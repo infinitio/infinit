@@ -29,6 +29,8 @@ namespace frete
     public elle::Printable
 
   {
+    friend ::frete::RPCFrete;
+
   /*------.
   | Types |
   `------*/
@@ -84,105 +86,59 @@ namespace frete
     void
     add(boost::filesystem::path const& root,
         boost::filesystem::path const& path);
-    void
-    get(boost::filesystem::path const& output,
-        bool strong_encryption = true,
-        std::string const& name_policy = " (%s)");
 
-    /*-------------.
-    | Remote calls |
-    `-------------*/
+    /*----.
+    | Api |
+    `----*/
   public:
-    /// The number of file in the remote filesystem.
+    /// Return the number of file.
     FileCount
     count();
-    /// The total size of a remote files.
+    /// Return the total size of files.
     FileSize
     full_size();
-    /// The size of a remote file.
+    /// Return the size of a file.
     FileSize
     file_size(FileID f);
-    /// The path of the \a f file.
+    /// Return the path of a file.
     std::string
     path(FileID f);
-    /// A chunk of a remote file.
-    elle::Buffer
+    /// Return a weakly crypted chunck of a file.
+    infinit::cryptography::Code
     read(FileID f, FileOffset start, FileSize size);
-    elle::Buffer
+    /// Return a strongly crypted chunck of a file.
+    infinit::cryptography::Code
     encrypted_read(FileID f, FileOffset start, FileSize size);
-    /// Notify the sender of the progress of the transaction.
+    /// Update the progress.
     void
     set_progress(FileSize progress);
-    /// The remote Infinit version.
+    /// Return the version.
     elle::Version
-    version();
+    version() const;
     /// Get the key of the transfer.
     infinit::cryptography::SecretKey const&
     key();
+    /// Get the key of the transfer.
+    infinit::cryptography::Code const&
+    key_code() const;
     /// Signal we're done
     void
     finish();
 
     ELLE_ATTRIBUTE_RX(reactor::Barrier, finished);
 
-  /*-----.
-  | RPCs |
-  `-----*/
   private:
     boost::filesystem::path
     _local_path(FileID file_id);
-    FileCount
-    _count();
-    FileSize
-    _full_size();
-    FileSize
-    _file_size(FileID f);
-    std::string
-    _path(FileID f);
     elle::Buffer
-    __read(FileID file_id,
-           FileOffset offset,
-           FileSize const size);
-    infinit::cryptography::Code
-    _read(FileID f, FileOffset start, FileSize size);
-    infinit::cryptography::Code
-    _encrypted_read(FileID f, FileOffset start, FileSize size);
-    void
-    _finish();
-    void
-    _set_progress(FileSize progress);
-    elle::Version
-    _version() const;
-    infinit::cryptography::Code const&
-    _key_code() const;
+    _read(FileID file_id,
+          FileOffset offset,
+          FileSize const size);
 
     // Sender.
     typedef std::pair<boost::filesystem::path, boost::filesystem::path> Path;
     typedef std::vector<Path> Paths;
     ELLE_ATTRIBUTE(Paths, paths);
-
-    typedef infinit::protocol::RPC<
-      elle::serialize::InputBinaryArchive,
-      elle::serialize::OutputBinaryArchive> RPC;
-    RPC _rpc;
-    RPC::RemoteProcedure<FileCount> _rpc_count;
-    RPC::RemoteProcedure<FileSize> _rpc_full_size;
-    RPC::RemoteProcedure<FileSize, FileID> _rpc_file_size;
-    RPC::RemoteProcedure<std::string,
-                         FileID> _rpc_path;
-    RPC::RemoteProcedure<infinit::cryptography::Code,
-                         FileID,
-                         FileOffset,
-                         FileSize> _rpc_read;
-    RPC::RemoteProcedure<void,
-                         FileSize> _rpc_set_progress;
-    RPC::RemoteProcedure<elle::Version> _rpc_version;
-    RPC::RemoteProcedure<infinit::cryptography::Code> _rpc_key_code;
-    RPC::RemoteProcedure<infinit::cryptography::Code,
-                         FileID,
-                         FileOffset,
-                         FileSize> _rpc_encrypted_read;
-    RPC::RemoteProcedure<void> _rpc_finish;
 
   private:
     void
@@ -204,20 +160,6 @@ namespace frete
     virtual
     void
     print(std::ostream& stream) const;
-
-    /*--------------.
-    | Static Method |
-    `--------------*/
-    // Exposed for debugging purposes.
-    static
-    boost::filesystem::path
-    eligible_name(boost::filesystem::path const path,
-                  std::string const& name_policy);
-
-    static
-    boost::filesystem::path
-    trim(boost::filesystem::path const& item,
-         boost::filesystem::path const& root);
   };
 }
 

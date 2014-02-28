@@ -1,0 +1,90 @@
+#ifndef RPCFRETE_HH
+# define RPCFRETE_HH
+
+# include <functional>
+
+# include <elle/Version.hh>
+# include <elle/attribute.hh>
+
+# include <protocol/fwd.hh>
+
+# include <frete/Frete.hh>
+
+namespace frete
+{
+// Prepend the name of the attribute with rpc_ to create the name of the rpc.
+#define RPC_NAME(_name_)                                                \
+  BOOST_PP_CAT(rpc_, _name_)
+
+// Create a getter that use the rpc.
+// RPC_WRAPPER(Foo, foo) will results to:
+// An attribute: Foo _rpc_foo;
+// A method foo(...) { return _rpc_foo(_ARGS_); }
+#define RPC_WRAPPER(_rpc_type_, _name_)                                 \
+  ELLE_ATTRIBUTE(_rpc_type_, RPC_NAME(_name_));                         \
+  public:                                                               \
+  template <typename... Args>                                           \
+  _rpc_type_::ReturnType                                                \
+  _name_(Args&&... args)                                                \
+  {                                                                     \
+    return RPC_NAME(_name_)(std::forward<Args&&>(args)...);             \
+  }
+
+  class RPCFrete
+  {
+  private:
+  /*------.
+  | Types |
+  `------*/
+    typedef infinit::protocol::RPC<
+      elle::serialize::InputBinaryArchive,
+      elle::serialize::OutputBinaryArchive> RPC;
+    typedef RPC::RemoteProcedure<Frete::FileCount> CountRPC;
+    typedef RPC::RemoteProcedure<Frete::FileSize> FullSizeRPC;
+    typedef RPC::RemoteProcedure<Frete::FileSize, Frete::FileID> FileSizeRPC;
+    typedef RPC::RemoteProcedure<std::string, Frete::FileID> FilePathRPC;
+    typedef RPC::RemoteProcedure<infinit::cryptography::Code,
+                                 Frete::FileID,
+                                 Frete::FileOffset,
+                                 Frete::FileSize> ReadRPC;
+    typedef ReadRPC EncryptedReadRPC;
+    typedef RPC::RemoteProcedure<void, Frete::FileSize> SetProgressRPC;
+    typedef RPC::RemoteProcedure<elle::Version> VersionRPC;
+    typedef RPC::RemoteProcedure<infinit::cryptography::Code> KeyCodeRPC;
+    typedef RPC::RemoteProcedure<void> FinishRPC;
+  /*-------------.
+  | Construction |
+  `-------------*/
+  public:
+    RPCFrete(Frete& frete,
+             infinit::protocol::ChanneledStream& channels);
+
+    RPCFrete(infinit::protocol::ChanneledStream& channels);
+
+  /*-----------.
+  | Attributes |
+  `-----------*/
+  private:
+    ELLE_ATTRIBUTE(RPC, rpc);
+
+  private:
+    RPC_WRAPPER(CountRPC, count);
+    RPC_WRAPPER(FullSizeRPC, full_size);
+    RPC_WRAPPER(FileSizeRPC, file_size);
+    RPC_WRAPPER(FilePathRPC, path);
+    RPC_WRAPPER(ReadRPC, read);
+    RPC_WRAPPER(SetProgressRPC, set_progress);
+  private:
+    VersionRPC _rpc_version;
+  public:
+    VersionRPC::ReturnType
+    version();
+   private:
+    RPC_WRAPPER(KeyCodeRPC, key_code);
+    RPC_WRAPPER(EncryptedReadRPC, encrypted_read);
+    RPC_WRAPPER(FinishRPC, finish);
+  };
+}
+
+
+#endif

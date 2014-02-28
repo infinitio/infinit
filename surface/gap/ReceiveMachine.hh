@@ -1,16 +1,19 @@
 #ifndef RECEIVEMACHINE_HH
 # define RECEIVEMACHINE_HH
 
-# include <surface/gap/State.hh>
+# include <memory>
+# include <string>
+# include <unordered_set>
+
+# include <boost/filesystem.hpp>
+
+# include <elle/attribute.hh>
 
 # include <reactor/waitable.hh>
 # include <reactor/signal.hh>
 
+# include <surface/gap/State.hh>
 # include <surface/gap/TransactionMachine.hh>
-
-# include <memory>
-# include <string>
-# include <unordered_set>
 
 namespace surface
 {
@@ -98,6 +101,20 @@ namespace surface
 
       std::string
       type() const override;
+
+    /*--------------.
+    | Static Method |
+    `--------------*/
+    // XXX: Exposed for debugging purposes.
+    static
+    boost::filesystem::path
+    eligible_name(boost::filesystem::path const path,
+                  std::string const& name_policy);
+
+    static
+    boost::filesystem::path
+    trim(boost::filesystem::path const& item,
+         boost::filesystem::path const& root);
     };
   }
 }

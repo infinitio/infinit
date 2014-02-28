@@ -4,6 +4,7 @@
 namespace frete
 {
   class Frete;
+  class RPCFrete;
   class TransferSnapshot;
 }
 
