@@ -307,6 +307,8 @@ def configure(cxx_toolkit = None,
     'frete/src/frete/Frete.cc',
     'frete/src/frete/TransferSnapshot.hh',
     'frete/src/frete/TransferSnapshot.cc',
+    'frete/src/frete/RPCFrete.hh',
+    'frete/src/frete/RPCFrete.cc',
     'frete/src/frete/fwd.hh',
   )
   cxx_config.add_local_include_path('frete/src')

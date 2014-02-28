@@ -243,6 +243,57 @@ namespace surface
       }
     }
 
+    boost::filesystem::path
+    ReceiveMachine::eligible_name(boost::filesystem::path const path,
+                                  std::string const& name_policy)
+    {
+      if (!boost::filesystem::exists(path))
+        return path;
+
+      auto _path = path.filename();
+      // Remove the extensions, add the name_policy and set the extension.
+      std::string extensions;
+      for (; !_path.extension().empty(); _path = _path.stem())
+        extensions = _path.extension().string() + extensions;
+      _path = path.parent_path() / _path;
+      _path += name_policy;
+      _path += extensions;
+
+      // Ugly.
+      for (size_t i = 2; i < std::numeric_limits<size_t>::max(); ++i)
+      {
+        if (!boost::filesystem::exists(elle::sprintf(_path.string().c_str(), i)))
+        {
+          return elle::sprintf(_path.string().c_str(), i);
+        }
+      }
+
+      throw elle::Exception(
+        elle::sprintf("unable to find a suitable name that matches %s", _path));
+    }
+
+    boost::filesystem::path
+    ReceiveMachine::trim(boost::filesystem::path const& item,
+                         boost::filesystem::path const& root)
+    {
+      if (item == root)
+        return "";
+
+      auto it = item.begin();
+      boost::filesystem::path rel;
+      for(; rel != root && it != item.end(); ++it)
+        rel /= *it;
+      if (it == item.end())
+        throw elle::Exception(
+          elle::sprintf("%s is not the root of %s", root, item));
+
+      boost::filesystem::path trimed;
+      for (; it != item.end(); ++it)
+        trimed /= *it;
+
+      return trimed;
+    }
+
     void
     ReceiveMachine::_transfer_operation(frete::Frete& frete)
     {
@@ -257,6 +308,7 @@ namespace surface
             frete.get(boost::filesystem::path{this->state().output_dir()});
             this->finished().open();
           });
+
         scope.run_background(
           elle::sprintf("frete get %s", this->id()),
           [&frete] ()
