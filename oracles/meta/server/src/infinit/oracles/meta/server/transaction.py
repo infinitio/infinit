@@ -8,7 +8,7 @@ import unicodedata
 
 import elle.log
 from .utils import api, require_logged_in
-from . import regexp, error, transaction_status, notifier, invitation
+from . import regexp, error, transaction_status, notifier, invitation, cloud_buffer_token
 import uuid
 import re
 from pymongo import ASCENDING, DESCENDING
@@ -20,6 +20,10 @@ class Mixin:
   def is_sender(self, transaction, owner_id):
     assert isinstance(owner_id, bson.ObjectId)
     return transaction['sender_id'] == owner_id
+
+  def is_recipient(self, transaction, user_id):
+    assert isinstance(user_id, bson.ObjectId)
+    return transaction['recipient_id'] == user_id
 
   def transaction(self, id, owner_id = None):
     assert isinstance(id, bson.ObjectId)
@@ -529,3 +533,38 @@ class Mixin:
     res['fallback'] = ["88.190.48.55:9899"]
 
     return self.success(res)
+
+  @api('/transaction/<transaction_id>/cloud_buffer')
+  @require_logged_in
+  def cloud_buffer(self, transaction_id: bson.ObjectId):
+    """
+    Return an AWS token giving the user permissions to PUT (sender) or GET
+    (recipient) from the cloud buffer.
+    """
+    user = self.user
+    transaction = self.transaction(transaction_id, owner_id = user['_id'])
+
+    # Ensure transaction is not in a final state.
+    if transaction['status'] in transaction_status.final:
+      return self.fail(error.TRANSACTION_ALREADY_FINALIZED)
+
+    res = None
+
+    if self.is_sender(transaction, user['_id']): # We're doing a PUT.
+      res = cloud_buffer_token.CloudBufferToken(user['_id'], transaction_id, 'PUT')
+    elif self.is_recipient(transaction, user['_id']): # We're doing a GET.
+      res = cloud_buffer_token.CloudBufferToken(user['_id'], transaction_id, 'GET')
+    else: # Not this user's transaction.
+      return self.fail(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
+
+    if res == None:
+      return self.fail(error.UNKNOWN)
+
+    # Only send back required credentials.
+    credentials = dict()
+    credentials['access_key_id'] = res.credentials['AccessKeyId']
+    credentials['secret_access_key'] = res.credentials['SecretAccessKey']
+    credentials['session_token'] = res.credentials['SessionToken']
+    credentials['expiration'] = res.credentials['Expiration']
+
+    return self.success(token)

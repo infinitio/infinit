@@ -29,7 +29,7 @@ class CloudBufferToken:
 
   default_parameters = {
     'Action': 'GetFederationToken',
-    'DurationSeconds': str(8 * 60 * 60), # 36 hrs is AWS max
+    'DurationSeconds': str(36 * 60 * 60), # 36 hrs is AWS max.
     'Version': '2011-06-15',
     'X-Amz-Algorithm': 'AWS4-HMAC-SHA256'
   }
