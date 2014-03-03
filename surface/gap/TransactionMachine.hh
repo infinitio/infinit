@@ -195,7 +195,7 @@ namespace surface
     protected:
       virtual
       void
-      _transfer_operation(frete::Frete& frete) = 0;
+      _transfer_operation(frete::RPCFrete& frete) = 0;
 
     protected:
       // This state has to be protected to allow the children to start the
@@ -225,7 +225,11 @@ namespace surface
     public:
       ELLE_ATTRIBUTE_R(surface::gap::State const&, state);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
-      ELLE_ATTRIBUTE_r(float, progress);
+      ELLE_ATTRIBUTE(float, progress);
+    public:
+      virtual
+      float
+      progress() const = 0;
 
     public:
       std::string const&
@@ -260,8 +264,8 @@ namespace surface
 
     protected:
       virtual
-      std::unique_ptr<frete::Frete>
-      frete(infinit::protocol::ChanneledStream& socket) = 0;
+      std::unique_ptr<frete::RPCFrete>
+      rpcs(infinit::protocol::ChanneledStream& socket) = 0;
 
       /*----------.
       | Printable |

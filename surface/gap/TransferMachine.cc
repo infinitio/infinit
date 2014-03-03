@@ -209,9 +209,7 @@ namespace surface
     float
     TransferMachine::progress() const
     {
-      if (this->_frete == nullptr)
-        return 0.0f;
-      return this->_frete->progress();
+      return this->_owner.progress();
     }
 
     /*-------.
@@ -337,7 +335,7 @@ namespace surface
         new infinit::protocol::Serializer(*this->_host));
       this->_channels.reset(
         new infinit::protocol::ChanneledStream(*this->_serializer));
-      this->_frete = this->_owner.frete(*this->_channels);
+      this->_rpcs = this->_owner.rpcs(*this->_channels);
       this->_peer_connected.signal();
     }
 
@@ -353,16 +351,17 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: start transfer operation", *this);
       this->_owner.current_state(TransactionMachine::State::Transfer);
-      elle::SafeFinally clear_freete{
+      elle::SafeFinally clear_frete{
         [this]
         {
-          this->_finished = this->_frete->finished();
-          this->_frete.reset();
+          //this->_finished = this->_frete->finished();
+          this->_rpcs.reset();
           this->_channels.reset();
           this->_serializer.reset();
           this->_host.reset();
         }};
-      this->_owner._transfer_operation(*this->_frete);
+
+      this->_owner._transfer_operation(*this->_rpcs);
       ELLE_TRACE_SCOPE("%s: end of transfer operation", *this);
     }
 

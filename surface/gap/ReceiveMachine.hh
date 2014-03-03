@@ -62,7 +62,7 @@ namespace surface
       _accept();
 
       void
-      _transfer_operation(frete::Frete& frete) override;
+      _transfer_operation(frete::RPCFrete& frete) override;
 
       void
       _fail();
@@ -81,10 +81,15 @@ namespace surface
       `-----------------*/
       ELLE_ATTRIBUTE(std::string, recipient);
       ELLE_ATTRIBUTE(std::unordered_set<std::string>, files);
-
+      ELLE_ATTRIBUTE(boost::filesystem::path, snapshot_path);
+      ELLE_ATTRIBUTE(std::unique_ptr<frete::TransferSnapshot>, snapshot)
     private:
-      std::unique_ptr<frete::Frete>
-      frete(infinit::protocol::ChanneledStream& socket) override;
+      std::unique_ptr<frete::RPCFrete>
+      rpcs(infinit::protocol::ChanneledStream& channels) override;
+
+    public:
+      float
+      progress() const override;
 
     public:
       virtual
@@ -102,19 +107,26 @@ namespace surface
       std::string
       type() const override;
 
-    /*--------------.
-    | Static Method |
-    `--------------*/
-    // XXX: Exposed for debugging purposes.
-    static
-    boost::filesystem::path
-    eligible_name(boost::filesystem::path const path,
-                  std::string const& name_policy);
+    public:
+      void
+      get(frete::RPCFrete& frete,
+          boost::filesystem::path const& output_path,
+          bool strong_encryption = true,
+          std::string const& name_policy = " (%s)");
 
-    static
-    boost::filesystem::path
-    trim(boost::filesystem::path const& item,
-         boost::filesystem::path const& root);
+      /*--------------.
+      | Static Method |
+      `--------------*/
+      // XXX: Exposed for debugging purposes.
+      static
+      boost::filesystem::path
+      eligible_name(boost::filesystem::path const path,
+                    std::string const& name_policy);
+
+      static
+      boost::filesystem::path
+      trim(boost::filesystem::path const& item,
+           boost::filesystem::path const& root);
     };
   }
 }

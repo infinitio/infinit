@@ -1,14 +1,20 @@
-#include <surface/gap/ReceiveMachine.hh>
-#include <surface/gap/Rounds.hh>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
 
-#include <frete/Frete.hh>
+#include <elle/finally.hh>
+#include <elle/serialize/extract.hh>
+#include <elle/serialize/insert.hh>
+
+#include <reactor/exception.hh>
+#include <reactor/thread.hh>
 
 #include <station/Station.hh>
 
-#include <reactor/thread.hh>
-#include <reactor/exception.hh>
+#include <frete/Frete.hh>
+#include <frete/TransferSnapshot.hh>
 
-#include <boost/filesystem.hpp>
+#include <surface/gap/ReceiveMachine.hh>
+#include <surface/gap/Rounds.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.ReceiveMachine");
 
@@ -28,7 +34,12 @@ namespace surface
       _accept_state(
         this->_machine.state_make(
           "accept", std::bind(&ReceiveMachine::_accept, this))),
-      _accepted("accepted barrier")
+      _accepted("accepted barrier"),
+      _snapshot_path(boost::filesystem::path(
+                       common::infinit::frete_snapshot_path(
+                         this->data()->recipient_id,
+                         this->data()->id))),
+      _snapshot(nullptr)
     {
       // Normal way.
       this->_machine.transition_add(this->_wait_for_decision_state,
@@ -56,6 +67,35 @@ namespace surface
       this->_machine.transition_add_catch(_accept_state, _fail_state);
       this->_machine.transition_add_catch(_reject_state, _fail_state);
       this->_machine.transition_add_catch(_transfer_core_state, _fail_state);
+
+      if (boost::filesystem::exists(this->_snapshot_path))
+      {
+        ELLE_LOG("snapshot exist at %s", this->_snapshot_path);
+        try
+        {
+          elle::SafeFinally delete_snapshot{
+            [&]
+            {
+              try
+              {
+                boost::filesystem::remove(this->_snapshot_path);
+              }
+              catch (std::exception const&)
+              {
+                ELLE_ERR("couldn't delete snapshot at %s: %s",
+                         this->_snapshot_path, elle::exception_string());
+              }
+            }};
+
+          this->_snapshot.reset(
+            new frete::TransferSnapshot(
+              elle::serialize::from_file(this->_snapshot_path.string())));
+        }
+        catch (std::exception const&) //XXX: Choose the right exception here.
+        {
+          ELLE_ERR("%s: snap shot was invalid: %s", *this, elle::exception_string());
+        }
+      }
     }
 
     ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
@@ -295,7 +335,7 @@ namespace surface
     }
 
     void
-    ReceiveMachine::_transfer_operation(frete::Frete& frete)
+    ReceiveMachine::_transfer_operation(frete::RPCFrete& frete)
     {
       ELLE_TRACE_SCOPE("%s: transfer operation", *this);
 
@@ -305,12 +345,13 @@ namespace surface
           elle::sprintf("download %s", this->id()),
           [&frete, this] ()
           {
-            frete.get(boost::filesystem::path{this->state().output_dir()});
+            this->get(frete,
+                      boost::filesystem::path{this->state().output_dir()});
             this->finished().open();
           });
 
         scope.run_background(
-          elle::sprintf("frete get %s", this->id()),
+          elle::sprintf("run rpcs %s", this->id()),
           [&frete] ()
           {
             frete.run();
@@ -320,17 +361,212 @@ namespace surface
       };
     }
 
-    std::unique_ptr<frete::Frete>
-    ReceiveMachine::frete(infinit::protocol::ChanneledStream& channels)
+    std::unique_ptr<frete::RPCFrete>
+    ReceiveMachine::rpcs(infinit::protocol::ChanneledStream& channels)
     {
+      return elle::make_unique<frete::RPCFrete>(channels);
+    }
 
-      return elle::make_unique<frete::Frete>(
-        channels,
-        this->transaction_id(),
-        this->state().identity().pair().k(),
-        common::infinit::frete_snapshot_path(
-          this->data()->recipient_id,
-          this->data()->id));
+    float
+    ReceiveMachine::progress() const
+    {
+      if (this->_snapshot != nullptr)
+        return this->_snapshot->progress();
+      return 0.0f;
+    }
+
+    void
+    ReceiveMachine::get(frete::RPCFrete& frete,
+                        boost::filesystem::path const& output_path,
+                        bool strong_encryption,
+                        std::string const& name_policy)
+    {
+      auto peer_version = frete.version();
+      if (peer_version < elle::Version(0, 8, 3))
+      {
+        // XXX: Create better exception.
+        if (strong_encryption)
+          ELLE_WARN("peer version doesn't support strong encryption");
+        strong_encryption = false;
+      }
+
+      auto count = frete.count();
+
+      // total_size can be 0 if all files are empty.
+      auto total_size = frete.full_size();
+
+      if (this->_snapshot != nullptr)
+      {
+        if ((this->_snapshot->total_size() != total_size) ||
+            (this->_snapshot->count() != count))
+        {
+          ELLE_ERR("snapshot data (%s) are invalid", *this->_snapshot);
+          throw elle::Exception("invalid transfer data");
+        }
+      }
+      else
+      {
+        this->_snapshot.reset(new frete::TransferSnapshot(count, total_size));
+      }
+
+      static std::streamsize const chunk_size = 1 << 18;
+
+      ELLE_DEBUG("transfer snapshot: %s", *this->_snapshot);
+
+      auto last_index = this->_snapshot->transfers().size();
+      if (last_index > 0)
+        --last_index;
+
+      // If files are present in the snapshot, take the last one.
+      for (auto index = last_index; index < count; ++index)
+      {
+        ELLE_DEBUG("%s: index %s", *this, index);
+
+        boost::filesystem::path fullpath;
+        // XXX: Merge file_size & rpc_path.
+        auto file_size = frete.file_size(index);
+
+        if (this->_snapshot->transfers().find(index) != this->_snapshot->transfers().end())
+        {
+          auto const& transfer = this->_snapshot->transfers().at(index);
+          fullpath = this->_snapshot->transfers().at(index).full_path();
+
+          if (file_size != transfer.file_size())
+          {
+            ELLE_ERR("%s: transfer data (%s) at index %s are invalid.",
+                     *this, transfer, index);
+
+            throw elle::Exception("invalid transfer data");
+          }
+        }
+        else
+        {
+          auto relativ_path = boost::filesystem::path{frete.path(index)};
+          fullpath = ReceiveMachine::eligible_name(output_path / relativ_path,
+                                                   name_policy);
+          relativ_path = ReceiveMachine::trim(fullpath, output_path);
+
+          this->_snapshot->transfers().emplace(
+            std::piecewise_construct,
+            std::make_tuple(index),
+            std::forward_as_tuple(index, output_path, relativ_path, file_size));
+        }
+
+        ELLE_ASSERT(this->_snapshot->transfers().find(index) !=
+                    this->_snapshot->transfers().end());
+
+        auto& tr = this->_snapshot->transfers().at(index);
+
+        ELLE_DEBUG("%s: index (%s) - path %s - size %s",
+                   *this, index, fullpath, file_size);
+
+        // Create subdir.
+        boost::filesystem::create_directories(fullpath.parent_path());
+        boost::filesystem::ofstream output{fullpath,
+            std::ios::app | std::ios::binary};
+
+        if (tr.complete())
+        {
+          ELLE_DEBUG("%s: transfer was marked as complete", *this);
+          continue;
+        }
+
+        auto key = strong_encryption ?
+          infinit::cryptography::SecretKey(
+            this->state().identity().pair().k().decrypt<
+              infinit::cryptography::SecretKey>(frete.key_code())) :
+          infinit::cryptography::SecretKey(
+            infinit::cryptography::cipher::Algorithm::aes256,
+            this->transaction_id());
+
+        while (true)
+        {
+          if (!output.good())
+            throw elle::Exception("output is invalid");
+
+          // Get the buffer from the rpc.
+          elle::Buffer buffer{
+              key.decrypt<elle::Buffer>(
+                strong_encryption ?
+                frete.encrypted_read(index, tr.progress(), chunk_size) :
+                frete.read(index, tr.progress(), chunk_size))};
+
+          ELLE_ASSERT_LT(index, this->_snapshot->transfers().size());
+          ELLE_DUMP("%s: %s (size: %s)",
+                    index, fullpath, boost::filesystem::file_size(fullpath));
+          {
+            boost::system::error_code ec;
+            auto size = boost::filesystem::file_size(fullpath, ec);
+
+            if (ec)
+            {
+              ELLE_ERR("destination file deleted");
+              throw elle::Exception("destination file deleted");
+            }
+
+            if (size != this->_snapshot->transfers()[index].progress())
+            {
+              uintmax_t current_size;
+              try
+              {
+                current_size = boost::filesystem::file_size(fullpath);
+              }
+              catch (boost::filesystem::filesystem_error const& e)
+              {
+                ELLE_ERR("%s: expected size and actual size differ, "
+                         "unable to determine actual size: %s", *this, e);
+                throw elle::Exception("destination file corrupted");
+              }
+              ELLE_ERR(
+                "%s: expected file size %s and actual file size %s are different",
+                *this,
+                this->_snapshot->transfers()[index].progress(),
+                current_size);
+              throw elle::Exception("destination file corrupted");
+            }
+          }
+
+          ELLE_DUMP("content: %s (%sB)", buffer, buffer.size());
+
+          // Write the file.
+          output.write((char const*) buffer.contents(), buffer.size());
+          output.flush();
+
+          if (!output.good())
+            throw elle::Exception("writing left the stream in a bad state");
+          {
+            this->_snapshot->increment_progress(index, buffer.size());
+            elle::serialize::to_file(this->_snapshot_path.string()) << *this->_snapshot;
+            frete.set_progress(this->_snapshot->progress());
+            // this->_progress_changed.signal();
+          }
+          ELLE_DEBUG("%s: %s (size: %s)",
+                     index, fullpath, boost::filesystem::file_size(fullpath));
+          // XXX: Shouldn't be an assert, the user can rm the file. The
+          // transaction should fail but not create an assertion error.
+          ELLE_ASSERT_EQ(boost::filesystem::file_size(fullpath),
+                         this->_snapshot->transfers()[index].progress());
+          if (buffer.size() < unsigned(chunk_size))
+          {
+            output.close();
+            ELLE_TRACE("finished %s: %s", index, *this->_snapshot);
+            break;
+          }
+        }
+      }
+
+      // this->finished.open();
+      this->_finish();
+
+      try
+      {
+        boost::filesystem::remove(this->_snapshot_path);
+      }
+      catch (std::exception const&)
+      {
+        ELLE_ERR("couldn't delete snapshot at %s: %s",
+                 this->_snapshot_path, elle::exception_string());
+      }
     }
 
     std::string

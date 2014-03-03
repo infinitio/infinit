@@ -4,6 +4,8 @@
 # include <surface/gap/TransactionMachine.hh>
 # include <surface/gap/State.hh>
 
+# include <frete/fwd.hh>
+
 namespace surface
 {
   namespace gap
@@ -59,7 +61,7 @@ namespace surface
       _wait_for_accept();
 
       void
-      _transfer_operation(frete::Frete& frete) override;
+      _transfer_operation(frete::RPCFrete& frete) override;
 
       /*-----------------------.
       | Machine implementation |
@@ -71,12 +73,18 @@ namespace surface
       ELLE_ATTRIBUTE_RX(reactor::Barrier, accepted);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, rejected);
 
+      ELLE_ATTRIBUTE(std::unique_ptr<frete::Frete>, frete);
+
       /*-----------------.
       | Transaction data |
       `-----------------*/
       typedef std::unordered_set<std::string> Files;
       ELLE_ATTRIBUTE(Files, files);
       ELLE_ATTRIBUTE(std::string, message);
+
+    public:
+      float
+      progress() const override;
 
     public:
       virtual
@@ -87,8 +95,11 @@ namespace surface
       }
 
     private:
-      std::unique_ptr<frete::Frete>
-      frete(infinit::protocol::ChanneledStream& channels);
+      frete::Frete&
+      frete();
+
+      std::unique_ptr<frete::RPCFrete>
+      rpcs(infinit::protocol::ChanneledStream& channels) override;
 
     public:
       /*----------.

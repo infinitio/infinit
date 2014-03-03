@@ -356,7 +356,7 @@ namespace surface
     }
 
     void
-    SendMachine::_transfer_operation(frete::Frete& frete)
+    SendMachine::_transfer_operation(frete::RPCFrete& frete)
     {
       ELLE_TRACE_SCOPE("%s: transfer operation", *this);
 
@@ -372,22 +372,41 @@ namespace surface
       };
     }
 
-    std::unique_ptr<frete::Frete>
-    SendMachine::frete(infinit::protocol::ChanneledStream& channels)
+    float
+    SendMachine::progress() const
     {
-      infinit::cryptography::PublicKey peer_K;
-      peer_K.Restore(this->state().user(this->peer_id(), true).public_key);
-      auto frete = elle::make_unique<frete::Frete>(
-        channels,
-        this->transaction_id(),
-        peer_K,
-        common::infinit::frete_snapshot_path(
-          this->data()->sender_id,
-          this->data()->id));
-      ELLE_TRACE("%s: initialize frete", *this)
-        for (std::string const& file: this->_files)
-          frete->add(file);
-      return frete;
+      if (this->_frete != nullptr)
+        return this->_frete->progress();
+      return 0.0f;
+    }
+
+    frete::Frete&
+    SendMachine::frete()
+    {
+      if (this->_frete == nullptr)
+      {
+        infinit::cryptography::PublicKey peer_K;
+        peer_K.Restore(this->state().user(this->peer_id(), true).public_key);
+
+        this->_frete = elle::make_unique<frete::Frete>(
+          this->transaction_id(),
+          peer_K,
+          common::infinit::frete_snapshot_path(
+            this->data()->sender_id,
+            this->data()->id));
+
+        ELLE_TRACE("%s: initialize frete", *this)
+          for (std::string const& file: this->_files)
+            this->_frete->add(file);
+      }
+
+      return *this->_frete;
+    }
+
+    std::unique_ptr<frete::RPCFrete>
+    SendMachine::rpcs(infinit::protocol::ChanneledStream& channels)
+    {
+      return elle::make_unique<frete::RPCFrete>(this->frete(), channels);
     }
 
     /*----------.

@@ -5,7 +5,7 @@
 # include <reactor/fsm.hh>
 # include <reactor/network/socket.hh>
 
-# include <frete/Frete.hh>
+# include <frete/RPCFrete.hh>
 # include <surface/gap/fwd.hh>
 
 namespace surface
@@ -25,8 +25,7 @@ namespace surface
                      serializer);
       ELLE_ATTRIBUTE(std::unique_ptr<infinit::protocol::ChanneledStream>,
                      channels);
-      ELLE_ATTRIBUTE(std::unique_ptr<frete::Frete>, frete);
-
+      ELLE_ATTRIBUTE(std::unique_ptr<frete::RPCFrete>, rpcs);
 
     /*--------.
     | Control |
@@ -51,6 +50,7 @@ namespace surface
     public:
       float
       progress() const;
+
       ELLE_ATTRIBUTE(bool, finished);
 
     /*-------.
