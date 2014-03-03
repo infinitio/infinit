@@ -236,7 +236,7 @@ namespace infinit
                      uint16_t port):
         _host(server),
         _port(port),
-        _root_url{elle::sprintf("http://%s:%d", server, port)},
+        _root_url{elle::sprintf("https://%s:%d", server, port)},
         _client{},
         _default_configuration{boost::posix_time::seconds{30},
                                reactor::http::Version::v10},
