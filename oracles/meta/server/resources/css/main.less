@@ -83,7 +83,8 @@ h1, h2, h3, h4, h5 { font-weight: 300; }
 body { font-family: @helvetica; color: @infinitblack; }
 
 header {
-  height: 25px; padding: 10px 0 17px 0;  background: white; z-index: 99; position: absolute; width: 100%; padding-top: 5px; display: block;
+  height: 25px; padding: 10px 0 17px 0;  background: white; z-index: 99; 
+  position: absolute; width: 100%; padding-top: 5px; display: block;
   -webkit-box-shadow: 0 1px 1px 0 rgba(0,0,0,.1); box-shadow: 0 1px 1px 0 rgba(0,0,0,.1); 
   
   .logo { float:left; margin-top: 0; height: 35px; padding-left: 10px; 
@@ -97,7 +98,9 @@ header {
         text-decoration: none;
         &:hover { color: @infinitred; }
         &.current { color: lighten(@infinitblack, 35%); }
-        &.register { background: @infinitred; color: white; border-radius: 5px; padding: 5px 7px;}
+        &.register { 
+          background: @infinitred; color: white; border-radius: 5px; padding: 5px 7px;
+        }
       }
     }
   }
@@ -113,9 +116,12 @@ header {
   }
   
   .sidebar { 
-    width: 230px; background: @transactionbg; border-radius: 5px; padding: 15px; font-size: 0.8em; z-index: 2;
+    width: 230px; background: @transactionbg; border-radius: 5px; padding: 15px; 
+    font-size: 0.8em; z-index: 2; max-height: 80%;
     position: fixed; left: 50%; margin-left: 215px; margin-top: 15px;
-    label { text-transform: uppercase; font-family: @montserrat; margin: 10px; display: block; } 
+    label { 
+      text-transform: uppercase; font-family: @montserrat; margin: 10px; 
+      display: block; } 
     
     li a {
       &.active { color: @infinitblack; }
@@ -136,7 +142,8 @@ footer { height: 100px; clear: both; }
 .tooltip { display: none;}
 
 input[type="text"] { 
-  padding: 8px 10px; font-size: 0.9em; border-radius: 3px; border: 1px solid lighten(gray, 20%); margin-left: 11px;
+  padding: 8px 10px; font-size: 0.9em; border-radius: 3px; 
+  border: 1px solid lighten(gray, 20%); margin-left: 11px;
   color: @infinitblack; font-family: @montserrat; width: 182px;
 }
 
@@ -176,7 +183,7 @@ body.waterfall {
       
       h2 { 
         font-size: 1.3em; font-weight: 300; margin-top: 40px;
-        &:nth-of-type(1) { margin-top: 10px; } 
+        &:nth-of-type(1) { margin-top: 10px; }
         
         a { font-weight: strong; }
         span { font-family: @montserrat; color: lighten(gray, 15%); font-size: 0.6em; 
@@ -186,12 +193,13 @@ body.waterfall {
         
       }
       .transaction {
-        clear: both; min-height: 25px; padding: 5px 10px;  margin-right: 40px; background: white; 
-        margin-bottom: 3px; border-radius: 5px;
+        clear: both; min-height: 40px; padding: 5px 10px;  margin-right: 40px; 
+        background: white; margin-bottom: 3px; border-radius: 5px;
+
         &:hover, &.extended { background: @transactionbg; cursor: pointer; }
         &.extended { margin-bottom: 15px; }
          
-        .summary {
+        .summary { position: relative;
           img { float: left; height: 24px; width: 24px; border-radius: 24px; margin-right: 7px; }
           h3 { float: left; margin: 0; font-size: 1em; 
             a { color: @infinitblack; 
@@ -199,6 +207,7 @@ body.waterfall {
               &.ghost { opacity: 0.5;}
             }
           }
+          .emails { position: absolute; top: 26px; left: 102px; font-size: 11px; color: lighten(gray, 20%); font-weight: 300;  }
           .arrow { float: left; display: block; margin: 0 10px; }
           .status { 
             float: left; font-size: 0.6em; font-family: @montserrat; text-transform: uppercase;
@@ -212,13 +221,11 @@ body.waterfall {
           }
           .date { color: lighten(gray, 20%); float: right; font-size: 0.8em; display: none; padding-top: 5px; padding-right:5px;}
           
-          .tooltip { display: none;
-            
-          }
+          .tooltip { display: none; }
           
         }
         .details { display: none; font-size: 0.8em; padding-left: 75px;
-          clear: both; border-top: 1px solid darken(@transactionbg, 5%); margin-top: 32px; padding-bottom: 5px;
+          clear: both; border-top: 1px solid darken(@transactionbg, 5%); margin-top: 50px; padding-bottom: 5px;
           
           p { margin: 0; padding: 0; }
           p.files { padding: 10px 0 0px 0; color: lighten(gray, 20%);
@@ -232,8 +239,37 @@ body.waterfall {
     .sidebar { 
       .date, .status, .groups, .views { margin-bottom: 20px; }
       .date { margin-bottom: 20px; }
-
+      
+      .status {
+        ul { list-style-type: none; margin: 0; padding: 0; margin-left:10px;
+          li { 
+            a { 
+              padding-left: 25px; display: block; 
+              background: url('../images/tick.png') no-repeat;
+              
+              &.active {
+                background: url('../images/ticked.png') no-repeat; 
+              }
+            }
+          }
+        } 
+      }
+      
       .groups {
+        ul { 
+          list-style-type: none; margin: 0; padding: 0; margin-left:10px; 
+          overflow-y: scroll; max-height: 230px;
+          li { 
+            a { 
+              padding-left: 25px; display: block; 
+              background: url('../images/tick.png') no-repeat;
+              
+              &.active {
+                background: url('../images/ticked.png') no-repeat; 
+              }
+            }
+          }
+        } 
         input { }
         .group {  }
         .rm_group { 

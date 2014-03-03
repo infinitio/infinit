@@ -117,13 +117,17 @@ $(document).ready(function() {
 
       if (!users)
       {
-        users = getURLParameter('users')
+        users = getURLParameter('users');
         if (users)
         {
           users = getURLParameter('users');
           start = moment().subtract('year', 1).startOf('day');
           end = moment();
         }
+      } 
+      else 
+      {
+        users = JSON.stringify(users);  
       }
 
       url = '/waterfall/transactions.html?';
@@ -164,6 +168,7 @@ $(document).ready(function() {
         Object.keys(groups).forEach(function(key) {
           $('.sidebar .groups ul').append('<li><a class="filter_group" href="#group">' + groups[key].name + '</a></li>');
         });
+        $('.sidebar .groups ul').append('<li><a class="filter_group all" href="#group">All</a></li>');
       })
       .error(function(data) {
         alert('Error getting group.');
@@ -189,6 +194,15 @@ $(document).ready(function() {
     function getSelectedGroups() {
       var groups = Array();
       $('.filter_group.active').each(function() {
+        groups.push($(this).text());
+      });
+
+      return groups;
+    }
+
+    function getAllGroups() {
+      var groups = Array();
+      $('.filter_group').each(function() {
         groups.push($(this).text());
       });
 
@@ -241,10 +255,10 @@ $(document).ready(function() {
     // Date filter
     $('#datepicker').daterangepicker({
       ranges: {
-       'Today': [moment(), moment()],
-       'Yesterday': [moment().subtract('days', 1), moment().subtract('days', 1)],
-       'Last 7 Days': [moment().subtract('days', 6), moment()],
-       'Last 30 Days': [moment().subtract('days', 29), moment()],
+       'Today': [moment().startOf('day'), moment()],
+       'Yesterday': [moment().subtract('days', 1).startOf('day'), moment().subtract('days', 1)],
+       'Last 7 Days': [moment().subtract('days', 6).startOf('day'), moment()],
+       'Last 30 Days': [moment().subtract('days', 29).startOf('day'), moment()],
        'This Month': [moment().startOf('month'), moment().endOf('month')],
        'Last Month': [moment().subtract('month', 1).startOf('month'), moment().subtract('month', 1).endOf('month')]
       },
@@ -252,16 +266,14 @@ $(document).ready(function() {
         endDate: moment()
       },
       function(start, end) {
+        $('.transactions').empty().addClass('loading');
         $('#datepicker').html(start.format('MMMM D, YYYY') + ' &#8594; ' + end.format('MMMM D, YYYY'));
         var groups = getSelectedGroups();
-
-        loadTransactions(start = start, end = end, status = '', user = null, groups = groups);
+        var status = getSelectedStatus();
+        
+        loadTransactions(start = start, end = end, status = status, user = null, groups = groups);
       }
     );
-
-    $('#datepicker').on('apply', function(ev, picker) {
-      $('.transactions').empty().addClass('loading');
-    });
 
 
     // Status filter
@@ -292,12 +304,25 @@ $(document).ready(function() {
 
     // Group filter
     $(document).on("click", ".sidebar .groups .filter_group", function() {
-      $(this).toggleClass('active');
+
+      // Select all groups
+      if ($(this).hasClass('all') && !$(this).hasClass('active')) {
+        $('.sidebar .groups .filter_group').removeClass('active');
+        var groups = getAllGroups(); 
+        $(this).toggleClass('active');     
+
+      // Select only checked groups
+      } else {
+        $(this).toggleClass('active');
+        $('.sidebar .groups .filter_group.all').removeClass('active');
+        var groups = getSelectedGroups();
+      }
+
+      
 
       var start = getCurrentStartDate();
       var end = getCurrentEndDate();
       var status = getSelectedStatus();
-      var groups = getSelectedGroups();
 
       loadTransactions(start = start, end = end, status = status, user = null, groups = groups);
     });
