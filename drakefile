@@ -171,6 +171,7 @@ def configure(cxx_toolkit = None,
   cryptography_lib = copy_lib(elle.cryptography.library)
   reactor_lib = copy_lib(elle.reactor.library)
   protocol_lib = copy_lib(elle.protocol.library)
+  aws_lib = copy_lib(elle.aws.library)
 
   cxx_config += elle.config
   cxx_config.add_local_include_path('.')
@@ -472,6 +473,7 @@ def configure(cxx_toolkit = None,
   gap_lib = drake.cxx.DynLib(
     'lib/gap',
     gap_sources + [
+      aws_lib,
       trophonius_client_lib,
       meta_client_lib,
       frete_lib,
