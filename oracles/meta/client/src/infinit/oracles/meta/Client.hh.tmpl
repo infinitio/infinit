@@ -175,6 +175,14 @@ namespace infinit
         std::vector<std::string>      locals;
       };
 
+      struct CloudBufferTokenResponse: Response
+      {
+        std::string access_key_id;
+        std::string secret_access_key;
+        std::string session_token;
+        std::string expiration;
+      };
+
       struct Device
       {
         // boost::uuids::uuid
@@ -395,6 +403,9 @@ namespace infinit
 
         FallbackResponse
         fallback(std::string const& _id) const;
+
+        CloudBufferTokenResponse
+        get_cloud_buffer_token(std::string const& transaction_id) const;
 
       public:
         ServerStatusResponse
