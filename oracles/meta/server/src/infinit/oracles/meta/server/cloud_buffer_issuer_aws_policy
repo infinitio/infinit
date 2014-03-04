@@ -4,12 +4,12 @@
     {
         "Effect":"Allow",
         "Action":["s3:*"],
-        "Resource":"arn:aws:s3:::io.infinit.buffer.us0"
+        "Resource":"arn:aws:s3:::us-east-1-buffer-infinit-io"
    },
    {
         "Effect":"Allow",
         "Action":["s3:*"],
-        "Resource":"arn:aws:s3:::io.infinit.buffer.us0/*"
+        "Resource":"arn:aws:s3:::us-east-1-buffer-infinit-io/*"
    },
    {
         "Effect":"Allow",
