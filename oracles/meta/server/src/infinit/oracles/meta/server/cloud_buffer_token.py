@@ -44,7 +44,8 @@ class CloudBufferToken:
     return res
 
   def __init__(self, user_id, transaction_id, http_action,
-               aws_region='us-east-1'):
+               aws_region='us-east-1',
+               bucket_name='us-east-1-buffer-infinit-io'):
     assert http_action in ['PUT', 'GET']
     elle.log.log('%s: fetching S3 %s token for transaction (%s), user_id (%s) for region: %s' %
                  (self, http_action, transaction_id, user_id, aws_region))
@@ -53,6 +54,7 @@ class CloudBufferToken:
     self.http_action = http_action
     self.aws_region = aws_region
     self.aws_service = 'sts'
+    self.bucket_name = bucket_name
 
     self.request_time = datetime.utcnow()
     self.headers = self._make_headers()
@@ -105,14 +107,15 @@ class CloudBufferToken:
     object_statement = {
       'Effect': 'Allow',
       'Action': object_actions,
-      'Resource': 'arn:aws:s3:::io.infinit.buffer.us0/%s/*' % (self.transaction_id)
+      'Resource': 'arn:aws:s3:::%s/%s/*' % (self.bucket_name,
+                                            self.transaction_id)
     }
     bucket_statement = None
     if bucket_actions:
       bucket_statement = {
         'Effect': 'Allow',
         'Action': bucket_actions,
-        'Resource': 'arn:aws:s3:::io.infinit.buffer.us0'
+        'Resource': 'arn:aws:s3:::%s' % (self.bucket_name)
       }
     statements = [object_statement]
     if bucket_statement:
