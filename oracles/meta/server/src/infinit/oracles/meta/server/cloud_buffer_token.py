@@ -212,6 +212,6 @@ class CloudBufferToken:
       self._aws_urlencode(parameters),
       urllib.parse.quote(signed_request),
     )
-    url_string = 'https://%s?%s' % (CloudBufferToken.aws_host, completed_request)
+    url_string = 'https://%s:443?%s' % (CloudBufferToken.aws_host, completed_request)
     elle.log.debug('%s: url string: %s' % (self, url_string))
     return url_string
