@@ -31,7 +31,7 @@ namespace surface
       S3TransferBufferer(
         infinit::oracles::Transaction& transaction,
         aws::Credentials const& credentials,
-        std::string const& bucket_name = "io.infinit.buffer.us0");
+        std::string const& bucket_name = "us-east-1-buffer-infinit-io");
 
     /*----------.
     | Buffering |
