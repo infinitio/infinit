@@ -35,9 +35,10 @@ namespace infinit
         typedef std::string TID;
 
       public:
-        Apertus(std::string mhost,
-                int mport,
-                std::string host = "0.0.0.0",
+        Apertus(std::string const& meta_protocol,
+                std::string const& meta_host,
+                int meta_port,
+                std::string const& host = "0.0.0.0",
                 int port_ssl = 6566,
                 int port_tcp = 6565,
                 boost::posix_time::time_duration const& tick_rate = 10_sec);

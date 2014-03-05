@@ -21,7 +21,7 @@ parse_options(int argc, char** argv)
     ("port-ssl,pssl", value<int>(), "specify the SSL port to listen on")
     ("port-tcp,ptcp", value<int>(), "specify the TCP port to listen on")
     ("meta,m", value<std::string>(),
-     "specify the meta host[:port] to connect to")
+     "specify the meta protocol://host[:port] to connect to")
     ("tick,t", value<long>(), "specify the rate at which to announce the load to meta")
     ("syslog,s", "send logs to the system logger")
     ("version,v", "display version information and exit")
@@ -68,6 +68,7 @@ int main(int argc, char** argv)
     if (!options.count("meta"))
       throw std::runtime_error("meta argument is mandatory");
 
+    std::string meta_protocol = "http";
     std::string meta_host = "";
     int meta_port = 80;
 
@@ -75,15 +76,21 @@ int main(int argc, char** argv)
       std::string meta = options["meta"].as<std::string>();
       std::vector<std::string> result;
       boost::split(result, meta, boost::is_any_of(":"));
-      if (result.size() > 2)
+      if (result.size() > 3)
         throw std::runtime_error("meta must be <host>(:<port>)");
-      else if (result.size() == 2)
+      else if (result.size() == 3)
       {
-        meta_port = std::stoi(result[1]);
-        meta_host = result[0];
+        meta_protocol = result[0];
+        meta_host = result[1];
+        // Remove slashes after protocol.
+        meta_host.erase(std::remove(meta_host.begin(), meta_host.end(), '/'),
+                        meta_host.end());
+        meta_port = std::stoi(result[2]);
       }
       else
+      {
         meta_host = meta;
+      }
 
       if (meta_host.empty())
         throw std::runtime_error("meta host is empty");
@@ -108,6 +115,7 @@ int main(int argc, char** argv)
       {
         apertus.reset(
           new infinit::oracles::apertus::Apertus(
+            meta_protocol,
             meta_host,
             meta_port,
             "0.0.0.0",

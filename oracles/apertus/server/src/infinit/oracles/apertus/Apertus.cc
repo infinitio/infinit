@@ -27,14 +27,16 @@ namespace infinit
   {
     namespace apertus
     {
-      Apertus::Apertus(std::string mhost, int mport,
-                       std::string host, int port_ssl, int port_tcp,
+      Apertus::Apertus(std::string const& meta_protocol,
+                       std::string const& meta_host,
+                       int meta_port,
+                       std::string const& host, int port_ssl, int port_tcp,
                        boost::posix_time::time_duration const& tick_rate):
         Waitable("apertus"),
         _unregistered(false),
         _accepter_ssl(nullptr),
         _accepter_tcp(nullptr),
-        _meta(mhost, mport),
+        _meta(meta_protocol, meta_host, meta_port),
         _uuid(boost::uuids::random_generator()()),
         _host(host),
         _port_ssl(port_ssl),
