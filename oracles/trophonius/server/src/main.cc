@@ -1,6 +1,8 @@
 #include <infinit/oracles/trophonius/server/Client.hh>
 #include <infinit/oracles/trophonius/server/Trophonius.hh>
 
+#include <algorithm>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/program_options.hpp>
 
@@ -30,7 +32,7 @@ parse_options(int argc, char** argv)
     ("port-ssl,pssl", value<int>(), "specify the SSL port to listen on")
     ("port-tcp,ptcp", value<int>(), "specify the TCP port to listen on")
     ("meta,m", value<std::string>(),
-     "specify the meta host[:port] to connect to")
+     "specify the meta protocol://host[:port] to connect to")
     ("ignore-meta",
      "make meta registration errors non fatal")
     ("notifications-port,n", value<int>(),
@@ -77,6 +79,7 @@ int main(int argc, char** argv)
   {
     auto options = parse_options(argc, argv);
     bool meta_fatal = true;
+    std::string meta_protocol = "http";
     std::string meta_host = "";
     int meta_port = 80;
     if (!options.count("meta"))
@@ -86,15 +89,22 @@ int main(int argc, char** argv)
       std::string meta = options["meta"].as<std::string>();
       std::vector<std::string> result;
       boost::split(result, meta, boost::is_any_of(":"));
-      if (result.size() > 2)
+      if (result.size() > 3)
         throw std::runtime_error("meta must be <host>(:<port>)");
-      else if (result.size() == 2)
+      else if (result.size() == 3)
       {
-        meta_port = std::stoi(result[1]);
-        meta_host = result[0];
+        meta_protocol = result[0];
+        meta_host = result[1];
+        // Remove slashes after protocol.
+        meta_host.erase(std::remove(meta_host.begin(), meta_host.end(), '/'),
+                        meta_host.end());
+        meta_port = std::stoi(result[2]);
       }
       else
+      {
         meta_host = meta;
+      }
+
       if (meta_host.empty())
         throw std::runtime_error("meta host is empty");
     }
@@ -122,6 +132,7 @@ int main(int argc, char** argv)
           new Trophonius(
             port_ssl,
             port_tcp,
+            meta_protocol,
             meta_host,
             meta_port,
             notifications_port,

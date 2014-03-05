@@ -30,7 +30,8 @@ namespace infinit
           _user_id(),
           _session_id(),
           // Meta
-          _meta(this->trophonius().meta().host(),
+          _meta(this->trophonius().meta().protocol(),
+                this->trophonius().meta().host(),
                 this->trophonius().meta().port()),
           _authentified(),
           _registered(false),
