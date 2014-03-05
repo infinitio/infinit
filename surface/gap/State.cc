@@ -83,12 +83,13 @@ namespace surface
     /*-------------------------.
     | Construction/Destruction |
     `-------------------------*/
-    State::State(std::string const& meta_host,
+    State::State(std::string const& meta_protocol,
+                 std::string const& meta_host,
                  uint16_t meta_port,
                  std::string const& trophonius_host,
                  uint16_t trophonius_port):
       _logger_intializer{},
-      _meta{meta_host, meta_port},
+      _meta{meta_protocol, meta_host, meta_port},
       _meta_message{""},
       _trophonius{
         trophonius_host,
