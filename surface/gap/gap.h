@@ -33,7 +33,8 @@ extern "C" {
 
   /// Create a new state.
   /// Returns NULL on failure.
-  gap_State* gap_configurable_new(char const* meta_host,
+  gap_State* gap_configurable_new(char const* meta_protocol,
+                                  char const* meta_host,
                                   unsigned short meta_port,
                                   char const* trophonius_host,
                                   unsigned short trophonius_port);
