@@ -6,7 +6,7 @@
 
 ELLE_TEST_SCHEDULED(connection_refused)
 {
-  infinit::oracles::meta::Client c("127.0.0.1", 21232);
+  infinit::oracles::meta::Client c("http", "127.0.0.1", 21232);
 }
 
 ELLE_TEST_SUITE()
