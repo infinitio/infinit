@@ -100,14 +100,16 @@ extern "C"
 
   /// Create a new state.
   /// Returns NULL on failure.
-  gap_State* gap_configurable_new(char const* meta_host,
+  gap_State* gap_configurable_new(char const* meta_protocol,
+                                  char const* meta_host,
                                   unsigned short meta_port,
                                   char const* trophonius_host,
                                   unsigned short trophonius_port)
   {
     try
     {
-      gap_State* state = new gap_State(meta_host,
+      gap_State* state = new gap_State(meta_protocol,
+                                       meta_host,
                                        meta_port,
                                        trophonius_host,
                                        trophonius_port);

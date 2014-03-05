@@ -35,9 +35,10 @@ namespace infinit
       using elle::sprintf;
       using reactor::http::Method;
 
-      Admin::Admin(std::string const& host,
+      Admin::Admin(std::string const& protocol,
+                   std::string const& host,
                    uint16_t port):
-        Client(host, port)
+        Client(protocol, host, port)
       {}
 
       Response

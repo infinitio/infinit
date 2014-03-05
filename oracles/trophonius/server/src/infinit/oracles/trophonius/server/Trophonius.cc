@@ -37,6 +37,7 @@ namespace infinit
         Trophonius::Trophonius(
           int port_ssl,
           int port_tcp,
+          std::string const& meta_protocol,
           std::string const& meta_host,
           int meta_port,
           int notifications_port,
@@ -58,7 +59,7 @@ namespace infinit
             elle::sprintf("%s meta accepter", *this),
             std::bind(&Trophonius::_serve_notifier, std::ref(*this))),
           _uuid(boost::uuids::random_generator()()),
-          _meta(meta_host, meta_port),
+          _meta(meta_protocol, meta_host, meta_port),
           _meta_pinger(
             reactor::Scheduler::scheduler()->every(
               [&]

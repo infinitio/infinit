@@ -49,6 +49,7 @@ namespace infinit
           Trophonius(
             int port_ssl,
             int port_tcp,
+            std::string const& meta_protocol,
             std::string const& meta_host,
             int meta_port,
             int notifications_port = 0,

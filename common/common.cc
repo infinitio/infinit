@@ -407,17 +407,6 @@ namespace common
       );
       return host;
     }
-
-    std::string const&
-    url()
-    {
-      static std::string const url = elle::os::getenv(
-          "INFINIT_TROPHONIUS_URL",
-          protocol() + "://" + host()
-            + ":" + elle::sprint(port())
-      );
-      return url;
-    }
   } // !trophonius
 
   namespace resources

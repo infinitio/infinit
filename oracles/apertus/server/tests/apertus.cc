@@ -209,6 +209,7 @@ ELLE_TEST_SCHEDULED(register_unregister)
   BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
   {
     infinit::oracles::apertus::Apertus apertus(
+      "http",
       "localhost",
       meta.port(),
       "localhost",
@@ -251,6 +252,7 @@ ELLE_TEST_SCHEDULED(no_update_after_stop)
   {
     auto tick_rate = 1_sec;
     infinit::oracles::apertus::Apertus apertus(
+      "http",
       "localhost",
       meta.port(),
       "localhost",
@@ -296,6 +298,7 @@ ELLE_TEST_SCHEDULED(simple_transfer)
   {
     auto tick_rate = 1_sec;
     infinit::oracles::apertus::Apertus apertus(
+      "http",
       "localhost",
       meta.port(),
       "localhost",
@@ -346,6 +349,7 @@ ELLE_TEST_SCHEDULED(ssl_tcp_transfer)
   {
     auto tick_rate = 1_sec;
     infinit::oracles::apertus::Apertus apertus(
+      "http",
       "localhost",
       meta.port(),
       "localhost",
@@ -396,6 +400,7 @@ ELLE_TEST_SCHEDULED(wait_for_transfers)
   {
     auto tick_rate = 1_sec;
     infinit::oracles::apertus::Apertus apertus(
+      "http",
       "localhost",
       meta.port(),
       "localhost",
