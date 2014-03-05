@@ -232,24 +232,23 @@ namespace infinit
       namespace json = elle::format::json;
 
       // - Ctor & dtor ----------------------------------------------------------
-      Client::Client(std::string const& server,
+      Client::Client(std::string const& protocol,
+                     std::string const& server,
                      uint16_t port):
+        _protocol(protocol),
         _host(server),
         _port(port),
-        _root_url{elle::sprintf("https://%s:%d", server, port)},
+        _root_url{elle::sprintf("%s://%s:%d", protocol, server, port)},
         _client{},
         _default_configuration{boost::posix_time::seconds{30},
                                reactor::http::Version::v10},
         _email{},
         _user_agent{"MetaClient/" INFINIT_VERSION},
         _logged_in{false}
-      {
-        //ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-      }
+      {}
 
       Client::~Client()
-      {
-      }
+      {}
 
       std::string
       Client::session_id() const
