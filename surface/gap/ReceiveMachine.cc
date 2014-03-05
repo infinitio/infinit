@@ -557,6 +557,7 @@ namespace surface
 
       // this->finished.open();
       this->_finish();
+      frete.finish();
 
       try
       {

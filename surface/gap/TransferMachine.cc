@@ -354,7 +354,10 @@ namespace surface
       elle::SafeFinally clear_frete{
         [this]
         {
-          //this->_finished = this->_frete->finished();
+          if (auto owner = dynamic_cast<SendMachine*>(&this->_owner))
+          {
+            this->_finished = owner->frete().finished();
+          }
           this->_rpcs.reset();
           this->_channels.reset();
           this->_serializer.reset();
