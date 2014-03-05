@@ -43,6 +43,7 @@ namespace infinit
           int notifications_port,
           boost::posix_time::time_duration const& user_ping_period,
           boost::posix_time::time_duration const& meta_ping_period,
+          boost::posix_time::time_duration const& user_auth_max_time,
           bool meta_fatal):
           Waitable("trophonius"),
           _certificate(nullptr),
@@ -80,6 +81,7 @@ namespace infinit
               )
             ),
           _ping_period(user_ping_period),
+          _user_auth_max_time(user_auth_max_time),
           _remove_lock()
         {
           elle::SafeFinally kill_accepters{
