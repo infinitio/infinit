@@ -150,11 +150,6 @@ namespace common
     /// Can be overriden by COMMON_INFINIT_TROPHONIUS_PORT.
     uint16_t
     port();
-
-    /// Returns the url to the trophonius server. If INFINIT_META_URL is defined, its
-    /// value will be returned.
-    std::string const&
-    url();
   }
 
   namespace heartbeat
