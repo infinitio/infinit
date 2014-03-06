@@ -374,5 +374,15 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: stopped", *this);
     }
 
+    /*----------.
+    | Printable |
+    `----------*/
+
+    void
+    TransferMachine::print(std::ostream& stream) const
+    {
+      stream << "TransferMachine(" << this->_owner.id() << ")";
+    }
+
   }
 }

@@ -267,9 +267,10 @@ namespace surface
       std::unique_ptr<frete::RPCFrete>
       rpcs(infinit::protocol::ChanneledStream& socket) = 0;
 
-      /*----------.
-      | Printable |
-      `----------*/
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
       void
       print(std::ostream& stream) const override;
     };

@@ -12,7 +12,8 @@ namespace surface
 {
   namespace gap
   {
-    class TransferMachine
+    class TransferMachine:
+      public elle::Printable
     {
     /*-------------.
     | Construction |
@@ -70,6 +71,12 @@ namespace surface
       void
       _stopped();
 
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      void
+      print(std::ostream& stream) const override;
 
     //   // Common on both sender and recipient process.
     //   ELLE_ATTRIBUTE(reactor::fsm::State&, publish_interfaces_state);
