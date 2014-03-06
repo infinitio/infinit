@@ -140,7 +140,7 @@ namespace frete
 
   private:
     ELLE_ATTRIBUTE(boost::filesystem::path, snapshot_destination);
-    ELLE_ATTRIBUTE(std::unique_ptr<TransferSnapshot>, transfer_snapshot);
+    ELLE_ATTRIBUTE_R(std::unique_ptr<TransferSnapshot>, transfer_snapshot);
 
     /*----------.
     | Printable |
