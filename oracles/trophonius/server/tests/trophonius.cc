@@ -478,6 +478,7 @@ ELLE_TEST_SCHEDULED(no_authentication_timeout, (bool, ssl))
   infinit::oracles::trophonius::server::Trophonius trophonius(
     0,
     0,
+    "http",
     "localhost",
     meta.port(),
     0,
