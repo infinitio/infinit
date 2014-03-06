@@ -407,7 +407,7 @@ namespace elle
       }
 
       std::string url = elle::sprintf("%s://%s:%s/debug/report/user",
-                                      protocol
+                                      protocol,
                                       host,
                                       port);
 
