@@ -59,7 +59,8 @@ namespace elle
   {
     /// Function for sending existing crash reports.
     void
-    existing_report(std::string const& host,
+    existing_report(std::string const& protocol,
+                    std::string const& host,
                     uint16_t port,
                     std::vector<std::string> const& files,
                     std::string const& user_name = "",
@@ -72,7 +73,8 @@ namespace elle
 
     /// Function for sending user reports.
     void
-    user_report(std::string const& host,
+    user_report(std::string const& protocol,
+                std::string const& host,
                 uint16_t port,
                 std::string const& user_name = "",
                 std::string const& os_description = "",

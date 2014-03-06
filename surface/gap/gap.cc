@@ -1209,7 +1209,8 @@ extern "C"
       std::string const user_message{_message};
       std::string const file{_file};
 
-      elle::crash::user_report(common::meta::host(),        // meta host
+      elle::crash::user_report(common::meta::protocol(),    // meta protocol
+                               common::meta::host(),        // meta host
                                common::meta::port(),        // meta port
                                user_name,                   // user name
                                os_description,              // OS description
@@ -1241,7 +1242,8 @@ extern "C"
       files.push_back(std::string{_crash_report});
       files.push_back(std::string{_state_log});
 
-      elle::crash::existing_report(common::meta::host(),    // meta host.
+      elle::crash::existing_report(common::meta::protocol(),// meta protocol
+                                   common::meta::host(),    // meta host.
                                    common::meta::port(),    // meta port.
                                    files,                   // file list.
                                    user_name,               // user name.
