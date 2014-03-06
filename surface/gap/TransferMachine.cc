@@ -1,3 +1,5 @@
+#include <boost/filesystem.hpp>
+
 #include <elle/log.hh>
 #include <elle/network/Interface.hh>
 #include <elle/os/environ.hh>
@@ -6,8 +8,12 @@
 
 #include <protocol/exceptions.hh>
 
+#include <frete/src/frete/TransferSnapshot.hh>
+
 #include <station/src/station/Station.hh>
+#include <surface/gap/FilesystemTransferBufferer.hh>
 #include <surface/gap/Rounds.hh>
+#include <surface/gap/SendMachine.hh>
 #include <surface/gap/State.hh>
 #include <surface/gap/TransactionMachine.hh>
 #include <surface/gap/TransferMachine.hh>
@@ -27,8 +33,7 @@ namespace surface
       _fsm(),
       _peer_online("peer online"),
       _peer_offline("peer offline"),
-      _peer_connected("peer connected"),
-      _finished(false)
+      _peer_connected("peer connected")
     {
       /*-------.
       | States |
@@ -71,15 +76,16 @@ namespace surface
         true)
         .action([&]
                 {
-                  ELLE_TRACE("%s: peer offline: wait for peer", *this);
+                  ELLE_TRACE("%s: peer went offline while connecting", *this);
                 });
       this->_fsm.transition_add(
         wait_for_peer_state,
         connection_state,
-        reactor::Waitables{&this->_peer_online})
+        reactor::Waitables{&this->_peer_online},
+        true)
         .action([&]
                 {
-                  ELLE_TRACE("%s: peer online: connection", *this);
+                  ELLE_TRACE("%s: peer went online", *this);
                 });
 
       // Finished.
@@ -95,11 +101,20 @@ namespace surface
       this->_fsm.transition_add(
         transfer_state,
         stopped_state,
-        [this]() { return this->_finished; }
+        [this]() { return this->finished(); }
         )
         .action([this]
                 {
                   ELLE_LOG("%s: transfer finished", *this);
+                });
+      this->_fsm.transition_add(
+        wait_for_peer_state,
+        stopped_state,
+        [this]() { return this->finished(); }
+        )
+        .action([this]
+                {
+                  ELLE_LOG("%s: transfer finished in the cloud", *this);
                 });
 
       // Start and stop transfering.
@@ -212,6 +227,15 @@ namespace surface
       return this->_owner.progress();
     }
 
+    bool
+    TransferMachine::finished() const
+    {
+      if (auto owner = dynamic_cast<SendMachine*>(&this->_owner))
+        return owner->frete().finished();
+      else
+        return false; // FIXME
+    }
+
     /*-------.
     | States |
     `-------*/
@@ -260,12 +284,30 @@ namespace surface
     TransferMachine::_connect()
     {
       auto const& transaction = *this->_owner.data();
-      auto endpoints = this->_owner.state().meta().device_endpoints(
-        this->_owner.data()->id,
-        this->_owner.is_sender() ? transaction.sender_device_id :
-                                   transaction.recipient_device_id,
-        this->_owner.is_sender() ? transaction.recipient_device_id :
-                                   transaction.sender_device_id);
+      infinit::oracles::meta::EndpointNodeResponse endpoints;
+      // Get endpoints. If the peer disconnected, we might go back to the
+      // connection state before we're informed of this and try
+      // reconnecting. Don't err and just keep retrying until either he comes
+      // back online or we're notified he's offline.
+      while (true)
+      {
+        try
+        {
+          endpoints = this->_owner.state().meta().device_endpoints(
+            this->_owner.data()->id,
+            this->_owner.is_sender() ? transaction.sender_device_id :
+            transaction.recipient_device_id,
+            this->_owner.is_sender() ? transaction.recipient_device_id :
+            transaction.sender_device_id);
+          break;
+        }
+        catch (infinit::oracles::meta::Exception const& e)
+        {
+          if (e.err != infinit::oracles::meta::Error::device_not_found)
+            throw;
+        }
+        reactor::sleep(1_sec);
+      }
       static auto print = [] (std::string const &s) { ELLE_DEBUG("-- %s", s); };
       ELLE_DEBUG("locals")
         std::for_each(std::begin(endpoints.locals),
@@ -328,7 +370,7 @@ namespace surface
     void
     TransferMachine::_connection()
     {
-      ELLE_TRACE_SCOPE("%s: connecting peers", *this);
+      ELLE_TRACE_SCOPE("%s: connect to peer", *this);
       this->_owner.current_state(TransactionMachine::State::Connect);
       this->_host = this->_connect();
       this->_serializer.reset(
@@ -339,31 +381,52 @@ namespace surface
       this->_peer_connected.signal();
     }
 
+    static std::streamsize const chunk_size = 1 << 18;
+
     void
     TransferMachine::_wait_for_peer()
     {
-      ELLE_TRACE_SCOPE("%s: waiting for peer to reconnect", *this);
+      ELLE_TRACE_SCOPE("%s: wait for peer to connect", *this);
       this->_owner.current_state(TransactionMachine::State::PeerDisconnected);
+      // Mundo va ou il veut.
+      if (auto owner = dynamic_cast<SendMachine*>(&this->_owner))
+      {
+        FilesystemTransferBufferer bufferer(*this->_owner.data(),
+                                            "/tmp/infinit-buffering");
+        auto& frete = owner->frete();
+        auto& snapshot = *frete.transfer_snapshot();
+        for (frete::Frete::FileID file = 0; file < snapshot.count(); ++file)
+        {
+          auto& info = snapshot.transfers().at(file);
+          auto file_size = info.file_size();
+          for (frete::Frete::FileOffset offset = info.progress();
+               offset < file_size;
+               offset += chunk_size)
+          {
+            ELLE_DEBUG_SCOPE("%s: buffer file %s at offset %s in the cloud",
+                             *this, file, offset);
+            auto block = frete.encrypted_read(file, offset, chunk_size);
+            auto& buffer = block.buffer();
+            bufferer.put(file, offset, buffer.size(), buffer);
+          }
+        }
+        frete.finish();
+      }
     }
 
     void
     TransferMachine::_transfer()
     {
-      ELLE_TRACE_SCOPE("%s: start transfer operation", *this);
+      ELLE_TRACE_SCOPE("%s: transfer", *this);
       this->_owner.current_state(TransactionMachine::State::Transfer);
       elle::SafeFinally clear_frete{
         [this]
         {
-          if (auto owner = dynamic_cast<SendMachine*>(&this->_owner))
-          {
-            this->_finished = owner->frete().finished();
-          }
           this->_rpcs.reset();
           this->_channels.reset();
           this->_serializer.reset();
           this->_host.reset();
         }};
-
       this->_owner._transfer_operation(*this->_rpcs);
       ELLE_TRACE_SCOPE("%s: end of transfer operation", *this);
     }
