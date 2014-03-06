@@ -339,8 +339,8 @@ namespace elle
           args.push_back(path.filename().string());
         }
       }
-
-      std::string url = elle::sprintf("https://%s:%d/debug/report/backtrace",
+      std::string url = elle::sprintf("%s://%s:%d/debug/report/backtrace",
+                                      protocol,
                                       host,
                                       port);
 
@@ -367,9 +367,11 @@ namespace elle
       }
 
       std::string os_description{common::system::platform()};
+      std::string protocol{common::meta::protocol()};
       std::string host{common::meta::host()};
       uint16_t port = common::meta::port();
-      std::string url = elle::sprintf("https://%s:%s/debug/report/transaction",
+      std::string url = elle::sprintf("%s://%s:%s/debug/report/transaction",
+                                      protocol,
                                       host,
                                       port);
       _send_report(url, user_name, os_description, "",
@@ -404,7 +406,8 @@ namespace elle
         }
       }
 
-      std::string url = elle::sprintf("http://%s:%s/debug/report/user",
+      std::string url = elle::sprintf("%s://%s:%s/debug/report/user",
+                                      protocol
                                       host,
                                       port);
 
