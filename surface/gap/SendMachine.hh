@@ -94,10 +94,10 @@ namespace surface
         return true;
       }
 
-    private:
       frete::Frete&
       frete();
 
+    private:
       std::unique_ptr<frete::RPCFrete>
       rpcs(infinit::protocol::ChanneledStream& channels) override;
 
