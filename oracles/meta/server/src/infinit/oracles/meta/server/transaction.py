@@ -538,7 +538,7 @@ class Mixin:
   @require_logged_in
   def cloud_buffer(self, transaction_id: bson.ObjectId):
     """
-    Return an AWS token giving the user permissions to PUT (sender) or GET
+    Return AWS credentials giving the user permissions to PUT (sender) or GET
     (recipient) from the cloud buffer.
     """
     user = self.user
@@ -567,4 +567,4 @@ class Mixin:
     credentials['session_token'] = res.credentials['SessionToken']
     credentials['expiration'] = res.credentials['Expiration']
 
-    return self.success(token)
+    return self.success(credentials)
