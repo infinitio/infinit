@@ -3,6 +3,7 @@
 #include <elle/json/json.hh>
 #include <elle/log.hh>
 #include <elle/test.hh>
+#include <elle/os/environ.hh>
 #include <elle/utility/Move.hh>
 
 #include <reactor/network/buffer.hh>
@@ -455,8 +456,167 @@ ELLE_TEST_SCHEDULED(wait_for_transfers)
   BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
 }
 
+ELLE_TEST_SCHEDULED(client_timeout)
+{
+  Meta meta;
+  BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
+  {
+    infinit::oracles::apertus::Apertus apertus(
+      "http",
+      "localhost",
+      meta.port(),
+      "localhost",
+      0,
+      0,
+      10_sec,
+      1_sec);
+    reactor::wait(meta.apertus_registered());
+    BOOST_CHECK_EQUAL(meta.apertuses().size(), 1);
+    { // no data
+      reactor::network::TCPSocket socket(
+        "127.0.0.1",
+        boost::lexical_cast<std::string>(apertus.port_tcp()));
+      BOOST_CHECK_THROW(socket.read_some(1, 2_sec), reactor::network::ConnectionClosed);
+    }
+    { // id
+      reactor::network::TCPSocket socket(
+        "127.0.0.1",
+        boost::lexical_cast<std::string>(apertus.port_tcp()));
+      socket.write("\1a");
+      BOOST_CHECK_THROW(socket.read_some(1, 2_sec), reactor::network::ConnectionClosed);
+    }
+  }
+  BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
+}
+
+ELLE_TEST_SCHEDULED(two_ways_transfer)
+{
+   Meta meta;
+  BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
+  {
+    auto tick_rate = 1_sec;
+    infinit::oracles::apertus::Apertus apertus(
+      "http",
+      "localhost",
+      meta.port(),
+      "localhost",
+      0,
+      0,
+      tick_rate);
+
+    reactor::wait(meta.apertus_registered());
+    BOOST_CHECK_EQUAL(meta.apertuses().size(), 1);
+
+    BOOST_CHECK_EQUAL(apertus.workers().size(), 0);
+
+    std::string passphrase(32, 'b');
+    reactor::network::FingerprintedSocket socket1(
+      "127.0.0.1",
+      boost::lexical_cast<std::string>(apertus.port_ssl()),
+      fingerprint);
+    socket1.write(elle::ConstWeakBuffer(elle::sprintf(" %s", passphrase)));
+
+    reactor::network::FingerprintedSocket socket2(
+      "127.0.0.1",
+      boost::lexical_cast<std::string>(apertus.port_ssl()),
+      fingerprint);
+    socket2.write(elle::ConstWeakBuffer(elle::sprintf(" %s", passphrase)));
+
+    reactor::wait(meta.apertus_bandwidth_updated());
+    BOOST_CHECK_EQUAL(meta.bandwidth_update_count(), 1);
+    BOOST_CHECK_EQUAL(apertus.workers().size(), 1);
+
+    std::string some_stuff = std::string(10, 'a') + "\n";
+    socket1.write(some_stuff);
+    socket2.write(some_stuff);
+    BOOST_CHECK_EQUAL(socket2.read_until(some_stuff), some_stuff);
+    BOOST_CHECK_EQUAL(socket1.read_until(some_stuff), some_stuff);
+  }
+  BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
+}
+
+inline bool brand()
+{
+  return std::rand() & 1;
+}
+inline bool prand(int percent)
+{
+  return (std::rand() % 100) < percent;
+}
+static void random_client(int id, bool first, const std::string& apertus_port,
+                          const std::string& apertus_port_ssl,
+                          int& nok, int& nfail)
+{
+  try
+  {
+    std::unique_ptr<reactor::network::Socket> s(brand()?
+      (reactor::network::Socket*)new reactor::network::TCPSocket("127.0.0.1", apertus_port):
+      (reactor::network::Socket*)new reactor::network::FingerprintedSocket("127.0.0.1", apertus_port_ssl, fingerprint));
+    reactor::sleep( 1_ms * (std::rand()%1500) );
+    if (prand(10))
+      s->close();
+    std::string sid = '\xa' + boost::lexical_cast<std::string>(1000000000 + id);
+    s->write(sid.substr(0, sid.size()-1));
+    if (prand(10))
+      s->close();
+    if (prand(10))
+      reactor::sleep( 1_ms * (std::rand()%500));
+    s->write(sid.substr(sid.size() - 1));
+    reactor::sleep( 1_ms * (std::rand()%500));
+    s->write("my message");
+    reactor::sleep( 1_ms * (std::rand()%500));
+    nok++;
+  }
+  catch(...)
+  {
+    nfail++;
+  }
+}
+
+ELLE_TEST_SCHEDULED(many_clients)
+{
+  Meta meta;
+  BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
+  {
+    infinit::oracles::apertus::Apertus apertus(
+      "http",
+      "localhost",
+      meta.port(),
+      "localhost",
+      0,
+      0,
+      10_sec,
+      1_sec);
+    reactor::wait(meta.apertus_registered());
+    std::string apertus_port = boost::lexical_cast<std::string>(apertus.port_tcp());
+    std::string apertus_port_ssl = boost::lexical_cast<std::string>(apertus.port_ssl());
+    std::vector<std::unique_ptr<reactor::Thread>> threads;
+    int nok = 0, nfail = 0;
+    int nclients = RUNNING_ON_VALGRIND?1000:20;
+    for (int i=0; i< nclients; ++i)
+    {
+      threads.emplace_back(new reactor::Thread(elle::sprintf("c1 %s", i),
+        [=, &nok, &nfail] {random_client(i, true, apertus_port, apertus_port_ssl, nok, nfail);}));
+      threads.emplace_back(new reactor::Thread(elle::sprintf("c2 %s", i),
+        [=, &nok, &nfail] {random_client(i, false, apertus_port, apertus_port_ssl, nok, nfail);}));
+    }
+    for (auto& t: threads)
+      reactor::wait(*t);
+    threads.clear();
+    BOOST_CHECK_EQUAL(nclients*2, nok + nfail);
+    ELLE_LOG("%s/%s OK", nok, nclients*2);
+  }
+  BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
+
+}
+
 ELLE_TEST_SUITE()
 {
+  std::string s = elle::os::getenv("RANDOM_SEED", "");
+  if (s.empty())
+    std::srand(std::time(0));
+  else
+    std::srand(boost::lexical_cast<int>(s));
   auto timeout = RUNNING_ON_VALGRIND ? 20 : 5;
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(register_unregister), 0, timeout);
@@ -464,4 +624,7 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(simple_transfer), 0, timeout);
   suite.add(BOOST_TEST_CASE(ssl_tcp_transfer), 0, timeout);
   suite.add(BOOST_TEST_CASE(wait_for_transfers), 0, timeout);
+  suite.add(BOOST_TEST_CASE(two_ways_transfer), 0, timeout);
+  suite.add(BOOST_TEST_CASE(client_timeout), 0, timeout);
+  suite.add(BOOST_TEST_CASE(many_clients), 0, timeout*2);
 }
