@@ -8,7 +8,9 @@ import sys
 SELF = os.path.realpath(__file__)
 sys.path.insert(0, '%s/../lib/python' % os.path.dirname(SELF))
 
-# Do not reorder those lines.
+# Do not reorder those lines, or a python native module component will
+# load the system libcrypto.so, which will prevent loading our
+# libcrypto.so through a RPATH on our native module.
 import infinit.oracles.meta.server
 import bottle
 import elle.log
