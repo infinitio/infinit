@@ -26,13 +26,15 @@ namespace surface
     | Construction |
     `-------------*/
     public:
+      /// Recipient constructor.
       FilesystemTransferBufferer(infinit::oracles::Transaction& transaction,
                                  boost::filesystem::path const& root);
+      /// Sender constructor.
       FilesystemTransferBufferer(infinit::oracles::Transaction& transaction,
                                  boost::filesystem::path const& root,
                                  FileCount count,
                                  FileSize total_size,
-                                 std::vector<std::pair<std::string, FileSize>> const& files,
+                                 Files const& files,
                                  infinit::cryptography::Code const& key);
       ELLE_ATTRIBUTE_R(boost::filesystem::path, root);
       ELLE_ATTRIBUTE_R(FileCount, count);
@@ -60,11 +62,11 @@ namespace surface
       virtual
       std::string
       path(FileID f) const override;
-      /// Return a weakly crypted chunck of a file.
+      /// Return a weakly crypted chunk of a file.
       virtual
       infinit::cryptography::Code
       read(FileID f, FileOffset start, FileSize size) override;
-      /// Return a strongly crypted chunck of a file.
+      /// Return a strongly crypted chunk of a file.
       virtual
       infinit::cryptography::Code
       encrypted_read(FileID f, FileOffset start, FileSize size) override;
