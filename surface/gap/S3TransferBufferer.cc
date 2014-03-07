@@ -1,10 +1,16 @@
-#include <surface/gap/S3TransferBufferer.hh>
-
 #include <boost/lexical_cast.hpp>
 
+#include <elle/json/json.hh>
 #include <elle/log.hh>
+#include <elle/serialize/construct.hh>
+#include <elle/serialize/extract.hh>
+#include <elle/serialize/insert.hh>
+#include <elle/serialize/PairSerializer.hxx>
+#include <elle/serialize/VectorSerializer.hxx>
 
 #include <aws/Exceptions.hh>
+
+#include <surface/gap/S3TransferBufferer.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.S3TransferBufferer");
 
@@ -16,17 +22,102 @@ namespace surface
     | Construction |
     `-------------*/
 
+    // Recipient.
     S3TransferBufferer::S3TransferBufferer(
       infinit::oracles::Transaction& transaction,
       aws::Credentials const& credentials,
       std::string const& bucket_name):
         Super(transaction),
+        _count(),
+        _full_size(),
+        _files(),
+        _key_code(),
         _bucket_name(bucket_name),
         _credentials(credentials),
         _remote_folder(this->transaction().id),
         _s3_handler(this->_bucket_name, this->_remote_folder,
                     this->_credentials)
-    {}
+    {
+      // Fetch transfer meta-data from cloud.
+      elle::InputStreamBuffer<elle::Buffer> buffer(
+        this->_s3_handler.get_object("meta-data"));
+      std::istream stream(&buffer);
+      auto meta_data =
+        boost::any_cast<elle::json::Object>(elle::json::read(stream));
+      this->_count = boost::any_cast<FileCount>(meta_data["count"]);
+      this->_full_size = boost::any_cast<FileSize>(meta_data["full_size"]);
+      elle::serialize::from_string(boost::any_cast<std::string>(
+        meta_data["files"])) >> this->_files;
+      elle::serialize::from_string(boost::any_cast<std::string>(
+        meta_data["key_code"])) >> this->_key_code;
+    }
+
+    // Sender.
+    S3TransferBufferer::S3TransferBufferer(
+      infinit::oracles::Transaction& transaction,
+      aws::Credentials const& credentials,
+      FileCount count,
+      FileSize total_size,
+      Files const& files,
+      infinit::cryptography::Code const& key,
+      std::string const& bucket_name):
+        Super(transaction),
+        _count(count),
+        _full_size(total_size),
+        _files(files),
+        _key_code(key),
+        _bucket_name(bucket_name),
+        _credentials(credentials),
+        _remote_folder(this->transaction().id),
+        _s3_handler(this->_bucket_name, this->_remote_folder,
+                    this->_credentials)
+    {
+      // Write transfer meta-data to cloud.
+      elle::json::Object meta_data;
+      meta_data["count"] = this->_count;
+      meta_data["full_size"] = this->_full_size;
+      std::string files_str;
+      elle::serialize::to_string(files_str) << this->_files;
+      meta_data["files"] = files_str;
+      std::string key_str;
+      elle::serialize::to_string(key_str) << this->_key_code;
+      meta_data["key_code"] = key_str;
+      elle::Buffer buffer;
+      elle::OutputStreamBuffer out_buffer(buffer);
+      std::ostream stream(&out_buffer);
+      elle::json::write(stream, meta_data);
+      this->_s3_handler.put_object(buffer, "meta_data");
+    }
+
+    /*------.
+    | Frete |
+    `------*/
+      TransferBufferer::FileSize
+      S3TransferBufferer::file_size(FileID f) const
+      {
+        return this->_files[f].second;
+      }
+
+      std::string
+      S3TransferBufferer::path(FileID f) const
+      {
+        return this->_files[f].first;
+      }
+
+      infinit::cryptography::Code
+      S3TransferBufferer::read(FileID f, FileOffset start, FileSize size)
+      {
+        // Deprecated.
+        elle::unreachable();
+      }
+
+      infinit::cryptography::Code
+      S3TransferBufferer::encrypted_read(FileID f,
+                                         FileOffset start,
+                                         FileSize size)
+      {
+        return infinit::cryptography::Code(this->get(f, start));
+      }
 
     /*----------.
     | Buffering |
