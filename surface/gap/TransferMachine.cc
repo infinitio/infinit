@@ -12,6 +12,7 @@
 
 #include <station/src/station/Station.hh>
 #include <surface/gap/FilesystemTransferBufferer.hh>
+#include <surface/gap/ReceiveMachine.hh>
 #include <surface/gap/Rounds.hh>
 #include <surface/gap/SendMachine.hh>
 #include <surface/gap/State.hh>
@@ -35,6 +36,8 @@ namespace surface
       _peer_offline("peer offline"),
       _peer_connected("peer connected")
     {
+      this->_peer_offline.open();
+
       /*-------.
       | States |
       `-------*/
@@ -69,6 +72,10 @@ namespace surface
         publish_interfaces_state,
         connection_state,
         reactor::Waitables{&this->_peer_online});
+      this->_fsm.transition_add(
+        publish_interfaces_state,
+        wait_for_peer_state,
+        reactor::Waitables{&this->_peer_offline});
       this->_fsm.transition_add(
         connection_state,
         wait_for_peer_state,
@@ -387,14 +394,28 @@ namespace surface
     TransferMachine::_wait_for_peer()
     {
       ELLE_TRACE_SCOPE("%s: wait for peer to connect", *this);
+      reactor::sleep(10_sec);
+      // FIXME: this is a joke.
+      ELLE_TRACE("%s: no peer after 10s, cloud buffer", *this);
       this->_owner.current_state(TransactionMachine::State::PeerDisconnected);
       // Mundo va ou il veut.
       if (auto owner = dynamic_cast<SendMachine*>(&this->_owner))
       {
-        FilesystemTransferBufferer bufferer(*this->_owner.data(),
-                                            "/tmp/infinit-buffering");
         auto& frete = owner->frete();
         auto& snapshot = *frete.transfer_snapshot();
+
+        FilesystemTransferBufferer::Files files;
+        for (frete::Frete::FileID file = 0; file < snapshot.count(); ++file)
+        {
+          auto& info = snapshot.transfers().at(file);
+          files.push_back(std::make_pair(info.path(), info.file_size()));
+        }
+        FilesystemTransferBufferer bufferer(*this->_owner.data(),
+                                            "/tmp/infinit-buffering",
+                                            snapshot.count(),
+                                            snapshot.total_size(),
+                                            files,
+                                            frete.key_code());
         for (frete::Frete::FileID file = 0; file < snapshot.count(); ++file)
         {
           auto& info = snapshot.transfers().at(file);
@@ -412,6 +433,16 @@ namespace surface
         }
         frete.finish();
       }
+      else if (auto owner = dynamic_cast<ReceiveMachine*>(&this->_owner))
+      {
+        ELLE_DEBUG("%s: create cloud bufferer", *this);
+        FilesystemTransferBufferer bufferer(*this->_owner.data(),
+                                            "/tmp/infinit-buffering");
+        ELLE_DEBUG("%s: download from the cloud", *this)
+          owner->get(bufferer);
+      }
+      else
+        elle::unreachable();
     }
 
     void

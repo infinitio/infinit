@@ -14,6 +14,7 @@
 
 # include <surface/gap/State.hh>
 # include <surface/gap/TransactionMachine.hh>
+# include <surface/gap/TransferBufferer.hh>
 
 namespace surface
 {
@@ -82,7 +83,7 @@ namespace surface
       ELLE_ATTRIBUTE(std::string, recipient);
       ELLE_ATTRIBUTE(std::unordered_set<std::string>, files);
       ELLE_ATTRIBUTE(boost::filesystem::path, snapshot_path);
-      ELLE_ATTRIBUTE(std::unique_ptr<frete::TransferSnapshot>, snapshot)
+      ELLE_ATTRIBUTE_R(std::unique_ptr<frete::TransferSnapshot>, snapshot)
     private:
       std::unique_ptr<frete::RPCFrete>
       rpcs(infinit::protocol::ChanneledStream& channels) override;
@@ -99,24 +100,31 @@ namespace surface
         return false;
       }
 
+    /*----------.
+    | Printable |
+    `----------*/
     public:
-      /*----------.
-      | Printable |
-      `----------*/
-
       std::string
       type() const override;
 
     public:
       void
       get(frete::RPCFrete& frete,
-          boost::filesystem::path const& output_path,
-          bool strong_encryption = true,
           std::string const& name_policy = " (%s)");
+      void
+      get(TransferBufferer& bufferer,
+          std::string const& name_policy = " (%s)");
+    private:
+      template <typename Source>
+      void
+      _get(Source& source,
+           bool strong_encryption,
+           std::string const& name_policy);
 
-      /*--------------.
-      | Static Method |
-      `--------------*/
+    /*--------------.
+    | Static Method |
+    `--------------*/
+    public:
       // XXX: Exposed for debugging purposes.
       static
       boost::filesystem::path

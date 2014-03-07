@@ -20,6 +20,7 @@ namespace surface
     public:
       typedef FilesystemTransferBufferer Self;
       typedef TransferBufferer Super;
+      typedef std::vector<std::pair<std::string, FileSize>> Files;
 
     /*-------------.
     | Construction |
@@ -27,7 +28,50 @@ namespace surface
     public:
       FilesystemTransferBufferer(infinit::oracles::Transaction& transaction,
                                  boost::filesystem::path const& root);
+      FilesystemTransferBufferer(infinit::oracles::Transaction& transaction,
+                                 boost::filesystem::path const& root,
+                                 FileCount count,
+                                 FileSize total_size,
+                                 std::vector<std::pair<std::string, FileSize>> const& files,
+                                 infinit::cryptography::Code const& key);
       ELLE_ATTRIBUTE_R(boost::filesystem::path, root);
+      ELLE_ATTRIBUTE_R(FileCount, count);
+      ELLE_ATTRIBUTE_R(FileSize, full_size);
+      ELLE_ATTRIBUTE_R(Files, files);
+      ELLE_ATTRIBUTE_R(infinit::cryptography::Code, key_code);
+
+    /*------.
+    | Frete |
+    `------*/
+    public:
+      // /// Return the number of file.
+      // virtual
+      // FileCount
+      // count() override;
+      // /// Return the total size of files.
+      // virtual
+      // FileSize
+      // full_size() override;
+      /// Return the size of a file.
+      virtual
+      FileSize
+      file_size(FileID f) const override;
+      /// Return the path of a file.
+      virtual
+      std::string
+      path(FileID f) const override;
+      /// Return a weakly crypted chunck of a file.
+      virtual
+      infinit::cryptography::Code
+      read(FileID f, FileOffset start, FileSize size) override;
+      /// Return a strongly crypted chunck of a file.
+      virtual
+      infinit::cryptography::Code
+      encrypted_read(FileID f, FileOffset start, FileSize size) override;
+      // /// Get the key of the transfer.
+      // virtual
+      // infinit::cryptography::Code const&
+      // key_code() const override;
 
     /*----------.
     | Buffering |
@@ -46,6 +90,10 @@ namespace surface
       virtual
       List
       list() override;
+    private:
+      boost::filesystem::path
+      _filename(FileID file,
+                FileOffset offset);
 
     /*----------.
     | Printable |

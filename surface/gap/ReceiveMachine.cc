@@ -345,8 +345,7 @@ namespace surface
           elle::sprintf("download %s", this->id()),
           [&frete, this] ()
           {
-            this->get(frete,
-                      boost::filesystem::path{this->state().output_dir()});
+            this->get(frete);
             this->finished().open();
           });
 
@@ -377,11 +376,10 @@ namespace surface
 
     void
     ReceiveMachine::get(frete::RPCFrete& frete,
-                        boost::filesystem::path const& output_path,
-                        bool strong_encryption,
                         std::string const& name_policy)
     {
       auto peer_version = frete.version();
+      bool strong_encryption = true;
       if (peer_version < elle::Version(0, 8, 3))
       {
         // XXX: Create better exception.
@@ -389,11 +387,29 @@ namespace surface
           ELLE_WARN("peer version doesn't support strong encryption");
         strong_encryption = false;
       }
+      return this->_get<frete::RPCFrete>(
+        frete, strong_encryption, name_policy);
+    }
 
-      auto count = frete.count();
+    void
+    ReceiveMachine::get(TransferBufferer& frete,
+                        std::string const& name_policy)
+    {
+      return this->_get<TransferBufferer>(
+        frete, true, name_policy);
+    }
+
+    template <typename Source>
+    void
+    ReceiveMachine::_get(Source& source,
+                         bool strong_encryption,
+                         std::string const& name_policy)
+    {
+      boost::filesystem::path output_path(this->state().output_dir());
+      auto count = source.count();
 
       // total_size can be 0 if all files are empty.
-      auto total_size = frete.full_size();
+      auto total_size = source.full_size();
 
       if (this->_snapshot != nullptr)
       {
@@ -424,7 +440,7 @@ namespace surface
 
         boost::filesystem::path fullpath;
         // XXX: Merge file_size & rpc_path.
-        auto file_size = frete.file_size(index);
+        auto file_size = source.file_size(index);
 
         if (this->_snapshot->transfers().find(index) != this->_snapshot->transfers().end())
         {
@@ -441,7 +457,7 @@ namespace surface
         }
         else
         {
-          auto relativ_path = boost::filesystem::path{frete.path(index)};
+          auto relativ_path = boost::filesystem::path{source.path(index)};
           fullpath = ReceiveMachine::eligible_name(output_path / relativ_path,
                                                    name_policy);
           relativ_path = ReceiveMachine::trim(fullpath, output_path);
@@ -474,7 +490,7 @@ namespace surface
         auto key = strong_encryption ?
           infinit::cryptography::SecretKey(
             this->state().identity().pair().k().decrypt<
-              infinit::cryptography::SecretKey>(frete.key_code())) :
+              infinit::cryptography::SecretKey>(source.key_code())) :
           infinit::cryptography::SecretKey(
             infinit::cryptography::cipher::Algorithm::aes256,
             this->transaction_id());
@@ -488,8 +504,8 @@ namespace surface
           elle::Buffer buffer{
               key.decrypt<elle::Buffer>(
                 strong_encryption ?
-                frete.encrypted_read(index, tr.progress(), chunk_size) :
-                frete.read(index, tr.progress(), chunk_size))};
+                source.encrypted_read(index, tr.progress(), chunk_size) :
+                source.read(index, tr.progress(), chunk_size))};
 
           ELLE_ASSERT_LT(index, this->_snapshot->transfers().size());
           ELLE_DUMP("%s: %s (size: %s)",
@@ -537,7 +553,7 @@ namespace surface
           {
             this->_snapshot->increment_progress(index, buffer.size());
             elle::serialize::to_file(this->_snapshot_path.string()) << *this->_snapshot;
-            frete.set_progress(this->_snapshot->progress());
+            source.set_progress(this->_snapshot->progress());
             // this->_progress_changed.signal();
           }
           ELLE_DEBUG("%s: %s (size: %s)",
@@ -557,7 +573,7 @@ namespace surface
 
       // this->finished.open();
       this->_finish();
-      frete.finish();
+      source.finish();
 
       try
       {

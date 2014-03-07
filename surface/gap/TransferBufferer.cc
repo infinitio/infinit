@@ -19,5 +19,17 @@ namespace surface
       stream << "TransferBufferer (transaction_id: " << this->transaction().id
              << ")";
     }
+
+    /*------.
+    | Frete |
+    `------*/
+
+    void
+    TransferBufferer::set_progress(FileSize progress)
+    {}
+
+    void
+    TransferBufferer::finish()
+    {}
   }
 }

@@ -1,5 +1,10 @@
 #include <boost/filesystem/fstream.hpp>
 
+#include <elle/serialize/PairSerializer.hxx>
+#include <elle/serialize/VectorSerializer.hxx>
+#include <elle/serialize/construct.hh>
+#include <elle/serialize/insert.hh>
+
 #include <surface/gap/FilesystemTransferBufferer.hh>
 
 namespace surface
@@ -14,10 +19,111 @@ namespace surface
       infinit::oracles::Transaction& transaction,
       boost::filesystem::path const& root):
       Super(transaction),
-      _root(root / transaction.id)
+      _root(root / transaction.id),
+      _count(),
+      _full_size(),
+      _files(),
+      _key_code()
     {
       create_directories(this->_root);
+      {
+        elle::serialize::from_file((this->_root / "count").string())
+          >> this->_count;
+      }
+      {
+        elle::serialize::from_file((this->_root / "total_size").string())
+          >> this->_full_size;
+      }
+      {
+        elle::serialize::from_file((this->_root / "files").string())
+          >> this->_files;
+      }
+      {
+        elle::serialize::from_file((this->_root / "key").string())
+          >> this->_key_code;
+      }
     }
+
+    FilesystemTransferBufferer::FilesystemTransferBufferer(
+      infinit::oracles::Transaction& transaction,
+      boost::filesystem::path const& root,
+      FileCount count,
+      FileSize full_size,
+      std::vector<std::pair<std::string, FileSize>> const& files,
+      infinit::cryptography::Code const& key):
+      Super(transaction),
+      _root(root / transaction.id),
+      _count(count),
+      _full_size(full_size),
+      _files(files),
+      _key_code(key)
+    {
+      create_directories(this->_root);
+      {
+        elle::serialize::to_file((this->_root / "count").string())
+          << count;
+      }
+      {
+        elle::serialize::to_file((this->_root / "total_size").string())
+          << full_size;
+      }
+      {
+        elle::serialize::to_file((this->_root / "files").string())
+          << files;
+      }
+      {
+        elle::serialize::to_file((this->_root / "key").string())
+          << key;
+      }
+    }
+
+    /*------.
+    | Frete |
+    `------*/
+
+    // FilesystemTransferBufferer::FileCount
+    // FilesystemTransferBufferer::count()
+    // {
+
+    // }
+
+    // FilesystemTransferBufferer::FileSize
+    // FilesystemTransferBufferer::full_size()
+    // {
+
+    // }
+
+    FilesystemTransferBufferer::FileSize
+    FilesystemTransferBufferer::file_size(FileID f) const
+    {
+      return this->_files[f].second;
+    }
+
+    std::string
+    FilesystemTransferBufferer::path(FileID f) const
+    {
+      return this->_files[f].first;
+    }
+
+    infinit::cryptography::Code
+    FilesystemTransferBufferer::read(FileID f, FileOffset start, FileSize size)
+    {
+      elle::unreachable();
+    }
+
+    infinit::cryptography::Code
+    FilesystemTransferBufferer::encrypted_read(FileID f,
+                                               FileOffset start,
+                                               FileSize)
+    {
+      return infinit::cryptography::Code(this->get(f, start));
+    }
+
+    // infinit::cryptography::Code const&
+    // FilesystemTransferBufferer::key_code() const
+    // {
+
+    // }
 
     /*----------.
     | Buffering |
@@ -29,12 +135,8 @@ namespace surface
                                     FileSize size,
                                     elle::ConstWeakBuffer const& b)
     {
-      auto dir = this->_root / boost::lexical_cast<std::string>(file);
-      create_directory(dir);
-      auto filename =
-        boost::lexical_cast<std::string>(offset) + "-" +
-        boost::lexical_cast<std::string>(size);
-      boost::filesystem::ofstream output(dir / filename);
+      auto filename = this->_filename(file, offset);
+      boost::filesystem::ofstream output(filename);
       output.write(reinterpret_cast<const char*>(b.contents()), b.size());
     }
 
@@ -42,7 +144,24 @@ namespace surface
     FilesystemTransferBufferer::get(FileID file,
                                     FileOffset offset)
     {
-      return elle::Buffer();
+      auto filename = this->_filename(file, offset);
+      boost::filesystem::ifstream input(filename);
+      input.seekg(0, std::ios::end);
+      auto size = input.tellg();
+      elle::Buffer res(size);
+      input.seekg(0, std::ios::beg);
+      input.read(reinterpret_cast<char*>(res.mutable_contents()), size);
+      return res;
+     }
+
+    boost::filesystem::path
+    FilesystemTransferBufferer::_filename(FileID file,
+                                          FileOffset offset)
+    {
+      auto dir = this->_root / boost::lexical_cast<std::string>(file);
+      create_directory(dir);
+      return dir / boost::filesystem::path(
+        boost::lexical_cast<std::string>(offset));
     }
 
     TransferBufferer::List
