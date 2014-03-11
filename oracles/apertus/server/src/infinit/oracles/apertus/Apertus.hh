@@ -2,6 +2,7 @@
 # define INFINIT_ORACLES_APERTUS_APERTUS
 
 # include <infinit/oracles/apertus/fwd.hh>
+# include <infinit/oracles/apertus/Accepter.hh>
 # include <infinit/oracles/meta/Admin.hh>
 
 # include <reactor/network/buffer.hh>
@@ -41,12 +42,12 @@ namespace infinit
                 std::string const& host = "0.0.0.0",
                 int port_ssl = 6566,
                 int port_tcp = 6565,
-                boost::posix_time::time_duration const& tick_rate = 10_sec);
+                boost::posix_time::time_duration const& tick_rate = 10_sec,
+                boost::posix_time::time_duration const& timeout = 5_min
+                );
         ~Apertus();
 
       private:
-        void
-        _remove_clients_and_accepters();
 
         void
         _register();
@@ -74,10 +75,15 @@ namespace infinit
         ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, accepter_tcp);
 
       private:
+        typedef Accepter::AccepterPtr AccepterPtr;
         ELLE_ATTRIBUTE(infinit::oracles::meta::Admin, meta);
         ELLE_ATTRIBUTE(boost::uuids::uuid, uuid);
-        typedef std::unordered_set<Accepter*> Accepters;
+        typedef std::unordered_map<Accepter*, AccepterPtr> Accepters;
+        // just connected
         ELLE_ATTRIBUTE_R(Accepters, accepters);
+
+        AccepterPtr
+        _take_from_accepters(Accepter*);
         ELLE_ATTRIBUTE(bool, stop_ordered);
 
         friend Accepter;
@@ -85,9 +91,6 @@ namespace infinit
 
         void
         _transfer_remove(Transfer const& transfer);
-
-        void
-        _accepter_remove(Accepter const& transfer);
 
         typedef std::unordered_map<TID, std::unique_ptr<Transfer>> Workers;
         ELLE_ATTRIBUTE_R(Workers, workers);
@@ -104,7 +107,8 @@ namespace infinit
                        server_tcp);
 
       private:
-        typedef std::map<TID, reactor::network::Socket*> Clients;
+        typedef std::unordered_map<TID, AccepterPtr> Clients;
+        // id received, not associated
         ELLE_ATTRIBUTE_R(Clients, clients);
 
         /*----------.
@@ -128,6 +132,7 @@ namespace infinit
       private:
         ELLE_ATTRIBUTE(uint32_t, bandwidth);
         ELLE_ATTRIBUTE(boost::posix_time::time_duration, tick_rate);
+        ELLE_ATTRIBUTE(boost::posix_time::time_duration, timeout);
         ELLE_ATTRIBUTE(reactor::Thread, monitor);
       };
     }

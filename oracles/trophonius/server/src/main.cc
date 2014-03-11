@@ -29,6 +29,8 @@ parse_options(int argc, char** argv)
     ("help,h", "display this help and exit")
     ("ping-period,i", value<int>(),
      "specify the ping period in seconds (default 30)")
+    ("auth-max-time", value<int>(),
+     "specify max time between client connect and login request in seconds (default 10)")
     ("port-ssl,pssl", value<int>(), "specify the SSL port to listen on")
     ("port-tcp,ptcp", value<int>(), "specify the TCP port to listen on")
     ("meta,m", value<std::string>(),
@@ -114,6 +116,7 @@ int main(int argc, char** argv)
     int port_tcp = 0;
     int notifications_port = 0;
     int ping = 30;
+    int auth_max_time = 10;
     if (options.count("port-ssl"))
       port_ssl = options["port-ssl"].as<int>();
     if (options.count("port-tcp"))
@@ -122,6 +125,8 @@ int main(int argc, char** argv)
       notifications_port = options["notifications-port"].as<int>();
     if (options.count("ping-period"))
       ping = options["ping-period"].as<int>();
+    if (options.count("auth-max-time"))
+      auth_max_time = options["auth-max-time"].as<int>();
     reactor::Scheduler s;
     std::unique_ptr<Trophonius> trophonius;
     reactor::Thread main(
@@ -138,6 +143,7 @@ int main(int argc, char** argv)
             notifications_port,
             boost::posix_time::seconds(ping),
             boost::posix_time::seconds(60),
+            boost::posix_time::seconds(auth_max_time),
             meta_fatal));
         // Wait for trophonius to be asked to finish.
         reactor::wait(*trophonius);

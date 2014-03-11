@@ -314,7 +314,8 @@ namespace elle
 #endif
 
     void
-    existing_report(std::string const& host,
+    existing_report(std::string const& protocol,
+                    std::string const& host,
                     uint16_t port,
                     std::vector<std::string> const& files,
                     std::string const& user_name,
@@ -338,8 +339,8 @@ namespace elle
           args.push_back(path.filename().string());
         }
       }
-
-      std::string url = elle::sprintf("http://%s:%d/debug/report/backtrace",
+      std::string url = elle::sprintf("%s://%s:%d/debug/report/backtrace",
+                                      protocol,
                                       host,
                                       port);
 
@@ -366,9 +367,11 @@ namespace elle
       }
 
       std::string os_description{common::system::platform()};
+      std::string protocol{common::meta::protocol()};
       std::string host{common::meta::host()};
       uint16_t port = common::meta::port();
-      std::string url = elle::sprintf("http://%s:%s/debug/report/transaction",
+      std::string url = elle::sprintf("%s://%s:%s/debug/report/transaction",
+                                      protocol,
                                       host,
                                       port);
       _send_report(url, user_name, os_description, "",
@@ -377,7 +380,8 @@ namespace elle
     }
 
     void
-    user_report(std::string const& host,
+    user_report(std::string const& protocol,
+                std::string const& host,
                 uint16_t port,
                 std::string const& user_name,
                 std::string const& os_description,
@@ -402,7 +406,8 @@ namespace elle
         }
       }
 
-      std::string url = elle::sprintf("http://%s:%s/debug/report/user",
+      std::string url = elle::sprintf("%s://%s:%s/debug/report/user",
+                                      protocol,
                                       host,
                                       port);
 

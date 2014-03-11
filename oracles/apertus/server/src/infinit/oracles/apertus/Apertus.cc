@@ -31,7 +31,8 @@ namespace infinit
                        std::string const& meta_host,
                        int meta_port,
                        std::string const& host, int port_ssl, int port_tcp,
-                       boost::posix_time::time_duration const& tick_rate):
+                       boost::posix_time::time_duration const& tick_rate,
+                       boost::posix_time::time_duration const& timeout):
         Waitable("apertus"),
         _unregistered(false),
         _accepter_ssl(nullptr),
@@ -46,6 +47,7 @@ namespace infinit
         _server_tcp(nullptr),
         _bandwidth(0),
         _tick_rate(tick_rate),
+        _timeout(timeout),
         _monitor(*reactor::Scheduler::scheduler(),
                  "apertus_monitor",
                  std::bind(&Apertus::_run_monitor, std::ref(*this)))
@@ -102,8 +104,6 @@ namespace infinit
         if (this->_accepter_tcp)
           this->_accepter_tcp->terminate_now();
 
-        this->_remove_clients_and_accepters();
-
         while (!this->_workers.empty())
         {
           ELLE_TRACE_SCOPE("%s: kick running transfer", *this);
@@ -118,29 +118,8 @@ namespace infinit
         }
 
         ELLE_ASSERT(this->_workers.empty());
-        ELLE_ASSERT(this->_accepters.empty());
-        ELLE_ASSERT(this->_clients.empty());
       }
 
-      void
-      Apertus::_remove_clients_and_accepters()
-      {
-        ELLE_LOG("%s: removing clients and accepters", *this);
-        for (auto const& client: this->_clients)
-        {
-          ELLE_TRACE("%s: kick pending users for transfer %s", *this, client.first);
-          delete client.second;
-          this->_clients.erase(client.first);
-        }
-
-        while (!this->_accepters.empty())
-        {
-          ELLE_DEBUG("%s: remaining accepters: %s", *this, this->_accepters.size());
-          Accepter* accepter = *this->_accepters.begin();
-          ELLE_TRACE("%s: kick running accepter %s", *this, accepter)
-            this->_accepter_remove(*accepter);
-        }
-      }
 
       void
       Apertus::_register()
@@ -178,7 +157,8 @@ namespace infinit
             auto client = server.accept();
             ELLE_DEBUG("%s: socket opened", *this);
 
-            this->_accepters.emplace(new Accepter(*this, std::move(client)));
+            AccepterPtr accepter = Accepter::make(*this, std::move(client), _timeout);
+            this->_accepters[accepter.get()] = std::move(accepter);
           }
         };
       }
@@ -192,7 +172,8 @@ namespace infinit
         this->_monitor.terminate_now();
         this->_unregister();
 
-        this->_remove_clients_and_accepters();
+        this->_accepters.clear();
+        this->_clients.clear();
 
         reactor::Waitables currently_working;
         for (auto const& worker: this->_workers)
@@ -243,32 +224,6 @@ namespace infinit
           });
       }
 
-      void
-      Apertus::_accepter_remove(Accepter const& accepter)
-      {
-        ELLE_TRACE_SCOPE("%s: remove accepter %s", *this, accepter);
-        Accepter* accepter_ptr = const_cast<Accepter*>(&accepter);
-
-        ELLE_DEBUG("accepter address: %s", accepter_ptr);
-        // ELLE_ASSERT(this->_accepters
-        // ELLE_ASSERT_CONTAINS(this->_accepters, &accepter);
-        ELLE_ASSERT(accepter_ptr != nullptr);
-
-        ELLE_DEBUG("erase accepter");
-        size_t removed = this->_accepters.erase(accepter_ptr);
-        ELLE_ASSERT_EQ(removed, 1u);
-
-        ELLE_DEBUG("run later: delete accepter %s", accepter_ptr);
-        reactor::run_later(
-          elle::sprintf("delete accepter %s", *accepter_ptr),
-          [accepter_ptr]
-          {
-            ELLE_DEBUG("about to delete accepter: %s", *accepter_ptr);
-            delete accepter_ptr;
-            //accepter_ptr = nullptr;
-          });
-      }
-
       /*----------.
       | Printable |
       `----------*/
@@ -315,6 +270,17 @@ namespace infinit
 
           _bandwidth = 0;
         }
+      }
+
+      auto
+      Apertus::_take_from_accepters(Accepter* ptr)
+      -> AccepterPtr
+      {
+        auto it = _accepters.find(ptr);
+        ELLE_ASSERT(it != _accepters.end());
+        AccepterPtr res = std::move(it->second);
+        _accepters.erase(it);
+        return std::move(res);
       }
     }
   }

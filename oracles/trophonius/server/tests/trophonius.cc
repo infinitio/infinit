@@ -472,6 +472,23 @@ ELLE_TEST_SCHEDULED(no_authentication, (bool, ssl))
     reactor::yield();
 }
 
+ELLE_TEST_SCHEDULED(no_authentication_timeout, (bool, ssl))
+{
+  Meta meta;
+  infinit::oracles::trophonius::server::Trophonius trophonius(
+    0,
+    0,
+    "http",
+    "localhost",
+    meta.port(),
+    0,
+    60_sec,
+    10_sec,
+    1_sec);
+  std::unique_ptr<reactor::network::Socket> socket(
+    connect_socket(ssl, trophonius));
+  BOOST_CHECK_THROW(socket->read_some(1, 2_sec), reactor::network::ConnectionClosed);
+}
 
 /*-----------------------.
 | authentication_failure |
@@ -756,6 +773,11 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(no_authentication_tcp), 0, timeout);
   auto no_authentication_ssl = std::bind(no_authentication, true);
   suite.add(BOOST_TEST_CASE(no_authentication_ssl), 0, timeout);
+
+  auto no_authentication_timeout_tcp = std::bind(no_authentication_timeout, false);
+  suite.add(BOOST_TEST_CASE(no_authentication_timeout_tcp), 0, timeout);
+  auto no_authentication_timeout_ssl = std::bind(no_authentication_timeout, true);
+  suite.add(BOOST_TEST_CASE(no_authentication_timeout_ssl), 0, timeout);
 
   auto authentication_failure_tcp = std::bind(authentication_failure, false);
   suite.add(BOOST_TEST_CASE(authentication_failure_tcp), 0, timeout);

@@ -9,6 +9,7 @@
 
 # include <reactor/network/socket.hh>
 # include <reactor/thread.hh>
+# include <reactor/timer.hh>
 
 # include <infinit/oracles/trophonius/server/fwd.hh>
 # include <infinit/oracles/meta/Admin.hh>
@@ -56,6 +57,16 @@ namespace infinit
           std::unique_ptr<reactor::network::Socket> _socket;
 
           ELLE_ATTRIBUTE(reactor::Thread, handle_thread);
+
+        protected:
+          /// Set a timer that calls terminate() when duraption elapses. Cancels previous timers.
+          void
+          _set_timeout(reactor::Duration d);
+          /// Cancel a previously set timeout.
+          void
+          _cancel_timeout();
+
+          ELLE_ATTRIBUTE(std::unique_ptr<reactor::Timer>, timeout_timer);
 
         /*-----.
         | Ward |

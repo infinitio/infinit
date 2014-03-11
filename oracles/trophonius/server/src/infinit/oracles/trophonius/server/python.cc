@@ -190,6 +190,7 @@ BOOST_PYTHON_MODULE(trophonius)
                          int,
                          int,
                          boost::posix_time::time_duration const&,
+                         boost::posix_time::time_duration const&,
                          boost::posix_time::time_duration const&>())
     .def("stop", &Trophonius::stop)
     .def("wait", &Trophonius::wait) // XXX: use Waitable::wait

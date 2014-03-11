@@ -8,8 +8,11 @@ import sys
 SELF = os.path.realpath(__file__)
 sys.path.insert(0, '%s/../lib/python' % os.path.dirname(SELF))
 
-import bottle
+# Do not reorder those lines, or a python native module component will
+# load the system libcrypto.so, which will prevent loading our
+# libcrypto.so through a RPATH on our native module.
 import infinit.oracles.meta.server
+import bottle
 import elle.log
 
 import optparse
@@ -19,7 +22,11 @@ parser.add_option('--force-admin',
                   action = 'store_true',
                   help = 'run all requests in admin mode',
                   default = False)
+parser.add_option('--enable-emails',
+                  action = 'store_true',
+                  help = 'Enable email support',
+                  default = False)
 options, args = parser.parse_args()
 
-bottle.run(app = infinit.oracles.meta.server.Meta(force_admin = options.force_admin),
+bottle.run(app = infinit.oracles.meta.server.Meta(force_admin = options.force_admin, enable_emails=options.enable_emails),
            host = '127.0.0.1')
