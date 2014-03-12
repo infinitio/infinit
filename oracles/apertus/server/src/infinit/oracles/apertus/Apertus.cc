@@ -157,7 +157,7 @@ namespace infinit
             auto client = server.accept();
             ELLE_DEBUG("%s: socket opened", *this);
 
-            AccepterPtr accepter = Accepter::make(*this, std::move(client), _timeout);
+            AccepterPtr accepter(new Accepter(*this, std::move(client), _timeout));
             this->_accepters[accepter.get()] = std::move(accepter);
           }
         };

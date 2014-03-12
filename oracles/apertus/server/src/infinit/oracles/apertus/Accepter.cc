@@ -22,12 +22,12 @@ namespace infinit
                          reactor::Duration timeout):
         _apertus(apertus),
         _client(std::move(client)),
-        _accepter(
+        _accepter(reactor::Thread::make_tracked(
           *reactor::Scheduler::scheduler(),
-          "accept",
+          elle::sprintf("accept-%s", this),
           [this] { this->_handle(); }
-          ),
-        _timeout("timeout",
+          )),
+        _timeout(elle::sprintf("timeout-%s", this),
           timeout,
           [this]
           {
@@ -40,38 +40,11 @@ namespace infinit
         ELLE_ASSERT(this->_client != nullptr);
       }
 
-
-      void Accepter::Deleter::operator () (Accepter* p) const
-      {
-        p->destroy();
-      }
-
-      auto
-      Accepter::make(Apertus& apertus,
-                     std::unique_ptr<reactor::network::Socket>&& client,
-                     reactor::Duration timeout)
-      -> AccepterPtr
-      {
-        return AccepterPtr(
-          new Accepter(apertus, std::move(client), timeout),
-          Deleter());
-      }
-
-      void
-      Accepter::destroy()
-      {
-        ELLE_TRACE_SCOPE("%s: destruction", *this);
-        this->_accepter.terminate_now(false);
-        this->_timeout.terminate_now(false);
-        reactor::run_later("deleter",
-          [this] {delete this;}
-          );
-      }
-
       Accepter::~Accepter()
       {
-        ELLE_TRACE_SCOPE("%s: deletion", *this);
-        ELLE_ASSERT_NEQ(&this->_accepter, this->_accepter.scheduler().current());
+        ELLE_TRACE_SCOPE("%s: deletion:accepter", *this);
+        this->_accepter->terminate_now(false);
+        this->_timeout.terminate_now(false);
       }
 
       void
@@ -104,10 +77,11 @@ namespace infinit
 
           // First client to connect with this TID, it must wait.
           auto peer_iterator = this->_apertus._clients.find(tid);
+          auto self = this->_apertus._take_from_accepters(this);
           if (peer_iterator == this->_apertus._clients.end())
           {
             ELLE_TRACE("%s: first user for TID %s", *this, tid);
-            this->_apertus._clients[tid] = this->_apertus._take_from_accepters(this);
+            this->_apertus._clients[tid] = std::move(self);
           }
           // Second client, establishing connection.
           else
@@ -126,26 +100,22 @@ namespace infinit
                 tid,
                 std::move(this->_client),
                 std::move(peer_socket));
-              auto self = elle::utility::move_on_copy(
-                this->_apertus._take_from_accepters(this));
+              ELLE_DEBUG("%s: finish", *this);
             }
           }
         }
         catch (reactor::Terminate const&)
         {
           ELLE_TRACE("%s: eplicitly terminated", *this);
-          this->_apertus._take_from_accepters(this);
         }
         catch (reactor::network::ConnectionClosed const&)
         {
           ELLE_TRACE("%s: connection closed", *this);
-          this->_apertus._take_from_accepters(this);
         }
         catch (...)
         {
           ELLE_ERR("%s: swallowed exception: %s",
                    *this, elle::exception_string());
-          this->_apertus._take_from_accepters(this);
         }
       }
 

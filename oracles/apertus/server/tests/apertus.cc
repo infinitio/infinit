@@ -549,6 +549,7 @@ static void random_client(int id, bool first, const std::string& apertus_port,
 {
   try
   {
+    ELLE_TRACE("start client %s/%s", id, first);
     std::unique_ptr<reactor::network::Socket> s(brand()?
       (reactor::network::Socket*)new reactor::network::TCPSocket("127.0.0.1", apertus_port):
       (reactor::network::Socket*)new reactor::network::FingerprintedSocket("127.0.0.1", apertus_port_ssl, fingerprint));
@@ -566,11 +567,13 @@ static void random_client(int id, bool first, const std::string& apertus_port,
     s->write("my message");
     reactor::sleep( 1_ms * (std::rand()%500));
     nok++;
+    s->close();
   }
   catch(...)
   {
     nfail++;
   }
+  ELLE_TRACE("stop client %s/%s", id, first);
 }
 
 ELLE_TEST_SCHEDULED(many_clients)
@@ -592,7 +595,8 @@ ELLE_TEST_SCHEDULED(many_clients)
     std::string apertus_port_ssl = boost::lexical_cast<std::string>(apertus.port_ssl());
     std::vector<std::unique_ptr<reactor::Thread>> threads;
     int nok = 0, nfail = 0;
-    int nclients = RUNNING_ON_VALGRIND?1000:20;
+    int nclients = (RUNNING_ON_VALGRIND)?5:100;
+    ELLE_LOG("Initializing, valgrind=%s", (RUNNING_ON_VALGRIND));
     for (int i=0; i< nclients; ++i)
     {
       threads.emplace_back(new reactor::Thread(elle::sprintf("c1 %s", i),
@@ -600,8 +604,10 @@ ELLE_TEST_SCHEDULED(many_clients)
       threads.emplace_back(new reactor::Thread(elle::sprintf("c2 %s", i),
         [=, &nok, &nfail] {random_client(i, false, apertus_port, apertus_port_ssl, nok, nfail);}));
     }
+    ELLE_LOG("Waiting...");
     for (auto& t: threads)
       reactor::wait(*t);
+    ELLE_LOG("Clearing...");
     threads.clear();
     BOOST_CHECK_EQUAL(nclients*2, nok + nfail);
     ELLE_LOG("%s/%s OK", nok, nclients*2);

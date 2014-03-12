@@ -75,7 +75,7 @@ namespace infinit
         ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, accepter_tcp);
 
       private:
-        typedef Accepter::AccepterPtr AccepterPtr;
+        typedef std::unique_ptr<Accepter> AccepterPtr;
         ELLE_ATTRIBUTE(infinit::oracles::meta::Admin, meta);
         ELLE_ATTRIBUTE(boost::uuids::uuid, uuid);
         typedef std::unordered_map<Accepter*, AccepterPtr> Accepters;

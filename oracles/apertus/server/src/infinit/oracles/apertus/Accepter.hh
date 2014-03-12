@@ -23,23 +23,7 @@ namespace infinit
         typedef std::unique_ptr<reactor::network::Socket> Socket;
 
       public:
-        /* We hold by-value a Thread and a Timer, which means a two-stage
-        * destruction is required: stop all threads, and then asynchronously
-        * delete the object (because stage 1 can be on one of the threads).
-        * So use a custom unique_ptr deleter, that way users of this class
-        * don't have to take care of that.
-        */
-        struct Deleter
-        {
-           void operator () (Accepter* p) const;
-        };
-        typedef std::unique_ptr<Accepter, Deleter> AccepterPtr;
-        static AccepterPtr make(Apertus& apertus,
-                 Socket&& client,
-                 reactor::Duration timeout);
-      private:
-        friend struct Deleter;
-        void destroy();
+
         Accepter(Apertus& apertus,
                  Socket&& client,
                  reactor::Duration timeout);
@@ -50,7 +34,7 @@ namespace infinit
 
         ELLE_ATTRIBUTE(Apertus&, apertus);
         ELLE_ATTRIBUTE(Socket, client);
-        ELLE_ATTRIBUTE(reactor::Thread, accepter);
+        ELLE_ATTRIBUTE(reactor::ThreadPtr, accepter);
         ELLE_ATTRIBUTE(reactor::Timer, timeout);
 
         /*----------.
