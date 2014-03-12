@@ -342,10 +342,10 @@ namespace surface
           this->_machine->transaction_status_update(this->_data->status);
     }
 
-    using infinit::oracles::trophonius::PeerConnectionUpdateNotification;
+    using infinit::oracles::trophonius::PeerInterfacesUpdated;
     void
-    Transaction::on_peer_connection_update(
-      PeerConnectionUpdateNotification const& update)
+    Transaction::on_peer_interfaces_updated(
+      PeerInterfacesUpdated const& update)
     {
       ELLE_TRACE_SCOPE("%s: update peer status: %s",
                        *this, update.status ? "online" : "offline");

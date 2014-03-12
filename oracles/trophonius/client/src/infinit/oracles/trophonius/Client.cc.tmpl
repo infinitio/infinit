@@ -99,8 +99,8 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::TransactionNotification,
   ar & base_class<infinit::oracles::Transaction>(value);
 }
 
-ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::PeerConnectionUpdateNotification);
-ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::PeerConnectionUpdateNotification,
+ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::PeerInterfacesUpdated);
+ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::PeerInterfacesUpdated,
                       ar,
                       value,
                       version)
@@ -172,7 +172,7 @@ namespace infinit
           case NotificationType::transaction:
             return Ptr(new TransactionNotification{extractor});
           case NotificationType::peer_connection_update:
-            return Ptr(new PeerConnectionUpdateNotification{extractor});
+            return Ptr(new PeerInterfacesUpdated{extractor});
           case NotificationType::new_swagger:
             return Ptr(new NewSwaggerNotification{extractor});
           case NotificationType::user_status:

@@ -101,14 +101,14 @@ namespace infinit
         print(std::ostream& stream) const override;
       };
 
-      struct PeerConnectionUpdateNotification:
+      struct PeerInterfacesUpdated:
         public Notification
       {
         std::string transaction_id;
         bool status;
         std::vector<std::string> devices;
 
-        ELLE_SERIALIZE_CONSTRUCT(PeerConnectionUpdateNotification,
+        ELLE_SERIALIZE_CONSTRUCT(PeerInterfacesUpdated,
                                  Notification)
         {}
       };

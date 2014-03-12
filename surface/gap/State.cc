@@ -747,10 +747,10 @@ namespace surface
           break;
         case infinit::oracles::trophonius::NotificationType::peer_connection_update:
           ELLE_ASSERT(
-            dynamic_cast<infinit::oracles::trophonius::PeerConnectionUpdateNotification const*>(
+            dynamic_cast<infinit::oracles::trophonius::PeerInterfacesUpdated const*>(
               notif.get()) != nullptr);
-          this->_on_peer_connection_update(
-            *static_cast<infinit::oracles::trophonius::PeerConnectionUpdateNotification const*>(
+          this->_on_peer_interfaces_updated(
+            *static_cast<infinit::oracles::trophonius::PeerInterfacesUpdated const*>(
               notif.release()));
           break;
         case infinit::oracles::trophonius::NotificationType::none:

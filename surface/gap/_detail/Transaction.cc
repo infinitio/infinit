@@ -209,18 +209,20 @@ namespace surface
       }
       else
       {
-        ELLE_DEBUG_SCOPE("%s: update transaction %s", *this, notif.id);
+        ELLE_DEBUG_SCOPE("update transaction %s", notif.id);
         it->second.on_transaction_update(notif);
       }
     }
 
     void
-    State::_on_peer_connection_update(
-      infinit::oracles::trophonius::PeerConnectionUpdateNotification const& notif)
+    State::_on_peer_interfaces_updated(
+      infinit::oracles::trophonius::PeerInterfacesUpdated const& notif)
     {
-      ELLE_TRACE_SCOPE("%s: peer connection notification", *this);
-
+      ELLE_TRACE_SCOPE(
+        "%s: peer (%s)published his interfaces for transaction %s",
+        *this, notif.status ? "" : "un", notif.transaction_id);
       ELLE_ASSERT(!notif.transaction_id.empty());
+      ELLE_DEBUG("search for the local transaction to notify");
       auto it = std::find_if(
         std::begin(this->_transactions),
         std::end(this->_transactions),
@@ -229,23 +231,13 @@ namespace surface
           return (!pair.second.data()->id.empty()) &&
                  (pair.second.data()->id == notif.transaction_id);
         });
-
       if (it == std::end(this->_transactions))
       {
-        ELLE_ERR("%s: no transaction found for network %s",
-                 *this, notif.transaction_id);
-        ELLE_DEBUG("%s: transactions", *this)
-          for (auto const& tr: this->transactions())
-          {
-            ELLE_DEBUG("-- %s: %s", tr.first, tr.second);
-          }
+        ELLE_WARN("interface publication: transaction %s doesn't exist",
+                  notif.transaction_id);
         return;
-        // throw TransactionNotFoundException(
-        //   elle::sprintf("network %s", notif.network_id));
       }
-
-      it->second.on_peer_connection_update(notif);
+      it->second.on_peer_interfaces_updated(notif);
     }
-
   }
 }
