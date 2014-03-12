@@ -8,6 +8,7 @@ library = None
 build = None
 check = None
 install = None
+tests = None
 
 def configure(elle,
               protocol,
@@ -19,7 +20,7 @@ def configure(elle,
               cxx_config = None):
 
   global library
-  global build, check, install
+  global build, check, install, tests
 
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
@@ -83,10 +84,13 @@ def configure(elle,
                                    elle_lib] + ssl_libs,
                                   cxx_toolkit,
                                   test_cxx_config)
-  test = drake.Runner(exe = test_exe)
 
+  tests = drake.Rule('tests')
+  tests << test_exe
+
+  test_runner = drake.Runner(exe = test_exe)
   check = drake.Rule('check')
-  check << test.status
+  check << test_runner.status
 
   ## ---------- ##
   ## Executable ##
