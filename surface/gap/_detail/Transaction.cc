@@ -60,13 +60,15 @@ namespace surface
         std::string snapshots_path =
           common::infinit::transaction_snapshots_directory(this->me().id);
         boost::filesystem::create_directories(snapshots_path);
-        boost::filesystem::recursive_directory_iterator iterator(snapshots_path);
-        boost::filesystem::recursive_directory_iterator end;
+        using boost::filesystem::recursive_directory_iterator;
+        recursive_directory_iterator iterator(snapshots_path);
+        recursive_directory_iterator end;
         for (; iterator != end; ++iterator)
         {
           auto snapshot_path = iterator->path().string().c_str();
-          ELLE_TRACE("path %s", snapshot_path);
-          elle::SafeFinally delete_snapshot([&snapshot_path]
+          ELLE_DEBUG("snapshot path %s", snapshot_path);
+          elle::SafeFinally delete_snapshot(
+            [&snapshot_path]
             {
               boost::filesystem::remove(snapshot_path);
             });
@@ -121,8 +123,6 @@ namespace surface
         {
           this->_on_transaction_update(std::move(this->meta().transaction(id)));
         }
-
-      // History.
       ELLE_TRACE("%s: resynchronize transaction history from meta", *this)
       {
         static std::vector<infinit::oracles::Transaction::Status> final{
@@ -130,10 +130,8 @@ namespace surface
             infinit::oracles::Transaction::Status::finished,
             infinit::oracles::Transaction::Status::canceled,
             infinit::oracles::Transaction::Status::failed};
-
         std::list<std::string> transactions_ids{
           std::move(this->meta().transactions(final, true, 100).transactions)};
-
         for (auto const& id: transactions_ids)
         {
           auto it = std::find_if(
@@ -144,7 +142,6 @@ namespace surface
               return (!pair.second.data()->id.empty()) &&
                      ( pair.second.data()->id == id);
             });
-
           if (it != std::end(this->_transactions))
           {
             if (!it->second.final())
@@ -153,12 +150,13 @@ namespace surface
             }
             continue;
           }
-
-          infinit::oracles::Transaction transaction{this->meta().transaction(id)};
-
-          this->user(transaction.sender_id);
-          this->user(transaction.recipient_id);
-
+          infinit::oracles::Transaction transaction{
+            this->meta().transaction(id)};
+          ELLE_DEBUG("ensure that both user are fetched")
+          {
+            this->user(transaction.sender_id);
+            this->user(transaction.recipient_id);
+          }
           auto _id = generate_id();
           ELLE_TRACE("%s: create history transaction from data: %s",
                      *this, transaction)
@@ -175,7 +173,6 @@ namespace surface
     State::_transactions_clear()
     {
       ELLE_TRACE_SCOPE("%s: clear transactions", *this);
-
       // We assume that Transaction destructor doesn't throw.
       this->_transactions.clear();
     }
@@ -185,9 +182,13 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: receive transaction notification: %s",
                        *this, notif.id);
-      this->user(notif.sender_id);
-      this->user(notif.recipient_id);
       ELLE_ASSERT(!notif.id.empty());
+      ELLE_DEBUG("ensure that both user are fetched")
+      {
+        this->user(notif.sender_id);
+        this->user(notif.recipient_id);
+      }
+      ELLE_DEBUG("search for a local transaction to update");
       auto it = std::find_if(
         std::begin(this->_transactions),
         std::end(this->_transactions),
@@ -198,8 +199,7 @@ namespace surface
         });
       if (it == std::end(this->_transactions))
       {
-        ELLE_TRACE_SCOPE("%s: create transaction from notification: %s",
-                         *this, notif);
+        ELLE_TRACE_SCOPE("create transaction from notification: %s", notif);
         infinit::oracles::Transaction data = notif;
         auto id = generate_id();
         this->_transactions.emplace(

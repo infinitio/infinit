@@ -296,13 +296,11 @@ namespace surface
     Transaction::progress() const
     {
       ELLE_DEBUG_SCOPE("%s: progress transaction", *this);
-
       if (this->_machine == nullptr)
       {
         ELLE_WARN("%s: machine is empty (it doesn't concern your device)", *this);
         throw BadOperation(BadOperation::Type::progress);
       }
-
       return this->_machine->progress();
     }
 
