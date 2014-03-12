@@ -632,5 +632,5 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(wait_for_transfers), 0, timeout);
   suite.add(BOOST_TEST_CASE(two_ways_transfer), 0, timeout);
   suite.add(BOOST_TEST_CASE(client_timeout), 0, timeout);
-  suite.add(BOOST_TEST_CASE(many_clients), 0, timeout*2);
+  suite.add(BOOST_TEST_CASE(many_clients), 0, timeout*4);
 }
