@@ -61,16 +61,6 @@ def require_admin(method):
     raise Exception(
       'require_admin for %r wraps the API' % method.__name__)
   def wrapper(wrapped, self, *args, **kwargs):
-    if 'admin_token' in kwargs and kwargs['admin_token'] == ADMIN_TOKEN:
-      return wrapped(self, *args, **kwargs)
-    self.forbiden()
-  return decorator.decorator(wrapper, method)
-
-def _require_admin(method):
-  if hasattr(method, '__api__'):
-    raise Exception(
-      'require_admin for %r wraps the API' % method.__name__)
-  def wrapper(wrapped, self, *args, **kwargs):
     if not self.admin:
       self.forbiden()
     return wrapped(self, *args, **kwargs)
