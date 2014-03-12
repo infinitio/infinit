@@ -547,12 +547,16 @@ static void random_client(int id, bool first, const std::string& apertus_port,
                           const std::string& apertus_port_ssl,
                           int& nok, int& nfail)
 {
+  static bool no_ssl = !elle::os::getenv("TEST_NO_SSL").empty();
   try
   {
     ELLE_TRACE("start client %s/%s", id, first);
-    std::unique_ptr<reactor::network::Socket> s(brand()?
-      (reactor::network::Socket*)new reactor::network::TCPSocket("127.0.0.1", apertus_port):
-      (reactor::network::Socket*)new reactor::network::FingerprintedSocket("127.0.0.1", apertus_port_ssl, fingerprint));
+    std::unique_ptr<reactor::network::Socket> s;
+
+    if (no_ssl || brand())
+      s.reset(new reactor::network::TCPSocket("127.0.0.1", apertus_port));
+    else
+      s.reset(new reactor::network::FingerprintedSocket("127.0.0.1", apertus_port_ssl, fingerprint));
     reactor::sleep( 1_ms * (std::rand()%1500) );
     if (prand(10))
       s->close();
