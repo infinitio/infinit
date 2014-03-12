@@ -547,7 +547,7 @@ static void random_client(int id, bool first, const std::string& apertus_port,
                           const std::string& apertus_port_ssl,
                           int& nok, int& nfail)
 {
-  static bool no_ssl = !elle::os::getenv("TEST_NO_SSL").empty();
+  static bool no_ssl = !elle::os::getenv("TEST_NO_SSL", "").empty();
   try
   {
     ELLE_TRACE("start client %s/%s", id, first);
