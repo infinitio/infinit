@@ -63,8 +63,7 @@ class CloudBufferToken:
     self.request_url = self._generate_url()
 
     headers_dict = self._list_to_dict(self.headers)
-    request = urllib.request.Request(self.request_url,
-                                     headers=headers_dict, method='GET')
+    request = urllib.request.Request(self.request_url, headers=headers_dict)
     try:
       res_xml = urllib.request.urlopen(request).read()
       elle.log.debug('%s: XML response: %s' % (self, res_xml))
