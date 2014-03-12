@@ -256,7 +256,15 @@ namespace surface
         // diff.
         auto old_user = this->user(swagger_id);
         auto user = this->user_sync(old_user.id);
-
+        // Remove duplicates.
+        old_user.connected_devices.erase(
+          std::unique(old_user.connected_devices.begin(),
+                      old_user.connected_devices.end()),
+          old_user.connected_devices.end());
+        user.connected_devices.erase(
+          std::unique(user.connected_devices.begin(),
+                      user.connected_devices.end()),
+          user.connected_devices.end());
         auto res = compare<std::string>(old_user.connected_devices,
                                         user.connected_devices);
 
@@ -264,7 +272,8 @@ namespace surface
           for (auto const& device: res.first)
           {
             ELLE_DEBUG("%s: updating device %s", *this, device);
-            auto* notif_ptr = new infinit::oracles::trophonius::UserStatusNotification{};
+            auto* notif_ptr =
+              new infinit::oracles::trophonius::UserStatusNotification{};
             notif_ptr->user_id = swagger_id;
             notif_ptr->status = user.status();
             notif_ptr->device_id = device;
