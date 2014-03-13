@@ -38,14 +38,22 @@ namespace surface
       _peer_unreachable("peer unreachable"),
       _peer_connected("peer connected")
     {
-      // XXX: Is it legit?
-      // this->_peer_offline.open();
+      // By default, use the cached status from gap.
+      if (owner.state().user(owner.peer_id()).status())
+      {
+        this->_peer_offline.close();
+        this->_peer_online.open();
+      }
+      else
+      {
+        this->_peer_online.close();
+        this->_peer_offline.open();
+      }
       this->_peer_unreachable.open();
 
       /*-------.
       | States |
       `-------*/
-
       auto& publish_interfaces_state =
         this->_fsm.state_make(
           "publish interfaces",
@@ -70,7 +78,6 @@ namespace surface
       /*------------.
       | Transitions |
       `------------*/
-
       // Publish and wait for connection.
       this->_fsm.transition_add(
         publish_interfaces_state,

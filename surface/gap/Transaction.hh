@@ -108,6 +108,10 @@ namespace surface
       on_peer_interfaces_updated(
         infinit::oracles::trophonius::PeerInterfacesUpdated const& update);
 
+      void
+      on_peer_connection_status_updated(
+        infinit::oracles::trophonius::UserStatusNotification const& update);
+
       /*------------.
       | Atttributes |
       `------------*/
@@ -124,13 +128,13 @@ namespace surface
       concerns_user(std::string const& peer_id) const;
 
       bool
+      is_sender(std::string const& user_id) const;
+
+      bool
       concerns_device(std::string const& device_id) const;
 
       bool
       has_transaction_id(std::string const& id) const;
-
-      bool
-      concerns_network(std::string const& network_id) const;
 
       bool
       final() const;

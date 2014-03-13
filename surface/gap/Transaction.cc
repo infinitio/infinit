@@ -12,7 +12,8 @@ namespace surface
 {
   namespace gap
   {
-    Notification::Type Transaction::Notification::type = NotificationType_TransactionUpdate;
+    Notification::Type Transaction::Notification::type =
+      NotificationType_TransactionUpdate;
     Transaction::Notification::Notification(uint32_t id,
                                             gap_TransactionStatus status):
       id(id),
@@ -171,7 +172,8 @@ namespace surface
                              std::string const& message):
       _id(id),
       _data(new Data{state.me().id, state.me().fullname, state.device().id}),
-      _machine(new SendMachine{state, this->_id, peer_id, std::move(files), message, this->_data}),
+      _machine(new SendMachine{
+          state, this->_id, peer_id, std::move(files), message, this->_data}),
       _last_status(gap_transaction_none)
     {
       ELLE_TRACE_SCOPE("%s: constructed for send", *this);
@@ -220,7 +222,8 @@ namespace surface
 
       if (this->_machine == nullptr)
       {
-        ELLE_WARN("%s: machine is empty (it doesn't concern your device)", *this);
+        ELLE_WARN("%s: machine is empty (it doesn't concern your device)",
+                  *this);
         throw BadOperation(BadOperation::Type::accept);
       }
 
@@ -253,7 +256,8 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: canceling transaction", *this);
       if (this->_machine == nullptr)
       {
-        ELLE_WARN("%s: machine is empty (it doesn't concern your device)", *this);
+        ELLE_WARN("%s: machine is empty (it doesn't concern your device)",
+                  *this);
         throw BadOperation(BadOperation::Type::cancel);
       }
 
@@ -266,7 +270,8 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: joining transaction", *this);
       if (this->_machine == nullptr)
       {
-        ELLE_WARN("%s: machine is empty (it doesn't concern your device)", *this);
+        ELLE_WARN("%s: machine is empty (it doesn't concern your device)",
+                  *this);
         throw BadOperation(BadOperation::Type::join);
       }
 
@@ -287,8 +292,8 @@ namespace surface
     Transaction::last_status() const
     {
       if (this->_last_status == gap_transaction_none)
-        return _transaction_status(*this->data(), TransactionMachine::State::None);
-
+        return _transaction_status(*this->data(),
+                                   TransactionMachine::State::None);
       return this->_last_status;
     }
 
@@ -298,7 +303,8 @@ namespace surface
       ELLE_DEBUG_SCOPE("%s: progress transaction", *this);
       if (this->_machine == nullptr)
       {
-        ELLE_WARN("%s: machine is empty (it doesn't concern your device)", *this);
+        ELLE_WARN("%s: machine is empty (it doesn't concern your device)", *
+                  this);
         throw BadOperation(BadOperation::Type::progress);
       }
       return this->_machine->progress();
@@ -310,10 +316,9 @@ namespace surface
     {
       static std::vector<infinit::oracles::Transaction::Status> final{
         infinit::oracles::Transaction::Status::rejected,
-          infinit::oracles::Transaction::Status::finished,
+        infinit::oracles::Transaction::Status::finished,
         infinit::oracles::Transaction::Status::canceled,
         infinit::oracles::Transaction::Status::failed};
-
       return final;
     }
 
@@ -345,22 +350,64 @@ namespace surface
     Transaction::on_peer_interfaces_updated(
       PeerInterfacesUpdated const& update)
     {
-      ELLE_TRACE_SCOPE("%s: update peer status: %s",
-                       *this, update.status ? "online" : "offline");
+      ELLE_TRACE_SCOPE("%s: peer now %savaialble for peer to peer connection",
+                       *this, update.status ? "" : "un");
       if (this->_machine == nullptr)
       {
         ELLE_DEBUG("%s: transaction is not running", *this);
         return;
       }
       ELLE_ASSERT_EQ(this->_data->id, update.transaction_id);
-      // XXX.
-      // ELLE_ASSERT(
-      //   std::find(update.devices.begin(), update.devices.end(),
-      //             this->_data->sender_device_id) != update.devices.end());
-      // ELLE_ASSERT(
-      //   std::find(update.devices.begin(), update.devices.end(),
-      //             this->_data->recipient_device_id) != update.devices.end());
-      this->_machine->peer_availability_changed(update.status);
+      // Notification should only be sent to the sender device and the
+      // recipient device concerned by this transaction.
+      ELLE_ASSERT(
+        std::find(update.devices.begin(), update.devices.end(),
+                  this->_data->sender_device_id) != update.devices.end());
+      ELLE_ASSERT(
+        std::find(update.devices.begin(), update.devices.end(),
+                  this->_data->recipient_device_id) != update.devices.end());
+      ELLE_DEBUG("notify machine of the peer availability change")
+        this->_machine->peer_availability_changed(update.status);
+    }
+
+    using infinit::oracles::trophonius::UserStatusNotification;
+    void
+    Transaction::on_peer_connection_status_updated(
+      UserStatusNotification const& update)
+    {
+      ELLE_TRACE_SCOPE(
+        "%s: peer went %sline on device %s",
+          *this, update.device_status ? "on" : "off", update.device_id);
+      // Ensure that the notification concerns this transaction.
+      ELLE_ASSERT(this->concerns_user(update.user_id));
+      if (this->_machine == nullptr)
+      {
+        ELLE_DEBUG("%s: transaction is not running", *this);
+        return;
+      }
+      // XXX: There is no way to know if you are the sender or the recipient
+      // because state is not accessible from transaction.
+      // So we assume that the notification CAN'T be our own status.
+      bool is_sender = this->is_sender(update.user_id);
+      if (!is_sender && this->_data->recipient_device_id.empty())
+      {
+        // Transaction has not recipient device id set (transaction is not
+        //  accepted) so his general connection status is important.
+        ELLE_DEBUG("no recipient device id set, user connection status used")
+          this->_machine->peer_connection_changed(update.status);
+      }
+      // Check if the transaction is linked to this update, looking for the
+      // device_id in both sender and recipient device ids.
+      if ((is_sender && this->_data->sender_device_id == update.device_id) ||
+          (!is_sender && this->_data->recipient_device_id  == update.device_id))
+      {
+        ELLE_DEBUG("notify machine of the device connection status update")
+          this->_machine->peer_connection_changed(update.device_status);
+      }
+      else
+      {
+        ELLE_DEBUG("device not linked to the transaction");
+      }
     }
 
     bool
@@ -368,6 +415,12 @@ namespace surface
     {
       return this->_data->sender_id == peer_id ||
              this->_data->recipient_id == peer_id;
+    }
+
+    bool
+    Transaction::is_sender(std::string const& user_id) const
+    {
+      return this->concerns_user(user_id) && this->_data->sender_id == user_id;
     }
 
     bool
