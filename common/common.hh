@@ -198,15 +198,6 @@ namespace common
     port();
   }
 
-  namespace apertus
-  {
-    std::string
-    host();
-
-    int
-    port();
-  }
-
 } // !common
 
 #endif
