@@ -34,9 +34,13 @@ namespace surface
       _fsm(),
       _peer_online("peer online"),
       _peer_offline("peer offline"),
+      _peer_reachable("peer reachable"),
+      _peer_unreachable("peer unreachable"),
       _peer_connected("peer connected")
     {
-      this->_peer_offline.open();
+      // XXX: Is it legit?
+      // this->_peer_offline.open();
+      this->_peer_unreachable.open();
 
       /*-------.
       | States |
@@ -71,15 +75,15 @@ namespace surface
       this->_fsm.transition_add(
         publish_interfaces_state,
         connection_state,
-        reactor::Waitables{&this->_peer_online});
+        reactor::Waitables{&this->_peer_reachable});
       this->_fsm.transition_add(
         publish_interfaces_state,
         wait_for_peer_state,
-        reactor::Waitables{&this->_peer_offline});
+        reactor::Waitables{&this->_peer_unreachable});
       this->_fsm.transition_add(
         connection_state,
         wait_for_peer_state,
-        reactor::Waitables{&this->_peer_offline},
+        reactor::Waitables{&this->_peer_unreachable},
         true)
         .action([&]
                 {
@@ -88,7 +92,7 @@ namespace surface
       this->_fsm.transition_add(
         wait_for_peer_state,
         connection_state,
-        reactor::Waitables{&this->_peer_online},
+        reactor::Waitables{&this->_peer_reachable},
         true)
         .action([&]
                 {

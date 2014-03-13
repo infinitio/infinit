@@ -360,7 +360,7 @@ namespace surface
       // ELLE_ASSERT(
       //   std::find(update.devices.begin(), update.devices.end(),
       //             this->_data->recipient_device_id) != update.devices.end());
-      this->_machine->peer_connection_update(update.status);
+      this->_machine->peer_availability_changed(update.status);
     }
 
     bool

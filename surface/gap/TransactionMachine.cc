@@ -336,7 +336,26 @@ namespace surface
     }
 
     void
-    TransactionMachine::peer_connection_update(bool user_status)
+    TransactionMachine::peer_availability_changed(bool available)
+    {
+      ELLE_TRACE_SCOPE("%s: peer is %savailable for peer to peer connection",
+                       *this, available ? "" : "un");
+      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+      ELLE_DEBUG("switch barriers")
+      if (available)
+      {
+        this->_transfer_machine.peer_unreachable().close();
+        this->_transfer_machine.peer_reachable().open();
+      }
+      else
+      {
+        this->_transfer_machine.peer_reachable().close();
+        this->_transfer_machine.peer_unreachable().open();
+      }
+    }
+
+    void
+    TransactionMachine::peer_connection_changed(bool user_status)
     {
       ELLE_TRACE_SCOPE("%s: update with new peer connection status %s",
                        *this, user_status);

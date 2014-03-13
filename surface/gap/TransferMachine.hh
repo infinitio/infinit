@@ -41,8 +41,13 @@ namespace surface
     | Triggers |
     `---------*/
     private:
+      // Represents the connection status of the peer according to the servers.
       ELLE_ATTRIBUTE_RX(reactor::Barrier, peer_online);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, peer_offline);
+      // Represents the availability of the peer for peer to peer connection.
+      ELLE_ATTRIBUTE_RX(reactor::Barrier, peer_reachable);
+      ELLE_ATTRIBUTE_RX(reactor::Barrier, peer_unreachable);
+      // Signal that the peer is connected to us.
       ELLE_ATTRIBUTE(reactor::Signal,  peer_connected);
 
     /*-------.
