@@ -38,17 +38,11 @@ namespace surface
       _peer_unreachable("peer unreachable"),
       _peer_connected("peer connected")
     {
+      // Online / Offline barrier can't be initialized here, because
+      // TransactionMachine is abstract.
+      // I choosed to initialize the values on run() method.
+
       // By default, use the cached status from gap.
-      if (owner.state().user(owner.peer_id()).status())
-      {
-        this->_peer_offline.close();
-        this->_peer_online.open();
-      }
-      else
-      {
-        this->_peer_online.close();
-        this->_peer_offline.open();
-      }
       this->_peer_unreachable.open();
 
       /*-------.
@@ -232,6 +226,18 @@ namespace surface
     void
     TransferMachine::run()
     {
+      // XXX: Best place to do that? (See constructor).
+      if (this->_owner.state().user(this->_owner.peer_id()).status())
+      {
+        this->_peer_offline.close();
+        this->_peer_online.open();
+      }
+      else
+      {
+        this->_peer_online.close();
+        this->_peer_offline.open();
+      }
+
       this->_fsm.run();
     }
 
