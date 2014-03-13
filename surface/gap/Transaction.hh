@@ -105,8 +105,8 @@ namespace surface
       on_transaction_update(Data const& data);
 
       void
-      on_peer_interfaces_updated(
-        infinit::oracles::trophonius::PeerInterfacesUpdated const& update);
+      on_peer_reachability_updated(
+        infinit::oracles::trophonius::PeerReachabilityNotification const& update);
 
       void
       on_peer_connection_status_updated(

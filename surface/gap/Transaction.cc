@@ -345,10 +345,10 @@ namespace surface
           this->_machine->transaction_status_update(this->_data->status);
     }
 
-    using infinit::oracles::trophonius::PeerInterfacesUpdated;
+    using infinit::oracles::trophonius::PeerReachabilityNotification;
     void
-    Transaction::on_peer_interfaces_updated(
-      PeerInterfacesUpdated const& update)
+    Transaction::on_peer_reachability_updated(
+      PeerReachabilityNotification const& update)
     {
       ELLE_TRACE_SCOPE("%s: peer now %savaialble for peer to peer connection",
                        *this, update.status ? "" : "un");

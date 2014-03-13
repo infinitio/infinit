@@ -215,8 +215,8 @@ namespace surface
     }
 
     void
-    State::_on_peer_interfaces_updated(
-      infinit::oracles::trophonius::PeerInterfacesUpdated const& notif)
+    State::_on_peer_reachability_updated(
+      infinit::oracles::trophonius::PeerReachabilityNotification const& notif)
     {
       ELLE_TRACE_SCOPE(
         "%s: peer (%s)published his interfaces for transaction %s",
@@ -237,7 +237,7 @@ namespace surface
                   notif.transaction_id);
         return;
       }
-      it->second.on_peer_interfaces_updated(notif);
+      it->second.on_peer_reachability_updated(notif);
     }
   }
 }

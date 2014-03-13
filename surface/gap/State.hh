@@ -514,8 +514,8 @@ namespace surface
       _on_transaction_update(infinit::oracles::Transaction const& notif);
 
       void
-      _on_peer_interfaces_updated(
-        infinit::oracles::trophonius::PeerInterfacesUpdated const& notif);
+      _on_peer_reachability_updated(
+        infinit::oracles::trophonius::PeerReachabilityNotification const& notif);
 
       /*----------.
       | Printable |
