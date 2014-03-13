@@ -85,6 +85,9 @@ namespace infinit
         UserStatusNotification():
           Notification{NotificationType::user_status}
         {}
+
+        void
+        print(std::ostream& stream) const override;
       };
 
       struct TransactionNotification:

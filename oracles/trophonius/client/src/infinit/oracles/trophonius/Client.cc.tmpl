@@ -151,6 +151,14 @@ namespace infinit
       }
 
       void
+      UserStatusNotification::print(std::ostream& stream) const
+      {
+        stream << "Notification user " << user_id
+               << " went " << (device_status ? "on" : "off")
+               << "line on device " << device_id;
+      }
+
+      void
       TransactionNotification::print(std::ostream& stream) const
       {
         stream << this->notification_type << ": "
