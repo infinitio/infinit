@@ -165,7 +165,9 @@ class Mixin:
           source = (user['fullname'], user['email']),
           filename = files[0],
           sendername = user['fullname'],
-          database = self.database
+          database = self.database,
+          ghost_id = recipient.get('_id'),
+          sender_id = user['_id'],
         )
 
     self._increase_swag(user['_id'], recipient['_id'])
