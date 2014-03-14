@@ -1,7 +1,9 @@
 import test
 import reactor
+import time
 def go():
-  (servers, addr_meta, addr_trophonius, addr_apertus) = test.oracles()
+  with test.Oracles() as o:
+    time.sleep(2)
 
 
 s = reactor.Scheduler()
