@@ -673,14 +673,6 @@ extern "C"
     );
   }
 
-  /// - Permissions ---------------------------------------------------------
-  static inline
-  void
-  gap_file_users_free(char** users)
-  {
-    ::free(users);
-  }
-
   // - Trophonius -----------------------------------------------------------
 
   gap_Status
