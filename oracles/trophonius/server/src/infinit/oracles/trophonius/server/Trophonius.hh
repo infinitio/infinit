@@ -61,6 +61,8 @@ namespace infinit
           ~Trophonius();
           void
           stop();
+          void
+          terminate();
 
         /*-------.
         | Server |
@@ -92,7 +94,7 @@ namespace infinit
           ELLE_ATTRIBUTE_R(boost::uuids::uuid, uuid);
           ELLE_ATTRIBUTE_R(meta::Admin, meta);
           ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, meta_pinger);
-
+          ELLE_ATTRIBUTE(bool, terminating);
         /*--------.
         | Clients |
         `--------*/

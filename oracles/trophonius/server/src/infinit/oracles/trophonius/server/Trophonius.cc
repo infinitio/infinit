@@ -80,6 +80,7 @@ namespace infinit
               meta_ping_period
               )
             ),
+          _terminating(false),
           _ping_period(user_ping_period),
           _user_auth_max_time(user_auth_max_time),
           _remove_lock()
@@ -170,6 +171,14 @@ namespace infinit
 
         Trophonius::~Trophonius()
         {
+          if (!this->_terminating)
+            terminate();
+        }
+
+        void
+        Trophonius::terminate()
+        {
+          this->_terminating = true;
           this->_accepter_ssl->terminate_now();
           this->_accepter_tcp->terminate_now();
           this->_meta_accepter.terminate_now();
