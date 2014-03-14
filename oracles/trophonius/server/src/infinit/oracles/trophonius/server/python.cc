@@ -10,6 +10,11 @@ extern "C"
   PyObject* PyInit_trophonius();
 }
 
+static void wait_wrap(infinit::oracles::trophonius::server::Trophonius* t)
+{
+  t->wait();
+}
+
 BOOST_PYTHON_MODULE(server)
 {
   using infinit::oracles::trophonius::server::Trophonius;
@@ -27,7 +32,7 @@ BOOST_PYTHON_MODULE(server)
                          boost::posix_time::time_duration const&>())
     .def("stop", &Trophonius::stop)
     .def("terminate", &Trophonius::terminate)
-    .def("wait", &Trophonius::wait) // XXX: use Waitable::wait
+    .def("wait", &wait_wrap) // XXX: use Waitable::wait
     .def("port_tcp", &Trophonius::port_tcp)
     .def("port_ssl", &Trophonius::port_ssl)
     ;
