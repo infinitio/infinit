@@ -149,3 +149,26 @@ def configure(elle,
   debian << drake.debian.Packager(
     'fist-apertus_%s_amd64.deb' % git.version(),
     package, 'debian', preload = elle.elle.dpkg_preload).package
+
+  ## ------ ##
+  ## Python ##
+  ## ------ ##
+  python3 = drake.cxx.find_library(
+    token = 'pyconfig.h',
+    include_dir = ['include/python3.2', 'include/python3.3'])
+  python_sources = drake.nodes(
+      'src/infinit/oracles/apertus/python.cc',
+    )
+  python_cxx_config = drake.cxx.Config(local_cxx_config)
+  python_cxx_config.lib_path_runtime('../../..')
+  python_cxx_config += python3
+  python_cxx_config += boost.config_python()
+  python_lib = drake.cxx.Module(
+    'lib/python/infinit/oracles/apertus',
+    python_sources + [library],
+    cxx_toolkit, python_cxx_config)
+  drake.Rule('python') << python_lib
+  build << python_lib
+  build << drake.touch('lib/python/infinit/__init__.py')
+  build << drake.touch('lib/python/infinit/oracles/__init__.py')
+  drake.Rule('python') << python_lib
