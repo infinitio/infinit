@@ -5,6 +5,9 @@ import os
 import os.path
 import sys
 
+import threading
+import time
+
 SELF = os.path.realpath(__file__)
 sys.path.insert(0, '%s/../lib/python' % os.path.dirname(SELF))
 
@@ -26,7 +29,29 @@ parser.add_option('--enable-emails',
                   action = 'store_true',
                   help = 'Enable email support',
                   default = False)
+parser.add_option('--port-file',
+                  action = 'store',
+                  help = 'File name to write port information to',
+                  default = None)
+parser.add_option('--port',
+                  action = 'store',
+                  help = 'File name to write port information to',
+                  default = '8080')
 options, args = parser.parse_args()
 
-bottle.run(app = infinit.oracles.meta.server.Meta(force_admin = options.force_admin, enable_emails=options.enable_emails),
-           host = '127.0.0.1')
+app = infinit.oracles.meta.server.Meta(force_admin = options.force_admin, enable_emails=options.enable_emails)
+app.port = 0
+
+def write_port_file():
+  while app.port == 0:
+    time.sleep(0.1)
+  with open(options.port_file, 'w') as f:
+    f.write(str(app.port))
+
+if options.port_file is not None:
+  t = threading.Thread(target = lambda : write_port_file())
+  t.start()
+
+bottle.run(app = app,
+           host = '127.0.0.1',
+           port = int(options.port))
