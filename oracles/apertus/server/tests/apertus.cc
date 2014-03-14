@@ -478,6 +478,13 @@ ELLE_TEST_SCHEDULED(client_timeout)
         boost::lexical_cast<std::string>(apertus.port_tcp()));
       BOOST_CHECK_THROW(socket.read_some(1, 2_sec), reactor::network::ConnectionClosed);
     }
+    { // partial id
+      reactor::network::TCPSocket socket(
+        "127.0.0.1",
+        boost::lexical_cast<std::string>(apertus.port_tcp()));
+      socket.write("\5aa");
+      BOOST_CHECK_THROW(socket.read_some(1, 2_sec), reactor::network::ConnectionClosed);
+    }
     { // id
       reactor::network::TCPSocket socket(
         "127.0.0.1",
