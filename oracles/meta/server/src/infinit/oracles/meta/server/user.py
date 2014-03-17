@@ -5,7 +5,7 @@ import bson
 import uuid
 import elle.log
 
-from .utils import api, require_logged_in, require_admin, hash_pasword, _require_admin
+from .utils import api, require_logged_in, require_admin, hash_pasword
 from . import error, notifier, regexp, conf, invitation
 
 from pymongo import DESCENDING
@@ -516,7 +516,7 @@ class Mixin:
       return self.success({"swaggers" : list(user["swaggers"].keys())})
 
   @api('/user/add_swagger', method = 'POST')
-  @_require_admin
+  @require_admin
   def add_swagger(self,
                   user1: bson.ObjectId,
                   user2: bson.ObjectId):

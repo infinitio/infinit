@@ -158,13 +158,16 @@ namespace station
       check_already();
 
       bool master = hash < remote_hash;
+      ELLE_DEBUG("%s: assume %s role", *this, master ? "master" : "slave");
 
       elle::SafeFinally pop_negotiation;
       if (master)
       {
         // If we're already negotiating, wait.
-        while (this->_host_negotiating.find(remote) != this->_host_negotiating.end())
+        auto& negotiating = this->_host_negotiating;
+        while (negotiating.find(remote) != negotiating.end())
         {
+          ELLE_DEBUG("%s: already negotiating with this peer, wait", *this);
           reactor::Scheduler::scheduler()->current()->wait(
             this->_negotiation_ended);
           check_already();

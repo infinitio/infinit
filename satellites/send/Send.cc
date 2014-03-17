@@ -101,32 +101,24 @@ int main(int argc, char** argv)
 
         state.attach_callback<surface::gap::State::ConnectionStatus>(
           [&] (surface::gap::State::ConnectionStatus const& notif)
-          {
-            std::cerr << "ConnectionStatusNotification(" << notif.status
-                      << ")" << std::endl;
-          }
+          {}
         );
 
         state.attach_callback<surface::gap::State::TrophoniusUnavailable>(
           [&]
           (surface::gap::State::TrophoniusUnavailable const& notif)
-          {
-            std::cerr << "TrophoniusUnavailable" << std::endl;
-          }
+          {}
         );
 
         state.attach_callback<surface::gap::State::KickedOut>(
           [&]
           (surface::gap::State::KickedOut const& notif)
-          {
-            std::cerr << "KickedNotification" << std::endl;
-          }
+          {}
         );
 
         state.attach_callback<surface::gap::State::UserStatusNotification>(
           [&] (surface::gap::State::UserStatusNotification const& notif)
-          {
-          });
+          {});
 
         state.attach_callback<surface::gap::Transaction::Notification>(
           [&] (surface::gap::Transaction::Notification const& notif)
@@ -152,10 +144,24 @@ int main(int argc, char** argv)
         if (id == surface::gap::null_id)
           throw elle::Exception("transaction id is null");
 
+        static const int width = 70;
+        std::cout << std::endl;
         do
         {
           state.poll();
-          reactor::sleep(1_sec);
+          std::cout << "[A[J";
+          float progress = 0.0;
+          if (stop)
+            progress = 1.0;
+          else
+            progress = state.transactions().at(id).progress();
+          std::cout << "[";
+          for (int i = 0; i < width - 2; ++i)
+          {
+            std::cout << (float(i) / width < progress ? "#" : " ");
+          }
+          std::cout << "] " << int(progress * 100) << "%" << std::endl;
+          reactor::sleep(100_ms);
         }
         while (stop != true);
 

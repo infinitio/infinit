@@ -16,7 +16,7 @@ namespace path = elle::os::path;
 namespace papier
 {
 
-  ELLE_LOG_COMPONENT("infinit.papier.Identity");
+//  ELLE_LOG_COMPONENT("infinit.papier.Identity");
 
 //
 // ---------- constructors & destructors --------------------------------------

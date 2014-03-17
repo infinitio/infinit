@@ -12,7 +12,7 @@ import pymongo.errors
 import elle.log
 
 from infinit.oracles.meta.server.utils import api
-from infinit.oracles.meta.server.utils import _require_admin as require_admin
+from infinit.oracles.meta.server.utils import require_admin
 from itertools import chain
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Metrics'

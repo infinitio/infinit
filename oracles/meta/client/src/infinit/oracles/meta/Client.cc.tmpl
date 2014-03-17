@@ -184,6 +184,14 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::FallbackResponse, ar, res)
   ar & named("fallback_port_tcp", res.fallback_port_tcp);
 }
 
+SERIALIZE_RESPONSE(infinit::oracles::meta::CloudBufferTokenResponse, ar, res)
+{
+  ar & named("access_key_id", res.access_key_id);
+  ar & named("secret_access_key", res.secret_access_key);
+  ar & named("session_token", res.session_token);
+  ar & named("expiration", res.expiration);
+}
+
 /*--------------.
 | Server Status |
 `--------------*/
@@ -672,6 +680,14 @@ namespace infinit
       {
         return this->_request<FallbackResponse>(
           elle::sprintf("/apertus/fallback/%s", _id), Method::GET);
+      }
+
+      CloudBufferTokenResponse
+      Client::get_cloud_buffer_token(std::string const& transaction_id) const
+      {
+        return this->_request<CloudBufferTokenResponse>(
+          elle::sprintf("/transaction/%s/cloud_buffer", transaction_id),
+          Method::GET);
       }
 
       /*--------------.

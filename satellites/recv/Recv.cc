@@ -1,17 +1,19 @@
-#include <iostream>
 #include <stdexcept>
 
 #include <boost/program_options.hpp>
 
-#include <CrashReporter.hh>
+#include <elle/Exception.hh>
+#include <elle/assert.hh>
+#include <elle/log.hh>
 
 #include <reactor/scheduler.hh>
 #include <reactor/sleep.hh>
-#include <elle/Exception.hh>
-#include <elle/assert.hh>
 
+#include <CrashReporter.hh>
 #include <surface/gap/State.hh>
 #include <version.hh>
+
+ELLE_LOG_COMPONENT("8recv");
 
 bool stop = false;
 
@@ -94,53 +96,31 @@ int main(int argc, char** argv)
         state.attach_callback<surface::gap::State::ConnectionStatus>(
           [&] (surface::gap::State::ConnectionStatus const& notif)
           {
-            std::cerr << "ConnectionStatusNotification(" << notif.status
-                      << ")" << std::endl;
-          }
-        );
-
-        state.attach_callback<surface::gap::State::TrophoniusUnavailable>(
-          [&]
-          (surface::gap::State::TrophoniusUnavailable const& notif)
-          {
-            std::cerr << "TrophoniusUnavailable" << std::endl;
-          }
-        );
-
-        state.attach_callback<surface::gap::State::KickedOut>(
-          [&]
-          (surface::gap::State::KickedOut const& notif)
-          {
-            std::cerr << "KickedNotification" << std::endl;
+            ELLE_TRACE("connection status notification: %s", notif);
           }
         );
 
         state.attach_callback<surface::gap::State::UserStatusNotification>(
           [&] (surface::gap::State::UserStatusNotification const& notif)
           {
-            std::cerr << "UserStatusNotification(" << notif.id
-                      << ", status: " << notif.status << ")" << std::endl;
-
+            ELLE_TRACE("user status notification: %s", notif);
           });
 
         state.attach_callback<surface::gap::Transaction::Notification>(
           [&] (surface::gap::Transaction::Notification const& notif)
           {
-            std::cerr << "TransactionNotification(" << notif.id
-                      << ", status: " << notif.status << ")" << std::endl;
-
+            ELLE_TRACE_SCOPE("transaction notification: %s", notif);
             auto& tr = state.transactions().at(notif.id);
-
             if (tr.data()->recipient_id != state.me().id)
               return;
-
             if (notif.status == gap_transaction_waiting_for_accept)
             {
+              ELLE_LOG("accept transaction %s", notif.id);
               state.transactions().at(notif.id).accept();
             }
             else if (notif.status == gap_transaction_finished)
             {
-              std::cerr << "finished" << std::endl;
+              ELLE_LOG("transaction %s finished", notif.id);
               state.transactions().at(notif.id).join();
             }
 

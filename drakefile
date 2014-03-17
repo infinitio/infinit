@@ -29,6 +29,7 @@ def configure(cxx_toolkit = None,
   build = drake.Rule('build')
   check = drake.TestSuite('check')
   install = drake.Rule('install')
+  python_build = drake.Rule('python')
   tests = drake.Rule('tests')
 
   prefix = drake.Path(os.path.abspath(prefix))
@@ -114,7 +115,7 @@ def configure(cxx_toolkit = None,
   ## Python configuration ##
   ## -------------------- ##
 
-  python_enabled = cxx_toolkit.os != drake.os.windows
+  python_enabled = python3 is not None
   if python_enabled:
     python3 = drake.cxx.find_library(
       'pyconfig.h', prefix = python3,
@@ -170,7 +171,11 @@ def configure(cxx_toolkit = None,
   elle_lib = copy_lib(elle.elle.library)
   cryptography_lib = copy_lib(elle.cryptography.library)
   reactor_lib = copy_lib(elle.reactor.library)
+  if python_enabled:
+    reactor_python_lib = copy_lib(elle.reactor.python_lib, where='lib/python')
+    python_build << reactor_python_lib
   protocol_lib = copy_lib(elle.protocol.library)
+  aws_lib = copy_lib(elle.aws.library)
 
   cxx_config += elle.config
   cxx_config.add_local_include_path('.')
@@ -304,6 +309,11 @@ def configure(cxx_toolkit = None,
   frete_sources = drake.nodes(
     'frete/src/frete/Frete.hh',
     'frete/src/frete/Frete.cc',
+    'frete/src/frete/TransferSnapshot.hh',
+    'frete/src/frete/TransferSnapshot.cc',
+    'frete/src/frete/RPCFrete.hh',
+    'frete/src/frete/RPCFrete.cc',
+    'frete/src/frete/fwd.hh',
   )
   cxx_config.add_local_include_path('frete/src')
   cxx_config_libs.add_local_include_path('frete/src')
@@ -405,33 +415,42 @@ def configure(cxx_toolkit = None,
   )
   with templating_context:
     gap_sources = drake.nodes(
+      'surface/gap/Device.hh',
       'surface/gap/Exception.hh',
-      'surface/gap/Transaction.hh',
+      'surface/gap/FilesystemTransferBufferer.cc',
+      'surface/gap/FilesystemTransferBufferer.hh',
+      'surface/gap/ReceiveMachine.cc',
+      'surface/gap/ReceiveMachine.hh',
+      'surface/gap/Rounds.cc',
+      'surface/gap/Rounds.hh',
+      # 'surface/gap/S3TransferBufferer.cc',
+      # 'surface/gap/S3TransferBufferer.hh',
+      'surface/gap/Self.hh',
+      'surface/gap/SendMachine.cc',
+      'surface/gap/SendMachine.hh',
+      'surface/gap/State.cc',
+      'surface/gap/State.hh',
       'surface/gap/Transaction.cc',
+      'surface/gap/Transaction.hh',
+      'surface/gap/Transaction.hh',
       'surface/gap/Transaction.hxx',
-      'surface/gap/gap.cc',
-      'surface/gap/gap.h',
-      'surface/gap/gap_bridge.hh',
-      'surface/gap/enums.hh.tmpl',
+      'surface/gap/TransactionMachine.cc',
+      'surface/gap/TransactionMachine.hh',
+      'surface/gap/TransactionMachine.hxx',
+      'surface/gap/TransferBufferer.cc',
+      'surface/gap/TransferBufferer.hh',
       'surface/gap/TransferMachine.cc',
       'surface/gap/TransferMachine.hh',
       'surface/gap/TransferMachine.hxx',
-      'surface/gap/SendMachine.cc',
-      'surface/gap/SendMachine.hh',
-      'surface/gap/ReceiveMachine.cc',
-      'surface/gap/ReceiveMachine.hh',
-      'surface/gap/State.cc',
-      'surface/gap/State.hh',
-      'surface/gap/status.hh.tmpl',
-      'surface/gap/Transaction.hh',
-      'surface/gap/Device.hh',
-      'surface/gap/Self.hh',
-      'surface/gap/Rounds.cc',
-      'surface/gap/Rounds.hh',
-      'surface/gap/_detail/Papiers.cc',
       'surface/gap/_detail/Network.cc',
+      'surface/gap/_detail/Papiers.cc',
       'surface/gap/_detail/Transaction.cc',
       'surface/gap/_detail/User.cc',
+      'surface/gap/enums.hh.tmpl',
+      'surface/gap/gap.cc',
+      'surface/gap/gap.h',
+      'surface/gap/gap_bridge.hh',
+      'surface/gap/status.hh.tmpl',
       # Get rid of common asap.
       'common/common.hh',
       'common/common.cc',
@@ -464,6 +483,7 @@ def configure(cxx_toolkit = None,
   gap_lib = drake.cxx.DynLib(
     'lib/gap',
     gap_sources + [
+      aws_lib,
       trophonius_client_lib,
       meta_client_lib,
       frete_lib,
@@ -530,6 +550,118 @@ def configure(cxx_toolkit = None,
 
   build << cli_build
 
+  ## ----- ##
+  ## State ##
+  ## ----- ##
+
+  templating_context = drake.templating.Context(
+    sources = oracles.meta.server.python,
+    pythonpath = ('oracles/meta/server/lib/python',), # XXX
+  )
+  with templating_context:
+    state_sources = drake.nodes(
+      'surface/gap/Device.hh',
+      'surface/gap/Exception.hh',
+      'surface/gap/FilesystemTransferBufferer.cc',
+      'surface/gap/FilesystemTransferBufferer.hh',
+      'surface/gap/ReceiveMachine.cc',
+      'surface/gap/ReceiveMachine.hh',
+      'surface/gap/Rounds.cc',
+      'surface/gap/Rounds.hh',
+      'surface/gap/S3TransferBufferer.cc',
+      'surface/gap/S3TransferBufferer.hh',
+      'surface/gap/Self.hh',
+      'surface/gap/SendMachine.cc',
+      'surface/gap/SendMachine.hh',
+      'surface/gap/State.cc',
+      'surface/gap/State.hh',
+      'surface/gap/Transaction.cc',
+      'surface/gap/Transaction.hh',
+      'surface/gap/Transaction.hh',
+      'surface/gap/Transaction.hxx',
+      'surface/gap/TransactionMachine.cc',
+      'surface/gap/TransactionMachine.hh',
+      'surface/gap/TransactionMachine.hxx',
+      'surface/gap/TransferBufferer.cc',
+      'surface/gap/TransferBufferer.hh',
+      'surface/gap/TransferMachine.cc',
+      'surface/gap/TransferMachine.hh',
+      'surface/gap/TransferMachine.hxx',
+      'surface/gap/_detail/Network.cc',
+      'surface/gap/_detail/Papiers.cc',
+      'surface/gap/_detail/Transaction.cc',
+      'surface/gap/_detail/User.cc',
+      'surface/gap/enums.hh.tmpl',
+      'surface/gap/status.hh.tmpl',
+      # Get rid of common asap.
+      'common/common.hh',
+      'common/common.cc',
+    )
+  state_build = drake.Rule('state/build')
+  state_tests = drake.Rule('state/tests')
+  state_check = drake.TestSuite('state/check')
+  state_install = drake.TestSuite('state/install')
+
+  state_cxx_config = drake.cxx.Config(cxx_config_libs)
+  state_cxx_config.add_local_include_path('metrics/src')
+  state_cxx_config.add_local_include_path('oracles/src')
+  state_cxx_config.add_local_include_path('oracles/meta/client/src')
+  state_cxx_config.add_local_include_path('oracles/trophonius/client/src')
+
+  state_cxx_config_libs = drake.cxx.Config(gap_cxx_config)
+  state_cxx_config_libs += boost.config_filesystem(
+    static = (cxx_toolkit.os is drake.os.macos and True or None))
+  state_cxx_config_libs += boost.config_system()
+  state_cxx_config_libs += boost.config_signals()
+  state_cxx_config_libs += boost.config_thread()
+  if cxx_toolkit.os == drake.os.windows:
+    state_cxx_config_libs.lib('shlwapi')
+    state_cxx_config_libs.lib('ws2_32')
+    state_cxx_config_libs.lib('gdi32')
+    state_cxx_config_libs.lib('mswsock')
+  state_lib = drake.cxx.DynLib(
+    'lib/state',
+    state_sources + [
+      aws_lib,
+      trophonius_client_lib,
+      meta_client_lib,
+      frete_lib,
+      station_lib,
+      metrics_lib,
+      crash_lib,
+      papier_lib,
+      protocol_lib,
+      elle_lib,
+      reactor_lib,
+      cryptography_lib,
+    ],
+    cxx_toolkit,
+    state_cxx_config_libs
+  )
+
+  ## ------------ ##
+  ## State python ##
+  ## ------------ ##
+
+  state_python_lib = None
+  if python_enabled:
+    state_python_cxx_config = drake.cxx.Config(gap_cxx_config)
+    state_python_cxx_config += python3
+    state_python_cxx_config += boost.config_python()
+    state_python_cxx_config.lib_path_runtime('..')
+    state_python_sources = drake.nodes(
+      'surface/gap/python/State.cc',
+    )
+    state_python_lib = drake.cxx.Module(
+      'lib/python/state',
+      state_python_sources + [
+        state_lib,
+      ],
+      cxx_toolkit,
+      state_python_cxx_config
+    )
+    python_build << state_python_lib
+
   ## ---------- ##
   ## GAP python ##
   ## ---------- ##
@@ -573,18 +705,15 @@ def configure(cxx_toolkit = None,
     gap_build << gap_python_lib
     gap_build << gap_python_pyfile_copy
     gap_build << infinit_cli_copy
-
+    python_build << gap_python_lib
 
     python_merge = []
-
     python_merge += drake.copy(oracles.trophonius.server.python, '.', strip_prefix='oracles/trophonius/server')
     python_merge += drake.copy(oracles.apertus.server.python, '.', strip_prefix='oracles/apertus/server')
     python_merge += drake.copy(oracles.meta.server.python, '.', strip_prefix = 'oracles/meta/server')
     python_merge.append(drake.copy(elle.reactor.python_lib, '.', strip_prefix = 'elle/reactor'))
-
     drake.Rule('python') << python_merge
     python_env = dict(PYTHONPATH = 'lib/python')
-
     # Top-level tests
     mongobox = drake.nodes(
       'oracles/mongobox/mongobox/__init__.py',

@@ -99,8 +99,8 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::TransactionNotification,
   ar & base_class<infinit::oracles::Transaction>(value);
 }
 
-ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::PeerConnectionUpdateNotification);
-ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::PeerConnectionUpdateNotification,
+ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::PeerReachabilityNotification);
+ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::PeerReachabilityNotification,
                       ar,
                       value,
                       version)
@@ -151,6 +151,14 @@ namespace infinit
       }
 
       void
+      UserStatusNotification::print(std::ostream& stream) const
+      {
+        stream << "Notification user " << user_id
+               << " went " << (device_status ? "on" : "off")
+               << "line on device " << device_id;
+      }
+
+      void
       TransactionNotification::print(std::ostream& stream) const
       {
         stream << this->notification_type << ": "
@@ -172,7 +180,7 @@ namespace infinit
           case NotificationType::transaction:
             return Ptr(new TransactionNotification{extractor});
           case NotificationType::peer_connection_update:
-            return Ptr(new PeerConnectionUpdateNotification{extractor});
+            return Ptr(new PeerReachabilityNotification{extractor});
           case NotificationType::new_swagger:
             return Ptr(new NewSwaggerNotification{extractor});
           case NotificationType::user_status:
@@ -902,7 +910,6 @@ namespace infinit
           ELLE_ERR("%s: unable to authenticate with trophonius", *this);
           return false;
         }
-        ELLE_LOG("%s: connected to trophonius", *this);
         this->_impl->_synchronized = true;
         return true;
       }

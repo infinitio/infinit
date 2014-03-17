@@ -1,36 +1,40 @@
 #ifndef RECEIVEMACHINE_HH
 # define RECEIVEMACHINE_HH
 
-# include <surface/gap/State.hh>
+# include <memory>
+# include <string>
+# include <unordered_set>
+
+# include <boost/filesystem.hpp>
+
+# include <elle/attribute.hh>
 
 # include <reactor/waitable.hh>
 # include <reactor/signal.hh>
 
-# include <surface/gap/TransferMachine.hh>
-
-# include <memory>
-# include <string>
-# include <unordered_set>
+# include <surface/gap/State.hh>
+# include <surface/gap/TransactionMachine.hh>
+# include <surface/gap/TransferBufferer.hh>
 
 namespace surface
 {
   namespace gap
   {
     struct ReceiveMachine:
-      public TransferMachine
+      public TransactionMachine
     {
 
     public:
       // Construct from notification.
       ReceiveMachine(surface::gap::State const& state,
                      uint32_t id,
-                     std::shared_ptr<TransferMachine::Data> data);
+                     std::shared_ptr<TransactionMachine::Data> data);
 
       // Construct from snapshot (with current_state).
       ReceiveMachine(surface::gap::State const& state,
                      uint32_t id,
-                     TransferMachine::State const current_state,
-                     std::shared_ptr<TransferMachine::Data> data);
+                     TransactionMachine::State const current_state,
+                     std::shared_ptr<TransactionMachine::Data> data);
       virtual
       ~ReceiveMachine();
 
@@ -48,7 +52,7 @@ namespace surface
     private:
       ReceiveMachine(surface::gap::State const& state,
                      uint32_t id,
-                     std::shared_ptr<TransferMachine::Data> data,
+                     std::shared_ptr<TransactionMachine::Data> data,
                      bool);
 
     private:
@@ -59,7 +63,7 @@ namespace surface
       _accept();
 
       void
-      _transfer_operation() override;
+      _transfer_operation(frete::RPCFrete& frete) override;
 
       void
       _fail();
@@ -78,10 +82,15 @@ namespace surface
       `-----------------*/
       ELLE_ATTRIBUTE(std::string, recipient);
       ELLE_ATTRIBUTE(std::unordered_set<std::string>, files);
-
+      ELLE_ATTRIBUTE(boost::filesystem::path, snapshot_path);
+      ELLE_ATTRIBUTE_R(std::unique_ptr<frete::TransferSnapshot>, snapshot)
     private:
-      frete::Frete&
-      frete() override;
+      std::unique_ptr<frete::RPCFrete>
+      rpcs(infinit::protocol::ChanneledStream& channels) override;
+
+    public:
+      float
+      progress() const override;
 
     public:
       virtual
@@ -91,13 +100,41 @@ namespace surface
         return false;
       }
 
+    /*----------.
+    | Printable |
+    `----------*/
     public:
-      /*----------.
-      | Printable |
-      `----------*/
-
       std::string
       type() const override;
+
+    public:
+      void
+      get(frete::RPCFrete& frete,
+          std::string const& name_policy = " (%s)");
+      void
+      get(TransferBufferer& bufferer,
+          std::string const& name_policy = " (%s)");
+    private:
+      template <typename Source>
+      void
+      _get(Source& source,
+           bool strong_encryption,
+           std::string const& name_policy);
+
+    /*--------------.
+    | Static Method |
+    `--------------*/
+    public:
+      // XXX: Exposed for debugging purposes.
+      static
+      boost::filesystem::path
+      eligible_name(boost::filesystem::path const path,
+                    std::string const& name_policy);
+
+      static
+      boost::filesystem::path
+      trim(boost::filesystem::path const& item,
+           boost::filesystem::path const& root);
     };
   }
 }

@@ -1,3 +1,6 @@
+#include <elle/container/vector.hh>
+#include <sstream>
+
 #include <surface/gap/State.hh>
 #include <surface/gap/Exception.hh>
 #include <reactor/scheduler.hh>
@@ -127,7 +130,7 @@ namespace surface
     State::User const&
     State::user(uint32_t id) const
     {
-      ELLE_TRACE_SCOPE("%s: get user from id %s", *this, id);
+      ELLE_DEBUG_SCOPE("%s: get user from id %s", *this, id);
 
       try
       {
@@ -256,7 +259,15 @@ namespace surface
         // diff.
         auto old_user = this->user(swagger_id);
         auto user = this->user_sync(old_user.id);
-
+        // Remove duplicates.
+        old_user.connected_devices.erase(
+          std::unique(old_user.connected_devices.begin(),
+                      old_user.connected_devices.end()),
+          old_user.connected_devices.end());
+        user.connected_devices.erase(
+          std::unique(user.connected_devices.begin(),
+                      user.connected_devices.end()),
+          user.connected_devices.end());
         auto res = compare<std::string>(old_user.connected_devices,
                                         user.connected_devices);
 
@@ -264,7 +275,8 @@ namespace surface
           for (auto const& device: res.first)
           {
             ELLE_DEBUG("%s: updating device %s", *this, device);
-            auto* notif_ptr = new infinit::oracles::trophonius::UserStatusNotification{};
+            auto* notif_ptr =
+              new infinit::oracles::trophonius::UserStatusNotification{};
             notif_ptr->user_id = swagger_id;
             notif_ptr->status = user.status();
             notif_ptr->device_id = device;
@@ -446,8 +458,9 @@ namespace surface
       ELLE_ASSERT(notif.status == gap_user_status_online ||
                   notif.status == gap_user_status_offline);
 
-      State::User user = this->_users.at(this->_user_indexes.at(swagger.id));
-
+      State::User& user = this->_users.at(this->_user_indexes.at(swagger.id));
+      ELLE_DEBUG("%s: device %s status is %s",
+                 *this, notif.device_id, notif.device_status);
       if (notif.device_status)
       {
         auto it = std::find(std::begin(user.connected_devices),
@@ -456,12 +469,13 @@ namespace surface
 
         if (it == std::end(user.connected_devices))
         {
+          ELLE_DEBUG("add device to connected device list");
           user.connected_devices.push_back(notif.device_id);
         }
         else
         {
-          ELLE_WARN("%s: device %s was already in connected devices",
-                    *this, notif.device_id);
+          ELLE_DEBUG("%s: device %s was already in connected devices",
+                     *this, notif.device_id);
         }
       }
       else
@@ -471,21 +485,26 @@ namespace surface
                             notif.device_id);
         if (it != std::end(user.connected_devices))
         {
+          ELLE_DEBUG("remove device from connected device list");
           user.connected_devices.erase(it);
         }
         else
         {
-          ELLE_WARN("%s: device %s status wasn't in connected_devices",
-                    *this, notif.device_id);
+          ELLE_DEBUG("%s: device %s status wasn't in connected_devices",
+                     *this, notif.device_id);
         }
       }
-
-      ELLE_DEBUG("%s: device %s status is %s",
-                 *this, notif.device_id, notif.device_status);
-
-      this->enqueue<UserStatusNotification>(
-        UserStatusNotification(
-          this->_user_indexes.at(swagger.id), notif.status));
+      ELLE_DUMP("%s connected devices: %s", user, user.connected_devices);
+      ELLE_DEBUG("signal connection status update to concerned transactions")
+        for (auto& transaction_pair: this->transactions())
+        {
+          if (transaction_pair.second.concerns_user(notif.user_id))
+            transaction_pair.second.on_peer_connection_status_updated(notif);
+        };
+      ELLE_DEBUG("enqueue notification for UI")
+        this->enqueue<UserStatusNotification>(
+          UserStatusNotification(
+            this->_user_indexes.at(swagger.id), notif.status));
     }
   }
 }

@@ -29,7 +29,7 @@
 #include <surface/gap/ReceiveMachine.hh>
 #include <surface/gap/SendMachine.hh>
 #include <surface/gap/State.hh>
-#include <surface/gap/TransferMachine.hh>
+#include <surface/gap/TransactionMachine.hh>
 #include <version.hh>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
@@ -160,7 +160,7 @@ namespace surface
             auto meta_response = this->_meta.server_status();
             if (meta_response.status)
             {
-              ELLE_LOG("%s: Meta is reachable", *this);
+              ELLE_TRACE("%s: Meta is reachable", *this);
               result = true;
             }
             else
@@ -217,10 +217,10 @@ namespace surface
     bool
     State::_trophonius_server_check()
     {
-      ELLE_TRACE("%s: check trophonius availablity", *this);
+      ELLE_TRACE_SCOPE("%s: check trophonius availablity", *this);
       if (this->_trophonius.poke())
       {
-        ELLE_LOG("%s: successfully poked Trophonius", *this);
+        ELLE_TRACE("%s: successfully poked Trophonius", *this);
         return true;
       }
       else
@@ -315,15 +315,10 @@ namespace surface
       elle::With<elle::Finally>([&] { this->_meta.logout(); })
         << [&] (elle::Finally& finally_logout)
       {
-        ELLE_LOG("Logged in as %s", email);
+        ELLE_LOG("%s: logged in as %s", *this, email);
 
         infinit::metrics::Reporter::metric_sender_id(res.id);
         this->_composite_reporter.user_login(true, "");
-
-        ELLE_LOG("id: '%s' - fullname: '%s' - lower_email: '%s'",
-                 this->me().id,
-                 this->me().fullname,
-                 this->me().email);
 
         std::string identity_clear;
 
@@ -752,10 +747,10 @@ namespace surface
           break;
         case infinit::oracles::trophonius::NotificationType::peer_connection_update:
           ELLE_ASSERT(
-            dynamic_cast<infinit::oracles::trophonius::PeerConnectionUpdateNotification const*>(
+            dynamic_cast<infinit::oracles::trophonius::PeerReachabilityNotification const*>(
               notif.get()) != nullptr);
-          this->_on_peer_connection_update(
-            *static_cast<infinit::oracles::trophonius::PeerConnectionUpdateNotification const*>(
+          this->_on_peer_reachability_updated(
+            *static_cast<infinit::oracles::trophonius::PeerReachabilityNotification const*>(
               notif.release()));
           break;
         case infinit::oracles::trophonius::NotificationType::none:
