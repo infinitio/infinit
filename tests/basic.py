@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 import test
 import reactor
 import time
@@ -7,7 +9,7 @@ def go():
 
 
 s = reactor.Scheduler()
-t = reactor.Thread(s, "coucou", lambda : go())
+t = reactor.Thread(s, "test starter", lambda : go())
 s.run()
 
 

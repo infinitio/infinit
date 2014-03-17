@@ -378,7 +378,7 @@ def configure(cxx_toolkit = None,
     papier_python = papier_python_lib,
     boost = boost,
     python3 = python3,
-    enable_python_bindings = False,
+    enable_python_bindings = True,
     prefix = prefix,
     cxx_toolkit = cxx_toolkit,
     cxx_config = cxx_config,
@@ -572,3 +572,12 @@ def configure(cxx_toolkit = None,
     gap_build << gap_python_lib
     gap_build << gap_python_pyfile_copy
     gap_build << infinit_cli_copy
+
+
+    python_merge = []
+
+    python_merge += drake.copy(oracles.trophonius.server.python, '.', strip_prefix='oracles/trophonius/server')
+    python_merge += drake.copy(oracles.meta.server.python, '.', strip_prefix = 'oracles/meta/server')
+    python_merge.append(drake.copy(elle.reactor.python_lib, '.', strip_prefix = 'elle/reactor'))
+
+    drake.Rule('python') << python_merge
