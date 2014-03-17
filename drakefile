@@ -362,6 +362,7 @@ def configure(cxx_toolkit = None,
 
   tests << elle.rule_tests
 
+
   ## ----- ##
   ## Check ##
   ## ----- ##
@@ -581,3 +582,17 @@ def configure(cxx_toolkit = None,
     python_merge.append(drake.copy(elle.reactor.python_lib, '.', strip_prefix = 'elle/reactor'))
 
     drake.Rule('python') << python_merge
+    python_env = dict(PYTHONPATH = 'lib/python')
+
+    # Top-level tests
+    functional_check = drake.Rule('/functional/check')
+    functional_test_lib = drake.nodes(
+      'tests/test/__init__.py'
+    )
+    for name in ['basic.py']:
+      test_node = drake.Node('tests/%s' % name)
+      test_node.dependencies_add(python_merge)
+      test_node.dependencies_add(functional_test_lib)
+      runner = drake.Runner(exe = test_node, env = python_env)
+      check << runner.status
+      functional_check << runner.status
