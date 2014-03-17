@@ -35,11 +35,23 @@ parser.add_option('--port-file',
                   default = None)
 parser.add_option('--port',
                   action = 'store',
-                  help = 'File name to write port information to',
+                  help = 'Port to listen to',
                   default = '8080')
+parser.add_option('--mongo-port',
+                  action = 'store',
+                  help = 'Mongodb port',
+                  default = None)
+
 options, args = parser.parse_args()
 
-app = infinit.oracles.meta.server.Meta(force_admin = options.force_admin, enable_emails=options.enable_emails)
+if options.mongo_port is not None:
+  app = infinit.oracles.meta.server.Meta(force_admin = options.force_admin,
+                                         enable_emails = options.enable_emails)
+else:
+  app = infinit.oracles.meta.server.Meta(force_admin = options.force_admin,
+                                         enable_emails = options.enable_emails,
+                                         mongo_port = options.mongo_port)
+
 app.port = 0
 
 def write_port_file():
