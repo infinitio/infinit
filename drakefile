@@ -17,7 +17,7 @@ def configure(cxx_toolkit = None,
               optimization = True,
               prefix = '/usr',
               boost = None,
-              python3 = True,
+              python3 = None,
               build_type = "Development",
               enable_debug = True,
               valgrind = None):
@@ -115,13 +115,12 @@ def configure(cxx_toolkit = None,
   ## Python configuration ##
   ## -------------------- ##
 
-  if python3:
-    python3 = drake.cxx.find_library(
-      'pyconfig.h', prefix = python3,
-      include_dir = ['include',
-                     'include/python3.2',
-                     'include/python3.2m',
-                     'include/python3.3m'])
+  python3 = drake.cxx.find_library(
+    'pyconfig.h', prefix = python3,
+    include_dir = ['include',
+                   'include/python3.2',
+                   'include/python3.2m',
+                   'include/python3.3m'])
 
   ## ------- ##
   ## Version ##

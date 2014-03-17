@@ -26,6 +26,7 @@ with drake.Drake('../..') as d:
   d.run(
     cxx_toolkit,
     cxx_config,
+    python3 = None,
     enable_horizon = False,
     build_type = "Development",
     boost = boost,
