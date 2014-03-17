@@ -7,7 +7,7 @@
 // Pacify -Wmissing-declarations
 extern "C"
 {
-  PyObject* PyInit_trophonius();
+  PyObject* PyInit_server();
 }
 
 static void wait_wrap(infinit::oracles::trophonius::server::Trophonius* t)
