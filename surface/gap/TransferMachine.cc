@@ -411,6 +411,7 @@ namespace surface
     TransferMachine::_wait_for_peer()
     {
       ELLE_TRACE_SCOPE("%s: wait for peer to connect", *this);
+#if 0 // File buffering disabled.
       reactor::sleep(10_sec);
       // FIXME: this is a joke.
       ELLE_TRACE("%s: no peer after 10s, cloud buffer", *this);
@@ -420,7 +421,6 @@ namespace surface
       {
         auto& frete = owner->frete();
         auto& snapshot = *frete.transfer_snapshot();
-
         FilesystemTransferBufferer::Files files;
         for (frete::Frete::FileID file = 0; file < snapshot.count(); ++file)
         {
@@ -460,6 +460,7 @@ namespace surface
       }
       else
         elle::unreachable();
+#endif
     }
 
     void
