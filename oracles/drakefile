@@ -7,6 +7,8 @@ trophonius = None
 build = None
 check = None
 install = None
+meta = None
+trophonius = None
 
 def configure(elle,
               papier_python,

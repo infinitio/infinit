@@ -2,8 +2,10 @@
 
 #include <infinit/oracles/apertus/Apertus.hh>
 
+#include <reactor/network/exception.hh>
 #include <reactor/network/socket.hh>
 #include <reactor/scheduler.hh>
+#include <reactor/Scope.hh>
 
 #include <elle/finally.hh>
 #include <elle/log.hh>
@@ -17,7 +19,7 @@ namespace infinit
     namespace apertus
     {
       Transfer::Transfer(Apertus& owner,
-                         oracle::hermes::TID tid,
+                         Apertus::TID tid,
                          Socket&& left,
                          Socket&& right):
         Waitable(elle::sprintf("transfer %s", tid)),
@@ -45,7 +47,8 @@ namespace infinit
       {
         static const uint32_t buff_size = 1024 * 1024 * 16;
 
-        char* buff = new char[buff_size];
+        std::string sbuff(buff_size, 0);
+        char* buff = &sbuff[0];
         reactor::network::Buffer recv(buff, buff_size);
 
         while (true)
@@ -65,8 +68,6 @@ namespace infinit
             this->_apertus.add_to_bandwidth(size);
           }
         }
-
-        delete[] buff;
       }
 
       void

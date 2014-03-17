@@ -33,6 +33,6 @@ def configure(elle,
                          cxx_toolkit = cxx_toolkit,
                          cxx_config = cxx_config)
 
-  for name in ('build', 'check', 'install'):
+  for name in ('build', 'tests', 'check', 'install'):
     globals()[name] = drake.Rule(name)
     globals()[name] << getattr(server, name)

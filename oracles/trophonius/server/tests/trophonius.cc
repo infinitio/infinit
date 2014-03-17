@@ -149,7 +149,7 @@ public:
             auto json_read = elle::json::read(*socket);
             auto json = boost::any_cast<elle::json::Object>(json_read);
             BOOST_CHECK(json.find("port") != json.end());
-            auto port = boost::any_cast<int>(json.find("port")->second);
+            auto port = boost::any_cast<int64_t>(json.find("port")->second);
             this->_register(*socket, id, port);
           }
           else if (method == "DELETE")
@@ -296,7 +296,7 @@ read_notification(reactor::network::Socket& socket)
   auto response = boost::any_cast<elle::json::Object>(response_read);
   auto it = response.find("notification_type");
   BOOST_CHECK(it != response.end());
-  return boost::any_cast<int>(it->second);
+  return boost::any_cast<int64_t>(it->second);
 }
 
 static
@@ -313,9 +313,9 @@ check_authentication_success(reactor::network::Socket& socket)
   auto json_read = elle::json::read(socket);
   auto json = boost::any_cast<elle::json::Object>(json_read);
   auto notification_type = json["notification_type"];
-  BOOST_CHECK_EQUAL(boost::any_cast<int>(notification_type), -666);
+  BOOST_CHECK_EQUAL(boost::any_cast<int64_t>(notification_type), -666);
   auto response_code = json["response_code"];
-  BOOST_CHECK_EQUAL(boost::any_cast<int>(response_code), 200);
+  BOOST_CHECK_EQUAL(boost::any_cast<int64_t>(response_code), 200);
 }
 
 static
@@ -325,9 +325,9 @@ check_authentication_failure(reactor::network::Socket& socket)
   auto json_read = elle::json::read(socket);
   auto json = boost::any_cast<elle::json::Object>(json_read);
   auto notification_type = json["notification_type"];
-  BOOST_CHECK_EQUAL(boost::any_cast<int>(notification_type), -666);
+  BOOST_CHECK_EQUAL(boost::any_cast<int64_t>(notification_type), -666);
   auto response_code = json["response_code"];
-  BOOST_CHECK_EQUAL(boost::any_cast<int>(response_code), 403);
+  BOOST_CHECK_EQUAL(boost::any_cast<int64_t>(response_code), 403);
 }
 
 static
@@ -365,6 +365,7 @@ ELLE_TEST_SCHEDULED(register_unregister)
     infinit::oracles::trophonius::server::Trophonius trophonius(
       0,
       0,
+      "http",
       "localhost",
       meta.port(),
       0,
@@ -388,6 +389,7 @@ ELLE_TEST_SCHEDULED(notifications, (bool, ssl))
   infinit::oracles::trophonius::server::Trophonius trophonius(
     0,
     0,
+    "http",
     "localhost",
     meta.port(),
     0,
@@ -405,7 +407,7 @@ ELLE_TEST_SCHEDULED(notifications, (bool, ssl))
       auto notif_read = elle::json::read(*socket);
       auto notif = boost::any_cast<elle::json::Object>(notif_read);
       auto notification_type = notif["notification_type"];
-      BOOST_CHECK_EQUAL(boost::any_cast<int>(notification_type),
+      BOOST_CHECK_EQUAL(boost::any_cast<int64_t>(notification_type),
                         user * 10 + device);
     };
     reactor::Barrier b00;
@@ -453,6 +455,7 @@ ELLE_TEST_SCHEDULED(no_authentication, (bool, ssl))
   infinit::oracles::trophonius::server::Trophonius trophonius(
     0,
     0,
+    "http",
     "localhost",
     meta.port(),
     0,
@@ -469,6 +472,23 @@ ELLE_TEST_SCHEDULED(no_authentication, (bool, ssl))
     reactor::yield();
 }
 
+ELLE_TEST_SCHEDULED(no_authentication_timeout, (bool, ssl))
+{
+  Meta meta;
+  infinit::oracles::trophonius::server::Trophonius trophonius(
+    0,
+    0,
+    "http",
+    "localhost",
+    meta.port(),
+    0,
+    60_sec,
+    10_sec,
+    1_sec);
+  std::unique_ptr<reactor::network::Socket> socket(
+    connect_socket(ssl, trophonius));
+  BOOST_CHECK_THROW(socket->read_some(1, 2_sec), reactor::network::ConnectionClosed);
+}
 
 /*-----------------------.
 | authentication_failure |
@@ -497,6 +517,7 @@ ELLE_TEST_SCHEDULED(authentication_failure, (bool, ssl))
   infinit::oracles::trophonius::server::Trophonius trophonius(
     0,
     0,
+    "http",
     "localhost",
     meta.port(),
     0,
@@ -547,6 +568,7 @@ ELLE_TEST_SCHEDULED(wait_authentified, (bool, ssl))
   infinit::oracles::trophonius::server::Trophonius trophonius(
     0,
     0,
+    "http",
     "localhost",
     meta.port(),
     0,
@@ -563,7 +585,7 @@ ELLE_TEST_SCHEDULED(wait_authentified, (bool, ssl))
       auto json_read = elle::json::read(*socket);
       auto json = boost::any_cast<elle::json::Object>(json_read);
       auto notification_type = json["notification_type"];
-      BOOST_CHECK_EQUAL(boost::any_cast<int>(notification_type), 42);
+      BOOST_CHECK_EQUAL(boost::any_cast<int64_t>(notification_type), 42);
     }
   }
 }
@@ -598,6 +620,7 @@ ELLE_TEST_SCHEDULED(notification_authentication_failed, (bool, ssl))
   infinit::oracles::trophonius::server::Trophonius trophonius(
     0,
     0,
+    "http",
     "localhost",
     meta.port(),
     0,
@@ -622,6 +645,7 @@ ELLE_TEST_SCHEDULED(ping_timeout, (bool, ssl))
   infinit::oracles::trophonius::server::Trophonius trophonius(
     0,
     0,
+    "http",
     "localhost",
     meta.port(),
     0,
@@ -668,6 +692,7 @@ ELLE_TEST_SCHEDULED(replace, (bool, ssl))
   infinit::oracles::trophonius::server::Trophonius trophonius(
     0,
     0,
+    "http",
     "localhost",
     meta.port(),
     0,
@@ -719,6 +744,7 @@ ELLE_TEST_SCHEDULED(bad_ssl_handshake)
   infinit::oracles::trophonius::server::Trophonius trophonius(
     0,
     0,
+    "http",
     "localhost",
     meta.port(),
     0,
@@ -747,6 +773,11 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(no_authentication_tcp), 0, timeout);
   auto no_authentication_ssl = std::bind(no_authentication, true);
   suite.add(BOOST_TEST_CASE(no_authentication_ssl), 0, timeout);
+
+  auto no_authentication_timeout_tcp = std::bind(no_authentication_timeout, false);
+  suite.add(BOOST_TEST_CASE(no_authentication_timeout_tcp), 0, timeout);
+  auto no_authentication_timeout_ssl = std::bind(no_authentication_timeout, true);
+  suite.add(BOOST_TEST_CASE(no_authentication_timeout_ssl), 0, timeout);
 
   auto authentication_failure_tcp = std::bind(authentication_failure, false);
   suite.add(BOOST_TEST_CASE(authentication_failure_tcp), 0, timeout);

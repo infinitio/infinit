@@ -89,14 +89,17 @@ class Client:
 
   def delete(self, url, body = None):
     return self.request(url, 'DELETE', body)
+
+
 class Meta:
 
-  def __init__(self, enable_emails = False):
+  def __init__(self, enable_emails = False, force_admin = False):
     self.__mongo = mongobox.MongoBox()
     self.__server = bottle.WSGIRefServer(port = 0)
     self.__database = None
     self.__client = None
     self.__enalbe_emails = enable_emails
+    self.__force_admin = force_admin
     self.__meta = None
 
   def __enter__(self):
@@ -107,7 +110,8 @@ class Meta:
       try:
         self.__meta = infinit.oracles.meta.server.Meta(
           mongo_port = self.__mongo.port,
-          enable_emails = self.__enalbe_emails)
+          enable_emails = self.__enalbe_emails,
+          force_admin = self.__force_admin)
         self.__meta.catchall = False
         bottle.run(app = self.__meta,
                    quiet = True,

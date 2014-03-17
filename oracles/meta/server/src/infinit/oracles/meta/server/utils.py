@@ -1,8 +1,11 @@
 import bottle
 import bson
+import datetime
 import decorator
 import inspect
+import iso8601
 import uuid
+
 from . import error
 from . import conf
 import pymongo
@@ -23,19 +26,30 @@ class api:
     def annotation_mapper(self, *args, **kwargs):
       for arg, annotation in spec.annotations.items():
         value = kwargs.get(arg, None)
-        if arg is not None:
+        if arg is not None and value is not None:
           try:
-            kwargs[arg] = annotation(value)
+            if annotation is datetime.datetime:
+              if not isinstance(value, datetime.datetime):
+                value = iso8601.parse_date(value)
+            else:
+              value = annotation(value)
+            kwargs[arg] = value
           except:
             m = '%r is not a valid %s' % (value, annotation.__name__)
             bottle.abort(400, m)
       return method(self, *args, **kwargs)
-    method.__route__ = self.__route
-    method.__method__ = self.__method
-    api.functions.append(method)
+    annotation_mapper.__route__ = self.__route
+    annotation_mapper.__method__ = self.__method
+    annotation_mapper.__underlying_method__ = method
+    annotation_mapper.__api__ = None
+    annotation_mapper.__name__ = method.__name__
+    api.functions.append(annotation_mapper)
     return annotation_mapper
 
 def require_logged_in(method):
+  if hasattr(method, '__api__'):
+    raise Exception(
+      'require_logged_in for %r wraps the API' % method.__name__)
   def wrapper(wrapped, self, *args, **kwargs):
     if self.user is None:
       self.forbiden()
@@ -43,10 +57,23 @@ def require_logged_in(method):
   return decorator.decorator(wrapper, method)
 
 def require_admin(method):
+  if hasattr(method, '__api__'):
+    raise Exception(
+      'require_admin for %r wraps the API' % method.__name__)
   def wrapper(wrapped, self, *args, **kwargs):
     if 'admin_token' in kwargs and kwargs['admin_token'] == ADMIN_TOKEN:
       return wrapped(self, *args, **kwargs)
-    self.not_found()
+    self.forbiden()
+  return decorator.decorator(wrapper, method)
+
+def _require_admin(method):
+  if hasattr(method, '__api__'):
+    raise Exception(
+      'require_admin for %r wraps the API' % method.__name__)
+  def wrapper(wrapped, self, *args, **kwargs):
+    if not self.admin:
+      self.forbiden()
+    return wrapped(self, *args, **kwargs)
   return decorator.decorator(wrapper, method)
 
 def hash_pasword(password):

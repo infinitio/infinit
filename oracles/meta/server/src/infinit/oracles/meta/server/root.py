@@ -191,8 +191,8 @@ class Mixin:
 
     email = email.lower()
     user = self.database.users.find_one({"email": email})
-    if not user:
-      return self.error(error_code = error.UNKNOWN_USER)
+    if not user or user['register_status'] == 'ghost':
+      return self.fail(error.UNKNOWN_USER)
     import time, hashlib
     hash = str(time.time()) + email
     hash = hash.encode('utf-8')
@@ -218,6 +218,7 @@ class Mixin:
 
   # XXX: Accept 15M body as JSON
   bottle.Request.MEMFILE_MAX = 15 * 1024 * 1024
+
   @api('/debug/report/<type>', method = 'POST')
   def user_report(self,
                   type: str,
@@ -258,8 +259,8 @@ class Mixin:
         )
       return self.success()
 
-  @require_admin
   @api('/genocide', method = 'POST')
+  @require_admin
   def _genocide_(self, admin_token):
     """
     Make all client commit suicide.
@@ -271,8 +272,8 @@ class Mixin:
                               recipient_ids = targets)
     return self.success({'victims': list(targets)})
 
-  @require_admin
   @api('/cron', method = 'POST')
+  @require_admin
   def cron(self, admin_token):
     """
     Do cron jobs as:

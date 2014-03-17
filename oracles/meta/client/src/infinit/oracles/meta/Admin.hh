@@ -17,7 +17,8 @@ namespace infinit
       class Admin: public Client
       {
       public:
-        Admin(std::string const& host,
+        Admin(std::string const& protocol,
+              std::string const& host,
               uint16_t port);
 
         Response

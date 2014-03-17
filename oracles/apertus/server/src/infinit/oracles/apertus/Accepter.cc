@@ -7,6 +7,7 @@
 
 #include <elle/log.hh>
 #include <elle/finally.hh>
+#include <elle/utility/Move.hh>
 
 ELLE_LOG_COMPONENT("infinit.oracles.apertus.Accepter");
 
@@ -17,14 +18,23 @@ namespace infinit
     namespace apertus
     {
       Accepter::Accepter(Apertus& apertus,
-                         std::unique_ptr<reactor::network::Socket>&& client):
+                         std::unique_ptr<reactor::network::Socket>&& client,
+                         reactor::Duration timeout):
         _apertus(apertus),
         _client(std::move(client)),
-        _accepter(
-            *reactor::Scheduler::scheduler(),
-            "accept",
-            [this] { this->_handle(); }
-            )
+        _accepter(reactor::Thread::make_tracked(
+          *reactor::Scheduler::scheduler(),
+          elle::sprintf("accept-%s", this),
+          [this] { this->_handle(); }
+          )),
+        _timeout(elle::sprintf("timeout-%s", this),
+          timeout,
+          [this]
+          {
+            ELLE_TRACE("%s: client timeout", *this);
+            // Terminating accepter thread does not have the semantic we need
+            _client->close();
+          })
       {
         ELLE_TRACE_SCOPE("%s: construction", *this);
         ELLE_ASSERT(this->_client != nullptr);
@@ -32,20 +42,17 @@ namespace infinit
 
       Accepter::~Accepter()
       {
-        ELLE_TRACE_SCOPE("%s: destruction", *this);
-        this->_accepter.terminate_now(false);
+        ELLE_TRACE_SCOPE("%s: deletion:accepter", *this);
+        this->_accepter->terminate_now(false);
+        this->_timeout.terminate_now(false);
       }
 
       void
       Accepter::_handle()
       {
+        /* Warning, 'this' survives termination of _handle() in one case.
+        */
         ELLE_TRACE_SCOPE("%s: start handling client", *this);
-        elle::SafeFinally pop(
-          [this]
-          {
-            ELLE_TRACE("%s: pop myself from apertus", *this);
-            this->_apertus._accepter_remove(*this);
-          });
 
         ELLE_ASSERT(this->_client != nullptr);
 
@@ -65,37 +72,41 @@ namespace infinit
 
           ELLE_TRACE("%s: reading for the identifier", *this)
             this->_client->read(tid_buffer);
-          oracle::hermes::TID tid = std::string(tid_array);
+          Apertus::TID tid = std::string(tid_array);
           ELLE_DEBUG("%s: identifier: %s", *this, tid);
 
           // First client to connect with this TID, it must wait.
-          if (this->_apertus._clients.find(tid) == this->_apertus._clients.end())
+          auto peer_iterator = this->_apertus._clients.find(tid);
+          auto self = this->_apertus._take_from_accepters(this);
+          if (peer_iterator == this->_apertus._clients.end())
           {
-            ELLE_TRACE("%s: first user for TID %s", *this, tid)
-              this->_apertus._clients[tid] = this->_client.release();
+            ELLE_TRACE("%s: first user for TID %s", *this, tid);
+            this->_apertus._clients[tid] = std::move(self);
           }
           // Second client, establishing connection.
           else
           {
             ELLE_TRACE("%s: peer found for TID %s", *this, tid)
             {
-              auto* peer = this->_apertus._clients[tid];
-              this->_apertus._clients.erase(tid);
-
+              // extract both sockets, and remove this from accepters, and peer from clients
+              auto peer_acceptor = std::move(peer_iterator->second);
+              auto peer_socket = std::move(peer_acceptor->_client);
+              // stop timers
+              peer_acceptor->_timeout.terminate_now();
+              _timeout.terminate_now();
+              this->_apertus._clients.erase(peer_iterator);
               ELLE_DEBUG("%s: connect users", *this);
               this->_apertus._connect(
                 tid,
                 std::move(this->_client),
-                std::move(std::unique_ptr<reactor::network::Socket>(peer)));
+                std::move(peer_socket));
+              ELLE_DEBUG("%s: finish", *this);
             }
           }
         }
         catch (reactor::Terminate const&)
         {
-          // If a termination his explicitly asked, the responsability of
-          // deleting the object is given to the caller of the termination.
-          ELLE_TRACE("%s: invalidate pop ward", *this);
-          pop.abort();
+          ELLE_TRACE("%s: eplicitly terminated", *this);
         }
         catch (reactor::network::ConnectionClosed const&)
         {

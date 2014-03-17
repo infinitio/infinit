@@ -214,6 +214,7 @@ namespace infinit
 
       class Client: public elle::Printable
       {
+        ELLE_ATTRIBUTE_R(std::string, protocol);
         ELLE_ATTRIBUTE_R(std::string, host);
         ELLE_ATTRIBUTE_R(uint16_t, port);
 
@@ -233,7 +234,8 @@ namespace infinit
         session_id(std::string const&);
 
       public:
-        Client(std::string const& server,
+        Client(std::string const& protocol,
+               std::string const& server,
                uint16_t port);
 
         virtual

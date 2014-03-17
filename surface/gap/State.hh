@@ -120,12 +120,11 @@ namespace surface
       };
 
     public:
-      State(std::string const& meta_host = common::meta::host(),
+      State(std::string const& meta_protocol = common::meta::protocol(),
+            std::string const& meta_host = common::meta::host(),
             uint16_t meta_port = common::meta::port(),
             std::string const& trophonius_host = common::trophonius::host(),
-            uint16_t trophonius_port = common::trophonius::port(),
-            std::string const& apertus_host = common::apertus::host(),
-            uint16_t apertus_port = common::apertus::port());
+            uint16_t trophonius_port = common::trophonius::port());
       ~State();
 
     public:

@@ -136,10 +136,9 @@ class MetaClient:
   public Client
 {
 public:
-  MetaClient(std::string const& host, int port)
-    : Client(host, port)
-  {
-  }
+  MetaClient(std::string const& protocol, std::string const& host, int port)
+    : Client(protocol, host, port)
+  {}
 
   LoginResponse
   login(std::string const& email,
@@ -156,8 +155,8 @@ class AdminClient:
   public Admin
 {
 public:
-  AdminClient(std::string const& host, int port)
-    : Admin(host, port)
+  AdminClient(std::string const& protocol, std::string const& host, int port)
+    : Admin(protocol, host, port)
   {}
 };
 
@@ -265,7 +264,7 @@ void export_meta_client()
   std::string const& (MetaClient::*get_email)() const = &MetaClient::email;
 
   py::class_<MetaClient, boost::noncopyable>(
-    "Meta", py::init<std::string const&, int>())
+    "Meta", py::init<std::string const&, std::string const&, int>())
     .def("debug", &MetaClient::debug)
     .def("login", &MetaClient::login)
     .def("logout", &MetaClient::logout)
@@ -291,7 +290,7 @@ void export_meta_client()
   ;
 
   py::class_<AdminClient, boost::noncopyable>(
-    "Admin", py::init<std::string const&, int>())
+    "Admin", py::init<std::string const&, std::string const&, int>())
     .def("add_swaggers", &AdminClient::add_swaggers)
     .def("genocide", &AdminClient::genocide)
     .def("ghostify", &AdminClient::ghostify)

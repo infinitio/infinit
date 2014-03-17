@@ -33,12 +33,11 @@ extern "C" {
 
   /// Create a new state.
   /// Returns NULL on failure.
-  gap_State* gap_configurable_new(char const* meta_host,
+  gap_State* gap_configurable_new(char const* meta_protocol,
+                                  char const* meta_host,
                                   unsigned short meta_port,
                                   char const* trophonius_host,
-                                  unsigned short trophonius_port,
-                                  char const* apertus_host,
-                                  unsigned short apertus_port);
+                                  unsigned short trophonius_port);
 
   /// Release a state.
   void gap_free(gap_State* state);
@@ -224,11 +223,11 @@ extern "C" {
   gap_transaction_files(gap_State* state,
                         uint32_t const transaction_id);
 
-  unsigned int
+  int64_t
   gap_transaction_files_count(gap_State*,
                               uint32_t);
 
-  uint64_t
+  int64_t
   gap_transaction_total_size(gap_State*,
                              uint32_t);
 

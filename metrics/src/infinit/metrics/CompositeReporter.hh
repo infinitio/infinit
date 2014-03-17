@@ -47,8 +47,8 @@ namespace infinit
       _transaction_created(std::string const& transaction_id,
                            std::string const& sender_id,
                            std::string const& recipient_id,
-                           uint32_t file_count,
-                           uint64_t total_size,
+                           int64_t file_count,
+                           int64_t total_size,
                            uint32_t message_length);
 
       virtual

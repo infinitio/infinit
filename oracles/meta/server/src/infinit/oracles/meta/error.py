@@ -1,7 +1,7 @@
 errors = {
   'not_logged_in': (-101, "You must be logged in."),
   'already_logged_in': (-102, "You are already logged in."),
-  'unknown_user': (-103, "This user doesn't seems to exist."),
+  'unknown_user': (-103, "This user doesn't seem to exist."),
   'operation_not_permitted': (-104, "Operation not permitted."),
   'bad_request': (-200, "This request is bad formed."),
   'field_is_empty': (-201, "This field is empty."),

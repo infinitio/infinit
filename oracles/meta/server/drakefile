@@ -54,6 +54,7 @@ def configure(elle,
     'src/infinit/oracles/meta/server/notifier.py',
     'src/infinit/oracles/meta/server/place_holder_avatar.png',
     'src/infinit/oracles/meta/server/plugins/__init__.py',
+    'src/infinit/oracles/meta/server/plugins/certification.py',
     'src/infinit/oracles/meta/server/plugins/failure.py',
     'src/infinit/oracles/meta/server/plugins/jsongo.py',
     'src/infinit/oracles/meta/server/plugins/session.py',
@@ -66,6 +67,38 @@ def configure(elle,
     'src/infinit/oracles/meta/server/utils.py',
     'src/infinit/oracles/meta/server/waterfall.py',
     'src/infinit/oracles/meta/server/wsgi.py',
+  )
+
+  templates = drake.nodes(
+    'templates/base.html',
+    'templates/waterfall/transactions.html',
+    'templates/waterfall/waterfall.html',
+    'templates/waterfall/manage_groups.html',
+    'templates/waterfall/groups.html',
+    'templates/waterfall/user_search.html',
+  )
+
+  resources = drake.nodes(
+    'resources/css/normalize.min.css',
+    'resources/css/main.less',
+    'resources/css/normalize.css',
+    'resources/css/main.css',
+    'resources/css/daterangepicker-bs3.css',
+    'resources/css/font-awesome.min.css',
+    'resources/css/jquery.qtip.min.css',
+    'resources/favicon.ico',
+    'resources/js/vendor/jquery-1.10.1.min.js',
+    'resources/js/vendor/modernizr-2.6.2.min.js',
+    'resources/js/vendor/daterangepicker.js',
+    'resources/js/vendor/moment.min.js',
+    'resources/js/vendor/jquery.poshytip.min.js',
+    'resources/js/vendor/jquery.qtip.min.js',
+    'resources/js/vendor/imagesloaded.pkgd.min.js',
+    'resources/js/main.js',
+    'resources/images/logo.png',
+    'resources/images/loading.gif',
+    'resources/images/tick.png',
+    'resources/images/ticked.png',
   )
 
   ## ----- ##
@@ -95,6 +128,8 @@ def configure(elle,
   build << python
   build_binary = drake.copy(drake.node('meta'), 'bin')
   build << build_binary
+  build << drake.copy(templates, 'share/infinit/meta/server')
+  build << drake.copy(resources, 'share/infinit/meta/server')
 
   ## ------- ##
   ## Install ##
@@ -105,6 +140,8 @@ def configure(elle,
     res = []
     res += f(python, where / ('lib/python%s' % python_version),
              build_python_path)
+    res += f(templates, where / 'share/infinit/meta/server')
+    res += f(resources, where / 'share/infinit/meta/server')
     res.append(f(build_binary, where))
     res.append(f(drake.node('config/meta'),
                  where / 'etc/nginx/sites-available', 'config'))
@@ -153,6 +190,8 @@ def configure(elle,
     'devices/search',
     'devices/update',
     'root/lost-password',
+    'root/reset-password-ghost',
+    'root/reset-password-unknown-email',
     'root/user-report',
     'routes',
     'status',

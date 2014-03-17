@@ -1,6 +1,8 @@
 #include <infinit/oracles/trophonius/server/Client.hh>
 #include <infinit/oracles/trophonius/server/Trophonius.hh>
 
+#include <algorithm>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/program_options.hpp>
 
@@ -27,10 +29,12 @@ parse_options(int argc, char** argv)
     ("help,h", "display this help and exit")
     ("ping-period,i", value<int>(),
      "specify the ping period in seconds (default 30)")
+    ("auth-max-time", value<int>(),
+     "specify max time between client connect and login request in seconds (default 10)")
     ("port-ssl,pssl", value<int>(), "specify the SSL port to listen on")
     ("port-tcp,ptcp", value<int>(), "specify the TCP port to listen on")
     ("meta,m", value<std::string>(),
-     "specify the meta host[:port] to connect to")
+     "specify the meta protocol://host[:port] to connect to")
     ("ignore-meta",
      "make meta registration errors non fatal")
     ("notifications-port,n", value<int>(),
@@ -77,6 +81,7 @@ int main(int argc, char** argv)
   {
     auto options = parse_options(argc, argv);
     bool meta_fatal = true;
+    std::string meta_protocol = "http";
     std::string meta_host = "";
     int meta_port = 80;
     if (!options.count("meta"))
@@ -86,15 +91,22 @@ int main(int argc, char** argv)
       std::string meta = options["meta"].as<std::string>();
       std::vector<std::string> result;
       boost::split(result, meta, boost::is_any_of(":"));
-      if (result.size() > 2)
+      if (result.size() > 3)
         throw std::runtime_error("meta must be <host>(:<port>)");
-      else if (result.size() == 2)
+      else if (result.size() == 3)
       {
-        meta_port = std::stoi(result[1]);
-        meta_host = result[0];
+        meta_protocol = result[0];
+        meta_host = result[1];
+        // Remove slashes after protocol.
+        meta_host.erase(std::remove(meta_host.begin(), meta_host.end(), '/'),
+                        meta_host.end());
+        meta_port = std::stoi(result[2]);
       }
       else
+      {
         meta_host = meta;
+      }
+
       if (meta_host.empty())
         throw std::runtime_error("meta host is empty");
     }
@@ -104,6 +116,7 @@ int main(int argc, char** argv)
     int port_tcp = 0;
     int notifications_port = 0;
     int ping = 30;
+    int auth_max_time = 10;
     if (options.count("port-ssl"))
       port_ssl = options["port-ssl"].as<int>();
     if (options.count("port-tcp"))
@@ -112,6 +125,8 @@ int main(int argc, char** argv)
       notifications_port = options["notifications-port"].as<int>();
     if (options.count("ping-period"))
       ping = options["ping-period"].as<int>();
+    if (options.count("auth-max-time"))
+      auth_max_time = options["auth-max-time"].as<int>();
     reactor::Scheduler s;
     std::unique_ptr<Trophonius> trophonius;
     reactor::Thread main(
@@ -122,11 +137,13 @@ int main(int argc, char** argv)
           new Trophonius(
             port_ssl,
             port_tcp,
+            meta_protocol,
             meta_host,
             meta_port,
             notifications_port,
             boost::posix_time::seconds(ping),
             boost::posix_time::seconds(60),
+            boost::posix_time::seconds(auth_max_time),
             meta_fatal));
         // Wait for trophonius to be asked to finish.
         reactor::wait(*trophonius);

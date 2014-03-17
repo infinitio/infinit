@@ -24,7 +24,7 @@ namespace infinit
         typedef std::unique_ptr<reactor::network::Socket> Socket;
       public:
         Transfer(Apertus& owner,
-                 oracle::hermes::TID tid,
+                 Apertus::TID tid,
                  Socket&& left,
                  Socket&& right);
         virtual
@@ -41,7 +41,7 @@ namespace infinit
         _handle(Socket&, Socket&);
 
         ELLE_ATTRIBUTE(Apertus&, apertus);
-        ELLE_ATTRIBUTE_R(oracle::hermes::TID, tid);
+        ELLE_ATTRIBUTE_R(Apertus::TID, tid);
         ELLE_ATTRIBUTE(Socket, left);
         ELLE_ATTRIBUTE(Socket, right);
         ELLE_ATTRIBUTE(reactor::Thread, forward);

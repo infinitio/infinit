@@ -24,16 +24,8 @@
 #define COMMON_DEFAULT_META_PORT 80
 #define COMMON_DEFAULT_TROPHONIUS_PROTOCOL "https"
 #define COMMON_DEFAULT_TROPHONIUS_HOST COMMON_DEFAULT_API
-#define COMMON_DEFAULT_TROPHONIUS_PORT 443
+#define COMMON_DEFAULT_TROPHONIUS_PORT 444
 #define COMMON_DEFAULT_RESOURCES_ROOT_URL "http://download.development.infinit.io"
-#define COMMON_DEFAULT_LONGINUS_HOST "v2.longinus.api.development.infinit.io"
-#define COMMON_DEFAULT_LONGINUS_PORT 9999
-#define COMMON_DEFAULT_HEARTBEAT_HOST "v2.heartbeat.development.infinit.io"
-#define COMMON_DEFAULT_HEARTBEAT_PORT 9898
-#define COMMON_DEFAULT_STUN_HOST "v2.punch.api.development.infinit.io"
-#define COMMON_DEFAULT_STUN_PORT 3478
-#define COMMON_DEFAULT_APERTUS_HOST "v2.apertus.api.development.infinit.io"
-#define COMMON_DEFAULT_APERTUS_PORT 9899
 
 #define COMMON_PRODUCTION_API                       \
   BOOST_PP_STRINGIZE(INFINIT_VERSION_MINOR) "."     \
@@ -47,14 +39,6 @@
 #define COMMON_PRODUCTION_TROPHONIUS_HOST "trophonius." COMMON_PRODUCTION_API
 #define COMMON_PRODUCTION_TROPHONIUS_PORT 443
 #define COMMON_PRODUCTION_RESOURCES_ROOT_URL "http://download.production.infinit.io"
-#define COMMON_PRODUCTION_LONGINUS_HOST "v2.longinus.api.production.infinit.io"
-#define COMMON_PRODUCTION_LONGINUS_PORT 9999
-#define COMMON_PRODUCTION_HEARTBEAT_HOST "heartbeat.production.infinit.io"
-#define COMMON_PRODUCTION_HEARTBEAT_PORT 9898
-#define COMMON_PRODUCTION_STUN_HOST "punch.api.development.infinit.io"
-#define COMMON_PRODUCTION_STUN_PORT 3478
-#define COMMON_PRODUCTION_APERTUS_HOST "apertus.api.production.infinit.io"
-#define COMMON_PRODUCTION_APERTUS_PORT 9899
 
 #ifdef INFINIT_PRODUCTION_BUILD
 # define VAR_PREFIX COMMON_PRODUCTION
@@ -85,30 +69,6 @@
 /**/
 # define COMMON_RESOURCES_ROOT_URL \
   BOOST_PP_CAT(VAR_PREFIX, _RESOURCES_ROOT_URL) \
-/**/
-# define COMMON_LONGINUS_HOST \
-  BOOST_PP_CAT(VAR_PREFIX, _LONGINUS_HOST) \
-/**/
-# define COMMON_LONGINUS_PORT \
-  BOOST_PP_CAT(VAR_PREFIX, _LONGINUS_PORT) \
-/**/
-# define COMMON_HEARTBEAT_HOST \
-  BOOST_PP_CAT(VAR_PREFIX, _HEARTBEAT_HOST) \
-/**/
-# define COMMON_HEARTBEAT_PORT \
-  BOOST_PP_CAT(VAR_PREFIX, _HEARTBEAT_PORT) \
-/**/
-# define COMMON_STUN_HOST \
-  BOOST_PP_CAT(VAR_PREFIX, _STUN_HOST) \
-/**/
-# define COMMON_STUN_PORT \
-  BOOST_PP_CAT(VAR_PREFIX, _STUN_PORT) \
-/**/
-# define COMMON_APERTUS_HOST \
-  BOOST_PP_CAT(VAR_PREFIX, _APERTUS_HOST) \
-/**/
-# define COMMON_APERTUS_PORT \
-  BOOST_PP_CAT(VAR_PREFIX, _APERTUS_PORT) \
 /**/
 
 namespace path = elle::os::path;
@@ -447,17 +407,6 @@ namespace common
       );
       return host;
     }
-
-    std::string const&
-    url()
-    {
-      static std::string const url = elle::os::getenv(
-          "INFINIT_TROPHONIUS_URL",
-          protocol() + "://" + host()
-            + ":" + elle::sprint(port())
-      );
-      return url;
-    }
   } // !trophonius
 
   namespace resources
@@ -484,96 +433,4 @@ namespace common
       return base_url + "/" + platform + architecture;
     }
   }
-
-  namespace longinus
-  {
-    std::string
-    host()
-    {
-      static std::string const host_string = elle::os::getenv(
-        "INFINIT_LONGINUS_HOST",
-        COMMON_LONGINUS_HOST
-      );
-      return host_string;
-    }
-
-    int
-    port()
-    {
-      static std::string const port_string = elle::os::getenv(
-        "INFINIT_LONGINUS_PORT",
-        std::to_string(COMMON_LONGINUS_PORT)
-      );
-      return std::stoi(port_string);
-    }
-  }
-
-  namespace apertus
-  {
-    std::string
-    host()
-    {
-      static std::string const host_string = elle::os::getenv(
-        "INFINIT_APERTUS_HOST",
-        COMMON_APERTUS_HOST
-      );
-      return host_string;
-    }
-
-    int
-    port()
-    {
-      static std::string const port_string = elle::os::getenv(
-        "INFINIT_APERTUS_PORT",
-        std::to_string(COMMON_APERTUS_PORT)
-      );
-      return std::stoi(port_string);
-    }
-  }
-
-  namespace heartbeat
-  {
-    std::string const&
-    host()
-    {
-      static std::string const host_string = elle::os::getenv(
-        "INFINIT_HEARTBEAT_HOST",
-        COMMON_HEARTBEAT_HOST
-      );
-      return host_string;
-    }
-
-    int
-    port()
-    {
-      static std::string const port_string = elle::os::getenv(
-        "INFINIT_HEARTBEAT_PORT",
-        std::to_string(COMMON_HEARTBEAT_PORT)
-      );
-      return std::stoi(port_string);
-    }
-  }
-
-  namespace stun
-  {
-    std::string const&
-    host()
-    {
-      static std::string const host_string = elle::os::getenv(
-        "INFINIT_STUN_HOST",
-        COMMON_STUN_HOST
-      );
-      return host_string;
-    }
-
-    int
-    port()
-    {
-      static std::string const port_string = elle::os::getenv(
-        "INFINIT_STUN_PORT",
-        std::to_string(COMMON_STUN_PORT)
-      );
-      return std::stoi(port_string);
-    }
-  } /* stun */
 }

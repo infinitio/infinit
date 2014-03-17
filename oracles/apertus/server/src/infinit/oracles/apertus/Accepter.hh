@@ -5,6 +5,7 @@
 
 # include <reactor/network/fwd.hh>
 # include <reactor/thread.hh>
+# include <reactor/timer.hh>
 
 # include <elle/attribute.hh>
 # include <elle/Printable.hh>
@@ -20,20 +21,21 @@ namespace infinit
         public elle::Printable
       {
         typedef std::unique_ptr<reactor::network::Socket> Socket;
-      public:
-        Accepter(Apertus& apertus,
-                 Socket&& client);
 
+      public:
+
+        Accepter(Apertus& apertus,
+                 Socket&& client,
+                 reactor::Duration timeout);
         virtual
         ~Accepter();
-
-      private:
         void
         _handle();
 
         ELLE_ATTRIBUTE(Apertus&, apertus);
         ELLE_ATTRIBUTE(Socket, client);
-        ELLE_ATTRIBUTE(reactor::Thread, accepter);
+        ELLE_ATTRIBUTE(reactor::ThreadPtr, accepter);
+        ELLE_ATTRIBUTE(reactor::Timer, timeout);
 
         /*----------.
         | Printable |

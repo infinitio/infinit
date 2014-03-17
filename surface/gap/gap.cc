@@ -11,16 +11,11 @@
 #include <elle/elle.hh>
 #include <elle/finally.hh>
 #include <elle/HttpClient.hh>
-#include <elle/format/base64.hh>
-#ifndef INFINIT_WINDOWS
-# include <elle/system/Process.hh>
-#endif
 #include <elle/container/list.hh>
 #include <CrashReporter.hh>
 
 #include <reactor/scheduler.hh>
 
-#include <boost/filesystem.hpp>
 #include <boost/range/join.hpp>
 
 #include <algorithm>
@@ -105,21 +100,19 @@ extern "C"
 
   /// Create a new state.
   /// Returns NULL on failure.
-  gap_State* gap_configurable_new(char const* meta_host,
+  gap_State* gap_configurable_new(char const* meta_protocol,
+                                  char const* meta_host,
                                   unsigned short meta_port,
                                   char const* trophonius_host,
-                                  unsigned short trophonius_port,
-                                  char const* apertus_host,
-                                  unsigned short apertus_port)
+                                  unsigned short trophonius_port)
   {
     try
     {
-      gap_State* state = new gap_State(meta_host,
+      gap_State* state = new gap_State(meta_protocol,
+                                       meta_host,
                                        meta_port,
                                        trophonius_host,
-                                       trophonius_port,
-                                       apertus_host,
-                                       apertus_port);
+                                       trophonius_port);
       return state;
     }
     catch (std::exception const& err)
@@ -885,7 +878,9 @@ extern "C"
       #_field_,                                                                \
       [&] (surface::gap::State& state) -> _type_                               \
       {                                                                        \
-        return _transform_(state.transactions().at(_id).data()->_field_);      \
+        auto res = _transform_(state.transactions().at(_id).data()->_field_);  \
+        ELLE_DUMP("fetch "#_field_ ": %s", res);                               \
+        return res;                                                            \
       });                                                                      \
       }                                                                        \
 /**/
@@ -917,8 +912,8 @@ extern "C"
   DEFINE_TRANSACTION_GETTER_STR(recipient_fullname)
   DEFINE_TRANSACTION_GETTER_STR(recipient_device_id)
   DEFINE_TRANSACTION_GETTER_STR(message)
-  DEFINE_TRANSACTION_GETTER(uint32_t, files_count, NO_TRANSFORM)
-  DEFINE_TRANSACTION_GETTER(uint64_t, total_size, NO_TRANSFORM)
+  DEFINE_TRANSACTION_GETTER(int64_t, files_count, NO_TRANSFORM)
+  DEFINE_TRANSACTION_GETTER(int64_t, total_size, NO_TRANSFORM)
   DEFINE_TRANSACTION_GETTER_DOUBLE(ctime)
   DEFINE_TRANSACTION_GETTER_DOUBLE(mtime)
   DEFINE_TRANSACTION_GETTER_BOOL(is_directory)
@@ -1201,63 +1196,26 @@ extern "C"
     return ret.value().c_str();
   }
 
-#ifndef INFINIT_WINDOWS
-  static
-  std::string
-  to_base64(boost::filesystem::path const& archive_path,
-            std::list<std::string> const& args)
-  {
-    elle::system::Process tar{"tar", args};
-    tar.wait();
-
-    std::stringstream base64;
-
-    {
-      elle::format::base64::Stream encoder(base64);
-      std::ifstream archive(archive_path.string());
-
-      std::copy(std::istreambuf_iterator<char>(archive),
-                std::istreambuf_iterator<char>(),
-                std::ostreambuf_iterator<char>(encoder));
-    }
-    return base64.str();
-  }
-#endif
-
   gap_Status
   gap_send_user_report(char const* _user_name,
                        char const* _message,
                        char const* _file,
                        char const* _os_description)
   {
-#ifndef INFINIT_WINDOWS
     try
     {
-      boost::filesystem::path destination{"/tmp/infinit-report-user"};
-      boost::filesystem::path user_file_path(_file);
-      boost::filesystem::path infinit_home_path(common::infinit::home());
-
-      std::list<std::string> args{"cjf", destination.string()};
-      for (auto path: {user_file_path, infinit_home_path})
-      {
-        if (boost::filesystem::exists(path))
-        {
-          args.push_back("-C");
-          args.push_back(path.parent_path().string());
-          args.push_back(path.filename().string());
-        }
-      }
-
       std::string const user_name{_user_name};
       std::string const os_description{_os_description};
       std::string const user_message{_message};
+      std::string const file{_file};
 
-      elle::crash::user_report(common::meta::host(),        // meta host
+      elle::crash::user_report(common::meta::protocol(),    // meta protocol
+                               common::meta::host(),        // meta host
                                common::meta::port(),        // meta port
                                user_name,                   // user name
                                os_description,              // OS description
                                user_message,                // user message
-                               to_base64(destination, args) // file
+                               file                         // file
         );
     }
     catch (...)
@@ -1265,7 +1223,6 @@ extern "C"
       ELLE_WARN("cannot send user report: %s", elle::exception_string());
       return gap_api_error;
     }
-#endif
     return gap_ok;
   }
 
@@ -1276,36 +1233,22 @@ extern "C"
                            char const* _os_description,
                            char const* _additional_info)
   {
-#ifndef INFINIT_WINDOWS
     try
     {
-      boost::filesystem::path destination{"/tmp/infinit-crash-archive"};
-
-      boost::filesystem::path crash_report_path(_crash_report);
-      boost::filesystem::path state_log_path(_state_log);
-
-      std::list<std::string> args{"cjf", destination.string()};
-
-      for (auto path: {crash_report_path, state_log_path})
-      {
-        if (boost::filesystem::exists(crash_report_path))
-        {
-          args.push_back("-C");
-          args.push_back(path.parent_path().string());
-          args.push_back(path.filename().string());
-        }
-      }
-
       std::string const user_name{_user_name};
       std::string const os_description{_os_description};
       std::string const additional_info{_additional_info};
+      std::vector<std::string> files;
+      files.push_back(std::string{_crash_report});
+      files.push_back(std::string{_state_log});
 
-      elle::crash::existing_report(common::meta::host(),        // meta host.
-                                   common::meta::port(),        // meta port.
-                                   user_name,                   // user name.
-                                   os_description,              // OS description.
-                                   additional_info,             // additional info.
-                                   to_base64(destination, args) // file.
+      elle::crash::existing_report(common::meta::protocol(),// meta protocol
+                                   common::meta::host(),    // meta host.
+                                   common::meta::port(),    // meta port.
+                                   files,                   // file list.
+                                   user_name,               // user name.
+                                   os_description,          // OS description.
+                                   additional_info          // additional info.
         );
     }
     catch (...)
@@ -1313,7 +1256,7 @@ extern "C"
       ELLE_WARN("cannot send crash reports: %s", elle::exception_string());
       return gap_api_error;
     }
-#endif
+
     return gap_ok;
   }
 

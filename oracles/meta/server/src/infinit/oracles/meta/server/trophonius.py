@@ -54,8 +54,8 @@ class Mixin:
       res = self.database.trophonius.remove({"_id": str(uid)})
       return self.success()
 
-  @require_logged_in
   @api('/trophonius/<uid>/users/<id>/<device>', method = 'PUT')
+  @require_logged_in
   def trophonius_register_user(self,
                                uid: uuid.UUID,
                                id: bson.ObjectId,

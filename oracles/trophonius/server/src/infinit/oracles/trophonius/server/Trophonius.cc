@@ -37,11 +37,13 @@ namespace infinit
         Trophonius::Trophonius(
           int port_ssl,
           int port_tcp,
+          std::string const& meta_protocol,
           std::string const& meta_host,
           int meta_port,
           int notifications_port,
           boost::posix_time::time_duration const& user_ping_period,
           boost::posix_time::time_duration const& meta_ping_period,
+          boost::posix_time::time_duration const& user_auth_max_time,
           bool meta_fatal):
           Waitable("trophonius"),
           _certificate(nullptr),
@@ -58,7 +60,7 @@ namespace infinit
             elle::sprintf("%s meta accepter", *this),
             std::bind(&Trophonius::_serve_notifier, std::ref(*this))),
           _uuid(boost::uuids::random_generator()()),
-          _meta(meta_host, meta_port),
+          _meta(meta_protocol, meta_host, meta_port),
           _meta_pinger(
             reactor::Scheduler::scheduler()->every(
               [&]
@@ -78,7 +80,9 @@ namespace infinit
               meta_ping_period
               )
             ),
+          _terminating(false),
           _ping_period(user_ping_period),
+          _user_auth_max_time(user_auth_max_time),
           _remove_lock()
         {
           elle::SafeFinally kill_accepters{
@@ -167,6 +171,14 @@ namespace infinit
 
         Trophonius::~Trophonius()
         {
+          if (!this->_terminating)
+            terminate();
+        }
+
+        void
+        Trophonius::terminate()
+        {
+          this->_terminating = true;
           this->_accepter_ssl->terminate_now();
           this->_accepter_tcp->terminate_now();
           this->_meta_accepter.terminate_now();

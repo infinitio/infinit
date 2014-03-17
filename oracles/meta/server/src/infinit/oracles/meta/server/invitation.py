@@ -28,8 +28,9 @@ class Invitation:
   def __init__(self,
                active = True):
     self.__active = active
-    from mailsnake import MailSnake
-    self.ms = MailSnake(conf.MAILCHIMP_APIKEY)
+    if self.__active:
+      from mailsnake import MailSnake
+      self.ms = MailSnake(conf.MAILCHIMP_APIKEY)
 
   def is_active(method):
     def wrapper(wrapped, self, *a, **ka):

@@ -7,6 +7,7 @@ import papier
 import bottle
 import elle.log
 import inspect
+import mako.lookup
 import papier
 import pymongo
 import re
@@ -14,32 +15,50 @@ import re
 from .plugins.jsongo import Plugin as JsongoPlugin
 from .plugins.failure import Plugin as FailurePlugin
 from .plugins.session import Plugin as SessionPlugin
+from .plugins.certification import Plugin as CertificationPlugin
 
 from infinit.oracles.meta import error
 
-from .utils import api, hash_pasword, require_logged_in
+from .utils import api, hash_pasword, require_admin, require_logged_in
 
-from . import user, transaction, device, root, trophonius, apertus, invitation, waterfall
-from . import notifier
+from . import apertus
+from . import device
+from . import invitation
 from . import mail
+from . import notifier
+from . import root
+from . import transaction
+from . import trophonius
+from . import user
+from . import waterfall
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.Meta'
 
-class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin,
-           device.Mixin, trophonius.Mixin, apertus.Mixin, waterfall.Mixin):
+class Meta(bottle.Bottle,
+           root.Mixin,
+           user.Mixin,
+           transaction.Mixin,
+           device.Mixin,
+           trophonius.Mixin,
+           apertus.Mixin,
+           waterfall.Waterfall,
+         ):
 
   def __init__(self,
                mongo_host = None,
                mongo_port = None,
                enable_emails = True,
                trophonius_expiration_time = 300, # in sec
-               apertus_expiration_time = 300 # in sec
+               apertus_expiration_time = 300, # in sec
+               force_admin = False,
                ):
     import os
     system_logger = os.getenv("META_LOG_SYSTEM")
     if system_logger is not None:
       elle.log.set_logger(elle.log.SysLogger(system_logger))
-
+    self.__force_admin = force_admin
+    if self.__force_admin:
+      elle.log.warn('%s: running in force admin mode' % self)
     super().__init__()
     db_args = {}
     if mongo_host is not None:
@@ -56,6 +75,7 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin,
     self.__sessions = SessionPlugin(self.__database, 'sessions')
     self.install(self.__sessions)
     self.install(JsongoPlugin())
+    self.install(CertificationPlugin())
     # Configuration.
     self.ignore_trailing_slash = True
     # Routing.
@@ -63,11 +83,24 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin,
       self.__register(function)
     # Notifier.
     self.notifier = notifier.Notifier(self.__database)
+    # Share
+    share_path = os.path.realpath('/'.join(__file__.split('/')[:-7]))
+    share_path = '%s/share/infinit/meta/server/' % share_path
+    self.__share_path = share_path
+    # Resources
+    self.__resources_path = '%s/resources' % share_path
+    # Templates
+    self.__mako_path = '%s/templates' % share_path
+    print(self.__mako_path)
+    self.__mako = mako.lookup.TemplateLookup(
+      directories = [self.__mako_path]
+    )
     # Could be cleaner.
     self.mailer = mail.Mailer(active = enable_emails)
     self.invitation = invitation.Invitation(active = enable_emails)
     self.trophonius_expiration_time = trophonius_expiration_time
     self.apertus_expiration_time = apertus_expiration_time
+    waterfall.Waterfall.__init__(self)
 
   def __set_constraints(self):
     self.__database.devices.ensure_index([("id", 1), ("owner", 1)], unique = True)
@@ -77,7 +110,7 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin,
     rule = method.__route__
     elle.log.debug('%s: register route %s' % (self, rule))
     # Introspect method.
-    spec = inspect.getfullargspec(method)
+    spec = inspect.getfullargspec(method.__underlying_method__)
     del spec.args[0] # remove self
     import itertools
     defaults = spec.defaults or []
@@ -86,7 +119,7 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin,
                      in itertools.zip_longest(
                        reversed(spec.args),
                        reversed([True] * len(defaults))))
-    for arg in re.findall('<(\\w*)>', rule):
+    for arg in re.findall('<(\\w*)(?::\\w*(?::[^>]*)?)?>', rule):
       if arg in spec_args:
         del spec_args[arg]
       elif spec.varkw is None:
@@ -117,7 +150,7 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin,
       for argument, default in arguments.items():
         if not default:
           bottle.abort(400, 'missing argument: %r' % argument)
-      return getattr(self, method.__name__)(*args, **kwargs)
+      return method(self, *args, **kwargs)
     # Add route.
     route = bottle.Route(app = self,
                          rule = rule,
@@ -154,8 +187,41 @@ class Meta(bottle.Bottle, root.Mixin, user.Mixin, transaction.Mixin,
   def forbiden(self):
     bottle.abort(403)
 
-  def not_found(self):
-    bottle.abort(404)
+  def not_found(self, message = None):
+    bottle.abort(404, message)
 
   def bad_request(self, text = None):
     bottle.abort(400, text)
+
+  @api('/js/<filename:path>')
+  def static_javascript(self, filename):
+    return self.__static('js/%s' % filename)
+
+  @api('/css/<filename:path>')
+  def static_css(self, filename):
+    return self.__static('css/%s' % filename)
+
+  @api('/images/<filename:path>')
+  def static_images(self, filename):
+    return self.__static('images/%s' % filename)
+
+  @api('/favicon.ico')
+  def static_css(self):
+    return self.__static('favicon.ico')
+
+  def __static(self, filename):
+    return bottle.static_file(
+      filename, root = self.__resources_path)
+
+  @property
+  def admin(self):
+    return self.__force_admin or bottle.request.certificate in [
+      'antony.mechin@infinit.io',
+      'baptiste.fradin@infinit.io',
+      'christopher.crone@infinit.io',
+      'gaetan.rochel@infinit.io',
+      'julien.quintard@infinit.io',
+      'matthieu.nottale@infinit.io',
+      'patrick.perlmutter@infinit.io',
+      'quentin.hocquet@infinit.io',
+    ]

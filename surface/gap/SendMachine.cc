@@ -272,14 +272,12 @@ namespace surface
     SendMachine::_create_transaction()
     {
       ELLE_TRACE_SCOPE("%s: create transaction", *this);
-      this->current_state(TransferMachine::State::SenderCreateTransaction);
-
       auto total_size =
-        [] (std::unordered_set<std::string> const& files) -> uint64_t
+        [] (std::unordered_set<std::string> const& files) -> int64_t
         {
           ELLE_TRACE_FUNCTION(files);
 
-          uint64_t size = 0;
+          int64_t size = 0;
           {
             for (auto const& file: files)
             {
@@ -291,7 +289,9 @@ namespace surface
           return size;
         };
 
-      uint64_t size = total_size(this->_files);
+      int64_t size = total_size(this->_files);
+      ELLE_DEBUG("%s: total file size: %s", *this, size);
+      this->data()->total_size = size;
 
       std::string first_file =
         boost::filesystem::path(*(this->_files.cbegin())).filename().string();
@@ -306,22 +306,22 @@ namespace surface
         });
       ELLE_ASSERT_EQ(file_list.size(), this->_files.size());
 
+      // Change state to SenderCreateTransaction once we've calculated the file
+      // size and have the file list.
+      this->current_state(TransferMachine::State::SenderCreateTransaction);
+
       ELLE_DEBUG("create transaction");
       this->transaction_id(
         this->state().meta().create_transaction(
           this->peer_id(),
           this->data()->files,
           this->data()->files.size(),
-          size,
+          this->data()->total_size,
           boost::filesystem::is_directory(first_file),
           this->state().device().id,
           this->_message
           ).created_transaction_id
         );
-
-      // This is fake, we don't create peer to peer network.
-      // this->state().google_reporter()[this->state().me().id].store(
-      //   "network.create.succeed");
 
       ELLE_TRACE("created transaction: %s", this->transaction_id());
 

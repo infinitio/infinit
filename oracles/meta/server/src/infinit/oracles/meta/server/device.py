@@ -30,15 +30,15 @@ class Mixin:
       raise error.Error(error.DEVICE_NOT_FOUND)
     return device
 
-  @require_logged_in
   @api('/devices')
+  @require_logged_in
   def devices(self):
     """Return all user's device ids.
     """
     return self.success({'devices': self.user.get('devices', [])})
 
-  @require_logged_in
   @api('/device/<id>/view')
+  @require_logged_in
   def device_view(self,
                   id: uuid.UUID):
     """Return one user device.
@@ -85,8 +85,8 @@ class Mixin:
     self.database.users.find_and_modify({'_id': owner['_id']}, {'$addToSet': {'devices': str(id)}})
     return device
 
-  @require_logged_in
   @api('/device/create', method="POST")
+  @require_logged_in
   def create_device(self,
                     id = None,
                     name = None):
@@ -134,8 +134,8 @@ class Mixin:
           "trophonius": {"$ne": None},
         }).count() > 0
 
-  @require_logged_in
   @api('/device/update', method = "POST")
+  @require_logged_in
   def update_device(self, id: uuid.UUID, name):
     """Rename an existing device.
     """
@@ -156,8 +156,8 @@ class Mixin:
         'name' : name,
       })
 
-  @require_logged_in
   @api('/device/delete', method = "POST")
+  @require_logged_in
   def delete_device(self,
                     id: uuid.UUID):
     """Delete a device.

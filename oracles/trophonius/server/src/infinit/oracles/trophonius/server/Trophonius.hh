@@ -49,16 +49,20 @@ namespace infinit
           Trophonius(
             int port_ssl,
             int port_tcp,
+            std::string const& meta_protocol,
             std::string const& meta_host,
             int meta_port,
             int notifications_port = 0,
             boost::posix_time::time_duration const& user_ping_period = 30_sec,
             boost::posix_time::time_duration const& meta_ping_period = 60_sec,
+            boost::posix_time::time_duration const& user_auth_max_time = 10_sec,
             bool meta_fatal = true);
 
           ~Trophonius();
           void
           stop();
+          void
+          terminate();
 
         /*-------.
         | Server |
@@ -90,7 +94,7 @@ namespace infinit
           ELLE_ATTRIBUTE_R(boost::uuids::uuid, uuid);
           ELLE_ATTRIBUTE_R(meta::Admin, meta);
           ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, meta_pinger);
-
+          ELLE_ATTRIBUTE(bool, terminating);
         /*--------.
         | Clients |
         `--------*/
@@ -125,6 +129,7 @@ namespace infinit
           typedef std::unordered_set<Meta*> Metas;
           ELLE_ATTRIBUTE(Metas, metas);
           ELLE_ATTRIBUTE_R(boost::posix_time::time_duration, ping_period);
+          ELLE_ATTRIBUTE_R(boost::posix_time::time_duration, user_auth_max_time);
           ELLE_ATTRIBUTE(reactor::RWMutex, remove_lock);
 
         /*----------.

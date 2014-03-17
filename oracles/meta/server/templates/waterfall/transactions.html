@@ -1,0 +1,156 @@
+<%!
+import iso8601
+
+class PeekIterator:
+
+  def __init__(self, c):
+    self.__iterator = iter(c)
+    self.__peek = None
+
+  def __next__(self):
+    if self.__peek is not None:
+      res = self.__peek[0]
+      self.__peek = None
+      return res
+    else:
+      return self.__iterator.__next__()
+
+  def __iter__(self):
+    return self.__iterator.__iter__()
+
+  def peek(self):
+    if self.__peek is None:
+      self.__peek = (next(self),)
+    return self.__peek[0]
+
+def __group_by_helper(index, i, criteria):
+  while criteria(i.peek()) == index:
+    yield next(i)
+
+def group_by(collection, criteria):
+  i = PeekIterator(collection)
+  while True:
+    value = i.peek()
+    index = criteria(value)
+    yield index, __group_by_helper(index, i, criteria)
+
+def size(n, short = True):
+  if n <= 0:
+    return '0 B'
+  else:
+    import math
+    base = 1024
+    units = ('B', 'KB', 'MB', 'GB', 'TB')
+    order = math.floor(math.log(n, base))
+    unit = units[order]
+    if short:
+      repr = int(n / (math.pow(base, order)))
+      return '%i %s' % (repr, units[order])
+    else:
+      repr = round(n / (math.pow(base, order)), 2)
+      return '%.2f %s' % (repr, units[order])
+
+def magnitude_order(n):
+  if n > 1048576000:
+    return 'giga_file'
+  elif n > 104857600:
+    return 'mega_file'
+  else:
+    return 'small_file'
+    
+  
+def plural(word, c):
+  return word + ('s' if len(c) > 1 else '')
+%>
+  
+  %if transaction_days:
+    %for day in sorted(transaction_days, key = lambda day: day['date'], reverse = True):
+    
+    <div class="transactions-${day['date']}">
+      <h2>
+        <a href="#date">-</a>
+        ${iso8601.parse_date(day['date']).strftime('%A %d %b')} 
+        <span class="total_count">${day['count']}</span> <span class="total_size">${size(day['size'], False)}</span>
+      </h2>
+        
+        %for transaction in sorted(day['transactions'], key = lambda transaction: transaction['size'], reverse = True):
+          <div class="transaction">
+
+            <div class="summary">
+              <div class="totalsize ${magnitude_order(transaction['size'])}">${size(transaction['size'], False)}</div>
+              <img src="//${http_host}/user/${transaction['sender']['_id']}/avatar" class="avatar" />
+              <h3><a class="show_tooltip" href="#user" title="${transaction['sender']['fullname']}">${transaction['sender']['fullname']}</a></h3> 
+              <div class="tooltip">
+                <img src="//${http_host}/user/${transaction['sender']['_id']}/avatar" class="avatar" />
+                <div class="infos">
+                  <h3>${transaction['sender']['fullname']}</h3>
+                  <p class="handle">@${transaction['sender']['handle']}</p>
+                  <p>${transaction['sender']['email']}</p>
+                </div>
+                <ul>
+                  <li><select class="add_group" rel="${transaction['sender']['_id']}">
+                    <option>Add To Group...</option>
+                  </select></li>
+                  <li><a href="#solo" rel="${transaction['sender']['_id']}" class="show_user">Show Transactions</a></li>
+                </ul>
+              </div>
+              
+              <span class="emails">${transaction['sender']['email']} &#8594; ${transaction['recipient']['email']}</span>
+              <span class="arrow">&#8594;</span>
+              
+              <img src="//${http_host}/user/${transaction['recipient']['_id']}/avatar" class="avatar" />
+              <h3><a class="show_tooltip 
+                %if not 'handle' in transaction['recipient']:
+                  ghost
+                %endif
+                " href="#user">${transaction['recipient']['fullname']}</a>
+              </h3>
+                
+              <div class="tooltip">
+                <img src="//${http_host}/user/${transaction['recipient']['_id']}/avatar" class="avatar" />
+                <div class="infos">
+                  <h3>${transaction['recipient']['fullname']}</h3>
+                  <p class="handle">
+                    %if 'handle' in transaction['recipient']:
+                      @${transaction['recipient']['handle']}
+                    %else:
+                      Ghost  
+                    %endif
+                  </p>
+                  <p>${transaction['recipient']['email']}</p>
+                </div>
+                <ul>
+                  <li><select class="add_group" rel="${transaction['recipient']['_id']}">
+                    <option>Add To Group...</option>
+                  </select></li>
+                  <li><a href="#solo" rel="${transaction['recipient']['_id']}" class="show_user">Show Transactions</a></li>
+                </ul>
+              </div>
+              
+              <div class="status ${transaction['status']}">${transaction['status'].capitalize()}</div>
+              <span class="date">Created at ${iso8601.parse_date(transaction['time']).strftime('%H:%M')}</span>
+            </div>
+            
+            <div class="details">
+              <p class="files">
+                <strong>
+                  ${len(transaction['files'])} ${plural('file', transaction['files'])} 
+                </strong>
+                (${size(transaction['size'], False)}):
+              </p>
+                <ul>
+                %for i, file in enumerate(transaction['files']):
+                  <li>${file}</li>
+                %endfor
+                </ul>
+              </p>
+            </div>
+            
+          </div>
+        %endfor
+      </div>
+    %endfor
+  
+  %else:
+    <h2>No transactions.</h2>
+  %endif

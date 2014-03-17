@@ -30,7 +30,8 @@ namespace infinit
           _user_id(),
           _session_id(),
           // Meta
-          _meta(this->trophonius().meta().host(),
+          _meta(this->trophonius().meta().protocol(),
+                this->trophonius().meta().host(),
                 this->trophonius().meta().port()),
           _authentified(),
           _registered(false),
@@ -50,6 +51,8 @@ namespace infinit
           _pinged(false)
         {
           ELLE_TRACE("%s: connected", *this);
+          // disconnect if the user takes too long to register
+          _set_timeout(this->trophonius().user_auth_max_time());
         }
 
         User::~User()
@@ -202,6 +205,7 @@ namespace infinit
                 }
                 this->trophonius().users().insert(this);
                 this->trophonius().users_pending().erase(this);
+                this->_cancel_timeout();
                 meta::Response res;
                 try
                 {

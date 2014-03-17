@@ -57,53 +57,31 @@ namespace elle
 
   namespace crash
   {
-
-    class Handler
-    {
-    public:
-      Handler(std::string const& host,
-              int port,
-              std::string const& name,
-              bool quit);
-
-      Handler(std::string const& host,
-              int port,
-              std::string const& name,
-              bool quit,
-              int argc,
-              char** argv);
-
-      virtual ~Handler();
-
-      virtual
-      void
-      operator() (int sig);
-
-    private:
-      std::string _host;
-      uint16_t _port;
-      std::string _name;
-      bool _quit;
-    };
-
-    /// Function for sending existing crash reports
+    /// Function for sending existing crash reports.
     void
-    existing_report(std::string const& host,
+    existing_report(std::string const& protocol,
+                    std::string const& host,
                     uint16_t port,
+                    std::vector<std::string> const& files,
                     std::string const& user_name = "",
                     std::string const& os_description = "",
-                    std::string const& info = "",
-                    std::string const& file = "");
+                    std::string const& info = "");
 
-    /// Function for sending user reports
+    /// Function for sending a report when a transfer fails.
     void
-    user_report(std::string const& host,
+    transfer_failed_report(std::string const& user_name = "");
+
+    /// Function for sending user reports.
+    void
+    user_report(std::string const& protocol,
+                std::string const& host,
                 uint16_t port,
                 std::string const& user_name = "",
                 std::string const& os_description = "",
                 std::string const& message = "",
-                std::string const& file = "");
-  };
+                std::string const& user_file = "");
+
+  }
 }
 
 #endif

@@ -277,6 +277,7 @@ def configure(cxx_toolkit = None,
   station_build << station_lib
   station_tests = drake.Rule('station/tests')
   station_check = drake.Rule('station/check')
+  station_install = drake.Rule('station/install')
   station_cxx_config_tests = drake.cxx.Config(station_cxx_config)
   station_cxx_config_tests += boost.config_test()
   station_cxx_config_tests += boost.config_system()
@@ -319,6 +320,7 @@ def configure(cxx_toolkit = None,
   frete_build << frete_lib
   frete_tests = drake.Rule('frete/tests')
   frete_check = drake.Rule('frete/check')
+  frete_install = drake.Rule('frete/install')
   frete_cxx_config_tests = drake.cxx.Config(frete_cxx_config)
   frete_cxx_config_tests += boost.config_test()
   frete_cxx_config_tests += boost.config_system()

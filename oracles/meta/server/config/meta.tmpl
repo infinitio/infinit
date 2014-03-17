@@ -12,6 +12,32 @@ server
         include         uwsgi_params;
         uwsgi_param     UWSGI_SCHEME $scheme;
         uwsgi_param     SERVER_SOFTWARE nginx/$nginx_version;
+    }
+}
 
+server
+{
+    listen      443;
+    server_name meta.${version_minor}.${version_major}.api.production.infinit.io;
+
+    access_log  /var/log/nginx/meta/access-ssl.log;
+    error_log   /var/log/nginx/meta/error-ssl.log;
+    client_max_body_size 15M;
+
+    ssl on;
+
+    ssl_certificate "/etc/ssl/meta.crt";
+    ssl_certificate_key "/etc/ssl/private/meta.key";
+    ssl_client_certificate /etc/ssl/infinit-ca.crt;
+    ssl_verify_client optional;
+
+    location /
+    {
+        uwsgi_pass      unix:///run/uwsgi/app/meta/socket;
+        include         uwsgi_params;
+        uwsgi_param     UWSGI_SCHEME $scheme;
+        uwsgi_param     SERVER_SOFTWARE nginx/$nginx_version;
+        uwsgi_param     SSL_CLIENT_VERIFIED $ssl_client_verify;
+        uwsgi_param     SSL_CLIENT_DN $ssl_client_s_dn;
     }
 }
