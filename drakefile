@@ -578,6 +578,7 @@ def configure(cxx_toolkit = None,
     python_merge = []
 
     python_merge += drake.copy(oracles.trophonius.server.python, '.', strip_prefix='oracles/trophonius/server')
+    python_merge += drake.copy(oracles.apertus.server.python, '.', strip_prefix='oracles/apertus/server')
     python_merge += drake.copy(oracles.meta.server.python, '.', strip_prefix = 'oracles/meta/server')
     python_merge.append(drake.copy(elle.reactor.python_lib, '.', strip_prefix = 'elle/reactor'))
 

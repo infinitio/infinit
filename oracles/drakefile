@@ -3,12 +3,12 @@ import drake.templating
 
 meta = None
 trophonius = None
+apertus = None
 
 build = None
 check = None
 install = None
-meta = None
-trophonius = None
+
 
 def configure(elle,
               papier_python,
@@ -20,7 +20,7 @@ def configure(elle,
               cxx_config = None,
               valgrind = None):
 
-  global meta, trophonius
+  global meta, trophonius, apertus
   global build, check, install
 
   for name in ('build', 'check', 'install'):

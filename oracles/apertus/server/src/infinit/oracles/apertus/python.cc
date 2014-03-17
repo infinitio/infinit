@@ -12,12 +12,12 @@ extern "C"
   PyObject* PyInit_apertus();
 }
 
-BOOST_PYTHON_MODULE(apertus)
+BOOST_PYTHON_MODULE(server)
 {
   using infinit::oracles::apertus::Apertus;
   boost::python::class_<Apertus,
                         boost::noncopyable>
-    ("Trophonius",
+    ("Apertus",
      boost::python::init<std::string const&,
                          std::string const&,
                          int,
@@ -28,5 +28,7 @@ BOOST_PYTHON_MODULE(apertus)
                          boost::posix_time::time_duration const&>())
     .def("stop", &Apertus::stop)
     .def("wait", &Apertus::wait) // XXX: use Waitable::wait
+    .def("port_tcp", &Apertus::port_tcp)
+    .def("port_ssl", &Apertus::port_ssl)
     ;
 }
