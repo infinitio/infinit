@@ -74,8 +74,8 @@ struct user_to_python_dict
                          PyUnicode_FromString(user.handle.data()));
     PyDict_SetItemString(dict, "public_key",
                          PyUnicode_FromString(user.public_key.data()));
-    auto device_list = PyList_New(user.connected_devices.size());
-    for (auto device: user.connected_devices)
+    auto device_list = PyList_New(0);
+    for (std::string const& device: user.connected_devices)
     {
       PyList_Append(device_list, PyUnicode_FromString(device.data()));
     }
@@ -166,8 +166,8 @@ struct transaction_to_python_dict
     PyDict_SetItemString(
       dict, "message",
       PyUnicode_FromString(transaction.data()->message.data()));
-    auto file_list = PyList_New(transaction.data()->files.size());
-    for (auto file: transaction.data()->files)
+    auto file_list = PyList_New(0);
+    for (std::string const& file: transaction.data()->files)
     {
       PyList_Append(file_list, PyUnicode_FromString(file.data()));
     }
