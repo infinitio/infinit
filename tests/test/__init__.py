@@ -1,10 +1,14 @@
 #!/usr/bin/python3
 
 import infinit.oracles.trophonius.server
+import infinit.oracles.apertus.server
 import infinit.oracles.meta.server
 
 import bottle
 import elle.log
+
+import pymongo
+import mongobox
 
 import threading
 
@@ -15,6 +19,8 @@ import tempfile
 import time
 import os
 import sys
+
+ELLE_LOG_COMPONENT = 'test'
 
 timedelta = datetime.timedelta
 
@@ -28,14 +34,16 @@ class MetaWrapperThread(threading.Thread):
   def port(self):
     return self.meta.port
 
+
 class MetaWrapperProcess:
-  def __init__(self, force_admin = False):
+  def __init__(self, force_admin = False, mongo_port = None):
     port_file = tempfile.NamedTemporaryFile(delete = False).name
-    os.environ['PYTHONPATH'] = os.environ['PYTHONPATH'] + ':lib/python'
     args = ['../../oracles/meta/server/meta', '--port', '0',
             '--port-file', port_file]
     if force_admin:
       args.append('--force-admin')
+    if mongo_port is not None:
+      args += ['--mongo-port', str(mongo_port)]
     self.process = subprocess.Popen(args, stdout = sys.stdout, stderr = sys.stderr)
     while not os.path.getsize(port_file):
       time.sleep(0.1)
@@ -61,16 +69,27 @@ class Oracles:
     self.__force_admin = force_admin
 
   def __enter__(self):
-    self._meta = MetaWrapperProcess(self.__force_admin)
+    elle.log.trace('starting mongobox')
+    self._mongo = mongobox.MongoBox()
+    self._mongo.__enter__()
+    elle.log.trace('starting meta')
+    self._meta = MetaWrapperProcess(self.__force_admin, self._mongo.port)
     self._meta.start()
+    elle.log.trace('starting tropho')
     self._trophonius = infinit.oracles.trophonius.server.Trophonius(0,0, 'http', '127.0.0.1', self._meta.port, 0, timedelta(seconds=3), timedelta(seconds = 5), timedelta(seconds=7))
-    self.meta = ('tcp', '127.0.0.1', self._meta.port)
-    self.trophonius = ('tcp', '127.0.0.1', self._trophonius.port_tcp())
+    elle.log.trace('starting apertus')
+    self._apertus = infinit.oracles.apertus.server.Apertus('http', '127.0.0.1', self._meta.port, '127.0.0.1', 0, 0, timedelta(seconds = 10), timedelta(minutes = 5))
+    elle.log.trace('ready')
+    self.meta = ('http', '127.0.0.1', self._meta.port)
+    self.trophonius = ('tcp', '127.0.0.1', self._trophonius.port_tcp(), self._trophonius.port_ssl())
+    self.apertus = ('tcp', '127.0.0.1', self._apertus.port_tcp(), self._apertus.port_ssl())
     return self
 
   def __exit__(self, *args, **kwargs):
     self._trophonius.terminate()
     self._trophonius.stop()
+    self._apertus.stop()
     time.sleep(1)
     #self._trophonius.wait()
     self._meta.stop()
+    self._mongo.__exit__(*args, **kwargs)

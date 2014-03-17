@@ -586,6 +586,14 @@ def configure(cxx_toolkit = None,
     python_env = dict(PYTHONPATH = 'lib/python')
 
     # Top-level tests
+    mongobox = drake.nodes(
+      'oracles/mongobox/mongobox/__init__.py',
+      'oracles/mongobox/mongobox/mongobox.py',
+      'oracles/mongobox/mongobox/utils.py',
+      'oracles/mongobox/mongobox/nose_plugin.py',
+    )
+    python_merge += drake.copy(mongobox, 'lib/python', strip_prefix='oracles/mongobox')
+
     functional_check = drake.Rule('/functional/check')
     functional_test_lib = drake.nodes(
       'tests/test/__init__.py'
