@@ -9,7 +9,7 @@
 // Pacify -Wmissing-declarations
 extern "C"
 {
-  PyObject* PyInit_apertus();
+  PyObject* PyInit_server();
 }
 
 BOOST_PYTHON_MODULE(server)
