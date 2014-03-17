@@ -17,7 +17,7 @@ def configure(cxx_toolkit = None,
               optimization = True,
               prefix = '/usr',
               boost = None,
-              python3 = None,
+              python3 = True,
               build_type = "Development",
               enable_debug = True,
               valgrind = None):
@@ -115,8 +115,7 @@ def configure(cxx_toolkit = None,
   ## Python configuration ##
   ## -------------------- ##
 
-  python_enabled = python3 is not None
-  if python_enabled:
+  if python3:
     python3 = drake.cxx.find_library(
       'pyconfig.h', prefix = python3,
       include_dir = ['include',
@@ -171,7 +170,7 @@ def configure(cxx_toolkit = None,
   elle_lib = copy_lib(elle.elle.library)
   cryptography_lib = copy_lib(elle.cryptography.library)
   reactor_lib = copy_lib(elle.reactor.library)
-  if python_enabled:
+  if python3 is not None:
     reactor_python_lib = copy_lib(elle.reactor.python_lib, where='lib/python')
     python_build << reactor_python_lib
   protocol_lib = copy_lib(elle.protocol.library)
@@ -229,7 +228,7 @@ def configure(cxx_toolkit = None,
   )
 
   papier_python_lib = None
-  if python_enabled:
+  if python3 is not None:
     papier_python_cxx_config = drake.cxx.Config(cxx_config)
     papier_python_sources = drake.nodes('papier/python.cc')
     papier_python_sources.append(papier_lib)
@@ -389,7 +388,6 @@ def configure(cxx_toolkit = None,
     papier_python = papier_python_lib,
     boost = boost,
     python3 = python3,
-    enable_python_bindings = True,
     prefix = prefix,
     cxx_toolkit = cxx_toolkit,
     cxx_config = cxx_config,
@@ -644,7 +642,7 @@ def configure(cxx_toolkit = None,
   ## ------------ ##
 
   state_python_lib = None
-  if python_enabled:
+  if python3 is not None:
     state_python_cxx_config = drake.cxx.Config(gap_cxx_config)
     state_python_cxx_config += python3
     state_python_cxx_config += boost.config_python()
@@ -667,7 +665,7 @@ def configure(cxx_toolkit = None,
   ## ---------- ##
 
   gap_python_lib = None
-  if python_enabled:
+  if python3 is not None:
     gap_python_cxx_config = drake.cxx.Config(gap_cxx_config)
     gap_python_cxx_config += python3
     gap_python_cxx_config += boost.config_python()
