@@ -213,36 +213,114 @@ struct transaction_map_to_python_dict
 };
 
 static
-void
-bind_user()
+std::string
+gap_transaction_status_string(gap_TransactionStatus status)
 {
+  switch (status)
+  {
+    case gap_transaction_none:
+      return "none";
+    case gap_transaction_pending:
+      return "pending";
+    case gap_transaction_copying:
+      return "copying";
+    case gap_transaction_waiting_for_accept:
+      return "waiting_for_accept";
+    case gap_transaction_accepted:
+      return "accepted";
+    case gap_transaction_preparing:
+      return "preparing";
+    case gap_transaction_running:
+      return "running";
+    case gap_transaction_cleaning:
+      return "cleaning";
+    case gap_transaction_finished:
+      return "finished";
+    case gap_transaction_failed:
+      return "failed";
+    case gap_transaction_canceled:
+      return "canceled";
+    case gap_transaction_rejected:
+      return "rejected";
+
+    default:
+      elle::unreachable();
+  }
+}
+
+struct transaction_notification_to_python_dict
+{
+  static
+  PyObject*
+  convert(surface::gap::Transaction::Notification const& notification)
+  {
+    auto dict = PyDict_New();
+    PyDict_SetItemString(dict, "transaction_id",
+                         PyLong_FromLong(notification.id));
+    PyDict_SetItemString(dict, "status", PyUnicode_FromString(
+      gap_transaction_status_string(notification.status).data()));
+
+    return dict;
+  }
+};
+
+static
+void
+bind_conversions()
+{
+  // Users.
   using infinit::oracles::meta::User;
-
   user_from_python_dict();
-
   boost::python::to_python_converter<const User,
                                      user_to_python_dict>();
 
   boost::python::to_python_converter<
     const std::unordered_map<unsigned int, User>, user_map_to_python_dict>();
 
+  // Transactions.
   using surface::gap::Transaction;
-
   boost::python::to_python_converter<const Transaction,
                                    transaction_to_python_dict>();
   boost::python::to_python_converter<
     const std::unordered_map<unsigned int, Transaction>,
     transaction_map_to_python_dict>();
+
+  // Transaction Notification.
+  using surface::gap::Transaction;
+  boost::python::to_python_converter<const Transaction::Notification,
+                                     transaction_notification_to_python_dict>();
 }
+
+class PythonState:
+  public surface::gap::State
+{
+public:
+  typedef surface::gap::State Super;
+  using Super::Super;
+
+  template <typename T>
+  void
+  attach_callback(boost::python::object cb) const
+  {
+    Super::attach_callback<T>(
+      [cb] (T const& notification)
+      {
+        boost::python::handle<> handle(
+          transaction_notification_to_python_dict::convert(notification));
+        boost::python::object dict(handle);
+        cb(dict);
+      });
+  }
+};
 
 BOOST_PYTHON_MODULE(state)
 {
   namespace py = boost::python;
   typedef
     py::return_value_policy<boost::python::copy_const_reference> by_const_ref;
-  bind_user();
+  bind_conversions();
   using surface::gap::State;
-  boost::python::class_<State, boost::noncopyable>
+  boost::python::class_<PythonState, boost::noncopyable>
     ("State",
      boost::python::init<std::string const&,
                          std::string const&,
@@ -256,6 +334,8 @@ BOOST_PYTHON_MODULE(state)
     .def("transactions", static_cast<
       State::Transactions const& (State::*)() const>(&State::transactions),
          by_const_ref())
+    .def("attach_transaction_callback",
+         &PythonState::attach_callback<surface::gap::Transaction::Notification>)
     ;
     // Static functions.
     boost::python::def("hash_password", &State::hash_password);
