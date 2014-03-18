@@ -1,6 +1,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
+#include <elle/os/environ.hh>
 #include <elle/finally.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
@@ -425,7 +426,18 @@ namespace surface
         this->_snapshot.reset(new frete::TransferSnapshot(count, total_size));
       }
 
-      static std::streamsize const chunk_size = 1 << 18;
+      static std::streamsize chunk_size = 1 << 18;
+      static bool override_check = false;
+      if (!override_check)
+      {
+        override_check = true;
+        std::string s = elle::os::getenv("INFINIT_CHUNK_SIZE", "");
+        if (!s.empty())
+        {
+          chunk_size = boost::lexical_cast<std::streamsize>(s);
+          ELLE_WARN("Forcing chunk size to %s", chunk_size);
+        }
+      }
 
       ELLE_DEBUG("transfer snapshot: %s", *this->_snapshot);
 
