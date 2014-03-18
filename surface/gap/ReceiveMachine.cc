@@ -8,6 +8,7 @@
 
 #include <reactor/exception.hh>
 #include <reactor/thread.hh>
+#include <reactor/Channel.hh>
 
 #include <station/Station.hh>
 
@@ -534,79 +535,88 @@ namespace surface
           infinit::cryptography::cipher::Algorithm::aes256,
           this->transaction_id());
 
-      while (true)
+      /* Use a channel to transmit buffers between receiver thread(s)
+      * and a thread that writes to disk, expecting blocks in order in
+      * the channel.
+      */
+      typedef std::pair<elle::Buffer, size_t> IndexedBuffer;
+      reactor::Channel<IndexedBuffer> buffers;
+      size_t start_position = tr.progress();
+
+      elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
-        if (!output.good())
-          throw elle::Exception("output is invalid");
-
-        // Get the buffer from the rpc.
-        // BEARCLAW OVER HERE!
-        elle::Buffer buffer{
-          key.decrypt<elle::Buffer>(
-            strong_encryption ?
-            source.encrypted_read(index, tr.progress(), chunk_size) :
-            source.read(index, tr.progress(), chunk_size))};
-
-        ELLE_ASSERT_LT(index, this->_snapshot->transfers().size());
-        ELLE_DUMP("%s: %s (size: %s)",
-          index, full_path, boost::filesystem::file_size(full_path));
+        scope.run_background("receive writer", [&]()
         {
-          boost::system::error_code ec;
-          auto size = boost::filesystem::file_size(full_path, ec);
-
-          if (ec)
+          while (true)
           {
-            ELLE_ERR("destination file deleted");
-            throw elle::Exception("destination file deleted");
-          }
+            ELLE_DUMP("receiver waiting for buffer");
+            IndexedBuffer indexed_buffer = buffers.get();
+            const elle::Buffer& buffer = indexed_buffer.first;
+            // if this assert fails, packets were received out of order
+            ELLE_ASSERT_EQ(indexed_buffer.second, tr.progress());
+            ELLE_ASSERT_LT(index, this->_snapshot->transfers().size());
+            ELLE_DUMP("%s: %s (size: %s) (pos %s)",
+                      index, full_path, boost::filesystem::file_size(full_path),
+                      indexed_buffer.second);
+            boost::system::error_code ec;
+            auto size = boost::filesystem::file_size(full_path, ec);
 
-          if (size != tr.progress())
-          {
-            uintmax_t current_size;
-            try
+            if (ec)
             {
-              current_size = boost::filesystem::file_size(full_path);
+              ELLE_ERR("destination file deleted: %s", ec);
+              throw elle::Exception("destination file deleted");
             }
-            catch (boost::filesystem::filesystem_error const& e)
+            if (size != tr.progress())
             {
-              ELLE_ERR("%s: expected size and actual size differ, "
-                "unable to determine actual size: %s", *this, e);
+              ELLE_ERR(
+                "%s: expected file size %s and actual file size %s are different",
+                *this,
+                tr.progress(),
+                size);
               throw elle::Exception("destination file corrupted");
             }
-            ELLE_ERR(
-              "%s: expected file size %s and actual file size %s are different",
-              *this,
-              tr.progress(),
-              current_size);
-            throw elle::Exception("destination file corrupted");
-          }
-        }
+            ELLE_DUMP("content: %s (%sB)", buffer, buffer.size());
+            // Write the file.
+            output.write((char const*) buffer.contents(), buffer.size());
+            output.flush();
 
-        ELLE_DUMP("content: %s (%sB)", buffer, buffer.size());
+            this->_snapshot->increment_progress(index, buffer.size());
+            elle::serialize::to_file(this->_snapshot_path.string()) << *this->_snapshot;
+            ELLE_DEBUG("%s: %s (size: %s)",
+            index, full_path, boost::filesystem::file_size(full_path));
 
-        // Write the file.
-        output.write((char const*) buffer.contents(), buffer.size());
-        output.flush();
-
-        if (!output.good())
-          throw elle::Exception("writing left the stream in a bad state");
-        {
-          this->_snapshot->increment_progress(index, buffer.size());
-          elle::serialize::to_file(this->_snapshot_path.string()) << *this->_snapshot;
-        }
-        ELLE_DEBUG("%s: %s (size: %s)",
-          index, full_path, boost::filesystem::file_size(full_path));
-        // XXX: Shouldn't be an assert, the user can rm the file. The
-        // transaction should fail but not create an assertion error.
-        ELLE_ASSERT_EQ(boost::filesystem::file_size(full_path),
-          tr.progress());
-        if (buffer.size() < unsigned(chunk_size))
-        {
-          output.close();
-          ELLE_TRACE("finished %s: %s", index, *this->_snapshot);
-          break;
-        }
-      }
+            if (buffer.size() < chunk_size)
+            {
+              output.close();
+              ELLE_TRACE("finished %s: %s", index, *this->_snapshot);
+              break; // breaks the while true
+            }
+          } // while true
+          ELLE_DUMP("writer exiting cleanly");
+        });
+        scope.run_background("receive reader", [&]()
+          {
+            size_t current_position = start_position;
+            while (true)
+            {
+              ELLE_DUMP("Reading buffer at %s", current_position);
+              elle::Buffer buffer{
+                key.decrypt<elle::Buffer>(
+                  strong_encryption ?
+                  source.encrypted_read(index, current_position, chunk_size) :
+                  source.read(index, current_position, chunk_size))};
+              ELLE_DUMP("Got buffer %s %s", current_position, buffer.size());
+              bool short_read = buffer.size() < chunk_size;
+              buffers.put(std::make_pair(std::move(buffer), current_position));
+              current_position += chunk_size;
+              if (short_read)
+                break;
+            }
+            ELLE_DUMP("reader exiting cleanly");
+          });
+        scope.wait();
+        ELLE_TRACE("finish_transfer exited cleanly");
+      }; // scope
     }
 
     std::string
