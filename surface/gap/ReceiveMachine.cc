@@ -581,8 +581,6 @@ namespace surface
         {
           this->_snapshot->increment_progress(index, buffer.size());
           elle::serialize::to_file(this->_snapshot_path.string()) << *this->_snapshot;
-          source.set_progress(this->_snapshot->progress());
-          // this->_progress_changed.signal();
         }
         ELLE_DEBUG("%s: %s (size: %s)",
           index, full_path, boost::filesystem::file_size(full_path));
