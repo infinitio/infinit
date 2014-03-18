@@ -476,10 +476,6 @@ namespace surface
         ELLE_DEBUG("%s: index (%s) - path %s - size %s",
                    *this, index, fullpath, file_size);
 
-        // Create subdir.
-        boost::filesystem::create_directories(fullpath.parent_path());
-        boost::filesystem::ofstream output{fullpath,
-            std::ios::app | std::ios::binary};
 
         if (tr.complete())
         {
@@ -487,88 +483,7 @@ namespace surface
           continue;
         }
 
-        auto key = strong_encryption ?
-          infinit::cryptography::SecretKey(
-            this->state().identity().pair().k().decrypt<
-              infinit::cryptography::SecretKey>(source.key_code())) :
-          infinit::cryptography::SecretKey(
-            infinit::cryptography::cipher::Algorithm::aes256,
-            this->transaction_id());
-
-        while (true)
-        {
-          if (!output.good())
-            throw elle::Exception("output is invalid");
-
-          // Get the buffer from the rpc.
-          elle::Buffer buffer{
-              key.decrypt<elle::Buffer>(
-                strong_encryption ?
-                source.encrypted_read(index, tr.progress(), chunk_size) :
-                source.read(index, tr.progress(), chunk_size))};
-
-          ELLE_ASSERT_LT(index, this->_snapshot->transfers().size());
-          ELLE_DUMP("%s: %s (size: %s)",
-                    index, fullpath, boost::filesystem::file_size(fullpath));
-          {
-            boost::system::error_code ec;
-            auto size = boost::filesystem::file_size(fullpath, ec);
-
-            if (ec)
-            {
-              ELLE_ERR("destination file deleted");
-              throw elle::Exception("destination file deleted");
-            }
-
-            if (size != this->_snapshot->transfers()[index].progress())
-            {
-              uintmax_t current_size;
-              try
-              {
-                current_size = boost::filesystem::file_size(fullpath);
-              }
-              catch (boost::filesystem::filesystem_error const& e)
-              {
-                ELLE_ERR("%s: expected size and actual size differ, "
-                         "unable to determine actual size: %s", *this, e);
-                throw elle::Exception("destination file corrupted");
-              }
-              ELLE_ERR(
-                "%s: expected file size %s and actual file size %s are different",
-                *this,
-                this->_snapshot->transfers()[index].progress(),
-                current_size);
-              throw elle::Exception("destination file corrupted");
-            }
-          }
-
-          ELLE_DUMP("content: %s (%sB)", buffer, buffer.size());
-
-          // Write the file.
-          output.write((char const*) buffer.contents(), buffer.size());
-          output.flush();
-
-          if (!output.good())
-            throw elle::Exception("writing left the stream in a bad state");
-          {
-            this->_snapshot->increment_progress(index, buffer.size());
-            elle::serialize::to_file(this->_snapshot_path.string()) << *this->_snapshot;
-            source.set_progress(this->_snapshot->progress());
-            // this->_progress_changed.signal();
-          }
-          ELLE_DEBUG("%s: %s (size: %s)",
-                     index, fullpath, boost::filesystem::file_size(fullpath));
-          // XXX: Shouldn't be an assert, the user can rm the file. The
-          // transaction should fail but not create an assertion error.
-          ELLE_ASSERT_EQ(boost::filesystem::file_size(fullpath),
-                         this->_snapshot->transfers()[index].progress());
-          if (buffer.size() < unsigned(chunk_size))
-          {
-            output.close();
-            ELLE_TRACE("finished %s: %s", index, *this->_snapshot);
-            break;
-          }
-        }
+        _finish_transfer(source, index, tr, chunk_size, fullpath, strong_encryption);
       }
 
       // this->finished.open();
@@ -583,6 +498,104 @@ namespace surface
       {
         ELLE_ERR("couldn't delete snapshot at %s: %s",
                  this->_snapshot_path, elle::exception_string());
+      }
+    }
+
+    template<typename Source>
+    void
+    ReceiveMachine::_finish_transfer(Source& source,
+                                     unsigned int index,
+                                     frete::TransferSnapshot::TransferProgressInfo& tr ,
+                                     int chunk_size,
+                                     const boost::filesystem::path& full_path,
+                                     bool strong_encryption)
+    {
+      boost::filesystem::create_directories(full_path.parent_path());
+        boost::filesystem::ofstream output{full_path,
+            std::ios::app | std::ios::binary};
+
+      auto key = strong_encryption ?
+        infinit::cryptography::SecretKey(
+          this->state().identity().pair().k().decrypt<
+          infinit::cryptography::SecretKey>(source.key_code())) :
+        infinit::cryptography::SecretKey(
+          infinit::cryptography::cipher::Algorithm::aes256,
+          this->transaction_id());
+
+      while (true)
+      {
+        if (!output.good())
+          throw elle::Exception("output is invalid");
+
+        // Get the buffer from the rpc.
+        // BEARCLAW OVER HERE!
+        elle::Buffer buffer{
+          key.decrypt<elle::Buffer>(
+            strong_encryption ?
+            source.encrypted_read(index, tr.progress(), chunk_size) :
+            source.read(index, tr.progress(), chunk_size))};
+
+        ELLE_ASSERT_LT(index, this->_snapshot->transfers().size());
+        ELLE_DUMP("%s: %s (size: %s)",
+          index, full_path, boost::filesystem::file_size(full_path));
+        {
+          boost::system::error_code ec;
+          auto size = boost::filesystem::file_size(full_path, ec);
+
+          if (ec)
+          {
+            ELLE_ERR("destination file deleted");
+            throw elle::Exception("destination file deleted");
+          }
+
+          if (size != tr.progress())
+          {
+            uintmax_t current_size;
+            try
+            {
+              current_size = boost::filesystem::file_size(full_path);
+            }
+            catch (boost::filesystem::filesystem_error const& e)
+            {
+              ELLE_ERR("%s: expected size and actual size differ, "
+                "unable to determine actual size: %s", *this, e);
+              throw elle::Exception("destination file corrupted");
+            }
+            ELLE_ERR(
+              "%s: expected file size %s and actual file size %s are different",
+              *this,
+              tr.progress(),
+              current_size);
+            throw elle::Exception("destination file corrupted");
+          }
+        }
+
+        ELLE_DUMP("content: %s (%sB)", buffer, buffer.size());
+
+        // Write the file.
+        output.write((char const*) buffer.contents(), buffer.size());
+        output.flush();
+
+        if (!output.good())
+          throw elle::Exception("writing left the stream in a bad state");
+        {
+          this->_snapshot->increment_progress(index, buffer.size());
+          elle::serialize::to_file(this->_snapshot_path.string()) << *this->_snapshot;
+          source.set_progress(this->_snapshot->progress());
+          // this->_progress_changed.signal();
+        }
+        ELLE_DEBUG("%s: %s (size: %s)",
+          index, full_path, boost::filesystem::file_size(full_path));
+        // XXX: Shouldn't be an assert, the user can rm the file. The
+        // transaction should fail but not create an assertion error.
+        ELLE_ASSERT_EQ(boost::filesystem::file_size(full_path),
+          tr.progress());
+        if (buffer.size() < unsigned(chunk_size))
+        {
+          output.close();
+          ELLE_TRACE("finished %s: %s", index, *this->_snapshot);
+          break;
+        }
       }
     }
 

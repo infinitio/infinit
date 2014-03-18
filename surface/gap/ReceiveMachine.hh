@@ -12,6 +12,8 @@
 # include <reactor/waitable.hh>
 # include <reactor/signal.hh>
 
+# include <frete/TransferSnapshot.hh>
+
 # include <surface/gap/State.hh>
 # include <surface/gap/TransactionMachine.hh>
 # include <surface/gap/TransferBufferer.hh>
@@ -121,6 +123,14 @@ namespace surface
            bool strong_encryption,
            std::string const& name_policy);
 
+      template <typename Source>
+      void
+      _finish_transfer(Source& source,
+                       unsigned int index,
+                       frete::TransferSnapshot::TransferProgressInfo& tr,
+                       int chunk_size,
+                       const boost::filesystem::path& full_path,
+                       bool strong_encryption);
     /*--------------.
     | Static Method |
     `--------------*/
