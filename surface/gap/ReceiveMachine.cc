@@ -10,6 +10,8 @@
 #include <reactor/thread.hh>
 #include <reactor/Channel.hh>
 
+#include <papier/Identity.hh>
+
 #include <station/Station.hh>
 
 #include <frete/Frete.hh>

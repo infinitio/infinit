@@ -15,8 +15,7 @@
 # include <reactor/scheduler.hh>
 # include <reactor/thread.hh>
 
-# include <papier/Identity.hh>
-# include <papier/Passport.hh>
+# include <papier/fwd.hh>
 
 # include <common/common.hh>
 

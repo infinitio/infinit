@@ -8,8 +8,6 @@
 # include <elle/fwd.hh>
 
 # include <cryptography/fwd.hh>
-# include <cryptography/KeyPair.hh>
-# include <cryptography/Signature.hh>
 
 # include <papier/Authority.hh>
 

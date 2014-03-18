@@ -272,7 +272,7 @@ extern "C"
       else
         ret = gap_internal_error;
     }
-    catch (oracles::meta::Exception const& err)
+    catch (infinit::oracles::meta::Exception const& err)
     {
       ELLE_ERR("poll error: %s", err.what());
       ret = (gap_Status) err.err;

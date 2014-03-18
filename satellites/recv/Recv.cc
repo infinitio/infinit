@@ -1,3 +1,4 @@
+#include <iostream>
 #include <stdexcept>
 
 #include <boost/program_options.hpp>
@@ -7,7 +8,6 @@
 #include <elle/log.hh>
 
 #include <reactor/scheduler.hh>
-#include <reactor/sleep.hh>
 
 #include <CrashReporter.hh>
 #include <surface/gap/State.hh>

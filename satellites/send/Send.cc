@@ -3,9 +3,9 @@
 
 #include <boost/program_options.hpp>
 
-#include <reactor/scheduler.hh>
-#include <reactor/sleep.hh>
 #include <elle/Exception.hh>
+
+#include <reactor/scheduler.hh>
 
 #include <CrashReporter.hh>
 

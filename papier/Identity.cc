@@ -4,6 +4,7 @@
 #include <cryptography/KeyPair.hh>
 #include <cryptography/Code.hh>
 #include <cryptography/SecretKey.hh>
+#include <cryptography/Signature.hh>
 
 #include <papier/Authority.hh>
 

@@ -22,6 +22,7 @@
 #include <common/common.hh>
 
 #include <papier/Identity.hh>
+#include <papier/Passport.hh>
 
 #include <infinit/metrics/reporters/GoogleReporter.hh>
 #include <infinit/metrics/reporters/InfinitReporter.hh>
