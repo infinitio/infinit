@@ -524,8 +524,8 @@ namespace surface
                                      bool strong_encryption)
     {
       boost::filesystem::create_directories(full_path.parent_path());
-        boost::filesystem::ofstream output{full_path,
-            std::ios::app | std::ios::binary};
+      boost::filesystem::ofstream output{full_path,
+        std::ios::app | std::ios::binary};
 
       auto key = strong_encryption ?
         infinit::cryptography::SecretKey(
@@ -542,6 +542,7 @@ namespace surface
       typedef std::pair<elle::Buffer, size_t> IndexedBuffer;
       reactor::Channel<IndexedBuffer> buffers;
       size_t start_position = tr.progress();
+      size_t full_size = tr.file_size();
 
       elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
@@ -585,35 +586,62 @@ namespace surface
             ELLE_DEBUG("%s: %s (size: %s)",
             index, full_path, boost::filesystem::file_size(full_path));
 
-            if (buffer.size() < chunk_size)
+            if (buffer.size() < chunk_size || tr.progress() >= full_size)
             {
-              output.close();
+              if (tr.progress() != full_size)
+              {
+                ELLE_ERR("End of transfer with unexpected size, got %s, expected %s",
+                         tr.progress(), full_size);
+                throw elle::Exception("Transfer size mismatch");
+              }
               ELLE_TRACE("finished %s: %s", index, *this->_snapshot);
               break; // breaks the while true
             }
           } // while true
           ELLE_DUMP("writer exiting cleanly");
         });
-        scope.run_background("receive reader", [&]()
+
+        // Have multiple reader threads, sharing read position
+        // so we push stuff in order to buffers (we are assuming a
+        // synchronous singlethreaded RPC handler at the other end)
+        static int num_reader = 2;
+        static std::once_flag once_nr;
+        std::call_once(once_nr, [&]()
           {
-            size_t current_position = start_position;
-            while (true)
-            {
-              ELLE_DUMP("Reading buffer at %s", current_position);
-              elle::Buffer buffer{
-                key.decrypt<elle::Buffer>(
-                  strong_encryption ?
-                  source.encrypted_read(index, current_position, chunk_size) :
-                  source.read(index, current_position, chunk_size))};
-              ELLE_DUMP("Got buffer %s %s", current_position, buffer.size());
-              bool short_read = buffer.size() < chunk_size;
-              buffers.put(std::make_pair(std::move(buffer), current_position));
-              current_position += chunk_size;
-              if (short_read)
-                break;
-            }
-            ELLE_DUMP("reader exiting cleanly");
+            std::string nr = elle::os::getenv("INFINIT_NUM_READER_THREAD", "");
+            if (!nr.empty())
+              num_reader = boost::lexical_cast<int>(nr);
           });
+        // shared position of next block to read
+        size_t current_position = start_position;
+        auto reader = [&](int id)
+        {
+          while (true)
+          {
+            ELLE_DUMP("Reading buffer at %s", current_position);
+            size_t next_read = current_position;
+            current_position += chunk_size;
+            if (next_read >= full_size)
+            {
+              ELLE_DUMP("Thread %s would read past end", id);
+              break;
+            }
+            elle::Buffer buffer{
+              key.decrypt<elle::Buffer>(
+                strong_encryption ?
+                source.encrypted_read(index, next_read, chunk_size) :
+                source.read(index, next_read , chunk_size))};
+            ELLE_DUMP("Got buffer %s %s", next_read, buffer.size());
+            bool short_read = buffer.size() < chunk_size;
+            buffers.put(std::make_pair(std::move(buffer), next_read));
+            if (short_read)
+              break;
+          }
+          ELLE_DUMP("reader %s exiting cleanly", id);
+        };
+        for (unsigned i = 0; i < num_reader; ++i)
+          scope.run_background(elle::sprintf("transfer reader %s", i),
+                               std::bind(reader, i));
         scope.wait();
         ELLE_TRACE("finish_transfer exited cleanly");
       }; // scope
