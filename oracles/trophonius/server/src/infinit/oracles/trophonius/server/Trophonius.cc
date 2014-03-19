@@ -56,7 +56,6 @@ namespace infinit
           _accepter_tcp(nullptr),
           _meta_fatal(meta_fatal),
           _meta_accepter(
-            *reactor::Scheduler::scheduler(),
             elle::sprintf("%s meta accepter", *this),
             std::bind(&Trophonius::_serve_notifier, std::ref(*this))),
           _uuid(boost::uuids::random_generator()()),
