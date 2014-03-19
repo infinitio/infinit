@@ -373,8 +373,8 @@ namespace surface
     float
     ReceiveMachine::progress() const
     {
-      if (this->_snapshot != nullptr)
-        return this->_snapshot->progress();
+      if (auto& snapshot = this->_snapshot)
+        return float(snapshot->progress()) / snapshot->total_size();
       return 0.0f;
     }
 
