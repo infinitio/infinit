@@ -4,11 +4,13 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/signal_set.hpp>
+#include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/system/error_code.hpp>
 
 #include <elle/json/json.hh>
 #include <elle/format/base64.hh>
+#include <elle/format/gzip.hh>
 #include <elle/log.hh>
 #include <elle/os/environ.hh>
 #include <elle/os/path.hh>
@@ -221,14 +223,13 @@ namespace elle
 
   namespace crash
   {
-#ifndef INFINIT_WINDOWS
     void
     static
     _send_report(std::string const& url,
                  std::string const& user_name,
                  std::string const& os_description,
                  std::string const& message,
-                 std::string const& file)
+                 std::string file)
     {
       std::vector<boost::any> env_arr;
 
@@ -242,7 +243,6 @@ namespace elle
           env_arr.push_back(line);
         }
       }
-
       elle::json::Object json_dict;
 
       json_dict["user_name"] = user_name;
@@ -261,34 +261,56 @@ namespace elle
 # endif
       reactor::http::Request::Configuration conf{
         reactor::DurationOpt(300_sec),
-        reactor::http::Version(reactor::http::Version::v10)};
+          reactor::http::Version(reactor::http::Version::v10)};
 
       reactor::Scheduler sched;
-      reactor::Thread thread(sched, "upload report", [&]
-      {
-        try
+      reactor::Thread thread(
+        sched, "upload report",
+        [&]
         {
-          reactor::http::Request request(
-            url,
-            reactor::http::Method::POST,
-            "application/json",
-            conf);
-          elle::json::write(request, json_dict);
-          request.wait();
-          if (request.status() != reactor::http::StatusCode::OK)
+          try
           {
-            ELLE_ERR("error while posting report to %s: (%s) %s",
-                     url, request.status(), request.response().string());
+            reactor::http::Request request(
+              url,
+              reactor::http::Method::POST,
+              "application/json",
+              conf);
+            elle::json::write(request, json_dict);
+            request.wait();
+            if (request.status() != reactor::http::StatusCode::OK)
+            {
+              ELLE_ERR("error while posting report to %s: (%s) %s",
+                       url, request.status(), request.response().string());
+            }
           }
-        }
-        catch (...)
-        {
-          ELLE_ERR("unable to post report to %s", url);
-        }
-      });
+          catch (...)
+          {
+            ELLE_ERR("unable to post report to %s", url);
+          }
+        });
       sched.run();
     }
+
+  static
+  std::string
+  _to_base64(boost::filesystem::path const& source)
+  {
+    std::stringstream base64;
+    // Scope to flush Stream(s).
+    {
+#ifndef INFINIT_WINDOWS
+      elle::format::base64::Stream encoder(base64);
+#else
+      elle::format::base64::Stream base64encoder(base64);
+      elle::format::gzip::Stream encoder(base64encoder, true);
 #endif
+      boost::filesystem::ifstream source_stream(source, std::ios::binary);
+      std::copy(std::istreambuf_iterator<char>(source_stream),
+                std::istreambuf_iterator<char>(),
+                std::ostreambuf_iterator<char>(encoder));
+    }
+    return base64.str();
+  }
 
 #ifndef INFINIT_WINDOWS
   static
@@ -299,61 +321,71 @@ namespace elle
     elle::system::Process tar{"tar", args};
     tar.wait();
 
-    std::stringstream base64;
-
-    {
-      elle::format::base64::Stream encoder(base64);
-      std::ifstream archive(archive_path.string());
-
-      std::copy(std::istreambuf_iterator<char>(archive),
-                std::istreambuf_iterator<char>(),
-                std::ostreambuf_iterator<char>(encoder));
-    }
-    return base64.str();
+    return _to_base64(archive_path);
   }
 #endif
 
-    void
-    existing_report(std::string const& protocol,
-                    std::string const& host,
-                    uint16_t port,
-                    std::vector<std::string> const& files,
-                    std::string const& user_name,
-                    std::string const& os_description,
-                    std::string const& info)
-    {
+  void
+  existing_report(std::string const& protocol,
+                  std::string const& host,
+                  uint16_t port,
+                  std::vector<std::string> const& files,
+                  std::string const& user_name,
+                  std::string const& os_description,
+                  std::string const& info)
+  {
+    ELLE_TRACE("report last crash");
+    std::string url = elle::sprintf("%s://%s:%d/debug/report/backtrace",
+                                    protocol,
+                                    host,
+                                    port);
+
 #ifndef INFINIT_WINDOWS
-      ELLE_TRACE("report last crash");
+    boost::filesystem::path destination{"/tmp/infinit-crash-archive"};
 
-      boost::filesystem::path destination{"/tmp/infinit-crash-archive"};
+    std::list<std::string> args{"cjf", destination.string()};
 
-      std::list<std::string> args{"cjf", destination.string()};
-
-      for (auto path_str: files)
+    for (auto path_str: files)
+    {
+      boost::filesystem::path path(path_str);
+      if (boost::filesystem::exists(path))
       {
-        boost::filesystem::path path(path_str);
-        if (boost::filesystem::exists(path))
-        {
-          args.push_back("-C");
-          args.push_back(path.parent_path().string());
-          args.push_back(path.filename().string());
-        }
+        args.push_back("-C");
+        args.push_back(path.parent_path().string());
+        args.push_back(path.filename().string());
       }
-      std::string url = elle::sprintf("%s://%s:%d/debug/report/backtrace",
-                                      protocol,
-                                      host,
-                                      port);
-
-      _send_report(url, user_name, os_description, "",
-                   _to_base64(destination, args));
-#endif
     }
+
+    _send_report(
+      url, user_name, os_description, "", _to_base64(destination, args));
+#else
+    auto path_str = files[0];
+    if (files.size() > 1)
+      ELLE_WARN("CrashReporter: only 1 file (%s) can be sent from windows",
+                path_str);
+    boost::filesystem::path path(path_str);
+    if (!boost::filesystem::exists(path))
+    {
+      ELLE_ERR("CrashReporter: file to report (%s) doesn't exist", path_str);
+      return;
+    }
+    _send_report(url, user_name, os_description, "", _to_base64(path));
+#endif
+  }
 
     void
     transfer_failed_report(std::string const& user_name)
     {
 #ifndef INFINIT_WINDOWS
       ELLE_TRACE("transaction failed report");
+      std::string protocol{common::meta::protocol()};
+      std::string host{common::meta::host()};
+      uint16_t port = common::meta::port();
+      std::string os_description{common::system::platform()};
+      std::string url = elle::sprintf("%s://%s:%s/debug/report/transaction",
+                                      protocol,
+                                      host,
+                                      port);
 
       boost::filesystem::path destination{"/tmp/infinit-report-transaction"};
       boost::filesystem::path infinit_home_path(common::infinit::home());
@@ -366,14 +398,6 @@ namespace elle
         args.push_back(infinit_home_path.filename().string());
       }
 
-      std::string os_description{common::system::platform()};
-      std::string protocol{common::meta::protocol()};
-      std::string host{common::meta::host()};
-      uint16_t port = common::meta::port();
-      std::string url = elle::sprintf("%s://%s:%s/debug/report/transaction",
-                                      protocol,
-                                      host,
-                                      port);
       _send_report(url, user_name, os_description, "",
                    _to_base64(destination, args));
 #endif
@@ -388,6 +412,10 @@ namespace elle
                 std::string const& message,
                 std::string const& user_file)
     {
+      std::string url = elle::sprintf("%s://%s:%s/debug/report/user",
+                                      protocol,
+                                      host,
+                                      port);
 #ifndef INFINIT_WINDOWS
       ELLE_TRACE("user report");
 
@@ -406,13 +434,20 @@ namespace elle
         }
       }
 
-      std::string url = elle::sprintf("%s://%s:%s/debug/report/user",
-                                      protocol,
-                                      host,
-                                      port);
-
       _send_report(url, user_name, os_description, message,
                    _to_base64(destination, args));
+#else
+      boost::filesystem::path to_send(user_file);
+      if (boost::filesystem::exists(to_send) &&
+          !boost::filesystem::is_directory(to_send))
+      {
+        _send_report(url, user_name, os_description, "",
+                     _to_base64(to_send));
+      }
+      else
+      {
+        ELLE_ERR("CrashReporter: file doesn't exist or is a directory");
+      }
 #endif
     }
   }
