@@ -47,7 +47,7 @@ options, args = parser.parse_args()
 
 app = infinit.oracles.meta.server.Meta(force_admin = options.force_admin,
                                        enable_emails = options.enable_emails,
-                                       mongo_port = options.mongo_port)
+                                       mongo_port = int(options.mongo_port))
 
 app.port = 0
 
