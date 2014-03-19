@@ -122,8 +122,6 @@ using infinit::oracles::meta::SelfResponse;
 using infinit::oracles::meta::InviteUserResponse;
 using infinit::oracles::meta::UsersResponse;
 using infinit::oracles::meta::SwaggersResponse;
-using infinit::oracles::meta::TransactionsResponse;
-using infinit::oracles::meta::TransactionResponse;
 using infinit::oracles::meta::CreateTransactionResponse;
 using infinit::oracles::meta::UpdateTransactionResponse;
 using infinit::oracles::meta::EndpointNodeResponse;
@@ -237,7 +235,6 @@ void export_meta_client()
   // py::class_<TransactionsResponse, py::bases<Response>>("TransactionsResponse")
   //   .def_readonly("transactions", &TransactionsResponse::transactions)
   // ;
-  py::class_<TransactionResponse, py::bases<Response, Transaction>>("TransactionResponse");
   py::class_<CreateTransactionResponse, py::bases<Response>>("CreateTransactionResponse")
     .def_readonly("created_transaction_id", &CreateTransactionResponse::created_transaction_id)
     .def_readonly("remaining_invitations", &CreateTransactionResponse::remaining_invitations)
