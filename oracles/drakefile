@@ -36,8 +36,9 @@ def configure(elle,
   python = drake.nodes(
     'src/infinit/__init__.py',
     'src/infinit/oracles/__init__.py',
-    'src/infinit/oracles/transaction.py',
     'src/infinit/oracles/notification.py',
+    'src/infinit/oracles/servers.py',
+    'src/infinit/oracles/transaction.py',
   )
   python_built = drake.copy(python, 'lib/python', 'src')
 
@@ -57,6 +58,9 @@ def configure(elle,
     Library = drake.cxx.StaticLib
   else:
     Library = drake.cxx.DynLib
+
+  servers = drake.nodes('src/infinit/oracles/fist-servers')
+  build << drake.copy(servers, 'bin', strip_prefix = True)
 
   lib = Library('lib/transaction',
                 sources + [elle_lib],
@@ -102,5 +106,23 @@ def configure(elle,
   for name in ('build', 'check', 'install'):
     for oracle in [meta, trophonius, apertus]:
       globals()[name] << getattr(oracle, name)
+
   build << lib
   build << python_built
+
+  build << drake.copy(trophonius.server.python, '.',
+                      strip_prefix='trophonius/server')
+  build << drake.copy(apertus.server.python, '.',
+                      strip_prefix='apertus/server')
+  build << drake.copy(meta.server.python, '.',
+                      strip_prefix = 'meta/server')
+  build << drake.copy(elle.reactor.python_lib, 'lib/python',
+                      strip_prefix = True)
+  mongobox = drake.nodes(
+    'mongobox/mongobox/__init__.py',
+    'mongobox/mongobox/mongobox.py',
+    'mongobox/mongobox/utils.py',
+    'mongobox/mongobox/nose_plugin.py',
+  )
+  build << drake.copy(mongobox, 'lib/python',
+                      strip_prefix='mongobox')

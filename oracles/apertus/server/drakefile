@@ -172,4 +172,8 @@ def configure(elle,
     build << drake.touch('lib/python/infinit/__init__.py')
     build << drake.touch('lib/python/infinit/oracles/__init__.py')
     drake.Rule('python') << python_lib
-    python = [python_lib]
+    python = [
+      python_lib,
+      drake.touch('lib/python/infinit/oracles/apertus/__init__.py'),
+    ]
+    build << python

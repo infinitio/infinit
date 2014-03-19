@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 import infinit.oracles.trophonius.server
 import infinit.oracles.apertus.server
 import infinit.oracles.meta.server
@@ -93,3 +91,7 @@ class Oracles:
     #self._trophonius.wait()
     self._meta.stop()
     self._mongo.__exit__(*args, **kwargs)
+
+  @property
+  def mongo(self):
+    return self._mongo

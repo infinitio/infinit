@@ -722,30 +722,17 @@ def configure(cxx_toolkit = None,
     gap_build << infinit_cli_copy
     python_build << gap_python_lib
 
-    python_merge = []
-    python_merge += drake.copy(oracles.trophonius.server.python, '.', strip_prefix='oracles/trophonius/server')
-    python_merge += drake.copy(oracles.apertus.server.python, '.', strip_prefix='oracles/apertus/server')
-    python_merge += drake.copy(oracles.meta.server.python, '.', strip_prefix = 'oracles/meta/server')
-    python_merge.append(drake.copy(elle.reactor.python_lib, '.', strip_prefix = 'elle/reactor'))
-    drake.Rule('python') << python_merge
-    python_env = dict(PYTHONPATH = 'lib/python')
-    # Top-level tests
-    mongobox = drake.nodes(
-      'oracles/mongobox/mongobox/__init__.py',
-      'oracles/mongobox/mongobox/mongobox.py',
-      'oracles/mongobox/mongobox/utils.py',
-      'oracles/mongobox/mongobox/nose_plugin.py',
-    )
-    python_merge += drake.copy(mongobox, 'lib/python', strip_prefix='oracles/mongobox')
 
-    functional_check = drake.Rule('/functional/check')
-    functional_test_lib = drake.nodes(
-      'tests/test/__init__.py'
-    )
-    for name in ['basic.py']:
-      test_node = drake.Node('tests/%s' % name)
-      test_node.dependencies_add(python_merge)
-      test_node.dependencies_add(functional_test_lib)
-      runner = drake.Runner(exe = test_node, env = python_env)
-      check << runner.status
-      functional_check << runner.status
+    # # Top-level tests
+    # python_env = dict(PYTHONPATH = 'oracles/lib/python')
+    # functional_check = drake.Rule('/functional/check')
+    # functional_test_lib = drake.nodes(
+    #   'tests/test/__init__.py'
+    # )
+    # for name in ['basic.py']:
+    #   test_node = drake.Node('tests/%s' % name)
+    #   test_node.dependencies_add(python_merge)
+    #   test_node.dependencies_add(functional_test_lib)
+    #   runner = drake.Runner(exe = test_node, env = python_env)
+    #   check << runner.status
+    #   functional_check << runner.status
