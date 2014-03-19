@@ -4,6 +4,7 @@ import datetime
 import decorator
 import inspect
 import iso8601
+import json
 import uuid
 
 from . import error
@@ -71,3 +72,9 @@ def hash_pasword(password):
   seasoned = password + conf.SALT
   seasoned = seasoned.encode('utf-8')
   return hashlib.md5(seasoned).hexdigest()
+
+def json_value(s):
+  return json.loads(utf8_string(s))
+
+def utf8_string(s):
+  return s.encode('latin-1').decode('utf-8')
