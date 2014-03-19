@@ -13,6 +13,8 @@ import uuid
 import re
 from pymongo import ASCENDING, DESCENDING
 
+from infinit.oracles.meta.server.utils import json_value
+
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Transaction'
 
 class Mixin:
@@ -234,31 +236,52 @@ class Mixin:
 
   @api('/transactions')
   @require_logged_in
-  def transcations_get(self,
-                       filter = transaction_status.final + [transaction_status.CREATED],
-                       type = False,
-                       peer_id = None,
-                       count = 100,
-                       offset = 0):
-    return self._transactions(filter = filter,
-                              type = type,
-                              peer_id = peer_id,
-                              count = count,
-                              offset = offset)
+  def transcations(self,
+                   filter : json_value = transaction_status.final + [transaction_status.CREATED],
+                   negate : bool = False,
+                   peer_id : bson.ObjectId = None,
+                   count : int = 100,
+                   offset : int = 0,
+                 ):
+    print(filter, negate, count, offset)
+    user_id = self.user['_id']
+    if peer_id is not None:
+      query = {
+        '$or':
+        [
+          { 'recipient_id': user_id, 'sender_id': peer_id, },
+          { 'sender_id': user_id, 'recipient_id': peer_id, },
+        ]}
+    else:
+      query = {
+        '$or':
+        [
+          { 'sender_id': user_id },
+          { 'recipient_id': user_id },
+        ]
+      }
+    query['status'] = {'$%s' % (negate and 'in' or 'nin'): filter}
+    res = self.database.transactions.aggregate([
+      {'$match': query},
+      {'$sort': {'mtime': -1}},
+      {'$skip': offset},
+      {'$limit': count},
+    ])['result']
+    return {'transactions': res}
 
-  @api('/transactions', method = 'POST')
-  @require_logged_in
-  def transaction_post(self,
-                       filter = transaction_status.final + [transaction_status.CREATED],
-                       type = False,
-                       peer_id = None,
-                       count = 100,
-                       offset = 0):
-    return self._transactions(filter = filter,
-                              peer_id = peer_id,
-                              type = type,
-                              count = count,
-                              offset = offset)
+  # @api('/transactions', method = 'POST')
+  # @require_logged_in
+  # def transaction_post(self,
+  #                      filter = transaction_status.final + [transaction_status.CREATED],
+  #                      type = False,
+  #                      peer_id = None,
+  #                      count = 100,
+  #                      offset = 0):
+  #   return self._transactions(filter = filter,
+  #                             peer_id = peer_id,
+  #                             type = type,
+  #                             count = count,
+  #                             offset = offset)
 
   def on_accept(self, transaction, device_id, device_name):
     with elle.log.trace("accept transaction as %s" % device_id):
