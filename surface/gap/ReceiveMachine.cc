@@ -606,7 +606,10 @@ namespace surface
         // Have multiple reader threads, sharing read position
         // so we push stuff in order to buffers (we are assuming a
         // synchronous singlethreaded RPC handler at the other end)
-        static int num_reader = 2;
+        // The idea is to absorb 'gaps' in link availability.
+        // Counting 256k packet size and 10Mo/s, two pending requests
+        // 'buffers' for 1/20th of a second
+        static int num_reader = 8;
         static std::once_flag once_nr;
         std::call_once(once_nr, [&]()
           {
