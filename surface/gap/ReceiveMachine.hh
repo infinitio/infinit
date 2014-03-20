@@ -121,7 +121,8 @@ namespace surface
       void
       _get(Source& source,
            bool strong_encryption,
-           std::string const& name_policy);
+           std::string const& name_policy,
+           elle::Version const& peer_version);
 
       template <typename Source>
       void
@@ -130,7 +131,8 @@ namespace surface
                        frete::TransferSnapshot::TransferProgressInfo& tr,
                        int chunk_size,
                        const boost::filesystem::path& full_path,
-                       bool strong_encryption);
+                       bool strong_encryption,
+                       elle::Version const& peer_version);
     /*--------------.
     | Static Method |
     `--------------*/

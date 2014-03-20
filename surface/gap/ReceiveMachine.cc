@@ -20,6 +20,10 @@
 #include <surface/gap/ReceiveMachine.hh>
 #include <surface/gap/Rounds.hh>
 
+
+#include <version.hh>
+
+
 ELLE_LOG_COMPONENT("surface.gap.ReceiveMachine");
 
 namespace surface
@@ -392,7 +396,7 @@ namespace surface
         strong_encryption = false;
       }
       return this->_get<frete::RPCFrete>(
-        frete, strong_encryption, name_policy);
+        frete, strong_encryption, name_policy, peer_version);
     }
 
     void
@@ -400,14 +404,19 @@ namespace surface
                         std::string const& name_policy)
     {
       return this->_get<TransferBufferer>(
-        frete, true, name_policy);
+        frete, true, name_policy,
+        elle::Version(INFINIT_VERSION_MAJOR,
+                      INFINIT_VERSION_MINOR,
+                      INFINIT_VERSION_SUBMINOR));
     }
 
     template <typename Source>
     void
     ReceiveMachine::_get(Source& source,
                          bool strong_encryption,
-                         std::string const& name_policy)
+                         std::string const& name_policy,
+                         elle::Version const& peer_version
+                         )
     {
       boost::filesystem::path output_path(this->state().output_dir());
       auto count = source.count();
@@ -498,12 +507,15 @@ namespace surface
           continue;
         }
 
-        _finish_transfer(source, index, tr, chunk_size, fullpath, strong_encryption);
+        _finish_transfer(source, index, tr, chunk_size, fullpath, strong_encryption, peer_version);
       }
 
       // this->finished.open();
       this->_finish();
-      source.finish();
+      if (peer_version >= elle::Version(0, 8, 7))
+      {
+        source.finish();
+      }
 
       try
       {
@@ -523,7 +535,8 @@ namespace surface
                                      frete::TransferSnapshot::TransferProgressInfo& tr ,
                                      int chunk_size,
                                      const boost::filesystem::path& full_path,
-                                     bool strong_encryption)
+                                     bool strong_encryption,
+                                     elle::Version const & peer_version)
     {
       boost::filesystem::create_directories(full_path.parent_path());
       boost::filesystem::ofstream output{full_path,
@@ -582,11 +595,14 @@ namespace surface
             // Write the file.
             output.write((char const*) buffer.contents(), buffer.size());
             output.flush();
-
             this->_snapshot->increment_progress(index, buffer.size());
+            if (peer_version < elle::Version(0, 8, 7))
+            { // OLD clients need this RPC to update progress
+              source.set_progress(this->_snapshot->progress());
+            }
             elle::serialize::to_file(this->_snapshot_path.string()) << *this->_snapshot;
             ELLE_DEBUG("%s: %s (size: %s)",
-            index, full_path, boost::filesystem::file_size(full_path));
+              index, full_path, boost::filesystem::file_size(full_path));
 
             if (buffer.size() < chunk_size || tr.progress() >= full_size)
             {
