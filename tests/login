@@ -2,9 +2,9 @@
 
 import infinit.oracles.servers
 import os
+import state
 import utils
 from utils import expect_raise
-
 
 def main():
   with infinit.oracles.servers.Oracles(
