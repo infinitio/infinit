@@ -96,3 +96,9 @@ class Oracles:
   @property
   def mongo(self):
     return self._mongo
+
+  def state(self):
+    import state
+    meta_proto, meta_host, meta_port = self.meta
+    tropho_proto, tropho_host, tropho_port_plain, tropho_port_ssl = self.trophonius
+    return state.State(meta_proto, meta_host, meta_port, tropho_host, tropho_port_ssl)
