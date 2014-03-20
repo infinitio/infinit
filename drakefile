@@ -723,12 +723,16 @@ def configure(cxx_toolkit = None,
     python_build << gap_python_lib
 
     # Top-level tests
-    python_env = dict(PYTHONPATH = 'oracles/lib/python:lib/python')
+    python_env = {
+      'PYTHONPATH': 'oracles/lib/python:lib/python',
+      'DUMPS': str(drake.path_source('tests/dumps')),
+    }
     functional_check = drake.Rule('functional/check')
     functional_test_lib = drake.nodes(
     )
     for name in [
         'basic.py',
+        'login',
     ]:
       test_node = drake.Node('tests/%s' % name)
       test_node.dependencies_add(oracles.oracles)
