@@ -20,7 +20,7 @@ parser = optparse.OptionParser(usage = usage)
 parser.add_option('--mongorestore',
                   action = 'store',
                   help = 'The database snapshot to load',
-                  default = False)
+                  default = None)
 options, args = parser.parse_args()
 
 def main():
