@@ -722,17 +722,17 @@ def configure(cxx_toolkit = None,
     gap_build << infinit_cli_copy
     python_build << gap_python_lib
 
-
-    # # Top-level tests
-    # python_env = dict(PYTHONPATH = 'oracles/lib/python')
-    # functional_check = drake.Rule('/functional/check')
-    # functional_test_lib = drake.nodes(
-    #   'tests/test/__init__.py'
-    # )
-    # for name in ['basic.py']:
-    #   test_node = drake.Node('tests/%s' % name)
-    #   test_node.dependencies_add(python_merge)
-    #   test_node.dependencies_add(functional_test_lib)
-    #   runner = drake.Runner(exe = test_node, env = python_env)
-    #   check << runner.status
-    #   functional_check << runner.status
+    # Top-level tests
+    python_env = dict(PYTHONPATH = 'oracles/lib/python')
+    functional_check = drake.Rule('functional/check')
+    functional_test_lib = drake.nodes(
+    )
+    for name in [
+        'basic.py',
+    ]:
+      test_node = drake.Node('tests/%s' % name)
+      test_node.dependencies_add(oracles.oracles)
+      test_node.dependencies_add(functional_test_lib)
+      runner = drake.Runner(exe = test_node, env = python_env)
+      check << runner.status
+      functional_check << runner.status

@@ -9,6 +9,7 @@ build = None
 check = None
 install = None
 
+oracles = None
 
 def configure(elle,
               papier_python,
@@ -19,7 +20,7 @@ def configure(elle,
               cxx_config = None,
               valgrind = None):
 
-  global meta, trophonius, apertus
+  global meta, trophonius, apertus, oracles
   global build, check, install
 
   for name in ('build', 'check', 'install'):
@@ -110,19 +111,22 @@ def configure(elle,
   build << lib
   build << python_built
 
-  build << drake.copy(trophonius.server.python, '.',
+  oracles = []
+
+  oracles += drake.copy(trophonius.server.python, '.',
                       strip_prefix='trophonius/server')
-  build << drake.copy(apertus.server.python, '.',
+  oracles += drake.copy(apertus.server.python, '.',
                       strip_prefix='apertus/server')
-  build << drake.copy(meta.server.python, '.',
+  oracles += drake.copy(meta.server.python, '.',
                       strip_prefix = 'meta/server')
-  build << drake.copy(elle.reactor.python_lib, 'lib/python',
-                      strip_prefix = True)
+  oracles.append(drake.copy(elle.reactor.python_lib, 'lib/python',
+                            strip_prefix = True))
   mongobox = drake.nodes(
     'mongobox/mongobox/__init__.py',
     'mongobox/mongobox/mongobox.py',
     'mongobox/mongobox/utils.py',
     'mongobox/mongobox/nose_plugin.py',
   )
-  build << drake.copy(mongobox, 'lib/python',
-                      strip_prefix='mongobox')
+  oracles += drake.copy(mongobox, 'lib/python',
+                        strip_prefix='mongobox')
+  build << oracles
