@@ -1,6 +1,6 @@
 #include <boost/python.hpp>
 
-#include <elle/python/bindings.cc>
+#include <elle/python/datetime-converter.hh>
 
 #include <infinit/oracles/trophonius/server/Trophonius.hh>
 
@@ -9,6 +9,10 @@ extern "C"
 {
   PyObject* PyInit_server();
 }
+
+elle::PluginLoad load_python_bindings(
+  elle::python::datetime_converter
+  );
 
 static void wait_wrap(infinit::oracles::trophonius::server::Trophonius* t)
 {

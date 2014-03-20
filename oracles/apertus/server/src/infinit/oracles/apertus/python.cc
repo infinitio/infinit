@@ -1,8 +1,6 @@
 #include <boost/python.hpp>
 
-#include <datetime.h> // This is the Python include
-
-#include <elle/python/bindings.cc>
+#include <elle/python/datetime-converter.hh>
 
 #include <infinit/oracles/apertus/Apertus.hh>
 
@@ -11,6 +9,10 @@ extern "C"
 {
   PyObject* PyInit_server();
 }
+
+elle::PluginLoad load_python_bindings(
+  elle::python::datetime_converter
+  );
 
 BOOST_PYTHON_MODULE(server)
 {

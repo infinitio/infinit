@@ -163,9 +163,11 @@ def configure(elle,
     python_cxx_config.lib_path_runtime('../../../..')
     python_cxx_config += python3
     python_cxx_config += boost.config_python()
+    datetime = drake.copy(elle.elle.python_plugin_datetime,
+                          'lib', True)
     python_lib = drake.cxx.Module(
       'lib/python/infinit/oracles/apertus/server',
-      python_sources + [library],
+      python_sources + [library, datetime],
       cxx_toolkit, python_cxx_config)
     drake.Rule('python') << python_lib
     build << python_lib
