@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import datetime
+import threading
 
 SELF = os.path.realpath(__file__)
 PYTHONPATH = '%s/lib/python' % os.path.dirname(os.path.dirname(SELF))
@@ -23,7 +24,10 @@ parser.add_option('--mongorestore',
                   default = None)
 options, args = parser.parse_args()
 
+exit_request = False
+
 def main():
+  global exit_request
   with Oracles(mongo_dump = options.mongorestore) as oracles:
     meta_proto, meta_host, meta_port = oracles.meta
     environ = {}
@@ -39,9 +43,17 @@ def main():
     #   reactor.sleep(datetime.timedelta(seconds = 1))
     for key, value in environ.items():
       print('export %s=%s' % (key, value))
-    while True:
+    def wait_stdin_close():
+      global exit_request
+      while True:
+        d = sys.stdin.read(1)
+        if d is None or not len(d):
+          break
+      exit_request = True
+    t = threading.Thread(target = wait_stdin_close)
+    t.start()
+    while not exit_request:
       reactor.sleep(datetime.timedelta(seconds = 1))
-
 sched = reactor.Scheduler()
 reactor.Thread(sched, 'main', main)
 sched.run()
