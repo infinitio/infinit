@@ -43,16 +43,19 @@ struct user_from_python_dict
       data)->storage.bytes;
     new (storage) User;
     auto user = reinterpret_cast<User*>(storage);
-    user->id = PyUnicode_AsUTF8(PyDict_GetItemString(pydict, "id"));
-    user->fullname = PyUnicode_AsUTF8(PyDict_GetItemString(pydict, "fullname"));
-    user->handle = PyUnicode_AsUTF8(PyDict_GetItemString(pydict, "handle"));
-    user->public_key = PyUnicode_AsUTF8(PyDict_GetItemString(pydict,
-                                        "public_key"));
+    user->id =
+      PyUnicode_AS_DATA(PyDict_GetItemString(pydict, "id"));
+    user->fullname =
+      PyUnicode_AS_DATA(PyDict_GetItemString(pydict, "fullname"));
+    user->handle =
+      PyUnicode_AS_DATA(PyDict_GetItemString(pydict, "handle"));
+    user->public_key =
+      PyUnicode_AS_DATA(PyDict_GetItemString(pydict, "public_key"));
     auto device_list = PyDict_GetItemString(pydict, "connected_devices");
     std::vector<std::string> connected_devices;
     for (int i = 0; i < PyList_Size(device_list); i++)
     {
-      connected_devices.push_back(PyUnicode_AsUTF8(
+      connected_devices.push_back(PyUnicode_AS_DATA(
                                   PyList_GetItem(device_list, i)));
     }
     user->connected_devices = connected_devices;
