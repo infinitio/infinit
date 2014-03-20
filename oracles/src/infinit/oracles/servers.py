@@ -63,12 +63,13 @@ class MetaWrapperProcess:
 
 class Oracles:
 
-  def __init__(self, force_admin = False):
+  def __init__(self, force_admin = False, mongo_dump = None):
     self.__force_admin = force_admin
+    self.__mongo_dump = mongo_dump
 
   def __enter__(self):
     elle.log.trace('starting mongobox')
-    self._mongo = mongobox.MongoBox()
+    self._mongo = mongobox.MongoBox(dump_file = self.__mongo_dump)
     self._mongo.__enter__()
     elle.log.trace('starting meta')
     self._meta = MetaWrapperProcess(self.__force_admin, self._mongo.port)
