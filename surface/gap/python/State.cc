@@ -1,4 +1,5 @@
 #include <boost/python.hpp>
+#include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 
 #include <elle/assert.hh>
 
@@ -314,15 +315,38 @@ public:
         cb(dict);
       });
   }
+  std::vector<unsigned int>
+  wrap_swaggers()
+  {
+    auto sw = swaggers();
+    return std::vector<unsigned int>(sw.begin(), sw.end());
+  }
+  uint32_t
+  wrap_send_files(const std::string& peer,
+    std::vector<std::string> files,
+    const std::string& message)
+  {
+    std::unordered_set<std::string> sfiles(files.begin(), files.end());
+    return send_files(peer, std::move(sfiles), message);
+  }
 };
+
+
+
 
 BOOST_PYTHON_MODULE(state)
 {
   namespace py = boost::python;
   typedef
     py::return_value_policy<boost::python::copy_const_reference> by_const_ref;
+   typedef
+    py::return_value_policy<boost::python::return_by_value> by_value;
   bind_conversions();
   using surface::gap::State;
+  typedef infinit::oracles::meta::User User;
+  typedef infinit::oracles::Transaction Transaction;
+  boost::python::class_<std::vector<unsigned int>>("VectorInt")
+        .def(boost::python::vector_indexing_suite<std::vector<unsigned int>>() );
   boost::python::class_<PythonState, boost::noncopyable>
     ("State",
      boost::python::init<std::string const&,
@@ -333,7 +357,14 @@ BOOST_PYTHON_MODULE(state)
     .def("logged_in", &State::logged_in)
     .def("login", &State::login)
     .def("logout", &State::logout)
+    .def("invite", &State::invite)
     .def("users", &State::users, by_const_ref())
+    .def("swaggers", &PythonState::wrap_swaggers)
+    .def("swagger_from_name", (User (State::*)(const std::string&)) &State::swagger)
+    .def("swagger_from_id", (User (State::*) (uint32_t)) &State::swagger)
+    .def("device_status", &State::device_status)
+    .def("transactions", (const State::Transactions& (State::*)() const)&State::transactions, by_value())
+    .def("send_files", &PythonState::wrap_send_files)
     .def("transactions", static_cast<
       State::Transactions const& (State::*)() const>(&State::transactions),
          by_const_ref())
