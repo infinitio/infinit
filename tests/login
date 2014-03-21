@@ -4,15 +4,40 @@ import infinit.oracles.servers
 import os
 import state
 import utils
+import unittest
+
 from utils import expect_raise
 
-def main():
-  with infinit.oracles.servers.Oracles(
-      mongo_dump = '%s/one-user' % os.environ['DUMPS']) as o:
-    s = o.state()
-    expect_raise(lambda: s.login('mefyl@infinit.io', 'lol'))
-    expect_raise(lambda: s.login('mefyl@infinit.com', 'mefyl'))
-    s.login('mefyl@infinit.io',
-            state.hash_password('mefyl@infinit.io', 'mefyl'))
+class TestLogin(unittest.TestCase):
 
-utils.run(main)
+  def test_login(self):
+    with infinit.oracles.servers.Oracles(
+        mongo_dump = '%s/one-user' % os.environ['DUMPS']) as o:
+      s = o.state()
+      expect_raise(lambda: s.login('mefyl@infinit.io', 'lol'))
+      expect_raise(lambda: s.login('mefyl@infinit.com', 'mefyl'))
+      s.login('mefyl@infinit.io',
+              state.hash_password('mefyl@infinit.io', 'mefyl'))
+      self.assertTrue(s.logged_in())
+      users = s.users();
+      self.assertEqual(len(users), 1)
+      me = iter(users.values()).__next__()
+      self.assertEqual(me['fullname'], 'mefyl')
+      self.assertEqual(me['handle'], 'mefyl')
+
+  def test_login2(self):
+    with infinit.oracles.servers.Oracles(
+      mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
+      s1 = o.state()
+      s1.login('mefyl@infinit.io',
+              state.hash_password('mefyl@infinit.io', 'mefyl'))
+      s2 = o.state()
+      s2.login('mefyl2@infinit.io',
+              state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+      users1 = s1.users()
+      self.assertEqual(len(users1), 1)
+      self.assertEqual(len(s1.swaggers()), 0)
+      users2 = s2.users()
+      self.assertEqual(len(users2), 1)
+
+utils.run(unittest.main)
