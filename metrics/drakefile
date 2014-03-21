@@ -47,6 +47,8 @@ def configure(elle,
     'src/infinit/metrics/reporters/InfinitReporter.hh',
     'src/infinit/metrics/reporters/JSONReporter.cc',
     'src/infinit/metrics/reporters/JSONReporter.hh',
+    'src/infinit/metrics/reporters/KeenReporter.cc',
+    'src/infinit/metrics/reporters/KeenReporter.hh',
   )
 
   if cxx_toolkit.os == drake.os.windows:
