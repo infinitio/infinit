@@ -26,6 +26,7 @@
 
 #include <infinit/metrics/reporters/GoogleReporter.hh>
 #include <infinit/metrics/reporters/InfinitReporter.hh>
+#include <infinit/metrics/reporters/KeenReporter.hh>
 
 #include <surface/gap/ReceiveMachine.hh>
 #include <surface/gap/SendMachine.hh>
@@ -111,10 +112,10 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: create state", *this);
 
-      // Add metrics reporters to composite reporter
-      std::unique_ptr<infinit::metrics::Reporter> infinit_reporter(
-        new infinit::metrics::InfinitReporter());
-      this->_composite_reporter.add_reporter(std::move(infinit_reporter));
+      this->_composite_reporter.add_reporter(
+        elle::make_unique<infinit::metrics::InfinitReporter>());
+      this->_composite_reporter.add_reporter(
+        elle::make_unique<infinit::metrics::KeenReporter>());
       this->_composite_reporter.start();
     }
 
