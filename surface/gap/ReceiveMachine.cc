@@ -528,6 +528,18 @@ namespace surface
       }
     }
 
+    static
+    int
+    rpc_pipeline_size()
+    {
+      std::string nr = elle::os::getenv("INFINIT_NUM_READER_THREAD", "");
+      if (!nr.empty())
+        return boost::lexical_cast<int>(nr);
+      else
+        return 8;
+    }
+
+
     template<typename Source>
     void
     ReceiveMachine::_finish_transfer(Source& source,
@@ -625,14 +637,7 @@ namespace surface
         // The idea is to absorb 'gaps' in link availability.
         // Counting 256k packet size and 10Mo/s, two pending requests
         // 'buffers' for 1/20th of a second
-        static int num_reader = 8;
-        static std::once_flag once_nr;
-        std::call_once(once_nr, [&]()
-          {
-            std::string nr = elle::os::getenv("INFINIT_NUM_READER_THREAD", "");
-            if (!nr.empty())
-              num_reader = boost::lexical_cast<int>(nr);
-          });
+        static int num_reader = rpc_pipeline_size();
         // shared position of next block to read
         size_t current_position = start_position;
         auto reader = [&](int id)
