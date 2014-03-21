@@ -122,8 +122,10 @@ def configure(cxx_toolkit = None,
       'pyconfig.h', prefix = python3,
       include_dir = ['include',
                      'include/python3.2',
+                     'include/python3.3',
                      'include/python3.2m',
-                     'include/python3.3m'])
+                     'include/python3.3m'],
+      name = 'python3')
 
   ## ------- ##
   ## Version ##
@@ -531,6 +533,35 @@ def configure(cxx_toolkit = None,
 
   build << cli_build
 
+  cli_crash_sources = drake.nodes(
+    'satellites/crash/Crash.cc',
+    'common/common.hh',
+    'common/common.cc',
+  )
+
+  cli_crash_bin = drake.cxx.Executable(
+    'bin/8crash',
+    cli_crash_sources + [elle_lib, reactor_lib, crash_lib],
+    cxx_toolkit,
+    cli_cxx_config
+  )
+  cli_build << cli_crash_bin
+
+  cli_gzip_sources = drake.nodes(
+    'satellites/gzip/Gzip.cc',
+    'common/common.hh',
+    'common/common.cc',
+  )
+  cli_gzip_bin = drake.cxx.Executable(
+    'bin/8gzip',
+    cli_gzip_sources + [elle_lib, reactor_lib, crash_lib],
+    cxx_toolkit,
+    cli_cxx_config
+  )
+  cli_build << cli_gzip_bin
+
+  build << cli_build
+
   ## ---------- ##
   ## GAP python ##
   ## ---------- ##
@@ -580,9 +611,11 @@ def configure(cxx_toolkit = None,
       libraries = [gap_lib]
     else:
       libraries = [gap_lib, elle_lib]
+    fist_cxx_config = drake.cxx.Config(cxx_config)
     application = drake.include('fist-gui-qt',
                                 cxx_toolkit = cxx_toolkit,
-                                cxx_config = drake.cxx.Config(cxx_config),
+                                cxx_config = fist_cxx_config,
                                 qt = qt,
                                 prefix = prefix,
                                 libraries = libraries)
+    build << application.build
