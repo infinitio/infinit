@@ -3,6 +3,8 @@
 #include <fstream>
 #include <iostream>
 
+#include <boost/random.hpp>
+
 #include <elle/Buffer.hh>
 #include <elle/assert.hh>
 #include <elle/finally.hh>
@@ -252,7 +254,7 @@ namespace infinit
           _read_thread(*reactor::Scheduler::scheduler(),
                        elle::sprintf("%s read thread", *this),
                        [&] () { this->read_thread(); }),
-          _poke_timeout(6_sec)
+          _poke_timeout(15_sec)
         {
           this->_buffer.capacity(1024);
         }
@@ -295,7 +297,7 @@ namespace infinit
             this->_socket.reset(new reactor::network::FingerprintedSocket(
               endpoint,
               fingerprint,
-              3_sec));
+              15_sec));
           }
           else
           {
@@ -303,7 +305,7 @@ namespace infinit
             this->_socket.reset(new reactor::network::FingerprintedSocket(
               endpoint,
               this->_test_fingerprint,
-              3_sec));
+              15_sec));
           }
 
           ELLE_DEBUG("%s: socket connected", *this);
@@ -604,9 +606,15 @@ namespace infinit
                         *this,
                         elle::exception_string());
             }
-            ELLE_LOG("%s: will try to reconnect in 20 seconds", *this);
             this->reconnect_failed_callback();
-            reactor::Scheduler::scheduler()->current()->sleep(20_sec);
+            boost::random::mt19937 rng;
+            rng.seed(static_cast<unsigned int>(std::time(0)));
+            boost::random::uniform_int_distribution<> random_ten(0, 10);
+            int rand_num = random_ten(rng);
+            ELLE_LOG("%s: will try to reconnect in 20 + %s seconds",
+                     *this, rand_num);
+            reactor::Scheduler::scheduler()->current()->sleep(
+              20_sec + (boost::posix_time::seconds(rand_num)));
           }
           if (this->_connected)
           {
