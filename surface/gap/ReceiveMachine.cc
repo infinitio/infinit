@@ -511,7 +511,6 @@ namespace surface
       }
 
       // this->finished.open();
-      this->_finish();
       if (peer_version >= elle::Version(0, 8, 7))
       {
         source.finish();
