@@ -457,6 +457,14 @@ namespace surface
       if (last_index > 0)
         --last_index;
 
+      auto key = strong_encryption ?
+        infinit::cryptography::SecretKey(
+          this->state().identity().pair().k().decrypt<
+          infinit::cryptography::SecretKey>(source.key_code())) :
+        infinit::cryptography::SecretKey(
+          infinit::cryptography::cipher::Algorithm::aes256,
+          this->transaction_id());
+
       // If files are present in the snapshot, take the last one.
       for (auto index = last_index; index < count; ++index)
       {
@@ -507,7 +515,9 @@ namespace surface
           continue;
         }
 
-        _finish_transfer(source, index, tr, chunk_size, fullpath, strong_encryption, peer_version);
+        this->_finish_transfer(source, index, tr,
+                               chunk_size, fullpath,
+                               strong_encryption, key, peer_version);
       }
 
       // this->finished.open();
@@ -541,25 +551,19 @@ namespace surface
 
     template<typename Source>
     void
-    ReceiveMachine::_finish_transfer(Source& source,
-                                     unsigned int index,
-                                     frete::TransferSnapshot::TransferProgressInfo& tr ,
-                                     int chunk_size,
-                                     const boost::filesystem::path& full_path,
-                                     bool strong_encryption,
-                                     elle::Version const & peer_version)
+    ReceiveMachine::_finish_transfer(
+      Source& source,
+      unsigned int index,
+      frete::TransferSnapshot::TransferProgressInfo& tr ,
+      int chunk_size,
+      const boost::filesystem::path& full_path,
+      bool strong_encryption,
+      infinit::cryptography::SecretKey const& key,
+      elle::Version const& peer_version)
     {
       boost::filesystem::create_directories(full_path.parent_path());
       boost::filesystem::ofstream output{full_path,
         std::ios::app | std::ios::binary};
-
-      auto key = strong_encryption ?
-        infinit::cryptography::SecretKey(
-          this->state().identity().pair().k().decrypt<
-          infinit::cryptography::SecretKey>(source.key_code())) :
-        infinit::cryptography::SecretKey(
-          infinit::cryptography::cipher::Algorithm::aes256,
-          this->transaction_id());
 
       /* Use a channel to transmit buffers between receiver thread(s)
       * and a thread that writes to disk, expecting blocks in order in

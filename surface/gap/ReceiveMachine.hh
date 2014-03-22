@@ -109,6 +109,9 @@ namespace surface
       std::string
       type() const override;
 
+    /*---------.
+    | Transfer |
+    `---------*/
     public:
       void
       get(frete::RPCFrete& frete,
@@ -116,6 +119,7 @@ namespace surface
       void
       get(TransferBufferer& bufferer,
           std::string const& name_policy = " (%s)");
+
     private:
       template <typename Source>
       void
@@ -123,7 +127,6 @@ namespace surface
            bool strong_encryption,
            std::string const& name_policy,
            elle::Version const& peer_version);
-
       template <typename Source>
       void
       _finish_transfer(Source& source,
@@ -132,7 +135,9 @@ namespace surface
                        int chunk_size,
                        const boost::filesystem::path& full_path,
                        bool strong_encryption,
+                       infinit::cryptography::SecretKey const& key,
                        elle::Version const& peer_version);
+
     /*--------------.
     | Static Method |
     `--------------*/
