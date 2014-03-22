@@ -1,8 +1,8 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
-#include <elle/os/environ.hh>
 #include <elle/finally.hh>
+#include <elle/os/environ.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
 
@@ -403,11 +403,11 @@ namespace surface
     ReceiveMachine::get(TransferBufferer& frete,
                         std::string const& name_policy)
     {
-      return this->_get<TransferBufferer>(
-        frete, true, name_policy,
-        elle::Version(INFINIT_VERSION_MAJOR,
-                      INFINIT_VERSION_MINOR,
-                      INFINIT_VERSION_SUBMINOR));
+      // return this->_get<TransferBufferer>(
+      //   frete, true, name_policy,
+      //   elle::Version(INFINIT_VERSION_MAJOR,
+      //                 INFINIT_VERSION_MINOR,
+      //                 INFINIT_VERSION_SUBMINOR));
     }
 
     template <typename Source>
@@ -465,14 +465,15 @@ namespace surface
           infinit::cryptography::cipher::Algorithm::aes256,
           this->transaction_id());
 
+      auto infos = source.files_info();
       // If files are present in the snapshot, take the last one.
       for (auto index = last_index; index < count; ++index)
       {
         ELLE_DEBUG("%s: index %s", *this, index);
 
         boost::filesystem::path fullpath;
-        // XXX: Merge file_size & rpc_path.
-        auto file_size = source.file_size(index);
+        auto file_path = infos.at(index).first;
+        auto file_size = infos.at(index).second;
 
         if (this->_snapshot->transfers().find(index) != this->_snapshot->transfers().end())
         {
@@ -489,7 +490,7 @@ namespace surface
         }
         else
         {
-          auto relativ_path = boost::filesystem::path{source.path(index)};
+          auto relativ_path = boost::filesystem::path(file_path);
           fullpath = ReceiveMachine::eligible_name(output_path / relativ_path,
                                                    name_policy);
           relativ_path = ReceiveMachine::trim(fullpath, output_path);
