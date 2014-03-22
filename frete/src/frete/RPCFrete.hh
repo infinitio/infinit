@@ -5,6 +5,8 @@
 
 # include <elle/Version.hh>
 # include <elle/attribute.hh>
+# include <elle/serialize/PairSerializer.hxx>
+# include <elle/serialize/VectorSerializer.hxx>
 
 # include <protocol/fwd.hh>
 
@@ -42,6 +44,7 @@ namespace frete
     typedef RPC::RemoteProcedure<Frete::FileCount> CountRPC;
     typedef RPC::RemoteProcedure<Frete::FileSize> FullSizeRPC;
     typedef RPC::RemoteProcedure<Frete::FileSize, Frete::FileID> FileSizeRPC;
+    typedef RPC::RemoteProcedure<std::vector<std::pair<std::string, Frete::FileSize>>> FilesInfoRPC;
     typedef RPC::RemoteProcedure<std::string, Frete::FileID> FilePathRPC;
     typedef RPC::RemoteProcedure<infinit::cryptography::Code,
                                  Frete::FileID,
@@ -85,6 +88,7 @@ namespace frete
     RPC_WRAPPER(KeyCodeRPC, key_code);
     RPC_WRAPPER(EncryptedReadRPC, encrypted_read);
     RPC_WRAPPER(FinishRPC, finish);
+    RPC_WRAPPER(FilesInfoRPC, files_info);
   };
 }
 

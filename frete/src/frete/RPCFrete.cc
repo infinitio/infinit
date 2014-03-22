@@ -22,7 +22,8 @@ namespace frete
     _rpc_version("version", this->_rpc),
     _rpc_key_code("key_code", this->_rpc),
     _rpc_encrypted_read("encrypted_read", this->_rpc),
-    _rpc_finish("finish", this->_rpc)
+    _rpc_finish("finish", this->_rpc),
+    _rpc_files_info("files_info", this->_rpc)
   {
     this->_rpc_count = std::bind(&Frete::count,
                                  &frete);
@@ -62,6 +63,9 @@ namespace frete
 
     this->_rpc_finish = std::bind(std::bind(&Frete::finish,
                                             &frete));
+
+    this->_rpc_files_info = std::bind(std::bind(&Frete::files_info,
+                                                &frete));
   }
 
   RPCFrete::RPCFrete(infinit::protocol::ChanneledStream& channels):
@@ -75,7 +79,8 @@ namespace frete
     _rpc_version("version", this->_rpc),
     _rpc_key_code("key_code", this->_rpc),
     _rpc_encrypted_read("encrypted_read", this->_rpc),
-    _rpc_finish("finish", this->_rpc)
+    _rpc_finish("finish", this->_rpc),
+    _rpc_files_info("files_info", this->_rpc)
   {
     this->_rpc_version = []
       {

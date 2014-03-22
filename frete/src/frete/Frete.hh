@@ -92,6 +92,9 @@ namespace frete
     /// Return the size of a file.
     FileSize
     file_size(FileID f);
+    /// Return the path and size of all files.
+    std::vector<std::pair<std::string, FileSize>>
+    files_info();
     /// Return the path of a file.
     std::string
     path(FileID f);

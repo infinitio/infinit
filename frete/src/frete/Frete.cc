@@ -232,6 +232,7 @@ namespace frete
   /*----.
   | Api |
   `----*/
+
   elle::Version
   Frete::version() const
   {
@@ -277,6 +278,18 @@ namespace frete
                 this->_transfer_snapshot->transfers().end());
 
     return this->_transfer_snapshot->transfers().at(file_id).file_size();
+  }
+
+  std::vector<std::pair<std::string, Frete::FileSize>>
+  Frete::files_info()
+  {
+    std::vector<std::pair<std::string, FileSize>> res;
+    for (unsigned i = 0; i < this->count(); ++i)
+    {
+      auto& transfer = this->_transfer_snapshot->transfers().at(i);
+      res.push_back(std::make_pair(transfer.path(), transfer.file_size()));
+    }
+    return res;
   }
 
   infinit::cryptography::Code
