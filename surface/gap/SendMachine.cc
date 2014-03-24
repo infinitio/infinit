@@ -1,17 +1,19 @@
-#include <surface/gap/SendMachine.hh>
-#include <surface/gap/Rounds.hh>
+#include <boost/filesystem.hpp>
+
+#include <elle/os/path.hh>
+#include <elle/os/file.hh>
+
+#include <reactor/thread.hh>
+#include <reactor/exception.hh>
+
+#include <common/common.hh>
 
 #include <frete/Frete.hh>
 
 #include <station/Station.hh>
 
-#include <reactor/thread.hh>
-#include <reactor/exception.hh>
-
-#include <elle/os/path.hh>
-#include <elle/os/file.hh>
-
-#include <boost/filesystem.hpp>
+#include <surface/gap/SendMachine.hh>
+#include <surface/gap/Rounds.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.SendMachine");
 
@@ -330,14 +332,15 @@ namespace surface
       this->peer_id(this->state().user(this->peer_id(), true).id);
       ELLE_TRACE("peer id: %s", this->peer_id());
 
-      this->state().composite_reporter().transaction_created(
-        this->transaction_id(),
-        this->state().me().id,
-        this->peer_id(),
-        this->data()->files.size(),
-        size,
-        this->_message.length()
-      );
+      if (this->state().metrics_reporter())
+        this->state().metrics_reporter()->transaction_created(
+          this->transaction_id(),
+          this->state().me().id,
+          this->peer_id(),
+          this->data()->files.size(),
+          size,
+          this->_message.length()
+          );
 
       this->state().meta().update_transaction(this->transaction_id(),
                                               TransactionStatus::initialized);

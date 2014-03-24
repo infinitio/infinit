@@ -13,6 +13,11 @@
 #include <elle/system/home_directory.hh>
 #include <elle/system/platform.hh>
 
+#include <infinit/metrics/CompositeReporter.hh>
+#include <infinit/metrics/reporters/InfinitReporter.hh>
+#include <infinit/metrics/reporters/KeenReporter.hh>
+#include <infinit/metrics/Reporter.hh>
+
 #include <common/common.hh>
 #include <version.hh>
 
@@ -432,5 +437,56 @@ namespace common
       );
       return base_url + "/" + platform + architecture;
     }
+  }
+
+  struct DefaultValues
+  {
+    DefaultValues()
+    {
+      bool production = !::elle::os::getenv("INFINIT_PRODUCTION", "").empty();
+      bool development = !::elle::os::getenv("INFINIT_DEVELOPMENT", "").empty();
+      if (production && development)
+      {
+        ELLE_ABORT("define one and only one of "
+                   "INFINIT_PRODUCTION and INFINIT_DEVELOPMENT");
+      }
+      this->metrics_infinit_host =
+        elle::os::getenv(
+          "INFINIT_METRICS_INFINIT_HOST", production ?
+          "v3.metrics.api.production.infinit.io" :
+          "v3.metrics.api.development.infinit.io");
+      this->metrics_infinit_port = boost::lexical_cast<int>(
+        elle::os::getenv(
+          "INFINIT_METRICS_INFINIT_PORT", "80"));
+      this->metrics_keen_project =
+        elle::os::getenv(
+          "INFINIT_METRICS_KEEN_PROJECT", production ?
+          "532c5a9c00111c0da2000023" :
+          "53307f5ace5e436303000014");
+      this->metrics_keen_key =
+        elle::os::getenv(
+          "INFINIT_METRICS_KEEN_KEY", production ?
+          "19562aa3aed59df3f0a0bb746975d4b61a1789b52b6ee42ffcdd88fbe9fec7bd6f8e6cf4256fee1a08a842edc8212b98b57d3c28b6df94fd1520834390d0796ad2efbf59ee1fca268bdc4c6d03fa438102ae22c7c6e318d98fbe07becfb83ec65b2e844c57bb3db2da1d36903c4ef791" :
+          "d9440867211d34efa94b2dc72673c46b02d3110dbc3271ee83fec6fd97d9be1839a3c02a913cd7091ee310e93c62f95799679ee4ec66707d8742c3649dd756ae32c69828778b2a77ea39121f0d407a49577553c71ad87fd3c38bdf1e9322201e0155fdc21269c6c47834e9907470204f");
+    }
+
+    std::string metrics_infinit_host;
+    int metrics_infinit_port;
+    std::string metrics_keen_project;
+    std::string metrics_keen_key;
+  } default_values;
+
+  std::unique_ptr<::infinit::metrics::Reporter>
+  metrics()
+  {
+    auto res = elle::make_unique<::infinit::metrics::CompositeReporter>();
+    res->add_reporter(elle::make_unique<::infinit::metrics::InfinitReporter>(
+                        default_values.metrics_infinit_host,
+                        default_values.metrics_infinit_port));
+    res->add_reporter(elle::make_unique<::infinit::metrics::KeenReporter>(
+                        default_values.metrics_keen_project,
+                        default_values.metrics_keen_key));
+    return std::unique_ptr<::infinit::metrics::Reporter>(
+      std::move(res));
   }
 }

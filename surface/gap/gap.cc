@@ -627,7 +627,8 @@ extern "C"
                       favorites.end(),
                       id) == favorites.end())
           favorites.push_back(id);
-        state.composite_reporter().user_favorite(id);
+        if (state.metrics_reporter())
+          state.metrics_reporter()->user_favorite(id);
         return gap_ok;
       });
   }
@@ -650,8 +651,8 @@ extern "C"
                             id);
         if (it != favorites.end())
           favorites.erase(it);
-
-        state.composite_reporter().user_unfavorite(id);
+        if (state.metrics_reporter())
+          state.metrics_reporter()->user_unfavorite(id);
         return gap_ok;
       });
   }

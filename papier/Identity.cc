@@ -10,8 +10,6 @@
 
 #include <papier/Identity.hh>
 
-#include <common/common.hh>
-
 namespace path = elle::os::path;
 
 namespace papier

@@ -371,7 +371,8 @@ namespace surface
               if (host)
               {
                 found.open();
-                this->_owner.state().composite_reporter().transaction_connected(
+                if (this->_owner.state().metrics_reporter())
+                  this->_owner.state().metrics_reporter()->transaction_connected(
                   this->_owner.transaction_id(),
                   round->name()
                 );

@@ -6,10 +6,12 @@
 #include <elle/Exception.hh>
 #include <elle/assert.hh>
 #include <elle/log.hh>
+#include <elle/os/environ.hh>
 
 #include <reactor/scheduler.hh>
 
 #include <CrashReporter.hh>
+#include <common/common.hh>
 #include <surface/gap/State.hh>
 #include <version.hh>
 
@@ -91,7 +93,12 @@ int main(int argc, char** argv)
       "recv",
       [&] () -> int
       {
-        surface::gap::State state;
+        surface::gap::State state(common::meta::protocol(),
+                                  common::meta::host(),
+                                  common::meta::port(),
+                                  common::trophonius::host(),
+                                  common::trophonius::port(),
+                                  common::metrics());
 
         state.attach_callback<surface::gap::State::ConnectionStatus>(
           [&] (surface::gap::State::ConnectionStatus const& notif)

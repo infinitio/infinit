@@ -33,10 +33,11 @@ namespace surface
 {
   namespace gap
   {
-    TransactionMachine::Snapshot::Snapshot(Data const& data,
-                                        State const state,
-                                        std::unordered_set<std::string> const& files,
-                                        std::string const& message):
+    TransactionMachine::Snapshot::Snapshot(
+      Data const& data,
+      State const state,
+      std::unordered_set<std::string> const& files,
+      std::string const& message):
       data(data),
       state(state),
       files(files),
@@ -206,7 +207,8 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: machine finished", *this);
       if (!this->is_sender())
       {
-        this->state().composite_reporter().transaction_ended(
+        if (this->state().metrics_reporter())
+          this->state().metrics_reporter()->transaction_ended(
           this->transaction_id(),
           infinit::oracles::Transaction::Status::finished,
           ""
@@ -246,7 +248,8 @@ namespace surface
       else
         transaction_id = "unknown";
 
-      this->state().composite_reporter().transaction_ended(
+      if (this->state().metrics_reporter())
+        this->state().metrics_reporter()->transaction_ended(
         transaction_id,
         infinit::oracles::Transaction::Status::failed,
         ""
@@ -383,11 +386,12 @@ namespace surface
 
       if (!this->_canceled.opened())
       {
-        this->state().composite_reporter().transaction_ended(
-          this->transaction_id(),
-          infinit::oracles::Transaction::Status::canceled,
-          ""
-        );
+        if (this->state().metrics_reporter())
+          this->state().metrics_reporter()->transaction_ended(
+            this->transaction_id(),
+            infinit::oracles::Transaction::Status::canceled,
+            ""
+            );
       }
 
       this->_canceled.open();

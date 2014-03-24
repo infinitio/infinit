@@ -4,14 +4,19 @@
 #include <boost/program_options.hpp>
 
 #include <elle/Exception.hh>
+#include <elle/os/environ.hh>
 
 #include <reactor/scheduler.hh>
+
+#include <common/common.hh>
 
 #include <CrashReporter.hh>
 
 #include <surface/gap/gap.h>
 #include <surface/gap/State.hh>
+
 #include <version.hh>
+
 
 bool stop = false;
 
@@ -96,7 +101,12 @@ int main(int argc, char** argv)
       "sendto",
       [&] () -> int
       {
-        surface::gap::State state;
+        surface::gap::State state(common::meta::protocol(),
+                                  common::meta::host(),
+                                  common::meta::port(),
+                                  common::trophonius::host(),
+                                  common::trophonius::port(),
+                                  common::metrics());
         uint32_t id = surface::gap::null_id;
 
         state.attach_callback<surface::gap::State::ConnectionStatus>(

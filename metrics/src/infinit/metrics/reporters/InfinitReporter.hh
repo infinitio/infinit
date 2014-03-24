@@ -21,7 +21,8 @@ namespace infinit
     | Construction |
     `-------------*/
     public:
-      InfinitReporter();
+      InfinitReporter(std::string const& url,
+                      int port);
       virtual
       ~InfinitReporter() = default;
 

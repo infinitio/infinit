@@ -4,6 +4,14 @@
 # include <stdint.h>
 # include <string>
 
+namespace infinit
+{
+  namespace metrics
+  {
+    class Reporter;
+  }
+}
+
 namespace common
 {
 
@@ -169,6 +177,9 @@ namespace common
     int
     port();
   }
+
+  std::unique_ptr<::infinit::metrics::Reporter>
+  metrics();
 
   /// All resources URIs
   namespace resources

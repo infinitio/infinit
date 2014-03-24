@@ -10,16 +10,17 @@
 #include <reactor/thread.hh>
 #include <reactor/Channel.hh>
 
-#include <papier/Identity.hh>
-
-#include <station/Station.hh>
+#include <common/common.hh>
 
 #include <frete/Frete.hh>
 #include <frete/TransferSnapshot.hh>
 
+#include <papier/Identity.hh>
+
+#include <station/Station.hh>
+
 #include <surface/gap/ReceiveMachine.hh>
 #include <surface/gap/Rounds.hh>
-
 
 #include <version.hh>
 
@@ -234,9 +235,10 @@ namespace surface
 
       if (!this->_accepted.opened())
       {
-        this->state().composite_reporter().transaction_accepted(
-          this->transaction_id()
-        );
+        if (this->state().metrics_reporter())
+          this->state().metrics_reporter()->transaction_accepted(
+            this->transaction_id()
+            );
       }
 
       this->_accepted.open();
@@ -250,11 +252,12 @@ namespace surface
 
       if (!this->rejected().opened())
       {
-        this->state().composite_reporter().transaction_ended(
-          this->transaction_id(),
-          infinit::oracles::Transaction::Status::rejected,
-          ""
-        );
+        if (this->state().metrics_reporter())
+          this->state().metrics_reporter()->transaction_ended(
+            this->transaction_id(),
+            infinit::oracles::Transaction::Status::rejected,
+            ""
+            );
       }
 
       this->rejected().open();

@@ -1,21 +1,24 @@
 #ifndef GAPBRIDE_HH
 # define GAPBRIDE_HH
 
-#include <surface/gap/State.hh>
+# include <exception>
+# include <thread>
+# include <memory>
+# include <stdint.h>
 
-#include <reactor/network/exception.hh>
-#include <reactor/http/exceptions.hh>
-#include <reactor/scheduler.hh>
-#include <reactor/thread.hh>
+# include <elle/attribute.hh>
+# include <elle/HttpClient.hh>
+# include <elle/log.hh>
 
-#include <elle/attribute.hh>
-#include <elle/HttpClient.hh>
-#include <elle/log.hh>
+# include <reactor/network/exception.hh>
+# include <reactor/http/exceptions.hh>
+# include <reactor/scheduler.hh>
+# include <reactor/thread.hh>
 
-#include <exception>
-#include <thread>
-#include <memory>
-#include <stdint.h>
+# include <common/common.hh>
+
+# include <surface/gap/State.hh>
+
 
 extern "C"
 {
@@ -85,7 +88,6 @@ extern "C"
             this->_exception = std::current_exception();
             if (this->_critical_callback)
               this->_critical_callback(elle::exception_string());
-
           }
         }}
     {
@@ -94,47 +96,19 @@ extern "C"
         [&]
         {
           this->_state.reset(
-            new surface::gap::State{meta_protocol, meta_host, meta_port,
-                                    trophonius_host, trophonius_port});
+            new surface::gap::State(meta_protocol, meta_host, meta_port,
+                                    trophonius_host, trophonius_port,
+                                    common::metrics()));
         });
     }
 
     gap_State():
-      _scheduler{},
-      _keep_alive{this->_scheduler, "State keep alive",
-                  []
-                  {
-                    while (true)
-                    {
-                      auto& current = *reactor::Scheduler::scheduler()->current();
-                      current.sleep(boost::posix_time::seconds(60));
-                    }
-                  }},
-      _scheduler_thread{
-        [&]
-        {
-          try
-          {
-            this->_scheduler.run();
-          }
-          catch (...)
-          {
-            ELLE_LOG_COMPONENT("surface.gap.bridge");
-            ELLE_ERR("exception escaped from State scheduler: %s",
-                     elle::exception_string());
-            this->_exception = std::current_exception();
-            if (this->_critical_callback)
-              this->_critical_callback(elle::exception_string());
-          }
-        }}
-    {
-      this->_scheduler.mt_run<void>(
-        "creating state",
-        [&]
-        {
-          this->_state.reset(new surface::gap::State{});
-        });
-    }
+      gap_State(common::meta::protocol().c_str(),
+                common::meta::host().c_str(),
+                common::meta::port(),
+                common::trophonius::host().c_str(),
+                common::trophonius::port())
+    {}
 
     ~gap_State()
     {

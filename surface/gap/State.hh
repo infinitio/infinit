@@ -17,8 +17,6 @@
 
 # include <papier/fwd.hh>
 
-# include <common/common.hh>
-
 # include <infinit/metrics/CompositeReporter.hh>
 # include <infinit/oracles/meta/Client.hh>
 # include <infinit/oracles/Transaction.hh>
@@ -75,19 +73,14 @@ namespace surface
       bool
       _trophonius_server_check();
 
-      /*----------.
-      | Reporters |
-      `----------*/
-      ELLE_ATTRIBUTE_P(infinit::metrics::CompositeReporter,
-                       composite_reporter,
+    /*--------.
+    | Metrics |
+    `--------*/
+    private:
+      ELLE_ATTRIBUTE_RP(std::unique_ptr<infinit::metrics::Reporter>,
+                       metrics_reporter,
                        mutable);
 
-    public:
-      infinit::metrics::Reporter&
-      composite_reporter() const
-      {
-        return this->_composite_reporter;
-      }
 
       /*-------------.
       | Construction |
@@ -119,11 +112,12 @@ namespace surface
       };
 
     public:
-      State(std::string const& meta_protocol = common::meta::protocol(),
-            std::string const& meta_host = common::meta::host(),
-            uint16_t meta_port = common::meta::port(),
-            std::string const& trophonius_host = common::trophonius::host(),
-            uint16_t trophonius_port = common::trophonius::port());
+      State(std::string const& meta_protocol,
+            std::string const& meta_host,
+            uint16_t meta_port,
+            std::string const& trophonius_host,
+            uint16_t trophonius_port,
+            std::unique_ptr<infinit::metrics::Reporter> metrics = nullptr);
       ~State();
 
     public:

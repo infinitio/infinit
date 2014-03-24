@@ -1,10 +1,12 @@
+#include <atomic>
+
+#include <boost/filesystem.hpp>
+
 #include <surface/gap/State.hh>
 #include <surface/gap/Transaction.hh>
 #include <surface/gap/Exception.hh>
 
-#include <boost/filesystem.hpp>
-
-#include <atomic>
+#include <common/common.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.State.Transaction");
 
@@ -66,7 +68,7 @@ namespace surface
         for (; iterator != end; ++iterator)
         {
           auto snapshot_path = iterator->path().string().c_str();
-          ELLE_DEBUG("snapshot path %s", snapshot_path);
+          ELLE_TRACE("%s: load transaction snapshot %s", *this, snapshot_path);
           elle::SafeFinally delete_snapshot(
             [&snapshot_path]
             {
@@ -78,6 +80,11 @@ namespace surface
             snapshot.reset(
               new TransactionMachine::Snapshot(
                 elle::serialize::from_file(snapshot_path)));
+            // FIXME: this should be in the snapshot deserialization.
+            // FIXME: this can happen if you kill the client while creating a
+            //        transaction and you haven't fetch an id from the server
+            //        yet. Test and fix that shit.
+            ELLE_ASSERT(!snapshot->data.id.empty());
           }
           catch (std::exception const&)
           {

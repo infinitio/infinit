@@ -21,7 +21,8 @@ namespace infinit
     | Construction |
     `-------------*/
     public:
-      KeenReporter();
+      KeenReporter(std::string const& project,
+                   std::string const &key);
       virtual
       ~KeenReporter() = default;
 
