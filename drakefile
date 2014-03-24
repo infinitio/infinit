@@ -18,7 +18,6 @@ def configure(cxx_toolkit = None,
               optimization = True,
               prefix = '/usr',
               boost = None,
-              python3 = None,
               build_type = "Development",
               enable_debug = True,
 	      qt = None,
@@ -112,21 +111,6 @@ def configure(cxx_toolkit = None,
   boost = boost or drake.cxx.boost.Boost(cxx_toolkit = cxx_toolkit)
   cxx_config += boost.config()
 
-  ## -------------------- ##
-  ## Python configuration ##
-  ## -------------------- ##
-
-  python_enabled = cxx_toolkit.os != drake.os.windows
-  if python_enabled:
-    python3 = drake.cxx.find_library(
-      'pyconfig.h', prefix = python3,
-      include_dir = ['include',
-                     'include/python3.2',
-                     'include/python3.3',
-                     'include/python3.2m',
-                     'include/python3.3m'],
-      name = 'python3')
-
   ## ------- ##
   ## Version ##
   ## ------- ##
@@ -163,7 +147,6 @@ def configure(cxx_toolkit = None,
   elle = drake.include('elle',
                        cxx_toolkit,
                        drake.cxx.Config(cxx_config),
-                       python3 = python3,
                        prefix = prefix,
                        boost = boost,
                        valgrind = valgrind)
@@ -175,6 +158,7 @@ def configure(cxx_toolkit = None,
   cryptography_lib = copy_lib(elle.cryptography.library)
   reactor_lib = copy_lib(elle.reactor.library)
   protocol_lib = copy_lib(elle.protocol.library)
+  python_lib = copy_lib(elle.python_lib)
 
   cxx_config += elle.config
   cxx_config.add_local_include_path('.')
@@ -228,23 +212,23 @@ def configure(cxx_toolkit = None,
   )
 
   papier_python_lib = None
-  if python_enabled:
-    papier_python_cxx_config = drake.cxx.Config(cxx_config)
-    papier_python_sources = drake.nodes('papier/python.cc')
-    papier_python_sources.append(papier_lib)
-    if cxx_toolkit.os is drake.os.windows:
-      papier_python_cxx_config += boost.config_python(static = True)
-    else:
-      papier_python_cxx_config += boost.config_python(link = False)
-      papier_python_cxx_config.library_add(
-        drake.copy(boost.python_dynamic, 'lib', strip_prefix = True))
-    papier_python_cxx_config += python3
-    papier_python_cxx_config.lib_path_runtime('..')
-    papier_python_lib = drake.cxx.Module(
-      'lib/python/papier',
-      papier_python_sources,
-      cxx_toolkit,
-      papier_python_cxx_config)
+  papier_python_cxx_config = drake.cxx.Config(cxx_config)
+  papier_python_sources = drake.nodes('papier/python.cc')
+  papier_python_sources.append(papier_lib)
+  if cxx_toolkit.os is drake.os.windows:
+    papier_python_cxx_config += boost.config_python(static = True)
+  else:
+    papier_python_cxx_config += boost.config_python(link = False)
+    papier_python_cxx_config.library_add(
+      drake.copy(boost.python_dynamic, 'lib', strip_prefix = True))
+  papier_python_cxx_config.library_add(python_lib)
+  papier_python_cxx_config += elle.python_config
+  papier_python_cxx_config.lib_path_runtime('..')
+  papier_python_lib = drake.cxx.Module(
+    'lib/python/papier',
+    papier_python_sources,
+    cxx_toolkit,
+    papier_python_cxx_config)
 
   ## ------- ##
   ## Station ##
@@ -381,7 +365,8 @@ def configure(cxx_toolkit = None,
     elle = elle,
     papier_python = papier_python_lib,
     boost = boost,
-    python3 = python3,
+    python_config = elle.python_config,
+    python_lib = python_lib,
     enable_python_bindings = False,
     prefix = prefix,
     cxx_toolkit = cxx_toolkit,
@@ -460,10 +445,10 @@ def configure(cxx_toolkit = None,
   gap_cxx_config_libs += boost.config_signals()
   gap_cxx_config_libs += boost.config_thread()
   if cxx_toolkit.os == drake.os.windows:
-    gap_cxx_config_libs.lib('shlwapi')
-    gap_cxx_config_libs.lib('ws2_32')
-    gap_cxx_config_libs.lib('gdi32')
-    gap_cxx_config_libs.lib('mswsock')
+    gap_cxx_config_libs.library_add('shlwapi')
+    gap_cxx_config_libs.library_add('ws2_32')
+    gap_cxx_config_libs.library_add('gdi32')
+    gap_cxx_config_libs.library_add('mswsock')
   gap_lib = drake.cxx.DynLib(
     'lib/gap',
     gap_sources + [
@@ -567,44 +552,44 @@ def configure(cxx_toolkit = None,
   ## ---------- ##
 
   gap_python_lib = None
-  if python_enabled:
-    gap_python_cxx_config = drake.cxx.Config(gap_cxx_config)
-    gap_python_cxx_config += python3
-    gap_python_cxx_config += boost.config_python()
-    gap_python_cxx_config.lib_path_runtime('..')
-    with templating_context:
-      gap_python_sources = drake.nodes(
-        'surface/gap/python/pygap.cc.tmpl',
-      )
-
-    gap_python_lib = drake.cxx.Module(
-      'lib/python/_gap',
-      gap_python_sources + [
-        gap_lib,
-      ],
-      cxx_toolkit,
-      gap_python_cxx_config
+  gap_python_cxx_config = drake.cxx.Config(gap_cxx_config)
+  gap_python_cxx_config += elle.python_config
+  gap_python_cxx_config.library_add(python_lib)
+  gap_python_cxx_config += boost.config_python()
+  gap_python_cxx_config.lib_path_runtime('..')
+  with templating_context:
+    gap_python_sources = drake.nodes(
+      'surface/gap/python/pygap.cc.tmpl',
     )
 
-    gap_python_pyfiles = drake.nodes(
-      'surface/gap/python/gap.py',
+  gap_python_lib = drake.cxx.Module(
+    'lib/python/_gap',
+    gap_python_sources + [
+      gap_lib,
+    ],
+    cxx_toolkit,
+    gap_python_cxx_config
+  )
+
+  gap_python_pyfiles = drake.nodes(
+    'surface/gap/python/gap.py',
+  )
+
+  gap_python_pyfile_copy = drake.copy(gap_python_pyfiles,
+                                      'lib/python',
+                                      'surface/gap/python')
+
+  infinit_cli_sources = drake.nodes(
+    'surface/cli/infinit-cli'
     )
 
-    gap_python_pyfile_copy = drake.copy(gap_python_pyfiles,
-                                        'lib/python',
-                                        'surface/gap/python')
+  infinit_cli_copy = drake.copy(infinit_cli_sources,
+                                'bin',
+                                'surface/cli')
 
-    infinit_cli_sources = drake.nodes(
-      'surface/cli/infinit-cli'
-      )
-
-    infinit_cli_copy = drake.copy(infinit_cli_sources,
-                                  'bin',
-                                  'surface/cli')
-
-    gap_build << gap_python_lib
-    gap_build << gap_python_pyfile_copy
-    gap_build << infinit_cli_copy
+  gap_build << gap_python_lib
+  gap_build << gap_python_pyfile_copy
+  gap_build << infinit_cli_copy
 
   if qt is not None:
     if cxx_toolkit.os == drake.os.windows:

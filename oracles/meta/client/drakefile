@@ -13,7 +13,8 @@ def configure(elle,
               transaction_lib,
               server_python,
               boost = None,
-              python3 = None,
+              python_config = None,
+              python_lib = None,
               prefix = drake.Path('/usr/local'),
               cxx_toolkit = None,
               cxx_config = None):
@@ -77,14 +78,15 @@ def configure(elle,
   ## Python ##
   ## ------ ##
 
-  if python3 is not None:
+  if python_lib is not None:
     with template_context:
       python_sources = drake.nodes(
         'src/infinit/oracles/meta/python.cc.tmpl',
       )
 
     meta_python_cxx_config = drake.cxx.Config(local_cxx_config)
-    meta_python_cxx_config += python3
+    meta_python_cxx_config += python_config
+    meta_python_cxx_config.lib(python_lib)
     meta_python_cxx_config += boost.config_python()
     meta_python_cxx_config.lib_path_runtime('..')
     meta_python = drake.cxx.Module(
