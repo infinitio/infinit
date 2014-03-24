@@ -450,6 +450,8 @@ namespace common
         ELLE_ABORT("define one and only one of "
                    "INFINIT_PRODUCTION and INFINIT_DEVELOPMENT");
       }
+      this->metrics_infinit_enabled = boost::lexical_cast<bool>(
+        elle::os::getenv("INFINIT_METRICS_INFINIT", production ? "1" : "0"));
       this->metrics_infinit_host =
         elle::os::getenv(
           "INFINIT_METRICS_INFINIT_HOST", production ?
@@ -458,6 +460,8 @@ namespace common
       this->metrics_infinit_port = boost::lexical_cast<int>(
         elle::os::getenv(
           "INFINIT_METRICS_INFINIT_PORT", "80"));
+      this->metrics_keen_enabled = boost::lexical_cast<bool>(
+        elle::os::getenv("INFINIT_METRICS_KEEN", "1"));
       this->metrics_keen_project =
         elle::os::getenv(
           "INFINIT_METRICS_KEEN_PROJECT", production ?
@@ -470,8 +474,10 @@ namespace common
           "d9440867211d34efa94b2dc72673c46b02d3110dbc3271ee83fec6fd97d9be1839a3c02a913cd7091ee310e93c62f95799679ee4ec66707d8742c3649dd756ae32c69828778b2a77ea39121f0d407a49577553c71ad87fd3c38bdf1e9322201e0155fdc21269c6c47834e9907470204f");
     }
 
+    bool metrics_infinit_enabled;
     std::string metrics_infinit_host;
     int metrics_infinit_port;
+    bool metrics_keen_enabled;
     std::string metrics_keen_project;
     std::string metrics_keen_key;
   } default_values;
@@ -480,12 +486,14 @@ namespace common
   metrics()
   {
     auto res = elle::make_unique<::infinit::metrics::CompositeReporter>();
-    res->add_reporter(elle::make_unique<::infinit::metrics::InfinitReporter>(
-                        default_values.metrics_infinit_host,
-                        default_values.metrics_infinit_port));
-    res->add_reporter(elle::make_unique<::infinit::metrics::KeenReporter>(
-                        default_values.metrics_keen_project,
-                        default_values.metrics_keen_key));
+    if (default_values.metrics_infinit_enabled)
+      res->add_reporter(elle::make_unique<::infinit::metrics::InfinitReporter>(
+                          default_values.metrics_infinit_host,
+                          default_values.metrics_infinit_port));
+    if (default_values.metrics_keen_enabled)
+      res->add_reporter(elle::make_unique<::infinit::metrics::KeenReporter>(
+                          default_values.metrics_keen_project,
+                          default_values.metrics_keen_key));
     return std::unique_ptr<::infinit::metrics::Reporter>(
       std::move(res));
   }
