@@ -72,110 +72,115 @@ class Mixin:
     Errors:
     Using an id that doesn't exist.
     """
-    user = self.user
-    id_or_email = id_or_email.strip()
+    with elle.log.log("create transaction (recipient %s)" % id_or_email):
+      user = self.user
+      id_or_email = id_or_email.strip()
 
-    # if self.database.devices.find_one(bson.ObjectId(device_id)) is None:
-    #   return self.fail(error.DEVICE_NOT_FOUND)
+      # if self.database.devices.find_one(bson.ObjectId(device_id)) is None:
+      #   return self.fail(error.DEVICE_NOT_FOUND)
 
-    new_user = False
-    is_ghost = False
-    invitee = 0
-    invitee_email = ""
+      new_user = False
+      is_ghost = False
+      invitee = 0
+      invitee_email = ""
 
-    if re.match(regexp.Email, id_or_email): # email.
-      invitee_email = id_or_email
-      # XXX: search email in each accounts.
-      recipient = self.database.users.find_one({'email': id_or_email})
-      # if the user doesn't exist, create a ghost and invite.
+      if re.match(regexp.Email, id_or_email): # email.
+        elle.log.debug("%s is an email" % id_or_email)
+        invitee_email = id_or_email
+        # XXX: search email in each accounts.
+        recipient = self.database.users.find_one({'email': id_or_email})
+        # if the user doesn't exist, create a ghost and invite.
 
-      if not recipient:
-        new_user = True
-        recipient_id = self._register(
-          _id = self.database.users.save({}),
-          email = invitee_email,
-          fullname = invitee_email[0:invitee_email.index('@')],
-          register_status = 'ghost',
-          notifications = [],
-          networks = [],
-          swaggers = {},
-          accounts=[{'type':'email', 'id':invitee_email}]
-        )
+        if not recipient:
+          elle.log.trace("recipient unknown, create a ghost")
+          new_user = True
+          recipient_id = self._register(
+            _id = self.database.users.save({}),
+            email = invitee_email,
+            fullname = invitee_email[0:invitee_email.index('@')],
+            register_status = 'ghost',
+            notifications = [],
+            networks = [],
+            swaggers = {},
+            accounts=[{'type':'email', 'id':invitee_email}]
+          )
+          recipient = self.database.users.find_one(recipient_id)
+      else:
+        try:
+          recipient_id = bson.ObjectId(id_or_email)
+        except Exception as e:
+          return self.fail(error.USER_ID_NOT_VALID)
         recipient = self.database.users.find_one(recipient_id)
-    else:
-      try:
-        recipient_id = bson.ObjectId(id_or_email)
-      except Exception as e:
+
+      if recipient is None:
         return self.fail(error.USER_ID_NOT_VALID)
-      recipient = self.database.users.find_one(recipient_id)
 
-    if recipient is None:
-      return self.fail(error.USER_ID_NOT_VALID)
+      _id = user['_id']
 
-    _id = user['_id']
+      transaction = {
+        'sender_id': _id,
+        'sender_fullname': user['fullname'],
+        'sender_device_id': device_id, # bson.ObjectId(device_id),
 
-    transaction = {
-      'sender_id': _id,
-      'sender_fullname': user['fullname'],
-      'sender_device_id': device_id, # bson.ObjectId(device_id),
+        'recipient_id': recipient['_id'],
+        'recipient_fullname': recipient['fullname'],
 
-      'recipient_id': recipient['_id'],
-      'recipient_fullname': recipient['fullname'],
+        # Empty until accepted.
+        'recipient_device_id': '',
+        'recipient_device_name': '',
 
-      # Empty until accepted.
-      'recipient_device_id': '',
-      'recipient_device_name': '',
+        'message': message,
 
-      'message': message,
+        'files': files,
+        'files_count': files_count,
+        'total_size': total_size,
+        'is_directory': is_directory,
 
-      'files': files,
-      'files_count': files_count,
-      'total_size': total_size,
-      'is_directory': is_directory,
+        'ctime': time.time(),
+        'mtime': time.time(),
+        'status': transaction_status.CREATED,
+        'fallback_host': None,
+        'fallback_port_ssl': None,
+        'fallback_port_tcp': None,
+        'strings': ' '.join([
+              user['fullname'],
+              user['handle'],
+              user['email'],
+              recipient['fullname'],
+              recipient.get('handle', ""),
+              recipient['email'],
+              message,
+              ] + files)
+        }
 
-      'ctime': time.time(),
-      'mtime': time.time(),
-      'status': transaction_status.CREATED,
-      'fallback_host': None,
-      'fallback_port_ssl': None,
-      'fallback_port_tcp': None,
-      'strings': ' '.join([
-            user['fullname'],
-            user['handle'],
-            user['email'],
-            recipient['fullname'],
-            recipient.get('handle', ""),
-            recipient['email'],
-            message,
-            ] + files)
-      }
+      transaction_id = self.database.transactions.insert(transaction)
 
-    transaction_id = self.database.transactions.insert(transaction)
+      recipient_connected = recipient.get('connected', False)
+      if not recipient_connected:
+        elle.log.debug("recipient is no connected")
+        if not invitee_email:
+          invitee_email = recipient['email']
 
-    recipient_connected = recipient.get('connected', False)
-    if not recipient_connected:
-      if not invitee_email:
-        invitee_email = recipient['email']
+        if new_user:
+          elle.log.trace("send invitation to new user %s" % invitee_email)
+          invitation.invite_user(
+            invitee_email,
+            mailer = self.mailer,
+            mail_template = 'send-file',
+            source = (user['fullname'], user['email']),
+            filename = files[0],
+            sendername = user['fullname'],
+            database = self.database,
+            ghost_id = str(recipient.get('_id')),
+            sender_id = str(user['_id']),
+          )
 
-      if new_user:
-        invitation.invite_user(
-          invitee_email,
-          mailer = self.mailer,
-          mail_template = 'send-file',
-          source = (user['fullname'], user['email']),
-          filename = files[0],
-          sendername = user['fullname'],
-          database = self.database,
-          ghost_id = recipient.get('_id'),
-          sender_id = user['_id'],
-        )
+      self._increase_swag(user['_id'], recipient['_id'])
 
-    self._increase_swag(user['_id'], recipient['_id'])
-
-    return self.success({
-        'created_transaction_id': transaction_id,
-        'remaining_invitations': user.get('remaining_invitations', 0),
-        })
+      return self.success({
+          'created_transaction_id': transaction_id,
+          'remaining_invitations': user.get('remaining_invitations', 0),
+          })
 
   def _transactions(self,
                     filter,
