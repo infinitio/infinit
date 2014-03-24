@@ -23,13 +23,10 @@ namespace surface
     void
     State::attach_callback(std::function<void (T const&)> cb) const
     {
-      ELLE_LOG_COMPONENT("surface.gap.State");
-      ELLE_LOG("attach callback");
       auto fn = [cb] (Notification const& notif) -> void
         {
           return cb(static_cast<T const&>(notif));
         };
-
       this->_callbacks[T::type].emplace_back(fn);
     }
 

@@ -236,10 +236,10 @@ namespace infinit
     {
       if (this->_no_metrics)
       {
-        ELLE_LOG("%s: no metrics, will not poll metrics queue", *this);
+        ELLE_TRACE("%s: no metrics, will not poll metrics queue", *this);
         return;
       }
-      ELLE_LOG("%s: start polling", *this);
+      ELLE_TRACE("%s: start polling", *this);
       while (true)
       {
         reactor::wait(this->_metric_available);

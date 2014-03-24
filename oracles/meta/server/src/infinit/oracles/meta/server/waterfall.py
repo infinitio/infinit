@@ -12,7 +12,9 @@ import pymongo.errors
 import elle.log
 
 from infinit.oracles.meta.server.utils import api
-from infinit.oracles.meta.server.utils import _require_admin as require_admin
+from infinit.oracles.meta.server.utils import json_value
+from infinit.oracles.meta.server.utils import utf8_string
+from infinit.oracles.meta.server.utils import require_admin
 from itertools import chain
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Metrics'
@@ -33,12 +35,6 @@ def develop(collections):
   for collection in collections:
     for element in collection:
       yield element
-
-def utf8_string(s):
-  return s.encode('latin-1').decode('utf-8')
-
-def json_value(s):
-  return json.loads(utf8_string(s))
 
 def join(collection, foreign, joined, project = None):
   related_ids = set()

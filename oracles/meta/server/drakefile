@@ -46,6 +46,7 @@ def configure(elle,
     'src/infinit/oracles/meta/error.py',
     'src/infinit/oracles/meta/server/__init__.py',
     'src/infinit/oracles/meta/server/apertus.py',
+    'src/infinit/oracles/meta/server/cloud_buffer_token.py',
     'src/infinit/oracles/meta/server/conf.py',
     'src/infinit/oracles/meta/server/device.py',
     'src/infinit/oracles/meta/server/infinit.auth',
@@ -108,18 +109,14 @@ def configure(elle,
   build = drake.Rule('build')
   build_python_path = drake.Path('lib/python')
 
-  if elle.python is not None:
-    elle_python = drake.copy(elle.python, '.', '../../../elle/elle')
-  if papier_python is not None:
-    papier_python = drake.copy(papier_python, build_python_path,
-                               strip_prefix = True)
+  elle_python = drake.copy(elle.python, '.', '../../../elle/elle')
+  papier_python = drake.copy(papier_python, build_python_path,
+                             strip_prefix = True)
   python = [version]
   sources_built = drake.copy(sources, build_python_path, 'src')
   for source in sources_built:
-    if elle.python is not None:
-      source.dependencies_add(elle_python)
-    if papier_python is not None:
-      source.dependency_add(papier_python)
+    source.dependencies_add(elle_python)
+    source.dependency_add(papier_python)
   python += sources_built
   bottle = drake.nodes('../../bottle/bottle.py')
   python += drake.copy(bottle, build_python_path,
@@ -195,6 +192,7 @@ def configure(elle,
     'root/user-report',
     'routes',
     'status',
+    'transaction',
     'transactions/ghost',
     'transactions/transaction',
     'transactions/connect-device',

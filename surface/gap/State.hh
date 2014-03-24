@@ -15,8 +15,7 @@
 # include <reactor/scheduler.hh>
 # include <reactor/thread.hh>
 
-# include <papier/Identity.hh>
-# include <papier/Passport.hh>
+# include <papier/fwd.hh>
 
 # include <common/common.hh>
 
@@ -518,8 +517,8 @@ namespace surface
       _on_transaction_update(infinit::oracles::Transaction const& notif);
 
       void
-      _on_peer_connection_update(
-        infinit::oracles::trophonius::PeerConnectionUpdateNotification const& notif);
+      _on_peer_reachability_updated(
+        infinit::oracles::trophonius::PeerReachabilityNotification const& notif);
 
       /*----------.
       | Printable |

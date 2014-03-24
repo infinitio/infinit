@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+
+import os
+import subprocess
+import sys
+import time
+
+SELF = os.path.realpath(__file__)
+PYTHONPATH = '%s/../../oracles/mongobox' % os.path.dirname(SELF)
+sys.path.insert(0, PYTHONPATH)
+import mongobox
+
+PORT = 4242
+
+with mongobox.MongoBox() as mongo:
+  subprocess.check_call(['mongorestore',
+                         '--port', str(mongo.port),
+                         sys.argv[1]])
+  subprocess.check_call(['mongo',
+                         '--port', str(mongo.port)])
+  subprocess.check_call(['mongodump',
+                         '--port', str(mongo.port),
+                         '--out', sys.argv[1]])

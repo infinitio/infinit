@@ -1,23 +1,25 @@
 #include <boost/python.hpp>
 
-#include <datetime.h> // This is the Python include
-
-#include <elle/python/bindings.cc>
+#include <elle/python/datetime-converter.hh>
 
 #include <infinit/oracles/apertus/Apertus.hh>
 
 // Pacify -Wmissing-declarations
 extern "C"
 {
-  PyObject* PyInit_apertus();
+  PyObject* PyInit_server();
 }
 
-BOOST_PYTHON_MODULE(apertus)
+elle::PluginLoad load_python_bindings(
+  elle::python::datetime_converter
+  );
+
+BOOST_PYTHON_MODULE(server)
 {
   using infinit::oracles::apertus::Apertus;
   boost::python::class_<Apertus,
                         boost::noncopyable>
-    ("Trophonius",
+    ("Apertus",
      boost::python::init<std::string const&,
                          std::string const&,
                          int,
@@ -28,5 +30,7 @@ BOOST_PYTHON_MODULE(apertus)
                          boost::posix_time::time_duration const&>())
     .def("stop", &Apertus::stop)
     .def("wait", &Apertus::wait) // XXX: use Waitable::wait
+    .def("port_tcp", &Apertus::port_tcp)
+    .def("port_ssl", &Apertus::port_ssl)
     ;
 }

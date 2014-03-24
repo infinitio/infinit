@@ -9,12 +9,14 @@ build = None
 check = None
 install = None
 tests = None
+python = None
 
 def configure(elle,
               protocol,
               reactor,
               meta_client,
               boost = None,
+              python3 = None,
               prefix = drake.Path('/usr/local'),
               python3 = None,
               enable_python_bindings = True,
@@ -22,7 +24,7 @@ def configure(elle,
               cxx_config = None):
 
   global library
-  global build, check, install, tests
+  global build, check, install, tests, python
 
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
@@ -155,23 +157,28 @@ def configure(elle,
   ## ------ ##
   ## Python ##
   ## ------ ##
-  if enable_python_bindings:
-    python3 = drake.cxx.find_library(
-      token = 'pyconfig.h',
-      include_dir = ['include/python3.2', 'include/python3.3'])
+  if python3 is not None:
     python_sources = drake.nodes(
         'src/infinit/oracles/apertus/python.cc',
       )
     python_cxx_config = drake.cxx.Config(local_cxx_config)
-    python_cxx_config.lib_path_runtime('../../..')
+    python_cxx_config.lib_path_runtime('../../../..')
     python_cxx_config += python3
     python_cxx_config += boost.config_python()
+    datetime = drake.copy(elle.elle.python_plugin_datetime,
+                          'lib', True)
     python_lib = drake.cxx.Module(
-      'lib/python/infinit/oracles/apertus',
-      python_sources + [library],
+      'lib/python/infinit/oracles/apertus/server',
+      python_sources + [library, datetime],
+
       cxx_toolkit, python_cxx_config)
     drake.Rule('python') << python_lib
     build << python_lib
     build << drake.touch('lib/python/infinit/__init__.py')
     build << drake.touch('lib/python/infinit/oracles/__init__.py')
     drake.Rule('python') << python_lib
+    python = [
+      python_lib,
+      drake.touch('lib/python/infinit/oracles/apertus/__init__.py'),
+    ]
+    build << python

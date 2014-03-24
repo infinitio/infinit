@@ -1,6 +1,7 @@
 #include <boost/filesystem/fstream.hpp>
 
 #include <elle/test.hh>
+#include <elle/Buffer.hh>
 
 #include <reactor/Barrier.hh>
 #include <reactor/network/tcp-server.hh>
@@ -8,11 +9,14 @@
 #include <reactor/Scope.hh>
 
 #include <cryptography/KeyPair.hh>
+#include <cryptography/Code.hh>
+#include <cryptography/Output.hh>
 
 #include <protocol/ChanneledStream.hh>
 #include <protocol/Serializer.hh>
 
 #include <frete/Frete.hh>
+#include <frete/RPCFrete.hh>
 
 #include <elle/finally.hh>
 #include <elle/log.hh>
@@ -82,87 +86,6 @@ compare_files(boost::filesystem::path const& p1,
   return file1content == file2content;
 }
 
-ELLE_TEST_SCHEDULED(eligible_names)
-{
-  boost::filesystem::path root("frete/tests/eligible_name");
-  auto clear_root =
-    [&] {try { boost::filesystem::remove_all(root); } catch (...) {}};
-
-  if (boost::filesystem::exists(root))
-    clear_root();
-
-  boost::filesystem::create_directory(root);
-  elle::SafeFinally rm_root([&] ()
-    {
-      clear_root();
-    }
-  );
-
-  auto filename = root / "dest.tar.bz";
-
-  static const size_t count = 32;
-
-  bool first_pass = true;
-  for (std::string  pattern: {" (%s)", "_%s", " - %s"})
-  {
-    for (size_t i = 0; i < count; ++i)
-    {
-      // Touch the file.
-      boost::filesystem::ofstream{frete::Frete::eligible_name(filename,
-                                                              pattern)};
-    }
-
-    BOOST_CHECK(boost::filesystem::exists(filename));
-
-    auto max = first_pass ? (count + 1) : (count + 2);
-    for (size_t i = 2; i < max; ++i)
-    {
-      auto name = "frete/tests/eligible_name/dest" + pattern + ".tar.bz";
-      BOOST_CHECK(boost::filesystem::exists(elle::sprintf(name, i)));
-    }
-
-    boost::filesystem::directory_iterator end;
-    for (auto it = boost::filesystem::directory_iterator(root); it != end; ++it)
-    {
-      ELLE_DEBUG("- %s", *it);
-    }
-
-    ELLE_DEBUG("%s", std::string(32, '-'));
-
-    first_pass = false;
-  }
-}
-
-ELLE_TEST_SCHEDULED(trim)
-{
-  boost::filesystem::path tmp{"/tmp"};
-  boost::filesystem::path folder{"/tmp/folder"};
-  boost::filesystem::path folder2{"/tmp/folder/folder"};
-  boost::filesystem::path file{"/tmp/file.ext"};
-  boost::filesystem::path file_into_folder {"/tmp/folder/file.ext"};
-  boost::filesystem::path dotfolder {"/tmp/folder.com"};
-  boost::filesystem::path file_into_dotfolder {"/tmp/folder.com/file.ext"};
-
-  BOOST_CHECK_EQUAL(frete::Frete::trim(tmp, tmp), "");
-  BOOST_CHECK_EQUAL(frete::Frete::trim(folder, tmp), "folder");
-  BOOST_CHECK_EQUAL(frete::Frete::trim(folder2, tmp), "folder/folder");
-  BOOST_CHECK_EQUAL(frete::Frete::trim(folder2, folder), "folder");
-  BOOST_CHECK_EQUAL(frete::Frete::trim(file, tmp), "file.ext");
-  BOOST_CHECK_EQUAL(frete::Frete::trim(file_into_folder, tmp),
-                    "folder/file.ext");
-  BOOST_CHECK_EQUAL(frete::Frete::trim(file_into_folder, folder), "file.ext");
-  BOOST_CHECK_EQUAL(frete::Frete::trim(dotfolder, tmp), "folder.com");
-  BOOST_CHECK_EQUAL(frete::Frete::trim(file_into_dotfolder, tmp),
-                    "folder.com/file.ext");
-  BOOST_CHECK_EQUAL(frete::Frete::trim(file_into_dotfolder, dotfolder),
-                    "file.ext");
-
-  BOOST_CHECK_THROW(
-    frete::Frete::trim(file_into_folder, "folder_that_doesn_t_exist"),
-    elle::Exception);
-
-}
-
 ELLE_TEST_SCHEDULED(connection)
 {
   auto recipient_key_pair = infinit::cryptography::KeyPair::generate(
@@ -220,14 +143,18 @@ ELLE_TEST_SCHEDULED(connection)
         *reactor::Scheduler::scheduler(), *socket);
       infinit::protocol::ChanneledStream channels(
         *reactor::Scheduler::scheduler(), serializer);
-      frete::Frete frete(channels, "suce", recipient_key_pair.K(), snap);
+      frete::Frete frete("suce", recipient_key_pair.K(), snap);
+      frete::RPCFrete rpcs(frete, channels);
+
       frete.add(empty);
       frete.add(content);
       frete.add(dir);
 
-      frete.run();
+      rpcs.run();
+
       reactor::Scheduler::scheduler()->current()->Waitable::wait();
     });
+
     scope.run_background("client", [&]
     {
       auto snap = root;
@@ -239,622 +166,89 @@ ELLE_TEST_SCHEDULED(connection)
                                                socket);
       infinit::protocol::ChanneledStream channels(
         *reactor::Scheduler::scheduler(), serializer);
-      frete::Frete frete(channels, "suce", recipient_key_pair.k(), snap);
-      BOOST_CHECK_EQUAL(frete.count(), 4);
+      frete::RPCFrete rpcs(channels);
+
+      ELLE_DEBUG("get symmetric key for transaction and decrypt it");
+      auto key = infinit::cryptography::SecretKey(
+        recipient_key_pair.k().decrypt<infinit::cryptography::SecretKey>(rpcs.key_code()));
+
+      ELLE_DEBUG("Read the number of transaction");
+      BOOST_CHECK_EQUAL(rpcs.count(), 4);
       {
-        BOOST_CHECK_EQUAL(frete.path(0), "empty");
-        BOOST_CHECK_EQUAL(frete.file_size(0), 0);
-        for (int i = 0; i < 3; ++i)
+        ELLE_DEBUG("Check the name of the first file");
+        BOOST_CHECK_EQUAL(rpcs.path(0), "empty");
+        ELLE_DEBUG("Check the size of the first file");
+        BOOST_CHECK_EQUAL(rpcs.file_size(0), 0);
+        ELLE_DEBUG("Read many time the same block")
+          for (int i = 0; i < 3; ++i)
+          {
+            ELLE_DEBUG("read 1024 bytes from file 0 with an offset of 0");
+            elle::Buffer buffer(
+              key.decrypt<elle::Buffer>(rpcs.encrypted_read(0, 0, 1024)));
+            BOOST_CHECK_EQUAL(buffer.size(), 0);
+          }
         {
-          auto buffer = frete.read(0, 0, 1024);
-          BOOST_CHECK_EQUAL(buffer.size(), 0);
-        }
-        {
-          auto buffer = frete.read(0, 1, 1024);
+          auto buffer = key.decrypt<elle::Buffer>(rpcs.encrypted_read(0, 1, 1024));
           BOOST_CHECK_EQUAL(buffer.size(), 0);
         }
       }
       {
-        BOOST_CHECK_EQUAL(frete.path(1), "content");
-        BOOST_CHECK_EQUAL(frete.file_size(1), 8);
+        BOOST_CHECK_EQUAL(rpcs.path(1), "content");
+        BOOST_CHECK_EQUAL(rpcs.file_size(1), 8);
         {
-          auto buffer = frete.read(1, 0, 1024);
+          auto buffer = key.decrypt<elle::Buffer>(rpcs.encrypted_read(1, 0, 1024));
           BOOST_CHECK_EQUAL(buffer.size(), 8);
           BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("content\n"));
         }
         {
-          auto buffer = frete.read(1, 2, 2);
+          auto buffer = key.decrypt<elle::Buffer>(rpcs.encrypted_read(1, 2, 2));
           BOOST_CHECK_EQUAL(buffer.size(), 2);
           BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("nt"));
         }
         {
-          auto buffer = frete.read(1, 7, 3);
+          auto buffer = key.decrypt<elle::Buffer>(rpcs.encrypted_read(1, 7, 3));
           BOOST_CHECK_EQUAL(buffer.size(), 1);
           BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("\n"));
         }
       }
       {
-        if (frete.path(2) == "dir/2")
+        if (rpcs.path(2) == "dir/2")
         {
-          BOOST_CHECK_EQUAL(frete.file_size(2), 1);
-          BOOST_CHECK_EQUAL(frete.read(2, 0, 2), elle::ConstWeakBuffer("2"));
+          BOOST_CHECK_EQUAL(rpcs.file_size(2), 1);
+          BOOST_CHECK_EQUAL(key.decrypt<elle::Buffer>(rpcs.encrypted_read(2, 0, 2)), elle::ConstWeakBuffer("2"));
         }
-        else if (frete.path(2) == "dir/1")
+        else if (rpcs.path(2) == "dir/1")
         {
-          BOOST_CHECK_EQUAL(frete.file_size(2), 1);
-          BOOST_CHECK_EQUAL(frete.read(2, 0, 2), elle::ConstWeakBuffer("1"));
+          BOOST_CHECK_EQUAL(rpcs.file_size(2), 1);
+          BOOST_CHECK_EQUAL(key.decrypt<elle::Buffer>(rpcs.encrypted_read(2, 0, 2)), elle::ConstWeakBuffer("1"));
         }
-        else if (frete.path(3) == "dir/2")
+        else if (rpcs.path(3) == "dir/2")
         {
-          BOOST_CHECK_EQUAL(frete.file_size(3), 1);
-          BOOST_CHECK_EQUAL(frete.read(3, 0, 2), elle::ConstWeakBuffer("2"));
+          BOOST_CHECK_EQUAL(rpcs.file_size(3), 1);
+          BOOST_CHECK_EQUAL(key.decrypt<elle::Buffer>(rpcs.encrypted_read(3, 0, 2)), elle::ConstWeakBuffer("2"));
         }
-        else if (frete.path(3) == "dir/1")
+        else if (rpcs.path(3) == "dir/1")
         {
-          BOOST_CHECK_EQUAL(frete.file_size(3), 1);
-          BOOST_CHECK_EQUAL(frete.read(3, 0, 2), elle::ConstWeakBuffer("1"));
+          BOOST_CHECK_EQUAL(rpcs.file_size(3), 1);
+          BOOST_CHECK_EQUAL(key.decrypt<elle::Buffer>(rpcs.encrypted_read(3, 0, 2)), elle::ConstWeakBuffer("1"));
         }
         else
         {
           BOOST_FAIL("recipient files incorrect");
         }
       }
-      BOOST_CHECK_THROW(frete.path(4), std::runtime_error);
-      BOOST_CHECK_THROW(frete.read(4, 0, 1), std::runtime_error);
+      BOOST_CHECK_THROW(rpcs.path(4), std::runtime_error);
+      BOOST_CHECK_THROW(rpcs.encrypted_read(4, 0, 1), std::runtime_error);
       scope.terminate_now();
     });
     scope.wait();
   };
 }
 
-ELLE_TEST_SCHEDULED(one_function_get)
-{
-  auto recipient_key_pair = infinit::cryptography::KeyPair::generate(
-    infinit::cryptography::Cryptosystem::rsa, 2048);
-
-  int port = 0;
-
-  reactor::Barrier listening;
-
-  // Create dummy test fs.
-  boost::filesystem::path root("frete/tests/fs-get");
-  boost::filesystem::path dest("frete/tests/fs-get-dest");
-
-  auto clear_root =
-    [&] {try { boost::filesystem::remove_all(root); } catch (...) {}};
-  auto clear_dest =
-    [&] {try { boost::filesystem::remove_all(dest); } catch (...) {}};
-
-  if (boost::filesystem::exists(root))
-    clear_root();
-
-  boost::filesystem::create_directory(root);
-  // elle::SafeFinally rm_root( [&] () { clear_root(); } );
-
-  if (boost::filesystem::exists(dest))
-    clear_dest();
-
-  boost::filesystem::create_directory(dest);
-  // elle::SafeFinally rm_dest( [&] () { clear_dest(); } );
-
-  boost::filesystem::path empty(root / "empty");
-  boost::filesystem::ofstream{empty};
-
-  boost::filesystem::path content(root / "content");
-  {
-    boost::filesystem::ofstream f(content);
-    f << std::string(52, 'b') << "\n" << "queue" << "\n" << std::flush;
-  }
-
-  boost::filesystem::path dir(root / "dir");
-  boost::filesystem::create_directory(dir);
-  {
-    boost::filesystem::ofstream f((dir / "1"));
-    f << "1" << std::flush;
-  }
-  boost::filesystem::create_directory(dir);
-  {
-    boost::filesystem::ofstream f((dir / "2"));
-    f << "2" << std::flush;
-  }
-  boost::filesystem::path subdir(dir / "subdir");
-  boost::filesystem::create_directory(subdir);
-  {
-    boost::filesystem::ofstream f((subdir / "1"));
-    f << "1" << std::flush;
-  }
-
-  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
-  {
-    scope.run_background("server", [&]
-    {
-      auto snap = root;
-      snap += "transfer";
-
-      reactor::network::TCPServer server{};
-      server.listen();
-      port = server.port();
-      listening.open();
-      std::unique_ptr<reactor::network::Socket> socket(server.accept());
-      infinit::protocol::Serializer serializer(*reactor::Scheduler::scheduler(),
-                                               *socket);
-      infinit::protocol::ChanneledStream channels(
-        *reactor::Scheduler::scheduler(), serializer);
-      frete::Frete frete(channels, "suce", recipient_key_pair.K(), snap);
-      frete.add(empty);
-      frete.add(content);
-      frete.add(dir); // Will add subdir.
-      frete.run();
-    });
-    scope.run_background("client", [&]
-    {
-      auto snap = dest;
-      snap += "transfer";
-
-      reactor::wait(listening);
-      reactor::network::TCPSocket socket("127.0.0.1", port);
-      infinit::protocol::Serializer serializer(*reactor::Scheduler::scheduler(),
-                                               socket);
-      infinit::protocol::ChanneledStream channels(
-        *reactor::Scheduler::scheduler(), serializer);
-      frete::Frete frete(channels, "suce", recipient_key_pair.k(), snap);
-      BOOST_CHECK_EQUAL(frete.count(), 5);
-      {
-        frete.get(dest);
-      }
-
-      BOOST_CHECK(boost::filesystem::exists(dest / "empty") &&
-                  boost::filesystem::is_regular_file(dest / "empty"));
-      BOOST_CHECK(boost::filesystem::exists(dest / "content") &&
-                  boost::filesystem::is_regular_file(dest / "content"));
-      BOOST_CHECK(boost::filesystem::exists(dest / "dir") &&
-                  boost::filesystem::is_directory(dest / "dir"));
-      BOOST_CHECK(
-        boost::filesystem::exists(dest / "dir" / "1") &&
-        boost::filesystem::is_regular_file(dest / "dir" / "1"));
-      BOOST_CHECK(
-        boost::filesystem::exists(dest / "dir" / "2") &&
-        boost::filesystem::is_regular_file(dest / "dir" / "2"));
-      BOOST_CHECK(
-        boost::filesystem::exists(dest / "dir" / "subdir") &&
-        boost::filesystem::is_directory(dest / "dir" / "subdir"));
-      BOOST_CHECK(
-        boost::filesystem::exists(dest / "dir" / "subdir" / "1") &&
-        boost::filesystem::is_regular_file(dest / "dir" / "subdir" / "1"));
-
-      BOOST_CHECK(compare_files(dest / "empty", root / "empty"));
-      BOOST_CHECK(compare_files(dest / "content", root / "content"));
-      BOOST_CHECK(compare_files(dest / "dir" / "1", root / "dir" / "1"));
-      BOOST_CHECK(compare_files(dest / "dir" / "2", root / "dir" / "2"));
-      BOOST_CHECK(compare_files(dest / "dir" / "subdir" / "1",
-                                root / "dir" / "subdir" / "1"));
-
-      scope.terminate_now();
-    });
-    scope.wait();
-  };
-}
-
-ELLE_TEST_SCHEDULED(recipient_disconnection)
-{
-  auto recipient_key_pair = infinit::cryptography::KeyPair::generate(
-    infinit::cryptography::Cryptosystem::rsa, 2048);
-
-  int port = 0;
-
-  reactor::Barrier listening;
-
-  // Create dummy test fs.
-  boost::filesystem::path root("frete/tests/fs-recipient-disconnection");
-  boost::filesystem::path dest("frete/tests/fs-recipient-disconnection-dest");
-
-  auto clear_root =
-    [&] { try { boost::filesystem::remove_all(root); } catch (...) {} };
-  auto clear_dest =
-    [&] { try { boost::filesystem::remove_all(dest); } catch (...) {} };
-
-  if (boost::filesystem::exists(root))
-    clear_root();
-
-  boost::filesystem::create_directory(root);
-  elle::SafeFinally rm_root( [&] () { clear_root(); } );
-
-  if (boost::filesystem::exists(dest))
-    clear_dest();
-
-  boost::filesystem::create_directory(dest);
-  elle::SafeFinally rm_dest( [&] () { clear_dest(); } );
-
-  size_t block_size = 512 * 1024;
-  size_t block_count = 8;
-
-  boost::filesystem::path file(root / "file");
-  {
-    boost::filesystem::ofstream ofile(file);
-    ofile << std::string(block_count * block_size, 'b');
-  }
-  boost::filesystem::path empty(root / "empty");
-  {
-    boost::filesystem::ofstream ofile(empty);
-  }
-  boost::filesystem::path folder = root / "folder";
-  boost::filesystem::create_directories(folder);
-
-  boost::filesystem::path empty2(folder / "empty");
-  {
-    boost::filesystem::ofstream ofile(empty2);
-  }
-
-  boost::filesystem::path file2(folder / "file");
-  {
-    boost::filesystem::ofstream ofile(file2);
-    ofile << std::string(block_count * block_size, 'b');
-  }
-
-  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
-  {
-    scope.run_background("server", [&]
-    {
-      reactor::network::TCPServer server{};
-
-      auto snap = root;
-      snap /= ".transfer";
-
-      while (true)
-      {
-        try
-        {
-          server.listen();
-          port = server.port();
-
-          listening.open();
-          std::unique_ptr<reactor::network::Socket> socket(server.accept());
-          infinit::protocol::Serializer serializer(
-            *reactor::Scheduler::scheduler(), *socket);
-          infinit::protocol::ChanneledStream channels(
-            *reactor::Scheduler::scheduler(), serializer);
-          frete::Frete frete(channels, "suce", recipient_key_pair.K(), snap);
-
-          elle::SafeFinally progress([&]
-          {
-            ELLE_DEBUG("progress %s", frete.progress());
-          });
-
-          frete.add(file);
-          // frete.add(empty);
-          // frete.add(folder);
-          frete.add(file2);
-
-          frete.run();
-        }
-        catch (reactor::Terminate const&)
-        {
-          throw;
-        }
-        catch (elle::AssertError const&)
-        {
-          ELLE_ERR("assert");
-          throw;
-        }
-        catch (std::exception const&)
-        {
-          listening.close();
-        }
-        catch (...)
-        {
-          ELLE_ERR("%s", elle::exception_string());
-          throw;
-        }
-      }
-    });
-    scope.run_background("client", [&]
-    {
-      auto snap = dest;
-      snap /= ".transfer";
-
-      elle::SafeFinally compare{
-        [&]
-        {
-          BOOST_CHECK(compare_files(dest / "file",
-                                    root / "file"));
-          BOOST_CHECK(compare_files(dest / "file (2)",
-                                    root / "folder" / "file",
-                                    false));
-          // BOOST_CHECK(compare_files(dest / "empty",
-          //                           root / "empty"));
-          // BOOST_CHECK(compare_files(dest / "folder" / "empty",
-          //                           root / "folder" / "empty"));
-          // BOOST_CHECK(compare_files(dest / "folder" / "file2",
-          //                           root / "folder" / "file2"));
-          // BOOST_CHECK(compare_files(dest / "folder" / "file2 (2)",
-          //                           root / "folder" / "file2"));
-
-        }
-      };
-
-      while (true)
-      {
-        reactor::wait(listening);
-
-        bool finished{false};
-        try
-        {
-          reactor::network::TCPSocket socket("127.0.0.1", port);
-          infinit::protocol::Serializer serializer(
-            *reactor::Scheduler::scheduler(), socket);
-          infinit::protocol::ChanneledStream channels(
-            *reactor::Scheduler::scheduler(), serializer);
-          frete::Frete frete(channels, "suce", recipient_key_pair.k(), snap);
-
-          elle::SafeFinally progress([&]
-                                     {
-                                       ELLE_WARN("progress %s", frete.progress());
-                                     });
-
-          elle::SafeFinally close_listening([&] { listening.close(); });
-
-          elle::With<reactor::Scope>() << [&] (reactor::Scope& inner_scope)
-          {
-            inner_scope.run_background("get", [&]
-            {
-              try
-              {
-                frete.get(dest);
-                finished = true;
-                ELLE_DEBUG("%s", "transfer finished");
-                frete.progress_changed().signal();
-              }
-              catch (reactor::Terminate const&)
-              {
-                throw;
-              }
-              catch (elle::AssertError const&)
-              {
-                ELLE_ERR("Assert");
-                throw;
-              }
-              catch (...)
-              {
-                ELLE_ERR("%s", elle::exception_string());
-                throw;
-              }
-            });
-            inner_scope.run_background("client run", [&]
-            {
-              frete.run();
-            });
-            reactor::wait(frete.progress_changed());
-          };
-        }
-        catch (reactor::Terminate const&)
-        {
-          throw;
-        }
-        catch (elle::AssertError const&)
-        {
-          ELLE_ERR("Assert");
-          throw;
-        }
-        catch (std::exception const&)
-        {
-        }
-
-        if (finished)
-          break;
-      }
-      scope.terminate_now();
-    });
-    scope.wait();
-  };
-}
-
-ELLE_TEST_SCHEDULED(sender_disconnection)
-{
-  auto recipient_key_pair = infinit::cryptography::KeyPair::generate(
-    infinit::cryptography::Cryptosystem::rsa, 2048);
-
-  int port = 0;
-
-  reactor::Barrier listening;
-
-  // Create dummy test fs.
-  boost::filesystem::path root("frete/tests/fs-sender-disconnection");
-  boost::filesystem::path dest("frete/tests/fs-sender-disconnection-dest");
-
-  auto clear_root =
-    [&] {try { boost::filesystem::remove_all(root); } catch (...) {}};
-  auto clear_dest =
-    [&] {try { boost::filesystem::remove_all(dest); } catch (...) {}};
-
-  if (boost::filesystem::exists(root))
-    clear_root();
-
-  boost::filesystem::create_directory(root);
-  elle::SafeFinally rm_root( [&] () { clear_root(); } );
-
-  if (boost::filesystem::exists(dest))
-    clear_dest();
-
-  boost::filesystem::create_directory(dest);
-  elle::SafeFinally rm_dest( [&] () { clear_dest(); } );
-
-  size_t block_size = 512 * 1024;
-  size_t block_count = 8;
-
-  boost::filesystem::path file(root / "file");
-  {
-    boost::filesystem::ofstream ofile(file);
-    ofile << std::string(block_count * block_size, 'b');
-  }
-  boost::filesystem::path empty(root / "empty");
-  {
-    boost::filesystem::ofstream ofile(empty);
-  }
-  boost::filesystem::path folder = root / "folder";
-  boost::filesystem::create_directories(folder);
-
-  boost::filesystem::path empty2(folder / "empty");
-  {
-    boost::filesystem::ofstream ofile(empty2);
-  }
-
-  boost::filesystem::path file2(folder / "file2");
-  {
-    boost::filesystem::ofstream ofile(file2);
-    ofile << std::string(block_count * block_size, 'b');
-  }
-
-  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
-  {
-    scope.run_background("server", [&]
-    {
-      reactor::network::TCPServer server{};
-
-      auto snap = root;
-      snap += "transfer";
-
-      while (true)
-      {
-        try
-        {
-          server.listen();
-          port = server.port();
-          listening.open();
-          std::unique_ptr<reactor::network::Socket> socket(server.accept());
-          infinit::protocol::Serializer serializer(
-            *reactor::Scheduler::scheduler(), *socket);
-          infinit::protocol::ChanneledStream channels(
-            *reactor::Scheduler::scheduler(), serializer);
-          frete::Frete frete(channels, "suce", recipient_key_pair.K(), snap);
-
-          frete.add(file);
-          frete.add(empty);
-          frete.add(folder);
-
-          elle::SafeFinally progress([&]
-                                     {
-                                       ELLE_WARN("sen: %s", frete.progress());
-                                     });
-
-          elle::With<reactor::Scope>() << [&] (reactor::Scope& server_scope)
-          {
-            server_scope.run_background("server run", [&]
-            {
-              frete.run();
-              frete.progress_changed().signal();
-            });
-            reactor::wait(frete.progress_changed());
-            listening.close();
-          };
-        }
-        catch (reactor::Terminate const&)
-        {
-          throw;
-        }
-        catch (elle::AssertError const&)
-        {
-          ELLE_ERR("Assert");
-          throw;
-        }
-        catch (std::exception const&)
-        {
-          ELLE_DEBUG("client disconnected");
-          listening.close();
-        }
-      }
-    });
-    scope.run_background("client", [&]
-    {
-      auto snap = dest;
-      snap += "transfer";
-
-      elle::SafeFinally compare{
-        [&]
-        {
-          BOOST_CHECK(compare_files(dest / "file", root / "file"));
-          BOOST_CHECK(compare_files(dest / "empty", root / "empty"));
-          BOOST_CHECK(compare_files(dest / "folder" / "empty",
-                                    root / "folder" / "empty"));
-          BOOST_CHECK(compare_files(dest / "folder" / "file2",
-                                    root / "folder" / "file2"));
-        }
-      };
-
-      while (true)
-      {
-        reactor::wait(listening);
-
-        bool finished{false};
-        try
-        {
-          reactor::network::TCPSocket socket("127.0.0.1", port);
-          infinit::protocol::Serializer serializer(
-            *reactor::Scheduler::scheduler(), socket);
-          infinit::protocol::ChanneledStream channels(
-            *reactor::Scheduler::scheduler(), serializer);
-          frete::Frete frete(channels, "suce", recipient_key_pair.k(), snap);
-
-          elle::SafeFinally progress([&]
-          {
-            ELLE_WARN("rec: %s", frete.progress());
-          });
-
-          try
-          {
-            elle::With<reactor::Scope>() << [&] (reactor::Scope& client_scope)
-            {
-              client_scope.run_background("get", [&]
-              {
-                ELLE_ERR("start getting");
-                frete.get(dest);
-                if (frete.finished().opened())
-                  throw elle::Exception("finished");
-              });
-              client_scope.run_background("client run", [&]
-              {
-                frete.run();
-              });
-              client_scope.wait();
-            };
-          }
-          catch (reactor::Terminate const&)
-          {
-            throw;
-          }
-          catch (std::exception const&)
-          {}
-
-          finished = frete.finished().opened();
-        }
-        catch (reactor::Terminate const&)
-        {
-          throw;
-        }
-        catch (elle::AssertError const&)
-        {
-          ELLE_ERR("Assert");
-          throw;
-        }
-        catch (std::exception const&)
-        {}
-
-        if (finished)
-          break;
-      }
-      scope.terminate_now();
-    });
-    scope.wait();
-  };
-}
 
 ELLE_TEST_SUITE()
 {
   auto timeout = RUNNING_ON_VALGRIND ? 15 : 3;
   auto& suite = boost::unit_test::framework::master_test_suite();
-  suite.add(BOOST_TEST_CASE(eligible_names), 0, timeout);
-  suite.add(BOOST_TEST_CASE(trim), 0, timeout);
   suite.add(BOOST_TEST_CASE(connection), 0, timeout);
-  suite.add(BOOST_TEST_CASE(one_function_get), 0, timeout);
-  suite.add(BOOST_TEST_CASE(recipient_disconnection), 0, timeout);
-  suite.add(BOOST_TEST_CASE(sender_disconnection), 0, timeout);
 }

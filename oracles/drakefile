@@ -3,24 +3,24 @@ import drake.templating
 
 meta = None
 trophonius = None
+apertus = None
 
 build = None
 check = None
 install = None
-meta = None
-trophonius = None
+
+oracles = None
 
 def configure(elle,
               papier_python,
               boost = None,
               python3 = None,
-              enable_python_bindings = True,
               prefix = drake.Path('/usr/local'),
               cxx_toolkit = None,
               cxx_config = None,
               valgrind = None):
 
-  global meta, trophonius
+  global meta, trophonius, apertus, oracles
   global build, check, install
 
   for name in ('build', 'check', 'install'):
@@ -37,8 +37,9 @@ def configure(elle,
   python = drake.nodes(
     'src/infinit/__init__.py',
     'src/infinit/oracles/__init__.py',
-    'src/infinit/oracles/transaction.py',
     'src/infinit/oracles/notification.py',
+    'src/infinit/oracles/servers.py',
+    'src/infinit/oracles/transaction.py',
   )
   python_built = drake.copy(python, 'lib/python', 'src')
 
@@ -58,6 +59,9 @@ def configure(elle,
     Library = drake.cxx.StaticLib
   else:
     Library = drake.cxx.DynLib
+
+  servers = drake.nodes('src/infinit/oracles/fist-servers')
+  build << drake.copy(servers, 'bin', strip_prefix = True)
 
   lib = Library('lib/transaction',
                 sources + [elle_lib],
@@ -81,7 +85,6 @@ def configure(elle,
                              python_common = python_built,
                              boost = boost,
                              python3 = python3,
-                             enable_python_bindings = enable_python_bindings,
                              transaction_lib = lib,
                              prefix = prefix,
                              meta_client = meta.client,
@@ -98,6 +101,7 @@ def configure(elle,
                           python3 = python3,
                           enable_python_bindings = enable_python_bindings,
                           boost = boost,
+                          python3 = python3,
                           prefix = prefix,
                           cxx_toolkit = cxx_toolkit,
                           cxx_config = cxx_config)
@@ -105,5 +109,26 @@ def configure(elle,
   for name in ('build', 'check', 'install'):
     for oracle in [meta, trophonius, apertus]:
       globals()[name] << getattr(oracle, name)
+
   build << lib
   build << python_built
+
+  oracles = []
+
+  oracles += drake.copy(trophonius.server.python, '.',
+                      strip_prefix='trophonius/server')
+  oracles += drake.copy(apertus.server.python, '.',
+                      strip_prefix='apertus/server')
+  oracles += drake.copy(meta.server.python, '.',
+                      strip_prefix = 'meta/server')
+  oracles.append(drake.copy(elle.reactor.python_lib, 'lib/python',
+                            strip_prefix = True))
+  mongobox = drake.nodes(
+    'mongobox/mongobox/__init__.py',
+    'mongobox/mongobox/mongobox.py',
+    'mongobox/mongobox/utils.py',
+    'mongobox/mongobox/nose_plugin.py',
+  )
+  oracles += drake.copy(mongobox, 'lib/python',
+                        strip_prefix='mongobox')
+  build << oracles

@@ -1,0 +1,1 @@
+{ "indexes" : [ { "v" : 1, "key" : { "_id" : 1 }, "ns" : "meta.transactions", "name" : "_id_" }, { "v" : 1, "key" : { "ctime" : 1 }, "ns" : "meta.transactions", "name" : "ctime_1" } ] }

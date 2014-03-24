@@ -100,7 +100,7 @@ class Mixin:
       )
     return user
 
-  @api('/reset-accounts/<hash>')
+  @api('/reset-accounts/<hash>', method = 'GET')
   def reseted_account(self, hash):
     """Reset account using the hash generated from the /lost-password page.
 
@@ -179,6 +179,7 @@ class Mixin:
       accounts = [
         {'type': 'email', 'id': user['email']}
       ],
+      avatar = user.get("avatar"),
     )
     return self.success({'user_id': str(user_id)})
 

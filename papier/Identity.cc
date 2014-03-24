@@ -4,6 +4,7 @@
 #include <cryptography/KeyPair.hh>
 #include <cryptography/Code.hh>
 #include <cryptography/SecretKey.hh>
+#include <cryptography/Signature.hh>
 
 #include <papier/Authority.hh>
 
@@ -16,7 +17,7 @@ namespace path = elle::os::path;
 namespace papier
 {
 
-  ELLE_LOG_COMPONENT("infinit.papier.Identity");
+//  ELLE_LOG_COMPONENT("infinit.papier.Identity");
 
 //
 // ---------- constructors & destructors --------------------------------------

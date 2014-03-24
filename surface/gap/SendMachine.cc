@@ -22,9 +22,9 @@ namespace surface
     using TransactionStatus = infinit::oracles::Transaction::Status;
     SendMachine::SendMachine(surface::gap::State const& state,
                              uint32_t id,
-                             std::shared_ptr<TransferMachine::Data> data,
+                             std::shared_ptr<TransactionMachine::Data> data,
                              bool):
-      TransferMachine(state, id, std::move(data)),
+      TransactionMachine(state, id, std::move(data)),
       _create_transaction_state(
         this->_machine.state_make(
           "create transaction", std::bind(&SendMachine::_create_transaction, this))),
@@ -69,10 +69,10 @@ namespace surface
       // Cancel.
       this->_machine.transition_add(this->_create_transaction_state,
                                     this->_cancel_state,
-                                    reactor::Waitables{&this->_canceled}, true);
+                                    reactor::Waitables{&this->canceled()}, true);
       this->_machine.transition_add(this->_wait_for_accept_state,
                                     this->_cancel_state,
-                                    reactor::Waitables{&this->_canceled}, true);
+                                    reactor::Waitables{&this->canceled()}, true);
       // Exception.
       this->_machine.transition_add_catch(
         this->_create_transaction_state, this->_fail_state);
@@ -93,7 +93,7 @@ namespace surface
 
     SendMachine::SendMachine(surface::gap::State const& state,
                              uint32_t id,
-                             std::shared_ptr<TransferMachine::Data> data):
+                             std::shared_ptr<TransactionMachine::Data> data):
       SendMachine(state, id, std::move(data), true)
     {
       ELLE_WARN_SCOPE("%s: constructing machine for transaction data %s "
@@ -131,7 +131,7 @@ namespace surface
                              std::string const& recipient,
                              std::unordered_set<std::string>&& files,
                              std::string const& message,
-                             std::shared_ptr<TransferMachine::Data> data):
+                             std::shared_ptr<TransactionMachine::Data> data):
       SendMachine(state, id, std::move(data), true)
     {
       ELLE_TRACE_SCOPE("%s: send %s to %s", *this, files, recipient);
@@ -165,9 +165,9 @@ namespace surface
     SendMachine::SendMachine(surface::gap::State const& state,
                              uint32_t id,
                              std::unordered_set<std::string> files,
-                             TransferMachine::State current_state,
+                             TransactionMachine::State current_state,
                              std::string const& message,
-                             std::shared_ptr<TransferMachine::Data> data):
+                             std::shared_ptr<TransactionMachine::Data> data):
       SendMachine(state, id, std::move(data), true)
     {
       ELLE_TRACE_SCOPE("%s: construct from data %s, starting at %s",
@@ -192,34 +192,34 @@ namespace surface
       this->_message = message;
       switch (current_state)
       {
-        case TransferMachine::State::NewTransaction:
+        case TransactionMachine::State::NewTransaction:
           elle::unreachable();
-        case TransferMachine::State::SenderCreateTransaction:
+        case TransactionMachine::State::SenderCreateTransaction:
           this->_run(this->_create_transaction_state);
           break;
-        case TransferMachine::State::SenderWaitForDecision:
+        case TransactionMachine::State::SenderWaitForDecision:
           this->_run(this->_wait_for_accept_state);
           break;
-        case TransferMachine::State::RecipientWaitForDecision:
-        case TransferMachine::State::RecipientAccepted:
+        case TransactionMachine::State::RecipientWaitForDecision:
+        case TransactionMachine::State::RecipientAccepted:
           elle::unreachable();
-        case TransferMachine::State::PublishInterfaces:
-        case TransferMachine::State::Connect:
-        case TransferMachine::State::PeerDisconnected:
-        case TransferMachine::State::PeerConnectionLost:
-        case TransferMachine::State::Transfer:
+        case TransactionMachine::State::PublishInterfaces:
+        case TransactionMachine::State::Connect:
+        case TransactionMachine::State::PeerDisconnected:
+        case TransactionMachine::State::PeerConnectionLost:
+        case TransactionMachine::State::Transfer:
           this->_run(this->_transfer_core_state);
           break;
-        case TransferMachine::State::Finished:
+        case TransactionMachine::State::Finished:
           this->_run(this->_finish_state);
           break;
-        case TransferMachine::State::Rejected:
+        case TransactionMachine::State::Rejected:
           this->_run(this->_reject_state);
           break;
-        case TransferMachine::State::Canceled:
+        case TransactionMachine::State::Canceled:
           this->_run(this->_cancel_state);
           break;
-        case TransferMachine::State::Failed:
+        case TransactionMachine::State::Failed:
           this->_run(this->_fail_state);
           break;
         default:
@@ -240,23 +240,23 @@ namespace surface
       {
         case TransactionStatus::accepted:
           ELLE_DEBUG("%s: open accepted barrier", *this)
-            this->_accepted.open();
+            this->accepted().open();
           break;
         case TransactionStatus::canceled:
           ELLE_DEBUG("%s: open canceled barrier", *this)
-            this->_canceled.open();
+            this->canceled().open();
           break;
         case TransactionStatus::failed:
           ELLE_DEBUG("%s: open failed barrier", *this)
-            this->_failed.open();
+            this->failed().open();
           break;
         case TransactionStatus::finished:
           ELLE_DEBUG("%s: open finished barrier", *this)
-            this->_finished.open();
+            this->finished().open();
           break;
         case TransactionStatus::rejected:
           ELLE_DEBUG("%s: open rejected barrier", *this)
-            this->_rejected.open();
+            this->rejected().open();
           break;
         case TransactionStatus::initialized:
           ELLE_DEBUG("%s: ignore status %s", *this, status);
@@ -293,8 +293,7 @@ namespace surface
       ELLE_DEBUG("%s: total file size: %s", *this, size);
       this->data()->total_size = size;
 
-      std::string first_file =
-        boost::filesystem::path(*(this->_files.cbegin())).filename().string();
+      auto first_file = boost::filesystem::path(*(this->_files.cbegin()));
 
       std::list<std::string> file_list{this->_files.size()};
       std::transform(
@@ -308,7 +307,7 @@ namespace surface
 
       // Change state to SenderCreateTransaction once we've calculated the file
       // size and have the file list.
-      this->current_state(TransferMachine::State::SenderCreateTransaction);
+      this->current_state(TransactionMachine::State::SenderCreateTransaction);
 
       ELLE_DEBUG("create transaction");
       this->transaction_id(
@@ -348,7 +347,7 @@ namespace surface
     SendMachine::_wait_for_accept()
     {
       ELLE_TRACE_SCOPE("%s: waiting for peer to accept or reject", *this);
-      this->current_state(TransferMachine::State::SenderWaitForDecision);
+      this->current_state(TransactionMachine::State::SenderWaitForDecision);
 
       // There are two ways to go to the next step:
       // - Checking local state, meaning that during the copy, we recieved an
@@ -357,7 +356,7 @@ namespace surface
     }
 
     void
-    SendMachine::_transfer_operation()
+    SendMachine::_transfer_operation(frete::RPCFrete& frete)
     {
       ELLE_TRACE_SCOPE("%s: transfer operation", *this);
 
@@ -365,50 +364,49 @@ namespace surface
       {
         scope.run_background(
           elle::sprintf("frete get %s", this->id()),
-          [this] ()
+          [&frete] ()
           {
-            this->frete().run();
+            frete.run();
           });
         scope.wait();
       };
     }
 
+    float
+    SendMachine::progress() const
+    {
+      if (this->_frete != nullptr)
+        return this->_frete->progress();
+      return 0.0f;
+    }
+
     frete::Frete&
     SendMachine::frete()
     {
-      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
       if (this->_frete == nullptr)
       {
-        reactor::Scheduler& sched = *reactor::Scheduler::scheduler();
-        ELLE_ASSERT(this->_frete == nullptr);
-
-        ELLE_DEBUG("create serializer");
-        this->_serializer.reset(
-          new infinit::protocol::Serializer(sched,
-                                            *this->_host));
-        ELLE_DEBUG("create channels");
-        this->_channels.reset(
-          new infinit::protocol::ChanneledStream(sched, *this->_serializer));
-
         infinit::cryptography::PublicKey peer_K;
         peer_K.Restore(this->state().user(this->peer_id(), true).public_key);
-        this->_frete.reset(
-          new frete::Frete(*this->_channels,
-                           this->transaction_id(),
-                           peer_K,
-                           common::infinit::frete_snapshot_path(
-                             this->data()->sender_id,
-                             this->data()->id)));
 
-        ELLE_TRACE_SCOPE("%s: init frete", *this);
-        for (std::string const& file: this->_files)
-          this->_frete->add(file);
-        ELLE_DEBUG("frete successfully initialized");
+        this->_frete = elle::make_unique<frete::Frete>(
+          this->transaction_id(),
+          peer_K,
+          common::infinit::frete_snapshot_path(
+            this->data()->sender_id,
+            this->data()->id));
+
+        ELLE_TRACE("%s: initialize frete", *this)
+          for (std::string const& file: this->_files)
+            this->_frete->add(file);
       }
 
-      ELLE_ASSERT(this->_frete != nullptr);
       return *this->_frete;
+    }
+
+    std::unique_ptr<frete::RPCFrete>
+    SendMachine::rpcs(infinit::protocol::ChanneledStream& channels)
+    {
+      return elle::make_unique<frete::RPCFrete>(this->frete(), channels);
     }
 
     /*----------.

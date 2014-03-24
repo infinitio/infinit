@@ -1,35 +1,23 @@
-#include <functional>
-#include <sstream>
+#include <boost/filesystem.hpp>
 
-#include <elle/container/list.hh>
+#include <elle/log.hh>
 #include <elle/network/Interface.hh>
 #include <elle/os/environ.hh>
-#include <elle/printf.hh>
-#include <elle/serialize/insert.hh>
 
-#include <common/common.hh>
-
-#include <infinit/metrics/CompositeReporter.hh>
-#include <surface/gap/Rounds.hh>
-#include <surface/gap/State.hh>
-#include <surface/gap/TransferMachine.hh>
-
-#include <papier/Authority.hh>
-
-#include <frete/Frete.hh>
-
-#include <station/Station.hh>
-#include <station/AlreadyConnected.hh>
-
-#include <reactor/fsm/Machine.hh>
-#include <reactor/exception.hh>
-#include <reactor/Scope.hh>
-
-#include <cryptography/oneway.hh>
+#include <reactor/network/exception.hh>
 
 #include <protocol/exceptions.hh>
 
-#include <CrashReporter.hh>
+#include <frete/src/frete/TransferSnapshot.hh>
+
+#include <station/src/station/Station.hh>
+#include <surface/gap/FilesystemTransferBufferer.hh>
+#include <surface/gap/ReceiveMachine.hh>
+#include <surface/gap/Rounds.hh>
+#include <surface/gap/SendMachine.hh>
+#include <surface/gap/State.hh>
+#include <surface/gap/TransactionMachine.hh>
+#include <surface/gap/TransferMachine.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.TransferMachine");
 
@@ -37,621 +25,253 @@ namespace surface
 {
   namespace gap
   {
-    TransferMachine::Snapshot::Snapshot(Data const& data,
-                                        State const state,
-                                        std::unordered_set<std::string> const& files,
-                                        std::string const& message):
-      data(data),
-      state(state),
-      files(files),
-      message(message)
-    {}
+    /*-------------.
+    | Construction |
+    `-------------*/
 
-    //---------- TransferMachine -----------------------------------------------
-    TransferMachine::TransferMachine(surface::gap::State const& state,
-                                     uint32_t id,
-                                     std::shared_ptr<TransferMachine::Data> data):
-      _snapshot_path(
-        boost::filesystem::path(
-          common::infinit::transaction_snapshots_directory(state.me().id) /
-          boost::filesystem::unique_path()).string()),
-      _id(id),
-      _machine(),
-      _machine_thread(),
-      _current_state(State::None),
-      _state_changed("state changed"),
-      _transfer_core_state(
-        this->_machine.state_make(
-          "transfer core", std::bind(&TransferMachine::_transfer_core, this))),
-      _finish_state(
-        this->_machine.state_make(
-          "finish", std::bind(&TransferMachine::_finish, this))),
-      _reject_state(
-        this->_machine.state_make(
-          "reject", std::bind(&TransferMachine::_reject, this))),
-      _cancel_state(
-        this->_machine.state_make(
-          "cancel", std::bind(&TransferMachine::_cancel, this))),
-      _fail_state(
-        this->_machine.state_make(
-          "fail", std::bind(&TransferMachine::_fail, this))),
-      _end_state(
-        this->_machine.state_make(
-          "end", std::bind(&TransferMachine::_end, this))),
-      _finished("finished barrier"),
-      _rejected("rejected barrier"),
-      _canceled("canceled barrier"),
-      _failed("failed barrier"),
-      _core_machine(),
-      _core_machine_thread(),
-      _publish_interfaces_state(
-        this->_core_machine.state_make(
-          "publish interfaces", std::bind(&TransferMachine::_publish_interfaces, this))),
-      _connection_state(
-        this->_core_machine.state_make(
-          "connection", std::bind(&TransferMachine::_connection, this))),
-      _wait_for_peer_state(
-        this->_core_machine.state_make(
-          "wait for peer", std::bind(&TransferMachine::_wait_for_peer, this))),
-      _transfer_state(
-        this->_core_machine.state_make(
-          "transfer", std::bind(&TransferMachine::_transfer, this))),
-      _core_stoped_state(
-        this->_core_machine.state_make(
-          "core stoped", std::bind(&TransferMachine::_core_stoped, this))),
-      _core_paused_state(
-        this->_core_machine.state_make(
-          "core paused", std::bind(&TransferMachine::_core_paused, this))),
+    TransferMachine::TransferMachine(TransactionMachine& owner):
+      _owner(owner),
+      _fsm(),
       _peer_online("peer online"),
       _peer_offline("peer offline"),
-      _peer_connected("peer connected"),
-      _peer_disconnected("peer connected"),
-      _state(state),
-      _data(std::move(data))
+      _peer_reachable("peer reachable"),
+      _peer_unreachable("peer unreachable"),
+      _peer_connected("peer connected")
     {
-      ELLE_TRACE_SCOPE("%s: creating transfer machine: %s", *this, this->_data);
+      // Online / Offline barrier can't be initialized here, because
+      // TransactionMachine is abstract.
+      // I choosed to initialize the values on run() method.
 
-      // Normal way.
-      this->_machine.transition_add(this->_transfer_core_state,
-                                    this->_finish_state,
-                                    reactor::Waitables{&this->_finished},
-                                    true);
+      // By default, use the cached status from gap.
+      this->_peer_unreachable.open();
 
-      this->_machine.transition_add(this->_finish_state,
-                                    this->_end_state);
+      /*-------.
+      | States |
+      `-------*/
+      auto& publish_interfaces_state =
+        this->_fsm.state_make(
+          "publish interfaces",
+          std::bind(&TransferMachine::_publish_interfaces, this));
+      auto& connection_state =
+        this->_fsm.state_make(
+          "connection",
+          std::bind(&TransferMachine::_connection, this));
+      auto& wait_for_peer_state =
+        this->_fsm.state_make(
+          "wait for peer",
+          std::bind(&TransferMachine::_wait_for_peer, this));
+      auto& transfer_state =
+        this->_fsm.state_make(
+          "transfer",
+          std::bind(&TransferMachine::_transfer, this));
+      auto& stopped_state =
+        this->_fsm.state_make(
+          "stopped",
+          std::bind(&TransferMachine::_stopped, this));
 
-      // Cancel way.
-      this->_machine.transition_add(this->_transfer_core_state,
-                                    this->_cancel_state,
-                                    reactor::Waitables{&this->_canceled}, true);
-      this->_machine.transition_add(this->_cancel_state,
-                                    this->_end_state);
-
-      // Fail way.
-      this->_machine.transition_add_catch(this->_transfer_core_state,
-                                          this->_fail_state);
-
-      this->_machine.transition_add(this->_transfer_core_state,
-                                    this->_fail_state,
-                                    reactor::Waitables{&this->_failed}, true);
-
-      this->_machine.transition_add(this->_fail_state,
-                                    this->_end_state);
-      // Reject.
-      this->_machine.transition_add(this->_reject_state,
-                                    this->_end_state);
-
-      // The catch transitions just open the barrier to logging purpose.
-      // The snapshot will be kept.
-      this->_machine.transition_add_catch(this->_fail_state, this->_end_state)
-        .action([this] { ELLE_ERR("%s: failure failed", *this); });
-      this->_machine.transition_add_catch(this->_cancel_state, this->_end_state)
-        .action([this]
-                {
-                  ELLE_ERR("%s: cancellation failed", *this);
-                  this->_failed.open();
-                });
-      this->_machine.transition_add_catch(this->_finish_state, this->_end_state)
-        .action([this]
-                {
-                  ELLE_ERR("%s: termination failed", *this);
-                  this->_failed.open();
-                });
-
-      /*-------------.
-      | Core Machine |
-      `-------------*/
-      this->_core_machine.transition_add(
-        this->_publish_interfaces_state,
-        this->_connection_state,
-        reactor::Waitables{&this->_peer_online});
-
-      this->_core_machine.transition_add(
-        this->_connection_state,
-        this->_wait_for_peer_state,
-        reactor::Waitables{&this->_peer_offline},
+      /*------------.
+      | Transitions |
+      `------------*/
+      // Publish and wait for connection.
+      this->_fsm.transition_add(
+        publish_interfaces_state,
+        connection_state,
+        reactor::Waitables{&this->_peer_reachable});
+      this->_fsm.transition_add(
+        publish_interfaces_state,
+        wait_for_peer_state,
+        reactor::Waitables{&this->_peer_unreachable});
+      this->_fsm.transition_add(
+        connection_state,
+        wait_for_peer_state,
+        reactor::Waitables{&this->_peer_unreachable},
         true)
         .action([&]
                 {
-                  ELLE_TRACE("%s: peer offline: wait for peer", *this);
+                  ELLE_TRACE("%s: peer went offline while connecting", *this);
                 });
-
-      this->_core_machine.transition_add(
-        this->_wait_for_peer_state,
-        this->_connection_state,
-        reactor::Waitables{&this->_peer_online})
+      this->_fsm.transition_add(
+        wait_for_peer_state,
+        connection_state,
+        reactor::Waitables{&this->_peer_reachable},
+        true)
         .action([&]
                 {
-                  ELLE_TRACE("%s: peer online: connection", *this);
+                  ELLE_TRACE("%s: peer went online", *this);
                 });
 
-      this->_core_machine.transition_add(
-        this->_publish_interfaces_state,
-        this->_core_stoped_state,
-        reactor::Waitables{&this->_canceled}, true);
-
-      this->_core_machine.transition_add(
-        this->_connection_state,
-        this->_core_stoped_state,
-        reactor::Waitables{&this->_canceled}, true);
-
-      this->_core_machine.transition_add(
-        this->_wait_for_peer_state,
-        this->_core_stoped_state,
-        reactor::Waitables{&this->_canceled}, true);
-
-      this->_core_machine.transition_add(
-        this->_transfer_state,
-        this->_core_stoped_state,
-        reactor::Waitables{&this->_canceled}, true);
-
-      this->_core_machine.transition_add(
-        this->_connection_state,
-        this->_transfer_state,
-        reactor::Waitables{&this->_peer_connected});
-
-      this->_core_machine.transition_add(
-        this->_transfer_state,
-        this->_core_stoped_state,
-        reactor::Waitables{&this->_finished},
+      // Finished.
+      this->_fsm.transition_add(
+        transfer_state,
+        stopped_state,
+        reactor::Waitables{&owner.finished()},
         true)
         .action([this]
                 {
                   ELLE_LOG("%s: transfer finished", *this);
                 });
+      this->_fsm.transition_add(
+        transfer_state,
+        stopped_state,
+        [this]() { return this->finished(); }
+        )
+        .action([this]
+                {
+                  ELLE_LOG("%s: transfer finished", *this);
+                });
+      this->_fsm.transition_add(
+        wait_for_peer_state,
+        stopped_state,
+        [this]() { return this->finished(); }
+        )
+        .action([this]
+                {
+                  ELLE_LOG("%s: transfer finished in the cloud", *this);
+                });
 
-      this->_core_machine.transition_add_catch_specific<
+      // Start and stop transfering.
+      this->_fsm.transition_add(
+        connection_state,
+        transfer_state,
+        reactor::Waitables{&this->_peer_connected});
+      this->_fsm.transition_add_catch_specific<
         reactor::network::Exception>(
-        this->_transfer_state,
-        this->_connection_state)
+        transfer_state,
+        connection_state)
         .action([this]
                 {
                   ELLE_TRACE("%s: peer disconnected from the frete", *this);
                 });
-
-      this->_core_machine.transition_add_catch_specific<
+      this->_fsm.transition_add_catch_specific<
         infinit::protocol::Error>(
-        this->_transfer_state,
-        this->_connection_state)
+        transfer_state,
+        connection_state)
         .action([this]
                 {
                   ELLE_TRACE("%s: protocol error in frete", *this);
                 });
-
-      // I
-      this->_core_machine.transition_add_catch_specific<
+      this->_fsm.transition_add_catch_specific<
         infinit::protocol::ChecksumError>(
-        this->_transfer_state,
-        this->_connection_state)
+        transfer_state,
+        connection_state)
         .action([this]
                 {
                   ELLE_TRACE("%s: checksum error in frete", *this);
                 });
-
-      this->_core_machine.transition_add(
-        this->_transfer_state,
-        this->_connection_state)
+      this->_fsm.transition_add(
+        transfer_state,
+        connection_state)
         .action([this]
                 {
                   ELLE_TRACE("%s: peer disconnected from the frete", *this);
                 });
 
-      this->_core_machine.transition_add_catch(
-        this->_publish_interfaces_state,
-        this->_core_stoped_state)
-        .action([this]
+      // Cancel.
+      this->_fsm.transition_add(
+        publish_interfaces_state,
+        stopped_state,
+        reactor::Waitables{&owner.canceled()}, true);
+      this->_fsm.transition_add(
+        connection_state,
+        stopped_state,
+        reactor::Waitables{&owner.canceled()}, true);
+      this->_fsm.transition_add(
+        wait_for_peer_state,
+        stopped_state,
+        reactor::Waitables{&owner.canceled()}, true);
+      this->_fsm.transition_add(
+        transfer_state,
+        stopped_state,
+        reactor::Waitables{&owner.canceled()}, true);
+
+      // Failure.
+      this->_fsm.transition_add_catch(
+        publish_interfaces_state,
+        stopped_state)
+        .action([this, &owner]
                 {
                   ELLE_ERR("%s: interface publication failed", *this);
-                  this->_failed.open();
+                  owner.failed().open();
                 });
-
-      this->_core_machine.transition_add_catch(
-        this->_wait_for_peer_state,
-        this->_core_stoped_state)
-        .action([this]
+      this->_fsm.transition_add_catch(
+        wait_for_peer_state,
+        stopped_state)
+        .action([this, &owner]
                 {
                   ELLE_ERR("%s: peer wait failed", *this);
-                  this->_failed.open();
+                  owner.failed().open();
                 });
-
-      this->_core_machine.transition_add_catch(
-        this->_connection_state,
-        this->_core_stoped_state)
-        .action([this]
+      this->_fsm.transition_add_catch(
+        connection_state,
+        stopped_state)
+        .action([this, &owner]
                 {
                   ELLE_ERR("%s: connection failed", *this);
-                  this->_failed.open();
+                  owner.failed().open();
                 });
-
-      this->_core_machine.transition_add_catch(
-        this->_transfer_state,
-        this->_core_stoped_state)
-        .action([this]
+      this->_fsm.transition_add_catch(
+        transfer_state,
+        stopped_state)
+        .action([this, &owner]
                 {
                   ELLE_ERR("%s: transfer failed", *this);
-                  this->_failed.open();
+                  owner.failed().open();
                 });
     }
 
-    TransferMachine::~TransferMachine()
-    {
-      ELLE_TRACE_SCOPE("%s: destroying transfer machine", *this);
-    }
-
-    TransferMachine::Snapshot
-    TransferMachine::_make_snapshot() const
-    {
-      return Snapshot{*this->data(), this->_current_state};
-    }
+    /*--------.
+    | Control |
+    `--------*/
 
     void
-    TransferMachine::_save_snapshot() const
+    TransferMachine::run()
     {
-      elle::serialize::to_file(this->_snapshot_path.string()) << this->_make_snapshot();
-    }
-
-    void
-    TransferMachine::current_state(TransferMachine::State const& state)
-    {
-      ELLE_TRACE_SCOPE("%s: set new state to %s", *this, state);
-      this->_current_state = state;
-      this->_save_snapshot();
-      this->_state_changed.signal();
-    }
-
-    TransferMachine::State
-    TransferMachine::current_state() const
-    {
-      return this->_current_state;
-    }
-
-    void
-    TransferMachine::_transfer_core()
-    {
-      ELLE_TRACE_SCOPE("%s: start transfer core machine", *this);
-      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
-      reactor::Scheduler& scheduler = *reactor::Scheduler::scheduler();
-
-      this->_core_machine_thread.reset(
-        new reactor::Thread{
-          scheduler,
-          "run core",
-          [&]
-          {
-            try
-            {
-              this->_core_machine.run();
-              ELLE_TRACE("%s: core machine finished properly", *this);
-            }
-            catch (reactor::Terminate const&)
-            {
-              ELLE_TRACE("%s: terminted", *this);
-              throw;
-            }
-            catch (std::exception const&)
-            {
-              ELLE_ERR("%s: something went wrong while transfering", *this);
-            }
-          }});
-
-      elle::With<elle::Finally>( [&]
-        {
-          if (this->_core_machine_thread)
-          {
-            this->_core_machine_thread->terminate_now();
-            this->_core_machine_thread.reset();
-          }
-        }) << [&]
+      // XXX: Best place to do that? (See constructor).
+      if (this->_owner.state().user(this->_owner.peer_id()).status())
       {
-        scheduler.current()->wait(*this->_core_machine_thread);
-      };
-
-      if (this->_failed.opened())
-        throw Exception(gap_error, "an error occured");
-
-      ELLE_DEBUG("%s: transfer core finished", *this);
-    }
-
-    void
-    TransferMachine::_end()
-    {
-      ELLE_TRACE_SCOPE("%s: finish transfer machine", *this);
-      if (this->_failed.opened())
-        ELLE_WARN("fail barrier was opened");
-      if (this->_canceled.opened())
-        ELLE_WARN("cancel barrier was opened");
-    }
-
-    void
-    TransferMachine::_finish()
-    {
-      ELLE_TRACE_SCOPE("%s: machine finished", *this);
-      if (!this->is_sender())
-      {
-        this->state().composite_reporter().transaction_ended(
-          this->transaction_id(),
-          infinit::oracles::Transaction::Status::finished,
-          ""
-        );
-      }
-      this->current_state(State::Finished);
-      this->_finalize(infinit::oracles::Transaction::Status::finished);
-      ELLE_DEBUG("%s: finished", *this);
-    }
-
-    void
-    TransferMachine::_reject()
-    {
-      ELLE_TRACE_SCOPE("%s: machine rejected", *this);
-      this->current_state(State::Rejected);
-      this->_finalize(infinit::oracles::Transaction::Status::rejected);
-      ELLE_DEBUG("%s: rejected", *this);
-    }
-
-    void
-    TransferMachine::_cancel()
-    {
-      ELLE_TRACE_SCOPE("%s: machine canceled", *this);
-      this->current_state(State::Canceled);
-      this->_finalize(infinit::oracles::Transaction::Status::canceled);
-      ELLE_DEBUG("%s: canceled", *this);
-    }
-
-    void
-    TransferMachine::_fail()
-    {
-      ELLE_TRACE_SCOPE("%s: machine failed", *this);
-
-      std::string transaction_id;
-      if (!this->data()->id.empty())
-        transaction_id = this->transaction_id();
-      else
-        transaction_id = "unknown";
-
-      this->state().composite_reporter().transaction_ended(
-        transaction_id,
-        infinit::oracles::Transaction::Status::failed,
-        ""
-      );
-
-      // Send report for failed transfer
-      elle::crash::transfer_failed_report(this->state().me().email);
-
-      this->current_state(State::Failed);
-      this->_finalize(infinit::oracles::Transaction::Status::failed);
-      ELLE_DEBUG("%s: failed", *this);
-    }
-
-    void
-    TransferMachine::_finalize(infinit::oracles::Transaction::Status status)
-    {
-      ELLE_TRACE_SCOPE("%s: finalize machine: %s", *this, status);
-
-      try
-      {
-        if (this->_machine.exception() != std::exception_ptr{})
-          throw this->_machine.exception();
-      }
-      catch (reactor::Terminate const&)
-      {
-        ELLE_TRACE("%s: machine terminated cleanly: %s", *this, elle::exception_string());
-        throw;
-      }
-      catch (...)
-      {
-        ELLE_ERR("%s: transaction failed: %s", *this, elle::exception_string());
-      }
-
-      if (!this->_data->empty())
-      {
-        try
-        {
-          this->state().meta().update_transaction(
-            this->transaction_id(), status);
-        }
-        catch (reactor::Terminate const&)
-        {
-          ELLE_TRACE("%s: machine terminated while canceling transaction: %s",
-                     *this, elle::exception_string());
-          throw;
-        }
-        catch (infinit::oracles::meta::Exception const& e)
-        {
-          if (e.err == infinit::oracles::meta::Error::transaction_already_finalized)
-            ELLE_TRACE("%s: transaction already finalized", *this);
-          else if (e.err == infinit::oracles::meta::Error::transaction_already_has_this_status)
-            ELLE_TRACE("%s: transaction already in this state", *this);
-          else
-            ELLE_ERR("%s: unable to finalize the transaction %s: %s",
-                     *this, this->transaction_id(), elle::exception_string());
-        }
-        catch (std::exception const&)
-        {
-          ELLE_ERR("%s: unable to finalize the transaction %s: %s",
-                   *this, this->transaction_id(), elle::exception_string());
-        }
+        this->_peer_offline.close();
+        this->_peer_online.open();
       }
       else
       {
-        ELLE_DEBUG("%s: transaction id is still empty", *this);
-      }
-    }
-
-    void
-    TransferMachine::_run(reactor::fsm::State& initial_state)
-    {
-      ELLE_TRACE_SCOPE("%s: running transfer machine", *this);
-      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
-      auto& scheduler = *reactor::Scheduler::scheduler();
-
-      this->_machine_thread.reset(
-        new reactor::Thread{
-          scheduler,
-          "run",
-          [&]
-          {
-            this->_machine.run(initial_state);
-            ELLE_TRACE("%s: machine finished properly", *this);
-            boost::filesystem::remove(this->_snapshot_path);
-          }});
-    }
-
-    void
-    TransferMachine::peer_connection_update(bool user_status)
-    {
-      ELLE_TRACE_SCOPE("%s: update with new peer connection status %s",
-                       *this, user_status);
-
-      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
-      if (user_status)
-      {
-        if (this->_peer_online.opened())
-        {
-          ELLE_WARN("%s: peer was already signal online", *this);
-          this->_peer_offline.close();
-        }
-
-        ELLE_DEBUG("%s: signal peer online", *this)
-        {
-          this->_peer_offline.close();
-          this->_peer_online.open();
-        }
-      }
-      else
-      {
-        ELLE_DEBUG("%s: signal peer offline", *this);
         this->_peer_online.close();
         this->_peer_offline.open();
       }
+
+      this->_fsm.run();
     }
 
-    void
-    TransferMachine::cancel()
+    /*-------.
+    | Status |
+    `-------*/
+
+    float
+    TransferMachine::progress() const
     {
-      ELLE_TRACE_SCOPE("%s: cancel transaction %s", *this, this->data()->id);
-
-      if (!this->_canceled.opened())
-      {
-        this->state().composite_reporter().transaction_ended(
-          this->transaction_id(),
-          infinit::oracles::Transaction::Status::canceled,
-          ""
-        );
-      }
-
-      this->_canceled.open();
+      return this->_owner.progress();
     }
 
     bool
-    TransferMachine::concerns_transaction(std::string const& transaction_id)
+    TransferMachine::finished() const
     {
-      return this->_data->id == transaction_id;
+      if (auto owner = dynamic_cast<SendMachine*>(&this->_owner))
+        return owner->frete().finished();
+      else
+        return false; // FIXME
     }
 
-    bool
-    TransferMachine::concerns_user(std::string const& user_id)
-    {
-      return (user_id == this->_data->sender_id) ||
-             (user_id == this->_data->recipient_id);
-    }
+    /*-------.
+    | States |
+    `-------*/
 
-    bool
-    TransferMachine::concerns_device(std::string const& device_id)
-    {
-      return (device_id == this->_data->sender_device_id) ||
-             (device_id == this->_data->recipient_device_id);
-    }
-
-    bool
-    TransferMachine::has_id(uint32_t id)
-    {
-      return (id == this->id());
-    }
-
-    void
-    TransferMachine::join()
-    {
-      ELLE_TRACE_SCOPE("%s: join machine", *this);
-
-      if (this->_machine_thread == nullptr)
-      {
-        ELLE_WARN("%s: thread already destroyed", *this);
-        return;
-      }
-
-      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-      reactor::Thread* current = reactor::Scheduler::scheduler()->current();
-      ELLE_ASSERT(current != nullptr);
-      ELLE_DEBUG("%s: start joining", *this);
-      if (this->_machine_thread.get() != nullptr)
-      {
-        current->wait(*this->_machine_thread.get());
-      }
-      ELLE_DEBUG("%s: successfully joined", *this);
-    }
-
-    void
-    TransferMachine::_stop()
-    {
-      ELLE_TRACE_SCOPE("%s: stop machine for transaction", *this);
-
-      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
-      if (this->_core_machine_thread != nullptr)
-      {
-        ELLE_DEBUG("%s: terminate machine thread", *this)
-          this->_core_machine_thread->terminate_now();
-        this->_core_machine_thread.reset();
-      }
-
-      if (this->_machine_thread != nullptr)
-      {
-        ELLE_DEBUG("%s: terminate machine thread", *this)
-          this->_machine_thread->terminate_now();
-        this->_machine_thread.reset();
-      }
-
-      // Assign directly, don't use setter.
-      this->_current_state = State::Over;
-    }
-
-    /*-------------.
-    | Core Machine |
-    `-------------*/
     void
     TransferMachine::_publish_interfaces()
     {
       ELLE_TRACE_SCOPE("%s: publish interfaces", *this);
-      this->current_state(State::PublishInterfaces);
-
-      auto& station = this->station();
-
+      this->_owner.current_state(TransactionMachine::State::PublishInterfaces);
+      auto& station = this->_owner.station();
       typedef std::vector<std::pair<std::string, uint16_t>> AddressContainer;
       AddressContainer addresses;
-
       // In order to test the fallback, we can fake our local addresses.
       // It should also work for nated network.
       if (elle::os::getenv("INFINIT_LOCAL_ADDRESS", "").length() > 0)
@@ -675,14 +295,10 @@ namespace surface
           }
       }
       ELLE_DEBUG("addresses: %s", addresses);
-
       AddressContainer public_addresses;
-
-      // XXX.
-
-      this->state().meta().connect_device(
-        this->data()->id,
-        this->state().passport().id(),
+      this->_owner.state().meta().connect_device(
+        this->_owner.data()->id,
+        this->_owner.state().passport().id(),
         addresses,
         public_addresses);
       ELLE_DEBUG("%s: interfaces published", *this);
@@ -691,65 +307,76 @@ namespace surface
     std::unique_ptr<reactor::network::Socket>
     TransferMachine::_connect()
     {
-      auto const& transaction = *this->data();
-
-      auto endpoints = this->state().meta().device_endpoints(
-        this->data()->id,
-        is_sender() ? transaction.sender_device_id :
-                      transaction.recipient_device_id,
-        is_sender() ? transaction.recipient_device_id :
-                      transaction.sender_device_id);
-
+      auto const& transaction = *this->_owner.data();
+      infinit::oracles::meta::EndpointNodeResponse endpoints;
+      // Get endpoints. If the peer disconnected, we might go back to the
+      // connection state before we're informed of this and try
+      // reconnecting. Don't err and just keep retrying until either he comes
+      // back online or we're notified he's offline.
+      while (true)
+      {
+        try
+        {
+          endpoints = this->_owner.state().meta().device_endpoints(
+            this->_owner.data()->id,
+            this->_owner.is_sender() ? transaction.sender_device_id :
+            transaction.recipient_device_id,
+            this->_owner.is_sender() ? transaction.recipient_device_id :
+            transaction.sender_device_id);
+          break;
+        }
+        catch (infinit::oracles::meta::Exception const& e)
+        {
+          if (e.err != infinit::oracles::meta::Error::device_not_found)
+            throw;
+        }
+        reactor::sleep(1_sec);
+      }
       static auto print = [] (std::string const &s) { ELLE_DEBUG("-- %s", s); };
-
       ELLE_DEBUG("locals")
-        std::for_each(begin(endpoints.locals), end(endpoints.locals), print);
+        std::for_each(std::begin(endpoints.locals),
+                      std::end(endpoints.locals), print);
       ELLE_DEBUG("externals")
-        std::for_each(begin(endpoints.externals), end(endpoints.externals), print);
-
+        std::for_each(std::begin(endpoints.externals),
+                      std::end(endpoints.externals), print);
       std::vector<std::unique_ptr<Round>> rounds;
       rounds.emplace_back(new AddressRound("local",
                                            std::move(endpoints.locals)));
-
       rounds.emplace_back(new FallbackRound("fallback",
-                                            this->state().meta(),
-                                            this->data()->id));
-
+                                            this->_owner.state().meta(),
+                                            this->_owner.data()->id));
       ELLE_TRACE("%s: selected rounds (%s):", *this, rounds.size())
         for (auto& r: rounds)
           ELLE_TRACE("-- %s", *r);
-
       return elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
         reactor::Barrier found;
         std::unique_ptr<reactor::network::Socket> host;
-        scope.run_background("wait_accepted",
-                             [&] ()
-                             {
-                               this->station().host_available().wait();
-                               host = this->station().accept()->release();
-                               found.open();
-                               ELLE_WARN("%s: host found via 'accept'", *this);
-                             });
-
+        scope.run_background(
+          "wait_accepted",
+          [&] ()
+          {
+            this->_owner.station().host_available().wait();
+            host = this->_owner.station().accept()->release();
+            found.open();
+            ELLE_TRACE("%s: peer connection accepted", *this);
+          });
         scope.run_background(
           "rounds",
           [&]
           {
             for (auto& round: rounds)
             {
-              host = round->connect(this->station());
-
+              host = round->connect(this->_owner.station());
               if (host)
               {
                 found.open();
-                this->state().composite_reporter().transaction_connected(
-                  this->transaction_id(),
+                this->_owner.state().composite_reporter().transaction_connected(
+                  this->_owner.transaction_id(),
                   round->name()
                 );
-
-                ELLE_WARN("%s: host found via round: %s",
-                          *this, round->name());
+                ELLE_TRACE("%s: connected to peer in round %s",
+                           *this, round->name());
                 break;
               }
               else
@@ -757,209 +384,116 @@ namespace surface
                           *this, *round);
             }
           });
-
         found.wait();
-
         ELLE_ASSERT(host != nullptr);
-
         return std::move(host);
       };
-
       throw Exception(gap_api_error, "no round succeed");
     }
 
     void
     TransferMachine::_connection()
     {
-      ELLE_TRACE_SCOPE("%s: connecting peers", *this);
-      this->current_state(State::Connect);
-
+      ELLE_TRACE_SCOPE("%s: connect to peer", *this);
+      this->_owner.current_state(TransactionMachine::State::Connect);
       this->_host = this->_connect();
-      this->frete(); // Force lazy evaluation.
+      this->_serializer.reset(
+        new infinit::protocol::Serializer(*this->_host));
+      this->_channels.reset(
+        new infinit::protocol::ChanneledStream(*this->_serializer));
+      this->_rpcs = this->_owner.rpcs(*this->_channels);
       this->_peer_connected.signal();
     }
+
+    static std::streamsize const chunk_size = 1 << 18;
 
     void
     TransferMachine::_wait_for_peer()
     {
-      ELLE_TRACE_SCOPE("%s: waiting for peer to reconnect", *this);
-      this->current_state(State::PeerDisconnected);
+      ELLE_TRACE_SCOPE("%s: wait for peer to connect", *this);
+#if 0 // File buffering disabled.
+      reactor::sleep(10_sec);
+      // FIXME: this is a joke.
+      ELLE_TRACE("%s: no peer after 10s, cloud buffer", *this);
+      this->_owner.current_state(TransactionMachine::State::PeerDisconnected);
+      // Mundo va ou il veut.
+      if (auto owner = dynamic_cast<SendMachine*>(&this->_owner))
+      {
+        auto& frete = owner->frete();
+        auto& snapshot = *frete.transfer_snapshot();
+        FilesystemTransferBufferer::Files files;
+        for (frete::Frete::FileID file = 0; file < snapshot.count(); ++file)
+        {
+          auto& info = snapshot.transfers().at(file);
+          files.push_back(std::make_pair(info.path(), info.file_size()));
+        }
+        FilesystemTransferBufferer bufferer(*this->_owner.data(),
+                                            "/tmp/infinit-buffering",
+                                            snapshot.count(),
+                                            snapshot.total_size(),
+                                            files,
+                                            frete.key_code());
+        for (frete::Frete::FileID file = 0; file < snapshot.count(); ++file)
+        {
+          auto& info = snapshot.transfers().at(file);
+          auto file_size = info.file_size();
+          for (frete::Frete::FileOffset offset = info.progress();
+               offset < file_size;
+               offset += chunk_size)
+          {
+            ELLE_DEBUG_SCOPE("%s: buffer file %s at offset %s in the cloud",
+                             *this, file, offset);
+            auto block = frete.encrypted_read(file, offset, chunk_size);
+            auto& buffer = block.buffer();
+            bufferer.put(file, offset, buffer.size(), buffer);
+          }
+        }
+        frete.finish();
+      }
+      else if (auto owner = dynamic_cast<ReceiveMachine*>(&this->_owner))
+      {
+        ELLE_DEBUG("%s: create cloud bufferer", *this);
+        FilesystemTransferBufferer bufferer(*this->_owner.data(),
+                                            "/tmp/infinit-buffering");
+        ELLE_DEBUG("%s: download from the cloud", *this)
+          owner->get(bufferer);
+      }
+      else
+        elle::unreachable();
+#endif
     }
 
     void
     TransferMachine::_transfer()
     {
-      ELLE_TRACE_SCOPE("%s: start transfer operation", *this);
-      this->current_state(State::Transfer);
-
-      elle::SafeFinally clear_freete{
+      ELLE_TRACE_SCOPE("%s: transfer", *this);
+      this->_owner.current_state(TransactionMachine::State::Transfer);
+      elle::SafeFinally clear_frete{
         [this]
         {
-          this->_frete.reset();
+          this->_rpcs.reset();
           this->_channels.reset();
           this->_serializer.reset();
           this->_host.reset();
         }};
-
-      this->_transfer_operation();
-
+      this->_owner._transfer_operation(*this->_rpcs);
       ELLE_TRACE_SCOPE("%s: end of transfer operation", *this);
     }
 
     void
-    TransferMachine::_core_stoped()
+    TransferMachine::_stopped()
     {
-      ELLE_TRACE_SCOPE("%s: core machine stoped", *this);
-    }
-
-    void
-    TransferMachine::_core_paused()
-    {
-      ELLE_TRACE_SCOPE("%s: core machine paused", *this);
-    }
-
-    /*-----------.
-    | Attributes |
-    `-----------*/
-    std::string const&
-    TransferMachine::transaction_id() const
-    {
-      ELLE_ASSERT(!this->_data->id.empty());
-      return this->_data->id;
-    }
-
-    void
-    TransferMachine::transaction_id(std::string const& id)
-    {
-      if (!this->_data->id.empty())
-      {
-        ELLE_ASSERT_EQ(this->_data->id, id);
-        return;
-      }
-
-      this->_data->id = id;
-    }
-
-    std::string const&
-    TransferMachine::peer_id() const
-    {
-      if (this->is_sender())
-      {
-        ELLE_ASSERT(!this->_data->recipient_id.empty());
-        return this->_data->recipient_id;
-      }
-      else
-      {
-        ELLE_ASSERT(!this->_data->sender_id.empty());
-        return this->_data->sender_id;
-      }
-    }
-
-    void
-    TransferMachine::peer_id(std::string const& id)
-    {
-      if (this->is_sender())
-      {
-        if (!this->_data->recipient_id.empty() && this->_data->recipient_id != id)
-          ELLE_WARN("%s: replace recipient id %s by %s",
-                    *this, this->_data->recipient_id, id);
-        this->_data->recipient_id = id;
-      }
-      else
-      {
-        if (!this->_data->sender_id.empty() && this->_data->sender_id != id)
-          ELLE_WARN("%s: replace sender id %s by %s",
-                    *this, this->_data->sender_id, id);
-        this->_data->sender_id = id;
-      }
-    }
-
-    station::Station&
-    TransferMachine::station()
-    {
-      ELLE_TRACE_SCOPE("%s: get station", *this);
-      if (!this->_station)
-      {
-        ELLE_DEBUG_SCOPE("building station");
-        this->_station.reset(
-          new station::Station(papier::authority(), this->state().passport()));
-      }
-      ELLE_ASSERT(this->_station != nullptr);
-      return *this->_station;
-    }
-
-    float
-    TransferMachine::progress() const
-    {
-      if (this->_frete == nullptr)
-        return 0.0f;
-
-      return this->_frete->progress();
+      ELLE_TRACE_SCOPE("%s: stopped", *this);
     }
 
     /*----------.
     | Printable |
     `----------*/
 
-    std::string
-    TransferMachine::type() const
-    {
-      return "TransferMachine";
-    }
-
     void
     TransferMachine::print(std::ostream& stream) const
     {
-      auto const& data = *this->_data;
-      auto const& me = this->state().me();
-
-      stream << this->type() << "(id=" << this->id()
-             << ", (u=" << me.id;
-      if (!data.id.empty())
-        stream << ", t=" << data.id;
-      stream << ")";
-    }
-
-    std::ostream&
-    operator <<(std::ostream& out,
-                TransferMachine::State const& t)
-    {
-      switch (t)
-      {
-        case TransferMachine::State::NewTransaction:
-          return out << "NewTransaction";
-        case TransferMachine::State::SenderCreateTransaction:
-          return out << "SenderCreateTransaction";
-        case TransferMachine::State::SenderWaitForDecision:
-          return out << "SenderWaitForDecision";
-        case TransferMachine::State::RecipientWaitForDecision:
-          return out << "RecipientWaitForDecision";
-        case TransferMachine::State::RecipientAccepted:
-          return out << "RecipientAccepted";
-        case TransferMachine::State::PublishInterfaces:
-          return out << "PublishInterfaces";
-        case TransferMachine::State::Connect:
-          return out << "Connect";
-        case TransferMachine::State::PeerDisconnected:
-          return out << "PeerDisconnected";
-        case TransferMachine::State::PeerConnectionLost:
-          return out << "PeerConnectionLost";
-        case TransferMachine::State::Transfer:
-          return out << "Transfer";
-        case TransferMachine::State::Finished:
-          return out << "Finished";
-        case TransferMachine::State::Rejected:
-          return out << "Rejected";
-        case TransferMachine::State::Canceled:
-          return out << "Canceled";
-        case TransferMachine::State::Failed:
-          return out << "Failed";
-        case TransferMachine::State::Over:
-          return out << "Over";
-        case TransferMachine::State::None:
-          return out << "None";
-      }
-      return out;
+      stream << "TransferMachine(" << this->_owner.id() << ")";
     }
 
   }

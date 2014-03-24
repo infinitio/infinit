@@ -272,7 +272,7 @@ extern "C"
       else
         ret = gap_internal_error;
     }
-    catch (oracles::meta::Exception const& err)
+    catch (infinit::oracles::meta::Exception const& err)
     {
       ELLE_ERR("poll error: %s", err.what());
       ret = (gap_Status) err.err;
@@ -671,14 +671,6 @@ extern "C"
         return (it != state.me().favorites.end());
       }
     );
-  }
-
-  /// - Permissions ---------------------------------------------------------
-  static inline
-  void
-  gap_file_users_free(char** users)
-  {
-    ::free(users);
   }
 
   // - Trophonius -----------------------------------------------------------

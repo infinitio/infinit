@@ -1,10 +1,26 @@
 #!/usr/bin/env python3
 
 from utils import Meta, User
+from infinit.oracles.meta.server.mail import Mailer
+
+message_sent = False
+class MailService(Mailer):
+
+  def __init__(self, sender_fullname):
+    super().__init__(True)
+    self.__sender_fullname = sender_fullname
+
+  # Override Mailer private __send method.
+  def _Mailer__send(self, msg):
+    global message_sent
+    message_sent = True
+    assert str(msg).find(("%s_wants_to_share" % self.__sender_fullname))
 
 with Meta() as meta:
   alice = User(meta, "alice@infinit.io")
   bob = User(meta, "bob@infinit.io")
+
+  response = {"email": "alice@infinit.io"}
 
   bob.login()
 
@@ -13,6 +29,32 @@ with Meta() as meta:
 
   transaction_id = res['created_transaction_id']
 
+  alice.login()
+
+  res = alice.get('transaction/%s/view' % transaction_id)
+
+  for key in transaction.keys():
+    if key in ['id_or_email', 'device_id']: # Special cases.
+      continue
+    assert res[key] == transaction[key]
+  res['recipient_id'] == transaction['id_or_email']
+
+# Invited by email.
+with Meta(enable_emails = True) as meta:
+  alice_email = "alice@infinit.io"
+  bob = User(meta, "bob@infinit.io")
+
+  response = {"email": alice_email}
+  meta.mailer = MailService(response)
+
+  bob.login()
+
+  transaction, res = bob.sendfile(recipient_id = alice_email)
+  assert res['success']
+  assert message_sent
+  transaction_id = res['created_transaction_id']
+
+  alice = User(meta, alice_email)
   alice.login()
 
   res = alice.get('transaction/%s/view' % transaction_id)

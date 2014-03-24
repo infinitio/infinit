@@ -85,6 +85,9 @@ namespace infinit
         UserStatusNotification():
           Notification{NotificationType::user_status}
         {}
+
+        void
+        print(std::ostream& stream) const override;
       };
 
       struct TransactionNotification:
@@ -101,14 +104,14 @@ namespace infinit
         print(std::ostream& stream) const override;
       };
 
-      struct PeerConnectionUpdateNotification:
+      struct PeerReachabilityNotification:
         public Notification
       {
         std::string transaction_id;
         bool status;
         std::vector<std::string> devices;
 
-        ELLE_SERIALIZE_CONSTRUCT(PeerConnectionUpdateNotification,
+        ELLE_SERIALIZE_CONSTRUCT(PeerReachabilityNotification,
                                  Notification)
         {}
       };

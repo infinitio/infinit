@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+
+import os
+import subprocess
+import sys
+import datetime
+import threading
+
+SELF = os.path.realpath(__file__)
+PYTHONPATH = '%s/lib/python' % os.path.dirname(os.path.dirname(SELF))
+sys.path.insert(0, PYTHONPATH)
+# Export the PYTHONPATH to the environ because meta is forked.
+os.environ['PYTHONPATH'] = ':'.join(sys.path)
+
+from infinit.oracles.servers import Oracles
+import reactor
+
+import optparse
+usage = "usage: %prog [options]"
+parser = optparse.OptionParser(usage = usage)
+parser.add_option('--mongorestore',
+                  action = 'store',
+                  help = 'The database snapshot to load',
+                  default = None)
+options, args = parser.parse_args()
+
+exit_request = False
+
+def main():
+  global exit_request
+  with Oracles(mongo_dump = options.mongorestore) as oracles:
+    meta_proto, meta_host, meta_port = oracles.meta
+    environ = {}
+    environ['INFINIT_META_PROTOCOL'] = meta_proto
+    environ['INFINIT_META_HOST'] = meta_host
+    environ['INFINIT_META_PORT'] = str(meta_port)
+    tropho_proto, tropho_host, tropho_port_plain, tropho_port_ssl = oracles.trophonius
+    environ['INFINIT_TROPHONIUS_HOST'] = tropho_host
+    environ['INFINIT_TROPHONIUS_PORT'] = str(tropho_port_ssl)
+    # os.environ.update(environ)
+    # shell = subprocess.Popen(os.environ['SHELL'])
+    # while shell.returncode is None:
+    #   reactor.sleep(datetime.timedelta(seconds = 1))
+    for key, value in environ.items():
+      print('export %s=%s' % (key, value))
+    def wait_stdin_close():
+      global exit_request
+      while True:
+        d = sys.stdin.read(1)
+        if d is None or not len(d):
+          break
+      exit_request = True
+    t = threading.Thread(target = wait_stdin_close)
+    t.start()
+    while not exit_request:
+      reactor.sleep(datetime.timedelta(seconds = 1))
+sched = reactor.Scheduler()
+reactor.Thread(sched, 'main', main)
+sched.run()

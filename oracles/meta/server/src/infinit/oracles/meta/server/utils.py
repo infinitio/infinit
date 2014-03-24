@@ -4,6 +4,7 @@ import datetime
 import decorator
 import inspect
 import iso8601
+import json
 import uuid
 
 from . import error
@@ -61,16 +62,6 @@ def require_admin(method):
     raise Exception(
       'require_admin for %r wraps the API' % method.__name__)
   def wrapper(wrapped, self, *args, **kwargs):
-    if 'admin_token' in kwargs and kwargs['admin_token'] == ADMIN_TOKEN:
-      return wrapped(self, *args, **kwargs)
-    self.forbiden()
-  return decorator.decorator(wrapper, method)
-
-def _require_admin(method):
-  if hasattr(method, '__api__'):
-    raise Exception(
-      'require_admin for %r wraps the API' % method.__name__)
-  def wrapper(wrapped, self, *args, **kwargs):
     if not self.admin:
       self.forbiden()
     return wrapped(self, *args, **kwargs)
@@ -81,3 +72,9 @@ def hash_pasword(password):
   seasoned = password + conf.SALT
   seasoned = seasoned.encode('utf-8')
   return hashlib.md5(seasoned).hexdigest()
+
+def json_value(s):
+  return json.loads(utf8_string(s))
+
+def utf8_string(s):
+  return s.encode('latin-1').decode('utf-8')

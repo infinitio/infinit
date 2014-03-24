@@ -1,7 +1,7 @@
-#ifndef FRETE_FRETE_HXX
-# define FRETE_FRETE_HXX
+#ifndef FRETE_TRANSFERSNAPSHOT_HXX
+# define FRETE_TRANSFERSNAPSHOT_HXX
 
-# include <frete/Frete.hh>
+# include <frete/TransferSnapshot.hh>
 
 // ########## HXX ############
 #include <elle/serialize/construct.hh>
@@ -9,7 +9,7 @@
 
 # include <elle/serialize/MapSerializer.hxx>
 
-ELLE_SERIALIZE_SIMPLE(frete::Frete::TransferSnapshot::TransferInfo,
+ELLE_SERIALIZE_SIMPLE(frete::TransferSnapshot::TransferInfo,
                       ar,
                       res,
                       version)
@@ -25,18 +25,18 @@ ELLE_SERIALIZE_SIMPLE(frete::Frete::TransferSnapshot::TransferInfo,
     res._full_path = boost::filesystem::path(res._root) / res._path;
 }
 
-ELLE_SERIALIZE_SIMPLE(frete::Frete::TransferSnapshot::TransferProgressInfo,
+ELLE_SERIALIZE_SIMPLE(frete::TransferSnapshot::TransferProgressInfo,
                       ar,
                       res,
                       version)
 {
   enforce(version == 0);
 
-  ar & base_class<frete::Frete::TransferSnapshot::TransferInfo>(res);
+  ar & base_class<frete::TransferSnapshot::TransferInfo>(res);
   ar & named("progress", res._progress);
 }
 
-ELLE_SERIALIZE_SIMPLE(frete::Frete::TransferSnapshot,
+ELLE_SERIALIZE_SIMPLE(frete::TransferSnapshot,
                       ar,
                       res,
                       version)

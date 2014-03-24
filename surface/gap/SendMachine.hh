@@ -1,15 +1,17 @@
 #ifndef SENDMACHINE_HH
 # define SENDMACHINE_HH
 
-# include <surface/gap/TransferMachine.hh>
+# include <surface/gap/TransactionMachine.hh>
 # include <surface/gap/State.hh>
+
+# include <frete/fwd.hh>
 
 namespace surface
 {
   namespace gap
   {
     class  SendMachine:
-      public TransferMachine
+      public TransactionMachine
     {
     public:
       // Construct from send files.
@@ -24,14 +26,14 @@ namespace surface
       SendMachine(surface::gap::State const& state,
                   uint32_t id,
                   std::unordered_set<std::string> files,
-                  TransferMachine::State current_state,
+                  TransactionMachine::State current_state,
                   std::string const& message,
-                  std::shared_ptr<TransferMachine::Data> data);
+                  std::shared_ptr<TransactionMachine::Data> data);
 
       // XXX: Add putain de commentaire de la vie.
       SendMachine(surface::gap::State const& state,
                   uint32_t id,
-                  std::shared_ptr<TransferMachine::Data> data);
+                  std::shared_ptr<TransactionMachine::Data> data);
 
 
       virtual
@@ -59,7 +61,7 @@ namespace surface
       _wait_for_accept();
 
       void
-      _transfer_operation() override;
+      _transfer_operation(frete::RPCFrete& frete) override;
 
       /*-----------------------.
       | Machine implementation |
@@ -68,8 +70,10 @@ namespace surface
       ELLE_ATTRIBUTE(reactor::fsm::State&, wait_for_accept_state);
 
       // Transaction status signals.
-      ELLE_ATTRIBUTE(reactor::Barrier, accepted);
-      ELLE_ATTRIBUTE(reactor::Barrier, rejected);
+      ELLE_ATTRIBUTE_RX(reactor::Barrier, accepted);
+      ELLE_ATTRIBUTE_RX(reactor::Barrier, rejected);
+
+      ELLE_ATTRIBUTE(std::unique_ptr<frete::Frete>, frete);
 
       /*-----------------.
       | Transaction data |
@@ -79,6 +83,10 @@ namespace surface
       ELLE_ATTRIBUTE(std::string, message);
 
     public:
+      float
+      progress() const override;
+
+    public:
       virtual
       bool
       is_sender() const override
@@ -86,9 +94,12 @@ namespace surface
         return true;
       }
 
-    private:
       frete::Frete&
-      frete() override;
+      frete();
+
+    private:
+      std::unique_ptr<frete::RPCFrete>
+      rpcs(infinit::protocol::ChanneledStream& channels) override;
 
     public:
       /*----------.
