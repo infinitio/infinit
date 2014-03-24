@@ -3,6 +3,8 @@
 
 # include <elle/json/json.hh>
 
+# include <reactor/http/Request.hh>
+
 # include <infinit/metrics/Reporter.hh>
 
 namespace infinit
@@ -33,7 +35,9 @@ namespace infinit
       public Reporter
     {
     public:
-      JSONReporter(std::string const& name);
+      JSONReporter(std::string const& name,
+                   reactor::http::StatusCode expected_status =
+                   reactor::http::StatusCode::OK);
 
       virtual
       ~JSONReporter() = default;
@@ -45,7 +49,10 @@ namespace infinit
       virtual
       void
       _post(std::string const& destination,
-            elle::json::Object data) = 0;
+            elle::json::Object data);
+      virtual
+      std::string
+      _url(std::string const& destination) const = 0;
     private:
       void
       _send(std::string const& destination,
@@ -112,6 +119,7 @@ namespace infinit
       ELLE_ATTRIBUTE(int, port);
       ELLE_ATTRIBUTE(std::string, transaction_dest);
       ELLE_ATTRIBUTE(std::string, user_dest);
+      ELLE_ATTRIBUTE_R(reactor::http::StatusCode, expected_status);
     };
   }
 }
