@@ -35,7 +35,7 @@ class Invitation:
   def is_active(method):
     def wrapper(wrapped, self, *a, **ka):
       if not self.__active:
-        print("invitation was ignored because inviter is inactive")
+        elle.log.warn("invitation was ignored because inviter is inactive")
         return # Return an empty func.
       return wrapped(self, *a, **ka)
     return decorator.decorator(wrapper, method)
