@@ -67,12 +67,20 @@ namespace surface
         recursive_directory_iterator end;
         for (; iterator != end; ++iterator)
         {
-          auto snapshot_path = iterator->path().string().c_str();
+          auto snapshot_path =
+            boost::filesystem::path{iterator->path().native()}.string();
           ELLE_TRACE("%s: load transaction snapshot %s", *this, snapshot_path);
           elle::SafeFinally delete_snapshot(
             [&snapshot_path]
             {
-              boost::filesystem::remove(snapshot_path);
+              ELLE_DEBUG("remove snashot");
+              boost::system::error_code ec;
+              auto res =
+                boost::filesystem::remove(
+                  boost::filesystem::path{snapshot_path}, ec);
+              if (!res || ec)
+                ELLE_DEBUG("failed at removing snapshot %s: %s",
+                           snapshot_path, ec);
             });
           std::unique_ptr<TransactionMachine::Snapshot> snapshot;
           try
@@ -96,6 +104,23 @@ namespace surface
           {
             this->user(snapshot->data.sender_id);
             this->user(snapshot->data.recipient_id);
+
+            auto it = std::find_if(
+              std::begin(this->_transactions),
+              std::end(this->_transactions),
+              [&] (TransactionConstPair const& pair)
+              {
+                return (!pair.second.data()->id.empty()) &&
+                       (pair.second.data()->id == snapshot->data.id);
+              });
+
+            if (it != std::end(this->_transactions))
+            {
+              throw elle::Exception(
+                elle::sprintf("duplicated snapshot found for transaction %s",
+                              snapshot->data.id));
+            }
+
             auto _id = generate_id();
             ELLE_TRACE("%s: create transaction from snapshot", *this)
               this->_transactions.emplace(
