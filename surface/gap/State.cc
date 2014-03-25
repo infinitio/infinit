@@ -212,7 +212,7 @@ namespace surface
     bool
     State::_meta_server_check()
     {
-      return this->_meta_server_check(3_sec);
+      return this->_meta_server_check(10_sec);
     }
 
     bool
