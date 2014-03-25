@@ -184,66 +184,11 @@ class Mixin:
           'remaining_invitations': user.get('remaining_invitations', 0),
           })
 
-  def _transactions(self,
-                    filter,
-                    type,
-                    peer_id,
-                    count,
-                    offset):
-    """
-    Get all transaction involving user (as sender or recipient) which fit parameters.
-
-    filter -- a list of transaction status.
-    type -- make request inclusiv or exclusiv.
-    count -- the number of transactions to get.
-    offset -- the number of transactions to skip.
-    _with -- The peer id if specified.
-    """
-    inclusive = type
-    user_id = self.user['_id']
-
-    if peer_id is not None:
-      peer_id = bson.ObjectId(peer_id)
-      query = {
-        '$or':
-        [
-          { 'recipient_id': user_id, 'sender_id': peer_id, },
-          { 'sender_id': user_id, 'recipient_id': peer_id, },
-        ]}
-    else:
-      query = {
-        '$or':
-          [
-            { 'sender_id': user_id },
-            { 'recipient_id': user_id },
-          ]
-        }
-
-    query['status'] = {'$%s' % (inclusive and 'in' or 'nin'): filter}
-
-    from pymongo import ASCENDING, DESCENDING
-    find_params = {
-      'spec': query,
-      'limit': count,
-      'skip': offset,
-      'fields': ['_id'],
-      'sort': [
-        ('mtime', DESCENDING),
-        ],
-      }
-
-    return self.success(
-      {
-        "transactions": [ t['_id'] for t in self.database.transactions.find(**find_params)
-                        ]
-      }
-    )
-
   @api('/transactions')
   @require_logged_in
   def transcations(self,
                    filter : json_value = transaction_status.final + [transaction_status.CREATED],
-                   negate : bool = False,
+                   negate : json_value = True,
                    peer_id : bson.ObjectId = None,
                    count : int = 100,
                    offset : int = 0,
@@ -265,7 +210,7 @@ class Mixin:
           { 'recipient_id': user_id },
         ]
       }
-    query['status'] = {'$%s' % (negate and 'in' or 'nin'): filter}
+    query['status'] = {'$%s' % (negate and 'nin' or 'in'): filter}
     res = self.database.transactions.aggregate([
       {'$match': query},
       {'$sort': {'mtime': -1}},

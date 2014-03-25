@@ -137,7 +137,7 @@ namespace surface
             infinit::oracles::Transaction::Status::finished,
             infinit::oracles::Transaction::Status::canceled,
             infinit::oracles::Transaction::Status::failed};
-        for (auto& transaction: this->meta().transactions(final, true, 100))
+        for (auto& transaction: this->meta().transactions(final, false, 100))
         {
           auto it = std::find_if(
             std::begin(this->_transactions),

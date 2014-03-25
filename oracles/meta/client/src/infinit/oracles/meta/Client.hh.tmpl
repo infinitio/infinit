@@ -354,7 +354,7 @@ namespace infinit
         /// 'count' is use to set a limit of transactions id to be pulled.
         std::vector<Transaction>
         transactions(std::vector<Transaction::Status> const& status = {},
-                     bool inclusive = true,
+                     bool negate = true,
                      int count = 0) const;
 
         CreateTransactionResponse
