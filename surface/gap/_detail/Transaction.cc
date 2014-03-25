@@ -222,10 +222,9 @@ namespace surface
       infinit::oracles::trophonius::PeerReachabilityNotification const& notif)
     {
       ELLE_TRACE_SCOPE(
-        "%s: peer (%s)published his interfaces for transaction %s",
+        "%s: peer %spublished his interfaces for transaction %s",
         *this, notif.status ? "" : "un", notif.transaction_id);
       ELLE_ASSERT(!notif.transaction_id.empty());
-      ELLE_DEBUG("search for the local transaction to notify");
       auto it = std::find_if(
         std::begin(this->_transactions),
         std::end(this->_transactions),
