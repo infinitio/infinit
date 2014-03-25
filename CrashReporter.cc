@@ -252,7 +252,8 @@ namespace elle
       json_dict["env"] = env_arr;
       json_dict["version"] = std::string(INFINIT_VERSION);
       std::string crash_dest = elle::os::getenv("INFINIT_CRASH_DEST", "");
-      json_dict["email"] = crash_dest;
+      if (!crash_dest.empty())
+        json_dict["email"] = crash_dest;
       json_dict["file"] = file;
 # ifdef INFINIT_PRODUCTION_BUILD
       json_dict["send"] = true;
