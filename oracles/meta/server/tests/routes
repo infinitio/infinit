@@ -43,8 +43,7 @@ with Meta() as meta:
   # Transaction
   throws(lambda: meta.get('transaction/5241b9d226b9f10fff8be391/view'), 403)
   throws(lambda: meta.post('transaction/create', {}), 400)
-  throws(lambda: meta.get('transactions'), 403)
-  throws(lambda: meta.post('transactions', {}), 403)
+  throws(lambda: meta.get('transactions'), 200)
   throws(lambda: meta.post('transaction/update'), 400)
   throws(lambda: meta.get('transaction/search', {}), 400)
   throws(lambda: meta.post('transaction/connect_device'), 400)

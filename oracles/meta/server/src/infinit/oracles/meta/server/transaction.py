@@ -186,7 +186,7 @@ class Mixin:
 
   @api('/transactions')
   @require_logged_in
-  def transcations(self,
+  def transactions(self,
                    filter : json_value = transaction_status.final + [transaction_status.CREATED],
                    negate : json_value = True,
                    peer_id : bson.ObjectId = None,
@@ -218,20 +218,6 @@ class Mixin:
       {'$limit': count},
     ])['result']
     return {'transactions': res}
-
-  # @api('/transactions', method = 'POST')
-  # @require_logged_in
-  # def transaction_post(self,
-  #                      filter = transaction_status.final + [transaction_status.CREATED],
-  #                      type = False,
-  #                      peer_id = None,
-  #                      count = 100,
-  #                      offset = 0):
-  #   return self._transactions(filter = filter,
-  #                             peer_id = peer_id,
-  #                             type = type,
-  #                             count = count,
-  #                             offset = offset)
 
   def on_accept(self, transaction, device_id, device_name):
     with elle.log.trace("accept transaction as %s" % device_id):
