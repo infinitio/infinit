@@ -737,6 +737,7 @@ def configure(cxx_toolkit = None,
       test_node = drake.Node('tests/%s' % name)
       test_node.dependencies_add(oracles.oracles)
       test_node.dependencies_add(functional_test_lib)
+      test_node.dependency_add(state_python_lib)
       runner = drake.Runner(exe = test_node, env = python_env)
       check << runner.status
       functional_check << runner.status
