@@ -200,6 +200,9 @@ namespace surface
       virtual
       void
       _transfer_operation(frete::RPCFrete& frete) = 0;
+      virtual
+      void
+      _cloud_operation() = 0;
 
     protected:
       // This state has to be protected to allow the children to start the

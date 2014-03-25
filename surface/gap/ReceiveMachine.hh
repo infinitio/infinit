@@ -65,13 +65,12 @@ namespace surface
     private:
       void
       _wait_for_decision();
-
       void
       _accept();
-
       void
       _transfer_operation(frete::RPCFrete& frete) override;
-
+      void
+      _cloud_operation() override;
       void
       _fail();
 

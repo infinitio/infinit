@@ -9,9 +9,11 @@
 #include <common/common.hh>
 
 #include <frete/Frete.hh>
+#include <frete/TransferSnapshot.hh>
 
 #include <station/Station.hh>
 
+#include <surface/gap/FilesystemTransferBufferer.hh>
 #include <surface/gap/SendMachine.hh>
 #include <surface/gap/Rounds.hh>
 
@@ -355,6 +357,44 @@ namespace surface
           });
         scope.wait();
       };
+    }
+
+    static std::streamsize const chunk_size = 1 << 18;
+
+    void
+    SendMachine::_cloud_operation()
+    {
+      ELLE_TRACE_SCOPE("%s: upload to the cloud", *this);
+      auto& frete = this->frete();
+      auto& snapshot = *frete.transfer_snapshot();
+      FilesystemTransferBufferer::Files files;
+      for (frete::Frete::FileID file = 0; file < snapshot.count(); ++file)
+      {
+        auto& info = snapshot.transfers().at(file);
+        files.push_back(std::make_pair(info.path(), info.file_size()));
+      }
+      FilesystemTransferBufferer bufferer(*this->data(),
+                                          "/tmp/infinit-buffering",
+                                          snapshot.count(),
+                                          snapshot.total_size(),
+                                          files,
+                                          frete.key_code());
+      for (frete::Frete::FileID file = 0; file < snapshot.count(); ++file)
+      {
+        auto& info = snapshot.transfers().at(file);
+        auto file_size = info.file_size();
+        for (frete::Frete::FileOffset offset = info.progress();
+             offset < file_size;
+             offset += chunk_size)
+        {
+          ELLE_DEBUG_SCOPE("%s: buffer file %s at offset %s in the cloud",
+                           *this, file, offset);
+          auto block = frete.encrypted_read(file, offset, chunk_size);
+          auto& buffer = block.buffer();
+          bufferer.put(file, offset, buffer.size(), buffer);
+        }
+      }
+      frete.finish();
     }
 
     float

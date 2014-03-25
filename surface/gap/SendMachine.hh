@@ -56,12 +56,12 @@ namespace surface
     private:
       void
       _create_transaction();
-
       void
       _wait_for_accept();
-
       void
       _transfer_operation(frete::RPCFrete& frete) override;
+      void
+      _cloud_operation() override;
 
       /*-----------------------.
       | Machine implementation |

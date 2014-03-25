@@ -19,6 +19,7 @@
 
 #include <station/Station.hh>
 
+#include <surface/gap/FilesystemTransferBufferer.hh>
 #include <surface/gap/ReceiveMachine.hh>
 #include <surface/gap/Rounds.hh>
 
@@ -404,7 +405,6 @@ namespace surface
     ReceiveMachine::_transfer_operation(frete::RPCFrete& frete)
     {
       ELLE_TRACE_SCOPE("%s: transfer operation", *this);
-
       elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
         scope.run_background(
@@ -414,16 +414,24 @@ namespace surface
             this->get(frete);
             this->finished().open();
           });
-
         scope.run_background(
           elle::sprintf("run rpcs %s", this->id()),
           [&frete] ()
           {
             frete.run();
           });
-
         scope.wait();
       };
+    }
+
+    void
+    ReceiveMachine::_cloud_operation()
+    {
+      ELLE_DEBUG("%s: create cloud bufferer", *this);
+      FilesystemTransferBufferer bufferer(*this->data(),
+                                          "/tmp/infinit-buffering");
+      ELLE_DEBUG("%s: download from the cloud", *this)
+        this->get(bufferer);
     }
 
     std::unique_ptr<frete::RPCFrete>
@@ -461,11 +469,11 @@ namespace surface
     ReceiveMachine::get(TransferBufferer& frete,
                         std::string const& name_policy)
     {
-       return this->_get<TransferBufferer>(
-         frete, true, name_policy,
-         elle::Version(INFINIT_VERSION_MAJOR,
-                       INFINIT_VERSION_MINOR,
-                       INFINIT_VERSION_SUBMINOR));
+      return this->_get<TransferBufferer>(
+        frete, true, name_policy,
+        elle::Version(INFINIT_VERSION_MAJOR,
+                      INFINIT_VERSION_MINOR,
+                      INFINIT_VERSION_SUBMINOR));
     }
 
     template <typename Source>
