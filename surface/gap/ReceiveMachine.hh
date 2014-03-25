@@ -31,6 +31,7 @@ namespace surface
 
     public:
       typedef ::frete::Frete::FileSize FileSize;
+      typedef ::frete::Frete::FileID FileID;
       // Construct from notification.
       ReceiveMachine(surface::gap::State const& state,
                      uint32_t id,
@@ -140,10 +141,11 @@ namespace surface
         FileSize start_position; // next expected recieve buffer pos
         boost::filesystem::ofstream output;
       };
-      struct IndexedBuffer{
+      struct IndexedBuffer
+      {
         elle::Buffer buffer;
         FileSize start_position;
-        size_t file_index;
+        FileID file_index;
       };
       reactor::Channel<IndexedBuffer> _buffers;
 

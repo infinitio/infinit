@@ -552,7 +552,7 @@ namespace surface
               size_t next_read = current_position;
               current_position += chunk_size;
 
-              size_t local_current_index = current_index;
+              FileID local_current_index = current_index;
               // This line blocks, no shared state access past that point!
               elle::Buffer buffer{
                 key.decrypt<elle::Buffer>(
@@ -573,7 +573,7 @@ namespace surface
                                        peer_version, chunk_size));
           scope.wait();
           // tell the reader thread to terminate
-          _buffers.put(IndexedBuffer{elle::Buffer(), -1, -1});
+          _buffers.put(IndexedBuffer{elle::Buffer(), FileSize(-1), FileID(-1)});
           reactor::wait(disk_writer);
           ELLE_TRACE("finish_transfer exited cleanly");
         }; // scope
@@ -671,7 +671,7 @@ namespace surface
       // we do not store an expected transfer position, it is already
       // present in the snapshot and we assert on it
       while (true)
-       {
+      {
          ELLE_DUMP("receiver waiting for buffer");
          IndexedBuffer data = _buffers.get();
          if (data.file_index == -1)
