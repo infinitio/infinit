@@ -274,24 +274,12 @@ namespace surface
     SendMachine::_create_transaction()
     {
       ELLE_TRACE_SCOPE("%s: create transaction", *this);
-      auto total_size =
-        [] (std::unordered_set<std::string> const& files) -> int64_t
-        {
-          ELLE_TRACE_FUNCTION(files);
-
-          int64_t size = 0;
-          {
-            for (auto const& file: files)
-            {
-              auto _size = elle::os::file::size(file);
-              ELLE_DEBUG("%s: %i", file, _size);
-              size += _size;
-            }
-          }
-          return size;
-        };
-
-      int64_t size = total_size(this->_files);
+      int64_t size = 0;
+      for (auto const& file: this->_files)
+      {
+        auto _size = elle::os::file::size(file);
+        size += _size;
+      }
       ELLE_DEBUG("%s: total file size: %s", *this, size);
       this->data()->total_size = size;
 
