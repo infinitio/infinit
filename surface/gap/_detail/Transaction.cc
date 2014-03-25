@@ -183,15 +183,15 @@ namespace surface
     void
     State::_on_transaction_update(infinit::oracles::Transaction const& notif)
     {
-      ELLE_TRACE_SCOPE("%s: receive transaction notification: %s",
+      ELLE_TRACE_SCOPE("%s: receive notification for transaction %s",
                        *this, notif.id);
       ELLE_ASSERT(!notif.id.empty());
-      ELLE_DEBUG("ensure that both user are fetched")
+      ELLE_DUMP("%s: notification: %s", *this, notif)
+      ELLE_DEBUG("%s: ensure that both user are fetched", *this)
       {
         this->user(notif.sender_id);
         this->user(notif.recipient_id);
       }
-      ELLE_DEBUG("search for a local transaction to update");
       auto it = std::find_if(
         std::begin(this->_transactions),
         std::end(this->_transactions),
@@ -202,7 +202,8 @@ namespace surface
         });
       if (it == std::end(this->_transactions))
       {
-        ELLE_TRACE_SCOPE("create transaction from notification: %s", notif);
+        ELLE_TRACE_SCOPE("%s: create transaction %s from notification",
+                         *this, notif.id);
         infinit::oracles::Transaction data = notif;
         auto id = generate_id();
         this->_transactions.emplace(
@@ -212,7 +213,7 @@ namespace surface
       }
       else
       {
-        ELLE_DEBUG_SCOPE("update transaction %s", notif.id);
+        ELLE_TRACE_SCOPE("%s: update transaction %s", *this, notif.id);
         it->second.on_transaction_update(notif);
       }
     }
