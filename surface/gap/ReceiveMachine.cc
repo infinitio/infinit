@@ -461,11 +461,11 @@ namespace surface
     ReceiveMachine::get(TransferBufferer& frete,
                         std::string const& name_policy)
     {
-      // return this->_get<TransferBufferer>(
-      //   frete, true, name_policy,
-      //   elle::Version(INFINIT_VERSION_MAJOR,
-      //                 INFINIT_VERSION_MINOR,
-      //                 INFINIT_VERSION_SUBMINOR));
+       return this->_get<TransferBufferer>(
+         frete, true, name_policy,
+         elle::Version(INFINIT_VERSION_MAJOR,
+                       INFINIT_VERSION_MINOR,
+                       INFINIT_VERSION_SUBMINOR));
     }
 
     template <typename Source>

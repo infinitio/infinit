@@ -57,14 +57,10 @@ namespace surface
     | Frete |
     `------*/
     public:
-      /// Return the size of a file.
+      /// Return the path and size of all files.
       virtual
-      FileSize
-      file_size(FileID f) const override;
-      /// Return the path of a file.
-      virtual
-      std::string
-      path(FileID f) const override;
+      std::vector<std::pair<std::string, FileSize>>
+      files_info() const override;
       /// Return a weakly crypted chunk of data.
       virtual
       infinit::cryptography::Code

@@ -92,16 +92,10 @@ namespace surface
     /*------.
     | Frete |
     `------*/
-      TransferBufferer::FileSize
-      S3TransferBufferer::file_size(FileID f) const
+      std::vector<std::pair<std::string, S3TransferBufferer::FileSize>>
+      S3TransferBufferer::files_info() const
       {
-        return this->_files[f].second;
-      }
-
-      std::string
-      S3TransferBufferer::path(FileID f) const
-      {
-        return this->_files[f].first;
+        return this->_files;
       }
 
       infinit::cryptography::Code

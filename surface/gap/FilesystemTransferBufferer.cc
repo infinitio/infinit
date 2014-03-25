@@ -93,16 +93,10 @@ namespace surface
 
     // }
 
-    FilesystemTransferBufferer::FileSize
-    FilesystemTransferBufferer::file_size(FileID f) const
+    std::vector<std::pair<std::string, FilesystemTransferBufferer::FileSize>>
+    FilesystemTransferBufferer::files_info() const
     {
-      return this->_files[f].second;
-    }
-
-    std::string
-    FilesystemTransferBufferer::path(FileID f) const
-    {
-      return this->_files[f].first;
+      return this->_files;
     }
 
     infinit::cryptography::Code
