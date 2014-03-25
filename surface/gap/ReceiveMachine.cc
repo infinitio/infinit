@@ -320,32 +320,62 @@ namespace surface
     }
 
     boost::filesystem::path
-    ReceiveMachine::eligible_name(boost::filesystem::path const path,
-                                  std::string const& name_policy)
+    ReceiveMachine::eligible_name(boost::filesystem::path start_point,
+                                  boost::filesystem::path const path,
+                                  std::string const& name_policy,
+                                  std::map<boost::filesystem::path, boost::filesystem::path>& mapping)
     {
-      if (!boost::filesystem::exists(path))
-        return path;
+      boost::filesystem::path first = *path.begin();
+      bool exists = boost::filesystem::exists(start_point / first);
+      ELLE_DEBUG("Looking for a replacment name for %s, firstcomp=%s, exists=%s", path, first, exists);
+      if (! exists)
+      { // we will create the path along the way so we must add itself into mapping
+        mapping[first] = first;
+        return start_point / path;
+      }
+      auto it = mapping.find(first);
+      ELLE_DEBUG("Looking for %s in mapping", first);
+      if (it != mapping.end())
+      {
+        ELLE_DEBUG("Found it in mapping");
+        boost::filesystem::path result = it->second;
+        auto it = path.begin();
+        ++it;
+        for (; it != path.end(); ++it)
+          result /= *it;
+        ELLE_DEBUG("Returning final path: %s", result);
+        return start_point / result;
+      }
 
-      auto _path = path.filename();
       // Remove the extensions, add the name_policy and set the extension.
       std::string extensions;
-      for (; !_path.extension().empty(); _path = _path.stem())
-        extensions = _path.extension().string() + extensions;
-      _path = path.parent_path() / _path;
-      _path += name_policy;
-      _path += extensions;
+      boost::filesystem::path pattern = first;
+      for (; !pattern.extension().empty(); pattern = pattern.stem())
+        extensions = pattern.extension().string() + extensions;
+      pattern += name_policy;
+      pattern += extensions;
 
       // Ugly.
       for (size_t i = 2; i < std::numeric_limits<size_t>::max(); ++i)
       {
-        if (!boost::filesystem::exists(elle::sprintf(_path.string().c_str(), i)))
+        boost::filesystem::path replace = elle::sprintf(pattern.string().c_str(), i);
+        if (!boost::filesystem::exists(start_point / replace))
         {
-          return elle::sprintf(_path.string().c_str(), i);
+          mapping[first] = replace;
+          ELLE_DEBUG("Adding in mapping: %s -> %s", first, replace);
+          boost::filesystem::path result = replace;
+          auto it = path.begin();
+          ++it;
+          for (; it != path.end(); ++it)
+            result /= *it;
+          ELLE_DEBUG("Found %s", result);
+          return start_point / result;
         }
       }
 
+
       throw elle::Exception(
-        elle::sprintf("unable to find a suitable name that matches %s", _path));
+        elle::sprintf("unable to find a suitable name that matches %s", first));
     }
 
     boost::filesystem::path
@@ -470,9 +500,27 @@ namespace surface
 
       ELLE_DEBUG("transfer snapshot: %s", *this->_snapshot);
 
+
+
       FileID last_index = this->_snapshot->transfers().size();
       if (last_index > 0)
         --last_index;
+
+      auto infos = source.files_info();
+
+      // reconstruct directory name mapping data so that files in transfer
+      // but not yet in snapshot will reuse it
+      for (int i = 0; i < this->_snapshot->transfers().size(); ++i)
+      {
+        // get asked/got relative path from output_path
+        boost::filesystem::path got = this->_snapshot->transfers().at(i).path();
+        boost::filesystem::path asked = infos.at(i).first;
+        boost::filesystem::path got0 = *got.begin();
+        boost::filesystem::path asked0 = *asked.begin();
+        // add to the mapping even if its the same
+        ELLE_DEBUG("Adding entry to path map: %s -> %s", asked0, got0);
+        _root_component_mapping[asked0] = got0;
+      }
 
       auto key = strong_encryption ?
         infinit::cryptography::SecretKey(
@@ -482,7 +530,7 @@ namespace surface
           infinit::cryptography::cipher::Algorithm::aes256,
           this->transaction_id());
 
-      auto infos = source.files_info();
+
 
       // Snapshot only has info on files for which transfer started,
       // and we transfer in order, so we know all files in snapshot except
@@ -640,8 +688,8 @@ namespace surface
       else
       {
         auto relativ_path = boost::filesystem::path(file_path);
-        fullpath = ReceiveMachine::eligible_name(output_path / relativ_path,
-                                                   name_policy);
+        fullpath = ReceiveMachine::eligible_name(
+          output_path, relativ_path, name_policy, _root_component_mapping);
         relativ_path = ReceiveMachine::trim(fullpath, output_path);
 
         this->_snapshot->transfers().emplace(

@@ -126,6 +126,7 @@ namespace surface
           std::string const& name_policy = " (%s)");
 
     private:
+      std::map<boost::filesystem::path, boost::filesystem::path> _root_component_mapping;
       /* Transfer pipelining data
       */
       // next file for which we'll request data
@@ -172,11 +173,17 @@ namespace surface
     | Static Method |
     `--------------*/
     public:
-      // XXX: Exposed for debugging purposes.
+      /* XXX: Exposed for debugging purposes.
+       * root_component_mapping is a list of path names that we already
+       * attributed a maping to (either themselves, or renamed)
+       * It will be updated according to new mapping mades.
+       */
       static
       boost::filesystem::path
-      eligible_name(boost::filesystem::path const path,
-                    std::string const& name_policy);
+      eligible_name(boost::filesystem::path start_point,
+                    boost::filesystem::path path,
+                    std::string const& name_policy,
+                    std::map<boost::filesystem::path, boost::filesystem::path>& root_component_mapping);
 
       static
       boost::filesystem::path
