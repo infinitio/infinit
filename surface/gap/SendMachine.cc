@@ -136,7 +136,8 @@ namespace surface
                              std::shared_ptr<TransactionMachine::Data> data):
       SendMachine(state, id, std::move(data), true)
     {
-      ELLE_TRACE_SCOPE("%s: send %s to %s", *this, files, recipient);
+      ELLE_TRACE_SCOPE("%s: construct to send %s to %s",
+                       *this, files, recipient);
 
       this->_message = message;
 
@@ -172,8 +173,8 @@ namespace surface
                              std::shared_ptr<TransactionMachine::Data> data):
       SendMachine(state, id, std::move(data), true)
     {
-      ELLE_TRACE_SCOPE("%s: construct from data %s, starting at %s",
-                       *this, *this->data(), current_state);
+      ELLE_TRACE_SCOPE("%s: construct from snapshot starting at %s",
+                       *this, current_state);
       this->_files = std::move(files);
 
       ELLE_ASSERT_NEQ(this->_files.size(), 0u);
@@ -261,7 +262,6 @@ namespace surface
             this->rejected().open();
           break;
         case TransactionStatus::initialized:
-          ELLE_DEBUG("%s: ignore status %s", *this, status);
           break;
         case TransactionStatus::created:
         case TransactionStatus::none:
@@ -298,8 +298,6 @@ namespace surface
       // Change state to SenderCreateTransaction once we've calculated the file
       // size and have the file list.
       this->current_state(TransactionMachine::State::SenderCreateTransaction);
-
-      ELLE_DEBUG("create transaction");
       this->transaction_id(
         this->state().meta().create_transaction(
           this->peer_id(),
@@ -312,13 +310,10 @@ namespace surface
           ).created_transaction_id
         );
 
-      ELLE_TRACE("created transaction: %s", this->transaction_id());
+      ELLE_TRACE("%s: created transaction %s", *this, this->transaction_id());
 
       // XXX: Ensure recipient is an id.
-
-      ELLE_DEBUG("store peer id");
       this->peer_id(this->state().user(this->peer_id(), true).id);
-      ELLE_TRACE("peer id: %s", this->peer_id());
 
       if (this->state().metrics_reporter())
         this->state().metrics_reporter()->transaction_created(
@@ -350,7 +345,6 @@ namespace surface
     SendMachine::_transfer_operation(frete::RPCFrete& frete)
     {
       ELLE_TRACE_SCOPE("%s: transfer operation", *this);
-
       elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
         scope.run_background(
