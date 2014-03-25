@@ -25,22 +25,21 @@ namespace surface
       _files(),
       _key_code()
     {
-      create_directories(this->_root);
+      try
       {
+        create_directories(this->_root);
         elle::serialize::from_file((this->_root / "count").string())
           >> this->_count;
-      }
-      {
         elle::serialize::from_file((this->_root / "total_size").string())
           >> this->_full_size;
-      }
-      {
         elle::serialize::from_file((this->_root / "files").string())
           >> this->_files;
-      }
-      {
         elle::serialize::from_file((this->_root / "key").string())
           >> this->_key_code;
+      }
+      catch(...)
+      {
+        throw DataExhausted();
       }
     }
 
