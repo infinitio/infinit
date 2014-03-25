@@ -676,18 +676,18 @@ namespace surface
     ReceiveMachine::_reader_thread(Source& source, elle::Version peer_version,
                                    size_t chunk_size)
     {
-      // cached current transfer info to avoid refetching each time
+      ELLE_TRACE_SCOPE("%s: start writing blocks to disk", *this);
+      // Cached current transfer info to avoid refetching each time.
       TransferData* current_transfer = 0;
       size_t current_index = -1;
-      // we do not store an expected transfer position, it is already
-      // present in the snapshot and we assert on it
+      // We do not store an expected transfer position, it is already
+      // present in the snapshot and we assert on it.
       while (true)
       {
-         ELLE_DUMP("receiver waiting for buffer");
          IndexedBuffer data = _buffers.get();
          if (data.file_index == FileID(-1))
          {
-           ELLE_DEBUG("Reader thread exiting");
+           ELLE_DEBUG("%s: done writing blocks to disk", *this);
            break;
          }
          const elle::Buffer& buffer = data.buffer;
@@ -696,23 +696,25 @@ namespace surface
          if (current_index != index)
          {
            current_index = index;
-           // we know it's there if we have a buffer for it, RPC requester
-           // thread created it and we delete it
+           // We know it's there if we have a buffer for it, RPC requester
+           // thread created it and we delete it.
            current_transfer = _transfer_data_map.at(index).get();
          }
-         ELLE_DEBUG("Receiver got data for file %s, position %s, will write to %s at %s",
-           index, position, current_transfer->full_path,
-           boost::filesystem::file_size(current_transfer->full_path));
+         ELLE_TRACE("%s: receiver got data for file %s at position %s, "
+                    "will write to %s",
+                    *this,
+                    index, position, current_transfer->full_path);
          ELLE_ASSERT(current_transfer);
-         // if this assert fails, packets were received out of order
+         // If this assert fails, packets were received out of order.
          ELLE_ASSERT_EQ(position, current_transfer->tr.progress());
          ELLE_ASSERT_LT(index, this->_snapshot->transfers().size());
          boost::system::error_code ec;
          auto size = boost::filesystem::file_size(current_transfer->full_path, ec);
          if (ec)
          {
-           ELLE_ERR("destination file deleted: %s", ec);
-           throw elle::Exception("destination file deleted");
+           ELLE_ERR("%s: destination file deleted: %s", *this, ec);
+           throw elle::Exception(elle::sprintf("destination file %s deleted",
+                                               current_transfer->full_path));
          }
          if (size != current_transfer->tr.progress())
          {
@@ -723,38 +725,38 @@ namespace surface
              size);
            throw elle::Exception("destination file corrupted");
          }
-         ELLE_DUMP("content: %x (%sB)", buffer, buffer.size());
          // Write the file.
+         ELLE_DUMP("content: %x (%sB)", buffer, buffer.size());
          current_transfer->output.write((char const*) buffer.contents(), buffer.size());
          current_transfer->output.flush();
          this->_snapshot->increment_progress(index, buffer.size());
+         // OLD clients need this RPC to update progress
          if (peer_version < elle::Version(0, 8, 7))
-         { // OLD clients need this RPC to update progress
            source.set_progress(this->_snapshot->progress());
-         }
          // Write snapshot state to file
-         elle::serialize::to_file(this->_snapshot_path.string()) << *this->_snapshot;
-         ELLE_DEBUG("wrote file index %s at %s with size: %s",
-           index, current_transfer->full_path,
-           boost::filesystem::file_size(current_transfer->full_path));
-
-         if (buffer.size() < chunk_size
-             || current_transfer->tr.progress() >= current_transfer->tr.file_size())
+         ELLE_TRACE("%s: write down snapshot", *this)
          {
-           if (current_transfer->tr.progress() != current_transfer->tr.file_size())
+           ELLE_DUMP("%s: snapshot: %s", *this, *this->_snapshot);
+           elle::serialize::to_file(this->_snapshot_path.string())
+             << *this->_snapshot;
+         }
+         auto progress = current_transfer->tr.progress();
+         auto file_size = current_transfer->tr.file_size();
+         if (buffer.size() < chunk_size || progress >= file_size)
+         {
+           if (progress != file_size)
            {
-             ELLE_ERR("End of transfer with unexpected size, got %s, expected %s",
-               current_transfer->tr.progress(), current_transfer->tr.file_size());
-             throw elle::Exception("Transfer size mismatch");
+             ELLE_ERR("%s: end of transfer with unexpected size, "
+                      "got %s, expected %s",
+                      *this, progress, file_size);
+             throw elle::Exception("transfer size mismatch");
            }
-           ELLE_TRACE("finished %s: %s", index, *this->_snapshot);
            // cleanup transfer data
            current_transfer = 0;
            _transfer_data_map.erase(current_index);
            current_index = -1;
          }
-       } // while true
-       ELLE_DUMP("writer exiting cleanly");
+      }
     }
 
 
