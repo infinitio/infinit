@@ -126,9 +126,9 @@ namespace surface
     State::_transaction_resync()
     {
       ELLE_TRACE("%s: resynchronize active transactions from meta", *this)
-        for (auto const& id: this->meta().transactions().transactions)
+        for (auto& transaction: this->meta().transactions())
         {
-          this->_on_transaction_update(std::move(this->meta().transaction(id)));
+          this->_on_transaction_update(std::move(transaction));
         }
       ELLE_TRACE("%s: resynchronize transaction history from meta", *this)
       {
@@ -137,9 +137,7 @@ namespace surface
             infinit::oracles::Transaction::Status::finished,
             infinit::oracles::Transaction::Status::canceled,
             infinit::oracles::Transaction::Status::failed};
-        std::list<std::string> transactions_ids{
-          std::move(this->meta().transactions(final, true, 100).transactions)};
-        for (auto const& id: transactions_ids)
+        for (auto& transaction: this->meta().transactions(final, true, 100))
         {
           auto it = std::find_if(
             std::begin(this->_transactions),
@@ -147,18 +145,16 @@ namespace surface
             [&] (TransactionConstPair const& pair)
             {
               return (!pair.second.data()->id.empty()) &&
-                     ( pair.second.data()->id == id);
+                     ( pair.second.data()->id == transaction.id);
             });
           if (it != std::end(this->_transactions))
           {
             if (!it->second.final())
             {
-              it->second.on_transaction_update(this->meta().transaction(id));
+              it->second.on_transaction_update(transaction);
             }
             continue;
           }
-          infinit::oracles::Transaction transaction{
-            this->meta().transaction(id)};
           ELLE_DEBUG("ensure that both user are fetched")
           {
             this->user(transaction.sender_id);
