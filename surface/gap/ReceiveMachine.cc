@@ -581,12 +581,20 @@ namespace surface
             std::bind(&ReceiveMachine::_reader_thread<Source>,
                       this, std::ref(source),
                       peer_version, chunk_size));
-          scope.wait();
-          // tell the reader thread to terminate
-          this->_buffers.put(
-            IndexedBuffer{elle::Buffer(), FileSize(-1), FileID(-1)});
-          reactor::wait(disk_writer);
-          ELLE_TRACE("finish_transfer exited cleanly");
+          try
+          {
+            scope.wait();
+            // tell the reader thread to terminate
+            this->_buffers.put(
+              IndexedBuffer{elle::Buffer(), FileSize(-1), FileID(-1)});
+            reactor::wait(disk_writer);
+            ELLE_TRACE("finish_transfer exited cleanly");
+          }
+          catch(...)
+          {
+            disk_writer.terminate_now();
+            throw;
+          }
         }; // scope
       }// if current_transfer
       // this->finished.open();
