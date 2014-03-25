@@ -42,6 +42,20 @@ namespace surface
         return 8;
     }
 
+    static
+    std::streamsize
+    rpc_chunk_size()
+    {
+      std::streamsize res = 1 << 18;
+      std::string s = elle::os::getenv("INFINIT_CHUNK_SIZE", "");
+      if (!s.empty())
+      {
+        res = boost::lexical_cast<std::streamsize>(s);
+      }
+      return res;
+    }
+
+
     using TransactionStatus = infinit::oracles::Transaction::Status;
     ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
                                    uint32_t id,
@@ -452,18 +466,7 @@ namespace surface
         this->_snapshot.reset(new frete::TransferSnapshot(count, total_size));
       }
 
-      static std::streamsize chunk_size = 1 << 18;
-      static bool override_check = false;
-      if (!override_check)
-      {
-        override_check = true;
-        std::string s = elle::os::getenv("INFINIT_CHUNK_SIZE", "");
-        if (!s.empty())
-        {
-          chunk_size = boost::lexical_cast<std::streamsize>(s);
-          ELLE_WARN("Forcing chunk size to %s", chunk_size);
-        }
-      }
+      static const std::streamsize chunk_size = rpc_chunk_size();
 
       ELLE_DEBUG("transfer snapshot: %s", *this->_snapshot);
 
@@ -538,13 +541,17 @@ namespace surface
                   current_transfer = nullptr;
                   break;
                 }
-                _transfer_data_map[current_index] =
-                _initialize_one(current_index,
-                                infos.at(current_index).first,
-                                infos.at(current_index).second,
-                                output_path,
-                                name_policy);
-                current_transfer = _transfer_data_map[current_index].get();
+                {
+                  auto transfer =
+                    this->_initialize_one(current_index,
+                                          infos.at(current_index).first,
+                                          infos.at(current_index).second,
+                                          output_path,
+                                          name_policy);
+                  current_transfer = transfer.get();
+                  this->_transfer_data_map.insert(
+                    std::make_pair(current_index, std::move(transfer)));
+                }
                 // technically for now current_position is always 0
                 current_position = current_transfer->start_position;
                 current_full_size = current_transfer->tr.file_size();
@@ -560,20 +567,24 @@ namespace surface
                   source.encrypted_read(current_index, next_read, chunk_size) :
                   source.read(current_index, next_read , chunk_size))};
               ELLE_DUMP("Queuing buffer fileindex:%s offset:%s size:%s", local_current_index, next_read, buffer.size());
-              _buffers.put(IndexedBuffer{std::move(buffer), next_read, local_current_index});
+              this->_buffers.put(
+                IndexedBuffer{std::move(buffer),
+                              next_read, local_current_index});
             }
             ELLE_DEBUG("reader %s exiting cleanly", id);
           };
-          for (unsigned i = 0; i < num_reader; ++i)
+          for (int i = 0; i < num_reader; ++i)
             scope.run_background(elle::sprintf("transfer reader %s", i),
                                  std::bind(reader, i));
-          reactor::Thread disk_writer("receive writer",
-                             std::bind(&ReceiveMachine::_reader_thread<Source>,
-                                       this, std::ref(source),
-                                       peer_version, chunk_size));
+          reactor::Thread disk_writer(
+            "receive writer",
+            std::bind(&ReceiveMachine::_reader_thread<Source>,
+                      this, std::ref(source),
+                      peer_version, chunk_size));
           scope.wait();
           // tell the reader thread to terminate
-          _buffers.put(IndexedBuffer{elle::Buffer(), FileSize(-1), FileID(-1)});
+          this->_buffers.put(
+            IndexedBuffer{elle::Buffer(), FileSize(-1), FileID(-1)});
           reactor::wait(disk_writer);
           ELLE_TRACE("finish_transfer exited cleanly");
         }; // scope
@@ -674,7 +685,7 @@ namespace surface
       {
          ELLE_DUMP("receiver waiting for buffer");
          IndexedBuffer data = _buffers.get();
-         if (data.file_index == -1)
+         if (data.file_index == FileID(-1))
          {
            ELLE_DEBUG("Reader thread exiting");
            break;
