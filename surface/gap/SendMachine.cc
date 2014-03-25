@@ -46,7 +46,7 @@ namespace surface
         this->_wait_for_accept_state,
         this->_transfer_core_state,
         reactor::Waitables{&this->_accepted},
-        false,
+        true,
         [&] () -> bool
         {
           // Pre Trigger the condition if the accepted barrier has already been
@@ -337,10 +337,9 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: waiting for peer to accept or reject", *this);
       this->current_state(TransactionMachine::State::SenderWaitForDecision);
 
-      // There are two ways to go to the next step:
-      // - Checking local state, meaning that during the copy, we recieved an
-      //   accepted, so we can directly go the next step.
-      // - Waiting for the accepted notification.
+      auto peer = this->state().user(this->peer_id());
+      if (!peer.ghost() && !peer.online())
+        this->_cloud_operation();
     }
 
     void
