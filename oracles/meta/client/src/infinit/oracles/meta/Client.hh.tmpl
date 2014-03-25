@@ -104,6 +104,12 @@ namespace infinit
         {
           return !this->connected_devices.empty();
         }
+
+        bool
+        ghost() const
+        {
+          return this->public_key.empty();
+        }
       };
 
       struct UserResponse : User, Response

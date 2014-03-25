@@ -441,10 +441,10 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: user status notification %s", *this, notif);
 
       State::User swagger = this->user(notif.user_id);
-      if (swagger.public_key.empty() && notif.status == gap_user_status_online)
+      if (swagger.ghost() && notif.status == gap_user_status_online)
       {
         swagger = this->user_sync(notif.user_id);
-        ELLE_ASSERT(not swagger.public_key.empty());
+        ELLE_ASSERT(swagger.ghost());
       }
       this->swaggers(); // force up-to-date swaggers
 
