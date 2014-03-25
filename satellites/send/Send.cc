@@ -22,13 +22,6 @@ bool stop = false;
 
 static
 void
-interrupt(int)
-{
-  stop = true;
-}
-
-static
-void
 mandatory(boost::program_options::variables_map const& options,
           std::string const& option)
 {
@@ -82,9 +75,6 @@ parse_options(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
-  /// Initialize with signal list and handler (sync).
-  elle::signal::ScopedGuard p({SIGINT}, interrupt);
-
   try
   {
     auto options = parse_options(argc, argv);
@@ -94,6 +84,13 @@ int main(int argc, char** argv)
     std::string const file = options["file"].as<std::string>();
 
     reactor::Scheduler sched;
+
+    sched.signal_handle(
+      SIGINT,
+      [&sched]
+      {
+        sched.terminate();
+      });
 
     reactor::VThread<int> t
     {
