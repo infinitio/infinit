@@ -156,21 +156,26 @@ int main(int argc, char** argv)
 
         static const int width = 70;
         std::cout << std::endl;
+        float previous_progress = 0.0;
         do
         {
           state.poll();
-          std::cout << "[A[J";
+          //std::cout << "[A[J";
           float progress = 0.0;
           if (stop)
             progress = 1.0;
           else
             progress = state.transactions().at(id).progress();
-          std::cout << "[";
-          for (int i = 0; i < width - 2; ++i)
+          if (progress != previous_progress)
           {
-            std::cout << (float(i) / width < progress ? "#" : " ");
+            previous_progress = progress;
+            std::cout << "[";
+            for (int i = 0; i < width - 2; ++i)
+            {
+              std::cout << (float(i) / width < progress ? "#" : " ");
+            }
+            std::cout << "] " << int(progress * 100) << "%" << std::endl;
           }
-          std::cout << "] " << int(progress * 100) << "%" << std::endl;
           reactor::sleep(100_ms);
         }
         while (stop != true);
