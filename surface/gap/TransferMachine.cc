@@ -226,11 +226,13 @@ namespace surface
       this->_fsm.transition_add_catch(
         connection_state,
         stopped_state)
-        .action([this, &owner]
-                {
-                  ELLE_ERR("%s: connection failed", *this);
-                  owner.failed().open();
-                });
+        .action_exception(
+          [this, &owner] (std::exception_ptr e)
+          {
+            ELLE_ERR("%s: connection failed: %s",
+                     *this, elle::exception_string(e));
+            owner.failed().open();
+          });
       this->_fsm.transition_add_catch(
         transfer_state,
         stopped_state)
