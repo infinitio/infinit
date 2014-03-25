@@ -16,10 +16,8 @@ def configure(elle,
               reactor,
               meta_client,
               boost = None,
-              python3 = None,
               prefix = drake.Path('/usr/local'),
               python3 = None,
-              enable_python_bindings = True,
               cxx_toolkit = None,
               cxx_config = None):
 
