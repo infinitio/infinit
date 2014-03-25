@@ -28,10 +28,14 @@ boost = drake.cxx.boost.Boost(
   cxx_toolkit = cxx_toolkit,
   prefer_shared = False)
 
-qt = drake.cxx.qt.Qt(
-  prefix = os.getenv('QT_PREFIX', '/usr'),
-  gui = True,
-)
+try:
+  qt = drake.cxx.qt.Qt(
+    prefix = os.getenv('QT_PREFIX', '/usr'),
+    gui = True,
+  )
+except drake.Exception:
+  print("Qt not found, all targets releated will be ignored")
+  qt = None
 
 python3 = drake.cxx.find_library(
   token = 'pyconfig.h',

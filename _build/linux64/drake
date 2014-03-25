@@ -23,9 +23,13 @@ boost = drake.cxx.boost.Boost(
     prefix = os.getenv('BOOST_PREFIX', '/usr')
 )
 
-qt = drake.cxx.qt.Qt(
-    prefix = os.getenv('QT_PREFIX', '/usr')
-)
+try:
+  qt = drake.cxx.qt.Qt(
+     prefix = os.getenv('QT_PREFIX', '/usr')
+  )
+except drake.Exception as e:
+  print("Qt not found, all targets releated will be ignored")
+  qt = None
 
 with drake.Drake('../..') as d:
   d.run(
