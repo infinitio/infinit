@@ -251,17 +251,22 @@ def configure(cxx_toolkit = None,
     papier_python_cxx_config = drake.cxx.Config(cxx_config)
     papier_python_sources = drake.nodes('papier/python.cc')
     papier_python_sources.append(papier_lib)
+    papier_python_cxx_config += boost.config_filesystem(
+      static = (cxx_toolkit.os is drake.os.macos and True or None))
+    papier_python_cxx_config += python3
     if cxx_toolkit.os is drake.os.windows:
+      papier_python_cxx_config.define('BOOST_PYTHON_STATIC_LIB')
       papier_python_cxx_config += boost.config_python(static = True)
+      papier_python_cxx_config.flag('-Wl,-Bdynamic')
     else:
       papier_python_cxx_config += boost.config_python(link = False)
       papier_python_cxx_config.library_add(
         drake.copy(boost.python_dynamic, 'lib', strip_prefix = True))
-    papier_python_cxx_config += python3
+
     papier_python_cxx_config.lib_path_runtime('..')
     papier_python_lib = drake.cxx.Module(
       'lib/python/papier',
-      papier_python_sources,
+      papier_python_sources + [elle_lib, cryptography_lib],
       cxx_toolkit,
       papier_python_cxx_config)
 
@@ -687,8 +692,15 @@ def configure(cxx_toolkit = None,
   if python3 is not None:
     gap_python_cxx_config = drake.cxx.Config(gap_cxx_config)
     gap_python_cxx_config += python3
-    gap_python_cxx_config += boost.config_python()
     gap_python_cxx_config.lib_path_runtime('..')
+    if cxx_toolkit.os is drake.os.windows:
+      gap_python_cxx_config.define('BOOST_PYTHON_STATIC_LIB')
+      gap_python_cxx_config += boost.config_python(static = True)
+      gap_python_cxx_config.flag('-Wl,-Bdynamic')
+    else:
+      gap_python_cxx_config += boost.config_python(link = False)
+      gap_python_cxx_config.library_add(
+        drake.copy(boost.python_dynamic, 'lib', strip_prefix = True))
     with templating_context:
       gap_python_sources = drake.nodes(
         'surface/gap/python/pygap.cc.tmpl',

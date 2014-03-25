@@ -33,10 +33,17 @@ qt = drake.cxx.qt.Qt(
   gui = True,
 )
 
+python3 = drake.cxx.find_library(
+  token = 'pyconfig.h',
+  prefix = os.getenv('PYTHON_PREFIX', '/usr'),
+  libs = ('python3',),
+  toolkit = cxx_toolkit)
+
 drake.run('../..',
           build_type = 'Development',
           cxx_toolkit = cxx_toolkit,
           cxx_config = cxx_config,
+          python3 = python3,
           boost = boost,
           qt = qt,
           enable_horizon = False)
