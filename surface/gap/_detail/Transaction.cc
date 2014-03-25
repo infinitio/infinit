@@ -28,7 +28,7 @@ namespace surface
       Exception{
       gap_transaction_doesnt_exist, elle::sprintf("unknown transaction %s", id)}
     {
-      ELLE_ERR("transaction %s not found", id);
+      ELLE_ERR("%s: transaction %s not found", *this, id);
     }
 
     State::TransactionNotFoundException::TransactionNotFoundException(
@@ -36,7 +36,7 @@ namespace surface
       Exception{
       gap_transaction_doesnt_exist, elle::sprintf("unknown transaction %s", id)}
     {
-      ELLE_ERR("transaction %s not found", id);
+      ELLE_ERR("%s: transaction %s not found", *this, id);
     }
 
     uint32_t
