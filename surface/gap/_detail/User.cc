@@ -278,7 +278,7 @@ namespace surface
             auto* notif_ptr =
               new infinit::oracles::trophonius::UserStatusNotification{};
             notif_ptr->user_id = swagger_id;
-            notif_ptr->status = user.status();
+            notif_ptr->status = user.online();
             notif_ptr->device_id = device;
             notif_ptr->device_status = true;
 
@@ -294,7 +294,7 @@ namespace surface
             ELLE_DEBUG("%s: updating device %s", *this, device);
             auto* notif_ptr = new infinit::oracles::trophonius::UserStatusNotification{};
             notif_ptr->user_id = swagger_id;
-            notif_ptr->status = user.status();
+            notif_ptr->status = user.online();
             notif_ptr->device_id = device;
             notif_ptr->device_status = false;
 

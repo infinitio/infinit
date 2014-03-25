@@ -580,7 +580,7 @@ extern "C"
       "user status",
       [&] (surface::gap::State& state) -> gap_UserStatus
       {
-        return (gap_UserStatus) state.users().at(id).status();
+        return (gap_UserStatus) state.users().at(id).online();
       });
   }
 

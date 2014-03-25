@@ -249,7 +249,7 @@ namespace surface
     TransferMachine::run()
     {
       // XXX: Best place to do that? (See constructor).
-      if (this->_owner.state().user(this->_owner.peer_id()).status())
+      if (this->_owner.state().user(this->_owner.peer_id()).online())
       {
         this->_peer_offline.close();
         this->_peer_online.open();
