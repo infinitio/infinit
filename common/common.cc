@@ -482,19 +482,19 @@ namespace common
     std::string metrics_keen_key;
   } default_values;
 
-  std::unique_ptr<::infinit::metrics::Reporter>
+  std::unique_ptr< ::infinit::metrics::Reporter>
   metrics()
   {
-    auto res = elle::make_unique<::infinit::metrics::CompositeReporter>();
+    auto res = elle::make_unique< ::infinit::metrics::CompositeReporter>();
     if (default_values.metrics_infinit_enabled)
-      res->add_reporter(elle::make_unique<::infinit::metrics::InfinitReporter>(
+      res->add_reporter(elle::make_unique< ::infinit::metrics::InfinitReporter>(
                           default_values.metrics_infinit_host,
                           default_values.metrics_infinit_port));
     if (default_values.metrics_keen_enabled)
-      res->add_reporter(elle::make_unique<::infinit::metrics::KeenReporter>(
+      res->add_reporter(elle::make_unique< ::infinit::metrics::KeenReporter>(
                           default_values.metrics_keen_project,
                           default_values.metrics_keen_key));
-    return std::unique_ptr<::infinit::metrics::Reporter>(
+    return std::unique_ptr< ::infinit::metrics::Reporter>(
       std::move(res));
   }
 }

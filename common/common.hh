@@ -178,7 +178,7 @@ namespace common
     port();
   }
 
-  std::unique_ptr<::infinit::metrics::Reporter>
+  std::unique_ptr< ::infinit::metrics::Reporter>
   metrics();
 
   /// All resources URIs
