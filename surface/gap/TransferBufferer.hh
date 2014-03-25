@@ -17,6 +17,14 @@ namespace surface
     | Types |
     `------*/
     public:
+
+      class DataExhausted:
+        public elle::Exception
+      {
+      public:
+        DataExhausted();
+      };
+
       typedef TransferBufferer Self;
       typedef frete::Frete::FileID FileID;
       typedef frete::Frete::FileCount FileCount;

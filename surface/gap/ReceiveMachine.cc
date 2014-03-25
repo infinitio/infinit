@@ -427,11 +427,16 @@ namespace surface
     void
     ReceiveMachine::_cloud_operation()
     {
-      ELLE_DEBUG("%s: create cloud bufferer", *this);
-      FilesystemTransferBufferer bufferer(*this->data(),
-                                          "/tmp/infinit-buffering");
-      ELLE_DEBUG("%s: download from the cloud", *this)
-        this->get(bufferer);
+      try
+      {
+        ELLE_DEBUG("%s: create cloud bufferer", *this);
+        FilesystemTransferBufferer bufferer(*this->data(),
+                                            "/tmp/infinit-buffering");
+        ELLE_DEBUG("%s: download from the cloud", *this)
+         this->get(bufferer);
+      }
+      catch (TransferBufferer::DataExhausted const&)
+      {}
     }
 
     std::unique_ptr<frete::RPCFrete>

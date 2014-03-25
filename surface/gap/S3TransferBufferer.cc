@@ -156,7 +156,8 @@ namespace surface
       {
         // XXX could retry.
         ELLE_ERR("%s: unable to get block: %s", *this, e.error());
-        throw;
+        // FIXME: differenciate AWS other exception and "data not here"
+        throw DataExhausted();
       }
     }
 

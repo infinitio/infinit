@@ -8,6 +8,10 @@ namespace surface
     | Construction |
     `-------------*/
 
+    TransferBufferer::DataExhausted::DataExhausted()
+    : elle::Exception("Data exhausted")
+    {}
+
     TransferBufferer::TransferBufferer(
       infinit::oracles::Transaction& transaction):
       _transaction(transaction)

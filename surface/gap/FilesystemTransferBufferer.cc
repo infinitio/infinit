@@ -141,12 +141,14 @@ namespace surface
       auto filename = this->_filename(file, offset);
       boost::filesystem::ifstream input(filename);
       input.seekg(0, std::ios::end);
-      auto size = input.tellg();
+      std::ios::pos_type size = input.tellg();
+      if (size == std::ios::pos_type(-1))
+        throw DataExhausted();
       elle::Buffer res(size);
       input.seekg(0, std::ios::beg);
       input.read(reinterpret_cast<char*>(res.mutable_contents()), size);
       return res;
-     }
+    }
 
     boost::filesystem::path
     FilesystemTransferBufferer::_filename(FileID file,
