@@ -150,7 +150,7 @@ namespace surface
       reactor::Channel<IndexedBuffer> _buffers;
 
       typedef std::unique_ptr<TransferData> TransferDataPtr;
-      typedef std::unordered_map<size_t, TransferDataPtr> TransferDataMap;
+      typedef std::unordered_map<FileID, TransferDataPtr> TransferDataMap;
       ELLE_ATTRIBUTE(TransferDataMap, transfer_data_map);
       template <typename Source>
       void
@@ -162,7 +162,7 @@ namespace surface
       void _reader_thread(Source& source,
                           elle::Version peer_version,
                           size_t chunk_size);
-      TransferDataPtr _initialize_one(size_t index,
+      TransferDataPtr _initialize_one(FileID index,
                                       const std::string& file_name,
                                       FileSize file_size,
                                       boost::filesystem::path output_path,

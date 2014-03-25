@@ -467,7 +467,7 @@ namespace surface
 
       ELLE_DEBUG("transfer snapshot: %s", *this->_snapshot);
 
-      auto last_index = this->_snapshot->transfers().size();
+      FileID last_index = this->_snapshot->transfers().size();
       if (last_index > 0)
         --last_index;
 
@@ -484,7 +484,7 @@ namespace surface
       // Snapshot only has info on files for which transfer started,
       // and we transfer in order, so we know all files in snapshot except
       // maybe the last one are fully transfered.
-      size_t current_index = last_index;
+      FileID current_index = last_index;
       TransferData * current_transfer = 0;
       // get first transfer for which there is something to do
       while (current_index < count)
@@ -598,9 +598,9 @@ namespace surface
     }
 
     ReceiveMachine::TransferDataPtr
-    ReceiveMachine::_initialize_one(size_t index,
+    ReceiveMachine::_initialize_one(FileID index,
                                     const std::string& file_path,
-                                    size_t file_size,
+                                    FileSize file_size,
                                     boost::filesystem::path output_path,
                                     const std::string& name_policy)
     {
