@@ -105,7 +105,8 @@ namespace surface
                  std::string const& meta_host,
                  uint16_t meta_port,
                  std::string const& trophonius_host,
-                 uint16_t trophonius_port):
+                 uint16_t trophonius_port,
+                 std::unique_ptr<infinit::metrics::Reporter> metrics):
       _logger_intializer{},
       _meta{meta_protocol, meta_host, meta_port},
       _meta_message{""},
@@ -121,18 +122,16 @@ namespace surface
             this->on_reconnection_failed();
           }
       },
-      _composite_reporter{},
+      _metrics_reporter(std::move(metrics)),
       _me{nullptr},
       _output_dir{common::system::download_directory()},
       _device{nullptr}
     {
       ELLE_TRACE_SCOPE("%s: create state", *this);
-
-      this->_composite_reporter.add_reporter(
-        elle::make_unique<infinit::metrics::InfinitReporter>());
-      this->_composite_reporter.add_reporter(
-        elle::make_unique<infinit::metrics::KeenReporter>());
-      this->_composite_reporter.start();
+      if (!this->_metrics_reporter)
+        // This is a no-op reporter.
+        this->_metrics_reporter.reset(new infinit::metrics::CompositeReporter);
+      this->_metrics_reporter->start();
     }
 
     State::~State()
@@ -142,7 +141,7 @@ namespace surface
       try
       {
         this->logout();
-        this->_composite_reporter.stop();
+        this->_metrics_reporter->stop();
       }
       catch (std::runtime_error const&)
       {
@@ -302,7 +301,7 @@ namespace surface
 
       elle::SafeFinally login_failed{[this, lower_email, fail_reason] {
         infinit::metrics::Reporter::metric_sender_id(lower_email);
-        this->_composite_reporter.user_login(false, fail_reason);
+        this->_metrics_reporter->user_login(false, fail_reason);
       }};
 
       boost::uuids::uuid device_uuid = boost::uuids::nil_generator()();
@@ -336,7 +335,7 @@ namespace surface
         ELLE_LOG("%s: logged in as %s", *this, email);
 
         infinit::metrics::Reporter::metric_sender_id(res.id);
-        this->_composite_reporter.user_login(true, "");
+        this->_metrics_reporter->user_login(true, "");
 
         std::string identity_clear;
 
@@ -480,7 +479,7 @@ namespace surface
 
             this->_meta.logout();
 
-            this->_composite_reporter.user_logout(true, "");
+            this->_metrics_reporter->user_logout(true, "");
           }
           catch (elle::Exception const&)
           {
@@ -608,7 +607,7 @@ namespace surface
 
       elle::SafeFinally register_failed{[this, lower_email, error_details] {
         infinit::metrics::Reporter::metric_sender_id(lower_email);
-        this->_composite_reporter.user_register(false, error_details);
+        this->_metrics_reporter->user_register(false, error_details);
       }};
 
       auto res = this->meta(false).register_(
@@ -622,7 +621,7 @@ namespace surface
 
       elle::SafeFinally registered_metric{[this, res] {
         infinit::metrics::Reporter::metric_sender_id(res.registered_user_id);
-        this->_composite_reporter.user_register(true, "");
+        this->_metrics_reporter->user_register(true, "");
       }};
       this->login(lower_email, password);
     }

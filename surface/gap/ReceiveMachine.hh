@@ -6,13 +6,16 @@
 # include <unordered_set>
 
 # include <boost/filesystem.hpp>
+# include <boost/filesystem/fstream.hpp>
 
 # include <elle/attribute.hh>
 
+# include <reactor/Channel.hh>
 # include <reactor/waitable.hh>
 # include <reactor/signal.hh>
 
 # include <frete/TransferSnapshot.hh>
+# include <frete/Frete.hh>
 
 # include <surface/gap/State.hh>
 # include <surface/gap/TransactionMachine.hh>
@@ -27,6 +30,8 @@ namespace surface
     {
 
     public:
+      typedef ::frete::Frete::FileSize FileSize;
+      typedef ::frete::Frete::FileID FileID;
       // Construct from notification.
       ReceiveMachine(surface::gap::State const& state,
                      uint32_t id,
@@ -121,6 +126,32 @@ namespace surface
           std::string const& name_policy = " (%s)");
 
     private:
+      /* Transfer pipelining data
+      */
+      // next file for which we'll request data
+      ELLE_ATTRIBUTE(size_t, next_file);
+      struct TransferData
+      {
+        TransferData(
+          frete::TransferSnapshot::TransferProgressInfo&,
+          boost::filesystem::path full_path,
+          FileSize current_position = 0);
+        frete::TransferSnapshot::TransferProgressInfo& tr;
+        boost::filesystem::path full_path;
+        FileSize start_position; // next expected recieve buffer pos
+        boost::filesystem::ofstream output;
+      };
+      struct IndexedBuffer
+      {
+        elle::Buffer buffer;
+        FileSize start_position;
+        FileID file_index;
+      };
+      reactor::Channel<IndexedBuffer> _buffers;
+
+      typedef std::unique_ptr<TransferData> TransferDataPtr;
+      typedef std::unordered_map<FileID, TransferDataPtr> TransferDataMap;
+      ELLE_ATTRIBUTE(TransferDataMap, transfer_data_map);
       template <typename Source>
       void
       _get(Source& source,
@@ -128,15 +159,14 @@ namespace surface
            std::string const& name_policy,
            elle::Version const& peer_version);
       template <typename Source>
-      void
-      _finish_transfer(Source& source,
-                       unsigned int index,
-                       frete::TransferSnapshot::TransferProgressInfo& tr,
-                       int chunk_size,
-                       const boost::filesystem::path& full_path,
-                       bool strong_encryption,
-                       infinit::cryptography::SecretKey const& key,
-                       elle::Version const& peer_version);
+      void _reader_thread(Source& source,
+                          elle::Version peer_version,
+                          size_t chunk_size);
+      TransferDataPtr _initialize_one(FileID index,
+                                      const std::string& file_name,
+                                      FileSize file_size,
+                                      boost::filesystem::path output_path,
+                                      const std::string& name_policy);
 
     /*--------------.
     | Static Method |

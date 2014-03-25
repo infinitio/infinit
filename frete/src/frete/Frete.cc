@@ -309,7 +309,7 @@ namespace frete
 
     auto code = this->_impl->key().encrypt(this->_read(f, start, size));
 
-    ELLE_DEBUG("encrypted data: %s with buffer %s", code, code.buffer());
+    ELLE_DUMP("encrypted data: %s with buffer %x", code, code.buffer());
     return code;
   }
 
@@ -384,7 +384,7 @@ namespace frete
     if (!file.eof() && file.fail() || file.bad())
       throw elle::Exception("unable to read");
 
-    ELLE_DEBUG("buffer read: %s", buffer);
+    ELLE_DUMP("buffer read: %x", buffer);
     return buffer;
   }
 

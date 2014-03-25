@@ -1,10 +1,12 @@
+#include <atomic>
+
+#include <boost/filesystem.hpp>
+
 #include <surface/gap/State.hh>
 #include <surface/gap/Transaction.hh>
 #include <surface/gap/Exception.hh>
 
-#include <boost/filesystem.hpp>
-
-#include <atomic>
+#include <common/common.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.State.Transaction");
 
@@ -26,7 +28,7 @@ namespace surface
       Exception{
       gap_transaction_doesnt_exist, elle::sprintf("unknown transaction %s", id)}
     {
-      ELLE_ERR("transaction %s not found", id);
+      ELLE_ERR("%s: transaction %s not found", *this, id);
     }
 
     State::TransactionNotFoundException::TransactionNotFoundException(
@@ -34,7 +36,7 @@ namespace surface
       Exception{
       gap_transaction_doesnt_exist, elle::sprintf("unknown transaction %s", id)}
     {
-      ELLE_ERR("transaction %s not found", id);
+      ELLE_ERR("%s: transaction %s not found", *this, id);
     }
 
     uint32_t
@@ -66,7 +68,7 @@ namespace surface
         for (; iterator != end; ++iterator)
         {
           auto snapshot_path = iterator->path().string().c_str();
-          ELLE_DEBUG("snapshot path %s", snapshot_path);
+          ELLE_TRACE("%s: load transaction snapshot %s", *this, snapshot_path);
           elle::SafeFinally delete_snapshot(
             [&snapshot_path]
             {
@@ -78,6 +80,11 @@ namespace surface
             snapshot.reset(
               new TransactionMachine::Snapshot(
                 elle::serialize::from_file(snapshot_path)));
+            // FIXME: this should be in the snapshot deserialization.
+            // FIXME: this can happen if you kill the client while creating a
+            //        transaction and you haven't fetch an id from the server
+            //        yet. Test and fix that shit.
+            ELLE_ASSERT(!snapshot->data.id.empty());
           }
           catch (std::exception const&)
           {
@@ -119,9 +126,9 @@ namespace surface
     State::_transaction_resync()
     {
       ELLE_TRACE("%s: resynchronize active transactions from meta", *this)
-        for (auto const& id: this->meta().transactions().transactions)
+        for (auto& transaction: this->meta().transactions())
         {
-          this->_on_transaction_update(std::move(this->meta().transaction(id)));
+          this->_on_transaction_update(std::move(transaction));
         }
       ELLE_TRACE("%s: resynchronize transaction history from meta", *this)
       {
@@ -130,9 +137,7 @@ namespace surface
             infinit::oracles::Transaction::Status::finished,
             infinit::oracles::Transaction::Status::canceled,
             infinit::oracles::Transaction::Status::failed};
-        std::list<std::string> transactions_ids{
-          std::move(this->meta().transactions(final, true, 100).transactions)};
-        for (auto const& id: transactions_ids)
+        for (auto& transaction: this->meta().transactions(final, false, 100))
         {
           auto it = std::find_if(
             std::begin(this->_transactions),
@@ -140,18 +145,16 @@ namespace surface
             [&] (TransactionConstPair const& pair)
             {
               return (!pair.second.data()->id.empty()) &&
-                     ( pair.second.data()->id == id);
+                     ( pair.second.data()->id == transaction.id);
             });
           if (it != std::end(this->_transactions))
           {
             if (!it->second.final())
             {
-              it->second.on_transaction_update(this->meta().transaction(id));
+              it->second.on_transaction_update(transaction);
             }
             continue;
           }
-          infinit::oracles::Transaction transaction{
-            this->meta().transaction(id)};
           ELLE_DEBUG("ensure that both user are fetched")
           {
             this->user(transaction.sender_id);
@@ -180,15 +183,15 @@ namespace surface
     void
     State::_on_transaction_update(infinit::oracles::Transaction const& notif)
     {
-      ELLE_TRACE_SCOPE("%s: receive transaction notification: %s",
+      ELLE_TRACE_SCOPE("%s: receive notification for transaction %s",
                        *this, notif.id);
       ELLE_ASSERT(!notif.id.empty());
-      ELLE_DEBUG("ensure that both user are fetched")
+      ELLE_DUMP("%s: notification: %s", *this, notif)
+      ELLE_DEBUG("%s: ensure that both user are fetched", *this)
       {
         this->user(notif.sender_id);
         this->user(notif.recipient_id);
       }
-      ELLE_DEBUG("search for a local transaction to update");
       auto it = std::find_if(
         std::begin(this->_transactions),
         std::end(this->_transactions),
@@ -199,7 +202,8 @@ namespace surface
         });
       if (it == std::end(this->_transactions))
       {
-        ELLE_TRACE_SCOPE("create transaction from notification: %s", notif);
+        ELLE_TRACE_SCOPE("%s: create transaction %s from notification",
+                         *this, notif.id);
         infinit::oracles::Transaction data = notif;
         auto id = generate_id();
         this->_transactions.emplace(
@@ -209,7 +213,7 @@ namespace surface
       }
       else
       {
-        ELLE_DEBUG_SCOPE("update transaction %s", notif.id);
+        ELLE_TRACE_SCOPE("%s: update transaction %s", *this, notif.id);
         it->second.on_transaction_update(notif);
       }
     }
@@ -219,10 +223,9 @@ namespace surface
       infinit::oracles::trophonius::PeerReachabilityNotification const& notif)
     {
       ELLE_TRACE_SCOPE(
-        "%s: peer (%s)published his interfaces for transaction %s",
+        "%s: peer %spublished his interfaces for transaction %s",
         *this, notif.status ? "" : "un", notif.transaction_id);
       ELLE_ASSERT(!notif.transaction_id.empty());
-      ELLE_DEBUG("search for the local transaction to notify");
       auto it = std::find_if(
         std::begin(this->_transactions),
         std::end(this->_transactions),

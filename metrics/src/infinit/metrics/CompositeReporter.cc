@@ -70,15 +70,25 @@ namespace infinit
     /*----------------.
     | Dispatch Metric |
     `----------------*/
+
     void
     CompositeReporter::_dispatch(std::function<void(Reporter*)> fn)
     {
       ELLE_TRACE_SCOPE("%s: dispatching metrics to all reporters", *this);
-      for (auto& reporter: this->_reporters)
+      elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
-        ELLE_DUMP("%s: sending metric using %s", *this, reporter->name());
-        fn(reporter.get());
-      }
+        for (auto& reporter: this->_reporters)
+        {
+          scope.run_background(
+            elle::sprintf("%s: %s", *this, *reporter),
+            [fn, this, &reporter]
+            {
+              ELLE_DUMP("%s: sending metric using %s", *this, *reporter);
+              fn(reporter.get());
+            });
+        }
+        reactor::wait(scope);
+      };
     }
 
     /*--------------------.

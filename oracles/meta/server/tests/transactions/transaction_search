@@ -3,7 +3,7 @@
 from utils import Meta, User
 from bson import ObjectId
 from functools import reduce
-
+import sys
 from infinit.oracles.meta.server import transaction_status
 
 with Meta() as meta:
@@ -20,13 +20,11 @@ with Meta() as meta:
     transaction_ids[charles.id].append(bob.sendfile(recipient_id = charles.id)[1]['created_transaction_id'])
 
   # While in status created, transactions are not matched by default search.
-  res = bob.post('transactions', {})
-  assert res['success']
+  res = bob.get('transactions')
   assert len(res['transactions']) == 0
 
-  res = bob.post('transactions', {"filter": [transaction_status.CREATED], "type": True})
-  print(res)
-  assert res['success']
+  res = bob.get(
+    'transactions?filter=[%s]&negate=false' % transaction_status.CREATED)
   assert len(res['transactions']) == 20
 
   trs = transaction_ids[alice.id] + transaction_ids[charles.id]
@@ -35,45 +33,31 @@ with Meta() as meta:
     bob.post("transaction/update", {"transaction_id": tr, "status": transaction_status.INITIALIZED})
 
   # Count.
-  res = bob.post('transactions', {'count': 5})
-
-  assert res['success']
+  res = bob.get('transactions?count=5')
   assert len(res['transactions']) == 5
-
   res['transactions'].reverse()
-  assert res['transactions'] == transaction_ids[charles.id][5:]
+  assert [t['_id'] for t in res['transactions']] == transaction_ids[charles.id][5:]
 
   # Count & Offset.
-  res = bob.post('transactions', {'count': 5, "offset": 5})
-
-  assert res['success']
+  res = bob.get('transactions?count=5&offset=5')
   assert len(res['transactions']) == 5
 
   res['transactions'].reverse()
-  assert res['transactions'] == transaction_ids[charles.id][:5]
+  assert [t['_id'] for t in res['transactions']] == transaction_ids[charles.id][:5]
 
   # With.
-  res = bob.post('transactions', {'peer_id': alice.id})
-  assert res['success']
-  print(res)
-  for transaction_id in res['transactions']:
-    tr = bob.get('transaction/%s/view' % transaction_id)
-    print(tr['recipient_id'], tr['sender_id'])
+  res = bob.get('transactions?peer_id=%s' % alice.id)
   assert len(res['transactions']) == 10
-  assert set(res['transactions']) == set(transaction_ids[alice.id])
+  assert set(t['_id'] for t in res['transactions']) == set(transaction_ids[alice.id])
 
-  res = bob.post('transactions', {'peer_id': charles.id})
-  assert res['success']
+  res = bob.get('transactions?peer_id=%s' % charles.id)
   assert len(res['transactions']) == 10
-  assert set(res['transactions']) == set(transaction_ids[charles.id])
+  assert set(t['_id'] for t in res['transactions']) == set(transaction_ids[charles.id])
 
   # Edit transaction_ids, must be the last.
-  res = bob.post('transactions', {})
-  assert res['success']
-
+  res = bob.get('transactions')
   def concat_list(x, y):
     x.extend(y)
     return x
-  assert set(res['transactions']) == set(reduce(concat_list, transaction_ids.values()))
-
+  assert set(t['_id'] for t in res['transactions']) == set(reduce(concat_list, transaction_ids.values()))
   assert not bob.get('transaction/%s/view' % bob.id)['success']

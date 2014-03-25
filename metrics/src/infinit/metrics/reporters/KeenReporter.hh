@@ -21,7 +21,8 @@ namespace infinit
     | Construction |
     `-------------*/
     public:
-      KeenReporter();
+      KeenReporter(std::string const& project,
+                   std::string const &key);
       virtual
       ~KeenReporter() = default;
 
@@ -30,9 +31,8 @@ namespace infinit
     `-----*/
     protected:
       virtual
-      void
-      _post(std::string const& destination,
-            elle::json::Object data) override;
+      std::string
+      _url(std::string const& destination) const override;
 
     /*----------------------.
     | Connection attributes |

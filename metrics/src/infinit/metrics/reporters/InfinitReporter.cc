@@ -9,7 +9,7 @@
 #include <reactor/http/Request.hh>
 #include <reactor/scheduler.hh>
 
-//ELLE_LOG_COMPONENT("infinit.metrics.InfinitReporter");
+// ELLE_LOG_COMPONENT("infinit.metrics.InfinitReporter");
 
 namespace infinit
 {
@@ -19,35 +19,22 @@ namespace infinit
     | Construction |
     `-------------*/
 
-    InfinitReporter::InfinitReporter():
+    InfinitReporter::InfinitReporter(std::string const& url,
+                                     int port):
       Super("infinit reporter"),
-      _base_url(),
-      _port()
-    {
-      this->_base_url =
-        elle::os::getenv("INFINIT_METRICS_HOST",
-                         "v3.metrics.api.production.infinit.io");
-      this->_port = boost::lexical_cast<int>(
-        elle::os::getenv("INFINIT_METRICS_PORT", "80"));
-    }
+      _base_url(url),
+      _port(port)
+    {}
 
     /*-----.
     | Send |
     `-----*/
 
-    void
-    InfinitReporter::_post(std::string const& destination,
-                           elle::json::Object data)
+    std::string
+    InfinitReporter::_url(std::string const& destination) const
     {
-      auto url = elle::sprintf(
+      return elle::sprintf(
         "http://%s:%d/%s", this->_base_url, this->_port, destination);
-      reactor::http::Request::Configuration cfg(
-        10_sec, reactor::http::Version::v11);
-      cfg.header_add("User-Agent", Reporter::user_agent());
-      reactor::http::Request r(
-        url, reactor::http::Method::POST, "application/json", cfg);
-      elle::json::write(r, data);
-      reactor::wait(r);
     }
   }
 }

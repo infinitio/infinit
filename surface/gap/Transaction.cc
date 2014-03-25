@@ -350,13 +350,11 @@ namespace surface
     Transaction::on_peer_reachability_updated(
       PeerReachabilityNotification const& update)
     {
+      // If the transaction is not running, ignore.
+      if (this->_machine == nullptr)
+        return;
       ELLE_TRACE_SCOPE("%s: peer now %savaialble for peer to peer connection",
                        *this, update.status ? "" : "un");
-      if (this->_machine == nullptr)
-      {
-        ELLE_DEBUG("%s: transaction is not running", *this);
-        return;
-      }
       ELLE_ASSERT_EQ(this->_data->id, update.transaction_id);
       // Notification should only be sent to the sender device and the
       // recipient device concerned by this transaction.
@@ -375,16 +373,13 @@ namespace surface
     Transaction::on_peer_connection_status_updated(
       UserStatusNotification const& update)
     {
+      // If the transaction is not running, ignore.
+      if (this->_machine == nullptr)
+        return;
       ELLE_TRACE_SCOPE(
         "%s: peer went %sline on device %s",
           *this, update.device_status ? "on" : "off", update.device_id);
-      // Ensure that the notification concerns this transaction.
       ELLE_ASSERT(this->concerns_user(update.user_id));
-      if (this->_machine == nullptr)
-      {
-        ELLE_DEBUG("%s: transaction is not running", *this);
-        return;
-      }
       // XXX: There is no way to know if you are the sender or the recipient
       // because state is not accessible from transaction.
       // So we assume that the notification CAN'T be our own status.

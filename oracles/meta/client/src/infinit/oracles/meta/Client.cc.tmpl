@@ -1,3 +1,11 @@
+#include <sstream>
+
+#include <boost/uuid/uuid_io.hpp>
+#include <boost/uuid/string_generator.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+
+#include <elle/json/json.hh>
 #include <elle/log.hh>
 #include <elle/print.hh>
 #include <elle/serialize/JSONArchive.hh>
@@ -6,17 +14,11 @@
 #include <elle/serialize/MapSerializer.hxx>
 #include <elle/serialize/SetSerializer.hxx>
 
-#include <infinit/oracles/meta/Client.hh>
-#include <infinit/oracles/meta/macro.hh>
-
 #include <reactor/scheduler.hh>
 
+#include <infinit/oracles/meta/Client.hh>
+#include <infinit/oracles/meta/macro.hh>
 #include <version.hh>
-
-#include <boost/uuid/uuid_io.hpp>
-#include <boost/uuid/string_generator.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
 
 ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
 
@@ -137,16 +139,6 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::DeleteDeviceResponse, ar, res)
 /*-------------.
 | Transactions |
 `-------------*/
-
-SERIALIZE_RESPONSE(infinit::oracles::meta::TransactionResponse, ar, res)
-{
-  ar & static_cast<infinit::oracles::Transaction&>(res);
-}
-
-SERIALIZE_RESPONSE(infinit::oracles::meta::TransactionsResponse, ar, res)
-{
-  ar & named("transactions", res.transactions);
-}
 
 SERIALIZE_RESPONSE(infinit::oracles::meta::CreateTransactionResponse, ar, res)
 {
@@ -558,34 +550,77 @@ namespace infinit
                                         device_name);
       }
 
-      TransactionResponse
-      Client::transaction(std::string const& _id) const
+      static
+      Transaction
+      transaction_from_json(boost::any const& json_)
       {
-        return this->_request<TransactionResponse>(
-          sprintf("/transaction/%s/view", _id), Method::GET);
+        auto const& json =
+          boost::any_cast<elle::json::Object>(json_);
+        Transaction t;
+        t.id = boost::any_cast<std::string>(json.at("_id"));
+        t.sender_id = boost::any_cast<std::string>(json.at("sender_id"));
+        t.sender_fullname = boost::any_cast<std::string>(json.at("sender_fullname"));
+        t.sender_device_id = boost::any_cast<std::string>(json.at("sender_device_id"));
+        t.recipient_id = boost::any_cast<std::string>(json.at("recipient_id"));
+        t.recipient_fullname = boost::any_cast<std::string>(json.at("recipient_fullname"));
+        t.recipient_device_id = boost::any_cast<std::string>(json.at("recipient_device_id"));
+        t.recipient_device_name = boost::any_cast<std::string>(json.at("recipient_device_name"));
+        t.message = boost::any_cast<std::string>(json.at("message"));
+        for (auto const& file: boost::any_cast<elle::json::Array>(json.at("files")))
+          t.files.push_back(boost::any_cast<std::string>(file));
+        t.files_count = boost::any_cast<int64_t>(json.at("files_count"));
+        t.total_size = boost::any_cast<int64_t>(json.at("total_size"));
+        t.is_directory = boost::any_cast<bool>(json.at("is_directory"));
+        t.status = Transaction::Status(boost::any_cast<int64_t>(json.at("status")));
+        t.ctime = boost::any_cast<double>(json.at("ctime"));
+        t.mtime = boost::any_cast<double>(json.at("mtime"));
+        return t;
       }
 
-      TransactionsResponse
+      Transaction
+      Client::transaction(std::string const& _id) const
+      {
+        std::string url = sprintf("/transaction/%s/view", _id);
+        reactor::http::Request request =
+          this->_client.request(this->_url(url),
+                                Method::GET,
+                                this->_default_configuration);
+        this->_handle_errors(request);
+        return transaction_from_json(elle::json::read(request));
+      }
+
+      std::vector<Transaction>
       Client::transactions(std::vector<Transaction::Status> const& status,
-                           bool inclusive,
+                           bool negate,
                            int count) const
       {
-        json::Dictionary request{};
+        std::string url;
         if (status.size() > 0)
         {
-          json::Array status_array;
-          for (Transaction::Status statu: status)
-          {
-            status_array.push_back((int) statu);
-          }
-
-          request["filter"] = std::move(status_array);
-          request["type"] = inclusive;
-          request["count"] = count;
+          std::stringstream filter;
+          std::vector<boost::any> status_json;
+          for (auto s: status)
+            status_json.push_back(boost::any(int(s)));
+          elle::json::write(filter, status_json);
+          // FIXME: handle query parameters in reactor Request
+          url = elle::sprintf("/transactions?count=%d&negate=%d&filter=%s",
+                              count, negate, filter.str());
         }
-
-        return this->_request<TransactionsResponse>(
-          "/transactions", Method::POST, request);
+        else
+          url = "/transactions";
+        reactor::http::Request request =
+          this->_client.request(this->_url(url),
+                                Method::GET,
+                                this->_default_configuration);
+        this->_handle_errors(request);
+        auto json = elle::json::read(request);
+        auto const& transactions =
+          boost::any_cast<elle::json::Array>(
+            boost::any_cast<elle::json::Object>(json).at("transactions"));
+        std::vector<Transaction> res;
+        for (auto const& transaction: transactions)
+          res.push_back(transaction_from_json(transaction));
+        return res;
       }
 
       MessageResponse
@@ -769,6 +804,27 @@ namespace infinit
             elle::sprintf("error %s while posting on %s", status, url));
         }
         return request;
+      }
+
+      std::string
+      Client::_url(std::string const& url) const
+      {
+        return this->_root_url + url;
+      }
+
+      void
+      Client::_handle_errors(reactor::http::Request& request) const
+      {
+        auto response = request.status();
+        if (response != reactor::http::StatusCode::OK)
+        {
+          ELLE_ERR("%s: error while posting: %s (%s)",
+                   *this, response, request.response().string());
+          throw elle::http::Exception(
+            static_cast<elle::http::ResponseCode>(response),
+            elle::sprintf("error %s while posting on %s",
+                          response, request.url()));
+        }
       }
 
       //- Properties ------------------------------------------------------------

@@ -55,7 +55,7 @@ class Mixin:
 
   @api('/ghostify', method = 'POST')
   @require_admin
-  def ghostify(self, email, admin_token):
+  def ghostify(self, email):
     email.strip()
 
     user = self.database.users.find_one({"email": email})
@@ -262,7 +262,7 @@ class Mixin:
 
   @api('/genocide', method = 'POST')
   @require_admin
-  def _genocide_(self, admin_token):
+  def _genocide_(self):
     """
     Make all client commit suicide.
     """
@@ -275,7 +275,7 @@ class Mixin:
 
   @api('/cron', method = 'POST')
   @require_admin
-  def cron(self, admin_token):
+  def cron(self):
     """
     Do cron jobs as:
     - clean old trophonius instances.

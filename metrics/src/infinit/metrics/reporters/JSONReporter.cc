@@ -15,10 +15,12 @@ namespace infinit
 {
   namespace metrics
   {
-    JSONReporter::JSONReporter(std::string const& name):
+    JSONReporter::JSONReporter(std::string const& name,
+                               reactor::http::StatusCode expected_status):
       Reporter::Reporter(name),
       _transaction_dest("transactions"),
-      _user_dest("users")
+      _user_dest("users"),
+      _expected_status(expected_status)
     {}
 
     /*--------------------.
@@ -179,6 +181,23 @@ namespace infinit
         ELLE_ERR("%s: unable to post metric %s: %s",
                  *this, event_name, elle::exception_string());
       }
+    }
+
+    void
+    JSONReporter::_post(std::string const& destination,
+                        elle::json::Object data)
+    {
+      auto url = this->_url(destination);
+      ELLE_TRACE_SCOPE("%s: send event to %s", *this, url);
+      ELLE_DUMP("%s: data: %s", *this, data);
+      reactor::http::Request::Configuration cfg(
+        10_sec, reactor::http::Version::v11);
+      cfg.expected_status(this->_expected_status);
+      cfg.header_add("User-Agent", Reporter::user_agent());
+      reactor::http::Request r(
+        url, reactor::http::Method::POST, "application/json", cfg);
+      elle::json::write(r, data);
+      reactor::wait(r);
     }
 
     /*-----------------.
