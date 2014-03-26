@@ -47,19 +47,14 @@ namespace frete
   | Construction |
   `-------------*/
   public:
-    // Sender.
     Frete(std::string const& password, // Retro compatibility.
           infinit::cryptography::PublicKey peer_K,
           boost::filesystem::path const& snapshot_destination);
 
-  private:
-    Frete(boost::filesystem::path const& snapshot_destination,
-          bool);
-
   public:
     ~Frete();
 
-    struct Impl;
+    class Impl;
     ELLE_ATTRIBUTE(std::unique_ptr<Impl>, impl);
 
   /*----.
