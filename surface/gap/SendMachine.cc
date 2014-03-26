@@ -96,18 +96,8 @@ namespace surface
         this->_create_transaction_state, this->_fail_state);
       this->_machine.transition_add_catch(
         this->_wait_for_accept_state, this->_fail_state);
-      // try restoring snapshot, which will only work if we reached cloud
-      // upload phase
-      try
-      {
-        frete().transfer_snapshot().reset(
-          new frete::TransferSnapshot(
-            elle::serialize::from_file(this->_snapshot_path.string())));
-      }
-      catch(...)
-      {
-        ELLE_DEBUG("Ignored exception when restoring snapshot");
-      }
+      if (!this->data()->recipient_id.empty())
+        _set_peer_id(this->data()->recipient_id);
     }
 
     SendMachine::~SendMachine()
@@ -189,11 +179,7 @@ namespace surface
 
       ELLE_ASSERT_EQ(this->data()->files.size(), this->_files.size());
 
-      this->peer_id(recipient);
-      _snapshot_path = boost::filesystem::path(
-        common::infinit::frete_snapshot_path(
-          this->data()->recipient_id,
-          this->data()->id));
+      this->_set_peer_id(recipient);
       this->_run(this->_create_transaction_state);
     }
 
@@ -345,7 +331,7 @@ namespace surface
       ELLE_TRACE("%s: created transaction %s", *this, this->transaction_id());
 
       // XXX: Ensure recipient is an id.
-      this->peer_id(this->state().user(this->peer_id(), true).id);
+      this->_set_peer_id(this->state().user(this->peer_id(), true).id);
 
       if (this->state().metrics_reporter())
         this->state().metrics_reporter()->transaction_created(
@@ -493,6 +479,27 @@ namespace surface
       {
         ELLE_ERR("couldn't delete snapshot at %s: %s",
                  this->_snapshot_path, elle::exception_string());
+      }
+    }
+    void
+    SendMachine::_set_peer_id(const std::string& pid)
+    {
+      TransactionMachine::peer_id(pid);
+      _snapshot_path = boost::filesystem::path(
+        common::infinit::frete_snapshot_path(
+          this->data()->recipient_id,
+          this->data()->id));
+      // try restoring snapshot, which will only work if we reached cloud
+      // upload phase
+      try
+      {
+        frete().transfer_snapshot().reset(
+          new frete::TransferSnapshot(
+            elle::serialize::from_file(this->_snapshot_path.string())));
+      }
+      catch(...)
+      {
+        ELLE_DEBUG("Ignored exception when restoring snapshot");
       }
     }
   }

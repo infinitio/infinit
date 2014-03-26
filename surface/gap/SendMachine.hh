@@ -62,7 +62,9 @@ namespace surface
       _transfer_operation(frete::RPCFrete& frete) override;
       void
       _cloud_operation() override;
-
+      // Called once from ctor or at some point when peer id is finally known
+      void
+      _set_peer_id(const std::string& peer_id);
       /*-----------------------.
       | Machine implementation |
       `-----------------------*/
