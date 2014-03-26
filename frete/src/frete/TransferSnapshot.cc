@@ -9,7 +9,6 @@ namespace frete
   // Recipient.
   TransferSnapshot::TransferSnapshot(Frete::FileCount count,
                                      Frete::FileSize total_size):
-    _sender(false),
     _count(count),
     _total_size(total_size),
     _progress(0)
@@ -17,7 +16,6 @@ namespace frete
 
   // Sender.
   TransferSnapshot::TransferSnapshot():
-    _sender(true),
     _count(0),
     _total_size(0),
     _progress(0)
@@ -60,8 +58,6 @@ namespace frete
   TransferSnapshot::add(boost::filesystem::path const& root,
                         boost::filesystem::path const& path)
   {
-    ELLE_ASSERT(this->_sender);
-
     auto file = root / path;
     if (!boost::filesystem::exists(file))
       throw elle::Exception(elle::sprintf("file %s doesn't exist", file));
@@ -122,8 +118,6 @@ namespace frete
   void
   TransferSnapshot::progress(Frete::FileSize const& progress)
   {
-    ELLE_ASSERT(this->sender());
-
     if (progress < this->_progress)
       ELLE_WARN("%s: reducing progress", *this);
 
@@ -133,7 +127,7 @@ namespace frete
   void
   TransferSnapshot::print(std::ostream& stream) const
   {
-    stream << "Snapshot " << (this->_sender ? "sender" : "recipient")
+    stream << "Snapshot "
            << " " << this->_count
            << " files for a total size of " << this->_total_size
            << ". Already 'copied': " << this->_progress << ": "

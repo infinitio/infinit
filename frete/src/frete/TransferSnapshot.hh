@@ -30,7 +30,6 @@ namespace frete
                      FileSize total_size);
     /// Construct sender snapshot.
     TransferSnapshot();
-    ELLE_ATTRIBUTE_R(bool, sender);
 
   /*-----.
   | File |
