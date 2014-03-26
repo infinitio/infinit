@@ -193,31 +193,32 @@ class Mixin:
                    count : int = 100,
                    offset : int = 0,
                  ):
-    print(filter, negate, count, offset)
-    user_id = self.user['_id']
-    if peer_id is not None:
-      query = {
-        '$or':
-        [
-          { 'recipient_id': user_id, 'sender_id': peer_id, },
-          { 'sender_id': user_id, 'recipient_id': peer_id, },
-        ]}
-    else:
-      query = {
-        '$or':
-        [
-          { 'sender_id': user_id },
-          { 'recipient_id': user_id },
-        ]
-      }
-    query['status'] = {'$%s' % (negate and 'nin' or 'in'): filter}
-    res = self.database.transactions.aggregate([
-      {'$match': query},
-      {'$sort': {'mtime': -1}},
-      {'$skip': offset},
-      {'$limit': count},
-    ])['result']
-    return {'transactions': res}
+    with elle.log.trace("get %s transactions with(%s) status in %s" % \
+                        (count, negate and "out" or "", filter)):
+      user_id = self.user['_id']
+      if peer_id is not None:
+        query = {
+          '$or':
+          [
+            { 'recipient_id': user_id, 'sender_id': peer_id, },
+            { 'sender_id': user_id, 'recipient_id': peer_id, },
+          ]}
+      else:
+        query = {
+          '$or':
+          [
+            { 'sender_id': user_id },
+            { 'recipient_id': user_id },
+          ]
+        }
+      query['status'] = {'$%s' % (negate and 'nin' or 'in'): filter}
+      res = self.database.transactions.aggregate([
+        {'$match': query},
+        {'$sort': {'mtime': -1}},
+        {'$skip': offset},
+        {'$limit': count},
+      ])['result']
+      return self.success({'transactions': res})
 
   def on_accept(self, transaction, device_id, device_name):
     with elle.log.trace("accept transaction as %s" % device_id):
