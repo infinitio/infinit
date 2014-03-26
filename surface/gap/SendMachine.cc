@@ -460,7 +460,7 @@ namespace surface
             new frete::TransferSnapshot(
               elle::serialize::from_file(this->_snapshot_path.string())));
         }
-        catch(const boost::filesystem::filesystem_error& e)
+        catch (boost::filesystem::filesystem_error const& e)
         {
           ELLE_DEBUG("Ignored exception when restoring snapshot: %s", e.what());
         }
