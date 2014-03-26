@@ -22,9 +22,10 @@ from uuid import uuid4, UUID
 
 class HTTPException(Exception):
 
-  def __init__(self, status, url, body):
+  def __init__(self, status, method, url, body):
     self.status = int(status)
-    super().__init__('status %s on /%s with body %s' % (status, url, body))
+    super().__init__('status %s with %s on /%s with body %s' % \
+                     (status, method, url, body))
 
 class Client:
 
@@ -34,6 +35,10 @@ class Client:
     self.__database = None
     self.__cookies = None
     self.__meta = meta
+
+  @property
+  def meta(self):
+    return self.__meta
 
   def __exit__(self, *args, **kwargs):
     self.__mongo.__exit__(*args, **kwargs)
@@ -51,10 +56,10 @@ class Client:
   def cookie(self):
     return self.__cookies
 
-  def __convert_result(self, url, body, headers, content):
+  def __convert_result(self, url, method, body, headers, content):
     status = headers['status']
     if status != '200':
-      raise HTTPException(status, url, body)
+      raise HTTPException(status, method, url, body)
     if headers['content-type'] == 'application/json':
       return json.loads(content.decode())
     elif headers['content-type'] == 'text/plain':
@@ -76,7 +81,7 @@ class Client:
                               body = body,
                               headers = headers)
     self.__get_cookies(resp)
-    return self.__convert_result(url, body, resp, content)
+    return self.__convert_result(url, method, body, resp, content)
 
   def post(self, url, body = None):
     return self.request(url, 'POST', body)
@@ -90,6 +95,37 @@ class Client:
   def delete(self, url, body = None):
     return self.request(url, 'DELETE', body)
 
+class Trophonius(Client):
+
+  def __init__(self, meta):
+    super().__init__(meta)
+    self.__uuid = str(uuid4())
+    self.__users = {}
+    self.__args = {"port": 23456}
+
+  def __enter__(self):
+    res = self.put('trophonius/%s' % self.__uuid, self.__args)
+    assert res['success']
+    return self
+
+  def __exit__(self, *args, **kwargs):
+    res = self.delete('trophonius/%s' % self.__uuid)
+    assert res['success']
+
+  def connect_user(self, user):
+    user_id = str(user.id)
+    res = user.put('trophonius/%s/users/%s/%s' % \
+                   (self.__uuid, user_id, str(user.device_id)))
+    assert res['success']
+    self.__users.setdefault(user_id, [])
+    self.__users[user_id] += str(user.device_id)
+
+  def disconnect_user(self, user):
+    assert user.device_id in self.__users[user.id]
+    res = user.delete('trophonius/%s/users/%s/%s' % \
+                      (self.__uuid, str(user.id), str(user.device_id)))
+    assert res['success']
+    self.__users[user.id].remove(user.device_id)
 
 class Meta:
 
@@ -268,6 +304,10 @@ class User(Client):
   @property
   def identity(self):
     return self.get('user/self')['identity']
+
+  @property
+  def fullname(self):
+    return self.get('user/self')['fullname']
 
   @property
   def connected_on_device(self, device_id = None):

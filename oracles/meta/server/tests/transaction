@@ -3,18 +3,23 @@
 from utils import Meta, User
 from infinit.oracles.meta.server.mail import Mailer
 
-message_sent = False
 class MailService(Mailer):
 
-  def __init__(self, sender_fullname):
+  def __init__(self, sender_fullname), expected_template):
     super().__init__(True)
-    self.__sender_fullname = sender_fullname
+    self.__sender = sender_fullname
+    self.__expected_template = expected_template
+    self.__sent = False
 
   # Override Mailer private __send method.
   def _Mailer__send(self, msg):
-    global message_sent
-    message_sent = True
-    assert str(msg).find(("%s_wants_to_share" % self.__sender_fullname))
+    assert str(msg).find(self.__expected_template) > 0
+    assert str(msg).find("%s_wants_to_share" % self.__sender) > 0
+    self.__sent = True
+
+  @property
+  def sent(self):
+    return self.__sent
 
 with Meta() as meta:
   alice = User(meta, "alice@infinit.io")
@@ -44,20 +49,20 @@ with Meta(enable_emails = True) as meta:
   alice_email = "alice@infinit.io"
   bob = User(meta, "bob@infinit.io")
 
-  response = {"email": alice_email}
-  meta.mailer = MailService(response)
-
   bob.login()
+  meta.mailer = MailService(bob.fullname, 'send-file')
 
   transaction, res = bob.sendfile(recipient_id = alice_email)
   assert res['success']
-  assert message_sent
+
+  assert meta.mailer.sent
   transaction_id = res['created_transaction_id']
 
   alice = User(meta, alice_email)
   alice.login()
 
   res = alice.get('transaction/%s/view' % transaction_id)
+
 
   for key in transaction.keys():
     if key in ['id_or_email', 'device_id']: # Special cases.
