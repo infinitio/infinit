@@ -122,11 +122,6 @@ namespace frete
           FileOffset offset,
           FileSize const size);
 
-    // Sender.
-    typedef std::pair<boost::filesystem::path, boost::filesystem::path> Path;
-    typedef std::vector<Path> Paths;
-    ELLE_ATTRIBUTE(Paths, paths);
-
   private:
     void
     _save_snapshot() const;
