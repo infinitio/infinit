@@ -196,7 +196,7 @@ void export_meta_client()
     .def_readonly("fullname", &User::fullname)
     .def_readonly("handle", &User::handle)
     .def_readonly("public_key", &User::public_key)
-    .def_readonly("status", &User::status)
+    .def_readonly("online", &User::online)
     .def_readonly("connected_devices", &User::connected_devices)
   ;
   py::class_<Device>("Device")
