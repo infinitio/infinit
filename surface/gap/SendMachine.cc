@@ -227,6 +227,7 @@ namespace surface
         case TransactionMachine::State::PeerDisconnected:
         case TransactionMachine::State::PeerConnectionLost:
         case TransactionMachine::State::Transfer:
+        case TransactionMachine::State::CloudBuffered:
           this->_run(this->_transfer_core_state);
           break;
         case TransactionMachine::State::Finished:
