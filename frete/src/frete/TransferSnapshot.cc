@@ -13,9 +13,7 @@ namespace frete
     _count(count),
     _total_size(total_size),
     _progress(0)
-  {
-    ELLE_LOG("%s: contruction", *this);
-  }
+  {}
 
   // Sender.
   TransferSnapshot::TransferSnapshot():
@@ -23,9 +21,7 @@ namespace frete
     _count(0),
     _total_size(0),
     _progress(0)
-  {
-    ELLE_LOG("%s: contruction", *this);
-  }
+  {}
 
   void
   TransferSnapshot::increment_progress(Frete::FileID index,
