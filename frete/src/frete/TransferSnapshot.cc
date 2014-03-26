@@ -127,11 +127,10 @@ namespace frete
   void
   TransferSnapshot::print(std::ostream& stream) const
   {
-    stream << "Snapshot "
-           << " " << this->_count
-           << " files for a total size of " << this->_total_size
-           << ". Already 'copied': " << this->_progress << ": "
-           << this->_files;
+    elle::fprintf(stream, "Snapshot(%s files, %s bytes, %.2f%%)",
+                  this->_count,
+                  this->_total_size,
+                  this->_progress / (float)this->_total_size);
   }
 
   /*---------.
@@ -165,9 +164,10 @@ namespace frete
   void
   TransferSnapshot::File::print(std::ostream& stream) const
   {
-    stream << "File "
-           << this->file_id() << " : " << this->full_path()
-           << "(" << this->_progress << " / " << this->size() << ")";
+    elle::fprintf(stream, "Snapshot::File(%s, %s, %.2f%%)",
+                  this->file_id(),
+                  this->full_path(),
+                  this->_progress / (float)this->size());
   }
 
   bool
