@@ -231,18 +231,21 @@ namespace elle
                  std::string const& message,
                  std::string file)
     {
+      ELLE_TRACE_SCOPE("send report %s to %s", message, url);
       std::vector<boost::any> env_arr;
 
-      for (auto const& pair: elle::os::environ())
-      {
-        if (boost::starts_with(pair.first, "ELLE_") ||
-            boost::starts_with(pair.first, "INFINIT_"))
+      ELLE_DEBUG("store environment")
+        for (auto const& pair: elle::os::environ())
         {
-          std::string line =
-            elle::sprintf("%s = %s", pair.first, pair.second);
-          env_arr.push_back(line);
+          if (boost::starts_with(pair.first, "ELLE_") ||
+              boost::starts_with(pair.first, "INFINIT_"))
+          {
+            std::string line =
+              elle::sprintf("%s = %s", pair.first, pair.second);
+            env_arr.push_back(line);
+          }
         }
-      }
+
       elle::json::Object json_dict;
 
       json_dict["user_name"] = user_name;
@@ -296,6 +299,7 @@ namespace elle
   std::string
   _to_base64(boost::filesystem::path const& source)
   {
+    ELLE_TRACE_SCOPE("turn %s to base 64", source.string());
     std::stringstream base64;
     // Scope to flush Stream(s).
     {
@@ -413,12 +417,12 @@ namespace elle
                 std::string const& message,
                 std::string const& user_file)
     {
+      ELLE_TRACE_SCOPE("user report");
       std::string url = elle::sprintf("%s://%s:%s/debug/report/user",
                                       protocol,
                                       host,
                                       port);
 #ifndef INFINIT_WINDOWS
-      ELLE_TRACE("user report");
 
       boost::filesystem::path destination{"/tmp/infinit-report-user"};
       boost::filesystem::path user_file_path(user_file);
@@ -442,8 +446,9 @@ namespace elle
       if (boost::filesystem::exists(to_send) &&
           !boost::filesystem::is_directory(to_send))
       {
-        _send_report(url, user_name, os_description, "",
-                     _to_base64(to_send));
+        ELLE_DEBUG("send report")
+          _send_report(
+            url, user_name, os_description, message, _to_base64(to_send));
       }
       else
       {
