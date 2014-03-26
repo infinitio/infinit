@@ -42,7 +42,7 @@ namespace surface
       _rejected("rejected barrier"),
       _snapshot_path(boost::filesystem::path(
         common::infinit::frete_snapshot_path(
-          this->data()->recipient_id,
+          this->data()->sender_id,
           this->data()->id))) /* might be invalid if called from ctors below*/
     {
       ELLE_TRACE("Creating SendMachine: id %s sid %s sdid %s rid %s rdid %s",
@@ -450,7 +450,7 @@ namespace surface
             this->_frete->add(file);
         _snapshot_path = boost::filesystem::path(
         common::infinit::frete_snapshot_path(
-          this->data()->recipient_id,
+          this->data()->sender_id,
           this->data()->id));
         // try restoring snapshot, which will only work if we reached cloud
         // upload phase
