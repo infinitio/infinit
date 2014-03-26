@@ -435,37 +435,18 @@ namespace surface
     {
       if (this->_frete == nullptr)
       {
+        ELLE_TRACE_SCOPE("%s: initialize frete", *this);
         infinit::cryptography::PublicKey peer_K;
         peer_K.Restore(this->state().user(this->peer_id(), true).public_key);
-
         this->_frete = elle::make_unique<frete::Frete>(
           this->transaction_id(),
           peer_K,
           common::infinit::frete_snapshot_path(
             this->data()->sender_id,
             this->data()->id));
-
-        ELLE_TRACE("%s: initialize frete", *this)
-          for (std::string const& file: this->_files)
-            this->_frete->add(file);
-        _snapshot_path = boost::filesystem::path(
-        common::infinit::frete_snapshot_path(
-          this->data()->sender_id,
-          this->data()->id));
-        // try restoring snapshot, which will only work if we reached cloud
-        // upload phase
-        try
-        {
-          this->_frete->transfer_snapshot().reset(
-            new frete::TransferSnapshot(
-              elle::serialize::from_file(this->_snapshot_path.string())));
-        }
-        catch (boost::filesystem::filesystem_error const& e)
-        {
-          ELLE_DEBUG("Ignored exception when restoring snapshot: %s", e.what());
-        }
+        for (std::string const& file: this->_files)
+          this->_frete->add(file);
       }
-
       return *this->_frete;
     }
 
