@@ -57,22 +57,23 @@ namespace frete
     _transfer_snapshot(),
     _snapshot_destination(snapshot_destination)
   {
-    if (boost::filesystem::exists(this->_snapshot_destination))
+    ELLE_TRACE_SCOPE("%s: load snapshot %s",
+                     *this, this->_snapshot_destination);
+    try
     {
-      ELLE_TRACE_SCOPE("%s: load snapshot %s",
-                       *this, this->_snapshot_destination);
-      try
-      {
-        this->_transfer_snapshot.reset(
-          new TransferSnapshot(
-            elle::serialize::from_file(this->_snapshot_destination.string())));
-      }
-      catch (std::exception const&) //XXX: Choose the right exception here.
-      {
-        ELLE_ERR("%s: snapshot is invalid: %s",
+      this->_transfer_snapshot.reset(
+        new TransferSnapshot(
+          elle::serialize::from_file(this->_snapshot_destination.string())));
+    }
+    catch (boost::filesystem::filesystem_error const&)
+    {
+      ELLE_TRACE("%s: unable to read snapshot file: %s",
                  *this, elle::exception_string());
-        boost::filesystem::remove(this->_snapshot_destination);
-      }
+    }
+    catch (std::exception const&) //XXX: Choose the right exception here.
+    {
+      ELLE_WARN("%s: snapshot is invalid: %s",
+                *this, elle::exception_string());
     }
     if (this->_transfer_snapshot == nullptr)
       this->_transfer_snapshot.reset(new TransferSnapshot());
