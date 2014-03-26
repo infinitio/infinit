@@ -13,9 +13,7 @@ namespace frete
     _count(count),
     _total_size(total_size),
     _progress(0)
-  {
-    ELLE_LOG("%s: contruction", *this);
-  }
+  {}
 
   // Sender.
   TransferSnapshot::TransferSnapshot():
@@ -23,9 +21,7 @@ namespace frete
     _count(0),
     _total_size(0),
     _progress(0)
-  {
-    ELLE_LOG("%s: contruction", *this);
-  }
+  {}
 
   void
   TransferSnapshot::increment_progress(Frete::FileID index,
@@ -126,7 +122,14 @@ namespace frete
   /*---------.
   | Snapshot |
   `---------*/
-  TransferSnapshot::TransferInfo::TransferInfo(
+
+  bool
+  TransferSnapshot::TransferProgressInfo::file_exists() const
+  {
+    return boost::filesystem::exists(this->_full_path);
+  }
+
+  TransferSnapshot::TransferProgressInfo::TransferProgressInfo(
     Frete::FileID file_id,
     boost::filesystem::path const& root,
     boost::filesystem::path const& path,
@@ -135,37 +138,7 @@ namespace frete
     _root(root.string()),
     _path(path.string()),
     _full_path(root / path),
-    _file_size(file_size)
-  {}
-
-  bool
-  TransferSnapshot::TransferInfo::file_exists() const
-  {
-    return boost::filesystem::exists(this->_full_path);
-  }
-
-  bool
-  TransferSnapshot::TransferInfo::operator ==(TransferInfo const& rh) const
-  {
-    return ((this->_file_id == rh._file_id) &&
-            (this->_full_path == rh._full_path) &&
-            (this->_file_size == rh._file_size));
-  }
-
-  void
-  TransferSnapshot::TransferInfo::print(std::ostream& stream) const
-  {
-    stream << "TransferInfo "
-           << this->_file_id << " : " << this->_full_path
-           << "(" << this->_file_size << ")";
-  }
-
-  TransferSnapshot::TransferProgressInfo::TransferProgressInfo(
-    Frete::FileID file_id,
-    boost::filesystem::path const& root,
-    boost::filesystem::path const& path,
-    Frete::FileSize file_size):
-    TransferInfo(file_id, root, path, file_size),
+    _file_size(file_size),
     _progress(0)
   {}
 
@@ -192,7 +165,7 @@ namespace frete
   void
   TransferSnapshot::TransferProgressInfo::print(std::ostream& stream) const
   {
-    stream << "ProgressInfo "
+    stream << "TransferProgressInfo "
            << this->file_id() << " : " << this->full_path()
            << "(" << this->_progress << " / " << this->file_size() << ")";
   }
@@ -201,7 +174,8 @@ namespace frete
   TransferSnapshot::TransferProgressInfo::operator ==(
     TransferProgressInfo const& rh) const
   {
-    return ((this->TransferInfo::operator ==(rh) &&
-             this->_progress == rh._progress));
+    return ((this->_file_id == rh._file_id) &&
+            (this->_full_path == rh._full_path) &&
+            (this->_file_size == rh._file_size));
   }
 }

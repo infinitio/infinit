@@ -47,19 +47,12 @@ namespace frete
   | Construction |
   `-------------*/
   public:
-    // Sender.
     Frete(std::string const& password, // Retro compatibility.
           infinit::cryptography::PublicKey peer_K,
           boost::filesystem::path const& snapshot_destination);
-
-  private:
-    Frete(boost::filesystem::path const& snapshot_destination,
-          bool);
-
-  public:
     ~Frete();
-
-    struct Impl;
+  private:
+    class Impl;
     ELLE_ATTRIBUTE(std::unique_ptr<Impl>, impl);
 
   /*----.
@@ -73,85 +66,95 @@ namespace frete
   | Local configuration |
   `--------------------*/
   public:
+    /// Register a file.
     void
     add(boost::filesystem::path const& path);
+  private:
     void
-    add(boost::filesystem::path const& root,
-        boost::filesystem::path const& path);
+    _add(boost::filesystem::path const& root,
+         boost::filesystem::path const& path);
 
-    /*----.
-    | Api |
-    `----*/
+  /*----.
+  | Api |
+  `----*/
   public:
-    /// Return the number of file.
+    /// The number of file.
     FileCount
     count();
-    /// Return the total size of files.
+    /// The total size of files.
     FileSize
     full_size();
-    /// Return the size of a file.
+    /// The size of a file.
     FileSize
     file_size(FileID f);
-    /// Return the path and size of all files.
+    /// The path and size of all files.
     std::vector<std::pair<std::string, FileSize>>
     files_info();
-    /// Return the path of a file.
+    /// The path of a file.
     std::string
     path(FileID f);
-    /// Return a weakly crypted chunck of a file.
+    /// A weakly crypted chunk of a file.
     infinit::cryptography::Code
     read(FileID f, FileOffset start, FileSize size);
-    /// Return a strongly crypted chunck of a file.
+    /// A strongly crypted chunk of a file.
     infinit::cryptography::Code
     encrypted_read(FileID f, FileOffset start, FileSize size);
     /// Update the progress.
     void
     set_progress(FileSize progress);
-    /// Return the version.
+    /// The infinit version.
     elle::Version
     version() const;
-    /// Get the key of the transfer.
+    /// The key of the transfer.
     infinit::cryptography::Code const&
     key_code() const;
     /// Signal we're done
     void
     finish();
-
+    /// Whether we're done.
     ELLE_ATTRIBUTE_RX(reactor::Barrier, finished);
-
   private:
+    /// The path of a file on the local filesystem.
     boost::filesystem::path
     _local_path(FileID file_id);
+    /// A plain chunk of a file.
     elle::Buffer
     _read(FileID file_id,
           FileOffset offset,
           FileSize const size);
 
-    // Sender.
-    typedef std::pair<boost::filesystem::path, boost::filesystem::path> Path;
-    typedef std::vector<Path> Paths;
-    ELLE_ATTRIBUTE(Paths, paths);
-
-  private:
-    void
-    _save_snapshot() const;
-
-    ELLE_ATTRIBUTE_RX(reactor::Signal, progress_changed);
+  /*---------.
+  | Progress |
+  `---------*/
   public:
     float
     progress() const;
+    ELLE_ATTRIBUTE_RX(reactor::Signal, progress_changed);
 
-  private:
-    ELLE_ATTRIBUTE(boost::filesystem::path, snapshot_destination);
+  /*---------.
+  | Snapshot |
+  `---------*/
+  public:
     ELLE_ATTRIBUTE_RX(std::unique_ptr<TransferSnapshot>, transfer_snapshot);
+  private:
+    void
+    _save_snapshot() const;
+    ELLE_ATTRIBUTE(boost::filesystem::path, snapshot_destination);
 
-    /*----------.
-    | Printable |
-    `----------*/
+  /*----------.
+  | Printable |
+  `----------*/
   public:
     virtual
     void
     print(std::ostream& stream) const;
+
+  /*--------.
+  | Helpers |
+  `--------*/
+  private:
+    void
+    _check_file_id(FileID id);
   };
 }
 

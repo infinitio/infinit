@@ -24,9 +24,7 @@
 #include <papier/Identity.hh>
 #include <papier/Passport.hh>
 
-#include <infinit/metrics/reporters/GoogleReporter.hh>
-#include <infinit/metrics/reporters/InfinitReporter.hh>
-#include <infinit/metrics/reporters/KeenReporter.hh>
+#include <infinit/metrics/Reporter.hh>
 
 #include <surface/gap/ReceiveMachine.hh>
 #include <surface/gap/SendMachine.hh>

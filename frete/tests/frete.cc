@@ -2,14 +2,17 @@
 
 #include <elle/test.hh>
 #include <elle/Buffer.hh>
+#include <elle/finally.hh>
+#include <elle/log.hh>
+#include <elle/test.hh>
 
 #include <reactor/Barrier.hh>
+#include <reactor/Scope.hh>
 #include <reactor/network/tcp-server.hh>
 #include <reactor/scheduler.hh>
-#include <reactor/Scope.hh>
 
-#include <cryptography/KeyPair.hh>
 #include <cryptography/Code.hh>
+#include <cryptography/KeyPair.hh>
 #include <cryptography/Output.hh>
 
 #include <protocol/ChanneledStream.hh>
@@ -18,12 +21,7 @@
 #include <frete/Frete.hh>
 #include <frete/RPCFrete.hh>
 
-#include <elle/finally.hh>
-#include <elle/log.hh>
-#include <elle/test.hh>
-
-
-ELLE_LOG_COMPONENT("test.frete");
+ELLE_LOG_COMPONENT("frete.tests");
 
 #ifdef VALGRIND
 # include <valgrind/valgrind.h>
@@ -42,19 +40,15 @@ compare_files(boost::filesystem::path const& p1,
   {
     if (!boost::filesystem::exists(p1))
       ELLE_ERR("file %s doesn't exist", p1);
-
     if (!boost::filesystem::exists(p2))
       ELLE_ERR("file %s doesn't exist", p2);
-
     return false;
   }
-
   if (must_have_same_name && (p1.filename() != p2.filename()))
   {
     ELLE_ERR("%s and %s don't have same name", p1, p2);
     return false;
   }
-
   if (boost::filesystem::file_size(p1) != boost::filesystem::file_size(p2))
   {
     ELLE_ERR("%s (%sO) and %s (%sO) don't have the same size",
@@ -64,68 +58,85 @@ compare_files(boost::filesystem::path const& p1,
              boost::filesystem::file_size(p2));
     return false;
   }
-
   boost::filesystem::ifstream file1{p1};
   boost::filesystem::ifstream file2{p2};
-
   elle::Buffer file1content(boost::filesystem::file_size(p1));
   elle::Buffer file2content(boost::filesystem::file_size(p2));
-
   file1content.size(
     file1.readsome(reinterpret_cast<char*>(file1content.mutable_contents()),
                   elle::Buffer::max_size));
   if (file1content.size() == elle::Buffer::max_size)
     throw std::runtime_error("file too big to be compared");
-
   file2content.size(
     file2.readsome(reinterpret_cast<char*>(file2content.mutable_contents()),
                   elle::Buffer::max_size));
   if (file2content.size() == elle::Buffer::max_size)
     throw std::runtime_error("file too big to be compared");
-
   return file1content == file2content;
 }
+
+class DummyHierarchy
+{
+public:
+  DummyHierarchy():
+    _root("frete/tests/fs-connection"),
+    _empty(this->_root / "empty"),
+    _content(this->_root / "content"),
+    _dir(this->_root / "dir")
+  {
+    if (boost::filesystem::exists(this->_root))
+      this->_clear_root();
+    boost::filesystem::create_directory(this->_root);
+    boost::filesystem::ofstream(this->_empty);
+    {
+      boost::filesystem::ofstream f(this->_content);
+      f << "content\n";
+    }
+    boost::filesystem::create_directory(this->_dir);
+    {
+      boost::filesystem::ofstream f((this->_dir / "1"));
+      f << "1";
+    }
+    boost::filesystem::create_directory(this->_dir);
+    {
+      boost::filesystem::ofstream f((this->_dir / "2"));
+      f << "2";
+    }
+  }
+
+  ~DummyHierarchy()
+  {
+    this->_clear_root();
+  }
+
+  ELLE_ATTRIBUTE_R(boost::filesystem::path, root);
+  ELLE_ATTRIBUTE_R(boost::filesystem::path, empty);
+  ELLE_ATTRIBUTE_R(boost::filesystem::path, content);
+  ELLE_ATTRIBUTE_R(boost::filesystem::path, dir);
+
+private:
+  void
+  _clear_root()
+  {
+    try
+    {
+      boost::filesystem::remove_all(this->_root);
+    }
+    catch (...)
+    {};
+  }
+};
 
 ELLE_TEST_SCHEDULED(connection)
 {
   auto recipient_key_pair = infinit::cryptography::KeyPair::generate(
     infinit::cryptography::Cryptosystem::rsa, 2048);
-
   int port = 0;
-
   reactor::Barrier listening;
 
   // Create dummy test fs.
-  boost::filesystem::path root("frete/tests/fs-connection");
-  auto clear_root =
-    [&] {try { boost::filesystem::remove_all(root); } catch (...) {}};
-
-  if (boost::filesystem::exists(root))
-    clear_root();
-
-  boost::filesystem::create_directory(root);
-  elle::SafeFinally rm_root( [&] () { clear_root(); } );
-
-  boost::filesystem::path empty(root / "empty");
-  boost::filesystem::ofstream{empty};
-
-  boost::filesystem::path content(root / "content");
-  {
-    boost::filesystem::ofstream f(content);
-    f << "content\n";
-  }
-
-  boost::filesystem::path dir(root / "dir");
-  boost::filesystem::create_directory(dir);
-  {
-    boost::filesystem::ofstream f((dir / "1"));
-    f << "1";
-  }
-  boost::filesystem::create_directory(dir);
-  {
-    boost::filesystem::ofstream f((dir / "2"));
-    f << "2";
-  }
+  DummyHierarchy hierarchy;
+  auto root = hierarchy.root();
 
   elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
   {
@@ -133,7 +144,6 @@ ELLE_TEST_SCHEDULED(connection)
     {
       auto snap = root;
       snap += "server";
-
       reactor::network::TCPServer server{};
       server.listen();
       port = server.port();
@@ -145,21 +155,17 @@ ELLE_TEST_SCHEDULED(connection)
         *reactor::Scheduler::scheduler(), serializer);
       frete::Frete frete("suce", recipient_key_pair.K(), snap);
       frete::RPCFrete rpcs(frete, channels);
-
-      frete.add(empty);
-      frete.add(content);
-      frete.add(dir);
-
+      frete.add(hierarchy.empty());
+      frete.add(hierarchy.content());
+      frete.add(hierarchy.dir());
       rpcs.run();
-
-      reactor::Scheduler::scheduler()->current()->Waitable::wait();
+      reactor::sleep();
     });
 
     scope.run_background("client", [&]
     {
       auto snap = root;
       snap += "client";
-
       reactor::wait(listening);
       reactor::network::TCPSocket socket("127.0.0.1", port);
       infinit::protocol::Serializer serializer(*reactor::Scheduler::scheduler(),
@@ -167,11 +173,9 @@ ELLE_TEST_SCHEDULED(connection)
       infinit::protocol::ChanneledStream channels(
         *reactor::Scheduler::scheduler(), serializer);
       frete::RPCFrete rpcs(channels);
-
       ELLE_DEBUG("get symmetric key for transaction and decrypt it");
       auto key = infinit::cryptography::SecretKey(
         recipient_key_pair.k().decrypt<infinit::cryptography::SecretKey>(rpcs.key_code()));
-
       ELLE_DEBUG("Read the number of transaction");
       BOOST_CHECK_EQUAL(rpcs.count(), 4);
       {
@@ -179,7 +183,7 @@ ELLE_TEST_SCHEDULED(connection)
         BOOST_CHECK_EQUAL(rpcs.path(0), "empty");
         ELLE_DEBUG("Check the size of the first file");
         BOOST_CHECK_EQUAL(rpcs.file_size(0), 0);
-        ELLE_DEBUG("Read many time the same block")
+        ELLE_DEBUG("read many time the same block")
           for (int i = 0; i < 3; ++i)
           {
             ELLE_DEBUG("read 1024 bytes from file 0 with an offset of 0");
@@ -192,6 +196,7 @@ ELLE_TEST_SCHEDULED(connection)
           BOOST_CHECK_EQUAL(buffer.size(), 0);
         }
       }
+      ELLE_DEBUG("check different parts of /content")
       {
         BOOST_CHECK_EQUAL(rpcs.path(1), "content");
         BOOST_CHECK_EQUAL(rpcs.file_size(1), 8);
@@ -211,6 +216,7 @@ ELLE_TEST_SCHEDULED(connection)
           BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("\n"));
         }
       }
+      ELLE_DEBUG("check dir/1 and dir/2")
       {
         if (rpcs.path(2) == "dir/2")
         {
@@ -237,8 +243,11 @@ ELLE_TEST_SCHEDULED(connection)
           BOOST_FAIL("recipient files incorrect");
         }
       }
-      BOOST_CHECK_THROW(rpcs.path(4), std::runtime_error);
-      BOOST_CHECK_THROW(rpcs.encrypted_read(4, 0, 1), std::runtime_error);
+      ELLE_DEBUG("check errors")
+      {
+        BOOST_CHECK_THROW(rpcs.path(4), std::runtime_error);
+        BOOST_CHECK_THROW(rpcs.encrypted_read(4, 0, 1), std::runtime_error);
+      }
       scope.terminate_now();
     });
     scope.wait();
