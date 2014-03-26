@@ -66,6 +66,8 @@ namespace surface
               return gap_transaction_canceled;
             case TransactionMachine::State::Failed:
               return gap_transaction_failed;
+            case TransactionMachine::State::CloudBuffered:
+              return gap_transaction_cloud_buffered;
             case TransactionMachine::State::None:
               return gap_transaction_none;
           }

@@ -420,6 +420,7 @@ namespace surface
       }
       elle::serialize::to_file(this->_snapshot_path.string())
         << snapshot;
+      this->current_state(State::CloudBuffered);
       frete.finish();
     }
 

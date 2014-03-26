@@ -55,7 +55,7 @@ namespace surface
         Canceled = 18,
         Failed = 19,
         Over = 20,
-
+        CloudBuffered = 21,
         None = 99,
       };
 
