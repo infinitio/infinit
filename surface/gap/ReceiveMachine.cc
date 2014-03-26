@@ -517,7 +517,7 @@ namespace surface
 
 
 
-      FileID last_index = this->_snapshot->transfers().size();
+      FileID last_index = this->_snapshot->count();
       if (last_index > 0)
         --last_index;
 
@@ -525,10 +525,10 @@ namespace surface
 
       // reconstruct directory name mapping data so that files in transfer
       // but not yet in snapshot will reuse it
-      for (int i = 0; i < this->_snapshot->transfers().size(); ++i)
+      for (int i = 0; i < this->_snapshot->count(); ++i)
       {
         // get asked/got relative path from output_path
-        boost::filesystem::path got = this->_snapshot->transfers().at(i).path();
+        boost::filesystem::path got = this->_snapshot->file(i).path();
         boost::filesystem::path asked = infos.at(i).first;
         boost::filesystem::path got0 = *got.begin();
         boost::filesystem::path asked0 = *asked.begin();
@@ -572,7 +572,7 @@ namespace surface
       if (current_transfer)
       {
         size_t current_position = current_transfer->start_position;
-        size_t current_full_size = current_transfer->tr.file_size();
+        size_t current_full_size = current_transfer->tr.size();
         // Start processing threads
         elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
         {
@@ -617,7 +617,7 @@ namespace surface
                 }
                 // technically for now current_position is always 0
                 current_position = current_transfer->start_position;
-                current_full_size = current_transfer->tr.file_size();
+                current_full_size = current_transfer->tr.size();
               }
               size_t next_read = current_position;
               current_position += chunk_size;
@@ -688,35 +688,29 @@ namespace surface
     {
       boost::filesystem::path fullpath;
 
-      if (this->_snapshot->transfers().find(index) != this->_snapshot->transfers().end())
+      if (this->_snapshot->has(index))
       {
-        auto const& transfer = this->_snapshot->transfers().at(index);
-        fullpath = this->_snapshot->transfers().at(index).full_path();
+        auto const& file = this->_snapshot->file(index);
+        fullpath = file.full_path();
 
-        if (file_size != transfer.file_size())
+        if (file_size != file.size())
         {
           ELLE_ERR("%s: transfer data (%s) at index %s are invalid.",
-            *this, transfer, index);
+                   *this, file, index);
           throw elle::Exception("invalid transfer data");
         }
       }
       else
       {
-        auto relativ_path = boost::filesystem::path(file_path);
+        auto relative_path = boost::filesystem::path(file_path);
         fullpath = ReceiveMachine::eligible_name(
-          output_path, relativ_path, name_policy, _root_component_mapping);
-        relativ_path = ReceiveMachine::trim(fullpath, output_path);
-
-        this->_snapshot->transfers().emplace(
-          std::piecewise_construct,
-          std::make_tuple(index),
-          std::forward_as_tuple(index, output_path, relativ_path, file_size));
+          output_path, relative_path, name_policy,
+          this->_root_component_mapping);
+        relative_path = ReceiveMachine::trim(fullpath, output_path);
+        this->_snapshot->add(index, output_path, relative_path, file_size);
       }
 
-      ELLE_ASSERT(this->_snapshot->transfers().find(index) !=
-        this->_snapshot->transfers().end());
-
-      auto& tr = this->_snapshot->transfers().at(index);
+      auto& tr = this->_snapshot->file(index);
 
       ELLE_DEBUG("%s: index (%s) - path %s - size %s",
         *this, index, fullpath, file_size);
@@ -731,12 +725,13 @@ namespace surface
       return std::move(transfer);
     }
 
-    ReceiveMachine::TransferData::TransferData(frete::TransferSnapshot::TransferProgressInfo& tr,
-                               boost::filesystem::path full_path,
-                               FileSize start_position)
-    : tr(tr)
-    , full_path(full_path)
-    , start_position(start_position)
+    ReceiveMachine::TransferData::TransferData(
+      frete::TransferSnapshot::File& tr,
+      boost::filesystem::path full_path,
+      FileSize start_position)
+      : tr(tr)
+      , full_path(full_path)
+      , start_position(start_position)
     {
       boost::filesystem::create_directories(full_path.parent_path());
       output.open(full_path, std::ios::app | std::ios::binary);
@@ -778,7 +773,7 @@ namespace surface
          ELLE_ASSERT(current_transfer);
          // If this assert fails, packets were received out of order.
          ELLE_ASSERT_EQ(position, current_transfer->tr.progress());
-         ELLE_ASSERT_LT(index, this->_snapshot->transfers().size());
+         ELLE_ASSERT_LT(index, this->_snapshot->count());
          boost::system::error_code ec;
          auto size = boost::filesystem::file_size(current_transfer->full_path, ec);
          if (ec)
@@ -800,7 +795,7 @@ namespace surface
          ELLE_DUMP("content: %x (%sB)", buffer, buffer.size());
          current_transfer->output.write((char const*) buffer.contents(), buffer.size());
          current_transfer->output.flush();
-         this->_snapshot->increment_progress(index, buffer.size());
+         this->_snapshot->file_progress_increment(index, buffer.size());
          // OLD clients need this RPC to update progress
          if (peer_version < elle::Version(0, 8, 7))
            source.set_progress(this->_snapshot->progress());
@@ -812,7 +807,7 @@ namespace surface
              << *this->_snapshot;
          }
          auto progress = current_transfer->tr.progress();
-         auto file_size = current_transfer->tr.file_size();
+         auto file_size = current_transfer->tr.size();
          if (buffer.size() < chunk_size || progress >= file_size)
          {
            if (progress != file_size)

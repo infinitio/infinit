@@ -24,48 +24,37 @@ namespace frete
   {}
 
   void
-  TransferSnapshot::increment_progress(Frete::FileID index,
-                                       Frete::FileSize increment)
+  TransferSnapshot::file_progress_increment(FileID file_id,
+                                            FileSize increment)
   {
-    ELLE_ASSERT_LT(index, this->_transfers.size());
-
-    ELLE_TRACE("increment progress for file %s by %s", index, increment);
-
-    ELLE_DUMP("old progress was %s", this->_transfers.at(index).progress());
-    this->_transfers.at(index)._increment_progress(increment);
-    ELLE_DEBUG("new progress is %s", this->_transfers.at(index).progress());
-    ELLE_DUMP("old total progress was %s", this->progress());
+    ELLE_TRACE("%s: increment progress by %s", *this, increment);
+    auto& file = this->file(file_id);
+    file._progress += increment;
+    ELLE_ASSERT_LTE(file._progress, file._size);
     this->_progress += increment;
-    ELLE_DEBUG("new total progress is %s", this->progress());
   }
 
   void
-  TransferSnapshot::set_progress(Frete::FileID index,
-                                 Frete::FileSize progress)
+  TransferSnapshot::file_progress_set(FileID file_id,
+                                      FileSize size)
   {
-    ELLE_ASSERT_LT(index, this->_transfers.size());
-    ELLE_TRACE_SCOPE("%s: set progress for file %s to %s",
-                     *this, index, progress);
-    auto& transfer = this->_transfers.at(index);
-    auto old = transfer.progress();
-    if (old >= progress)
-      return;
-    transfer._set_progress(progress);
-    this->_progress += progress - old;
+    ELLE_TRACE("%s: set progress to %s", *this, size);
+    auto& file = this->file(file_id);
+    ELLE_ASSERT_GTE(size, file._size);
+    auto increment = size - file._progress;
+    this->file_progress_increment(file_id, increment);
   }
 
   void
-  TransferSnapshot::end_progress(Frete::FileID index)
+  TransferSnapshot::file_progress_end(Frete::FileID file_id)
   {
-    ELLE_ASSERT_LT(index, this->_transfers.size());
-    ELLE_TRACE_SCOPE("%s: end progress for file %s",
-                     *this, index);
-    auto& transfer = this->_transfers.at(index);
-    auto old = transfer.progress();
-    auto progress = transfer.file_size();
-    transfer._set_progress(progress);
-    this->_progress += progress - old;
+    auto& file = this->file(file_id);
+    this->file_progress_set(file_id, file._size);
   }
+
+  /*------.
+  | Files |
+  `------*/
 
   void
   TransferSnapshot::add(boost::filesystem::path const& root,
@@ -77,14 +66,46 @@ namespace frete
     if (!boost::filesystem::exists(file))
       throw elle::Exception(elle::sprintf("file %s doesn't exist", file));
 
-    auto index = this->_transfers.size();
+    auto index = this->_files.size();
     auto size = boost::filesystem::file_size(file);
-    this->_transfers.emplace(
-      std::piecewise_construct,
-      std::make_tuple(index),
-      std::forward_as_tuple(index, root, path, size));
+    this->_files.insert(std::make_pair(index, File(index, root, path, size)));
     this->_total_size += size;
-    this->_count = this->_transfers.size();
+    this->_count = this->_files.size();
+  }
+
+  TransferSnapshot::File&
+  TransferSnapshot::file(FileID file_id)
+  {
+    try
+    {
+      return this->_files.at(file_id);
+    }
+    catch (std::exception const&)
+    {
+      throw elle::Exception(elle::sprintf("file id out of range: %s", file_id));
+    }
+  }
+
+  bool
+  TransferSnapshot::has(FileID file_id) const
+  {
+    return this->_files.find(file_id) != this->_files.end();
+  }
+
+  void
+  TransferSnapshot::add(FileID file_id,
+                        boost::filesystem::path const& root,
+                        boost::filesystem::path const& path,
+                        FileSize size)
+  {
+    this->_files.insert(
+      std::make_pair(file_id, File(file_id, root, path, size)));
+  }
+
+  TransferSnapshot::File const&
+  TransferSnapshot::file(FileID file_id) const
+  {
+    return const_cast<TransferSnapshot*>(this)->file(file_id);
   }
 
   bool
@@ -93,9 +114,9 @@ namespace frete
     return ((this->_count == rh._count) &&
             (this->_total_size == rh._total_size) &&
             (this->_progress == rh._progress) &&
-            std::equal(this->_transfers.begin(),
-                       this->_transfers.end(),
-                       rh._transfers.begin()));
+            std::equal(this->_files.begin(),
+                       this->_files.end(),
+                       rh._files.begin()));
   }
 
   void
@@ -116,7 +137,7 @@ namespace frete
            << " " << this->_count
            << " files for a total size of " << this->_total_size
            << ". Already 'copied': " << this->_progress << ": "
-           << this->_transfers;
+           << this->_files;
   }
 
   /*---------.
@@ -124,58 +145,42 @@ namespace frete
   `---------*/
 
   bool
-  TransferSnapshot::TransferProgressInfo::file_exists() const
+  TransferSnapshot::File::file_exists() const
   {
     return boost::filesystem::exists(this->_full_path);
   }
 
-  TransferSnapshot::TransferProgressInfo::TransferProgressInfo(
-    Frete::FileID file_id,
-    boost::filesystem::path const& root,
-    boost::filesystem::path const& path,
-    Frete::FileSize file_size):
-    _file_id(file_id),
-    _root(root.string()),
-    _path(path.string()),
-    _full_path(root / path),
-    _file_size(file_size),
-    _progress(0)
+  TransferSnapshot::File::File(Frete::FileID file_id,
+                               boost::filesystem::path const& root,
+                               boost::filesystem::path const& path,
+                               Frete::FileSize size)
+    : _file_id(file_id)
+    , _root(root.string())
+    , _path(path.string())
+    , _full_path(root / path)
+    , _size(size)
+    , _progress(0)
   {}
 
-  void
-  TransferSnapshot::TransferProgressInfo::_increment_progress(
-    Frete::FileSize increment)
-  {
-    this->_progress += increment;
-  }
-
-  void
-  TransferSnapshot::TransferProgressInfo::_set_progress(
-    Frete::FileSize progress)
-  {
-    this->_progress = progress;
-  }
-
   bool
-  TransferSnapshot::TransferProgressInfo::complete() const
+  TransferSnapshot::File::complete() const
   {
-    return (this->file_size() == this->_progress);
+    return this->_size == this->_progress;
   }
 
   void
-  TransferSnapshot::TransferProgressInfo::print(std::ostream& stream) const
+  TransferSnapshot::File::print(std::ostream& stream) const
   {
-    stream << "TransferProgressInfo "
+    stream << "File "
            << this->file_id() << " : " << this->full_path()
-           << "(" << this->_progress << " / " << this->file_size() << ")";
+           << "(" << this->_progress << " / " << this->size() << ")";
   }
 
   bool
-  TransferSnapshot::TransferProgressInfo::operator ==(
-    TransferProgressInfo const& rh) const
+  TransferSnapshot::File::operator ==(File const& rh) const
   {
     return ((this->_file_id == rh._file_id) &&
             (this->_full_path == rh._full_path) &&
-            (this->_file_size == rh._file_size));
+            (this->_size == rh._size));
   }
 }

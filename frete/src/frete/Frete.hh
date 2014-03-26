@@ -148,13 +148,6 @@ namespace frete
     virtual
     void
     print(std::ostream& stream) const;
-
-  /*--------.
-  | Helpers |
-  `--------*/
-  private:
-    void
-    _check_file_id(FileID id);
   };
 }
 

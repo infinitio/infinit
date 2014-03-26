@@ -146,10 +146,7 @@ namespace frete
   boost::filesystem::path
   Frete::_local_path(FileID file_id)
   {
-    ELLE_ASSERT(this->_transfer_snapshot != nullptr);
-    ELLE_ASSERT(this->_transfer_snapshot->transfers().find(file_id) !=
-                this->_transfer_snapshot->transfers().end());
-    return this->_transfer_snapshot->transfers().at(file_id).full_path();
+    return this->_transfer_snapshot->file(file_id).full_path();
   }
 
   /*----.
@@ -167,7 +164,7 @@ namespace frete
   void
   Frete::finish()
   {
-    this->_transfer_snapshot->end_progress(this->count() - 1);
+    this->_transfer_snapshot->file_progress_end(this->count() - 1);
     this->_progress_changed.signal();
     this->_finished.open();
   }
@@ -175,10 +172,7 @@ namespace frete
   frete::Frete::FileCount
   Frete::count()
   {
-    ELLE_ASSERT(this->_transfer_snapshot != nullptr);
-    ELLE_DEBUG("%s: %s file(s)",
-               *this, this->_transfer_snapshot->transfers().size());
-    return this->_transfer_snapshot->transfers().size();
+    return this->_transfer_snapshot->count();
   }
 
   frete::Frete::FileSize
@@ -191,12 +185,7 @@ namespace frete
   frete::Frete::FileSize
   Frete::file_size(FileID file_id)
   {
-    ELLE_ASSERT_LT(file_id, this->count());
-
-    ELLE_ASSERT(this->_transfer_snapshot->transfers().find(file_id) !=
-                this->_transfer_snapshot->transfers().end());
-
-    return this->_transfer_snapshot->transfers().at(file_id).file_size();
+    return this->_transfer_snapshot->file(file_id).size();
   }
 
   std::vector<std::pair<std::string, Frete::FileSize>>
@@ -205,8 +194,8 @@ namespace frete
     std::vector<std::pair<std::string, FileSize>> res;
     for (unsigned i = 0; i < this->count(); ++i)
     {
-      auto& transfer = this->_transfer_snapshot->transfers().at(i);
-      res.push_back(std::make_pair(transfer.path(), transfer.file_size()));
+      auto& file = this->_transfer_snapshot->file(i);
+      res.push_back(std::make_pair(file.path(), file.size()));
     }
     return res;
   }
@@ -235,10 +224,7 @@ namespace frete
   std::string
   Frete::path(FileID file_id)
   {
-    this->_check_file_id(file_id);
-    ELLE_ASSERT(this->_transfer_snapshot->transfers().find(file_id) !=
-                this->_transfer_snapshot->transfers().end());
-    return this->_transfer_snapshot->transfers().at(file_id).path();
+    return this->_transfer_snapshot->file(file_id).path();
   }
 
   elle::Buffer
@@ -248,13 +234,11 @@ namespace frete
   {
     ELLE_DEBUG_SCOPE("%s: read %s bytes of file %s at offset %s",
                      *this, size,  file_id, offset);
-    this->_check_file_id(file_id);
-
     auto& snapshot = *this->_transfer_snapshot;
     if (offset != 0)
-      snapshot.set_progress(file_id, offset);
+      snapshot.file_progress_set(file_id, offset);
     else if (file_id != 0)
-      snapshot.end_progress(file_id - 1);
+      snapshot.file_progress_end(file_id - 1);
     this->_progress_changed.signal();
 
     auto path = this->_local_path(file_id);
@@ -299,7 +283,7 @@ namespace frete
     ELLE_DEBUG("buffer resized to %s bytes", buffer.size());
 
     if (!file.eof() && file.fail() || file.bad())
-      throw elle::Exception("unable to read");
+      throw elle::Exception("unable to reathd");
 
     ELLE_DUMP("buffer read: %x", buffer);
     return buffer;
@@ -326,12 +310,5 @@ namespace frete
     // if (this->_transfer_snapshot != nullptr)
     //   stream << " " << *this->_transfer_snapshot;
     // stream << " snapshot location " << this->_snapshot_destination;
-  }
-
-  void
-  Frete::_check_file_id(FileID id)
-  {
-    if (id >= this->count())
-      throw elle::Exception(elle::sprintf("file id out of range: %s", id));
   }
 }

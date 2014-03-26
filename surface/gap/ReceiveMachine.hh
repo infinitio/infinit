@@ -137,10 +137,10 @@ namespace surface
       struct TransferData
       {
         TransferData(
-          frete::TransferSnapshot::TransferProgressInfo&,
+          frete::TransferSnapshot::File&,
           boost::filesystem::path full_path,
           FileSize current_position = 0);
-        frete::TransferSnapshot::TransferProgressInfo& tr;
+        frete::TransferSnapshot::File& tr;
         boost::filesystem::path full_path;
         FileSize start_position; // next expected recieve buffer pos
         boost::filesystem::ofstream output;

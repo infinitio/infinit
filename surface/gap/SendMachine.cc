@@ -383,10 +383,12 @@ namespace surface
       auto& frete = this->frete();
       auto& snapshot = *frete.transfer_snapshot();
       FilesystemTransferBufferer::Files files;
-      for (frete::Frete::FileID file = 0; file < snapshot.count(); ++file)
+      for (frete::Frete::FileID file_id = 0;
+           file_id < snapshot.count();
+           ++file_id)
       {
-        auto& info = snapshot.transfers().at(file);
-        files.push_back(std::make_pair(info.path(), info.file_size()));
+        auto& file = snapshot.file(file_id);
+        files.push_back(std::make_pair(file.path(), file.size()));
       }
       FilesystemTransferBufferer bufferer(*this->data(),
                                           "/tmp/infinit-buffering",
@@ -395,19 +397,19 @@ namespace surface
                                           files,
                                           frete.key_code());
       frete::Frete::FileSize transfer_since_snapshot = 0;
-      for (frete::Frete::FileID file = 0; file < snapshot.count(); ++file)
+      for (frete::Frete::FileID file_id = 0; file_id < snapshot.count(); ++file_id)
       {
-        auto& info = snapshot.transfers().at(file);
-        auto file_size = info.file_size();
-        for (frete::Frete::FileOffset offset = info.progress();
-             offset < file_size;
+        auto& file = snapshot.file(file_id);
+        auto size = file.size();
+        for (frete::Frete::FileOffset offset = file.progress();
+             offset < size;
              offset += chunk_size)
         {
           ELLE_DEBUG_SCOPE("%s: buffer file %s at offset %s in the cloud",
-                           *this, file, offset);
-          auto block = frete.encrypted_read(file, offset, chunk_size);
+                           *this, file_id, offset);
+          auto block = frete.encrypted_read(file_id, offset, chunk_size);
           auto& buffer = block.buffer();
-          bufferer.put(file, offset, buffer.size(), buffer);
+          bufferer.put(file_id, offset, buffer.size(), buffer);
           transfer_since_snapshot += buffer.size();
           if (transfer_since_snapshot >= 1000000)
           {
