@@ -183,4 +183,10 @@ namespace frete
             (this->_full_path == rh._full_path) &&
             (this->_size == rh._size));
   }
+
+  TransferSnapshot::FileCount
+  TransferSnapshot::file_count() const
+  {
+    return this->_files.size();
+  }
 }

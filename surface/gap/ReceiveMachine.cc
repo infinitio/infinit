@@ -517,15 +517,16 @@ namespace surface
 
 
 
-      FileID last_index = this->_snapshot->count();
+      FileID last_index = this->_snapshot->file_count();
       if (last_index > 0)
         --last_index;
 
       auto infos = source.files_info();
 
+      ELLE_ASSERT(infos.size() >= this->_snapshot->count());
       // reconstruct directory name mapping data so that files in transfer
       // but not yet in snapshot will reuse it
-      for (int i = 0; i < this->_snapshot->count(); ++i)
+      for (int i = 0; i < this->_snapshot->file_count(); ++i)
       {
         // get asked/got relative path from output_path
         boost::filesystem::path got = this->_snapshot->file(i).path();
@@ -773,7 +774,7 @@ namespace surface
          ELLE_ASSERT(current_transfer);
          // If this assert fails, packets were received out of order.
          ELLE_ASSERT_EQ(position, current_transfer->tr.progress());
-         ELLE_ASSERT_LT(index, this->_snapshot->count());
+         ELLE_ASSERT_LT(index, this->_snapshot->file_count());
          boost::system::error_code ec;
          auto size = boost::filesystem::file_size(current_transfer->full_path, ec);
          if (ec)

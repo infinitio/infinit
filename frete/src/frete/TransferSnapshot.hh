@@ -115,15 +115,17 @@ namespace frete
         FileSize size);
   private:
     typedef std::unordered_map<FileID, File> Files;
-    ELLE_ATTRIBUTE(Files, files);
+    ELLE_ATTRIBUTE_R(Files, files);
 
   /*-----------.
   | Attributes |
   `-----------*/
   public:
+    /// Total number of files.
     ELLE_ATTRIBUTE_R(FileCount, count);
     ELLE_ATTRIBUTE_R(FileSize, total_size);
-
+    /// Number of files present locally (with index 0 to file_count()).
+    FileCount file_count() const;
   /*---------.
   | Progress |
   `---------*/
