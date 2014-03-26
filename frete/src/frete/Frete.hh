@@ -145,13 +145,20 @@ namespace frete
     ELLE_ATTRIBUTE(boost::filesystem::path, snapshot_destination);
     ELLE_ATTRIBUTE_R(std::unique_ptr<TransferSnapshot>, transfer_snapshot);
 
-    /*----------.
-    | Printable |
-    `----------*/
+  /*----------.
+  | Printable |
+  `----------*/
   public:
     virtual
     void
     print(std::ostream& stream) const;
+
+  /*--------.
+  | Helpers |
+  `--------*/
+  private:
+    void
+    _check_file_id(FileID id);
   };
 }
 

@@ -316,8 +316,7 @@ namespace frete
   std::string
   Frete::path(FileID file_id)
   {
-    ELLE_ASSERT_LT(file_id, this->count());
-
+    this->_check_file_id(file_id);
     ELLE_ASSERT(this->_transfer_snapshot->transfers().find(file_id) !=
                 this->_transfer_snapshot->transfers().end());
 
@@ -331,7 +330,7 @@ namespace frete
   {
     ELLE_DEBUG_SCOPE("%s: read %s bytes of file %s at offset %s",
                      *this, size,  file_id, offset);
-    ELLE_ASSERT_LT(file_id, this->count());
+    this->_check_file_id(file_id);
 
     auto& snapshot = *this->_transfer_snapshot;
     if (offset != 0)
@@ -410,5 +409,12 @@ namespace frete
     // if (this->_transfer_snapshot != nullptr)
     //   stream << " " << *this->_transfer_snapshot;
     // stream << " snapshot location " << this->_snapshot_destination;
+  }
+
+  void
+  Frete::_check_file_id(FileID id)
+  {
+    if (id >= this->count())
+      throw elle::Exception(elle::sprintf("file id out of range: %s", id));
   }
 }
