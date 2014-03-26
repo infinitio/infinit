@@ -43,7 +43,7 @@ namespace surface
       _snapshot_path(boost::filesystem::path(
         common::infinit::frete_snapshot_path(
           this->data()->recipient_id,
-          this->data()->id)))
+          this->data()->id))) /* might be invalid if called from ctors below*/
     {
       ELLE_TRACE("Creating SendMachine: id %s sid %s sdid %s rid %s rdid %s",
                 this->data()->id,
@@ -190,6 +190,10 @@ namespace surface
       ELLE_ASSERT_EQ(this->data()->files.size(), this->_files.size());
 
       this->peer_id(recipient);
+      _snapshot_path = boost::filesystem::path(
+        common::infinit::frete_snapshot_path(
+          this->data()->recipient_id,
+          this->data()->id));
       this->_run(this->_create_transaction_state);
     }
 
