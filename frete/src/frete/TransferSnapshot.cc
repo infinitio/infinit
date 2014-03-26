@@ -40,7 +40,7 @@ namespace frete
   {
     ELLE_TRACE("%s: set progress to %s", *this, size);
     auto& file = this->file(file_id);
-    ELLE_ASSERT_GTE(size, file._size);
+    ELLE_ASSERT_LTE(size, file._size);
     auto increment = size - file._progress;
     this->file_progress_increment(file_id, increment);
   }
