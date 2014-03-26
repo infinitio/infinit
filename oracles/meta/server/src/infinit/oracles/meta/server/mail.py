@@ -17,6 +17,14 @@ ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Mailer'
 import smtplib
 import json
 
+MAILCHIMP_TEMPLATE_SUBJECTS = {
+  'invitation-beta': '%(sendername)s would like to invite you to Infinit',
+  'send-file': '%(sendername)s wants to share %(filename)s with you',
+  'send-invitation-no-file': '%(sendername)s wants to use Infinit with you',
+  'accept-file-online-offline': '%(sender_name)s placeholder',
+  'accept-file-only-offline': '%(sender_name)s placeholder',
+}
+
 ALPHA_LIST = 'd8d5225ac7'
 INVITED_LIST = '385e50ea2c'
 USERBASE_LIST = ''
