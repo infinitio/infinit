@@ -115,33 +115,21 @@ namespace surface
       this->_machine.transition_add_catch(_reject_state, _fail_state);
       this->_machine.transition_add_catch(_transfer_core_state, _fail_state);
 
-      if (boost::filesystem::exists(this->_snapshot_path))
+      ELLE_LOG("snapshot exist at %s", this->_snapshot_path);
+      try
       {
-        ELLE_LOG("snapshot exist at %s", this->_snapshot_path);
-        try
-        {
-          elle::SafeFinally delete_snapshot{
-            [&]
-            {
-              try
-              {
-                boost::filesystem::remove(this->_snapshot_path);
-              }
-              catch (std::exception const&)
-              {
-                ELLE_ERR("couldn't delete snapshot at %s: %s",
-                         this->_snapshot_path, elle::exception_string());
-              }
-            }};
-
-          this->_snapshot.reset(
-            new frete::TransferSnapshot(
-              elle::serialize::from_file(this->_snapshot_path.string())));
-        }
-        catch (std::exception const&) //XXX: Choose the right exception here.
-        {
-          ELLE_ERR("%s: snap shot was invalid: %s", *this, elle::exception_string());
-        }
+        this->_snapshot.reset(
+          new frete::TransferSnapshot(
+            elle::serialize::from_file(this->_snapshot_path.string())));
+      }
+      catch (boost::filesystem::filesystem_error const&)
+      {
+        ELLE_TRACE("%s: unable to read snapshot file: %s",
+                   *this, elle::exception_string());
+      }
+      catch (std::exception const&) //XXX: Choose the right exception here.
+      {
+        ELLE_ERR("%s: snap shot was invalid: %s", *this, elle::exception_string());
       }
     }
 
