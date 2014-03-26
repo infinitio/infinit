@@ -602,6 +602,8 @@ namespace surface
           return out << "Failed";
         case TransactionMachine::State::Over:
           return out << "Over";
+        case TransactionMachine::State::CloudBuffered:
+          return out << "CloudBuffered";
         case TransactionMachine::State::None:
           return out << "None";
       }
