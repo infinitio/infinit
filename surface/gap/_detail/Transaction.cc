@@ -90,6 +90,7 @@ namespace surface
           {
             ELLE_ERR("%s: couldn't load snapshot at %s: %s",
                      *this, snapshot_path, elle::exception_string());
+            boost::filesystem::remove(snapshot_path);
             continue;
           }
           try
