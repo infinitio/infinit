@@ -32,6 +32,18 @@ namespace surface
 {
   namespace gap
   {
+    struct ReceiveMachine::TransferData
+    {
+      TransferData(
+        frete::TransferSnapshot::File&,
+        boost::filesystem::path full_path,
+        FileSize current_position = 0);
+      frete::TransferSnapshot::File& tr;
+      boost::filesystem::path full_path;
+      FileSize start_position; // next expected recieve buffer pos
+      boost::filesystem::ofstream output;
+    };
+
     static
     int
     rpc_pipeline_size()

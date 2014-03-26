@@ -8,8 +8,6 @@
 
 #include <protocol/exceptions.hh>
 
-#include <frete/src/frete/TransferSnapshot.hh>
-
 #include <station/src/station/Station.hh>
 #include <surface/gap/ReceiveMachine.hh>
 #include <surface/gap/Rounds.hh>

@@ -14,7 +14,7 @@
 # include <reactor/waitable.hh>
 # include <reactor/signal.hh>
 
-# include <frete/TransferSnapshot.hh>
+# include <frete/fwd.hh>
 # include <frete/Frete.hh>
 
 # include <surface/gap/State.hh>
@@ -134,17 +134,7 @@ namespace surface
       */
       // next file for which we'll request data
       ELLE_ATTRIBUTE(size_t, next_file);
-      struct TransferData
-      {
-        TransferData(
-          frete::TransferSnapshot::File&,
-          boost::filesystem::path full_path,
-          FileSize current_position = 0);
-        frete::TransferSnapshot::File& tr;
-        boost::filesystem::path full_path;
-        FileSize start_position; // next expected recieve buffer pos
-        boost::filesystem::ofstream output;
-      };
+      struct TransferData;
       struct IndexedBuffer
       {
         elle::Buffer buffer;
