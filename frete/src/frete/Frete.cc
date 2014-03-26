@@ -54,8 +54,8 @@ namespace frete
                boost::filesystem::path const& snapshot_destination):
     _impl(new Impl(peer_key, password)),
     _progress_changed("progress changed signal"),
-    _snapshot_destination(snapshot_destination),
-    _transfer_snapshot()
+    _transfer_snapshot(),
+    _snapshot_destination(snapshot_destination)
   {
     if (boost::filesystem::exists(this->_snapshot_destination))
     {
@@ -104,19 +104,19 @@ namespace frete
         for (; rel != it->path().end(); ++rel)
           relative /= *rel;
         if (!boost::filesystem::is_directory(*it))
-          this->add(parent, relative);
+          this->_add(parent, relative);
       }
     }
     else
     {
       ELLE_TRACE("%s: add %s / %s", *this, path.parent_path(), path.filename());
-      this->add(path.parent_path(), path.filename());
+      this->_add(path.parent_path(), path.filename());
     }
   }
 
   void
-  Frete::add(boost::filesystem::path const& root,
-             boost::filesystem::path const& path)
+  Frete::_add(boost::filesystem::path const& root,
+              boost::filesystem::path const& path)
   {
     auto full_path = root / path;
 
@@ -238,7 +238,6 @@ namespace frete
     this->_check_file_id(file_id);
     ELLE_ASSERT(this->_transfer_snapshot->transfers().find(file_id) !=
                 this->_transfer_snapshot->transfers().end());
-
     return this->_transfer_snapshot->transfers().at(file_id).path();
   }
 
