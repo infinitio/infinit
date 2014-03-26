@@ -3,6 +3,9 @@
 #include <elle/os/path.hh>
 #include <elle/os/file.hh>
 
+#include <elle/serialize/extract.hh>
+#include <elle/serialize/insert.hh>
+
 #include <reactor/thread.hh>
 #include <reactor/exception.hh>
 
@@ -36,8 +39,19 @@ namespace surface
         this->_machine.state_make(
           "wait for accept", std::bind(&SendMachine::_wait_for_accept, this))),
       _accepted("accepted barrier"),
-      _rejected("rejected barrier")
+      _rejected("rejected barrier"),
+      _snapshot_path(boost::filesystem::path(
+        common::infinit::frete_snapshot_path(
+          this->data()->recipient_id,
+          this->data()->id)))
     {
+      ELLE_TRACE("Creating SendMachine: id %s sid %s sdid %s rid %s rdid %s",
+                this->data()->id,
+                this->data()->sender_id,
+                this->data()->sender_device_id,
+                this->data()->recipient_id,
+                this->data()->recipient_device_id);
+      ELLE_TRACE("snapshot path is %s", _snapshot_path);
       this->_machine.transition_add(
         this->_create_transaction_state,
         this->_wait_for_accept_state);
@@ -82,6 +96,18 @@ namespace surface
         this->_create_transaction_state, this->_fail_state);
       this->_machine.transition_add_catch(
         this->_wait_for_accept_state, this->_fail_state);
+      // try restoring snapshot, which will only work if we reached cloud
+      // upload phase
+      try
+      {
+        frete().transfer_snapshot().reset(
+          new frete::TransferSnapshot(
+            elle::serialize::from_file(this->_snapshot_path.string())));
+      }
+      catch(...)
+      {
+        ELLE_DEBUG("Ignored exception when restoring snapshot");
+      }
     }
 
     SendMachine::~SendMachine()
@@ -378,6 +404,7 @@ namespace surface
                                           snapshot.total_size(),
                                           files,
                                           frete.key_code());
+      frete::Frete::FileSize transfer_since_snapshot = 0;
       for (frete::Frete::FileID file = 0; file < snapshot.count(); ++file)
       {
         auto& info = snapshot.transfers().at(file);
@@ -391,8 +418,16 @@ namespace surface
           auto block = frete.encrypted_read(file, offset, chunk_size);
           auto& buffer = block.buffer();
           bufferer.put(file, offset, buffer.size(), buffer);
+          transfer_since_snapshot += buffer.size();
+          if (transfer_since_snapshot >= 1000000)
+          {
+            elle::serialize::to_file(this->_snapshot_path.string())
+              << snapshot;
+          }
         }
       }
+      elle::serialize::to_file(this->_snapshot_path.string())
+        << snapshot;
       frete.finish();
     }
 
@@ -443,5 +478,18 @@ namespace surface
       return "SendMachine";
     }
 
+    void
+    SendMachine::cleanup()
+    {
+      try
+      {
+        boost::filesystem::remove(this->_snapshot_path);
+      }
+      catch (std::exception const&)
+      {
+        ELLE_ERR("couldn't delete snapshot at %s: %s",
+                 this->_snapshot_path, elle::exception_string());
+      }
+    }
   }
 }

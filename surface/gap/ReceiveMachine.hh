@@ -124,6 +124,10 @@ namespace surface
       get(TransferBufferer& bufferer,
           std::string const& name_policy = " (%s)");
 
+    protected:
+      void
+      cleanup() override;
+
     private:
       std::map<boost::filesystem::path, boost::filesystem::path> _root_component_mapping;
       /* Transfer pipelining data

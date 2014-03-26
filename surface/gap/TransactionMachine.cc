@@ -214,6 +214,7 @@ namespace surface
           ""
         );
       }
+      this->cleanup();
       this->current_state(State::Finished);
       this->_finalize(infinit::oracles::Transaction::Status::finished);
       ELLE_DEBUG("%s: finished", *this);
@@ -226,6 +227,7 @@ namespace surface
       this->current_state(State::Rejected);
       this->_finalize(infinit::oracles::Transaction::Status::rejected);
       ELLE_DEBUG("%s: rejected", *this);
+      this->cleanup();
     }
 
     void
@@ -235,6 +237,7 @@ namespace surface
       this->current_state(State::Canceled);
       this->_finalize(infinit::oracles::Transaction::Status::canceled);
       ELLE_DEBUG("%s: canceled", *this);
+      this->cleanup();
     }
 
     void
@@ -260,6 +263,7 @@ namespace surface
 
       this->current_state(State::Failed);
       this->_finalize(infinit::oracles::Transaction::Status::failed);
+      this->cleanup();
       ELLE_DEBUG("%s: failed", *this);
     }
 

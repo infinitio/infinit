@@ -189,6 +189,10 @@ namespace surface
       void
       _finalize(infinit::oracles::Transaction::Status);
 
+      // invoked to cleanup data when this transaction will never restart
+      virtual
+      void
+      cleanup() = 0;
     private:
       void
       _clean();

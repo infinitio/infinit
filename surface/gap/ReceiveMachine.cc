@@ -436,7 +436,9 @@ namespace surface
          this->get(bufferer);
       }
       catch (TransferBufferer::DataExhausted const&)
-      {}
+      {
+        ELLE_TRACE("%s: Data exhausted on cloud bufferer", *this);
+      }
     }
 
     std::unique_ptr<frete::RPCFrete>
@@ -833,6 +835,11 @@ namespace surface
     ReceiveMachine::type() const
     {
       return "ReceiveMachine";
+    }
+
+    void
+    ReceiveMachine::cleanup()
+    { // our _get knows when it's finished, nothing to do
     }
   }
 }
