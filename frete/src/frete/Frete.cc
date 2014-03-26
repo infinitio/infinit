@@ -74,6 +74,8 @@ namespace frete
         boost::filesystem::remove(this->_snapshot_destination);
       }
     }
+    if (this->_transfer_snapshot == nullptr)
+      this->_transfer_snapshot.reset(new TransferSnapshot());
   }
 
   Frete::~Frete()
@@ -121,30 +123,14 @@ namespace frete
     if (!boost::filesystem::exists(full_path))
       throw elle::Exception(
         elle::sprintf("given path %s doesn't exist", full_path));
-
-    // XXX: Frete is used as sender or recipient...
-    // Add is dedicated to sender.
-    if (this->_transfer_snapshot == nullptr)
-      this->_transfer_snapshot.reset(new TransferSnapshot());
-
-    auto& snapshot = *this->_transfer_snapshot;
-
-    ELLE_ASSERT(snapshot.sender());
-
-    snapshot.add(root, path);
-
-    ELLE_DEBUG("%s: updated snapshot: %s", *this, snapshot);
+    this->_transfer_snapshot->add(root, path);
   }
 
   float
   Frete::progress() const
   {
-    if (this->_transfer_snapshot == nullptr)
-      return 0.0f;
-
     if (this->_transfer_snapshot->total_size() == 0)
       return 0.0f;
-
     return this->_transfer_snapshot->progress() /
            (float) this->_transfer_snapshot->total_size();
   }
@@ -161,10 +147,8 @@ namespace frete
   Frete::_local_path(FileID file_id)
   {
     ELLE_ASSERT(this->_transfer_snapshot != nullptr);
-
     ELLE_ASSERT(this->_transfer_snapshot->transfers().find(file_id) !=
                 this->_transfer_snapshot->transfers().end());
-
     return this->_transfer_snapshot->transfers().at(file_id).full_path();
   }
 
@@ -183,8 +167,7 @@ namespace frete
   void
   Frete::finish()
   {
-    auto& snapshot = *this->_transfer_snapshot;
-    snapshot.end_progress(this->count() - 1);
+    this->_transfer_snapshot->end_progress(this->count() - 1);
     this->_progress_changed.signal();
     this->_finished.open();
   }
@@ -192,9 +175,7 @@ namespace frete
   frete::Frete::FileCount
   Frete::count()
   {
-    ELLE_DEBUG("%s: get file count", *this);
     ELLE_ASSERT(this->_transfer_snapshot != nullptr);
-
     ELLE_DEBUG("%s: %s file(s)",
                *this, this->_transfer_snapshot->transfers().size());
     return this->_transfer_snapshot->transfers().size();
@@ -204,7 +185,6 @@ namespace frete
   Frete::full_size()
   {
     ELLE_ASSERT(this->_transfer_snapshot != nullptr);
-
     return this->_transfer_snapshot->total_size();
   }
 
