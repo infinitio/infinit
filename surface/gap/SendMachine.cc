@@ -16,7 +16,10 @@
 
 #include <station/Station.hh>
 
+#include <aws/Credentials.hh>
+
 #include <surface/gap/FilesystemTransferBufferer.hh>
+#include <surface/gap/S3TransferBufferer.hh>
 #include <surface/gap/SendMachine.hh>
 #include <surface/gap/Rounds.hh>
 
@@ -395,6 +398,17 @@ namespace surface
         auto& file = snapshot.file(file_id);
         files.push_back(std::make_pair(file.path(), file.size()));
       }
+      // auto meta = this->state().meta();
+      // auto token = meta.get_cloud_buffer_token(this->transaction_id());
+      // auto credentials = aws::Credentials(token.access_key_id,
+      //                                     token.secrec_access_key,
+      //                                     token.expiration);
+      // S3TransferBufferer bufferer(*this->data(),
+      //                             credentials,
+      //                             snapshot.count(),
+      //                             snapshot.total_size(),
+      //                             files,
+      //                             frete.key_code());
       FilesystemTransferBufferer bufferer(*this->data(),
                                           "/tmp/infinit-buffering",
                                           snapshot.count(),
