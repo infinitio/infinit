@@ -636,28 +636,22 @@ namespace surface
             }
             ELLE_DEBUG("reader %s exiting cleanly", id);
           };
+          std::vector<reactor::Waitable*> readers;
           for (int i = 0; i < num_reader; ++i)
-            scope.run_background(elle::sprintf("transfer reader %s", i),
-                                 std::bind(reader, i));
-          reactor::Thread disk_writer(
+            readers.push_back(
+              &scope.run_background(elle::sprintf("transfer reader %s", i),
+                                   std::bind(reader, i)));
+          reactor::Thread& disk_writer = scope.run_background(
             "receive writer",
             std::bind(&ReceiveMachine::_reader_thread<Source>,
                       this, std::ref(source),
                       peer_version, chunk_size));
-          try
-          {
-            scope.wait();
-            // tell the reader thread to terminate
-            this->_buffers.put(
-              IndexedBuffer{elle::Buffer(), FileSize(-1), FileID(-1)});
-            reactor::wait(disk_writer);
-            ELLE_TRACE("finish_transfer exited cleanly");
-          }
-          catch(...)
-          {
-            disk_writer.terminate_now();
-            throw;
-          }
+          reactor::wait(readers);
+          // tell the disk thread to terminate
+          this->_buffers.put(
+            IndexedBuffer{elle::Buffer(), FileSize(-1), FileID(-1)});
+          reactor::wait(scope);
+          ELLE_TRACE("finish_transfer exited cleanly");
         }; // scope
       }// if current_transfer
       // this->finished.open();
