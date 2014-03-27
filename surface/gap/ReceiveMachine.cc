@@ -652,20 +652,15 @@ namespace surface
             }
             ELLE_DEBUG("reader %s exiting cleanly", id);
           };
-          std::vector<reactor::Waitable*> readers;
+          _running_readers = num_reader;
           for (int i = 0; i < num_reader; ++i)
-            readers.push_back(
-              &scope.run_background(elle::sprintf("transfer reader %s", i),
-                                   std::bind(reader, i)));
+              scope.run_background(elle::sprintf("transfer reader %s", i),
+                                   std::bind(reader, i));
           scope.run_background(
             "receive writer",
             std::bind(&ReceiveMachine::_reader_thread<Source>,
                       this, std::ref(source),
                       peer_version, chunk_size));
-          reactor::wait(readers);
-          // tell the disk thread to terminate
-          this->_buffers.put(
-            IndexedBuffer{elle::Buffer(), FileSize(-1), FileID(-1)});
           reactor::wait(scope);
           ELLE_TRACE("finish_transfer exited cleanly");
         }; // scope
@@ -832,6 +827,15 @@ namespace surface
            _transfer_data_map.erase(current_index);
            current_index = -1;
          }
+      }
+      // No need to Finally the block below, it stops an other thread in
+      // the same scope
+      if (!--this->_running_readers)
+      {
+        // Last reader
+        ELLE_DEBUG("Last reader exiting, terminating writer thread");
+        this->_buffers.put(
+          IndexedBuffer{elle::Buffer(), FileSize(-1), FileID(-1)});
       }
     }
 

@@ -134,6 +134,7 @@ namespace surface
       */
       // next file for which we'll request data
       ELLE_ATTRIBUTE(size_t, next_file);
+      ELLE_ATTRIBUTE(size_t, running_readers);
       struct TransferData;
       struct IndexedBuffer
       {
