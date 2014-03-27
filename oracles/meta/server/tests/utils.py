@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import infinit.oracles.meta.server
+from infinit.oracles.meta.server.mail import Mailer
+from infinit.oracles.meta.server.invitation import Invitation
 
 import http.cookies
 import os
@@ -127,9 +129,38 @@ class Trophonius(Client):
     assert res['success']
     self.__users[user.id].remove(user.device_id)
 
+class NoOpMailer(Mailer):
+
+  def __init__(self, op = None):
+    super().__init__(True)
+
+  # Override Mailer private __send method.
+  def _Mailer__send(self, msg):
+    self.__sent = True
+
+  @property
+  def sent(self):
+    return self.__sent
+
+class NoOpInvitation(Invitation):
+
+  def __init__(self):
+    super().__init__(True)
+    self.ms = None
+    self.user_base = []
+
+  def move_from_invited_to_userbase(self, ghost_mail, new_mail):
+    self.subscribe(new_mail)
+
+  def subscribe(self, email):
+    self.user_base.append(email)
+
+  def subscribed(self, email):
+    return email in self.user_base
+
 class Meta:
 
-  def __init__(self, enable_emails = False, force_admin = False):
+  def __init__(self, enable_emails = False, force_admin = False, **kw):
     self.__mongo = mongobox.MongoBox()
     self.__server = bottle.WSGIRefServer(port = 0)
     self.__database = None
@@ -137,6 +168,7 @@ class Meta:
     self.__enalbe_emails = enable_emails
     self.__force_admin = force_admin
     self.__meta = None
+    self.__meta_args = kw
 
   def __enter__(self):
     self.__mongo.__enter__()
@@ -147,7 +179,10 @@ class Meta:
         self.__meta = infinit.oracles.meta.server.Meta(
           mongo_port = self.__mongo.port,
           enable_emails = self.__enalbe_emails,
-          force_admin = self.__force_admin)
+          force_admin = self.__force_admin,
+          **self.__meta_args)
+        self.__meta.mailer = NoOpMailer()
+        self.__meta.invitation = NoOpInvitation()
         self.__meta.catchall = False
         bottle.run(app = self.__meta,
                    quiet = True,
@@ -171,6 +206,15 @@ class Meta:
   def mailer(self, mailer):
     assert self.__meta is not None
     self.__meta.mailer = mailer
+
+  @property
+  def invitation(self):
+    return self.__meta.invitation
+
+  @invitation.setter
+  def invitation(self, invitation):
+    assert self.__meta is not None
+    self.__meta.invitation = invitation
 
   @property
   def notifier(self):
@@ -244,18 +288,22 @@ class User(Client):
     self.id = meta.get('user/%s/view' % self.email)['_id']
     self.device_id = uuid4()
 
-  def login(self, device_id = None):
-    if device_id is not None:
-      self.device_id = device_id
-
-    req = {
+  @property
+  def login_paremeters(self):
+    return {
       'email': self.email,
       'password': self.password,
       'device_id': str(self.device_id),
     }
-    res = self.post('login', req)
+
+  def login(self, device_id = None):
+    if device_id is not None:
+      self.device_id = device_id
+
+    res = self.post('login', self.login_paremeters)
     assert res['success']
     assert res['device_id'] == str(self.device_id)
+    return res
 
   def logout(self):
     res = self.post('logout', {})
