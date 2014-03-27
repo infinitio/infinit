@@ -267,6 +267,7 @@ namespace surface
                                         this->_meta_message));
         }
       }
+      ELLE_TRACE("Poking trophonius");
       if (!this->_trophonius_server_check())
       {
         throw Exception(gap_trophonius_unreachable,
@@ -298,13 +299,18 @@ namespace surface
       else
       {
         ELLE_TRACE("%s: create device uuid", *this);
+        boost::filesystem::create_directories(
+          boost::filesystem::path(common::infinit::device_id_path())
+            .parent_path());
         device_uuid = boost::uuids::random_generator()();
         std::ofstream file(common::infinit::device_id_path());
+        if (!file.good())
+          ELLE_ERR("%s: Failed to create device uuid file at %s", *this,
+                   common::infinit::device_id_path());
         file << device_uuid << std::endl;
       }
 
       ELLE_DEBUG("%s: device uuid %s", *this, device_uuid);
-
       auto res = this->_meta.login(lower_email, password, device_uuid);
 
       fail_reason = res.error_details;
@@ -362,7 +368,7 @@ namespace surface
         if (this->_passport->Restore(device.passport) == elle::Status::Error)
           throw Exception(gap_wrong_passport, "Cannot load the passport");
         this->_passport->store(elle::io::Path(passport_path));
-
+        ELLE_TRACE("connecting to trophonius");
         this->_trophonius.connect(
           this->me().id, this->device().id, this->_meta.session_id());
 
