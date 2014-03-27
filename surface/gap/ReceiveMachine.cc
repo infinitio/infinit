@@ -644,7 +644,7 @@ namespace surface
             readers.push_back(
               &scope.run_background(elle::sprintf("transfer reader %s", i),
                                    std::bind(reader, i)));
-          reactor::Thread& disk_writer = scope.run_background(
+          scope.run_background(
             "receive writer",
             std::bind(&ReceiveMachine::_reader_thread<Source>,
                       this, std::ref(source),
