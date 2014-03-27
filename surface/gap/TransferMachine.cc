@@ -433,6 +433,7 @@ namespace surface
     void
     TransferMachine::_wait_for_peer()
     {
+      this->_owner.current_state(TransactionMachine::State::PeerDisconnected);
       ELLE_TRACE_SCOPE("%s: wait for peer to connect", *this);
     }
 
@@ -462,6 +463,7 @@ namespace surface
     void
     TransferMachine::_cloud_buffer()
     {
+      this->_owner.current_state(TransactionMachine::State::Transfer);
       this->_owner._cloud_operation();
     }
 
