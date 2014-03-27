@@ -131,6 +131,7 @@ namespace surface
       auto filename = this->_filename(file, offset);
       boost::filesystem::ofstream output(filename);
       output.write(reinterpret_cast<const char*>(b.contents()), b.size());
+      reactor::sleep(100_ms);
     }
 
     elle::Buffer
