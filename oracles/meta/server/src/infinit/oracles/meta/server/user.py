@@ -407,8 +407,32 @@ class Mixin:
       })
       return self.database.users.aggregate(pipeline)
 
+  @api('/user/search_emails')
+  @require_logged_in
+  def users_by_emails_search(self, emails, limit = 200, offset = 0):
+    """Search users for a list of emails.
+
+    emails -- list of emails to search with.
+    limit -- the maximum number of results.
+    offset -- number to skip in search.
+    """
+    with elle.log.trace("%s: search %s emails (limit: %s)" %
+                        (self.user['_id'], emails.count(), limit))
+      res = self.database.users.find(
+        {
+          'email': {'$in': emails},
+          'register_status': 'ok',
+        },
+        fields = ["_id"],
+        limit = limit,
+        skip = offset,
+      )
+      return {'users': res}
+
   @api('/user/search', method = 'POST')
-  #@require_logged_in
+  # XXX: This call is used by the waterfall which does not login. We need to
+  # make an admin mode so that our servers can access calls they need.
+  # @require_logged_in
   def user_search(self, text, limit = 5, offset = 0):
     """Search the ids of the users with handle or fullname matching text.
 
@@ -419,6 +443,7 @@ class Mixin:
     # XXX: self.user in the log.
     with elle.log.trace("%s: search %s (limit: %s, offset: %s)" %
                         (self.user['_id'], text, limit, offset)):
+      fields = ['_id', 'fullname', 'handle', 'public_key', 'connected_devices']
       users = [str(u['_id']) for u in self.database.users.find(
           {
             '$or' :
@@ -428,7 +453,7 @@ class Mixin:
             ],
             'register_status':'ok',
           },
-          fields = ["_id"],
+          fields = fields,
           limit = limit,
           skip = offset,
         ).sort("swaggers.%s" % str(self.user['_id']), DESCENDING)]
