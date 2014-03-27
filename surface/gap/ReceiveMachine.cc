@@ -19,7 +19,10 @@
 
 #include <station/Station.hh>
 
+#include <aws/Credentials.hh>
+
 #include <surface/gap/FilesystemTransferBufferer.hh>
+#include <surface/gap/S3TransferBufferer.hh>
 #include <surface/gap/ReceiveMachine.hh>
 #include <surface/gap/Rounds.hh>
 
@@ -431,6 +434,13 @@ namespace surface
       try
       {
         ELLE_DEBUG("%s: create cloud bufferer", *this);
+        // auto meta = this->state().meta();
+        // auto token = meta.get_cloud_buffer_token(this->transaction_id());
+        // auto credentials = aws::Credentials(token.access_key_id,
+        //                                     token.secrec_access_key,
+        //                                     token.expiration);
+        // S3TransferBufferer bufferer(*this->data(),
+        //                             credentials);
         FilesystemTransferBufferer bufferer(*this->data(),
                                             "/tmp/infinit-buffering");
         ELLE_DEBUG("%s: download from the cloud", *this)
