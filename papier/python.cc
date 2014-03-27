@@ -1,3 +1,6 @@
+#ifdef INFINIT_WINDOWS
+# include <cmath>
+#endif
 #include <boost/python.hpp>
 
 #include <papier/Authority.hh>

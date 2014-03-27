@@ -40,6 +40,10 @@ namespace surface
     {
     public:
       LoggerInitializer();
+      ~LoggerInitializer();
+
+    private:
+      ELLE_ATTRIBUTE(std::unique_ptr<std::ofstream>, output);
     };
 
     class State:

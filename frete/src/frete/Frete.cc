@@ -222,7 +222,7 @@ namespace frete
   infinit::cryptography::Code
   Frete::encrypted_read(FileID f, FileOffset start, FileSize size)
   {
-    ELLE_TRACE_SCOPE(
+    ELLE_DEBUG_SCOPE(
       "%s: read and encrypt block %s of size %s at offset %s with key %s",
       *this, f, size, start, this->_impl->key());
 

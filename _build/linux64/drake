@@ -9,6 +9,7 @@ sys.path.insert(0, drake)
 import drake
 import drake.cxx
 import drake.cxx.boost
+import drake.cxx.qt
 
 cxx_compiler = os.getenv('CXX', 'g++')
 cxx_toolkit = drake.cxx.GccToolkit(compiler = cxx_compiler)
@@ -22,6 +23,14 @@ boost = drake.cxx.boost.Boost(
     prefix = os.getenv('BOOST_PREFIX', '/usr')
 )
 
+try:
+  qt = drake.cxx.qt.Qt(
+     prefix = os.getenv('QT_PREFIX', '/usr')
+  )
+except drake.Exception as e:
+  print("Qt not found, all targets releated will be ignored")
+  qt = None
+
 with drake.Drake('../..') as d:
   d.run(
     cxx_toolkit,
@@ -30,4 +39,5 @@ with drake.Drake('../..') as d:
     enable_horizon = False,
     build_type = "Development",
     boost = boost,
+    qt = qt,
   )
