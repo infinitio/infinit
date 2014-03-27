@@ -152,12 +152,20 @@ namespace surface
         return res;
         // XXX should clean up folder once transaction has been completed.
       }
+      catch (aws::FileNotFound const& e)
+      {
+        throw DataExhausted();
+      }
+      catch (aws::CorruptedData const& e)
+      {
+        throw;
+      }
       catch (aws::AWSException const& e)
       {
         // XXX could retry.
         ELLE_ERR("%s: unable to get block: %s", *this, e.error());
         // FIXME: differenciate AWS other exception and "data not here"
-        throw DataExhausted();
+        throw;
       }
     }
 
