@@ -412,7 +412,6 @@ namespace surface
           [&frete, this] ()
           {
             this->get(frete);
-            this->finished().open();
           });
         scope.run_background(
           elle::sprintf("run rpcs %s", this->id()),
@@ -433,7 +432,7 @@ namespace surface
         FilesystemTransferBufferer bufferer(*this->data(),
                                             "/tmp/infinit-buffering");
         ELLE_DEBUG("%s: download from the cloud", *this)
-         this->get(bufferer);
+          this->get(bufferer);
       }
       catch (TransferBufferer::DataExhausted const&)
       {
@@ -662,12 +661,12 @@ namespace surface
         }; // scope
       }// if current_transfer
       // this->finished.open();
-      ELLE_LOG("Transfer finished, peer is %s", peer_version);
+      ELLE_LOG("%s: transfer finished", *this);
       if (peer_version >= elle::Version(0, 8, 7))
       {
-        ELLE_LOG("Notifying finish");
         source.finish();
       }
+      this->finished().open();
 
       try
       {
