@@ -147,7 +147,8 @@ namespace surface
     void
     TransactionMachine::_save_snapshot() const
     {
-      elle::serialize::to_file(this->_snapshot_path.string()) << this->_make_snapshot();
+      ELLE_TRACE("%s saving snapshot to %s", *this, this->_snapshot_path.string())
+        elle::serialize::to_file(this->_snapshot_path.string()) << this->_make_snapshot();
     }
 
     void

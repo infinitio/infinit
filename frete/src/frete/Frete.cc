@@ -165,6 +165,7 @@ namespace frete
   void
   Frete::finish()
   {
+    ELLE_TRACE("%s: Finish called, opening barrier", *this);
     this->_transfer_snapshot->file_progress_end(this->count() - 1);
     this->_progress_changed.signal();
     this->_finished.open();
@@ -212,7 +213,7 @@ namespace frete
   infinit::cryptography::Code
   Frete::encrypted_read(FileID f, FileOffset start, FileSize size)
   {
-    ELLE_TRACE_SCOPE(
+    ELLE_DEBUG_SCOPE(
       "%s: read and encrypt block %s of size %s at offset %s with key %s",
       *this, f, size, start, this->_impl->key());
 

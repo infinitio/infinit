@@ -128,7 +128,7 @@ namespace surface
         true)
         .action([this]
                 {
-                  ELLE_LOG("%s: transfer finished", *this);
+                  ELLE_LOG("%s: transfer finished: owner.finished()", *this);
                 });
       this->_fsm.transition_add(
         transfer_state,
@@ -137,7 +137,7 @@ namespace surface
         )
         .action([this]
                 {
-                  ELLE_LOG("%s: transfer finished", *this);
+                  ELLE_LOG("%s: transfer finished: this->finished", *this);
                 });
       this->_fsm.transition_add(
         wait_for_peer_state,

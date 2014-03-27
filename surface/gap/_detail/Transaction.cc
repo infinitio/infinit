@@ -156,7 +156,7 @@ namespace surface
             }
             continue;
           }
-          ELLE_DEBUG("ensure that both user are fetched")
+          ELLE_DUMP("ensure that both user are fetched")
           {
             this->user(transaction.sender_id);
             this->user(transaction.recipient_id);

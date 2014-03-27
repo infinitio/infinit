@@ -130,7 +130,7 @@ namespace surface
     State::User const&
     State::user(uint32_t id) const
     {
-      ELLE_DEBUG_SCOPE("%s: get user from id %s", *this, id);
+      ELLE_DUMP_SCOPE("%s: get user from id %s", *this, id);
 
       try
       {

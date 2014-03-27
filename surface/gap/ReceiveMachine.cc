@@ -121,6 +121,9 @@ namespace surface
         this->_snapshot.reset(
           new frete::TransferSnapshot(
             elle::serialize::from_file(this->_snapshot_path.string())));
+          if (this->_snapshot->file_count())
+            ELLE_DEBUG("Reloaded snapshot, first file at %s",
+              this->_snapshot->file(0).progress());
       }
       catch (boost::filesystem::filesystem_error const&)
       {
