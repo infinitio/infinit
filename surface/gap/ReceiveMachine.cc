@@ -640,11 +640,20 @@ namespace surface
 
               FileID local_current_index = current_index;
               // This line blocks, no shared state access past that point!
-              elle::Buffer buffer{
-                key.decrypt<elle::Buffer>(
+              auto code =
                   strong_encryption ?
-                  source.encrypted_read(current_index, next_read, chunk_size) :
-                  source.read(current_index, next_read , chunk_size))};
+                    source.encrypted_read(current_index, next_read, chunk_size) :
+                    source.read(current_index, next_read , chunk_size);
+              elle::Buffer buffer;
+              try
+              {
+                buffer = key.decrypt<elle::Buffer>(code);
+              }
+              catch(...)
+              {
+                ELLE_WARN("%s: decryption error on block %s/%s", *this, local_current_index, next_read);
+                throw;
+              }
               ELLE_DUMP("Queuing buffer fileindex:%s offset:%s size:%s", local_current_index, next_read, buffer.size());
               this->_buffers.put(
                 IndexedBuffer{std::move(buffer),
