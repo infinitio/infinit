@@ -381,7 +381,6 @@ namespace elle
     void
     transfer_failed_report(std::string const& user_name)
     {
-#ifndef INFINIT_WINDOWS
       ELLE_TRACE("transaction failed report");
       std::string protocol{common::meta::protocol()};
       std::string host{common::meta::host()};
@@ -391,7 +390,7 @@ namespace elle
                                       protocol,
                                       host,
                                       port);
-
+#ifndef INFINIT_WINDOWS
       boost::filesystem::path destination{"/tmp/infinit-report-transaction"};
       boost::filesystem::path infinit_home_path(common::infinit::home());
 
@@ -405,6 +404,11 @@ namespace elle
 
       _send_report(url, user_name, os_description, "",
                    _to_base64(destination, args));
+#else
+      auto log_file = elle::os::getenv("INFINIT_LOG_FILE",
+                                       elle::os::getenv("ELLE_LOG_FILE", ""));
+      if (!log_file.empty())
+        _send_report(url, user_name, os_description, "", _to_base64(log_file));
 #endif
     }
 
