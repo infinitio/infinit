@@ -385,6 +385,8 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: upload to the cloud", *this);
       auto& frete = this->frete();
       auto& snapshot = *frete.transfer_snapshot();
+      // Save snapshot of what eventual direct upload already did right now.
+      this->frete().save_snapshot();
       FilesystemTransferBufferer::Files files;
       for (frete::Frete::FileID file_id = 0;
            file_id < snapshot.count();
