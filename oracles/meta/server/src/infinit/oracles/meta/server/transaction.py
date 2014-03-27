@@ -193,7 +193,6 @@ class Mixin:
                    count : int = 100,
                    offset : int = 0,
                  ):
-    print(filter, negate, count, offset)
     user_id = self.user['_id']
     if peer_id is not None:
       query = {
