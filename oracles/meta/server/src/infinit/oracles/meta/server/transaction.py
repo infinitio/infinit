@@ -219,6 +219,22 @@ class Mixin:
     ])['result']
     return {'transactions': res}
 
+  # Previous (shitty) transactions fetching API that only returns ids.
+  @api('/transactions', method = 'POST')
+  @require_logged_in
+  def transaction_post(self,
+                       filter = transaction_status.final + [transaction_status.CREATED],
+                       type = False,
+                       peer_id = None,
+                       count = 100,
+                       offset = 0):
+    return self._transactions(filter = filter,
+                              peer_id = peer_id,
+                              type = type,
+                              count = count,
+                              offset = offset)
+
+
   def on_accept(self, transaction, device_id, device_name):
     with elle.log.trace("accept transaction as %s" % device_id):
       if device_id is None or device_name is None:
