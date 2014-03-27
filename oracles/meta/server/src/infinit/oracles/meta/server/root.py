@@ -180,6 +180,7 @@ class Mixin:
         {'type': 'email', 'id': user['email']}
       ],
       avatar = user.get("avatar"),
+      email_confirmed = True, # User got a reset account mail, email confirmed.
     )
     return self.success({'user_id': str(user_id)})
 

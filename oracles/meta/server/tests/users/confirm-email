@@ -1,0 +1,113 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+from infinit.oracles.meta import error
+from infinit.oracles.meta.server.mail import Mailer
+
+unconfirmed_email_leeway = 100
+
+class MailService(Mailer):
+
+  def __init__(self):
+    super().__init__(True)
+
+  def templated_send(self, **kw):
+    if kw['template_id'] == 'confirm-sign-up':
+      self.email_confirmation_hash = kw['hash']
+    elif kw['template_id'] == 'reconfirm-sign-up':
+      self.email_reconfirmation_hash = kw['hash']
+    elif kw['template_id'] == 'lost-password':
+      self.reset_password_hash = kw['reset_password_hash']
+    Mailer.templated_send(self, **kw)
+
+  # Override Mailer private __send method.
+  def _Mailer__send(self, msg):
+    self.__sent = True
+
+  @property
+  def sent(self):
+    return self.__sent
+
+with Meta(enable_emails = True,
+          unconfirmed_email_leeway = unconfirmed_email_leeway) as meta:
+  email = 'foobar@infinit.io'
+  fullname = 'jean louis'
+  u = User(meta,
+           email = email,
+           fullname = fullname)
+  assert meta.mailer.sent
+
+  # To make sure the system is not too fast (less than one sec), sleep.
+  from time import sleep
+  sleep(1)
+  res = u.login()
+  assert res['unconfirmed_email_leeway'] < unconfirmed_email_leeway
+  assert res['unconfirmed_email_leeway'] > 0
+
+# Normal process.
+with Meta(enable_emails = True, unconfirmed_email_leeway = 0) as meta:
+  email = 'foobar@infinit.io'
+  fullname = 'jean louis'
+  meta.mailer = MailService()
+
+  u = User(meta,
+           email = email,
+           fullname = fullname)
+  assert meta.mailer.sent
+  assert hasattr(meta.mailer, 'email_confirmation_hash')
+  # The unconfirmed email leeway is 0 so login without confirming email
+  # should result to a EMAIL_NOT_CONFIRMED error.
+  res = u.post('login', u.login_paremeters)
+  assert res['success'] == False
+  assert res['error_code'] == error.EMAIL_NOT_CONFIRMED[0]
+
+  res = u.post('user/confirm_email/%s' % meta.mailer.email_confirmation_hash)
+  assert res['success']
+
+  res = u.post('user/confirm_email/%s' % meta.mailer.email_confirmation_hash)
+  assert res['success'] == False
+  assert res['error_code'] == error.OPERATION_NOT_PERMITTED[0]
+
+  u.login()
+
+# Reask hash.
+with Meta(enable_emails = True, unconfirmed_email_leeway = 0) as meta:
+  email = 'foobar@infinit.io'
+  fullname = 'jean louis'
+  meta.mailer = MailService()
+
+  u = User(meta,
+           email = email,
+           fullname = fullname)
+  assert meta.mailer.sent
+  assert hasattr(meta.mailer, 'email_confirmation_hash')
+  # The unconfirmed email leeway is 0 so login without confirming email
+  # should result to a EMAIL_NOT_CONFIRMED error.
+  res = u.post('login', u.login_paremeters)
+  assert res['success'] == False
+  assert res['error_code'] == error.EMAIL_NOT_CONFIRMED[0]
+
+  res = u.post('user/resend_confirmation_email/%s' % u.email)
+  assert res['success']
+  assert hasattr(meta.mailer, 'email_reconfirmation_hash')
+
+  res = u.post('user/confirm_email/%s' % str(meta.mailer.email_reconfirmation_hash))
+  assert res['success']
+
+  res = u.post('user/resend_confirmation_email/%s' % u.email)
+  assert res['success'] == False
+  assert res['error_code'] == error.EMAIL_ALREADY_CONFIRMED[0]
+
+  u.login()
+
+# Confirm by reseting password.
+with Meta(enable_emails = True, unconfirmed_email_leeway = 0) as meta:
+  email = 'foobar@infinit.io'
+  fullname = 'jean louis'
+  meta.mailer = MailService()
+
+  u = User(meta,
+           email = email,
+           fullname = fullname)
+  assert meta.mailer.sent
+  assert hasattr(meta.mailer, 'email_confirmation_hash')

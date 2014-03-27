@@ -22,7 +22,6 @@ with Meta() as meta:
   fullname = 'jean louis'
 
   response = {"email": "alice@infinit.io"}
-  meta.mailer = MailService(response)
 
   query = {
     'email': email,
@@ -37,6 +36,7 @@ with Meta() as meta:
   res = meta.post('web-login', query)
   assert res['success']
 
+  meta.mailer = MailService(response)
   res = meta.post('user/invite', {"email": response['email']})
   assert res['success']
 

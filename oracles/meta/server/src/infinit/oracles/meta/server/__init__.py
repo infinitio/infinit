@@ -50,6 +50,7 @@ class Meta(bottle.Bottle,
                enable_emails = True,
                trophonius_expiration_time = 300, # in sec
                apertus_expiration_time = 300, # in sec
+               unconfirmed_email_leeway = 604800, # in sec, 7 days.
                force_admin = False,
                ):
     import os
@@ -100,6 +101,7 @@ class Meta(bottle.Bottle,
     self.invitation = invitation.Invitation(active = enable_emails)
     self.trophonius_expiration_time = trophonius_expiration_time
     self.apertus_expiration_time = apertus_expiration_time
+    self.unconfirmed_email_leeway = unconfirmed_email_leeway
     waterfall.Waterfall.__init__(self)
 
   def __set_constraints(self):

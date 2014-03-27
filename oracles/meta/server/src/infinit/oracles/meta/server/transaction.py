@@ -173,6 +173,7 @@ class Mixin:
           database = self.database,
           ghost_id = str(recipient.get('_id')),
           sender_id = str(user['_id']),
+          avatar = self.user_avatar_route(recipient['_id']),
         )
       else:
         recipient_connected = recipient.get('connected', False)
@@ -190,7 +191,7 @@ class Mixin:
           source = (user['fullname'], user['email']),
           filename = files[0],
           sendername = user['fullname'],
-          avatar = avatar,
+          avatar = self.user_avatar_route(recipient['_id']),
         )
 
       self._increase_swag(user['_id'], recipient['_id'])
