@@ -19,10 +19,12 @@ import json
 
 MAILCHIMP_TEMPLATE_SUBJECTS = {
   'invitation-beta': '%(sendername)s would like to invite you to Infinit',
-  'send-file': '%(sendername)s wants to share %(filename)s with you',
+  'invitation-with-file': '%(sendername)s wants to share %(filename)s with you',
   'send-invitation-no-file': '%(sendername)s wants to use Infinit with you',
-  'accept-file-online-offline': '%(sender_name)s placeholder',
-  'accept-file-only-offline': '%(sender_name)s placeholder',
+  'accept-file-online-offline': '%(sendername)s wants to share %(filename)s with you',
+  'accept-file-only-offline': '%(sendername)s wants to share %(filename)s with you',
+  'confirm-sign-up': 'Welcome to Infinit',
+  'reconfirm-sign-up': 'Confirm your email',
 }
 
 ALPHA_LIST = 'd8d5225ac7'

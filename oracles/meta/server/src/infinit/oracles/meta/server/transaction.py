@@ -166,7 +166,7 @@ class Mixin:
         invitation.invite_user(
           peer_email,
           mailer = self.mailer,
-          mail_template = 'send-file',
+          mail_template = 'invitation-with-file',
           source = (user['fullname'], user['email']),
           filename = files[0],
           sendername = user['fullname'],
@@ -181,12 +181,12 @@ class Mixin:
         template_id = recipient_connected and 'accept-file-online-offline' \
                                            or 'accept-file-only-offline'
 
-        from bottle import Request
-        avatar = Request().url + 'user/%s/avatar' % _id
+        subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS[template_id]
+        subject %= { "sendername": user['fullname'], 'filename': files[0] }
         self.mailer.templated_send(
           to = peer_email,
           template_id = template_id,
-          subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS[template_id] % { "sender_name": user['fullname'] },
+          subject = subject,
           source = (user['fullname'], user['email']),
           filename = files[0],
           sendername = user['fullname'],

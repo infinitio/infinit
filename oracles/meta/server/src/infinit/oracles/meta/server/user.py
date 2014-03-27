@@ -6,7 +6,7 @@ import uuid
 import elle.log
 
 from .utils import api, require_logged_in, require_admin, hash_pasword
-from . import error, notifier, regexp, conf, invitation
+from . import error, notifier, regexp, conf, invitation, mail
 
 from pymongo import DESCENDING
 import os
