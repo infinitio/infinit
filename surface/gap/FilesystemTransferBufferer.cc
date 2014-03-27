@@ -7,6 +7,8 @@
 
 #include <surface/gap/FilesystemTransferBufferer.hh>
 
+ELLE_LOG_COMPONENT("surface.gap.FilesystemTransferBufferer");
+
 namespace surface
 {
   namespace gap
@@ -143,7 +145,10 @@ namespace surface
       input.seekg(0, std::ios::end);
       std::ios::pos_type size = input.tellg();
       if (size == std::ios::pos_type(-1))
+      {
+        ELLE_TRACE("Data exhausted on %s/%s at %s", file, offset, filename);
         throw DataExhausted();
+      }
       elle::Buffer res(size);
       input.seekg(0, std::ios::beg);
       input.read(reinterpret_cast<char*>(res.mutable_contents()), size);
