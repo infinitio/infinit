@@ -42,11 +42,7 @@ namespace surface
         this->_machine.state_make(
           "wait for accept", std::bind(&SendMachine::_wait_for_accept, this))),
       _accepted("accepted barrier"),
-      _rejected("rejected barrier"),
-      _snapshot_path(boost::filesystem::path(
-        common::infinit::frete_snapshot_path(
-          this->data()->sender_id,
-          this->data()->id))) /* might be invalid if called from ctors below*/
+      _rejected("rejected barrier")
     {
       ELLE_TRACE("Creating SendMachine: id %s sid %s sdid %s rid %s rdid %s",
                 this->data()->id,
@@ -54,7 +50,6 @@ namespace surface
                 this->data()->sender_device_id,
                 this->data()->recipient_id,
                 this->data()->recipient_device_id);
-      ELLE_TRACE("snapshot path is %s", _snapshot_path);
       this->_machine.transition_add(
         this->_create_transaction_state,
         this->_wait_for_accept_state);
@@ -431,14 +426,10 @@ namespace surface
           bufferer.put(file_id, offset, buffer.size(), buffer);
           transfer_since_snapshot += buffer.size();
           if (transfer_since_snapshot >= 1000000)
-          {
-            elle::serialize::to_file(this->_snapshot_path.string())
-              << snapshot;
-          }
+            this->frete().save_snapshot();
         }
       }
-      elle::serialize::to_file(this->_snapshot_path.string())
-        << snapshot;
+      this->frete().save_snapshot();
       this->current_state(State::CloudBuffered);
     }
 
@@ -464,8 +455,23 @@ namespace surface
           common::infinit::frete_snapshot_path(
             this->data()->sender_id,
             this->data()->id));
-        for (std::string const& file: this->_files)
-          this->_frete->add(file);
+        if (this->_frete->count())
+        { // Reloaded from snapshot, validate it
+          if (this->_files.size() != this->_frete->count())
+          {
+            ELLE_ERR("snapshot data mismatch: count %s vs %s",
+                     *this,
+                     this->_frete->count(),
+                     this->_files.size()
+                     );
+            throw elle::Exception("invalid transfer data");
+          }
+        }
+        else
+        { // No snapshot yet, fill file list
+          for (std::string const& file: this->_files)
+            this->_frete->add(file);
+        }
       }
       return *this->_frete;
     }
@@ -489,15 +495,7 @@ namespace surface
     void
     SendMachine::cleanup()
     {
-      try
-      {
-        boost::filesystem::remove(this->_snapshot_path);
-      }
-      catch (std::exception const&)
-      {
-        ELLE_ERR("couldn't delete snapshot at %s: %s",
-                 this->_snapshot_path, elle::exception_string());
-      }
+      this->frete().remove_snapshot();
     }
   }
 }

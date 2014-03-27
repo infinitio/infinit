@@ -99,7 +99,6 @@ namespace surface
     private:
       std::unique_ptr<frete::RPCFrete>
       rpcs(infinit::protocol::ChanneledStream& channels) override;
-      ELLE_ATTRIBUTE(boost::filesystem::path, snapshot_path);
     public:
       /*----------.
       | Printable |

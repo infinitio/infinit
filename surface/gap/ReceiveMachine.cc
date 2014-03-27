@@ -513,7 +513,11 @@ namespace surface
         if ((this->_snapshot->total_size() != total_size) ||
             (this->_snapshot->count() != count))
         {
-          ELLE_ERR("snapshot data (%s) are invalid", *this->_snapshot);
+          ELLE_ERR("snapshot data (%s) are invalid: size %s vs %s  count %s vs %s",
+                   *this->_snapshot,
+                   this->_snapshot->total_size(), total_size,
+                   this->_snapshot->count(), count
+                   );
           throw elle::Exception("invalid transfer data");
         }
       }

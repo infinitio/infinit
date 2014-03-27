@@ -64,6 +64,12 @@ namespace frete
       this->_transfer_snapshot.reset(
         new TransferSnapshot(
           elle::serialize::from_file(this->_snapshot_destination.string())));
+      ELLE_DUMP("%s: Loaded snapshot %s with progress[0] %s",
+                *this,
+                this->_snapshot_destination,
+                (this->_transfer_snapshot->file_count()?
+                  this->_transfer_snapshot->file(0).progress():
+                  0));
     }
     catch (boost::filesystem::filesystem_error const&)
     {
@@ -137,11 +143,31 @@ namespace frete
   }
 
   void
-  Frete::_save_snapshot() const
+  Frete::save_snapshot() const
   {
     ELLE_ASSERT(this->_transfer_snapshot != nullptr);
+    ELLE_DUMP("%s: Saving snapshot %s with progress[0] %s",
+                *this,
+                this->_snapshot_destination,
+                (this->_transfer_snapshot->file_count()?
+                  this->_transfer_snapshot->file(0).progress():
+                  0));
     elle::serialize::to_file(this->_snapshot_destination.string()) <<
       *this->_transfer_snapshot;
+  }
+
+  void
+  Frete::remove_snapshot()
+  {
+    try
+    {
+      boost::filesystem::remove(this->_snapshot_destination);
+    }
+    catch (std::exception const&)
+    {
+      ELLE_ERR("couldn't delete snapshot at %s: %s",
+        this->_snapshot_destination, elle::exception_string());
+    }
   }
 
   boost::filesystem::path

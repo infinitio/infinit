@@ -136,9 +136,10 @@ namespace frete
   `---------*/
   public:
     ELLE_ATTRIBUTE_RX(std::unique_ptr<TransferSnapshot>, transfer_snapshot);
-  private:
     void
-    _save_snapshot() const;
+    save_snapshot() const;
+    void
+    remove_snapshot();
     ELLE_ATTRIBUTE(boost::filesystem::path, snapshot_destination);
 
   /*----------.
