@@ -454,18 +454,13 @@ namespace surface
     TransactionMachine::_stop()
     {
       ELLE_TRACE_SCOPE("%s: stop machine for transaction", *this);
-
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
       if (this->_machine_thread != nullptr)
       {
         ELLE_DEBUG("%s: terminate machine thread", *this)
           this->_machine_thread->terminate_now();
         this->_machine_thread.reset();
       }
-
-      // Assign directly, don't use setter.
-      this->_current_state = State::Over;
     }
 
     /*-----------.
@@ -605,6 +600,8 @@ namespace surface
           return out << "Over";
         case TransactionMachine::State::CloudBuffered:
           return out << "CloudBuffered";
+        case TransactionMachine::State::CloudBufferingBeforeAccept:
+          return out << "CloudBufferingBeforeAccept";
         case TransactionMachine::State::None:
           return out << "None";
       }

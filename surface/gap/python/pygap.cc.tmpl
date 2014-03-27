@@ -377,18 +377,15 @@ BOOST_PYTHON_MODULE(_gap)
   ;
 
   py::enum_<gap_TransactionStatus>("TransactionStatus")
-    .value("none", gap_transaction_none)
-    .value("pending", gap_transaction_pending)
-    .value("copying", gap_transaction_copying)
-    .value("waiting_for_accept", gap_transaction_waiting_for_accept)
-    .value("accepted", gap_transaction_accepted)
-    .value("preparing", gap_transaction_preparing)
-    .value("running", gap_transaction_running)
-    .value("cleaning", gap_transaction_cleaning)
-    .value("finished", gap_transaction_finished)
-    .value("failed", gap_transaction_failed)
-    .value("canceled", gap_transaction_canceled)
-    .value("rejected", gap_transaction_rejected)
+    .value("transaction_canceled", gap_transaction_canceled)
+    .value("transaction_cloud_buffered", gap_transaction_cloud_buffered)
+    .value("transaction_connecting", gap_transaction_connecting)
+    .value("transaction_failed", gap_transaction_failed)
+    .value("transaction_finished", gap_transaction_finished)
+    .value("transaction_rejected", gap_transaction_rejected)
+    .value("transaction_transferring", gap_transaction_transferring)
+    .value("transaction_waiting_accept", gap_transaction_waiting_accept)
+    .value("transaction_waiting_register", gap_transaction_waiting_register)
   ;
 
   //- gap ctor and dtor -------------------------------------------------------

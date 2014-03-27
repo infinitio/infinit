@@ -217,6 +217,7 @@ namespace surface
           this->_run(this->_create_transaction_state);
           break;
         case TransactionMachine::State::SenderWaitForDecision:
+        case TransactionMachine::State::CloudBufferingBeforeAccept:
           this->_run(this->_wait_for_accept_state);
           break;
         case TransactionMachine::State::RecipientWaitForDecision:
@@ -350,11 +351,16 @@ namespace surface
     SendMachine::_wait_for_accept()
     {
       ELLE_TRACE_SCOPE("%s: waiting for peer to accept or reject", *this);
-      this->current_state(TransactionMachine::State::SenderWaitForDecision);
 
       auto peer = this->state().user(this->peer_id());
       if (!peer.ghost() && !peer.online())
+      {
+        this->current_state(
+          TransactionMachine::State::CloudBufferingBeforeAccept);
         this->_cloud_operation();
+      }
+      else
+        this->current_state(TransactionMachine::State::SenderWaitForDecision);
     }
 
     void

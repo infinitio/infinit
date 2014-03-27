@@ -56,6 +56,7 @@ namespace surface
         Failed = 19,
         Over = 20,
         CloudBuffered = 21,
+        CloudBufferingBeforeAccept = 22,
         None = 99,
       };
 

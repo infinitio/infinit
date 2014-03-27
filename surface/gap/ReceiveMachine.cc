@@ -148,7 +148,6 @@ namespace surface
       switch (current_state)
       {
         case TransactionMachine::State::NewTransaction:
-          //
           break;
         case TransactionMachine::State::SenderCreateTransaction:
         case TransactionMachine::State::SenderWaitForDecision:
