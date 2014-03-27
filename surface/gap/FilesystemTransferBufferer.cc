@@ -147,6 +147,7 @@ namespace surface
       elle::Buffer res(size);
       input.seekg(0, std::ios::beg);
       input.read(reinterpret_cast<char*>(res.mutable_contents()), size);
+      reactor::sleep(20_ms);
       return res;
     }
 
