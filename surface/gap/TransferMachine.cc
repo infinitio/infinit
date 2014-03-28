@@ -375,7 +375,7 @@ namespace surface
                   round->name()
                 );
                 ELLE_TRACE("%s: connected to peer with %s",
-                           *this, round);
+                           *this, *round);
                 break;
               }
               else
