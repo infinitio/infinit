@@ -337,10 +337,12 @@ class Mixin:
       try:
         user = self.__account_from_hash(hash)
         elle.log.trace('confirm %s\'s account' % user['email'])
-        # XXX: Check race condition.
-        user.pop('email_confirmation_hash')
-        user['email_confirmed'] = True
-        self.database.users.save(user)
+        self.database.users.find_and_modify(
+          query = {"email_confirmation_hash": hash},
+          update = {
+            '$unset': {'email_confirmation_hash': True},
+            '$set': {'email_confirmed': True}
+            })
         return self.success()
       except error.Error as e:
         self.fail(*e.args)
