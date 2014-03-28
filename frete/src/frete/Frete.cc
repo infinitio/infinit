@@ -249,6 +249,21 @@ namespace frete
     return code;
   }
 
+  infinit::cryptography::Code
+  Frete::encrypted_read_acknowledge(FileID f, FileOffset start, FileSize size,
+                                    FileSize acknowledge)
+  {
+    ELLE_DEBUG_SCOPE(
+      "%s: read and encrypt block %s of size %s at offset %s with key %s",
+      *this, f, size, start, this->_impl->key());
+
+    auto code = this->_impl->key().encrypt(this->_read(f, start, size, false));
+    auto& snapshot = *this->_transfer_snapshot;
+    snapshot.progress_increment(acknowledge - snapshot.progress());
+    ELLE_DUMP("encrypted data: %s with buffer %x", code, code.buffer());
+    return code;
+  }
+
   std::string
   Frete::path(FileID file_id)
   {
@@ -258,17 +273,20 @@ namespace frete
   elle::Buffer
   Frete::_read(FileID file_id,
                 FileOffset offset,
-                FileSize const size)
+                FileSize const size,
+                bool update_progress)
   {
     ELLE_DEBUG_SCOPE("%s: read %s bytes of file %s at offset %s",
                      *this, size,  file_id, offset);
     auto& snapshot = *this->_transfer_snapshot;
-    if (offset != 0)
-      snapshot.file_progress_set(file_id, offset);
-    else if (file_id != 0)
-      snapshot.file_progress_end(file_id - 1);
-    this->_progress_changed.signal();
-
+    if (update_progress)
+    {
+      if (offset != 0)
+        snapshot.file_progress_set(file_id, offset);
+      else if (file_id != 0)
+        snapshot.file_progress_end(file_id - 1);
+      this->_progress_changed.signal();
+    }
     auto path = this->_local_path(file_id);
     boost::filesystem::ifstream file{path, std::ios::binary};
     static const FileOffset MAX_offset{

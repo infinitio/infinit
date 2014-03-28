@@ -96,7 +96,7 @@ namespace frete
     /// A weakly crypted chunk of a file.
     infinit::cryptography::Code
     read(FileID f, FileOffset start, FileSize size);
-    /// A strongly crypted chunk of a file.
+    /// A strongly crypted chunk of a file. Aknowlege up to file f position start
     infinit::cryptography::Code
     encrypted_read(FileID f, FileOffset start, FileSize size);
     /// Update the progress.
@@ -111,6 +111,10 @@ namespace frete
     /// Signal we're done
     void
     finish();
+    /// Request a file chunk and acknowledge overall progress up to
+    /// acknowledge_progress starting from the beginning of the whole frete data
+    infinit::cryptography::Code
+    encrypted_read_acknowledge(FileID f, FileOffset start, FileSize size, FileSize acknowledge_progress);
     /// Whether we're done.
     ELLE_ATTRIBUTE_RX(reactor::Barrier, finished);
   private:
@@ -121,7 +125,8 @@ namespace frete
     elle::Buffer
     _read(FileID file_id,
           FileOffset offset,
-          FileSize const size);
+          FileSize const size,
+          bool increment_progress = true);
 
   /*---------.
   | Progress |
