@@ -183,4 +183,22 @@ namespace frete
   {
     return this->_files.size();
   }
+
+  void
+  TransferSnapshot::progress_increment(FileSize increment)
+  {
+    FileSize remain = increment;
+    for (FileCount i = file_count() - 1; i < count() && remain; ++i)
+    {
+      File& f = file(i);
+      FileSize take = std::min(remain, f.size() - f.progress());
+      remain -= take;
+      f._progress += take;
+    }
+    _progress += increment - remain;
+    if (remain)
+      throw elle::Exception(
+        elle::sprintf("progress_increment(%s): could not increment of %s bytes with %s files",
+                      increment, remain, file_count()));
+  }
 }

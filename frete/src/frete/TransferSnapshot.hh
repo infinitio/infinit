@@ -52,6 +52,7 @@ namespace frete
       ELLE_ATTRIBUTE(std::string, root);
       ELLE_ATTRIBUTE_R(std::string, path);
       ELLE_ATTRIBUTE_R(boost::filesystem::path, full_path);
+      /// Total file size
       ELLE_ATTRIBUTE_R(FileSize, size);
 
     /*-------.
@@ -67,6 +68,7 @@ namespace frete
     | Progress |
     `---------*/
     public:
+      /// Current file size or amount transmitted (depending if sender/recipient)
       ELLE_ATTRIBUTE_R(FileSize, progress);
 
     /*-----------.
@@ -135,6 +137,10 @@ namespace frete
     file_progress_set(FileID file, FileSize progress);
     void
     file_progress_end(FileID file);
+    // Increment progress and appropriate file(s) progress of 'increment' bytes.
+    void
+    progress_increment(FileSize increment);
+    // does not update individual files progress!
     void
     progress(FileSize const& progress);
     ELLE_ATTRIBUTE_R(FileSize, progress);
