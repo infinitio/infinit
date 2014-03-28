@@ -37,7 +37,7 @@ with Meta(enable_emails = True) as meta, Trophonius(meta) as trophonius:
   transaction, res = bob.sendfile(recipient_id = alice.id)
   assert res['success']
 
-  assert meta.mailer.sent
+  assert meta.mailer.sent == False
 
 # Peer offline.
 with Meta(enable_emails = True) as meta, Trophonius(meta) as trophonius:

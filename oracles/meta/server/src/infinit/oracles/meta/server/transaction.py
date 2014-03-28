@@ -175,12 +175,9 @@ class Mixin:
           sender_id = str(user['_id']),
           avatar = self.user_avatar_route(recipient['_id']),
         )
-      else:
-        recipient_connected = recipient.get('connected', False)
-        elle.log.debug("recipient is %sconnected" % \
-                       (not recipient_connected and "dis" or ""))
-        template_id = recipient_connected and 'accept-file-online-offline' \
-                                           or 'accept-file-only-offline'
+      elif recipient.get('connected', False) == False:
+        elle.log.debug("recipient is disconnected")
+        template_id = 'accept-file-only-offline'
 
         subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS[template_id]
         subject %= { "sendername": user['fullname'], 'filename': files[0] }
