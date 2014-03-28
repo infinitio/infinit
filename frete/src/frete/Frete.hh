@@ -48,6 +48,7 @@ namespace frete
   `-------------*/
   public:
     Frete(std::string const& password, // Retro compatibility.
+          infinit::cryptography::KeyPair const& self_K, /*needed to decrypt session key from snapshot*/
           infinit::cryptography::PublicKey peer_K,
           boost::filesystem::path const& snapshot_destination);
     ~Frete();

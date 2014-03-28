@@ -114,9 +114,14 @@ namespace frete
         boost::filesystem::path const& root,
         boost::filesystem::path const& path,
         FileSize size);
+    /// Set encryption symetric key, encrypted with current user's public key
+    /// Can only be called once.
+    void
+    set_key_code(infinit::cryptography::Code const& code);
   private:
     typedef std::unordered_map<FileID, File> Files;
     ELLE_ATTRIBUTE_R(Files, files);
+    ELLE_ATTRIBUTE_R(std::unique_ptr<infinit::cryptography::Code>, key_code);
 
   /*-----------.
   | Attributes |

@@ -14,6 +14,8 @@
 #include <frete/Frete.hh>
 #include <frete/TransferSnapshot.hh>
 
+#include <papier/Identity.hh>
+
 #include <station/Station.hh>
 
 #include <aws/Credentials.hh>
@@ -453,6 +455,7 @@ namespace surface
         peer_K.Restore(this->state().user(this->peer_id(), true).public_key);
         this->_frete = elle::make_unique<frete::Frete>(
           this->transaction_id(),
+          this->state().identity().pair(),
           peer_K,
           common::infinit::frete_snapshot_path(
             this->data()->sender_id,

@@ -35,21 +35,24 @@ namespace frete
     Impl(infinit::cryptography::PublicKey const& peer_key,
          std::string const& password):
       _old_key(infinit::cryptography::cipher::Algorithm::aes256, password),
-      _key(infinit::cryptography::SecretKey::generate(
-             infinit::cryptography::cipher::Algorithm::aes256, 2048)),
+      _key(new infinit::cryptography::SecretKey(
+        infinit::cryptography::SecretKey::generate(
+             infinit::cryptography::cipher::Algorithm::aes256, 2048))),
       _peer_key(peer_key),
-      _encrypted_key(this->_peer_key.encrypt(this->_key))
+      _encrypted_key(new infinit::cryptography::Code(this->_peer_key.encrypt(*this->_key)))
     {
       ELLE_DEBUG("frete impl with peer K %s", peer_key);
     }
 
     ELLE_ATTRIBUTE_R(infinit::cryptography::SecretKey, old_key);
-    ELLE_ATTRIBUTE_R(infinit::cryptography::SecretKey, key);
+    ELLE_ATTRIBUTE_R(std::unique_ptr<infinit::cryptography::SecretKey>, key);
     ELLE_ATTRIBUTE_R(infinit::cryptography::PublicKey, peer_key);
-    ELLE_ATTRIBUTE_R(infinit::cryptography::Code, encrypted_key);
+    ELLE_ATTRIBUTE_R(std::unique_ptr<infinit::cryptography::Code>, encrypted_key);
+    friend class Frete;
   };
 
   Frete::Frete(std::string const& password,
+               infinit::cryptography::KeyPair const& self_key,
                infinit::cryptography::PublicKey peer_key,
                boost::filesystem::path const& snapshot_destination):
     _impl(new Impl(peer_key, password)),
@@ -70,6 +73,15 @@ namespace frete
                 (this->_transfer_snapshot->file_count()?
                   this->_transfer_snapshot->file(0).progress():
                   0));
+      // reload key from snapshot
+      auto& k = *this->_transfer_snapshot->key_code();
+      _impl->_key.reset(
+        new infinit::cryptography::SecretKey(
+          self_key.k().decrypt<infinit::cryptography::SecretKey>(k)));
+      // and reload frete key_code, encrypted session key with peer key
+      _impl->_encrypted_key.reset(
+        new infinit::cryptography::Code(
+          peer_key.encrypt(*_impl->_key)));
     }
     catch (boost::filesystem::filesystem_error const&)
     {
@@ -82,7 +94,13 @@ namespace frete
                 *this, elle::exception_string());
     }
     if (this->_transfer_snapshot == nullptr)
+    {
       this->_transfer_snapshot.reset(new TransferSnapshot());
+      // Write encrypted session key to the snapshot
+      this->_transfer_snapshot->set_key_code(self_key.K().encrypt(*_impl->_key));
+      // immediately save the snapshot so that key never changes
+      this->save_snapshot();
+    }
   }
 
   Frete::~Frete()
@@ -243,7 +261,7 @@ namespace frete
       "%s: read and encrypt block %s of size %s at offset %s with key %s",
       *this, f, size, start, this->_impl->key());
 
-    auto code = this->_impl->key().encrypt(this->_read(f, start, size));
+    auto code = this->_impl->key()->encrypt(this->_read(f, start, size));
 
     ELLE_DUMP("encrypted data: %s with buffer %x", code, code.buffer());
     return code;
@@ -257,7 +275,7 @@ namespace frete
       "%s: read and encrypt block %s of size %s at offset %s with key %s",
       *this, f, size, start, this->_impl->key());
 
-    auto code = this->_impl->key().encrypt(this->_read(f, start, size, false));
+    auto code = this->_impl->key()->encrypt(this->_read(f, start, size, false));
     auto& snapshot = *this->_transfer_snapshot;
     snapshot.progress_increment(acknowledge - snapshot.progress());
     ELLE_DUMP("encrypted data: %s with buffer %x", code, code.buffer());
@@ -338,7 +356,7 @@ namespace frete
   infinit::cryptography::Code const&
   Frete::key_code() const
   {
-    return this->_impl->encrypted_key();
+    return *this->_impl->encrypted_key();
   }
 
   void

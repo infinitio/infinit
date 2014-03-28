@@ -201,4 +201,12 @@ namespace frete
         elle::sprintf("progress_increment(%s): could not increment of %s bytes with %s files",
                       increment, remain, file_count()));
   }
+
+  void
+  TransferSnapshot::set_key_code(infinit::cryptography::Code const& key_code)
+  {
+    if (_key_code)
+      throw elle::Exception("Key code already set.");
+    _key_code.reset(new infinit::cryptography::Code(key_code));
+  }
 }
