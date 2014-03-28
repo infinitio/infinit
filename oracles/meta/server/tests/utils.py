@@ -6,6 +6,7 @@ from infinit.oracles.meta.server.invitation import Invitation
 
 import http.cookies
 import os
+import bson
 import pymongo
 import sys
 
@@ -338,6 +339,10 @@ class User(Client):
       return False
 
   @property
+  def _id(self):
+    return bson.ObjectId(self.get('user/self')['_id'])
+
+  @property
   def devices(self):
     return self.get('devices')['devices']
 
@@ -358,10 +363,21 @@ class User(Client):
     return self.get('user/self')['fullname']
 
   @property
+  def transactions(self):
+    res = self.get('transactions')
+    assert res['success']
+    return res['transactions']
+
+  @property
   def connected_on_device(self, device_id = None):
     if device_id is None:
       device_id = self.device_id
     return self.get('device/%s/%s/connected' % (self.id, str(device_id)))['connected']
+
+  def __eq__(self, other):
+    if isinstance(other, User):
+      return self.email == other.email
+    return NotImplemented
 
   def sendfile(self,
                recipient_id,
