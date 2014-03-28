@@ -277,7 +277,12 @@ namespace frete
 
     auto code = this->_impl->key()->encrypt(this->_read(f, start, size, false));
     auto& snapshot = *this->_transfer_snapshot;
-    snapshot.progress_increment(acknowledge - snapshot.progress());
+    /* Since we might be pushing both in a bufferer and directly, there
+     * are actually two progress positions.
+     * We can safely(*) ignore acks behind our current state
+    */
+    if (acknowledge > snapshot.progress())
+      snapshot.progress_increment(acknowledge - snapshot.progress());
     ELLE_DUMP("encrypted data: %s with buffer %x", code, code.buffer());
     return code;
   }
