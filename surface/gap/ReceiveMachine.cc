@@ -599,6 +599,7 @@ namespace surface
           // Counting 256k packet size and 10Mo/s, two pending requests
           // 'buffers' for 1/20th of a second
           static int num_reader = rpc_pipeline_size();
+          bool explicit_ack = peer_version >= elle::Version(0, 8, 9);
           auto reader = [&,this](int id)
           {
             while (true)
@@ -608,7 +609,10 @@ namespace surface
                 ELLE_DEBUG("Thread %s has nothing to do, exiting", id);
                 break; // some other thread figured out this was over
               }
-              ELLE_DUMP("Reading buffer at %s", current_position);
+              ELLE_DUMP("Reading buffer at %s in mode %s", current_position,
+                explicit_ack? "read_encrypt_ack" :
+                 strong_encryption? "read_encrypt" : "encrypt"
+                );
               if (current_position >= current_full_size)
               {
                 ELLE_DUMP("Thread %s would read past end", id);
@@ -640,10 +644,17 @@ namespace surface
 
               FileID local_current_index = current_index;
               // This line blocks, no shared state access past that point!
-              auto code =
-                  strong_encryption ?
-                    source.encrypted_read(current_index, next_read, chunk_size) :
-                    source.read(current_index, next_read , chunk_size);
+              // For some reasons this can't be rewritten cleanly: the compiler
+              // burst into flames about deleted =(const&), thus ignoring
+              // =(&&)  when writing code = f();
+              infinit::cryptography::Code code(
+                 explicit_ack ?
+                  source.encrypted_read_acknowledge(current_index,
+                                                         next_read, chunk_size,
+                                                         this->_snapshot->progress())
+                  : strong_encryption ?
+                    source.encrypted_read(current_index, next_read, chunk_size)
+                    :  source.read(current_index, next_read , chunk_size));
               elle::Buffer buffer;
               try
               {
