@@ -146,10 +146,12 @@ namespace surface
         infinit::protocol::Error>(
         transfer_state,
         connection_state)
-        .action([this]
-                {
-                  ELLE_TRACE("%s: protocol error in frete", *this);
-                });
+        .action_exception(
+          [this] (std::exception_ptr e)
+          {
+            ELLE_WARN("%s: protocol error in frete: %s",
+                      *this, elle::exception_string(e));
+          });
       this->_fsm.transition_add_catch_specific<
         infinit::protocol::ChecksumError>(
         transfer_state,
