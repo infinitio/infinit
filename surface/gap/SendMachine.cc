@@ -463,7 +463,7 @@ namespace surface
         { // Reloaded from snapshot, validate it
           if (this->_files.size() != this->_frete->count())
           {
-            ELLE_ERR("snapshot data mismatch: count %s vs %s",
+            ELLE_ERR("%s: snapshot data mismatch: count %s vs %s",
                      *this,
                      this->_frete->count(),
                      this->_files.size()
