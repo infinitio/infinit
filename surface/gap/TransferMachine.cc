@@ -106,7 +106,8 @@ namespace surface
       this->_fsm.transition_add(
         wait_for_peer_state,
         cloud_buffer_state,
-        reactor::Waitables{&this->_peer_offline})
+        reactor::Waitables{&this->_peer_offline},
+        true)
         .action([&]
                 {
                   ELLE_TRACE("%s: start cloud buffering", *this);
@@ -114,7 +115,8 @@ namespace surface
       this->_fsm.transition_add(
         cloud_buffer_state,
         wait_for_peer_state,
-        reactor::Waitables{&this->_peer_online})
+        reactor::Waitables{&this->_peer_online},
+        true)
         .action([&]
                 {
                   ELLE_TRACE("%s: stop cloud buffering", *this);
