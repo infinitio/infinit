@@ -11,6 +11,10 @@ namespace surface
 {
   namespace gap
   {
+    /** Base class for providers of transfer buffers.
+    * Transfer bufferers do not track trasnfer progress, they just
+    * store data chunks on behalf or senders/recipients.
+    */
     class TransferBufferer
     {
     /*------.
@@ -64,11 +68,14 @@ namespace surface
       virtual
       infinit::cryptography::Code
       encrypted_read(FileID f, FileOffset start, FileSize size) = 0;
+      virtual
+      infinit::cryptography::Code
+      encrypted_read_acknowledge(FileID f, FileOffset start, FileSize size, FileSize progress);
       /// Get the key of the transfer.
       virtual
       infinit::cryptography::Code const&
       key_code() const = 0;
-      /// Update the progress.
+      /// Update the progress. no-op.
       void
       set_progress(FileSize progress);
       /// Signal we're done

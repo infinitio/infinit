@@ -35,5 +35,12 @@ namespace surface
     void
     TransferBufferer::finish()
     {}
+
+    infinit::cryptography::Code
+    TransferBufferer:: encrypted_read_acknowledge(FileID f, FileOffset start, FileSize size, FileSize progress)
+    {
+      set_progress(progress);
+      return encrypted_read(f, start, size);
+    }
   }
 }
