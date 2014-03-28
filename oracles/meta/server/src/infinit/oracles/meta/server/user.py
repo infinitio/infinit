@@ -672,6 +672,7 @@ class Mixin:
         source = (user['fullname'], user['email']),
         database = self.database,
         sendername = user['fullname'],
+        user_id = str(user['_id']),
       )
       return self.success()
 

@@ -53,17 +53,33 @@ namespace surface
           log_file += std::to_string(::getpid());
         }
 
-        static std::ofstream out{
-          log_file + ".log",
-          std::fstream::trunc | std::fstream::out};
+        this->_output.reset(
+          new std::ofstream{
+            log_file,
+              std::fstream::trunc | std::fstream::out});
 
-        static elle::format::gzip::Stream compressed(out, false, 1024);
-
+        // XXX: Logs should be compressed, but that feature is only used on
+        // Windows. While the archiving / compression (tar) is not available
+        // on Windows, we compresse them when creating a crash report.
+        // static elle::format::gzip::Stream compressed(out, false, 1024);
         elle::log::logger(
-          std::unique_ptr<elle::log::Logger>{new elle::log::TextLogger(
-            compressed)});
+          std::unique_ptr<elle::log::Logger>{
+            new elle::log::TextLogger(*this->_output)});
       }
       ELLE_LOG("Infinit Version: %s", INFINIT_VERSION);
+    }
+
+    LoggerInitializer::~LoggerInitializer()
+    {
+      std::string log_file = elle::os::getenv("INFINIT_LOG_FILE", "");
+      if (!log_file.empty())
+      {
+        elle::log::logger(
+          std::unique_ptr<elle::log::Logger>{
+            new elle::log::TextLogger(std::cerr)});
+
+        this->_output.reset();
+      }
     }
 
     /*--------------.

@@ -37,7 +37,7 @@ namespace surface
       ELLE_LOG_COMPONENT("surface.gap.State");
       try
       {
-        ELLE_DEBUG("enqueue cb");
+        ELLE_DEBUG("%s: enqueue callback: %s", *this, notif);
         std::lock_guard<std::mutex> lock(this->_poll_lock);
         for (auto const& cb: this->_callbacks.at(T::type))
         {

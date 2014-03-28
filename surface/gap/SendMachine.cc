@@ -23,7 +23,6 @@
 #include <surface/gap/FilesystemTransferBufferer.hh>
 #include <surface/gap/S3TransferBufferer.hh>
 #include <surface/gap/SendMachine.hh>
-#include <surface/gap/Rounds.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.SendMachine");
 

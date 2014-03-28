@@ -1,6 +1,7 @@
 import drake
 import drake.cxx
 import drake.cxx.boost
+import drake.cxx.qt
 import drake.git
 import drake.templating
 
@@ -20,6 +21,7 @@ def configure(cxx_toolkit = None,
               python3 = None,
               build_type = "Development",
               enable_debug = True,
+	      qt = None,
               valgrind = None):
 
   ## ----- ##
@@ -73,16 +75,16 @@ def configure(cxx_toolkit = None,
       cxx_config.define(define[0], define[1])
 
   platform_defines = ()
-  if sys.platform.startswith('linux'):
+  if cxx_toolkit.os == drake.os.linux:
     platform_defines = ("INFINIT_LINUX",)
-  elif sys.platform == 'win32' or sys.platform == 'cygwin':
+  elif cxx_toolkit.os == drake.os.windows:
     platform_defines = ("INFINIT_WINDOWS",)
     cxx_config.define('INFINIT_WINDOWS')
     cxx_config.lib('shlwapi')
     cxx_config.lib('ws2_32')
     cxx_config.lib('gdi32')
     cxx_config.lib('mswsock')
-  elif sys.platform == 'darwin':
+  elif cxx_toolkit.os == drake.os.macos:
     platform_defines = ("INFINIT_MACOSX", "HAVE_STATFS")
   else:
     raise Exception("platform %s not supported" % sys.platform)
@@ -249,17 +251,22 @@ def configure(cxx_toolkit = None,
     papier_python_cxx_config = drake.cxx.Config(cxx_config)
     papier_python_sources = drake.nodes('papier/python.cc')
     papier_python_sources.append(papier_lib)
+    papier_python_cxx_config += boost.config_filesystem(
+      static = (cxx_toolkit.os is drake.os.macos and True or None))
+    papier_python_cxx_config += python3
     if cxx_toolkit.os is drake.os.windows:
+      papier_python_cxx_config.define('BOOST_PYTHON_STATIC_LIB')
       papier_python_cxx_config += boost.config_python(static = True)
+      papier_python_cxx_config.flag('-Wl,-Bdynamic')
     else:
       papier_python_cxx_config += boost.config_python(link = False)
       papier_python_cxx_config.library_add(
         drake.copy(boost.python_dynamic, 'lib', strip_prefix = True))
-    papier_python_cxx_config += python3
+
     papier_python_cxx_config.lib_path_runtime('..')
     papier_python_lib = drake.cxx.Module(
       'lib/python/papier',
-      papier_python_sources,
+      papier_python_sources + [elle_lib, cryptography_lib],
       cxx_toolkit,
       papier_python_cxx_config)
 
@@ -685,8 +692,15 @@ def configure(cxx_toolkit = None,
   if python3 is not None:
     gap_python_cxx_config = drake.cxx.Config(gap_cxx_config)
     gap_python_cxx_config += python3
-    gap_python_cxx_config += boost.config_python()
     gap_python_cxx_config.lib_path_runtime('..')
+    if cxx_toolkit.os is drake.os.windows:
+      gap_python_cxx_config.define('BOOST_PYTHON_STATIC_LIB')
+      gap_python_cxx_config += boost.config_python(static = True)
+      gap_python_cxx_config.flag('-Wl,-Bdynamic')
+    else:
+      gap_python_cxx_config += boost.config_python(link = False)
+      gap_python_cxx_config.library_add(
+        drake.copy(boost.python_dynamic, 'lib', strip_prefix = True))
     with templating_context:
       gap_python_sources = drake.nodes(
         'surface/gap/python/pygap.cc.tmpl',
@@ -720,6 +734,7 @@ def configure(cxx_toolkit = None,
     gap_build << gap_python_lib
     gap_build << gap_python_pyfile_copy
     gap_build << infinit_cli_copy
+
     python_build << gap_python_lib
 
     # Top-level tests
@@ -741,3 +756,17 @@ def configure(cxx_toolkit = None,
       runner = drake.Runner(exe = test_node, env = python_env)
       check << runner.status
       functional_check << runner.status
+
+  if qt is not None:
+    if cxx_toolkit.os == drake.os.windows:
+      libraries = [gap_lib]
+    else:
+      libraries = [gap_lib, elle_lib]
+    fist_cxx_config = drake.cxx.Config(cxx_config)
+    application = drake.include('fist-gui-qt',
+                                cxx_toolkit = cxx_toolkit,
+                                cxx_config = fist_cxx_config,
+                                qt = qt,
+                                prefix = prefix,
+                                libraries = libraries)
+    build << application.build

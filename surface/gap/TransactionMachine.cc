@@ -522,10 +522,9 @@ namespace surface
     station::Station&
     TransactionMachine::station()
     {
-      ELLE_TRACE_SCOPE("%s: get station", *this);
       if (!this->_station)
       {
-        ELLE_DEBUG_SCOPE("building station");
+        ELLE_TRACE_SCOPE("%s: building station", *this);
         this->_station.reset(
           new station::Station(papier::authority(), this->state().passport()));
       }

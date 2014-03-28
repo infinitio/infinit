@@ -30,8 +30,8 @@ def configure(elle,
                          reactor = reactor,
                          meta_client = meta_client,
                          boost = boost,
-                         python3 = python3,
                          prefix = prefix,
+                         python3 = python3,
                          cxx_toolkit = cxx_toolkit,
                          cxx_config = cxx_config)
 

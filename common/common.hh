@@ -1,6 +1,7 @@
 #ifndef  COMMON_COMMON_HH
 # define COMMON_COMMON_HH
 
+# include <memory>
 # include <stdint.h>
 # include <string>
 
