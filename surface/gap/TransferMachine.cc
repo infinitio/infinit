@@ -374,8 +374,8 @@ namespace surface
                   this->_owner.transaction_id(),
                   round->name()
                 );
-                ELLE_TRACE("%s: connected to peer with round %s",
-                           *this, round->name());
+                ELLE_TRACE("%s: connected to peer with %s",
+                           *this, round);
                 break;
               }
               else

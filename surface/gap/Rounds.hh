@@ -19,90 +19,64 @@
 
 namespace surface
 {
-    namespace gap
+  namespace gap
+  {
+    class Round:
+      public elle::Printable
     {
-      class Round:
-        public elle::Printable
-      {
-      public:
-        Round(std::string const& name);
+    public:
+      Round(std::string const& name);
+      virtual
+      ~Round();
 
-        virtual
-        ~Round();
+      virtual
+      std::unique_ptr<reactor::network::Socket>
+      connect(station::Station& station) = 0;
 
-        virtual
-        std::unique_ptr<reactor::network::Socket>
-        connect(station::Station& station) = 0;
+      ELLE_ATTRIBUTE_R(std::string, name);
+    };
 
-        /*----------.
-        | Printable |
-        `----------*/
-        void
-        print(std::ostream& stream) const override;
+    class AddressRound:
+      public Round
+    {
+    public:
+      AddressRound(std::string const& name,
+                   std::vector<std::string> enpoints);
 
-        virtual
-        std::string const&
-        type() const
-        {
-          static std::string const type{"Round"};
-          return type;
-        }
+      std::unique_ptr<reactor::network::Socket>
+      connect(station::Station& station) override;
+      ELLE_ATTRIBUTE(std::vector<std::string>, endpoints);
 
-      private:
-        ELLE_ATTRIBUTE_R(std::string, name);
-      protected:
-        std::vector<std::string> _endpoints;
-      };
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      void
+      print(std::ostream& stream) const override;
+    };
 
-      class AddressRound:
-        public Round
-      {
-      public:
-        AddressRound(std::string const& name,
-                     std::vector<std::string>&& enpoints);
+    class FallbackRound:
+      public Round
+    {
+    public:
+      FallbackRound(std::string const& name,
+                    infinit::oracles::meta::Client const& meta,
+                    std::string const& uid);
+      std::unique_ptr<reactor::network::Socket>
+      connect(station::Station& station) override;
 
-        std::unique_ptr<reactor::network::Socket>
-        connect(station::Station& station) override;
+    private:
+      ELLE_ATTRIBUTE(infinit::oracles::meta::Client const&, meta);
+      ELLE_ATTRIBUTE(std::string , uid);
 
-        /*----------.
-        | Printable |
-        `----------*/
-      public:
-        std::string const&
-        type() const override
-        {
-          static std::string const type{"AddressRound"};
-          return type;
-        }
-      };
-
-      class FallbackRound:
-        public Round
-      {
-      public:
-        FallbackRound(std::string const& name,
-                      infinit::oracles::meta::Client const& meta,
-                      std::string const& uid);
-
-        std::unique_ptr<reactor::network::Socket>
-        connect(station::Station& station) override;
-
-      private:
-        ELLE_ATTRIBUTE(infinit::oracles::meta::Client const&, meta);
-        ELLE_ATTRIBUTE(std::string , uid);
-
-        /*----------.
-        | Printable |
-        `----------*/
-      public:
-        std::string const&
-        type() const override
-        {
-          static std::string const type{"FallbackRound"};
-          return type;
-        }
-      };
-    }
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      void
+      print(std::ostream& stream) const override;
+    };
+  }
 }
 
 #endif
