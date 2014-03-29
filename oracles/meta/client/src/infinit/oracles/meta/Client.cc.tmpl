@@ -580,7 +580,7 @@ namespace infinit
       Transaction
       Client::transaction(std::string const& _id) const
       {
-        std::string url = sprintf("/transaction/%s/view", _id);
+        std::string url = sprintf("/transaction/%s", _id);
         reactor::http::Request request =
           this->_client.request(this->_url(url),
                                 Method::GET,
