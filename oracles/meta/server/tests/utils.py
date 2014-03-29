@@ -297,6 +297,12 @@ class User(Client):
       'device_id': str(self.device_id),
     }
 
+  @property
+  def data(self):
+    res = self.get('user/self')
+    assert res['success']
+    return res
+
   def login(self, device_id = None):
     if device_id is not None:
       self.device_id = device_id
@@ -325,12 +331,12 @@ class User(Client):
 
   @property
   def favorites(self):
-    return self.get('user/self')['favorites']
+    return self.data['favorites']
 
   @property
   def logged_in(self):
     try:
-      res = self.get('user/self')
+      res = self.data
       assert res['success']
       assert str(self.device_id) in res['devices']
       return True
@@ -340,7 +346,7 @@ class User(Client):
 
   @property
   def _id(self):
-    return bson.ObjectId(self.get('user/self')['_id'])
+    return bson.ObjectId(self.data['_id'])
 
   @property
   def devices(self):
@@ -356,11 +362,11 @@ class User(Client):
 
   @property
   def identity(self):
-    return self.get('user/self')['identity']
+    return self.data['identity']
 
   @property
   def fullname(self):
-    return self.get('user/self')['fullname']
+    return self.data['fullname']
 
   @property
   def transactions(self):

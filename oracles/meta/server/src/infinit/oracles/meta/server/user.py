@@ -146,6 +146,9 @@ class Mixin:
       bottle.request.session['email'] = email
 
       user = self.user
+      self.database.users.find_and_modify(
+        query = {'_id': user['_id']},
+        update = {'$set': {'last_connection': time.time(),}})
       elle.log.trace("%s: successfully connected as %s on device %s" %
                      (email, user['_id'], device['id']))
 
@@ -785,6 +788,7 @@ class Mixin:
       'connected_devices': user.get('connected_devices', []),
       'status': self._is_connected(user['_id']),
       'created_at': user.get('created_at', 0),
+      'last_connection': user.get('last_connection', 0),
     })
 
   @api('/user/minimum_self')
