@@ -146,10 +146,12 @@ namespace surface
         infinit::protocol::Error>(
         transfer_state,
         connection_state)
-        .action([this]
-                {
-                  ELLE_TRACE("%s: protocol error in frete", *this);
-                });
+        .action_exception(
+          [this] (std::exception_ptr e)
+          {
+            ELLE_WARN("%s: protocol error in frete: %s",
+                      *this, elle::exception_string(e));
+          });
       this->_fsm.transition_add_catch_specific<
         infinit::protocol::ChecksumError>(
         transfer_state,
@@ -307,6 +309,7 @@ namespace surface
     std::unique_ptr<reactor::network::Socket>
     TransferMachine::_connect()
     {
+      ELLE_TRACE_SCOPE("%s: connect to peer", *this);
       auto const& transaction = *this->_owner.data();
       infinit::oracles::meta::EndpointNodeResponse endpoints;
       // Get endpoints. If the peer disconnected, we might go back to the
@@ -317,6 +320,7 @@ namespace surface
       {
         try
         {
+          ELLE_DEBUG_SCOPE("%s: get peer endpoints", *this);
           endpoints = this->_owner.state().meta().device_endpoints(
             this->_owner.data()->id,
             this->_owner.is_sender() ? transaction.sender_device_id :
@@ -327,27 +331,23 @@ namespace surface
         }
         catch (infinit::oracles::meta::Exception const& e)
         {
+          ELLE_WARN("%s: unable to fetch endpoints: %s", *this, e);
           if (e.err != infinit::oracles::meta::Error::device_not_found)
             throw;
         }
         reactor::sleep(1_sec);
       }
-      static auto print = [] (std::string const &s) { ELLE_DEBUG("-- %s", s); };
-      ELLE_DEBUG("locals")
-        std::for_each(std::begin(endpoints.locals),
-                      std::end(endpoints.locals), print);
-      ELLE_DEBUG("externals")
-        std::for_each(std::begin(endpoints.externals),
-                      std::end(endpoints.externals), print);
+      ELLE_DEBUG("%s: got endpoints", *this)
+      {
+        ELLE_DEBUG("locals: %s", endpoints.locals);
+        ELLE_DEBUG("externals: %s", endpoints.externals);
+      }
       std::vector<std::unique_ptr<Round>> rounds;
       rounds.emplace_back(new AddressRound("local",
                                            std::move(endpoints.locals)));
       rounds.emplace_back(new FallbackRound("fallback",
                                             this->_owner.state().meta(),
                                             this->_owner.data()->id));
-      ELLE_TRACE("%s: selected rounds (%s):", *this, rounds.size())
-        for (auto& r: rounds)
-          ELLE_TRACE("-- %s", *r);
       return elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
         reactor::Barrier found;
@@ -356,7 +356,7 @@ namespace surface
           "wait_accepted",
           [&] ()
           {
-            this->_owner.station().host_available().wait();
+            reactor::wait(this->_owner.station().host_available());
             host = this->_owner.station().accept()->release();
             found.open();
             ELLE_TRACE("%s: peer connection accepted", *this);
@@ -376,20 +376,19 @@ namespace surface
                   this->_owner.transaction_id(),
                   round->name()
                 );
-                ELLE_TRACE("%s: connected to peer in round %s",
-                           *this, round->name());
+                ELLE_TRACE("%s: connected to peer with %s",
+                           *this, *round);
                 break;
               }
               else
-                ELLE_WARN("%s: connection round %s failed, no host has been found",
-                          *this, *round);
+                ELLE_DEBUG("%s: connection round %s failed", *this, *round);
             }
           });
-        found.wait();
+        reactor::wait(found);
         ELLE_ASSERT(host != nullptr);
         return std::move(host);
       };
-      throw Exception(gap_api_error, "no round succeed");
+      throw Exception(gap_api_error, "unable to connect to peer");
     }
 
     void

@@ -20,7 +20,6 @@
 #include <station/Station.hh>
 
 #include <surface/gap/ReceiveMachine.hh>
-#include <surface/gap/Rounds.hh>
 
 #include <version.hh>
 
@@ -461,11 +460,11 @@ namespace surface
     ReceiveMachine::get(TransferBufferer& frete,
                         std::string const& name_policy)
     {
-       return this->_get<TransferBufferer>(
-         frete, true, name_policy,
-         elle::Version(INFINIT_VERSION_MAJOR,
-                       INFINIT_VERSION_MINOR,
-                       INFINIT_VERSION_SUBMINOR));
+       // return this->_get<TransferBufferer>(
+       //   frete, true, name_policy,
+       //   elle::Version(INFINIT_VERSION_MAJOR,
+       //                 INFINIT_VERSION_MINOR,
+       //                 INFINIT_VERSION_SUBMINOR));
     }
 
     template <typename Source>
@@ -506,7 +505,18 @@ namespace surface
       if (last_index > 0)
         --last_index;
 
-      auto infos = source.files_info();
+      std::vector<std::pair<std::string, FileSize>> infos;
+      if (peer_version >= elle::Version(0, 8, 9))
+        infos = source.files_info();
+      else
+      {
+        for (int i = 0; i < count; ++i)
+        {
+          auto path = source.path(i);
+          auto size = source.file_size(i);
+          infos.push_back(std::make_pair(path, size));
+        }
+      }
 
       // reconstruct directory name mapping data so that files in transfer
       // but not yet in snapshot will reuse it

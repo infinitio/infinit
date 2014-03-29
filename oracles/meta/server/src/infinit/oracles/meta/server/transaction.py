@@ -219,6 +219,76 @@ class Mixin:
     ])['result']
     return {'transactions': res}
 
+  # Previous (shitty) transactions fetching API that only returns ids.
+  @api('/transactions', method = 'POST')
+  @require_logged_in
+  def transaction_post(self,
+                       filter = transaction_status.final + [transaction_status.CREATED],
+                       type = False,
+                       peer_id = None,
+                       count = 100,
+                       offset = 0):
+    return self._transactions(filter = filter,
+                              peer_id = peer_id,
+                              type = type,
+                              count = count,
+                              offset = offset)
+
+  def _transactions(self,
+                    filter,
+                    type,
+                    peer_id,
+                    count,
+                    offset):
+    """
+    Get all transaction involving user (as sender or recipient) which fit parameters.
+
+    filter -- a list of transaction status.
+    type -- make request inclusiv or exclusiv.
+    count -- the number of transactions to get.
+    offset -- the number of transactions to skip.
+    _with -- The peer id if specified.
+    """
+    inclusive = type
+    user_id = self.user['_id']
+
+    if peer_id is not None:
+      peer_id = bson.ObjectId(peer_id)
+      query = {
+        '$or':
+        [
+          { 'recipient_id': user_id, 'sender_id': peer_id, },
+          { 'sender_id': user_id, 'recipient_id': peer_id, },
+        ]}
+    else:
+      query = {
+        '$or':
+          [
+            { 'sender_id': user_id },
+            { 'recipient_id': user_id },
+          ]
+        }
+
+    query['status'] = {'$%s' % (inclusive and 'in' or 'nin'): filter}
+
+    from pymongo import ASCENDING, DESCENDING
+    find_params = {
+      'spec': query,
+      'limit': count,
+      'skip': offset,
+      'fields': ['_id'],
+      'sort': [
+        ('mtime', DESCENDING),
+        ],
+      }
+
+    return self.success(
+      {
+        "transactions": [ t['_id'] for t in self.database.transactions.find(**find_params)
+                        ]
+      }
+    )
+
   def on_accept(self, transaction, device_id, device_name):
     with elle.log.trace("accept transaction as %s" % device_id):
       if device_id is None or device_name is None:

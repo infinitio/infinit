@@ -221,7 +221,6 @@ namespace infinit
         Client::ReconnectPokeFailedCallback reconnect_failed_callback;
         std::unique_ptr<reactor::Thread> _connect_callback_thread;
         std::exception_ptr _poll_exception;
-        elle::Buffer _buffer;
 
         Impl(std::string const& server,
              uint16_t port,
@@ -239,7 +238,6 @@ namespace infinit
           connect_callback{connect_callback},
           reconnect_failed_callback{reconnect_failed_callback},
           _poll_exception(),
-          _buffer{},
           _poke_sent_signal(),
           _ping_period(default_ping_period),
           _ping_timeout(this->_ping_period * 2),
@@ -255,9 +253,7 @@ namespace infinit
                        elle::sprintf("%s read thread", *this),
                        [&] () { this->read_thread(); }),
           _poke_timeout(15_sec)
-        {
-          this->_buffer.capacity(1024);
-        }
+        {}
 
         ~Impl()
         {
@@ -505,7 +501,6 @@ namespace infinit
             this->_connect_callback_thread->terminate_now();
             this->_connect_callback_thread.reset();
           }
-          this->_buffer.reset();
           if (this->_socket)
           {
             this->_socket->close();
@@ -687,40 +682,15 @@ namespace infinit
         std::unique_ptr<Notification>
         read()
         {
+          ELLE_DEBUG_SCOPE("%s: reading message", *this);
           auto socket = this->_socket;
-
-          this->_buffer.size(0);
-          ELLE_DEBUG("%s: reading message", *this);
-          size_t idx = 0;
-          while (true)
-          {
-            elle::IOStreamClear clearer(*socket);
-            socket->getline(((char*)this->_buffer.mutable_contents()) + idx,
-                            this->_buffer.capacity() - idx, '\n');
-            if (!socket->fail())
-            {
-              this->_buffer.size(idx + socket->gcount());
-              break;
-            }
-            idx = this->_buffer.capacity() - 1;
-            this->_buffer.capacity(this->_buffer.capacity() * 2);
-          }
-          if (this->_buffer.size() == 0)
-          {
-            ELLE_ERR("Empty line read from tropho: bad:%s fail:%s eof:%s gcount:%s",
-                     socket->bad(), socket->fail(), socket->eof(), socket->gcount());
-            // XXX getline should not return an empty buffer, but throw a
-            // massive exception.
-            throw elle::Exception{"read an empty buffer"};
-          }
-
-          ELLE_TRACE_SCOPE("%s: got message", *this);
+          auto buffer = socket->read_until("\n");
+          ELLE_DEBUG("%s: got message: %f", *this, buffer);
           // XXX: Shitty JSON parser seeks.
           // elle::InputStreamBuffer<elle::Buffer> streambuffer(buffer);
           // std::istream input(&streambuffer);
-          std::string buffer_str(reinterpret_cast<char const*>(
-                                   this->_buffer.contents()),
-                                 this->_buffer.size());
+          std::string buffer_str(
+            reinterpret_cast<char const*>(buffer.contents()), buffer.size());
           std::stringstream input(buffer_str);
           ELLE_DUMP("%s: contents: %s", *this, buffer_str);
           return notification_from_dict(json::parse(input)->as_dictionary());

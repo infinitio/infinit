@@ -13,7 +13,6 @@
 #include <station/Station.hh>
 
 #include <surface/gap/SendMachine.hh>
-#include <surface/gap/Rounds.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.SendMachine");
 

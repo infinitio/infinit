@@ -67,32 +67,18 @@ namespace surface
       return nullptr;
     }
 
-    Round::Round(std::string const& name):
-      _name{name},
-      _endpoints{}
+    Round::Round(std::string const& name)
+      : _name(name)
     {}
 
     Round::~Round()
-    {
-    }
-
-    /*----------.
-    | Printable |
-    `----------*/
-    void
-    Round::print(std::ostream& stream) const
-    {
-      stream << this->type() << " " << this->_name << " with "
-             << this->_endpoints.size() << " endpoint(s): " << this->_endpoints;
-    };
+    {}
 
     AddressRound::AddressRound(std::string const& name,
-                               std::vector<std::string>&& endpoints):
-      Round(name)
-    {
-      this->_endpoints = std::move(endpoints);
-      ELLE_TRACE("creating AddressRound(%s, %s)", name, this->_endpoints);
-    }
+                               std::vector<std::string> endpoints)
+      : Round(name)
+      , _endpoints(std::move(endpoints))
+    {}
 
     std::unique_ptr<reactor::network::Socket>
     AddressRound::connect(station::Station& station)
@@ -112,7 +98,6 @@ namespace surface
                 found.open();
             });
         }
-
         found.wait(10_sec);
         if (host)
           return std::move(host->release());
@@ -120,40 +105,45 @@ namespace surface
       };
     }
 
+    void
+    AddressRound::print(std::ostream& stream) const
+    {
+      stream << "direct connection round";
+    };
+
     FallbackRound::FallbackRound(std::string const& name,
                                  oracles::meta::Client const& meta,
-                                 std::string const& uid):
-      Round(name),
-      _meta(meta),
-      _uid{uid}
-    {
-      ELLE_TRACE("creating FallbackRound(%s, %s)", name, uid);
-    }
+                                 std::string const& uid)
+      : Round(name)
+      , _meta(meta)
+      , _uid(uid)
+    {}
 
     std::unique_ptr<reactor::network::Socket>
     FallbackRound::connect(station::Station& station)
     {
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
       ELLE_DEBUG("%s: get fallback from meta", *this);
       auto fallback = this->_meta.fallback(this->_uid);
-
       ELLE_TRACE("%s: connect to SSL apertus %s:%s",
                  *this, fallback.fallback_host, fallback.fallback_port_ssl);
-
       std::unique_ptr<reactor::network::FingerprintedSocket> sock(
         new reactor::network::FingerprintedSocket(
           fallback.fallback_host,
           boost::lexical_cast<std::string>(fallback.fallback_port_ssl),
           fingerprint));
-
       ELLE_LOG("%s: transaction key %s (of length: %i)",
                *this, this->_uid, this->_uid.size());
       sock->write(elle::ConstWeakBuffer(
         elle::sprintf("%c",(char) this->_uid.size())));
       sock->write(elle::ConstWeakBuffer(elle::sprintf("%s", this->_uid)));
-
       return std::unique_ptr<reactor::network::Socket>(sock.release());
     }
+
+    void
+    FallbackRound::print(std::ostream& stream) const
+    {
+      stream << "fallback round";
+    };
   }
 }

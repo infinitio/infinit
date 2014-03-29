@@ -267,16 +267,9 @@ namespace elle
         reactor::DurationOpt(300_sec),
           reactor::http::Version(reactor::http::Version::v10)};
 
-      reactor::Scheduler* sched = reactor::Scheduler::scheduler();
-      if (sched == nullptr)
-      {
-        // Could leak if creating a thread can throw.
-        ELLE_TRACE("not running in a scheduler")
-          sched = new reactor::Scheduler();
-      }
-
+      reactor::Scheduler sched;
       reactor::Thread thread(
-        *sched, "upload report",
+        sched, "upload report",
         [&]
         {
           try
@@ -299,13 +292,7 @@ namespace elle
             ELLE_ERR("unable to post report to %s", url);
           }
         });
-
-      if (reactor::Scheduler::scheduler() == nullptr)
-      {
-        std::unique_ptr<reactor::Scheduler> protector{sched};
-        ELLE_DEBUG("run freshly created scheduler")
-          sched->run();
-      }
+      sched.run();
     }
 
   static
@@ -403,7 +390,6 @@ namespace elle
                                       protocol,
                                       host,
                                       port);
-
 #ifndef INFINIT_WINDOWS
       boost::filesystem::path destination{"/tmp/infinit-report-transaction"};
       boost::filesystem::path infinit_home_path(common::infinit::home());
@@ -424,7 +410,6 @@ namespace elle
       if (!log_file.empty())
         _send_report(url, user_name, os_description, "", _to_base64(log_file));
 #endif
-
     }
 
     void
