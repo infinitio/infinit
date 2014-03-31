@@ -98,7 +98,7 @@ namespace surface
                 found.open();
             });
         }
-        found.wait(10_sec);
+        found.wait(2_sec);
         if (host)
           return std::move(host->release());
         return std::unique_ptr<reactor::network::Socket>();
