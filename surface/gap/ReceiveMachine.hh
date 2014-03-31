@@ -132,21 +132,44 @@ namespace surface
       std::map<boost::filesystem::path, boost::filesystem::path> _root_component_mapping;
       /* Transfer pipelining data
       */
-      // next file for which we'll request data
-      ELLE_ATTRIBUTE(size_t, next_file);
-      ELLE_ATTRIBUTE(size_t, running_readers);
       struct TransferData;
       struct IndexedBuffer
       {
+        IndexedBuffer(elle::Buffer&& buf, FileSize pos, FileID index);
+        IndexedBuffer(IndexedBuffer&& b);
+        void operator = (IndexedBuffer && b);
         elle::Buffer buffer;
         FileSize start_position;
         FileID file_index;
+        // *REVERSED* since priority queu returns top(max) element
+        bool operator <(const IndexedBuffer& b) const;
       };
-      reactor::Channel<IndexedBuffer> _buffers;
+      // Fetcher threads will write blocks here, priority queue orders them
+      reactor::Channel<IndexedBuffer, std::priority_queue<IndexedBuffer>> _buffers;
+      /* disk_writer thread needs to be waken up only when the top block is
+      *  the next one to write */
+      reactor::Barrier _disk_writer_barrier;
+      FileID   _store_expected_file;
+      FileSize _store_expected_position;
 
-      typedef std::unique_ptr<TransferData> TransferDataPtr;
-      typedef std::unordered_map<FileID, TransferDataPtr> TransferDataMap;
-      ELLE_ATTRIBUTE(TransferDataMap, transfer_data_map);
+      // Current state for fetcher threads
+      FileID   _fetch_current_file_index;
+      FileSize _fetch_current_position;
+      FileSize _fetch_current_file_full_size; // cached
+      typedef std::unordered_map<FileID, std::unique_ptr<boost::filesystem::ofstream>> TransferDataMap;
+      TransferDataMap _transfer_stream_map;
+      /** Initialize transfer data for given file index
+       *  @return start position or -1 for nothing to do at this index.
+       */
+      FileSize  _initialize_one(FileID index,
+                                const std::string& file_name,
+                                FileSize file_size,
+                                const std::string& name_policy);
+      /** Switch fetcher data to next file, returns false if nothing else to do
+      *   Fills all _fetcher state in
+      */
+      bool _fetch_next_file(const std::string& name_policy,
+                            const std::vector<std::pair<std::string, FileSize>>& infos);
       template <typename Source>
       void
       _get(Source& source,
@@ -154,14 +177,16 @@ namespace surface
            std::string const& name_policy,
            elle::Version const& peer_version);
       template <typename Source>
-      void _reader_thread(Source& source,
+      void _disk_thread(Source& source,
                           elle::Version peer_version,
                           size_t chunk_size);
-      TransferDataPtr _initialize_one(FileID index,
-                                      const std::string& file_name,
-                                      FileSize file_size,
-                                      boost::filesystem::path output_path,
-                                      const std::string& name_policy);
+      template <typename Source>
+      void _fetcher_thread(Source& source, int id,
+                           const std::string& name_policy,
+                           bool explicit_ack,
+                           bool strong_encryption,
+                           size_t chunk_size,
+                           const infinit::cryptography::SecretKey& key);
 
     /*--------------.
     | Static Method |
