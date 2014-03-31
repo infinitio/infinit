@@ -308,9 +308,10 @@ namespace infinit
         search_users(
           std::string const& text, int count = 10, int offset = 0) const;
 
-        std::vector<User>
-        search_users_by_emails(
-          std::vector<std::string> const& emails, int limit, int offset) const;
+        std::unordered_map<std::string, User>
+        search_users_by_emails(std::vector<std::string> const& emails,
+                               int limit = 100,
+                               int offset = 0) const;
 
         SwaggersResponse
         get_swaggers() const;
