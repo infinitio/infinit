@@ -75,7 +75,7 @@ class Oracles:
     self._meta = MetaWrapperProcess(self.__force_admin, self._mongo.port)
     self._meta.start()
     elle.log.trace('starting tropho')
-    self._trophonius = infinit.oracles.trophonius.server.Trophonius(0,0, 'http', '127.0.0.1', self._meta.port, 0, timedelta(seconds=3), timedelta(seconds = 5), timedelta(seconds=7))
+    self._trophonius = infinit.oracles.trophonius.server.Trophonius(0,0, 'http', '127.0.0.1', self._meta.port, 0, timedelta(seconds=30), timedelta(seconds = 60), timedelta(seconds=10))
     elle.log.trace('starting apertus')
     self._apertus = infinit.oracles.apertus.server.Apertus('http', '127.0.0.1', self._meta.port, '127.0.0.1', 0, 0, timedelta(seconds = 10), timedelta(minutes = 5))
     elle.log.trace('ready')

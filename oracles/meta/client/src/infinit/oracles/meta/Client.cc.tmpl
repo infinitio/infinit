@@ -728,6 +728,40 @@ namespace infinit
         return this->_request<DebugResponse>("/scratchit", Method::GET);
       }
 
+      void
+      Client::transaction_endpoints_put(
+        std::string const& transaction_id,
+        std::string const& device_id,
+        adapter_type const& local_endpoints,
+        adapter_type const& public_endpoints) const
+      {
+        elle::json::Object json;
+        json["device"] = device_id;
+        auto convert_endpoints = [&](adapter_type const& endpoints)
+          {
+            std::vector<boost::any> res;
+            for (auto const& endpoint: endpoints)
+            {
+              elle::json::Object o;
+              o["ip"] = endpoint.first;
+              o["port"] = endpoint.second;
+              res.push_back(std::move(o));
+            }
+            return res;
+          };
+        json["locals"] = convert_endpoints(local_endpoints);
+        json["externals"] = convert_endpoints(public_endpoints);
+        auto url = elle::sprintf("/transaction/%s/endpoints", transaction_id);
+        reactor::http::Request request =
+          this->_client.request(this->_url(url),
+                                Method::PUT,
+                                "application/json",
+                                this->_default_configuration);
+        elle::json::write(request, json);
+        this->_handle_errors(request);
+        auto response = elle::json::read(request);
+      }
+
       ConnectDeviceResponse
       Client::connect_device(std::string const& transaction_id,
                              std::string const& device_id,
@@ -894,8 +928,9 @@ namespace infinit
         auto response = request.status();
         if (response != reactor::http::StatusCode::OK)
         {
-          ELLE_ERR("%s: error while posting: %s (%s)",
+          ELLE_ERR("%s: error while posting: %s.\n%s",
                    *this, response, request.response().string());
+          ELLE_ERR("%s", elle::Backtrace::current());
           throw elle::http::Exception(
             static_cast<elle::http::ResponseCode>(response),
             elle::sprintf("error %s while posting on %s",
@@ -918,7 +953,6 @@ namespace infinit
               break;
           %endfor
         }
-
         return out;
       }
 

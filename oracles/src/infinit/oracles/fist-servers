@@ -18,10 +18,17 @@ import reactor
 import optparse
 usage = "usage: %prog [options]"
 parser = optparse.OptionParser(usage = usage)
-parser.add_option('--mongorestore',
-                  action = 'store',
-                  help = 'The database snapshot to load',
-                  default = None)
+parser.add_option(
+  '--mongorestore',
+  action = 'store',
+  help = 'The database snapshot to load',
+  default = None)
+parser.add_option(
+  '--write-config',
+  action = 'store',
+  help = 'Write the environment configuration to a file',
+  type = str,
+  default = None)
 options, args = parser.parse_args()
 
 exit_request = False
@@ -41,8 +48,13 @@ def main():
     # shell = subprocess.Popen(os.environ['SHELL'])
     # while shell.returncode is None:
     #   reactor.sleep(datetime.timedelta(seconds = 1))
-    for key, value in environ.items():
-      print('export %s=%s' % (key, value))
+    def print_config(f):
+      for key, value in environ.items():
+        print('export %s=%s' % (key, value), file = f)
+    print_config(sys.stdout)
+    if options.write_config is not None:
+      with open(options.write_config, 'w') as f:
+        print_config(f)
     def wait_stdin_close():
       global exit_request
       while True:

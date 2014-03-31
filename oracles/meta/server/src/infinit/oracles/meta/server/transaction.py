@@ -457,10 +457,10 @@ class Mixin:
         new = True,
         )
 
-  @api('/transaction/<transaction>/endpoints', method = 'PUT')
+  @api('/transaction/<transaction_id>/endpoints', method = 'PUT')
   @require_logged_in
   def put_endpoints(self,
-                    transaction: bson.ObjectId,
+                    transaction_id: bson.ObjectId,
                     device: uuid.UUID,
                     locals = [],
                     externals = []):
@@ -472,13 +472,14 @@ class Mixin:
     externals -- a set of externals ip address and port.
     """
     user = self.user
-    transaction = self.transaction(transaction,
+    transaction = self.transaction(transaction_id,
                                    owner_id = user['_id'])
+    device_id = device
     device = self.device(id = str(device),
                          owner =  user['_id'])
-    if str(device) not in [transaction['sender_device_id'],
-                              transaction['recipient_device_id']]:
-      return self.fail(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
+    if str(device['id']) not in [transaction['sender_device_id'],
+                                 transaction['recipient_device_id']]:
+      self.forbiden('transaction is not for this device')
     node = dict()
     node['locals'] = [
       {'ip' : v['ip'], 'port' : v['port']}
@@ -492,21 +493,31 @@ class Mixin:
         'transaction %s: update node for device %s: %s' %
         (transaction, device, node)):
       transaction = self.database.transactions.find_and_modify(
-        {'_id': transaction},
-        {'$set': {'nodes.%s' % self.__user_key(user['_id'], device): node}},
+        {'_id': transaction_id},
+        {'$set': {
+          'nodes.%s' % self.__user_key(user['_id'], device_id): node
+        }},
         multi = False,
         new = True,
       )
     if len(transaction['nodes']) == 2:
       def notify(transaction, notified, other):
+        key = self.__user_key(
+          transaction['%s_id' % other],
+          uuid.UUID(transaction['%s_device_id' % other]))
+        endpoints = transaction['nodes'][key]
+        device_ids = set((transaction['%s_device_id' % notified],))
+        message = {
+          'transaction_id': str(transaction_id),
+          'peer_endpoints': endpoints,
+          'status': True,
+        }
+        import sys
+        print('NOTIFY', device_ids, message, file = sys.stderr)
         self.notifier.notify_some(
           notifier.PEER_CONNECTION_UPDATE,
-          device_ids = (transaction['%s_device_id' % notified],),
-          message = {
-            'transaction_id': str(transaction['_id']),
-            'peer_endpoints': transaction['nodes'][self.__user_key(transaction['%s_id' % other], transaction['%s_device_id' % other])],
-            'status': True,
-          },
+          device_ids = device_ids,
+          message = message,
         )
       notify(transaction, 'sender', 'recipient')
       notify(transaction, 'recipient', 'sender')
