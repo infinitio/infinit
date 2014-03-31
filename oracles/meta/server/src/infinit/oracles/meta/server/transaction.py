@@ -452,7 +452,7 @@ class Mixin:
       assert isinstance(transaction_id, bson.ObjectId)
       return self.database.transactions.find_and_modify(
         {"_id": transaction_id},
-        {"$set": {"nodes.%s" % self.__user_key(user_id, device_id): node}},
+        {"$unset": {"nodes.%s" % self.__user_key(user_id, device_id): 1}},
         multi = False,
         new = True,
         )
