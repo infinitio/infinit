@@ -1,5 +1,6 @@
 #include <boost/filesystem.hpp>
 
+#include <elle/os/environ.hh>
 #include <elle/os/path.hh>
 #include <elle/os/file.hh>
 
@@ -396,23 +397,31 @@ namespace surface
         auto& file = snapshot.file(file_id);
         files.push_back(std::make_pair(file.path(), file.size()));
       }
-      // auto meta = this->state().meta();
-      // auto token = meta.get_cloud_buffer_token(this->transaction_id());
-      // auto credentials = aws::Credentials(token.access_key_id,
-      //                                     token.secrec_access_key,
-      //                                     token.expiration);
-      // S3TransferBufferer bufferer(*this->data(),
-      //                             credentials,
-      //                             snapshot.count(),
-      //                             snapshot.total_size(),
-      //                             files,
-      //                             frete.key_code());
-      FilesystemTransferBufferer bufferer(*this->data(),
-                                          "/tmp/infinit-buffering",
-                                          snapshot.count(),
-                                          snapshot.total_size(),
-                                          files,
-                                          frete.key_code());
+      bool cloud_debug = !elle::os::getenv("INFINIT_CLOUD_FILEBUFFERER", "").empty();
+      std::unique_ptr<TransferBufferer> bufferer;
+      if (cloud_debug)
+        bufferer.reset(new FilesystemTransferBufferer(*this->data(),
+                                                      "/tmp/infinit-buffering",
+                                                      snapshot.count(),
+                                                      snapshot.total_size(),
+                                                      files,
+                                                      frete.key_code()));
+      else
+      {
+        auto& meta = this->state().meta();
+        auto token = meta.get_cloud_buffer_token(this->transaction_id());
+        auto credentials = aws::Credentials(token.access_key_id,
+                                            token.secret_access_key,
+                                            token.session_token,
+                                            token.expiration);
+        bufferer.reset(new S3TransferBufferer(*this->data(),
+                                              credentials,
+                                              snapshot.count(),
+                                              snapshot.total_size(),
+                                              files,
+                                              frete.key_code()));
+      }
+
       frete::Frete::FileSize transfer_since_snapshot = 0;
       for (frete::Frete::FileID file_id = 0; file_id < snapshot.count(); ++file_id)
       {
@@ -422,11 +431,11 @@ namespace surface
              offset < size;
              offset += chunk_size)
         {
-          ELLE_DEBUG_SCOPE("%s: buffer file %s at offset %s in the cloud",
-                           *this, file_id, offset);
+          ELLE_DEBUG_SCOPE("%s: buffer file %s at offset %s/%s in the cloud",
+                           *this, file_id, offset, size);
           auto block = frete.encrypted_read(file_id, offset, chunk_size);
           auto& buffer = block.buffer();
-          bufferer.put(file_id, offset, buffer.size(), buffer);
+          bufferer->put(file_id, offset, buffer.size(), buffer);
           transfer_since_snapshot += buffer.size();
           if (transfer_since_snapshot >= 1000000)
             this->frete().save_snapshot();
