@@ -3,6 +3,7 @@
 import infinit.oracles.meta.server
 from infinit.oracles.meta.server.mail import Mailer
 from infinit.oracles.meta.server.invitation import Invitation
+from infinit.oracles.meta.server import transaction_status
 
 import http.cookies
 import os
@@ -133,11 +134,12 @@ class Trophonius(Client):
 class NoOpMailer(Mailer):
 
   def __init__(self, op = None):
+    self.__sent = 0
     super().__init__(True)
 
   # Override Mailer private __send method.
   def _Mailer__send(self, msg):
-    self.__sent = True
+    self.__sent += 1
 
   @property
   def sent(self):
@@ -275,16 +277,24 @@ def throws(f):
   else:
     raise Exception('exception expected')
 
+def random_email(N = 10):
+  import random
+  from time import time
+  random.seed(time())
+  import string
+  return ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(N))
+
 class User(Client):
 
   def __init__(self,
                meta,
-               email,
+               email = None,
                device_name = 'device',
                **kwargs):
     super().__init__(meta)
-    self.email = email
-    self.password = meta.create_user(email,
+
+    self.email = email is not None and email or random_email() + '@infinit.io'
+    self.password = meta.create_user(self.email,
                                      **kwargs)
     self.id = meta.get('user/%s/view' % self.email)['_id']
     self.device_id = uuid4()
@@ -394,6 +404,7 @@ class User(Client):
                message = 'no message',
                is_directory = False,
                device_id = None,
+               initialize = False,
                ):
     if device_id is None:
       device_id = self.device_id
@@ -409,5 +420,7 @@ class User(Client):
     }
 
     res = self.post('transaction/create', transaction)
-
+    if initialize:
+      self.post("transaction/update", {"transaction_id": res['created_transaction_id'],
+                                       "status": transaction_status.INITIALIZED})
     return transaction, res
