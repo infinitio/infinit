@@ -1,6 +1,5 @@
 # -*- encoding: utf-8 -*-
 
-
 import bson
 import re
 import time
@@ -74,7 +73,7 @@ class Mixin:
     Errors:
     Using an id that doesn't exist.
     """
-    with elle.log.log("create transaction (recipient %s)" % id_or_email):
+    with elle.log.trace("create transaction (recipient %s)" % id_or_email):
       user = self.user
       id_or_email = id_or_email.strip()
 
@@ -275,8 +274,8 @@ class Mixin:
                           device_id = None,
                           device_name = None,
                           user = None):
-    with elle.log.log("update transaction %s: %s" %
-                      (transaction_id, status)):
+    with elle.log.trace("update transaction %s: %s" %
+                        (transaction_id, status)):
       if user is None:
         user = self.user
       if user is None:
