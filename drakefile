@@ -131,17 +131,30 @@ def configure(cxx_toolkit = None,
       libs = ('python3.2',),
       toolkit = cxx_toolkit)
   except:
-    python3 = drake.cxx.find_library(
-      'pyconfig.h',
-      prefix = python3,
-      include_dir = [
-        'include',
-        'include/python3.3',
-        'include/python3.3m',
-      ],
-      name = 'python3',
-      libs = ('python3.3',),
-      toolkit = cxx_toolkit)
+    try:
+      python3 = drake.cxx.find_library(
+        'pyconfig.h',
+        prefix = python3,
+        include_dir = [
+          'include',
+          'include/python3.3',
+          'include/python3.3m',
+        ],
+        name = 'python3',
+        libs = ('python3.3',),
+        toolkit = cxx_toolkit)
+    except:
+      python3 = drake.cxx.find_library(
+        'pyconfig.h',
+        prefix = python3,
+        include_dir = [
+          'include',
+          'include/python3.4',
+          'include/python3.4m',
+        ],
+        name = 'python3',
+        libs = ('python3.4',),
+        toolkit = cxx_toolkit)
 
   ## ------- ##
   ## Version ##
