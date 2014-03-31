@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+
+import os
+
+from utils import Meta, Trophonius, User, NoOpMailer
+from infinit.oracles.meta.server.mail import Mailer
+from infinit.oracles.meta.server import transaction_status
+
+class UMailer(NoOpMailer):
+
+  def __init__(self):
+    super().__init__(True)
+    self.__summaries = 0
+
+  def templated_send(self, **kw):
+    if kw['template_id'] == 'daily-summary':
+      self.__summaries += 1
+    NoOpMailer.templated_send(self, **kw)
+
+  @property
+  def summaries(self):
+    return self.__summaries
+
+  @property
+  def summaries(self):
+    return self.__summaries
+
+  @summaries.setter
+  def summaries(self, i):
+    self.__summaries += i
+
+class RaisingMailer(UMailer):
+
+  def __init__(self):
+    super().__init__()
+
+  def templated_send(self, **kw):
+    if self.summaries == 0:
+      self.summaries += 1
+      raise BaseException("impossible to send")
+    UMailer.templated_send(self, **kw)
+
+with Meta(force_admin = True) as meta, Trophonius(meta) as trophonius:
+  bob = User(meta)
+  alice = User(meta)
+  eve = User(meta)
+  serge = User(meta)
+
+  bob.login()
+  alice.login()
+  eve.login()
+  serge.login()
+
+  trophonius.connect_user(bob)
+  trophonius.connect_user(alice)
+  trophonius.connect_user(eve)
+  trophonius.connect_user(serge)
+
+  bob.sendfile(alice.email, initialize = True)
+  bob.sendfile(alice.email, initialize = True)
+  bob.sendfile(alice.email, initialize = True)
+  alice.sendfile(eve.email, initialize = True)
+  bob.sendfile(eve.email, initialize = True)
+  bob.sendfile(serge.email, initialize = True)
+
+  meta.mailer = UMailer()
+
+  res = meta.post('cron/daily-summary')
+  assert(res['success'])
+  print(meta.mailer.sent)
+  assert meta.mailer.sent == 3
+  assert meta.mailer.sent == meta.mailer.summaries
+
+  # Alice connect.
+  meta.mailer = UMailer()
+  alice.logout()
+  alice.login()
+
+  res = meta.post('cron/daily-summary')
+  assert(res['success'])
+  assert meta.mailer.sent == 2
+  assert meta.mailer.sent == meta.mailer.summaries
+
+  meta.mailer = RaisingMailer()
+  res = meta.post('cron/daily-summary')
+  assert(res['success'])
+  assert meta.mailer.sent == 1
+  assert meta.mailer.summaries == 2

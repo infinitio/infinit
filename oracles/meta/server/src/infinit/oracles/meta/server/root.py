@@ -293,3 +293,62 @@ class Mixin:
                {"time": {"$exists": False}}]},
       multi = True)
     return self.success(res)
+
+  @api('/cron/daily-summary', method = 'POST')
+  @require_admin
+  def daily_summary(self):
+    """
+    Send a summary of the unaccepted transfers of the day received after the
+    last connection.
+    """
+    with elle.log.trace('run daily cron'):
+      # Hardcoded 86400 represents a day in seconds. The system is for daily
+      # report.
+      query = {
+        'status': transaction_status.INITIALIZED,
+        'mtime': {'$gt': time.time() - 86400},
+      }
+      group = {
+        '_id': '$recipient_id',
+        'mtime': {'$max': '$mtime'},
+        'peers': {'$addToSet': '$sender_id'},
+        'count': {'$sum': 1},
+      }
+      transactions = self.database.transactions.aggregate([
+        {'$match': query},
+        {'$group': group},
+        ])['result']
+
+      users = dict()
+      for transaction in transactions:
+        query = {
+          '_id': transaction['_id'],
+          'last_connection': {'$lt': transaction['mtime']}
+        }
+        u = self.database.users.find_one(query, fields = ['email'])
+        if u:
+          query = {
+            '_id': {'$in': transaction['peers']},
+          }
+          fields = {'fullname': 1, '_id': 0}
+
+          peer = self.database.users.find(query = query,
+                                          fields = fields)
+          users[u['email']] = (transaction['count'],
+                               list(map(lambda x: x['fullname'], peer)))
+      elle.log.debug('%s users to mail' % len(users))
+      template_id = 'daily-summary'
+      for email in users.keys():
+        subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS[template_id] % {
+          'count': users[email][0] }
+        try:
+          with elle.log.debug('send email'):
+            self.mailer.templated_send(
+              to = email,
+              template_id = template_id,
+              subject = subject,
+              peers = ', '.join(users[email][1])
+            )
+        except BaseException as e:
+          elle.log.err("enable to send mail to %s: %s" % (email, str(e)))
+      return self.success()
