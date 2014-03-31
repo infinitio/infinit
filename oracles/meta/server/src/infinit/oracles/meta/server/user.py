@@ -5,7 +5,7 @@ import bson
 import uuid
 import elle.log
 
-from .utils import api, require_logged_in, require_admin, hash_pasword
+from .utils import api, require_logged_in, require_admin, hash_pasword, json_value
 from . import error, notifier, regexp, conf, invitation
 
 from pymongo import DESCENDING
@@ -409,25 +409,37 @@ class Mixin:
 
   @api('/user/search_emails')
   @require_logged_in
-  def users_by_emails_search(self, emails, limit = 200, offset = 0):
+  def users_by_emails_search(self,
+                             emails : json_value = {},
+                             limit : int = 50,
+                             offset : int = 0):
     """Search users for a list of emails.
 
     emails -- list of emails to search with.
     limit -- the maximum number of results.
     offset -- number to skip in search.
     """
-    with elle.log.trace("%s: search %s emails (limit: %s)" %
-                        (self.user['_id'], emails.count(), limit))
+    with elle.log.trace("%s: search %s emails (limit: %s, offset: %s)" %
+                        (self.user['_id'], len(emails), limit, offset)):
+      fields = {
+        'id': '$_id',
+        'email' : '$email',
+        'public_key': '$public_key',
+        'fullname': '$fullname',
+        'handle': '$handle',
+        'connected_devices': '$connected_devices',
+        'status': '$status',
+      }
       res = self.database.users.find(
         {
           'email': {'$in': emails},
           'register_status': 'ok',
         },
-        fields = ["_id"],
+        fields = fields,
         limit = limit,
         skip = offset,
       )
-      return {'users': res}
+      return {'users': list(res)}
 
   @api('/user/search', method = 'POST')
   # XXX: This call is used by the waterfall which does not login. We need to
