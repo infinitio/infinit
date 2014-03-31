@@ -330,7 +330,6 @@ namespace surface
     State::users_by_emails(std::vector<std::string> const& emails) const
     {
       auto users = this->meta().search_users_by_emails(emails);
-      std::cerr << "users_by_emails: " << users.size() << "\n";
       std::unordered_map<std::string, uint32_t> res;
       for (auto const& user: users)
       {
