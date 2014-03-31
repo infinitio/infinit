@@ -384,6 +384,9 @@ namespace surface
       UserIndexes
       user_search(std::string const& text) const;
 
+      std::unordered_map<std::string, uint32_t>
+      users_by_emails(std::vector<std::string> const& emails) const;
+
       bool
       device_status(std::string const& user_id,
                     std::string const& device_id) const;
