@@ -23,7 +23,7 @@
 # include <infinit/oracles/trophonius/Client.hh>
 # include <surface/gap/Device.hh>
 # include <surface/gap/Exception.hh>
-# include <surface/gap/gap.h>
+# include <surface/gap/gap.hh>
 # include <surface/gap/Notification.hh>
 # include <surface/gap/Self.hh>
 # include <surface/gap/Transaction.hh>
