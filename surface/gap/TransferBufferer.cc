@@ -36,6 +36,18 @@ namespace surface
     TransferBufferer::finish()
     {}
 
+    TransferBufferer::FileSize
+    TransferBufferer::file_size(FileID f)
+    {
+      return files_info()[f].second;
+    }
+
+    std::string
+    TransferBufferer::path(FileID f)
+    {
+      return files_info()[f].first;
+    }
+
     infinit::cryptography::Code
     TransferBufferer:: encrypted_read_acknowledge(FileID f, FileOffset start, FileSize size, FileSize progress)
     {

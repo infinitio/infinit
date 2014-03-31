@@ -60,6 +60,12 @@ namespace surface
       virtual
       std::vector<std::pair<std::string, FileSize>>
       files_info() const = 0;
+      // For backward compatibility
+      FileSize
+      file_size(FileID f);
+      // For backward compatibility
+      std::string
+      path(FileID f);
       /// Return a weakly crypted chunck of a file.
       virtual
       infinit::cryptography::Code
