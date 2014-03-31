@@ -311,7 +311,13 @@ namespace infinit
         user_from_public_key(std::string const& public_key) const;
 
         UsersResponse
-        search_users(std::string const& text, int count = 10, int offset = 0) const;
+        search_users(
+          std::string const& text, int count = 10, int offset = 0) const;
+
+        std::unordered_map<std::string, User>
+        search_users_by_emails(std::vector<std::string> const& emails,
+                               int limit = 10,
+                               int offset = 0) const;
 
         SwaggersResponse
         get_swaggers() const;
@@ -393,6 +399,12 @@ namespace infinit
         typedef std::vector<std::pair<std::string, uint16_t>> adapter_type;
 
       public:
+        void
+        transaction_endpoints_put(std::string const& transaction_id,
+                                  std::string const& device_id,
+                                  adapter_type const& local_endpoints,
+                                  adapter_type const& public_endpoints) const;
+
         ConnectDeviceResponse
         connect_device(std::string const& transaction_id,
                        std::string const& device_id,

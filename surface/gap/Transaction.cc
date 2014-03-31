@@ -356,12 +356,6 @@ namespace surface
       ELLE_ASSERT_EQ(this->_data->id, update.transaction_id);
       // Notification should only be sent to the sender device and the
       // recipient device concerned by this transaction.
-      ELLE_ASSERT(
-        std::find(update.devices.begin(), update.devices.end(),
-                  this->_data->sender_device_id) != update.devices.end());
-      ELLE_ASSERT(
-        std::find(update.devices.begin(), update.devices.end(),
-                  this->_data->recipient_device_id) != update.devices.end());
       ELLE_DEBUG("notify machine of the peer availability change")
         this->_machine->peer_availability_changed(update.status);
     }

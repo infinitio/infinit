@@ -1,6 +1,7 @@
 #ifndef INFINIT_ORACLES_TROPHONIUS_CLIENT_HH
 # define INFINIT_ORACLES_TROPHONIUS_CLIENT_HH
 
+
 # include <infinit/oracles/Transaction.hh>
 
 # include <boost/date_time/posix_time/posix_time_types.hpp>
@@ -107,13 +108,12 @@ namespace infinit
       struct PeerReachabilityNotification:
         public Notification
       {
+        PeerReachabilityNotification();
         std::string transaction_id;
         bool status;
-        std::vector<std::string> devices;
-
-        ELLE_SERIALIZE_CONSTRUCT(PeerReachabilityNotification,
-                                 Notification)
-        {}
+        typedef std::pair<std::string, int> Endpoint;
+        std::vector<Endpoint> endpoints_local;
+        std::vector<Endpoint> endpoints_public;
       };
 
       struct MessageNotification:
@@ -126,12 +126,6 @@ namespace infinit
                                  Notification)
         {}
       };
-
-      /// Build a notification with the 'good' type from a dictionnary.
-      /// The notification type is determined by the "notification_type" field
-      /// presents in the dictionary.
-      std::unique_ptr<Notification>
-      notification_from_dict(json::Dictionary const& dict);
 
       class Client:
         public elle::Printable

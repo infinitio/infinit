@@ -12,7 +12,7 @@
 
 #include <CrashReporter.hh>
 
-#include <surface/gap/gap.h>
+#include <surface/gap/gap.hh>
 #include <surface/gap/State.hh>
 
 #include <version.hh>

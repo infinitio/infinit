@@ -326,6 +326,22 @@ namespace surface
       return result;
     }
 
+    std::unordered_map<std::string, uint32_t>
+    State::users_by_emails(std::vector<std::string> const& emails) const
+    {
+      auto users = this->meta().search_users_by_emails(emails);
+      std::unordered_map<std::string, uint32_t> res;
+      for (auto const& user: users)
+      {
+        this->user_sync(user.second);
+        std::pair<std::string, uint32_t> item;
+        item.first = user.first;
+        item.second = this->_user_indexes.at(user.second.id);
+        res.insert(item);
+      }
+      return res;
+    }
+
     elle::ConstWeakBuffer
     State::user_icon(std::string const& user_id) const
     {

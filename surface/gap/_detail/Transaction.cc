@@ -69,11 +69,12 @@ namespace surface
         {
           auto snapshot_path =
             boost::filesystem::path{iterator->path().native()}.string();
-          ELLE_TRACE("%s: load transaction snapshot %s", *this, snapshot_path);
+          ELLE_TRACE_SCOPE("%s: load transaction snapshot %s",
+                           *this, snapshot_path);
           elle::SafeFinally delete_snapshot(
             [&snapshot_path]
             {
-              ELLE_DEBUG("remove snashot");
+              ELLE_DEBUG("remove snapshot");
               boost::system::error_code ec;
               auto res =
                 boost::filesystem::remove(
@@ -122,13 +123,19 @@ namespace surface
                               snapshot->data.id));
             }
 
-            auto _id = generate_id();
-            ELLE_TRACE("%s: create transaction from snapshot", *this)
+            auto transaction = snapshot.release();
+            ELLE_TRACE("%s: update transaction with status from meta", *this)
+            {
+              auto meta_transaction =
+                this->meta().transaction(transaction->data.id);
+              auto _id = generate_id();
               this->_transactions.emplace(
                 std::piecewise_construct,
                 std::make_tuple(_id),
                 std::forward_as_tuple(*this, _id,
-                                      std::move(*snapshot.release())));
+                                      std::move(*transaction)));
+              this->_on_transaction_update(meta_transaction);
+            }
           }
           catch (std::exception const&)
           {
@@ -136,12 +143,6 @@ namespace surface
                      *this, snapshot_path, elle::exception_string());
             continue;
           }
-        }
-        for (auto& transaction: this->_transactions)
-        {
-          ELLE_ASSERT(transaction.second.data() != nullptr);
-          this->_on_transaction_update(
-            std::move(this->meta().transaction(transaction.second.data()->id)));
         }
       }
       ELLE_TRACE("%s: load transactions from meta", *this)

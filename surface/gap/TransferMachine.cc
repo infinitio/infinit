@@ -212,11 +212,13 @@ namespace surface
       this->_fsm.transition_add_catch(
         publish_interfaces_state,
         stopped_state)
-        .action([this, &owner]
-                {
-                  ELLE_ERR("%s: interface publication failed", *this);
-                  owner.failed().open();
-                });
+        .action_exception(
+          [this, &owner] (std::exception_ptr exception)
+          {
+            ELLE_ERR("%s: interface publication failed: %s",
+                     *this, elle::exception_string(exception));
+            owner.failed().open();
+          });
       this->_fsm.transition_add_catch(
         wait_for_peer_state,
         stopped_state)
@@ -322,12 +324,11 @@ namespace surface
       }
       ELLE_DEBUG("addresses: %s", addresses);
       AddressContainer public_addresses;
-      this->_owner.state().meta().connect_device(
+      this->_owner.state().meta().transaction_endpoints_put(
         this->_owner.data()->id,
         this->_owner.state().passport().id(),
         addresses,
         public_addresses);
-      ELLE_DEBUG("%s: interfaces published", *this);
     }
 
     std::unique_ptr<reactor::network::Socket>

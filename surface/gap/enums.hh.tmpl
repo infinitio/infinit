@@ -32,6 +32,13 @@ extern "C"
 
   typedef enum
   {
+    gap_user_status_offline = 0,
+    gap_user_status_online = 1,
+    gap_user_status_busy = 2,
+  } gap_UserStatus;
+
+  typedef enum
+  {
     NotificationType_NewTransaction,
     NotificationType_TransactionUpdate,
     NotificationType_UserStatusUpdate,

@@ -21,12 +21,13 @@ def configure(cxx_toolkit = None,
               python3 = None,
               build_type = "Development",
               enable_debug = True,
-	      qt = None,
+      	      qt = None,
               valgrind = None):
 
   ## ----- ##
   ## Rules ##
   ## ----- ##
+
 
   build = drake.Rule('build')
   check = drake.TestSuite('check')
@@ -130,17 +131,30 @@ def configure(cxx_toolkit = None,
       libs = ('python3.2',),
       toolkit = cxx_toolkit)
   except:
-    python3 = drake.cxx.find_library(
-      'pyconfig.h',
-      prefix = python3,
-      include_dir = [
-        'include',
-        'include/python3.3',
-        'include/python3.3m',
-      ],
-      name = 'python3',
-      libs = ('python3.3',),
-      toolkit = cxx_toolkit)
+    try:
+      python3 = drake.cxx.find_library(
+        'pyconfig.h',
+        prefix = python3,
+        include_dir = [
+          'include',
+          'include/python3.3',
+          'include/python3.3m',
+        ],
+        name = 'python3',
+        libs = ('python3.3',),
+        toolkit = cxx_toolkit)
+    except:
+      python3 = drake.cxx.find_library(
+        'pyconfig.h',
+        prefix = python3,
+        include_dir = [
+          'include',
+          'include/python3.4',
+          'include/python3.4m',
+        ],
+        name = 'python3',
+        libs = ('python3.4',),
+        toolkit = cxx_toolkit)
 
   ## ------- ##
   ## Version ##
@@ -470,7 +484,7 @@ def configure(cxx_toolkit = None,
       'surface/gap/_detail/User.cc',
       'surface/gap/enums.hh.tmpl',
       'surface/gap/gap.cc',
-      'surface/gap/gap.h',
+      'surface/gap/gap.hh',
       'surface/gap/gap_bridge.hh',
       'surface/gap/status.hh.tmpl',
       # Get rid of common asap.
@@ -502,7 +516,7 @@ def configure(cxx_toolkit = None,
     gap_cxx_config_libs.lib('ws2_32')
     gap_cxx_config_libs.lib('gdi32')
     gap_cxx_config_libs.lib('mswsock')
-  gap_lib = drake.cxx.DynLib(
+  gap_lib = Library(
     'lib/gap',
     gap_sources + [
       aws_lib,
@@ -641,7 +655,7 @@ def configure(cxx_toolkit = None,
     state_cxx_config_libs.lib('ws2_32')
     state_cxx_config_libs.lib('gdi32')
     state_cxx_config_libs.lib('mswsock')
-  state_lib = drake.cxx.DynLib(
+  state_lib = Library(
     'lib/state',
     state_sources + [
       aws_lib,

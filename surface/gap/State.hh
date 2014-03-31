@@ -23,7 +23,7 @@
 # include <infinit/oracles/trophonius/Client.hh>
 # include <surface/gap/Device.hh>
 # include <surface/gap/Exception.hh>
-# include <surface/gap/gap.h>
+# include <surface/gap/gap.hh>
 # include <surface/gap/Notification.hh>
 # include <surface/gap/Self.hh>
 # include <surface/gap/Transaction.hh>
@@ -383,6 +383,9 @@ namespace surface
 
       UserIndexes
       user_search(std::string const& text) const;
+
+      std::unordered_map<std::string, uint32_t>
+      users_by_emails(std::vector<std::string> const& emails) const;
 
       bool
       device_status(std::string const& user_id,

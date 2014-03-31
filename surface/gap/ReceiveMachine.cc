@@ -535,7 +535,18 @@ namespace surface
       if (last_index > 0)
         --last_index;
 
-      auto infos = source.files_info();
+      std::vector<std::pair<std::string, FileSize>> infos;
+      if (peer_version >= elle::Version(0, 8, 9))
+        infos = source.files_info();
+      else
+      {
+        for (int i = 0; i < count; ++i)
+        {
+          auto path = source.path(i);
+          auto size = source.file_size(i);
+          infos.push_back(std::make_pair(path, size));
+        }
+      }
 
       ELLE_ASSERT(infos.size() >= this->_snapshot->count());
       // reconstruct directory name mapping data so that files in transfer

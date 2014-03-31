@@ -91,7 +91,6 @@ class Meta(bottle.Bottle,
     self.__resources_path = '%s/resources' % share_path
     # Templates
     self.__mako_path = '%s/templates' % share_path
-    print(self.__mako_path)
     self.__mako = mako.lookup.TemplateLookup(
       directories = [self.__mako_path]
     )
@@ -184,8 +183,8 @@ class Meta(bottle.Bottle,
   def abort(self, message):
     bottle.abort(500, message)
 
-  def forbiden(self):
-    bottle.abort(403)
+  def forbiden(self, message = None):
+    bottle.abort(403, message)
 
   def not_found(self, message = None):
     bottle.abort(404, message)

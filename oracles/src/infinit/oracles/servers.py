@@ -87,7 +87,7 @@ class Oracles:
     # Note: we are actually setting the ssl port, which is the one used
     if self.__force_trophonius_port is not None:
       tropho_tcp_port = self.__force_trophonius_port
-    self._trophonius = infinit.oracles.trophonius.server.Trophonius(tropho_tcp_port, 0, 'http', '127.0.0.1', self._meta.port, 0, timedelta(seconds=30), timedelta(seconds = 5), timedelta(seconds=7))
+    self._trophonius = infinit.oracles.trophonius.server.Trophonius(tropho_tcp_port, 0, 'http', '127.0.0.1', self._meta.port, 0, timedelta(seconds=30), timedelta(seconds = 60), timedelta(seconds=10))
     elle.log.trace('starting apertus')
     self._apertus = infinit.oracles.apertus.server.Apertus('http', '127.0.0.1', self._meta.port, '127.0.0.1', 0, 0, timedelta(seconds = 10), timedelta(minutes = 5))
     elle.log.trace('ready')

@@ -38,6 +38,19 @@ class Mixin:
         raise error.Error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
     return transaction
 
+  @api('/transaction/<id>')
+  @require_logged_in
+  def transaction_view(self, id: bson.ObjectId):
+    try:
+      return self.transaction(id, self.user['_id'])
+    except error.Error as e:
+      # Am I giving too much information ?
+      if e.args == error.TRANSACTION_DOESNT_BELONG_TO_YOU:
+        self.forbidden('transaction %s doesn\'t belong to you' % id)
+      else:
+        self.not_found('transaction %s doesn\'t exist' % id)
+
+  # FIXME: This is backward compatibility for /transaction/<id>.
   @api('/transaction/<id>/view')
   @require_logged_in
   def transaction_view(self, id: bson.ObjectId):
@@ -442,6 +455,72 @@ class Mixin:
         multi = False,
         new = True,
         )
+
+  @api('/transaction/<transaction_id>/endpoints', method = 'PUT')
+  @require_logged_in
+  def put_endpoints(self,
+                    transaction_id: bson.ObjectId,
+                    device: uuid.UUID,
+                    locals = [],
+                    externals = []):
+    """
+    Connect the device to a transaction (setting ip and port).
+    _id -- the id of the transaction.
+    device -- the id of the device to link with.
+    locals -- a set of local ip address and port.
+    externals -- a set of externals ip address and port.
+    """
+    user = self.user
+    transaction = self.transaction(transaction_id,
+                                   owner_id = user['_id'])
+    device_id = device
+    device = self.device(id = str(device),
+                         owner =  user['_id'])
+    if str(device['id']) not in [transaction['sender_device_id'],
+                                 transaction['recipient_device_id']]:
+      self.forbiden('transaction is not for this device')
+    node = dict()
+    node['locals'] = [
+      {'ip' : v['ip'], 'port' : v['port']}
+      for v in locals or () if v['ip'] != '0.0.0.0'
+    ]
+    node['externals'] = [
+      {'ip' : v['ip'], 'port' : v['port']}
+      for v in externals or () if v['ip'] != '0.0.0.0'
+    ]
+    with elle.log.trace(
+        'transaction %s: update node for device %s: %s' %
+        (transaction, device, node)):
+      transaction = self.database.transactions.find_and_modify(
+        {'_id': transaction_id},
+        {'$set': {
+          'nodes.%s' % self.__user_key(user['_id'], device_id): node
+        }},
+        multi = False,
+        new = True,
+      )
+    if len(transaction['nodes']) == 2:
+      def notify(transaction, notified, other):
+        key = self.__user_key(
+          transaction['%s_id' % other],
+          uuid.UUID(transaction['%s_device_id' % other]))
+        endpoints = transaction['nodes'][key]
+        device_ids = set((transaction['%s_device_id' % notified],))
+        message = {
+          'transaction_id': str(transaction_id),
+          'peer_endpoints': endpoints,
+          'status': True,
+        }
+        import sys
+        print('NOTIFY', device_ids, message, file = sys.stderr)
+        self.notifier.notify_some(
+          notifier.PEER_CONNECTION_UPDATE,
+          device_ids = device_ids,
+          message = message,
+        )
+      notify(transaction, 'sender', 'recipient')
+      notify(transaction, 'recipient', 'sender')
+    return self.success()
 
   @api('/transaction/connect_device', method = "POST")
   @require_logged_in

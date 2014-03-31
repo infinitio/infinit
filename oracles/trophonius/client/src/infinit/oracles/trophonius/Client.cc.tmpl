@@ -101,19 +101,6 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::TransactionNotification,
   ar & base_class<infinit::oracles::Transaction>(value);
 }
 
-ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::PeerReachabilityNotification);
-ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::PeerReachabilityNotification,
-                      ar,
-                      value,
-                      version)
-{
-  (void)version;
-  ar & base_class<infinit::oracles::trophonius::Notification>(value);
-  ar & named("transaction_id", value.transaction_id);
-  ar & named("status", value.status);
-  ar & named("devices", value. devices);
-}
-
 ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::MessageNotification);
 ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::MessageNotification,
                       ar,
@@ -143,9 +130,10 @@ namespace infinit
       boost::posix_time::time_duration const default_ping_period(
         boost::posix_time::seconds(30));
 
-        /*--------------.
-        | Notifications |
-        `--------------*/
+      /*--------------.
+      | Notifications |
+      `--------------*/
+
       void
       Notification::print(std::ostream& stream) const
       {
@@ -167,13 +155,47 @@ namespace infinit
                << *static_cast<Transaction const*>(this);
       }
 
+      PeerReachabilityNotification::PeerReachabilityNotification()
+        : Notification(NotificationType::peer_connection_update)
+      {}
+
+      static
       std::unique_ptr<Notification>
-      notification_from_dict(json::Dictionary const& dict)
+      notification_from_dict(elle::json::Object const& json)
       {
-        ELLE_TRACE("convert json %s to Notification instance", dict.repr());
-        NotificationType type = dict["notification_type"].as<NotificationType>();
+        ELLE_TRACE("convert json %s to notification", json);
+        auto type =
+          NotificationType(
+            boost::any_cast<int64_t>(json.at("notification_type")));
+        if (type == NotificationType::peer_connection_update)
+        {
+          auto res = elle::make_unique<PeerReachabilityNotification>();
+          elle::json::write(std::cerr, json);
+          res->transaction_id =
+            boost::any_cast<std::string>(json.at("transaction_id"));
+          res->status =
+            boost::any_cast<bool>(json.at("status"));
+          if (res->status)
+          {
+            auto const& endpoints =
+              boost::any_cast<elle::json::Object>(json.at("peer_endpoints"));
+            for (auto const& elt_:
+                   boost::any_cast<elle::json::Array>(endpoints.at("locals")))
+            {
+              auto const& elt = boost::any_cast<elle::json::Object>(elt_);
+              auto ip = boost::any_cast<std::string>(elt.at("ip"));
+              auto port = boost::any_cast<int64_t>(elt.at("port"));
+              res->endpoints_local.push_back(
+                PeerReachabilityNotification::Endpoint(ip, port));
+            }
+          }
+          return std::move(res);
+        }
         using namespace elle::serialize;
-        auto extractor = from_string<InputJSONArchive>(dict.repr());
+        std::stringstream stream;
+        elle::json::write(stream, json);
+        auto repr = stream.str();
+        auto extractor = from_string<InputJSONArchive>(repr);
         typedef std::unique_ptr<Notification> Ptr;
         switch (type)
         {
@@ -182,7 +204,7 @@ namespace infinit
           case NotificationType::transaction:
             return Ptr(new TransactionNotification{extractor});
           case NotificationType::peer_connection_update:
-            return Ptr(new PeerReachabilityNotification{extractor});
+            elle::unreachable();
           case NotificationType::new_swagger:
             return Ptr(new NewSwaggerNotification{extractor});
           case NotificationType::user_status:
@@ -221,7 +243,6 @@ namespace infinit
         Client::ReconnectPokeFailedCallback reconnect_failed_callback;
         std::unique_ptr<reactor::Thread> _connect_callback_thread;
         std::exception_ptr _poll_exception;
-        elle::Buffer _buffer;
 
         Impl(std::string const& server,
              uint16_t port,
@@ -239,7 +260,6 @@ namespace infinit
           connect_callback{connect_callback},
           reconnect_failed_callback{reconnect_failed_callback},
           _poll_exception(),
-          _buffer{},
           _poke_sent_signal(),
           _ping_period(default_ping_period),
           _ping_timeout(this->_ping_period * 2),
@@ -255,9 +275,7 @@ namespace infinit
                        elle::sprintf("%s read thread", *this),
                        [&] () { this->read_thread(); }),
           _poke_timeout(15_sec)
-        {
-          this->_buffer.capacity(1024);
-        }
+        {}
 
         ~Impl()
         {
@@ -505,7 +523,6 @@ namespace infinit
             this->_connect_callback_thread->terminate_now();
             this->_connect_callback_thread.reset();
           }
-          this->_buffer.reset();
           if (this->_socket)
           {
             this->_socket->close();
@@ -687,43 +704,15 @@ namespace infinit
         std::unique_ptr<Notification>
         read()
         {
+          ELLE_DEBUG_SCOPE("%s: read message", *this);
           auto socket = this->_socket;
-
-          this->_buffer.size(0);
-          ELLE_DEBUG("%s: reading message", *this);
-          size_t idx = 0;
-          while (true)
-          {
-            elle::IOStreamClear clearer(*socket);
-            socket->getline(((char*)this->_buffer.mutable_contents()) + idx,
-                            this->_buffer.capacity() - idx, '\n');
-            if (!socket->fail())
-            {
-              this->_buffer.size(idx + socket->gcount());
-              break;
-            }
-            idx = this->_buffer.capacity() - 1;
-            this->_buffer.capacity(this->_buffer.capacity() * 2);
-          }
-          if (this->_buffer.size() == 0)
-          {
-            ELLE_ERR("Empty line read from tropho: bad:%s fail:%s eof:%s gcount:%s",
-                     socket->bad(), socket->fail(), socket->eof(), socket->gcount());
-            // XXX getline should not return an empty buffer, but throw a
-            // massive exception.
-            throw elle::Exception{"read an empty buffer"};
-          }
-
-          ELLE_TRACE_SCOPE("%s: got message", *this);
-          // XXX: Shitty JSON parser seeks.
-          // elle::InputStreamBuffer<elle::Buffer> streambuffer(buffer);
-          // std::istream input(&streambuffer);
-          std::string buffer_str(reinterpret_cast<char const*>(
-                                   this->_buffer.contents()),
-                                 this->_buffer.size());
-          std::stringstream input(buffer_str);
-          ELLE_DUMP("%s: contents: %s", *this, buffer_str);
-          return notification_from_dict(json::parse(input)->as_dictionary());
+          auto buffer = socket->read_until("\n");
+          ELLE_TRACE("%s: got message: %f", *this, buffer);
+          elle::InputStreamBuffer<elle::Buffer> streambuffer(buffer);
+          std::istream input(&streambuffer);
+          auto json = boost::any_cast<elle::json::Object>(
+            elle::json::read(input));
+          return notification_from_dict(json);
         }
 
         std::queue<std::unique_ptr<Notification>> _notifications;
@@ -906,8 +895,8 @@ namespace infinit
                       std::string const& device_id,
                       std::string const& session_id)
       {
-        ELLE_TRACE("%s: connecting with id %s, session %s, device_id %s",
-                   *this, _id, session_id, device_id);
+        ELLE_TRACE_SCOPE("%s: connecting with id %s, session %s, device_id %s",
+                         *this, _id, session_id, device_id);
 
         this->_impl->user_id = _id;
         this->_impl->user_session_id = session_id;
