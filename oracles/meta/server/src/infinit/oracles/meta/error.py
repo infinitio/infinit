@@ -4,7 +4,7 @@ errors = {
   'unknown_user': (-103, "This user doesn't seem to exist."),
   'operation_not_permitted': (-104, "Operation not permitted."),
   'email_not_confirmed': (-105, "Your email has not been confirmed."),
-  'email_already_confirmed': (-105, "Your email has already been confirmed."),
+  'email_already_confirmed': (-106, "Your email has already been confirmed."),
   'bad_request': (-200, "This request is bad formed."),
   'field_is_empty': (-201, "This field is empty."),
   'email_not_valid': (-210, "This email is not valid."),
