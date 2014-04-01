@@ -381,6 +381,17 @@ namespace surface
 
     static std::streamsize const chunk_size = 1 << 18;
 
+    typedef std::pair<frete::Frete::FileSize, frete::Frete::FileID> Position;
+    static frete::Frete::FileSize
+    progress_from(std::vector<std::pair<std::string, frete::Frete::FileSize>> const& infos, const Position& p)
+    {
+      frete::Frete::FileSize result = 0;
+      for (unsigned i=0; i<p.first; ++i)
+        result += infos[i].second;
+      result += p.second;
+      return result;
+    }
+
     void
     SendMachine::_cloud_operation()
     {
@@ -427,6 +438,8 @@ namespace surface
                                               frete.key_code()));
       }
 
+      /* Pipelined cloud upload with periodic local snapshot update
+      */
       int num_threads = 8;
       std::string snum_threads = elle::os::getenv("INFINIT_NUM_CLOUD_UPLOAD_THREAD", "");
       if (!snum_threads.empty())
@@ -437,6 +450,11 @@ namespace surface
       FileID current_file = FileID(-1);
       FileSize current_position = 0;
       FileSize current_file_size = 0;
+      // per-thread last pos
+      std::vector<Position> last_acknowledge_block(
+        num_threads, std::make_pair(0,0));
+      FileSize acknowledge_position = 0;
+      bool save_snapshot = false; // reqest one-shot snapshot save
       auto pipeline_cloud_upload = [&, this](int id)
       {
         while(true)
@@ -455,12 +473,37 @@ namespace surface
           FileSize local_file = current_file;
           FileSize local_position = current_position;
           current_position += chunk_size;
-          auto block = frete.encrypted_read(local_file, local_position, chunk_size);
+          auto block = frete.encrypted_read_acknowledge(
+            local_file, local_position, chunk_size, acknowledge_position);
+          if (save_snapshot)
+          {
+            this->frete().save_snapshot();
+            save_snapshot = false;
+          }
           auto& buffer = block.buffer();
           bufferer->put(local_file, local_position, buffer.size(), buffer);
           transfer_since_snapshot += buffer.size();
+          last_acknowledge_block[id] = std::make_pair(local_file, local_position);
           if (transfer_since_snapshot >= 1000000)
-            this->frete().save_snapshot();
+          {
+            // Update acknowledge position
+            // First find the smallest value in per-thread last_ack
+            // Since each thread is fetching blocks monotonically,
+            // we know all blocks before that are acknowledged
+            Position pmin = *std::min_element(
+              last_acknowledge_block.begin(),
+              last_acknowledge_block.end(),
+              [](const Position& a, const Position&b)
+              {
+                if (a.first != b.first)
+                  return a.first < b.first;
+                else
+                  return a.second < b.second;
+              });
+            acknowledge_position = progress_from(this->frete().files_info(), pmin);
+            // need one call to read_acknowledge for save to have effect:async
+            save_snapshot = true;
+          }
         }
       };
       elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
