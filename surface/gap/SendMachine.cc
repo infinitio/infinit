@@ -422,25 +422,49 @@ namespace surface
                                               frete.key_code()));
       }
 
-      frete::Frete::FileSize transfer_since_snapshot = 0;
-      for (frete::Frete::FileID file_id = 0; file_id < snapshot.count(); ++file_id)
+      int num_threads = 8;
+      std::string snum_threads = elle::os::getenv("INFINIT_NUM_CLOUD_UPLOAD_THREAD", "");
+      if (!snum_threads.empty())
+        num_threads = boost::lexical_cast<int>(snum_threads);
+      typedef frete::Frete::FileSize FileSize;
+      typedef frete::Frete::FileID FileID;
+      FileSize transfer_since_snapshot = 0;
+      FileID current_file = FileID(-1);
+      FileSize current_position = 0;
+      FileSize current_file_size = 0;
+      auto pipeline_cloud_upload = [&, this](int id)
       {
-        auto& file = snapshot.file(file_id);
-        auto size = file.size();
-        for (frete::Frete::FileOffset offset = file.progress();
-             offset < size;
-             offset += chunk_size)
+        while(true)
         {
+          while (current_position >= current_file_size)
+          {
+            ++current_file;
+            if (current_file >= snapshot.count())
+              return;
+            auto& file = snapshot.file(current_file);
+            current_file_size = file.size();
+            current_position = file.progress();
+          }
           ELLE_DEBUG_SCOPE("%s: buffer file %s at offset %s/%s in the cloud",
-                           *this, file_id, offset, size);
-          auto block = frete.encrypted_read(file_id, offset, chunk_size);
+                           *this, current_file, current_position, current_file_size);
+          FileSize local_file = current_file;
+          FileSize local_position = current_position;
+          current_position += chunk_size;
+          auto block = frete.encrypted_read(local_file, local_position, chunk_size);
           auto& buffer = block.buffer();
-          bufferer->put(file_id, offset, buffer.size(), buffer);
+          bufferer->put(local_file, local_position, buffer.size(), buffer);
           transfer_since_snapshot += buffer.size();
           if (transfer_since_snapshot >= 1000000)
             this->frete().save_snapshot();
         }
-      }
+      };
+      elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+      {
+        for (int i=0; i<num_threads; ++i)
+          scope.run_background(elle::sprintf("cloud %s", i),
+                               std::bind(pipeline_cloud_upload, i));
+        scope.wait();
+      };
       this->frete().save_snapshot();
       this->current_state(State::CloudBuffered);
     }
