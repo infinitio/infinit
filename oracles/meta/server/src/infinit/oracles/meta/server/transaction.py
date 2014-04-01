@@ -505,7 +505,10 @@ class Mixin:
         multi = False,
         new = True,
       )
-    if len(transaction['nodes']) == 2:
+    # The None check is required because of old transactions in the
+    # database where the endpoints of disconnected users where set to
+    # null instead of removed.
+    if len(transaction['nodes']) == 2 and list(transaction['nodes'].values()).count(None) == 0:
       def notify(transaction, notified, other):
         key = self.__user_key(
           transaction['%s_id' % other],
