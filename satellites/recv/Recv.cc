@@ -123,17 +123,17 @@ int main(int argc, char** argv)
           {
             ELLE_TRACE_SCOPE("transaction notification: %s", notif);
             auto& tr = state.transactions().at(notif.id);
-            if (tr.data()->recipient_id != state.me().id)
+            if (tr->data()->recipient_id != state.me().id)
               return;
             if (notif.status == gap_transaction_waiting_for_accept)
             {
               ELLE_LOG("accept transaction %s", notif.id);
-              state.transactions().at(notif.id).accept();
+              state.transactions().at(notif.id)->accept();
             }
             else if (notif.status == gap_transaction_finished)
             {
               ELLE_LOG("transaction %s finished", notif.id);
-              state.transactions().at(notif.id).join();
+              state.transactions().at(notif.id)->join();
             }
 
           });

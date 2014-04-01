@@ -48,7 +48,7 @@ namespace surface
         {
           // Pre Trigger the condition if the accepted barrier has already been
           // opened.
-          return this->state().transactions().at(this->id()).data()->status ==
+          return this->state().transactions().at(this->id())->data()->status ==
             TransactionStatus::accepted;
         }
         );
@@ -62,7 +62,7 @@ namespace surface
         {
           // Pre Trigger the condition if the rejected barrier has already been
           // opened.
-          return this->state().transactions().at(this->id()).data()->status ==
+          return this->state().transactions().at(this->id())->data()->status ==
             TransactionStatus::rejected;
         }
         );

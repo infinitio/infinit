@@ -146,7 +146,7 @@ int main(int argc, char** argv)
 
             if (notif.status == gap_transaction_finished)
             {
-              state.transactions().at(id).join();
+              state.transactions().at(id)->join();
               stop = true;
             }
           });
@@ -170,7 +170,7 @@ int main(int argc, char** argv)
           if (stop)
             progress = 1.0;
           else
-            progress = state.transactions().at(id).progress();
+            progress = state.transactions().at(id)->progress();
           if (progress != previous_progress)
           {
             previous_progress = progress;
