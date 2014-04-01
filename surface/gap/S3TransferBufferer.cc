@@ -2,6 +2,7 @@
 
 #include <elle/json/json.hh>
 #include <elle/log.hh>
+#include <elle/format/base64.hh>
 #include <elle/serialize/construct.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
@@ -39,17 +40,19 @@ namespace surface
                     this->_credentials)
     {
       // Fetch transfer meta-data from cloud.
-      elle::InputStreamBuffer<elle::Buffer> buffer(
-        this->_s3_handler.get_object("meta-data"));
+      elle::Buffer buf = this->_s3_handler.get_object("meta_data");
+      elle::InputStreamBuffer<elle::Buffer> buffer(buf);
       std::istream stream(&buffer);
       auto meta_data =
         boost::any_cast<elle::json::Object>(elle::json::read(stream));
-      this->_count = boost::any_cast<FileCount>(meta_data["count"]);
-      this->_full_size = boost::any_cast<FileSize>(meta_data["full_size"]);
-      elle::serialize::from_string(boost::any_cast<std::string>(
-        meta_data["files"])) >> this->_files;
-      elle::serialize::from_string(boost::any_cast<std::string>(
-        meta_data["key_code"])) >> this->_key_code;
+      this->_count = boost::any_cast<int64_t>(meta_data["count"]);
+      this->_full_size = boost::any_cast<int64_t>(meta_data["full_size"]);
+      elle::serialize::from_string(elle::format::base64::decode(
+        boost::any_cast<std::string>(
+          meta_data["files"])).string()) >> this->_files;
+      elle::serialize::from_string(elle::format::base64::decode(
+        boost::any_cast<std::string>(
+          meta_data["key_code"])).string()) >> this->_key_code;
     }
 
     // Sender.
@@ -73,15 +76,18 @@ namespace surface
                     this->_credentials)
     {
       // Write transfer meta-data to cloud.
+      // We binary serialize stuff, then base64-encode to be valid json
+      // string, and then json-serialize
+      // this is bad
       elle::json::Object meta_data;
       meta_data["count"] = this->_count;
       meta_data["full_size"] = this->_full_size;
       std::string files_str;
       elle::serialize::to_string(files_str) << this->_files;
-      meta_data["files"] = files_str;
+      meta_data["files"] = elle::format::base64::encode(files_str).string();
       std::string key_str;
       elle::serialize::to_string(key_str) << this->_key_code;
-      meta_data["key_code"] = key_str;
+      meta_data["key_code"] = elle::format::base64::encode(key_str).string();
       elle::Buffer buffer;
       elle::OutputStreamBuffer out_buffer(buffer);
       std::ostream stream(&out_buffer);
