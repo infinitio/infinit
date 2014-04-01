@@ -430,6 +430,11 @@ namespace surface
     void
     ReceiveMachine::_cloud_operation()
     {
+      if (elle::os::getenv("INFINIT_CLOUD_BUFFERING", "").empty())
+      {
+        ELLE_DEBUG("%s: cloud buffering disabled by configuration", *this);
+        return;
+      }
       try
       {
         ELLE_DEBUG("%s: create cloud bufferer", *this);

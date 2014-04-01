@@ -384,6 +384,11 @@ namespace surface
     void
     SendMachine::_cloud_operation()
     {
+      if (elle::os::getenv("INFINIT_CLOUD_BUFFERING", "").empty())
+      {
+        ELLE_DEBUG("%s: cloud buffering disabled by configuration", *this);
+        return;
+      }
       ELLE_TRACE_SCOPE("%s: upload to the cloud", *this);
       auto& frete = this->frete();
       auto& snapshot = *frete.transfer_snapshot();
