@@ -450,9 +450,15 @@ class Mixin:
     with elle.log.trace("transaction %s: update node for device %s: %s" %
                          (transaction_id, device_id, node)):
       assert isinstance(transaction_id, bson.ObjectId)
+      if node is None:
+        operation = '$unset'
+        value = 1
+      else:
+        operation = '$set'
+        value = node
       return self.database.transactions.find_and_modify(
         {"_id": transaction_id},
-        {"$unset": {"nodes.%s" % self.__user_key(user_id, device_id): 1}},
+        {operation: {"nodes.%s" % self.__user_key(user_id, device_id): value}},
         multi = False,
         new = True,
         )
