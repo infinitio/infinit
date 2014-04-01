@@ -500,6 +500,9 @@ namespace surface
                  std::unordered_set<std::string>&& files,
                  std::string const& message);
 
+      uint32_t
+      start_onboarding(reactor::Duration const& transfer_duration = 5_sec);
+
     private:
       void
       _transactions_init();

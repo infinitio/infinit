@@ -485,6 +485,8 @@ def configure(cxx_toolkit = None,
     'surface/gap/gap.cc',
     'surface/gap/gap.hh',
     'surface/gap/gap_bridge.hh',
+    'surface/gap/onboarding/Transaction.cc',
+    'surface/gap/onboarding/Transaction.hh',
     'surface/gap/status.hh.tmpl',
     # Get rid of common asap.
     'common/common.hh',

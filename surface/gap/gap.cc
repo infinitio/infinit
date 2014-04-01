@@ -1199,8 +1199,19 @@ gap_get_output_dir(gap_State* state)
     {
       return state.output_dir();
     });
-
   return ret.value().c_str();
+}
+
+uint32_t
+gap_start_onboarding(gap_State* state)
+{
+  return run<uint32_t>(
+    state,
+    "start onboarding",
+    [&] (surface::gap::State& state) -> uint32_t
+    {
+      return state.start_onboarding();
+    });
 }
 
 gap_Status

@@ -6,6 +6,7 @@
 
 #include <surface/gap/State.hh>
 #include <surface/gap/Transaction.hh>
+#include <surface/gap/onboarding/Transaction.hh>
 #include <surface/gap/Exception.hh>
 
 #include <common/common.hh>
@@ -51,6 +52,35 @@ namespace surface
         this->_transactions.emplace(
           id,
           elle::make_unique<Transaction>(*this, id, peer_id, std::move(files), message));
+      return id;
+    }
+
+    uint32_t
+    State::start_onboarding(reactor::Duration const& transfer_duration)
+    {
+      ELLE_TRACE_SCOPE("%s: create an onboarding transaction", *this);
+      // XXX: We should have a fake onboarding user.
+      auto peer = [&] () -> uint32_t
+        {
+          try
+          {
+            return this->_user_indexes.at(this->user_sync("contact@infinit.io").id);
+          }
+          catch (infinit::oracles::meta::Exception const&)
+          {
+            ELLE_WARN("impossible to get contact@infinit.io user");
+            return this->_user_indexes.at(this->me().id);
+          }
+        };
+
+      auto id = generate_id();
+      this->_transactions.emplace(
+        id,
+        elle::make_unique<onboarding::Transaction>(
+          *this,
+          id,
+          this->user(peer()),
+          transfer_duration));
       return id;
     }
 

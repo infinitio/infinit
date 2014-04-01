@@ -447,6 +447,12 @@ uint32_t
 gap_join_transaction(gap_State* state,
                      uint32_t id);
 
+/// Join a transaction.
+/// This function will block as long as the transaction is not terminated
+/// and cleaned.
+uint32_t
+gap_start_onboarding(gap_State* state);
+
 // Set output directory.
 gap_Status
 gap_set_output_dir(gap_State* state,
