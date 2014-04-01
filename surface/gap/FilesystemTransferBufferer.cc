@@ -181,5 +181,11 @@ namespace surface
       stream << "FilesystemTransferBufferer (transaction_id: "
              << this->transaction().id << ")";
     }
+
+    void
+    FilesystemTransferBufferer::cleanup()
+    {
+
+    }
   }
 }

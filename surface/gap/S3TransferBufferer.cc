@@ -154,7 +154,6 @@ namespace surface
       {
         elle::Buffer res;
         res = this->_s3_handler.get_object(s3_name);
-        this->_s3_handler.delete_object(s3_name);
         return res;
         // XXX should clean up folder once transaction has been completed.
       }
@@ -266,6 +265,45 @@ namespace surface
         res.push_back(outter);
       }
       return res;
+    }
+
+    void
+    S3TransferBufferer::cleanup()
+    {
+      // Consider cleanup errors as nonfatal for the user
+      try
+      {
+        ELLE_TRACE("%s: cleaning all buffered data", *this);
+        aws::S3::List list;
+        std::string marker = "";
+        bool first = true;
+        do
+        {
+          list = this->_s3_handler.list_remote_folder(marker);
+          if (list.empty())
+            break;
+          marker = list.back().first;
+          // If we're running a second+ time, it means that we'll get marker
+          // element twice, so remove it.
+          int start = first?0:1;
+          first = false;
+          for (unsigned i = start; i < list.size(); ++i)
+            this->_s3_handler.delete_object(list[i].first);
+        }
+        while (list.size() >= 1000);
+        // Remove the directory
+        this->_s3_handler.delete_object("");
+      }
+      catch (const reactor::Terminate&)
+      {
+        ELLE_WARN("%s: terminated while cleaning up", *this);
+        throw;
+      }
+      catch (...)
+      {
+        ELLE_WARN("%s: losing cleanup exception %s", *this,
+                  elle::exception_string());
+      }
     }
 
     /*----------.

@@ -105,7 +105,10 @@ namespace surface
       virtual
       List
       list() = 0;
-
+      // Request to clear buffered data when transfer is finished.
+      virtual
+      void
+      cleanup() = 0;
     /*----------.
     | Printable |
     `----------*/

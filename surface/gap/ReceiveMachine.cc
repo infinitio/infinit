@@ -434,9 +434,8 @@ namespace surface
       {
         ELLE_DEBUG("%s: create cloud bufferer", *this);
         bool cloud_debug = !elle::os::getenv("INFINIT_CLOUD_FILEBUFFERER", "").empty();
-        std::unique_ptr<TransferBufferer> bufferer;
         if (cloud_debug)
-          bufferer.reset(new FilesystemTransferBufferer(*this->data(),
+          _bufferer.reset(new FilesystemTransferBufferer(*this->data(),
                                                         "/tmp/infinit-buffering"));
         else
         {
@@ -446,11 +445,11 @@ namespace surface
                                              token.secret_access_key,
                                              token.session_token,
                                              token.expiration);
-         bufferer.reset(new S3TransferBufferer(*this->data(),
+         _bufferer.reset(new S3TransferBufferer(*this->data(),
                                                credentials));
         }
         ELLE_DEBUG("%s: download from the cloud", *this)
-          this->get(*bufferer);
+          this->get(*_bufferer);
       }
       catch (TransferBufferer::DataExhausted const&)
       {
@@ -943,6 +942,9 @@ namespace surface
     void
     ReceiveMachine::cleanup()
     { // our _get knows when it's finished, nothing to do
+      ELLE_TRACE_SCOPE("%s: cleaning up", *this);
+      if (_bufferer)
+        _bufferer->cleanup();
     }
 
     void

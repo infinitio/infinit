@@ -188,6 +188,9 @@ namespace surface
                            size_t chunk_size,
                            const infinit::cryptography::SecretKey& key);
 
+      // Transfer bufferer for cloud operations
+       std::unique_ptr<TransferBufferer> _bufferer;
+
     /*--------------.
     | Static Method |
     `--------------*/
