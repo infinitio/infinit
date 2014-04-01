@@ -339,6 +339,9 @@ gap_user_status(gap_State* state, uint32_t id);
 uint32_t*
 gap_search_users(gap_State* state, char const* text);
 
+std::vector<uint32_t>
+gap_users_search(gap_State* state, std::string const& text);
+
 std::unordered_map<std::string, uint32_t>
 gap_users_by_emails(gap_State* state, std::vector<std::string> emails);
 
