@@ -313,7 +313,7 @@ namespace surface
     }
 
     State::UserIndexes
-    State::user_search(std::string const& text) const
+    State::user_search_deprecated(std::string const& text) const
     {
       ELLE_TRACE_METHOD(text);
 
@@ -324,6 +324,20 @@ namespace surface
         result.emplace(this->_user_indexes.at(this->user(user_id).id));
       }
       return result;
+    }
+
+    std::vector<uint32_t>
+    State::users_search(std::string const& text) const
+    {
+      ELLE_TRACE_METHOD(text);
+      auto users = this->meta().users_search(text);
+      std::vector<uint32_t> res;
+      for (auto const& user: users)
+      {
+        this->user_sync(user);
+        res.push_back(this->_user_indexes.at(user.id));
+      }
+      return res;
     }
 
     std::unordered_map<std::string, uint32_t>

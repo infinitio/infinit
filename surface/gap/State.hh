@@ -382,7 +382,10 @@ namespace surface
       user_icon(std::string const& user_id) const;
 
       UserIndexes
-      user_search(std::string const& text) const;
+      user_search_deprecated(std::string const& text) const;
+
+      std::vector<uint32_t>
+      users_search(std::string const& text) const;
 
       std::unordered_map<std::string, uint32_t>
       users_by_emails(std::vector<std::string> const& emails) const;
