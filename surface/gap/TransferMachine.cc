@@ -182,6 +182,15 @@ namespace surface
                 {
                   ELLE_TRACE("%s: checksum error in frete", *this);
                 });
+      this->_fsm.transition_add_catch(
+        transfer_state,
+        stopped_state)
+        .action_exception([this, &owner](std::exception_ptr exception)
+                {
+                  ELLE_TRACE("%s: failing transfer because of exception: %s",
+                             *this, elle::exception_string(exception));
+                  owner.failed().open();
+                });
       this->_fsm.transition_add(
         transfer_state,
         connection_state)
