@@ -159,6 +159,8 @@ namespace surface
       }
       catch (aws::FileNotFound const& e)
       {
+        ELLE_LOG("%s: file not found on aws for block %s/%s",
+                 *this, file, offset);
         throw DataExhausted();
       }
       catch (aws::CorruptedData const& e)
