@@ -798,17 +798,21 @@ namespace surface
           ELLE_WARN("%s: decryption error on block %s/%s", *this, local_index, local_position);
           throw;
         }
-        ELLE_DEBUG("Queuing buffer fileindex:%s offset:%s size:%s", local_index, local_position, buffer.size());
-        this->_buffers.put(
-          IndexedBuffer{std::move(buffer),
-                        local_position, local_index});
-        // Did we get next thing expected by disk writer?
-        if (local_index == _store_expected_file
+        ELLE_DEBUG("Queuing buffer %s/%s size:%s. Writer waits for %s/%s",
+          local_index, local_position, buffer.size(),
+          _store_expected_file, _store_expected_position);
+        // Subtelty here: put will block us *after* the insert operation
+        // if queue is full, so we must notify the reader thread before the
+        // put
+         if (local_index == _store_expected_file
           && local_position == _store_expected_position)
         {
           ELLE_DEBUG("Opening disk writer barrier at %s/%s", local_index, local_position);
           _disk_writer_barrier.open();
         }
+        this->_buffers.put(
+          IndexedBuffer{std::move(buffer),
+                        local_position, local_index});
       }
       ELLE_DEBUG("reader %s exiting cleanly", id);
     }
@@ -835,6 +839,8 @@ namespace surface
       }
       while (true)
       {
+        ELLE_DEBUG("%s waiting for block %s/%s", *this, _store_expected_file,
+          _store_expected_position);
         reactor::wait(_disk_writer_barrier);
         while (true)
         { // we might have successive blocks ready in the pipe, and nobody
