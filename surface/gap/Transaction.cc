@@ -48,10 +48,10 @@ namespace surface
               // The recipient is pending creating waiting for decision.
               return gap_transaction_waiting_for_accept;
             case TransactionMachine::State::RecipientAccepted:
-              return gap_transaction_accepted;
-            case TransactionMachine::State::PublishInterfaces:
-            case TransactionMachine::State::Connect:
             case TransactionMachine::State::PeerDisconnected:
+            case TransactionMachine::State::PublishInterfaces:
+              return gap_transaction_accepted;
+            case TransactionMachine::State::Connect:
             case TransactionMachine::State::PeerConnectionLost:
               return gap_transaction_preparing;
             case TransactionMachine::State::Transfer:
