@@ -400,12 +400,13 @@ class Mixin:
       ]
       if self.user is not None:
         pipeline.append({
-          '$sort': 'swaggers.%s' % str(self.user['_id'])
+          '$sort': {'swaggers.%s' % str(self.user['_id']) : -1}
         })
       pipeline.append({
         '$project': self.user_public_fields,
       })
-      return self.database.users.aggregate(pipeline)
+      users = self.database.users.aggregate(pipeline)
+      return {'users': users['result']}
 
   @api('/user/search_emails')
   @require_logged_in
