@@ -412,11 +412,11 @@ namespace surface
     TransferMachine::_wait_for_peer()
     {
       ELLE_TRACE_SCOPE("%s: wait for peer to connect", *this);
+      this->_owner.current_state(TransactionMachine::State::PeerDisconnected);
 #if 0 // File buffering disabled.
       reactor::sleep(10_sec);
       // FIXME: this is a joke.
       ELLE_TRACE("%s: no peer after 10s, cloud buffer", *this);
-      this->_owner.current_state(TransactionMachine::State::PeerDisconnected);
       // Mundo va ou il veut.
       if (auto owner = dynamic_cast<SendMachine*>(&this->_owner))
       {
