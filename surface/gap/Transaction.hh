@@ -1,12 +1,11 @@
-#ifndef SURFACE_GAP_DETAIL_TRANSACTION_HH
-# define SURFACE_GAP_DETAIL_TRANSACTION_HH
+#ifndef SURFACE_GAP_TRANSACTION_HH
+# define SURFACE_GAP_TRANSACTION_HH
 
 # include <surface/gap/Notification.hh>
 # include <surface/gap/enums.hh>
 # include <surface/gap/fwd.hh>
 # include <surface/gap/Exception.hh>
 # include <surface/gap/TransactionMachine.hh>
-
 
 # include <infinit/oracles/trophonius/Client.hh>
 
@@ -34,7 +33,7 @@ namespace surface
           join,
           cancel,
           progress,
-        };
+       };
 
         BadOperation(Type type);
 
@@ -77,23 +76,28 @@ namespace surface
 
       ~Transaction();
 
-      public:
+    public:
+      virtual
       void
       accept();
 
+      virtual
       void
       reject();
 
+      virtual
       void
       cancel();
 
+      virtual
       void
       join();
 
+      virtual
       float
       progress() const;
 
-    private:
+    protected:
       bool
       last_status(gap_TransactionStatus);
 
