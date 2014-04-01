@@ -206,7 +206,6 @@ class Mixin:
                    count : int = 100,
                    offset : int = 0,
                  ):
-    print(filter, negate, count, offset)
     user_id = self.user['_id']
     if peer_id is not None:
       query = {
@@ -518,8 +517,6 @@ class Mixin:
           'peer_endpoints': endpoints,
           'status': True,
         }
-        import sys
-        print('NOTIFY', device_ids, message, file = sys.stderr)
         self.notifier.notify_some(
           notifier.PEER_CONNECTION_UPDATE,
           device_ids = device_ids,
