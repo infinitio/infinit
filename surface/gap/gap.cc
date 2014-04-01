@@ -71,11 +71,11 @@ _cpp_stringlist_to_c_stringlist(std::list<std::string> const& list)
 
 /// - gap ctor & dtor -----------------------------------------------------
 
-gap_State* gap_new()
+gap_State* gap_new(bool production)
 {
   try
   {
-    gap_State* state = new gap_State();
+    gap_State* state = new gap_State(production);
     return state;
   }
   catch (std::exception const& err)
@@ -98,7 +98,8 @@ gap_null()
 
 /// Create a new state.
 /// Returns NULL on failure.
-gap_State* gap_configurable_new(char const* meta_protocol,
+gap_State* gap_configurable_new(bool production,
+                                char const* meta_protocol,
                                 char const* meta_host,
                                 unsigned short meta_port,
                                 char const* trophonius_host,
@@ -106,7 +107,8 @@ gap_State* gap_configurable_new(char const* meta_protocol,
 {
   try
   {
-    gap_State* state = new gap_State(meta_protocol,
+    gap_State* state = new gap_State(production,
+                                     meta_protocol,
                                      meta_host,
                                      meta_port,
                                      trophonius_host,
