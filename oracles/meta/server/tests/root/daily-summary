@@ -49,12 +49,10 @@ with Meta(force_admin = True) as meta, Trophonius(meta) as trophonius:
   bob.login()
   alice.login()
   eve.login()
-  serge.login()
 
   trophonius.connect_user(bob)
   trophonius.connect_user(alice)
   trophonius.connect_user(eve)
-  trophonius.connect_user(serge)
 
   bob.sendfile(alice.email, initialize = True)
   bob.sendfile(alice.email, initialize = True)
@@ -67,9 +65,17 @@ with Meta(force_admin = True) as meta, Trophonius(meta) as trophonius:
 
   res = meta.post('cron/daily-summary')
   assert(res['success'])
-  print(meta.mailer.sent)
-  assert meta.mailer.sent == 3
+  # Alice and eve received it because they were online.
+  # Serge will not because he didn't connect.
+  assert meta.mailer.sent == 2
   assert meta.mailer.sent == meta.mailer.summaries
+
+  # Something went wrong while sending a mail.
+  meta.mailer = RaisingMailer()
+  res = meta.post('cron/daily-summary')
+  assert(res['success'])
+  assert meta.mailer.sent == 1
+  assert meta.mailer.summaries == 2
 
   # Alice connect.
   meta.mailer = UMailer()
@@ -78,11 +84,5 @@ with Meta(force_admin = True) as meta, Trophonius(meta) as trophonius:
 
   res = meta.post('cron/daily-summary')
   assert(res['success'])
-  assert meta.mailer.sent == 2
-  assert meta.mailer.sent == meta.mailer.summaries
-
-  meta.mailer = RaisingMailer()
-  res = meta.post('cron/daily-summary')
-  assert(res['success'])
   assert meta.mailer.sent == 1
-  assert meta.mailer.summaries == 2
+  assert meta.mailer.sent == meta.mailer.summaries
