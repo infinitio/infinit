@@ -292,6 +292,19 @@ class Mixin:
       {"$or": [{"time": {"$lt": time.time() - self.apertus_expiration_time}},
                {"time": {"$exists": False}}]},
       multi = True)
+
+    daily_summary = self.database.mailer.find_one({'name': 'daily-summary'})
+    if daily_summary is None or daily_summary['last-sent'] < time.time() - 86400:
+      self.database.mailer.find_and_modify(
+        {
+          'name': 'daily-summary'
+        },
+        {
+          'name': 'daily-summary',
+          'last-sent': time.time()
+        },
+        upsert = True)
+      self.daily_summary()
     return self.success(res)
 
   @api('/cron/daily-summary', method = 'POST')
@@ -338,6 +351,7 @@ class Mixin:
                                list(map(lambda x: x['fullname'], peer)))
       elle.log.debug('%s users to mail' % len(users))
       template_id = 'daily-summary'
+      # XXX: Should use a mass mailing system. This is really slow.
       for email in users.keys():
         subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS[template_id] % {
           'count': users[email][0] }
