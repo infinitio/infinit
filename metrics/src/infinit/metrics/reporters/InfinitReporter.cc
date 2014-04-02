@@ -21,7 +21,7 @@ namespace infinit
 
     InfinitReporter::InfinitReporter(std::string const& url,
                                      int port):
-      Super("infinit reporter"),
+      Super("Infinit reporter"),
       _base_url(url),
       _port(port)
     {}

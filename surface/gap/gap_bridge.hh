@@ -1,5 +1,5 @@
-#ifndef GAPBRIDE_HH
-# define GAPBRIDE_HH
+#ifndef GAP_BRIDGE_HH
+# define GAP_BRIDGE_HH
 
 # include <exception>
 # include <thread>
@@ -20,127 +20,122 @@
 # include <surface/gap/State.hh>
 
 
-extern "C"
+/// - Utils -----------------------------------------------------------------
+class gap_State
 {
+  ELLE_ATTRIBUTE_R(common::infinit::Configuration, configuration);
+  ELLE_ATTRIBUTE_X(reactor::Scheduler, scheduler);
+  ELLE_ATTRIBUTE_R(reactor::Thread, keep_alive);
+  ELLE_ATTRIBUTE_R(std::thread, scheduler_thread);
+  ELLE_ATTRIBUTE(std::unique_ptr<surface::gap::State>, state);
+  ELLE_ATTRIBUTE_R(std::exception_ptr, exception);
+  ELLE_ATTRIBUTE_R(std::function<void (std::string const&)>, critical_callback);
 
-  /// - Utils -----------------------------------------------------------------
-  struct gap_State
+  gap_Status
+  gap_critical_callback(gap_State* state,
+                        gap_critical_callback_t cb)
   {
-    ELLE_ATTRIBUTE_X(reactor::Scheduler, scheduler);
-    ELLE_ATTRIBUTE_R(reactor::Thread, keep_alive);
-    ELLE_ATTRIBUTE_R(std::thread, scheduler_thread);
-    ELLE_ATTRIBUTE(std::unique_ptr<surface::gap::State>, state);
-    ELLE_ATTRIBUTE_R(std::exception_ptr, exception);
-    ELLE_ATTRIBUTE_R(std::function<void (std::string const&)>, critical_callback);
+    this->_critical_callback = [&] (std::string const& error)
+      {
+        cb(error.c_str());
+      };
+    return gap_ok;
+  }
 
-    gap_Status
-    gap_critical_callback(gap_State* state,
-                          gap_critical_callback_t cb)
-    {
-      this->_critical_callback = [&] (std::string const& error)
-        {
-          cb(error.c_str());
-        };
-      return gap_ok;
-    }
+public:
 
-  public:
-    // reactor::Scheduler&
-    // scheduler() const
-    // {
-    //   return this->_scheduler;
-    // }
+  surface::gap::State&
+  state()
+  {
+    return *this->_state;
+  }
 
-    surface::gap::State&
-    state()
-    {
-      return *this->_state;
-    }
-
-  public:
-    gap_State(char const* meta_protocol,
-              char const* meta_host,
-              unsigned short meta_port,
-              char const* trophonius_host,
-              unsigned short trophonius_port):
-      _scheduler{},
-      _keep_alive{this->_scheduler, "State keep alive",
-                  [this]
+public:
+  gap_State(bool production,
+            char const* meta_protocol,
+            char const* meta_host,
+            unsigned short meta_port,
+            char const* trophonius_host,
+            unsigned short trophonius_port):
+    _configuration(production),
+    _scheduler{},
+    _keep_alive{this->_scheduler, "State keep alive",
+                [this]
+                {
+                  while (true)
                   {
-                    while (true)
-                    {
-                      auto& current = *this->_scheduler.current();
-                      current.sleep(boost::posix_time::seconds(60));
-                    }
-                  }},
-      _scheduler_thread{
-        [&]
+                    auto& current = *this->_scheduler.current();
+                    current.sleep(boost::posix_time::seconds(60));
+                  }
+                }},
+    _scheduler_thread{
+      [&]
+      {
+        try
         {
-          try
-          {
-            this->_scheduler.run();
-          }
-          catch (...)
-          {
-            ELLE_LOG_COMPONENT("surface.gap.bridge");
-            ELLE_ERR("exception escaped from State scheduler: %s",
-                     elle::exception_string());
-            this->_exception = std::current_exception();
-            if (this->_critical_callback)
-              this->_critical_callback(elle::exception_string());
-          }
-        }}
-    {
-      this->_scheduler.mt_run<void>(
-        "creating state",
-        [&]
-        {
-          this->_state.reset(
-            new surface::gap::State(meta_protocol, meta_host, meta_port,
-                                    trophonius_host, trophonius_port,
-                                    common::metrics()));
-        });
-    }
-
-    gap_State():
-      gap_State(common::meta::protocol().c_str(),
-                common::meta::host().c_str(),
-                common::meta::port(),
-                common::trophonius::host().c_str(),
-                common::trophonius::port())
-    {}
-
-    ~gap_State()
-    {
-      elle::With<elle::Finally> sched_destruction{
-        [&] ()
-        {
-          this->_scheduler.mt_run<void>(
-            "destroying sched",
-            []
-            {
-              auto& scheduler = *reactor::Scheduler::scheduler();
-              scheduler.terminate_now();
-            });
-
-          this->_scheduler_thread.join();
+          this->_scheduler.run();
         }
-      };
-
-      elle::With<elle::Finally> state_destruction{
-        [&] ()
+        catch (...)
         {
-          this->_scheduler.mt_run<void>(
-            "destroying state",
-            [&] () -> void
-            {
-              this->_state.reset();
-            });
+          ELLE_LOG_COMPONENT("surface.gap.bridge");
+          ELLE_ERR("exception escaped from State scheduler: %s",
+                   elle::exception_string());
+          this->_exception = std::current_exception();
+          if (this->_critical_callback)
+            this->_critical_callback(elle::exception_string());
         }
-      };
-    }
-  };
-}
+      }}
+  {
+    this->_scheduler.mt_run<void>(
+      "creating state",
+      [&]
+      {
+        this->_state.reset(
+          new surface::gap::State(meta_protocol, meta_host, meta_port,
+                                  trophonius_host, trophonius_port,
+                                  common::metrics(this->configuration())));
+      });
+  }
+
+  gap_State(bool production):
+    gap_State(production,
+              common::meta::protocol().c_str(),
+              common::meta::host().c_str(),
+              common::meta::port(),
+              common::trophonius::host().c_str(),
+              common::trophonius::port())
+  {}
+
+  ~gap_State()
+  {
+    elle::With<elle::Finally> sched_destruction{
+      [&] ()
+      {
+        this->_scheduler.mt_run<void>(
+          "destroying sched",
+          []
+          {
+            auto& scheduler = *reactor::Scheduler::scheduler();
+            scheduler.terminate_now();
+          });
+
+        this->_scheduler_thread.join();
+      }
+    };
+
+    elle::With<elle::Finally> state_destruction{
+      [&] ()
+      {
+        this->_scheduler.mt_run<void>(
+          "destroying state",
+          [&] () -> void
+          {
+            this->_state.reset();
+          });
+      }
+    };
+  }
+};
 
 class _Ret
 {

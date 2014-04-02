@@ -41,7 +41,8 @@ parse_options(int argc, char** argv)
     ("user,u", value<std::string>(), "the username")
     ("password,p", value<std::string>(), "the password")
     ("to,t", value<std::string>(), "the recipient")
-    ("file,f", value<std::string>(), "the file to send");
+    ("file,f", value<std::string>(), "the file to send")
+    ("production,r", value<bool>(), "send metrics to production");
 
   variables_map vm;
   try
@@ -82,6 +83,9 @@ int main(int argc, char** argv)
     std::string const password = options["password"].as<std::string>();
     std::string const to = options["to"].as<std::string>();
     std::string const file = options["file"].as<std::string>();
+    bool production = false;
+    if (options.count("production") != 0)
+      production = options["production"].as<bool>();
 
     reactor::Scheduler sched;
 
@@ -98,12 +102,13 @@ int main(int argc, char** argv)
       "sendto",
       [&] () -> int
       {
+        common::infinit::Configuration config(production);
         surface::gap::State state(common::meta::protocol(),
                                   common::meta::host(),
                                   common::meta::port(),
                                   common::trophonius::host(),
                                   common::trophonius::port(),
-                                  common::metrics());
+                                  common::metrics(config));
         uint32_t id = surface::gap::null_id;
 
         state.attach_callback<surface::gap::State::ConnectionStatus>(

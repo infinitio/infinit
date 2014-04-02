@@ -400,12 +400,13 @@ class Mixin:
       ]
       if self.user is not None:
         pipeline.append({
-          '$sort': 'swaggers.%s' % str(self.user['_id'])
+          '$sort': {'swaggers.%s' % str(self.user['_id']) : -1}
         })
       pipeline.append({
         '$project': self.user_public_fields,
       })
-      return self.database.users.aggregate(pipeline)
+      users = self.database.users.aggregate(pipeline)
+      return {'users': users['result']}
 
   @api('/user/search_emails')
   @require_logged_in
@@ -421,25 +422,19 @@ class Mixin:
     """
     with elle.log.trace("%s: search %s emails (limit: %s, offset: %s)" %
                         (self.user['_id'], len(emails), limit, offset)):
-      fields = {
-        'id': '$_id',
-        'email' : '$email',
-        'public_key': '$public_key',
-        'fullname': '$fullname',
-        'handle': '$handle',
-        'connected_devices': '$connected_devices',
-        'status': '$status',
-      }
-      res = self.database.users.find(
+      res = self.database.users.aggregate([
         {
-          'email': {'$in': emails},
-          'register_status': 'ok',
+          '$match':
+          {
+            'email': {'$in': emails},
+            'register_status': 'ok',
+          }
         },
-        fields = fields,
-        limit = limit,
-        skip = offset,
-      )
-      return {'users': list(res)}
+        {'$limit': limit},
+        {'$skip': offset},
+        {'$project': dict(email = '$email', **self.user_public_fields)}
+      ])
+      return {'users': res['result']}
 
   @api('/user/search', method = 'POST')
   # XXX: This call is used by the waterfall which does not login. We need to

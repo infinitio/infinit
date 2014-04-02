@@ -45,7 +45,8 @@ parse_options(int argc, char** argv)
   options.add_options()
     ("help,h", "display the help")
     ("user,u", value<std::string>(), "the username")
-    ("password,p", value<std::string>(), "the password");
+    ("password,p", value<std::string>(), "the password")
+    ("production,r", value<bool>(), "send metrics to production");
 
   variables_map vm;
   try
@@ -84,6 +85,9 @@ int main(int argc, char** argv)
     auto options = parse_options(argc, argv);
     std::string const user = options["user"].as<std::string>();
     std::string const password = options["password"].as<std::string>();
+    bool production = false;
+    if (options.count("production") != 0)
+      production = options["production"].as<bool>();
 
     reactor::Scheduler sched;
 
@@ -93,12 +97,13 @@ int main(int argc, char** argv)
       "recv",
       [&] () -> int
       {
+        common::infinit::Configuration config(production);
         surface::gap::State state(common::meta::protocol(),
                                   common::meta::host(),
                                   common::meta::port(),
                                   common::trophonius::host(),
                                   common::trophonius::port(),
-                                  common::metrics());
+                                  common::metrics(config));
 
         state.attach_callback<surface::gap::State::ConnectionStatus>(
           [&] (surface::gap::State::ConnectionStatus const& notif)

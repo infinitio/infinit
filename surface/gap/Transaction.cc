@@ -48,9 +48,9 @@ namespace surface
             case TransactionMachine::State::RecipientWaitForDecision:
             case TransactionMachine::State::RecipientAccepted:
               return gap_transaction_waiting_accept;
+            case TransactionMachine::State::PeerDisconnected:
             case TransactionMachine::State::PublishInterfaces:
             case TransactionMachine::State::Connect:
-            case TransactionMachine::State::PeerDisconnected:
             case TransactionMachine::State::PeerConnectionLost:
               return gap_transaction_connecting;
             case TransactionMachine::State::Transfer:

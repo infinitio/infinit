@@ -14,4 +14,6 @@ namespace surface
   }
 }
 
+struct gap_State;
+
 #endif

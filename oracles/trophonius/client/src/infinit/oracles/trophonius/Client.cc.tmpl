@@ -170,7 +170,6 @@ namespace infinit
         if (type == NotificationType::peer_connection_update)
         {
           auto res = elle::make_unique<PeerReachabilityNotification>();
-          elle::json::write(std::cerr, json);
           res->transaction_id =
             boost::any_cast<std::string>(json.at("transaction_id"));
           res->status =

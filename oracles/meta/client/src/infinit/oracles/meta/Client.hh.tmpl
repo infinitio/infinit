@@ -321,6 +321,11 @@ namespace infinit
                                int limit = 10,
                                int offset = 0) const;
 
+        std::vector<User>
+        users_search(std::string const& text,
+                     int limit = 5,
+                     int offset = 0) const;
+
         SwaggersResponse
         get_swaggers() const;
 

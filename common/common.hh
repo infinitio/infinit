@@ -19,6 +19,22 @@ namespace common
   /// All infinit related generic variables
   namespace infinit
   {
+    /// Create configuration.
+    class Configuration
+    {
+    public:
+      Configuration(bool production);
+
+      ELLE_ATTRIBUTE_R(bool, production);
+
+      /// Metrics configuration
+      ELLE_ATTRIBUTE_R(bool, metrics_infinit_enabled);
+      ELLE_ATTRIBUTE_R(std::string, metrics_infinit_host);
+      ELLE_ATTRIBUTE_R(int, metrics_infinit_port);
+      ELLE_ATTRIBUTE_R(bool, metrics_keen_enabled);
+      ELLE_ATTRIBUTE_R(std::string, metrics_keen_project);
+      ELLE_ATTRIBUTE_R(std::string, metrics_keen_key);
+    };
 
     /// Returns infinit home directory.
     /// Defaults to ~/.infinit on unices but could be changed by exporting
@@ -180,7 +196,7 @@ namespace common
   }
 
   std::unique_ptr< ::infinit::metrics::Reporter>
-  metrics();
+  metrics(infinit::Configuration const& config);
 
   /// All resources URIs
   namespace resources

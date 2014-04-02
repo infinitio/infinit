@@ -8,12 +8,7 @@
 
 # include <surface/gap/enums.hh>
 
-//typedef enum
-//{
-//  gap_true = 1,
-//  gap_false = 0,
-//} gap_Bool;
-typedef int gap_Bool; // XXX Use the previous enum.
+typedef int gap_Bool;
 
 /// gap_State is an opaque structure used in every calls.
 struct gap_State;
@@ -23,11 +18,12 @@ typedef struct gap_State gap_State;
 
 /// Create a new state.
 /// Returns NULL on failure.
-gap_State* gap_new();
+gap_State* gap_new(bool production);
 
 /// Create a new state.
 /// Returns NULL on failure.
-gap_State* gap_configurable_new(char const* meta_protocol,
+gap_State* gap_configurable_new(bool production,
+                                char const* meta_protocol,
                                 char const* meta_host,
                                 unsigned short meta_port,
                                 char const* trophonius_host,
@@ -342,6 +338,9 @@ gap_user_status(gap_State* state, uint32_t id);
 /// Search users.
 uint32_t*
 gap_search_users(gap_State* state, char const* text);
+
+std::vector<uint32_t>
+gap_users_search(gap_State* state, std::string const& text);
 
 std::unordered_map<std::string, uint32_t>
 gap_users_by_emails(gap_State* state, std::vector<std::string> emails);
