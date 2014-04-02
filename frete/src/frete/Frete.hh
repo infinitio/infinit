@@ -116,18 +116,13 @@ namespace frete
     /// acknowledge_progress starting from the beginning of the whole frete data
     infinit::cryptography::Code
     encrypted_read_acknowledge(FileID f, FileOffset start, FileSize size, FileSize acknowledge_progress);
+    elle::Buffer cleartext_read(FileID f, FileOffset start, FileSize size, bool increment_progress = true);
     /// Whether we're done.
     ELLE_ATTRIBUTE_RX(reactor::Barrier, finished);
   private:
     /// The path of a file on the local filesystem.
     boost::filesystem::path
     _local_path(FileID file_id);
-    /// A plain chunk of a file.
-    elle::Buffer
-    _read(FileID file_id,
-          FileOffset offset,
-          FileSize const size,
-          bool increment_progress = true);
 
   /*---------.
   | Progress |
