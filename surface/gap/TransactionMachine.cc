@@ -398,6 +398,22 @@ namespace surface
     }
 
     bool
+    TransactionMachine::pause()
+    {
+      ELLE_TRACE_SCOPE("%s: pause transaction %s", *this, this->data()->id);
+      throw elle::Exception(
+        elle::sprintf("%s: pause not implemented yet", *this));
+    }
+
+    void
+    TransactionMachine::interrupt()
+    {
+      ELLE_TRACE_SCOPE("%s: interrupt transaction %s", *this, this->data()->id);
+      throw elle::Exception(
+        elle::sprintf("%s: interruption not implemented yet", *this));
+    }
+
+    bool
     TransactionMachine::concerns_transaction(std::string const& transaction_id)
     {
       return this->_data->id == transaction_id;

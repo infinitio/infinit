@@ -29,24 +29,11 @@ namespace surface
         void
         accept() override;
 
-        // In order to give the onboarding the ability to control the process,
-        // the onboarding transaction expose the hidden transfer machine api.
-        void
-        peer_connection_status(bool status);
+        bool
+        pause() override;
 
         void
-        peer_availability_status(bool status);
-
-        void
-        interrupt_transfer();
-
-        void
-        pause();
-        // void
-        // join() override;
-
-        // float
-        // progress() const override;
+        interrupt() override;
 
         ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, thread);
 

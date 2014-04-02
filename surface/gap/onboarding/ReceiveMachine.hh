@@ -27,11 +27,11 @@ namespace surface
         void
         accept();
 
-        void
-        pause();
+        bool
+        pause() override;
 
         void
-        interrupt_transfer();
+        interrupt() override;
 
         // Overload because it talks to meta.
         void

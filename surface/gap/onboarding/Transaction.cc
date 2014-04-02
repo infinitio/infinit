@@ -81,35 +81,31 @@ namespace surface
       void
       Transaction::accept()
       {
-        ELLE_DEBUG("%s: accepted", *this);
-        this->machine().accept();
-        this->peer_availability_status(true);
-        this->peer_connection_status(true);
+        if (!dynamic_cast<surface::gap::onboarding::ReceiveMachine*>(
+        this->_machine.get()))
+        {
+          surface::gap::Transaction::accept();
+        }
+        else
+        {
+          ELLE_DEBUG("%s: accepted", *this);
+          this->machine().accept();
+          this->peer_availability_status(true);
+          this->peer_connection_status(true);
+        }
       }
 
-      void
-      Transaction::peer_connection_status(bool status)
-      {
-        this->_machine->peer_connection_changed(status);
-      }
-
-      void
-      Transaction::peer_availability_status(bool status)
-      {
-        this->_machine->peer_availability_changed(status);
-      }
-
-      void
-      Transaction::interrupt_transfer()
-      {
-        this->peer_availability_status(false);
-        this->machine().interrupt_transfer();
-      }
-
-      void
+      bool
       Transaction::pause()
       {
-         this->machine().pause();
+        return this->_machine->pause();
+      }
+
+      void
+      Transaction::interrupt()
+      {
+        this->peer_availability_status(false);
+        this->_machine->interrupt();
       }
 
       void

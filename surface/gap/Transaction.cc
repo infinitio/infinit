@@ -310,6 +310,20 @@ namespace surface
       return this->_machine->progress();
     }
 
+    bool
+    Transaction::pause()
+    {
+      ELLE_WARN("%s: pause not implemented yet", *this);
+      throw BadOperation(BadOperation::Type::pause);
+    }
+
+    void
+    Transaction::interrupt()
+    {
+      ELLE_WARN("%s: interruption not implemented yet", *this);
+      throw BadOperation(BadOperation::Type::interrupt);
+    }
+
     static
     std::vector<infinit::oracles::Transaction::Status> const&
     final_status()
@@ -359,7 +373,13 @@ namespace surface
       // Notification should only be sent to the sender device and the
       // recipient device concerned by this transaction.
       ELLE_DEBUG("notify machine of the peer availability change")
-        this->_machine->peer_availability_changed(update.status);
+        this->peer_availability_status(update.status);
+    }
+
+    void
+    Transaction::peer_availability_status(bool status)
+    {
+      this->_machine->peer_availability_changed(status);
     }
 
     using infinit::oracles::trophonius::UserStatusNotification;
@@ -383,7 +403,7 @@ namespace surface
         // Transaction has not recipient device id set (transaction is not
         //  accepted) so his general connection status is important.
         ELLE_DEBUG("no recipient device id set, user connection status used")
-          this->_machine->peer_connection_changed(update.status);
+          this->peer_availability_status(update.status);
       }
       // Check if the transaction is linked to this update, looking for the
       // device_id in both sender and recipient device ids.
@@ -391,12 +411,18 @@ namespace surface
           (!is_sender && this->_data->recipient_device_id  == update.device_id))
       {
         ELLE_DEBUG("notify machine of the device connection status update")
-          this->_machine->peer_connection_changed(update.device_status);
+          this->peer_availability_status(update.device_status);
       }
       else
       {
         ELLE_DEBUG("device not linked to the transaction");
       }
+    }
+
+    void
+    Transaction::peer_connection_status(bool status)
+    {
+      this->_machine->peer_connection_changed(status);
     }
 
     bool

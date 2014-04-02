@@ -1226,12 +1226,10 @@ gap_onboarding_set_peer_status(gap_State* state,
     "change onboarding peer status",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      auto const& tr = state.transactions().at(transaction_id);
+      auto& tr = state.transactions().at(transaction_id);
       if (!dynamic_cast<surface::gap::onboarding::Transaction*>(tr.get()))
         return gap_error;
-      auto& transaction =
-        *static_cast<surface::gap::onboarding::Transaction*>(tr.get());
-      transaction.peer_connection_status(status);
+      tr->peer_connection_status(status);
       return gap_ok;
     });
 }
@@ -1247,12 +1245,10 @@ gap_onboarding_set_peer_availability(gap_State* state,
     "change onboarding peer availability",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      auto const& tr = state.transactions().at(transaction_id);
+      auto& tr = state.transactions().at(transaction_id);
       if (!dynamic_cast<surface::gap::onboarding::Transaction*>(tr.get()))
         return gap_error;
-      auto& transaction =
-        *static_cast<surface::gap::onboarding::Transaction*>(tr.get());
-      transaction.peer_availability_status(status);
+      tr->peer_availability_status(status);
       return gap_ok;
     });
 }
@@ -1270,9 +1266,7 @@ gap_onboarding_interrupt_transfer(gap_State* state,
       auto const& tr = state.transactions().at(transaction_id);
       if (!dynamic_cast<surface::gap::onboarding::Transaction*>(tr.get()))
         return gap_error;
-      auto& transaction =
-        *static_cast<surface::gap::onboarding::Transaction*>(tr.get());
-      transaction.interrupt_transfer();
+      tr->interrupt();
       return gap_ok;
     });
 }

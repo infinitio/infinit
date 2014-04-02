@@ -35,7 +35,7 @@ namespace surface
         this->_accepted.open();
       }
 
-      void
+      bool
       ReceiveMachine::pause()
       {
         auto* machine = static_cast<TransferMachine*>(
@@ -46,10 +46,11 @@ namespace surface
           machine->running().close();
         else
           machine->running().open();
+        return machine->running().opened();
       }
 
       void
-      ReceiveMachine::interrupt_transfer()
+      ReceiveMachine::interrupt()
       {
         auto* machine = static_cast<TransferMachine*>(
           this->_transfer_machine.get());

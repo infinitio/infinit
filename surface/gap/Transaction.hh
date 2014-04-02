@@ -33,6 +33,8 @@ namespace surface
           join,
           cancel,
           progress,
+          pause,
+          interrupt,
        };
 
         BadOperation(Type type);
@@ -97,6 +99,14 @@ namespace surface
       float
       progress() const;
 
+      virtual
+      bool
+      pause();
+
+      virtual
+      void
+      interrupt();
+
     protected:
       bool
       last_status(gap_TransactionStatus);
@@ -115,6 +125,12 @@ namespace surface
       void
       on_peer_connection_status_updated(
         infinit::oracles::trophonius::UserStatusNotification const& update);
+
+      void
+      peer_connection_status(bool status);
+
+      void
+      peer_availability_status(bool status);
 
       /*------------.
       | Atttributes |
