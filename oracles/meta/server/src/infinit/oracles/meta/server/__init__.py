@@ -107,8 +107,48 @@ class Meta(bottle.Bottle,
     waterfall.Waterfall.__init__(self)
 
   def __set_constraints(self):
-    self.__database.devices.ensure_index([("id", 1), ("owner", 1)], unique = True)
+    #---------------------------------------------------------------------------
+    # Users
+    #---------------------------------------------------------------------------
+    # - Search by email.
+    self.__database.users.ensure_index([("email", 1)], unique = True)
+    # - Search by handle.
+    self.__database.users.ensure_index([("handle", 1)], unique = True)
+    # - Default search.
+    self.__database.users.ensure_index([("fullname", 1), ("handle", 1)])
+    # - Email confirmation.
+    self.__database.users.ensure_index([("email_confirmation_hash", 1)],
+                                       unique = True, sparse = True)
+    # - Lost password.
+    self.__database.users.ensure_index([("reset_password_hash", 1)],
+                                       unique = True, sparse = True)
+    # - Midnight cron.
+    self.__database.users.ensure_index([("_id", 1), ("last_connection", 1)])
+
+    #---------------------------------------------------------------------------
+    # Devices
+    #---------------------------------------------------------------------------
+    # - Default search.
+    self.__database.devices.ensure_index([("id", 1), ("owner", 1)],
+                                         unique = True)
+    # - Trophonius disconnection.
+    self.__database.devices.ensure_index([("trophonius", 1)],
+                                         unique = False)
+
+    #---------------------------------------------------------------------------
+    # Transactions
+    #---------------------------------------------------------------------------
+    # - ??
     self.__database.transactions.ensure_index('ctime')
+
+    # - Midnight cron.
+    self.__database.transactions.ensure_index([("mtime", 1),
+                                               ('status', 1)])
+    # - Default transaction search.
+    self.__database.transactions.ensure_index([("sender_id", 1),
+                                               ("recipient_id", 1),
+                                               ('status', 1),
+                                               ('mtime', 1)])
 
   def __register(self, method):
     rule = method.__route__
