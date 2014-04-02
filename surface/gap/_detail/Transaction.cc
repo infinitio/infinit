@@ -99,6 +99,7 @@ namespace surface
           {
             ELLE_ERR("%s: couldn't load snapshot at %s: %s",
                      *this, snapshot_path, elle::exception_string());
+            boost::filesystem::remove(snapshot_path);
             continue;
           }
           try
@@ -181,7 +182,7 @@ namespace surface
             }
             continue;
           }
-          ELLE_DEBUG("ensure that both user are fetched")
+          ELLE_DUMP("ensure that both user are fetched")
           {
             this->user(transaction.sender_id);
             this->user(transaction.recipient_id);

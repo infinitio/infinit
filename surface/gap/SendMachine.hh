@@ -56,13 +56,12 @@ namespace surface
     private:
       void
       _create_transaction();
-
       void
       _wait_for_accept();
-
       void
       _transfer_operation(frete::RPCFrete& frete) override;
-
+      void
+      _cloud_operation() override;
       /*-----------------------.
       | Machine implementation |
       `-----------------------*/
@@ -100,13 +99,15 @@ namespace surface
     private:
       std::unique_ptr<frete::RPCFrete>
       rpcs(infinit::protocol::ChanneledStream& channels) override;
-
     public:
       /*----------.
       | Printable |
       `----------*/
       std::string
       type() const override;
+    protected:
+      virtual
+      void cleanup () override;
     };
   }
 }

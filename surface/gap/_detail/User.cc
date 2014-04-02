@@ -130,7 +130,7 @@ namespace surface
     State::User const&
     State::user(uint32_t id) const
     {
-      ELLE_DEBUG_SCOPE("%s: get user from id %s", *this, id);
+      ELLE_DUMP_SCOPE("%s: get user from id %s", *this, id);
 
       try
       {
@@ -278,7 +278,7 @@ namespace surface
             auto* notif_ptr =
               new infinit::oracles::trophonius::UserStatusNotification{};
             notif_ptr->user_id = swagger_id;
-            notif_ptr->status = user.status();
+            notif_ptr->status = user.online();
             notif_ptr->device_id = device;
             notif_ptr->device_status = true;
 
@@ -294,7 +294,7 @@ namespace surface
             ELLE_DEBUG("%s: updating device %s", *this, device);
             auto* notif_ptr = new infinit::oracles::trophonius::UserStatusNotification{};
             notif_ptr->user_id = swagger_id;
-            notif_ptr->status = user.status();
+            notif_ptr->status = user.online();
             notif_ptr->device_id = device;
             notif_ptr->device_status = false;
 
@@ -471,10 +471,10 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: user status notification %s", *this, notif);
 
       State::User swagger = this->user(notif.user_id);
-      if (swagger.public_key.empty() && notif.status == gap_user_status_online)
+      if (swagger.ghost() && notif.status == gap_user_status_online)
       {
         swagger = this->user_sync(notif.user_id);
-        ELLE_ASSERT(not swagger.public_key.empty());
+        ELLE_ASSERT(swagger.ghost());
       }
       this->swaggers(); // force up-to-date swaggers
 

@@ -35,21 +35,24 @@ namespace frete
     Impl(infinit::cryptography::PublicKey const& peer_key,
          std::string const& password):
       _old_key(infinit::cryptography::cipher::Algorithm::aes256, password),
-      _key(infinit::cryptography::SecretKey::generate(
-             infinit::cryptography::cipher::Algorithm::aes256, 2048)),
+      _key(new infinit::cryptography::SecretKey(
+        infinit::cryptography::SecretKey::generate(
+             infinit::cryptography::cipher::Algorithm::aes256, 2048))),
       _peer_key(peer_key),
-      _encrypted_key(this->_peer_key.encrypt(this->_key))
+      _encrypted_key(new infinit::cryptography::Code(this->_peer_key.encrypt(*this->_key)))
     {
       ELLE_DEBUG("frete impl with peer K %s", peer_key);
     }
 
     ELLE_ATTRIBUTE_R(infinit::cryptography::SecretKey, old_key);
-    ELLE_ATTRIBUTE_R(infinit::cryptography::SecretKey, key);
+    ELLE_ATTRIBUTE_R(std::unique_ptr<infinit::cryptography::SecretKey>, key);
     ELLE_ATTRIBUTE_R(infinit::cryptography::PublicKey, peer_key);
-    ELLE_ATTRIBUTE_R(infinit::cryptography::Code, encrypted_key);
+    ELLE_ATTRIBUTE_R(std::unique_ptr<infinit::cryptography::Code>, encrypted_key);
+    friend class Frete;
   };
 
   Frete::Frete(std::string const& password,
+               infinit::cryptography::KeyPair const& self_key,
                infinit::cryptography::PublicKey peer_key,
                boost::filesystem::path const& snapshot_destination):
     _impl(new Impl(peer_key, password)),
@@ -57,25 +60,47 @@ namespace frete
     _transfer_snapshot(),
     _snapshot_destination(snapshot_destination)
   {
-    if (boost::filesystem::exists(this->_snapshot_destination))
+    ELLE_TRACE_SCOPE("%s: load snapshot %s",
+                     *this, this->_snapshot_destination);
+    try
     {
-      ELLE_TRACE_SCOPE("%s: load snapshot %s",
-                       *this, this->_snapshot_destination);
-      try
-      {
-        this->_transfer_snapshot.reset(
-          new TransferSnapshot(
-            elle::serialize::from_file(this->_snapshot_destination.string())));
-      }
-      catch (std::exception const&) //XXX: Choose the right exception here.
-      {
-        ELLE_ERR("%s: snapshot is invalid: %s",
+      this->_transfer_snapshot.reset(
+        new TransferSnapshot(
+          elle::serialize::from_file(this->_snapshot_destination.string())));
+      ELLE_DUMP("%s: Loaded snapshot %s with progress[0] %s",
+                *this,
+                this->_snapshot_destination,
+                (this->_transfer_snapshot->file_count()?
+                  this->_transfer_snapshot->file(0).progress():
+                  0));
+      // reload key from snapshot
+      auto& k = *this->_transfer_snapshot->key_code();
+      _impl->_key.reset(
+        new infinit::cryptography::SecretKey(
+          self_key.k().decrypt<infinit::cryptography::SecretKey>(k)));
+      // and reload frete key_code, encrypted session key with peer key
+      _impl->_encrypted_key.reset(
+        new infinit::cryptography::Code(
+          peer_key.encrypt(*_impl->_key)));
+    }
+    catch (boost::filesystem::filesystem_error const&)
+    {
+      ELLE_TRACE("%s: unable to read snapshot file: %s",
                  *this, elle::exception_string());
-        boost::filesystem::remove(this->_snapshot_destination);
-      }
+    }
+    catch (std::exception const&) //XXX: Choose the right exception here.
+    {
+      ELLE_WARN("%s: snapshot is invalid: %s",
+                *this, elle::exception_string());
     }
     if (this->_transfer_snapshot == nullptr)
+    {
       this->_transfer_snapshot.reset(new TransferSnapshot());
+      // Write encrypted session key to the snapshot
+      this->_transfer_snapshot->set_key_code(self_key.K().encrypt(*_impl->_key));
+      // immediately save the snapshot so that key never changes
+      this->save_snapshot();
+    }
   }
 
   Frete::~Frete()
@@ -136,20 +161,37 @@ namespace frete
   }
 
   void
-  Frete::_save_snapshot() const
+  Frete::save_snapshot() const
   {
     ELLE_ASSERT(this->_transfer_snapshot != nullptr);
+    ELLE_DUMP("%s: Saving snapshot %s with progress[0] %s",
+                *this,
+                this->_snapshot_destination,
+                (this->_transfer_snapshot->file_count()?
+                  this->_transfer_snapshot->file(0).progress():
+                  0));
     elle::serialize::to_file(this->_snapshot_destination.string()) <<
       *this->_transfer_snapshot;
+  }
+
+  void
+  Frete::remove_snapshot()
+  {
+    try
+    {
+      boost::filesystem::remove(this->_snapshot_destination);
+    }
+    catch (std::exception const&)
+    {
+      ELLE_ERR("couldn't delete snapshot at %s: %s",
+        this->_snapshot_destination, elle::exception_string());
+    }
   }
 
   boost::filesystem::path
   Frete::_local_path(FileID file_id)
   {
-    ELLE_ASSERT(this->_transfer_snapshot != nullptr);
-    ELLE_ASSERT(this->_transfer_snapshot->transfers().find(file_id) !=
-                this->_transfer_snapshot->transfers().end());
-    return this->_transfer_snapshot->transfers().at(file_id).full_path();
+    return this->_transfer_snapshot->file(file_id).full_path();
   }
 
   /*----.
@@ -167,7 +209,8 @@ namespace frete
   void
   Frete::finish()
   {
-    this->_transfer_snapshot->end_progress(this->count() - 1);
+    ELLE_TRACE("%s: Finish called, opening barrier", *this);
+    this->_transfer_snapshot->file_progress_end(this->count() - 1);
     this->_progress_changed.signal();
     this->_finished.open();
   }
@@ -175,10 +218,7 @@ namespace frete
   frete::Frete::FileCount
   Frete::count()
   {
-    ELLE_ASSERT(this->_transfer_snapshot != nullptr);
-    ELLE_DEBUG("%s: %s file(s)",
-               *this, this->_transfer_snapshot->transfers().size());
-    return this->_transfer_snapshot->transfers().size();
+    return this->_transfer_snapshot->count();
   }
 
   frete::Frete::FileSize
@@ -191,12 +231,7 @@ namespace frete
   frete::Frete::FileSize
   Frete::file_size(FileID file_id)
   {
-    ELLE_ASSERT_LT(file_id, this->count());
-
-    ELLE_ASSERT(this->_transfer_snapshot->transfers().find(file_id) !=
-                this->_transfer_snapshot->transfers().end());
-
-    return this->_transfer_snapshot->transfers().at(file_id).file_size();
+    return this->_transfer_snapshot->file(file_id).size();
   }
 
   std::vector<std::pair<std::string, Frete::FileSize>>
@@ -205,8 +240,8 @@ namespace frete
     std::vector<std::pair<std::string, FileSize>> res;
     for (unsigned i = 0; i < this->count(); ++i)
     {
-      auto& transfer = this->_transfer_snapshot->transfers().at(i);
-      res.push_back(std::make_pair(transfer.path(), transfer.file_size()));
+      auto& file = this->_transfer_snapshot->file(i);
+      res.push_back(std::make_pair(file.path(), file.size()));
     }
     return res;
   }
@@ -226,8 +261,28 @@ namespace frete
       "%s: read and encrypt block %s of size %s at offset %s with key %s",
       *this, f, size, start, this->_impl->key());
 
-    auto code = this->_impl->key().encrypt(this->_read(f, start, size));
+    auto code = this->_impl->key()->encrypt(this->_read(f, start, size));
 
+    ELLE_DUMP("encrypted data: %s with buffer %x", code, code.buffer());
+    return code;
+  }
+
+  infinit::cryptography::Code
+  Frete::encrypted_read_acknowledge(FileID f, FileOffset start, FileSize size,
+                                    FileSize acknowledge)
+  {
+    ELLE_DEBUG_SCOPE(
+      "%s: read and encrypt block %s of size %s at offset %s with key %s",
+      *this, f, size, start, this->_impl->key());
+
+    auto code = this->_impl->key()->encrypt(this->_read(f, start, size, false));
+    auto& snapshot = *this->_transfer_snapshot;
+    /* Since we might be pushing both in a bufferer and directly, there
+     * are actually two progress positions.
+     * We can safely(*) ignore acks behind our current state
+    */
+    if (acknowledge > snapshot.progress())
+      snapshot.progress_increment(acknowledge - snapshot.progress());
     ELLE_DUMP("encrypted data: %s with buffer %x", code, code.buffer());
     return code;
   }
@@ -235,28 +290,26 @@ namespace frete
   std::string
   Frete::path(FileID file_id)
   {
-    this->_check_file_id(file_id);
-    ELLE_ASSERT(this->_transfer_snapshot->transfers().find(file_id) !=
-                this->_transfer_snapshot->transfers().end());
-    return this->_transfer_snapshot->transfers().at(file_id).path();
+    return this->_transfer_snapshot->file(file_id).path();
   }
 
   elle::Buffer
   Frete::_read(FileID file_id,
                 FileOffset offset,
-                FileSize const size)
+                FileSize const size,
+                bool update_progress)
   {
     ELLE_DEBUG_SCOPE("%s: read %s bytes of file %s at offset %s",
                      *this, size,  file_id, offset);
-    this->_check_file_id(file_id);
-
     auto& snapshot = *this->_transfer_snapshot;
-    if (offset != 0)
-      snapshot.set_progress(file_id, offset);
-    else if (file_id != 0)
-      snapshot.end_progress(file_id - 1);
-    this->_progress_changed.signal();
-
+    if (update_progress)
+    {
+      if (offset != 0)
+        snapshot.file_progress_set(file_id, offset);
+      else if (file_id != 0)
+        snapshot.file_progress_end(file_id - 1);
+      this->_progress_changed.signal();
+    }
     auto path = this->_local_path(file_id);
     boost::filesystem::ifstream file{path, std::ios::binary};
     static const FileOffset MAX_offset{
@@ -299,7 +352,7 @@ namespace frete
     ELLE_DEBUG("buffer resized to %s bytes", buffer.size());
 
     if (!file.eof() && file.fail() || file.bad())
-      throw elle::Exception("unable to read");
+      throw elle::Exception("unable to reathd");
 
     ELLE_DUMP("buffer read: %x", buffer);
     return buffer;
@@ -308,7 +361,7 @@ namespace frete
   infinit::cryptography::Code const&
   Frete::key_code() const
   {
-    return this->_impl->encrypted_key();
+    return *this->_impl->encrypted_key();
   }
 
   void
@@ -326,12 +379,5 @@ namespace frete
     // if (this->_transfer_snapshot != nullptr)
     //   stream << " " << *this->_transfer_snapshot;
     // stream << " snapshot location " << this->_snapshot_destination;
-  }
-
-  void
-  Frete::_check_file_id(FileID id)
-  {
-    if (id >= this->count())
-      throw elle::Exception(elle::sprintf("file id out of range: %s", id));
   }
 }

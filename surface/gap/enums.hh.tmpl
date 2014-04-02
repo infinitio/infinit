@@ -8,17 +8,25 @@ extern "C"
 # endif
   typedef enum
   {
-    gap_transaction_none,
-    gap_transaction_pending,
-    gap_transaction_copying,
-    gap_transaction_waiting_for_accept,
-    gap_transaction_accepted,
-    gap_transaction_preparing,
-    gap_transaction_running,
-    gap_transaction_cleaning,
+    // The transaction was just created.
+    gap_transaction_new,
+    // Sender or recipient waiting until acceptance.
+    gap_transaction_waiting_accept,
+    // Sender is waiting for the recipient to register.
+    gap_transaction_waiting_register,
+    // Connecting.
+    gap_transaction_connecting,
+    // Actively transfering.
+    gap_transaction_transferring,
+    // Uploaded in the cloud, not yet dowloaded.
+    gap_transaction_cloud_buffered,
+    // Finished.
     gap_transaction_finished,
+    // Failed.
     gap_transaction_failed,
+    // Cancelled.
     gap_transaction_canceled,
+    // Rejected.
     gap_transaction_rejected,
   } gap_TransactionStatus;
 

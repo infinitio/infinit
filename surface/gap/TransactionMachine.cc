@@ -147,7 +147,8 @@ namespace surface
     void
     TransactionMachine::_save_snapshot() const
     {
-      elle::serialize::to_file(this->_snapshot_path.string()) << this->_make_snapshot();
+      ELLE_TRACE("%s saving snapshot to %s", *this, this->_snapshot_path.string())
+        elle::serialize::to_file(this->_snapshot_path.string()) << this->_make_snapshot();
     }
 
     void
@@ -214,6 +215,7 @@ namespace surface
           ""
         );
       }
+      this->cleanup();
       this->current_state(State::Finished);
       this->_finalize(infinit::oracles::Transaction::Status::finished);
       ELLE_DEBUG("%s: finished", *this);
@@ -226,6 +228,7 @@ namespace surface
       this->current_state(State::Rejected);
       this->_finalize(infinit::oracles::Transaction::Status::rejected);
       ELLE_DEBUG("%s: rejected", *this);
+      this->cleanup();
     }
 
     void
@@ -235,6 +238,7 @@ namespace surface
       this->current_state(State::Canceled);
       this->_finalize(infinit::oracles::Transaction::Status::canceled);
       ELLE_DEBUG("%s: canceled", *this);
+      this->cleanup();
     }
 
     void
@@ -260,6 +264,7 @@ namespace surface
 
       this->current_state(State::Failed);
       this->_finalize(infinit::oracles::Transaction::Status::failed);
+      this->cleanup();
       ELLE_DEBUG("%s: failed", *this);
     }
 
@@ -449,18 +454,13 @@ namespace surface
     TransactionMachine::_stop()
     {
       ELLE_TRACE_SCOPE("%s: stop machine for transaction", *this);
-
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
       if (this->_machine_thread != nullptr)
       {
         ELLE_DEBUG("%s: terminate machine thread", *this)
           this->_machine_thread->terminate_now();
         this->_machine_thread.reset();
       }
-
-      // Assign directly, don't use setter.
-      this->_current_state = State::Over;
     }
 
     /*-----------.
@@ -597,6 +597,10 @@ namespace surface
           return out << "Failed";
         case TransactionMachine::State::Over:
           return out << "Over";
+        case TransactionMachine::State::CloudBuffered:
+          return out << "CloudBuffered";
+        case TransactionMachine::State::CloudBufferingBeforeAccept:
+          return out << "CloudBufferingBeforeAccept";
         case TransactionMachine::State::None:
           return out << "None";
       }

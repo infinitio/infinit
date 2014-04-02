@@ -88,6 +88,9 @@ namespace surface
       virtual
       List
       list() override;
+      virtual
+      void
+      cleanup() override;
     private:
       boost::filesystem::path
       _filename(FileID file,

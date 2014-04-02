@@ -19,6 +19,10 @@
 
 #include <station/Station.hh>
 
+#include <aws/Credentials.hh>
+
+#include <surface/gap/FilesystemTransferBufferer.hh>
+#include <surface/gap/S3TransferBufferer.hh>
 #include <surface/gap/ReceiveMachine.hh>
 
 #include <version.hh>
@@ -30,6 +34,18 @@ namespace surface
 {
   namespace gap
   {
+    struct ReceiveMachine::TransferData
+    {
+      TransferData(
+        frete::TransferSnapshot::File&,
+        boost::filesystem::path full_path,
+        FileSize current_position = 0);
+
+      boost::filesystem::path full_path;
+      FileSize start_position; // next expected recieve buffer pos
+      boost::filesystem::ofstream output;
+    };
+
     static
     int
     rpc_pipeline_size()
@@ -101,33 +117,24 @@ namespace surface
       this->_machine.transition_add_catch(_reject_state, _fail_state);
       this->_machine.transition_add_catch(_transfer_core_state, _fail_state);
 
-      if (boost::filesystem::exists(this->_snapshot_path))
+      ELLE_LOG("snapshot exist at %s", this->_snapshot_path);
+      try
       {
-        ELLE_LOG("snapshot exist at %s", this->_snapshot_path);
-        try
-        {
-          elle::SafeFinally delete_snapshot{
-            [&]
-            {
-              try
-              {
-                boost::filesystem::remove(this->_snapshot_path);
-              }
-              catch (std::exception const&)
-              {
-                ELLE_ERR("couldn't delete snapshot at %s: %s",
-                         this->_snapshot_path, elle::exception_string());
-              }
-            }};
-
-          this->_snapshot.reset(
-            new frete::TransferSnapshot(
-              elle::serialize::from_file(this->_snapshot_path.string())));
-        }
-        catch (std::exception const&) //XXX: Choose the right exception here.
-        {
-          ELLE_ERR("%s: snap shot was invalid: %s", *this, elle::exception_string());
-        }
+        this->_snapshot.reset(
+          new frete::TransferSnapshot(
+            elle::serialize::from_file(this->_snapshot_path.string())));
+          if (this->_snapshot->file_count())
+            ELLE_DEBUG("Reloaded snapshot, first file at %s",
+              this->_snapshot->file(0).progress());
+      }
+      catch (boost::filesystem::filesystem_error const&)
+      {
+        ELLE_TRACE("%s: unable to read snapshot file: %s",
+                   *this, elle::exception_string());
+      }
+      catch (std::exception const&) //XXX: Choose the right exception here.
+      {
+        ELLE_ERR("%s: snap shot was invalid: %s", *this, elle::exception_string());
       }
     }
 
@@ -143,7 +150,6 @@ namespace surface
       switch (current_state)
       {
         case TransactionMachine::State::NewTransaction:
-          //
           break;
         case TransactionMachine::State::SenderCreateTransaction:
         case TransactionMachine::State::SenderWaitForDecision:
@@ -403,7 +409,6 @@ namespace surface
     ReceiveMachine::_transfer_operation(frete::RPCFrete& frete)
     {
       ELLE_TRACE_SCOPE("%s: transfer operation", *this);
-
       elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
         scope.run_background(
@@ -411,18 +416,50 @@ namespace surface
           [&frete, this] ()
           {
             this->get(frete);
-            this->finished().open();
           });
-
         scope.run_background(
           elle::sprintf("run rpcs %s", this->id()),
           [&frete] ()
           {
             frete.run();
           });
-
         scope.wait();
       };
+    }
+
+    void
+    ReceiveMachine::_cloud_operation()
+    {
+      if (elle::os::getenv("INFINIT_CLOUD_BUFFERING", "").empty())
+      {
+        ELLE_DEBUG("%s: cloud buffering disabled by configuration", *this);
+        return;
+      }
+      try
+      {
+        ELLE_DEBUG("%s: create cloud bufferer", *this);
+        bool cloud_debug = !elle::os::getenv("INFINIT_CLOUD_FILEBUFFERER", "").empty();
+        if (cloud_debug)
+          _bufferer.reset(new FilesystemTransferBufferer(*this->data(),
+                                                        "/tmp/infinit-buffering"));
+        else
+        {
+         auto& meta = this->state().meta();
+         auto token = meta.get_cloud_buffer_token(this->transaction_id());
+         auto credentials = aws::Credentials(token.access_key_id,
+                                             token.secret_access_key,
+                                             token.session_token,
+                                             token.expiration);
+         _bufferer.reset(new S3TransferBufferer(*this->data(),
+                                               credentials));
+        }
+        ELLE_DEBUG("%s: download from the cloud", *this)
+          this->get(*_bufferer);
+      }
+      catch (TransferBufferer::DataExhausted const&)
+      {
+        ELLE_TRACE("%s: Data exhausted on cloud bufferer", *this);
+      }
     }
 
     std::unique_ptr<frete::RPCFrete>
@@ -460,11 +497,11 @@ namespace surface
     ReceiveMachine::get(TransferBufferer& frete,
                         std::string const& name_policy)
     {
-       // return this->_get<TransferBufferer>(
-       //   frete, true, name_policy,
-       //   elle::Version(INFINIT_VERSION_MAJOR,
-       //                 INFINIT_VERSION_MINOR,
-       //                 INFINIT_VERSION_SUBMINOR));
+      return this->_get<TransferBufferer>(
+        frete, true, name_policy,
+        elle::Version(INFINIT_VERSION_MAJOR,
+                      INFINIT_VERSION_MINOR,
+                      INFINIT_VERSION_SUBMINOR));
     }
 
     template <typename Source>
@@ -486,7 +523,11 @@ namespace surface
         if ((this->_snapshot->total_size() != total_size) ||
             (this->_snapshot->count() != count))
         {
-          ELLE_ERR("snapshot data (%s) are invalid", *this->_snapshot);
+          ELLE_ERR("snapshot data (%s) are invalid: size %s vs %s  count %s vs %s",
+                   *this->_snapshot,
+                   this->_snapshot->total_size(), total_size,
+                   this->_snapshot->count(), count
+                   );
           throw elle::Exception("invalid transfer data");
         }
       }
@@ -501,7 +542,7 @@ namespace surface
 
 
 
-      FileID last_index = this->_snapshot->transfers().size();
+      FileID last_index = this->_snapshot->file_count();
       if (last_index > 0)
         --last_index;
 
@@ -518,12 +559,13 @@ namespace surface
         }
       }
 
+      ELLE_ASSERT(infos.size() >= this->_snapshot->count());
       // reconstruct directory name mapping data so that files in transfer
       // but not yet in snapshot will reuse it
-      for (int i = 0; i < this->_snapshot->transfers().size(); ++i)
+      for (int i = 0; i < this->_snapshot->file_count(); ++i)
       {
         // get asked/got relative path from output_path
-        boost::filesystem::path got = this->_snapshot->transfers().at(i).path();
+        boost::filesystem::path got = this->_snapshot->file(i).path();
         boost::filesystem::path asked = infos.at(i).first;
         boost::filesystem::path got0 = *got.begin();
         boost::filesystem::path asked0 = *asked.begin();
@@ -541,33 +583,18 @@ namespace surface
           this->transaction_id());
 
 
-
+      _fetch_current_file_index = last_index;
       // Snapshot only has info on files for which transfer started,
       // and we transfer in order, so we know all files in snapshot except
-      // maybe the last one are fully transfered.
-      FileID current_index = last_index;
-      TransferData * current_transfer = 0;
-      // get first transfer for which there is something to do
-      while (current_index < count)
+      bool things_to_do = _fetch_next_file(name_policy,
+                                           source.files_info());
+      if (!things_to_do)
+        ELLE_TRACE("Nothing to do");
+      if (things_to_do)
       {
-        TransferDataPtr next = _initialize_one(
-          current_index,
-          infos.at(current_index).first,
-          infos.at(current_index).second,
-          output_path,
-          name_policy);
-        if (next)
-        {
-          current_transfer = next.get();
-          _transfer_data_map[current_index] = std::move(next);
-          break;
-        }
-        ++current_index;
-      }
-      if (current_transfer)
-      {
-        size_t current_position = current_transfer->start_position;
-        size_t current_full_size = current_transfer->tr.file_size();
+        // Initialize expectations of reader thread with first block
+        _store_expected_file = _fetch_current_file_index;
+        _store_expected_position = _fetch_current_position;
         // Start processing threads
         elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
         {
@@ -578,90 +605,32 @@ namespace surface
           // Counting 256k packet size and 10Mo/s, two pending requests
           // 'buffers' for 1/20th of a second
           static int num_reader = rpc_pipeline_size();
-          auto reader = [&,this](int id)
-          {
-            while (true)
-            {
-              if (!current_transfer)
-              {
-                ELLE_DEBUG("Thread %s has nothing to do, exiting", id);
-                break; // some other thread figured out this was over
-              }
-              ELLE_DUMP("Reading buffer at %s", current_position);
-              if (current_position >= current_full_size)
-              {
-                ELLE_DUMP("Thread %s would read past end", id);
-                // switch to next file
-                ++current_index;
-                if (current_index >= count)
-                {
-                  // we're done
-                  current_transfer = nullptr;
-                  break;
-                }
-                {
-                  auto transfer =
-                    this->_initialize_one(current_index,
-                                          infos.at(current_index).first,
-                                          infos.at(current_index).second,
-                                          output_path,
-                                          name_policy);
-                  current_transfer = transfer.get();
-                  this->_transfer_data_map.insert(
-                    std::make_pair(current_index, std::move(transfer)));
-                }
-                // technically for now current_position is always 0
-                current_position = current_transfer->start_position;
-                current_full_size = current_transfer->tr.file_size();
-              }
-              size_t next_read = current_position;
-              current_position += chunk_size;
+          bool explicit_ack = peer_version >= elle::Version(0, 8, 9);
 
-              FileID local_current_index = current_index;
-              // This line blocks, no shared state access past that point!
-              elle::Buffer buffer{
-                key.decrypt<elle::Buffer>(
-                  strong_encryption ?
-                  source.encrypted_read(current_index, next_read, chunk_size) :
-                  source.read(current_index, next_read , chunk_size))};
-              ELLE_DUMP("Queuing buffer fileindex:%s offset:%s size:%s", local_current_index, next_read, buffer.size());
-              this->_buffers.put(
-                IndexedBuffer{std::move(buffer),
-                              next_read, local_current_index});
-            }
-            ELLE_DEBUG("reader %s exiting cleanly", id);
-          };
+          // Prevent unlimited ram buffering if a block fetcher gets stuck
+          _buffers.max_size(num_reader * 3);
           for (int i = 0; i < num_reader; ++i)
-            scope.run_background(elle::sprintf("transfer reader %s", i),
-                                 std::bind(reader, i));
-          reactor::Thread disk_writer(
+              scope.run_background(
+                elle::sprintf("transfer reader %s", i),
+                std::bind(&ReceiveMachine::_fetcher_thread<Source>,
+                          this, std::ref(source), i, name_policy, explicit_ack,
+                          strong_encryption, chunk_size, std::ref(key)));
+          scope.run_background(
             "receive writer",
-            std::bind(&ReceiveMachine::_reader_thread<Source>,
+            std::bind(&ReceiveMachine::_disk_thread<Source>,
                       this, std::ref(source),
                       peer_version, chunk_size));
-          try
-          {
-            scope.wait();
-            // tell the reader thread to terminate
-            this->_buffers.put(
-              IndexedBuffer{elle::Buffer(), FileSize(-1), FileID(-1)});
-            reactor::wait(disk_writer);
-            ELLE_TRACE("finish_transfer exited cleanly");
-          }
-          catch(...)
-          {
-            disk_writer.terminate_now();
-            throw;
-          }
+          reactor::wait(scope);
+          ELLE_TRACE("finish_transfer exited cleanly");
         }; // scope
       }// if current_transfer
       // this->finished.open();
-      ELLE_LOG("Transfer finished, peer is %s", peer_version);
+      ELLE_LOG("%s: transfer finished", *this);
       if (peer_version >= elle::Version(0, 8, 7))
       {
-        ELLE_LOG("Notifying finish");
         source.finish();
       }
+      this->finished().open();
 
       try
       {
@@ -674,44 +643,38 @@ namespace surface
       }
     }
 
-    ReceiveMachine::TransferDataPtr
+    ReceiveMachine::FileSize
     ReceiveMachine::_initialize_one(FileID index,
                                     const std::string& file_path,
                                     FileSize file_size,
-                                    boost::filesystem::path output_path,
                                     const std::string& name_policy)
     {
+      boost::filesystem::path output_path(this->state().output_dir());
       boost::filesystem::path fullpath;
 
-      if (this->_snapshot->transfers().find(index) != this->_snapshot->transfers().end())
+      if (this->_snapshot->has(index))
       {
-        auto const& transfer = this->_snapshot->transfers().at(index);
-        fullpath = this->_snapshot->transfers().at(index).full_path();
+        auto const& file = this->_snapshot->file(index);
+        fullpath = file.full_path();
 
-        if (file_size != transfer.file_size())
+        if (file_size != file.size())
         {
           ELLE_ERR("%s: transfer data (%s) at index %s are invalid.",
-            *this, transfer, index);
+                   *this, file, index);
           throw elle::Exception("invalid transfer data");
         }
       }
       else
       {
-        auto relativ_path = boost::filesystem::path(file_path);
+        auto relative_path = boost::filesystem::path(file_path);
         fullpath = ReceiveMachine::eligible_name(
-          output_path, relativ_path, name_policy, _root_component_mapping);
-        relativ_path = ReceiveMachine::trim(fullpath, output_path);
-
-        this->_snapshot->transfers().emplace(
-          std::piecewise_construct,
-          std::make_tuple(index),
-          std::forward_as_tuple(index, output_path, relativ_path, file_size));
+          output_path, relative_path, name_policy,
+          this->_root_component_mapping);
+        relative_path = ReceiveMachine::trim(fullpath, output_path);
+        this->_snapshot->add(index, output_path, relative_path, file_size);
       }
 
-      ELLE_ASSERT(this->_snapshot->transfers().find(index) !=
-        this->_snapshot->transfers().end());
-
-      auto& tr = this->_snapshot->transfers().at(index);
+      auto& tr = this->_snapshot->file(index);
 
       ELLE_DEBUG("%s: index (%s) - path %s - size %s",
         *this, index, fullpath, file_size);
@@ -720,109 +683,264 @@ namespace surface
       if (tr.complete())
       {
         ELLE_DEBUG("%s: transfer was marked as complete", *this);
-        return TransferDataPtr();
+        // Handle empty files here
+        if (!boost::filesystem::exists(fullpath))
+        {
+          boost::filesystem::create_directories(fullpath.parent_path());
+          boost::filesystem::ofstream output(fullpath, std::ios::app | std::ios::binary);
+        }
+        return FileSize(-1);
       }
-      TransferDataPtr transfer(new TransferData(tr, fullpath, tr.progress()));
-      return std::move(transfer);
+      boost::filesystem::create_directories(fullpath.parent_path());
+      boost::filesystem::ofstream output(fullpath, std::ios::app | std::ios::binary);
+      _transfer_stream_map[index] =
+        elle::make_unique<boost::filesystem::ofstream>(fullpath, std::ios::app | std::ios::binary);
+      return tr.progress();
     }
 
-    ReceiveMachine::TransferData::TransferData(frete::TransferSnapshot::TransferProgressInfo& tr,
-                               boost::filesystem::path full_path,
-                               FileSize start_position)
-    : tr(tr)
-    , full_path(full_path)
-    , start_position(start_position)
+    bool ReceiveMachine::IndexedBuffer::operator<(
+      const ReceiveMachine::IndexedBuffer& b) const
     {
-      boost::filesystem::create_directories(full_path.parent_path());
-      output.open(full_path, std::ios::app | std::ios::binary);
+        // Ensure -1 which is our stop request stays last
+        if (file_index != b.file_index)
+          return (unsigned)file_index > (unsigned)b.file_index;
+        else
+          return start_position > b.start_position;
+    };
+
+    bool
+    ReceiveMachine::_fetch_next_file(
+      const std::string& name_policy,
+      const std::vector<std::pair<std::string, FileSize>>& infos)
+    {
+      boost::filesystem::path output_path(this->state().output_dir());
+      FileSize pos = 0;
+      // switch to next file until we find one for which there is something to do
+      while (_fetch_current_file_index < _snapshot->count())
+      {
+        pos = this->_initialize_one(
+          _fetch_current_file_index,
+          infos.at(_fetch_current_file_index).first,
+          infos.at(_fetch_current_file_index).second,
+          name_policy);
+        if (pos != FileSize(-1))
+          break;
+        ++_fetch_current_file_index;
+      }
+      if (_fetch_current_file_index >= _snapshot->count())
+      {
+        // we're done
+        _fetch_current_file_index = -1;
+        return false;
+      }
+      _fetch_current_position = pos; // start position for this file
+      _fetch_current_file_full_size =
+      _snapshot->file(_fetch_current_file_index).size();
+      return true;
     }
 
     template<typename Source>
     void
-    ReceiveMachine::_reader_thread(Source& source, elle::Version peer_version,
-                                   size_t chunk_size)
+    ReceiveMachine::_fetcher_thread(Source& source, int id,
+                                    const std::string& name_policy,
+                                    bool explicit_ack,
+                                    bool strong_encryption,
+                                    size_t chunk_size,
+                                    const infinit::cryptography::SecretKey& key)
     {
-      ELLE_TRACE_SCOPE("%s: start writing blocks to disk", *this);
-      // Cached current transfer info to avoid refetching each time.
-      TransferData* current_transfer = 0;
-      size_t current_index = -1;
-      // We do not store an expected transfer position, it is already
-      // present in the snapshot and we assert on it.
       while (true)
       {
-         IndexedBuffer data = _buffers.get();
-         if (data.file_index == FileID(-1))
-         {
-           ELLE_DEBUG("%s: done writing blocks to disk", *this);
-           break;
-         }
-         const elle::Buffer& buffer = data.buffer;
-         size_t position = data.start_position;
-         size_t index = data.file_index;
-         if (current_index != index)
-         {
-           current_index = index;
-           // We know it's there if we have a buffer for it, RPC requester
-           // thread created it and we delete it.
-           current_transfer = _transfer_data_map.at(index).get();
-         }
-         ELLE_TRACE("%s: receiver got data for file %s at position %s, "
-                    "will write to %s",
-                    *this,
-                    index, position, current_transfer->full_path);
-         ELLE_ASSERT(current_transfer);
-         // If this assert fails, packets were received out of order.
-         ELLE_ASSERT_EQ(position, current_transfer->tr.progress());
-         ELLE_ASSERT_LT(index, this->_snapshot->transfers().size());
-         boost::system::error_code ec;
-         auto size = boost::filesystem::file_size(current_transfer->full_path, ec);
-         if (ec)
-         {
-           ELLE_ERR("%s: destination file deleted: %s", *this, ec);
-           throw elle::Exception(elle::sprintf("destination file %s deleted",
-                                               current_transfer->full_path));
-         }
-         if (size != current_transfer->tr.progress())
-         {
-           ELLE_ERR(
-             "%s: expected file size %s and actual file size %s are different",
-             *this,
-             current_transfer->tr.progress(),
-             size);
-           throw elle::Exception("destination file corrupted");
-         }
-         // Write the file.
-         ELLE_DUMP("content: %x (%sB)", buffer, buffer.size());
-         current_transfer->output.write((char const*) buffer.contents(), buffer.size());
-         current_transfer->output.flush();
-         this->_snapshot->increment_progress(index, buffer.size());
-         // OLD clients need this RPC to update progress
-         if (peer_version < elle::Version(0, 8, 7))
-           source.set_progress(this->_snapshot->progress());
-         // Write snapshot state to file
-         ELLE_TRACE("%s: write down snapshot", *this)
-         {
-           ELLE_DUMP("%s: snapshot: %s", *this, *this->_snapshot);
-           elle::serialize::to_file(this->_snapshot_path.string())
-             << *this->_snapshot;
-         }
-         auto progress = current_transfer->tr.progress();
-         auto file_size = current_transfer->tr.file_size();
-         if (buffer.size() < chunk_size || progress >= file_size)
-         {
-           if (progress != file_size)
-           {
-             ELLE_ERR("%s: end of transfer with unexpected size, "
-                      "got %s, expected %s",
-                      *this, progress, file_size);
-             throw elle::Exception("transfer size mismatch");
-           }
-           // cleanup transfer data
-           current_transfer = 0;
-           _transfer_data_map.erase(current_index);
-           current_index = -1;
-         }
+        if (_fetch_current_file_index == -1)
+        {
+          ELLE_DEBUG("Thread %s has nothing to do, exiting", id);
+          break; // some other thread figured out this was over
+        }
+        ELLE_DEBUG("Reading buffer at %s in mode %s", _fetch_current_position,
+          explicit_ack? "read_encrypt_ack" :
+           strong_encryption? "read_encrypt" : "encrypt"
+          );
+        if (_fetch_current_position >= _fetch_current_file_full_size)
+        {
+          ELLE_DEBUG("Thread %s would read past end", id);
+          ++_fetch_current_file_index;
+          if (!_fetch_next_file(name_policy, source.files_info()))
+          {
+            // we're done
+            _fetch_current_file_index = -1;
+            break;
+          }
+
+        }
+        // local cache for next block
+        FileSize local_position = _fetch_current_position;
+        FileID   local_index    = _fetch_current_file_index;
+        _fetch_current_position += chunk_size;
+
+        // This line blocks, no shared state access past that point!
+        // For some reasons this can't be rewritten cleanly: the compiler
+        // burst into flames about deleted =(const&), thus ignoring
+        // =(&&)  when writing code = f();
+        infinit::cryptography::Code code(
+           explicit_ack ?
+            source.encrypted_read_acknowledge(local_index,
+                                              local_position, chunk_size,
+                                              this->_snapshot->progress())
+            : strong_encryption ?
+              source.encrypted_read(local_index, local_position, chunk_size)
+              :  source.read(local_index, local_position, chunk_size));
+        elle::Buffer buffer;
+        try
+        {
+          buffer = key.decrypt<elle::Buffer>(code);
+        }
+        catch(...)
+        {
+          ELLE_WARN("%s: decryption error on block %s/%s", *this, local_index, local_position);
+          throw;
+        }
+        ELLE_DEBUG("Queuing buffer %s/%s size:%s. Writer waits for %s/%s",
+          local_index, local_position, buffer.size(),
+          _store_expected_file, _store_expected_position);
+        // Subtelty here: put will block us *after* the insert operation
+        // if queue is full, so we must notify the reader thread before the
+        // put
+         if (local_index == _store_expected_file
+          && local_position == _store_expected_position)
+        {
+          ELLE_DEBUG("Opening disk writer barrier at %s/%s", local_index, local_position);
+          _disk_writer_barrier.open();
+        }
+        this->_buffers.put(
+          IndexedBuffer{std::move(buffer),
+                        local_position, local_index});
       }
+      ELLE_DEBUG("reader %s exiting cleanly", id);
+    }
+
+    template<typename Source>
+    void
+    ReceiveMachine::_disk_thread(Source& source, elle::Version peer_version,
+                                 size_t chunk_size)
+    {
+      // somebody initialized our _store_expected_ state
+      ELLE_TRACE_SCOPE("%s: start writing blocks to disk", *this);
+      // Cached current transfer info to avoid refetching each time.
+      // it should be there, but a logic error that gives us a
+      // nothing-to-do-on-this-first-file state is possible and nonfatal
+      // so do not use at
+      boost::filesystem::ofstream* current_stream
+        = _transfer_stream_map[_store_expected_file].get();
+      FileSize current_file_full_size;
+      boost::filesystem::path current_file_full_path;
+      {
+        frete::TransferSnapshot::File& f = _snapshot->file(_store_expected_file);
+        current_file_full_size = f.size();
+        current_file_full_path = f.full_path();
+      }
+      while (true)
+      {
+        ELLE_DEBUG("%s waiting for block %s/%s", *this, _store_expected_file,
+          _store_expected_position);
+        reactor::wait(_disk_writer_barrier);
+        while (true)
+        { // we might have successive blocks ready in the pipe, and nobody
+          // will notify us of the ones after the top() one.
+          IndexedBuffer data = _buffers.get();
+          if (data.file_index == FileID(-1))
+          {
+            ELLE_DEBUG("%s: done writing blocks to disk", *this);
+            break;
+          }
+          const elle::Buffer& buffer = data.buffer;
+          ELLE_TRACE("%s: receiver got data for file %s at position %s with size %s, "
+                     "will write to %s",
+                     *this,
+                     data.file_index, data.start_position,
+                     data.buffer.size(),
+                     current_file_full_path);
+          ELLE_ASSERT(current_stream);
+          // If this assert fails, packets were received out of order.
+          ELLE_ASSERT_EQ(_store_expected_file, data.file_index);
+          ELLE_ASSERT_EQ(_store_expected_position, data.start_position);
+          boost::system::error_code ec;
+          auto size = boost::filesystem::file_size(current_file_full_path, ec);
+          if (ec)
+          {
+            ELLE_ERR("%s: destination file deleted: %s", *this, ec);
+            throw elle::Exception(elle::sprintf("destination file %s deleted",
+                                  current_file_full_path));
+          }
+          if (size != _store_expected_position)
+          {
+            ELLE_ERR(
+              "%s: expected file size %s and actual file size %s are different",
+              *this,
+              _store_expected_position,
+              size);
+          throw elle::Exception("destination file corrupted");
+          }
+          // Write the file.
+          ELLE_DUMP("content: %x (%sB)", buffer, buffer.size());
+          current_stream->write((char const*) buffer.contents(), buffer.size());
+          current_stream->flush();
+          this->_snapshot->file_progress_increment(_store_expected_file, buffer.size());
+          // OLD clients need this RPC to update progress
+          if (peer_version < elle::Version(0, 8, 7))
+            source.set_progress(this->_snapshot->progress());
+          // Write snapshot state to file
+          ELLE_TRACE("%s: write down snapshot", *this)
+          {
+            ELLE_DUMP("%s: snapshot: %s", *this, *this->_snapshot);
+            elle::serialize::to_file(this->_snapshot_path.string())
+              << *this->_snapshot;
+          }
+           _store_expected_position += buffer.size();
+           ELLE_ASSERT_EQ(_store_expected_position,
+                          _snapshot->file(_store_expected_file).progress());
+          if (buffer.size() < chunk_size
+            || _store_expected_position >= current_file_full_size)
+          {
+            if (_store_expected_position != current_file_full_size)
+            {
+              ELLE_ERR("%s: end of transfer with unexpected size, "
+                       "got %s, expected %s",
+                       *this, _store_expected_position, current_file_full_size);
+              throw elle::Exception("transfer size mismatch");
+            }
+            // cleanup transfer data
+            _transfer_stream_map.erase(_store_expected_file);
+          }
+          // Update our expected file if needed
+          while (_store_expected_position == current_file_full_size)
+          {
+            ++_store_expected_file;
+            if (_store_expected_file == _snapshot->count())
+            {
+              ELLE_TRACE("%s: writer thread is done", *this);
+              return;
+            }
+            frete::TransferSnapshot::File& f = _snapshot->file(_store_expected_file);
+            _store_expected_position = f.progress();
+            current_file_full_size = f.size();
+            current_file_full_path = f.full_path();
+            if (_store_expected_position != current_file_full_size)
+            { // We need blocks for that one, good
+              current_stream = _transfer_stream_map.at(_store_expected_file).get();
+              break;
+            }
+          }
+          // Check next available data
+          const IndexedBuffer& next = _buffers.peek();
+          if (next.start_position != _store_expected_position
+             || next.file_index != _store_expected_file)
+          {
+            _disk_writer_barrier.close();
+            break; // break to outer while that will wait on barrier
+          }
+        } // inner while true
+      } // outer while true
+      // No need to Finally the block below, it stops an other thread in
+      // the same scope
     }
 
 
@@ -830,6 +948,36 @@ namespace surface
     ReceiveMachine::type() const
     {
       return "ReceiveMachine";
+    }
+
+    void
+    ReceiveMachine::cleanup()
+    { // our _get knows when it's finished, nothing to do
+      ELLE_TRACE_SCOPE("%s: cleaning up", *this);
+      if (_bufferer)
+        _bufferer->cleanup();
+    }
+
+    void
+    ReceiveMachine::IndexedBuffer::operator=(IndexedBuffer&&b)
+    {
+      buffer = std::move(b.buffer);
+      start_position = b.start_position;
+      file_index = b.file_index;
+    }
+
+    ReceiveMachine::IndexedBuffer::IndexedBuffer(elle::Buffer && b,
+                                                 FileSize pos, FileID index)
+    : buffer(std::move(b))
+    , start_position(pos)
+    , file_index(index)
+    {}
+
+    ReceiveMachine::IndexedBuffer::IndexedBuffer(IndexedBuffer && b)
+    : buffer(std::move(b.buffer))
+    , start_position(b.start_position)
+    , file_index(b.file_index)
+    {
     }
   }
 }

@@ -75,6 +75,8 @@ namespace surface
       _transfer();
       void
       _stopped();
+      void
+      _cloud_buffer();
 
     /*----------.
     | Printable |

@@ -1,7 +1,11 @@
 #include <boost/filesystem.hpp>
 
+#include <elle/os/environ.hh>
 #include <elle/os/path.hh>
 #include <elle/os/file.hh>
+
+#include <elle/serialize/extract.hh>
+#include <elle/serialize/insert.hh>
 
 #include <reactor/thread.hh>
 #include <reactor/exception.hh>
@@ -9,9 +13,16 @@
 #include <common/common.hh>
 
 #include <frete/Frete.hh>
+#include <frete/TransferSnapshot.hh>
+
+#include <papier/Identity.hh>
 
 #include <station/Station.hh>
 
+#include <aws/Credentials.hh>
+
+#include <surface/gap/FilesystemTransferBufferer.hh>
+#include <surface/gap/S3TransferBufferer.hh>
 #include <surface/gap/SendMachine.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.SendMachine");
@@ -35,6 +46,12 @@ namespace surface
       _accepted("accepted barrier"),
       _rejected("rejected barrier")
     {
+      ELLE_TRACE("Creating SendMachine: id %s sid %s sdid %s rid %s rdid %s",
+                this->data()->id,
+                this->data()->sender_id,
+                this->data()->sender_device_id,
+                this->data()->recipient_id,
+                this->data()->recipient_device_id);
       this->_machine.transition_add(
         this->_create_transaction_state,
         this->_wait_for_accept_state);
@@ -43,7 +60,7 @@ namespace surface
         this->_wait_for_accept_state,
         this->_transfer_core_state,
         reactor::Waitables{&this->_accepted},
-        false,
+        true,
         [&] () -> bool
         {
           // Pre Trigger the condition if the accepted barrier has already been
@@ -200,6 +217,7 @@ namespace surface
           this->_run(this->_create_transaction_state);
           break;
         case TransactionMachine::State::SenderWaitForDecision:
+        case TransactionMachine::State::CloudBufferingBeforeAccept:
           this->_run(this->_wait_for_accept_state);
           break;
         case TransactionMachine::State::RecipientWaitForDecision:
@@ -210,6 +228,7 @@ namespace surface
         case TransactionMachine::State::PeerDisconnected:
         case TransactionMachine::State::PeerConnectionLost:
         case TransactionMachine::State::Transfer:
+        case TransactionMachine::State::CloudBuffered:
           this->_run(this->_transfer_core_state);
           break;
         case TransactionMachine::State::Finished:
@@ -332,12 +351,16 @@ namespace surface
     SendMachine::_wait_for_accept()
     {
       ELLE_TRACE_SCOPE("%s: waiting for peer to accept or reject", *this);
-      this->current_state(TransactionMachine::State::SenderWaitForDecision);
 
-      // There are two ways to go to the next step:
-      // - Checking local state, meaning that during the copy, we recieved an
-      //   accepted, so we can directly go the next step.
-      // - Waiting for the accepted notification.
+      auto peer = this->state().user(this->peer_id());
+      if (!peer.ghost() && !peer.online())
+      {
+        this->current_state(
+          TransactionMachine::State::CloudBufferingBeforeAccept);
+        this->_cloud_operation();
+      }
+      else
+        this->current_state(TransactionMachine::State::SenderWaitForDecision);
     }
 
     void
@@ -356,6 +379,144 @@ namespace surface
       };
     }
 
+    static std::streamsize const chunk_size = 1 << 18;
+
+    typedef std::pair<frete::Frete::FileSize, frete::Frete::FileID> Position;
+    static frete::Frete::FileSize
+    progress_from(std::vector<std::pair<std::string, frete::Frete::FileSize>> const& infos, const Position& p)
+    {
+      frete::Frete::FileSize result = 0;
+      for (unsigned i=0; i<p.first; ++i)
+        result += infos[i].second;
+      result += p.second;
+      return result;
+    }
+
+    void
+    SendMachine::_cloud_operation()
+    {
+      if (elle::os::getenv("INFINIT_CLOUD_BUFFERING", "").empty())
+      {
+        ELLE_DEBUG("%s: cloud buffering disabled by configuration", *this);
+        return;
+      }
+      ELLE_TRACE_SCOPE("%s: upload to the cloud", *this);
+      auto& frete = this->frete();
+      auto& snapshot = *frete.transfer_snapshot();
+      // Save snapshot of what eventual direct upload already did right now.
+      this->frete().save_snapshot();
+      FilesystemTransferBufferer::Files files;
+      for (frete::Frete::FileID file_id = 0;
+           file_id < snapshot.count();
+           ++file_id)
+      {
+        auto& file = snapshot.file(file_id);
+        files.push_back(std::make_pair(file.path(), file.size()));
+      }
+      bool cloud_debug = !elle::os::getenv("INFINIT_CLOUD_FILEBUFFERER", "").empty();
+      std::unique_ptr<TransferBufferer> bufferer;
+      if (cloud_debug)
+        bufferer.reset(new FilesystemTransferBufferer(*this->data(),
+                                                      "/tmp/infinit-buffering",
+                                                      snapshot.count(),
+                                                      snapshot.total_size(),
+                                                      files,
+                                                      frete.key_code()));
+      else
+      {
+        auto& meta = this->state().meta();
+        auto token = meta.get_cloud_buffer_token(this->transaction_id());
+        auto credentials = aws::Credentials(token.access_key_id,
+                                            token.secret_access_key,
+                                            token.session_token,
+                                            token.expiration);
+        bufferer.reset(new S3TransferBufferer(*this->data(),
+                                              credentials,
+                                              snapshot.count(),
+                                              snapshot.total_size(),
+                                              files,
+                                              frete.key_code()));
+      }
+
+      /* Pipelined cloud upload with periodic local snapshot update
+      */
+      int num_threads = 8;
+      std::string snum_threads = elle::os::getenv("INFINIT_NUM_CLOUD_UPLOAD_THREAD", "");
+      if (!snum_threads.empty())
+        num_threads = boost::lexical_cast<int>(snum_threads);
+      typedef frete::Frete::FileSize FileSize;
+      typedef frete::Frete::FileID FileID;
+      FileSize transfer_since_snapshot = 0;
+      FileID current_file = FileID(-1);
+      FileSize current_position = 0;
+      FileSize current_file_size = 0;
+      // per-thread last pos
+      std::vector<Position> last_acknowledge_block(
+        num_threads, std::make_pair(0,0));
+      FileSize acknowledge_position = 0;
+      bool save_snapshot = false; // reqest one-shot snapshot save
+      auto pipeline_cloud_upload = [&, this](int id)
+      {
+        while(true)
+        {
+          while (current_position >= current_file_size)
+          {
+            ++current_file;
+            if (current_file >= snapshot.count())
+              return;
+            auto& file = snapshot.file(current_file);
+            current_file_size = file.size();
+            current_position = file.progress();
+          }
+          ELLE_DEBUG_SCOPE("%s: buffer file %s at offset %s/%s in the cloud",
+                           *this, current_file, current_position, current_file_size);
+          FileSize local_file = current_file;
+          FileSize local_position = current_position;
+          current_position += chunk_size;
+          auto block = frete.encrypted_read_acknowledge(
+            local_file, local_position, chunk_size, acknowledge_position);
+          if (save_snapshot)
+          {
+            this->frete().save_snapshot();
+            save_snapshot = false;
+          }
+          auto& buffer = block.buffer();
+          bufferer->put(local_file, local_position, buffer.size(), buffer);
+          transfer_since_snapshot += buffer.size();
+          last_acknowledge_block[id] = std::make_pair(local_file, local_position);
+          if (transfer_since_snapshot >= 1000000)
+          {
+            // Update acknowledge position
+            // First find the smallest value in per-thread last_ack
+            // Since each thread is fetching blocks monotonically,
+            // we know all blocks before that are acknowledged
+            Position pmin = *std::min_element(
+              last_acknowledge_block.begin(),
+              last_acknowledge_block.end(),
+              [](const Position& a, const Position&b)
+              {
+                if (a.first != b.first)
+                  return a.first < b.first;
+                else
+                  return a.second < b.second;
+              });
+            acknowledge_position = progress_from(this->frete().files_info(), pmin);
+            // need one call to read_acknowledge for save to have effect:async
+            save_snapshot = true;
+          }
+        }
+      };
+      elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+      {
+        for (int i=0; i<num_threads; ++i)
+          scope.run_background(elle::sprintf("cloud %s", i),
+                               std::bind(pipeline_cloud_upload, i));
+        scope.wait();
+      };
+      this->frete().save_snapshot();
+      this->current_state(State::CloudBuffered);
+    }
+
     float
     SendMachine::progress() const
     {
@@ -369,21 +530,34 @@ namespace surface
     {
       if (this->_frete == nullptr)
       {
+        ELLE_TRACE_SCOPE("%s: initialize frete", *this);
         infinit::cryptography::PublicKey peer_K;
         peer_K.Restore(this->state().user(this->peer_id(), true).public_key);
-
         this->_frete = elle::make_unique<frete::Frete>(
           this->transaction_id(),
+          this->state().identity().pair(),
           peer_K,
           common::infinit::frete_snapshot_path(
             this->data()->sender_id,
             this->data()->id));
-
-        ELLE_TRACE("%s: initialize frete", *this)
+        if (this->_frete->count())
+        { // Reloaded from snapshot, validate it
+          if (this->_files.size() != this->_frete->count())
+          {
+            ELLE_ERR("%s: snapshot data mismatch: count %s vs %s",
+                     *this,
+                     this->_frete->count(),
+                     this->_files.size()
+                     );
+            throw elle::Exception("invalid transfer data");
+          }
+        }
+        else
+        { // No snapshot yet, fill file list
           for (std::string const& file: this->_files)
             this->_frete->add(file);
+        }
       }
-
       return *this->_frete;
     }
 
@@ -403,5 +577,10 @@ namespace surface
       return "SendMachine";
     }
 
+    void
+    SendMachine::cleanup()
+    {
+      this->frete().remove_snapshot();
+    }
   }
 }

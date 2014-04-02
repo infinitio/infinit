@@ -7,6 +7,8 @@
 
 #include <surface/gap/FilesystemTransferBufferer.hh>
 
+ELLE_LOG_COMPONENT("surface.gap.FilesystemTransferBufferer");
+
 namespace surface
 {
   namespace gap
@@ -25,22 +27,21 @@ namespace surface
       _files(),
       _key_code()
     {
-      create_directories(this->_root);
+      try
       {
+        create_directories(this->_root);
         elle::serialize::from_file((this->_root / "count").string())
           >> this->_count;
-      }
-      {
         elle::serialize::from_file((this->_root / "total_size").string())
           >> this->_full_size;
-      }
-      {
         elle::serialize::from_file((this->_root / "files").string())
           >> this->_files;
-      }
-      {
         elle::serialize::from_file((this->_root / "key").string())
           >> this->_key_code;
+      }
+      catch(...)
+      {
+        throw DataExhausted();
       }
     }
 
@@ -132,6 +133,7 @@ namespace surface
       auto filename = this->_filename(file, offset);
       boost::filesystem::ofstream output(filename);
       output.write(reinterpret_cast<const char*>(b.contents()), b.size());
+      reactor::sleep(20_ms);
     }
 
     elle::Buffer
@@ -141,12 +143,18 @@ namespace surface
       auto filename = this->_filename(file, offset);
       boost::filesystem::ifstream input(filename);
       input.seekg(0, std::ios::end);
-      auto size = input.tellg();
+      std::ios::pos_type size = input.tellg();
+      if (size == std::ios::pos_type(-1))
+      {
+        ELLE_TRACE("Data exhausted on %s/%s at %s", file, offset, filename);
+        throw DataExhausted();
+      }
       elle::Buffer res(size);
       input.seekg(0, std::ios::beg);
       input.read(reinterpret_cast<char*>(res.mutable_contents()), size);
+      reactor::sleep(20_ms);
       return res;
-     }
+    }
 
     boost::filesystem::path
     FilesystemTransferBufferer::_filename(FileID file,
@@ -172,6 +180,12 @@ namespace surface
     {
       stream << "FilesystemTransferBufferer (transaction_id: "
              << this->transaction().id << ")";
+    }
+
+    void
+    FilesystemTransferBufferer::cleanup()
+    {
+
     }
   }
 }

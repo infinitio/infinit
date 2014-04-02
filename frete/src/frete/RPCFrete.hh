@@ -55,6 +55,11 @@ namespace frete
     typedef RPC::RemoteProcedure<elle::Version> VersionRPC;
     typedef RPC::RemoteProcedure<infinit::cryptography::Code> KeyCodeRPC;
     typedef RPC::RemoteProcedure<void> FinishRPC;
+    typedef RPC::RemoteProcedure<infinit::cryptography::Code,
+                                 Frete::FileID,
+                                 Frete::FileOffset,
+                                 Frete::FileSize,
+                                 Frete::FileSize> EncryptedReadAcknowledgeRPC;
   /*-------------.
   | Construction |
   `-------------*/
@@ -89,6 +94,7 @@ namespace frete
     RPC_WRAPPER(EncryptedReadRPC, encrypted_read);
     RPC_WRAPPER(FinishRPC, finish);
     RPC_WRAPPER(FilesInfoRPC, files_info);
+    RPC_WRAPPER(EncryptedReadAcknowledgeRPC, encrypted_read_acknowledge);
   };
 }
 

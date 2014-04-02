@@ -40,24 +40,22 @@ namespace surface
           {
             case TransactionMachine::State::NewTransaction:
             case TransactionMachine::State::SenderCreateTransaction:
+            case TransactionMachine::State::None:
+            case TransactionMachine::State::Over:
               // The sender is pending creating the transaction.
-              return gap_transaction_pending;
+              return gap_transaction_new;
             case TransactionMachine::State::SenderWaitForDecision:
-              return gap_transaction_waiting_for_accept;
             case TransactionMachine::State::RecipientWaitForDecision:
-              // The recipient is pending creating waiting for decision.
-              return gap_transaction_waiting_for_accept;
             case TransactionMachine::State::RecipientAccepted:
+              return gap_transaction_waiting_accept;
             case TransactionMachine::State::PeerDisconnected:
             case TransactionMachine::State::PublishInterfaces:
-              return gap_transaction_accepted;
             case TransactionMachine::State::Connect:
             case TransactionMachine::State::PeerConnectionLost:
-              return gap_transaction_preparing;
+              return gap_transaction_connecting;
             case TransactionMachine::State::Transfer:
-              return gap_transaction_running;
-            case TransactionMachine::State::Over:
-              return gap_transaction_cleaning;
+            case TransactionMachine::State::CloudBufferingBeforeAccept:
+              return gap_transaction_transferring;
             case TransactionMachine::State::Finished:
               return gap_transaction_finished;
             case TransactionMachine::State::Rejected:
@@ -66,8 +64,8 @@ namespace surface
               return gap_transaction_canceled;
             case TransactionMachine::State::Failed:
               return gap_transaction_failed;
-            case TransactionMachine::State::None:
-              return gap_transaction_none;
+            case TransactionMachine::State::CloudBuffered:
+              return gap_transaction_cloud_buffered;
           }
       }
       throw Exception(gap_internal_error,
@@ -87,7 +85,7 @@ namespace surface
       _id(id),
       _data(new Data{std::move(data)}),
       _machine(),
-      _last_status(gap_transaction_none)
+      _last_status(gap_TransactionStatus(-1))
     {
       ELLE_TRACE_SCOPE("%s: constructed from data", *this);
       ELLE_ASSERT(state.me().id == this->_data->sender_id ||
@@ -130,7 +128,7 @@ namespace surface
       _id(id),
       _data(new Data{std::move(snapshot.data)}),
       _machine(),
-      _last_status(gap_transaction_none)
+      _last_status(gap_TransactionStatus(-1))
     {
       ELLE_TRACE_SCOPE("%s: constructed from snapshot (%s)",
                        *this, snapshot.state);
@@ -174,7 +172,7 @@ namespace surface
       _data(new Data{state.me().id, state.me().fullname, state.device().id}),
       _machine(new SendMachine{
           state, this->_id, peer_id, std::move(files), message, this->_data}),
-      _last_status(gap_transaction_none)
+      _last_status(gap_TransactionStatus(-1))
     {
       ELLE_TRACE_SCOPE("%s: constructed for send", *this);
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
@@ -291,7 +289,7 @@ namespace surface
     gap_TransactionStatus
     Transaction::last_status() const
     {
-      if (this->_last_status == gap_transaction_none)
+      if (this->_last_status == gap_TransactionStatus(-1))
         return _transaction_status(*this->data(),
                                    TransactionMachine::State::None);
       return this->_last_status;
@@ -300,7 +298,7 @@ namespace surface
     float
     Transaction::progress() const
     {
-      ELLE_DEBUG_SCOPE("%s: progress transaction", *this);
+      ELLE_DUMP_SCOPE("%s: progress transaction", *this);
       if (this->_machine == nullptr)
       {
         ELLE_WARN("%s: machine is empty (it doesn't concern your device)", *

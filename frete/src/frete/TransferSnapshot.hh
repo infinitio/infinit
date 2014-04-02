@@ -12,61 +12,71 @@ namespace frete
   class TransferSnapshot:
     public elle::Printable
   {
+  /*------.
+  | Types |
+  `------*/
   public:
-    // Recipient.
-    TransferSnapshot(Frete::FileCount count,
-                     Frete::FileSize total_size);
-    // Sender.
+    typedef TransferSnapshot Self;
+    typedef Frete::FileCount FileCount;
+    typedef Frete::FileID FileID;
+    typedef Frete::FileSize FileSize;
+
+  /*-------------.
+  | Construction |
+  `-------------*/
+  public:
+    // Construct recipient snapshot.
+    TransferSnapshot(FileCount count,
+                     FileSize total_size);
+    /// Construct sender snapshot.
     TransferSnapshot();
 
+  /*-----.
+  | File |
+  `-----*/
   public:
-    void
-    progress(Frete::FileSize const& progress);
-    void
-    increment_progress(Frete::FileID index,
-                       Frete::FileSize increment);
-    void
-    set_progress(Frete::FileID index,
-                 Frete::FileSize progress);
-    void
-    end_progress(Frete::FileID index);
-    void
-    add(boost::filesystem::path const& root,
-        boost::filesystem::path const& path);
-
-  public:
-    struct TransferProgressInfo:
+    struct File:
       public elle::Printable
     {
-    public:
-      TransferProgressInfo(Frete::FileID file_id,
-                           boost::filesystem::path const& root,
-                           boost::filesystem::path const& path,
-                           Frete::FileSize file_size);
-      bool
-      file_exists() const;
-
+    /*-------------.
+    | Construction |
+    `-------------*/
     private:
-      void
-      _increment_progress(Frete::FileSize increment);
-      void
-      _set_progress(Frete::FileSize progress);
-
+      File(FileID file_id,
+           boost::filesystem::path const& root,
+           boost::filesystem::path const& path,
+           FileSize size);
+      friend TransferSnapshot;
     public:
-      bool
-      complete() const;
-
-      bool
-      operator ==(TransferProgressInfo const& rh) const;
-
-      ELLE_ATTRIBUTE_R(Frete::FileID, file_id);
+      ELLE_ATTRIBUTE_R(FileID, file_id);
       ELLE_ATTRIBUTE(std::string, root);
       ELLE_ATTRIBUTE_R(std::string, path);
       ELLE_ATTRIBUTE_R(boost::filesystem::path, full_path);
-      ELLE_ATTRIBUTE_R(Frete::FileSize, file_size);
-      ELLE_ATTRIBUTE_R(Frete::FileSize, progress);
+      /// Total file size
+      ELLE_ATTRIBUTE_R(FileSize, size);
 
-      friend TransferSnapshot;
+    /*-------.
+    | Status |
+    `-------*/
+    public:
+      bool
+      file_exists() const;
+      bool
+      complete() const;
+
+    /*---------.
+    | Progress |
+    `---------*/
+    public:
+      /// Current file size or amount transmitted (depending if sender/recipient)
+      ELLE_ATTRIBUTE_R(FileSize, progress);
+
+    /*-----------.
+    | Comparison |
+    `-----------*/
+    public:
+      bool
+      operator ==(File const& rh) const;
 
     /*----------.
     | Printable |
@@ -80,21 +90,70 @@ namespace frete
     | Serialization |
     `--------------*/
     public:
-      TransferProgressInfo() = default;
-
-      ELLE_SERIALIZE_CONSTRUCT(TransferProgressInfo)
+      File() = default;
+      ELLE_SERIALIZE_CONSTRUCT(File)
       {}
-
-      ELLE_SERIALIZE_FRIEND_FOR(TransferProgressInfo);
+      ELLE_SERIALIZE_FRIEND_FOR(File);
     };
 
-    ELLE_ATTRIBUTE_R(bool, sender);
-    typedef std::unordered_map<Frete::FileID, TransferProgressInfo> TransferProgress;
-    ELLE_ATTRIBUTE_X(TransferProgress, transfers);
-    ELLE_ATTRIBUTE_R(Frete::FileCount, count);
-    ELLE_ATTRIBUTE_R(Frete::FileSize, total_size);
-    ELLE_ATTRIBUTE_R(Frete::FileSize, progress);
+  /*------.
+  | Files |
+  `------*/
+  public:
+    void
+    add(boost::filesystem::path const& root,
+        boost::filesystem::path const& path);
+    File&
+    file(FileID file_id);
+    File const&
+    file(FileID file_id) const;
+    bool
+    has(FileID file_id) const;
+    void
+    add(FileID file_id,
+        boost::filesystem::path const& root,
+        boost::filesystem::path const& path,
+        FileSize size);
+    /// Set encryption symetric key, encrypted with current user's public key
+    /// Can only be called once.
+    void
+    set_key_code(infinit::cryptography::Code const& code);
+  private:
+    typedef std::unordered_map<FileID, File> Files;
+    ELLE_ATTRIBUTE_R(Files, files);
+    ELLE_ATTRIBUTE_R(std::unique_ptr<infinit::cryptography::Code>, key_code);
 
+  /*-----------.
+  | Attributes |
+  `-----------*/
+  public:
+    /// Total number of files.
+    ELLE_ATTRIBUTE_R(FileCount, count);
+    ELLE_ATTRIBUTE_R(FileSize, total_size);
+    /// Number of files present locally (with index 0 to file_count()).
+    FileCount file_count() const;
+  /*---------.
+  | Progress |
+  `---------*/
+  public:
+    void
+    file_progress_increment(FileID file, FileSize increment);
+    void
+    file_progress_set(FileID file, FileSize progress);
+    void
+    file_progress_end(FileID file);
+    // Increment progress and appropriate file(s) progress of 'increment' bytes.
+    void
+    progress_increment(FileSize increment);
+    // does not update individual files progress!
+    void
+    progress(FileSize const& progress);
+    ELLE_ATTRIBUTE_R(FileSize, progress);
+
+  /*-----------.
+  | Comparison |
+  `-----------*/
+  public:
     bool
     operator ==(TransferSnapshot const& rh) const;
 

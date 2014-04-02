@@ -8,10 +8,7 @@
 
 #include <protocol/exceptions.hh>
 
-#include <frete/src/frete/TransferSnapshot.hh>
-
 #include <station/src/station/Station.hh>
-#include <surface/gap/FilesystemTransferBufferer.hh>
 #include <surface/gap/ReceiveMachine.hh>
 #include <surface/gap/Rounds.hh>
 #include <surface/gap/SendMachine.hh>
@@ -60,6 +57,10 @@ namespace surface
         this->_fsm.state_make(
           "wait for peer",
           std::bind(&TransferMachine::_wait_for_peer, this));
+      auto& cloud_buffer_state =
+        this->_fsm.state_make(
+          "cloud buffer",
+          std::bind(&TransferMachine::_cloud_buffer, this));
       auto& transfer_state =
         this->_fsm.state_make(
           "transfer",
@@ -72,6 +73,7 @@ namespace surface
       /*------------.
       | Transitions |
       `------------*/
+
       // Publish and wait for connection.
       this->_fsm.transition_add(
         publish_interfaces_state,
@@ -100,6 +102,26 @@ namespace surface
                   ELLE_TRACE("%s: peer went online", *this);
                 });
 
+      // Cloud buffer.
+      this->_fsm.transition_add(
+        wait_for_peer_state,
+        cloud_buffer_state,
+        reactor::Waitables{&this->_peer_offline},
+        true)
+        .action([&]
+                {
+                  ELLE_TRACE("%s: start cloud buffering", *this);
+                });
+      this->_fsm.transition_add(
+        cloud_buffer_state,
+        wait_for_peer_state,
+        reactor::Waitables{&this->_peer_online},
+        true)
+        .action([&]
+                {
+                  ELLE_TRACE("%s: stop cloud buffering", *this);
+                });
+
       // Finished.
       this->_fsm.transition_add(
         transfer_state,
@@ -108,7 +130,7 @@ namespace surface
         true)
         .action([this]
                 {
-                  ELLE_LOG("%s: transfer finished", *this);
+                  ELLE_LOG("%s: transfer finished: owner.finished()", *this);
                 });
       this->_fsm.transition_add(
         transfer_state,
@@ -117,7 +139,7 @@ namespace surface
         )
         .action([this]
                 {
-                  ELLE_LOG("%s: transfer finished", *this);
+                  ELLE_LOG("%s: transfer finished: this->finished", *this);
                 });
       this->_fsm.transition_add(
         wait_for_peer_state,
@@ -159,6 +181,15 @@ namespace surface
         .action([this]
                 {
                   ELLE_TRACE("%s: checksum error in frete", *this);
+                });
+      this->_fsm.transition_add_catch(
+        transfer_state,
+        stopped_state)
+        .action_exception([this, &owner](std::exception_ptr exception)
+                {
+                  ELLE_TRACE("%s: failing transfer because of exception: %s",
+                             *this, elle::exception_string(exception));
+                  owner.failed().open();
                 });
       this->_fsm.transition_add(
         transfer_state,
@@ -208,11 +239,13 @@ namespace surface
       this->_fsm.transition_add_catch(
         connection_state,
         stopped_state)
-        .action([this, &owner]
-                {
-                  ELLE_ERR("%s: connection failed", *this);
-                  owner.failed().open();
-                });
+        .action_exception(
+          [this, &owner] (std::exception_ptr e)
+          {
+            ELLE_ERR("%s: connection failed: %s",
+                     *this, elle::exception_string(e));
+            owner.failed().open();
+          });
       this->_fsm.transition_add_catch(
         transfer_state,
         stopped_state)
@@ -231,7 +264,7 @@ namespace surface
     TransferMachine::run()
     {
       // XXX: Best place to do that? (See constructor).
-      if (this->_owner.state().user(this->_owner.peer_id()).status())
+      if (this->_owner.state().user(this->_owner.peer_id()).online())
       {
         this->_peer_offline.close();
         this->_peer_online.open();
@@ -411,57 +444,8 @@ namespace surface
     void
     TransferMachine::_wait_for_peer()
     {
-      ELLE_TRACE_SCOPE("%s: wait for peer to connect", *this);
       this->_owner.current_state(TransactionMachine::State::PeerDisconnected);
-#if 0 // File buffering disabled.
-      reactor::sleep(10_sec);
-      // FIXME: this is a joke.
-      ELLE_TRACE("%s: no peer after 10s, cloud buffer", *this);
-      // Mundo va ou il veut.
-      if (auto owner = dynamic_cast<SendMachine*>(&this->_owner))
-      {
-        auto& frete = owner->frete();
-        auto& snapshot = *frete.transfer_snapshot();
-        FilesystemTransferBufferer::Files files;
-        for (frete::Frete::FileID file = 0; file < snapshot.count(); ++file)
-        {
-          auto& info = snapshot.transfers().at(file);
-          files.push_back(std::make_pair(info.path(), info.file_size()));
-        }
-        FilesystemTransferBufferer bufferer(*this->_owner.data(),
-                                            "/tmp/infinit-buffering",
-                                            snapshot.count(),
-                                            snapshot.total_size(),
-                                            files,
-                                            frete.key_code());
-        for (frete::Frete::FileID file = 0; file < snapshot.count(); ++file)
-        {
-          auto& info = snapshot.transfers().at(file);
-          auto file_size = info.file_size();
-          for (frete::Frete::FileOffset offset = info.progress();
-               offset < file_size;
-               offset += chunk_size)
-          {
-            ELLE_DEBUG_SCOPE("%s: buffer file %s at offset %s in the cloud",
-                             *this, file, offset);
-            auto block = frete.encrypted_read(file, offset, chunk_size);
-            auto& buffer = block.buffer();
-            bufferer.put(file, offset, buffer.size(), buffer);
-          }
-        }
-        frete.finish();
-      }
-      else if (auto owner = dynamic_cast<ReceiveMachine*>(&this->_owner))
-      {
-        ELLE_DEBUG("%s: create cloud bufferer", *this);
-        FilesystemTransferBufferer bufferer(*this->_owner.data(),
-                                            "/tmp/infinit-buffering");
-        ELLE_DEBUG("%s: download from the cloud", *this)
-          owner->get(bufferer);
-      }
-      else
-        elle::unreachable();
-#endif
+      ELLE_TRACE_SCOPE("%s: wait for peer to connect", *this);
     }
 
     void
@@ -487,6 +471,13 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: stopped", *this);
     }
 
+    void
+    TransferMachine::_cloud_buffer()
+    {
+      this->_owner.current_state(TransactionMachine::State::Transfer);
+      this->_owner._cloud_operation();
+    }
+
     /*----------.
     | Printable |
     `----------*/
@@ -496,6 +487,5 @@ namespace surface
     {
       stream << "TransferMachine(" << this->_owner.id() << ")";
     }
-
   }
 }

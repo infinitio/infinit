@@ -55,7 +55,8 @@ namespace surface
         Canceled = 18,
         Failed = 19,
         Over = 20,
-
+        CloudBuffered = 21,
+        CloudBufferingBeforeAccept = 22,
         None = 99,
       };
 
@@ -189,6 +190,10 @@ namespace surface
       void
       _finalize(infinit::oracles::Transaction::Status);
 
+      // invoked to cleanup data when this transaction will never restart
+      virtual
+      void
+      cleanup() = 0;
     private:
       void
       _clean();
@@ -200,6 +205,9 @@ namespace surface
       virtual
       void
       _transfer_operation(frete::RPCFrete& frete) = 0;
+      virtual
+      void
+      _cloud_operation() = 0;
 
     protected:
       // This state has to be protected to allow the children to start the

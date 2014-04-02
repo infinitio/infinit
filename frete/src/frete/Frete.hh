@@ -48,6 +48,7 @@ namespace frete
   `-------------*/
   public:
     Frete(std::string const& password, // Retro compatibility.
+          infinit::cryptography::KeyPair const& self_K, /*needed to decrypt session key from snapshot*/
           infinit::cryptography::PublicKey peer_K,
           boost::filesystem::path const& snapshot_destination);
     ~Frete();
@@ -96,7 +97,7 @@ namespace frete
     /// A weakly crypted chunk of a file.
     infinit::cryptography::Code
     read(FileID f, FileOffset start, FileSize size);
-    /// A strongly crypted chunk of a file.
+    /// A strongly crypted chunk of a file. Aknowlege up to file f position start
     infinit::cryptography::Code
     encrypted_read(FileID f, FileOffset start, FileSize size);
     /// Update the progress.
@@ -111,6 +112,10 @@ namespace frete
     /// Signal we're done
     void
     finish();
+    /// Request a file chunk and acknowledge overall progress up to
+    /// acknowledge_progress starting from the beginning of the whole frete data
+    infinit::cryptography::Code
+    encrypted_read_acknowledge(FileID f, FileOffset start, FileSize size, FileSize acknowledge_progress);
     /// Whether we're done.
     ELLE_ATTRIBUTE_RX(reactor::Barrier, finished);
   private:
@@ -121,7 +126,8 @@ namespace frete
     elle::Buffer
     _read(FileID file_id,
           FileOffset offset,
-          FileSize const size);
+          FileSize const size,
+          bool increment_progress = true);
 
   /*---------.
   | Progress |
@@ -135,10 +141,11 @@ namespace frete
   | Snapshot |
   `---------*/
   public:
-    ELLE_ATTRIBUTE_R(std::unique_ptr<TransferSnapshot>, transfer_snapshot);
-  private:
+    ELLE_ATTRIBUTE_RX(std::unique_ptr<TransferSnapshot>, transfer_snapshot);
     void
-    _save_snapshot() const;
+    save_snapshot() const;
+    void
+    remove_snapshot();
     ELLE_ATTRIBUTE(boost::filesystem::path, snapshot_destination);
 
   /*----------.
@@ -148,13 +155,6 @@ namespace frete
     virtual
     void
     print(std::ostream& stream) const;
-
-  /*--------.
-  | Helpers |
-  `--------*/
-  private:
-    void
-    _check_file_id(FileID id);
   };
 }
 

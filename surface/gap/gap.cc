@@ -608,7 +608,7 @@ gap_user_status(gap_State* state,
     "user status",
     [&] (surface::gap::State& state) -> gap_UserStatus
     {
-      return (gap_UserStatus) state.users().at(id).status();
+        return (gap_UserStatus) state.users().at(id).online();
     });
 }
 

@@ -11,12 +11,24 @@ namespace surface
 {
   namespace gap
   {
+    /** Base class for providers of transfer buffers.
+    * Transfer bufferers do not track trasnfer progress, they just
+    * store data chunks on behalf or senders/recipients.
+    */
     class TransferBufferer
     {
     /*------.
     | Types |
     `------*/
     public:
+
+      class DataExhausted:
+        public elle::Exception
+      {
+      public:
+        DataExhausted();
+      };
+
       typedef TransferBufferer Self;
       typedef frete::Frete::FileID FileID;
       typedef frete::Frete::FileCount FileCount;
@@ -48,6 +60,12 @@ namespace surface
       virtual
       std::vector<std::pair<std::string, FileSize>>
       files_info() const = 0;
+      // For backward compatibility
+      FileSize
+      file_size(FileID f);
+      // For backward compatibility
+      std::string
+      path(FileID f);
       /// Return a weakly crypted chunck of a file.
       virtual
       infinit::cryptography::Code
@@ -56,11 +74,14 @@ namespace surface
       virtual
       infinit::cryptography::Code
       encrypted_read(FileID f, FileOffset start, FileSize size) = 0;
+      virtual
+      infinit::cryptography::Code
+      encrypted_read_acknowledge(FileID f, FileOffset start, FileSize size, FileSize progress);
       /// Get the key of the transfer.
       virtual
       infinit::cryptography::Code const&
       key_code() const = 0;
-      /// Update the progress.
+      /// Update the progress. no-op.
       void
       set_progress(FileSize progress);
       /// Signal we're done
@@ -84,7 +105,10 @@ namespace surface
       virtual
       List
       list() = 0;
-
+      // Request to clear buffered data when transfer is finished.
+      virtual
+      void
+      cleanup() = 0;
     /*----------.
     | Printable |
     `----------*/
