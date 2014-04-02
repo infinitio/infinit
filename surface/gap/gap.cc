@@ -2,6 +2,7 @@
 #include <surface/gap/gap_bridge.hh>
 #include <surface/gap/State.hh>
 #include <surface/gap/Transaction.hh>
+#include <surface/gap/onboarding/Transaction.hh>
 
 #include <infinit/oracles/meta/Client.hh>
 
@@ -1203,14 +1204,76 @@ gap_get_output_dir(gap_State* state)
 }
 
 uint32_t
-gap_start_onboarding(gap_State* state)
+gap_onboarding_receive_transaction(gap_State* state)
 {
   return run<uint32_t>(
     state,
-    "start onboarding",
+    "start reception onboarding",
     [&] (surface::gap::State& state) -> uint32_t
     {
       return state.start_onboarding();
+    });
+}
+
+/// Change the peer connection status.
+gap_Status
+gap_onboarding_set_peer_status(gap_State* state,
+                               uint32_t transaction_id,
+                               bool status)
+{
+  return run<gap_Status>(
+    state,
+    "change onboarding peer status",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      auto const& tr = state.transactions().at(transaction_id);
+      if (!dynamic_cast<surface::gap::onboarding::Transaction*>(tr.get()))
+        return gap_error;
+      auto& transaction =
+        *static_cast<surface::gap::onboarding::Transaction*>(tr.get());
+      transaction.peer_connection_status(status);
+      return gap_ok;
+    });
+}
+
+/// Change the peer availability status.
+gap_Status
+gap_onboarding_set_peer_availability(gap_State* state,
+                                     uint32_t transaction_id,
+                                     bool status)
+{
+  return run<gap_Status>(
+    state,
+    "change onboarding peer availability",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      auto const& tr = state.transactions().at(transaction_id);
+      if (!dynamic_cast<surface::gap::onboarding::Transaction*>(tr.get()))
+        return gap_error;
+      auto& transaction =
+        *static_cast<surface::gap::onboarding::Transaction*>(tr.get());
+      transaction.peer_availability_status(status);
+      return gap_ok;
+    });
+}
+
+/// Force transfer deconnection.
+gap_Status
+gap_onboarding_interrupt_transfer(gap_State* state,
+                                  uint32_t transaction_id)
+{
+  return run<gap_Status>(
+    state,
+    "interrupt onboarding transfer",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      auto const& tr = state.transactions().at(transaction_id);
+      if (!dynamic_cast<surface::gap::onboarding::Transaction*>(tr.get()))
+        return gap_error;
+      auto& transaction =
+        *static_cast<surface::gap::onboarding::Transaction*>(tr.get());
+      transaction.interrupt_transfer();
+      return gap_ok;
     });
 }
 

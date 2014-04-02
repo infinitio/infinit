@@ -49,6 +49,14 @@ namespace surface
       }
 
       void
+      ReceiveMachine::interrupt_transfer()
+      {
+        auto* machine = static_cast<TransferMachine*>(
+          this->_transfer_machine.get());
+        machine->interrupt();
+      }
+
+      void
       ReceiveMachine::_accept()
       {
         this->current_state(TransactionMachine::State::RecipientAccepted);

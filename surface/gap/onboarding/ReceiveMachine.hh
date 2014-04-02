@@ -30,6 +30,9 @@ namespace surface
         void
         pause();
 
+        void
+        interrupt_transfer();
+
         // Overload because it talks to meta.
         void
         _accept() override;

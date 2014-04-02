@@ -42,9 +42,13 @@ namespace surface
         bool
         finished() const override;
 
+        void
+        interrupt();
+
         ELLE_ATTRIBUTE(float, progress);
         ELLE_ATTRIBUTE(reactor::Duration, duration);
         ELLE_ATTRIBUTE_X(reactor::Barrier, running);
+        ELLE_ATTRIBUTE(bool, interrupt);
       };
     }
   }

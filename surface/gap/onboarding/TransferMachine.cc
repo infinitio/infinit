@@ -16,6 +16,7 @@ namespace surface
         , _progress(0.0f)
         , _duration(duration)
         , _running("running")
+        , _interrupt(false)
       {
         ELLE_TRACE_SCOPE("%s: creation", *this);
         this->_running.open();
@@ -45,8 +46,13 @@ namespace surface
         ELLE_TRACE_SCOPE("%s: running transfer", *this);
         while (this->_progress < 1.0f)
         {
-          static reactor::Duration step = 200_ms;
+          static reactor::Duration step = 100_ms;
           this->_running.wait();
+          if (this->_interrupt)
+          {
+            this->_interrupt = false;
+            throw reactor::network::Exception("transfer interrupted by user");
+          }
           this->_progress +=
             (step.total_milliseconds() /
              (1.0f * this->_duration.total_milliseconds()));
@@ -69,6 +75,12 @@ namespace surface
       TransferMachine::finished() const
       {
         return (this->_progress >= 1.0f);
+      }
+
+      void
+      TransferMachine::interrupt()
+      {
+        this->_interrupt = true;
       }
     }
   }

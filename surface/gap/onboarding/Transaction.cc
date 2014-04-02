@@ -100,6 +100,13 @@ namespace surface
       }
 
       void
+      Transaction::interrupt_transfer()
+      {
+        this->peer_availability_status(false);
+        this->machine().interrupt_transfer();
+      }
+
+      void
       Transaction::pause()
       {
          this->machine().pause();

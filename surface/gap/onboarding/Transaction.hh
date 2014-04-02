@@ -38,6 +38,9 @@ namespace surface
         peer_availability_status(bool status);
 
         void
+        interrupt_transfer();
+
+        void
         pause();
         // void
         // join() override;

@@ -447,11 +447,26 @@ uint32_t
 gap_join_transaction(gap_State* state,
                      uint32_t id);
 
-/// Join a transaction.
-/// This function will block as long as the transaction is not terminated
-/// and cleaned.
+/// Return the id of an onboarding received transaction.
 uint32_t
-gap_start_onboarding(gap_State* state);
+gap_onboarding_receive_transaction(gap_State* state);
+
+/// Change the peer connection status.
+gap_Status
+gap_onboarding_set_peer_status(gap_State* state,
+                               uint32_t transaction_id,
+                               bool status);
+
+/// Change the peer availability status.
+gap_Status
+gap_onboarding_set_peer_availability(gap_State* state,
+                                     uint32_t transaction_id,
+                                     bool status);
+
+/// Force transfer deconnection.
+gap_Status
+gap_onboarding_interrupt_transfer(gap_State* state,
+                                  uint32_t transaction_id);
 
 // Set output directory.
 gap_Status
