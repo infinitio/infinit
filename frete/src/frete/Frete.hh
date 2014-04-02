@@ -49,9 +49,10 @@ namespace frete
   public:
     Frete(std::string const& password, // Retro compatibility.
           infinit::cryptography::KeyPair const& self_K, /*needed to decrypt session key from snapshot*/
-          infinit::cryptography::PublicKey peer_K,
           boost::filesystem::path const& snapshot_destination);
     ~Frete();
+    /// Set peer key (used to encrypt session key in key_code())
+    void set_peer_key(infinit::cryptography::PublicKey peer_K);
   private:
     class Impl;
     ELLE_ATTRIBUTE(std::unique_ptr<Impl>, impl);
@@ -107,7 +108,7 @@ namespace frete
     elle::Version
     version() const;
     /// The key of the transfer.
-    infinit::cryptography::Code const&
+    infinit::cryptography::Code
     key_code() const;
     /// Signal we're done
     void
