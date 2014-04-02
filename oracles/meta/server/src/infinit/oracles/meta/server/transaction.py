@@ -505,6 +505,10 @@ class Mixin:
         multi = False,
         new = True,
       )
+    self.__notify_reachability(transaction)
+    return self.success()
+
+  def __notify_reachability(self, transaction):
     # The None check is required because of old transactions in the
     # database where the endpoints of disconnected users where set to
     # null instead of removed.
@@ -514,20 +518,22 @@ class Mixin:
           transaction['%s_id' % other],
           uuid.UUID(transaction['%s_device_id' % other]))
         endpoints = transaction['nodes'][key]
-        device_ids = set((transaction['%s_device_id' % notified],))
+        destination = set((transaction['%s_device_id' % notified],))
+        device_ids = (transaction['%s_device_id' % notified],
+                      transaction['%s_device_id' % other])
         message = {
-          'transaction_id': str(transaction_id),
+          'transaction_id': str(transaction['_id']),
           'peer_endpoints': endpoints,
+          'devices': list(map(str, device_ids)),
           'status': True,
         }
         self.notifier.notify_some(
           notifier.PEER_CONNECTION_UPDATE,
-          device_ids = device_ids,
+          device_ids = destination,
           message = message,
         )
       notify(transaction, 'sender', 'recipient')
       notify(transaction, 'recipient', 'sender')
-    return self.success()
 
   @api('/transaction/connect_device', method = "POST")
   @require_logged_in
@@ -585,20 +591,7 @@ class Mixin:
                                    node = node)
 
     elle.log.trace("device %s connected to transaction %s as %s" % (device_id, _id, node))
-
-    if len(transaction['nodes']) == 2 and list(transaction['nodes'].values()).count(None) == 0:
-      devices_ids = {uuid.UUID(transaction['sender_device_id']),
-                     uuid.UUID(transaction['recipient_device_id'])}
-      self.notifier.notify_some(
-        notifier.PEER_CONNECTION_UPDATE,
-        recipient_ids = {transaction[k] for k in ['sender_id', 'recipient_id']},
-        message = {
-          "transaction_id": str(_id),
-          "devices": list(map(str, devices_ids)),
-          "status": True
-        },
-      )
-
+    self.__notify_reachability(transaction)
     return self.success()
 
   @api('/transaction/<transaction_id>/endpoints', method = "POST")

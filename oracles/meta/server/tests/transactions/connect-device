@@ -9,6 +9,8 @@ class Notifier():
     self.transaction_id = transaction_id
     self.sender = sender
     self.recipient = recipient
+    self.invoked_sender = 0
+    self.invoked_recipient = 0
 
   def notify_some(self,
                   notification_type,
@@ -16,13 +18,22 @@ class Notifier():
                   device_ids = None,
                   message = None):
     if notification_type == notifications['peer_connection_update']:
-      recipients = set(map(bson.ObjectId, [self.sender.id, self.recipient.id]))
-      devices = {self.sender.device_id, self.recipient.device_id}
-      print(recipients, recipient_ids)
-      assert recipient_ids == recipients
+      assert recipient_ids is None
+      assert device_ids is not None
+      assert len(device_ids) == 1
+      device = next(iter(device_ids))
       assert message['transaction_id'] == self.transaction_id
       assert len(message['devices']) == 2
-      assert set(message['devices']) == set(map(str, devices))
+      assert device in set(message['devices'])
+      if device == str(self.sender.device_id):
+        self.invoked_sender += 1
+        assert message['peer_endpoints']['locals'][0]['port'] == 234
+      elif device == str(self.recipient.device_id):
+        self.invoked_recipient += 1
+        assert message['peer_endpoints']['locals'][0]['port'] == 123
+      else:
+        raise Exception('invalid device id: %s' % device)
+
 
 with Meta() as meta:
   alice = User(meta, "alice@infinit.io")
@@ -88,3 +99,6 @@ with Meta() as meta:
                          })
 
   assert endpoints['locals'] == ["%s:%s" % (alice_locals['ip'], alice_locals['port'])]
+
+  assert meta.notifier.invoked_sender == 1
+  assert meta.notifier.invoked_recipient == 1
