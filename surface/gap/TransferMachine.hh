@@ -12,30 +12,25 @@ namespace surface
 {
   namespace gap
   {
-    class TransferMachine:
+    class Transferer:
       public elle::Printable
     {
     /*-------------.
     | Construction |
     `-------------*/
     public:
-      TransferMachine(TransactionMachine& owner);
-      ELLE_ATTRIBUTE(TransactionMachine&, owner);
-      ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::Socket>, host);
-      ELLE_ATTRIBUTE(std::unique_ptr<infinit::protocol::Serializer>,
-                     serializer);
-      ELLE_ATTRIBUTE(std::unique_ptr<infinit::protocol::ChanneledStream>,
-                     channels);
-      ELLE_ATTRIBUTE(std::unique_ptr<frete::RPCFrete>, rpcs);
+      Transferer(TransactionMachine& owner);
 
-    /*--------.
-    | Control |
-    `--------*/
+      /*--------.
+      | Control |
+      `--------*/
     public:
       void
       run();
-    private:
-      ELLE_ATTRIBUTE(reactor::fsm::Machine, fsm);
+
+    protected:
+      TransactionMachine& _owner;
+      reactor::fsm::Machine _fsm;
 
     /*---------.
     | Triggers |
@@ -54,27 +49,44 @@ namespace surface
     | Status |
     `-------*/
     public:
+      virtual
       float
       progress() const;
+
+      virtual
       bool
       finished() const;
 
     /*-------.
     | States |
     `-------*/
-    private:
       void
-      _publish_interfaces();
-      std::unique_ptr<reactor::network::Socket>
-      _connect();
+      _publish_interfaces_wrapper();
       void
-      _connection();
+      _connection_wrapper();
       void
-      _wait_for_peer();
+      _wait_for_peer_wrapper();
       void
-      _transfer();
+      _transfer_wrapper();
       void
-      _stopped();
+      _stopped_wrapper();
+
+    protected:
+      virtual
+      void
+      _publish_interfaces() = 0;
+      virtual
+      void
+      _connection() = 0;
+      virtual
+      void
+      _wait_for_peer() = 0;
+      virtual
+      void
+      _transfer() = 0;
+      virtual
+      void
+      _stopped() = 0;
 
     /*----------.
     | Printable |
@@ -82,16 +94,50 @@ namespace surface
     public:
       void
       print(std::ostream& stream) const override;
+    };
 
-    //   // Common on both sender and recipient process.
-    //   ELLE_ATTRIBUTE(reactor::fsm::State&, publish_interfaces_state);
-    //   ELLE_ATTRIBUTE(reactor::fsm::State&, connection_state);
-    //   // XXX: I you disconnect, which is quasi transparent, you must publish your interfaces.
-    //   ELLE_ATTRIBUTE(reactor::fsm::State&, wait_for_peer_state);
-    //   ELLE_ATTRIBUTE(reactor::fsm::State&, transfer_state);
-    //   ELLE_ATTRIBUTE(reactor::fsm::State&, core_stoped_state);
-    //   ELLE_ATTRIBUTE(reactor::fsm::State&, core_paused_state);
+    class TransferMachine:
+      public Transferer
+    {
+    /*-------------.
+    | Construction |
+    `-------------*/
+    public:
+      TransferMachine(TransactionMachine& owner);
+      ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::Socket>, host);
+      ELLE_ATTRIBUTE(std::unique_ptr<infinit::protocol::Serializer>,
+                     serializer);
+      ELLE_ATTRIBUTE(std::unique_ptr<infinit::protocol::ChanneledStream>,
+                     channels);
+      ELLE_ATTRIBUTE(std::unique_ptr<frete::RPCFrete>, rpcs);
 
+    private:
+      std::unique_ptr<reactor::network::Socket>
+      _connect();
+
+    protected:
+      virtual
+      void
+      _publish_interfaces() override;
+      virtual
+      void
+      _connection() override;
+      virtual
+      void
+      _wait_for_peer() override;
+      virtual
+      void
+      _transfer() override;
+      virtual
+      void
+      _stopped() override;
+
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      void
+      print(std::ostream& stream) const override;
     };
   }
 }

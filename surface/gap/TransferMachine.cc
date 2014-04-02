@@ -29,7 +29,7 @@ namespace surface
     | Construction |
     `-------------*/
 
-    TransferMachine::TransferMachine(TransactionMachine& owner):
+    Transferer::Transferer(TransactionMachine& owner):
       _owner(owner),
       _fsm(),
       _peer_online("peer online"),
@@ -51,23 +51,23 @@ namespace surface
       auto& publish_interfaces_state =
         this->_fsm.state_make(
           "publish interfaces",
-          std::bind(&TransferMachine::_publish_interfaces, this));
+          std::bind(&TransferMachine::_publish_interfaces_wrapper, this));
       auto& connection_state =
         this->_fsm.state_make(
           "connection",
-          std::bind(&TransferMachine::_connection, this));
+          std::bind(&TransferMachine::_connection_wrapper, this));
       auto& wait_for_peer_state =
         this->_fsm.state_make(
           "wait for peer",
-          std::bind(&TransferMachine::_wait_for_peer, this));
+          std::bind(&TransferMachine::_wait_for_peer_wrapper, this));
       auto& transfer_state =
         this->_fsm.state_make(
           "transfer",
-          std::bind(&TransferMachine::_transfer, this));
+          std::bind(&TransferMachine::_transfer_wrapper, this));
       auto& stopped_state =
         this->_fsm.state_make(
           "stopped",
-          std::bind(&TransferMachine::_stopped, this));
+          std::bind(&TransferMachine::_stopped_wrapper, this));
 
       /*------------.
       | Transitions |
@@ -228,7 +228,7 @@ namespace surface
     `--------*/
 
     void
-    TransferMachine::run()
+    Transferer::run()
     {
       // XXX: Best place to do that? (See constructor).
       if (this->_owner.state().user(this->_owner.peer_id()).status())
@@ -250,13 +250,13 @@ namespace surface
     `-------*/
 
     float
-    TransferMachine::progress() const
+    Transferer::progress() const
     {
       return this->_owner.progress();
     }
 
     bool
-    TransferMachine::finished() const
+    Transferer::finished() const
     {
       if (auto owner = dynamic_cast<SendMachine*>(&this->_owner))
         return owner->frete().finished();
@@ -269,10 +269,63 @@ namespace surface
     `-------*/
 
     void
-    TransferMachine::_publish_interfaces()
+    Transferer::_publish_interfaces_wrapper()
     {
       ELLE_TRACE_SCOPE("%s: publish interfaces", *this);
       this->_owner.current_state(TransactionMachine::State::PublishInterfaces);
+      this->_publish_interfaces();
+    }
+
+    void
+    Transferer::_connection_wrapper()
+    {
+      ELLE_TRACE_SCOPE("%s: connect to peer", *this);
+      this->_owner.current_state(TransactionMachine::State::Connect);
+      this->_connection();
+      this->_peer_connected.signal();
+    }
+
+    void
+    Transferer::_wait_for_peer_wrapper()
+    {
+      ELLE_TRACE_SCOPE("%s: wait for peer to connect", *this);
+      this->_owner.current_state(TransactionMachine::State::PeerDisconnected);
+      this->_wait_for_peer();
+    }
+
+
+    void
+    Transferer::_transfer_wrapper()
+    {
+      ELLE_TRACE_SCOPE("%s: transfer", *this);
+      this->_owner.current_state(TransactionMachine::State::Transfer);
+      this->_transfer();
+    }
+
+    void
+    Transferer::_stopped_wrapper()
+    {
+      ELLE_TRACE_SCOPE("%s: stopped", *this);
+      this->_stopped();
+    }
+
+    /*----------.
+    | Printable |
+    `----------*/
+    void
+    Transferer::print(std::ostream& stream) const
+    {
+      stream << "Transferer(" << this->_owner.id() << ")";
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    TransferMachine::TransferMachine(TransactionMachine& owner):
+      Transferer(owner)
+    {}
+
+    void
+    TransferMachine::_publish_interfaces()
+    {
       auto& station = this->_owner.station();
       typedef std::vector<std::pair<std::string, uint16_t>> AddressContainer;
       AddressContainer addresses;
@@ -395,15 +448,12 @@ namespace surface
     void
     TransferMachine::_connection()
     {
-      ELLE_TRACE_SCOPE("%s: connect to peer", *this);
-      this->_owner.current_state(TransactionMachine::State::Connect);
       this->_host = this->_connect();
       this->_serializer.reset(
         new infinit::protocol::Serializer(*this->_host));
       this->_channels.reset(
         new infinit::protocol::ChanneledStream(*this->_serializer));
       this->_rpcs = this->_owner.rpcs(*this->_channels);
-      this->_peer_connected.signal();
     }
 
     static std::streamsize const chunk_size = 1 << 18;
@@ -411,8 +461,6 @@ namespace surface
     void
     TransferMachine::_wait_for_peer()
     {
-      ELLE_TRACE_SCOPE("%s: wait for peer to connect", *this);
-      this->_owner.current_state(TransactionMachine::State::PeerDisconnected);
 #if 0 // File buffering disabled.
       reactor::sleep(10_sec);
       // FIXME: this is a joke.
@@ -467,8 +515,6 @@ namespace surface
     void
     TransferMachine::_transfer()
     {
-      ELLE_TRACE_SCOPE("%s: transfer", *this);
-      this->_owner.current_state(TransactionMachine::State::Transfer);
       elle::SafeFinally clear_frete{
         [this]
         {
@@ -484,13 +530,11 @@ namespace surface
     void
     TransferMachine::_stopped()
     {
-      ELLE_TRACE_SCOPE("%s: stopped", *this);
     }
 
     /*----------.
     | Printable |
     `----------*/
-
     void
     TransferMachine::print(std::ostream& stream) const
     {
