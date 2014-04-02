@@ -954,8 +954,10 @@ namespace surface
     ReceiveMachine::cleanup()
     { // our _get knows when it's finished, nothing to do
       ELLE_TRACE_SCOPE("%s: cleaning up", *this);
+      // FIXME: cloud-check instead of relying if we have bufferer locally
       if (_bufferer)
         _bufferer->cleanup();
+      // FIXME: cleanup raw cloud data
     }
 
     void

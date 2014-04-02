@@ -357,7 +357,9 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: waiting for peer to accept or reject", *this);
 
       auto peer = this->state().user(this->peer_id());
-      if (!peer.ghost() && !peer.online())
+      if (peer.ghost())
+        this->_bare_cloud_upload();
+      else if (!peer.ghost() && !peer.online())
       {
         this->current_state(
           TransactionMachine::State::CloudBufferingBeforeAccept);
@@ -394,6 +396,100 @@ namespace surface
         result += infos[i].second;
       result += p.second;
       return result;
+    }
+
+    void
+    SendMachine::_bare_cloud_upload()
+    {
+      ELLE_TRACE_SCOPE("%s: bare_cloud_upload", *this);
+      auto& meta = this->state().meta();
+      auto token = meta.get_cloud_buffer_token(this->transaction_id());
+      auto credentials = aws::Credentials(token.access_key_id,
+                                          token.secret_access_key,
+                                          token.session_token,
+                                          token.expiration);
+      aws::S3 handler("us-east-1-buffer-infinit-io", this->transaction_id(),
+                      credentials);
+      // Since we zip, we support only one file, which simplifies the logic.
+      ELLE_ASSERT_EQ(this->data()->files.size(), 1);
+      typedef frete::Frete::FileSize FileSize;
+      std::pair<std::string, FileSize> file = frete().files_info().front();
+      const std::string& object = file.first;
+      FileSize size = file.second;
+      // AWS constraints: no more than 10k chunks, at least 5Mo block size
+      FileSize chunk_size = std::max(FileSize(5*1024*1024), size / 9500);
+      int chunk_count = size / chunk_size + ((size % chunk_size)? 1:0);
+      ELLE_TRACE("%s: using chunk size of %s, with %s chunks",
+                 *this, chunk_size, chunk_count);
+      // Load our own snapshot that contains the upload uid
+      std::string raw_snapshot_path = common::infinit::frete_snapshot_path(
+        this->data()->sender_id,
+        this->data()->id + "_raw");
+      std::string upload_id;
+      std::ifstream ifs(raw_snapshot_path);
+      ifs >> upload_id;
+      ELLE_DEBUG("%s: tried to reload id from %s, got %s",
+                 *this, raw_snapshot_path, upload_id);
+      std::vector<aws::S3::MultiPartChunk> chunks;
+      int next_chunk = 0;
+      if (upload_id.empty())
+      {
+        upload_id = handler.multipart_initialize(object);
+      }
+      else
+      { // Fetch block list
+        chunks = handler.multipart_list(object, upload_id);
+        if (!chunks.empty())
+        {
+          // We expect mostly contiguous data exept at the end,
+          std::vector<int> ids(chunks.size());
+          std::transform(chunks.begin(), chunks.end(), ids.begin(),
+            [](const aws::S3::MultiPartChunk& chunk) -> int { return chunk.first;});
+          std::sort(ids.begin(), ids.end());
+          // handling missing blocks is complicated code for not much,
+          // just get the first missing one. We know there is no dups
+          for (int i=0; i<int(ids.size()); ++i)
+            if (ids[i] != i)
+              break;
+            else
+              next_chunk = i+1;
+        }
+      }
+      auto& frete = this->frete();
+      // start pipelined upload
+      auto pipeline_upload = [&, this](int id)
+      {
+        while (true)
+        {
+          // fetch a chunk number
+          if (next_chunk >= chunk_count)
+            return;
+          int local_chunk = next_chunk++;
+          // upload it
+          ELLE_DEBUG("%s: uploading chunk %s", *this, local_chunk);
+          auto buffer = frete.cleartext_read(0, local_chunk*chunk_size, chunk_size);
+          std::string etag = handler.multipart_upload(
+            object, upload_id,
+            buffer,
+            local_chunk);
+          chunks.push_back(std::make_pair(local_chunk, etag));
+        }
+      };
+      int num_threads = 8;
+      elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+      {
+        for (int i=0; i<num_threads; ++i)
+          scope.run_background(elle::sprintf("cloud %s", i),
+                               std::bind(pipeline_upload, i));
+        scope.wait();
+      };
+      std::sort(chunks.begin(), chunks.end(),
+        [](aws::S3::MultiPartChunk const& a, aws::S3::MultiPartChunk const& b)
+          {
+            return a.first < b.first;
+          });
+      handler.multipart_finalize(object, upload_id, chunks);
+      // mark transfer as raw-finished
     }
 
     void
@@ -535,15 +631,22 @@ namespace surface
       if (this->_frete == nullptr)
       {
         ELLE_TRACE_SCOPE("%s: initialize frete", *this);
-        infinit::cryptography::PublicKey peer_K;
-        peer_K.Restore(this->state().user(this->peer_id(), true).public_key);
         this->_frete = elle::make_unique<frete::Frete>(
           this->transaction_id(),
           this->state().identity().pair(),
-          peer_K,
           common::infinit::frete_snapshot_path(
             this->data()->sender_id,
             this->data()->id));
+        auto k = this->state().user(this->peer_id(), true).public_key;
+        if (!k.empty())
+        {
+          infinit::cryptography::PublicKey peer_K;
+          ELLE_DEBUG("restoring key from %s", k);
+          peer_K.Restore(k);
+          this->_frete->set_peer_key(peer_K);
+        }
+        else
+          ELLE_DEBUG("%s: peer id unavailable, frete has no peer key", *this);
         if (this->_frete->count())
         { // Reloaded from snapshot, validate it
           if (this->_files.size() != this->_frete->count())
@@ -558,6 +661,7 @@ namespace surface
         }
         else
         { // No snapshot yet, fill file list
+          ELLE_DEBUG("%s: No snapshot loaded, populating files", *this);
           for (std::string const& file: this->_files)
             this->_frete->add(file);
         }

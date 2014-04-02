@@ -60,8 +60,12 @@ namespace surface
       _wait_for_accept();
       void
       _transfer_operation(frete::RPCFrete& frete) override;
+      // chunked upload to cloud
       void
       _cloud_operation() override;
+      // cleartext upload one file to cloud
+      void
+      _bare_cloud_upload();
       /*-----------------------.
       | Machine implementation |
       `-----------------------*/
