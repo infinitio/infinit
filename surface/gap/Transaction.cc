@@ -444,6 +444,7 @@ namespace surface
         stream << *this->_data;
       else
         stream << "Transaction(null)";
+      stream << "(" << this->_id << ")";
     }
   }
 }
