@@ -1,8 +1,7 @@
-
-
 #include <elle/log.hh>
 
 #include <surface/gap/onboarding/Transaction.hh>
+#include <surface/gap/onboarding/ReceiveMachine.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.onboarding.Transaction");
 
@@ -44,45 +43,24 @@ namespace surface
       Transaction::Transaction(surface::gap::State const& state,
                                uint32_t id,
                                State::User const& peer,
-                               reactor::Duration const& transfer_duration):
-        surface::gap::Transaction(state,
-                                  id,
-                                  transaction_data(state.me(),
-                                                   peer)),
-        _progress(0.0f),
-        _duration(transfer_duration),
-        _accepted("accepted"),
-        _thread(
-          new reactor::Thread(
-            *reactor::Scheduler::scheduler(),
-            "onboarding transaction",
-            [&]
-            {
-              auto set_status = [&] (gap_TransactionStatus status)
-                {
-                  this->last_status(status);
-                  state.enqueue(Notification(this->id(), status));
-                };
-              set_status(gap_transaction_waiting_for_accept);
-              this->_accepted.wait();
-              this->data()->status = TransactionStatus::accepted;
-              set_status(gap_transaction_accepted);
-              reactor::sleep(500_ms);
-              set_status(gap_transaction_preparing);
-              set_status(gap_transaction_running);
-              while (this->_progress < 1.0f)
-              {
-                static reactor::Duration step = 200_ms;
-                this->_progress +=
-                  (step.total_milliseconds() /
-                   (1.0f * this->_duration.total_milliseconds()));
-                reactor::sleep(step);
-              }
-              this->data()->status = TransactionStatus::finished;
-              set_status(gap_transaction_cleaning);
-              set_status(gap_transaction_finished);
-            }))
+                               reactor::Duration const& transfer_duration)
+        : surface::gap::Transaction(state,
+                                      id,
+                                      transaction_data(state.me(),
+                                                         peer))
+        , _thread(new reactor::Thread(
+                    *reactor::Scheduler::scheduler(),
+                    "onboarding transaction",
+                    [&]
+                    {
+                    }))
       {
+        this->_machine.reset(new surface::gap::onboarding::ReceiveMachine(
+          state,
+          id,
+          this->data(),
+          transfer_duration));
+
         ELLE_DEBUG_SCOPE("%s: creation", *this);
       }
 
@@ -93,24 +71,38 @@ namespace surface
           this->_thread->terminate_now();
       }
 
+      surface::gap::onboarding::ReceiveMachine&
+      Transaction::machine()
+      {
+        return *static_cast<surface::gap::onboarding::ReceiveMachine*>(
+          this->_machine.get());
+      }
+
       void
       Transaction::accept()
       {
         ELLE_DEBUG("%s: accepted", *this);
-        this->_accepted.open();
+        this->machine().accept();
+        this->peer_availability_status(true);
+        this->peer_connection_status(true);
       }
 
       void
-      Transaction::join()
+      Transaction::peer_connection_status(bool status)
       {
-        this->_thread->terminate_now();
-        this->_thread.reset();
+        this->_machine->peer_connection_changed(status);
       }
 
-      float
-      Transaction::progress() const
+      void
+      Transaction::peer_availability_status(bool status)
       {
-        return this->_progress;
+        this->_machine->peer_availability_changed(status);
+      }
+
+      void
+      Transaction::pause()
+      {
+         this->machine().pause();
       }
 
       void

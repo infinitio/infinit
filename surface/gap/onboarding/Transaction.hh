@@ -1,8 +1,13 @@
 #ifndef SURFACE_GAP_ONBOARDING_TRANSACTION_HH
 # define SURFACE_GAP_ONBOARDING_TRANSACTION_HH
 
+# include <elle/attribute.hh>
+
+# include <reactor/duration.hh>
+
 # include <surface/gap/State.hh>
 # include <surface/gap/Transaction.hh>
+# include <surface/gap/onboarding/fwd.hh>
 
 namespace surface
 {
@@ -24,16 +29,26 @@ namespace surface
         void
         accept() override;
 
+        // In order to give the onboarding the ability to control the process,
+        // the onboarding transaction expose the hidden transfer machine api.
         void
-        join() override;
+        peer_connection_status(bool status);
 
-        float
-        progress() const override;
+        void
+        peer_availability_status(bool status);
 
-        ELLE_ATTRIBUTE(float, progress);
-        ELLE_ATTRIBUTE(reactor::Duration, duration);
-        ELLE_ATTRIBUTE(reactor::Barrier, accepted);
+        void
+        pause();
+        // void
+        // join() override;
+
+        // float
+        // progress() const override;
+
         ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, thread);
+
+        surface::gap::onboarding::ReceiveMachine&
+        machine();
 
       /*----------.
       | Printable |
