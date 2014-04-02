@@ -418,6 +418,7 @@ class Mixin:
     email -- the email of the user.
     ensure_existence -- if set, raise if user is invald.
     """
+    email = email.lower().strip()
     user = self.database.users.find_one({'email': email})
     if ensure_existence:
       self.__ensure_user_existence(user)

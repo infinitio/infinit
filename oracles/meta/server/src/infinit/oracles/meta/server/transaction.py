@@ -75,7 +75,7 @@ class Mixin:
     """
     with elle.log.trace("create transaction (recipient %s)" % id_or_email):
       user = self.user
-      id_or_email = id_or_email.strip()
+      id_or_email = id_or_email.strip().lower()
 
       # if self.database.devices.find_one(bson.ObjectId(device_id)) is None:
       #   return self.fail(error.DEVICE_NOT_FOUND)
@@ -87,9 +87,9 @@ class Mixin:
 
       if re.match(regexp.Email, id_or_email): # email.
         elle.log.debug("%s is an email" % id_or_email)
-        peer_email = id_or_email
+        peer_email = id_or_email.lower().strip()
         # XXX: search email in each accounts.
-        recipient = self.database.users.find_one({'email': id_or_email})
+        recipient = self.database.users.find_one({'email': peer_email})
         # if the user doesn't exist, create a ghost and invite.
 
         if not recipient:
