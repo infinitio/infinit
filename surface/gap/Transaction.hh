@@ -121,7 +121,8 @@ namespace surface
       `------------*/
       ELLE_ATTRIBUTE_R(uint32_t, id);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
-      ELLE_ATTRIBUTE(std::unique_ptr<TransactionMachine>, machine);
+    protected:
+      std::unique_ptr<TransactionMachine> _machine;
       ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, machine_state_thread);
       ELLE_ATTRIBUTE_r(gap_TransactionStatus, last_status);
       /*--------.

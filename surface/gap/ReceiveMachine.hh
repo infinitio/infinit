@@ -66,6 +66,7 @@ namespace surface
       void
       _wait_for_decision();
 
+      virtual
       void
       _accept();
 
@@ -82,7 +83,8 @@ namespace surface
       ELLE_ATTRIBUTE(reactor::fsm::State&, accept_state);
 
       // Transaction status signals.
-      ELLE_ATTRIBUTE(reactor::Barrier, accepted);
+    protected:
+      reactor::Barrier _accepted;
 
       /*-----------------.
       | Transaction data |
