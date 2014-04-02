@@ -117,7 +117,11 @@ namespace surface
       ELLE_WARN_SCOPE("%s: constructing machine for transaction data %s "
                       "(not found on local snapshots)",
                        *this, this->data());
-
+      // set _files from data
+      for (auto const& f: this->data()->files)
+      {
+        this->_files.insert(f);
+      }
       switch (this->data()->status)
       {
         case TransactionStatus::initialized:
