@@ -99,9 +99,9 @@ class Meta(bottle.Bottle,
     # Could be cleaner.
     self.mailer = mail.Mailer(active = enable_emails)
     self.invitation = invitation.Invitation(active = enable_emails)
-    self.trophonius_expiration_time = trophonius_expiration_time
-    self.apertus_expiration_time = apertus_expiration_time
-    self.unconfirmed_email_leeway = unconfirmed_email_leeway
+    self.trophonius_expiration_time = int(trophonius_expiration_time)
+    self.apertus_expiration_time = int(apertus_expiration_time)
+    self.unconfirmed_email_leeway = int(unconfirmed_email_leeway)
     waterfall.Waterfall.__init__(self)
 
   def __set_constraints(self):
