@@ -293,18 +293,21 @@ class Mixin:
                {"time": {"$exists": False}}]},
       multi = True)
 
-    daily_summary = self.database.mailer.find_one({'name': 'daily-summary'})
-    if daily_summary is None or daily_summary['last-sent'] < time.time() - 86400:
-      self.database.mailer.find_and_modify(
-        {
-          'name': 'daily-summary'
-        },
-        {
-          'name': 'daily-summary',
-          'last-sent': time.time()
-        },
-        upsert = True)
-      self.daily_summary()
+    import datetime
+    if datetime.datetime.utcnow().hour == self.daily_summary_hour:
+      daily_summary_str = 'daily-summary'
+      daily_summary = self.database.mailer.find_one({'name': daily_summary_str})
+      if daily_summary is None or daily_summary['last-sent'] < time.time() - 86400:
+        self.database.mailer.find_and_modify(
+          {
+            'name': daily_summary_str,
+          },
+          {
+            'name': daily_summary_str,
+            'last-sent': time.time()
+          },
+          upsert = True)
+        self.daily_summary()
     return self.success(res)
 
   @api('/cron/daily-summary', method = 'POST')
