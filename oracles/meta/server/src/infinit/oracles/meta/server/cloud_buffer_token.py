@@ -94,11 +94,13 @@ class CloudBufferToken:
 
 
   # http://docs.aws.amazon.com/STS/latest/UsingSTS/sts-controlling-feduser-permissions.html
+  #http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingResOpsConditions.html
   def _make_policy(self):
     object_actions = []
     bucket_actions = None
     if self.http_action == 'PUT':
-      object_actions.extend(['s3:PutObject'])
+      object_actions.extend(['s3:PutObject', 's3:ListMultipartUploadParts', 's3:AbortMultipartUpload'])
+      bucket_actions = ['s3:ListBucket']
     elif self.http_action == 'GET':
       object_actions.extend(['s3:GetObject', 's3:DeleteObject'])
       bucket_actions = ['s3:ListBucket']
