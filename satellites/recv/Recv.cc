@@ -1,6 +1,10 @@
 #include <iostream>
 #include <stdexcept>
 
+#ifdef __linux__
+#include <signal.h>
+#endif
+
 #include <boost/program_options.hpp>
 
 #include <elle/Exception.hh>
@@ -78,6 +82,10 @@ parse_options(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
+#ifdef __linux__
+  signal(SIGPIPE, SIG_IGN);
+#endif
+
   elle::signal::ScopedGuard p({SIGINT}, interrupt);
 
   try
