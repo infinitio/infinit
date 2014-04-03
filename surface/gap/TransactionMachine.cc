@@ -603,6 +603,8 @@ namespace surface
           return out << "CloudBufferingBeforeAccept";
         case TransactionMachine::State::None:
           return out << "None";
+        case TransactionMachine::State::GhostCloudBuffering:
+          return out << "GhostCloudBuffering";
       }
       return out;
     }

@@ -222,6 +222,7 @@ namespace surface
           break;
         case TransactionMachine::State::SenderWaitForDecision:
         case TransactionMachine::State::CloudBufferingBeforeAccept:
+        case TransactionMachine::State::GhostCloudBuffering:
           this->_run(this->_wait_for_accept_state);
           break;
         case TransactionMachine::State::RecipientWaitForDecision:
@@ -401,6 +402,10 @@ namespace surface
     void
     SendMachine::_bare_cloud_upload()
     {
+      this->current_state(TransactionMachine::State::GhostCloudBuffering);
+      // Force a machine state snapshot save now that we have the transaction
+      // id.
+      current_state(current_state());
       ELLE_TRACE_SCOPE("%s: bare_cloud_upload", *this);
       auto& meta = this->state().meta();
       auto token = meta.get_cloud_buffer_token(this->transaction_id());
