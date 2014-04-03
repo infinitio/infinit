@@ -605,6 +605,8 @@ namespace surface
           return out << "None";
         case TransactionMachine::State::GhostCloudBuffering:
           return out << "GhostCloudBuffering";
+        case TransactionMachine::State::GhostCloudBufferingFinished:
+          return out << "GhostCloudBufferingFinished";
       }
       return out;
     }

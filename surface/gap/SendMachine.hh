@@ -65,7 +65,7 @@ namespace surface
       _cloud_operation() override;
       // cleartext upload one file to cloud
       void
-      _bare_cloud_upload();
+      _ghost_cloud_upload();
       /*-----------------------.
       | Machine implementation |
       `-----------------------*/

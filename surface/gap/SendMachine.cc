@@ -223,6 +223,7 @@ namespace surface
         case TransactionMachine::State::SenderWaitForDecision:
         case TransactionMachine::State::CloudBufferingBeforeAccept:
         case TransactionMachine::State::GhostCloudBuffering:
+        case TransactionMachine::State::GhostCloudBufferingFinished:
           this->_run(this->_wait_for_accept_state);
           break;
         case TransactionMachine::State::RecipientWaitForDecision:
@@ -359,7 +360,7 @@ namespace surface
 
       auto peer = this->state().user(this->peer_id());
       if (peer.ghost())
-        this->_bare_cloud_upload();
+        this->_ghost_cloud_upload();
       else if (!peer.ghost() && !peer.online())
       {
         this->current_state(
@@ -400,13 +401,16 @@ namespace surface
     }
 
     void
-    SendMachine::_bare_cloud_upload()
+    SendMachine::_ghost_cloud_upload()
     {
+      if (this->current_state()
+          == TransactionMachine::State::GhostCloudBufferingFinished)
+        return;
       this->current_state(TransactionMachine::State::GhostCloudBuffering);
       // Force a machine state snapshot save now that we have the transaction
       // id.
       current_state(current_state());
-      ELLE_TRACE_SCOPE("%s: bare_cloud_upload", *this);
+      ELLE_TRACE_SCOPE("%s: ghost_cloud_upload", *this);
       auto& meta = this->state().meta();
       auto token = meta.get_cloud_buffer_token(this->transaction_id());
       auto credentials = aws::Credentials(token.access_key_id,
@@ -520,6 +524,7 @@ namespace surface
           });
       handler.multipart_finalize(object, upload_id, chunks);
       // mark transfer as raw-finished
+      this->current_state(TransactionMachine::State::GhostCloudBufferingFinished);
     }
 
     void
