@@ -432,28 +432,37 @@ namespace surface
                  *this, raw_snapshot_path, upload_id);
       std::vector<aws::S3::MultiPartChunk> chunks;
       int next_chunk = 0;
+      int max_check_id = 0; // check for chunk presence up to that id
+      int start_check_index = 0; // check for presence from that chunks index
       if (upload_id.empty())
       {
         upload_id = handler.multipart_initialize(object);
+        std::ofstream ofs(raw_snapshot_path);
+        ofs << upload_id;
+        ELLE_DEBUG("%s: saved id %s to %s",
+                   *this, upload_id, raw_snapshot_path);
       }
       else
       { // Fetch block list
         chunks = handler.multipart_list(object, upload_id);
+        std::sort(chunks.begin(), chunks.end(),
+          [](aws::S3::MultiPartChunk const& a, aws::S3::MultiPartChunk const& b)
+          {
+            return a.first < b.first;
+          });
         if (!chunks.empty())
         {
-          // We expect mostly contiguous data exept at the end,
-          std::vector<int> ids(chunks.size());
-          std::transform(chunks.begin(), chunks.end(), ids.begin(),
-            [](const aws::S3::MultiPartChunk& chunk) -> int { return chunk.first;});
-          std::sort(ids.begin(), ids.end());
-          // handling missing blocks is complicated code for not much,
-          // just get the first missing one. We know there is no dups
-          for (int i=0; i<int(ids.size()); ++i)
-            if (ids[i] != i)
+          // We expect missing blocks potentially, but only at the end
+          //, ie we expect contiguous blocks 0 to (num_blocks - pipeline_size)
+          for (int i=0; i<int(chunks.size()); ++i)
+            if (chunks[i].first != i)
               break;
             else
               next_chunk = i+1;
+          start_check_index = next_chunk;
+          max_check_id = chunks.back().first;
         }
+        ELLE_DEBUG("Will resume at chunk %s", next_chunk);
       }
       auto& frete = this->frete();
       // start pipelined upload
@@ -465,6 +474,22 @@ namespace surface
           if (next_chunk >= chunk_count)
             return;
           int local_chunk = next_chunk++;
+          if (local_chunk <= max_check_id)
+          { // maybe we have it
+            bool has_it = false;
+            for (unsigned i=start_check_index;
+                 i<chunks.size() && chunks[i].first <= max_check_id;
+                 ++i)
+            {
+              if (chunks[i].first == local_chunk)
+              {
+                has_it = true;
+                break;
+              }
+            }
+            if (has_it)
+              continue;
+          }
           // upload it
           ELLE_DEBUG("%s: uploading chunk %s", *this, local_chunk);
           auto buffer = frete.cleartext_read(0, local_chunk*chunk_size, chunk_size);
@@ -475,7 +500,7 @@ namespace surface
           chunks.push_back(std::make_pair(local_chunk, etag));
         }
       };
-      int num_threads = 8;
+      int num_threads = 4;
       elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
         for (int i=0; i<num_threads; ++i)
