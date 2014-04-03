@@ -3,8 +3,10 @@
 import binascii
 import bson
 from datetime import datetime
+import time
 import hashlib
 import hmac
+import base64
 import json
 import urllib.parse
 import urllib.request
@@ -219,3 +221,28 @@ class CloudBufferToken:
     url_string = 'https://%s:443?%s' % (CloudBufferToken.aws_host, completed_request)
     elle.log.debug('%s: url string: %s' % (self, url_string))
     return url_string
+
+#http://docs.aws.amazon.com/AmazonS3/latest/dev/RESTAuthentication.html
+# at the bottom, 'Query String Request Authentication Alternative'
+def generate_get_url(bucket_name, transaction_id, file_path):
+  """ Generate a GET URL that can access relative 'file_path' in bucket
+      using the federated token we produced
+  """
+  expires = int(time.time()) + 36 * 60 * 60
+  string_to_sign = 'GET\n\n\n%s\n/%s/%s/%s' % (
+    expires, bucket_name, transaction_id, file_path)
+  signature = hmac.new(CloudBufferToken.aws_secret.encode('ascii'),
+                       string_to_sign.encode('utf-8'),
+                       hashlib.sha1).digest()
+  signature = base64.b64encode(signature)
+  ## urlencoding a base64 string...
+  signature = signature.decode('ascii').replace('+', '%2B').replace('=', '%3D')
+  url = 'https://%s.s3.amazonaws.com:443/%s/%s?AWSAccessKeyId=%s&Expires=%s&Signature=%s' % (
+    bucket_name,
+    transaction_id,
+    file_path,
+    CloudBufferToken.aws_id,
+    expires,
+    signature)
+  elle.log.log("Produced get url: %s" % url);
+  return url
