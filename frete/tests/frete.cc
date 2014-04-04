@@ -153,7 +153,8 @@ ELLE_TEST_SCHEDULED(connection)
         *reactor::Scheduler::scheduler(), *socket);
       infinit::protocol::ChanneledStream channels(
         *reactor::Scheduler::scheduler(), serializer);
-      frete::Frete frete("suce", recipient_key_pair.K(), snap);
+      frete::Frete frete("suce", recipient_key_pair, snap);
+      frete.set_peer_key(recipient_key_pair.K());
       frete::RPCFrete rpcs(frete, channels);
       frete.add(hierarchy.empty());
       frete.add(hierarchy.content());
