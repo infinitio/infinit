@@ -24,6 +24,8 @@ class CloudBufferToken:
   aws_secret = '6VphkFJAAWXTBLrDebB+AWmPAHPkJWfIFR2KCfSa'
   aws_id = 'AKIAIPTEKRYOSJORHQMA'
 
+  aws_default_bucket = 'us-east-1-buffer-infinit-io'
+
   default_headers = {
     'content-type': 'application/json',
     'host': aws_host
@@ -46,8 +48,8 @@ class CloudBufferToken:
     return res
 
   def __init__(self, user_id, transaction_id, http_action,
-               aws_region='us-east-1',
-               bucket_name='us-east-1-buffer-infinit-io'):
+               aws_region = 'us-east-1',
+               bucket_name = None):
     assert http_action in ['PUT', 'GET']
     elle.log.log('%s: fetching S3 %s token for transaction (%s), user_id (%s) for region: %s' %
                  (self, http_action, transaction_id, user_id, aws_region))
@@ -56,6 +58,8 @@ class CloudBufferToken:
     self.http_action = http_action
     self.aws_region = aws_region
     self.aws_service = 'sts'
+    if bucket_name is None:
+      bucket_name = CloudBufferToken.aws_default_bucket
     self.bucket_name = bucket_name
 
     self.request_time = datetime.utcnow()
@@ -244,5 +248,5 @@ def generate_get_url(bucket_name, transaction_id, file_path):
     CloudBufferToken.aws_id,
     expires,
     signature)
-  elle.log.log("Produced get url: %s" % url);
+  elle.log.debug("Produced get url: %s" % url);
   return url
