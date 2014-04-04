@@ -269,7 +269,7 @@ class Mixin:
         import hashlib
         hash = str(time()) + email
         hash = hash.encode('utf-8')
-        hashlib.md5(hash).hexdigest()
+        hash = hashlib.md5(hash).hexdigest()
         user_id = self._register(
           _id = id,
           register_status = 'ok',
