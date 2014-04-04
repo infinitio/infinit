@@ -53,6 +53,7 @@ namespace frete
     ~Frete();
     /// Set peer key (used to encrypt session key in key_code())
     void set_peer_key(infinit::cryptography::PublicKey peer_K);
+    bool has_peer_key() const;
   private:
     class Impl;
     ELLE_ATTRIBUTE(std::unique_ptr<Impl>, impl);

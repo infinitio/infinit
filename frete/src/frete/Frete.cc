@@ -103,6 +103,12 @@ namespace frete
       new infinit::cryptography::PublicKey(std::move(peer_K)));
   }
 
+  bool
+  Frete::has_peer_key() const
+  {
+    return this->_impl->_peer_key != nullptr;
+  }
+
   Frete::~Frete()
   {}
 
