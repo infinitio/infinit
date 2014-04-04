@@ -179,32 +179,53 @@ class Mixin:
         if new_user:
           elle.log.trace("send invitation to new user %s" % invitee_email)
           # Figure out what the sender will ghost-upload
-          # This heuristic must be in sync with the sender!
-          ghost_upload_file = ''
-          if len(files) == 1:
-            if is_directory:
-              ghost_upload_file = files[0] + '.zip'
-            else:
-              ghost_upload_file = files[0]
+        # This heuristic must be in sync with the sender!
+        ghost_upload_file = ''
+        if len(files) == 1:
+          if is_directory:
+            ghost_upload_file = files[0] + '.zip'
           else:
-            ghost_upload_file = 'archive.zip'
-          # Pregenerate GET URL for ghost cloud uploaded file
-          ghost_get_url = cloud_buffer_token.generate_get_url(
-            cloud_buffer_token.CloudBufferToken.aws_default_bucket,
-            transaction_id,
-            ghost_upload_file)
-          elle.log.log('Generating cloud GET URL for %s: %s'
-            % (ghost_upload_file, ghost_get_url))
-          invitation.invite_user(
-            invitee_email,
-            mailer = self.mailer,
-            mail_template = 'send-file',
-            source = (user['fullname'], user['email']),
-            filename = files[0],
-            sendername = user['fullname'],
-            database = self.database,
-            ghost_id = str(recipient.get('_id')),
-            sender_id = str(user['_id']),
+            ghost_upload_file = files[0]
+        else:
+          ghost_upload_file = 'archive.zip'
+        # Pregenerate GET URL for ghost cloud uploaded file
+        ghost_get_url = cloud_buffer_token.generate_get_url(
+          cloud_buffer_token.CloudBufferToken.aws_default_bucket,
+          transaction_id,
+          ghost_upload_file)
+        elle.log.log('Generating cloud GET URL for %s: %s'
+          % (ghost_upload_file, ghost_get_url))
+        invitation.invite_user(
+          peer_email,
+          mailer = self.mailer,
+          mail_template = 'send-file',
+          source = (user['fullname'], user['email']),
+          database = self.database,
+          merge_vars = {
+            peer_email: {
+              'filename': files[0],
+              'sendername': user['fullname'],
+              'ghost_id': str(recipient.get('_id')),
+              'sender_id': str(user['_id']),
+              'avatar': self.user_avatar_route(recipient['_id']),
+            }}
+        )
+      elif recipient.get('connected', False) == False:
+        elle.log.debug("recipient is disconnected")
+        template_id = 'accept-file-only-offline'
+
+        subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS[template_id]
+        subject %= { "sendername": user['fullname'], 'filename': files[0] }
+        self.mailer.send_template(
+          to = peer_email,
+          template_name = template_id,
+          subject = subject,
+          merge_vars = {
+            peer_email: {
+              'filename': files[0],
+              'sendername': user['fullname'],
+              'avatar': self.user_avatar_route(recipient['_id']),
+            }}
           )
 
       self._increase_swag(user['_id'], recipient['_id'])
@@ -318,6 +339,9 @@ class Mixin:
       }
     )
 
+  def cloud_cleanup_transaction(self, transaction):
+    pass # cloud_buffer_token.delete_directory(transaction.id)
+
   def on_accept(self, transaction, device_id, device_name):
     with elle.log.trace("accept transaction as %s" % device_id):
       if device_id is None or device_name is None:
@@ -388,16 +412,18 @@ class Mixin:
 
       from functools import partial
 
+      cleanup_cb = partial(self.cloud_cleanup_transaction,
+                           transaction = transaction)
       callbacks = {
         transaction_status.INITIALIZED: None,
         transaction_status.ACCEPTED: partial(self.on_accept,
                                              transaction = transaction,
                                              device_id = device_id,
                                              device_name = device_name),
-        transaction_status.FINISHED: None,
-        transaction_status.CANCELED: None,
-        transaction_status.FAILED: None,
-        transaction_status.REJECTED: None
+        transaction_status.FINISHED: cleanup_cb,
+        transaction_status.CANCELED: cleanup_cb,
+        transaction_status.FAILED:   cleanup_cb,
+        transaction_status.REJECTED: cleanup_cb
       }
 
       cb = callbacks[status]
@@ -676,21 +702,23 @@ class Mixin:
 
     res = None
 
+
     if self.is_sender(transaction, user['_id']): # We're doing a PUT.
-      res = cloud_buffer_token.CloudBufferToken(user['_id'], transaction_id, 'PUT')
+      token_maker = cloud_buffer_token.CloudBufferToken(user['_id'], transaction_id, 'PUT')
     elif self.is_recipient(transaction, user['_id']): # We're doing a GET.
-      res = cloud_buffer_token.CloudBufferToken(user['_id'], transaction_id, 'GET')
+      token_maker = cloud_buffer_token.CloudBufferToken(user['_id'], transaction_id, 'GET')
     else: # Not this user's transaction.
       return self.fail(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
 
-    if res == None:
+    raw_creds = token_maker.generate_s3_token()
+    if raw_creds == None:
       return self.fail(error.UNKNOWN)
 
     # Only send back required credentials.
     credentials = dict()
-    credentials['access_key_id'] = res.credentials['AccessKeyId']
-    credentials['secret_access_key'] = res.credentials['SecretAccessKey']
-    credentials['session_token'] = res.credentials['SessionToken']
-    credentials['expiration'] = res.credentials['Expiration']
+    credentials['access_key_id']     = raw_creds['AccessKeyId']
+    credentials['secret_access_key'] = raw_creds['SecretAccessKey']
+    credentials['session_token']     = raw_creds['SessionToken']
+    credentials['expiration']        = raw_creds['Expiration']
 
     return self.success(credentials)
