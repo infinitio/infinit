@@ -165,7 +165,7 @@ class Mixin:
         invitation.invite_user(
           peer_email,
           mailer = self.mailer,
-          mail_template = 'invitation-with-file',
+          mail_template = 'send-file',
           source = (user['fullname'], user['email']),
           database = self.database,
           merge_vars = {
