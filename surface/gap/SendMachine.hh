@@ -66,6 +66,8 @@ namespace surface
       // cleartext upload one file to cloud
       void
       _ghost_cloud_upload();
+      bool
+      _fetch_peer_key(bool assert_success);
       /*-----------------------.
       | Machine implementation |
       `-----------------------*/

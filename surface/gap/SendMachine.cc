@@ -374,6 +374,7 @@ namespace surface
     void
     SendMachine::_transfer_operation(frete::RPCFrete& frete)
     {
+      _fetch_peer_key(true);
       ELLE_TRACE_SCOPE("%s: transfer operation", *this);
       elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
@@ -537,6 +538,8 @@ namespace surface
       }
       ELLE_TRACE_SCOPE("%s: upload to the cloud", *this);
       auto& frete = this->frete();
+      _fetch_peer_key(true);
+
       auto& snapshot = *frete.transfer_snapshot();
       // Save snapshot of what eventual direct upload already did right now.
       this->frete().save_snapshot();
@@ -660,6 +663,23 @@ namespace surface
       return 0.0f;
     }
 
+    bool
+    SendMachine::_fetch_peer_key(bool assert_success)
+    {
+      auto& frete = this->frete();
+      if (frete.has_peer_key())
+        return true;
+      auto k = this->state().user(this->peer_id(), true).public_key;
+      if (k.empty() && !assert_success)
+        return false;
+      ELLE_ASSERT(!k.empty());
+      ELLE_DEBUG("restoring key from %s", k);
+      infinit::cryptography::PublicKey peer_K;
+      peer_K.Restore(k);
+      frete.set_peer_key(peer_K);
+      return true;
+    }
+
     frete::Frete&
     SendMachine::frete()
     {
@@ -672,16 +692,8 @@ namespace surface
           common::infinit::frete_snapshot_path(
             this->data()->sender_id,
             this->data()->id));
-        auto k = this->state().user(this->peer_id(), true).public_key;
-        if (!k.empty())
-        {
-          infinit::cryptography::PublicKey peer_K;
-          ELLE_DEBUG("restoring key from %s", k);
-          peer_K.Restore(k);
-          this->_frete->set_peer_key(peer_K);
-        }
-        else
-          ELLE_DEBUG("%s: peer id unavailable, frete has no peer key", *this);
+         _fetch_peer_key(false);
+
         if (this->_frete->count())
         { // Reloaded from snapshot, validate it
           if (this->_files.size() != this->_frete->count())
