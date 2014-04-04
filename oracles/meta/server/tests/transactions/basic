@@ -34,7 +34,6 @@ with Meta() as meta:
   alice.login()
 
   res = alice.get('transaction/%s/view' % transaction_id)
-
   for key in transaction.keys():
     if key in ['id_or_email', 'device_id']: # Special cases.
       continue
@@ -48,7 +47,7 @@ with Meta(enable_emails = True) as meta:
 
   bob.login()
   meta.mailer = MailService(bob.fullname,
-                            expected_template = 'invitation-with-file')
+                            expected_template = 'send-file')
 
   transaction, res = bob.sendfile(recipient_id = alice_email)
   assert res['success']
@@ -56,7 +55,6 @@ with Meta(enable_emails = True) as meta:
   assert meta.mailer.sent
   transaction_id = res['created_transaction_id']
 
-  print('foooooo')
   meta.mailer = MailService(expected_template = 'confirm-sign-up')
 
   alice = User(meta, alice_email)
