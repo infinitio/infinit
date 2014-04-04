@@ -460,6 +460,18 @@ namespace surface
       {
         ELLE_TRACE("%s: Data exhausted on cloud bufferer", *this);
       }
+      catch (reactor::Terminate const&)
+      { // aye aye
+        throw;
+      }
+      catch (std::exception const& e)
+      {
+        // We don't ever retry could DL, but the idea is that for
+        // cloud to work again, the peer must do something, which will
+        // send us notifications and wake us up
+        ELLE_WARN("%s: cloud download exception, exiting cloud state: %s",
+                  *this, e.what());
+      }
     }
 
     std::unique_ptr<frete::RPCFrete>
