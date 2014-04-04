@@ -488,10 +488,10 @@ namespace surface
         TransactionNotFoundException(std::string const& id);
       };
 
-      // typedef std::unique_ptr<Transaction> TransactionPtr;
-      typedef std::pair<uint32_t, Transaction> TransactionPair;
-      typedef std::pair<const uint32_t, Transaction> TransactionConstPair;
-      typedef std::unordered_map<uint32_t, Transaction> Transactions;
+      typedef std::unique_ptr<Transaction> TransactionPtr;
+      typedef std::pair<uint32_t, TransactionPtr> TransactionPair;
+      typedef std::pair<const uint32_t, TransactionPtr> TransactionConstPair;
+      typedef std::unordered_map<uint32_t, TransactionPtr> Transactions;
       typedef std::map<std::string, uint32_t> TransactionIndexMap;
       typedef std::unordered_set<uint32_t> TransactionIndexes;
 
@@ -502,6 +502,9 @@ namespace surface
       send_files(std::string const& peer_id,
                  std::unordered_set<std::string>&& files,
                  std::string const& message);
+
+      uint32_t
+      start_onboarding(reactor::Duration const& transfer_duration = 5_sec);
 
     private:
       void

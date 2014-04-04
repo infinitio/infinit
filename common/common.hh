@@ -5,6 +5,8 @@
 # include <stdint.h>
 # include <string>
 
+# include <elle/attribute.hh>
+
 namespace infinit
 {
   namespace metrics

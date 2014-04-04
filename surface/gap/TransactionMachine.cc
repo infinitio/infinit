@@ -79,7 +79,7 @@ namespace surface
       _rejected("rejected"),
       _canceled("canceled"),
       _failed("failed"),
-      _transfer_machine(*this),
+      _transfer_machine(new TransferMachine{*this}),
       _state(state),
       _data(std::move(data))
     {
@@ -174,7 +174,7 @@ namespace surface
 
       try
       {
-        this->_transfer_machine.run();
+        this->_transfer_machine->run();
         ELLE_TRACE("%s: core machine finished properly", *this);
       }
       catch (reactor::Terminate const&)
@@ -352,13 +352,13 @@ namespace surface
       ELLE_DEBUG("switch barriers")
       if (available)
       {
-        this->_transfer_machine.peer_unreachable().close();
-        this->_transfer_machine.peer_reachable().open();
+        this->_transfer_machine->peer_unreachable().close();
+        this->_transfer_machine->peer_reachable().open();
       }
       else
       {
-        this->_transfer_machine.peer_reachable().close();
-        this->_transfer_machine.peer_unreachable().open();
+        this->_transfer_machine->peer_reachable().close();
+        this->_transfer_machine->peer_unreachable().open();
       }
     }
 
@@ -373,14 +373,14 @@ namespace surface
       if (user_status)
         ELLE_DEBUG("%s: peer is now online", *this)
         {
-          this->_transfer_machine.peer_offline().close();
-          this->_transfer_machine.peer_online().open();
+          this->_transfer_machine->peer_offline().close();
+          this->_transfer_machine->peer_online().open();
         }
       else
         ELLE_DEBUG("%s: peer is now offline", *this)
         {
-          this->_transfer_machine.peer_online().close();
-          this->_transfer_machine.peer_offline().open();
+          this->_transfer_machine->peer_online().close();
+          this->_transfer_machine->peer_offline().open();
         }
     }
 
@@ -400,6 +400,22 @@ namespace surface
       }
 
       this->_canceled.open();
+    }
+
+    bool
+    TransactionMachine::pause()
+    {
+      ELLE_TRACE_SCOPE("%s: pause transaction %s", *this, this->data()->id);
+      throw elle::Exception(
+        elle::sprintf("%s: pause not implemented yet", *this));
+    }
+
+    void
+    TransactionMachine::interrupt()
+    {
+      ELLE_TRACE_SCOPE("%s: interrupt transaction %s", *this, this->data()->id);
+      throw elle::Exception(
+        elle::sprintf("%s: interruption not implemented yet", *this));
     }
 
     bool
@@ -535,7 +551,7 @@ namespace surface
     float
     TransactionMachine::progress() const
     {
-      return this->_transfer_machine.progress();
+      return this->_transfer_machine->progress();
     }
 
     /*----------.

@@ -80,8 +80,8 @@ namespace surface
 
     public:
       TransactionMachine(surface::gap::State const& state,
-                      uint32_t id,
-                      std::shared_ptr<TransactionMachine::Data> transaction);
+                         uint32_t id,
+                         std::shared_ptr<TransactionMachine::Data> transaction);
 
       virtual
       ~TransactionMachine();
@@ -125,9 +125,22 @@ namespace surface
       void
       cancel();
 
+      /// Pause the transfer.
+      /// XXX: Not implemented yet.
+      virtual
+      bool
+      pause();
+
+      /// For the transfer to roll back to the connection state.
+      /// XXX: Not implemented yet.
+      virtual
+      void
+      interrupt();
+
       /// Join the machine thread.
       /// The machine must be in his way to a final state, otherwise the caller
       /// will deadlock.
+      virtual
       void
       join();
 
@@ -163,6 +176,7 @@ namespace surface
       ELLE_ATTRIBUTE_X(reactor::Signal, state_changed);
 
     protected:
+      friend class Transferer;
       friend class TransferMachine;
       void
       current_state(State const& state);
@@ -187,6 +201,7 @@ namespace surface
       void
       _cancel();
 
+      virtual
       void
       _finalize(infinit::oracles::Transaction::Status);
 
@@ -228,8 +243,8 @@ namespace surface
     /*-------------.
     | Core Machine |
     `-------------*/
-    private:
-      ELLE_ATTRIBUTE(TransferMachine, transfer_machine);
+    protected:
+      std::unique_ptr<Transferer> _transfer_machine;
 
     /*------------.
     | Transaction |
