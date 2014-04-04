@@ -178,6 +178,23 @@ class Mixin:
 
         if new_user:
           elle.log.trace("send invitation to new user %s" % invitee_email)
+          # Figure out what the sender will ghost-upload
+          # This heuristic must be in sync with the sender!
+          ghost_upload_file = ''
+          if len(files) == 1:
+            if is_directory:
+              ghost_upload_file = files[0] + '.zip'
+            else:
+              ghost_upload_file = files[0]
+          else:
+            ghost_upload_file = 'archive.zip'
+          # Pregenerate GET URL for ghost cloud uploaded file
+          ghost_get_url = cloud_buffer_token.generate_get_url(
+            cloud_buffer_token.CloudBufferToken.aws_default_bucket,
+            transaction_id,
+            ghost_upload_file)
+          elle.log.log('Generating cloud GET URL for %s: %s'
+            % (ghost_upload_file, ghost_get_url))
           invitation.invite_user(
             invitee_email,
             mailer = self.mailer,
