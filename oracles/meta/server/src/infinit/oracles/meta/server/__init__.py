@@ -110,10 +110,6 @@ class Meta(bottle.Bottle,
     #---------------------------------------------------------------------------
     # Users
     #---------------------------------------------------------------------------
-    # - Search by email.
-    self.__database.users.ensure_index([("email", 1)], unique = True)
-    # - Search by handle.
-    self.__database.users.ensure_index([("handle", 1)], unique = True)
     # - Default search.
     self.__database.users.ensure_index([("fullname", 1), ("handle", 1)])
     # - Email confirmation.
