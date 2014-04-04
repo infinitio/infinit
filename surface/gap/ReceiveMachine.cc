@@ -540,8 +540,6 @@ namespace surface
 
       ELLE_DEBUG("transfer snapshot: %s", *this->_snapshot);
 
-
-
       FileID last_index = this->_snapshot->file_count();
       if (last_index > 0)
         --last_index;
@@ -582,7 +580,6 @@ namespace surface
           infinit::cryptography::cipher::Algorithm::aes256,
           this->transaction_id());
 
-
       _fetch_current_file_index = last_index;
       // Snapshot only has info on files for which transfer started,
       // and we transfer in order, so we know all files in snapshot except
@@ -608,7 +605,7 @@ namespace surface
           bool explicit_ack = peer_version >= elle::Version(0, 8, 9);
 
           // Prevent unlimited ram buffering if a block fetcher gets stuck
-          _buffers.max_size(num_reader * 3);
+          this->_buffers.max_size(num_reader * 3);
           for (int i = 0; i < num_reader; ++i)
               scope.run_background(
                 elle::sprintf("transfer reader %s", i),
@@ -845,7 +842,7 @@ namespace surface
         while (true)
         { // we might have successive blocks ready in the pipe, and nobody
           // will notify us of the ones after the top() one.
-          IndexedBuffer data = _buffers.get();
+          IndexedBuffer data = this->_buffers.get();
           if (data.file_index == FileID(-1))
           {
             ELLE_DEBUG("%s: done writing blocks to disk", *this);
@@ -930,7 +927,7 @@ namespace surface
             }
           }
           // Check next available data
-          const IndexedBuffer& next = _buffers.peek();
+          const IndexedBuffer& next = this->_buffers.peek();
           if (next.start_position != _store_expected_position
              || next.file_index != _store_expected_file)
           {
