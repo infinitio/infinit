@@ -309,13 +309,15 @@ class Mixin:
     last connection.
     """
     daily_summary_str = 'daily-summary'
+    # XXX: Remove exists when it's in prod for a while.
+    # It's just to initiate the database.mailer entry.
     exists = self.database.mailer.find_one({'name': daily_summary_str})
     summary = self.database.mailer.find_one(
       {
         'name': daily_summary_str,
         'last-sent': {'$lt': time.time() - 86400 },
       })
-    if summary or not exists:
+    if summary or exists is None:
       with elle.log.trace('run daily cron'):
         # Hardcoded 86400 represents a day in seconds. The system is for daily
         # report.
@@ -369,5 +371,5 @@ class Mixin:
           {
             'name': daily_summary_str,
             'last-sent': time.time(),
-          })
+          }, upsert = True)
         return self.success({"emails": list(users.keys())})
