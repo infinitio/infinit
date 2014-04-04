@@ -95,6 +95,31 @@ parser.add_argument(
     help="Enable debug mode",
     action="store_true",
 )
+parser.add_argument(
+    '--user',
+    help="User name",
+    action="store",
+    default=None,
+)
+parser.add_argument(
+    '--email',
+    help="User email",
+    action="store",
+    default=None,
+)
+parser.add_argument(
+    '--password',
+    help="User password",
+    action="store",
+    default=None,
+)
+
+parser.add_argument(
+    '--device',
+    help="User password",
+    action="store",
+    default=None,
+)
 
 pollThread = None
 
@@ -715,11 +740,21 @@ def re_input(prompt, pattern=".+", regexp=None, errmsg="Input is not valid", def
         print(errmsg)
     return res
 
-def register(state):
+def register(state, args):
     import socket
-    fullname = re_input("Fullname", pattern='[\w ]{3,64}')
-    email = re_input("Email", regexp=EMAIL_REGEXP)
+    fullname = args.user
+    email = args.email
+    password = args.password
+    dev_name = args.device
+    if fullname is not None and email is not None and password is not None and dev_name is not None:
+        # noninteractive register
+        state.register(fullname, email, password, dev_name, 'no_activation_code')
+        return
+    fullname = None
+    email = None
     while True:
+        fullname = re_input("Fullname", pattern='[\w ]{3,64}', default=fullname)
+        email = re_input("Email", regexp=EMAIL_REGEXP, default=email)
         password = getpass.getpass("password: ")
         password2 = getpass.getpass("confirm password: ")
         if password != password2:
@@ -733,14 +768,18 @@ def register(state):
           pattern="[\w ]{3,64}",
           default=socket.gethostname().strip(),
         )
-        activation_code = re_input("Activation code")
         try:
-          state.register(fullname, email, password, dev_name, activation_code)
-          state.connect() # connect to trophonius
+          print('Registering...')
+          state.register(fullname, email, password, dev_name, 'no_activation_code')
+          print('Relogging in...')
+          state.logout()
+          state.login(email, password)
+          print('Ready')
           global pollThread
           pollThread = PollThread(state)
           pollThread.start()
-        except:
+        except Exception as e:
+          print('Exception while registering: ' + str(e))
           pass
         else:
           break
@@ -844,7 +883,7 @@ def main():
         if 'register' in args.action:
             print("Registering to infinit:")
             args.action.remove('register')
-            register(state)
+            register(state, args)
         else:
             if state.logged != True:
                 print("Authentication required (if you don't have an account, try -r)")
