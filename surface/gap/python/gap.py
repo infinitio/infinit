@@ -143,7 +143,7 @@ class State(_State):
         if len(self.__args) == 0 and len(self.__kwargs) == 0:
             self.__state = _gap.new()
         else:
-            self.__state = _gap.configurable_new(*self.__args, **self.__kwargs)
+            self.__state = _gap.new(*self.__args, **self.__kwargs)
         assert self.__state is not None
         return self
 

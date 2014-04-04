@@ -1,6 +1,5 @@
 # -*- encoding: utf-8 -*-
 
-
 import bson
 import re
 import time
@@ -8,7 +7,7 @@ import unicodedata
 
 import elle.log
 from .utils import api, require_logged_in
-from . import regexp, error, transaction_status, notifier, invitation, cloud_buffer_token
+from . import regexp, error, transaction_status, notifier, invitation, cloud_buffer_token, mail
 import uuid
 import re
 from pymongo import ASCENDING, DESCENDING
@@ -87,9 +86,9 @@ class Mixin:
     Errors:
     Using an id that doesn't exist.
     """
-    with elle.log.log("create transaction (recipient %s)" % id_or_email):
+    with elle.log.trace("create transaction (recipient %s)" % id_or_email):
       user = self.user
-      id_or_email = id_or_email.strip()
+      id_or_email = id_or_email.strip().lower()
 
       # if self.database.devices.find_one(bson.ObjectId(device_id)) is None:
       #   return self.fail(error.DEVICE_NOT_FOUND)
@@ -97,13 +96,13 @@ class Mixin:
       new_user = False
       is_ghost = False
       invitee = 0
-      invitee_email = ""
+      peer_email = ""
 
       if re.match(regexp.Email, id_or_email): # email.
         elle.log.debug("%s is an email" % id_or_email)
-        invitee_email = id_or_email
+        peer_email = id_or_email.lower().strip()
         # XXX: search email in each accounts.
-        recipient = self.database.users.find_one({'email': id_or_email})
+        recipient = self.database.users.find_one({'email': peer_email})
         # if the user doesn't exist, create a ghost and invite.
 
         if not recipient:
@@ -111,13 +110,13 @@ class Mixin:
           new_user = True
           recipient_id = self._register(
             _id = self.database.users.save({}),
-            email = invitee_email,
-            fullname = invitee_email[0:invitee_email.index('@')],
+            email = peer_email,
+            fullname = peer_email[0:peer_email.index('@')],
             register_status = 'ghost',
             notifications = [],
             networks = [],
             swaggers = {},
-            accounts=[{'type':'email', 'id':invitee_email}]
+            accounts=[{'type':'email', 'id':peer_email}]
           )
           recipient = self.database.users.find_one(recipient_id)
       else:
@@ -130,6 +129,7 @@ class Mixin:
       if recipient is None:
         return self.fail(error.USER_ID_NOT_VALID)
 
+      elle.log.debug("transaction recipient has id %s" % recipient['_id'])
       _id = user['_id']
 
       transaction = {
@@ -170,24 +170,42 @@ class Mixin:
 
       transaction_id = self.database.transactions.insert(transaction)
 
-      recipient_connected = recipient.get('connected', False)
-      if not recipient_connected:
-        elle.log.debug("recipient is no connected")
-        if not invitee_email:
-          invitee_email = recipient['email']
+      if not peer_email:
+        peer_email = recipient['email']
 
-        if new_user:
-          elle.log.trace("send invitation to new user %s" % invitee_email)
-          invitation.invite_user(
-            invitee_email,
-            mailer = self.mailer,
-            mail_template = 'send-file',
-            source = (user['fullname'], user['email']),
-            filename = files[0],
-            sendername = user['fullname'],
-            database = self.database,
-            ghost_id = str(recipient.get('_id')),
-            sender_id = str(user['_id']),
+      if new_user:
+        elle.log.trace("send invitation to new user %s" % peer_email)
+        invitation.invite_user(
+          peer_email,
+          mailer = self.mailer,
+          mail_template = 'send-file',
+          source = (user['fullname'], user['email']),
+          database = self.database,
+          merge_vars = {
+            peer_email: {
+              'filename': files[0],
+              'sendername': user['fullname'],
+              'ghost_id': str(recipient.get('_id')),
+              'sender_id': str(user['_id']),
+              'avatar': self.user_avatar_route(recipient['_id']),
+            }}
+        )
+      elif recipient.get('connected', False) == False:
+        elle.log.debug("recipient is disconnected")
+        template_id = 'accept-file-only-offline'
+
+        subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS[template_id]
+        subject %= { "sendername": user['fullname'], 'filename': files[0] }
+        self.mailer.send_template(
+          to = peer_email,
+          template_name = template_id,
+          subject = subject,
+          merge_vars = {
+            peer_email: {
+              'filename': files[0],
+              'sendername': user['fullname'],
+              'avatar': self.user_avatar_route(recipient['_id']),
+            }}
           )
 
       self._increase_swag(user['_id'], recipient['_id'])
@@ -206,30 +224,32 @@ class Mixin:
                    count : int = 100,
                    offset : int = 0,
                  ):
-    user_id = self.user['_id']
-    if peer_id is not None:
-      query = {
-        '$or':
-        [
-          { 'recipient_id': user_id, 'sender_id': peer_id, },
-          { 'sender_id': user_id, 'recipient_id': peer_id, },
-        ]}
-    else:
-      query = {
-        '$or':
-        [
-          { 'sender_id': user_id },
-          { 'recipient_id': user_id },
-        ]
-      }
-    query['status'] = {'$%s' % (negate and 'nin' or 'in'): filter}
-    res = self.database.transactions.aggregate([
-      {'$match': query},
-      {'$sort': {'mtime': -1}},
-      {'$skip': offset},
-      {'$limit': count},
-    ])['result']
-    return {'transactions': res}
+    with elle.log.trace("get %s transactions with(%s) status in %s" % \
+                        (count, negate and "out" or "", filter)):
+      user_id = self.user['_id']
+      if peer_id is not None:
+        query = {
+          '$or':
+          [
+            { 'recipient_id': user_id, 'sender_id': peer_id, },
+            { 'sender_id': user_id, 'recipient_id': peer_id, },
+          ]}
+      else:
+        query = {
+          '$or':
+          [
+            { 'sender_id': user_id },
+            { 'recipient_id': user_id },
+          ]
+        }
+      query['status'] = {'$%s' % (negate and 'nin' or 'in'): filter}
+      res = self.database.transactions.aggregate([
+        {'$match': query},
+        {'$sort': {'mtime': -1}},
+        {'$skip': offset},
+        {'$limit': count},
+      ])['result']
+      return self.success({'transactions': res})
 
   # Previous (shitty) transactions fetching API that only returns ids.
   @api('/transactions', method = 'POST')
@@ -342,8 +362,8 @@ class Mixin:
                           device_id = None,
                           device_name = None,
                           user = None):
-    with elle.log.log("update transaction %s: %s" %
-                      (transaction_id, status)):
+    with elle.log.trace("update transaction %s: %s" %
+                        (transaction_id, status)):
       if user is None:
         user = self.user
       if user is None:

@@ -50,6 +50,8 @@ class Meta(bottle.Bottle,
                enable_emails = True,
                trophonius_expiration_time = 300, # in sec
                apertus_expiration_time = 300, # in sec
+               unconfirmed_email_leeway = 604800, # in sec, 7 days.
+               daily_summary_hour = 18,
                force_admin = False,
                ):
     import os
@@ -97,13 +99,51 @@ class Meta(bottle.Bottle,
     # Could be cleaner.
     self.mailer = mail.Mailer(active = enable_emails)
     self.invitation = invitation.Invitation(active = enable_emails)
-    self.trophonius_expiration_time = trophonius_expiration_time
-    self.apertus_expiration_time = apertus_expiration_time
+    self.trophonius_expiration_time = int(trophonius_expiration_time)
+    self.apertus_expiration_time = int(apertus_expiration_time)
+    self.unconfirmed_email_leeway = int(unconfirmed_email_leeway)
+    self.daily_summary_hour = int(daily_summary_hour)
     waterfall.Waterfall.__init__(self)
 
   def __set_constraints(self):
-    self.__database.devices.ensure_index([("id", 1), ("owner", 1)], unique = True)
+    #---------------------------------------------------------------------------
+    # Users
+    #---------------------------------------------------------------------------
+    # - Default search.
+    self.__database.users.ensure_index([("fullname", 1), ("handle", 1)])
+    # - Email confirmation.
+    self.__database.users.ensure_index([("email_confirmation_hash", 1)],
+                                       unique = True, sparse = True)
+    # - Lost password.
+    self.__database.users.ensure_index([("reset_password_hash", 1)],
+                                       unique = True, sparse = True)
+    # - Midnight cron.
+    self.__database.users.ensure_index([("_id", 1), ("last_connection", 1)])
+
+    #---------------------------------------------------------------------------
+    # Devices
+    #---------------------------------------------------------------------------
+    # - Default search.
+    self.__database.devices.ensure_index([("id", 1), ("owner", 1)],
+                                         unique = True)
+    # - Trophonius disconnection.
+    self.__database.devices.ensure_index([("trophonius", 1)],
+                                         unique = False)
+
+    #---------------------------------------------------------------------------
+    # Transactions
+    #---------------------------------------------------------------------------
+    # - ??
     self.__database.transactions.ensure_index('ctime')
+
+    # - Midnight cron.
+    self.__database.transactions.ensure_index([("mtime", 1),
+                                               ('status', 1)])
+    # - Default transaction search.
+    self.__database.transactions.ensure_index([("sender_id", 1),
+                                               ("recipient_id", 1),
+                                               ('status', 1),
+                                               ('mtime', 1)])
 
   def __register(self, method):
     rule = method.__route__
