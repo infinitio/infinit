@@ -208,12 +208,15 @@ class Mixin:
       })
 
     user = self.database.users.find_one({'email': email}, fields = ['reset_password_hash'])
-    self.mailer.templated_send(
+    self.mailer.send_template(
       to = email,
-      template_id = LOST_PASSWORD_TEMPLATE_ID,
+      template_name = LOST_PASSWORD_TEMPLATE_ID,
       subject = '[Infinit] Reset your password',
       reply_to = 'Infinit <support@infinit.io>',
-      reset_password_hash = user['reset_password_hash'],
+      merge_vars = {
+        email: {
+          'reset_password_hash': user['reset_password_hash']
+          }}
     )
 
     return self.success()
@@ -249,7 +252,7 @@ class Mixin:
           to = email,
           reply_to = user_email,
           subject = template['subject'] % {"client_os": client_os},
-          content = template['content'] % {
+          body = template['content'] % {
             "client_os": client_os,
             "version": version,
             "user_name": user_name,
@@ -257,7 +260,7 @@ class Mixin:
             "message": message,
             "more": more,
           },
-          attached = ('log.tar.bz', file),
+          attached  = ('log.tar.bz', file),
         )
       return self.success()
 
@@ -295,19 +298,7 @@ class Mixin:
 
     import datetime
     if datetime.datetime.utcnow().hour == self.daily_summary_hour:
-      daily_summary_str = 'daily-summary'
-      daily_summary = self.database.mailer.find_one({'name': daily_summary_str})
-      if daily_summary is None or daily_summary['last-sent'] < time.time() - 86400:
-        self.database.mailer.find_and_modify(
-          {
-            'name': daily_summary_str,
-          },
-          {
-            'name': daily_summary_str,
-            'last-sent': time.time()
-          },
-          upsert = True)
-        self.daily_summary()
+      self.daily_summary()
     return self.success(res)
 
   @api('/cron/daily-summary', method = 'POST')
@@ -317,55 +308,66 @@ class Mixin:
     Send a summary of the unaccepted transfers of the day received after the
     last connection.
     """
-    with elle.log.trace('run daily cron'):
-      # Hardcoded 86400 represents a day in seconds. The system is for daily
-      # report.
-      query = {
-        'status': transaction_status.INITIALIZED,
-        'mtime': {'$gt': time.time() - 86400},
-      }
-      group = {
-        '_id': '$recipient_id',
-        'mtime': {'$max': '$mtime'},
-        'peers': {'$addToSet': '$sender_id'},
-        'count': {'$sum': 1},
-      }
-      transactions = self.database.transactions.aggregate([
-        {'$match': query},
-        {'$group': group},
-        ])['result']
-
-      users = dict()
-      for transaction in transactions:
+    daily_summary_str = 'daily-summary'
+    exists = self.database.mailer.find_one({'name': daily_summary_str})
+    summary = self.database.mailer.find_one(
+      {
+        'name': daily_summary_str,
+        'last-sent': {'$lt': time.time() - 86400 },
+      })
+    if summary or not exists:
+      with elle.log.trace('run daily cron'):
+        # Hardcoded 86400 represents a day in seconds. The system is for daily
+        # report.
         query = {
-          '_id': transaction['_id'],
-          'last_connection': {'$lt': transaction['mtime']}
+          'status': transaction_status.INITIALIZED,
+          'mtime': {'$gt': exists is None and time.time() - 86400 or summary['last-sent']},
         }
-        u = self.database.users.find_one(query, fields = ['email'])
-        if u:
-          query = {
-            '_id': {'$in': transaction['peers']},
-          }
-          fields = {'fullname': 1, '_id': 0}
+        group = {
+          '_id': '$recipient_id',
+          'mtime': {'$max': '$mtime'},
+          'peers': {'$addToSet': '$sender_id'},
+          'count': {'$sum': 1},
+        }
+        transactions = self.database.transactions.aggregate([
+          {'$match': query},
+          {'$group': group},
+          ])['result']
 
-          peer = self.database.users.find(query = query,
-                                          fields = fields)
-          users[u['email']] = (transaction['count'],
-                               list(map(lambda x: x['fullname'], peer)))
-      elle.log.debug('%s users to mail' % len(users))
-      template_id = 'daily-summary'
-      # XXX: Should use a mass mailing system. This is really slow.
-      for email in users.keys():
-        subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS[template_id] % {
-          'count': users[email][0] }
-        try:
-          with elle.log.debug('send email'):
-            self.mailer.templated_send(
-              to = email,
-              template_id = template_id,
-              subject = subject,
-              peers = ', '.join(users[email][1])
-            )
-        except BaseException as e:
-          elle.log.err("enable to send mail to %s: %s" % (email, str(e)))
-      return self.success()
+        users = dict()
+        for transaction in transactions:
+          query = {
+            '_id': transaction['_id'],
+            'last_connection': {'$lt': transaction['mtime']}
+          }
+          u = self.database.users.find_one(query, fields = ['email'])
+          if u:
+            query = {
+              '_id': {'$in': transaction['peers']},
+            }
+            fields = {'fullname': 1, '_id': 0}
+
+            peer = self.database.users.find(query = query,
+                                            fields = fields)
+            users[u['email']] = {
+              'count': transaction['count'],
+              'recipients': list(map(lambda x: x['fullname'], peer))
+            }
+
+        template_name = 'daily-summary'
+        with elle.log.debug('send email'):
+          self.mailer.send_template(
+            to = list(users.keys()),
+            template_name = template_name,
+            subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS[template_name],
+            merge_vars = users,
+          )
+        summary = self.database.mailer.find_and_modify(
+          {
+            'name': daily_summary_str,
+          },
+          {
+            'name': daily_summary_str,
+            'last-sent': time.time(),
+          })
+        return self.success({"emails": list(users.keys())})

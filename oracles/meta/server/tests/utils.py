@@ -134,12 +134,24 @@ class Trophonius(Client):
 class NoOpMailer(Mailer):
 
   def __init__(self, op = None):
+    print("NoOpMailer: ctr")
     self.__sent = 0
     super().__init__(True)
 
-  # Override Mailer private __send method.
-  def _Mailer__send(self, msg):
+  def _Mailer__send(self, message):
     self.__sent += 1
+    self.view_message(message)
+
+  def _Mailer__send_template(self, template_name, message):
+    self.__sent += 1
+    self.template_message(template_name, message)
+
+  def template_message(self, template_name, message):
+    self.view_message(message)
+    pass
+
+  def view_message(self, message):
+    pass
 
   @property
   def sent(self):

@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
-from utils import Meta, User, Trophonius
-from infinit.oracles.meta.server.mail import Mailer
+from utils import Meta, User, Trophonius, NoOpMailer
 
-class MailService(Mailer):
+class MailService(NoOpMailer):
 
   def __init__(self, expected_template, sender, recipient):
     super().__init__(True)
@@ -12,10 +11,9 @@ class MailService(Mailer):
     self.__recipient = recipient
     self.__sent = False
 
-  # Override Mailer private __send method.
-  def _Mailer__send(self, msg):
-    assert str(msg).find(self.__recipient.email) > 0
-    assert str(msg).find(self.__expected_template) > 0
+  def template_message(self, template_name, message):
+    assert self.__expected_template == template_name
+    assert message['to'][0]['email'] == self.__recipient.email
     self.__sent = True
 
   @property

@@ -1,21 +1,16 @@
 #!/usr/bin/env python3
 
-from utils import Meta, User
-from infinit.oracles.meta import error
+from utils import Meta, User, NoOpMailer
 
-class MailService():
+class MailService(NoOpMailer):
 
   def __init__(self, response):
+    super().__init__()
     self.response = response
 
-  def templated_send(self, **kw):
-    assert response['email'] == kw['to']
-    assert kw['template_id'] == 'send-invitation-no-file'
-
-  def send(self, **kw):
-    self.response['email'] = kw['to']
-    self.response['subject'] = kw['subject']
-    self.response['content'] = kw['content']
+  def template_message(self, template_name, message):
+    assert response['email'] == message['to'][0]['email']
+    assert template_name == 'send-invitation-no-file'
 
 with Meta() as meta:
   email = 'foobar@infinit.io'

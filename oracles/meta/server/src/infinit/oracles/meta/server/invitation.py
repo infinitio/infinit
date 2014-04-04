@@ -59,7 +59,7 @@ def invite_user(email,
                 source = ('Infinit', 'no-reply@infinit.io'),
                 mail_template = 'send-invitation-no-file',
                 database = None,
-                **kw):
+                merge_vars = None):
   assert isinstance(source, tuple)
   with elle.log.trace('invite user %s' % email):
     assert database is not None
@@ -70,14 +70,13 @@ def invite_user(email,
       'code': code,
       'source': source[1],
     })
-    subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS[mail_template] % kw
+    subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS[mail_template]
     elle.log.debug('subject: %s' % subject)
     if send_email:
-      mailer.templated_send(
+      mailer.send_template(
         to = email,
-        template_id = mail_template,
+        template_name = mail_template,
         subject = subject,
         reply_to = "%s <%s>" % source,
-        #  accesscode=code,
-        **kw
+        merge_vars = merge_vars,
       )

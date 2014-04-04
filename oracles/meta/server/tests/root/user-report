@@ -15,7 +15,7 @@ class MailService():
   def send(self, **kw):
     self.response['email'] =   kw['to']
     self.response['subject'] = kw['subject']
-    self.response['content'] = kw['content']
+    self.response['content'] = kw['body']
 
 with Meta() as meta:
   res = dict()

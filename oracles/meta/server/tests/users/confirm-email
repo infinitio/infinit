@@ -1,32 +1,26 @@
 #!/usr/bin/env python3
 
-from utils import Meta, User
+from utils import Meta, User, NoOpMailer
 from infinit.oracles.meta import error
-from infinit.oracles.meta.server.mail import Mailer
 
 unconfirmed_email_leeway = 100
 
-class MailService(Mailer):
+class MailService(NoOpMailer):
 
   def __init__(self):
     super().__init__(True)
 
-  def templated_send(self, **kw):
-    if kw['template_id'] == 'confirm-sign-up':
-      self.email_confirmation_hash = kw['hash']
-    elif kw['template_id'] == 'reconfirm-sign-up':
-      self.email_reconfirmation_hash = kw['hash']
-    elif kw['template_id'] == 'lost-password':
-      self.reset_password_hash = kw['reset_password_hash']
-    Mailer.templated_send(self, **kw)
-
-  # Override Mailer private __send method.
-  def _Mailer__send(self, msg):
-    self.__sent = True
-
-  @property
-  def sent(self):
-    return self.__sent
+  def template_message(self, template_message, message):
+    merges = {}
+    for entry in message['merge_vars'][0]['vars']:
+      merges[entry['name']] = entry['content']
+    if template_message == 'confirm-sign-up':
+      self.email_confirmation_hash = merges['hash']
+    elif template_message == 'reconfirm-sign-up':
+      self.email_reconfirmation_hash = merges['hash']
+    elif template_message == 'lost-password':
+      self.reset_password_hash = merges['reset_password_hash']
+    NoOpMailer.template_message(self, template_message, message)
 
 with Meta(enable_emails = True,
           unconfirmed_email_leeway = unconfirmed_email_leeway) as meta:

@@ -310,11 +310,14 @@ class Mixin:
         )
 
         user = self.user_by_email(email, ensure_existence = True)
-        self.mailer.templated_send(
+        self.mailer.send_template(
           to = user['email'],
-          template_id = 'confirm-sign-up',
+          template_name = 'confirm-sign-up',
           subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS['confirm-sign-up'],
-          hash = str(hash),
+          merge_vars = {
+            user['email']: {
+              'hash': str(hash)
+            }}
         )
 
         return self.success({
@@ -361,11 +364,14 @@ class Mixin:
             error.EMAIL_ALREADY_CONFIRMED,
           )
         assert user.get('email_confirmation_hash') is not None
-        self.mailer.templated_send(
+        self.mailer.send_template(
           to = user['email'],
-          template_id = 'reconfirm-sign-up',
+          template_name = 'reconfirm-sign-up',
           subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS['reconfirm-sign-up'],
-          hash = user['email_confirmation_hash'],
+          merge_vars = {
+            user['email']: {
+              'hash': user['email_confirmation_hash']
+            }}
         )
         return self.success()
       except error.Error as e:
@@ -747,12 +753,15 @@ class Mixin:
         self.fail(error.USER_ALREADY_INVITED)
       invitation.invite_user(
         email = email,
-        send_mail = True,
+        send_email = True,
         mailer = self.mailer,
         source = (user['fullname'], user['email']),
         database = self.database,
-        sendername = user['fullname'],
-        user_id = str(user['_id']),
+        merge_vars = {
+          email: {
+            'sendername': user['fullname'],
+            'user_id': str(user['_id']),
+          }}
       )
       return self.success()
 

@@ -167,12 +167,15 @@ class Mixin:
           mailer = self.mailer,
           mail_template = 'invitation-with-file',
           source = (user['fullname'], user['email']),
-          filename = files[0],
-          sendername = user['fullname'],
           database = self.database,
-          ghost_id = str(recipient.get('_id')),
-          sender_id = str(user['_id']),
-          avatar = self.user_avatar_route(recipient['_id']),
+          merge_vars = {
+            peer_email: {
+              'filename': files[0],
+              'sendername': user['fullname'],
+              'ghost_id': str(recipient.get('_id')),
+              'sender_id': str(user['_id']),
+              'avatar': self.user_avatar_route(recipient['_id']),
+            }}
         )
       elif recipient.get('connected', False) == False:
         elle.log.debug("recipient is disconnected")
@@ -180,15 +183,17 @@ class Mixin:
 
         subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS[template_id]
         subject %= { "sendername": user['fullname'], 'filename': files[0] }
-        self.mailer.templated_send(
+        self.mailer.send_template(
           to = peer_email,
-          template_id = template_id,
+          template_name = template_id,
           subject = subject,
-          source = (user['fullname'], user['email']),
-          filename = files[0],
-          sendername = user['fullname'],
-          avatar = self.user_avatar_route(recipient['_id']),
-        )
+          merge_vars = {
+            peer_email: {
+              'filename': files[0],
+              'sendername': user['fullname'],
+              'avatar': self.user_avatar_route(recipient['_id']),
+            }}
+          )
 
       self._increase_swag(user['_id'], recipient['_id'])
 
