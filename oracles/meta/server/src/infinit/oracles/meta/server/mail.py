@@ -25,7 +25,7 @@ MAILCHIMP_TEMPLATE_SUBJECTS = {
   'accept-file-only-offline': '%(sendername)s wants to share %(filename)s with you',
   'confirm-sign-up': 'Welcome to Infinit',
   'reconfirm-sign-up': 'Confirm your email',
-  'daily-summary': 'You have %(count)s unaccepted files on Infinit',
+  'daily-summary': 'You have *|count|* unaccepted files on Infinit',
 }
 
 ALPHA_LIST = 'd8d5225ac7'
