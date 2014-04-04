@@ -38,7 +38,7 @@ class Mailer():
                active = True):
     print("Mailer: ctr(%s)" % active)
     self.__active = active
-    self.__mandrill = mandrill.Mandrill(apikey = '')
+    self.__mandrill = mandrill.Mandrill(apikey = conf.MANDRILL_PASSWORD)
 
   @property
   def active(self):
