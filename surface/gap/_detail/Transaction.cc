@@ -163,7 +163,7 @@ namespace surface
               this->_transactions.emplace(
                 _id,
                 elle::make_unique<Transaction>(
-                  *this, _id, std::move(*snapshot)));
+                  *this, _id, std::move(*transaction)));
               this->_on_transaction_update(meta_transaction);
             }
           }
