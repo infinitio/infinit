@@ -58,7 +58,7 @@ app = infinit.oracles.meta.server.Meta(
   enable_emails = options.enable_emails,
   mongo_port = options.mongo_port,
   unconfirmed_email_leeway = options.unconfirmed_email_leeway,
-  daily-summary-hour = options.daily-summary-hour)
+  daily_summary_hour = options.daily_summary_hour)
 
 app.port = 0
 
