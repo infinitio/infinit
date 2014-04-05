@@ -618,7 +618,7 @@ namespace surface
           // 'buffers' for 1/20th of a second
           static int num_reader = rpc_pipeline_size();
           bool explicit_ack = peer_version >= elle::Version(0, 8, 9);
-
+          auto files_info = source.files_info();
           // Prevent unlimited ram buffering if a block fetcher gets stuck
           _buffers.max_size(num_reader * 3);
           for (int i = 0; i < num_reader; ++i)
@@ -626,7 +626,8 @@ namespace surface
                 elle::sprintf("transfer reader %s", i),
                 std::bind(&ReceiveMachine::_fetcher_thread<Source>,
                           this, std::ref(source), i, name_policy, explicit_ack,
-                          strong_encryption, chunk_size, std::ref(key)));
+                          strong_encryption, chunk_size, std::ref(key),
+                            files_info));
           scope.run_background(
             "receive writer",
             std::bind(&ReceiveMachine::_disk_thread<Source>,
@@ -728,7 +729,7 @@ namespace surface
       boost::filesystem::path output_path(this->state().output_dir());
       FileSize pos = 0;
       // switch to next file until we find one for which there is something to do
-      while (_fetch_current_file_index < _snapshot->count())
+      while (_fetch_current_file_index < infos.size())
       {
         pos = this->_initialize_one(
           _fetch_current_file_index,
@@ -747,7 +748,7 @@ namespace surface
       }
       _fetch_current_position = pos; // start position for this file
       _fetch_current_file_full_size =
-      _snapshot->file(_fetch_current_file_index).size();
+        _snapshot->file(_fetch_current_file_index).size();
       return true;
     }
 
@@ -758,7 +759,8 @@ namespace surface
                                     bool explicit_ack,
                                     bool strong_encryption,
                                     size_t chunk_size,
-                                    const infinit::cryptography::SecretKey& key)
+                                    const infinit::cryptography::SecretKey& key,
+                                    std::vector<std::pair<std::string, FileSize>> const& files_info)
     {
       while (true)
       {
@@ -775,7 +777,7 @@ namespace surface
         {
           ELLE_DEBUG("Thread %s would read past end", id);
           ++_fetch_current_file_index;
-          if (!_fetch_next_file(name_policy, source.files_info()))
+          if (!_fetch_next_file(name_policy, files_info))
           {
             // we're done
             _fetch_current_file_index = -1;
