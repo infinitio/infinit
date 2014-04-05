@@ -68,6 +68,8 @@ namespace frete
     this->_files.insert(std::make_pair(index, File(index, root, path, size)));
     this->_total_size += size;
     this->_count = this->_files.size();
+    ELLE_DEBUG("Adding file %s/%s of size %s at index %s to snapshot",
+               root, path, size, this->_count - 1);
   }
 
   TransferSnapshot::File&
@@ -188,11 +190,13 @@ namespace frete
   void
   TransferSnapshot::progress_increment(FileSize increment)
   {
+    ELLE_DUMP_SCOPE("Incrementing progress of %s", increment);
     FileSize remain = increment;
-    for (FileCount i = file_count() - 1; i < count() && remain; ++i)
+    for (FileCount i = 0; i < count() && remain; ++i)
     {
       File& f = file(i);
       FileSize take = std::min(remain, f.size() - f.progress());
+      ELLE_DUMP("Took %s from file %s at %s/%s", take, i, f.progress(), f.size());
       remain -= take;
       f._progress += take;
     }
