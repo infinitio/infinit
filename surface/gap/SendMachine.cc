@@ -1,8 +1,10 @@
 #include <boost/filesystem.hpp>
 
+#include <elle/archive/zip.hh>
 #include <elle/os/environ.hh>
 #include <elle/os/path.hh>
 #include <elle/os/file.hh>
+#include <elle/system/system.hh>
 
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
@@ -407,11 +409,48 @@ namespace surface
       if (this->current_state()
           == TransactionMachine::State::GhostCloudBufferingFinished)
         return;
+      typedef frete::Frete::FileSize FileSize;
       this->current_state(TransactionMachine::State::GhostCloudBuffering);
       // Force a machine state snapshot save now that we have the transaction
       // id.
       current_state(current_state());
       ELLE_TRACE_SCOPE("%s: ghost_cloud_upload", *this);
+      typedef boost::filesystem::path path;
+      path source_file_path;
+      FileSize source_file_size;
+      if (this->_files.size() > 1)
+      { // Our users might not appreciate downloading zillion of files from
+        // their browser: make an archive
+        // make an archive name from data
+        path archive_name;
+        if (this->data()->files.size() == 1)
+        {
+          ELLE_ASSERT(this->data()->is_directory); // otherwise effective count is 1
+          archive_name = path(this->data()->files.front()).replace_extension("zip");
+        }
+        else
+          archive_name = "archive.zip";
+        std::vector<boost::filesystem::path> sources(
+          this->_files.begin(),
+          this->_files.end());
+        auto tmpdir = path(common::system::temporary_directory()) / transaction_id();
+        boost::filesystem::create_directories(tmpdir);
+        path archive_path = path(tmpdir) / archive_name;
+        ELLE_DEBUG("%s: Archiving transfer files into %s", *this, archive_path);
+        elle::archive::zip(sources, archive_path);
+        source_file_path = archive_path;
+      }
+      else
+      {
+        source_file_path = *this->_files.begin();
+      }
+      source_file_size = boost::filesystem::file_size(source_file_path);
+      std::string source_file_name = source_file_path.filename().string();
+      ELLE_TRACE("%s: will ghost-cloud-upload %s of size %s",
+                 *this, source_file_path, source_file_size);
+
+
+
       auto& meta = this->state().meta();
       auto token = meta.get_cloud_buffer_token(this->transaction_id());
       auto credentials = aws::Credentials(token.access_key_id,
@@ -420,15 +459,12 @@ namespace surface
                                           token.expiration);
       aws::S3 handler("us-east-1-buffer-infinit-io", this->transaction_id(),
                       credentials);
-      // Since we zip, we support only one file, which simplifies the logic.
-      ELLE_ASSERT_EQ(this->data()->files.size(), 1);
+
       typedef frete::Frete::FileSize FileSize;
-      std::pair<std::string, FileSize> file = frete().files_info().front();
-      const std::string& object = file.first;
-      FileSize size = file.second;
+
       // AWS constraints: no more than 10k chunks, at least 5Mo block size
-      FileSize chunk_size = std::max(FileSize(5*1024*1024), size / 9500);
-      int chunk_count = size / chunk_size + ((size % chunk_size)? 1:0);
+      FileSize chunk_size = std::max(FileSize(5*1024*1024), source_file_size / 9500);
+      int chunk_count = source_file_size / chunk_size + ((source_file_size % chunk_size)? 1:0);
       ELLE_TRACE("%s: using chunk size of %s, with %s chunks",
                  *this, chunk_size, chunk_count);
       // Load our own snapshot that contains the upload uid
@@ -446,7 +482,7 @@ namespace surface
       int start_check_index = 0; // check for presence from that chunks index
       if (upload_id.empty())
       {
-        upload_id = handler.multipart_initialize(object);
+        upload_id = handler.multipart_initialize(source_file_name);
         std::ofstream ofs(raw_snapshot_path);
         ofs << upload_id;
         ELLE_DEBUG("%s: saved id %s to %s",
@@ -454,7 +490,7 @@ namespace surface
       }
       else
       { // Fetch block list
-        chunks = handler.multipart_list(object, upload_id);
+        chunks = handler.multipart_list(source_file_name, upload_id);
         std::sort(chunks.begin(), chunks.end(),
           [](aws::S3::MultiPartChunk const& a, aws::S3::MultiPartChunk const& b)
           {
@@ -474,7 +510,6 @@ namespace surface
         }
         ELLE_DEBUG("Will resume at chunk %s", next_chunk);
       }
-      auto& frete = this->frete();
       // start pipelined upload
       auto pipeline_upload = [&, this](int id)
       {
@@ -502,11 +537,14 @@ namespace surface
           }
           // upload it
           ELLE_DEBUG("%s: uploading chunk %s", *this, local_chunk);
-          auto buffer = frete.cleartext_read(0, local_chunk*chunk_size, chunk_size);
+          auto buffer = elle::system::read_file_chunk(
+            source_file_path,
+            local_chunk*chunk_size, chunk_size);
           std::string etag = handler.multipart_upload(
-            object, upload_id,
+            source_file_name, upload_id,
             buffer,
             local_chunk);
+          // FIXME: update original frete progress
           chunks.push_back(std::make_pair(local_chunk, etag));
         }
       };
@@ -523,7 +561,7 @@ namespace surface
           {
             return a.first < b.first;
           });
-      handler.multipart_finalize(object, upload_id, chunks);
+      handler.multipart_finalize(source_file_name, upload_id, chunks);
       // mark transfer as raw-finished
       this->current_state(TransactionMachine::State::GhostCloudBufferingFinished);
     }
@@ -736,6 +774,16 @@ namespace surface
     SendMachine::cleanup()
     {
       this->frete().remove_snapshot();
+      // clear temporary session directory
+      std::string tid = transaction_id();
+      ELLE_ASSERT(!tid.empty());
+      ELLE_ASSERT(tid.find('/') == tid.npos);
+      boost::filesystem::path temp_transaction_dir
+        = common::system::temporary_directory();
+      temp_transaction_dir /= tid;
+      ELLE_LOG("%s: clearing temporary directory %s",
+               *this, temp_transaction_dir);
+      boost::filesystem::remove_all(temp_transaction_dir);
     }
   }
 }
