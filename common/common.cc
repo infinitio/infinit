@@ -338,6 +338,12 @@ namespace common
       return download_dir;
     }
 
+    /// Returns the path of the file containing the computer device uuid.
+    std::string
+    temporary_directory()
+    {
+      return path::join(home_directory(), "temp");
+    }
   } //!system
 
   namespace meta
