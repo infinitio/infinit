@@ -9,6 +9,7 @@
 #include <elle/serialize/construct.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
+#include <elle/system/system.hh>
 
 #include <cryptography/SecretKey.hh>
 #include <cryptography/PrivateKey.hh>
@@ -317,51 +318,7 @@ namespace frete
       this->_progress_changed.signal();
     }
     auto path = this->_local_path(file_id);
-    boost::filesystem::ifstream file{path, std::ios::binary};
-    static const FileOffset MAX_offset{
-      std::numeric_limits<std::streamsize>::max()};
-    static const size_t MAX_buffer{elle::Buffer::max_size};
-
-    if (size > MAX_buffer)
-      throw elle::Exception(
-        elle::sprintf("buffer that big (%s) can't be addressed", size));
-
-    if (!file.good())
-      throw elle::Exception("file is broken");
-
-    // If the offset is greater than the machine maximum streamsize, seekg n
-    // times to reach the right offset.
-    while (offset > MAX_offset)
-    {
-      file.seekg(MAX_offset, std::ios_base::cur);
-
-      if (!file.good())
-        throw elle::Exception(
-          elle::sprintf("unable to increment offset by %s", MAX_offset));
-
-      offset -= MAX_offset;
-    }
-
-    ELLE_DEBUG("seek to offset %s", *this);
-    file.seekg(offset, std::ios_base::cur);
-
-    if (!file.good())
-      throw elle::Exception(
-        elle::sprintf("unable to seek to pos %s", offset));
-
-    elle::Buffer buffer(size);
-
-    ELLE_DEBUG("read  file");
-    file.read(reinterpret_cast<char*>(buffer.mutable_contents()), size);
-    buffer.size(file.gcount());
-
-    ELLE_DEBUG("buffer resized to %s bytes", buffer.size());
-
-    if (!file.eof() && file.fail() || file.bad())
-      throw elle::Exception("unable to reathd");
-
-    ELLE_DUMP("buffer read: %x", buffer);
-    return buffer;
+    return elle::system::read_file_chunk(path, offset, size);
   }
 
   infinit::cryptography::Code
