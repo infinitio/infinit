@@ -452,7 +452,8 @@ gap_join_transaction(gap_State* state,
 
 /// Return the id of an onboarding received transaction.
 uint32_t
-gap_onboarding_receive_transaction(gap_State* state);
+gap_onboarding_receive_transaction(gap_State* state,
+                                   uint32_t transfer_time_sec);
 
 /// Change the peer connection status.
 gap_Status

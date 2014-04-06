@@ -1218,14 +1218,16 @@ gap_get_output_dir(gap_State* state)
 }
 
 uint32_t
-gap_onboarding_receive_transaction(gap_State* state)
+gap_onboarding_receive_transaction(gap_State* state, uint32_t transfer_time_sec)
 {
+  auto transfer_time =
+    reactor::Duration(boost::posix_time::seconds(transfer_time_sec));
   return run<uint32_t>(
     state,
     "start reception onboarding",
     [&] (surface::gap::State& state) -> uint32_t
     {
-      return state.start_onboarding();
+      return state.start_onboarding(transfer_time);
     });
 }
 
