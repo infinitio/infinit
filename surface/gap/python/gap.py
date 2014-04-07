@@ -144,7 +144,7 @@ class State(_State):
             print("WARNING, defaulting to devlopment server")
             self.__state = _gap.new(False)
         else:
-            self.__state = _gap.configurable_new(*self.__args, **self.__kwargs)
+            self.__state = _gap.new(*self.__args, **self.__kwargs)
         assert self.__state is not None
         return self
 

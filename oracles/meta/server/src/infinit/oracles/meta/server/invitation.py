@@ -13,12 +13,6 @@ def _generate_code(email):
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Invitation'
 
-MAILCHIMP_TEMPLATE_SUBJECTS = {
-  'invitation-beta': '%(sendername)s would like to invite you to Infinit',
-  'send-file': '%(sendername)s wants to share %(filename)s with you',
-  'send-invitation-no-file': '%(sendername)s wants to use Infinit with you',
-}
-
 ALPHA_LIST = 'd8d5225ac7'
 INVITED_LIST = '385e50ea2c'
 USERBASE_LIST = 'cf5bcab5b1'
@@ -65,7 +59,7 @@ def invite_user(email,
                 source = ('Infinit', 'no-reply@infinit.io'),
                 mail_template = 'send-invitation-no-file',
                 database = None,
-                **kw):
+                merge_vars = None):
   assert isinstance(source, tuple)
   with elle.log.trace('invite user %s' % email):
     assert database is not None
@@ -76,14 +70,13 @@ def invite_user(email,
       'code': code,
       'source': source[1],
     })
-    subject = MAILCHIMP_TEMPLATE_SUBJECTS[mail_template] % kw
+    subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS[mail_template]
     elle.log.debug('subject: %s' % subject)
     if send_email:
-      mailer.templated_send(
+      mailer.send_template(
         to = email,
-        template_id = mail_template,
+        template_name = mail_template,
         subject = subject,
         reply_to = "%s <%s>" % source,
-        #  accesscode=code,
-        **kw
+        merge_vars = merge_vars,
       )

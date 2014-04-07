@@ -349,6 +349,14 @@ namespace infinit
           "/user/register", Method::POST, request);
       }
 
+      Response
+      Client::resend_confirmation_email(std::string const& email) const
+      {
+        return this->_request<DebugResponse>(
+          elle::sprintf("/user/resend_confirmation_email/%s", email),
+          Method::POST);
+      }
+
       UsersResponse
       Client::search_users(std::string const& text, int count, int offset) const
       {

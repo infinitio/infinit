@@ -528,8 +528,8 @@ namespace surface
       ELLE_DEBUG("signal connection status update to concerned transactions")
         for (auto& transaction_pair: this->transactions())
         {
-          if (transaction_pair.second.concerns_user(notif.user_id))
-            transaction_pair.second.on_peer_connection_status_updated(notif);
+          if (transaction_pair.second->concerns_user(notif.user_id))
+            transaction_pair.second->on_peer_connection_status_updated(notif);
         };
       ELLE_DEBUG("enqueue notification for UI")
         this->enqueue<UserStatusNotification>(

@@ -2,8 +2,11 @@
 
 #include <boost/filesystem.hpp>
 
+#include <elle/memory.hh>
+
 #include <surface/gap/State.hh>
 #include <surface/gap/Transaction.hh>
+#include <surface/gap/onboarding/Transaction.hh>
 #include <surface/gap/Exception.hh>
 
 #include <common/common.hh>
@@ -47,9 +50,37 @@ namespace surface
       auto id = generate_id();
       ELLE_TRACE("%s: create send transaction", *this)
         this->_transactions.emplace(
-          std::piecewise_construct,
-          std::make_tuple(id),
-          std::forward_as_tuple(*this, id, peer_id, std::move(files), message));
+          id,
+          elle::make_unique<Transaction>(*this, id, peer_id, std::move(files), message));
+      return id;
+    }
+
+    uint32_t
+    State::start_onboarding(reactor::Duration const& transfer_duration)
+    {
+      ELLE_TRACE_SCOPE("%s: create an onboarding transaction", *this);
+      // XXX: We should have a fake onboarding user.
+      auto peer = [&] () -> uint32_t
+        {
+          try
+          {
+            return this->_user_indexes.at(this->user_sync("contact@infinit.io").id);
+          }
+          catch (infinit::oracles::meta::Exception const&)
+          {
+            ELLE_WARN("impossible to get contact@infinit.io user");
+            return this->_user_indexes.at(this->me().id);
+          }
+        };
+
+      auto id = generate_id();
+      this->_transactions.emplace(
+        id,
+        elle::make_unique<onboarding::Transaction>(
+          *this,
+          id,
+          this->user(peer()),
+          transfer_duration));
       return id;
     }
 
@@ -112,8 +143,8 @@ namespace surface
               std::end(this->_transactions),
               [&] (TransactionConstPair const& pair)
               {
-                return (!pair.second.data()->id.empty()) &&
-                       (pair.second.data()->id == snapshot->data.id);
+                return (!pair.second->data()->id.empty()) &&
+                       (pair.second->data()->id == snapshot->data.id);
               });
 
             if (it != std::end(this->_transactions))
@@ -130,10 +161,9 @@ namespace surface
                 this->meta().transaction(transaction->data.id);
               auto _id = generate_id();
               this->_transactions.emplace(
-                std::piecewise_construct,
-                std::make_tuple(_id),
-                std::forward_as_tuple(*this, _id,
-                                      std::move(*transaction)));
+                _id,
+                elle::make_unique<Transaction>(
+                  *this, _id, std::move(*transaction)));
               this->_on_transaction_update(meta_transaction);
             }
           }
@@ -171,14 +201,14 @@ namespace surface
             std::end(this->_transactions),
             [&] (TransactionConstPair const& pair)
             {
-              return (!pair.second.data()->id.empty()) &&
-                     ( pair.second.data()->id == transaction.id);
+              return (!pair.second->data()->id.empty()) &&
+                     ( pair.second->data()->id == transaction.id);
             });
           if (it != std::end(this->_transactions))
           {
-            if (!it->second.final())
+            if (!it->second->final())
             {
-              it->second.on_transaction_update(transaction);
+              it->second->on_transaction_update(transaction);
             }
             continue;
           }
@@ -191,10 +221,9 @@ namespace surface
           ELLE_TRACE("%s: create history transaction from data: %s",
                      *this, transaction)
             this->_transactions.emplace(
-              std::piecewise_construct,
-              std::make_tuple(_id),
-              std::forward_as_tuple(*this, _id, std::move(transaction),
-                                    true /* history */));
+              _id,
+              elle::make_unique<Transaction>(*this, _id, std::move(transaction),
+                              true /* history */));
         }
       }
     }
@@ -224,8 +253,8 @@ namespace surface
         std::end(this->_transactions),
         [&] (TransactionConstPair const& pair)
         {
-          return (!pair.second.data()->id.empty()) &&
-                 (pair.second.data()->id == notif.id);
+          return (!pair.second->data()->id.empty()) &&
+                 (pair.second->data()->id == notif.id);
         });
       if (it == std::end(this->_transactions))
       {
@@ -234,14 +263,13 @@ namespace surface
         infinit::oracles::Transaction data = notif;
         auto id = generate_id();
         this->_transactions.emplace(
-          std::piecewise_construct,
-          std::make_tuple(id),
-          std::forward_as_tuple(*this, id, std::move(data)));
+          id,
+          elle::make_unique<Transaction>(*this, id, std::move(data)));
       }
       else
       {
         ELLE_TRACE_SCOPE("%s: update transaction %s", *this, notif.id);
-        it->second.on_transaction_update(notif);
+        it->second->on_transaction_update(notif);
       }
     }
 
@@ -258,8 +286,8 @@ namespace surface
         std::end(this->_transactions),
         [&] (TransactionConstPair const& pair)
         {
-          return (!pair.second.data()->id.empty()) &&
-                 (pair.second.data()->id == notif.transaction_id);
+          return (!pair.second->data()->id.empty()) &&
+                 (pair.second->data()->id == notif.transaction_id);
         });
       if (it == std::end(this->_transactions))
       {
@@ -267,7 +295,7 @@ namespace surface
                   notif.transaction_id);
         return;
       }
-      it->second.on_peer_reachability_updated(notif);
+      it->second->on_peer_reachability_updated(notif);
     }
   }
 }

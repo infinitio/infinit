@@ -29,6 +29,14 @@ parser.add_option('--enable-emails',
                   action = 'store_true',
                   help = 'Enable email support',
                   default = False)
+parser.add_option('--unconfirmed-email-leeway',
+                  action = 'store',
+                  help = 'The duration (in sec) an unconfirmed email can be used',
+                  default = 604800)
+parser.add_option('--daily-summary-hour',
+                  action = 'store',
+                  help = 'The hour of the day in utc to send the daily summary',
+                  default = 18)
 parser.add_option('--port-file',
                   action = 'store',
                   help = 'File name to write port information to',
@@ -45,10 +53,12 @@ parser.add_option('--mongo-port',
 
 options, args = parser.parse_args()
 
-
-app = infinit.oracles.meta.server.Meta(force_admin = options.force_admin,
-                                       enable_emails = options.enable_emails,
-                                       mongo_port = options.mongo_port)
+app = infinit.oracles.meta.server.Meta(
+  force_admin = options.force_admin,
+  enable_emails = options.enable_emails,
+  mongo_port = options.mongo_port,
+  unconfirmed_email_leeway = options.unconfirmed_email_leeway,
+  daily_summary_hour = options.daily_summary_hour)
 
 app.port = 0
 

@@ -180,6 +180,7 @@ class Mixin:
         {'type': 'email', 'id': user['email']}
       ],
       avatar = user.get("avatar"),
+      email_confirmed = True, # User got a reset account mail, email confirmed.
     )
     return self.success({'user_id': str(user_id)})
 
@@ -207,12 +208,15 @@ class Mixin:
       })
 
     user = self.database.users.find_one({'email': email}, fields = ['reset_password_hash'])
-    self.mailer.templated_send(
+    self.mailer.send_template(
       to = email,
-      template_id = LOST_PASSWORD_TEMPLATE_ID,
+      template_name = LOST_PASSWORD_TEMPLATE_ID,
       subject = '[Infinit] Reset your password',
       reply_to = 'Infinit <support@infinit.io>',
-      reset_password_hash = user['reset_password_hash'],
+      merge_vars = {
+        email: {
+          'reset_password_hash': user['reset_password_hash']
+          }}
     )
 
     return self.success()
@@ -248,7 +252,7 @@ class Mixin:
           to = email,
           reply_to = user_email,
           subject = template['subject'] % {"client_os": client_os},
-          content = template['content'] % {
+          body = template['content'] % {
             "client_os": client_os,
             "version": version,
             "user_name": user_name,
@@ -256,7 +260,7 @@ class Mixin:
             "message": message,
             "more": more,
           },
-          attached = ('log.tar.bz', file),
+          attached  = ('log.tar.bz', file),
         )
       return self.success()
 
@@ -291,4 +295,81 @@ class Mixin:
       {"$or": [{"time": {"$lt": time.time() - self.apertus_expiration_time}},
                {"time": {"$exists": False}}]},
       multi = True)
+
+    import datetime
+    if datetime.datetime.utcnow().hour == self.daily_summary_hour:
+      self.daily_summary()
     return self.success(res)
+
+  @api('/cron/daily-summary', method = 'POST')
+  @require_admin
+  def daily_summary(self):
+    """
+    Send a summary of the unaccepted transfers of the day received after the
+    last connection.
+    """
+    daily_summary_str = 'daily-summary'
+    # XXX: Remove exists when it's in prod for a while.
+    # It's just to initiate the database.mailer entry.
+    exists = self.database.mailer.find_one({'name': daily_summary_str})
+    summary = self.database.mailer.find_one(
+      {
+        'name': daily_summary_str,
+        'last-sent': {'$lt': time.time() - 86400 },
+      })
+    if summary or exists is None:
+      with elle.log.trace('run daily cron'):
+        # Hardcoded 86400 represents a day in seconds. The system is for daily
+        # report.
+        query = {
+          'status': transaction_status.INITIALIZED,
+          'mtime': {'$gt': exists is None and time.time() - 86400 or summary['last-sent']},
+        }
+        group = {
+          '_id': '$recipient_id',
+          'mtime': {'$max': '$mtime'},
+          'peers': {'$addToSet': '$sender_id'},
+          'count': {'$sum': 1},
+        }
+        transactions = self.database.transactions.aggregate([
+          {'$match': query},
+          {'$group': group},
+          ])['result']
+
+        users = dict()
+        for transaction in transactions:
+          query = {
+            '_id': transaction['_id'],
+            'last_connection': {'$lt': transaction['mtime']}
+          }
+          u = self.database.users.find_one(query, fields = ['email'])
+          if u:
+            query = {
+              '_id': {'$in': transaction['peers']},
+            }
+            fields = {'fullname': 1, '_id': 0}
+
+            peer = self.database.users.find(query = query,
+                                            fields = fields)
+            users[u['email']] = {
+              'count': transaction['count'],
+              'recipients': list(map(lambda x: x['fullname'], peer))
+            }
+
+        template_name = 'daily-summary'
+        with elle.log.debug('send email'):
+          self.mailer.send_template(
+            to = list(users.keys()),
+            template_name = template_name,
+            subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS[template_name],
+            merge_vars = users,
+          )
+        summary = self.database.mailer.find_and_modify(
+          {
+            'name': daily_summary_str,
+          },
+          {
+            'name': daily_summary_str,
+            'last-sent': time.time(),
+          }, upsert = True)
+        return self.success({"emails": list(users.keys())})

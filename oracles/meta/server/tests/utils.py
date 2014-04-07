@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 
 import infinit.oracles.meta.server
+from infinit.oracles.meta.server.mail import Mailer
+from infinit.oracles.meta.server.invitation import Invitation
+from infinit.oracles.meta.server import transaction_status
 
 import http.cookies
 import os
+import bson
 import pymongo
 import sys
 
@@ -22,9 +26,10 @@ from uuid import uuid4, UUID
 
 class HTTPException(Exception):
 
-  def __init__(self, status, url, body):
+  def __init__(self, status, method, url, body):
     self.status = int(status)
-    super().__init__('status %s on /%s with body %s' % (status, url, body))
+    super().__init__('status %s with %s on /%s with body %s' % \
+                     (status, method, url, body))
 
 class Client:
 
@@ -34,6 +39,10 @@ class Client:
     self.__database = None
     self.__cookies = None
     self.__meta = meta
+
+  @property
+  def meta(self):
+    return self.__meta
 
   def __exit__(self, *args, **kwargs):
     self.__mongo.__exit__(*args, **kwargs)
@@ -51,10 +60,10 @@ class Client:
   def cookie(self):
     return self.__cookies
 
-  def __convert_result(self, url, body, headers, content):
+  def __convert_result(self, url, method, body, headers, content):
     status = headers['status']
     if status != '200':
-      raise HTTPException(status, url, body)
+      raise HTTPException(status, method, url, body)
     if headers['content-type'] == 'application/json':
       return json.loads(content.decode())
     elif headers['content-type'] == 'text/plain':
@@ -76,7 +85,7 @@ class Client:
                               body = body,
                               headers = headers)
     self.__get_cookies(resp)
-    return self.__convert_result(url, body, resp, content)
+    return self.__convert_result(url, method, body, resp, content)
 
   def post(self, url, body = None):
     return self.request(url, 'POST', body)
@@ -90,10 +99,83 @@ class Client:
   def delete(self, url, body = None):
     return self.request(url, 'DELETE', body)
 
+class Trophonius(Client):
+
+  def __init__(self, meta):
+    super().__init__(meta)
+    self.__uuid = str(uuid4())
+    self.__users = {}
+    self.__args = {"port": 23456}
+
+  def __enter__(self):
+    res = self.put('trophonius/%s' % self.__uuid, self.__args)
+    assert res['success']
+    return self
+
+  def __exit__(self, *args, **kwargs):
+    res = self.delete('trophonius/%s' % self.__uuid)
+    assert res['success']
+
+  def connect_user(self, user):
+    user_id = str(user.id)
+    res = user.put('trophonius/%s/users/%s/%s' % \
+                   (self.__uuid, user_id, str(user.device_id)))
+    assert res['success']
+    self.__users.setdefault(user_id, [])
+    self.__users[user_id] += str(user.device_id)
+
+  def disconnect_user(self, user):
+    assert user.device_id in self.__users[user.id]
+    res = user.delete('trophonius/%s/users/%s/%s' % \
+                      (self.__uuid, str(user.id), str(user.device_id)))
+    assert res['success']
+    self.__users[user.id].remove(user.device_id)
+
+class NoOpMailer(Mailer):
+
+  def __init__(self, op = None):
+    print("NoOpMailer: ctr")
+    self.__sent = 0
+    super().__init__(True)
+
+  def _Mailer__send(self, message):
+    self.__sent += 1
+    self.view_message(message)
+
+  def _Mailer__send_template(self, template_name, message):
+    self.__sent += 1
+    self.template_message(template_name, message)
+
+  def template_message(self, template_name, message):
+    self.view_message(message)
+    pass
+
+  def view_message(self, message):
+    pass
+
+  @property
+  def sent(self):
+    return self.__sent
+
+class NoOpInvitation(Invitation):
+
+  def __init__(self):
+    super().__init__(True)
+    self.ms = None
+    self.user_base = []
+
+  def move_from_invited_to_userbase(self, ghost_mail, new_mail):
+    self.subscribe(new_mail)
+
+  def subscribe(self, email):
+    self.user_base.append(email)
+
+  def subscribed(self, email):
+    return email in self.user_base
 
 class Meta:
 
-  def __init__(self, enable_emails = False, force_admin = False):
+  def __init__(self, enable_emails = False, force_admin = False, **kw):
     self.__mongo = mongobox.MongoBox()
     self.__server = bottle.WSGIRefServer(port = 0)
     self.__database = None
@@ -101,6 +183,7 @@ class Meta:
     self.__enalbe_emails = enable_emails
     self.__force_admin = force_admin
     self.__meta = None
+    self.__meta_args = kw
 
   def __enter__(self):
     self.__mongo.__enter__()
@@ -111,7 +194,10 @@ class Meta:
         self.__meta = infinit.oracles.meta.server.Meta(
           mongo_port = self.__mongo.port,
           enable_emails = self.__enalbe_emails,
-          force_admin = self.__force_admin)
+          force_admin = self.__force_admin,
+          **self.__meta_args)
+        self.__meta.mailer = NoOpMailer()
+        self.__meta.invitation = NoOpInvitation()
         self.__meta.catchall = False
         bottle.run(app = self.__meta,
                    quiet = True,
@@ -135,6 +221,15 @@ class Meta:
   def mailer(self, mailer):
     assert self.__meta is not None
     self.__meta.mailer = mailer
+
+  @property
+  def invitation(self):
+    return self.__meta.invitation
+
+  @invitation.setter
+  def invitation(self, invitation):
+    assert self.__meta is not None
+    self.__meta.invitation = invitation
 
   @property
   def notifier(self):
@@ -194,32 +289,50 @@ def throws(f):
   else:
     raise Exception('exception expected')
 
+def random_email(N = 10):
+  import random
+  from time import time
+  random.seed(time())
+  import string
+  return ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(N))
+
 class User(Client):
 
   def __init__(self,
                meta,
-               email,
+               email = None,
                device_name = 'device',
                **kwargs):
     super().__init__(meta)
-    self.email = email
-    self.password = meta.create_user(email,
+
+    self.email = email is not None and email or random_email() + '@infinit.io'
+    self.password = meta.create_user(self.email,
                                      **kwargs)
     self.id = meta.get('user/%s/view' % self.email)['_id']
     self.device_id = uuid4()
+
+  @property
+  def login_paremeters(self):
+    return {
+      'email': self.email,
+      'password': self.password,
+      'device_id': str(self.device_id),
+    }
+
+  @property
+  def data(self):
+    res = self.get('user/self')
+    assert res['success']
+    return res
 
   def login(self, device_id = None):
     if device_id is not None:
       self.device_id = device_id
 
-    req = {
-      'email': self.email,
-      'password': self.password,
-      'device_id': str(self.device_id),
-    }
-    res = self.post('login', req)
+    res = self.post('login', self.login_paremeters)
     assert res['success']
     assert res['device_id'] == str(self.device_id)
+    return res
 
   def logout(self):
     res = self.post('logout', {})
@@ -240,18 +353,22 @@ class User(Client):
 
   @property
   def favorites(self):
-    return self.get('user/self')['favorites']
+    return self.data['favorites']
 
   @property
   def logged_in(self):
     try:
-      res = self.get('user/self')
+      res = self.data
       assert res['success']
       assert str(self.device_id) in res['devices']
       return True
     except HTTPException as e:
       assert e.status == 403
       return False
+
+  @property
+  def _id(self):
+    return bson.ObjectId(self.data['_id'])
 
   @property
   def devices(self):
@@ -267,13 +384,28 @@ class User(Client):
 
   @property
   def identity(self):
-    return self.get('user/self')['identity']
+    return self.data['identity']
+
+  @property
+  def fullname(self):
+    return self.data['fullname']
+
+  @property
+  def transactions(self):
+    res = self.get('transactions')
+    assert res['success']
+    return res['transactions']
 
   @property
   def connected_on_device(self, device_id = None):
     if device_id is None:
       device_id = self.device_id
     return self.get('device/%s/%s/connected' % (self.id, str(device_id)))['connected']
+
+  def __eq__(self, other):
+    if isinstance(other, User):
+      return self.email == other.email
+    return NotImplemented
 
   def sendfile(self,
                recipient_id,
@@ -284,6 +416,7 @@ class User(Client):
                message = 'no message',
                is_directory = False,
                device_id = None,
+               initialize = False,
                ):
     if device_id is None:
       device_id = self.device_id
@@ -299,5 +432,7 @@ class User(Client):
     }
 
     res = self.post('transaction/create', transaction)
-
+    if initialize:
+      self.post("transaction/update", {"transaction_id": res['created_transaction_id'],
+                                       "status": transaction_status.INITIALIZED})
     return transaction, res

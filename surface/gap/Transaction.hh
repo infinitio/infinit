@@ -1,12 +1,11 @@
-#ifndef SURFACE_GAP_DETAIL_TRANSACTION_HH
-# define SURFACE_GAP_DETAIL_TRANSACTION_HH
+#ifndef SURFACE_GAP_TRANSACTION_HH
+# define SURFACE_GAP_TRANSACTION_HH
 
 # include <surface/gap/Notification.hh>
 # include <surface/gap/enums.hh>
 # include <surface/gap/fwd.hh>
 # include <surface/gap/Exception.hh>
 # include <surface/gap/TransactionMachine.hh>
-
 
 # include <infinit/oracles/trophonius/Client.hh>
 
@@ -34,7 +33,9 @@ namespace surface
           join,
           cancel,
           progress,
-        };
+          pause,
+          interrupt,
+       };
 
         BadOperation(Type type);
 
@@ -77,23 +78,36 @@ namespace surface
 
       ~Transaction();
 
-      public:
+    public:
+      virtual
       void
       accept();
 
+      virtual
       void
       reject();
 
+      virtual
       void
       cancel();
 
+      virtual
       void
       join();
 
+      virtual
       float
       progress() const;
 
-    private:
+      virtual
+      bool
+      pause();
+
+      virtual
+      void
+      interrupt();
+
+    protected:
       bool
       last_status(gap_TransactionStatus);
 
@@ -112,12 +126,19 @@ namespace surface
       on_peer_connection_status_updated(
         infinit::oracles::trophonius::UserStatusNotification const& update);
 
+      void
+      peer_connection_status(bool status);
+
+      void
+      peer_availability_status(bool status);
+
       /*------------.
       | Atttributes |
       `------------*/
       ELLE_ATTRIBUTE_R(uint32_t, id);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
-      ELLE_ATTRIBUTE(std::unique_ptr<TransactionMachine>, machine);
+    protected:
+      std::unique_ptr<TransactionMachine> _machine;
       ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, machine_state_thread);
       ELLE_ATTRIBUTE_r(gap_TransactionStatus, last_status);
       /*--------.

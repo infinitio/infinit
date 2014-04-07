@@ -300,6 +300,9 @@ namespace infinit
                   std::string const& password,
                   std::string const& activation_code) const;
 
+        Response
+        resend_confirmation_email(std::string const& email) const;
+
         UserResponse
         user(std::string const& id) const;
 

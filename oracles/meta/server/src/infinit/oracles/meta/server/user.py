@@ -6,7 +6,7 @@ import uuid
 import elle.log
 
 from .utils import api, require_logged_in, require_admin, hash_pasword, json_value
-from . import error, notifier, regexp, conf, invitation
+from . import error, notifier, regexp, conf, invitation, mail
 
 from pymongo import DESCENDING
 import os
@@ -81,6 +81,45 @@ class Mixin:
   ## -------- ##
   ## Sessions ##
   ## -------- ##
+
+  def _login(self, email, password):
+    user = self.database.users.find_one({
+      'email': email,
+      'password': hash_pasword(password),
+    })
+    if user is None:
+      self.fail(error.EMAIL_PASSWORD_DONT_MATCH)
+    # If email confirmed is not present, we can consider it's an old user,
+    # so his address will not be confirmed.
+    if not user.get('email_confirmed', True):
+      from time import time
+      if time() > user['unconfirmed_email_deadline']:
+        self.fail(error.EMAIL_NOT_CONFIRMED)
+    return user
+
+  def _login_response(self,
+                      user,
+                      device = None,
+                      web = False):
+    res = {
+      '_id' : user['_id'],
+      'fullname': user['fullname'],
+      'email': user['email'],
+      'handle': user['handle'],
+    }
+    if not web:
+      assert device is not None
+      res.update({
+        'identity': user['identity'],
+        'device_id': device['id'],
+      })
+    if not user.get('email_confirmed', True):
+      from time import time
+      res.update({
+        'unconfirmed_email_leeway': user['unconfirmed_email_deadline'] - time()
+      })
+    return res
+
   @api('/login', method = 'POST')
   def login(self,
             email,
@@ -89,12 +128,7 @@ class Mixin:
     with elle.log.trace("%s: log on device %s" % (email, device_id)):
       assert isinstance(device_id, uuid.UUID)
       email = email.lower()
-      user = self.database.users.find_one({
-        'email': email,
-        'password': hash_pasword(password),
-      })
-      if user is None:
-        self.fail(error.EMAIL_PASSWORD_DONT_MATCH)
+      user = self._login(email, password)
       query = {'id': str(device_id), 'owner': user['_id']}
       elle.log.debug("%s: look for session" % email)
       device = self.device(ensure_existence = False, **query)
@@ -112,48 +146,28 @@ class Mixin:
       bottle.request.session['email'] = email
 
       user = self.user
+      self.database.users.find_and_modify(
+        query = {'_id': user['_id']},
+        update = {'$set': {'last_connection': time.time(),}})
       elle.log.trace("%s: successfully connected as %s on device %s" %
                      (email, user['_id'], device['id']))
 
-      return self.success(
-        {
-          '_id': user['_id'],
-          'fullname': user['fullname'],
-          'email': user['email'],
-          'handle': user['handle'],
-          'identity': user['identity'],
-          'device_id': device['id'],
-        }
-    )
+      return self.success(self._login_response(user,
+                                               device = device,
+                                               web = False))
 
   @api('/web-login', method = 'POST')
   def web_login(self,
                 email,
                 password):
     with elle.log.trace("%s: web login" % email):
-      email = email.lower()
-      user = self.database.users.find_one({
-        'email': email,
-        'password': hash_pasword(password),
-      })
-      if user is None:
-        self.fail(error.EMAIL_PASSWORD_DONT_MATCH)
-
+      user = self._login(email, password)
       elle.log.debug("%s: store session" % email)
       bottle.request.session['email'] = email
       user = self.user
-
       elle.log.trace("%s: successfully connected as %s" %
                      (email, user['_id']))
-
-      return self.success(
-        {
-          '_id' : user['_id'],
-          'fullname': user['fullname'],
-          'email': user['email'],
-          'handle': user['handle'],
-        }
-      )
+      return self.success(self._login_response(user, web = True))
 
   @api('/logout', method = 'POST')
   @require_logged_in
@@ -251,6 +265,11 @@ class Mixin:
 
         handle = self.unique_handle(fullname)
 
+        from time import time
+        import hashlib
+        hash = str(time()) + email
+        hash = hash.encode('utf-8')
+        hash = hashlib.md5(hash).hexdigest()
         user_id = self._register(
           _id = id,
           register_status = 'ok',
@@ -271,7 +290,10 @@ class Mixin:
             {'type':'email', 'id': email}
           ],
           status = False,
-          created_at = time.time(),
+          created_at = time(),
+          email_confirmed = False,
+          unconfirmed_email_deadline = time() + self.unconfirmed_email_leeway,
+          email_confirmation_hash = str(hash),
         )
 
         with elle.log.trace("add user to the mailing list"):
@@ -287,10 +309,73 @@ class Mixin:
           user_id = user_id,
         )
 
+        user = self.user_by_email(email, ensure_existence = True)
+        self.mailer.send_template(
+          to = user['email'],
+          template_name = 'confirm-sign-up',
+          subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS['confirm-sign-up'],
+          merge_vars = {
+            user['email']: {
+              'hash': str(hash)
+            }}
+        )
+
         return self.success({
           'registered_user_id': user_id,
           'invitation_source': source or '',
+          'unconfirmed_email_leeway': self.unconfirmed_email_leeway,
         })
+
+  def __account_from_hash(self, hash):
+    with elle.log.debug('get user account from hash %s' % hash):
+      user = self.database.users.find_one({"email_confirmation_hash": hash})
+      if user is None:
+        raise error.Error(
+          error.OPERATION_NOT_PERMITTED,
+          "No user could be found",
+        )
+      return user
+
+  @api('/user/confirm_email/<hash>', method = 'POST')
+  def confirm_email(self,
+                    hash: str):
+    with elle.log.trace('confirm email'):
+      try:
+        user = self.__account_from_hash(hash)
+        elle.log.trace('confirm %s\'s account' % user['email'])
+        self.database.users.find_and_modify(
+          query = {"email_confirmation_hash": hash},
+          update = {
+            '$unset': {'email_confirmation_hash': True},
+            '$set': {'email_confirmed': True}
+            })
+        return self.success()
+      except error.Error as e:
+        self.fail(*e.args)
+
+  @api('/user/resend_confirmation_email/<email>', method = 'POST')
+  def resend_confirmation_email(self,
+                                email: str):
+    with elle.log.trace('resending confirmation email request for %s' % email):
+      try:
+        user = self.user_by_email(email, ensure_existence = True)
+        if user.get('email_confirmed', True):
+          raise error.Error(
+            error.EMAIL_ALREADY_CONFIRMED,
+          )
+        assert user.get('email_confirmation_hash') is not None
+        self.mailer.send_template(
+          to = user['email'],
+          template_name = 'reconfirm-sign-up',
+          subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS['reconfirm-sign-up'],
+          merge_vars = {
+            user['email']: {
+              'hash': user['email_confirmation_hash']
+            }}
+        )
+        return self.success()
+      except error.Error as e:
+        self.fail(*e.args)
 
   @api('/user/<id>/connected')
   def is_connected(self, id: bson.ObjectId):
@@ -339,6 +424,7 @@ class Mixin:
     email -- the email of the user.
     ensure_existence -- if set, raise if user is invald.
     """
+    email = email.lower().strip()
     user = self.database.users.find_one({'email': email})
     if ensure_existence:
       self.__ensure_user_existence(user)
@@ -699,12 +785,15 @@ class Mixin:
         self.fail(error.USER_ALREADY_INVITED)
       invitation.invite_user(
         email = email,
-        send_mail = True,
+        send_email = True,
         mailer = self.mailer,
         source = (user['fullname'], user['email']),
         database = self.database,
-        sendername = user['fullname'],
-        user_id = str(user['_id']),
+        merge_vars = {
+          email: {
+            'sendername': user['fullname'],
+            'user_id': str(user['_id']),
+          }}
       )
       return self.success()
 
@@ -741,6 +830,7 @@ class Mixin:
       'connected_devices': user.get('connected_devices', []),
       'status': self._is_connected(user['_id']),
       'created_at': user.get('created_at', 0),
+      'last_connection': user.get('last_connection', 0),
     })
 
   @api('/user/minimum_self')
@@ -764,6 +854,10 @@ class Mixin:
       {
         'remaining_invitations': self.user.get('remaining_invitations', 0),
       })
+
+  def user_avatar_route(self, id):
+    from bottle import Request
+    return Request().url + 'user/%s/avatar' % str(id)
 
   @api('/user/<id>/avatar')
   def get_avatar(self,
