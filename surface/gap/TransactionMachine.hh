@@ -59,6 +59,7 @@ namespace surface
         CloudBufferingBeforeAccept = 22,
         GhostCloudBuffering = 23,
         GhostCloudBufferingFinished = 24,
+        DataExhausted = 25,
         None = 99,
       };
 

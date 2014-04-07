@@ -165,6 +165,7 @@ namespace surface
         case TransactionMachine::State::PeerDisconnected:
         case TransactionMachine::State::PeerConnectionLost:
         case TransactionMachine::State::Transfer:
+        case TransactionMachine::State::DataExhausted:
           this->_run(this->_transfer_core_state);
           break;
         case TransactionMachine::State::Finished:
@@ -459,6 +460,7 @@ namespace surface
       catch (TransferBufferer::DataExhausted const&)
       {
         ELLE_TRACE("%s: Data exhausted on cloud bufferer", *this);
+        this->current_state(TransactionMachine::State::DataExhausted);
       }
       catch (reactor::Terminate const&)
       { // aye aye
