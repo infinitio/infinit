@@ -19,6 +19,8 @@ namespace surface
       {
       public:
         TransferMachine(TransactionMachine& owner,
+                        std::string const& input_file_path,
+                        std::string const& output_dir,
                         reactor::Duration duration = 5_sec);
 
         void
@@ -52,6 +54,8 @@ namespace surface
         ELLE_ATTRIBUTE(reactor::Duration, duration);
         ELLE_ATTRIBUTE_X(reactor::Barrier, running);
         ELLE_ATTRIBUTE(bool, interrupt);
+        ELLE_ATTRIBUTE(std::string, file_path);
+        ELLE_ATTRIBUTE(std::string, output_dir);
       };
     }
   }

@@ -10,13 +10,18 @@ namespace surface
   {
     namespace onboarding
     {
-      TransferMachine::TransferMachine(TransactionMachine& owner,
-                                       reactor::Duration duration)
-        : Transferer(owner)
-        , _progress(0.0f)
-        , _duration(duration)
-        , _running("running")
-        , _interrupt(false)
+      TransferMachine::TransferMachine(
+        TransactionMachine& owner,
+        std::string const& file_path,
+        std::string const& output_dir,
+        reactor::Duration duration):
+          Transferer(owner),
+          _progress(0.0f),
+          _duration(duration),
+          _running("running"),
+          _interrupt(false),
+          _file_path(file_path),
+          _output_dir(output_dir)
       {
         ELLE_TRACE_SCOPE("%s: creation", *this);
         this->_running.open();
@@ -62,6 +67,18 @@ namespace surface
             (step.total_milliseconds() /
              (1.0f * this->_duration.total_milliseconds()));
           reactor::sleep(step);
+        }
+        try
+        {
+          boost::filesystem::path input_path(this->_file_path);
+          boost::filesystem::path output_dir(this->_output_dir);
+          auto output_path = output_dir / input_path.filename();
+          boost::filesystem::copy_file(input_path, output_path);
+        }
+        catch (boost::filesystem::filesystem_error const& e)
+        {
+          ELLE_WARN("%s: error copying file: %s", *this, e.what());
+          throw e;
         }
       }
 
