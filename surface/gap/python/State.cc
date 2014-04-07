@@ -226,6 +226,8 @@ gap_transaction_status_string(gap_TransactionStatus status)
       return "transaction_new";
     case gap_transaction_waiting_accept:
       return "transaction_waiting_accept";
+    case gap_transaction_waiting_data:
+      return "transaction_waiting_data";
     case gap_transaction_connecting:
       return "transaction_connecting";
     case gap_transaction_transferring:
