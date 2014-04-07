@@ -180,7 +180,8 @@ namespace surface
         {
           return boost::filesystem::path(el).filename().string();
         });
-
+      this->data()->is_directory = boost::filesystem::is_directory(
+        *this->_files.begin());
       ELLE_ASSERT_EQ(this->data()->files.size(), this->_files.size());
 
       this->peer_id(recipient);
