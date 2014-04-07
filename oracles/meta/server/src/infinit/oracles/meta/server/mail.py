@@ -21,6 +21,7 @@ import json
 MAILCHIMP_TEMPLATE_SUBJECTS = {
   'invitation-beta': '%(sendername)s would like to invite you to Infinit',
   'send-file': '*|sendername|* wants to share *|filename|* with you',
+  'send-file-with-url': '*|sendername|* wants to share *|filename|* with you',
   'send-invitation-no-file': '%(sendername)s wants to use Infinit with you',
   'accept-file-only-offline': '%(sendername)s wants to share %(filename)s with you',
   'confirm-sign-up': 'Welcome to Infinit',
