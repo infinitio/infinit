@@ -372,7 +372,7 @@ class Mixin:
       invitation.invite_user(
         peer_email,
         mailer = self.mailer,
-        mail_template = 'send-file-with-url',
+        mail_template = 'send-file-url',
         source = (user['fullname'], user['email']),
         database = self.database,
         merge_vars = {
