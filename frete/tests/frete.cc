@@ -131,6 +131,8 @@ ELLE_TEST_SCHEDULED(connection)
 {
   auto recipient_key_pair = infinit::cryptography::KeyPair::generate(
     infinit::cryptography::Cryptosystem::rsa, 2048);
+  auto sender_key_pair = infinit::cryptography::KeyPair::generate(
+    infinit::cryptography::Cryptosystem::rsa, 2048);
   int port = 0;
   reactor::Barrier listening;
 
@@ -141,9 +143,14 @@ ELLE_TEST_SCHEDULED(connection)
   elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
   {
     scope.run_background("server", [&]
-    {
+                         {
       auto snap = root;
       snap += "server";
+      try
+      {
+        boost::filesystem::remove(snap);
+      }
+      catch (...) {}
       reactor::network::TCPServer server{};
       server.listen();
       port = server.port();
@@ -153,8 +160,10 @@ ELLE_TEST_SCHEDULED(connection)
         *reactor::Scheduler::scheduler(), *socket);
       infinit::protocol::ChanneledStream channels(
         *reactor::Scheduler::scheduler(), serializer);
-      frete::Frete frete("suce", recipient_key_pair, snap);
-      frete.set_peer_key(recipient_key_pair.K());
+      frete::Frete frete("suce",
+                         sender_key_pair,
+                         recipient_key_pair.K(),
+                         snap);
       frete::RPCFrete rpcs(frete, channels);
       frete.add(hierarchy.empty());
       frete.add(hierarchy.content());
@@ -167,6 +176,11 @@ ELLE_TEST_SCHEDULED(connection)
     {
       auto snap = root;
       snap += "client";
+      try
+      {
+        boost::filesystem::remove(snap);
+      }
+      catch (...) {}
       reactor::wait(listening);
       reactor::network::TCPSocket socket("127.0.0.1", port);
       infinit::protocol::Serializer serializer(*reactor::Scheduler::scheduler(),
@@ -192,10 +206,6 @@ ELLE_TEST_SCHEDULED(connection)
               key.decrypt<elle::Buffer>(rpcs.encrypted_read(0, 0, 1024)));
             BOOST_CHECK_EQUAL(buffer.size(), 0);
           }
-        {
-          auto buffer = key.decrypt<elle::Buffer>(rpcs.encrypted_read(0, 1, 1024));
-          BOOST_CHECK_EQUAL(buffer.size(), 0);
-        }
       }
       ELLE_DEBUG("check different parts of /content")
       {
