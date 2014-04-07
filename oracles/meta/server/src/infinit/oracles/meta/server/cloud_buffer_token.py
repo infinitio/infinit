@@ -3,8 +3,10 @@
 import binascii
 import bson
 from datetime import datetime
+import time
 import hashlib
 import hmac
+import base64
 import json
 import urllib.parse
 import urllib.request
@@ -22,14 +24,14 @@ class CloudBufferToken:
   aws_secret = '6VphkFJAAWXTBLrDebB+AWmPAHPkJWfIFR2KCfSa'
   aws_id = 'AKIAIPTEKRYOSJORHQMA'
 
+  aws_default_bucket = 'us-east-1-buffer-infinit-io'
+
   default_headers = {
     'content-type': 'application/json',
     'host': aws_host
   }
 
-  default_parameters = {
-    'Action': 'GetFederationToken',
-    'DurationSeconds': str(36 * 60 * 60), # 36 hrs is AWS max.
+  common_parameters = {
     'Version': '2011-06-15',
     'X-Amz-Algorithm': 'AWS4-HMAC-SHA256'
   }
@@ -44,8 +46,8 @@ class CloudBufferToken:
     return res
 
   def __init__(self, user_id, transaction_id, http_action,
-               aws_region='us-east-1',
-               bucket_name='us-east-1-buffer-infinit-io'):
+               aws_region = 'us-east-1',
+               bucket_name = None):
     assert http_action in ['PUT', 'GET']
     elle.log.log('%s: fetching S3 %s token for transaction (%s), user_id (%s) for region: %s' %
                  (self, http_action, transaction_id, user_id, aws_region))
@@ -53,12 +55,17 @@ class CloudBufferToken:
     self.transaction_id = transaction_id
     self.http_action = http_action
     self.aws_region = aws_region
-    self.aws_service = 'sts'
+    self.aws_sts_service = 'sts'
+    self.aws_s3_service = 's3'
+
+    if bucket_name is None:
+      bucket_name = CloudBufferToken.aws_default_bucket
     self.bucket_name = bucket_name
 
+  def generate_s3_token(self):
     self.request_time = datetime.utcnow()
     self.headers = self._make_headers()
-    self.key = self._make_key()
+    self.key = self._make_key(CloudBufferToken.aws_secret, self.aws_sts_service)
     self.parameters = self._make_parameters()
     self.request_url = self._generate_url()
 
@@ -70,11 +77,37 @@ class CloudBufferToken:
       self.credentials = self._get_credentials(res_xml)
     except urllib.error.HTTPError as e:
       elle.log.err('%s: unable to fetch token (%s): %s' % (self, e, e.read()))
+    return self.credentials
+
+  def delete_file(path):
+    self.request_time = datetime.utcnow()
+    self.headers = self._make_headers()
+    host = self.bucket_name + '.s3.amazonaws.com'
+    self.headers['host'] = host
+    self.key = self._make_key(CloudBufferToken.aws_secret, self.aws_s3_service)
+    parameters = dict()
+    string_to_sign = self._make_string_to_sign(
+      self._make_request(uri = '/' + self.transaction_id + '/' + path,
+                         method='DELETE', parameters = parameters),
+      aws_service = self.aws_s3_service)
+    signed_request = binascii.hexlify(
+      self._aws_sign(self.key, string_to_sign))
+    completed_request = '%s&X-Amz-Signature=%s' % (
+      self._aws_urlencode(parameters),
+      urllib.parse.quote(signed_request),
+    )
+    url_string = 'https://%s:443?%s' % (host, completed_request)
+    request = urllib.request.Request(self.request_url, headers=headers_dict)
+    try:
+      res_xml = urllib.request.urlopen(request).read()
+      elle.log.debug('%s: XML response: %s' % (self, res_xml))
+    except urllib.error.HTTPError as e:
+      elle.log.err('%s: unable to delete (%s): %s' % (self, e, e.read()))
 
   def _get_credentials(self, xml_str):
     root = etree.fromstring(xml_str)
     aws_xml_ns = '{https://%s/doc/%s/}' % (
-      CloudBufferToken.aws_host, CloudBufferToken.default_parameters['Version'])
+      CloudBufferToken.aws_host, CloudBufferToken.common_parameters['Version'])
     search_str = '%sGetFederationTokenResult/%s' % (aws_xml_ns, aws_xml_ns)
     credentials = {}
     credentials['SessionToken'] = root.find(
@@ -94,11 +127,13 @@ class CloudBufferToken:
 
 
   # http://docs.aws.amazon.com/STS/latest/UsingSTS/sts-controlling-feduser-permissions.html
+  #http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingResOpsConditions.html
   def _make_policy(self):
     object_actions = []
     bucket_actions = None
     if self.http_action == 'PUT':
-      object_actions.extend(['s3:PutObject'])
+      object_actions.extend(['s3:GetObject', 's3:PutObject', 's3:ListMultipartUploadParts', 's3:AbortMultipartUpload'])
+      bucket_actions = ['s3:ListBucket']
     elif self.http_action == 'GET':
       object_actions.extend(['s3:GetObject', 's3:DeleteObject'])
       bucket_actions = ['s3:ListBucket']
@@ -146,11 +181,11 @@ class CloudBufferToken:
     return signed_headers[:-1]
 
   # http://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
-  def _make_request(self):
+  def _make_request(self, method, uri, parameters):
     request = '%s\n%s\n%s\n%s\n\n%s\n%s' % (
-      'GET',                                          # HTTP Method.
-      CloudBufferToken.aws_uri,                       # Canonical URI.
-      self._aws_urlencode(self.parameters),           # Canonical Query String.
+      method,                                          # HTTP Method.
+      uri,                       # Canonical URI.
+      self._aws_urlencode(parameters),           # Canonical Query String.
       self._make_headers_str(),                       # Canonical Headers.
       self._make_signed_headers_str(),                # Signed Headers.
       hashlib.sha256(''.encode('utf-8')).hexdigest(), # Payload Hash.
@@ -159,34 +194,42 @@ class CloudBufferToken:
     return request
 
   # http://docs.aws.amazon.com/general/latest/gr/sigv4-create-string-to-sign.html
-  def _make_string_to_sign(self):
+  def _make_string_to_sign(self, request, aws_service):
     res = '%s\n%s\n%s\n%s' % (
       'AWS4-HMAC-SHA256',                               # Algorithm.
       self.request_time.strftime('%Y%m%dT%H%M%SZ'),     # Timestamp.
       '%s/%s/%s/%s' % (                                 # Credential Scope.
         self.request_time.strftime('%Y%m%d'),   # Date.
         self.aws_region,                        # AWS Region.
-        self.aws_service,                       # AWS Service.
+        aws_service,                       # AWS Service.
         'aws4_request',                         # AWS Request Type.
       ),
-      hashlib.sha256(self._make_request().encode('utf-8)')).hexdigest(), # Canonical Request Hash.
+      hashlib.sha256(request.encode('utf-8)')).hexdigest(), # Canonical Request Hash.
     )
     elle.log.debug('%s: string to sign: %s' % (self, res))
     return res
 
-  # http://stackoverflow.com/questions/12092518/signing-amazon-getfederationtoken-in-python
-  # The above code is python2 and uses the old signing method so had to be adjusted
-  def _make_parameters(self):
-    parameters = CloudBufferToken.default_parameters.copy()
+  def _make_initial_parameters(self, token, aws_service):
+    parameters = CloudBufferToken.common_parameters.copy()
     parameters['X-Amz-Credential'] = '%s/%s/%s/%s/%s' % (
-      CloudBufferToken.aws_id,
+      token,
       self.request_time.strftime('%Y%m%d'),
       self.aws_region,
-      self.aws_service,
+      aws_service,
       'aws4_request',
     )
     parameters['X-Amz-Date'] = self.request_time.strftime('%Y%m%dT%H%M%SZ')
     parameters['X-Amz-SignedHeaders'] = self._make_signed_headers_str()
+    elle.log.debug('%s: parameters: %s' % (self, parameters))
+    return parameters
+
+  # http://stackoverflow.com/questions/12092518/signing-amazon-getfederationtoken-in-python
+  # The above code is python2 and uses the old signing method so had to be adjusted
+  def _make_parameters(self):
+    parameters = self._make_initial_parameters(CloudBufferToken.aws_id,
+                                               self.aws_sts_service)
+    parameters['Action'] = 'GetFederationToken'
+    parameters['DurationSeconds'] = str(36 * 60 * 60) # 36 hrs is AWS max.
     parameters['Policy'] = json.dumps(self._make_policy())
     parameters['Name'] = self.user_id
     parameters = sorted(parameters.items())
@@ -197,19 +240,23 @@ class CloudBufferToken:
     return hmac.new(key, message.encode('utf-8'), hashlib.sha256).digest()
 
   # http://docs.aws.amazon.com/general/latest/gr/sigv4-calculate-signature.html
-  def _make_key(self):
-    key_str = 'AWS4%s' % CloudBufferToken.aws_secret
+  def _make_key(self, secret, aws_service):
+    key_str = 'AWS4%s' % secret
     k_date = self._aws_sign(bytes(key_str, 'utf-8'), self.request_time.strftime('%Y%m%d'))
     k_region = self._aws_sign(k_date, self.aws_region)
-    k_service = self._aws_sign(k_region, self.aws_service)
+    k_service = self._aws_sign(k_region, aws_service)
     k_signing = self._aws_sign(k_service, 'aws4_request')
     return k_signing
 
   # http://docs.aws.amazon.com/general/latest/gr/sigv4-calculate-signature.html
   def _generate_url(self):
     parameters = self.parameters
+    string_to_sign = self._make_string_to_sign(
+      self._make_request(uri = CloudBufferToken.aws_uri,
+                         method = 'GET', parameters = parameters),
+      self.aws_sts_service)
     signed_request = binascii.hexlify(
-      self._aws_sign(self.key, self._make_string_to_sign()))
+      self._aws_sign(self.key, string_to_sign))
     completed_request = '%s&X-Amz-Signature=%s' % (
       self._aws_urlencode(parameters),
       urllib.parse.quote(signed_request),
@@ -217,3 +264,28 @@ class CloudBufferToken:
     url_string = 'https://%s:443?%s' % (CloudBufferToken.aws_host, completed_request)
     elle.log.debug('%s: url string: %s' % (self, url_string))
     return url_string
+
+#http://docs.aws.amazon.com/AmazonS3/latest/dev/RESTAuthentication.html
+# at the bottom, 'Query String Request Authentication Alternative'
+def generate_get_url(bucket_name, transaction_id, file_path):
+  """ Generate a GET URL that can access relative 'file_path' in bucket
+      using the federated token we produced
+  """
+  expires = int(time.time()) + 36 * 60 * 60
+  string_to_sign = 'GET\n\n\n%s\n/%s/%s/%s' % (
+    expires, bucket_name, transaction_id, file_path)
+  signature = hmac.new(CloudBufferToken.aws_secret.encode('ascii'),
+                       string_to_sign.encode('utf-8'),
+                       hashlib.sha1).digest()
+  signature = base64.b64encode(signature)
+  ## urlencoding a base64 string...
+  signature = signature.decode('ascii').replace('+', '%2B').replace('=', '%3D')
+  url = 'https://%s.s3.amazonaws.com:443/%s/%s?AWSAccessKeyId=%s&Expires=%s&Signature=%s' % (
+    bucket_name,
+    transaction_id,
+    file_path,
+    CloudBufferToken.aws_id,
+    expires,
+    signature)
+  elle.log.debug("Produced get url: %s" % url);
+  return url

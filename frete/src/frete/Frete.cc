@@ -9,6 +9,7 @@
 #include <elle/serialize/construct.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
+#include <elle/system/system.hh>
 
 #include <cryptography/SecretKey.hh>
 #include <cryptography/PrivateKey.hh>
@@ -32,30 +33,25 @@ namespace frete
   class Frete::Impl
   {
   public:
-    Impl(infinit::cryptography::PublicKey const& peer_key,
-         std::string const& password):
+    Impl(std::string const& password):
       _old_key(infinit::cryptography::cipher::Algorithm::aes256, password),
       _key(new infinit::cryptography::SecretKey(
         infinit::cryptography::SecretKey::generate(
-             infinit::cryptography::cipher::Algorithm::aes256, 2048))),
-      _peer_key(peer_key),
-      _encrypted_key(new infinit::cryptography::Code(this->_peer_key.encrypt(*this->_key)))
+             infinit::cryptography::cipher::Algorithm::aes256, 2048)))
     {
-      ELLE_DEBUG("frete impl with peer K %s", peer_key);
+      ELLE_DEBUG("frete impl initialized");
     }
 
     ELLE_ATTRIBUTE_R(infinit::cryptography::SecretKey, old_key);
     ELLE_ATTRIBUTE_R(std::unique_ptr<infinit::cryptography::SecretKey>, key);
-    ELLE_ATTRIBUTE_R(infinit::cryptography::PublicKey, peer_key);
-    ELLE_ATTRIBUTE_R(std::unique_ptr<infinit::cryptography::Code>, encrypted_key);
+    ELLE_ATTRIBUTE_R(std::unique_ptr<infinit::cryptography::PublicKey>, peer_key);
     friend class Frete;
   };
 
   Frete::Frete(std::string const& password,
                infinit::cryptography::KeyPair const& self_key,
-               infinit::cryptography::PublicKey peer_key,
                boost::filesystem::path const& snapshot_destination):
-    _impl(new Impl(peer_key, password)),
+    _impl(new Impl(password)),
     _progress_changed("progress changed signal"),
     _transfer_snapshot(),
     _snapshot_destination(snapshot_destination)
@@ -78,10 +74,6 @@ namespace frete
       _impl->_key.reset(
         new infinit::cryptography::SecretKey(
           self_key.k().decrypt<infinit::cryptography::SecretKey>(k)));
-      // and reload frete key_code, encrypted session key with peer key
-      _impl->_encrypted_key.reset(
-        new infinit::cryptography::Code(
-          peer_key.encrypt(*_impl->_key)));
     }
     catch (boost::filesystem::filesystem_error const&)
     {
@@ -101,6 +93,21 @@ namespace frete
       // immediately save the snapshot so that key never changes
       this->save_snapshot();
     }
+  }
+
+  void
+  Frete::set_peer_key(infinit::cryptography::PublicKey peer_K)
+  {
+    if (this->_impl->_peer_key)
+      throw elle::Exception("Peer key can only be set once");
+    this->_impl->_peer_key.reset(
+      new infinit::cryptography::PublicKey(std::move(peer_K)));
+  }
+
+  bool
+  Frete::has_peer_key() const
+  {
+    return this->_impl->_peer_key != nullptr;
   }
 
   Frete::~Frete()
@@ -251,7 +258,7 @@ namespace frete
   {
     ELLE_DEBUG("%s: read and encrypt block %s of size %s at offset %s with old key %s",
                *this, f, size, start, this->_impl->old_key());
-    return this->_impl->old_key().encrypt(this->_read(f, start, size));
+    return this->_impl->old_key().encrypt(this->cleartext_read(f, start, size));
   }
 
   infinit::cryptography::Code
@@ -261,7 +268,7 @@ namespace frete
       "%s: read and encrypt block %s of size %s at offset %s with key %s",
       *this, f, size, start, this->_impl->key());
 
-    auto code = this->_impl->key()->encrypt(this->_read(f, start, size));
+    auto code = this->_impl->key()->encrypt(this->cleartext_read(f, start, size));
 
     ELLE_DUMP("encrypted data: %s with buffer %x", code, code.buffer());
     return code;
@@ -275,7 +282,7 @@ namespace frete
       "%s: read and encrypt block %s of size %s at offset %s with key %s",
       *this, f, size, start, this->_impl->key());
 
-    auto code = this->_impl->key()->encrypt(this->_read(f, start, size, false));
+    auto code = this->_impl->key()->encrypt(this->cleartext_read(f, start, size, false));
     auto& snapshot = *this->_transfer_snapshot;
     /* Since we might be pushing both in a bufferer and directly, there
      * are actually two progress positions.
@@ -294,7 +301,7 @@ namespace frete
   }
 
   elle::Buffer
-  Frete::_read(FileID file_id,
+  Frete::cleartext_read(FileID file_id,
                 FileOffset offset,
                 FileSize const size,
                 bool update_progress)
@@ -311,57 +318,16 @@ namespace frete
       this->_progress_changed.signal();
     }
     auto path = this->_local_path(file_id);
-    boost::filesystem::ifstream file{path, std::ios::binary};
-    static const FileOffset MAX_offset{
-      std::numeric_limits<std::streamsize>::max()};
-    static const size_t MAX_buffer{elle::Buffer::max_size};
-
-    if (size > MAX_buffer)
-      throw elle::Exception(
-        elle::sprintf("buffer that big (%s) can't be addressed", size));
-
-    if (!file.good())
-      throw elle::Exception("file is broken");
-
-    // If the offset is greater than the machine maximum streamsize, seekg n
-    // times to reach the right offset.
-    while (offset > MAX_offset)
-    {
-      file.seekg(MAX_offset, std::ios_base::cur);
-
-      if (!file.good())
-        throw elle::Exception(
-          elle::sprintf("unable to increment offset by %s", MAX_offset));
-
-      offset -= MAX_offset;
-    }
-
-    ELLE_DEBUG("seek to offset %s", *this);
-    file.seekg(offset, std::ios_base::cur);
-
-    if (!file.good())
-      throw elle::Exception(
-        elle::sprintf("unable to seek to pos %s", offset));
-
-    elle::Buffer buffer(size);
-
-    ELLE_DEBUG("read  file");
-    file.read(reinterpret_cast<char*>(buffer.mutable_contents()), size);
-    buffer.size(file.gcount());
-
-    ELLE_DEBUG("buffer resized to %s bytes", buffer.size());
-
-    if (!file.eof() && file.fail() || file.bad())
-      throw elle::Exception("unable to reathd");
-
-    ELLE_DUMP("buffer read: %x", buffer);
-    return buffer;
+    return elle::system::read_file_chunk(path, offset, size);
   }
 
-  infinit::cryptography::Code const&
+  infinit::cryptography::Code
   Frete::key_code() const
   {
-    return *this->_impl->encrypted_key();
+    if (!this->_impl->_peer_key)
+      throw elle::Exception("Peer key not available, cannot encrypt session key");
+    return infinit::cryptography::Code(
+      this->_impl->_peer_key->encrypt(*this->_impl->_key));
   }
 
   void

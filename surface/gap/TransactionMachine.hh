@@ -57,6 +57,8 @@ namespace surface
         Over = 20,
         CloudBuffered = 21,
         CloudBufferingBeforeAccept = 22,
+        GhostCloudBuffering = 23,
+        GhostCloudBufferingFinished = 24,
         None = 99,
       };
 

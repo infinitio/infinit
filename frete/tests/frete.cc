@@ -162,8 +162,8 @@ ELLE_TEST_SCHEDULED(connection)
         *reactor::Scheduler::scheduler(), serializer);
       frete::Frete frete("suce",
                          sender_key_pair,
-                         recipient_key_pair.K(),
                          snap);
+      frete.set_peer_key(recipient_key_pair.K());
       frete::RPCFrete rpcs(frete, channels);
       frete.add(hierarchy.empty());
       frete.add(hierarchy.content());

@@ -1,8 +1,10 @@
 #include <boost/filesystem.hpp>
 
+#include <elle/archive/zip.hh>
 #include <elle/os/environ.hh>
 #include <elle/os/path.hh>
 #include <elle/os/file.hh>
+#include <elle/system/system.hh>
 
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
@@ -117,7 +119,11 @@ namespace surface
       ELLE_WARN_SCOPE("%s: constructing machine for transaction data %s "
                       "(not found on local snapshots)",
                        *this, this->data());
-
+      // set _files from data
+      for (auto const& f: this->data()->files)
+      {
+        this->_files.insert(f);
+      }
       switch (this->data()->status)
       {
         case TransactionStatus::initialized:
@@ -174,7 +180,8 @@ namespace surface
         {
           return boost::filesystem::path(el).filename().string();
         });
-
+      this->data()->is_directory = boost::filesystem::is_directory(
+        *this->_files.begin());
       ELLE_ASSERT_EQ(this->data()->files.size(), this->_files.size());
 
       this->peer_id(recipient);
@@ -218,6 +225,8 @@ namespace surface
           break;
         case TransactionMachine::State::SenderWaitForDecision:
         case TransactionMachine::State::CloudBufferingBeforeAccept:
+        case TransactionMachine::State::GhostCloudBuffering:
+        case TransactionMachine::State::GhostCloudBufferingFinished:
           this->_run(this->_wait_for_accept_state);
           break;
         case TransactionMachine::State::RecipientWaitForDecision:
@@ -316,6 +325,9 @@ namespace surface
       // Change state to SenderCreateTransaction once we've calculated the file
       // size and have the file list.
       this->current_state(TransactionMachine::State::SenderCreateTransaction);
+      ELLE_TRACE("%s: Creating transaction, first_file=%s, dir=%s",
+                 *this, first_file,
+                 boost::filesystem::is_directory(first_file));
       this->transaction_id(
         this->state().meta().create_transaction(
           this->peer_id(),
@@ -353,7 +365,9 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: waiting for peer to accept or reject", *this);
 
       auto peer = this->state().user(this->peer_id());
-      if (!peer.ghost() && !peer.online())
+      if (peer.ghost())
+        this->_ghost_cloud_upload();
+      else if (!peer.ghost() && !peer.online())
       {
         this->current_state(
           TransactionMachine::State::CloudBufferingBeforeAccept);
@@ -366,6 +380,7 @@ namespace surface
     void
     SendMachine::_transfer_operation(frete::RPCFrete& frete)
     {
+      _fetch_peer_key(true);
       ELLE_TRACE_SCOPE("%s: transfer operation", *this);
       elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
@@ -393,6 +408,181 @@ namespace surface
     }
 
     void
+    SendMachine::_ghost_cloud_upload()
+    {
+      if (this->current_state()
+          == TransactionMachine::State::GhostCloudBufferingFinished)
+        return;
+      typedef frete::Frete::FileSize FileSize;
+      this->current_state(TransactionMachine::State::GhostCloudBuffering);
+      // Force a machine state snapshot save now that we have the transaction
+      // id.
+      current_state(current_state());
+      ELLE_TRACE_SCOPE("%s: ghost_cloud_upload", *this);
+      typedef boost::filesystem::path path;
+      path source_file_path;
+      FileSize source_file_size;
+      if (this->frete().count() > 1)
+      { // Our users might not appreciate downloading zillion of files from
+        // their browser: make an archive
+        // make an archive name from data
+        path archive_name;
+        if (this->_files.size() == 1)
+        {
+          ELLE_DEBUG("verifying is_directory on %s", *this->_files.begin());
+          ELLE_ASSERT(this->data()->is_directory); // otherwise effective count is 1
+          archive_name = path(*this->_files.begin()).filename().replace_extension("zip");
+        }
+        else
+          archive_name = "archive.zip";
+        // Use transfer data information to archive the files. This is
+        // what was passed by the user, and what we will flatten.
+        // That way if user selects a directory it will be preserved.
+        std::vector<boost::filesystem::path> sources(
+          this->_files.begin(),
+          this->_files.end());
+        auto tmpdir = boost::filesystem::temp_directory_path() / transaction_id();
+        boost::filesystem::create_directories(tmpdir);
+        path archive_path = path(tmpdir) / archive_name;
+        ELLE_DEBUG("%s: Archiving transfer files into %s", *this, archive_path);
+        elle::archive::zip(sources, archive_path, [](boost::filesystem::path const& p) {return p;});
+        source_file_path = archive_path;
+      }
+      else
+      {
+        source_file_path = *this->_files.begin();
+      }
+      source_file_size = boost::filesystem::file_size(source_file_path);
+      std::string source_file_name = source_file_path.filename().string();
+      ELLE_TRACE("%s: will ghost-cloud-upload %s of size %s",
+                 *this, source_file_path, source_file_size);
+
+
+
+      auto& meta = this->state().meta();
+      auto token = meta.get_cloud_buffer_token(this->transaction_id());
+      auto credentials = aws::Credentials(token.access_key_id,
+                                          token.secret_access_key,
+                                          token.session_token,
+                                          token.expiration);
+      aws::S3 handler("us-east-1-buffer-infinit-io", this->transaction_id(),
+                      credentials);
+
+      typedef frete::Frete::FileSize FileSize;
+
+      // AWS constraints: no more than 10k chunks, at least 5Mo block size
+      FileSize chunk_size = std::max(FileSize(5*1024*1024), source_file_size / 9500);
+      int chunk_count = source_file_size / chunk_size + ((source_file_size % chunk_size)? 1:0);
+      ELLE_TRACE("%s: using chunk size of %s, with %s chunks",
+                 *this, chunk_size, chunk_count);
+      // Load our own snapshot that contains the upload uid
+      std::string raw_snapshot_path = common::infinit::frete_snapshot_path(
+        this->data()->sender_id,
+        this->data()->id + "_raw");
+      std::string upload_id;
+      std::ifstream ifs(raw_snapshot_path);
+      ifs >> upload_id;
+      ELLE_DEBUG("%s: tried to reload id from %s, got %s",
+                 *this, raw_snapshot_path, upload_id);
+      std::vector<aws::S3::MultiPartChunk> chunks;
+      int next_chunk = 0;
+      int max_check_id = 0; // check for chunk presence up to that id
+      int start_check_index = 0; // check for presence from that chunks index
+      if (upload_id.empty())
+      {
+        upload_id = handler.multipart_initialize(source_file_name);
+        std::ofstream ofs(raw_snapshot_path);
+        ofs << upload_id;
+        ELLE_DEBUG("%s: saved id %s to %s",
+                   *this, upload_id, raw_snapshot_path);
+      }
+      else
+      { // Fetch block list
+        chunks = handler.multipart_list(source_file_name, upload_id);
+        std::sort(chunks.begin(), chunks.end(),
+          [](aws::S3::MultiPartChunk const& a, aws::S3::MultiPartChunk const& b)
+          {
+            return a.first < b.first;
+          });
+        if (!chunks.empty())
+        {
+          // We expect missing blocks potentially, but only at the end
+          //, ie we expect contiguous blocks 0 to (num_blocks - pipeline_size)
+          for (int i=0; i<int(chunks.size()); ++i)
+            if (chunks[i].first != i)
+              break;
+            else
+              next_chunk = i+1;
+          start_check_index = next_chunk;
+          max_check_id = chunks.back().first;
+        }
+        ELLE_DEBUG("Will resume at chunk %s", next_chunk);
+      }
+      // start pipelined upload
+      auto pipeline_upload = [&, this](int id)
+      {
+        while (true)
+        {
+          // fetch a chunk number
+          if (next_chunk >= chunk_count)
+            return;
+          int local_chunk = next_chunk++;
+          if (local_chunk <= max_check_id)
+          { // maybe we have it
+            bool has_it = false;
+            for (unsigned i=start_check_index;
+                 i<chunks.size() && chunks[i].first <= max_check_id;
+                 ++i)
+            {
+              if (chunks[i].first == local_chunk)
+              {
+                has_it = true;
+                break;
+              }
+            }
+            if (has_it)
+              continue;
+          }
+          // upload it
+          ELLE_DEBUG("%s: uploading chunk %s", *this, local_chunk);
+          auto buffer = elle::system::read_file_chunk(
+            source_file_path,
+            local_chunk*chunk_size, chunk_size);
+          std::string etag = handler.multipart_upload(
+            source_file_name, upload_id,
+            buffer,
+            local_chunk);
+          // Now, totally fake progress on the original frete by
+          // updating the global progress, and not individual files
+          // progress. That way we don't produce fake snapshot state data
+          // for further cloud upload.
+          auto& snapshot = this->frete().transfer_snapshot();
+          snapshot->progress(local_chunk * snapshot->total_size() / source_file_size);
+          chunks.push_back(std::make_pair(local_chunk, etag));
+        }
+      };
+      int num_threads = 4;
+      elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+      {
+        for (int i=0; i<num_threads; ++i)
+          scope.run_background(elle::sprintf("cloud %s", i),
+                               std::bind(pipeline_upload, i));
+        scope.wait();
+      };
+      std::sort(chunks.begin(), chunks.end(),
+        [](aws::S3::MultiPartChunk const& a, aws::S3::MultiPartChunk const& b)
+          {
+            return a.first < b.first;
+          });
+      handler.multipart_finalize(source_file_name, upload_id, chunks);
+      // mark transfer as raw-finished
+      this->current_state(TransactionMachine::State::GhostCloudBufferingFinished);
+      // For now, mark transfer as finished until we handle smooth mode changes
+      this->current_state(TransactionMachine::State::Finished);
+      this->finished().open();
+    }
+
+    void
     SendMachine::_cloud_operation()
     {
       if (elle::os::getenv("INFINIT_CLOUD_BUFFERING", "").empty())
@@ -402,6 +592,8 @@ namespace surface
       }
       ELLE_TRACE_SCOPE("%s: upload to the cloud", *this);
       auto& frete = this->frete();
+      _fetch_peer_key(true);
+
       auto& snapshot = *frete.transfer_snapshot();
       // Save snapshot of what eventual direct upload already did right now.
       this->frete().save_snapshot();
@@ -525,21 +717,37 @@ namespace surface
       return 0.0f;
     }
 
+    bool
+    SendMachine::_fetch_peer_key(bool assert_success)
+    {
+      auto& frete = this->frete();
+      if (frete.has_peer_key())
+        return true;
+      auto k = this->state().user(this->peer_id(), true).public_key;
+      if (k.empty() && !assert_success)
+        return false;
+      ELLE_ASSERT(!k.empty());
+      ELLE_DEBUG("restoring key from %s", k);
+      infinit::cryptography::PublicKey peer_K;
+      peer_K.Restore(k);
+      frete.set_peer_key(peer_K);
+      return true;
+    }
+
     frete::Frete&
     SendMachine::frete()
     {
       if (this->_frete == nullptr)
       {
         ELLE_TRACE_SCOPE("%s: initialize frete", *this);
-        infinit::cryptography::PublicKey peer_K;
-        peer_K.Restore(this->state().user(this->peer_id(), true).public_key);
         this->_frete = elle::make_unique<frete::Frete>(
           this->transaction_id(),
           this->state().identity().pair(),
-          peer_K,
           common::infinit::frete_snapshot_path(
             this->data()->sender_id,
             this->data()->id));
+         _fetch_peer_key(false);
+
         if (this->_frete->count())
         { // Reloaded from snapshot, validate it
           if (this->_files.size() != this->_frete->count())
@@ -554,6 +762,7 @@ namespace surface
         }
         else
         { // No snapshot yet, fill file list
+          ELLE_DEBUG("%s: No snapshot loaded, populating files", *this);
           for (std::string const& file: this->_files)
             this->_frete->add(file);
         }
@@ -581,6 +790,14 @@ namespace surface
     SendMachine::cleanup()
     {
       this->frete().remove_snapshot();
+      // clear temporary session directory
+      std::string tid = transaction_id();
+      ELLE_ASSERT(!tid.empty());
+      ELLE_ASSERT(tid.find('/') == tid.npos);
+      auto tmpdir = boost::filesystem::temp_directory_path() / tid;
+      ELLE_LOG("%s: clearing temporary directory %s",
+               *this, tmpdir);
+      boost::filesystem::remove_all(tmpdir);
     }
   }
 }

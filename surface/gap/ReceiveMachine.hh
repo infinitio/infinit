@@ -184,11 +184,13 @@ namespace surface
                           size_t chunk_size);
       template <typename Source>
       void _fetcher_thread(Source& source, int id,
-                           const std::string& name_policy,
+                           std::string const& name_policy,
                            bool explicit_ack,
                            bool strong_encryption,
                            size_t chunk_size,
-                           const infinit::cryptography::SecretKey& key);
+                           infinit::cryptography::SecretKey const& key,
+                           std::vector<std::pair<std::string, FileSize>> const& infos
+                           );
 
       // Transfer bufferer for cloud operations
        std::unique_ptr<TransferBufferer> _bufferer;

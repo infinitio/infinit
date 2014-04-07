@@ -49,9 +49,11 @@ namespace frete
   public:
     Frete(std::string const& password, // Retro compatibility.
           infinit::cryptography::KeyPair const& self_K, /*needed to decrypt session key from snapshot*/
-          infinit::cryptography::PublicKey peer_K,
           boost::filesystem::path const& snapshot_destination);
     ~Frete();
+    /// Set peer key (used to encrypt session key in key_code())
+    void set_peer_key(infinit::cryptography::PublicKey peer_K);
+    bool has_peer_key() const;
   private:
     class Impl;
     ELLE_ATTRIBUTE(std::unique_ptr<Impl>, impl);
@@ -107,7 +109,7 @@ namespace frete
     elle::Version
     version() const;
     /// The key of the transfer.
-    infinit::cryptography::Code const&
+    infinit::cryptography::Code
     key_code() const;
     /// Signal we're done
     void
@@ -116,18 +118,13 @@ namespace frete
     /// acknowledge_progress starting from the beginning of the whole frete data
     infinit::cryptography::Code
     encrypted_read_acknowledge(FileID f, FileOffset start, FileSize size, FileSize acknowledge_progress);
+    elle::Buffer cleartext_read(FileID f, FileOffset start, FileSize size, bool increment_progress = true);
     /// Whether we're done.
     ELLE_ATTRIBUTE_RX(reactor::Barrier, finished);
   private:
     /// The path of a file on the local filesystem.
     boost::filesystem::path
     _local_path(FileID file_id);
-    /// A plain chunk of a file.
-    elle::Buffer
-    _read(FileID file_id,
-          FileOffset offset,
-          FileSize const size,
-          bool increment_progress = true);
 
   /*---------.
   | Progress |

@@ -295,7 +295,6 @@ namespace common
         "identity"
       );
     }
-
   } // !infinit
 
 

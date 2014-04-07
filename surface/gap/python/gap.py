@@ -141,7 +141,8 @@ class State(_State):
 
     def __enter__(self):
         if len(self.__args) == 0 and len(self.__kwargs) == 0:
-            self.__state = _gap.new()
+            print("WARNING, defaulting to devlopment server")
+            self.__state = _gap.new(False)
         else:
             self.__state = _gap.new(*self.__args, **self.__kwargs)
         assert self.__state is not None

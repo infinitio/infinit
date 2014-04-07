@@ -17,6 +17,9 @@
 
 #include <version.hh>
 
+#ifdef __linux__
+#include <signal.h>
+#endif
 
 bool stop = false;
 
@@ -41,7 +44,7 @@ parse_options(int argc, char** argv)
     ("user,u", value<std::string>(), "the username")
     ("password,p", value<std::string>(), "the password")
     ("to,t", value<std::string>(), "the recipient")
-    ("file,f", value<std::string>(), "the file to send")
+    ("file,f", value<std::string>(), "the file to send, or comma-separated list")
     ("production,r", value<bool>(), "send metrics to production");
 
   variables_map vm;
@@ -76,6 +79,9 @@ parse_options(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
+#ifdef __linux__
+  signal(SIGPIPE, SIG_IGN);
+#endif
   try
   {
     auto options = parse_options(argc, argv);
@@ -150,8 +156,9 @@ int main(int argc, char** argv)
         auto hashed_password = state.hash_password(user, password);
         state.login(user, hashed_password);
         // state.update_device("lust");
-
-        id = state.send_files(to, {file.c_str()}, "");
+        std::unordered_set<std::string> files;
+        boost::algorithm::split(files, file, boost::is_any_of(","));
+        id = state.send_files(to,  std::unordered_set<std::string>(files), "");
 
         if (id == surface::gap::null_id)
           throw elle::Exception("transaction id is null");

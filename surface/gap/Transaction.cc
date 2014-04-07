@@ -47,6 +47,7 @@ namespace surface
             case TransactionMachine::State::SenderWaitForDecision:
             case TransactionMachine::State::RecipientWaitForDecision:
             case TransactionMachine::State::RecipientAccepted:
+            case TransactionMachine::State::GhostCloudBufferingFinished:
               return gap_transaction_waiting_accept;
             case TransactionMachine::State::PeerDisconnected:
             case TransactionMachine::State::PublishInterfaces:
@@ -55,6 +56,7 @@ namespace surface
               return gap_transaction_connecting;
             case TransactionMachine::State::Transfer:
             case TransactionMachine::State::CloudBufferingBeforeAccept:
+            case TransactionMachine::State::GhostCloudBuffering:
               return gap_transaction_transferring;
             case TransactionMachine::State::Finished:
               return gap_transaction_finished;

@@ -60,8 +60,14 @@ namespace surface
       _wait_for_accept();
       void
       _transfer_operation(frete::RPCFrete& frete) override;
+      // chunked upload to cloud
       void
       _cloud_operation() override;
+      // cleartext upload one file to cloud
+      void
+      _ghost_cloud_upload();
+      bool
+      _fetch_peer_key(bool assert_success);
       /*-----------------------.
       | Machine implementation |
       `-----------------------*/
@@ -77,6 +83,7 @@ namespace surface
       /*-----------------.
       | Transaction data |
       `-----------------*/
+      /// List of path from transaction data.
       typedef std::unordered_set<std::string> Files;
       ELLE_ATTRIBUTE(Files, files);
       ELLE_ATTRIBUTE(std::string, message);
