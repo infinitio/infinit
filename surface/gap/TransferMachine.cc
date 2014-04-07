@@ -496,8 +496,6 @@ namespace surface
       this->_rpcs = this->_owner.rpcs(*this->_channels);
     }
 
-    static std::streamsize const chunk_size = 1 << 18;
-
     void
     TransferMachine::_wait_for_peer()
     {
