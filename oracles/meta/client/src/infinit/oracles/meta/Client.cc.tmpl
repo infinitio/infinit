@@ -239,11 +239,10 @@ namespace infinit
         _host(server),
         _port(port),
         _root_url{elle::sprintf("%s://%s:%d", protocol, server, port)},
-        _client{},
+        _client{"MetaClient/" INFINIT_VERSION},
         _default_configuration{boost::posix_time::seconds{30},
                                reactor::http::Version::v10},
         _email{},
-        _user_agent{"MetaClient/" INFINIT_VERSION},
         _logged_in{false}
       {}
 
