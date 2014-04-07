@@ -292,4 +292,4 @@ class Meta(bottle.Bottle,
         version = res.group().split('/')[1].split('.')
         elle.log.debug('got version from user agent: %s' %
                        self.user_agent)
-        return Version(version[0], version[1], version[2])
+        return Version(int(version[0]), int(version[1]), int(version[2]))
