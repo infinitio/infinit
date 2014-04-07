@@ -11,6 +11,7 @@ from . import regexp, error, transaction_status, notifier, invitation, cloud_buf
 import uuid
 import re
 from pymongo import ASCENDING, DESCENDING
+from .version import Version
 
 from infinit.oracles.meta.server.utils import json_value
 
@@ -173,10 +174,11 @@ class Mixin:
       if not peer_email:
         peer_email = recipient['email']
 
+      cloud_capable = self.user_version >= Version(0, 8, 11)
       #FIXME : send invite email if initiator version will not attempt
       # ghost cloud upload
-      old_sender = False
-      if new_user and old_sender:
+      if new_user and not cloud_capable:
+        elle.log.debug("Client not cloud_capable, inviting now")
         invitation.invite_user(
           peer_email,
           mailer = self.mailer,
@@ -192,7 +194,7 @@ class Mixin:
               'avatar': self.user_avatar_route(recipient['_id']),
             }}
         )
-      if recipient.get('connected', False) == False:
+      if not new_user and recipient.get('connected', False) == False:
         elle.log.debug("recipient is disconnected")
         template_id = 'accept-file-only-offline'
 
