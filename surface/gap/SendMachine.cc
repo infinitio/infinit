@@ -577,6 +577,9 @@ namespace surface
       handler.multipart_finalize(source_file_name, upload_id, chunks);
       // mark transfer as raw-finished
       this->current_state(TransactionMachine::State::GhostCloudBufferingFinished);
+      // For now, mark transfer as finished until we handle smooth mode changes
+      this->current_state(TransactionMachine::State::Finished);
+      this->finished().open();
     }
 
     void
