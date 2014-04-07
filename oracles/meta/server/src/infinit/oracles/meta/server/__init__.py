@@ -31,6 +31,7 @@ from . import transaction
 from . import trophonius
 from . import user
 from . import waterfall
+from .version import Version
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.Meta'
 
@@ -264,3 +265,24 @@ class Meta(bottle.Bottle,
       'patrick.perlmutter@infinit.io',
       'quentin.hocquet@infinit.io',
     ]
+
+  @property
+  def user_agent(self):
+    from bottle import request
+    return request.environ.get('HTTP_USER_AGENT')
+
+  @property
+  def user_version(self):
+    with elle.log.debug('%s: get user version' % self):
+      import re
+      pattern = re.compile('MetaClient/[0-9]+\.[0-9]+\.[0-9]+')
+      res = re.match(pattern, self.user_agent)
+      if res is None:
+        elle.log.debug('can not extract version from user agent %s' %
+                       self.user_agent)
+        return Version(0, 8, 10)
+      else:
+        version = res.group().split('/')[1].split('.')
+        elle.log.debug('got version from user agent: %s' %
+                       self.user_agent)
+        return Version(version[0], version[1], version[2])

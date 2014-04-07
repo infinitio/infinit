@@ -66,6 +66,7 @@ def configure(elle,
     'src/infinit/oracles/meta/server/trophonius.py',
     'src/infinit/oracles/meta/server/user.py',
     'src/infinit/oracles/meta/server/utils.py',
+    'src/infinit/oracles/meta/server/version.py',
     'src/infinit/oracles/meta/server/waterfall.py',
     'src/infinit/oracles/meta/server/wsgi.py',
   )
