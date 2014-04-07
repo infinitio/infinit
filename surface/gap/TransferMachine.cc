@@ -133,6 +133,15 @@ namespace surface
                   ELLE_LOG("%s: transfer finished: owner.finished()", *this);
                 });
       this->_fsm.transition_add(
+        wait_for_peer_state,
+        stopped_state,
+        reactor::Waitables{&owner.finished()},
+        true)
+        .action([this]
+                {
+                  ELLE_LOG("%s: transfer finished: owner.finished()", *this);
+                });
+      this->_fsm.transition_add(
         transfer_state,
         stopped_state,
         [this]() { return this->finished(); }

@@ -60,6 +60,12 @@ namespace surface
 
       this->_machine.transition_add(
         this->_wait_for_accept_state,
+        this->_finish_state,
+        reactor::Waitables{&this->finished()},
+        true);
+
+      this->_machine.transition_add(
+        this->_wait_for_accept_state,
         this->_transfer_core_state,
         reactor::Waitables{&this->_accepted},
         true,
