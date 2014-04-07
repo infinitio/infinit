@@ -83,7 +83,7 @@ namespace surface
       /*-----------------.
       | Transaction data |
       `-----------------*/
-      /// Effective list of files to transfer
+      /// List of path from transaction data.
       typedef std::unordered_set<std::string> Files;
       ELLE_ATTRIBUTE(Files, files);
       ELLE_ATTRIBUTE(std::string, message);

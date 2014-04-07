@@ -120,10 +120,6 @@ namespace common
     std::string const&
     home_directory();
 
-    /// Returns a temporary directory suitable for creating temporary files.
-    std::string
-    temporary_directory();
-
     /// Returns download directory at {HOME}/Downloads if exists else home directory.
     std::string const&
     download_directory();

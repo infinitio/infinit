@@ -325,6 +325,9 @@ namespace surface
       // Change state to SenderCreateTransaction once we've calculated the file
       // size and have the file list.
       this->current_state(TransactionMachine::State::SenderCreateTransaction);
+      ELLE_TRACE("%s: Creating transaction, first_file=%s, dir=%s",
+                 *this, first_file,
+                 boost::filesystem::is_directory(first_file));
       this->transaction_id(
         this->state().meta().create_transaction(
           this->peer_id(),
@@ -419,26 +422,30 @@ namespace surface
       typedef boost::filesystem::path path;
       path source_file_path;
       FileSize source_file_size;
-      if (this->_files.size() > 1)
+      if (this->frete().count() > 1)
       { // Our users might not appreciate downloading zillion of files from
         // their browser: make an archive
         // make an archive name from data
         path archive_name;
-        if (this->data()->files.size() == 1)
+        if (this->_files.size() == 1)
         {
+          ELLE_DEBUG("verifying is_directory on %s", *this->_files.begin());
           ELLE_ASSERT(this->data()->is_directory); // otherwise effective count is 1
-          archive_name = path(this->data()->files.front()).replace_extension("zip");
+          archive_name = path(*this->_files.begin()).filename().replace_extension("zip");
         }
         else
           archive_name = "archive.zip";
+        // Use transfer data information to archive the files. This is
+        // what was passed by the user, and what we will flatten.
+        // That way if user selects a directory it will be preserved.
         std::vector<boost::filesystem::path> sources(
           this->_files.begin(),
           this->_files.end());
-        auto tmpdir = path(common::system::temporary_directory()) / transaction_id();
+        auto tmpdir = boost::filesystem::temp_directory_path() / transaction_id();
         boost::filesystem::create_directories(tmpdir);
         path archive_path = path(tmpdir) / archive_name;
         ELLE_DEBUG("%s: Archiving transfer files into %s", *this, archive_path);
-        elle::archive::zip(sources, archive_path);
+        elle::archive::zip(sources, archive_path, [](boost::filesystem::path const& p) {return p;});
         source_file_path = archive_path;
       }
       else
@@ -545,7 +552,12 @@ namespace surface
             source_file_name, upload_id,
             buffer,
             local_chunk);
-          // FIXME: update original frete progress
+          // Now, totally fake progress on the original frete by
+          // updating the global progress, and not individual files
+          // progress. That way we don't produce fake snapshot state data
+          // for further cloud upload.
+          auto& snapshot = this->frete().transfer_snapshot();
+          snapshot->progress(local_chunk * snapshot->total_size() / source_file_size);
           chunks.push_back(std::make_pair(local_chunk, etag));
         }
       };
@@ -779,12 +791,10 @@ namespace surface
       std::string tid = transaction_id();
       ELLE_ASSERT(!tid.empty());
       ELLE_ASSERT(tid.find('/') == tid.npos);
-      boost::filesystem::path temp_transaction_dir
-        = common::system::temporary_directory();
-      temp_transaction_dir /= tid;
+      auto tmpdir = boost::filesystem::temp_directory_path() / tid;
       ELLE_LOG("%s: clearing temporary directory %s",
-               *this, temp_transaction_dir);
-      boost::filesystem::remove_all(temp_transaction_dir);
+               *this, tmpdir);
+      boost::filesystem::remove_all(tmpdir);
     }
   }
 }
