@@ -54,6 +54,8 @@ namespace surface
             case TransactionMachine::State::Connect:
             case TransactionMachine::State::PeerConnectionLost:
               return gap_transaction_connecting;
+            case TransactionMachine::State::DataExhausted:
+              return gap_transaction_waiting_data;
             case TransactionMachine::State::Transfer:
             case TransactionMachine::State::CloudBufferingBeforeAccept:
             case TransactionMachine::State::GhostCloudBuffering:
