@@ -117,7 +117,6 @@ namespace surface
       this->_machine.transition_add_catch(_reject_state, _fail_state);
       this->_machine.transition_add_catch(_transfer_core_state, _fail_state);
 
-      ELLE_LOG("snapshot exist at %s", this->_snapshot_path);
       try
       {
         this->_snapshot.reset(
@@ -904,8 +903,7 @@ namespace surface
           ELLE_TRACE("%s: write down snapshot", *this)
           {
             ELLE_DUMP("%s: snapshot: %s", *this, *this->_snapshot);
-            elle::serialize::to_file(this->_snapshot_path.string())
-              << *this->_snapshot;
+            this->_save_transfer_snapshot();
           }
            _store_expected_position += buffer.size();
            ELLE_ASSERT_EQ(_store_expected_position,
@@ -956,6 +954,12 @@ namespace surface
       // the same scope
     }
 
+    void
+    ReceiveMachine::_save_transfer_snapshot()
+    {
+      elle::serialize::to_file(this->_snapshot_path.string())
+        << *this->_snapshot;
+    }
 
     std::string
     ReceiveMachine::type() const

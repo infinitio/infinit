@@ -37,6 +37,12 @@ namespace surface
         this->_accepted.open();
       }
 
+      void
+      ReceiveMachine::_save_snapshot() const
+      {
+        ELLE_DEBUG("don't save snapshot");
+      }
+
       bool
       ReceiveMachine::pause()
       {

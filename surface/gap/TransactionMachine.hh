@@ -96,10 +96,13 @@ namespace surface
       virtual
       Snapshot
       _make_snapshot() const;
-    private:
+      virtual
       void
       _save_snapshot() const;
-
+    protected:
+      virtual
+      void
+      _save_transfer_snapshot() = 0;
     protected:
       /// Launch the reactor::chine at the given state.
       void

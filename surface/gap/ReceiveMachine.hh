@@ -92,6 +92,9 @@ namespace surface
       ELLE_ATTRIBUTE(std::unordered_set<std::string>, files);
       ELLE_ATTRIBUTE(boost::filesystem::path, snapshot_path);
       ELLE_ATTRIBUTE_R(std::unique_ptr<frete::TransferSnapshot>, snapshot)
+    protected:
+      void
+      _save_transfer_snapshot() override;
     private:
       std::unique_ptr<frete::RPCFrete>
       rpcs(infinit::protocol::ChanneledStream& channels) override;

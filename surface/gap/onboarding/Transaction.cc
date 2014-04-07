@@ -29,7 +29,11 @@ namespace surface
         data.recipient_fullname = you.fullname;
         data.recipient_device_id = "Your device id";
         data.recipient_device_name = "Your device";
-        data.message = "Welcome to Infinit! Here is your first file.";
+        data.message = "Here is your fist file.";
+        data.files = { "Welcome.avi" };
+        data.files_count = 1;
+        data.total_size = 30120;
+        data.is_directory = false;
         data.status = TransactionStatus::initialized;
         data.ctime = ::time(nullptr);
         data.mtime = ::time(nullptr);
@@ -45,10 +49,6 @@ namespace surface
         {
           ELLE_WARN("unable to access file, fake transaction failed: %s",
                     e.what());
-          data.files = {"unknown"};
-          data.total_size = 0;
-          data.files_count = 1;
-          data.is_directory = false;
           data.status = TransactionStatus::failed;
         }
         ELLE_DEBUG("onboarding transaction: %s", data);

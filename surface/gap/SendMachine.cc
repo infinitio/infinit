@@ -602,7 +602,7 @@ namespace surface
 
       auto& snapshot = *frete.transfer_snapshot();
       // Save snapshot of what eventual direct upload already did right now.
-      this->frete().save_snapshot();
+      this->_save_transfer_snapshot();
       FilesystemTransferBufferer::Files files;
       for (frete::Frete::FileID file_id = 0;
            file_id < snapshot.count();
@@ -675,7 +675,7 @@ namespace surface
             local_file, local_position, chunk_size, acknowledge_position);
           if (save_snapshot)
           {
-            this->frete().save_snapshot();
+            this->_save_transfer_snapshot();
             save_snapshot = false;
           }
           auto& buffer = block.buffer();
@@ -711,8 +711,14 @@ namespace surface
                                std::bind(pipeline_cloud_upload, i));
         scope.wait();
       };
-      this->frete().save_snapshot();
+      this->_save_transfer_snapshot();
       this->current_state(State::CloudBuffered);
+    }
+
+    void
+    SendMachine::_save_transfer_snapshot()
+    {
+      this->frete().save_snapshot();
     }
 
     float

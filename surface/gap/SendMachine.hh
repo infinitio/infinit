@@ -87,6 +87,9 @@ namespace surface
       typedef std::unordered_set<std::string> Files;
       ELLE_ATTRIBUTE(Files, files);
       ELLE_ATTRIBUTE(std::string, message);
+    protected:
+      void
+      _save_transfer_snapshot() override;
 
     public:
       float
