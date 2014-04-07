@@ -173,25 +173,10 @@ class Mixin:
       if not peer_email:
         peer_email = recipient['email']
 
-      if new_user:
-        elle.log.trace("send invitation to new user %s" % peer_email)
-          # Figure out what the sender will ghost-upload
-        # This heuristic must be in sync with the sender!
-        ghost_upload_file = ''
-        if len(files) == 1:
-          if is_directory:
-            ghost_upload_file = files[0] + '.zip'
-          else:
-            ghost_upload_file = files[0]
-        else:
-          ghost_upload_file = 'archive.zip'
-        # Pregenerate GET URL for ghost cloud uploaded file
-        ghost_get_url = cloud_buffer_token.generate_get_url(
-          cloud_buffer_token.CloudBufferToken.aws_default_bucket,
-          transaction_id,
-          ghost_upload_file)
-        elle.log.log('Generating cloud GET URL for %s: %s'
-          % (ghost_upload_file, ghost_get_url))
+      #FIXME : send invite email if initiator version will not attempt
+      # ghost cloud upload
+      old_sender = False
+      if new_user and old_sender:
         invitation.invite_user(
           peer_email,
           mailer = self.mailer,
@@ -207,7 +192,7 @@ class Mixin:
               'avatar': self.user_avatar_route(recipient['_id']),
             }}
         )
-      elif recipient.get('connected', False) == False:
+      if recipient.get('connected', False) == False:
         elle.log.debug("recipient is disconnected")
         template_id = 'accept-file-only-offline'
 
@@ -355,6 +340,52 @@ class Mixin:
         'recipient_device_id': str(device_id),
       })
 
+  def on_finished(self, transaction, device_id, device_name, user):
+    elle.log.log('Transaction finished');
+    # Guess if this was a ghost cloud upload or not
+    recipient = self.database.users.find_one(transaction['recipient_id'])
+    elle.log.log('Peer status: %s' % recipient['register_status'])
+    elle.log.log('transaction: %s' % transaction.keys())
+    if recipient['register_status'] == 'ghost':
+      peer_email = recipient['email']
+      transaction_id = transaction['_id']
+      elle.log.trace("send invitation to new user %s for transaction %s" % (
+        peer_email, transaction_id))
+      # Figure out what the sender will ghost-upload
+      # This heuristic must be in sync with the sender!
+      ghost_upload_file = ''
+      files = transaction['files']
+      if len(files) == 1:
+        if transaction['is_directory']:
+          ghost_upload_file = files[0] + '.zip'
+        else:
+          ghost_upload_file = files[0]
+      else:
+        ghost_upload_file = 'archive.zip'
+      # Generate GET URL for ghost cloud uploaded file
+      ghost_get_url = cloud_buffer_token.generate_get_url(
+        cloud_buffer_token.CloudBufferToken.aws_default_bucket,
+        transaction_id,
+        ghost_upload_file)
+      elle.log.log('Generating cloud GET URL for %s: %s'
+        % (ghost_upload_file, ghost_get_url))
+      invitation.invite_user(
+        peer_email,
+        mailer = self.mailer,
+        mail_template = 'send-file-with-url',
+        source = (user['fullname'], user['email']),
+        database = self.database,
+        merge_vars = {
+          peer_email: {
+            'file_url': ghost_get_url,
+            'filename': files[0],
+            'sendername': user['fullname'],
+            'ghost_id': str(recipient.get('_id')),
+            'sender_id': str(user['_id']),
+            'avatar': self.user_avatar_route(recipient['_id']),
+          }}
+      )
+
   @api('/transaction/update', method = 'POST')
   @require_logged_in
   def transaction_update(self,
@@ -419,7 +450,11 @@ class Mixin:
                                              transaction = transaction,
                                              device_id = device_id,
                                              device_name = device_name),
-        transaction_status.FINISHED: cleanup_cb,
+        transaction_status.FINISHED: partial(self.on_finished,
+                                             transaction = transaction,
+                                             device_id = device_id,
+                                             device_name = device_name,
+                                             user = user),
         transaction_status.CANCELED: cleanup_cb,
         transaction_status.FAILED:   cleanup_cb,
         transaction_status.REJECTED: cleanup_cb

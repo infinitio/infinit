@@ -23,7 +23,8 @@ transitions = {
     {
     True: [
       CANCELED,
-      FAILED
+      FAILED,
+      FINISHED
       ],
     False: [
       ACCEPTED,
