@@ -222,22 +222,24 @@ gap_transaction_status_string(gap_TransactionStatus status)
 {
   switch (status)
   {
+    case gap_transaction_new:
+      return "transaction_new";
     case gap_transaction_waiting_accept:
-      return "waiting_accept";
-    case gap_transaction_waiting_register:
-      return "waiting_register";
+      return "transaction_waiting_accept";
     case gap_transaction_connecting:
-      return "transferring";
+      return "transaction_connecting";
     case gap_transaction_transferring:
-      return "running";
+      return "transaction_transferring";
+    case gap_transaction_cloud_buffered:
+      return "transaction_cloud_buffered";
     case gap_transaction_finished:
-      return "finished";
+      return "transaction_finished";
     case gap_transaction_failed:
-      return "failed";
+      return "transaction_failed";
     case gap_transaction_canceled:
-      return "canceled";
+      return "transaction_canceled";
     case gap_transaction_rejected:
-      return "rejected";
+      return "transaction_rejected";
     default:
       elle::unreachable();
   }
