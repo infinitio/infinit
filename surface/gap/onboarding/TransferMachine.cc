@@ -73,7 +73,8 @@ namespace surface
           boost::filesystem::path input_path(this->_file_path);
           boost::filesystem::path output_dir(this->_output_dir);
           auto output_path = output_dir / input_path.filename();
-          boost::filesystem::copy_file(input_path, output_path);
+          boost::filesystem::copy_file(input_path, output_path,
+            boost::filesystem::copy_option::overwrite_if_exists);
         }
         catch (boost::filesystem::filesystem_error const& e)
         {
