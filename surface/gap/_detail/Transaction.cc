@@ -56,7 +56,8 @@ namespace surface
     }
 
     uint32_t
-    State::start_onboarding(reactor::Duration const& transfer_duration)
+    State::start_onboarding(std::string const& file_path,
+                            reactor::Duration const& transfer_duration)
     {
       ELLE_TRACE_SCOPE("%s: create an onboarding transaction", *this);
       // XXX: We should have a fake onboarding user.
@@ -80,6 +81,7 @@ namespace surface
           *this,
           id,
           this->user(peer()),
+          file_path,
           transfer_duration));
       return id;
     }

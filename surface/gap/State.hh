@@ -504,7 +504,8 @@ namespace surface
                  std::string const& message);
 
       uint32_t
-      start_onboarding(reactor::Duration const& transfer_duration = 5_sec);
+      start_onboarding(std::string const& file_path,
+                       reactor::Duration const& transfer_duration = 5_sec);
 
     private:
       void

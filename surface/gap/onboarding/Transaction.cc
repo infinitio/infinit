@@ -1,4 +1,5 @@
 #include <elle/log.hh>
+#include <elle/os/file.hh>
 
 #include <surface/gap/onboarding/Transaction.hh>
 #include <surface/gap/onboarding/ReceiveMachine.hh>
@@ -16,7 +17,8 @@ namespace surface
       static
       surface::gap::Transaction::Data
       transaction_data(State::User const& you,
-                       State::User const& sender)
+                       State::User const& sender,
+                       std::string const& file_path)
       {
         surface::gap::Transaction::Data data;
         data.id = "TransactionID";
@@ -27,15 +29,28 @@ namespace surface
         data.recipient_fullname = you.fullname;
         data.recipient_device_id = "Your device id";
         data.recipient_device_name = "Your device";
-        data.message = "Here is your fist file.";
-        data.files = {"Welcome.avi"};
-        data.files_count = 1;
-        data.total_size = 30120;
-        data.is_directory = false;
+        data.message = "Welcome to Infinit! Here is your first file.";
         data.status = TransactionStatus::initialized;
         data.ctime = ::time(nullptr);
         data.mtime = ::time(nullptr);
-
+        try
+        {
+          auto path = boost::filesystem::path(file_path);
+          data.files = {path.filename().string()};
+          data.total_size = elle::os::file::size(path.string());
+          data.files_count = 1;
+          data.is_directory = false;
+        }
+        catch (elle::Exception const& e)
+        {
+          ELLE_WARN("unable to access file, fake transaction failed: %s",
+                    e.what());
+          data.files = {"unknown"};
+          data.total_size = 0;
+          data.files_count = 1;
+          data.is_directory = false;
+          data.status = TransactionStatus::failed;
+        }
         ELLE_DEBUG("onboarding transaction: %s", data);
         return data;
       }
@@ -43,22 +58,23 @@ namespace surface
       Transaction::Transaction(surface::gap::State const& state,
                                uint32_t id,
                                State::User const& peer,
+                               std::string const& file_path,
                                reactor::Duration const& transfer_duration)
         : surface::gap::Transaction(state,
-                                      id,
-                                      transaction_data(state.me(),
-                                                         peer))
-        , _thread(new reactor::Thread(
-                    *reactor::Scheduler::scheduler(),
-                    "onboarding transaction",
-                    [&]
-                    {
-                    }))
+                                    id,
+                                    transaction_data(
+                                      state.me(), peer, file_path))
+        , _thread(new reactor::Thread(*reactor::Scheduler::scheduler(),
+                                      "onboarding transaction",
+                                      [&]
+                                      {
+                                      }))
       {
         this->_machine.reset(new surface::gap::onboarding::ReceiveMachine(
           state,
           id,
           this->data(),
+          file_path,
           transfer_duration));
 
         ELLE_DEBUG_SCOPE("%s: creation", *this);

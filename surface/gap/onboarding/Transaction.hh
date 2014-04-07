@@ -22,6 +22,7 @@ namespace surface
         Transaction(surface::gap::State const& state,
                     uint32_t id,
                     State::User const& peer,
+                    std::string const& file_path,
                     reactor::Duration const& transfer_duration = 5_sec);
 
         ~Transaction();
