@@ -214,4 +214,12 @@ namespace frete
       throw elle::Exception("Key code already set.");
     _key_code.reset(new infinit::cryptography::Code(key_code));
   }
+
+  void
+  TransferSnapshot::_recompute_progress()
+  {
+    _progress = 0;
+    for (auto const& f: _files)
+      _progress += f.second.progress();
+  }
 }

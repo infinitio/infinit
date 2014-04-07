@@ -48,6 +48,9 @@ ELLE_SERIALIZE_SIMPLE(frete::TransferSnapshot,
       res._key_code.reset(new infinit::cryptography::Code(std::move(key_code)));
     }
   }
+  // Progress is redundant data, don't trust it
+  if (ar.mode == ArchiveMode::input)
+    res._recompute_progress();
 }
 
 #endif

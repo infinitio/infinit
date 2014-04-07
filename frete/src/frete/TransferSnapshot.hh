@@ -165,6 +165,9 @@ namespace frete
     void
     print(std::ostream& stream) const;
 
+  private:
+    // recalculate global progress from individual file data
+    void _recompute_progress();
   /*--------------.
   | Serialization |
   `--------------*/
