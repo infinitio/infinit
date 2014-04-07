@@ -19,6 +19,7 @@ namespace surface
         ReceiveMachine(surface::gap::State const& state,
                        uint32_t id,
                        std::shared_ptr<TransactionMachine::Data> transaction,
+                       std::string const& file_path,
                        reactor::Duration duration = 5_sec);
 
         float
@@ -40,6 +41,8 @@ namespace surface
         // Overload because it talks to meta.
         void
         _finalize(infinit::oracles::Transaction::Status) override;
+
+        ELLE_ATTRIBUTE(std::string, file_path);
       };
     }
   }

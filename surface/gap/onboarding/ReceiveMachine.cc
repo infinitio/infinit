@@ -15,12 +15,14 @@ namespace surface
         surface::gap::State const& state,
         uint32_t id,
         std::shared_ptr<TransactionMachine::Data> transaction,
-        reactor::Duration duration)
-        : surface::gap::ReceiveMachine(state, id, transaction)
+        std::string const& file_path,
+        reactor::Duration duration):
+          surface::gap::ReceiveMachine(state, id, transaction),
+          _file_path(file_path)
       {
         ELLE_TRACE_SCOPE("%s: construction", *this);
-
-        this->_transfer_machine.reset(new TransferMachine(*this, duration));
+        this->_transfer_machine.reset(new TransferMachine(
+          *this, this->_file_path, state.output_dir(), duration));
       }
 
       float
