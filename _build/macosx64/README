@@ -23,8 +23,8 @@ Python 3.3: brew install python3
 brew edit boost
 
 Add the following to where the bjam file is made to ensure boost links with
-Python 3.3:
-file.write "using python : 3.3 : /usr/local/Frameworks/Python.framework/Versions/3.3/bin/python3 : /usr/local/Frameworks/Python.framework/Versions/3.3/include/python3.3m : /usr/local/Frameworks/Python.framework/Versions/3.3/lib ;\n"
+Python 3.4:
+file.write "using python : 3.4 : /usr/local/Frameworks/Python.framework/Versions/3.4/bin/python3 : /usr/local/Frameworks/Python.framework/Versions/3.4/include/python3.4m : /usr/local/Frameworks/Python.framework/Versions/3.4/lib ;\n"
 
 MACOSX_DEPLOYMENT_TARGET=10.7 brew install --build-from-source --c++11 boost
 
