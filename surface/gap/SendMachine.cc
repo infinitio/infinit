@@ -519,6 +519,7 @@ namespace surface
       int start_check_index = 0; // check for presence from that chunks index
       if (upload_id.empty())
       {
+        //FIXME: pass correct mime type for non-zip case
         upload_id = handler.multipart_initialize(source_file_name);
         std::ofstream ofs(raw_snapshot_path);
         ofs << upload_id;
@@ -586,7 +587,10 @@ namespace surface
           // progress. That way we don't produce fake snapshot state data
           // for further cloud upload.
           auto& snapshot = this->frete().transfer_snapshot();
-          snapshot->progress(local_chunk * snapshot->total_size() / source_file_size);
+          // don't use local_chunk for progress or we might go back
+          ELLE_DEBUG("Setting progress to %s",
+            float(next_chunk) / float(chunk_count));
+          snapshot->progress(next_chunk * snapshot->total_size() / chunk_count);
           chunks.push_back(std::make_pair(local_chunk, etag));
         }
       };
