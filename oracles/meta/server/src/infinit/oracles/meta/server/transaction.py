@@ -193,7 +193,7 @@ class Mixin:
               'avatar': self.user_avatar_route(recipient['_id']),
             }}
         )
-      if not new_user and recipient.get('connected', False) and not is_ghost:
+      if not new_user and not recipient.get('connected', False) and not is_ghost:
         elle.log.debug("recipient is disconnected")
         template_id = 'accept-file-only-offline'
 
