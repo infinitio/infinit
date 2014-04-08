@@ -138,7 +138,7 @@ class Mailer():
 
   def __send(self, message):
     messenger = mandrill.Messages(self.__mandrill)
-    messenger.send(messenge)
+    messenger.send(message)
 
   def __send_template(self, template_name, message):
     messenger = mandrill.Messages(self.__mandrill)
