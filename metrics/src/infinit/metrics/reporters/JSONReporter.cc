@@ -135,6 +135,15 @@ namespace infinit
       this->_send(this->_user_dest, data);
     }
 
+    void
+    JSONReporter::_user_heartbeat()
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] = std::string("user heartbeat");
+
+      this->_send(this->_user_dest, data);
+    }
+
     /*-----.
     | Send |
     `-----*/

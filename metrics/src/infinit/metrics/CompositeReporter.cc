@@ -189,5 +189,12 @@ namespace infinit
                                 std::placeholders::_1,
                                 user_id));
     }
+
+    void
+    CompositeReporter::_user_heartbeat()
+    {
+      this->_dispatch(std::bind(&Reporter::_user_heartbeat,
+                                std::placeholders::_1));
+    }
   }
 }

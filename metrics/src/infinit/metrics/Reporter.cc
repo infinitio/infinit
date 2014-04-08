@@ -228,6 +228,16 @@ namespace infinit
       this->_metric_available.open();
     }
 
+    void
+    Reporter::user_heartbeat()
+    {
+      if (this->_no_metrics)
+        return;
+      this->_metric_queue.push(std::bind(&Reporter::_user_heartbeat,
+                                         this));
+      this->_metric_available.open();
+    }
+
     /*---------------.
     | Queue Handling |
     `---------------*/
@@ -330,6 +340,10 @@ namespace infinit
 
     void
     Reporter::_user_unfavorite(std::string const& user_id)
+    {}
+
+    void
+    Reporter::_user_heartbeat()
     {}
 
     /*----------.

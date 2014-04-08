@@ -102,6 +102,10 @@ namespace infinit
       void
       _user_unfavorite(std::string const& user_id);
 
+      virtual
+      void
+      _user_heartbeat();
+
     /// Private helper functions.
     private:
       std::string

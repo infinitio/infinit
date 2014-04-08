@@ -111,6 +111,9 @@ namespace infinit
       void
       user_unfavorite(std::string const& user_id);
 
+      void
+      user_heartbeat();
+
     /// User metrics implementation.
     protected:
       virtual
@@ -135,6 +138,10 @@ namespace infinit
       virtual
       void
       _user_unfavorite(std::string const& user_id);
+
+      virtual
+      void
+      _user_heartbeat();
 
     /// Queue handling.
     private:

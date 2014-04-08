@@ -79,6 +79,10 @@ namespace infinit
       void
       _user_unfavorite(std::string const& user_id);
 
+      virtual
+      void
+      _user_heartbeat();
+
     /// Dispatch metrics.
     private:
       void
