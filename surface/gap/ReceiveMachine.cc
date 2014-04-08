@@ -530,6 +530,8 @@ namespace surface
                          elle::Version const& peer_version
                          )
     {
+      // Clear hypotetical blocks we fetched but did not process.
+      this->_buffers.clear();
       boost::filesystem::path output_path(this->state().output_dir());
       auto count = source.count();
 
@@ -946,6 +948,11 @@ namespace surface
             }
           }
           // Check next available data
+          if (this->_buffers.empty())
+          {
+            _disk_writer_barrier.close();
+            break; // break to outer while that will wait on barrier
+          }
           const IndexedBuffer& next = this->_buffers.peek();
           if (next.start_position != _store_expected_position
              || next.file_index != _store_expected_file)
