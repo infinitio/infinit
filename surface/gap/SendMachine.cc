@@ -824,6 +824,10 @@ namespace surface
     void
     SendMachine::cleanup()
     {
+      if (this->data()->id.empty())
+      { // Early failure, no transaction_id -> nothing to clean up
+        return;
+      }
       this->frete().remove_snapshot();
       // clear temporary session directory
       std::string tid = transaction_id();
