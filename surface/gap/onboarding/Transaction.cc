@@ -29,12 +29,7 @@ namespace surface
         data.recipient_fullname = you.fullname;
         data.recipient_device_id = "Your device id";
         data.recipient_device_name = "Your device";
-        data.message = "Here is your fist file.";
-        data.files = { "Welcome.avi" };
-        data.files_count = 1;
-        data.total_size = 30120;
-        data.is_directory = false;
-        data.status = TransactionStatus::initialized;
+        data.message = "Welcome to Infinit! Here's your first file.";
         data.ctime = ::time(nullptr);
         data.mtime = ::time(nullptr);
         try
@@ -44,12 +39,17 @@ namespace surface
           data.total_size = elle::os::file::size(path.string());
           data.files_count = 1;
           data.is_directory = false;
+          data.status = TransactionStatus::initialized;
         }
         catch (elle::Exception const& e)
         {
+          data.files = { "Welcome.avi" };
+          data.files_count = 1;
+          data.total_size = 30120;
+          data.is_directory = false;
+          data.status = TransactionStatus::failed;
           ELLE_WARN("unable to access file, fake transaction failed: %s",
                     e.what());
-          data.status = TransactionStatus::failed;
         }
         ELLE_DEBUG("onboarding transaction: %s", data);
         return data;
