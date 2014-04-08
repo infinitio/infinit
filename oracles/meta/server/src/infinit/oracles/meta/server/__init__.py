@@ -280,15 +280,12 @@ class Meta(bottle.Bottle,
       # Try to distinguish browser user agent from meta client.
       # This assume that python re will take the complete subminor and not stop
       # at first digit found.
-      pattern = re.compile('MetaClient/\\d+\\.\\d+\\.\\d+')
+      pattern = re.compile('MetaClient/(\\d+)\\.(\\d+)\\.(\\d+)')
       res = re.match(pattern, self.user_agent)
       if res is None:
         elle.log.debug('can\'t extract version from user agent %s' %
                        self.user_agent)
-        # Web.
+        # Website.
         return (0, 0, 0)
       else:
-        version = res.group().split('/')[1].split('.')
-        elle.log.debug('got version from user agent: %s' %
-                       self.user_agent)
-        return (int(version[0]), int(version[1]), int(version[2]))
+        return tuple(map(int, pattern.groups()))
