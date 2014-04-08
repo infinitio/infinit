@@ -128,7 +128,7 @@ class Mixin:
 
       if recipient is None:
         return self.fail(error.USER_ID_NOT_VALID)
-
+      is_ghost = recipient['register_status'] == 'ghost'
       elle.log.debug("transaction recipient has id %s" % recipient['_id'])
       _id = user['_id']
 
@@ -193,7 +193,7 @@ class Mixin:
               'avatar': self.user_avatar_route(recipient['_id']),
             }}
         )
-      if not new_user and recipient.get('connected', False) == False:
+      if not new_user and recipient.get('connected', False) and not is_ghost:
         elle.log.debug("recipient is disconnected")
         template_id = 'accept-file-only-offline'
 
