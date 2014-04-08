@@ -260,7 +260,7 @@ class Mixin:
             "message": message,
             "more": more,
           },
-          attached  = ('log.tar.bz', file),
+          attachment = ('log.tar.bz', file),
         )
       return self.success()
 
