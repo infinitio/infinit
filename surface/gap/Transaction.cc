@@ -389,12 +389,15 @@ namespace surface
     Transaction::on_peer_connection_status_updated(
       UserStatusNotification const& update)
     {
-      // If the transaction is not running, ignore.
-      if (this->_machine == nullptr)
-        return;
       ELLE_TRACE_SCOPE(
         "%s: peer went %sline on device %s",
           *this, update.device_status ? "on" : "off", update.device_id);
+      // If the transaction is not running, ignore.
+      if (this->_machine == nullptr)
+      {
+        ELLE_DEBUG("%s: no machine to notify", *this);
+        return;
+      }
       ELLE_ASSERT(this->concerns_user(update.user_id));
       // XXX: There is no way to know if you are the sender or the recipient
       // because state is not accessible from transaction.
@@ -405,7 +408,7 @@ namespace surface
         // Transaction has not recipient device id set (transaction is not
         //  accepted) so his general connection status is important.
         ELLE_DEBUG("no recipient device id set, user connection status used")
-          this->peer_availability_status(update.status);
+          this->peer_connection_status(update.status);
       }
       // Check if the transaction is linked to this update, looking for the
       // device_id in both sender and recipient device ids.
@@ -413,7 +416,7 @@ namespace surface
           (!is_sender && this->_data->recipient_device_id  == update.device_id))
       {
         ELLE_DEBUG("notify machine of the device connection status update")
-          this->peer_availability_status(update.device_status);
+          this->peer_connection_status(update.device_status);
       }
       else
       {
