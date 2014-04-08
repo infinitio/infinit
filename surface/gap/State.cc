@@ -17,6 +17,7 @@
 #include <elle/os/path.hh>
 #include <elle/serialize/HexadecimalArchive.hh>
 
+#include <reactor/duration.hh>
 #include <reactor/http/exceptions.hh>
 
 #include <common/common.hh>
@@ -340,6 +341,18 @@ namespace surface
 
         infinit::metrics::Reporter::metric_sender_id(res.id);
         this->_metrics_reporter->user_login(true, "");
+        this->_metrics_heartbeat_thread.reset(
+          new reactor::Thread{
+            *reactor::Scheduler::scheduler(),
+              "metrics heartbeat",
+              [&]
+              {
+                while (true)
+                {
+                  this->_metrics_reporter->user_heartbeat();
+                  reactor::sleep(60_min);
+                }
+              }});
 
         std::string identity_clear;
 
@@ -499,7 +512,11 @@ namespace surface
     State::_cleanup()
     {
       ELLE_TRACE_SCOPE("%s: cleaning up the state", *this);
-
+      if (this->_metrics_heartbeat_thread != nullptr)
+      {
+        this->_metrics_heartbeat_thread->terminate_now();
+        this->_metrics_heartbeat_thread.reset();
+      }
       elle::SafeFinally clean_containers(
         [&]
         {

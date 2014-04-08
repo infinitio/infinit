@@ -82,13 +82,17 @@ namespace surface
     `--------*/
     private:
       ELLE_ATTRIBUTE_RP(std::unique_ptr<infinit::metrics::Reporter>,
-                       metrics_reporter,
-                       mutable);
+                        metrics_reporter,
+                        mutable);
+
+      ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>,
+                     metrics_heartbeat_thread);
 
 
       /*-------------.
       | Construction |
       `-------------*/
+    public:
       class ConnectionStatus:
         public Notification
       {
