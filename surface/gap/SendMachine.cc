@@ -833,5 +833,11 @@ namespace surface
                *this, tmpdir);
       boost::filesystem::remove_all(tmpdir);
     }
+
+    void
+    SendMachine::_cloud_synchronize()
+    {
+      // Nothing to do, don't keep uploading if the user is downloading
+    }
   }
 }

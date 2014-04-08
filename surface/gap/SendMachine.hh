@@ -63,6 +63,8 @@ namespace surface
       // chunked upload to cloud
       void
       _cloud_operation() override;
+      void
+      _cloud_synchronize() override;
       // cleartext upload one file to cloud
       void
       _ghost_cloud_upload();

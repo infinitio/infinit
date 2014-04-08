@@ -990,6 +990,12 @@ namespace surface
     }
 
     void
+    ReceiveMachine::_cloud_synchronize()
+    {
+      _cloud_operation();
+    }
+
+    void
     ReceiveMachine::IndexedBuffer::operator=(IndexedBuffer&&b)
     {
       buffer = std::move(b.buffer);

@@ -1,3 +1,4 @@
+#define BOOST_NO_CXX11_SCOPED_ENUMS
 #include <elle/log.hh>
 
 #include <surface/gap/onboarding/TransferMachine.hh>
@@ -48,6 +49,12 @@ namespace surface
       TransferMachine::_cloud_buffer()
       {
         // Show fake cloud buffering.
+      }
+
+      void
+      TransferMachine::_cloud_synchronize()
+      {
+        // Show fake cloud synchronizing.
       }
 
       void

@@ -227,9 +227,13 @@ namespace surface
       void
       _transfer_operation(frete::RPCFrete& frete) = 0;
       virtual
+      // Go all the way to the cloud until interrupted.
       void
       _cloud_operation() = 0;
-
+      virtual
+      // Just synchronize what you can with cloud
+      void
+      _cloud_synchronize() = 0;
     protected:
       // This state has to be protected to allow the children to start the
       // machine in this state.

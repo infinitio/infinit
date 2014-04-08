@@ -45,6 +45,11 @@ namespace surface
       /*-------.
       | States |
       `-------*/
+      // fetch all you can from cloud
+      auto& cloud_synchronize_state =
+        this->_fsm.state_make(
+          "cloud synchronize",
+          std::bind(&TransferMachine::_cloud_synchronize_wrapper, this));
       auto& publish_interfaces_state =
         this->_fsm.state_make(
           "publish interfaces",
@@ -74,6 +79,10 @@ namespace surface
       | Transitions |
       `------------*/
 
+      // first thing is cloud sync, and only when done do we publis ifaces
+      this->_fsm.transition_add(
+        cloud_synchronize_state,
+        publish_interfaces_state);
       // Publish and wait for connection.
       this->_fsm.transition_add(
         publish_interfaces_state,
@@ -344,6 +353,14 @@ namespace surface
     }
 
     void
+    Transferer::_cloud_synchronize_wrapper()
+    {
+      ELLE_TRACE_SCOPE("%s: cloud synchronize", *this);
+      this->_owner.current_state(TransactionMachine::State::Transfer);
+      this->_cloud_synchronize();
+    }
+
+    void
     Transferer::_transfer_wrapper()
     {
       ELLE_TRACE_SCOPE("%s: transfer", *this);
@@ -534,6 +551,12 @@ namespace surface
     TransferMachine::_cloud_buffer()
     {
       this->_owner._cloud_operation();
+    }
+
+    void
+    TransferMachine::_cloud_synchronize()
+    {
+      this->_owner._cloud_synchronize();
     }
 
     /*----------.

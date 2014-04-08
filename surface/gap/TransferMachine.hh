@@ -71,6 +71,8 @@ namespace surface
       void
       _cloud_buffer_wrapper();
       void
+      _cloud_synchronize_wrapper();
+      void
       _stopped_wrapper();
 
     protected:
@@ -92,6 +94,9 @@ namespace surface
       virtual
       void
       _stopped() = 0;
+      virtual
+      void
+      _cloud_synchronize() = 0;
 
     /*----------.
     | Printable |
@@ -139,6 +144,9 @@ namespace surface
       virtual
       void
       _stopped() override;
+      virtual
+      void
+      _cloud_synchronize() override;
 
     /*----------.
     | Printable |

@@ -73,6 +73,8 @@ namespace surface
       void
       _cloud_operation() override;
       void
+      _cloud_synchronize() override;
+      void
       _fail();
 
       /*-----------------------.
