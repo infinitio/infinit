@@ -629,8 +629,7 @@ namespace infinit
             int rand_num = random_ten(rng);
             ELLE_LOG("%s: will try to reconnect in 20 + %s seconds",
                      *this, rand_num);
-            reactor::Scheduler::scheduler()->current()->sleep(
-              20_sec + (boost::posix_time::seconds(rand_num)));
+            reactor::sleep(20_sec + (boost::posix_time::seconds(rand_num)));
           }
           if (this->_connected)
           {
