@@ -277,9 +277,6 @@ class Meta(bottle.Bottle,
       # Before 0.8.11, user agent was empty.
       if len(self.user_agent) == 0:
         return (0, 8, 10)
-      # Try to distinguish browser user agent from meta client.
-      # This assume that python re will take the complete subminor and not stop
-      # at first digit found.
       pattern = re.compile('MetaClient/(\\d+)\\.(\\d+)\\.(\\d+)')
       res = re.match(pattern, self.user_agent)
       if res is None:
