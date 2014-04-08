@@ -542,7 +542,10 @@ namespace surface
     void
     TransferMachine::print(std::ostream& stream) const
     {
-      stream << "TransferMachine(" << this->_owner.id() << ")";
+      stream << "TransferMachine(" << this->_owner.id();
+      if (this->_owner.data())
+        stream << ", " << this->_owner.data()->id;
+      stream << ")";
     }
   }
 }
