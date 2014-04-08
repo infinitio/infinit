@@ -165,6 +165,7 @@ namespace surface
         case TransactionMachine::State::PeerConnectionLost:
         case TransactionMachine::State::Transfer:
         case TransactionMachine::State::DataExhausted:
+        case TransactionMachine::State::CloudSynchronize:
           this->_run(this->_transfer_core_state);
           break;
         case TransactionMachine::State::Finished:
@@ -992,7 +993,8 @@ namespace surface
     void
     ReceiveMachine::_cloud_synchronize()
     {
-      _cloud_operation();
+      this->current_state(TransactionMachine::State::Transfer);
+      this->_cloud_operation();
     }
 
     void

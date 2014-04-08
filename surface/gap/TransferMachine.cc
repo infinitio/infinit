@@ -356,7 +356,7 @@ namespace surface
     Transferer::_cloud_synchronize_wrapper()
     {
       ELLE_TRACE_SCOPE("%s: cloud synchronize", *this);
-      this->_owner.current_state(TransactionMachine::State::Transfer);
+      this->_owner.current_state(TransactionMachine::State::CloudSynchronize);
       this->_cloud_synchronize();
     }
 

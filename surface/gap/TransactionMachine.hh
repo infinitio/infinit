@@ -60,6 +60,7 @@ namespace surface
         GhostCloudBuffering = 23,
         GhostCloudBufferingFinished = 24,
         DataExhausted = 25,
+        CloudSynchronize = 26,
         None = 99,
       };
 

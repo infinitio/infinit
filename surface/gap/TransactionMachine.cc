@@ -627,6 +627,8 @@ namespace surface
           return out << "GhostCloudBufferingFinished";
         case TransactionMachine::State::DataExhausted:
           return out << "DataExhausted";
+        case TransactionMachine::State::CloudSynchronize:
+          return out << "CloudSynchronize";
       }
       return out;
     }

@@ -53,6 +53,7 @@ namespace surface
             case TransactionMachine::State::PublishInterfaces:
             case TransactionMachine::State::Connect:
             case TransactionMachine::State::PeerConnectionLost:
+            case TransactionMachine::State::CloudSynchronize:
               return gap_transaction_connecting;
             case TransactionMachine::State::DataExhausted:
               return gap_transaction_waiting_data;
