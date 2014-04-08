@@ -68,6 +68,7 @@ def configure(elle,
     'src/infinit/oracles/meta/server/utils.py',
     'src/infinit/oracles/meta/server/waterfall.py',
     'src/infinit/oracles/meta/server/wsgi.py',
+    'src/infinit/oracles/meta/server/wsgi_debug.py',
   )
 
   templates = drake.nodes(
