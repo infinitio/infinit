@@ -990,6 +990,12 @@ namespace infinit
         return out;
       }
 
+      void
+      User::print(std::ostream& stream) const
+      {
+        stream << "User(" << this->id << ", " << this->handle << ")";
+      }
+
       /*----------.
       | Printable |
       `----------*/

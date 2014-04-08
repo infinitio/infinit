@@ -91,7 +91,8 @@ namespace infinit
       struct MessageResponse : Response
       {};
 
-      struct User
+      struct User:
+         public elle::Printable
       {
         std::string id;
         std::string fullname;
@@ -110,6 +111,15 @@ namespace infinit
         {
           return this->public_key.empty();
         }
+
+        /*----------.
+        | Printable |
+        `----------*/
+      public:
+        virtual
+        void
+        print(std::ostream& stream) const override;
+
       };
 
       struct UserResponse : User, Response
