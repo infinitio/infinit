@@ -485,7 +485,9 @@ namespace surface
     std::string const&
     TransactionMachine::transaction_id() const
     {
-      ELLE_ASSERT(!this->_data->id.empty());
+      if (this->_data->id.empty())
+        throw elle::Exception(
+          elle::sprintf("%s: Transaction machine is not ready", *this));
       return this->_data->id;
     }
 

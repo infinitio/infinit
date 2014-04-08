@@ -119,6 +119,7 @@ namespace surface
           std::unique_ptr<TransactionMachine::Snapshot> snapshot;
           try
           {
+            ELLE_DEBUG("Reloading snapshot from %s", snapshot_path);
             snapshot.reset(
               new TransactionMachine::Snapshot(
                 elle::serialize::from_file(snapshot_path)));
@@ -126,7 +127,12 @@ namespace surface
             // FIXME: this can happen if you kill the client while creating a
             //        transaction and you haven't fetch an id from the server
             //        yet. Test and fix that shit.
-            ELLE_ASSERT(!snapshot->data.id.empty());
+            if (snapshot->data.id.empty());
+            {
+              ELLE_LOG("Snapshot is corrupted: empty id");
+              boost::filesystem::remove(snapshot_path);
+              continue;
+            }
           }
           catch (std::exception const&)
           {
