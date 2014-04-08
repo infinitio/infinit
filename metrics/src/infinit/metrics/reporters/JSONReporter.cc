@@ -1,13 +1,15 @@
 #include <functional>
 
-#include <infinit/metrics/reporters/JSONReporter.hh>
-
 #include <elle/log.hh>
 #include <elle/os/environ.hh>
+
 #include <reactor/exception.hh>
 #include <reactor/http/exceptions.hh>
 #include <reactor/http/Request.hh>
 #include <reactor/scheduler.hh>
+
+#include <infinit/metrics/reporters/JSONReporter.hh>
+#include <version.hh>
 
 ELLE_LOG_COMPONENT("infinit.metrics.JSONReporter");
 
@@ -154,6 +156,24 @@ namespace infinit
     {
       auto event_name =
         boost::any_cast<std::string>(data[this->_key_str(JSONKey::event)]);
+      elle::json::Object version;
+      version["major"] = INFINIT_VERSION_MAJOR;
+      version["minor"] = INFINIT_VERSION_MINOR;
+      version["subminor"] = INFINIT_VERSION_SUBMINOR;
+      elle::json::Object infinit;
+      infinit["version"] = std::move(version);
+      infinit["os"] =
+#ifdef INFINIT_LINUX
+        "Linux"
+#elif defined(INFINIT_MACOSX)
+        "OS X"
+#elif defined(INFINIT_WINDOWS)
+        "Windows"
+#else
+# error "machine not supported"
+#endif
+         ;
+      data["infinit"] = std::move(infinit);
       try
       {
         ELLE_TRACE_SCOPE("%s: sending metric: %s", *this, event_name);
