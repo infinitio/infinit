@@ -331,11 +331,15 @@ namespace surface
                                   std::map<boost::filesystem::path, boost::filesystem::path>& mapping)
     {
       boost::filesystem::path first = *path.begin();
+      // Take care of toplevel files with no directory information, we can't
+      // add that to the mapping.
+      bool toplevel_file = (first == path);
       bool exists = boost::filesystem::exists(start_point / first);
       ELLE_DEBUG("Looking for a replacment name for %s, firstcomp=%s, exists=%s", path, first, exists);
       if (! exists)
       { // we will create the path along the way so we must add itself into mapping
-        mapping[first] = first;
+        if (!toplevel_file)
+          mapping[first] = first;
         return start_point / path;
       }
       auto it = mapping.find(first);
@@ -366,7 +370,8 @@ namespace surface
         boost::filesystem::path replace = elle::sprintf(pattern.string().c_str(), i);
         if (!boost::filesystem::exists(start_point / replace))
         {
-          mapping[first] = replace;
+          if (!toplevel_file)
+            mapping[first] = replace;
           ELLE_DEBUG("Adding in mapping: %s -> %s", first, replace);
           boost::filesystem::path result = replace;
           auto it = path.begin();
