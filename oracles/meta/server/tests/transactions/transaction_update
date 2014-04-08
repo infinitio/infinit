@@ -53,7 +53,7 @@ for i in STATUS:
 # Sender.
 #  C  I  A  F  R  CA FA
 # [E, O, E, E, E, S, S]) # C
-# [E, S, E, E, E, S, S]) # I
+# [E, S, E, O, E, S, S]) # I
 # [E, E, E, E, E, S, S]) # A
 # [E, O, E, E, E, S, S]) # F
 # [E, E, E, E, E, S, S]) # R
@@ -63,7 +63,7 @@ for i in STATUS:
 s = sender_transitions
 
 s[C][C]  = E; s[C][I]  = O; s[C][A]  = E; s[C][F]  = E; s[C][R]  = E; s[C][CA]  = O; s[C][FA]  = O;
-s[I][C]  = E; s[I][I]  = E; s[I][A]  = E; s[I][F]  = E; s[I][R]  = E; s[I][CA]  = O; s[I][FA]  = O;
+s[I][C]  = E; s[I][I]  = E; s[I][A]  = E; s[I][F]  = O; s[I][R]  = E; s[I][CA]  = O; s[I][FA]  = O;
 s[A][C]  = E; s[A][I]  = E; s[A][A]  = E; s[A][F]  = E; s[A][R]  = E; s[A][CA]  = O; s[A][FA]  = O;
 s[F][C]  = E; s[F][I]  = E; s[F][A]  = E; s[F][F]  = S; s[F][R]  = E; s[F][CA]  = E; s[F][FA]  = E;
 s[R][C]  = E; s[R][I]  = E; s[R][A]  = E; s[R][F]  = E; s[R][R]  = E; s[R][CA]  = E; s[R][FA]  = E;
