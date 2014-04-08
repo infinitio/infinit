@@ -451,7 +451,30 @@ namespace surface
         boost::filesystem::create_directories(tmpdir);
         path archive_path = path(tmpdir) / archive_name;
         ELLE_DEBUG("%s: Archiving transfer files into %s", *this, archive_path);
-        elle::archive::zip(sources, archive_path, [](boost::filesystem::path const& p) {return p;});
+        elle::archive::zip(sources, archive_path, [](boost::filesystem::path const& path)
+          {
+            std::string p(path.string());
+            // check if p maches our renaming scheme
+            size_t pos_beg = p.find_last_of('(');
+            size_t pos_end = p.find_last_of(')');
+            if (pos_beg != p.npos && pos_end != p.npos &&
+              (pos_end == p.size()-1 || p[pos_end+1] == '.'))
+            {
+              try
+              {
+                std::string sequence =  p.substr(pos_beg + 1, pos_end-pos_beg-1);
+                unsigned int v = boost::lexical_cast<unsigned int>(sequence);
+                std::string result = p.substr(0, pos_beg+1)
+                  + boost::lexical_cast<std::string>(v+1)
+                  + p.substr(pos_end);
+                return result;
+              }
+              catch(const boost::bad_lexical_cast& blc)
+              {// go on
+              }
+            }
+            return path.stem().string() + " (1)" + path.extension().string();
+          });
         source_file_path = archive_path;
       }
       else
