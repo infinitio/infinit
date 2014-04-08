@@ -277,12 +277,12 @@ class Meta(bottle.Bottle,
       # Before 0.8.11, user agent was empty.
       if len(self.user_agent) == 0:
         return (0, 8, 10)
-      pattern = re.compile('MetaClient/(\\d+)\\.(\\d+)\\.(\\d+)')
-      res = re.match(pattern, self.user_agent)
-      if res is None:
+      pattern = re.compile('^MetaClient/(\\d+)\\.(\\d+)\\.(\\d+)')
+      match = pattern.search(self.user_agent)
+      if match is None:
         elle.log.debug('can\'t extract version from user agent %s' %
                        self.user_agent)
         # Website.
         return (0, 0, 0)
       else:
-        return tuple(map(int, pattern.groups()))
+        return tuple(map(int, match.groups()))
