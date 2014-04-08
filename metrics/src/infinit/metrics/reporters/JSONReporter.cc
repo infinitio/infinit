@@ -33,7 +33,7 @@ namespace infinit
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] =
-        std::string("transaction accepted");
+        std::string("accepted");
       data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
 
       this->_send(this->_transaction_dest, data);
@@ -46,7 +46,7 @@ namespace infinit
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] =
-        std::string("transaction connected");
+        std::string("connected");
       data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
       data[this->_key_str(JSONKey::connection_method)] = connection_method;
 
@@ -63,7 +63,7 @@ namespace infinit
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] =
-        std::string("transaction created");
+        std::string("created");
       data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
       data[this->_key_str(JSONKey::sender_id)] = sender_id;
       data[this->_key_str(JSONKey::recipient_id)] = recipient_id;
@@ -82,7 +82,7 @@ namespace infinit
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] =
-        std::string("transaction ended");
+        std::string("ended");
       data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
       data[this->_key_str(JSONKey::how_ended)] =
         this->_transaction_status_str(status);
@@ -97,7 +97,7 @@ namespace infinit
     JSONReporter::_user_favorite(std::string const& user_id)
     {
       elle::json::Object data;
-      data[this->_key_str(JSONKey::event)] = std::string("user favorite");
+      data[this->_key_str(JSONKey::event)] = std::string("app/favorite");
       data[this->_key_str(JSONKey::who)] = user_id;
 
       this->_send(this->_user_dest, data);
@@ -107,7 +107,7 @@ namespace infinit
     JSONReporter::_user_login(bool success, std::string const& info)
     {
       elle::json::Object data;
-      data[this->_key_str(JSONKey::event)] = std::string("user login");
+      data[this->_key_str(JSONKey::event)] = std::string("app/login");
       data[this->_key_str(JSONKey::status)] = this->_status_string(success);
       if (!success)
         data[this->_key_str(JSONKey::fail_reason)] = info;
@@ -119,7 +119,7 @@ namespace infinit
     JSONReporter::_user_logout(bool success, std::string const& info)
     {
       elle::json::Object data;
-      data[this->_key_str(JSONKey::event)] = std::string("user logout");
+      data[this->_key_str(JSONKey::event)] = std::string("app/logout");
       data[this->_key_str(JSONKey::status)] = this->_status_string(success);
       if (!success)
         data[this->_key_str(JSONKey::fail_reason)] = info;
@@ -131,7 +131,7 @@ namespace infinit
     JSONReporter::_user_unfavorite(std::string const& user_id)
     {
       elle::json::Object data;
-      data[this->_key_str(JSONKey::event)] = std::string("user unfavorite");
+      data[this->_key_str(JSONKey::event)] = std::string("app/unfavorite");
       data[this->_key_str(JSONKey::who)] = user_id;
 
       this->_send(this->_user_dest, data);
@@ -141,7 +141,7 @@ namespace infinit
     JSONReporter::_user_heartbeat()
     {
       elle::json::Object data;
-      data[this->_key_str(JSONKey::event)] = std::string("user heartbeat");
+      data[this->_key_str(JSONKey::event)] = std::string("app/heartbeat");
 
       this->_send(this->_user_dest, data);
     }
