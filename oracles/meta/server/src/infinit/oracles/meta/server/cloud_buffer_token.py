@@ -271,7 +271,7 @@ def generate_get_url(bucket_name, transaction_id, file_path):
   """ Generate a GET URL that can access relative 'file_path' in bucket
       using the federated token we produced
   """
-  expires = int(time.time()) + 36 * 60 * 60
+  expires = int(time.time()) + 15 * 24 * 60 * 60
   string_to_sign = 'GET\n\n\n%s\n/%s/%s/%s' % (
     expires, bucket_name, transaction_id, file_path)
   signature = hmac.new(CloudBufferToken.aws_secret.encode('ascii'),
