@@ -31,7 +31,6 @@ from . import transaction
 from . import trophonius
 from . import user
 from . import waterfall
-from .version import Version
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.Meta'
 
@@ -277,7 +276,7 @@ class Meta(bottle.Bottle,
       import re
       # Before 0.8.11, user agent was empty.
       if len(self.user_agent) == 0:
-        return Version(0, 8, 10)
+        return (0, 8, 10)
       # Try to distinguish browser user agent from meta client.
       # This assume that python re will take the complete subminor and not stop
       # at first digit found.
@@ -287,9 +286,9 @@ class Meta(bottle.Bottle,
         elle.log.debug('can\'t extract version from user agent %s' %
                        self.user_agent)
         # Web.
-        return Version(0, 0, 0)
+        return (0, 0, 0)
       else:
         version = res.group().split('/')[1].split('.')
         elle.log.debug('got version from user agent: %s' %
                        self.user_agent)
-        return Version(int(version[0]), int(version[1]), int(version[2]))
+        return (int(version[0]), int(version[1]), int(version[2]))

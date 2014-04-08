@@ -11,7 +11,6 @@ from . import regexp, error, transaction_status, notifier, invitation, cloud_buf
 import uuid
 import re
 from pymongo import ASCENDING, DESCENDING
-from .version import Version
 
 from infinit.oracles.meta.server.utils import json_value
 
@@ -174,7 +173,7 @@ class Mixin:
       if not peer_email:
         peer_email = recipient['email']
 
-      cloud_capable = self.user_version >= Version(0, 8, 11)
+      cloud_capable = self.user_version >= (0, 8, 11)
       #FIXME : send invite email if initiator version will not attempt
       # ghost cloud upload
       if new_user and not cloud_capable:
