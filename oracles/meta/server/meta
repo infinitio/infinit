@@ -21,6 +21,10 @@ import elle.log
 import optparse
 usage = "usage: %prog [options]"
 parser = optparse.OptionParser(usage = usage)
+parser.add_option('--debug',
+                  action = 'store_true',
+                  help = 'enable debug (stacktraces on exceptions)',
+                  default = False)
 parser.add_option('--force-admin',
                   action = 'store_true',
                   help = 'run all requests in admin mode',
@@ -54,6 +58,7 @@ parser.add_option('--mongo-port',
 options, args = parser.parse_args()
 
 app = infinit.oracles.meta.server.Meta(
+  debug = options.debug,
   force_admin = options.force_admin,
   enable_emails = options.enable_emails,
   mongo_port = options.mongo_port,

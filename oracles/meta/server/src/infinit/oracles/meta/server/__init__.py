@@ -53,6 +53,7 @@ class Meta(bottle.Bottle,
                unconfirmed_email_leeway = 604800, # in sec, 7 days.
                daily_summary_hour = 18,
                force_admin = False,
+               debug = False,
                ):
     import os
     system_logger = os.getenv("META_LOG_SYSTEM")
@@ -71,7 +72,8 @@ class Meta(bottle.Bottle,
                       (self, mongo_host, mongo_port)):
       self.__database = pymongo.MongoClient(**db_args).meta
       self.__set_constraints()
-    self.catchall = False
+    self.catchall = debug
+    bottle.debug(debug)
     # Plugins.
     self.install(FailurePlugin())
     self.__sessions = SessionPlugin(self.__database, 'sessions')
