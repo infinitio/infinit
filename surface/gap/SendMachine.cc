@@ -784,16 +784,11 @@ namespace surface
          _fetch_peer_key(false);
 
         if (this->_frete->count())
-        { // Reloaded from snapshot, validate it
-          if (this->_files.size() != this->_frete->count())
-          {
-            ELLE_ERR("%s: snapshot data mismatch: count %s vs %s",
-                     *this,
-                     this->_frete->count(),
-                     this->_files.size()
-                     );
-            throw elle::Exception("invalid transfer data");
-          }
+        { // Reloaded from snapshot
+          //... not much to validate here, use previously snapshoted
+          // directory content
+          // We could recreate a 2nd frete, reperforming the add task,
+          // and compare the resulting effective file lists.
         }
         else
         { // No snapshot yet, fill file list
