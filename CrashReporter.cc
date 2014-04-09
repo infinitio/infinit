@@ -358,7 +358,7 @@ namespace elle
                                       port);
       elle::filesystem::TemporaryDirectory tmp;
       boost::filesystem::path destination(tmp.path() / "report.tar.bz2");
-      boost::filesystem::path infinit_home_path();
+      boost::filesystem::path infinit_home_path;
       elle::archive::archive(elle::archive::Format::tar_gzip,
                              {common::infinit::home()},
                              destination);
@@ -382,7 +382,7 @@ namespace elle
                                       port);
       elle::filesystem::TemporaryDirectory tmp;
       boost::filesystem::path destination(tmp.path() / "report.tar.bz2");
-      boost::filesystem::path infinit_home_path();
+      boost::filesystem::path infinit_home_path;
       elle::archive::archive(elle::archive::Format::tar_gzip,
                              {user_file, common::infinit::home()},
                              destination);
