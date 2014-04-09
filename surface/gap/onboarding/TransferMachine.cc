@@ -1,4 +1,6 @@
-#define BOOST_NO_CXX11_SCOPED_ENUMS
+#ifndef INFINIT_MACOSX
+# define BOOST_NO_CXX11_SCOPED_ENUMS
+#endif
 #include <elle/log.hh>
 
 #include <surface/gap/onboarding/TransferMachine.hh>
