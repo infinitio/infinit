@@ -619,7 +619,7 @@ namespace surface
     void
     SendMachine::_cloud_operation()
     {
-      if (elle::os::getenv("INFINIT_CLOUD_BUFFERING", "").empty())
+      if (elle::os::getenv("INFINIT_NO_CLOUD_BUFFERING", "").empty())
       {
         ELLE_DEBUG("%s: cloud buffering disabled by configuration", *this);
         return;
@@ -639,15 +639,19 @@ namespace surface
         auto& file = snapshot.file(file_id);
         files.push_back(std::make_pair(file.path(), file.size()));
       }
-      bool cloud_debug = !elle::os::getenv("INFINIT_CLOUD_FILEBUFFERER", "").empty();
+      bool cloud_debug =
+        !elle::os::getenv("INFINIT_CLOUD_FILEBUFFERER", "").empty();
       std::unique_ptr<TransferBufferer> bufferer;
       if (cloud_debug)
-        bufferer.reset(new FilesystemTransferBufferer(*this->data(),
-                                                      "/tmp/infinit-buffering",
-                                                      snapshot.count(),
-                                                      snapshot.total_size(),
-                                                      files,
-                                                      frete.key_code()));
+      {
+        bufferer.reset(
+          new FilesystemTransferBufferer(*this->data(),
+                                         "/tmp/infinit-buffering",
+                                         snapshot.count(),
+                                         snapshot.total_size(),
+                                         files,
+                                         frete.key_code()));
+      }
       else
       {
         auto& meta = this->state().meta();
@@ -667,7 +671,8 @@ namespace surface
       /* Pipelined cloud upload with periodic local snapshot update
       */
       int num_threads = 8;
-      std::string snum_threads = elle::os::getenv("INFINIT_NUM_CLOUD_UPLOAD_THREAD", "");
+      std::string snum_threads =
+        elle::os::getenv("INFINIT_NUM_CLOUD_UPLOAD_THREAD", "");
       if (!snum_threads.empty())
         num_threads = boost::lexical_cast<int>(snum_threads);
       typedef frete::Frete::FileSize FileSize;

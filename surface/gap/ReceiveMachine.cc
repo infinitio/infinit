@@ -436,7 +436,7 @@ namespace surface
     void
     ReceiveMachine::_cloud_operation()
     {
-      if (elle::os::getenv("INFINIT_CLOUD_BUFFERING", "").empty())
+      if (elle::os::getenv("INFINIT_NO_CLOUD_BUFFERING", "").empty())
       {
         ELLE_DEBUG("%s: cloud buffering disabled by configuration", *this);
         return;
@@ -444,10 +444,14 @@ namespace surface
       try
       {
         ELLE_DEBUG("%s: create cloud bufferer", *this);
-        bool cloud_debug = !elle::os::getenv("INFINIT_CLOUD_FILEBUFFERER", "").empty();
+        bool cloud_debug =
+          !elle::os::getenv("INFINIT_CLOUD_FILEBUFFERER", "").empty();
         if (cloud_debug)
-          _bufferer.reset(new FilesystemTransferBufferer(*this->data(),
-                                                        "/tmp/infinit-buffering"));
+        {
+          _bufferer.reset(
+            new FilesystemTransferBufferer(*this->data(),
+                                           "/tmp/infinit-buffering"));
+        }
         else
         {
          auto& meta = this->state().meta();
