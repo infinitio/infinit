@@ -53,7 +53,7 @@ namespace surface
           common::infinit::transaction_snapshots_directory(state.me().id) /
           boost::filesystem::unique_path()).string()),
       _id(id),
-      _machine(),
+      _machine(elle::sprintf("transaction (%s) fsm", id)),
       _machine_thread(),
       _current_state(State::None),
       _state_changed("state changed"),

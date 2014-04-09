@@ -28,7 +28,7 @@ namespace surface
 
     Transferer::Transferer(TransactionMachine& owner):
       _owner(owner),
-      _fsm(),
+      _fsm(elle::sprintf("transfer (%s) fsm", owner.id())),
       _peer_online("peer online"),
       _peer_offline("peer offline"),
       _peer_reachable("peer reachable"),
