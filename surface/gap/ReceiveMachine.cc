@@ -912,7 +912,7 @@ namespace surface
           if (peer_version < elle::Version(0, 8, 7))
             source.set_progress(this->_snapshot->progress());
           // Write snapshot state to file
-          ELLE_TRACE("%s: write down snapshot", *this)
+          ELLE_DEBUG("%s: write down snapshot", *this)
           {
             ELLE_DUMP("%s: snapshot: %s", *this, *this->_snapshot);
             this->_save_transfer_snapshot();
