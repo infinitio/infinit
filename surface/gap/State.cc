@@ -349,8 +349,8 @@ namespace surface
               {
                 while (true)
                 {
+                  reactor::sleep(360_min);
                   this->_metrics_reporter->user_heartbeat();
-                  reactor::sleep(60_min);
                 }
               }});
 
