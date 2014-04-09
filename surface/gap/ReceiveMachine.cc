@@ -454,14 +454,17 @@ namespace surface
         }
         else
         {
-         auto& meta = this->state().meta();
-         auto token = meta.get_cloud_buffer_token(this->transaction_id());
-         auto credentials = aws::Credentials(token.access_key_id,
-                                             token.secret_access_key,
-                                             token.session_token,
-                                             token.expiration);
+          auto get_credentials = [this]()
+          {
+            auto& meta = this->state().meta();
+            auto token = meta.get_cloud_buffer_token(this->transaction_id());
+            return aws::Credentials(token.access_key_id,
+                                    token.secret_access_key,
+                                    token.session_token,
+                                    token.expiration);
+          };
          _bufferer.reset(new S3TransferBufferer(*this->data(),
-                                               credentials));
+                                               get_credentials));
         }
         ELLE_DEBUG("%s: download from the cloud", *this)
           this->get(*_bufferer);
