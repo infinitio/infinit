@@ -159,6 +159,10 @@ namespace surface
 
       bool
       final() const;
+    private:
+      gap_TransactionStatus
+      _transaction_status(Transaction::Data const& data,
+                          TransactionMachine::State state) const;
 
       /*----------.
       | Printable |

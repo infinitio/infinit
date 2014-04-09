@@ -20,10 +20,9 @@ namespace surface
       status(status)
     {}
 
-    static
     gap_TransactionStatus
-    _transaction_status(Transaction::Data const& data,
-                        TransactionMachine::State state)
+    Transaction::_transaction_status(Transaction::Data const& data,
+                                     TransactionMachine::State state) const
     {
       switch (data.status)
       {
@@ -51,8 +50,13 @@ namespace surface
               return gap_transaction_waiting_accept;
             case TransactionMachine::State::PeerDisconnected:
             case TransactionMachine::State::PublishInterfaces:
-            case TransactionMachine::State::Connect:
             case TransactionMachine::State::PeerConnectionLost:
+              // If the progress is full but the transaction is not finished
+              // yet, it must be cloud buffered.
+              if (this->progress() == 1)
+                return gap_transaction_cloud_buffered;
+              return gap_transaction_connecting;
+            case TransactionMachine::State::Connect:
             case TransactionMachine::State::CloudSynchronize:
               return gap_transaction_connecting;
             case TransactionMachine::State::DataExhausted:
@@ -211,7 +215,7 @@ namespace surface
 
         current.wait(this->_machine->state_changed());
         if (this->last_status(
-              _transaction_status(
+              this->_transaction_status(
                 *this->data(),
                 this->_machine->current_state())))
           state.enqueue(Notification(this->id(), this->last_status()));
@@ -295,8 +299,8 @@ namespace surface
     Transaction::last_status() const
     {
       if (this->_last_status == gap_TransactionStatus(-1))
-        return _transaction_status(*this->data(),
-                                   TransactionMachine::State::None);
+        return this->_transaction_status(*this->data(),
+                                         TransactionMachine::State::None);
       return this->_last_status;
     }
 
