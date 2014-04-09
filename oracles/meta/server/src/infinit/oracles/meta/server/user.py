@@ -316,7 +316,9 @@ class Mixin:
           subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS['confirm-sign-up'],
           merge_vars = {
             user['email']: {
-              'hash': str(hash)
+              'hash': str(hash),
+              'fullname': user['fullname'],
+              'user_id': str(user['_id']),
             }}
         )
 
@@ -370,7 +372,9 @@ class Mixin:
           subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS['reconfirm-sign-up'],
           merge_vars = {
             user['email']: {
-              'hash': user['email_confirmation_hash']
+              'hash': user['email_confirmation_hash'],
+              'fullname': user['fullname'],
+              'user_id': str(user['_id']),
             }}
         )
         return self.success()
