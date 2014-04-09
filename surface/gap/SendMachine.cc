@@ -738,6 +738,9 @@ namespace surface
             save_snapshot = true;
           }
         }
+        // acknowledge last block and save snapshot
+        frete.encrypted_read_acknowledge(0, 0, 0, this->frete().full_size());
+        this->_save_transfer_snapshot();
       };
       elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
