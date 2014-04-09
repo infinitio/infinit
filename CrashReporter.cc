@@ -8,6 +8,8 @@
 #include <boost/filesystem.hpp>
 #include <boost/system/error_code.hpp>
 
+#include <elle/archive/archive.hh>
+#include <elle/filesystem/TemporaryDirectory.hh>
 #include <elle/json/json.hh>
 #include <elle/format/base64.hh>
 #include <elle/format/gzip.hh>
@@ -295,88 +297,52 @@ namespace elle
       sched.run();
     }
 
-  static
-  std::string
-  _to_base64(boost::filesystem::path const& source)
-  {
-    ELLE_TRACE_SCOPE("turn %s to base 64", source.string());
-    std::stringstream base64;
-    // Scope to flush Stream(s).
+    static
+    std::string
+    _to_base64(boost::filesystem::path const& source)
     {
-#ifndef INFINIT_WINDOWS
-      elle::format::base64::Stream encoder(base64);
-#else
-      elle::format::base64::Stream base64encoder(base64);
-      elle::format::gzip::Stream encoder(base64encoder, true);
-#endif
-      boost::filesystem::ifstream source_stream(source, std::ios::binary);
-      std::copy(std::istreambuf_iterator<char>(source_stream),
-                std::istreambuf_iterator<char>(),
-                std::ostreambuf_iterator<char>(encoder));
-    }
-    return base64.str();
-  }
-
-#ifndef INFINIT_WINDOWS
-  static
-  std::string
-  _to_base64(boost::filesystem::path const& archive_path,
-             std::list<std::string> const& args)
-  {
-    elle::system::Process tar{"tar", args};
-    tar.wait();
-
-    return _to_base64(archive_path);
-  }
-#endif
-
-  void
-  existing_report(std::string const& protocol,
-                  std::string const& host,
-                  uint16_t port,
-                  std::vector<std::string> const& files,
-                  std::string const& user_name,
-                  std::string const& os_description,
-                  std::string const& info)
-  {
-    ELLE_TRACE("report last crash");
-    std::string url = elle::sprintf("%s://%s:%d/debug/report/backtrace",
-                                    protocol,
-                                    host,
-                                    port);
-
-#ifndef INFINIT_WINDOWS
-    boost::filesystem::path destination{"/tmp/infinit-crash-archive"};
-
-    std::list<std::string> args{"cjf", destination.string()};
-
-    for (auto path_str: files)
-    {
-      boost::filesystem::path path(path_str);
-      if (boost::filesystem::exists(path))
+      ELLE_TRACE_SCOPE("turn %s to base 64", source.string());
+      std::stringstream base64;
+      // Scope to flush Stream(s).
       {
-        args.push_back("-C");
-        args.push_back(path.parent_path().string());
-        args.push_back(path.filename().string());
+        elle::format::base64::Stream encoder(base64);
+        boost::filesystem::ifstream source_stream(source, std::ios::binary);
+        std::copy(std::istreambuf_iterator<char>(source_stream),
+                  std::istreambuf_iterator<char>(),
+                  std::ostreambuf_iterator<char>(encoder));
       }
+      return base64.str();
     }
 
-    _send_report(
-      url, user_name, os_description, "", _to_base64(destination, args));
-#else
-    auto path_str = files[0];
-    if (files.size() > 1)
-      ELLE_WARN("CrashReporter: only 1 file (%s) can be sent from windows",
-                path_str);
-    boost::filesystem::path path(path_str);
-    if (!boost::filesystem::exists(path))
+    void
+    existing_report(std::string const& protocol,
+                    std::string const& host,
+                    uint16_t port,
+                    std::vector<std::string> const& files,
+                    std::string const& user_name,
+                    std::string const& os_description,
+                    std::string const& info)
     {
-      ELLE_ERR("CrashReporter: file to report (%s) doesn't exist", path_str);
-      return;
+      ELLE_TRACE("report last crash");
+      std::string url = elle::sprintf("%s://%s:%d/debug/report/backtrace",
+                                      protocol,
+                                      host,
+                                      port);
+      elle::filesystem::TemporaryDirectory tmp;
+      boost::filesystem::path destination(tmp.path() / "report.tar.bz2");
+      std::vector<boost::filesystem::path> archived;
+      for (auto path_str: files)
+      {
+        boost::filesystem::path path(path_str);
+        if (boost::filesystem::exists(path))
+          archived.push_back(path);
+      }
+      elle::archive::archive(elle::archive::Format::tar_gzip,
+                             archived,
+                             destination);
+      _send_report(url, user_name, os_description, "",
+                   _to_base64(destination));
     }
-    _send_report(url, user_name, os_description, "", _to_base64(path));
-#endif
-  }
 
     void
     transfer_failed_report(std::string const& user_name)
@@ -390,26 +356,14 @@ namespace elle
                                       protocol,
                                       host,
                                       port);
-#ifndef INFINIT_WINDOWS
-      boost::filesystem::path destination{"/tmp/infinit-report-transaction"};
-      boost::filesystem::path infinit_home_path(common::infinit::home());
-
-      std::list<std::string> args{"cjf", destination.string()};
-      if (boost::filesystem::exists(infinit_home_path))
-      {
-        args.push_back("-C");
-        args.push_back(infinit_home_path.parent_path().string());
-        args.push_back(infinit_home_path.filename().string());
-      }
-
+      elle::filesystem::TemporaryDirectory tmp;
+      boost::filesystem::path destination(tmp.path() / "report.tar.bz2");
+      boost::filesystem::path infinit_home_path();
+      elle::archive::archive(elle::archive::Format::tar_gzip,
+                             {common::infinit::home()},
+                             destination);
       _send_report(url, user_name, os_description, "",
-                   _to_base64(destination, args));
-#else
-      auto log_file = elle::os::getenv("INFINIT_LOG_FILE",
-                                       elle::os::getenv("ELLE_LOG_FILE", ""));
-      if (!log_file.empty())
-        _send_report(url, user_name, os_description, "", _to_base64(log_file));
-#endif
+                   _to_base64(destination));
     }
 
     void
@@ -426,39 +380,14 @@ namespace elle
                                       protocol,
                                       host,
                                       port);
-#ifndef INFINIT_WINDOWS
-
-      boost::filesystem::path destination{"/tmp/infinit-report-user"};
-      boost::filesystem::path user_file_path(user_file);
-      boost::filesystem::path infinit_home_path(common::infinit::home());
-
-      std::list<std::string> args{"cjf", destination.string()};
-      for (auto path: {user_file_path, infinit_home_path})
-      {
-        if (boost::filesystem::exists(path))
-        {
-          args.push_back("-C");
-          args.push_back(path.parent_path().string());
-          args.push_back(path.filename().string());
-        }
-      }
-
+      elle::filesystem::TemporaryDirectory tmp;
+      boost::filesystem::path destination(tmp.path() / "report.tar.bz2");
+      boost::filesystem::path infinit_home_path();
+      elle::archive::archive(elle::archive::Format::tar_gzip,
+                             {user_file, common::infinit::home()},
+                             destination);
       _send_report(url, user_name, os_description, message,
-                   _to_base64(destination, args));
-#else
-      boost::filesystem::path to_send(user_file);
-      if (boost::filesystem::exists(to_send) &&
-          !boost::filesystem::is_directory(to_send))
-      {
-        ELLE_DEBUG("send report")
-          _send_report(
-            url, user_name, os_description, message, _to_base64(to_send));
-      }
-      else
-      {
-        ELLE_ERR("CrashReporter: file doesn't exist or is a directory");
-      }
-#endif
+                   _to_base64(destination));
     }
   }
 }
