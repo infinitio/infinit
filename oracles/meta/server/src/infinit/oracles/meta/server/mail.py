@@ -87,7 +87,7 @@ class Mailer():
            to,
            subject,
            body,
-           fr = 'Infinit <no-reply@infinit.io>',
+           fr = 'Infinit <contact@infinit.io>',
            reply_to = None,
            attachment = None):
     message = self.build_message(to = to,
@@ -103,7 +103,7 @@ class Mailer():
                     to,
                     template_name,
                     subject,
-                    fr = 'Infinit <no-reply@infinit.io>',
+                    fr = 'Infinit <contact@infinit.io>',
                     reply_to = None,
                     attachment = None,
                     encoding = 'utf-8',

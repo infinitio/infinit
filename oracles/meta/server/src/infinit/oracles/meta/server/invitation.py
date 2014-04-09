@@ -56,7 +56,7 @@ class Invitation:
 def invite_user(email,
                 mailer,
                 send_email = True,
-                source = ('Infinit', 'no-reply@infinit.io'),
+                source = ('Infinit', 'contact@infinit.io'),
                 mail_template = 'send-invitation-no-file',
                 database = None,
                 merge_vars = None):
