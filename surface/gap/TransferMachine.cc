@@ -82,6 +82,11 @@ namespace surface
       // first thing is cloud sync, and only when done do we publis ifaces
       this->_fsm.transition_add(
         cloud_synchronize_state,
+        stopped_state,
+        reactor::Waitables{&owner.finished()}
+        );
+      this->_fsm.transition_add(
+        cloud_synchronize_state,
         publish_interfaces_state);
       // Publish and wait for connection.
       this->_fsm.transition_add(
