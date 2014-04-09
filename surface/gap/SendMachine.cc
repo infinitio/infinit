@@ -388,6 +388,8 @@ namespace surface
     SendMachine::_transfer_operation(frete::RPCFrete& frete)
     {
       _fetch_peer_key(true);
+      // save snapshot to get correct filepaths
+      this->frete().save_snapshot();
       ELLE_TRACE_SCOPE("%s: transfer operation", *this);
       elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
