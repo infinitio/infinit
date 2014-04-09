@@ -162,7 +162,7 @@ namespace infinit
       version["subminor"] = INFINIT_VERSION_SUBMINOR;
       elle::json::Object infinit;
       infinit["version"] = std::move(version);
-      infinit["os"] =
+      infinit["os"] = std::string(
 #ifdef INFINIT_LINUX
         "Linux"
 #elif defined(INFINIT_MACOSX)
@@ -172,7 +172,7 @@ namespace infinit
 #else
 # error "machine not supported"
 #endif
-         ;
+         );
       data["infinit"] = std::move(infinit);
       try
       {
