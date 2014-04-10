@@ -502,6 +502,7 @@ namespace surface
         // send us notifications and wake us up
         ELLE_WARN("%s: cloud download exception, exiting cloud state: %s",
                   *this, e.what());
+        this->current_state(TransactionMachine::State::DataExhausted);
       }
     }
 
