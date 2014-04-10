@@ -269,9 +269,9 @@ namespace elle
         reactor::DurationOpt(300_sec),
           reactor::http::Version(reactor::http::Version::v10)};
 
-      reactor::Scheduler sched;
+      auto sched = reactor::Scheduler::scheduler();
       reactor::Thread thread(
-        sched, "upload report",
+        *sched, "upload report",
         [&]
         {
           try
@@ -294,7 +294,7 @@ namespace elle
             ELLE_ERR("unable to post report to %s", url);
           }
         });
-      sched.run();
+      sched->run();
     }
 
     static
