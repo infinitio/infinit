@@ -186,6 +186,7 @@ namespace surface
       {
         ELLE_ERR("%s: something went wrong while transfering: %s",
                  *this, elle::exception_string());
+        throw;
       }
 
       if (this->_failed.opened())
