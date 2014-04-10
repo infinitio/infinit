@@ -129,19 +129,27 @@ int main(int argc, char** argv)
         state.attach_callback<surface::gap::Transaction::Notification>(
           [&] (surface::gap::Transaction::Notification const& notif)
           {
-            ELLE_TRACE_SCOPE("transaction notification: %s", notif);
-            auto& tr = state.transactions().at(notif.id);
-            if (tr->data()->recipient_id != state.me().id)
-              return;
-            if (notif.status == gap_transaction_waiting_accept)
+            try
             {
-              ELLE_LOG("accept transaction %s", notif.id);
-              state.transactions().at(notif.id)->accept();
+              ELLE_TRACE_SCOPE("transaction notification: %s", notif);
+              auto& tr = state.transactions().at(notif.id);
+              if (tr->data()->recipient_id != state.me().id)
+                return;
+              if (notif.status == gap_transaction_waiting_accept)
+              {
+                ELLE_LOG("accept transaction %s", notif.id);
+                state.transactions().at(notif.id)->accept();
+              }
+              else if (notif.status == gap_transaction_finished)
+              {
+                ELLE_LOG("transaction %s finished", notif.id);
+                state.transactions().at(notif.id)->join();
+              }
             }
-            else if (notif.status == gap_transaction_finished)
+            catch(...)
             {
-              ELLE_LOG("transaction %s finished", notif.id);
-              state.transactions().at(notif.id)->join();
+              ELLE_WARN("Exception while processing notification: %s",
+                elle::exception_string());
             }
 
           });
