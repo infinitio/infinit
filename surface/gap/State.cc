@@ -723,8 +723,15 @@ namespace surface
 
           try
           {
+            // If we reconnected, all our running transactions have been
+            // invalidated.
+            ELLE_LOG("Clearing all transactions...");
+            this->_transactions_clear();
+            ELLE_LOG("Syncing users...");
             this->_user_resync();
+            ELLE_LOG("Syncing transactions...");
             this->_transaction_resync();
+            ELLE_LOG("Resynchronized");
             resynched = true;
           }
           catch (reactor::Terminate const&)
