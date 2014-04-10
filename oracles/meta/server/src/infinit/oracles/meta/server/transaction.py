@@ -433,7 +433,7 @@ class Mixin:
       if transaction['status'] == status:
         raise error.Error(
           error.TRANSACTION_ALREADY_HAS_THIS_STATUS,
-          "Cannont change status from %s to %s (same status)." % (transaction['status'], status))
+          "Can't change status from %s to %s (same status)." % (transaction['status'], status))
 
       if transaction['status'] in transaction_status.final:
         raise error.Error(
