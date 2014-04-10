@@ -163,6 +163,9 @@ namespace frete
   {
     if (this->_transfer_snapshot->total_size() == 0)
       return 0.0f;
+    ELLE_DUMP("Frete progress(): %s / %s",
+              this->_transfer_snapshot->progress(),
+              this->_transfer_snapshot->total_size());
     return this->_transfer_snapshot->progress() /
            (float) this->_transfer_snapshot->total_size();
   }
