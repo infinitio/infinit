@@ -39,20 +39,28 @@ namespace surface
         _s3_handler(this->_bucket_name, this->_remote_folder,
                     this->_credentials)
     {
-      // Fetch transfer meta-data from cloud.
-      elle::Buffer buf = this->_s3_handler.get_object("meta_data");
-      elle::InputStreamBuffer<elle::Buffer> buffer(buf);
-      std::istream stream(&buffer);
-      auto meta_data =
-        boost::any_cast<elle::json::Object>(elle::json::read(stream));
-      this->_count = boost::any_cast<int64_t>(meta_data["count"]);
-      this->_full_size = boost::any_cast<int64_t>(meta_data["full_size"]);
-      elle::serialize::from_string(elle::format::base64::decode(
-        boost::any_cast<std::string>(
-          meta_data["files"])).string()) >> this->_files;
-      elle::serialize::from_string(elle::format::base64::decode(
-        boost::any_cast<std::string>(
-          meta_data["key_code"])).string()) >> this->_key_code;
+      try
+      {
+        // Fetch transfer meta-data from cloud.
+        elle::Buffer buf = this->_s3_handler.get_object("meta_data");
+        elle::InputStreamBuffer<elle::Buffer> buffer(buf);
+        std::istream stream(&buffer);
+        auto meta_data =
+          boost::any_cast<elle::json::Object>(elle::json::read(stream));
+        this->_count = boost::any_cast<int64_t>(meta_data["count"]);
+        this->_full_size = boost::any_cast<int64_t>(meta_data["full_size"]);
+        elle::serialize::from_string(elle::format::base64::decode(
+          boost::any_cast<std::string>(
+            meta_data["files"])).string()) >> this->_files;
+        elle::serialize::from_string(elle::format::base64::decode(
+          boost::any_cast<std::string>(
+            meta_data["key_code"])).string()) >> this->_key_code;
+      }
+      catch (aws::FileNotFound const& e)
+      {
+        ELLE_LOG("%s: file not found for aws block meta-data", *this);
+        throw DataExhausted();
+      }
     }
 
     // Sender.
