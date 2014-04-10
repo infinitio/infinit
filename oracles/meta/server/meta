@@ -37,6 +37,10 @@ parser.add_option('--unconfirmed-email-leeway',
                   action = 'store',
                   help = 'The duration (in sec) an unconfirmed email can be used',
                   default = 604800)
+parser.add_option('--email-confirmation-cooldown',
+                  action = 'store',
+                  help = 'The cooldown (in sec) between confirmation emails',
+                  default = 600)
 parser.add_option('--daily-summary-hour',
                   action = 'store',
                   help = 'The hour of the day in utc to send the daily summary',
@@ -63,7 +67,8 @@ app = infinit.oracles.meta.server.Meta(
   enable_emails = options.enable_emails,
   mongo_port = options.mongo_port,
   unconfirmed_email_leeway = options.unconfirmed_email_leeway,
-  daily_summary_hour = options.daily_summary_hour)
+  daily_summary_hour = options.daily_summary_hour,
+  email_confirmation_cooldown = options.email_confirmation_cooldown)
 
 app.port = 0
 

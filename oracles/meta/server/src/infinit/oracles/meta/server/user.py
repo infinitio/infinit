@@ -94,6 +94,7 @@ class Mixin:
     if not user.get('email_confirmed', True):
       from time import time
       if time() > user['unconfirmed_email_deadline']:
+        self.resend_confirmation_email(email)
         self.fail(error.EMAIL_NOT_CONFIRMED)
     return user
 
@@ -366,17 +367,24 @@ class Mixin:
             error.EMAIL_ALREADY_CONFIRMED,
           )
         assert user.get('email_confirmation_hash') is not None
-        self.mailer.send_template(
-          to = user['email'],
-          template_name = 'reconfirm-sign-up',
-          subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS['reconfirm-sign-up'],
-          merge_vars = {
-            user['email']: {
-              'hash': user['email_confirmation_hash'],
-              'fullname': user['fullname'],
-              'user_id': str(user['_id']),
-            }}
-        )
+        # XXX: Waiting for mandrill to put cooldown on mail.
+        res = self.database.users.find_and_modify(
+          {"email": email,
+           "$or": [{"last_email_confirmation": {"$lt": time.time() - self.email_confirmation_cooldown}},
+                   {"last_email_confirmation": {"$exists": False}}]},
+          {"$set": {"last_email_confirmation": time.time()}})
+        if res is not None:
+          self.mailer.send_template(
+            to = user['email'],
+            template_name = 'reconfirm-sign-up',
+            subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS['reconfirm-sign-up'],
+            merge_vars = {
+              user['email']: {
+                'hash': user['email_confirmation_hash'],
+                'fullname': user['fullname'],
+                'user_id': str(user['_id']),
+                }}
+            )
         return self.success()
       except error.Error as e:
         self.fail(*e.args)
@@ -397,7 +405,7 @@ class Mixin:
     user -- the user to validate.
     """
     if user is None:
-      raise Exception("user doesn't exist")
+      raise error.Error(error.UNKNOWN_USER)
 
   def _user_by_id(self, _id, ensure_existence = True):
     """Get a user using by id.

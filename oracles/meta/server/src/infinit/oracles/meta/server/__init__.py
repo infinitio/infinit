@@ -51,7 +51,8 @@ class Meta(bottle.Bottle,
                trophonius_expiration_time = 300, # in sec
                apertus_expiration_time = 300, # in sec
                unconfirmed_email_leeway = 604800, # in sec, 7 days.
-               daily_summary_hour = 18,
+               daily_summary_hour = 18, #in sec.
+               email_confirmation_cooldown = 600, # in sec.
                force_admin = False,
                debug = False,
                ):
@@ -105,6 +106,7 @@ class Meta(bottle.Bottle,
     self.apertus_expiration_time = int(apertus_expiration_time)
     self.unconfirmed_email_leeway = int(unconfirmed_email_leeway)
     self.daily_summary_hour = int(daily_summary_hour)
+    self.email_confirmation_cooldown = int(email_confirmation_cooldown)
     waterfall.Waterfall.__init__(self)
 
   def __set_constraints(self):

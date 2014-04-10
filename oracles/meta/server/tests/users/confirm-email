@@ -65,7 +65,7 @@ with Meta(enable_emails = True, unconfirmed_email_leeway = 0) as meta:
   u.login()
 
 # Reask hash.
-with Meta(enable_emails = True, unconfirmed_email_leeway = 0) as meta:
+with Meta(enable_emails = True, unconfirmed_email_leeway = 0, email_confirmation_cooldown = 1) as meta:
   email = 'foobar@infinit.io'
   fullname = 'jean louis'
   meta.mailer = MailService()
@@ -80,6 +80,19 @@ with Meta(enable_emails = True, unconfirmed_email_leeway = 0) as meta:
   res = u.post('login', u.login_paremeters)
   assert res['success'] == False
   assert res['error_code'] == error.EMAIL_NOT_CONFIRMED[0]
+
+  res = u.post('user/resend_confirmation_email/%s' % u.email)
+  assert res['success']
+  assert hasattr(meta.mailer, 'email_reconfirmation_hash')
+
+  meta.mailer = MailService()
+  # Cooldown.
+  res = u.post('user/resend_confirmation_email/%s' % u.email)
+  assert res['success']
+  assert not hasattr(meta.mailer, 'email_reconfirmation_hash')
+
+  from time import sleep
+  sleep(1)
 
   res = u.post('user/resend_confirmation_email/%s' % u.email)
   assert res['success']
