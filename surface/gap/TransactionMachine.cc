@@ -154,7 +154,8 @@ namespace surface
     void
     TransactionMachine::current_state(TransactionMachine::State const& state)
     {
-      ELLE_TRACE_SCOPE("%s: set new state to %s", *this, state);
+      ELLE_TRACE_SCOPE("%s: set new state to %s at progress %s", *this, state,
+                       this->progress());
       this->_current_state = state;
       this->_save_snapshot();
       this->_state_changed.signal();

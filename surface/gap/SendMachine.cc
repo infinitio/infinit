@@ -390,7 +390,8 @@ namespace surface
       _fetch_peer_key(true);
       // save snapshot to get correct filepaths
       this->frete().save_snapshot();
-      ELLE_TRACE_SCOPE("%s: transfer operation", *this);
+      ELLE_TRACE_SCOPE("%s: transfer operation, resuming at %s",
+                       *this, this->frete().progress());
       elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
         scope.run_background(
@@ -742,9 +743,6 @@ namespace surface
             save_snapshot = true;
           }
         }
-        // acknowledge last block and save snapshot
-        frete.encrypted_read_acknowledge(0, 0, 0, this->frete().full_size());
-        this->_save_transfer_snapshot();
       };
       elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
@@ -753,6 +751,8 @@ namespace surface
                                std::bind(pipeline_cloud_upload, i));
         scope.wait();
       };
+      // acknowledge last block and save snapshot
+      frete.encrypted_read_acknowledge(0, 0, 0, this->frete().full_size());
       this->_save_transfer_snapshot();
       this->current_state(State::CloudBuffered);
     }
