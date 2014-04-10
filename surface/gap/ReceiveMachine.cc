@@ -468,6 +468,9 @@ namespace surface
         }
         ELLE_DEBUG("%s: download from the cloud", *this)
           this->get(*_bufferer);
+        // We finished
+        ELLE_ASSERT_EQ(progress(), 1);
+        this->finished().open();
       }
       catch (TransferBufferer::DataExhausted const&)
       {
