@@ -383,9 +383,18 @@ namespace elle
       elle::filesystem::TemporaryDirectory tmp;
       boost::filesystem::path destination(tmp.path() / "report.tar.bz2");
       boost::filesystem::path infinit_home_path;
-      elle::archive::archive(elle::archive::Format::tar_gzip,
-                             {user_file, common::infinit::home()},
-                             destination);
+      if (user_file.size() == 0)
+      {
+        elle::archive::archive(elle::archive::Format::tar_gzip,
+                               {common::infinit::home()},
+                               destination);
+      }
+      else
+      {
+        elle::archive::archive(elle::archive::Format::tar_gzip,
+                               {user_file, common::infinit::home()},
+                               destination);
+      }
       _send_report(url, user_name, os_description, message,
                    _to_base64(destination));
     }
