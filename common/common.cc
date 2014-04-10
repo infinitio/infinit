@@ -288,6 +288,16 @@ namespace common
     }
 
     std::string
+    temporary_directory(std::string const& user_id,
+                        std::string const& transaction_id)
+    {
+      // WARNING
+      // code will assume it is safe to recursively delete this directory
+      // at transition cleanup time. It must be transition-specific.
+      return path::join(transactions_directory(user_id), transaction_id + ".tmp");
+    }
+
+    std::string
     identity_path(std::string const& user_id)
     {
       return path::join(
