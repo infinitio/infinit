@@ -273,7 +273,7 @@ namespace frete
 
     auto code = this->_impl->key()->encrypt(this->cleartext_read(f, start, size));
 
-    ELLE_DUMP("encrypted data: %s with buffer %x", code, code.buffer());
+    ELLE_DUMP("encrypted data: %x", code);
     return code;
   }
 
@@ -293,7 +293,7 @@ namespace frete
     */
     if (acknowledge > snapshot.progress())
       snapshot.progress_increment(acknowledge - snapshot.progress());
-    ELLE_DUMP("encrypted data: %s with buffer %x", code, code.buffer());
+    ELLE_DUMP("encrypted data: %x", code);
     return code;
   }
 
