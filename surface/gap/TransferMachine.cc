@@ -277,6 +277,21 @@ namespace surface
                   ELLE_ERR("%s: transfer failed", *this);
                   owner.failed().open();
                 });
+
+      this->_fsm.state_changed().connect(
+        [this] (reactor::fsm::State& state)
+        {
+          ELLE_LOG_COMPONENT("surface.gap.TransferMachine.State");
+          ELLE_TRACE("%s: entering %s", *this, state);
+        });
+
+      this->_fsm.transition_triggered().connect(
+        [this] (reactor::fsm::Transition& transition)
+        {
+          ELLE_LOG_COMPONENT("surface.gap.TransferMachine.Transition");
+          ELLE_TRACE("%s: %s triggered", *this, transition);
+        });
+
     }
 
     /*--------.

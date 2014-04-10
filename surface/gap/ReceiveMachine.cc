@@ -83,7 +83,7 @@ namespace surface
       _accept_state(
         this->_machine.state_make(
           "accept", std::bind(&ReceiveMachine::_accept, this))),
-      _accepted("accepted barrier"),
+      _accepted("accepted"),
       _snapshot_path(boost::filesystem::path(
                        common::infinit::frete_snapshot_path(
                          this->data()->recipient_id,
@@ -116,6 +116,20 @@ namespace surface
       this->_machine.transition_add_catch(_accept_state, _fail_state);
       this->_machine.transition_add_catch(_reject_state, _fail_state);
       this->_machine.transition_add_catch(_transfer_core_state, _fail_state);
+
+      this->_machine.state_changed().connect(
+        [this] (reactor::fsm::State& state)
+        {
+          ELLE_LOG_COMPONENT("surface.gap.ReceiveMachine.State");
+          ELLE_TRACE("%s: entering %s", *this, state);
+        });
+
+      this->_machine.transition_triggered().connect(
+        [this] (reactor::fsm::Transition& transition)
+        {
+          ELLE_LOG_COMPONENT("surface.gap.ReceiveMachine.Transition");
+          ELLE_TRACE("%s: %s triggered", *this, transition);
+        });
 
       try
       {

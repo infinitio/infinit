@@ -104,6 +104,20 @@ namespace surface
         this->_create_transaction_state, this->_fail_state);
       this->_machine.transition_add_catch(
         this->_wait_for_accept_state, this->_fail_state);
+
+      this->_machine.state_changed().connect(
+        [this] (reactor::fsm::State& state)
+        {
+          ELLE_LOG_COMPONENT("surface.gap.SendMachine.State");
+          ELLE_TRACE("%s: entering %s", *this, state);
+        });
+
+      this->_machine.transition_triggered().connect(
+        [this] (reactor::fsm::Transition& transition)
+        {
+          ELLE_LOG_COMPONENT("surface.gap.SendMachine.Transition");
+          ELLE_TRACE("%s: %s triggered", *this, transition);
+        });
     }
 
     SendMachine::~SendMachine()
