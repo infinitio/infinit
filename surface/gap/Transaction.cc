@@ -48,16 +48,16 @@ namespace surface
             case TransactionMachine::State::RecipientAccepted:
             case TransactionMachine::State::GhostCloudBufferingFinished:
               return gap_transaction_waiting_accept;
+            case TransactionMachine::State::CloudSynchronize:
+            case TransactionMachine::State::PeerConnectionLost:
             case TransactionMachine::State::PeerDisconnected:
             case TransactionMachine::State::PublishInterfaces:
-            case TransactionMachine::State::PeerConnectionLost:
               // If the progress is full but the transaction is not finished
               // yet, it must be cloud buffered.
               if (this->progress() == 1)
                 return gap_transaction_cloud_buffered;
               return gap_transaction_connecting;
             case TransactionMachine::State::Connect:
-            case TransactionMachine::State::CloudSynchronize:
               return gap_transaction_connecting;
             case TransactionMachine::State::DataExhausted:
               return gap_transaction_waiting_data;
