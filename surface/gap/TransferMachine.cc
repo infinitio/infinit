@@ -179,6 +179,14 @@ namespace surface
         connection_state,
         transfer_state,
         reactor::Waitables{&this->_peer_connected});
+      // In case network is lost abruptly, trophonius might get notified
+      // before us: we will recieve a peer-offline event before
+      // a disconnection on our p2p link.
+      this->_fsm.transition_add(
+        transfer_state,
+        connection_state,
+        reactor::Waitables{&this->_peer_offline},
+        true);
       this->_fsm.transition_add_catch_specific<
         reactor::network::Exception>(
         transfer_state,
