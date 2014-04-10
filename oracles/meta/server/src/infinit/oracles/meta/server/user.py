@@ -863,7 +863,7 @@ class Mixin:
     from bottle import Request
     return Request().url + 'user/%s/avatar' % str(id)
 
-  @api('/user/<id>/avatar')
+  @api('/user/<id>/avatar', date = '')
   def get_avatar(self,
                  id: bson.ObjectId):
     print(id)
