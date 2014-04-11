@@ -4,6 +4,7 @@ import bson
 import re
 import time
 import unicodedata
+import urllib.parse
 
 import elle.log
 from .utils import api, require_logged_in
@@ -379,6 +380,7 @@ class Mixin:
         merge_vars = {
           peer_email: {
             'file_url': ghost_get_url,
+            'file_url_urlencoded': urllib.parse.quote(ghost_get_url, ''),
             'filename': files[0],
             'sendername': user['fullname'],
             'ghost_id': str(recipient.get('_id')),
