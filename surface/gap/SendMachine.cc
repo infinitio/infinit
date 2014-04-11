@@ -465,8 +465,7 @@ namespace surface
         std::vector<boost::filesystem::path> sources(
           this->_files.begin(),
           this->_files.end());
-        auto tmpdir = common::infinit::temporary_directory(
-          this->data()->sender_id, transaction_id());
+        auto tmpdir = boost::filesystem::temp_directory_path() / transaction_id();
         boost::filesystem::create_directories(tmpdir);
         path archive_path = path(tmpdir) / archive_name;
         ELLE_DEBUG("%s: Archiving transfer files into %s", *this, archive_path);
@@ -859,12 +858,10 @@ namespace surface
       }
       this->frete().remove_snapshot();
       // clear temporary session directory
-      std::string uid = this->data()->sender_id;
       std::string tid = transaction_id();
       ELLE_ASSERT(!tid.empty());
       ELLE_ASSERT(tid.find('/') == tid.npos);
-      // Get transaction tmp dir
-      auto tmpdir = common::infinit::temporary_directory(uid, tid);
+      auto tmpdir = boost::filesystem::temp_directory_path() / tid;
       ELLE_LOG("%s: clearing temporary directory %s",
                *this, tmpdir);
       boost::filesystem::remove_all(tmpdir);

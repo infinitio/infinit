@@ -109,13 +109,6 @@ namespace common
     frete_snapshot_path(std::string const& user_id,
                         std::string const& transaction_id);
 
-    /// Returns a temporary directory suitable for creating files
-    /// linked with the lifetime of given transaction
-    /// Directory is unique to the transation and can be recursively deleted.
-    std::string
-    temporary_directory(std::string const& user_id,
-                        std::string const& transaction_id);
-
     /// The path to the identity file.
     std::string
     identity_path(std::string const& user_id);
