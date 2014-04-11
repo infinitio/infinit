@@ -92,6 +92,8 @@ namespace surface
                              Data&& data,
                              bool history):
       _id(id),
+      _sender(state.me().id == data.sender_id &&
+              state.device().id == data.sender_device_id),
       _data(new Data{std::move(data)}),
       _machine(),
       _last_status(gap_TransactionStatus(-1))
@@ -135,6 +137,8 @@ namespace surface
                              uint32_t id,
                              TransactionMachine::Snapshot snapshot):
       _id(id),
+      _sender(state.me().id == snapshot.data.sender_id &&
+              state.device().id == snapshot.data.sender_device_id),
       _data(new Data{std::move(snapshot.data)}),
       _machine(),
       _last_status(gap_TransactionStatus(-1))
@@ -178,6 +182,7 @@ namespace surface
                              std::unordered_set<std::string>&& files,
                              std::string const& message):
       _id(id),
+      _sender(true),
       _data(new Data{state.me().id, state.me().fullname, state.device().id}),
       _machine(new SendMachine{
           state, this->_id, peer_id, std::move(files), message, this->_data}),
