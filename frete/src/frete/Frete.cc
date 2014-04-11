@@ -5,6 +5,7 @@
 
 #include <boost/filesystem/fstream.hpp>
 
+#include <elle/container/map.hh>
 #include <elle/finally.hh>
 #include <elle/serialize/construct.hh>
 #include <elle/serialize/extract.hh>
@@ -179,7 +180,8 @@ namespace frete
                 this->_snapshot_destination,
                 (this->_transfer_snapshot->file_count()?
                   this->_transfer_snapshot->file(0).progress():
-                  0));
+                  0))
+      ELLE_DUMP("files: %s", this->_transfer_snapshot->files());
     elle::serialize::to_file(this->_snapshot_destination.string()) <<
       *this->_transfer_snapshot;
   }
