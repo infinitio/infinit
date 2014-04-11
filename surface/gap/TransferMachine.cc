@@ -9,8 +9,6 @@
 #include <protocol/exceptions.hh>
 
 #include <station/src/station/Station.hh>
-#include <station/src/station/ConnectionFailure.hh>
-
 #include <surface/gap/ReceiveMachine.hh>
 #include <surface/gap/Rounds.hh>
 #include <surface/gap/SendMachine.hh>
@@ -544,23 +542,6 @@ namespace surface
             }
           });
         reactor::wait(found);
-        // Some of those threads may throw network exceptions.
-        // Play it safe and whitelist: a thread may need to
-        // abort the whole process by throwing.
-        try
-        {
-          scope.wait();
-        }
-        catch(reactor::network::Exception const& e)
-        {
-          ELLE_TRACE("%s: ignoring network exception %s",
-                     *this, e.what());
-        }
-        catch(station::ConnectionFailure const& f)
-        {
-          ELLE_TRACE("%s: ignoring network exception %s",
-                     *this, f.what());
-        }
         ELLE_ASSERT(host != nullptr);
         return std::move(host);
       };
