@@ -403,7 +403,7 @@ namespace surface
     {
       _fetch_peer_key(true);
       // save snapshot to get correct filepaths
-      this->frete().save_snapshot();
+      this->_save_transfer_snapshot();
       ELLE_TRACE_SCOPE("%s: transfer operation, resuming at %s",
                        *this, this->frete().progress());
       elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
@@ -443,6 +443,7 @@ namespace surface
       // id.
       current_state(current_state());
       ELLE_TRACE_SCOPE("%s: ghost_cloud_upload", *this);
+      this->_save_transfer_snapshot();
       typedef boost::filesystem::path path;
       path source_file_path;
       FileSize source_file_size;
@@ -465,34 +466,46 @@ namespace surface
         std::vector<boost::filesystem::path> sources(
           this->_files.begin(),
           this->_files.end());
+        this->_save_transfer_snapshot();
         auto tmpdir = boost::filesystem::temp_directory_path() / transaction_id();
         boost::filesystem::create_directories(tmpdir);
         path archive_path = path(tmpdir) / archive_name;
-        ELLE_DEBUG("%s: Archiving transfer files into %s", *this, archive_path);
-        elle::archive::zip(sources, archive_path, [](boost::filesystem::path const& path)
-          {
-            std::string p(path.string());
-            // check if p maches our renaming scheme
-            size_t pos_beg = p.find_last_of('(');
-            size_t pos_end = p.find_last_of(')');
-            if (pos_beg != p.npos && pos_end != p.npos &&
-              (pos_end == p.size()-1 || p[pos_end+1] == '.'))
+        if (!boost::filesystem::exists(archive_path) ||
+            !this->frete().transfer_snapshot()->archived())
+        {
+          ELLE_DEBUG("%s: archiving transfer files into %s", *this, archive_path);
+          elle::archive::zip(sources, archive_path, [](boost::filesystem::path const& path)
             {
-              try
+              std::string p(path.string());
+              // check if p maches our renaming scheme
+              size_t pos_beg = p.find_last_of('(');
+              size_t pos_end = p.find_last_of(')');
+              if (pos_beg != p.npos && pos_end != p.npos &&
+                (pos_end == p.size()-1 || p[pos_end+1] == '.'))
               {
-                std::string sequence =  p.substr(pos_beg + 1, pos_end-pos_beg-1);
-                unsigned int v = boost::lexical_cast<unsigned int>(sequence);
-                std::string result = p.substr(0, pos_beg+1)
-                  + boost::lexical_cast<std::string>(v+1)
-                  + p.substr(pos_end);
-                return result;
+                try
+                {
+                  std::string sequence =  p.substr(pos_beg + 1, pos_end-pos_beg-1);
+                  unsigned int v = boost::lexical_cast<unsigned int>(sequence);
+                  std::string result = p.substr(0, pos_beg+1)
+                    + boost::lexical_cast<std::string>(v+1)
+                    + p.substr(pos_end);
+                  return result;
+                }
+                catch(const boost::bad_lexical_cast& blc)
+                {// go on
+                }
               }
-              catch(const boost::bad_lexical_cast& blc)
-              {// go on
-              }
-            }
-            return path.stem().string() + " (1)" + path.extension().string();
-          });
+              return path.stem().string() + " (1)" + path.extension().string();
+            });
+
+          this->frete().transfer_snapshot()->archived(true);
+          this->_save_transfer_snapshot();
+        }
+        else
+        {
+          ELLE_DEBUG("%s: archive already present at %s", *this, archive_path);
+        }
         source_file_path = archive_path;
       }
       else
@@ -503,8 +516,6 @@ namespace surface
       std::string source_file_name = source_file_path.filename().string();
       ELLE_TRACE("%s: will ghost-cloud-upload %s of size %s",
                  *this, source_file_path, source_file_size);
-
-
 
       auto& meta = this->state().meta();
       auto token = meta.get_cloud_buffer_token(this->transaction_id());
