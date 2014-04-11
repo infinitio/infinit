@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+
+import httplib2
+import json
+import sys
+import optparse
+
+usage = "usage: %prog [options]"
+parser = optparse.OptionParser(usage = usage)
+parser.add_option(
+  '--ids',
+  action = 'store',
+  help = 'file containing the user ids as a python expression',
+  type = str,
+)
+parser.add_option(
+  '--ca',
+  action = 'store',
+  help = 'infinit CA certificate',
+  type = str,
+)
+parser.add_option(
+  '--cert',
+  action = 'store',
+  help = 'your certificate',
+  type = str,
+)
+parser.add_option(
+  '--key',
+  action = 'store',
+  help = 'your key',
+  type = str,
+)
+options, args = parser.parse_args()
+
+if options.ids is None or options.ca is None or options.cert is None or options.key is None:
+  parser.parse_args(['foo', '--help'])
+  exit(1)
+
+def slices(collection, size):
+  it = iter(collection)
+  stop = [False]
+  def slice(collection):
+    try:
+      for i in range(size):
+        yield next(it)
+    except:
+      stop[0] = True
+      raise
+  while not stop[0]:
+    yield slice(collection)
+
+with open(options.ids, 'r') as f:
+  ids = eval(f.read())
+
+http = httplib2.Http(ca_certs = options.ca)
+http.add_certificate(cert = options.cert,
+                     key = options.key,
+                     domain = '')
+
+size = 50
+for slice in slices(ids, size):
+  url = 'https://meta.8.0.api.production.infinit.io/users?ids=%s&limit=%s' % (json.dumps(list(slice)), size)
+  status, content = http.request(url)
+  content = json.loads(content.decode())
+  for user in content['users']:
+    print(','.join((user['fullname'],user['email'])))
