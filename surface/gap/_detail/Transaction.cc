@@ -61,18 +61,8 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: create an onboarding transaction", *this);
       // XXX: We should have a fake onboarding user.
-      auto peer = [&] () -> uint32_t
-        {
-          try
-          {
-            return this->_user_indexes.at(this->user_sync("contact@infinit.io").id);
-          }
-          catch (infinit::oracles::meta::Exception const&)
-          {
-            ELLE_WARN("impossible to get contact@infinit.io user");
-            return this->_user_indexes.at(this->me().id);
-          }
-        };
+      static User onboarder("Onboarder", "Infinit", "Infinit", {"Infinit"});
+      this->user_sync(onboarder);
 
       auto id = generate_id();
       this->_transactions.emplace(
@@ -80,7 +70,7 @@ namespace surface
         elle::make_unique<onboarding::Transaction>(
           *this,
           id,
-          this->user(peer()),
+          onboarder,
           file_path,
           transfer_duration));
       return id;

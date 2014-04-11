@@ -13,6 +13,7 @@
 
 # include <boost/uuid/uuid.hpp>
 
+# include <algorithm>
 # include <functional>
 # include <list>
 # include <map>
@@ -94,16 +95,33 @@ namespace infinit
       struct User:
          public elle::Printable
       {
+        typedef std::vector<std::string> Devices;
         std::string id;
         std::string fullname;
         std::string handle;
         std::string public_key;
-        std::vector<std::string> connected_devices;
+        Devices connected_devices;
+
+        User() = default;
+
+        User(std::string const& id,
+             std::string const& fullname,
+             std::string const& handle,
+             Devices const& connected_devices = {},
+             std::string const& public_key = "");
 
         bool
         online() const
         {
           return !this->connected_devices.empty();
+        }
+
+        bool
+        online(std::string const& device_id) const
+        {
+          return std::find(std::begin(this->connected_devices),
+                           std::end(this->connected_devices),
+                           device_id) != std::end(this->connected_devices);
         }
 
         bool

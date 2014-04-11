@@ -318,6 +318,7 @@ namespace surface
     void
     Transferer::run()
     {
+      ELLE_TRACE_SCOPE("%s: run fsm %s", *this, this->_fsm);
       // XXX: Best place to do that? (See constructor).
       if (this->_owner.state().user(this->_owner.peer_id()).online())
       {

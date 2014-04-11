@@ -229,6 +229,18 @@ namespace infinit
         return !(*this == error);
       }
 
+      User::User(std::string const& id,
+                 std::string const& fullname,
+                 std::string const& handle,
+                 User::Devices const& devices,
+                 std::string const& public_key):
+        id(id),
+        fullname(fullname),
+        handle(handle),
+        public_key(public_key),
+        connected_devices(devices)
+      {}
+
       namespace json = elle::format::json;
 
       // - Ctor & dtor ----------------------------------------------------------
