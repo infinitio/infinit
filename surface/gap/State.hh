@@ -515,7 +515,6 @@ namespace surface
       void
       _transactions_init();
 
-      // Resync transactions from data in meta.
       void
       _transaction_resync();
 
