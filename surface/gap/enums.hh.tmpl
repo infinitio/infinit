@@ -66,7 +66,7 @@ extern "C"
     gap_meta_down_with_message = -14,
     gap_trophonius_unreachable = -15,
     <%! from infinit.oracles.meta.error import errors %>
-    %for name, (code, comment) in errors.items():
+    %for name, (code, comment) in sorted(errors.items()):
       gap_${name} = ${code},
     %endfor
   } gap_Status;
