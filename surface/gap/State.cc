@@ -723,6 +723,9 @@ namespace surface
 
           try
           {
+            //Reset transactions because link with tropho might have changed
+            for (auto& t: this->_transactions)
+              t.second->reset(*this);
             this->_user_resync();
             this->_transaction_resync();
             resynched = true;
