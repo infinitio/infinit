@@ -489,5 +489,23 @@ namespace surface
         stream << "Transaction(null)";
       stream << "(" << this->_id << ")";
     }
+
+    void
+    Transaction::reset(surface::gap::State const& state)
+    {
+      if (this->_machine == nullptr)
+        return; // history transaction, nothing going on
+      ELLE_TRACE("Reseting %s", *this);
+      if (this->_machine_state_thread)
+      {
+        this->_machine_state_thread->terminate_now();
+        this->_machine_state_thread.reset();
+      }
+      this->_machine.reset();
+      if (this->_sender)
+        this->_machine.reset(new SendMachine{state, this->_id, this->_data});
+      else
+        this->_machine.reset(new ReceiveMachine{state, this->_id, this->_data});
+    }
   }
 }
