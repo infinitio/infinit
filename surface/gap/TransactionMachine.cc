@@ -2,6 +2,7 @@
 #include <sstream>
 
 #include <elle/container/list.hh>
+#include <elle/container/set.hh>
 #include <elle/network/Interface.hh>
 #include <elle/os/environ.hh>
 #include <elle/printf.hh>
@@ -43,6 +44,12 @@ namespace surface
       files(files),
       message(message)
     {}
+
+    void
+    TransactionMachine::Snapshot::print(std::ostream& stream) const
+    {
+      stream << "Snapshot(" << this->data << ")";
+    }
 
     //---------- TransactionMachine -----------------------------------------------
     TransactionMachine::TransactionMachine(surface::gap::State const& state,
@@ -148,7 +155,11 @@ namespace surface
     TransactionMachine::_save_snapshot() const
     {
       ELLE_TRACE("%s saving snapshot to %s", *this, this->_snapshot_path.string())
-        elle::serialize::to_file(this->_snapshot_path.string()) << this->_make_snapshot();
+      {
+        auto snapshot = this->_make_snapshot();
+        ELLE_DUMP("snapshot data: %s", snapshot);
+        elle::serialize::to_file(this->_snapshot_path.string()) << snapshot;
+      }
     }
 
     void

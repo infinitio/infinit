@@ -127,9 +127,9 @@ namespace surface
             // FIXME: this can happen if you kill the client while creating a
             //        transaction and you haven't fetch an id from the server
             //        yet. Test and fix that shit.
-            if (snapshot->data.id.empty());
+            if (snapshot->data.id.empty())
             {
-              ELLE_LOG("Snapshot is corrupted: empty id");
+              ELLE_LOG("Snapshot %s is corrupted: empty id", *snapshot);
               boost::filesystem::remove(snapshot_path);
               continue;
             }

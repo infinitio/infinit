@@ -65,7 +65,8 @@ namespace surface
       };
 
     public:
-      class Snapshot
+      class Snapshot:
+        public elle::Printable
       {
       public:
         Snapshot(Data const& data,
@@ -80,6 +81,14 @@ namespace surface
         State state;
         std::unordered_set<std::string> files;
         std::string message;
+        bool archived;
+
+        /*----------.
+        | Printable |
+        `----------*/
+      public:
+        void
+        print(std::ostream& stream) const override;
       };
 
     public:
