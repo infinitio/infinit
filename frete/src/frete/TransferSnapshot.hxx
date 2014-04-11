@@ -32,7 +32,7 @@ ELLE_SERIALIZE_SIMPLE(frete::TransferSnapshot,
                       version)
 {
   ELLE_LOG_COMPONENT("frete.Snapshot");
-  ELLE_TRACE_SCOPE("%sserializing TransferSnapshot archive (version %s)",
+  ELLE_DEBUG_SCOPE("%sserializing TransferSnapshot archive (version %s)",
                    (ar.mode == ArchiveMode::input ? "de": ""), version);
   ar & named("transfers", res._files);
   ar & named("count", res._count);
@@ -56,7 +56,7 @@ ELLE_SERIALIZE_SIMPLE(frete::TransferSnapshot,
   // Old version didn't have archived boolean.
   if ((version < 2) && (ar.mode == ArchiveMode::input))
   {
-    ELLE_TRACE("archive in version %s found, setting archived to false",
+    ELLE_DEBUG("archive in version %s found, setting archived to false",
                version);
     res._archived = false;
   }
