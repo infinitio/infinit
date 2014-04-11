@@ -1,6 +1,8 @@
 #ifndef FRETE_TRANSFERSNAPSHOT_HXX
 # define FRETE_TRANSFERSNAPSHOT_HXX
 
+# include <elle/log.hh>
+
 # include <elle/serialize/MapSerializer.hxx>
 # include <elle/serialize/construct.hh>
 # include <elle/serialize/extract.hh>
@@ -22,14 +24,16 @@ ELLE_SERIALIZE_SIMPLE(frete::TransferSnapshot::File,
   ar & named("progress", res._progress);
 }
 
-ELLE_SERIALIZE_STATIC_FORMAT(frete::TransferSnapshot , 1);
-
+ELLE_SERIALIZE_STATIC_FORMAT(frete::TransferSnapshot , 2);
 
 ELLE_SERIALIZE_SIMPLE(frete::TransferSnapshot,
                       ar,
                       res,
                       version)
 {
+  ELLE_LOG_COMPONENT("frete.Snapshot");
+  ELLE_TRACE_SCOPE("%sserializing TransferSnapshot archive (version %s)",
+                   (ar.mode == ArchiveMode::input ? "de": ""), version);
   ar & named("transfers", res._files);
   ar & named("count", res._count);
   ar & named("total_size", res._total_size);
@@ -48,6 +52,19 @@ ELLE_SERIALIZE_SIMPLE(frete::TransferSnapshot,
       res._key_code.reset(new infinit::cryptography::Code(std::move(key_code)));
     }
   }
+
+  // Old version didn't have archived boolean.
+  if ((version < 2) && (ar.mode == ArchiveMode::input))
+  {
+    ELLE_TRACE("archive in version %s found, setting archived to false",
+               version);
+    res._archived = false;
+  }
+  else
+  {
+    ar & named("archived", res._archived);
+  }
+
   // Progress is redundant data, don't trust it
   if (ar.mode == ArchiveMode::input)
     res._recompute_progress();

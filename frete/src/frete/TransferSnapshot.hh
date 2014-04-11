@@ -150,6 +150,8 @@ namespace frete
     progress(FileSize const& progress);
     ELLE_ATTRIBUTE_R(FileSize, progress);
 
+    // If the ghost cloud buffering archive has been fully archived.
+    ELLE_ATTRIBUTE_RW(bool, archived);
   /*-----------.
   | Comparison |
   `-----------*/
