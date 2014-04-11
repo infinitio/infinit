@@ -188,6 +188,7 @@ class Mixin:
           merge_vars = {
             peer_email: {
               'filename': files[0],
+              'note': message,
               'sendername': user['fullname'],
               'ghost_id': str(recipient.get('_id')),
               'sender_id': str(user['_id']),
@@ -207,6 +208,7 @@ class Mixin:
           merge_vars = {
             peer_email: {
               'filename': files[0],
+              'note': message,
               'sendername': user['fullname'],
               'avatar': self.user_avatar_route(recipient['_id']),
             }}

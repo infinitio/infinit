@@ -12,9 +12,13 @@ class MailService(NoOpMailer):
     self.__sent = False
 
   def template_message(self, template_name, message):
-    print(self.__expected_template, template_name)
+    merges = {}
+    for entry in message['merge_vars'][0]['vars']:
+      merges[entry['name']] = entry['content']
     if len(self.__expected_template):
       assert self.__expected_template == template_name
+      if self.__expected_template == 'accept-file-only-offline':
+        assert 'note' in merges.keys()
     assert message['to'][0]['email'] == self.__recipient.email
     self.__sent = True
 
@@ -50,7 +54,8 @@ with Meta(enable_emails = True) as meta, Trophonius(meta) as trophonius:
 
   meta.mailer = MailService("accept-file-only-offline", bob, alice)
 
-  transaction, res = bob.sendfile(recipient_id = alice.id)
+  transaction, res = bob.sendfile(recipient_id = alice.id,
+                                  message = 'message')
   assert res['success']
 
   assert meta.mailer.sent
