@@ -506,6 +506,14 @@ namespace surface
         this->_machine.reset(new SendMachine{state, this->_id, this->_data});
       else
         this->_machine.reset(new ReceiveMachine{state, this->_id, this->_data});
+      this->_machine_state_thread.reset(
+        new reactor::Thread{
+          *reactor::Scheduler::scheduler(),
+          "notify fsm update",
+          [this, &state]
+          {
+            this->_notify_on_status_update(state);
+          }});
     }
   }
 }
