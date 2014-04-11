@@ -246,17 +246,12 @@ namespace surface
       TransferBufferer::FileID const& file,
       TransferBufferer::FileOffset const& offset)
     {
-      std::string prefix = boost::lexical_cast<std::string>(file);
-      std::string no_files_str =
-        boost::lexical_cast<std::string>(this->transaction().files_count);
-      prefix.insert(0, no_files_str.size() - prefix.size(), '0');
-
       std::string suffix = boost::lexical_cast<std::string>(offset);
       std::string total_size_str =
         boost::lexical_cast<std::string>(this->transaction().total_size);
+      ELLE_ASSERT(total_size_str.size() >= suffix.size());
       suffix.insert(0, total_size_str.size() - suffix.size(), '0');
-
-      return elle::sprintf("%s_%s", prefix, suffix);
+      return elle::sprintf("%012s_%s", file, suffix);
     }
 
     TransferBufferer::List
