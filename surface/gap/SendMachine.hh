@@ -33,7 +33,8 @@ namespace surface
       // XXX: Add putain de commentaire de la vie.
       SendMachine(surface::gap::State const& state,
                   uint32_t id,
-                  std::shared_ptr<TransactionMachine::Data> data);
+                  std::shared_ptr<TransactionMachine::Data> data,
+                  boost::filesystem::path const& path = "");
 
 
       virtual
@@ -48,6 +49,7 @@ namespace surface
       SendMachine(surface::gap::State const& state,
                   uint32_t id,
                   std::shared_ptr<Data> data,
+                  boost::filesystem::path const& path,
                   bool);
 
       Snapshot

@@ -37,8 +37,9 @@ namespace surface
     SendMachine::SendMachine(surface::gap::State const& state,
                              uint32_t id,
                              std::shared_ptr<TransactionMachine::Data> data,
+                             boost::filesystem::path const& snapshot_path,
                              bool):
-      TransactionMachine(state, id, std::move(data)),
+      TransactionMachine(state, id, std::move(data), snapshot_path),
       _create_transaction_state(
         this->_machine.state_make(
           "create transaction", std::bind(&SendMachine::_create_transaction, this))),
@@ -133,12 +134,13 @@ namespace surface
 
     SendMachine::SendMachine(surface::gap::State const& state,
                              uint32_t id,
-                             std::shared_ptr<TransactionMachine::Data> data):
-      SendMachine(state, id, std::move(data), true)
+                             std::shared_ptr<TransactionMachine::Data> data,
+                             boost::filesystem::path const& snapshot_path):
+      SendMachine(state, id, std::move(data), snapshot_path, true)
     {
+      ELLE_ASSERT(this->data() != nullptr);
       ELLE_WARN_SCOPE("%s: constructing machine for transaction data %s "
-                      "(not found on local snapshots)",
-                       *this, this->data());
+                      "(not found on local snapshots)", *this, *this->data());
       // set _files from data
       for (auto const& f: this->data()->files)
       {
@@ -176,7 +178,7 @@ namespace surface
                              std::unordered_set<std::string>&& files,
                              std::string const& message,
                              std::shared_ptr<TransactionMachine::Data> data):
-      SendMachine(state, id, std::move(data), true)
+      SendMachine(state, id, std::move(data), "", true)
     {
       ELLE_TRACE_SCOPE("%s: construct to send %s to %s",
                        *this, files, recipient);
@@ -214,7 +216,7 @@ namespace surface
                              TransactionMachine::State current_state,
                              std::string const& message,
                              std::shared_ptr<TransactionMachine::Data> data):
-      SendMachine(state, id, std::move(data), true)
+      SendMachine(state, id, std::move(data), "", true)
     {
       ELLE_TRACE_SCOPE("%s: construct from snapshot starting at %s",
                        *this, current_state);
@@ -867,7 +869,8 @@ namespace surface
       { // Early failure, no transaction_id -> nothing to clean up
         return;
       }
-      this->frete().remove_snapshot();
+      if (this->_frete)
+        this->frete().remove_snapshot();
       // clear temporary session directory
       std::string tid = transaction_id();
       ELLE_ASSERT(!tid.empty());

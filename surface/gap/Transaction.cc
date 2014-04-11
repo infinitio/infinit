@@ -501,19 +501,23 @@ namespace surface
         this->_machine_state_thread->terminate_now();
         this->_machine_state_thread.reset();
       }
-      this->_machine.reset();
+
+      boost::filesystem::path snapshot_path{this->_machine->snapshot_path()};
       if (this->_sender)
-        this->_machine.reset(new SendMachine{state, this->_id, this->_data});
+        this->_machine.reset(
+          new SendMachine{state, this->_id, this->_data, snapshot_path});
       else
-        this->_machine.reset(new ReceiveMachine{state, this->_id, this->_data});
+        this->_machine.reset(
+          new ReceiveMachine{state, this->_id, this->_data, snapshot_path});
+
       this->_machine_state_thread.reset(
         new reactor::Thread{
           *reactor::Scheduler::scheduler(),
-          "notify fsm update",
-          [this, &state]
-          {
-            this->_notify_on_status_update(state);
-          }});
+            "notify fsm update",
+            [this, &state]
+            {
+              this->_notify_on_status_update(state);
+            }});
     }
   }
 }

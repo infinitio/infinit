@@ -94,13 +94,14 @@ namespace surface
     public:
       TransactionMachine(surface::gap::State const& state,
                          uint32_t id,
-                         std::shared_ptr<TransactionMachine::Data> transaction);
+                         std::shared_ptr<TransactionMachine::Data> transaction,
+                         boost::filesystem::path const& path = "");
 
       virtual
       ~TransactionMachine();
 
     public:
-      ELLE_ATTRIBUTE_R(boost::filesystem::path, snapshot_path);
+      ELLE_ATTRIBUTE_RW(boost::filesystem::path, snapshot_path);
 
     protected:
       virtual

@@ -53,12 +53,14 @@ namespace surface
 
     //---------- TransactionMachine -----------------------------------------------
     TransactionMachine::TransactionMachine(surface::gap::State const& state,
-                                     uint32_t id,
-                                     std::shared_ptr<TransactionMachine::Data> data):
+                                           uint32_t id,
+                                           std::shared_ptr<TransactionMachine::Data> data,
+                                           boost::filesystem::path const& path):
       _snapshot_path(
-        boost::filesystem::path(
-          common::infinit::transaction_snapshots_directory(state.me().id) /
-          boost::filesystem::unique_path()).string()),
+        path.empty()
+        ? common::infinit::transaction_snapshots_directory(state.me().id) /
+          boost::filesystem::unique_path()
+        : path),
       _id(id),
       _machine(elle::sprintf("transaction (%s) fsm", id)),
       _machine_thread(),
