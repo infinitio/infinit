@@ -36,8 +36,6 @@ namespace surface
         void
         interrupt() override;
 
-        ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, thread);
-
         surface::gap::onboarding::ReceiveMachine&
         machine();
 

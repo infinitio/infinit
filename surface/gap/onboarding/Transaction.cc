@@ -64,11 +64,6 @@ namespace surface
                                     id,
                                     transaction_data(
                                       state.me(), peer, file_path))
-        , _thread(new reactor::Thread(*reactor::Scheduler::scheduler(),
-                                      "onboarding transaction",
-                                      [&]
-                                      {
-                                      }))
       {
         this->_machine.reset(new surface::gap::onboarding::ReceiveMachine(
           state,
@@ -83,8 +78,6 @@ namespace surface
       Transaction::~Transaction()
       {
         ELLE_DEBUG_SCOPE("%s: destruction", *this);
-        if (this->_thread)
-          this->_thread->terminate_now();
       }
 
       surface::gap::onboarding::ReceiveMachine&
