@@ -77,6 +77,8 @@ namespace surface
              (1.0f * this->_duration.total_milliseconds()));
           reactor::sleep(step);
         }
+        if (this->_progress > 1.0f)
+          this->_progress = 1.0f;
         try
         {
           boost::filesystem::path input_path(this->_file_path);
