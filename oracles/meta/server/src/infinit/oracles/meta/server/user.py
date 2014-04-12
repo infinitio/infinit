@@ -484,6 +484,7 @@ class Mixin:
                         (search, limit, skip)):
       pipeline = []
       match = {
+        # User must not be a ghost as ghost fullnames are their email addresses.
         'register_status':'ok',
       }
       if search is not None:
@@ -556,6 +557,7 @@ class Mixin:
               {'fullname' : {'$regex' : '^%s' % text,  '$options': 'i'}},
               {'handle' : {'$regex' : '^%s' % text, '$options': 'i'}},
             ],
+            # User must not be a ghost as ghost fullnames are their email addresses.
             'register_status':'ok',
           },
           fields = fields,
