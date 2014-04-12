@@ -112,7 +112,7 @@ class Mixin:
           recipient_id = self._register(
             _id = self.database.users.save({}),
             email = peer_email,
-            fullname = peer_email[0:peer_email.index('@')],
+            fullname = peer_email, # This is safe as long as we don't allow searching for ghost users.
             register_status = 'ghost',
             notifications = [],
             networks = [],
