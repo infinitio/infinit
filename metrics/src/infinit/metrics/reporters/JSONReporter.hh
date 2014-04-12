@@ -120,7 +120,6 @@ namespace infinit
     /// Private attributes.
     private:
       ELLE_ATTRIBUTE(std::string, base_url);
-      ELLE_ATTRIBUTE(int, port);
       ELLE_ATTRIBUTE(std::string, transaction_dest);
       ELLE_ATTRIBUTE(std::string, user_dest);
       ELLE_ATTRIBUTE_R(reactor::http::StatusCode, expected_status);
