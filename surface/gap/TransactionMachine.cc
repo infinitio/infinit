@@ -144,7 +144,7 @@ namespace surface
 
     TransactionMachine::~TransactionMachine()
     {
-      ELLE_TRACE_SCOPE("%s: destroying transfer machine", *this);
+      ELLE_TRACE_SCOPE("%s: destroying transaction machine", *this);
     }
 
     TransactionMachine::Snapshot
