@@ -23,10 +23,12 @@ namespace surface
     `-------------*/
     public:
       Transferer(TransactionMachine& owner);
+      virtual
+      ~Transferer();
 
-      /*--------.
-      | Control |
-      `--------*/
+    /*--------.
+    | Control |
+    `--------*/
     public:
       void
       run();
