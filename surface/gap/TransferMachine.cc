@@ -32,8 +32,7 @@ namespace surface
       _peer_online("peer online"),
       _peer_offline("peer offline"),
       _peer_reachable("peer reachable"),
-      _peer_unreachable("peer unreachable"),
-      _peer_connected("peer connected")
+      _peer_unreachable("peer unreachable")
     {
       // Online / Offline barrier can't be initialized here, because
       // TransactionMachine is abstract.
@@ -186,8 +185,7 @@ namespace surface
       // Start and stop transfering.
       this->_fsm.transition_add(
         connection_state,
-        transfer_state,
-        reactor::Waitables{&this->_peer_connected});
+        transfer_state);
       // In case network is lost abruptly, trophonius might get notified
       // before us: we will recieve a peer-offline event before
       // a disconnection on our p2p link.
@@ -371,7 +369,6 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: connect to peer", *this);
       this->_owner.current_state(TransactionMachine::State::Connect);
       this->_connection();
-      this->_peer_connected.signal();
     }
 
     void
