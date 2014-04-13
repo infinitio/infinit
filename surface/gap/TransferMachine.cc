@@ -464,7 +464,7 @@ namespace surface
         public_addresses);
     }
 
-    std::unique_ptr<reactor::network::Socket>
+    std::unique_ptr<station::Host>
     TransferMachine::_connect()
     {
       ELLE_TRACE_SCOPE("%s: connect to peer", *this);
@@ -509,13 +509,17 @@ namespace surface
       return elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
         reactor::Barrier found;
-        std::unique_ptr<reactor::network::Socket> host;
+        std::unique_ptr<station::Host> host;
         scope.run_background(
           "wait_accepted",
           [&] ()
           {
             reactor::wait(this->_owner.station().host_available());
-            host = this->_owner.station().accept()->release();
+            std::unique_ptr<station::Host> res =
+              this->_owner.station().accept();
+            ELLE_ASSERT_NEQ(res, nullptr);
+            ELLE_ASSERT_EQ(host, nullptr);
+            host = std::move(res);
             found.open();
             ELLE_TRACE("%s: peer connection accepted", *this);
           });
@@ -524,10 +528,13 @@ namespace surface
           [&]
           {
             for (auto& round: rounds)
-            {
-              host = round->connect(this->_owner.station());
-              if (host)
+            { // try rounds in order: (currently local, apertus)
+              std::unique_ptr<station::Host> res;
+              res = round->connect(this->_owner.station());
+              if (res)
               {
+                ELLE_ASSERT_EQ(host, nullptr);
+                host = std::move(res);
                 found.open();
                 if (this->_owner.state().metrics_reporter())
                   this->_owner.state().metrics_reporter()->transaction_connected(
@@ -554,7 +561,7 @@ namespace surface
     {
       this->_host = this->_connect();
       this->_serializer.reset(
-        new infinit::protocol::Serializer(*this->_host));
+        new infinit::protocol::Serializer(this->_host->socket()));
       this->_channels.reset(
         new infinit::protocol::ChanneledStream(*this->_serializer));
       this->_rpcs = this->_owner.rpcs(*this->_channels);

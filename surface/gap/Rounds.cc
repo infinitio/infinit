@@ -80,7 +80,7 @@ namespace surface
       , _endpoints(std::move(endpoints))
     {}
 
-    std::unique_ptr<reactor::network::Socket>
+    std::unique_ptr<station::Host>
     AddressRound::connect(station::Station& station)
     {
       return elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
@@ -100,8 +100,8 @@ namespace surface
         }
         found.wait(2_sec);
         if (host)
-          return std::move(host->release());
-        return std::unique_ptr<reactor::network::Socket>();
+          return std::move(host);
+        return std::unique_ptr<station::Host>();
       };
     }
 
@@ -119,7 +119,7 @@ namespace surface
       , _uid(uid)
     {}
 
-    std::unique_ptr<reactor::network::Socket>
+    std::unique_ptr<station::Host>
     FallbackRound::connect(station::Station& station)
     {
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
@@ -137,7 +137,7 @@ namespace surface
       sock->write(elle::ConstWeakBuffer(
         elle::sprintf("%c",(char) this->_uid.size())));
       sock->write(elle::ConstWeakBuffer(elle::sprintf("%s", this->_uid)));
-      return std::unique_ptr<reactor::network::Socket>(sock.release());
+      return elle::make_unique<station::Host>(std::move(sock));
     }
 
     void

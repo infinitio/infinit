@@ -30,7 +30,7 @@ namespace surface
       ~Round();
 
       virtual
-      std::unique_ptr<reactor::network::Socket>
+      std::unique_ptr<station::Host>
       connect(station::Station& station) = 0;
 
       ELLE_ATTRIBUTE_R(std::string, name);
@@ -43,7 +43,7 @@ namespace surface
       AddressRound(std::string const& name,
                    std::vector<std::string> enpoints);
 
-      std::unique_ptr<reactor::network::Socket>
+      std::unique_ptr<station::Host>
       connect(station::Station& station) override;
       ELLE_ATTRIBUTE(std::vector<std::string>, endpoints);
 
@@ -62,7 +62,7 @@ namespace surface
       FallbackRound(std::string const& name,
                     infinit::oracles::meta::Client const& meta,
                     std::string const& uid);
-      std::unique_ptr<reactor::network::Socket>
+      std::unique_ptr<station::Host>
       connect(station::Station& station) override;
 
     private:

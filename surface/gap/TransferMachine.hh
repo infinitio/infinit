@@ -6,6 +6,9 @@
 # include <reactor/network/socket.hh>
 
 # include <frete/RPCFrete.hh>
+
+# include <station/fwd.hh>
+
 # include <surface/gap/fwd.hh>
 
 namespace surface
@@ -114,7 +117,7 @@ namespace surface
     `-------------*/
     public:
       TransferMachine(TransactionMachine& owner);
-      ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::Socket>, host);
+      ELLE_ATTRIBUTE(std::unique_ptr<station::Host>, host);
       ELLE_ATTRIBUTE(std::unique_ptr<infinit::protocol::Serializer>,
                      serializer);
       ELLE_ATTRIBUTE(std::unique_ptr<infinit::protocol::ChanneledStream>,
@@ -122,7 +125,7 @@ namespace surface
       ELLE_ATTRIBUTE(std::unique_ptr<frete::RPCFrete>, rpcs);
 
     private:
-      std::unique_ptr<reactor::network::Socket>
+      std::unique_ptr<station::Host>
       _connect();
 
     protected:

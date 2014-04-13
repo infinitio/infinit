@@ -59,7 +59,9 @@ namespace station
   {
     ELLE_TRACE_SCOPE("%s: connect to %s:%s", *this, host, port);
     auto socket = elle::make_unique<reactor::network::TCPSocket>(host, port);
-    return this->_negotiate(std::move(socket));
+    std::unique_ptr<Host> res = this->_negotiate(std::move(socket));
+    ELLE_TRACE("%s: connect succeeded with %s", *this, host);
+    return res;
   }
 
   /*-------.
@@ -95,6 +97,8 @@ namespace station
       try
       {
         auto host = _negotiate(std::move(socket));
+        ELLE_TRACE("%s: negociation suceeded on %s, adding to hosts",
+                   *this, host->passport());
         this->_hosts[host->passport()] = host.get();
         this->_host_new.push(std::move(host));
         this->_host_available.open();
@@ -156,9 +160,12 @@ namespace station
           }
         };
       check_already();
-
+      if (hash == remote_hash)
+        ELLE_ERR("%s: Same hash '%s' for both passports, local %s, remote %s",
+                 *this, hash, this->passport(), remote);
       bool master = hash < remote_hash;
-      ELLE_DEBUG("%s: assume %s role", *this, master ? "master" : "slave");
+      ELLE_DEBUG("%s: hash check local:%s remote:%s assume %s role",
+                 *this, hash, remote_hash, master ? "master" : "slave");
 
       elle::SafeFinally pop_negotiation;
       if (master)
