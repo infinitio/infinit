@@ -19,9 +19,11 @@ namespace station
   `-------------*/
 
   Station::Station(papier::Authority const& authority,
-                   papier::Passport const& passport):
+                   papier::Passport const& passport,
+                   std::string const& name):
     _authority(authority),
     _passport(passport),
+    _name(name),
     _server(),
     _server_thread(*reactor::Scheduler::scheduler(),
                    elle::sprintf("%s server thread", *this),
@@ -254,7 +256,10 @@ namespace station
   void
   Station::print(std::ostream& stream) const
   {
-    stream << "Station(" << this << ")";
+    if (this->_name.empty())
+      stream << "Station(" << this << ")";
+    else
+      stream << this->_name;
   }
 
   std::ostream&
