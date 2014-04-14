@@ -1,5 +1,6 @@
 #include <boost/filesystem.hpp>
 
+#include <elle/container/vector.hh>
 #include <elle/log.hh>
 #include <elle/network/Interface.hh>
 #include <elle/os/environ.hh>
