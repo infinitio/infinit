@@ -159,9 +159,6 @@ namespace station
           }
         };
       check_already();
-      if (hash == remote_hash)
-        ELLE_ERR("%s: Same hash '%s' for both passports, local %s, remote %s",
-                 *this, hash, this->passport(), remote);
       bool master = hash < remote_hash;
 
       ELLE_DEBUG("%s: assume %s role", *this, master ? "master" : "slave")
