@@ -124,6 +124,11 @@ namespace station
   std::unique_ptr<Host>
   Station::_negotiate(std::unique_ptr<reactor::network::Socket> socket)
   {
+    // Exchange protocol version.
+    char version = 0;
+    socket->write(elle::ConstWeakBuffer(&version, 1));
+    auto remote_protocol = socket->read(1);
+    ELLE_ASSERT_EQ(elle::ConstWeakBuffer(remote_protocol)[0], 0);
     try
     {
       ELLE_TRACE_SCOPE("%s: negotiate connection with %s",
@@ -161,8 +166,8 @@ namespace station
 
       ELLE_DEBUG("%s: assume %s role", *this, master ? "master" : "slave")
       {
-        ELLE_DUMP("%s: local passport: %s", *this, hash);
-        ELLE_DUMP("%s: remote passport: %s", *this, remote_hash);
+        ELLE_DUMP("%s: local passport: %s", *this, this->passport());
+        ELLE_DUMP("%s: remote passport: %s", *this, remote);
       }
 
       elle::SafeFinally pop_negotiation;
