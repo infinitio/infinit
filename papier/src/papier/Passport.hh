@@ -66,6 +66,8 @@ namespace papier
     bool operator == (Passport const&) const;
     bool operator != (Passport const&) const;
 
+    bool operator < (Passport const&) const;
+
   private:
     ELLE_SERIALIZE_FRIEND_FOR(Passport);
   };

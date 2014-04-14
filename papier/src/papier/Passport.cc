@@ -85,6 +85,14 @@ namespace papier
   }
 
   bool
+  Passport::operator <(Passport const& passport) const
+  {
+    if (this->id() < passport.id())
+      return true;
+    return this->owner_K() < passport.owner_K();
+  }
+
+  bool
   Passport::operator ==(Passport const& passport) const
   {
     elle::io::Unique theirs;
