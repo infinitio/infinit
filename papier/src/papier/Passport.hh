@@ -71,6 +71,16 @@ namespace papier
   };
 }
 
+namespace std
+{
+  template<>
+  struct hash<papier::Passport>
+  {
+  public:
+    std::size_t operator()(papier::Passport const& s) const;
+  };
+}
+
 # include <papier/Passport.hxx>
 
 #endif
