@@ -1,6 +1,6 @@
 #include <surface/gap/Rounds.hh>
 
-# include <infinit/oracles/meta/Client.hh>
+#include <infinit/oracles/meta/Client.hh>
 
 #include <station/Station.hh>
 #include <station/Host.hh>
@@ -33,40 +33,6 @@ namespace surface
 {
   namespace gap
   {
-    static
-    std::unique_ptr<station::Host>
-    _connect(station::Station& station,
-             std::string const& endpoint)
-    {
-      try
-      {
-        std::vector<std::string> result;
-        boost::split(result, endpoint, boost::is_any_of(":"));
-
-        auto const &ip = result[0];
-        auto const &port = result[1];
-        ELLE_DEBUG("try to negociate connection with %s", endpoint);
-        // XXX: This statement is ok while we are connecting to one peer.
-        auto res = station.connect(ip, std::stoi(port));
-        ELLE_LOG("connection to %s succeed", endpoint);
-        return res;
-      }
-      catch (station::AlreadyConnected const&)
-      {
-        ELLE_LOG("connection to %s succeed (already connected)", endpoint);
-      }
-      catch (reactor::Terminate const&)
-      {
-        throw ;
-      }
-      catch (std::exception const& e)
-      {
-        ELLE_WARN("connection to %s failed: %s",
-                  endpoint, elle::exception_string());
-      }
-      return nullptr;
-    }
-
     Round::Round(std::string const& name)
       : _name(name)
     {}
@@ -75,7 +41,7 @@ namespace surface
     {}
 
     AddressRound::AddressRound(std::string const& name,
-                               std::vector<std::string> endpoints)
+                               Endpoints endpoints)
       : Round(name)
       , _endpoints(std::move(endpoints))
     {}
@@ -87,7 +53,7 @@ namespace surface
       {
         std::unique_ptr<station::Host> host;
         reactor::Barrier found;
-        for (std::string const& endpoint: this->_endpoints)
+        for (auto const& endpoint: this->_endpoints)
         {
           scope.run_background(
             elle::sprintf("connect_try(%s)", endpoint),
@@ -103,6 +69,40 @@ namespace surface
           return std::move(host);
         return std::unique_ptr<station::Host>();
       };
+    }
+
+    std::unique_ptr<station::Host>
+    AddressRound::_connect(station::Station& station,
+                           std::pair<std::string, int> const& endpoint)
+    {
+      try
+      {
+        auto const& ip = endpoint.first;
+        auto const& port = endpoint.second;
+        ELLE_DEBUG("%s: try to negociate connection with %s:%s",
+                   *this, ip, port);
+        // XXX: This statement is ok while we are connecting to one peer.
+        auto res = station.connect(ip, port);
+        ELLE_LOG("%s: connection to %s:%s succeed",
+                 *this, ip, port);
+        return res;
+      }
+      catch (station::AlreadyConnected const&)
+      {
+        ELLE_LOG("%s: connection to %s:%s succeed (already connected)",
+                 *this, endpoint.first, endpoint.second);
+      }
+      catch (reactor::Terminate const&)
+      {
+        throw ;
+      }
+      catch (std::exception const& e)
+      {
+        ELLE_WARN("%s: connection to %s:%s failed: %s",
+                  *this, endpoint.first, endpoint.second,
+                  elle::exception_string());
+      }
+      return nullptr;
     }
 
     void

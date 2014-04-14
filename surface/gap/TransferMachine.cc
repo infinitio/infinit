@@ -333,6 +333,29 @@ namespace surface
       this->_fsm.run();
     }
 
+    /*---------.
+    | Triggers |
+    `---------*/
+
+    void
+    Transferer::peer_available(
+      std::vector<std::pair<std::string, int>> const& endpoints)
+    {
+      ELLE_TRACE_SCOPE("%s: peer is available on %s", *this, endpoints);
+      this->_peer_endpoints = endpoints;
+      this->_peer_unreachable.close();
+      this->_peer_reachable.open();
+    }
+
+    void
+    Transferer::peer_unavailable()
+    {
+      ELLE_TRACE_SCOPE("%s: peer is unavailable", *this);
+      this->_peer_endpoints.clear();
+      this->_peer_reachable.close();
+      this->_peer_unreachable.open();
+    }
+
     /*-------.
     | Status |
     `-------*/
@@ -466,41 +489,8 @@ namespace surface
     TransferMachine::_connect()
     {
       ELLE_TRACE_SCOPE("%s: connect to peer", *this);
-      auto const& transaction = *this->_owner.data();
-      infinit::oracles::meta::EndpointNodeResponse endpoints;
-      // Get endpoints. If the peer disconnected, we might go back to the
-      // connection state before we're informed of this and try
-      // reconnecting. Don't err and just keep retrying until either he comes
-      // back online or we're notified he's offline.
-      while (true)
-      {
-        try
-        {
-          ELLE_DEBUG_SCOPE("%s: get peer endpoints", *this);
-          endpoints = this->_owner.state().meta().device_endpoints(
-            this->_owner.data()->id,
-            this->_owner.is_sender() ? transaction.sender_device_id :
-            transaction.recipient_device_id,
-            this->_owner.is_sender() ? transaction.recipient_device_id :
-            transaction.sender_device_id);
-          break;
-        }
-        catch (infinit::oracles::meta::Exception const& e)
-        {
-          ELLE_WARN("%s: unable to fetch endpoints: %s", *this, e);
-          if (e.err != infinit::oracles::meta::Error::device_not_found)
-            throw;
-        }
-        reactor::sleep(1_sec);
-      }
-      ELLE_DEBUG("%s: got endpoints", *this)
-      {
-        ELLE_DEBUG("locals: %s", endpoints.locals);
-        ELLE_DEBUG("externals: %s", endpoints.externals);
-      }
       std::vector<std::unique_ptr<Round>> rounds;
-      rounds.emplace_back(new AddressRound("local",
-                                           std::move(endpoints.locals)));
+      rounds.emplace_back(new AddressRound("local", this->peer_endpoints()));
       rounds.emplace_back(new FallbackRound("fallback",
                                             this->_owner.state().meta(),
                                             this->_owner.data()->id));

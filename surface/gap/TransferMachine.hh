@@ -40,13 +40,24 @@ namespace surface
     /*---------.
     | Triggers |
     `---------*/
+    public:
+      /// Notify the peer is available for peer to peer connection.
+      void
+      peer_available(std::vector<std::pair<std::string, int>> const& endpoints);
+      /// Notify the peer is unavailable for peer to peer connection.
+      void
+      peer_unavailable();
+
     private:
-      // Represents the connection status of the peer according to the servers.
+      // Connection status of the peer according to the servers.
       ELLE_ATTRIBUTE_RX(reactor::Barrier, peer_online);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, peer_offline);
-      // Represents the availability of the peer for peer to peer connection.
-      ELLE_ATTRIBUTE_RX(reactor::Barrier, peer_reachable);
-      ELLE_ATTRIBUTE_RX(reactor::Barrier, peer_unreachable);
+      // Availability of the peer for peer to peer connection.
+      ELLE_ATTRIBUTE(reactor::Barrier, peer_reachable);
+      ELLE_ATTRIBUTE(reactor::Barrier, peer_unreachable);
+      // The peer endpoints.
+      typedef std::vector<std::pair<std::string, int>> Endpoints;
+      ELLE_ATTRIBUTE_R(Endpoints, peer_endpoints);
 
     /*-------.
     | Status |

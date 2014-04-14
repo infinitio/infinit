@@ -99,7 +99,7 @@ namespace surface
         {
           ELLE_DEBUG("%s: accepted", *this);
           this->machine().accept();
-          this->peer_availability_status(true);
+          this->peer_available(std::vector<std::pair<std::string, int>>());
           this->peer_connection_status(true);
         }
       }
@@ -113,7 +113,7 @@ namespace surface
       void
       Transaction::interrupt()
       {
-        this->peer_availability_status(false);
+        this->peer_unavailable();
         this->_machine->interrupt();
       }
 

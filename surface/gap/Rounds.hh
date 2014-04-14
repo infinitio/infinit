@@ -40,12 +40,17 @@ namespace surface
       public Round
     {
     public:
+      typedef std::vector<std::pair<std::string, int>> Endpoints;
       AddressRound(std::string const& name,
-                   std::vector<std::string> enpoints);
+                   Endpoints enpoints);
 
       std::unique_ptr<station::Host>
       connect(station::Station& station) override;
-      ELLE_ATTRIBUTE(std::vector<std::string>, endpoints);
+      ELLE_ATTRIBUTE(Endpoints, endpoints);
+    private:
+      std::unique_ptr<station::Host>
+      _connect(station::Station& station,
+               std::pair<std::string, int> const& endpoint);
 
     /*----------.
     | Printable |

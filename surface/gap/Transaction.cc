@@ -385,13 +385,23 @@ namespace surface
       // Notification should only be sent to the sender device and the
       // recipient device concerned by this transaction.
       ELLE_DEBUG("notify machine of the peer availability change")
-        this->peer_availability_status(update.status);
+        if (update.status)
+          this->peer_available(update.endpoints_local);
+        else
+          this->peer_unavailable();
     }
 
     void
-    Transaction::peer_availability_status(bool status)
+    Transaction::peer_available(
+      std::vector<std::pair<std::string, int>> const& endpoints)
     {
-      this->_machine->peer_availability_changed(status);
+      this->_machine->peer_available(endpoints);
+    }
+
+    void
+    Transaction::peer_unavailable()
+    {
+      this->_machine->peer_unavailable();
     }
 
     using infinit::oracles::trophonius::UserStatusNotification;

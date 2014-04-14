@@ -130,7 +130,10 @@ namespace surface
       peer_connection_status(bool status);
 
       void
-      peer_availability_status(bool status);
+      peer_available(std::vector<std::pair<std::string, int>> const& endpoints);
+
+      void
+      peer_unavailable();
 
       // Reinitialize everything. Invoked when connection to servers is reset.
       virtual

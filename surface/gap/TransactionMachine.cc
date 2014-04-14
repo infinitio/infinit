@@ -360,22 +360,20 @@ namespace surface
     }
 
     void
-    TransactionMachine::peer_availability_changed(bool available)
+    TransactionMachine::peer_available(
+      std::vector<std::pair<std::string, int>> const& endpoints)
     {
-      ELLE_TRACE_SCOPE("%s: peer is %savailable for peer to peer connection",
-                       *this, available ? "" : "un");
-      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-      ELLE_DEBUG("switch barriers")
-      if (available)
-      {
-        this->_transfer_machine->peer_unreachable().close();
-        this->_transfer_machine->peer_reachable().open();
-      }
-      else
-      {
-        this->_transfer_machine->peer_reachable().close();
-        this->_transfer_machine->peer_unreachable().open();
-      }
+      ELLE_TRACE_SCOPE("%s: peer is available for peer to peer connection",
+                       *this);
+      this->_transfer_machine->peer_available(endpoints);
+    }
+
+    void
+    TransactionMachine::peer_unavailable()
+    {
+      ELLE_TRACE_SCOPE("%s: peer is unavailable for peer to peer connection",
+                       *this);
+      this->_transfer_machine->peer_unavailable();
     }
 
     void

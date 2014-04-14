@@ -131,9 +131,14 @@ namespace surface
       void
       transaction_status_update(infinit::oracles::Transaction::Status status) = 0;
 
-      /// Use to notify that the peer is available for peer to peer connection.
+
+      /// Notify that the peer is available for peer to peer connection.
       void
-      peer_availability_changed(bool added);
+      peer_available(std::vector<std::pair<std::string, int>> const& endpoints);
+
+      /// Notify that the peer is unavailable for peer to peer connection.
+      void
+      peer_unavailable();
 
       /// Use to notify that the peer status changed to connected or
       /// disconnected.
