@@ -527,6 +527,9 @@ namespace surface
             while (!this->_runners.empty())
               this->_runners.pop();
 
+          ELLE_DEBUG("clear transactions")
+            this->_transactions_clear();
+
           ELLE_DEBUG("clear users")
           {
             this->_user_indexes.clear();
@@ -543,9 +546,6 @@ namespace surface
             this->_avatar_to_fetch.clear();
             this->_avatars.clear();
           }
-
-          ELLE_DEBUG("clear transactions")
-            this->_transactions_clear();
 
           ELLE_DEBUG("clear device (%s)", this->_device.get())
             this->_device.reset();
