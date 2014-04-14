@@ -5,6 +5,7 @@
 #include <elle/os/environ.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
+#include <elle/system/system.hh>
 
 #include <reactor/exception.hh>
 #include <reactor/thread.hh>
@@ -738,7 +739,34 @@ namespace surface
         return FileSize(-1);
       }
       boost::filesystem::create_directories(fullpath.parent_path());
-      boost::filesystem::ofstream output(fullpath, std::ios::app | std::ios::binary);
+      if (boost::filesystem::exists(fullpath))
+      {
+        // Check size against snapshot data
+        auto size = boost::filesystem::file_size(fullpath);
+        if (size < tr.progress())
+        { // missing data on disk. Should not happen.
+          std::string msg = elle::sprintf("%s: file %s too short, expected %s, got %s",
+                    *this, fullpath, tr.progress(), size);
+          ELLE_WARN(msg.c_str());
+          throw elle::Exception(msg);
+        }
+        if (size > tr.progress())
+        {
+          // File too long, which means snapshot was not synced properly.
+          // Be conservative and truncate the file to expected length, maybe
+          // file write was only partial
+          ELLE_WARN("%s: File %s bigger than snapshot size: expected %s, got %s",
+                    *this, fullpath, tr.progress(), size);
+          // We need to effectively truncate the file, we have
+          // file_size checks all over the map
+          elle::system::truncate(fullpath, tr.progress());
+          size = boost::filesystem::file_size(fullpath);
+          if (size != tr.progress())
+            throw elle::Exception(
+              elle::sprintf("Truncate failed on %s: expected %s, got %s",
+                            fullpath, tr.progress(), size));
+        }
+      }
       _transfer_stream_map[index] =
         elle::make_unique<boost::filesystem::ofstream>(fullpath, std::ios::app | std::ios::binary);
       return tr.progress();
