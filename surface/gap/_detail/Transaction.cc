@@ -69,7 +69,7 @@ namespace surface
       // - The gui has a duplicated model, so popping the onboarding user from
       //   the state will just break the gui model.
       static User onboarder(
-        "contact@infinit.io", "Infinit", "Infinit", {"Infinit"});
+        "contact@infinit.io", "Infinit Team", "Infinit", {"Infinit"});
 
       this->user_sync(onboarder);
 
