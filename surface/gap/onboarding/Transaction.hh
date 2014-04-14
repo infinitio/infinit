@@ -36,6 +36,9 @@ namespace surface
         void
         interrupt() override;
 
+        void
+        reset(surface::gap::State const& state) override;
+
         surface::gap::onboarding::ReceiveMachine&
         machine();
 

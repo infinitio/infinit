@@ -133,7 +133,9 @@ namespace surface
       peer_availability_status(bool status);
 
       // Reinitialize everything. Invoked when connection to servers is reset.
-      void reset(surface::gap::State const& state);
+      virtual
+      void
+      reset(surface::gap::State const& state);
       /*------------.
       | Atttributes |
       `------------*/

@@ -60,8 +60,17 @@ namespace surface
                             reactor::Duration const& transfer_duration)
     {
       ELLE_TRACE_SCOPE("%s: create an onboarding transaction", *this);
-      // XXX: We should have a fake onboarding user.
-      static User onboarder("Onboarder", "Infinit", "Infinit", {"Infinit"});
+
+      // XXX: Hard coding contact@infinit.io is a bad idea but we are forced to:
+      // - We want the gui to send to contact@infinit.io if it's clicked on the
+      //   interface.
+      // - We can't use contact@infinit.io directly because we don't want the
+      //   behavior of the onboarding to depend on the status of a real user.
+      // - The gui has a duplicated model, so popping the onboarding user from
+      //   the state will just break the gui model.
+      static User onboarder(
+        "contact@infinit.io", "Infinit", "Infinit", {"Infinit"});
+
       this->user_sync(onboarder);
 
       auto id = generate_id();

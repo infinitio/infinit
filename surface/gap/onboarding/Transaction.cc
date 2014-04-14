@@ -118,6 +118,11 @@ namespace surface
       }
 
       void
+      Transaction::reset(surface::gap::State const& state)
+      {
+      }
+
+      void
       Transaction::print(std::ostream& stream) const
       {
         stream << "OnboardingTransaction";
