@@ -559,7 +559,11 @@ namespace surface
       {
         ELLE_TRACE_SCOPE("%s: building station", *this);
         this->_station.reset(
-          new station::Station(papier::authority(), this->state().passport()));
+          new station::Station(
+            papier::authority(),
+            this->state().passport(),
+            elle::sprintf("Station(id=%s, tr=%s)", this->id(), this->_data->id)
+          ));
       }
       ELLE_ASSERT(this->_station != nullptr);
       return *this->_station;
