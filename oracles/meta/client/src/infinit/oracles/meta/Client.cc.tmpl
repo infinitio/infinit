@@ -874,10 +874,14 @@ namespace infinit
       }
 
       CloudBufferTokenResponse
-      Client::get_cloud_buffer_token(std::string const& transaction_id) const
+      Client::get_cloud_buffer_token(std::string const& transaction_id,
+                                     bool force_regenerate) const
       {
+        // don't trust the sprintf bool printer to match the expected format
+        // for URL query bool argument
         return this->_request<CloudBufferTokenResponse>(
-          elle::sprintf("/transaction/%s/cloud_buffer", transaction_id),
+          elle::sprintf("/transaction/%s/cloud_buffer?force_regenerate=%s",
+                        transaction_id, force_regenerate?"true":"false"),
           Method::GET);
       }
 

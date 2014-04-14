@@ -522,14 +522,8 @@ namespace surface
       ELLE_TRACE("%s: will ghost-cloud-upload %s of size %s",
                  *this, source_file_path, source_file_size);
 
-      auto& meta = this->state().meta();
-      auto token = meta.get_cloud_buffer_token(this->transaction_id());
-      auto credentials = aws::Credentials(token.access_key_id,
-                                          token.secret_access_key,
-                                          token.session_token,
-                                          token.expiration);
       aws::S3 handler("us-east-1-buffer-infinit-io", this->transaction_id(),
-                      credentials);
+                      this->make_aws_credentials_getter());
 
       typedef frete::Frete::FileSize FileSize;
 
@@ -687,16 +681,7 @@ namespace surface
       }
       else
       {
-        auto get_creds = [this]()
-        {
-          auto& meta = this->state().meta();
-          auto token = meta.get_cloud_buffer_token(this->transaction_id());
-          return aws::Credentials(token.access_key_id,
-                                  token.secret_access_key,
-                                  token.session_token,
-                                  token.expiration);
-        };
-
+        auto get_creds = this->make_aws_credentials_getter();
         bufferer.reset(new S3TransferBufferer(*this->data(),
                                               get_creds,
                                               snapshot.count(),

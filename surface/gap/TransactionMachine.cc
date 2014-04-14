@@ -599,6 +599,22 @@ namespace surface
       stream << ")";
     }
 
+    std::function<aws::Credentials(bool)>
+    TransactionMachine::make_aws_credentials_getter()
+    {
+      return [this](bool first_time)
+      {
+         auto& meta = this->state().meta();
+         auto token = meta.get_cloud_buffer_token(this->transaction_id(),
+                                                  !first_time);//force-regenerate
+         auto credentials = aws::Credentials(token.access_key_id,
+                                             token.secret_access_key,
+                                             token.session_token,
+                                             token.expiration);
+         return credentials;
+      };
+    }
+
     std::ostream&
     operator <<(std::ostream& out,
                 TransactionMachine::State const& t)

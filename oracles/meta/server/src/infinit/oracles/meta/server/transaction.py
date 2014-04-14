@@ -158,6 +158,7 @@ class Mixin:
         'fallback_host': None,
         'fallback_port_ssl': None,
         'fallback_port_tcp': None,
+        'aws_credentials': None,
         'strings': ' '.join([
               user['fullname'],
               user['handle'],
@@ -727,7 +728,8 @@ class Mixin:
 
   @api('/transaction/<transaction_id>/cloud_buffer')
   @require_logged_in
-  def cloud_buffer(self, transaction_id: bson.ObjectId):
+  def cloud_buffer(self, transaction_id : bson.ObjectId,
+                   force_regenerate : json_value = True):
     """
     Return AWS credentials giving the user permissions to PUT (sender) or GET
     (recipient) from the cloud buffer.
@@ -741,15 +743,18 @@ class Mixin:
 
     res = None
 
-
-    if self.is_sender(transaction, user['_id']): # We're doing a PUT.
-      token_maker = cloud_buffer_token.CloudBufferToken(user['_id'], transaction_id, 'PUT')
-    elif self.is_recipient(transaction, user['_id']): # We're doing a GET.
-      token_maker = cloud_buffer_token.CloudBufferToken(user['_id'], transaction_id, 'GET')
-    else: # Not this user's transaction.
-      return self.fail(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
-
+    if not force_regenerate:
+      res = transaction['aws_credentials']
+      if res is not None:
+        elle.log.debug('cloud_buffer: returning from cache')
+        return self.success(res)
+    elle.log.debug('Regenerating AWS token')
+    # As long as those creds are transaction specific there is no risk
+    # in letting the recipient have WRITE access. This will no longuer hold
+    # if cloud data ever gets shared among transactions.
+    token_maker = cloud_buffer_token.CloudBufferToken(user['_id'], transaction_id, 'ALL')
     raw_creds = token_maker.generate_s3_token()
+
     if raw_creds == None:
       return self.fail(error.UNKNOWN)
 
@@ -759,5 +764,9 @@ class Mixin:
     credentials['secret_access_key'] = raw_creds['SecretAccessKey']
     credentials['session_token']     = raw_creds['SessionToken']
     credentials['expiration']        = raw_creds['Expiration']
-
+    elle.log.debug("Storing aws_credentials in DB")
+    transaction.update({'aws_credentials': credentials})
+    self.database.transactions.update(
+      {'_id': transaction_id},
+      {'$set': {'aws_credentials': credentials}})
     return self.success(credentials)

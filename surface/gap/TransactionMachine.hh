@@ -23,6 +23,8 @@
 # include <surface/gap/Notification.hh>
 # include <surface/gap/TransferMachine.hh>
 
+# include <aws/Credentials.hh>
+
 namespace surface
 {
   namespace gap
@@ -198,6 +200,8 @@ namespace surface
       void
       current_state(State const& state);
 
+      std::function<aws::Credentials(bool)>
+      make_aws_credentials_getter();
     public:
       State
       current_state() const;

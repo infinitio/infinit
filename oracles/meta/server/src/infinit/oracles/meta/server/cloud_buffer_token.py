@@ -51,7 +51,7 @@ class CloudBufferToken:
   def __init__(self, user_id, transaction_id, http_action,
                aws_region = 'us-east-1',
                bucket_name = None):
-    assert http_action in ['PUT', 'GET']
+    assert http_action in ['PUT', 'GET', 'ALL']
     elle.log.log('%s: fetching S3 %s token for transaction (%s), user_id (%s) for region: %s' %
                  (self, http_action, transaction_id, user_id, aws_region))
     self.user_id = user_id
@@ -139,6 +139,9 @@ class CloudBufferToken:
       bucket_actions = ['s3:ListBucket']
     elif self.http_action == 'GET':
       object_actions.extend(['s3:GetObject', 's3:DeleteObject'])
+      bucket_actions = ['s3:ListBucket']
+    elif self.http_action == 'ALL':
+      object_actions.extend(['s3:DeleteObject', 's3:GetObject', 's3:PutObject', 's3:ListMultipartUploadParts', 's3:AbortMultipartUpload'])
       bucket_actions = ['s3:ListBucket']
 
     object_statement = {

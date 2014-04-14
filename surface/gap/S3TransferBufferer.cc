@@ -26,7 +26,7 @@ namespace surface
     // Recipient.
     S3TransferBufferer::S3TransferBufferer(
       infinit::oracles::Transaction& transaction,
-      std::function<aws::Credentials()> credentials,
+      std::function<aws::Credentials(bool)> credentials,
       std::string const& bucket_name):
         Super(transaction),
         _count(),
@@ -66,7 +66,7 @@ namespace surface
     // Sender.
     S3TransferBufferer::S3TransferBufferer(
       infinit::oracles::Transaction& transaction,
-      std::function<aws::Credentials()> credentials,
+      std::function<aws::Credentials(bool)> credentials,
       FileCount count,
       FileSize total_size,
       Files const& files,

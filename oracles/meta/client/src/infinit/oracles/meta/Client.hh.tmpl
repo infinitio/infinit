@@ -458,7 +458,8 @@ namespace infinit
         fallback(std::string const& _id) const;
 
         CloudBufferTokenResponse
-        get_cloud_buffer_token(std::string const& transaction_id) const;
+        get_cloud_buffer_token(std::string const& transaction_id,
+                               bool force_regenerate) const;
 
       public:
         ServerStatusResponse

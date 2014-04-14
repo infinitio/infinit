@@ -471,15 +471,7 @@ namespace surface
         }
         else
         {
-          auto get_credentials = [this]()
-          {
-            auto& meta = this->state().meta();
-            auto token = meta.get_cloud_buffer_token(this->transaction_id());
-            return aws::Credentials(token.access_key_id,
-                                    token.secret_access_key,
-                                    token.session_token,
-                                    token.expiration);
-          };
+         auto get_credentials = this->make_aws_credentials_getter();
          _bufferer.reset(new S3TransferBufferer(*this->data(),
                                                get_credentials));
         }
@@ -948,10 +940,11 @@ namespace surface
           if (size != _store_expected_position)
           {
             ELLE_ERR(
-              "%s: expected file size %s and actual file size %s are different",
+              "%s: expected file size %s and actual file size %s are different on %s",
               *this,
               _store_expected_position,
-              size);
+              size,
+              current_file_full_path);
           throw elle::Exception("destination file corrupted");
           }
           // Write the file.
