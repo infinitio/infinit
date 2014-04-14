@@ -88,6 +88,7 @@ namespace surface
       _rejected("rejected"),
       _canceled("canceled"),
       _failed("failed"),
+      _station(nullptr),
       _transfer_machine(new TransferMachine{*this}),
       _state(state),
       _data(std::move(data))

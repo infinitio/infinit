@@ -261,6 +261,14 @@ namespace surface
       ELLE_ATTRIBUTE_RX(reactor::Barrier, canceled);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, failed);
 
+    /*--------.
+    | Station |
+    `--------*/
+      ELLE_ATTRIBUTE(std::unique_ptr<station::Station>, station);
+    protected:
+      station::Station&
+      station();
+
     /*-------------.
     | Core Machine |
     `-------------*/
@@ -299,11 +307,6 @@ namespace surface
       virtual
       bool
       is_sender() const = 0;
-
-      ELLE_ATTRIBUTE(std::unique_ptr<station::Station>, station);
-    protected:
-      station::Station&
-      station();
 
     public:
       virtual
