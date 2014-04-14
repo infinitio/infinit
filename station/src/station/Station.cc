@@ -146,8 +146,6 @@ namespace station
       ELLE_ASSERT_NEQ(remote, this->passport());
 
       // Check we are not already connected.
-      auto hash = std::hash<papier::Passport>()(this->passport());
-      auto remote_hash = std::hash<papier::Passport>()(remote);
       auto check_already = [&] ()
         {
           if (this->_hosts.find(remote) != this->_hosts.end())
@@ -159,12 +157,12 @@ namespace station
           }
         };
       check_already();
-      bool master = hash < remote_hash;
+      bool master = this->passport() < remote;
 
       ELLE_DEBUG("%s: assume %s role", *this, master ? "master" : "slave")
       {
-        ELLE_DUMP("%s: local hash: %s", *this, hash);
-        ELLE_DUMP("%s: remote hash: %s", *this, remote_hash);
+        ELLE_DUMP("%s: local passport: %s", *this, hash);
+        ELLE_DUMP("%s: remote passport: %s", *this, remote_hash);
       }
 
       elle::SafeFinally pop_negotiation;
