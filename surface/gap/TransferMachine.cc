@@ -558,6 +558,7 @@ namespace surface
     TransferMachine::_connection()
     {
       this->_host = this->_connect();
+      ELLE_TRACE_SCOPE("%s: open peer to peer RPCs", *this);
       this->_serializer.reset(
         new infinit::protocol::Serializer(this->_host->socket()));
       this->_channels.reset(
