@@ -240,6 +240,7 @@ def configure(cxx_toolkit = None,
   ## ------ ##
 
   papier_build = drake.Rule('papier/build')
+  papier_install = drake.Rule('papier/install')
   papier_sources = drake.nodes(
     'papier/src/papier/Authority.cc',
     'papier/src/papier/Authority.hh',
