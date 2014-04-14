@@ -99,9 +99,6 @@ namespace station
       try
       {
         auto host = _negotiate(std::move(socket));
-        ELLE_TRACE("%s: negotiation suceeded on %s, adding to hosts",
-                   *this, host->passport());
-        this->_hosts[host->passport()] = host.get();
         this->_host_new.push(std::move(host));
         this->_host_available.open();
       }
