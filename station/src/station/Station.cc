@@ -166,8 +166,12 @@ namespace station
         ELLE_ERR("%s: Same hash '%s' for both passports, local %s, remote %s",
                  *this, hash, this->passport(), remote);
       bool master = hash < remote_hash;
-      ELLE_DEBUG("%s: hash check local:%s remote:%s assume %s role",
-                 *this, hash, remote_hash, master ? "master" : "slave");
+
+      ELLE_DEBUG("%s: assume %s role", *this, master ? "master" : "slave")
+      {
+        ELLE_DUMP("%s: local hash: %s", *this, hash);
+        ELLE_DUMP("%s: remote hash: %s", *this, remote_hash);
+      }
 
       elle::SafeFinally pop_negotiation;
       if (master)
