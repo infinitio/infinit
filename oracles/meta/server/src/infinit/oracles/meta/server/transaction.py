@@ -389,6 +389,7 @@ class Mixin:
             'ghost_id': str(recipient.get('_id')),
             'sender_id': str(user['_id']),
             'avatar': self.user_avatar_route(recipient['_id']),
+            'note': transaction['message'],
           }}
       )
 
