@@ -24,7 +24,7 @@ namespace surface
     public:
       Transferer(TransactionMachine& owner);
       virtual
-      ~Transferer();
+      ~Transferer() = default;
 
     /*--------.
     | Control |
