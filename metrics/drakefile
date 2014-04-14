@@ -63,7 +63,7 @@ def configure(elle,
                            reactor.lib_dynamic.name().dirname())
 
   lib_cxx_config = drake.cxx.Config(local_cxx_config)
-  lib_cxx_config.lib_path_runtime('lib')
+  lib_cxx_config.lib_path_runtime('.')
   lib = Library('lib/metrics',
                 sources + [reactor_lib, elle_lib],
                 cxx_toolkit,

@@ -253,6 +253,7 @@ def configure(cxx_toolkit = None,
     'papier/src/papier/Passport.hxx',
   )
   cxx_config.add_local_include_path('papier/src')
+  cxx_config_libs.add_local_include_path('papier/src')
   papier_cxx_config = drake.cxx.Config(cxx_config_libs)
   papier_cxx_config.add_local_include_path('papier/src')
   papier_lib = Library(
@@ -330,6 +331,7 @@ def configure(cxx_toolkit = None,
     'station/src/station/Station.hh',
   )
   cxx_config.add_local_include_path('station/src')
+  cxx_config_libs.add_local_include_path('station/src')
   station_cxx_config = drake.cxx.Config(papier_cxx_config)
   station_cxx_config.add_local_include_path('station/src')
 
@@ -535,7 +537,7 @@ def configure(cxx_toolkit = None,
   build << gap_build
   install << gap_install
 
-  gap_cxx_config = drake.cxx.Config(cxx_config)
+  gap_cxx_config = drake.cxx.Config(cxx_config_libs)
   gap_cxx_config.add_local_include_path('metrics/src')
   gap_cxx_config.add_local_include_path('oracles/src')
   gap_cxx_config.add_local_include_path('oracles/meta/client/src')
