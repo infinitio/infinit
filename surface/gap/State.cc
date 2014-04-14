@@ -478,6 +478,8 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: logout", *this);
 
       this->_cleanup();
+      // After cleanup, all containers are empty.
+      // Do not use lazy accessor during the logout phase.
 
       ELLE_DEBUG("%s: cleaned up", *this);
 
@@ -492,10 +494,7 @@ namespace surface
         {
           try
           {
-            auto id = this->me().id;
-
             this->_meta.logout();
-
             this->_metrics_reporter->user_logout(true, "");
           }
           catch (elle::Exception const&)
