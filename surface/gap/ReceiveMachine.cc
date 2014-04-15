@@ -212,6 +212,7 @@ namespace surface
 
       switch (this->data()->status)
       {
+        case TransactionStatus::created:
         case TransactionStatus::initialized:
           this->_run(this->_wait_for_decision_state);
           break;
@@ -228,7 +229,6 @@ namespace surface
           this->_run(this->_fail_state);
           break;
         case TransactionStatus::rejected:
-        case TransactionStatus::created:
           break;
         case TransactionStatus::started:
         case TransactionStatus::none:
