@@ -750,7 +750,7 @@ class Mixin:
     res = None
 
     if not force_regenerate:
-      res = transaction['aws_credentials']
+      res = transaction.get('aws_credentials', None)
       if res is not None:
         elle.log.debug('cloud_buffer: returning from cache')
         return self.success(res)
