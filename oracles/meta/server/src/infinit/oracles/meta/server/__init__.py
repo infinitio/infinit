@@ -279,7 +279,7 @@ class Meta(bottle.Bottle,
     with elle.log.debug('%s: get user version' % self):
       import re
       # Before 0.8.11, user agent was empty.
-      if len(self.user_agent) == 0:
+      if self.user_agent is None or len(self.user_agent) == 0:
         return (0, 8, 10)
       pattern = re.compile('^MetaClient/(\\d+)\\.(\\d+)\\.(\\d+)')
       match = pattern.search(self.user_agent)
