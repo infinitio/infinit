@@ -110,14 +110,16 @@ public:
   }
 
   void
-  _response_failure(reactor::network::Socket& socket)
+  _response_failure(reactor::network::Socket& socket,
+                    std::string const& status = "200 OK")
   {
     this->response(socket,
                    std::string("{"
                                "  \"success\": false,"
                                "  \"error_code\": 0,"
                                "  \"error_details\": \"fuck you.\""
-                               "}"));
+                               "}"),
+                   status);
   }
 
   void
@@ -224,13 +226,17 @@ public:
 
   void
   response(reactor::network::Socket& socket,
-           elle::ConstWeakBuffer content)
+           elle::ConstWeakBuffer content,
+           std::string const& status = "200 OK")
   {
     std::string answer(
-      "HTTP/1.1 200 OK\r\n"
-      "Server: Custom HTTP of doom\r\n"
-      "Content-Length: " + std::to_string(content.size()) + "\r\n");
-    answer += "\r\n" + content.string();
+      elle::sprintf(
+        "HTTP/1.1 %s\r\n"
+        "Server: Custom HTTP of doom\r\n"
+        "Content-Length: %s\r\n"
+        "\r\n"
+        "%s",
+        status, content.size(), content.string()));
     ELLE_TRACE("%s: send response to %s: %s", *this, socket.peer(), answer);
     socket.write(elle::ConstWeakBuffer(answer));
   }
@@ -514,7 +520,7 @@ class MetaAuthenticationFailure:
                  std::string const& device)
   {
     ELLE_LOG_SCOPE("%s: reject user %s:%s on %s", *this, user, device, id);
-    this->_response_failure(socket);
+    this->_response_failure(socket, "403 Forbidden");
   }
 };
 
@@ -616,7 +622,7 @@ class MetaNotificationAuthenticationFailed:
   {
     ELLE_LOG_SCOPE("%s: reject user %s:%s on %s", *this, user, device, id);
     this->send_notification(42, user, device);
-    this->_response_failure(socket);
+    this->_response_failure(socket, "403 Forbidden");
   }
 };
 
