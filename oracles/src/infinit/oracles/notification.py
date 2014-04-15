@@ -4,6 +4,7 @@ notifications = {
   'transaction': 7,
   'new_swagger': 9,
   'peer_connection_update': 11,
+  'invalid_credentials': 12,
   'network_update': 128,
   'message': 217,
   'ping': 208,

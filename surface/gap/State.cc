@@ -761,7 +761,7 @@ namespace surface
       std::unique_ptr<infinit::oracles::trophonius::Notification>&& notif)
     {
       ELLE_TRACE_SCOPE("%s: new notification %s", *this, *notif);
-      switch(notif->notification_type)
+      switch (notif->notification_type)
       {
         case infinit::oracles::trophonius::NotificationType::user_status:
           ELLE_ASSERT(
@@ -800,6 +800,8 @@ namespace surface
         case infinit::oracles::trophonius::NotificationType::connection_enabled:
         case infinit::oracles::trophonius::NotificationType::suicide:
           break;
+        case infinit::oracles::trophonius::NotificationType::invalid_credentials:
+          elle::unreachable();
       }
     };
 

@@ -254,7 +254,8 @@ namespace infinit
           {
             ELLE_WARN("%s: authentication error: %s", *this, e.what());
             elle::json::Object response;
-            response["notification_type"] = int(-666);
+            response["notification_type"] =
+              int(NotificationType::peer_connection_update);
             response["response_code"] = int(403);
             response["response_details"] = std::string(e.what());
             elle::json::write(*this->_socket, response);
