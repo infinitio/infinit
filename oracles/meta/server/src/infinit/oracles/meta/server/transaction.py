@@ -362,7 +362,12 @@ class Mixin:
       files = transaction['files']
       if len(files) == 1:
         if transaction['is_directory']:
-          ghost_upload_file = files[0] + '.zip'
+          #C++ side is doing a replace_extension
+          parts = files[0].split('.')
+          if len(parts) == 1:
+            ghost_upload_file = files[0] + '.zip'
+          else:
+            ghost_upload_file = '.'.join(parts[0:-1]) + '.zip'
         else:
           ghost_upload_file = files[0]
       else:
