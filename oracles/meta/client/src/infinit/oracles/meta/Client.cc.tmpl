@@ -256,7 +256,11 @@ namespace infinit
                                reactor::http::Version::v10},
         _email{},
         _logged_in{false}
-      {}
+      {
+        // Don't check the host name since we have only one certificate but we
+        // change hostname between minor versions.
+        this->_default_configuration.ssl_verify_host(false);
+      }
 
       Client::~Client()
       {}

@@ -247,28 +247,29 @@ namespace elle
             env_arr.push_back(line);
           }
         }
-
+      // Create JSON.
       elle::json::Object json_dict;
-
-      json_dict["user_name"] = user_name;
-      json_dict["client_os"] = os_description;
-      if (!message.empty())
-        json_dict["message"] = message;
-      json_dict["env"] = env_arr;
-      json_dict["version"] = std::string(INFINIT_VERSION);
-      std::string crash_dest = elle::os::getenv("INFINIT_CRASH_DEST", "");
-      if (!crash_dest.empty())
-        json_dict["email"] = crash_dest;
-      json_dict["file"] = file;
+      {
+        json_dict["user_name"] = user_name;
+        json_dict["client_os"] = os_description;
+        if (!message.empty())
+          json_dict["message"] = message;
+        json_dict["env"] = env_arr;
+        json_dict["version"] = std::string(INFINIT_VERSION);
+        std::string crash_dest = elle::os::getenv("INFINIT_CRASH_DEST", "");
+        if (!crash_dest.empty())
+          json_dict["email"] = crash_dest;
+        json_dict["file"] = file;
 # ifdef INFINIT_PRODUCTION_BUILD
-      json_dict["send"] = true;
+        json_dict["send"] = true;
 # else
-      json_dict["send"] = !crash_dest.empty();
+        json_dict["send"] = !crash_dest.empty();
 # endif
+      }
       reactor::http::Request::Configuration conf{
         reactor::DurationOpt(300_sec),
           reactor::http::Version(reactor::http::Version::v10)};
-
+      conf.ssl_verify_host(false);
       reactor::Scheduler sched;
       reactor::Thread thread(
         sched, "upload report",
