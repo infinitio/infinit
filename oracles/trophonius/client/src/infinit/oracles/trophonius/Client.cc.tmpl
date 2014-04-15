@@ -34,6 +34,7 @@
 #include <reactor/thread.hh>
 
 #include <infinit/oracles/trophonius/Client.hh>
+#include <version.hh>
 
 ELLE_LOG_COMPONENT("infinit.oracles.trophonius.Client");
 
@@ -449,9 +450,19 @@ namespace infinit
             }
 
             elle::json::Object connection_request;
-            connection_request["user_id"] = this->user_id;
-            connection_request["session_id"] = this->user_session_id;
-            connection_request["device_id"] = this->user_device_id;
+            {
+              connection_request["user_id"] = this->user_id;
+              connection_request["session_id"] = this->user_session_id;
+              connection_request["device_id"] = this->user_device_id;
+              {
+                elle::json::Object version;
+                version["major"] = INFINIT_VERSION_MAJOR;
+                version["minor"] = INFINIT_VERSION_MINOR;
+                version["subminor"] = INFINIT_VERSION_SUBMINOR;
+                connection_request["version"] = version;
+
+              }
+            }
 
             ELLE_DEBUG("%s: identification", *this)
               elle::json::write(*this->_socket, connection_request);

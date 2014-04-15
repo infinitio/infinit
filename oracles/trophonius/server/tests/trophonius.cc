@@ -13,6 +13,7 @@
 #include <reactor/thread.hh>
 
 #include <infinit/oracles/trophonius/server/Trophonius.hh>
+#include <version.hh>
 
 ELLE_LOG_COMPONENT("infinit.oracles.trophonius.server.test")
 
@@ -283,8 +284,14 @@ authentify(reactor::network::Socket& socket,
       "{"
       "  \"user_id\":    \"00000000-0000-0000-0000-00000000000%s\","
       "  \"device_id\":  \"00000000-0000-0000-0000-00000000000%s\","
-      "  \"session_id\": \"00000000-0000-0000-0000-000000000000\""
-      "}\n", user, device);
+      "  \"session_id\": \"00000000-0000-0000-0000-000000000000\","
+      "  \"version\": {"
+      "    \"major\": %s,"
+      "    \"minor\": %s,"
+      "    \"subminor\": %s"
+      "  }"
+      "}\n", user, device,
+      INFINIT_VERSION_MAJOR, INFINIT_VERSION_MINOR, INFINIT_VERSION_SUBMINOR);
   socket.write(auth);
 }
 
@@ -325,7 +332,7 @@ check_authentication_failure(reactor::network::Socket& socket)
   auto json_read = elle::json::read(socket);
   auto json = boost::any_cast<elle::json::Object>(json_read);
   auto notification_type = json["notification_type"];
-  BOOST_CHECK_EQUAL(boost::any_cast<int64_t>(notification_type), -666);
+  BOOST_CHECK_EQUAL(boost::any_cast<int64_t>(notification_type), 12);
   auto response_code = json["response_code"];
   BOOST_CHECK_EQUAL(boost::any_cast<int64_t>(response_code), 403);
 }
