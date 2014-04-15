@@ -166,6 +166,37 @@ namespace infinit
       this->_metric_available.open();
     }
 
+    void
+    Reporter::transaction_transfer_begin(std::string const& transaction_id,
+                                         TransferMethod method,
+                                         float initialization_time)
+    {
+      if (this->_no_metrics)
+        return;
+      this->_metric_queue.push(std::bind(&Reporter::_transaction_transfer_begin,
+                                          this,
+                                          transaction_id,
+                                          method, initialization_time));
+      this->_metric_available.open();
+    }
+
+    void
+    Reporter::transaction_transfer_end(std::string const& transaction_id,
+                                       TransferMethod method,
+                                       float duration,
+                                       uint64_t bytes_transfered,
+                                       TransferExitReason reason,
+                                       std::string const& message)
+    {
+            if (this->_no_metrics)
+        return;
+      this->_metric_queue.push(std::bind(&Reporter::_transaction_transfer_end,
+                                          this, transaction_id,
+                                          method, duration, bytes_transfered,
+                                          reason, message));
+      this->_metric_available.open();
+    }
+
     /*-------------.
     | User Metrics |
     `-------------*/
@@ -314,6 +345,21 @@ namespace infinit
     Reporter::_transaction_ended(std::string const& transaction_id,
                                  infinit::oracles::Transaction::Status status,
                                  std::string const& info)
+    {}
+
+    void
+    Reporter::_transaction_transfer_begin(std::string const& transaction_id,
+                                          TransferMethod method,
+                                          float initialization_time)
+    {}
+
+    void
+    Reporter::_transaction_transfer_end(std::string const& transaction_id,
+                                        TransferMethod method,
+                                        float duration,
+                                        uint64_t bytes_transfered,
+                                        TransferExitReason reason,
+                                        std::string const& message)
     {}
 
     /*----------------------------.

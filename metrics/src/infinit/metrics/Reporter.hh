@@ -14,6 +14,22 @@ namespace infinit
 {
   namespace metrics
   {
+     enum TransferMethod
+      {
+        TransferMethodP2P,
+        TransferMethodCloud,
+        TransferMethodGhostCloud,
+      };
+
+      enum TransferExitReason
+      {
+        TransferExitReasonFinished,
+        TransferExitReasonExhausted, // no more data from that source
+        TransferExitReasonError, // specific error
+        TransferExitReasonTerminated, // terminated by fsm state change
+        TransferExitReasonUnknown, // not properly caught reason should not happen
+      };
+
     class CompositeReporter;
     /// Abstract metrics reporter.
     class Reporter:
@@ -65,6 +81,23 @@ namespace infinit
                         infinit::oracles::Transaction::Status status,
                         std::string const& info);
 
+      /** entering a state that will effectively transfer data
+      * @param initialization_time: time in seconds between entering state
+      *        and effectively sending/receiving the first bytes
+      */
+      void
+      transaction_transfer_begin(std::string const& transaction_id,
+                                 TransferMethod method,
+                                 float initialization_time);
+
+      void
+      transaction_transfer_end(std::string const& transaction_id,
+                               TransferMethod method,
+                               float duration,
+                               uint64_t bytes_transfered,
+                               TransferExitReason reason,
+                               std::string const& message);
+
     /// Transaction metrics implementation.
     protected:
       virtual
@@ -91,6 +124,20 @@ namespace infinit
                          infinit::oracles::Transaction::Status status,
                          std::string const& info);
 
+      virtual
+      void
+      _transaction_transfer_begin(std::string const& transaction_id,
+                                 TransferMethod method,
+                                 float initialization_time);
+
+      virtual
+      void
+      _transaction_transfer_end(std::string const& transaction_id,
+                               TransferMethod method,
+                               float duration,
+                               uint64_t bytes_transfered,
+                               TransferExitReason reason,
+                               std::string const& message);
     /// User metrics.
     public:
       void

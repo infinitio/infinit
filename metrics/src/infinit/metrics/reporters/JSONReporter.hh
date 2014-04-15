@@ -13,17 +13,23 @@ namespace infinit
   {
     enum class JSONKey
     {
+      bytes_transfered,
       connection_method,
+      duration,
       event,
+      exit_reason,
       fail_reason,
       file_count,
+      initialization_time,
       how_ended,
+      message,
       message_length,
       metric_sender_id,
       recipient_id,
       sender_id,
       status,
       timestamp,
+      transfer_method,
       total_size,
       transaction_id,
       user_agent,
@@ -84,6 +90,23 @@ namespace infinit
                          infinit::oracles::Transaction::Status status,
                          std::string const& info);
 
+
+
+      virtual
+      void
+      _transaction_transfer_begin(std::string const& transaction_id,
+                                 TransferMethod method,
+                                 float initialization_time);
+
+      virtual
+      void
+      _transaction_transfer_end(std::string const& transaction_id,
+                               TransferMethod method,
+                               float duration,
+                               uint64_t bytes_transfered,
+                               TransferExitReason reason,
+                               std::string const& message);
+
     /// Implementation of user metrics.
     private:
       virtual
@@ -117,6 +140,11 @@ namespace infinit
       std::string
       _transaction_status_str(infinit::oracles::Transaction::Status status);
 
+      std::string
+      _transfer_method_str(TransferMethod method);
+
+      std::string
+      _transfer_exit_reason_str(TransferExitReason method);
     /// Private attributes.
     private:
       ELLE_ATTRIBUTE(std::string, base_url);

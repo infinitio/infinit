@@ -458,6 +458,28 @@ namespace surface
         ELLE_DEBUG("%s: cloud buffering disabled by configuration", *this);
         return;
       }
+      auto start_time = boost::posix_time::microsec_clock::universal_time();
+      metrics::TransferExitReason exit_reason = metrics::TransferExitReasonUnknown;
+      std::string exit_message;
+      uint64_t total_bytes_transfered = 0;
+      frete::Frete::FileSize initial_progress = 0;
+      if (this->_snapshot != nullptr)
+        initial_progress = this->_snapshot->progress();
+      elle::SafeFinally write_end_message([&,this]
+      {
+        if (auto& mr = state().metrics_reporter())
+        {
+          auto now = boost::posix_time::microsec_clock::universal_time();
+          float duration =
+            float((now - start_time).total_milliseconds()) / 1000.0f;
+          mr->transaction_transfer_end(this->transaction_id(),
+                                       metrics::TransferMethodCloud,
+                                       duration,
+                                       total_bytes_transfered,
+                                       exit_reason,
+                                       exit_message);
+        }
+      });
       try
       {
         ELLE_DEBUG("%s: create cloud bufferer", *this);
@@ -475,19 +497,36 @@ namespace surface
          _bufferer.reset(new S3TransferBufferer(*this->data(),
                                                get_credentials));
         }
+        if (auto& mr = state().metrics_reporter())
+        {
+          auto now = boost::posix_time::microsec_clock::universal_time();
+          mr->transaction_transfer_begin(
+            this->transaction_id(),
+            infinit::metrics::TransferMethodCloud,
+            float((now - start_time).total_milliseconds()) / 1000.0f);
+        }
         ELLE_DEBUG("%s: download from the cloud", *this)
           this->get(*_bufferer);
         // We finished
         ELLE_ASSERT_EQ(progress(), 1);
         this->finished().open();
+        exit_reason = metrics::TransferExitReasonFinished;
+        ELLE_ASSERT_NEQ(this->_snapshot, nullptr);
+        total_bytes_transfered = this->_snapshot->progress() - initial_progress;
       }
       catch (TransferBufferer::DataExhausted const&)
       {
+        exit_reason = metrics::TransferExitReasonExhausted;
+        if (this->_snapshot)
+          total_bytes_transfered = this->_snapshot->progress() - initial_progress;
         ELLE_TRACE("%s: Data exhausted on cloud bufferer", *this);
         this->current_state(TransactionMachine::State::DataExhausted);
       }
       catch (reactor::Terminate const&)
       { // aye aye
+        exit_reason = metrics::TransferExitReasonTerminated;
+         if (this->_snapshot)
+           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
         throw;
       }
       catch (std::exception const& e)
@@ -498,6 +537,11 @@ namespace surface
         ELLE_WARN("%s: cloud download exception, exiting cloud state: %s",
                   *this, e.what());
         this->current_state(TransactionMachine::State::DataExhausted);
+        exit_reason = metrics::TransferExitReasonError;
+        if (this->_snapshot)
+          total_bytes_transfered = this->_snapshot->progress() - initial_progress;
+        exit_message = e.what();
+        // treat this as nonfatal for transaction: no throw
       }
     }
 
@@ -519,17 +563,68 @@ namespace surface
     ReceiveMachine::get(frete::RPCFrete& frete,
                         std::string const& name_policy)
     {
-      auto peer_version = frete.version();
-      bool strong_encryption = true;
-      if (peer_version < elle::Version(0, 8, 3))
+      auto start_time = boost::posix_time::microsec_clock::universal_time();
+      metrics::TransferExitReason exit_reason = metrics::TransferExitReasonUnknown;
+      std::string exit_message;
+      uint64_t total_bytes_transfered = 0;
+      frete::Frete::FileSize initial_progress = 0;
+      if (this->_snapshot != nullptr)
+        initial_progress = this->_snapshot->progress();
+      elle::SafeFinally write_end_message([&,this]
       {
-        // XXX: Create better exception.
-        if (strong_encryption)
-          ELLE_WARN("peer version doesn't support strong encryption");
-        strong_encryption = false;
+        if (auto& mr = state().metrics_reporter())
+        {
+          auto now = boost::posix_time::microsec_clock::universal_time();
+          float duration =
+            float((now - start_time).total_milliseconds()) / 1000.0f;
+          mr->transaction_transfer_end(this->transaction_id(),
+                                       metrics::TransferMethodP2P,
+                                       duration,
+                                       total_bytes_transfered,
+                                       exit_reason,
+                                       exit_message);
+        }
+      });
+      if (auto& mr = state().metrics_reporter())
+      {
+        auto now = boost::posix_time::microsec_clock::universal_time();
+        mr->transaction_transfer_begin(
+          this->transaction_id(),
+          infinit::metrics::TransferMethodP2P,
+          float((now - start_time).total_milliseconds()) / 1000.0f);
       }
-      return this->_get<frete::RPCFrete>(
-        frete, strong_encryption, name_policy, peer_version);
+      try
+      {
+        auto peer_version = frete.version();
+        bool strong_encryption = true;
+        if (peer_version < elle::Version(0, 8, 3))
+        {
+          // XXX: Create better exception.
+          if (strong_encryption)
+            ELLE_WARN("peer version doesn't support strong encryption");
+          strong_encryption = false;
+        }
+        if (this->_snapshot)
+          total_bytes_transfered = this->_snapshot->progress() - initial_progress;
+        else // normal termination: snapshot was removed
+          total_bytes_transfered = frete.full_size();
+        exit_reason = metrics::TransferExitReasonFinished;
+        return this->_get<frete::RPCFrete>(
+          frete, strong_encryption, name_policy, peer_version);
+      }
+      catch(reactor::Terminate const&)
+      {
+        total_bytes_transfered = this->_snapshot->progress() - initial_progress;
+        exit_reason = metrics::TransferExitReasonTerminated;
+        throw;
+      }
+      catch(...)
+      {
+        total_bytes_transfered = this->_snapshot->progress() - initial_progress;
+        exit_reason = metrics::TransferExitReasonError;
+        exit_message = elle::exception_string();
+        throw;
+      }
     }
 
     void

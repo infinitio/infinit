@@ -90,6 +90,42 @@ namespace infinit
       this->_send(this->_transaction_dest, data);
     }
 
+     void
+     JSONReporter::_transaction_transfer_begin(std::string const& transaction_id,
+                                               TransferMethod method,
+                                               float initialization_time)
+     {
+       elle::json::Object data;
+       data[this->_key_str(JSONKey::event)] = std::string("transfer_begin");
+       data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
+       data[this->_key_str(JSONKey::transfer_method)] =
+         this->_transfer_method_str(method);
+       data[this->_key_str(JSONKey::initialization_time)] = initialization_time;
+       this->_send(this->_transaction_dest, data);
+     }
+
+     void
+     JSONReporter::_transaction_transfer_end(std::string const& transaction_id,
+                                             TransferMethod method,
+                                             float duration,
+                                             uint64_t bytes_transfered,
+                                             TransferExitReason reason,
+                                             std::string const& message)
+     {
+       elle::json::Object data;
+       data[this->_key_str(JSONKey::event)] = std::string("transfer_end");
+
+       data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
+       data[this->_key_str(JSONKey::transfer_method)] =
+         this->_transfer_method_str(method);
+       data[this->_key_str(JSONKey::duration)] = duration;
+       data[this->_key_str(JSONKey::bytes_transfered)] = bytes_transfered;
+       data[this->_key_str(JSONKey::exit_reason)] =
+         this->_transfer_exit_reason_str(reason);
+       data[this->_key_str(JSONKey::message)] = message;
+       this->_send(this->_transaction_dest, data);
+     }
+
     /*-------------.
     | User Metrics |
     `-------------*/
@@ -237,16 +273,26 @@ namespace infinit
     {
       switch (k)
       {
+        case JSONKey::bytes_transfered:
+          return "bytes_transfered";
         case JSONKey::connection_method:
           return "connection_method";
+        case JSONKey::duration:
+          return "duration";
         case JSONKey::event:
           return "event";
+        case JSONKey::exit_reason:
+          return "exit_reason";
         case JSONKey::fail_reason:
           return "fail_reason";
         case JSONKey::file_count:
           return "file_count";
         case JSONKey::how_ended:
           return "how_ended";
+        case JSONKey::initialization_time:
+          return "initialization_time";
+        case JSONKey::message:
+          return "message";
         case JSONKey::message_length:
           return "message_length";
         case JSONKey::metric_sender_id:
@@ -263,6 +309,8 @@ namespace infinit
           return "file_size";
         case JSONKey::transaction_id:
           return "transaction";
+        case JSONKey::transfer_method:
+          return "transfer_method";
         case JSONKey::user_agent:
           return "user_agent";
         case JSONKey::version:
@@ -307,6 +355,42 @@ namespace infinit
           return "rejected";
         case infinit::oracles::Transaction::Status::started:
           return "started";
+        default:
+          elle::unreachable();
+      }
+    }
+
+    std::string
+    JSONReporter::_transfer_method_str(TransferMethod method)
+    {
+      switch(method)
+      {
+        case TransferMethodP2P:
+          return "peer-to-peer";
+        case TransferMethodCloud:
+          return "cloud-buffering";
+        case TransferMethodGhostCloud:
+          return "ghost-buffering";
+        default:
+          elle::unreachable();
+      }
+    }
+
+    std::string
+    JSONReporter::_transfer_exit_reason_str(TransferExitReason reason)
+    {
+      switch(reason)
+      {
+        case TransferExitReasonFinished:
+          return "finished";
+        case TransferExitReasonExhausted:
+          return "exhausted";
+        case TransferExitReasonError:
+          return "error";
+        case TransferExitReasonTerminated:
+          return "terminated";
+        case TransferExitReasonUnknown:
+          return "unknown";
         default:
           elle::unreachable();
       }
