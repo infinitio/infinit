@@ -20,10 +20,9 @@ namespace surface
       status(status)
     {}
 
-    static
     gap_TransactionStatus
-    _transaction_status(Transaction::Data const& data,
-                        TransactionMachine::State state)
+    Transaction::_transaction_status(Transaction::Data const& data,
+                                     TransactionMachine::State state) const
     {
       switch (data.status)
       {
@@ -49,10 +48,16 @@ namespace surface
             case TransactionMachine::State::RecipientAccepted:
             case TransactionMachine::State::GhostCloudBufferingFinished:
               return gap_transaction_waiting_accept;
+            case TransactionMachine::State::CloudSynchronize:
+            case TransactionMachine::State::PeerConnectionLost:
             case TransactionMachine::State::PeerDisconnected:
             case TransactionMachine::State::PublishInterfaces:
+              // If the progress is full but the transaction is not finished
+              // yet, it must be cloud buffered.
+              if (this->progress() == 1)
+                return gap_transaction_cloud_buffered;
+              return gap_transaction_connecting;
             case TransactionMachine::State::Connect:
-            case TransactionMachine::State::PeerConnectionLost:
               return gap_transaction_connecting;
             case TransactionMachine::State::DataExhausted:
               return gap_transaction_waiting_data;
@@ -87,6 +92,8 @@ namespace surface
                              Data&& data,
                              bool history):
       _id(id),
+      _sender(state.me().id == data.sender_id &&
+              state.device().id == data.sender_device_id),
       _data(new Data{std::move(data)}),
       _machine(),
       _last_status(gap_TransactionStatus(-1))
@@ -130,6 +137,8 @@ namespace surface
                              uint32_t id,
                              TransactionMachine::Snapshot snapshot):
       _id(id),
+      _sender(state.me().id == snapshot.data.sender_id &&
+              state.device().id == snapshot.data.sender_device_id),
       _data(new Data{std::move(snapshot.data)}),
       _machine(),
       _last_status(gap_TransactionStatus(-1))
@@ -173,6 +182,7 @@ namespace surface
                              std::unordered_set<std::string>&& files,
                              std::string const& message):
       _id(id),
+      _sender(true),
       _data(new Data{state.me().id, state.me().fullname, state.device().id}),
       _machine(new SendMachine{
           state, this->_id, peer_id, std::move(files), message, this->_data}),
@@ -210,7 +220,7 @@ namespace surface
 
         current.wait(this->_machine->state_changed());
         if (this->last_status(
-              _transaction_status(
+              this->_transaction_status(
                 *this->data(),
                 this->_machine->current_state())))
           state.enqueue(Notification(this->id(), this->last_status()));
@@ -294,8 +304,8 @@ namespace surface
     Transaction::last_status() const
     {
       if (this->_last_status == gap_TransactionStatus(-1))
-        return _transaction_status(*this->data(),
-                                   TransactionMachine::State::None);
+        return this->_transaction_status(*this->data(),
+                                         TransactionMachine::State::None);
       return this->_last_status;
     }
 
@@ -375,13 +385,23 @@ namespace surface
       // Notification should only be sent to the sender device and the
       // recipient device concerned by this transaction.
       ELLE_DEBUG("notify machine of the peer availability change")
-        this->peer_availability_status(update.status);
+        if (update.status)
+          this->peer_available(update.endpoints_local);
+        else
+          this->peer_unavailable();
     }
 
     void
-    Transaction::peer_availability_status(bool status)
+    Transaction::peer_available(
+      std::vector<std::pair<std::string, int>> const& endpoints)
     {
-      this->_machine->peer_availability_changed(status);
+      this->_machine->peer_available(endpoints);
+    }
+
+    void
+    Transaction::peer_unavailable()
+    {
+      this->_machine->peer_unavailable();
     }
 
     using infinit::oracles::trophonius::UserStatusNotification;
@@ -389,12 +409,15 @@ namespace surface
     Transaction::on_peer_connection_status_updated(
       UserStatusNotification const& update)
     {
-      // If the transaction is not running, ignore.
-      if (this->_machine == nullptr)
-        return;
       ELLE_TRACE_SCOPE(
         "%s: peer went %sline on device %s",
           *this, update.device_status ? "on" : "off", update.device_id);
+      // If the transaction is not running, ignore.
+      if (this->_machine == nullptr)
+      {
+        ELLE_DEBUG("%s: no machine to notify", *this);
+        return;
+      }
       ELLE_ASSERT(this->concerns_user(update.user_id));
       // XXX: There is no way to know if you are the sender or the recipient
       // because state is not accessible from transaction.
@@ -405,7 +428,7 @@ namespace surface
         // Transaction has not recipient device id set (transaction is not
         //  accepted) so his general connection status is important.
         ELLE_DEBUG("no recipient device id set, user connection status used")
-          this->peer_availability_status(update.status);
+          this->peer_connection_status(update.status);
       }
       // Check if the transaction is linked to this update, looking for the
       // device_id in both sender and recipient device ids.
@@ -413,7 +436,7 @@ namespace surface
           (!is_sender && this->_data->recipient_device_id  == update.device_id))
       {
         ELLE_DEBUG("notify machine of the device connection status update")
-          this->peer_availability_status(update.device_status);
+          this->peer_connection_status(update.device_status);
       }
       else
       {
@@ -475,6 +498,36 @@ namespace surface
       else
         stream << "Transaction(null)";
       stream << "(" << this->_id << ")";
+    }
+
+    void
+    Transaction::reset(surface::gap::State const& state)
+    {
+      if (this->_machine == nullptr)
+        return; // history transaction, nothing going on
+      ELLE_TRACE("Reseting %s", *this);
+      if (this->_machine_state_thread)
+      {
+        this->_machine_state_thread->terminate_now();
+        this->_machine_state_thread.reset();
+      }
+
+      boost::filesystem::path snapshot_path{this->_machine->snapshot_path()};
+      if (this->_sender)
+        this->_machine.reset(
+          new SendMachine{state, this->_id, this->_data, snapshot_path});
+      else
+        this->_machine.reset(
+          new ReceiveMachine{state, this->_id, this->_data, snapshot_path});
+
+      this->_machine_state_thread.reset(
+        new reactor::Thread{
+          *reactor::Scheduler::scheduler(),
+            "notify fsm update",
+            [this, &state]
+            {
+              this->_notify_on_status_update(state);
+            }});
     }
   }
 }

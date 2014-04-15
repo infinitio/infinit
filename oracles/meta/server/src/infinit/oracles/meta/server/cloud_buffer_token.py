@@ -16,6 +16,9 @@ import elle.log
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.CloudBufferToken'
 
+def _aws_urlquote(data):
+  return urllib.parse.quote(data)
+
 class CloudBufferToken:
 
   aws_host = 'sts.amazonaws.com'
@@ -48,7 +51,7 @@ class CloudBufferToken:
   def __init__(self, user_id, transaction_id, http_action,
                aws_region = 'us-east-1',
                bucket_name = None):
-    assert http_action in ['PUT', 'GET']
+    assert http_action in ['PUT', 'GET', 'ALL']
     elle.log.log('%s: fetching S3 %s token for transaction (%s), user_id (%s) for region: %s' %
                  (self, http_action, transaction_id, user_id, aws_region))
     self.user_id = user_id
@@ -136,6 +139,9 @@ class CloudBufferToken:
       bucket_actions = ['s3:ListBucket']
     elif self.http_action == 'GET':
       object_actions.extend(['s3:GetObject', 's3:DeleteObject'])
+      bucket_actions = ['s3:ListBucket']
+    elif self.http_action == 'ALL':
+      object_actions.extend(['s3:DeleteObject', 's3:GetObject', 's3:PutObject', 's3:ListMultipartUploadParts', 's3:AbortMultipartUpload'])
       bucket_actions = ['s3:ListBucket']
 
     object_statement = {
@@ -271,9 +277,9 @@ def generate_get_url(bucket_name, transaction_id, file_path):
   """ Generate a GET URL that can access relative 'file_path' in bucket
       using the federated token we produced
   """
-  expires = int(time.time()) + 36 * 60 * 60
+  expires = int(time.time()) + 15 * 24 * 60 * 60
   string_to_sign = 'GET\n\n\n%s\n/%s/%s/%s' % (
-    expires, bucket_name, transaction_id, file_path)
+    expires, bucket_name, transaction_id, _aws_urlquote(file_path))
   signature = hmac.new(CloudBufferToken.aws_secret.encode('ascii'),
                        string_to_sign.encode('utf-8'),
                        hashlib.sha1).digest()
@@ -283,7 +289,7 @@ def generate_get_url(bucket_name, transaction_id, file_path):
   url = 'https://%s.s3.amazonaws.com:443/%s/%s?AWSAccessKeyId=%s&Expires=%s&Signature=%s' % (
     bucket_name,
     transaction_id,
-    file_path,
+    _aws_urlquote(file_path),
     CloudBufferToken.aws_id,
     expires,
     signature)

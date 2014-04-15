@@ -29,7 +29,8 @@ namespace station
     /// \param authority The authority that signed passports.
     /// \param passport  The passport for this host.
     Station(papier::Authority const& authority,
-            papier::Passport const& passport);
+            papier::Passport const& passport,
+            std::string const& name = "");
     /// Destroy a Station.
     ///
     /// \throw TerminateException if terminated.
@@ -54,6 +55,8 @@ namespace station
     ELLE_ATTRIBUTE_R(papier::Authority, authority);
     /// The passport for this host.
     ELLE_ATTRIBUTE_R(papier::Passport, passport);
+    /// The pretty name.
+    ELLE_ATTRIBUTE_R(std::string, name);
 
   /*-----------.
   | Connection |

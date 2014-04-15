@@ -94,6 +94,7 @@ class Mixin:
     if not user.get('email_confirmed', True):
       from time import time
       if time() > user['unconfirmed_email_deadline']:
+        self.resend_confirmation_email(email)
         self.fail(error.EMAIL_NOT_CONFIRMED)
     return user
 
@@ -125,6 +126,9 @@ class Mixin:
             email,
             password,
             device_id: uuid.UUID):
+    # FIXME: 0.0.0.0 is the website.
+    if self.user_version < (0, 9, 0) and self.user_version != (0, 0, 0):
+      return self.fail(error.DEPRECATED)
     with elle.log.trace("%s: log on device %s" % (email, device_id)):
       assert isinstance(device_id, uuid.UUID)
       email = email.lower()
@@ -316,7 +320,9 @@ class Mixin:
           subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS['confirm-sign-up'],
           merge_vars = {
             user['email']: {
-              'hash': str(hash)
+              'hash': str(hash),
+              'fullname': user['fullname'],
+              'user_id': str(user['_id']),
             }}
         )
 
@@ -364,15 +370,24 @@ class Mixin:
             error.EMAIL_ALREADY_CONFIRMED,
           )
         assert user.get('email_confirmation_hash') is not None
-        self.mailer.send_template(
-          to = user['email'],
-          template_name = 'reconfirm-sign-up',
-          subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS['reconfirm-sign-up'],
-          merge_vars = {
-            user['email']: {
-              'hash': user['email_confirmation_hash']
-            }}
-        )
+        # XXX: Waiting for mandrill to put cooldown on mail.
+        res = self.database.users.find_and_modify(
+          {"email": email,
+           "$or": [{"last_email_confirmation": {"$lt": time.time() - self.email_confirmation_cooldown}},
+                   {"last_email_confirmation": {"$exists": False}}]},
+          {"$set": {"last_email_confirmation": time.time()}})
+        if res is not None:
+          self.mailer.send_template(
+            to = user['email'],
+            template_name = 'reconfirm-sign-up',
+            subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS['reconfirm-sign-up'],
+            merge_vars = {
+              user['email']: {
+                'hash': user['email_confirmation_hash'],
+                'fullname': user['fullname'],
+                'user_id': str(user['_id']),
+                }}
+            )
         return self.success()
       except error.Error as e:
         self.fail(*e.args)
@@ -393,7 +408,7 @@ class Mixin:
     user -- the user to validate.
     """
     if user is None:
-      raise Exception("user doesn't exist")
+      raise error.Error(error.UNKNOWN_USER)
 
   def _user_by_id(self, _id, ensure_existence = True):
     """Get a user using by id.
@@ -472,6 +487,7 @@ class Mixin:
                         (search, limit, skip)):
       pipeline = []
       match = {
+        # User must not be a ghost as ghost fullnames are their email addresses.
         'register_status':'ok',
       }
       if search is not None:
@@ -544,6 +560,7 @@ class Mixin:
               {'fullname' : {'$regex' : '^%s' % text,  '$options': 'i'}},
               {'handle' : {'$regex' : '^%s' % text, '$options': 'i'}},
             ],
+            # User must not be a ghost as ghost fullnames are their email addresses.
             'register_status':'ok',
           },
           fields = fields,
@@ -861,7 +878,8 @@ class Mixin:
 
   @api('/user/<id>/avatar')
   def get_avatar(self,
-                 id: bson.ObjectId):
+                 id: bson.ObjectId,
+                 date: int = 0):
     print(id)
     user = self._user_by_id(id, ensure_existence = False)
     image = user and user.get('avatar')

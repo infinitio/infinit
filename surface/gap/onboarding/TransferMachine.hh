@@ -36,6 +36,9 @@ namespace surface
         _cloud_buffer() override;
 
         void
+        _cloud_synchronize() override;
+
+        void
         _transfer() override;
 
         void

@@ -26,7 +26,7 @@ namespace surface
     // Recipient.
     S3TransferBufferer::S3TransferBufferer(
       infinit::oracles::Transaction& transaction,
-      aws::Credentials const& credentials,
+      std::function<aws::Credentials(bool)> credentials,
       std::string const& bucket_name):
         Super(transaction),
         _count(),
@@ -39,26 +39,34 @@ namespace surface
         _s3_handler(this->_bucket_name, this->_remote_folder,
                     this->_credentials)
     {
-      // Fetch transfer meta-data from cloud.
-      elle::Buffer buf = this->_s3_handler.get_object("meta_data");
-      elle::InputStreamBuffer<elle::Buffer> buffer(buf);
-      std::istream stream(&buffer);
-      auto meta_data =
-        boost::any_cast<elle::json::Object>(elle::json::read(stream));
-      this->_count = boost::any_cast<int64_t>(meta_data["count"]);
-      this->_full_size = boost::any_cast<int64_t>(meta_data["full_size"]);
-      elle::serialize::from_string(elle::format::base64::decode(
-        boost::any_cast<std::string>(
-          meta_data["files"])).string()) >> this->_files;
-      elle::serialize::from_string(elle::format::base64::decode(
-        boost::any_cast<std::string>(
-          meta_data["key_code"])).string()) >> this->_key_code;
+      try
+      {
+        // Fetch transfer meta-data from cloud.
+        elle::Buffer buf = this->_s3_handler.get_object("meta_data");
+        elle::InputStreamBuffer<elle::Buffer> buffer(buf);
+        std::istream stream(&buffer);
+        auto meta_data =
+          boost::any_cast<elle::json::Object>(elle::json::read(stream));
+        this->_count = boost::any_cast<int64_t>(meta_data["count"]);
+        this->_full_size = boost::any_cast<int64_t>(meta_data["full_size"]);
+        elle::serialize::from_string(elle::format::base64::decode(
+          boost::any_cast<std::string>(
+            meta_data["files"])).string()) >> this->_files;
+        elle::serialize::from_string(elle::format::base64::decode(
+          boost::any_cast<std::string>(
+            meta_data["key_code"])).string()) >> this->_key_code;
+      }
+      catch (aws::FileNotFound const& e)
+      {
+        ELLE_LOG("%s: file not found for aws block meta-data", *this);
+        throw DataExhausted();
+      }
     }
 
     // Sender.
     S3TransferBufferer::S3TransferBufferer(
       infinit::oracles::Transaction& transaction,
-      aws::Credentials const& credentials,
+      std::function<aws::Credentials(bool)> credentials,
       FileCount count,
       FileSize total_size,
       Files const& files,
@@ -238,17 +246,12 @@ namespace surface
       TransferBufferer::FileID const& file,
       TransferBufferer::FileOffset const& offset)
     {
-      std::string prefix = boost::lexical_cast<std::string>(file);
-      std::string no_files_str =
-        boost::lexical_cast<std::string>(this->transaction().files_count);
-      prefix.insert(0, no_files_str.size() - prefix.size(), '0');
-
       std::string suffix = boost::lexical_cast<std::string>(offset);
       std::string total_size_str =
         boost::lexical_cast<std::string>(this->transaction().total_size);
+      ELLE_ASSERT(total_size_str.size() >= suffix.size());
       suffix.insert(0, total_size_str.size() - suffix.size(), '0');
-
-      return elle::sprintf("%s_%s", prefix, suffix);
+      return elle::sprintf("%012s_%s", file, suffix);
     }
 
     TransferBufferer::List
@@ -275,26 +278,7 @@ namespace surface
       // Consider cleanup errors as nonfatal for the user
       try
       {
-        ELLE_TRACE("%s: cleaning all buffered data", *this);
-        aws::S3::List list;
-        std::string marker = "";
-        bool first = true;
-        do
-        {
-          list = this->_s3_handler.list_remote_folder(marker);
-          if (list.empty())
-            break;
-          marker = list.back().first;
-          // If we're running a second+ time, it means that we'll get marker
-          // element twice, so remove it.
-          int start = first?0:1;
-          first = false;
-          for (unsigned i = start; i < list.size(); ++i)
-            this->_s3_handler.delete_object(list[i].first);
-        }
-        while (list.size() >= 1000);
-        // Remove the directory
-        this->_s3_handler.delete_object("");
+        this->_s3_handler.delete_folder();
       }
       catch (const reactor::Terminate&)
       {

@@ -177,6 +177,27 @@ namespace infinit
                       boost::any_cast<std::string>(json["device_id"]));
                   this->_meta.session_id(
                     boost::any_cast<std::string>(json["session_id"]));
+                  if (json.find("version") != json.end())
+                  {
+                    auto const& version =
+                      boost::any_cast<elle::json::Object>(json.at("version"));
+                    try
+                    {
+                      auto major = boost::any_cast<int64_t>(version.at("major"));
+                      auto minor = boost::any_cast<int64_t>(version.at("minor"));
+                      auto subminor = boost::any_cast<int64_t>(version.at("subminor"));
+                      this->_version = elle::Version(major, minor, subminor);
+                      ELLE_DEBUG("%s: client version: %s",
+                                 *this, this->_version);
+                    }
+                    catch (...)
+                    {
+                      ELLE_WARN("%s: unable to get client version: %s",
+                                *this, elle::exception_string());
+                    }
+                  }
+                  else
+                    ELLE_WARN("%s: client didn't send his version", *this);
                 }
                 catch (std::runtime_error const& e)
                 {
@@ -213,13 +234,19 @@ namespace infinit
                                             this->_user_id,
                                             this->_device_id);
                 }
-                catch (infinit::oracles::meta::Exception const& e)
+                // FIXME: the meta client exception is bullshit.
+                catch (elle::http::Exception const& e)
                 {
-                  // FIXME: the meta client exception is bullshit.
-                  if (e.err == infinit::oracles::meta::Error::unknown)
-                    throw;
-                  else
+                  if (e.code == elle::http::ResponseCode::forbidden ||
+                      e.code == elle::http::ResponseCode::internal_server_error ||
+                      e.code == elle::http::ResponseCode::unknown_error)
+                  {
                     throw AuthenticationError(e.what());
+                  }
+                  else
+                  {
+                    throw;
+                  }
                 }
                 ELLE_TRACE("%s: authentified", *this);
                 this->_registered = true;
@@ -254,7 +281,7 @@ namespace infinit
           {
             ELLE_WARN("%s: authentication error: %s", *this, e.what());
             elle::json::Object response;
-            response["notification_type"] = int(-666);
+            response["notification_type"] = int(12);
             response["response_code"] = int(403);
             response["response_details"] = std::string(e.what());
             elle::json::write(*this->_socket, response);

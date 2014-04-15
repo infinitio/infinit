@@ -19,7 +19,7 @@
 #include <surface/gap/State.hh>
 #include <version.hh>
 
-ELLE_LOG_COMPONENT("8recv");
+ELLE_LOG_COMPONENT("8online");
 
 bool stop = false;
 
@@ -116,42 +116,20 @@ int main(int argc, char** argv)
         state.attach_callback<surface::gap::State::ConnectionStatus>(
           [&] (surface::gap::State::ConnectionStatus const& notif)
           {
-            ELLE_TRACE("connection status notification: %s", notif);
+            ELLE_TRACE_SCOPE("connection status notification: %s", notif);
           }
         );
 
         state.attach_callback<surface::gap::State::UserStatusNotification>(
           [&] (surface::gap::State::UserStatusNotification const& notif)
           {
-            ELLE_TRACE("user status notification: %s", notif);
+            ELLE_TRACE_SCOPE("user status notification: %s", notif);
           });
 
         state.attach_callback<surface::gap::Transaction::Notification>(
           [&] (surface::gap::Transaction::Notification const& notif)
           {
-            try
-            {
-              ELLE_TRACE_SCOPE("transaction notification: %s", notif);
-              auto& tr = state.transactions().at(notif.id);
-              if (tr->data()->recipient_id != state.me().id)
-                return;
-              if (notif.status == gap_transaction_waiting_accept)
-              {
-                ELLE_LOG("accept transaction %s", notif.id);
-                state.transactions().at(notif.id)->accept();
-              }
-              else if (notif.status == gap_transaction_finished)
-              {
-                ELLE_LOG("transaction %s finished", notif.id);
-                state.transactions().at(notif.id)->join();
-              }
-            }
-            catch(...)
-            {
-              ELLE_WARN("Exception while processing notification: %s",
-                elle::exception_string());
-            }
-
+            ELLE_TRACE_SCOPE("transaction notification: %s", notif);
           });
 
         auto hashed_password = state.hash_password(user, password);

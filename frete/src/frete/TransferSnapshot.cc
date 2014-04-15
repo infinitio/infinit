@@ -11,14 +11,16 @@ namespace frete
                                      Frete::FileSize total_size):
     _count(count),
     _total_size(total_size),
-    _progress(0)
+    _progress(0),
+    _archived(false)
   {}
 
   // Sender.
   TransferSnapshot::TransferSnapshot():
     _count(0),
     _total_size(0),
-    _progress(0)
+    _progress(0),
+    _archived(false)
   {}
 
   void

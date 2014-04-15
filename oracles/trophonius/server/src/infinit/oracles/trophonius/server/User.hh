@@ -3,6 +3,7 @@
 
 # include <queue>
 
+# include <elle/Version.hh>
 # include <elle/json/json.hh>
 
 # include <reactor/Barrier.hh>
@@ -48,6 +49,7 @@ namespace infinit
           ELLE_ATTRIBUTE_R(boost::uuids::uuid, device_id);
           ELLE_ATTRIBUTE_R(std::string, user_id);
           ELLE_ATTRIBUTE(std::string, session_id);
+          ELLE_ATTRIBUTE_R(elle::Version, version);
 
         /*-----.
         | Meta |

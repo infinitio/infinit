@@ -51,8 +51,10 @@ class Meta(bottle.Bottle,
                trophonius_expiration_time = 300, # in sec
                apertus_expiration_time = 300, # in sec
                unconfirmed_email_leeway = 604800, # in sec, 7 days.
-               daily_summary_hour = 18,
+               daily_summary_hour = 18, #in sec.
+               email_confirmation_cooldown = 600, # in sec.
                force_admin = False,
+               debug = False,
                ):
     import os
     system_logger = os.getenv("META_LOG_SYSTEM")
@@ -71,7 +73,8 @@ class Meta(bottle.Bottle,
                       (self, mongo_host, mongo_port)):
       self.__database = pymongo.MongoClient(**db_args).meta
       self.__set_constraints()
-    self.catchall = False
+    self.catchall = debug
+    bottle.debug(debug)
     # Plugins.
     self.install(FailurePlugin())
     self.__sessions = SessionPlugin(self.__database, 'sessions')
@@ -103,6 +106,7 @@ class Meta(bottle.Bottle,
     self.apertus_expiration_time = int(apertus_expiration_time)
     self.unconfirmed_email_leeway = int(unconfirmed_email_leeway)
     self.daily_summary_hour = int(daily_summary_hour)
+    self.email_confirmation_cooldown = int(email_confirmation_cooldown)
     waterfall.Waterfall.__init__(self)
 
   def __set_constraints(self):
@@ -275,17 +279,14 @@ class Meta(bottle.Bottle,
     with elle.log.debug('%s: get user version' % self):
       import re
       # Before 0.8.11, user agent was empty.
-      if len(self.user_agent) == 0:
+      if self.user_agent is None or len(self.user_agent) == 0:
         return (0, 8, 10)
-      # Try to distinguish browser user agent from meta client.
-      # This assume that python re will take the complete subminor and not stop
-      # at first digit found.
-      pattern = re.compile('MetaClient/(\\d+)\\.(\\d+)\\.(\\d+)')
-      res = re.match(pattern, self.user_agent)
-      if res is None:
+      pattern = re.compile('^MetaClient/(\\d+)\\.(\\d+)\\.(\\d+)')
+      match = pattern.search(self.user_agent)
+      if match is None:
         elle.log.debug('can\'t extract version from user agent %s' %
                        self.user_agent)
         # Website.
         return (0, 0, 0)
       else:
-        return tuple(map(int, pattern.groups()))
+        return tuple(map(int, match.groups()))

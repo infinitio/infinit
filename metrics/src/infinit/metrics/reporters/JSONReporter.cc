@@ -1,13 +1,15 @@
 #include <functional>
 
-#include <infinit/metrics/reporters/JSONReporter.hh>
-
 #include <elle/log.hh>
 #include <elle/os/environ.hh>
+
 #include <reactor/exception.hh>
 #include <reactor/http/exceptions.hh>
 #include <reactor/http/Request.hh>
 #include <reactor/scheduler.hh>
+
+#include <infinit/metrics/reporters/JSONReporter.hh>
+#include <version.hh>
 
 ELLE_LOG_COMPONENT("infinit.metrics.JSONReporter");
 
@@ -31,7 +33,7 @@ namespace infinit
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] =
-        std::string("transaction accepted");
+        std::string("accepted");
       data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
 
       this->_send(this->_transaction_dest, data);
@@ -44,7 +46,7 @@ namespace infinit
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] =
-        std::string("transaction connected");
+        std::string("connected");
       data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
       data[this->_key_str(JSONKey::connection_method)] = connection_method;
 
@@ -61,7 +63,7 @@ namespace infinit
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] =
-        std::string("transaction created");
+        std::string("created");
       data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
       data[this->_key_str(JSONKey::sender_id)] = sender_id;
       data[this->_key_str(JSONKey::recipient_id)] = recipient_id;
@@ -80,13 +82,49 @@ namespace infinit
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] =
-        std::string("transaction ended");
+        std::string("ended");
       data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
       data[this->_key_str(JSONKey::how_ended)] =
         this->_transaction_status_str(status);
 
       this->_send(this->_transaction_dest, data);
     }
+
+     void
+     JSONReporter::_transaction_transfer_begin(std::string const& transaction_id,
+                                               TransferMethod method,
+                                               float initialization_time)
+     {
+       elle::json::Object data;
+       data[this->_key_str(JSONKey::event)] = std::string("transfer_begin");
+       data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
+       data[this->_key_str(JSONKey::transfer_method)] =
+         this->_transfer_method_str(method);
+       data[this->_key_str(JSONKey::initialization_time)] = initialization_time;
+       this->_send(this->_transaction_dest, data);
+     }
+
+     void
+     JSONReporter::_transaction_transfer_end(std::string const& transaction_id,
+                                             TransferMethod method,
+                                             float duration,
+                                             uint64_t bytes_transfered,
+                                             TransferExitReason reason,
+                                             std::string const& message)
+     {
+       elle::json::Object data;
+       data[this->_key_str(JSONKey::event)] = std::string("transfer_end");
+
+       data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
+       data[this->_key_str(JSONKey::transfer_method)] =
+         this->_transfer_method_str(method);
+       data[this->_key_str(JSONKey::duration)] = duration;
+       data[this->_key_str(JSONKey::bytes_transfered)] = bytes_transfered;
+       data[this->_key_str(JSONKey::exit_reason)] =
+         this->_transfer_exit_reason_str(reason);
+       data[this->_key_str(JSONKey::message)] = message;
+       this->_send(this->_transaction_dest, data);
+     }
 
     /*-------------.
     | User Metrics |
@@ -95,7 +133,7 @@ namespace infinit
     JSONReporter::_user_favorite(std::string const& user_id)
     {
       elle::json::Object data;
-      data[this->_key_str(JSONKey::event)] = std::string("user favorite");
+      data[this->_key_str(JSONKey::event)] = std::string("app/favorite");
       data[this->_key_str(JSONKey::who)] = user_id;
 
       this->_send(this->_user_dest, data);
@@ -105,7 +143,7 @@ namespace infinit
     JSONReporter::_user_login(bool success, std::string const& info)
     {
       elle::json::Object data;
-      data[this->_key_str(JSONKey::event)] = std::string("user login");
+      data[this->_key_str(JSONKey::event)] = std::string("app/login");
       data[this->_key_str(JSONKey::status)] = this->_status_string(success);
       if (!success)
         data[this->_key_str(JSONKey::fail_reason)] = info;
@@ -117,7 +155,7 @@ namespace infinit
     JSONReporter::_user_logout(bool success, std::string const& info)
     {
       elle::json::Object data;
-      data[this->_key_str(JSONKey::event)] = std::string("user logout");
+      data[this->_key_str(JSONKey::event)] = std::string("app/logout");
       data[this->_key_str(JSONKey::status)] = this->_status_string(success);
       if (!success)
         data[this->_key_str(JSONKey::fail_reason)] = info;
@@ -129,7 +167,7 @@ namespace infinit
     JSONReporter::_user_unfavorite(std::string const& user_id)
     {
       elle::json::Object data;
-      data[this->_key_str(JSONKey::event)] = std::string("user unfavorite");
+      data[this->_key_str(JSONKey::event)] = std::string("app/unfavorite");
       data[this->_key_str(JSONKey::who)] = user_id;
 
       this->_send(this->_user_dest, data);
@@ -139,7 +177,7 @@ namespace infinit
     JSONReporter::_user_heartbeat()
     {
       elle::json::Object data;
-      data[this->_key_str(JSONKey::event)] = std::string("user heartbeat");
+      data[this->_key_str(JSONKey::event)] = std::string("app/heartbeat");
 
       this->_send(this->_user_dest, data);
     }
@@ -154,6 +192,24 @@ namespace infinit
     {
       auto event_name =
         boost::any_cast<std::string>(data[this->_key_str(JSONKey::event)]);
+      elle::json::Object version;
+      version["major"] = INFINIT_VERSION_MAJOR;
+      version["minor"] = INFINIT_VERSION_MINOR;
+      version["subminor"] = INFINIT_VERSION_SUBMINOR;
+      elle::json::Object infinit;
+      infinit["version"] = std::move(version);
+      infinit["os"] = std::string(
+#ifdef INFINIT_LINUX
+        "Linux"
+#elif defined(INFINIT_MACOSX)
+        "OS X"
+#elif defined(INFINIT_WINDOWS)
+        "Windows"
+#else
+# error "machine not supported"
+#endif
+         );
+      data["infinit"] = std::move(infinit);
       try
       {
         ELLE_TRACE_SCOPE("%s: sending metric: %s", *this, event_name);
@@ -217,16 +273,26 @@ namespace infinit
     {
       switch (k)
       {
+        case JSONKey::bytes_transfered:
+          return "bytes_transfered";
         case JSONKey::connection_method:
           return "connection_method";
+        case JSONKey::duration:
+          return "duration";
         case JSONKey::event:
           return "event";
+        case JSONKey::exit_reason:
+          return "exit_reason";
         case JSONKey::fail_reason:
           return "fail_reason";
         case JSONKey::file_count:
           return "file_count";
         case JSONKey::how_ended:
           return "how_ended";
+        case JSONKey::initialization_time:
+          return "initialization_time";
+        case JSONKey::message:
+          return "message";
         case JSONKey::message_length:
           return "message_length";
         case JSONKey::metric_sender_id:
@@ -243,6 +309,8 @@ namespace infinit
           return "file_size";
         case JSONKey::transaction_id:
           return "transaction";
+        case JSONKey::transfer_method:
+          return "transfer_method";
         case JSONKey::user_agent:
           return "user_agent";
         case JSONKey::version:
@@ -287,6 +355,42 @@ namespace infinit
           return "rejected";
         case infinit::oracles::Transaction::Status::started:
           return "started";
+        default:
+          elle::unreachable();
+      }
+    }
+
+    std::string
+    JSONReporter::_transfer_method_str(TransferMethod method)
+    {
+      switch(method)
+      {
+        case TransferMethodP2P:
+          return "peer-to-peer";
+        case TransferMethodCloud:
+          return "cloud-buffering";
+        case TransferMethodGhostCloud:
+          return "ghost-buffering";
+        default:
+          elle::unreachable();
+      }
+    }
+
+    std::string
+    JSONReporter::_transfer_exit_reason_str(TransferExitReason reason)
+    {
+      switch(reason)
+      {
+        case TransferExitReasonFinished:
+          return "finished";
+        case TransferExitReasonExhausted:
+          return "exhausted";
+        case TransferExitReasonError:
+          return "error";
+        case TransferExitReasonTerminated:
+          return "terminated";
+        case TransferExitReasonUnknown:
+          return "unknown";
         default:
           elle::unreachable();
       }

@@ -57,6 +57,20 @@ namespace infinit
                          infinit::oracles::Transaction::Status status,
                          std::string const& info);
 
+      virtual
+      void
+      _transaction_transfer_begin(std::string const& transaction_id,
+                                 TransferMethod method,
+                                 float initialization_time);
+
+      virtual
+      void
+      _transaction_transfer_end(std::string const& transaction_id,
+                               TransferMethod method,
+                               float duration,
+                               uint64_t bytes_transfered,
+                               TransferExitReason reason,
+                               std::string const& message);
     /// User metrics.
     private:
       virtual

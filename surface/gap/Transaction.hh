@@ -130,12 +130,20 @@ namespace surface
       peer_connection_status(bool status);
 
       void
-      peer_availability_status(bool status);
+      peer_available(std::vector<std::pair<std::string, int>> const& endpoints);
 
+      void
+      peer_unavailable();
+
+      // Reinitialize everything. Invoked when connection to servers is reset.
+      virtual
+      void
+      reset(surface::gap::State const& state);
       /*------------.
       | Atttributes |
       `------------*/
       ELLE_ATTRIBUTE_R(uint32_t, id);
+      ELLE_ATTRIBUTE_R(uint32_t, sender);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
     protected:
       std::unique_ptr<TransactionMachine> _machine;
@@ -159,6 +167,10 @@ namespace surface
 
       bool
       final() const;
+    private:
+      gap_TransactionStatus
+      _transaction_status(Transaction::Data const& data,
+                          TransactionMachine::State state) const;
 
       /*----------.
       | Printable |

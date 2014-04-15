@@ -134,7 +134,6 @@ class Trophonius(Client):
 class NoOpMailer(Mailer):
 
   def __init__(self, op = None):
-    print("NoOpMailer: ctr")
     self.__sent = 0
     super().__init__(True)
 

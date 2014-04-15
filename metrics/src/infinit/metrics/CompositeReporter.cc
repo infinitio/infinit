@@ -144,6 +144,32 @@ namespace infinit
                         info));
     }
 
+    void
+    CompositeReporter::_transaction_transfer_begin(std::string const& transaction_id,
+                                                   TransferMethod method,
+                                                   float initialization_time)
+    {
+      this->_dispatch(std::bind(&Reporter::_transaction_transfer_begin,
+                                std::placeholders::_1,
+                                transaction_id,
+                                method,
+                                initialization_time));
+    }
+
+    void
+    CompositeReporter::_transaction_transfer_end(std::string const& transaction_id,
+                                                 TransferMethod method,
+                                                 float duration,
+                                                 uint64_t bytes_transfered,
+                                                 TransferExitReason reason,
+                                                 std::string const& message)
+    {
+      this->_dispatch(std::bind(&Reporter::_transaction_transfer_end,
+                                std::placeholders::_1,
+                                transaction_id, method, duration,
+                                bytes_transfered, reason, message));
+    }
+
     /*-------------.
     | User Metrics |
     `-------------*/

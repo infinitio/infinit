@@ -229,6 +229,18 @@ namespace infinit
         return !(*this == error);
       }
 
+      User::User(std::string const& id,
+                 std::string const& fullname,
+                 std::string const& handle,
+                 User::Devices const& devices,
+                 std::string const& public_key):
+        id(id),
+        fullname(fullname),
+        handle(handle),
+        public_key(public_key),
+        connected_devices(devices)
+      {}
+
       namespace json = elle::format::json;
 
       // - Ctor & dtor ----------------------------------------------------------
@@ -244,7 +256,11 @@ namespace infinit
                                reactor::http::Version::v10},
         _email{},
         _logged_in{false}
-      {}
+      {
+        // Don't check the host name since we have only one certificate but we
+        // change hostname between minor versions.
+        this->_default_configuration.ssl_verify_host(false);
+      }
 
       Client::~Client()
       {}
@@ -862,10 +878,14 @@ namespace infinit
       }
 
       CloudBufferTokenResponse
-      Client::get_cloud_buffer_token(std::string const& transaction_id) const
+      Client::get_cloud_buffer_token(std::string const& transaction_id,
+                                     bool force_regenerate) const
       {
+        // don't trust the sprintf bool printer to match the expected format
+        // for URL query bool argument
         return this->_request<CloudBufferTokenResponse>(
-          elle::sprintf("/transaction/%s/cloud_buffer", transaction_id),
+          elle::sprintf("/transaction/%s/cloud_buffer?force_regenerate=%s",
+                        transaction_id, force_regenerate?"true":"false"),
           Method::GET);
       }
 
@@ -981,13 +1001,19 @@ namespace infinit
         switch (e)
         {
           <%! from infinit.oracles.meta.error import errors %>
-          %for name, (code, comment) in errors.items():
+          %for name, (code, comment) in sorted(errors.items()):
             case Error::${name}:
               out << "${name} (${comment})";
               break;
           %endfor
         }
         return out;
+      }
+
+      void
+      User::print(std::ostream& stream) const
+      {
+        stream << "User(" << this->id << ", " << this->handle << ")";
       }
 
       /*----------.

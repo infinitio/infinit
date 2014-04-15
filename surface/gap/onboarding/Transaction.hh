@@ -36,7 +36,8 @@ namespace surface
         void
         interrupt() override;
 
-        ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, thread);
+        void
+        reset(surface::gap::State const& state) override;
 
         surface::gap::onboarding::ReceiveMachine&
         machine();

@@ -1,3 +1,6 @@
+#ifndef INFINIT_MACOSX
+# define BOOST_NO_CXX11_SCOPED_ENUMS
+#endif
 #include <elle/log.hh>
 
 #include <surface/gap/onboarding/TransferMachine.hh>
@@ -51,6 +54,12 @@ namespace surface
       }
 
       void
+      TransferMachine::_cloud_synchronize()
+      {
+        // Show fake cloud synchronizing.
+      }
+
+      void
       TransferMachine::_transfer()
       {
         ELLE_TRACE_SCOPE("%s: running transfer", *this);
@@ -68,6 +77,8 @@ namespace surface
              (1.0f * this->_duration.total_milliseconds()));
           reactor::sleep(step);
         }
+        if (this->_progress > 1.0f)
+          this->_progress = 1.0f;
         try
         {
           boost::filesystem::path input_path(this->_file_path);

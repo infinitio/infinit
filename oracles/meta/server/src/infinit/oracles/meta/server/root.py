@@ -260,7 +260,7 @@ class Mixin:
             "message": message,
             "more": more,
           },
-          attached  = ('log.tar.bz', file),
+          attachment = ('log.tar.bz', file),
         )
       return self.success()
 
@@ -296,9 +296,9 @@ class Mixin:
                {"time": {"$exists": False}}]},
       multi = True)
 
-    import datetime
-    if datetime.datetime.utcnow().hour == self.daily_summary_hour:
-      self.daily_summary()
+    # import datetime
+    # if datetime.datetime.utcnow().hour == self.daily_summary_hour:
+    #   self.daily_summary()
     return self.success(res)
 
   @api('/cron/daily-summary', method = 'POST')

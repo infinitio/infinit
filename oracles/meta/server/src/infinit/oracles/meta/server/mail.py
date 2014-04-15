@@ -21,12 +21,12 @@ import json
 MAILCHIMP_TEMPLATE_SUBJECTS = {
   'invitation-beta': '%(sendername)s would like to invite you to Infinit',
   'send-file': '*|sendername|* wants to share *|filename|* with you',
-  'send-file-url': '*|sendername|* wants to share *|filename|* with you',
-  'send-invitation-no-file': '%(sendername)s wants to use Infinit with you',
+  'send-file-url': '*|sendername|* shared *|filename|* with you',
+  'send-invitation-no-file': '*|sendername|* wants to use Infinit with you',
   'accept-file-only-offline': '%(sendername)s wants to share %(filename)s with you',
   'confirm-sign-up': 'Welcome to Infinit',
-  'reconfirm-sign-up': 'Confirm your email',
-  'daily-summary': 'You have *|count|* unaccepted files on Infinit',
+  'reconfirm-sign-up': 'Confirm your email address on Infinit',
+  'daily-summary': 'You have *|count|* files waiting for you on Infinit',
 }
 
 ALPHA_LIST = 'd8d5225ac7'
@@ -37,7 +37,6 @@ class Mailer():
 
   def __init__(self,
                active = True):
-    print("Mailer: ctr(%s)" % active)
     self.__active = active
     self.__mandrill = mandrill.Mandrill(apikey = conf.MANDRILL_PASSWORD)
 
@@ -87,7 +86,7 @@ class Mailer():
            to,
            subject,
            body,
-           fr = 'Infinit <no-reply@infinit.io>',
+           fr = 'Infinit <contact@infinit.io>',
            reply_to = None,
            attachment = None):
     message = self.build_message(to = to,
@@ -103,7 +102,7 @@ class Mailer():
                     to,
                     template_name,
                     subject,
-                    fr = 'Infinit <no-reply@infinit.io>',
+                    fr = 'Infinit <contact@infinit.io>',
                     reply_to = None,
                     attachment = None,
                     encoding = 'utf-8',
@@ -138,7 +137,7 @@ class Mailer():
 
   def __send(self, message):
     messenger = mandrill.Messages(self.__mandrill)
-    messenger.send(messenge)
+    messenger.send(message)
 
   def __send_template(self, template_name, message):
     messenger = mandrill.Messages(self.__mandrill)

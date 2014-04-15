@@ -1,8 +1,10 @@
 #include <elle/serialize/TupleSerializer.hxx>
 
 #include <cryptography/PrivateKey.hh>
+#include <cryptography/oneway.hh>
 
 #include <papier/Authority.hh>
+#include <boost/functional/hash.hpp>
 #include <papier/Passport.hh>
 
 namespace papier
@@ -83,6 +85,14 @@ namespace papier
   }
 
   bool
+  Passport::operator <(Passport const& passport) const
+  {
+    if (this->id() < passport.id())
+      return true;
+    return this->owner_K() < passport.owner_K();
+  }
+
+  bool
   Passport::operator ==(Passport const& passport) const
   {
     elle::io::Unique theirs;
@@ -98,5 +108,21 @@ namespace papier
   {
     return !(*this == passport);
   }
+}
 
+namespace std
+{
+  std::size_t
+  hash<papier::Passport>::operator()(papier::Passport const& s) const
+  {
+    // XXX: The id is definitely not unique.
+    auto id = std::hash<std::string>()(s.id());
+    auto k = std::hash<elle::ConstWeakBuffer>()(
+      infinit::cryptography::oneway::hash(
+        s.owner_K(), infinit::cryptography::oneway::Algorithm::sha1).buffer());
+    size_t seed = 0;
+    boost::hash_combine(seed, id);
+    boost::hash_combine(seed, k);
+    return seed;
+  }
 }

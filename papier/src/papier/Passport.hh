@@ -66,8 +66,20 @@ namespace papier
     bool operator == (Passport const&) const;
     bool operator != (Passport const&) const;
 
+    bool operator < (Passport const&) const;
+
   private:
     ELLE_SERIALIZE_FRIEND_FOR(Passport);
+  };
+}
+
+namespace std
+{
+  template<>
+  struct hash<papier::Passport>
+  {
+  public:
+    std::size_t operator()(papier::Passport const& s) const;
   };
 }
 

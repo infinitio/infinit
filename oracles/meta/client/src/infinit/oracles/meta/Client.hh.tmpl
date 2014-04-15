@@ -13,6 +13,7 @@
 
 # include <boost/uuid/uuid.hpp>
 
+# include <algorithm>
 # include <functional>
 # include <list>
 # include <map>
@@ -32,7 +33,7 @@ namespace infinit
       enum class Error: int
       {
         <%! from infinit.oracles.meta.error import errors %>
-        %for name, (code, comment) in errors.items():
+        %for name, (code, comment) in sorted(errors.items()):
           ${name} = ${code},
         %endfor
       };
@@ -91,13 +92,23 @@ namespace infinit
       struct MessageResponse : Response
       {};
 
-      struct User
+      struct User:
+         public elle::Printable
       {
+        typedef std::vector<std::string> Devices;
         std::string id;
         std::string fullname;
         std::string handle;
         std::string public_key;
-        std::vector<std::string> connected_devices;
+        Devices connected_devices;
+
+        User() = default;
+
+        User(std::string const& id,
+             std::string const& fullname,
+             std::string const& handle,
+             Devices const& connected_devices = {},
+             std::string const& public_key = "");
 
         bool
         online() const
@@ -106,10 +117,27 @@ namespace infinit
         }
 
         bool
+        online(std::string const& device_id) const
+        {
+          return std::find(std::begin(this->connected_devices),
+                           std::end(this->connected_devices),
+                           device_id) != std::end(this->connected_devices);
+        }
+
+        bool
         ghost() const
         {
           return this->public_key.empty();
         }
+
+        /*----------.
+        | Printable |
+        `----------*/
+      public:
+        virtual
+        void
+        print(std::ostream& stream) const override;
+
       };
 
       struct UserResponse : User, Response
@@ -430,7 +458,8 @@ namespace infinit
         fallback(std::string const& _id) const;
 
         CloudBufferTokenResponse
-        get_cloud_buffer_token(std::string const& transaction_id) const;
+        get_cloud_buffer_token(std::string const& transaction_id,
+                               bool force_regenerate) const;
 
       public:
         ServerStatusResponse

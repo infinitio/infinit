@@ -23,6 +23,8 @@
 # include <surface/gap/Notification.hh>
 # include <surface/gap/TransferMachine.hh>
 
+# include <aws/Credentials.hh>
+
 namespace surface
 {
   namespace gap
@@ -60,11 +62,13 @@ namespace surface
         GhostCloudBuffering = 23,
         GhostCloudBufferingFinished = 24,
         DataExhausted = 25,
+        CloudSynchronize = 26,
         None = 99,
       };
 
     public:
-      class Snapshot
+      class Snapshot:
+        public elle::Printable
       {
       public:
         Snapshot(Data const& data,
@@ -79,18 +83,27 @@ namespace surface
         State state;
         std::unordered_set<std::string> files;
         std::string message;
+        bool archived;
+
+        /*----------.
+        | Printable |
+        `----------*/
+      public:
+        void
+        print(std::ostream& stream) const override;
       };
 
     public:
       TransactionMachine(surface::gap::State const& state,
                          uint32_t id,
-                         std::shared_ptr<TransactionMachine::Data> transaction);
+                         std::shared_ptr<TransactionMachine::Data> transaction,
+                         boost::filesystem::path const& path = "");
 
       virtual
       ~TransactionMachine();
 
     public:
-      ELLE_ATTRIBUTE_R(boost::filesystem::path, snapshot_path);
+      ELLE_ATTRIBUTE_RW(boost::filesystem::path, snapshot_path);
 
     protected:
       virtual
@@ -118,9 +131,14 @@ namespace surface
       void
       transaction_status_update(infinit::oracles::Transaction::Status status) = 0;
 
-      /// Use to notify that the peer is available for peer to peer connection.
+
+      /// Notify that the peer is available for peer to peer connection.
       void
-      peer_availability_changed(bool added);
+      peer_available(std::vector<std::pair<std::string, int>> const& endpoints);
+
+      /// Notify that the peer is unavailable for peer to peer connection.
+      void
+      peer_unavailable();
 
       /// Use to notify that the peer status changed to connected or
       /// disconnected.
@@ -187,6 +205,8 @@ namespace surface
       void
       current_state(State const& state);
 
+      std::function<aws::Credentials(bool)>
+      make_aws_credentials_getter();
     public:
       State
       current_state() const;
@@ -227,9 +247,13 @@ namespace surface
       void
       _transfer_operation(frete::RPCFrete& frete) = 0;
       virtual
+      // Go all the way to the cloud until interrupted.
       void
       _cloud_operation() = 0;
-
+      virtual
+      // Just synchronize what you can with cloud
+      void
+      _cloud_synchronize() = 0;
     protected:
       // This state has to be protected to allow the children to start the
       // machine in this state.
@@ -245,6 +269,14 @@ namespace surface
       ELLE_ATTRIBUTE_RX(reactor::Barrier, rejected);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, canceled);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, failed);
+
+    /*--------.
+    | Station |
+    `--------*/
+      ELLE_ATTRIBUTE(std::unique_ptr<station::Station>, station);
+    protected:
+      station::Station&
+      station();
 
     /*-------------.
     | Core Machine |
@@ -284,11 +316,6 @@ namespace surface
       virtual
       bool
       is_sender() const = 0;
-
-      ELLE_ATTRIBUTE(std::unique_ptr<station::Station>, station);
-    protected:
-      station::Station&
-      station();
 
     public:
       virtual

@@ -6,6 +6,9 @@
 # include <reactor/network/socket.hh>
 
 # include <frete/RPCFrete.hh>
+
+# include <station/fwd.hh>
+
 # include <surface/gap/fwd.hh>
 
 namespace surface
@@ -20,10 +23,12 @@ namespace surface
     `-------------*/
     public:
       Transferer(TransactionMachine& owner);
+      virtual
+      ~Transferer() = default;
 
-      /*--------.
-      | Control |
-      `--------*/
+    /*--------.
+    | Control |
+    `--------*/
     public:
       void
       run();
@@ -35,13 +40,24 @@ namespace surface
     /*---------.
     | Triggers |
     `---------*/
+    public:
+      /// Notify the peer is available for peer to peer connection.
+      void
+      peer_available(std::vector<std::pair<std::string, int>> const& endpoints);
+      /// Notify the peer is unavailable for peer to peer connection.
+      void
+      peer_unavailable();
+
     private:
-      // Represents the connection status of the peer according to the servers.
+      // Connection status of the peer according to the servers.
       ELLE_ATTRIBUTE_RX(reactor::Barrier, peer_online);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, peer_offline);
-      // Represents the availability of the peer for peer to peer connection.
-      ELLE_ATTRIBUTE_RX(reactor::Barrier, peer_reachable);
-      ELLE_ATTRIBUTE_RX(reactor::Barrier, peer_unreachable);
+      // Availability of the peer for peer to peer connection.
+      ELLE_ATTRIBUTE(reactor::Barrier, peer_reachable);
+      ELLE_ATTRIBUTE(reactor::Barrier, peer_unreachable);
+      // The peer endpoints.
+      typedef std::vector<std::pair<std::string, int>> Endpoints;
+      ELLE_ATTRIBUTE_R(Endpoints, peer_endpoints);
 
     /*-------.
     | Status |
@@ -69,6 +85,8 @@ namespace surface
       void
       _cloud_buffer_wrapper();
       void
+      _cloud_synchronize_wrapper();
+      void
       _stopped_wrapper();
 
     protected:
@@ -90,6 +108,9 @@ namespace surface
       virtual
       void
       _stopped() = 0;
+      virtual
+      void
+      _cloud_synchronize() = 0;
 
     /*----------.
     | Printable |
@@ -107,7 +128,7 @@ namespace surface
     `-------------*/
     public:
       TransferMachine(TransactionMachine& owner);
-      ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::Socket>, host);
+      ELLE_ATTRIBUTE(std::unique_ptr<station::Host>, host);
       ELLE_ATTRIBUTE(std::unique_ptr<infinit::protocol::Serializer>,
                      serializer);
       ELLE_ATTRIBUTE(std::unique_ptr<infinit::protocol::ChanneledStream>,
@@ -115,7 +136,7 @@ namespace surface
       ELLE_ATTRIBUTE(std::unique_ptr<frete::RPCFrete>, rpcs);
 
     private:
-      std::unique_ptr<reactor::network::Socket>
+      std::unique_ptr<station::Host>
       _connect();
 
     protected:
@@ -137,6 +158,9 @@ namespace surface
       virtual
       void
       _stopped() override;
+      virtual
+      void
+      _cloud_synchronize() override;
 
     /*----------.
     | Printable |

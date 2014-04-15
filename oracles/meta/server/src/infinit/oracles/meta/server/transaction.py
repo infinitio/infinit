@@ -4,6 +4,7 @@ import bson
 import re
 import time
 import unicodedata
+import urllib.parse
 
 import elle.log
 from .utils import api, require_logged_in
@@ -111,7 +112,7 @@ class Mixin:
           recipient_id = self._register(
             _id = self.database.users.save({}),
             email = peer_email,
-            fullname = peer_email[0:peer_email.index('@')],
+            fullname = peer_email, # This is safe as long as we don't allow searching for ghost users.
             register_status = 'ghost',
             notifications = [],
             networks = [],
@@ -128,7 +129,7 @@ class Mixin:
 
       if recipient is None:
         return self.fail(error.USER_ID_NOT_VALID)
-
+      is_ghost = recipient['register_status'] == 'ghost'
       elle.log.debug("transaction recipient has id %s" % recipient['_id'])
       _id = user['_id']
 
@@ -157,6 +158,7 @@ class Mixin:
         'fallback_host': None,
         'fallback_port_ssl': None,
         'fallback_port_tcp': None,
+        'aws_credentials': None,
         'strings': ' '.join([
               user['fullname'],
               user['handle'],
@@ -187,13 +189,14 @@ class Mixin:
           merge_vars = {
             peer_email: {
               'filename': files[0],
+              'note': message,
               'sendername': user['fullname'],
               'ghost_id': str(recipient.get('_id')),
               'sender_id': str(user['_id']),
               'avatar': self.user_avatar_route(recipient['_id']),
             }}
         )
-      if not new_user and recipient.get('connected', False) == False:
+      if not new_user and not recipient.get('connected', False) and not is_ghost:
         elle.log.debug("recipient is disconnected")
         template_id = 'accept-file-only-offline'
 
@@ -206,6 +209,7 @@ class Mixin:
           merge_vars = {
             peer_email: {
               'filename': files[0],
+              'note': message,
               'sendername': user['fullname'],
               'avatar': self.user_avatar_route(recipient['_id']),
             }}
@@ -358,7 +362,12 @@ class Mixin:
       files = transaction['files']
       if len(files) == 1:
         if transaction['is_directory']:
-          ghost_upload_file = files[0] + '.zip'
+          #C++ side is doing a replace_extension
+          parts = files[0].split('.')
+          if len(parts) == 1:
+            ghost_upload_file = files[0] + '.zip'
+          else:
+            ghost_upload_file = '.'.join(parts[0:-1]) + '.zip'
         else:
           ghost_upload_file = files[0]
       else:
@@ -379,11 +388,13 @@ class Mixin:
         merge_vars = {
           peer_email: {
             'file_url': ghost_get_url,
+            'file_url_urlencoded': urllib.parse.quote(ghost_get_url, ''),
             'filename': files[0],
             'sendername': user['fullname'],
             'ghost_id': str(recipient.get('_id')),
             'sender_id': str(user['_id']),
             'avatar': self.user_avatar_route(recipient['_id']),
+            'note': transaction['message'],
           }}
       )
 
@@ -433,7 +444,7 @@ class Mixin:
       if transaction['status'] == status:
         raise error.Error(
           error.TRANSACTION_ALREADY_HAS_THIS_STATUS,
-          "Cannont change status from %s to %s (same status)." % (transaction['status'], status))
+          "Can't change status from %s to %s (same status)." % (transaction['status'], status))
 
       if transaction['status'] in transaction_status.final:
         raise error.Error(
@@ -723,7 +734,8 @@ class Mixin:
 
   @api('/transaction/<transaction_id>/cloud_buffer')
   @require_logged_in
-  def cloud_buffer(self, transaction_id: bson.ObjectId):
+  def cloud_buffer(self, transaction_id : bson.ObjectId,
+                   force_regenerate : json_value = True):
     """
     Return AWS credentials giving the user permissions to PUT (sender) or GET
     (recipient) from the cloud buffer.
@@ -737,15 +749,18 @@ class Mixin:
 
     res = None
 
-
-    if self.is_sender(transaction, user['_id']): # We're doing a PUT.
-      token_maker = cloud_buffer_token.CloudBufferToken(user['_id'], transaction_id, 'PUT')
-    elif self.is_recipient(transaction, user['_id']): # We're doing a GET.
-      token_maker = cloud_buffer_token.CloudBufferToken(user['_id'], transaction_id, 'GET')
-    else: # Not this user's transaction.
-      return self.fail(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
-
+    if not force_regenerate:
+      res = transaction['aws_credentials']
+      if res is not None:
+        elle.log.debug('cloud_buffer: returning from cache')
+        return self.success(res)
+    elle.log.debug('Regenerating AWS token')
+    # As long as those creds are transaction specific there is no risk
+    # in letting the recipient have WRITE access. This will no longuer hold
+    # if cloud data ever gets shared among transactions.
+    token_maker = cloud_buffer_token.CloudBufferToken(user['_id'], transaction_id, 'ALL')
     raw_creds = token_maker.generate_s3_token()
+
     if raw_creds == None:
       return self.fail(error.UNKNOWN)
 
@@ -755,5 +770,9 @@ class Mixin:
     credentials['secret_access_key'] = raw_creds['SecretAccessKey']
     credentials['session_token']     = raw_creds['SessionToken']
     credentials['expiration']        = raw_creds['Expiration']
-
+    elle.log.debug("Storing aws_credentials in DB")
+    transaction.update({'aws_credentials': credentials})
+    self.database.transactions.update(
+      {'_id': transaction_id},
+      {'$set': {'aws_credentials': credentials}})
     return self.success(credentials)

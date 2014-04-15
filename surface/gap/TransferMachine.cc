@@ -1,5 +1,6 @@
 #include <boost/filesystem.hpp>
 
+#include <elle/container/vector.hh>
 #include <elle/log.hh>
 #include <elle/network/Interface.hh>
 #include <elle/os/environ.hh>
@@ -28,7 +29,7 @@ namespace surface
 
     Transferer::Transferer(TransactionMachine& owner):
       _owner(owner),
-      _fsm(),
+      _fsm(elle::sprintf("transfer (%s) fsm", owner.id())),
       _peer_online("peer online"),
       _peer_offline("peer offline"),
       _peer_reachable("peer reachable"),
@@ -44,6 +45,11 @@ namespace surface
       /*-------.
       | States |
       `-------*/
+      // fetch all you can from cloud
+      auto& cloud_synchronize_state =
+        this->_fsm.state_make(
+          "cloud synchronize",
+          std::bind(&TransferMachine::_cloud_synchronize_wrapper, this));
       auto& publish_interfaces_state =
         this->_fsm.state_make(
           "publish interfaces",
@@ -73,6 +79,15 @@ namespace surface
       | Transitions |
       `------------*/
 
+      // first thing is cloud sync, and only when done do we publis ifaces
+      this->_fsm.transition_add(
+        cloud_synchronize_state,
+        stopped_state,
+        reactor::Waitables{&owner.finished()}
+        );
+      this->_fsm.transition_add(
+        cloud_synchronize_state,
+        publish_interfaces_state);
       // Publish and wait for connection.
       this->_fsm.transition_add(
         publish_interfaces_state,
@@ -150,6 +165,15 @@ namespace surface
                   ELLE_LOG("%s: transfer finished: this->finished", *this);
                 });
       this->_fsm.transition_add(
+        cloud_buffer_state,
+        stopped_state,
+        [this]() { return this->finished(); }
+        )
+        .action([this]
+                {
+                  ELLE_LOG("%s: transfer finished in the cloud", *this);
+                });
+      this->_fsm.transition_add(
         wait_for_peer_state,
         stopped_state,
         [this]() { return this->finished(); }
@@ -163,6 +187,14 @@ namespace surface
       this->_fsm.transition_add(
         connection_state,
         transfer_state);
+      // In case network is lost abruptly, trophonius might get notified
+      // before us: we will recieve a peer-offline event before
+      // a disconnection on our p2p link.
+      this->_fsm.transition_add(
+        transfer_state,
+        connection_state,
+        reactor::Waitables{&this->_peer_offline},
+        true);
       this->_fsm.transition_add_catch_specific<
         reactor::network::Exception>(
         transfer_state,
@@ -261,6 +293,21 @@ namespace surface
                   ELLE_ERR("%s: transfer failed", *this);
                   owner.failed().open();
                 });
+
+      this->_fsm.state_changed().connect(
+        [this] (reactor::fsm::State& state)
+        {
+          ELLE_LOG_COMPONENT("surface.gap.TransferMachine.State");
+          ELLE_TRACE("%s: entering %s", *this, state);
+        });
+
+      this->_fsm.transition_triggered().connect(
+        [this] (reactor::fsm::Transition& transition)
+        {
+          ELLE_LOG_COMPONENT("surface.gap.TransferMachine.Transition");
+          ELLE_TRACE("%s: %s triggered", *this, transition);
+        });
+
     }
 
     /*--------.
@@ -270,6 +317,7 @@ namespace surface
     void
     Transferer::run()
     {
+      ELLE_TRACE_SCOPE("%s: run fsm %s", *this, this->_fsm);
       // XXX: Best place to do that? (See constructor).
       if (this->_owner.state().user(this->_owner.peer_id()).online())
       {
@@ -283,6 +331,29 @@ namespace surface
       }
 
       this->_fsm.run();
+    }
+
+    /*---------.
+    | Triggers |
+    `---------*/
+
+    void
+    Transferer::peer_available(
+      std::vector<std::pair<std::string, int>> const& endpoints)
+    {
+      ELLE_TRACE_SCOPE("%s: peer is available on %s", *this, endpoints);
+      this->_peer_endpoints = endpoints;
+      this->_peer_unreachable.close();
+      this->_peer_reachable.open();
+    }
+
+    void
+    Transferer::peer_unavailable()
+    {
+      ELLE_TRACE_SCOPE("%s: peer is unavailable", *this);
+      this->_peer_endpoints.clear();
+      this->_peer_reachable.close();
+      this->_peer_unreachable.open();
     }
 
     /*-------.
@@ -338,6 +409,14 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: cloud buffer", *this);
       this->_owner.current_state(TransactionMachine::State::Transfer);
       this->_cloud_buffer();
+    }
+
+    void
+    Transferer::_cloud_synchronize_wrapper()
+    {
+      ELLE_TRACE_SCOPE("%s: cloud synchronize", *this);
+      this->_owner.current_state(TransactionMachine::State::CloudSynchronize);
+      this->_cloud_synchronize();
     }
 
     void
@@ -406,58 +485,29 @@ namespace surface
         public_addresses);
     }
 
-    std::unique_ptr<reactor::network::Socket>
+    std::unique_ptr<station::Host>
     TransferMachine::_connect()
     {
       ELLE_TRACE_SCOPE("%s: connect to peer", *this);
-      auto const& transaction = *this->_owner.data();
-      infinit::oracles::meta::EndpointNodeResponse endpoints;
-      // Get endpoints. If the peer disconnected, we might go back to the
-      // connection state before we're informed of this and try
-      // reconnecting. Don't err and just keep retrying until either he comes
-      // back online or we're notified he's offline.
-      while (true)
-      {
-        try
-        {
-          ELLE_DEBUG_SCOPE("%s: get peer endpoints", *this);
-          endpoints = this->_owner.state().meta().device_endpoints(
-            this->_owner.data()->id,
-            this->_owner.is_sender() ? transaction.sender_device_id :
-            transaction.recipient_device_id,
-            this->_owner.is_sender() ? transaction.recipient_device_id :
-            transaction.sender_device_id);
-          break;
-        }
-        catch (infinit::oracles::meta::Exception const& e)
-        {
-          ELLE_WARN("%s: unable to fetch endpoints: %s", *this, e);
-          if (e.err != infinit::oracles::meta::Error::device_not_found)
-            throw;
-        }
-        reactor::sleep(1_sec);
-      }
-      ELLE_DEBUG("%s: got endpoints", *this)
-      {
-        ELLE_DEBUG("locals: %s", endpoints.locals);
-        ELLE_DEBUG("externals: %s", endpoints.externals);
-      }
       std::vector<std::unique_ptr<Round>> rounds;
-      rounds.emplace_back(new AddressRound("local",
-                                           std::move(endpoints.locals)));
+      rounds.emplace_back(new AddressRound("local", this->peer_endpoints()));
       rounds.emplace_back(new FallbackRound("fallback",
                                             this->_owner.state().meta(),
                                             this->_owner.data()->id));
       return elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
         reactor::Barrier found;
-        std::unique_ptr<reactor::network::Socket> host;
+        std::unique_ptr<station::Host> host;
         scope.run_background(
           "wait_accepted",
           [&] ()
           {
             reactor::wait(this->_owner.station().host_available());
-            host = this->_owner.station().accept()->release();
+            std::unique_ptr<station::Host> res =
+              this->_owner.station().accept();
+            ELLE_ASSERT_NEQ(res, nullptr);
+            ELLE_ASSERT_EQ(host, nullptr);
+            host = std::move(res);
             found.open();
             ELLE_TRACE("%s: peer connection accepted", *this);
           });
@@ -466,10 +516,13 @@ namespace surface
           [&]
           {
             for (auto& round: rounds)
-            {
-              host = round->connect(this->_owner.station());
-              if (host)
+            { // try rounds in order: (currently local, apertus)
+              std::unique_ptr<station::Host> res;
+              res = round->connect(this->_owner.station());
+              if (res)
               {
+                ELLE_ASSERT_EQ(host, nullptr);
+                host = std::move(res);
                 found.open();
                 if (this->_owner.state().metrics_reporter())
                   this->_owner.state().metrics_reporter()->transaction_connected(
@@ -495,8 +548,9 @@ namespace surface
     TransferMachine::_connection()
     {
       this->_host = this->_connect();
+      ELLE_TRACE_SCOPE("%s: open peer to peer RPCs", *this);
       this->_serializer.reset(
-        new infinit::protocol::Serializer(*this->_host));
+        new infinit::protocol::Serializer(this->_host->socket()));
       this->_channels.reset(
         new infinit::protocol::ChanneledStream(*this->_serializer));
       this->_rpcs = this->_owner.rpcs(*this->_channels);
@@ -533,13 +587,22 @@ namespace surface
       this->_owner._cloud_operation();
     }
 
+    void
+    TransferMachine::_cloud_synchronize()
+    {
+      this->_owner._cloud_synchronize();
+    }
+
     /*----------.
     | Printable |
     `----------*/
     void
     TransferMachine::print(std::ostream& stream) const
     {
-      stream << "TransferMachine(" << this->_owner.id() << ")";
+      stream << "TransferMachine(" << this->_owner.id();
+      if (this->_owner.data())
+        stream << ", " << this->_owner.data()->id;
+      stream << ")";
     }
   }
 }

@@ -2,6 +2,7 @@
 #include <sstream>
 
 #include <elle/container/list.hh>
+#include <elle/container/set.hh>
 #include <elle/network/Interface.hh>
 #include <elle/os/environ.hh>
 #include <elle/printf.hh>
@@ -44,16 +45,24 @@ namespace surface
       message(message)
     {}
 
+    void
+    TransactionMachine::Snapshot::print(std::ostream& stream) const
+    {
+      stream << "Snapshot(" << this->data << ")";
+    }
+
     //---------- TransactionMachine -----------------------------------------------
     TransactionMachine::TransactionMachine(surface::gap::State const& state,
-                                     uint32_t id,
-                                     std::shared_ptr<TransactionMachine::Data> data):
+                                           uint32_t id,
+                                           std::shared_ptr<TransactionMachine::Data> data,
+                                           boost::filesystem::path const& path):
       _snapshot_path(
-        boost::filesystem::path(
-          common::infinit::transaction_snapshots_directory(state.me().id) /
-          boost::filesystem::unique_path()).string()),
+        path.empty()
+        ? common::infinit::transaction_snapshots_directory(state.me().id) /
+          boost::filesystem::unique_path()
+        : path),
       _id(id),
-      _machine(),
+      _machine(elle::sprintf("transaction (%s) fsm", id)),
       _machine_thread(),
       _current_state(State::None),
       _state_changed("state changed"),
@@ -79,6 +88,7 @@ namespace surface
       _rejected("rejected"),
       _canceled("canceled"),
       _failed("failed"),
+      _station(nullptr),
       _transfer_machine(new TransferMachine{*this}),
       _state(state),
       _data(std::move(data))
@@ -135,7 +145,7 @@ namespace surface
 
     TransactionMachine::~TransactionMachine()
     {
-      ELLE_TRACE_SCOPE("%s: destroying transfer machine", *this);
+      ELLE_TRACE_SCOPE("%s: destroying transaction machine", *this);
     }
 
     TransactionMachine::Snapshot
@@ -148,13 +158,18 @@ namespace surface
     TransactionMachine::_save_snapshot() const
     {
       ELLE_TRACE("%s saving snapshot to %s", *this, this->_snapshot_path.string())
-        elle::serialize::to_file(this->_snapshot_path.string()) << this->_make_snapshot();
+      {
+        auto snapshot = this->_make_snapshot();
+        ELLE_DUMP("snapshot data: %s", snapshot);
+        elle::serialize::to_file(this->_snapshot_path.string()) << snapshot;
+      }
     }
 
     void
     TransactionMachine::current_state(TransactionMachine::State const& state)
     {
-      ELLE_TRACE_SCOPE("%s: set new state to %s", *this, state);
+      ELLE_TRACE_SCOPE("%s: set new state to %s at progress %s", *this, state,
+                       this->progress());
       this->_current_state = state;
       this->_save_snapshot();
       this->_state_changed.signal();
@@ -186,6 +201,7 @@ namespace surface
       {
         ELLE_ERR("%s: something went wrong while transfering: %s",
                  *this, elle::exception_string());
+        throw;
       }
 
       if (this->_failed.opened())
@@ -344,22 +360,20 @@ namespace surface
     }
 
     void
-    TransactionMachine::peer_availability_changed(bool available)
+    TransactionMachine::peer_available(
+      std::vector<std::pair<std::string, int>> const& endpoints)
     {
-      ELLE_TRACE_SCOPE("%s: peer is %savailable for peer to peer connection",
-                       *this, available ? "" : "un");
-      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-      ELLE_DEBUG("switch barriers")
-      if (available)
-      {
-        this->_transfer_machine->peer_unreachable().close();
-        this->_transfer_machine->peer_reachable().open();
-      }
-      else
-      {
-        this->_transfer_machine->peer_reachable().close();
-        this->_transfer_machine->peer_unreachable().open();
-      }
+      ELLE_TRACE_SCOPE("%s: peer is available for peer to peer connection",
+                       *this);
+      this->_transfer_machine->peer_available(endpoints);
+    }
+
+    void
+    TransactionMachine::peer_unavailable()
+    {
+      ELLE_TRACE_SCOPE("%s: peer is unavailable for peer to peer connection",
+                       *this);
+      this->_transfer_machine->peer_unavailable();
     }
 
     void
@@ -485,7 +499,9 @@ namespace surface
     std::string const&
     TransactionMachine::transaction_id() const
     {
-      ELLE_ASSERT(!this->_data->id.empty());
+      if (this->_data->id.empty())
+        throw elle::Exception(
+          elle::sprintf("%s: Transaction machine is not ready", *this));
       return this->_data->id;
     }
 
@@ -542,7 +558,11 @@ namespace surface
       {
         ELLE_TRACE_SCOPE("%s: building station", *this);
         this->_station.reset(
-          new station::Station(papier::authority(), this->state().passport()));
+          new station::Station(
+            papier::authority(),
+            this->state().passport(),
+            elle::sprintf("Station(id=%s, tr=%s)", this->id(), this->_data->id)
+          ));
       }
       ELLE_ASSERT(this->_station != nullptr);
       return *this->_station;
@@ -575,6 +595,22 @@ namespace surface
       if (!data.id.empty())
         stream << ", t=" << data.id;
       stream << ")";
+    }
+
+    std::function<aws::Credentials(bool)>
+    TransactionMachine::make_aws_credentials_getter()
+    {
+      return [this](bool first_time)
+      {
+         auto& meta = this->state().meta();
+         auto token = meta.get_cloud_buffer_token(this->transaction_id(),
+                                                  !first_time);//force-regenerate
+         auto credentials = aws::Credentials(token.access_key_id,
+                                             token.secret_access_key,
+                                             token.session_token,
+                                             token.expiration);
+         return credentials;
+      };
     }
 
     std::ostream&
@@ -625,6 +661,8 @@ namespace surface
           return out << "GhostCloudBufferingFinished";
         case TransactionMachine::State::DataExhausted:
           return out << "DataExhausted";
+        case TransactionMachine::State::CloudSynchronize:
+          return out << "CloudSynchronize";
       }
       return out;
     }

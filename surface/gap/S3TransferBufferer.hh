@@ -34,14 +34,14 @@ namespace surface
       /// The recipient fetches the meta-data from the cloud.
       S3TransferBufferer(
         infinit::oracles::Transaction& transaction,
-        aws::Credentials const& credentials,
+        std::function<aws::Credentials(bool)> credentials,
         std::string const& bucket_name = "us-east-1-buffer-infinit-io");
 
       /// Sender constructor.
       /// The sender saves the meta-data for the transfer to the cloud.
       S3TransferBufferer(
         infinit::oracles::Transaction& transaction,
-        aws::Credentials const& credentials,
+        std::function<aws::Credentials(bool)> credentials,
         FileCount count,
         FileSize total_size,
         Files const& files,
@@ -96,7 +96,7 @@ namespace surface
     `-----------*/
     private:
       ELLE_ATTRIBUTE(std::string, bucket_name);
-      ELLE_ATTRIBUTE(aws::Credentials, credentials);
+      ELLE_ATTRIBUTE(std::function<aws::Credentials(bool)>, credentials);
       ELLE_ATTRIBUTE(std::string, remote_folder);
       ELLE_ATTRIBUTE(aws::S3, s3_handler);
 

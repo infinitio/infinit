@@ -14,18 +14,4 @@ ELLE_SERIALIZE_SIMPLE(papier::Passport,
   archive & value._signature;
 }
 
-namespace std
-{
-  template<>
-  struct hash<papier::Passport>
-  {
-  public:
-    std::size_t operator()(papier::Passport const& s) const
-    {
-      // XXX: The id is definitely not unique.
-      return std::hash<std::string>()(s.id());
-    }
-  };
-}
-
 #endif

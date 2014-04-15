@@ -349,8 +349,8 @@ namespace surface
               {
                 while (true)
                 {
+                  reactor::sleep(360_min);
                   this->_metrics_reporter->user_heartbeat();
-                  reactor::sleep(60_min);
                 }
               }});
 
@@ -478,6 +478,8 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: logout", *this);
 
       this->_cleanup();
+      // After cleanup, all containers are empty.
+      // Do not use lazy accessor during the logout phase.
 
       ELLE_DEBUG("%s: cleaned up", *this);
 
@@ -492,10 +494,7 @@ namespace surface
         {
           try
           {
-            auto id = this->me().id;
-
             this->_meta.logout();
-
             this->_metrics_reporter->user_logout(true, "");
           }
           catch (elle::Exception const&)
@@ -527,6 +526,9 @@ namespace surface
             while (!this->_runners.empty())
               this->_runners.pop();
 
+          ELLE_DEBUG("clear transactions")
+            this->_transactions_clear();
+
           ELLE_DEBUG("clear users")
           {
             this->_user_indexes.clear();
@@ -543,9 +545,6 @@ namespace surface
             this->_avatar_to_fetch.clear();
             this->_avatars.clear();
           }
-
-          ELLE_DEBUG("clear transactions")
-            this->_transactions_clear();
 
           ELLE_DEBUG("clear device (%s)", this->_device.get())
             this->_device.reset();
@@ -723,6 +722,9 @@ namespace surface
 
           try
           {
+            //Reset transactions because link with tropho might have changed
+            for (auto& t: this->_transactions)
+              t.second->reset(*this);
             this->_user_resync();
             this->_transaction_resync();
             resynched = true;
@@ -759,7 +761,7 @@ namespace surface
       std::unique_ptr<infinit::oracles::trophonius::Notification>&& notif)
     {
       ELLE_TRACE_SCOPE("%s: new notification %s", *this, *notif);
-      switch(notif->notification_type)
+      switch (notif->notification_type)
       {
         case infinit::oracles::trophonius::NotificationType::user_status:
           ELLE_ASSERT(
@@ -798,6 +800,8 @@ namespace surface
         case infinit::oracles::trophonius::NotificationType::connection_enabled:
         case infinit::oracles::trophonius::NotificationType::suicide:
           break;
+        case infinit::oracles::trophonius::NotificationType::invalid_credentials:
+          elle::unreachable();
       }
     };
 

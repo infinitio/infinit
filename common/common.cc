@@ -464,9 +464,10 @@ common::infinit::Configuration::Configuration(bool production)
     elle::os::getenv("INFINIT_METRICS_INFINIT", env_production ? "1" : "0"));
   this->_metrics_infinit_host =
     elle::os::getenv(
-      "INFINIT_METRICS_INFINIT_HOST", env_production ?
-      "v3.metrics.api.production.infinit.io" :
-      "v3.metrics.api.development.infinit.io");
+      "INFINIT_METRICS_INFINIT_HOST",
+      elle::sprintf("metrics.%s.%s.api.%s.infinit.io",
+                    INFINIT_VERSION_MINOR, INFINIT_VERSION_MAJOR,
+                    env_production ? "production" : "development"));
   this->_metrics_infinit_port = boost::lexical_cast<int>(
     elle::os::getenv(
       "INFINIT_METRICS_INFINIT_PORT", "80"));

@@ -5,6 +5,7 @@
 #include <elle/os/environ.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
+#include <elle/system/system.hh>
 
 #include <reactor/exception.hh>
 #include <reactor/thread.hh>
@@ -75,15 +76,16 @@ namespace surface
     ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
                                    uint32_t id,
                                    std::shared_ptr<TransactionMachine::Data> data,
+                                   boost::filesystem::path const& snapshot_path,
                                    bool):
-      TransactionMachine(state, id, std::move(data)),
+      TransactionMachine(state, id, std::move(data), snapshot_path),
       _wait_for_decision_state(
         this->_machine.state_make(
           "wait for decision", std::bind(&ReceiveMachine::_wait_for_decision, this))),
       _accept_state(
         this->_machine.state_make(
           "accept", std::bind(&ReceiveMachine::_accept, this))),
-      _accepted("accepted barrier"),
+      _accepted("accepted"),
       _snapshot_path(boost::filesystem::path(
                        common::infinit::frete_snapshot_path(
                          this->data()->recipient_id,
@@ -117,6 +119,20 @@ namespace surface
       this->_machine.transition_add_catch(_reject_state, _fail_state);
       this->_machine.transition_add_catch(_transfer_core_state, _fail_state);
 
+      this->_machine.state_changed().connect(
+        [this] (reactor::fsm::State& state)
+        {
+          ELLE_LOG_COMPONENT("surface.gap.ReceiveMachine.State");
+          ELLE_TRACE("%s: entering %s", *this, state);
+        });
+
+      this->_machine.transition_triggered().connect(
+        [this] (reactor::fsm::Transition& transition)
+        {
+          ELLE_LOG_COMPONENT("surface.gap.ReceiveMachine.Transition");
+          ELLE_TRACE("%s: %s triggered", *this, transition);
+        });
+
       try
       {
         this->_snapshot.reset(
@@ -141,7 +157,7 @@ namespace surface
                                    uint32_t id,
                                    TransactionMachine::State const current_state,
                                    std::shared_ptr<TransactionMachine::Data> data):
-      ReceiveMachine(state, id, std::move(data), true)
+      ReceiveMachine(state, id, std::move(data), "", true)
     {
       ELLE_TRACE_SCOPE("%s: construct from data %s, starting at %s",
                        *this, *this->data(), current_state);
@@ -165,6 +181,7 @@ namespace surface
         case TransactionMachine::State::PeerConnectionLost:
         case TransactionMachine::State::Transfer:
         case TransactionMachine::State::DataExhausted:
+        case TransactionMachine::State::CloudSynchronize:
           this->_run(this->_transfer_core_state);
           break;
         case TransactionMachine::State::Finished:
@@ -186,14 +203,16 @@ namespace surface
 
     ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
                                    uint32_t id,
-                                   std::shared_ptr<TransactionMachine::Data> data):
-      ReceiveMachine(state, id, std::move(data), true)
+                                   std::shared_ptr<TransactionMachine::Data> data,
+                                   boost::filesystem::path const& snapshot_path):
+      ReceiveMachine(state, id, std::move(data), snapshot_path, true)
     {
       ELLE_TRACE_SCOPE("%s: constructing machine for transaction %s",
                        *this, data);
 
       switch (this->data()->status)
       {
+        case TransactionStatus::created:
         case TransactionStatus::initialized:
           this->_run(this->_wait_for_decision_state);
           break;
@@ -210,7 +229,6 @@ namespace surface
           this->_run(this->_fail_state);
           break;
         case TransactionStatus::rejected:
-        case TransactionStatus::created:
           break;
         case TransactionStatus::started:
         case TransactionStatus::none:
@@ -331,11 +349,15 @@ namespace surface
                                   std::map<boost::filesystem::path, boost::filesystem::path>& mapping)
     {
       boost::filesystem::path first = *path.begin();
+      // Take care of toplevel files with no directory information, we can't
+      // add that to the mapping.
+      bool toplevel_file = (first == path);
       bool exists = boost::filesystem::exists(start_point / first);
       ELLE_DEBUG("Looking for a replacment name for %s, firstcomp=%s, exists=%s", path, first, exists);
       if (! exists)
       { // we will create the path along the way so we must add itself into mapping
-        mapping[first] = first;
+        if (!toplevel_file)
+          mapping[first] = first;
         return start_point / path;
       }
       auto it = mapping.find(first);
@@ -366,7 +388,8 @@ namespace surface
         boost::filesystem::path replace = elle::sprintf(pattern.string().c_str(), i);
         if (!boost::filesystem::exists(start_point / replace))
         {
-          mapping[first] = replace;
+          if (!toplevel_file)
+            mapping[first] = replace;
           ELLE_DEBUG("Adding in mapping: %s -> %s", first, replace);
           boost::filesystem::path result = replace;
           auto it = path.begin();
@@ -430,39 +453,80 @@ namespace surface
     void
     ReceiveMachine::_cloud_operation()
     {
-      if (elle::os::getenv("INFINIT_CLOUD_BUFFERING", "").empty())
+      if (!elle::os::getenv("INFINIT_NO_CLOUD_BUFFERING", "").empty())
       {
         ELLE_DEBUG("%s: cloud buffering disabled by configuration", *this);
         return;
       }
+      auto start_time = boost::posix_time::microsec_clock::universal_time();
+      metrics::TransferExitReason exit_reason = metrics::TransferExitReasonUnknown;
+      std::string exit_message;
+      uint64_t total_bytes_transfered = 0;
+      frete::Frete::FileSize initial_progress = 0;
+      if (this->_snapshot != nullptr)
+        initial_progress = this->_snapshot->progress();
+      elle::SafeFinally write_end_message([&,this]
+      {
+        if (auto& mr = state().metrics_reporter())
+        {
+          auto now = boost::posix_time::microsec_clock::universal_time();
+          float duration =
+            float((now - start_time).total_milliseconds()) / 1000.0f;
+          mr->transaction_transfer_end(this->transaction_id(),
+                                       metrics::TransferMethodCloud,
+                                       duration,
+                                       total_bytes_transfered,
+                                       exit_reason,
+                                       exit_message);
+        }
+      });
       try
       {
         ELLE_DEBUG("%s: create cloud bufferer", *this);
-        bool cloud_debug = !elle::os::getenv("INFINIT_CLOUD_FILEBUFFERER", "").empty();
+        bool cloud_debug =
+          !elle::os::getenv("INFINIT_CLOUD_FILEBUFFERER", "").empty();
         if (cloud_debug)
-          _bufferer.reset(new FilesystemTransferBufferer(*this->data(),
-                                                        "/tmp/infinit-buffering"));
+        {
+          _bufferer.reset(
+            new FilesystemTransferBufferer(*this->data(),
+                                           "/tmp/infinit-buffering"));
+        }
         else
         {
-         auto& meta = this->state().meta();
-         auto token = meta.get_cloud_buffer_token(this->transaction_id());
-         auto credentials = aws::Credentials(token.access_key_id,
-                                             token.secret_access_key,
-                                             token.session_token,
-                                             token.expiration);
+         auto get_credentials = this->make_aws_credentials_getter();
          _bufferer.reset(new S3TransferBufferer(*this->data(),
-                                               credentials));
+                                               get_credentials));
+        }
+        if (auto& mr = state().metrics_reporter())
+        {
+          auto now = boost::posix_time::microsec_clock::universal_time();
+          mr->transaction_transfer_begin(
+            this->transaction_id(),
+            infinit::metrics::TransferMethodCloud,
+            float((now - start_time).total_milliseconds()) / 1000.0f);
         }
         ELLE_DEBUG("%s: download from the cloud", *this)
           this->get(*_bufferer);
+        // We finished
+        ELLE_ASSERT_EQ(progress(), 1);
+        this->finished().open();
+        exit_reason = metrics::TransferExitReasonFinished;
+        ELLE_ASSERT_NEQ(this->_snapshot, nullptr);
+        total_bytes_transfered = this->_snapshot->progress() - initial_progress;
       }
       catch (TransferBufferer::DataExhausted const&)
       {
+        exit_reason = metrics::TransferExitReasonExhausted;
+        if (this->_snapshot)
+          total_bytes_transfered = this->_snapshot->progress() - initial_progress;
         ELLE_TRACE("%s: Data exhausted on cloud bufferer", *this);
         this->current_state(TransactionMachine::State::DataExhausted);
       }
       catch (reactor::Terminate const&)
       { // aye aye
+        exit_reason = metrics::TransferExitReasonTerminated;
+         if (this->_snapshot)
+           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
         throw;
       }
       catch (std::exception const& e)
@@ -472,6 +536,12 @@ namespace surface
         // send us notifications and wake us up
         ELLE_WARN("%s: cloud download exception, exiting cloud state: %s",
                   *this, e.what());
+        this->current_state(TransactionMachine::State::DataExhausted);
+        exit_reason = metrics::TransferExitReasonError;
+        if (this->_snapshot)
+          total_bytes_transfered = this->_snapshot->progress() - initial_progress;
+        exit_message = e.what();
+        // treat this as nonfatal for transaction: no throw
       }
     }
 
@@ -493,17 +563,68 @@ namespace surface
     ReceiveMachine::get(frete::RPCFrete& frete,
                         std::string const& name_policy)
     {
-      auto peer_version = frete.version();
-      bool strong_encryption = true;
-      if (peer_version < elle::Version(0, 8, 3))
+      auto start_time = boost::posix_time::microsec_clock::universal_time();
+      metrics::TransferExitReason exit_reason = metrics::TransferExitReasonUnknown;
+      std::string exit_message;
+      uint64_t total_bytes_transfered = 0;
+      frete::Frete::FileSize initial_progress = 0;
+      if (this->_snapshot != nullptr)
+        initial_progress = this->_snapshot->progress();
+      elle::SafeFinally write_end_message([&,this]
       {
-        // XXX: Create better exception.
-        if (strong_encryption)
-          ELLE_WARN("peer version doesn't support strong encryption");
-        strong_encryption = false;
+        if (auto& mr = state().metrics_reporter())
+        {
+          auto now = boost::posix_time::microsec_clock::universal_time();
+          float duration =
+            float((now - start_time).total_milliseconds()) / 1000.0f;
+          mr->transaction_transfer_end(this->transaction_id(),
+                                       metrics::TransferMethodP2P,
+                                       duration,
+                                       total_bytes_transfered,
+                                       exit_reason,
+                                       exit_message);
+        }
+      });
+      if (auto& mr = state().metrics_reporter())
+      {
+        auto now = boost::posix_time::microsec_clock::universal_time();
+        mr->transaction_transfer_begin(
+          this->transaction_id(),
+          infinit::metrics::TransferMethodP2P,
+          float((now - start_time).total_milliseconds()) / 1000.0f);
       }
-      return this->_get<frete::RPCFrete>(
-        frete, strong_encryption, name_policy, peer_version);
+      try
+      {
+        auto peer_version = frete.version();
+        bool strong_encryption = true;
+        if (peer_version < elle::Version(0, 8, 3))
+        {
+          // XXX: Create better exception.
+          if (strong_encryption)
+            ELLE_WARN("peer version doesn't support strong encryption");
+          strong_encryption = false;
+        }
+        if (this->_snapshot)
+          total_bytes_transfered = this->_snapshot->progress() - initial_progress;
+        else // normal termination: snapshot was removed
+          total_bytes_transfered = frete.full_size();
+        exit_reason = metrics::TransferExitReasonFinished;
+        return this->_get<frete::RPCFrete>(
+          frete, strong_encryption, name_policy, peer_version);
+      }
+      catch(reactor::Terminate const&)
+      {
+        total_bytes_transfered = this->_snapshot->progress() - initial_progress;
+        exit_reason = metrics::TransferExitReasonTerminated;
+        throw;
+      }
+      catch(...)
+      {
+        total_bytes_transfered = this->_snapshot->progress() - initial_progress;
+        exit_reason = metrics::TransferExitReasonError;
+        exit_message = elle::exception_string();
+        throw;
+      }
     }
 
     void
@@ -525,6 +646,8 @@ namespace surface
                          elle::Version const& peer_version
                          )
     {
+      // Clear hypotetical blocks we fetched but did not process.
+      this->_buffers.clear();
       boost::filesystem::path output_path(this->state().output_dir());
       auto count = source.count();
 
@@ -703,7 +826,34 @@ namespace surface
         return FileSize(-1);
       }
       boost::filesystem::create_directories(fullpath.parent_path());
-      boost::filesystem::ofstream output(fullpath, std::ios::app | std::ios::binary);
+      if (boost::filesystem::exists(fullpath))
+      {
+        // Check size against snapshot data
+        auto size = boost::filesystem::file_size(fullpath);
+        if (size < tr.progress())
+        { // missing data on disk. Should not happen.
+          std::string msg = elle::sprintf("%s: file %s too short, expected %s, got %s",
+                    *this, fullpath, tr.progress(), size);
+          ELLE_WARN(msg.c_str());
+          throw elle::Exception(msg);
+        }
+        if (size > tr.progress())
+        {
+          // File too long, which means snapshot was not synced properly.
+          // Be conservative and truncate the file to expected length, maybe
+          // file write was only partial
+          ELLE_WARN("%s: File %s bigger than snapshot size: expected %s, got %s",
+                    *this, fullpath, tr.progress(), size);
+          // We need to effectively truncate the file, we have
+          // file_size checks all over the map
+          elle::system::truncate(fullpath, tr.progress());
+          size = boost::filesystem::file_size(fullpath);
+          if (size != tr.progress())
+            throw elle::Exception(
+              elle::sprintf("Truncate failed on %s: expected %s, got %s",
+                            fullpath, tr.progress(), size));
+        }
+      }
       _transfer_stream_map[index] =
         elle::make_unique<boost::filesystem::ofstream>(fullpath, std::ios::app | std::ios::binary);
       return tr.progress();
@@ -885,10 +1035,11 @@ namespace surface
           if (size != _store_expected_position)
           {
             ELLE_ERR(
-              "%s: expected file size %s and actual file size %s are different",
+              "%s: expected file size %s and actual file size %s are different on %s",
               *this,
               _store_expected_position,
-              size);
+              size,
+              current_file_full_path);
           throw elle::Exception("destination file corrupted");
           }
           // Write the file.
@@ -900,7 +1051,7 @@ namespace surface
           if (peer_version < elle::Version(0, 8, 7))
             source.set_progress(this->_snapshot->progress());
           // Write snapshot state to file
-          ELLE_TRACE("%s: write down snapshot", *this)
+          ELLE_DEBUG("%s: write down snapshot", *this)
           {
             ELLE_DUMP("%s: snapshot: %s", *this, *this->_snapshot);
             this->_save_transfer_snapshot();
@@ -941,6 +1092,11 @@ namespace surface
             }
           }
           // Check next available data
+          if (this->_buffers.empty())
+          {
+            _disk_writer_barrier.close();
+            break; // break to outer while that will wait on barrier
+          }
           const IndexedBuffer& next = this->_buffers.peek();
           if (next.start_position != _store_expected_position
              || next.file_index != _store_expected_file)
@@ -975,6 +1131,13 @@ namespace surface
       if (_bufferer)
         _bufferer->cleanup();
       // FIXME: cleanup raw cloud data
+    }
+
+    void
+    ReceiveMachine::_cloud_synchronize()
+    {
+      this->current_state(TransactionMachine::State::Transfer);
+      this->_cloud_operation();
     }
 
     void

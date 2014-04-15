@@ -19,9 +19,11 @@ namespace station
   `-------------*/
 
   Station::Station(papier::Authority const& authority,
-                   papier::Passport const& passport):
+                   papier::Passport const& passport,
+                   std::string const& name):
     _authority(authority),
     _passport(passport),
+    _name(name),
     _server(),
     _server_thread(*reactor::Scheduler::scheduler(),
                    elle::sprintf("%s server thread", *this),
@@ -59,7 +61,9 @@ namespace station
   {
     ELLE_TRACE_SCOPE("%s: connect to %s:%s", *this, host, port);
     auto socket = elle::make_unique<reactor::network::TCPSocket>(host, port);
-    return this->_negotiate(std::move(socket));
+    std::unique_ptr<Host> res = this->_negotiate(std::move(socket));
+    ELLE_TRACE("%s: connect succeeded with %s", *this, host);
+    return res;
   }
 
   /*-------.
@@ -95,7 +99,6 @@ namespace station
       try
       {
         auto host = _negotiate(std::move(socket));
-        this->_hosts[host->passport()] = host.get();
         this->_host_new.push(std::move(host));
         this->_host_available.open();
       }
@@ -121,6 +124,11 @@ namespace station
   std::unique_ptr<Host>
   Station::_negotiate(std::unique_ptr<reactor::network::Socket> socket)
   {
+    // Exchange protocol version.
+    char version = 0;
+    socket->write(elle::ConstWeakBuffer(&version, 1));
+    auto remote_protocol = socket->read(1);
+    ELLE_ASSERT_EQ(elle::ConstWeakBuffer(remote_protocol)[0], 0);
     try
     {
       ELLE_TRACE_SCOPE("%s: negotiate connection with %s",
@@ -143,8 +151,6 @@ namespace station
       ELLE_ASSERT_NEQ(remote, this->passport());
 
       // Check we are not already connected.
-      auto hash = std::hash<papier::Passport>()(this->passport());
-      auto remote_hash = std::hash<papier::Passport>()(remote);
       auto check_already = [&] ()
         {
           if (this->_hosts.find(remote) != this->_hosts.end())
@@ -156,9 +162,13 @@ namespace station
           }
         };
       check_already();
+      bool master = this->passport() < remote;
 
-      bool master = hash < remote_hash;
-      ELLE_DEBUG("%s: assume %s role", *this, master ? "master" : "slave");
+      ELLE_DEBUG("%s: assume %s role", *this, master ? "master" : "slave")
+      {
+        ELLE_DUMP("%s: local passport: %s", *this, this->passport());
+        ELLE_DUMP("%s: remote passport: %s", *this, remote);
+      }
 
       elle::SafeFinally pop_negotiation;
       if (master)
@@ -247,7 +257,10 @@ namespace station
   void
   Station::print(std::ostream& stream) const
   {
-    stream << "Station(" << this << ")";
+    if (this->_name.empty())
+      stream << "Station(" << this << ")";
+    else
+      stream << this->_name;
   }
 
   std::ostream&

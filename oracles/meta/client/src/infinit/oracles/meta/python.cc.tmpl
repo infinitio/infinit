@@ -178,7 +178,7 @@ void export_meta_client()
 
   py::enum_<Error>("Error")
     <%! from infinit.oracles.meta.error import errors %>
-    %for name, (code, comment) in errors.items():
+    %for name, (code, comment) in sorted(errors.items()):
       .value("${name}", Error::${name})
     %endfor
   ;
@@ -196,7 +196,10 @@ void export_meta_client()
     .def_readonly("fullname", &User::fullname)
     .def_readonly("handle", &User::handle)
     .def_readonly("public_key", &User::public_key)
-    .def_readonly("online", &User::online)
+    .def_readonly("online", static_cast<bool (User::*)() const>(&User::online))
+    .def_readonly("online",
+                  static_cast<
+                    bool (User::*)(std::string const&) const>(&User::online))
     .def_readonly("connected_devices", &User::connected_devices)
   ;
   py::class_<Device>("Device")

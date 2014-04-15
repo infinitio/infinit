@@ -29,12 +29,7 @@ namespace surface
         data.recipient_fullname = you.fullname;
         data.recipient_device_id = "Your device id";
         data.recipient_device_name = "Your device";
-        data.message = "Here is your fist file.";
-        data.files = { "Welcome.avi" };
-        data.files_count = 1;
-        data.total_size = 30120;
-        data.is_directory = false;
-        data.status = TransactionStatus::initialized;
+        data.message = "Welcome to Infinit! Here's your first file.";
         data.ctime = ::time(nullptr);
         data.mtime = ::time(nullptr);
         try
@@ -44,12 +39,17 @@ namespace surface
           data.total_size = elle::os::file::size(path.string());
           data.files_count = 1;
           data.is_directory = false;
+          data.status = TransactionStatus::initialized;
         }
         catch (elle::Exception const& e)
         {
+          data.files = { "Welcome.avi" };
+          data.files_count = 1;
+          data.total_size = 30120;
+          data.is_directory = false;
+          data.status = TransactionStatus::failed;
           ELLE_WARN("unable to access file, fake transaction failed: %s",
                     e.what());
-          data.status = TransactionStatus::failed;
         }
         ELLE_DEBUG("onboarding transaction: %s", data);
         return data;
@@ -64,11 +64,6 @@ namespace surface
                                     id,
                                     transaction_data(
                                       state.me(), peer, file_path))
-        , _thread(new reactor::Thread(*reactor::Scheduler::scheduler(),
-                                      "onboarding transaction",
-                                      [&]
-                                      {
-                                      }))
       {
         this->_machine.reset(new surface::gap::onboarding::ReceiveMachine(
           state,
@@ -83,8 +78,6 @@ namespace surface
       Transaction::~Transaction()
       {
         ELLE_DEBUG_SCOPE("%s: destruction", *this);
-        if (this->_thread)
-          this->_thread->terminate_now();
       }
 
       surface::gap::onboarding::ReceiveMachine&
@@ -106,7 +99,7 @@ namespace surface
         {
           ELLE_DEBUG("%s: accepted", *this);
           this->machine().accept();
-          this->peer_availability_status(true);
+          this->peer_available(std::vector<std::pair<std::string, int>>());
           this->peer_connection_status(true);
         }
       }
@@ -120,8 +113,13 @@ namespace surface
       void
       Transaction::interrupt()
       {
-        this->peer_availability_status(false);
+        this->peer_unavailable();
         this->_machine->interrupt();
+      }
+
+      void
+      Transaction::reset(surface::gap::State const& state)
+      {
       }
 
       void
