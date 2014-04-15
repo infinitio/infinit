@@ -126,6 +126,9 @@ class Mixin:
             email,
             password,
             device_id: uuid.UUID):
+    # FIXME: 0.0.0.0 is the website.
+    if self.user_version < (0, 9, 0) and self.user_version != (0, 0, 0):
+      return self.fail(error.DEPRECATED)
     with elle.log.trace("%s: log on device %s" % (email, device_id)):
       assert isinstance(device_id, uuid.UUID)
       email = email.lower()
