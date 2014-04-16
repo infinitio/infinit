@@ -8,20 +8,11 @@ sys.path.insert(0, drake)
 
 import drake
 import drake.cxx
-import drake.cxx.boost
 import drake.cxx.qt
 
-cxx_compiler = os.getenv('CXX', 'g++')
-cxx_toolkit = drake.cxx.GccToolkit(compiler = cxx_compiler)
 cxx_config = drake.cxx.Config()
-cxx_config.flag('-fPIC')
-cxx_config.flag('-Wall')
 cxx_config.enable_debug_symbols()
 cxx_config.enable_optimization(False)
-
-boost = drake.cxx.boost.Boost(
-    prefix = os.getenv('BOOST_PREFIX', '/usr')
-)
 
 try:
   qt = drake.cxx.qt.Qt(
@@ -33,11 +24,9 @@ except drake.Exception as e:
 
 with drake.Drake('../..') as d:
   d.run(
-    cxx_toolkit,
-    cxx_config,
+    cxx_config = cxx_config,
     python3 = None,
     enable_horizon = False,
     build_type = "Development",
-    boost = boost,
     qt = qt,
   )
