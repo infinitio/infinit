@@ -102,7 +102,7 @@ int main(int argc, char** argv)
     reactor::VThread<int> t
     {
       sched,
-      "recv",
+      "online",
       [&] () -> int
       {
         common::infinit::Configuration config(production);
