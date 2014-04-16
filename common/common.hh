@@ -29,6 +29,15 @@ namespace common
 
       ELLE_ATTRIBUTE_R(bool, production);
 
+      /// Meta configuration
+      ELLE_ATTRIBUTE_R(std::string, meta_protocol);
+      ELLE_ATTRIBUTE_R(std::string, meta_host);
+      ELLE_ATTRIBUTE_R(int, meta_port);
+
+      /// Trophonius configuration
+      ELLE_ATTRIBUTE_R(std::string, trophonius_host);
+      ELLE_ATTRIBUTE_R(int, trophonius_port);
+
       /// Metrics configuration
       ELLE_ATTRIBUTE_R(bool, metrics_infinit_enabled);
       ELLE_ATTRIBUTE_R(std::string, metrics_infinit_host);
@@ -44,53 +53,13 @@ namespace common
     std::string const&
     home();
 
-    /// @brief Returns binary path from its name.
-    ///
-    /// if the environment variable INFINIT_BINARY_DIR is present, it will
-    /// return ${INFINIT_BINARY_DIR}/name. Otherwise, if INFINIT_BUILD_DIR is
-    /// set, it will return ${INFINIT_BUILD_DIR}/bin/binary_name.  If none of
-    /// them has been set, it throws an exception.  Raises an exception when
-    /// ensure is true and the path does not refer to a valid binary.
-    std::string const&
-    binary_path(std::string const& name,
-                bool ensure = true);
-
-    /// Returns the default path of every director.
-    std::string
-    networks_directory(std::string const& user_id);
-
-    /// Returns network directory path.
-    std::string
-    network_directory(std::string const& user_id,
-                      std::string const& network_id);
-
     /// Returns passport path.
     std::string
     passport_path(std::string const& user);
 
-    /// Returns log file path.
-    std::string
-    log_path(std::string const& user_id,
-             std::string const& network_id);
-
     /// Returns the path of the file containing the computer device uuid.
     std::string
     device_id_path();
-
-    /// The path to the descriptor.
-    std::string
-    descriptor_path(std::string const& user_id,
-                    std::string const& network_id);
-
-    // Returns the path to the shelter.
-    std::string
-    network_shelter(std::string const& user_id,
-                    std::string const& network_id);
-
-    /// Returns portal file path.
-    std::string
-    portal_path(std::string const& user_id,
-                std::string const& network_id);
 
     /// Returns user directory path.
     std::string
@@ -136,67 +105,6 @@ namespace common
 
   }
 
-  /// URLs to access meta server
-  namespace meta
-  {
-
-    /// Returns the protocol used by meta (http or https)
-    /// Can be overriden by INFINIT_META_PROTOCOL
-    std::string const&
-    protocol();
-
-    /// Returns the host of the meta server.
-    /// Can be overriden by INFINIT_META_HOST.
-    std::string const&
-    host();
-
-    /// Returns the port of the meta server
-    /// Can be overriden by INFINIT_META_PORT.
-    uint16_t
-    port();
-
-    /// Returns the url to the meta server. If INFINIT_META_URL is defined, its
-    /// value will be returned.
-    std::string const&
-    url();
-  }
-
-  namespace trophonius
-  {
-    /// Returns the protocol used by trophonius (http or https)
-    /// Can be overriden by COMMON_INFINIT_TROPHONIUS_PROTOCOL
-    std::string const&
-    protocol();
-
-    /// Returns the host of the trophonius server.
-    /// Can be overriden by COMMON_INFINIT_TROPHONIUS_HOST.
-    std::string const&
-    host();
-
-    /// Returns the port of the trophonius server
-    /// Can be overriden by COMMON_INFINIT_TROPHONIUS_PORT.
-    uint16_t
-    port();
-  }
-
-  namespace heartbeat
-  {
-    std::string const&
-    host();
-
-    int
-    port();
-  }
-
-  namespace stun
-  {
-    std::string const&
-    host();
-
-    int
-    port();
-  }
-
   std::unique_ptr< ::infinit::metrics::Reporter>
   metrics(infinit::Configuration const& config);
 
@@ -217,15 +125,6 @@ namespace common
     manifest_url(char const* platform = nullptr,
                  unsigned int architecture = 0);
 
-  }
-
-  namespace longinus
-  {
-    std::string
-    host();
-
-    int
-    port();
   }
 
 } // !common
