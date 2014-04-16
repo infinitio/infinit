@@ -97,37 +97,6 @@ gap_null()
   return surface::gap::null_id;
 }
 
-/// Create a new state.
-/// Returns NULL on failure.
-gap_State* gap_configurable_new(bool production,
-                                char const* meta_protocol,
-                                char const* meta_host,
-                                unsigned short meta_port,
-                                char const* trophonius_host,
-                                unsigned short trophonius_port)
-{
-  try
-  {
-    gap_State* state = new gap_State(production,
-                                     meta_protocol,
-                                     meta_host,
-                                     meta_port,
-                                     trophonius_host,
-                                     trophonius_port);
-    return state;
-  }
-  catch (std::exception const& err)
-  {
-    ELLE_ERR("Cannot initialize gap state: %s", err.what());
-    return nullptr;
-  }
-  catch (...)
-  {
-    ELLE_ERR("Cannot initialize gap state");
-    return nullptr;
-  }
-}
-
 void gap_free(gap_State* state)
 {
   delete state;
@@ -144,14 +113,6 @@ void gap_enable_debug(gap_State* state)
 gap_Status gap_meta_status(gap_State*)
 {
   return gap_ok;
-}
-
-char const*
-gap_meta_url(gap_State*)
-{
-  static std::string meta_url;
-  meta_url = common::meta::url(); // force retreival
-  return meta_url.c_str();
 }
 
 gap_Status
@@ -1292,65 +1253,52 @@ gap_onboarding_interrupt_transfer(gap_State* state,
 }
 
 gap_Status
-gap_send_user_report(char const* _user_name,
-                     char const* _message,
-                     char const* _file,
-                     char const* _os_description)
+gap_send_user_report(gap_State* state,
+                     std::string const& user_name,
+                     std::string const& message,
+                     std::string const& file,
+                     std::string const& os_description)
 {
-  try
-  {
-    std::string const user_name{_user_name};
-    std::string const os_description{_os_description};
-    std::string const user_message{_message};
-    std::string const file{_file};
-
-    elle::crash::user_report(common::meta::protocol(),    // meta protocol
-                             common::meta::host(),        // meta host
-                             common::meta::port(),        // meta port
-                             user_name,                   // user name
-                             os_description,              // OS description
-                             user_message,                // user message
-                             file                         // file
-      );
-  }
-  catch (...)
-  {
-    ELLE_WARN("cannot send user report: %s", elle::exception_string());
-    return gap_api_error;
-  }
-  return gap_ok;
+  return run<gap_Status>(
+    state,
+    "send user report",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      elle::crash::user_report(state.meta().protocol(),
+                               state.meta().host(),
+                               state.meta().port(),
+                               user_name,
+                               os_description,
+                               message,
+                               file);
+      return gap_ok;
+    });
 }
 
 gap_Status
-gap_send_last_crash_logs(char const* _user_name,
-                         char const* _crash_report,
-                         char const* _state_log,
-                         char const* _os_description,
-                         char const* _additional_info)
+gap_send_last_crash_logs(gap_State* state,
+                         std::string const& user_name,
+                         std::string const& crash_report,
+                         std::string const& state_log,
+                         std::string const& os_description,
+                         std::string const& additional_info)
 {
-  try
-  {
-    std::string const user_name{_user_name};
-    std::string const os_description{_os_description};
-    std::string const additional_info{_additional_info};
-    std::vector<std::string> files;
-    files.push_back(std::string{_crash_report});
-    files.push_back(std::string{_state_log});
+  return run<gap_Status>(
+    state,
+    "send user report",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      std::vector<std::string> files;
+      files.push_back(crash_report);
+      files.push_back(state_log);
 
-    elle::crash::existing_report(common::meta::protocol(),// meta protocol
-                                 common::meta::host(),    // meta host.
-                                 common::meta::port(),    // meta port.
-                                 files,                   // file list.
-                                 user_name,               // user name.
-                                 os_description,          // OS description.
-                                 additional_info          // additional info.
-      );
-  }
-  catch (...)
-  {
-    ELLE_WARN("cannot send crash reports: %s", elle::exception_string());
-    return gap_api_error;
-  }
-
-  return gap_ok;
+      elle::crash::existing_report(state.meta().protocol(),
+                                   state.meta().host(),
+                                   state.meta().port(),
+                                   files,
+                                   user_name,
+                                   os_description,
+                                   additional_info);
+      return gap_ok;
+    });
 }

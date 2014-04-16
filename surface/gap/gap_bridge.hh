@@ -51,12 +51,7 @@ public:
   }
 
 public:
-  gap_State(bool production,
-            char const* meta_protocol,
-            char const* meta_host,
-            unsigned short meta_port,
-            char const* trophonius_host,
-            unsigned short trophonius_port):
+  gap_State(bool production):
     _configuration(production),
     _scheduler{},
     _keep_alive{this->_scheduler, "State keep alive",
@@ -91,20 +86,14 @@ public:
       [&]
       {
         this->_state.reset(
-          new surface::gap::State(meta_protocol, meta_host, meta_port,
-                                  trophonius_host, trophonius_port,
+          new surface::gap::State(this->_configuration.meta_protocol(),
+                                  this->_configuration.meta_host(),
+                                  this->_configuration.meta_port(),
+                                  this->_configuration.trophonius_host(),
+                                  this->_configuration.trophonius_port(),
                                   common::metrics(this->configuration())));
       });
   }
-
-  gap_State(bool production):
-    gap_State(production,
-              common::meta::protocol().c_str(),
-              common::meta::host().c_str(),
-              common::meta::port(),
-              common::trophonius::host().c_str(),
-              common::trophonius::port())
-  {}
 
   ~gap_State()
   {

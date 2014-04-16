@@ -20,15 +20,6 @@ typedef struct gap_State gap_State;
 /// Returns NULL on failure.
 gap_State* gap_new(bool production);
 
-/// Create a new state.
-/// Returns NULL on failure.
-gap_State* gap_configurable_new(bool production,
-                                char const* meta_protocol,
-                                char const* meta_host,
-                                unsigned short meta_port,
-                                char const* trophonius_host,
-                                unsigned short trophonius_port);
-
 /// Release a state.
 void gap_free(gap_State* state);
 
@@ -57,10 +48,6 @@ gap_Status gap_debug(gap_State* state);
 
 /// Check if meta is alive.
 gap_Status gap_meta_status(gap_State* state);
-
-/// The root url of meta server.
-char const*
-gap_meta_url(gap_State* state);
 
 /// Debug func: Pull notifications.
 gap_Status
@@ -483,17 +470,19 @@ gap_get_output_dir(gap_State* state);
 
 /// Send user report
 gap_Status
-gap_send_user_report(char const* _user_name,
-                     char const* _message,
-                     char const* _file,
-                     char const* _os_description);
+gap_send_user_report(gap_State* state,
+                     std::string const& user_name,
+                     std::string const& message,
+                     std::string const& file,
+                     std::string const& os_description);
 
 /// Send existing crash log to the server
 gap_Status
-gap_send_last_crash_logs(char const* _user_name,
-                         char const* _crash_report,
-                         char const* _state_log,
-                         char const* _os_description,
-                         char const* _additional_info);
+gap_send_last_crash_logs(gap_State* state,
+                         std::string const& user_name,
+                         std::string const& crash_report,
+                         std::string const& state_log,
+                         std::string const& os_description,
+                         std::string const& additional_info);
 
 #endif
