@@ -27,7 +27,7 @@ class CloudBufferToken:
   aws_secret = '6VphkFJAAWXTBLrDebB+AWmPAHPkJWfIFR2KCfSa'
   aws_id = 'AKIAIPTEKRYOSJORHQMA'
 
-  aws_default_bucket = 'us-east-1-buffer-infinit-io'
+  aws_default_bucket = 'us-east-1-buffer-dev-infinit-io'
 
   default_headers = {
     'content-type': 'application/json',
