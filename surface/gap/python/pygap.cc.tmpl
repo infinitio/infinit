@@ -399,9 +399,6 @@ BOOST_PYTHON_MODULE(_gap)
   py::def("new",
           &gap_new,
           py::return_value_policy<py::return_opaque_pointer>());
-  py::def("configurable_new",
-          &gap_configurable_new,
-          py::return_value_policy<py::return_opaque_pointer>());
   py::def("free", &gap_free);
 
   py::def("enable_debug", &gap_enable_debug);
