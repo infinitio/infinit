@@ -614,13 +614,15 @@ namespace surface
       }
       catch(reactor::Terminate const&)
       {
-        total_bytes_transfered = this->_snapshot->progress() - initial_progress;
+        if (this->_snapshot)
+          total_bytes_transfered = this->_snapshot->progress() - initial_progress;
         exit_reason = metrics::TransferExitReasonTerminated;
         throw;
       }
       catch(...)
       {
-        total_bytes_transfered = this->_snapshot->progress() - initial_progress;
+        if (this->_snapshot)
+          total_bytes_transfered = this->_snapshot->progress() - initial_progress;
         exit_reason = metrics::TransferExitReasonError;
         exit_message = elle::exception_string();
         throw;
