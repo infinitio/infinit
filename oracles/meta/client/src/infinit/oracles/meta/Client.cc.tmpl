@@ -182,6 +182,10 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::CloudBufferTokenResponse, ar, res)
   ar & named("secret_access_key", res.secret_access_key);
   ar & named("session_token", res.session_token);
   ar & named("expiration", res.expiration);
+  ar & named("protocol", res.protocol);
+  ar & named("region", res.region);
+  ar & named("bucket", res.bucket);
+  ar & named("folder", res.folder);
 }
 
 /*--------------.

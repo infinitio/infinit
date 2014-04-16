@@ -26,18 +26,14 @@ namespace surface
     // Recipient.
     S3TransferBufferer::S3TransferBufferer(
       infinit::oracles::Transaction& transaction,
-      std::function<aws::Credentials(bool)> credentials,
-      std::string const& bucket_name):
+      std::function<aws::Credentials(bool)> credentials):
         Super(transaction),
         _count(),
         _full_size(),
         _files(),
         _key_code(),
-        _bucket_name(bucket_name),
         _credentials(credentials),
-        _remote_folder(this->transaction().id),
-        _s3_handler(this->_bucket_name, this->_remote_folder,
-                    this->_credentials)
+        _s3_handler(this->_credentials)
     {
       try
       {
@@ -70,18 +66,14 @@ namespace surface
       FileCount count,
       FileSize total_size,
       Files const& files,
-      infinit::cryptography::Code const& key,
-      std::string const& bucket_name):
+      infinit::cryptography::Code const& key):
         Super(transaction),
         _count(count),
         _full_size(total_size),
         _files(files),
         _key_code(key),
-        _bucket_name(bucket_name),
         _credentials(credentials),
-        _remote_folder(this->transaction().id),
-        _s3_handler(this->_bucket_name, this->_remote_folder,
-                    this->_credentials)
+        _s3_handler(this->_credentials)
     {
       // Write transfer meta-data to cloud.
       // We binary serialize stuff, then base64-encode to be valid json

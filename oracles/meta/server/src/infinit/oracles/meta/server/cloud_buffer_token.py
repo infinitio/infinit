@@ -19,6 +19,9 @@ ELLE_LOG_COMPONENT = 'infinit.oracles.meta.CloudBufferToken'
 def _aws_urlquote(data):
   return urllib.parse.quote(data)
 
+aws_default_region = 'us-east-1'
+aws_default_bucket = 'us-east-1-buffer-dev-infinit-io'
+
 class CloudBufferToken:
 
   aws_host = 'sts.amazonaws.com'
@@ -26,8 +29,6 @@ class CloudBufferToken:
 
   aws_secret = '6VphkFJAAWXTBLrDebB+AWmPAHPkJWfIFR2KCfSa'
   aws_id = 'AKIAIPTEKRYOSJORHQMA'
-
-  aws_default_bucket = 'us-east-1-buffer-dev-infinit-io'
 
   default_headers = {
     'content-type': 'application/json',
@@ -49,11 +50,9 @@ class CloudBufferToken:
     return res
 
   def __init__(self, user_id, transaction_id, http_action,
-               aws_region = 'us-east-1',
+               aws_region = None,
                bucket_name = None):
     assert http_action in ['PUT', 'GET', 'ALL']
-    elle.log.log('%s: fetching S3 %s token for transaction (%s), user_id (%s) for region: %s' %
-                 (self, http_action, transaction_id, user_id, aws_region))
     self.user_id = user_id
     self.transaction_id = transaction_id
     self.http_action = http_action
@@ -61,9 +60,13 @@ class CloudBufferToken:
     self.aws_sts_service = 'sts'
     self.aws_s3_service = 's3'
 
+    if aws_region is None:
+      aws_region = aws_default_region
     if bucket_name is None:
-      bucket_name = CloudBufferToken.aws_default_bucket
+      bucket_name = aws_default_bucket
     self.bucket_name = bucket_name
+    elle.log.log('%s: fetching S3 %s token for (%s/%s), user_id (%s) for region: %s' %
+                 (self, http_action, bucket_name, transaction_id, user_id, aws_region))
 
   def generate_s3_token(self):
     self.request_time = datetime.utcnow()
@@ -273,7 +276,7 @@ class CloudBufferToken:
 
 #http://docs.aws.amazon.com/AmazonS3/latest/dev/RESTAuthentication.html
 # at the bottom, 'Query String Request Authentication Alternative'
-def generate_get_url(bucket_name, transaction_id, file_path):
+def generate_get_url(region, bucket_name, transaction_id, file_path):
   """ Generate a GET URL that can access relative 'file_path' in bucket
       using the federated token we produced
   """

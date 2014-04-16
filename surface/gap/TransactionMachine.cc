@@ -626,6 +626,9 @@ namespace surface
          auto credentials = aws::Credentials(token.access_key_id,
                                              token.secret_access_key,
                                              token.session_token,
+                                             token.region,
+                                             token.bucket,
+                                             token.folder,
                                              token.expiration);
          return credentials;
       };

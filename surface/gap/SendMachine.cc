@@ -161,6 +161,7 @@ namespace surface
       switch (this->data()->status)
       {
         case TransactionStatus::created:
+          throw elle::Exception("Unrestorable state created.");
         case TransactionStatus::initialized:
           this->_run(this->_wait_for_accept_state);
           break;
@@ -608,8 +609,7 @@ namespace surface
         ELLE_TRACE("%s: will ghost-cloud-upload %s of size %s",
                    *this, source_file_path, source_file_size);
 
-        aws::S3 handler("us-east-1-buffer-dev-infinit-io", this->transaction_id(),
-                        this->make_aws_credentials_getter());
+        aws::S3 handler(this->make_aws_credentials_getter());
 
         typedef frete::Frete::FileSize FileSize;
 

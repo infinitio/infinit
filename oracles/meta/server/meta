@@ -58,6 +58,14 @@ parser.add_option('--mongo-port',
                   help = 'Mongodb port',
                   type = int,
                   default = None)
+parser.add_option('--aws-region',
+                  action = 'store',
+                  help  = 'aws region for cloud data',
+                  default = None)
+parser.add_option('--aws-bucket',
+                  action = 'store',
+                  help = 'aws bucket for cloud data',
+                  default = None)
 
 options, args = parser.parse_args()
 
@@ -68,7 +76,9 @@ app = infinit.oracles.meta.server.Meta(
   mongo_port = options.mongo_port,
   unconfirmed_email_leeway = options.unconfirmed_email_leeway,
   daily_summary_hour = options.daily_summary_hour,
-  email_confirmation_cooldown = options.email_confirmation_cooldown)
+  email_confirmation_cooldown = options.email_confirmation_cooldown,
+  aws_region = options.aws_region,
+  aws_bucket = options.aws_bucket)
 
 app.port = 0
 

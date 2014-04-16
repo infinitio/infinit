@@ -53,6 +53,8 @@ class Meta(bottle.Bottle,
                unconfirmed_email_leeway = 604800, # in sec, 7 days.
                daily_summary_hour = 18, #in sec.
                email_confirmation_cooldown = 600, # in sec.
+               aws_region = None,
+               aws_bucket = None,
                force_admin = False,
                debug = False,
                ):
@@ -107,6 +109,12 @@ class Meta(bottle.Bottle,
     self.unconfirmed_email_leeway = int(unconfirmed_email_leeway)
     self.daily_summary_hour = int(daily_summary_hour)
     self.email_confirmation_cooldown = int(email_confirmation_cooldown)
+    if aws_region is None:
+      aws_region = cloud_buffer_token.aws_default_region
+    self.aws_region = aws_region
+    if aws_bucket is None:
+      aws_bucket = cloud_buffer_token.aws_default_bucket
+    self.aws_bucket = aws_bucket
     waterfall.Waterfall.__init__(self)
 
   def __set_constraints(self):
