@@ -113,7 +113,13 @@ namespace surface
 
       // Fail way.
       this->_machine.transition_add_catch(this->_transfer_core_state,
-                                          this->_fail_state);
+                                          this->_fail_state)
+        .action_exception(
+          [this] (std::exception_ptr e)
+          {
+            ELLE_WARN("%s: error while transfering: %s",
+                      *this, elle::exception_string(e));
+          });
 
       this->_machine.transition_add(this->_transfer_core_state,
                                     this->_fail_state,
@@ -130,17 +136,21 @@ namespace surface
       this->_machine.transition_add_catch(this->_fail_state, this->_end_state)
         .action([this] { ELLE_ERR("%s: failure failed", *this); });
       this->_machine.transition_add_catch(this->_cancel_state, this->_end_state)
-        .action([this]
-                {
-                  ELLE_ERR("%s: cancellation failed", *this);
-                  this->_failed.open();
-                });
+        .action_exception(
+          [this] (std::exception_ptr e)
+          {
+            ELLE_ERR("%s: cancellation failed: %s",
+                     *this, elle::exception_string(e));
+            this->_failed.open();
+          });
       this->_machine.transition_add_catch(this->_finish_state, this->_end_state)
-        .action([this]
-                {
-                  ELLE_ERR("%s: termination failed", *this);
-                  this->_failed.open();
-                });
+        .action_exception(
+          [this] (std::exception_ptr e)
+          {
+            ELLE_ERR("%s: termination failed: %s",
+                     *this, elle::exception_string(e));
+            this->_failed.open();
+          });
     }
 
     TransactionMachine::~TransactionMachine()

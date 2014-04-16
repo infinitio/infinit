@@ -102,10 +102,22 @@ namespace surface
                                     reactor::Waitables{&this->canceled()}, true);
       // Exception.
       this->_machine.transition_add_catch(
-        this->_create_transaction_state, this->_fail_state);
-      this->_machine.transition_add_catch(
-        this->_wait_for_accept_state, this->_fail_state);
+        this->_create_transaction_state, this->_fail_state)
+        .action_exception(
+          [this] (std::exception_ptr e)
+          {
+            ELLE_WARN("%s: error while waiting for accept: %s",
+                      *this, elle::exception_string(e));
+          });
 
+      this->_machine.transition_add_catch(
+        this->_wait_for_accept_state, this->_fail_state)
+        .action_exception(
+          [this] (std::exception_ptr e)
+          {
+            ELLE_WARN("%s: error while creating transaction: %s",
+                      *this, elle::exception_string(e));
+          });
       this->_machine.state_changed().connect(
         [this] (reactor::fsm::State& state)
         {
