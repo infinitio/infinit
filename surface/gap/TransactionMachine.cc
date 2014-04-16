@@ -286,7 +286,10 @@ namespace surface
       );
 
       // Send report for failed transfer
-      elle::crash::transfer_failed_report(this->state().me().email);
+      elle::crash::transfer_failed_report(this->state().meta().protocol(),
+                                          this->state().meta().host(),
+                                          this->state().meta().port(),
+                                          this->state().me().email);
 
       this->current_state(State::Failed);
       this->_finalize(infinit::oracles::Transaction::Status::failed);
