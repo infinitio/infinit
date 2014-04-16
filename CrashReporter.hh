@@ -59,9 +59,9 @@ namespace elle
   {
     /// Function for sending existing crash reports.
     void
-    existing_report(std::string const& protocol,
-                    std::string const& host,
-                    uint16_t port,
+    existing_report(std::string const& meta_protocol,
+                    std::string const& meta_host,
+                    uint16_t meta_port,
                     std::vector<std::string> const& files,
                     std::string const& user_name = "",
                     std::string const& os_description = "",
@@ -69,13 +69,16 @@ namespace elle
 
     /// Function for sending a report when a transfer fails.
     void
-    transfer_failed_report(std::string const& user_name = "");
+    transfer_failed_report(std::string const& meta_protocol,
+                           std::string const& meta_host,
+                           uint16_t meta_port,
+                           std::string const& user_name = "");
 
     /// Function for sending user reports.
     void
-    user_report(std::string const& protocol,
-                std::string const& host,
-                uint16_t port,
+    user_report(std::string const& meta_protocol,
+                std::string const& meta_host,
+                uint16_t meta_port,
                 std::string const& user_name = "",
                 std::string const& os_description = "",
                 std::string const& message = "",

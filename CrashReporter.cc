@@ -316,9 +316,9 @@ namespace elle
     }
 
     void
-    existing_report(std::string const& protocol,
-                    std::string const& host,
-                    uint16_t port,
+    existing_report(std::string const& meta_protocol,
+                    std::string const& meta_host,
+                    uint16_t meta_port,
                     std::vector<std::string> const& files,
                     std::string const& user_name,
                     std::string const& os_description,
@@ -326,9 +326,9 @@ namespace elle
     {
       ELLE_TRACE("report last crash");
       std::string url = elle::sprintf("%s://%s:%d/debug/report/backtrace",
-                                      protocol,
-                                      host,
-                                      port);
+                                      meta_protocol,
+                                      meta_host,
+                                      meta_port);
       elle::filesystem::TemporaryDirectory tmp;
       boost::filesystem::path destination(tmp.path() / "report.tar.bz2");
       std::vector<boost::filesystem::path> archived;
@@ -346,17 +346,17 @@ namespace elle
     }
 
     void
-    transfer_failed_report(std::string const& user_name)
+    transfer_failed_report(std::string const& meta_protocol,
+                           std::string const& meta_host,
+                           uint16_t meta_port,
+                           std::string const& user_name)
     {
       ELLE_TRACE("transaction failed report");
-      std::string protocol{common::meta::protocol()};
-      std::string host{common::meta::host()};
-      uint16_t port = common::meta::port();
       std::string os_description{common::system::platform()};
       std::string url = elle::sprintf("%s://%s:%s/debug/report/transaction",
-                                      protocol,
-                                      host,
-                                      port);
+                                      meta_protocol,
+                                      meta_host,
+                                      meta_port);
       elle::filesystem::TemporaryDirectory tmp;
       boost::filesystem::path destination(tmp.path() / "report.tar.bz2");
       boost::filesystem::path infinit_home_path;
@@ -368,9 +368,9 @@ namespace elle
     }
 
     void
-    user_report(std::string const& protocol,
-                std::string const& host,
-                uint16_t port,
+    user_report(std::string const& meta_protocol,
+                std::string const& meta_host,
+                uint16_t meta_port,
                 std::string const& user_name,
                 std::string const& os_description,
                 std::string const& message,
@@ -378,9 +378,9 @@ namespace elle
     {
       ELLE_TRACE_SCOPE("user report");
       std::string url = elle::sprintf("%s://%s:%s/debug/report/user",
-                                      protocol,
-                                      host,
-                                      port);
+                                      meta_protocol,
+                                      meta_host,
+                                      meta_port);
       elle::filesystem::TemporaryDirectory tmp;
       boost::filesystem::path destination(tmp.path() / "report.tar.bz2");
       boost::filesystem::path infinit_home_path;
