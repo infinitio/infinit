@@ -106,11 +106,11 @@ int main(int argc, char** argv)
       [&] () -> int
       {
         common::infinit::Configuration config(production);
-        surface::gap::State state(common::meta::protocol(),
-                                  common::meta::host(),
-                                  common::meta::port(),
-                                  common::trophonius::host(),
-                                  common::trophonius::port(),
+        surface::gap::State state(config.meta_protocol(),
+                                  config.meta_host(),
+                                  config.meta_port(),
+                                  config.trophonius_host(),
+                                  config.trophonius_port(),
                                   common::metrics(config));
 
         state.attach_callback<surface::gap::State::ConnectionStatus>(
