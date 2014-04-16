@@ -466,7 +466,7 @@ namespace surface
 
         this->user(this->me().id);
         this->_transactions_init();
-        this->on_connection_changed(true);
+        this->on_connection_changed(true, true);
 
         finally_logout.abort();
       };
@@ -707,10 +707,13 @@ namespace surface
     }
 
     void
-    State::on_connection_changed(bool connection_status)
+    State::on_connection_changed(bool connection_status, bool first_connection)
     {
       ELLE_TRACE_SCOPE(
-        "%s: connection %s", *this, connection_status ? "established" : "lost");
+        "%s: %sconnection %s",
+        *this,
+        first_connection? "first " : "re",
+        connection_status ? "established" : "lost");
 
       if (connection_status)
       {
@@ -723,14 +726,17 @@ namespace surface
           try
           {
             // Link with tropho might have changed.
-            ELLE_TRACE("reset transactions")
-              for (auto& t: this->_transactions)
-              {
-                if (!t.second->final())
-                  t.second->reset(*this);
-                else
-                  ELLE_DEBUG("ignore finalized transaction %s", t.second);
-              }
+            if (!first_connection)
+            {
+              ELLE_TRACE("reset transactions")
+                for (auto& t: this->_transactions)
+                {
+                  if (!t.second->final())
+                    t.second->reset(*this);
+                  else
+                    ELLE_DEBUG("ignore finalized transaction %s", t.second);
+                }
+            }
             this->_user_resync();
             this->_transaction_resync();
             resynched = true;
