@@ -107,13 +107,6 @@ def configure(cxx_toolkit = None,
   cxx_config.warnings.delete_non_virtual_dtor = \
     drake.cxx.Config.Warnings.Error
 
-  ## ----- ##
-  ## Boost ##
-  ## ----- ##
-
-  boost = boost or drake.cxx.boost.Boost(cxx_toolkit = cxx_toolkit)
-  cxx_config += boost.config()
-
   ## -------------------- ##
   ## Python configuration ##
   ## -------------------- ##
@@ -196,6 +189,8 @@ def configure(cxx_toolkit = None,
                        prefix = prefix,
                        boost = boost,
                        valgrind = valgrind)
+  boost = elle.boost
+  cxx_config += boost.config()
 
   def copy_lib(lib, where = 'lib'):
     return drake.copy(lib, where, lib.path().dirname())
