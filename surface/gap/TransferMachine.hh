@@ -112,6 +112,11 @@ namespace surface
       void
       _cloud_synchronize() = 0;
 
+      // Invoked right before the fsm is run, each time
+      virtual
+      void
+      _initialize() = 0;
+
     /*----------.
     | Printable |
     `----------*/
@@ -161,6 +166,9 @@ namespace surface
       virtual
       void
       _cloud_synchronize() override;
+      virtual
+      void
+      _initialize() override;
 
     /*----------.
     | Printable |

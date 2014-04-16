@@ -39,6 +39,9 @@ namespace surface
         _cloud_synchronize() override;
 
         void
+        _initialize() override;
+
+        void
         _transfer() override;
 
         void

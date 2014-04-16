@@ -125,6 +125,12 @@ namespace surface
                                     this->_fail_state,
                                     reactor::Waitables{&this->_failed}, true);
 
+      // Reset transfer
+      this->_machine.transition_add(this->_transfer_core_state,
+                                    this->_transfer_core_state,
+                                    reactor::Waitables{&this->_reset_transfer_signal},
+                                    true);
+
       this->_machine.transition_add(this->_fail_state,
                                     this->_end_state);
       // Reject.
@@ -196,7 +202,6 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: start transfer core machine", *this);
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
       try
       {
         this->_transfer_machine->run();
@@ -624,6 +629,12 @@ namespace surface
                                              token.expiration);
          return credentials;
       };
+    }
+
+    void
+    TransactionMachine::reset_transfer()
+    {
+      this->reset_transfer_signal().signal();
     }
 
     std::ostream&

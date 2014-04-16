@@ -99,6 +99,10 @@ namespace surface
       {
       }
 
+      void TransferMachine::_initialize()
+      {
+      }
+
       float
       TransferMachine::progress() const
       {

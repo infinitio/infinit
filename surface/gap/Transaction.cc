@@ -506,28 +506,8 @@ namespace surface
         return;
       }
 
-      if (this->_machine_state_thread)
-      {
-        this->_machine_state_thread->terminate_now();
-        this->_machine_state_thread.reset();
-      }
-
-      boost::filesystem::path snapshot_path{this->_machine->snapshot_path()};
-      if (this->_sender)
-        this->_machine.reset(
-          new SendMachine{state, this->_id, this->_data, snapshot_path});
-      else
-        this->_machine.reset(
-          new ReceiveMachine{state, this->_id, this->_data, snapshot_path});
-
-      this->_machine_state_thread.reset(
-        new reactor::Thread{
-          *reactor::Scheduler::scheduler(),
-            "notify fsm update",
-            [this, &state]
-            {
-              this->_notify_on_status_update(state);
-            }});
+      if (this->_machine != nullptr)
+        this->_machine->reset_transfer();
     }
   }
 }

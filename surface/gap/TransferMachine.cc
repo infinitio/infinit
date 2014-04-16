@@ -329,7 +329,7 @@ namespace surface
         this->_peer_online.close();
         this->_peer_offline.open();
       }
-
+      this->_initialize();
       this->_fsm.run();
     }
 
@@ -591,6 +591,13 @@ namespace surface
     TransferMachine::_cloud_synchronize()
     {
       this->_owner._cloud_synchronize();
+    }
+
+    void
+    TransferMachine::_initialize()
+    {
+      // Clear eventually left over station host.
+      _host.reset();
     }
 
     /*----------.

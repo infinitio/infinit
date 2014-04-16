@@ -168,6 +168,13 @@ namespace surface
       void
       join();
 
+      /** Reset hypothetical running transfer
+      * Invoked when some new information came that might invalidate what
+      * transfer is doing (tropho connection reset for now).
+      */
+      void
+      reset_transfer();
+
     public:
       /// Returns if the machine is releated to the given transaction object id.
       bool
@@ -269,6 +276,8 @@ namespace surface
       ELLE_ATTRIBUTE_RX(reactor::Barrier, rejected);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, canceled);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, failed);
+
+      ELLE_ATTRIBUTE_RX(reactor::Signal, reset_transfer_signal);
 
     /*--------.
     | Station |
