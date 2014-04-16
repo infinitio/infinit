@@ -2,14 +2,17 @@
 
 from utils import HTTPException, Meta, User
 
+def check_search_result(res, ids):
+  assert [user['id'] for user in res['users']] == ids
+
 with Meta() as meta:
   alice = User(meta, 'alice@provider.com')
   bob = User(meta, 'bob@provider.com')
   charles = User(meta, 'charles@provider.com')
   alice.login();
-  res = alice.post('user/search', {'text': 'al'})
-  assert res['users'] == [alice.id]
-  res = alice.post('user/search', {'text': 'dick'})
+  res = alice.get('users?search=al')
+  assert [user['id'] for user in res['users']] == [alice.id]
+  res = alice.get('users?search=dick')
   assert res['users'] == []
   alice.logout()
 
@@ -22,31 +25,34 @@ with Meta() as meta:
 
   bob.login()
 
-  res = bob.post('user/search', {'text': 'al', 'limit': 10})
+  res = bob.get('users?search=al&limit=10')
   assert len(res['users']) == number_of_alices
 
   bob.sendfile(alices[3].email)
-  bob.sendfile(alices[3].email)
-  bob.sendfile(alices[3].email)
-  bob.sendfile(alices[5].email)
-  bob.sendfile(alices[5].email)
   bob.sendfile(alices[1].email)
+  bob.sendfile(alices[3].email)
+  bob.sendfile(alices[3].email)
+  bob.sendfile(alices[5].email)
+  bob.sendfile(alices[5].email)
+
 
   # Current swag amounts:
   # alice3 : 3
   # alice5 : 2.
   # alice1 : 1.
 
-  res = bob.post('user/search', {'text': 'al', 'limit': 10})
+  res = bob.get('users?search=al&limit=10')
   assert len(res['users']) == number_of_alices
-  assert res['users'][:3] == [alices[3].id, alices[5].id, alices[1].id]
+  assert [user['id'] for user in res['users'][:3]] == [alices[3].id, alices[5].id, alices[1].id]
+  res = bob.get('users?search=al&limit=1')
+  assert len(res['users']) == 1
+  assert [user['id'] for user in res['users']] == [alices[3].id]
+  bob.logout()
 
 with Meta() as meta:
   bob = User(meta, email = 'bob@infinit.com', fullname = 'jean @ bob')
 
   bob.login()
-  res = bob.post('user/search', {'text': 'jean @', 'limit': 10})
-  assert res['success']
+  res = bob.get('users?search=jean%20@&limit=10')
   assert len(res['users']) == 1
-
-  bob.login()
+  bob.logout()
