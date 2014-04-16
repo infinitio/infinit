@@ -20,6 +20,14 @@ namespace surface
       status(status)
     {}
 
+    std::vector<infinit::oracles::Transaction::Status>
+    Transaction::final_statuses{
+      infinit::oracles::Transaction::Status::rejected,
+      infinit::oracles::Transaction::Status::finished,
+      infinit::oracles::Transaction::Status::canceled,
+      infinit::oracles::Transaction::Status::failed
+    };
+
     gap_TransactionStatus
     Transaction::_transaction_status(Transaction::Data const& data,
                                      TransactionMachine::State state) const
@@ -336,24 +344,11 @@ namespace surface
       throw BadOperation(BadOperation::Type::interrupt);
     }
 
-    static
-    std::vector<infinit::oracles::Transaction::Status> const&
-    final_status()
-    {
-      static std::vector<infinit::oracles::Transaction::Status> final{
-        infinit::oracles::Transaction::Status::rejected,
-        infinit::oracles::Transaction::Status::finished,
-        infinit::oracles::Transaction::Status::canceled,
-        infinit::oracles::Transaction::Status::failed};
-      return final;
-    }
-
     void
     Transaction::on_transaction_update(Data const& data)
     {
       ELLE_TRACE_SCOPE("%s: update transaction data with %s", *this, data);
-      if (std::find(final_status().begin(), final_status().end(),
-                    this->_data->status) != final_status().end())
+      if (this->final())
       {
         ELLE_WARN("%s: transaction already has a final status %s, can't "\
                   "change to %s", *this, this->_data->status, data.status);
@@ -485,9 +480,9 @@ namespace surface
       if (this->_data == nullptr)
         return true;
 
-      return std::find(final_status().begin(),
-                       final_status().end(),
-                       this->_data->status) != final_status().end();
+      return std::find(Transaction::final_statuses.begin(),
+                       Transaction::final_statuses.end(),
+                       this->_data->status) != Transaction::final_statuses.end();
     }
 
     void
@@ -503,9 +498,14 @@ namespace surface
     void
     Transaction::reset(surface::gap::State const& state)
     {
-      if (this->_machine == nullptr)
-        return; // history transaction, nothing going on
-      ELLE_TRACE("Reseting %s", *this);
+      ELLE_TRACE_SCOPE("reseting %s", *this);
+      if (this->final())
+      {
+        // Finalized (current session or history transaction): nothing to do.
+        ELLE_DEBUG("transaction already finilized");
+        return;
+      }
+
       if (this->_machine_state_thread)
       {
         this->_machine_state_thread->terminate_now();

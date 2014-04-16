@@ -57,6 +57,7 @@ namespace surface
 
     public:
       typedef infinit::oracles::Transaction Data;
+      static std::vector<infinit::oracles::Transaction::Status> final_statuses;
 
     public:
       Transaction(State const& state,

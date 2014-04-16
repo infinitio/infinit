@@ -722,9 +722,15 @@ namespace surface
 
           try
           {
-            //Reset transactions because link with tropho might have changed
-            for (auto& t: this->_transactions)
-              t.second->reset(*this);
+            // Link with tropho might have changed.
+            ELLE_TRACE("reset transactions")
+              for (auto& t: this->_transactions)
+              {
+                if (!t.second->final())
+                  t.second->reset(*this);
+                else
+                  ELLE_DEBUG("ignore finalized transaction %s", t.second);
+              }
             this->_user_resync();
             this->_transaction_resync();
             resynched = true;
