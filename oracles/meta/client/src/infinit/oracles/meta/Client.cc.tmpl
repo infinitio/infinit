@@ -706,9 +706,7 @@ namespace infinit
         this->_handle_errors(request);
         std::list<Transaction> res;
         elle::serialization::json::SerializerIn input(request);
-        ELLE_ERR("GO");
         input.serialize("transactions", res);
-        ELLE_ERR("DONE");
         return std::vector<Transaction>(res.begin(), res.end());
       }
 
