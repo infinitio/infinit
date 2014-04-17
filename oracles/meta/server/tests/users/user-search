@@ -7,7 +7,7 @@ def check_search_result(res, ids):
 
 with Meta() as meta:
   alice = User(meta, 'alice@provider.com')
-  bob = User(meta, 'bob@provider.com')
+  bob = User(meta, 'bobbymcferrin@provider.com')
   charles = User(meta, 'charles@provider.com')
   alice.login();
   res = alice.get('users?search=al')
