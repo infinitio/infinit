@@ -676,7 +676,7 @@ namespace infinit
           this->_client.request(this->_url(url),
                                 Method::GET,
                                 this->_default_configuration);
-        request.finalize();
+        this->_handle_errors(request);
         elle::serialization::json::SerializerIn input(request);
         return Transaction(input);
       }
