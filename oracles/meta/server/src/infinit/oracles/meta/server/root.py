@@ -126,29 +126,13 @@ class Mixin:
       self.fail(*e.args)
 
     # Cancel all the current transactions.
-    for transaction in self.database.transactions.find(
-      {
-          "$or": [
-            {"sender_id": user['_id']},
-            {"recipient_id": user['_id']}
-          ]
-      },
-      fields = ['_id']):
-      try:
-        self._transaction_update(str(transaction['_id']),
-                                 status = transaction_status.CANCELED,
-                                 user = user)
-      except error.Error as e:
-        elle.log.warn("%s" % (e.args,))
-        continue
-        # self.fail(error.UNKNOWN)
+    self.cancel_transactions(user)
 
     # Remove all the devices from the user because they are based on his old
     # public key.
     # XXX: All the sessions must be cleaned too.
     # XXX: Must be handle by the client.
-    self.database.devices.remove({"owner": user['_id']},
-                                 multi = True)
+    self.remove_devices(user)
 
     import papier
     identity, public_key = papier.generate_identity(
