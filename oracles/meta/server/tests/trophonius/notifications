@@ -16,7 +16,7 @@ class Trophonius:
       self.port = 1000 + int(random() * 64535)
       self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
       self.socket.bind(("localhost", self.port))
-      self.socket.listen(1)
+      self.socket.listen(2)
 
     def poll(self):
       expected = self.trophonius.expected_notifications
