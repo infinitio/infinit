@@ -38,6 +38,24 @@ class Mixin:
         raise error.Error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
     return transaction
 
+  def cancel_transactions(self, user):
+    for transaction in self.database.transactions.find(
+      {
+        '$or': [
+          {'sender_id': user['_id']},
+          {'recipient_id': user['_id']}
+        ],
+        'status': {'$nin': transaction_status.final}
+      },
+      fields = ['_id']):
+      try:
+        self._transaction_update(str(transaction['_id']),
+                                 status = transaction_status.CANCELED,
+                                 user = user)
+      except error.Error as e:
+        elle.log.warn('unable to cancel transaction (%s): %s' % \
+                      (str(transaction['_id'], (e.args,))))
+
   @api('/transaction/<id>')
   @require_logged_in
   def transaction_view(self, id: bson.ObjectId):
