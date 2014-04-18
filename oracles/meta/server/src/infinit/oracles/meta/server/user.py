@@ -399,6 +399,89 @@ class Mixin:
     except error.Error as e:
       self.fail(*e.args)
 
+
+  ## ------ ##
+  ## Delete ##
+  ## ------ ##
+  @api('/user', method='DELETE')
+  @require_logged_in
+  def delete_user(self):
+    """The idea is to just keep the user's id and fullname so that transactions
+       can still be shown properly to other users.
+       We need to:
+       - Log the user out.
+       - Ensure that the user is removed from other people's swagger lists (and
+         notify them of the change).
+       - Remove user as a favourite for other users.
+       - Remove user from mailing lists.
+    """
+    user = self.user
+    # Invalidate credentials.
+    self.sessions.remove({'email': self.user['email'], 'device': ''})
+    # Kick them out of the app.
+    self.notifier.notify_some(
+      notifier.INVALID_CREDENTIALS,
+      recipient_ids = {user['_id']},
+      message = {'response_details': 'user deleted'})
+    self.logout()
+    self.cancel_transactions(user)
+    # Must remove swaggers first as this writes to the DB.
+    user = self.remove_swaggers_and_notify(user)
+    self.remove_user_as_favorite_and_notify(user)
+    self.remove_devices(user)
+    user['accounts'] = [{'type': 'email', 'id': ''}]
+    try:
+      user.pop('avatar')
+    except:
+      elle.log.debug('user has no avatar')
+    user['connected_devices'] = []
+    user['devices'] = []
+    user['email'] = ''
+    user['favorites'] = []
+    user['handle'] = ''
+    user['identity'] = ''
+    user['lw_handle'] = ''
+    user['networks'] = []
+    user['notifications'] = []
+    user['old_notifications'] = []
+    user['password'] = ''
+    user['public_key'] = ''
+    user['register_status'] = 'deleted'
+    user['status'] = False
+    self.database.users.update({'_id': user['_id']},
+                               user)
+
+  def remove_user_as_favorite_and_notify(self, user = None):
+    if user is None:
+      user = self.user
+    self.notifier.notify_some(notifier.FAVORITE_DELETED,
+      recipient_ids = {user['_id']},
+      message = {'response_details': 'user deleted'})
+    self.database.users.update(
+      {'favorites': user['_id']},
+      {'$pull': {'favorites': user['_id']}},
+      multi = True,
+    )
+
+  def remove_swaggers_and_notify(self, user = None):
+    if user is None:
+      user = self.user
+    self._notify_swaggers(notifier.SWAGGER_DELETED,
+                          {'user_id' : str(user['_id'])},
+                          user['_id'])
+    swaggers = list(map(bson.ObjectId, user['swaggers'].keys()))
+    self.database.users.update(
+      {'_id': {'$in': swaggers}},
+      {'$unset': {'swaggers.%s' % user['_id']: ''}},
+      multi = True,
+    )
+    user = self.database.users.find_and_modify(
+      {'_id': user['_id']},
+      {'$set': {'swaggers': {}}},
+      new = True
+    )
+    return user
+
   ## -------------- ##
   ## Search helpers ##
   ## -------------- ##
