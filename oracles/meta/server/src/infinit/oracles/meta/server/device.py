@@ -30,6 +30,9 @@ class Mixin:
       raise error.Error(error.DEVICE_NOT_FOUND)
     return device
 
+  def remove_devices(self, user):
+    self.database.devices.remove({"owner": user['_id']})
+
   @api('/devices')
   @require_logged_in
   def devices(self):
