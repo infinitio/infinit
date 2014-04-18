@@ -22,6 +22,7 @@ from infinit.oracles.meta import error
 from .utils import api, hash_pasword, require_admin, require_logged_in
 
 from . import apertus
+from . import cloud_buffer_token
 from . import device
 from . import invitation
 from . import mail
