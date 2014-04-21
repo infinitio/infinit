@@ -107,6 +107,7 @@ class Mixin:
       'fullname': user['fullname'],
       'email': user['email'],
       'handle': user['handle'],
+      'register_status': user['register_status'],
     }
     if not web:
       assert device is not None
@@ -407,13 +408,18 @@ class Mixin:
   @require_logged_in
   def delete_user(self):
     """The idea is to just keep the user's id and fullname so that transactions
-       can still be shown properly to other users.
+       can still be shown properly to other users. We will leave them in other
+       users's swagger lists as we may want to generate the transaction history
+       from swaggers rather than transactions.
+
        We need to:
-       - Log the user out.
-       - Ensure that the user is removed from other people's swagger lists (and
-         notify them of the change).
+       - Log the user out and invalidate his session.
+       - Delete as much of his information as possible.
        - Remove user as a favourite for other users.
        - Remove user from mailing lists.
+
+       Considerations:
+       - Keep the process as atomic at the DB level as possible.
     """
     user = self.user
     # Invalidate credentials.
@@ -424,12 +430,10 @@ class Mixin:
       recipient_ids = {user['_id']},
       message = {'response_details': 'user deleted'})
     self.logout()
+    self.invitation.unsubscribe(user['email'])
     self.cancel_transactions(user)
-    # Must remove swaggers first as this writes to the DB.
-    user = self.remove_swaggers_and_notify(user)
-    self.remove_user_as_favorite_and_notify(user)
     self.remove_devices(user)
-    user['accounts'] = [{'type': 'email', 'id': ''}]
+    user['accounts'] = []
     try:
       user.pop('avatar')
     except:
@@ -448,39 +452,58 @@ class Mixin:
     user['public_key'] = ''
     user['register_status'] = 'deleted'
     user['status'] = False
+    swaggers = set(map(bson.ObjectId, user['swaggers'].keys()))
+    user['swaggers'] = {}
     self.database.users.update({'_id': user['_id']},
                                user)
+    self.notifier.notify_some(notifier.DELETED_SWAGGER,
+      recipient_ids = swaggers,
+      message = {'user_id': user['_id']})
+    self.remove_user_as_favorite_and_notify(user['_id'])
+    return self.success()
 
-  def remove_user_as_favorite_and_notify(self, user = None):
-    if user is None:
-      user = self.user
-    self.notifier.notify_some(notifier.FAVORITE_DELETED,
-      recipient_ids = {user['_id']},
-      message = {'response_details': 'user deleted'})
-    self.database.users.update(
-      {'favorites': user['_id']},
-      {'$pull': {'favorites': user['_id']}},
+  def remove_user_as_favorite_and_notify(self, user_id = None):
+    if user_id is None:
+      user_id = self.user['_id']
+    recipient_ids = [str(u['_id']) for u in self.database.users.find(
+      {'favorites': user_id},
+      fields = ['_id']
+    )]
+    recipient_ids = set(map(bson.ObjectId, recipient_ids))
+    if len(recipient_ids) == 0:
+      return
+    self.notifier.notify_some(notifier.DELETED_FAVORITE,
+      recipient_ids = recipient_ids,
+      message = {'user_id': user_id})
+    recipient_ids = self.database.users.update(
+      {'favorites': user_id},
+      {'$pull': {'favorites': user_id}},
       multi = True,
     )
 
-  def remove_swaggers_and_notify(self, user = None):
-    if user is None:
-      user = self.user
-    self._notify_swaggers(notifier.SWAGGER_DELETED,
-                          {'user_id' : str(user['_id'])},
-                          user['_id'])
-    swaggers = list(map(bson.ObjectId, user['swaggers'].keys()))
+  def remove_swaggers_and_notify(self, user_id = None):
+    if user_id is None:
+      user_id = self.user['_id']
+    swaggers = self.database.users.find_one(
+      {'_id': user_id},
+      fields = ['swaggers']
+    )
+    swaggers = list(map(bson.ObjectId, swaggers['swaggers'].keys()))
+    if len(swaggers) == 0:
+      return
     self.database.users.update(
       {'_id': {'$in': swaggers}},
-      {'$unset': {'swaggers.%s' % user['_id']: ''}},
+      {'$unset': {'swaggers.%s' % user_id: ''}},
       multi = True,
     )
+    self._notify_swaggers(notifier.DELETED_SWAGGER,
+                          {'user_id': bson.ObjectId(user_id)},
+                          user_id)
     user = self.database.users.find_and_modify(
-      {'_id': user['_id']},
+      {'_id': user_id},
       {'$set': {'swaggers': {}}},
       new = True
     )
-    return user
 
   ## -------------- ##
   ## Search helpers ##
@@ -552,6 +575,7 @@ class Mixin:
       'handle': '$handle',
       'connected_devices': '$connected_devices',
       'status': '$status',
+      'register_status': '$register_status',
       '_id': False,
     }
     if self.admin:
@@ -660,6 +684,7 @@ class Mixin:
       'handle': user.get('handle', ''),
       'connected_devices': user.get('connected_devices', []),
       'status': self._is_connected(user['_id']),
+      'register_status': user.get('register_status'),
     }
 
   @api('/user/<id_or_email>/view')
@@ -918,6 +943,7 @@ class Mixin:
       '_id': user['_id'],
       'fullname': user['fullname'],
       'handle': user['handle'],
+      'register_status': user['register_status'],
       'email': user['email'],
       'devices': user.get('devices', []),
       'networks': user.get('networks', []),
