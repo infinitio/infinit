@@ -52,9 +52,10 @@ class Mixin:
     with elle.log.log("unregister apertus %s" % uid):
       assert isinstance(uid, uuid.UUID)
       self.database.transactions.update({'fallback': str(uid)},
-                                        {'$set': {'fallback_host': None},
-                                         '$set': {'fallback_port_ssl': None},
-                                         '$set': {'fallback_port_tcp': None}},
+                                        {'$set': {
+                                          'fallback_host': None,
+                                          'fallback_port_ssl': None,
+                                          'fallback_port_tcp': None}},
                                         multi = True)
       res = self.database.apertus.remove({"_id": str(uid)})
       return self.success()
