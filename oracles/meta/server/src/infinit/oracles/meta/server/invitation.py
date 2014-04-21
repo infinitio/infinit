@@ -53,6 +53,18 @@ class Invitation:
     except:
       elle.log.warn("Couldn't subscribe %s to USERBASE" % email)
 
+  # XXX should be moved to another class.
+  @is_active
+  def unsubscribe(self, email):
+    try:
+      self.ms.listUnsubscribe(id = USERBASE_LIST,
+                              email_address = email)
+      elle.log.trace("%s: unsubscribed from USERBASE: %s" %
+                     (email, USERBASE_LIST))
+    except:
+      elle.log.warn("Couldn't unsubscribe %s from INVITED: %s" %
+                    (email, USERBASE_LIST))
+
 def invite_user(email,
                 mailer,
                 send_email = True,
