@@ -195,7 +195,6 @@ class Mixin:
     self.mailer.send_template(
       to = email,
       template_name = LOST_PASSWORD_TEMPLATE_ID,
-      subject = '[Infinit] Reset your password',
       reply_to = 'Infinit <support@infinit.io>',
       merge_vars = {
         email: {
@@ -345,7 +344,6 @@ class Mixin:
           self.mailer.send_template(
             to = list(users.keys()),
             template_name = template_name,
-            subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS[template_name],
             merge_vars = users,
           )
         summary = self.database.mailer.find_and_modify(
