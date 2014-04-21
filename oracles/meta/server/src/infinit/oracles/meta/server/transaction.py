@@ -53,8 +53,9 @@ class Mixin:
                                  status = transaction_status.CANCELED,
                                  user = user)
       except error.Error as e:
-        elle.log.warn('unable to cancel transaction (%s): %s' % \
-                      (str(transaction['_id'], (e.args,))))
+        elle.log.warn('unable to cancel transaction (%s): ' % \
+                      str(transaction['_id']))
+        continue
 
   @api('/transaction/<id>')
   @require_logged_in
