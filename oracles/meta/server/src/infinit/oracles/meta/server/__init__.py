@@ -211,6 +211,16 @@ class Meta(bottle.Bottle,
     self.add_route(route)
 
   @property
+  def mailer(self):
+    return self.__mailer
+
+  @mailer.setter
+  def mailer(self, mailer):
+    self.__mailer = mailer
+    if self.__mailer is not None:
+      self.__mailer.meta = self
+
+  @property
   def remote_ip(self):
     return bottle.request.environ.get('REMOTE_ADDR')
 

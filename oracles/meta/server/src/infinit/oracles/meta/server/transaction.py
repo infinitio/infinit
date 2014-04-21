@@ -219,12 +219,9 @@ class Mixin:
         elle.log.debug("recipient is disconnected")
         template_id = 'accept-file-only-offline'
 
-        subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS[template_id]
-        subject %= { "sendername": user['fullname'], 'filename': files[0] }
         self.mailer.send_template(
           to = peer_email,
           template_name = template_id,
-          subject = subject,
           merge_vars = {
             peer_email: {
               'filename': files[0],

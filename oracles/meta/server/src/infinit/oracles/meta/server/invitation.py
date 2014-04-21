@@ -82,13 +82,11 @@ def invite_user(email,
       'code': code,
       'source': source[1],
     })
-    subject = mail.MAILCHIMP_TEMPLATE_SUBJECTS[mail_template]
     elle.log.debug('subject: %s' % subject)
     if send_email:
       mailer.send_template(
         to = email,
         template_name = mail_template,
-        subject = subject,
         reply_to = "%s <%s>" % source,
         merge_vars = merge_vars,
       )
