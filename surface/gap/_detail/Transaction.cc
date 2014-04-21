@@ -70,8 +70,11 @@ namespace surface
       //   behavior of the onboarding to depend on the status of a real user.
       // - The gui has a duplicated model, so popping the onboarding user from
       //   the state will just break the gui model.
-      static User onboarder(
-        "contact@infinit.io", "Infinit Team", "Infinit", {"Infinit"});
+      static User onboarder("contact@infinit.io",
+                            "Infinit Team",
+                            "Infinit",
+                            "ok",
+                            {"Infinit"});
 
       auto onboarder_id = this->user_indexes().at(
         this->user_sync(onboarder).id);
