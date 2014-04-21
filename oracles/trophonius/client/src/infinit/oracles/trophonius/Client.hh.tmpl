@@ -71,6 +71,24 @@ namespace infinit
         {}
       };
 
+      struct DeletedSwaggerNotification:
+        public Notification
+      {
+        std::string user_id;
+        ELLE_SERIALIZE_CONSTRUCT(DeletedSwaggerNotification,
+                                 Notification)
+        {}
+      };
+
+      struct DeletedFavoriteNotification:
+        public Notification
+      {
+        std::string user_id;
+        ELLE_SERIALIZE_CONSTRUCT(DeletedFavoriteNotification,
+                                 Notification)
+        {}
+      };
+
       struct UserStatusNotification:
         public Notification
       {

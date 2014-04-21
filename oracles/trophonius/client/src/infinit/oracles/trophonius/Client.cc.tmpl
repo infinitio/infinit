@@ -77,6 +77,28 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::NewSwaggerNotification,
   ar & named("user_id", value.user_id);
 }
 
+ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::DeletedSwaggerNotification);
+ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::DeletedSwaggerNotification,
+                      ar,
+                      value,
+                      version)
+{
+  (void)version;
+  ar & base_class<infinit::oracles::trophonius::Notification>(value);
+  ar & named("user_id", value.user_id);
+}
+
+ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::DeletedFavoriteNotification);
+ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::DeletedFavoriteNotification,
+                      ar,
+                      value,
+                      version)
+{
+  (void)version;
+  ar & base_class<infinit::oracles::trophonius::Notification>(value);
+  ar & named("user_id", value.user_id);
+}
+
 ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::UserStatusNotification);
 ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::UserStatusNotification,
                       ar,
@@ -214,6 +236,10 @@ namespace infinit
             elle::unreachable();
           case NotificationType::new_swagger:
             return Ptr(new NewSwaggerNotification{extractor});
+          case NotificationType::deleted_swagger:
+            return Ptr(new DeletedSwaggerNotification{extractor});
+          case NotificationType::deleted_favorite:
+            return Ptr(new DeletedFavoriteNotification{extractor});
           case NotificationType::user_status:
             return Ptr(new UserStatusNotification{extractor});
           case NotificationType::message:

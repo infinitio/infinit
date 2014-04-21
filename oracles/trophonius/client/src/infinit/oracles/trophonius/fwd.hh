@@ -9,6 +9,8 @@ namespace plasma
 
     struct Notification;
     struct NewSwaggerNotification;
+    struct DeletedSwaggerNotification;
+    struct DeletedFavoriteNotification;
     struct UserStatusNotification;
     struct NetworkUpdateNotification;
     struct PeerConnectionUpdateNotification;
