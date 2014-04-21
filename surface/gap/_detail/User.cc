@@ -35,6 +35,10 @@ namespace surface
       NotificationType_UserStatusUpdate;
     Notification::Type State::NewSwaggerNotification::type =
       NotificationType_NewSwagger;
+    Notification::Type State::DeletedSwaggerNotification::type =
+      NotificationType_DeletedSwagger;
+    Notification::Type State::DeletedFavoriteNotification::type =
+      NotificationType_DeletedFavorite;
 
     State::UserStatusNotification::UserStatusNotification(uint32_t id,
                                                           bool status):
@@ -43,6 +47,14 @@ namespace surface
     {}
 
     State::NewSwaggerNotification::NewSwaggerNotification(uint32_t id):
+      id(id)
+    {}
+
+    State::DeletedSwaggerNotification::DeletedSwaggerNotification(uint32_t id):
+      id(id)
+    {}
+
+    State::DeletedFavoriteNotification::DeletedFavoriteNotification(uint32_t id):
       id(id)
     {}
 
@@ -465,6 +477,29 @@ namespace surface
     }
 
     void
+    State::_on_deleted_swagger(
+      infinit::oracles::trophonius::DeletedSwaggerNotification const& notif)
+    {
+      ELLE_TRACE_SCOPE("%s: deleted swagger notification %s", *this, notif);
+      uint32_t id = this->_user_indexes.at(this->user_sync(notif.user_id).id);
+      {
+        reactor::Lock lock(this->_swagger_mutex);
+        this->_swagger_indexes.erase(id);
+      }
+      this->enqueue<DeletedSwaggerNotification>(DeletedSwaggerNotification(id));
+    }
+
+    void
+    State::_on_deleted_favorite(
+      infinit::oracles::trophonius::DeletedFavoriteNotification const& notif)
+    {
+      ELLE_TRACE_SCOPE("%s: deleted favorite notification %s", *this, notif);
+      uint32_t id = this->_user_indexes.at(this->user_sync(notif.user_id).id);
+      this->_me->favorites.remove(notif.user_id);
+      this->enqueue<DeletedFavoriteNotification>(DeletedFavoriteNotification(id));
+    }
+
+    void
     State::_on_swagger_status_update(
       infinit::oracles::trophonius::UserStatusNotification const& notif)
     {
@@ -474,7 +509,7 @@ namespace surface
       if (swagger.ghost() && notif.status == gap_user_status_online)
       {
         swagger = this->user_sync(notif.user_id);
-        ELLE_ASSERT(swagger.ghost());
+        ELLE_ASSERT(!swagger.ghost());
       }
       this->swaggers(); // force up-to-date swaggers
 
