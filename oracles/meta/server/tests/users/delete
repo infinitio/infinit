@@ -61,9 +61,9 @@ with Meta(force_admin = True) as meta, Trophonius(meta) as trophonius:
 
   # Check other users have been cleaned.
   assert len(u2.favorites) == 1
-  assert len(u2.swaggers) == 1
+  assert len(u2.swaggers) == 2
   assert len(u3.favorites) == 0
-  assert len(u3.swaggers) == 1
+  assert len(u3.swaggers) == 2
 
   # Check transaction is cancelled.
   transaction = meta.database.transactions.find_one(
