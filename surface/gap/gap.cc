@@ -408,6 +408,34 @@ char const* gap_user_handle(gap_State* state,
   return nullptr;
 }
 
+gap_Bool
+gap_user_ghost(gap_State* state, uint32_t id)
+{
+  assert(id != surface::gap::null_id);
+  return run<gap_Bool>(state,
+                       "user ghost",
+                       [&] (surface::gap::State& state)
+                       {
+                        auto const& user = state.user(id);
+                        return user.ghost();
+                       });
+  return false;
+}
+
+gap_Bool
+gap_user_deleted(gap_State* state, uint32_t id)
+{
+  assert(id != surface::gap::null_id);
+  return run<gap_Bool>(state,
+                       "user deleted",
+                       [&] (surface::gap::State& state)
+                       {
+                        auto const& user = state.user(id);
+                        return user.deleted();
+                       });
+  return false;
+}
+
 char const*
 gap_user_realid(gap_State* state,
                 uint32_t id)
@@ -681,6 +709,44 @@ gap_new_swagger_callback(gap_State* state,
     [&] (surface::gap::State& state) -> gap_Status
     {
       state.attach_callback<surface::gap::State::NewSwaggerNotification>(cpp_cb);
+      return gap_ok;
+    });
+}
+
+gap_Status
+gap_deleted_swagger_callback(gap_State* state,
+                             gap_deleted_swagger_callback_t cb)
+{
+  auto cpp_cb = [cb] (surface::gap::State::DeletedSwaggerNotification const& notif)
+    {
+      cb(notif.id);
+    };
+
+  return run<gap_Status>(
+    state,
+    "deleted swagger callback",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.attach_callback<surface::gap::State::DeletedSwaggerNotification>(cpp_cb);
+      return gap_ok;
+    });
+}
+
+gap_Status
+gap_deleted_favorite_callback(gap_State* state,
+                             gap_deleted_swagger_callback_t cb)
+{
+  auto cpp_cb = [cb] (surface::gap::State::DeletedFavoriteNotification const& notif)
+    {
+      cb(notif.id);
+    };
+
+  return run<gap_Status>(
+    state,
+    "deleted favorite callback",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.attach_callback<surface::gap::State::DeletedFavoriteNotification>(cpp_cb);
       return gap_ok;
     });
 }

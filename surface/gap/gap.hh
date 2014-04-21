@@ -117,6 +117,16 @@ gap_Status
 gap_new_swagger_callback(gap_State* state,
                          gap_new_swagger_callback_t cb);
 
+typedef void (*gap_deleted_swagger_callback_t)(uint32_t id);
+gap_Status
+gap_deleted_swagger_callback(gap_State* state,
+                             gap_deleted_swagger_callback_t cb);
+
+typedef void (*gap_deleted_favorite_callback_t)(uint32_t id);
+gap_Status
+gap_deleted_favorite_callback(gap_State* state,
+                             gap_deleted_favorite_callback_t cb);
+
 typedef void (*gap_user_status_callback_t)(uint32_t id,
                                            gap_UserStatus const);
 gap_Status
@@ -283,6 +293,12 @@ gap_user_fullname(gap_State* state,
 char const*
 gap_user_handle(gap_State* state,
                 uint32_t id);
+
+gap_Bool
+gap_user_ghost(gap_State* state, uint32_t id);
+
+gap_Bool
+gap_user_deleted(gap_State* state, uint32_t id);
 
 char const*
 gap_user_realid(gap_State* state,
