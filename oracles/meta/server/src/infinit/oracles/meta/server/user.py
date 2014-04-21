@@ -138,7 +138,7 @@ class Mixin:
       elle.log.debug("%s: look for session" % email)
       device = self.device(ensure_existence = False, **query)
       if device is None:
-        elle.log.trace("user logged with an unknow device")
+        elle.log.trace("user logged with an unknown device")
         device = self._create_device(id = device_id,
                                      owner = user)
       else:
