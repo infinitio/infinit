@@ -99,14 +99,16 @@ namespace infinit
         std::string id;
         std::string fullname;
         std::string handle;
-        std::string public_key;
+        std::string register_status;
         Devices connected_devices;
+        std::string public_key;
 
         User() = default;
 
         User(std::string const& id,
              std::string const& fullname,
              std::string const& handle,
+             std::string const& register_status,
              Devices const& connected_devices = {},
              std::string const& public_key = "");
 
@@ -127,7 +129,19 @@ namespace infinit
         bool
         ghost() const
         {
-          return this->public_key.empty();
+          if (register_status == "ghost")
+            return true;
+          else
+            return false;
+        }
+
+        bool
+        deleted() const
+        {
+          if (register_status == "deleted")
+            return true;
+          else
+            return false;
         }
 
         /*----------.

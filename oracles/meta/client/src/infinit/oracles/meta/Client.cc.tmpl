@@ -67,7 +67,7 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::meta::User, ar, res, version)
   ar & named("fullname", res.fullname);
   ar & named("handle", res.handle);
   ar & named("connected_devices", res.connected_devices);
-
+  ar & named("register_status", res.register_status);
 }
 
 SERIALIZE_RESPONSE(infinit::oracles::meta::UserResponse, ar, res)
@@ -236,13 +236,15 @@ namespace infinit
       User::User(std::string const& id,
                  std::string const& fullname,
                  std::string const& handle,
+                 std::string const& register_status,
                  User::Devices const& devices,
                  std::string const& public_key):
         id(id),
         fullname(fullname),
         handle(handle),
-        public_key(public_key),
-        connected_devices(devices)
+        register_status(register_status),
+        connected_devices(devices),
+        public_key(public_key)
       {}
 
       namespace json = elle::format::json;
@@ -306,6 +308,8 @@ namespace infinit
         u.fullname = boost::any_cast<std::string>(json.at("fullname"));
         u.handle = boost::any_cast<std::string>(json.at("handle"));
         u.public_key = boost::any_cast<std::string>(json.at("public_key"));
+        u.register_status =
+          boost::any_cast<std::string>(json.at("register_status"));
         for (auto const& device:
              boost::any_cast<elle::json::Array>(json.at("connected_devices")))
         {
