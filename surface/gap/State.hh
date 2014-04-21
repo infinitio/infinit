@@ -320,6 +320,24 @@ namespace surface
         uint32_t id;
       };
 
+      class DeletedSwaggerNotification:
+        public Notification
+      {
+      public:
+        static Notification::Type type;
+        DeletedSwaggerNotification(uint32_t id);
+        uint32_t id;
+      };
+
+      class DeletedFavoriteNotification:
+        public Notification
+      {
+      public:
+        static Notification::Type type;
+        DeletedFavoriteNotification(uint32_t id);
+        uint32_t id;
+      };
+
       class AvatarAvailableNotification:
         public Notification
       {
@@ -415,10 +433,20 @@ namespace surface
       swaggers_dirty();
 
       void
-      _on_new_swagger(infinit::oracles::trophonius::NewSwaggerNotification const& notif);
+      _on_new_swagger(
+        infinit::oracles::trophonius::NewSwaggerNotification const& notif);
 
       void
-      _on_swagger_status_update(infinit::oracles::trophonius::UserStatusNotification const& notif);
+      _on_deleted_swagger(
+        infinit::oracles::trophonius::DeletedSwaggerNotification const& notif);
+
+      void
+      _on_deleted_favorite(
+        infinit::oracles::trophonius::DeletedFavoriteNotification const& notif);
+
+      void
+      _on_swagger_status_update(
+        infinit::oracles::trophonius::UserStatusNotification const& notif);
 
       /*---------.
       | Networks |

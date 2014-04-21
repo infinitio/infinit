@@ -797,6 +797,22 @@ namespace surface
             *static_cast<infinit::oracles::trophonius::NewSwaggerNotification const*>(
               notif.release()));
           break;
+        case infinit::oracles::trophonius::NotificationType::deleted_swagger:
+          ELLE_ASSERT(
+            dynamic_cast<infinit::oracles::trophonius::DeletedSwaggerNotification const*>(
+              notif.get()) != nullptr);
+          this->_on_deleted_swagger(
+            *static_cast<infinit::oracles::trophonius::DeletedSwaggerNotification const*>(
+              notif.release()));
+        break;
+        case infinit::oracles::trophonius::NotificationType::deleted_favorite:
+          ELLE_ASSERT(
+            dynamic_cast<infinit::oracles::trophonius::DeletedFavoriteNotification const*>(
+              notif.get()) != nullptr);
+          this->_on_deleted_favorite(
+            *static_cast<infinit::oracles::trophonius::DeletedFavoriteNotification const*>(
+              notif.release()));
+        break;
         case infinit::oracles::trophonius::NotificationType::peer_connection_update:
           ELLE_ASSERT(
             dynamic_cast<infinit::oracles::trophonius::PeerReachabilityNotification const*>(
@@ -874,6 +890,10 @@ namespace surface
           return out << "UserStatusUpdate";
         case NotificationType_NewSwagger:
           return out << "NewSwagger";
+        case NotificationType_DeletedSwagger:
+          return out << "DeletedSwagger";
+        case NotificationType_DeletedFavorite:
+          return out << "DeletedFavorite";
         case NotificationType_ConnectionStatus:
           return out << "ConnectionStatus";
         case NotificationType_KickedOut:
