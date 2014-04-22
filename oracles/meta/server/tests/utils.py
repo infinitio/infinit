@@ -425,3 +425,13 @@ class User(Client):
       self.post("transaction/update", {"transaction_id": res['created_transaction_id'],
                                        "status": transaction_status.INITIALIZED})
     return transaction, res
+
+  def update_transaction(self, transaction_id, status):
+    update = {
+      "transaction_id": transaction_id,
+      "status": status ,
+      "device_id": str(self.device_id),
+      "device_name": self.device_name
+      }
+
+    return self.post("transaction/update", update)
