@@ -847,7 +847,7 @@ class Mixin:
     """
     user = self.user
     handle = handle.strip()
-    # Clean the forbiden char from asked handle.
+    # Clean the forbidden char from asked handle.
     handle = self.__generate_handle(handle, enlarge = False)
     fullname = fullname.strip()
     lw_handle = handle.lower()
