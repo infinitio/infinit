@@ -80,11 +80,6 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::SelfResponse, ar, res)
   ar & named("favorites", res.favorites);
 }
 
-SERIALIZE_RESPONSE(infinit::oracles::meta::SwaggersResponse, ar, res)
-{
-  ar & named("swaggers", res.swaggers);
-}
-
 SERIALIZE_RESPONSE(infinit::oracles::meta::RemoveSwaggerResponse, ar, res)
 {
   (void) ar;
@@ -486,10 +481,23 @@ namespace infinit
           "/user/from_public_key", Method::POST, request);
       }
 
-      SwaggersResponse
+      std::vector<User>
       Client::get_swaggers() const
       {
-        return this->_request<SwaggersResponse>("/user/swaggers", Method::GET);
+        std::string url = "/user/full_swaggers";
+        reactor::http::Request request =
+          this->_client.request(this->_url(url),
+                                Method::GET,
+                                this->_default_configuration);
+        this->_handle_errors(request);
+        auto json = elle::json::read(request);
+        auto const& swaggers =
+          boost::any_cast<elle::json::Array>(
+            boost::any_cast<elle::json::Object>(json).at("swaggers"));
+        std::vector<User> res;
+        for (auto const& swagger: swaggers)
+          res.push_back(user_from_json(swagger));
+        return res;
       }
 
       RemoveSwaggerResponse
