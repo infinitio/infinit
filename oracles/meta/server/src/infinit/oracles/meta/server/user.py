@@ -582,7 +582,9 @@ class Mixin:
       res['email'] = '$email'
     return res
 
+  # XXX Used by waterfall, can't require login until we have admin mode.
   @api('/users')
+  # @require_logged_in
   def users(self, search = None, limit : int = 5, skip : int = 0):
     """Search the ids of the users with handle or fullname matching text.
 
@@ -644,37 +646,6 @@ class Mixin:
         {'$project': dict(email = '$email', **self.user_public_fields)}
       ])
       return {'users': res['result']}
-
-  @api('/user/search', method = 'POST')
-  # XXX: This call is used by the waterfall which does not login. We need to
-  # make an admin mode so that our servers can access calls they need.
-  # @require_logged_in
-  def user_search(self, text, limit = 5, offset = 0):
-    """Search the ids of the users with handle or fullname matching text.
-
-    text -- the query.
-    offset -- the number of user to skip in the result (optional).
-    limit -- the maximum number of match to return (optional).
-    """
-    # XXX: self.user in the log.
-    with elle.log.trace("%s: search %s (limit: %s, offset: %s)" %
-                        (self.user['_id'], text, limit, offset)):
-      fields = ['_id', 'fullname', 'handle', 'public_key', 'connected_devices']
-      users = [str(u['_id']) for u in self.database.users.find(
-          {
-            '$or' :
-            [
-              {'fullname' : {'$regex' : '^%s' % text,  '$options': 'i'}},
-              {'handle' : {'$regex' : '^%s' % text, '$options': 'i'}},
-            ],
-            # User must not be a ghost as ghost fullnames are their email addresses.
-            'register_status':'ok',
-          },
-          fields = fields,
-          limit = limit,
-          skip = offset,
-        ).sort("swaggers.%s" % str(self.user['_id']), DESCENDING)]
-      return self.success({'users': users})
 
   def extract_user_fields(self, user):
     return {
