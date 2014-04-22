@@ -304,15 +304,6 @@ char const*
 gap_user_realid(gap_State* state,
                 uint32_t id);
 
-/// Return the uri to the avatar.
-char const*
-gap_user_avatar_url(gap_State* state,
-                    uint32_t user_id);
-
-/// Free the avatar url.
-void
-gap_free_user_avatar_url(char const* str);
-
 /// Get user icon data.
 gap_Status
 gap_avatar(gap_State* state,
@@ -339,9 +330,6 @@ gap_UserStatus
 gap_user_status(gap_State* state, uint32_t id);
 
 /// Search users.
-uint32_t*
-gap_search_users(gap_State* state, char const* text);
-
 std::vector<uint32_t>
 gap_users_search(gap_State* state, std::string const& text);
 

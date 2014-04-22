@@ -450,36 +450,6 @@ gap_user_realid(gap_State* state,
                           });
 }
 
-char const*
-gap_user_avatar_url(gap_State* state,
-                    uint32_t user_id)
-{
-  assert(user_id != surface::gap::null_id);
-
-  std::string res = run<std::string>(
-    state,
-    "user avatar url",
-    [&] (surface::gap::State& state) -> std::string
-    {
-      return elle::sprintf(
-        "%s:%s/user/%s/avatar",
-        state.meta().host(),
-        state.meta().port(),
-        state.user(user_id).id);
-    });
-
-  auto size = res.size() + 1;
-  char const* cstr = static_cast<char const*>(::malloc(sizeof(char) * size));
-  ::strncpy((char *) cstr, res.c_str(), size);
-  return cstr;
-}
-
-void
-gap_free_user_avatar_url(char const* str)
-{
-  free((void*) str);
-}
-
 gap_Status
 gap_avatar(gap_State* state,
            uint32_t user_id,
@@ -530,28 +500,6 @@ gap_user_by_handle(gap_State* state,
       auto user = state.user_from_handle(handle);
       return state.user_indexes().at(user.id);
     });
-}
-
-uint32_t*
-gap_search_users(gap_State* state,
-                 char const* text)
-{
-  assert(text != nullptr);
-  auto ret = run<surface::gap::State::UserIndexes>(
-    state,
-    "users",
-    [&] (surface::gap::State& state) -> surface::gap::State::UserIndexes
-    {
-      return state.user_search_deprecated(text);
-    });
-
-  if (ret.status() != gap_ok)
-    return nullptr;
-
-  std::vector<uint32_t> values(ret.value().size());
-  std::copy(std::begin(ret.value()), std::end(ret.value()), values.begin());
-
-  return vector_to_pointer(values);
 }
 
 std::vector<uint32_t>
