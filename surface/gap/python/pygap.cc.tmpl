@@ -88,15 +88,13 @@ _search_users(gap_State* state, std::string text)
   assert(text.length() > 0);
 
   boost::python::list users_;
-  uint32_t* users = gap_search_users(state, text.c_str());
-  uint32_t* todel = users;
-  if (users != nullptr)
+  std::vector<uint32_t> users = gap_users_search(state, text);
+  if (users.size() != 0)
   {
-    while (*users != 0)
+    for (auto user: users)
     {
-      users_.append(boost::python::object(*(users++)));
+      users_.append(boost::python::object(user));
     }
-    gap_search_users_free(todel);
   }
 
   return users_;
