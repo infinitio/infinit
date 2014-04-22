@@ -19,13 +19,21 @@ ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Transaction'
 
 class Mixin:
 
-  def is_sender(self, transaction, owner_id):
+  def is_sender(self, transaction, owner_id, device_id = None):
     assert isinstance(owner_id, bson.ObjectId)
-    return transaction['sender_id'] == owner_id
+    if transaction['sender_id'] != owner_id:
+      return False
+    if device_id is None:
+      return True
+    return transaction['sender_device_id'] == str(device_id)
 
-  def is_recipient(self, transaction, user_id):
-    assert isinstance(user_id, bson.ObjectId)
-    return transaction['recipient_id'] == user_id
+  def is_recipient(self, transaction, owner_id, device_id = None):
+    assert isinstance(owner_id, bson.ObjectId)
+    if transaction['recipient_id'] != owner_id:
+      return False
+    if device_id is None:
+      return True
+    return transaction['recipient_device_id'] == str(device_id)
 
   def transaction(self, id, owner_id = None):
     assert isinstance(id, bson.ObjectId)
