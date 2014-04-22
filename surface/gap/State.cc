@@ -465,6 +465,7 @@ namespace surface
             }});
 
         this->user(this->me().id);
+        this->_users_init();
         this->_transactions_init();
         this->on_connection_changed(true, true);
 
