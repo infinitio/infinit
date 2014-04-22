@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 
+import bottle
 import bson
 import copy
 import uuid
@@ -32,6 +33,12 @@ class Mixin:
 
   def remove_devices(self, user):
     self.database.devices.remove({"owner": user['_id']})
+
+  @property
+  def current_device(self):
+    device = bottle.request.session.get('device')
+    if device is not None:
+      return self.device(device)
 
   @api('/devices')
   @require_logged_in
