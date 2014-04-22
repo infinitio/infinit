@@ -722,12 +722,26 @@ class Mixin:
             recipient_ids = {peer},
           )
 
+  # Used up to 0.9.1 for fetching swaggers
   @api('/user/swaggers')
   @require_logged_in
   def swaggers(self):
     user = self.user
     with elle.log.trace("%s: get his swaggers" % user['email']):
       return self.success({"swaggers" : list(user["swaggers"].keys())})
+
+  # Replaces /user/swaggers
+  @api('/user/full_swaggers')
+  @require_logged_in
+  def full_swaggers(self):
+    user = self.user
+    query = {'_id': {'$in': list(map(bson.ObjectId, user['swaggers'].keys()))}}
+    res = self.database.users.aggregate([
+      {'$match': query},
+      {'$project': self.user_public_fields},
+    ])['result']
+    return self.success({'swaggers': res})
+
 
   @api('/user/add_swagger', method = 'POST')
   @require_admin
