@@ -461,12 +461,17 @@ class Mixin:
       transaction = self.transaction(bson.ObjectId(transaction_id), owner_id = user['_id'])
       elle.log.debug("transaction: %s" % transaction)
       is_sender = self.is_sender(transaction, user['_id'])
-      elle.log.debug("%s" % is_sender and "sender" or "recipient")
-      if status not in transaction_status.transitions[transaction['status']][is_sender]:
-        raise error.Error(
-          error.TRANSACTION_OPERATION_NOT_PERMITTED,
-          "Cannot change status from %s to %s (not permitted)." % (transaction['status'], status)
-        )
+      is_recipient = self.is_recipient(transaction, user['_id'])
+
+      if is_sender and is_recipient:
+        elle.log.debug("send to self")
+      else:
+        elle.log.debug("%s" % is_sender and "sender" or "recipient")
+        if status not in transaction_status.transitions[transaction['status']][is_sender]:
+          raise error.Error(
+            error.TRANSACTION_OPERATION_NOT_PERMITTED,
+            "Cannot change status from %s to %s (not permitted)." % (transaction['status'], status)
+          )
 
       if transaction['status'] == status:
         raise error.Error(
@@ -719,21 +724,24 @@ class Mixin:
                 ):
     """
     Return ip port for a selected node.
+
     device_id -- the id of the device to get ips.
     self_device_id -- the id of your device.
     """
     user = self.user
+    assert self_device_id == self.current_device['_id']
 
     transaction = self.transaction(transaction_id, owner_id = user['_id'])
-    is_sender = self.is_sender(transaction, user['_id'])
 
     # XXX: Ugly.
-    if is_sender:
+    if self.is_sender(transaction, user['_id'], self.current_device['_id']):
       self_key = self.__user_key(transaction['sender_id'], self_device_id)
       peer_key = self.__user_key(transaction['recipient_id'], device_id)
-    else:
+    elif self.is_sender(transaction, user['_id'], self.current_device['_id']):
       self_key = self.__user_key(transaction['recipient_id'], self_device_id)
       peer_key = self.__user_key(transaction['sender_id'], device_id)
+    else:
+      self.forbidden()
 
     if (not self_key in transaction['nodes'].keys()) or (not transaction['nodes'][self_key]):
       return self.fail(error.DEVICE_NOT_FOUND, "you are not not connected to this transaction")
