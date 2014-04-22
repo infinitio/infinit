@@ -403,9 +403,6 @@ namespace surface
       elle::ConstWeakBuffer
       user_icon(std::string const& user_id) const;
 
-      UserIndexes
-      user_search_deprecated(std::string const& text) const;
-
       std::vector<uint32_t>
       users_search(std::string const& text) const;
 

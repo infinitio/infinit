@@ -317,25 +317,11 @@ namespace surface
           }
 
         this->_swagger_indexes.insert(
-          this->_user_indexes.at(swagger_id));
+          this->_user_indexes.at(user.id));
       }
 
       for (std::string const& user_id: this->me().favorites)
         this->user(user_id);
-    }
-
-    State::UserIndexes
-    State::user_search_deprecated(std::string const& text) const
-    {
-      ELLE_TRACE_METHOD(text);
-
-      State::UserIndexes result;
-      auto res = this->meta().search_users(text);
-      for (auto const& user_id: res.users)
-      {
-        result.emplace(this->_user_indexes.at(this->user(user_id).id));
-      }
-      return result;
     }
 
     std::vector<uint32_t>
