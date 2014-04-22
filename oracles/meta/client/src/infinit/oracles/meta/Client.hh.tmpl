@@ -179,11 +179,6 @@ namespace infinit
       //   std::vector<std::map<std::string, std::string>> emails;
       // };
 
-      struct UsersResponse : Response
-      {
-        std::list<std::string> users;
-      };
-
       struct RemoveSwaggerResponse: Response
       {};
 
@@ -359,10 +354,6 @@ namespace infinit
 
         UserResponse
         user_from_public_key(std::string const& public_key) const;
-
-        UsersResponse
-        search_users(
-          std::string const& text, int count = 10, int offset = 0) const;
 
         std::unordered_map<std::string, User>
         search_users_by_emails(std::vector<std::string> const& emails,
