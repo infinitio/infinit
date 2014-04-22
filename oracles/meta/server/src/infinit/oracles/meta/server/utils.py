@@ -53,7 +53,7 @@ def require_logged_in(method):
       'require_logged_in for %r wraps the API' % method.__name__)
   def wrapper(wrapped, self, *args, **kwargs):
     if self.user is None:
-      self.forbiden()
+      self.forbidden()
     return wrapped(self, *args, **kwargs)
   return decorator.decorator(wrapper, method)
 
@@ -63,7 +63,7 @@ def require_admin(method):
       'require_admin for %r wraps the API' % method.__name__)
   def wrapper(wrapped, self, *args, **kwargs):
     if not self.admin:
-      self.forbiden()
+      self.forbidden()
     return wrapped(self, *args, **kwargs)
   return decorator.decorator(wrapper, method)
 

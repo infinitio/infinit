@@ -592,7 +592,7 @@ class Mixin:
                          owner =  user['_id'])
     if str(device['id']) not in [transaction['sender_device_id'],
                                  transaction['recipient_device_id']]:
-      self.forbiden('transaction is not for this device')
+      self.forbidden('transaction is not for this device')
     node = dict()
     node['locals'] = [
       {'ip' : v['ip'], 'port' : v['port']}
