@@ -398,7 +398,13 @@ namespace surface
       user_from_public_key(std::string const& public_key) const;
 
       void
+      _users_init();
+
+      void
       _user_resync();
+
+      void
+      _queue_user_icon(std::string const& user_id) const;
 
       elle::ConstWeakBuffer
       user_icon(std::string const& user_id) const;

@@ -258,19 +258,33 @@ namespace surface
     }
 
     void
+    State::_users_init()
+    {
+      ELLE_TRACE("%s: load users from swagger list", *this);
+      {
+        auto swaggers = this->meta().get_swaggers();
+        for (auto const& swagger: swaggers)
+        {
+          this->user_sync(swagger);
+          this->_queue_user_icon(swagger.id);
+        }
+      }
+    }
+
+    void
     State::_user_resync()
     {
       ELLE_TRACE_SCOPE("%s: resync user", *this);
 
       this->_swagger_indexes.clear();
-      auto swaggers = this->meta().get_swaggers().swaggers;
+      auto swaggers = this->meta().get_swaggers();
 
-      for (std::string const& swagger_id: swaggers)
+      for (auto const& swagger: swaggers)
       {
         // Compare the cached user with the remote one, and calculate the
         // diff.
-        auto old_user = this->user(swagger_id);
-        auto user = this->user_sync(old_user.id);
+        auto old_user = this->user(swagger.id);
+        auto user = this->user_sync(swagger);
         // Remove duplicates.
         old_user.connected_devices.erase(
           std::unique(old_user.connected_devices.begin(),
@@ -289,7 +303,7 @@ namespace surface
             ELLE_DEBUG("%s: updating device %s", *this, device);
             auto* notif_ptr =
               new infinit::oracles::trophonius::UserStatusNotification{};
-            notif_ptr->user_id = swagger_id;
+            notif_ptr->user_id = user.id;
             notif_ptr->status = user.online();
             notif_ptr->device_id = device;
             notif_ptr->device_status = true;
@@ -305,7 +319,7 @@ namespace surface
           {
             ELLE_DEBUG("%s: updating device %s", *this, device);
             auto* notif_ptr = new infinit::oracles::trophonius::UserStatusNotification{};
-            notif_ptr->user_id = swagger_id;
+            notif_ptr->user_id = user.id;
             notif_ptr->status = user.online();
             notif_ptr->device_id = device;
             notif_ptr->device_status = false;
@@ -352,6 +366,18 @@ namespace surface
         res.insert(item);
       }
       return res;
+    }
+
+    void
+    State::_queue_user_icon(std::string const& user_id) const
+    {
+      auto id = this->_user_indexes.at(this->user(user_id).id);
+      if (this->_avatars.find(id) == this->_avatars.end() &&
+          this->_avatar_to_fetch.find(user_id) == this->_avatar_to_fetch.end())
+      {
+        this->_avatar_to_fetch.insert(user_id);
+        this->_avatar_fetching_barrier.open();
+      }
     }
 
     elle::ConstWeakBuffer
