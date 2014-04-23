@@ -236,11 +236,9 @@ def configure(elle,
       drake.path_source('tests'),
       drake.path_build('lib/python'),
     ]
-    env = os.environ
-    env.update({
+    env = {
       'PYTHONPATH': ':'.join(map(str, pythonpath)),
-      'PATH': os.environ['PATH']
-    })
+    }
 
     runner = drake.Runner(test, env = env)
     runner.reporting = drake.Runner.Reporting.on_failure
