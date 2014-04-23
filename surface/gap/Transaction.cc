@@ -502,7 +502,7 @@ namespace surface
       if (this->final())
       {
         // Finalized (current session or history transaction): nothing to do.
-        ELLE_DEBUG("transaction already finilized");
+        ELLE_DEBUG("transaction already finalized");
         return;
       }
 

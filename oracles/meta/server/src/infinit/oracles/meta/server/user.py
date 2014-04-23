@@ -596,7 +596,8 @@ class Mixin:
                         (search, limit, skip)):
       pipeline = []
       match = {
-        # User must not be a ghost as ghost fullnames are their email addresses.
+        # User must not be a ghost as ghost fullnames are their email
+        # addresses.
         'register_status':'ok',
       }
       if search is not None:
@@ -604,15 +605,13 @@ class Mixin:
           {'fullname' : {'$regex' : search,  '$options': 'i'}},
           {'handle' : {'$regex' : search, '$options': 'i'}},
         ]
-      pipeline = [
-        {'$match': match},
-        {'$skip': skip},
-        {'$limit': limit},
-      ]
+      pipeline.append({'$match': match})
       if self.user is not None:
         pipeline.append({
           '$sort': {'swaggers.%s' % str(self.user['_id']) : -1}
         })
+      pipeline.append({'$skip': skip})
+      pipeline.append({'$limit': limit})
       pipeline.append({
         '$project': self.user_public_fields,
       })

@@ -3,6 +3,7 @@
 
 # include <elle/serialize/construct.hh>
 # include <elle/Printable.hh>
+# include <elle/serialization/fwd.hh>
 
 # include <iosfwd>
 # include <list>
@@ -66,6 +67,12 @@ namespace infinit
 
       bool
       empty() const;
+
+    // Serialization
+    public:
+      Transaction(elle::serialization::SerializerIn& s);
+      void
+      serialize(elle::serialization::Serializer& s);
     };
 
     std::ostream&
