@@ -207,7 +207,7 @@ class Meta:
     self.__thread = threading.Thread(target = run)
     self.__thread.daemon = True
     self.__thread.start()
-    while self.__server.port == 0:
+    while self.__server.port == 0 and self.__thread.is_alive():
       import time
       time.sleep(.1)
     return self
