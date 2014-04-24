@@ -18,6 +18,8 @@ import time
 import os
 import sys
 
+root = os.path.dirname(__file__)
+
 ELLE_LOG_COMPONENT = 'test'
 
 timedelta = datetime.timedelta
@@ -36,7 +38,7 @@ class MetaWrapperThread(threading.Thread):
 class MetaWrapperProcess:
   def __init__(self, force_admin = False, mongo_port = None, force_port = None):
     port_file = tempfile.NamedTemporaryFile(delete = False).name
-    args = ['../../oracles/meta/server/meta',
+    args = ['%s/../../../../meta/server/bin/meta' % root,
             '--port-file', port_file]
     if force_admin:
       args.append('--force-admin')
