@@ -114,11 +114,11 @@ def configure(elle,
   oracles = []
 
   oracles += drake.copy(trophonius.server.python, '.',
-                      strip_prefix='trophonius/server')
+                        strip_prefix='trophonius/server')
   oracles += drake.copy(apertus.server.python, '.',
-                      strip_prefix='apertus/server')
+                        strip_prefix='apertus/server')
   oracles += drake.copy(meta.server.python, '.',
-                      strip_prefix = 'meta/server')
+                        strip_prefix = 'meta/server')
   oracles.append(drake.copy(elle.reactor.python_lib, 'lib/python',
                             strip_prefix = True))
   mongobox = drake.nodes(

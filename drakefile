@@ -153,23 +153,31 @@ def configure(cxx_toolkit = None,
   boost = elle.boost
   python3 = elle.python3
   cxx_config += boost.config()
-  if cxx_toolkit.os is drake.os.macos:
+  if cxx_toolkit.os in (drake.os.macos, drake.os.windows):
     boost_filesystem = drake.cxx.Config(boost.config_filesystem(static = True))
   else:
     boost_filesystem = drake.cxx.Config(boost.config_filesystem(link = False))
     boost_filesystem.library_add(copy_lib(boost.filesystem_dynamic))
-  boost_program_options = drake.cxx.Config(boost.config_program_options(link = False))
-  boost_program_options.library_add(copy_lib(boost.program_options_dynamic))
-  boost_python = drake.cxx.Config(boost.config_python(link = False))
-  boost_python.library_add(copy_lib(boost.python_dynamic))
-  boost_signals = drake.cxx.Config(boost.config_signals(link = False))
-  boost_signals.library_add(copy_lib(boost.signals_dynamic))
-  boost_system = drake.cxx.Config(boost.config_system(link = False))
-  boost_system.library_add(copy_lib(boost.system_dynamic))
-  boost_test = drake.cxx.Config(boost.config_test(link = False))
-  boost_test.library_add(copy_lib(boost.test_dynamic))
-  boost_thread = drake.cxx.Config(boost.config_thread(link = False))
-  boost_thread.library_add(copy_lib(boost.thread_dynamic))
+  if cxx_toolkit.os is drake.os.windows:
+    boost_program_options = drake.cxx.Config(boost.config_program_options(static = True))
+    boost_python = drake.cxx.Config(boost.config_python(static = True))
+    boost_signals = drake.cxx.Config(boost.config_signals(static = True))
+    boost_system = drake.cxx.Config(boost.config_system(static = True))
+    boost_test = drake.cxx.Config(boost.config_test(static = True))
+    boost_thread = drake.cxx.Config(boost.config_thread(static = True))
+  else:
+    boost_program_options = drake.cxx.Config(boost.config_program_options(link = False))
+    boost_program_options.library_add(copy_lib(boost.program_options_dynamic))
+    boost_python = drake.cxx.Config(boost.config_python(link = False))
+    boost_python.library_add(copy_lib(boost.python_dynamic))
+    boost_signals = drake.cxx.Config(boost.config_signals(link = False))
+    boost_signals.library_add(copy_lib(boost.signals_dynamic))
+    boost_system = drake.cxx.Config(boost.config_system(link = False))
+    boost_system.library_add(copy_lib(boost.system_dynamic))
+    boost_test = drake.cxx.Config(boost.config_test(link = False))
+    boost_test.library_add(copy_lib(boost.test_dynamic))
+    boost_thread = drake.cxx.Config(boost.config_thread(link = False))
+    boost_thread.library_add(copy_lib(boost.thread_dynamic))
 
   elle_lib = copy_lib(elle.elle.library)
   cryptography_lib = copy_lib(elle.cryptography.library)
@@ -234,7 +242,6 @@ def configure(cxx_toolkit = None,
     papier_cxx_config
   )
   papier_build << papier_lib
-
   papier_python = drake.Rule('papier/build')
   papier_python_lib = None
   if python3 is not None:
