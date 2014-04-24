@@ -28,6 +28,7 @@ MAILCHIMP_TEMPLATE_SUBJECTS = {
   'confirm-sign-up': 'Welcome to Infinit',
   'reconfirm-sign-up': 'Confirm your email address on Infinit',
   'daily-summary': 'You have *|count|* files waiting for you on Infinit',
+  'change-email-address': 'Change the main address of your Infinit account',
 }
 
 # XXX: If the template name changes, the database will need to be updated from
@@ -134,7 +135,7 @@ class Mailer():
                                    reply_to = reply_to,
                                    attachment = attachment)
       message['text'] = body
-      self.__send(message)
+      return self.__send(message)
 
   @is_active
   def send_template(self,
@@ -200,18 +201,19 @@ class Mailer():
           merge_vars[recipient].keys()))},
         merge_vars.keys()))
 
-      self.__send_template(template_name = template_name,
-                           message = message)
+      return self.__send_template(template_name = template_name,
+                                  message = message)
 
   def __send(self, message):
     messenger = mandrill.Messages(self.__mandrill)
-    messenger.send(message)
+    res = messenger.send(message)
+
 
   def __send_template(self, template_name, message):
     messenger = mandrill.Messages(self.__mandrill)
-    messenger.send_template(template_name = template_name,
-                            template_content = [],
-                            message = message)
+    res = messenger.send_template(template_name = template_name,
+                                  template_content = [],
+                                  message = message)
 
 
 report_templates = dict()

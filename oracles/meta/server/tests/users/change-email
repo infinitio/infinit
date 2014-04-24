@@ -1,0 +1,113 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User, NoOpMailer
+from infinit.oracles.meta import error
+
+unconfirmed_email_leeway = 100
+
+class MailService(NoOpMailer):
+
+  def __init__(self):
+    super().__init__(True)
+
+  def template_message(self, template_message, message):
+    merges = {}
+    for entry in message['merge_vars'][0]['vars']:
+      merges[entry['name']] = entry['content']
+    print(template_message)
+    if template_message == 'change-email-address':
+      self.change_email_hash = merges['hash']
+
+with Meta(enable_emails = True,
+          unconfirmed_email_leeway = unconfirmed_email_leeway) as meta:
+  email = 'foobar@infinit.io'
+  fullname = 'jean louis'
+  u = User(meta,
+           email = email,
+           fullname = fullname)
+  u.login()
+  assert meta.mailer.sent
+  user_data = u.data
+
+  meta.mailer = MailService()
+  new_email_address = 'barfoo@infinit.io'
+  res = u.post('user/change_email_request/%s' % new_email_address,
+               {'password': u.password })
+  assert res['success']
+
+  res = u.put('user/change_email/%s' % meta.mailer.change_email_hash)
+  assert res['success']
+
+  new_user_data = u.data
+  assert new_user_data['email'] == new_email_address
+  new_user_data.pop('email')
+  user_data.pop('email')
+  assert len(new_user_data['accounts']) == 2
+  new_user_data.pop('accounts')
+  user_data.pop('accounts')
+
+  from pprint import pprint
+  pprint(user_data)
+  pprint(new_user_data)
+  assert user_data == new_user_data
+
+with Meta(enable_emails = True,
+          unconfirmed_email_leeway = unconfirmed_email_leeway) as meta:
+  email = 'foobar@infinit.io'
+  fullname = 'jean louis'
+  u = User(meta,
+           email = email,
+           fullname = fullname)
+  u.login()
+  assert meta.mailer.sent
+  user_data = u.data
+
+  meta.mailer = MailService()
+  new_email_address = 'barfoo@infinit.io'
+  res = u.post('user/change_email_request/%s' % new_email_address,
+               {'password': u.password, 'keep_old_in_accounts': False})
+  assert res['success']
+
+  res = u.put('user/change_email/%s' % meta.mailer.change_email_hash)
+  assert res['success']
+
+  new_user_data = u.data
+  assert new_user_data['email'] == new_email_address
+  new_user_data.pop('email')
+  user_data.pop('email')
+  # XXX: Implement keep old.
+  # assert len(new_user_data['accounts']) == 1
+  new_user_data.pop('accounts')
+  user_data.pop('accounts')
+
+  from pprint import pprint
+  pprint(user_data)
+  pprint(new_user_data)
+  assert user_data == new_user_data
+
+with Meta(enable_emails = True,
+          unconfirmed_email_leeway = unconfirmed_email_leeway) as meta:
+  email = 'foobar@infinit.io'
+  fullname = 'jean louis'
+  u = User(meta,
+           email = email,
+           fullname = fullname)
+  u.login()
+
+  meta.mailer = MailService()
+  new_email_address = 'barfoo@infinit.io'
+  res = u.post('user/change_email_request/%s' % new_email_address,
+               {'password': u.password, 'keep_old_in_accounts': False})
+  assert res['success']
+
+  res = u.put('user/change_email/%s' % meta.mailer.change_email_hash)
+  assert res['success']
+
+  u.logout()
+
+  res = meta.post('login',
+                  { 'email': email,
+                    'password': u.password,
+                    'device_id': str(u.device_id) })
+  assert res['success'] == False
+

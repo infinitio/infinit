@@ -83,20 +83,19 @@ class Mixin:
   ## -------- ##
 
   def _login(self, email, password):
-    user = self.database.users.find_one({
-      'email': email,
-      'password': hash_pasword(password),
-    })
-    if user is None:
-      self.fail(error.EMAIL_PASSWORD_DONT_MATCH)
-    # If email confirmed is not present, we can consider it's an old user,
-    # so his address will not be confirmed.
-    if not user.get('email_confirmed', True):
-      from time import time
-      if time() > user['unconfirmed_email_deadline']:
-        self.resend_confirmation_email(email)
-        self.fail(error.EMAIL_NOT_CONFIRMED)
-    return user
+    try:
+      user = self.user_by_email_password(
+        email, password, ensure_existence = True)
+      # If email confirmed is not present, we can consider it's an old user,
+      # so his address will not be confirmed.
+      if not user.get('email_confirmed', True):
+        from time import time
+        if time() > user['unconfirmed_email_deadline']:
+          self.resend_confirmation_email(email)
+          self.fail(error.EMAIL_NOT_CONFIRMED)
+      return user
+    except error.Error as e:
+      self.fail(*e.args)
 
   def _login_response(self,
                       user,
@@ -195,7 +194,7 @@ class Mixin:
     elle.log.trace("get user from session")
     email = bottle.request.session.get('email', None)
     if email is not None:
-      return self.user_by_email(email)
+      return self.user_by_email(email, ensure_existence = False)
     elle.log.trace("session not found")
 
   ## -------- ##
@@ -352,7 +351,7 @@ class Mixin:
         self.database.users.find_and_modify(
           query = {"email_confirmation_hash": hash},
           update = {
-            '$unset': {'email_confirmation_hash': True},
+            '$unset': {'email_confirmation_hash': True, 'unconfirmed_email_leeway': True},
             '$set': {'email_confirmed': True}
             })
         return self.success()
@@ -398,9 +397,101 @@ class Mixin:
     except error.Error as e:
       self.fail(*e.args)
 
+  @api('/user/change_email_request/<new_email>', method = 'POST')
+  @require_logged_in
+  def change_email_request(self,
+                           new_email,
+                           password,
+                           keep_old_in_accounts : bool = True):
+    """
+    Request to change the main email for the account.
+    The main email is the one where email alerts are sent.
+
+    new_email -- The new main email address.
+    password -- The password of the account.
+    keep_old -- Keep the old email connected to this account.
+    """
+    user = self.user
+    with elle.log.trace('request main email changement from %s to %s' %
+                        (user['email'], new_email)):
+      user = self.user_by_email_password(user['email'], password)
+      new_email = new_email.lower().strip()
+      # Check if the new address is already in use.
+      if self.user_by_email(new_email, ensure_existence = False) is not None:
+        return self.fail(error.EMAIL_ALREADY_REGISTRED)
+      from time import time
+      import hashlib
+      seed = str(time()) + new_email
+      hash = hashlib.md5(seed.encode('utf-8')).hexdigest()
+      res = self.mailer.send_template(
+        new_email,
+        'change-email-address',
+        merge_vars = {
+          new_email : {
+            "hash": hash,
+            "new_email_address": new_email,
+            "user_fullname": user['fullname']
+            }}
+        )
+      self.database.users.find_and_modify(
+        { "_id": user['_id'] },
+        {
+          "$set": {
+            "new_main_email": new_email,
+            "new_main_email_hash": hash,
+            "keep_old": keep_old_in_accounts,
+          }
+        })
+      return self.success()
+
+  @api('/user/change_email/<hash>', method = 'PUT')
+  def change_email(self, hash):
+    """
+    Validate the process of changing the main email of the account.
+
+    hash -- The hash stored on the database for operation.
+    """
+    with elle.log.trace('change mail email associated to %s' % hash):
+      user = self.database.users.find_one({'new_main_email_hash': hash})
+      if user is None:
+        return self.fail(error.UNKNOWN_USER)
+      new_email = user['new_main_email']
+      # Check if the email has been take during the time laps.
+      if self.user_by_email(new_email, ensure_existence = False) is not None:
+        return self.fail(error.EMAIL_ALREADY_REGISTRED)
+      update = {
+        '$set': {
+          'email': new_email,
+          'email_confirmed': True
+        },
+        '$unset': {
+          'new_main_email': '',
+          'new_main_email_hash': ''
+        },
+        '$addToSet': {
+          'accounts': { 'type': 'email', 'id': new_email }
+        },
+      }
+      if not user['keep_old']:
+        # XXX: You can't do many operation on the same container atomically
+        # in mongo. So impossible to add the new email address and pop the
+        # old one.
+        elle.log.warn('not keeping the old email is not implemented yet')
+        # update.setdefault('$pop', {}).update({
+        #   'accounts': {'type': 'email', 'id': user['email']}
+        # })
+
+      self.database.users.find_and_modify(
+        { 'email': user['email'] }, update)
+      self.database.sessions.update({'email': user['email']},
+                                    {'$set': { 'email': new_email } },
+                                    multi = True)
+      self.invitation.unsubscribe(user['email'])
+      self.invitation.unsubscribe(new_email)
+      return self.success({'new_email': new_email})
 
   ## ------ ##
-  ## Delete ##
+  ## Delete ##
   ## ------ ##
   @api('/user', method='DELETE')
   @require_logged_in
@@ -538,7 +629,7 @@ class Mixin:
     return user
 
   def user_by_email(self, email, ensure_existence = True):
-    """Get a user from is email.
+    """Get a user with given email.
 
     email -- the email of the user.
     ensure_existence -- if set, raise if user is invald.
@@ -547,6 +638,21 @@ class Mixin:
     user = self.database.users.find_one({'email': email})
     if ensure_existence:
       self.__ensure_user_existence(user)
+    return user
+
+  def user_by_email_password(self, email, password, ensure_existence = True):
+    """Get a user from is email.
+
+    email -- The email of the user.
+    password -- The password for that account.
+    ensure_existence -- if set, raise if user is invald.
+    """
+    user = self.database.users.find_one({
+      'email': email,
+      'password': hash_pasword(password),
+    })
+    if user is None and ensure_existence:
+      raise error.Error(error.EMAIL_PASSWORD_DONT_MATCH)
     return user
 
   def user_by_handle(self, handle, ensure_existence = True):
