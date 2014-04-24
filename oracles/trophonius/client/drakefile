@@ -23,6 +23,24 @@ def configure(elle,
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
 
+  if cxx_toolkit.os is drake.os.windows:
+    boost_filesystem = drake.cxx.Config(boost.config_filesystem(static = True))
+    boost_system = drake.cxx.Config(boost.config_system(static = True))
+    boost_test = drake.cxx.Config(boost.config_test(static = True))
+  else:
+    boost_filesystem = drake.cxx.Config(boost.config_filesystem(link = False))
+    boost_filesystem.library_add(
+      drake.copy(boost.filesystem_dynamic,
+                 'lib', strip_prefix = True))
+    boost_system = drake.cxx.Config(boost.config_system(link = False))
+    boost_system.library_add(
+      drake.copy(boost.system_dynamic,
+                 'lib', strip_prefix = True))
+    boost_test = drake.cxx.Config(boost.config_test(link = False))
+    boost_test.library_add(
+      drake.copy(boost.test_dynamic,
+                 'lib', strip_prefix = True))
+
   local_cxx_config = drake.cxx.Config(cxx_config)
   local_cxx_config += elle.elle.config
   local_cxx_config += elle.reactor.config
@@ -97,9 +115,9 @@ def configure(elle,
 
   cxx_config_tests = drake.cxx.Config(local_cxx_config)
   cxx_config_tests.lib_path_runtime('../lib')
-  cxx_config_tests += boost.config_filesystem()
-  cxx_config_tests += boost.config_test()
-  cxx_config_tests += boost.config_system()
+  cxx_config_tests += boost_filesystem
+  cxx_config_tests += boost_test
+  cxx_config_tests += boost_system
   if cxx_toolkit.os is drake.os.windows:
     cxx_config_tests.lib('shlwapi')
     cxx_config_tests.lib('ws2_32')

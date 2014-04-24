@@ -27,6 +27,24 @@ def configure(elle,
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
 
+  if cxx_toolkit.os is drake.os.windows:
+    boost_program_options = drake.cxx.Config(boost.config_program_options(static = True))
+    boost_system = drake.cxx.Config(boost.config_system(static = True))
+    boost_test = drake.cxx.Config(boost.config_test(static = True))
+  else:
+    boost_program_options = drake.cxx.Config(boost.config_program_options(link = False))
+    boost_program_options.library_add(
+      drake.copy(boost.program_options_dynamic,
+                 'lib', strip_prefix = True))
+    boost_system = drake.cxx.Config(boost.config_system(link = False))
+    boost_system.library_add(
+      drake.copy(boost.system_dynamic,
+                 'lib', strip_prefix = True))
+    boost_test = drake.cxx.Config(boost.config_test(link = False))
+    boost_test.library_add(
+      drake.copy(boost.test_dynamic,
+                 'lib', strip_prefix = True))
+
   # SSL
   # FIXME: remove as soon as ssl is not leaked by elle
   ssl_libs = drake.copy((elle.openssl_lib_ssl,
@@ -70,8 +88,8 @@ def configure(elle,
 
   #check
   test_cxx_config = drake.cxx.Config(local_cxx_config)
-  test_cxx_config += boost.config_test()
-  test_cxx_config += boost.config_system()
+  test_cxx_config += boost_test
+  test_cxx_config += boost_system
   test_cxx_config.lib_path_runtime('../lib')
 
   test_sources = drake.nodes(
@@ -99,18 +117,8 @@ def configure(elle,
   ## ---------- ##
 
   exe_cxx_config = drake.cxx.Config(local_cxx_config)
-  if cxx_toolkit.os is drake.os.windows:
-    exe_cxx_config += boost.config_system(static = True)
-    exe_cxx_config += boost.config_program_options(static = True)
-  else:
-    exe_cxx_config += boost.config_system(link = False)
-    exe_cxx_config.library_add(
-      drake.copy(boost.system_dynamic,
-                 'lib', strip_prefix = True))
-    exe_cxx_config += boost.config_program_options(link = False)
-    exe_cxx_config.library_add(
-      drake.copy(boost.program_options_dynamic,
-                 'lib', strip_prefix = True))
+  exe_cxx_config += boost_system
+  exe_cxx_config += boost_program_options
   exe_cxx_config.lib_path_runtime('../lib')
 
   exe_sources = drake.nodes('src/main.cc')

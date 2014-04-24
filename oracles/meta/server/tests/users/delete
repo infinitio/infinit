@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import papier
+
 from bson.objectid import ObjectId
 from infinit.oracles.meta.server.transaction_status import CANCELED
 from utils import Meta, Trophonius, User
