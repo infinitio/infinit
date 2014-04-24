@@ -140,6 +140,9 @@ def configure(cxx_toolkit = None,
   ## Elle ##
   ## ---- ##
 
+  def copy_lib(lib, where = 'lib'):
+    return drake.copy(lib, where, lib.path().dirname())
+
   elle = drake.include('elle',
                        cxx_toolkit,
                        drake.cxx.Config(cxx_config),
@@ -150,9 +153,23 @@ def configure(cxx_toolkit = None,
   boost = elle.boost
   python3 = elle.python3
   cxx_config += boost.config()
-
-  def copy_lib(lib, where = 'lib'):
-    return drake.copy(lib, where, lib.path().dirname())
+  if cxx_toolkit.os is drake.os.macos:
+    boost_filesystem = drake.cxx.Config(boost.config_filesystem(static = True))
+  else:
+    boost_filesystem = drake.cxx.Config(boost.config_filesystem(link = False))
+    boost_filesystem.library_add(copy_lib(boost.filesystem_dynamic))
+  boost_program_options = drake.cxx.Config(boost.config_program_options(link = False))
+  boost_program_options.library_add(copy_lib(boost.program_options_dynamic))
+  boost_python = drake.cxx.Config(boost.config_python(link = False))
+  boost_python.library_add(copy_lib(boost.python_dynamic))
+  boost_signals = drake.cxx.Config(boost.config_signals(link = False))
+  boost_signals.library_add(copy_lib(boost.signals_dynamic))
+  boost_system = drake.cxx.Config(boost.config_system(link = False))
+  boost_system.library_add(copy_lib(boost.system_dynamic))
+  boost_test = drake.cxx.Config(boost.config_test(link = False))
+  boost_test.library_add(copy_lib(boost.test_dynamic))
+  boost_thread = drake.cxx.Config(boost.config_thread(link = False))
+  boost_thread.library_add(copy_lib(boost.thread_dynamic))
 
   elle_lib = copy_lib(elle.elle.library)
   cryptography_lib = copy_lib(elle.cryptography.library)
@@ -224,17 +241,13 @@ def configure(cxx_toolkit = None,
     papier_python_cxx_config = drake.cxx.Config(cxx_config)
     papier_python_sources = drake.nodes('papier/src/papier/python.cc')
     papier_python_sources.append(papier_lib)
-    papier_python_cxx_config += boost.config_filesystem(
-      static = (cxx_toolkit.os is drake.os.macos and True or None))
+    papier_python_cxx_config += boost_filesystem
     papier_python_cxx_config += python3
     if cxx_toolkit.os is drake.os.windows:
       papier_python_cxx_config.define('BOOST_PYTHON_STATIC_LIB')
-      papier_python_cxx_config += boost.config_python(static = True)
-      papier_python_cxx_config.flag('-Wl,-Bdynamic')
+      papier_python_cxx_config += boost_python
     else:
-      papier_python_cxx_config += boost.config_python(link = False)
-      papier_python_cxx_config.library_add(
-        drake.copy(boost.python_dynamic, 'lib', strip_prefix = True))
+      papier_python_cxx_config += boost_python
     papier_python_cxx_config.lib_path_runtime('..')
     papier_python_lib = drake.cxx.Module(
       'lib/python/papier',
@@ -246,8 +259,8 @@ def configure(cxx_toolkit = None,
   papier_tests = drake.Rule('papier/tests')
   papier_check = drake.TestSuite('papier/check')
   papier_cxx_config_tests = drake.cxx.Config(papier_cxx_config)
-  papier_cxx_config_tests += boost.config_system()
-  papier_cxx_config_tests += boost.config_test()
+  papier_cxx_config_tests += boost_system
+  papier_cxx_config_tests += boost_test
   papier_cxx_config_tests.lib_path_runtime('../../lib')
   for name in (
       'Passport',
@@ -302,8 +315,8 @@ def configure(cxx_toolkit = None,
   station_check = drake.Rule('station/check')
   station_install = drake.Rule('station/install')
   station_cxx_config_tests = drake.cxx.Config(station_cxx_config)
-  station_cxx_config_tests += boost.config_test()
-  station_cxx_config_tests += boost.config_system()
+  station_cxx_config_tests += boost_test
+  station_cxx_config_tests += boost_system
   station_cxx_config_tests.lib_path_runtime('../../lib')
   for name in ['station']:
     test = drake.cxx.Executable(
@@ -350,9 +363,9 @@ def configure(cxx_toolkit = None,
   frete_check = drake.Rule('frete/check')
   frete_install = drake.Rule('frete/install')
   frete_cxx_config_tests = drake.cxx.Config(frete_cxx_config)
-  frete_cxx_config_tests += boost.config_test()
-  frete_cxx_config_tests += boost.config_system()
-  frete_cxx_config_tests += boost.config_filesystem()
+  frete_cxx_config_tests += boost_filesystem
+  frete_cxx_config_tests += boost_system
+  frete_cxx_config_tests += boost_test
   frete_cxx_config_tests.lib_path_runtime('../../lib')
   for name in ['frete']:
     test = drake.cxx.Executable(
@@ -498,11 +511,10 @@ def configure(cxx_toolkit = None,
   gap_cxx_config.add_local_include_path('oracles/trophonius/client/src')
 
   gap_cxx_config_libs = drake.cxx.Config(gap_cxx_config)
-  gap_cxx_config_libs += boost.config_filesystem(
-    static = (cxx_toolkit.os is drake.os.macos and True or None))
-  gap_cxx_config_libs += boost.config_system()
-  gap_cxx_config_libs += boost.config_signals()
-  gap_cxx_config_libs += boost.config_thread()
+  gap_cxx_config_libs += boost_filesystem
+  gap_cxx_config_libs += boost_signals
+  gap_cxx_config_libs += boost_system
+  gap_cxx_config_libs += boost_thread
   if cxx_toolkit.os == drake.os.windows:
     gap_cxx_config_libs.lib('shlwapi')
     gap_cxx_config_libs.lib('ws2_32')
@@ -541,18 +553,8 @@ def configure(cxx_toolkit = None,
   cli_cxx_config.add_local_include_path('oracles/src')
   cli_cxx_config.add_local_include_path('oracles/meta/client/src')
   cli_cxx_config.add_local_include_path('oracles/trophonius/client/src')
-  if cxx_toolkit.os is drake.os.windows:
-    cli_cxx_config += boost.config_program_options(static = True)
-    cli_cxx_config += boost.config_system(static = True)
-  else:
-    cli_cxx_config += boost.config_program_options(link = False)
-    cli_cxx_config.library_add(
-      drake.copy(boost.program_options_dynamic,
-                 'lib', strip_prefix = True))
-    cli_cxx_config += boost.config_system(link = False)
-    cli_cxx_config.library_add(
-      drake.copy(boost.system_dynamic,
-                 'lib', strip_prefix = True))
+  cli_cxx_config += boost_program_options
+  cli_cxx_config += boost_system
 
   cli_send_sources = drake.nodes(
     'satellites/send/Send.cc',
@@ -613,11 +615,10 @@ def configure(cxx_toolkit = None,
   state_cxx_config.add_local_include_path('oracles/trophonius/client/src')
 
   state_cxx_config_libs = drake.cxx.Config(gap_cxx_config)
-  state_cxx_config_libs += boost.config_filesystem(
-    static = (cxx_toolkit.os is drake.os.macos and True or None))
-  state_cxx_config_libs += boost.config_system()
-  state_cxx_config_libs += boost.config_signals()
-  state_cxx_config_libs += boost.config_thread()
+  state_cxx_config_libs += boost_filesystem
+  state_cxx_config_libs += boost_signals
+  state_cxx_config_libs += boost_system
+  state_cxx_config_libs += boost_thread
   if cxx_toolkit.os == drake.os.windows:
     state_cxx_config_libs.lib('shlwapi')
     state_cxx_config_libs.lib('ws2_32')
@@ -651,7 +652,7 @@ def configure(cxx_toolkit = None,
   if python3 is not None:
     state_python_cxx_config = drake.cxx.Config(gap_cxx_config)
     state_python_cxx_config += python3
-    state_python_cxx_config += boost.config_python()
+    state_python_cxx_config += boost_python
     state_python_cxx_config.lib_path_runtime('..')
     state_python_sources = drake.nodes(
       'surface/gap/python/State.cc',
@@ -677,12 +678,9 @@ def configure(cxx_toolkit = None,
     gap_python_cxx_config.lib_path_runtime('..')
     if cxx_toolkit.os is drake.os.windows:
       gap_python_cxx_config.define('BOOST_PYTHON_STATIC_LIB')
-      gap_python_cxx_config += boost.config_python(static = True)
-      gap_python_cxx_config.flag('-Wl,-Bdynamic')
+      gap_python_cxx_config += boost_python
     else:
-      gap_python_cxx_config += boost.config_python(link = False)
-      gap_python_cxx_config.library_add(
-        drake.copy(boost.python_dynamic, 'lib', strip_prefix = True))
+      gap_python_cxx_config += boost_python
     with templating_context:
       gap_python_sources = drake.nodes(
         'surface/gap/python/pygap.cc.tmpl',
@@ -745,9 +743,8 @@ def configure(cxx_toolkit = None,
       libraries = [gap_lib]
     else:
       libraries = [gap_lib, elle_lib]
-    fist_cxx_config += boost.config_filesystem(
-      static = (cxx_toolkit.os is drake.os.macos and True or None))
-    fist_cxx_config += boost.config_system()
+    fist_cxx_config += boost_filesystem
+    fist_cxx_config += boost_system
     application = drake.include('fist-gui-qt',
                                 cxx_toolkit = cxx_toolkit,
                                 cxx_config = fist_cxx_config,
