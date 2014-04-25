@@ -82,7 +82,6 @@ def invite_user(email,
       'code': code,
       'source': source[1],
     })
-    elle.log.debug('subject: %s' % subject)
     if send_email:
       mailer.send_template(
         to = email,
