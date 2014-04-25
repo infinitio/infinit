@@ -34,18 +34,8 @@ class HTTPException(Exception):
 class Client:
 
   def __init__(self, meta):
-    self.__mongo = mongobox.MongoBox()
-    self.__server = bottle.WSGIRefServer(port = 0)
-    self.__database = None
     self.__cookies = None
-    self.__meta = meta
-
-  @property
-  def meta(self):
-    return self.__meta
-
-  def __exit__(self, *args, **kwargs):
-    self.__mongo.__exit__(*args, **kwargs)
+    self.__meta_port = meta._Meta__server.port
 
   def __get_cookies(self, headers):
     cookies = headers.get('set-cookie', None)
@@ -73,7 +63,7 @@ class Client:
 
   def request(self, url, method, body):
     h = httplib2.Http()
-    uri = "http://localhost:%s/%s" % (self.__meta._Meta__server.port,
+    uri = "http://localhost:%s/%s" % (self.__meta_port,
                                       url)
     headers = {}
     if body is not None and isinstance(body, dict):
