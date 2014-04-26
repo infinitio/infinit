@@ -77,7 +77,7 @@ def configure(elle,
   ## Python ##
   ## ------ ##
 
-  if python3 is not None:
+  if python3 is not None and cxx_toolkit.os is not drake.os.windows:
     with template_context:
       python_sources = drake.nodes(
         'src/infinit/oracles/meta/python.cc.tmpl',
