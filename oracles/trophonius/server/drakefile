@@ -27,12 +27,17 @@ def configure(elle,
   local_cxx_config = drake.cxx.Config(cxx_config)
   if cxx_toolkit.os is drake.os.windows:
     boost_program_options = drake.cxx.Config(boost.config_program_options(static = True))
+    boost_python = drake.cxx.Config(boost.config_python(static = True))
     boost_system = drake.cxx.Config(boost.config_system(static = True))
     boost_test = drake.cxx.Config(boost.config_test(static = True))
   else:
     boost_program_options = drake.cxx.Config(boost.config_program_options(link = False))
     boost_program_options.library_add(
       drake.copy(boost.program_options_dynamic,
+                 'lib', strip_prefix = True))
+    boost_python = drake.cxx.Config(boost.config_python(link = False))
+    boost_python.library_add(
+      drake.copy(boost.python_dynamic,
                  'lib', strip_prefix = True))
     boost_system = drake.cxx.Config(boost.config_system(link = False))
     boost_system.library_add(
@@ -105,7 +110,7 @@ def configure(elle,
     python_cxx_config = drake.cxx.Config(local_cxx_config)
     python_cxx_config.lib_path_runtime('../../../..')
     python_cxx_config += python3
-    python_cxx_config += boost.config_python()
+    python_cxx_config += boost_python
     datetime = drake.copy(elle.elle.python_plugin_datetime,
                           'lib', True)
     python_lib = drake.cxx.Module(
