@@ -29,6 +29,12 @@ ELLE_LOG_COMPONENT("frete.tests");
 # define RUNNING_ON_VALGRIND 0
 #endif
 
+#ifdef INFINIT_WINDOWS
+# define SEPARATOR "\\"
+#else
+# define SEPARATOR "/"
+#endif
+
 static
 bool
 compare_files(boost::filesystem::path const& p1,
@@ -94,12 +100,12 @@ public:
     }
     boost::filesystem::create_directory(this->_dir);
     {
-      boost::filesystem::ofstream f((this->_dir / "1", std::ios::binary));
+      boost::filesystem::ofstream f(this->_dir / "1", std::ios::binary);
       f << "1";
     }
     boost::filesystem::create_directory(this->_dir);
     {
-      boost::filesystem::ofstream f((this->_dir / "2", std::ios::binary));
+      boost::filesystem::ofstream f(this->_dir / "2", std::ios::binary);
       f << "2";
     }
   }
@@ -229,28 +235,29 @@ ELLE_TEST_SCHEDULED(connection)
       }
       ELLE_DEBUG("check dir/1 and dir/2")
       {
-        if (rpcs.path(2) == "dir/2")
+        if (rpcs.path(2) == "dir" SEPARATOR "2")
         {
           BOOST_CHECK_EQUAL(rpcs.file_size(2), 1);
           BOOST_CHECK_EQUAL(key.decrypt<elle::Buffer>(rpcs.encrypted_read(2, 0, 2)), elle::ConstWeakBuffer("2"));
         }
-        else if (rpcs.path(2) == "dir/1")
+        else if (rpcs.path(2) == "dir" SEPARATOR "1")
         {
           BOOST_CHECK_EQUAL(rpcs.file_size(2), 1);
           BOOST_CHECK_EQUAL(key.decrypt<elle::Buffer>(rpcs.encrypted_read(2, 0, 2)), elle::ConstWeakBuffer("1"));
         }
-        else if (rpcs.path(3) == "dir/2")
+        else if (rpcs.path(3) == "dir" SEPARATOR "2")
         {
           BOOST_CHECK_EQUAL(rpcs.file_size(3), 1);
           BOOST_CHECK_EQUAL(key.decrypt<elle::Buffer>(rpcs.encrypted_read(3, 0, 2)), elle::ConstWeakBuffer("2"));
         }
-        else if (rpcs.path(3) == "dir/1")
+        else if (rpcs.path(3) == "dir" SEPARATOR "1")
         {
           BOOST_CHECK_EQUAL(rpcs.file_size(3), 1);
           BOOST_CHECK_EQUAL(key.decrypt<elle::Buffer>(rpcs.encrypted_read(3, 0, 2)), elle::ConstWeakBuffer("1"));
         }
         else
         {
+          std::cerr << rpcs.path(3) << std::endl;
           BOOST_FAIL("recipient files incorrect");
         }
       }
