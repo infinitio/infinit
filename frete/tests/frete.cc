@@ -87,19 +87,19 @@ public:
     if (boost::filesystem::exists(this->_root))
       this->_clear_root();
     boost::filesystem::create_directory(this->_root);
-    boost::filesystem::ofstream(this->_empty);
+    boost::filesystem::ofstream(this->_empty, std::ios::binary);
     {
-      boost::filesystem::ofstream f(this->_content);
+      boost::filesystem::ofstream f(this->_content, std::ios::binary);
       f << "content\n";
     }
     boost::filesystem::create_directory(this->_dir);
     {
-      boost::filesystem::ofstream f((this->_dir / "1"));
+      boost::filesystem::ofstream f((this->_dir / "1", std::ios::binary));
       f << "1";
     }
     boost::filesystem::create_directory(this->_dir);
     {
-      boost::filesystem::ofstream f((this->_dir / "2"));
+      boost::filesystem::ofstream f((this->_dir / "2", std::ios::binary));
       f << "2";
     }
   }
