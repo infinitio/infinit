@@ -17,6 +17,8 @@
 # define RUNNING_ON_VALGRIND 0
 #endif
 
+ELLE_LOG_COMPONENT("station.test")
+
 infinit::cryptography::KeyPair authority_keys =
   infinit::cryptography::KeyPair::generate(
   infinit::cryptography::Cryptosystem::rsa, 1024);
@@ -94,6 +96,7 @@ ELLE_TEST_SCHEDULED(connection_closed)
 {
   auto s = elle::make_unique<reactor::network::TCPServer>();
   s->listen();
+  ELLE_LOG("server listens on %s", s->port());
   Credentials c1("host1");
   station::Station station1(authority, c1.passport);
 
@@ -101,12 +104,14 @@ ELLE_TEST_SCHEDULED(connection_closed)
   {
     scope.run_background("connect", [&]
     {
+      ELLE_LOG_SCOPE("connect station");
       BOOST_CHECK_THROW(station1.connect("127.0.0.1", s->port()),
                         std::runtime_error);
     });
     scope.run_background("ignore", [&]
     {
-      s.reset();
+      s->accept();
+      ELLE_LOG_SCOPE("close socket server side");
     });
     scope.wait();
   };
