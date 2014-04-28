@@ -71,6 +71,8 @@ ELLE_TEST_SCHEDULED(connection)
   };
 }
 
+// Connection refused entails infinite wait on wine.
+#ifndef INFINIT_WINDOWS
 ELLE_TEST_SCHEDULED(connection_fails)
 {
   elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
@@ -86,6 +88,7 @@ ELLE_TEST_SCHEDULED(connection_fails)
     scope.wait();
   };
 }
+#endif
 
 ELLE_TEST_SCHEDULED(connection_closed)
 {
@@ -242,7 +245,9 @@ ELLE_TEST_SUITE()
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(construction), 0, timeout);
   suite.add(BOOST_TEST_CASE(connection), 0, timeout);
+#ifndef INFINIT_WINDOWS
   suite.add(BOOST_TEST_CASE(connection_fails), 0, timeout);
+#endif
   suite.add(BOOST_TEST_CASE(connection_closed), 0, timeout);
   suite.add(BOOST_TEST_CASE(already_connected), 0, timeout);
   suite.add(BOOST_TEST_CASE(reconnect), 0, timeout);
