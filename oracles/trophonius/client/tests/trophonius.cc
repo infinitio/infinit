@@ -458,6 +458,7 @@ protected:
       scope.run_background("ping checker", [&]
       {
         auto previous = boost::posix_time::microsec_clock::local_time();
+        boost::posix_time::time_duration periods;
         while (true)
         {
           auto data_read = elle::json::read(socket);
@@ -467,10 +468,12 @@ protected:
           ELLE_LOG("got ping after %s: %s",
                    diff,
                    elle::json::pretty_print(ping));
-          BOOST_CHECK_LT(diff, this->_period * 12 / 10);
+          periods += diff;
           previous = now;
-          ++this->_ping_received;;
+          ++this->_ping_received;
         }
+        // Check the mean ping time is 20% around the expected period.
+        BOOST_CHECK_LT(periods / this->_ping_received, this->_period * 12 / 10);
       });
       scope.wait();
     };
@@ -482,8 +485,8 @@ private:
 
 ELLE_TEST_SCHEDULED(ping)
 {
-  boost::posix_time::time_duration const period = 100_ms;
-  boost::posix_time::time_duration const run_time = 3_sec;
+  boost::posix_time::time_duration const period = 500_ms;
+  boost::posix_time::time_duration const run_time = 10_sec;
   int periods = run_time.total_milliseconds() / period.total_milliseconds();
 
   PingTrophonius tropho(period);
@@ -551,6 +554,7 @@ protected:
     this->_login_response(socket);
     auto previous = boost::posix_time::microsec_clock::local_time();
     ELLE_LOG("serving no ping");
+    boost::posix_time::time_duration periods;
     try
     {
       while (true)
@@ -560,13 +564,14 @@ protected:
         auto ping = boost::any_cast<elle::json::Object>(data_read);
         auto diff = now - previous;
         ELLE_LOG("got ping after %s: %s", diff, elle::json::pretty_print(ping));
-        BOOST_CHECK_LT(diff, this->_period * 11 / 10);
+        periods += diff;
         previous = now;
         ++this->_ping_received;
       }
     }
     catch(reactor::network::ConnectionClosed const&)
     {
+      BOOST_CHECK_LT(periods / this->_ping_received, this->_period * 12 / 10);
       // As the client will not be receiving any pings, it will disconnect
       auto disconnection_time =
         boost::posix_time::microsec_clock::local_time() - previous;
@@ -582,8 +587,8 @@ private:
 
 ELLE_TEST_SCHEDULED(no_ping)
 {
-  boost::posix_time::time_duration const period = 100_ms;
-  boost::posix_time::time_duration const run_time = 3_sec;
+  boost::posix_time::time_duration const period = 500_ms;
+  boost::posix_time::time_duration const run_time = 10_sec;
   int periods = run_time.total_milliseconds() / period.total_milliseconds();
 
   NoPingTrophonius tropho(period);
