@@ -1016,8 +1016,8 @@ ELLE_TEST_SUITE()
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(poke), 0, timeout);
   suite.add(BOOST_TEST_CASE(notification), 0, timeout);
-  suite.add(BOOST_TEST_CASE(ping), 0, 2 * timeout);
-  suite.add(BOOST_TEST_CASE(no_ping), 0, 2 * timeout);
+  suite.add(BOOST_TEST_CASE(ping), 0, 5 * timeout);
+  suite.add(BOOST_TEST_CASE(no_ping), 0, 5 * timeout);
   suite.add(BOOST_TEST_CASE(reconnection), 0, 2 * timeout);
   suite.add(BOOST_TEST_CASE(connection_callback_throws), 0, timeout);
   suite.add(BOOST_TEST_CASE(reconnection_failed_callback), 0, 2 * timeout);
