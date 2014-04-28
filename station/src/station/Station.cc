@@ -124,6 +124,8 @@ namespace station
   std::unique_ptr<Host>
   Station::_negotiate(std::unique_ptr<reactor::network::Socket> socket)
   {
+    ELLE_TRACE_SCOPE("%s: negotiate connection with %s",
+                     *this, socket->peer());
     // Exchange protocol version.
     char version = 0;
     socket->write(elle::ConstWeakBuffer(&version, 1));
@@ -131,8 +133,6 @@ namespace station
     ELLE_ASSERT_EQ(elle::ConstWeakBuffer(remote_protocol)[0], 0);
     try
     {
-      ELLE_TRACE_SCOPE("%s: negotiate connection with %s",
-                       *this, socket->peer());
       elle::serialize::OutputBinaryArchive output(*socket);
       elle::serialize::InputBinaryArchive input(*socket);
 
