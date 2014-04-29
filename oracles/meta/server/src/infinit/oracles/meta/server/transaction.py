@@ -230,6 +230,7 @@ class Mixin:
         self.mailer.send_template(
           to = peer_email,
           template_name = template_id,
+          reply_to = "%s <%s>" % (user['fullname'], user['email']),
           merge_vars = {
             peer_email: {
               'filename': files[0],
