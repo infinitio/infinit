@@ -7,4 +7,4 @@ import targets
 
 os.chdir('%s' % os.environ['DIR_BUILD'])
 subprocess.check_call(
-  ['python3', 'drake', '-j', '3',] + list(targets.targets('build')))
+  ['python3', 'drake', '-j', os.environ['JOBS'],] + list(targets.targets('build')))
