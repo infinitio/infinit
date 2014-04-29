@@ -59,7 +59,8 @@ namespace infinit
                                           std::string const& recipient_id,
                                           int64_t file_count,
                                           int64_t total_size,
-                                          uint32_t message_length)
+                                          uint32_t message_length,
+                                          bool invitation)
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] =
@@ -70,6 +71,7 @@ namespace infinit
       data[this->_key_str(JSONKey::file_count)] = file_count;
       data[this->_key_str(JSONKey::total_size)] = total_size;
       data[this->_key_str(JSONKey::message_length)] = message_length;
+      data[this->_key_str(JSONKey::invitation)] = invitation;
 
       this->_send(this->_transaction_dest, data);
     }
@@ -291,6 +293,8 @@ namespace infinit
           return "how_ended";
         case JSONKey::initialization_time:
           return "initialization_time";
+        case JSONKey::invitation:
+          return "invitation";
         case JSONKey::message:
           return "message";
         case JSONKey::message_length:

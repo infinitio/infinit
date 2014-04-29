@@ -136,7 +136,8 @@ namespace infinit
                                   std::string const& recipient_id,
                                   int64_t file_count,
                                   int64_t total_size,
-                                  uint32_t message_length)
+                                  uint32_t message_length,
+                                  bool invitation)
     {
       if (this->_no_metrics)
         return;
@@ -147,7 +148,8 @@ namespace infinit
                                          recipient_id,
                                          file_count,
                                          total_size,
-                                         message_length));
+                                         message_length,
+                                         invitation));
       this->_metric_available.open();
     }
 
@@ -338,7 +340,8 @@ namespace infinit
                                    std::string const& recipient_id,
                                    int64_t file_count,
                                    int64_t total_size,
-                                   uint32_t message_length)
+                                   uint32_t message_length,
+                                   bool invitation)
     {}
 
     void

@@ -57,7 +57,8 @@ namespace infinit
                                           std::string const& recipient_id,
                                           int64_t file_count,
                                           int64_t total_size,
-                                          uint32_t message_length)
+                                          uint32_t message_length,
+                                          bool invitation)
     {
       std::unordered_map<std::string, std::string> data;
       data[this->_key_str(GoogleKey::event)] =

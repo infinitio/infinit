@@ -20,8 +20,9 @@ namespace infinit
       exit_reason,
       fail_reason,
       file_count,
-      initialization_time,
       how_ended,
+      initialization_time,
+      invitation,
       message,
       message_length,
       metric_sender_id,
@@ -29,9 +30,9 @@ namespace infinit
       sender_id,
       status,
       timestamp,
-      transfer_method,
       total_size,
       transaction_id,
+      transfer_method,
       user_agent,
       version,
       who,
@@ -82,7 +83,8 @@ namespace infinit
                            std::string const& recipient_id,
                            int64_t file_count,
                            int64_t total_size,
-                           uint32_t message_length);
+                           uint32_t message_length,
+                           bool invitation);
 
       virtual
       void
