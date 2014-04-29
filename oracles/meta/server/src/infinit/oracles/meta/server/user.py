@@ -125,7 +125,10 @@ class Mixin:
   def login(self,
             email,
             password,
-            device_id: uuid.UUID):
+            device_id: uuid.UUID,
+            OS: str = None):
+    if OS is not None:
+      OS = OS.strip().lower()
     # FIXME: 0.0.0.0 is the website.
     if self.user_version < (0, 9, 0) and self.user_version != (0, 0, 0):
       return self.fail(error.DEPRECATED)
@@ -155,7 +158,18 @@ class Mixin:
         update = {'$set': {'last_connection': time.time(),}})
       elle.log.trace("%s: successfully connected as %s on device %s" %
                      (email, user['_id'], device['id']))
-
+      if OS is not None and OS in invitation.os_lists.keys():
+        elle.log.debug("connected on os: %s" % OS)
+        res = self.database.users.find_and_modify({"_id": user['_id'], "os.%s" % OS: None},
+                                                  {"$addToSet": {"os": OS}})
+        # Because new is not set, find_and_modify will return the non modified user:
+        # - os was not present.
+        # - os was present but the os was not in the list.
+        if 'os' not in res or OS not in res['os']:
+          self.invitation.subscribe(list_name = OS,
+                                    email = user['email'])
+      else:
+        elle.log.debug("%s: no OS specified" % user['email'])
       return self.success(self._login_response(user,
                                                device = device,
                                                web = False))

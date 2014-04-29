@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+
+from utils import Meta, random_email
+
+with Meta(enable_invitations = True) as meta:
+  list_name = "test_list"
+  meta.invitation.add_list("test_list", "bb62af5b65")
+
+  email = random_email() + "@infinit.io"
+
+  members = meta.invitation.members("test_list")
+  if len(members):
+    meta.invitation.unsubscribe(list_name = list_name,
+                                email_address = set(members))
+  members = meta.invitation.members("test_list")
+  assert len(members) == 0
+
+  res = meta.invitation.subscribed(email = email,
+                                   list_name = list_name)
+  assert res == False
+
+  res = meta.invitation.subscribe(email = email,
+                                  list_name = list_name)
+  assert res
+  members = meta.invitation.members("test_list")
+  assert len(members) == 1
+
+  res = meta.invitation.subscribed(email = email,
+                                   list_name = list_name)
+  assert res
+
+  res = meta.invitation.unsubscribe(email = email,
+                                    list_name = list_name)
+  assert res
+
+  members = meta.invitation.members("test_list")
+  assert len(members) == 0
+
+  res = meta.invitation.subscribed(email = email,
+                                   list_name = list_name)
+  assert res == False

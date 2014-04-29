@@ -148,28 +148,70 @@ class NoOpMailer(Mailer):
 
 class NoOpInvitation(Invitation):
 
+  class FakeMailsnake:
+
+    def __init__(self):
+      self.__lists = {}
+      self.__unsubscribed = {}
+
+    def userbase(self, name):
+      return self.__lists.setdefault(name, set())
+
+    def unsubscribed(self, name):
+      return self.__unsubscribed.setdefault(name, set())
+
+    def listSubscribe(self, id, email_address, double_optin):
+      if email_address in self.unsubscribed(id):
+        self.unsubscribed(id).remove(email_address)
+      self.userbase(id).add(email_address)
+      return True
+
+    def listUnsubscribe(self, id, email_address):
+      try:
+        self.userbase(id).remove(email_address)
+        self.unsubscribed(id).add(email_address)
+        return True
+      except KeyError:
+        return False
+
+    def listMemberInfo(self, id, email_address):
+      if email_address in self.unsubscribed(id):
+        return {
+          "success": 1,
+          "data": [{"status": "unsubscribed"}]
+        }
+      if email_address in self.userbase(id):
+        return {
+          "success": 1,
+          "data": [{"status": "subscribed"}]
+        }
+      else:
+        return {
+          "success": 1,
+          "data": []
+        }
+
+    def listMembers(self, id):
+      return {"data": self.userbase(id)}
+
   def __init__(self):
     super().__init__(True)
-    self.ms = None
-    self.user_base = []
-
-  def move_from_invited_to_userbase(self, ghost_mail, new_mail):
-    self.subscribe(new_mail)
-
-  def subscribe(self, email):
-    self.user_base.append(email)
-
-  def subscribed(self, email):
-    return email in self.user_base
+    self.ms = NoOpInvitation.FakeMailsnake()
+    # XXX: Reset lists to secure the tests.
+    # self.lists = {}
 
 class Meta:
 
-  def __init__(self, enable_emails = False, force_admin = False, **kw):
+  def __init__(self,
+               enable_emails = False,
+               enable_invitations = False,
+               force_admin = False, **kw):
     self.__mongo = mongobox.MongoBox()
     self.__server = bottle.WSGIRefServer(port = 0)
     self.__database = None
     self.__client = None
-    self.__enalbe_emails = enable_emails
+    self.__enable_emails = enable_emails
+    self.__enable_invitations = enable_invitations
     self.__force_admin = force_admin
     self.__meta = None
     self.__meta_args = kw
@@ -182,7 +224,8 @@ class Meta:
       try:
         self.__meta = infinit.oracles.meta.server.Meta(
           mongo_port = self.__mongo.port,
-          enable_emails = self.__enalbe_emails,
+          enable_emails = self.__enable_emails,
+          enable_invitations = self.__enable_invitations,
           force_admin = self.__force_admin,
           **self.__meta_args)
         self.__meta.mailer = NoOpMailer()
@@ -314,11 +357,12 @@ class User(Client):
     assert res['success']
     return res
 
-  def login(self, device_id = None):
+  def login(self, device_id = None, **kw):
     if device_id is not None:
       self.device_id = device_id
-
-    res = self.post('login', self.login_paremeters)
+    params = self.login_paremeters
+    params.update(kw)
+    res = self.post('login', params)
     assert res['success']
     assert res['device_id'] == str(self.device_id)
     return res

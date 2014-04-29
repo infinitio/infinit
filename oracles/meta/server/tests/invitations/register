@@ -1,0 +1,11 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User, random_email
+
+with Meta(enable_invitations = True) as meta:
+  list_name = "userbase"
+  meta.invitation.add_list(list_name, "not_a_id")
+  bob = User(meta, "bob@infinit.io")
+
+  res = meta.invitation.subscribed(email = bob.email)
+  assert res == True

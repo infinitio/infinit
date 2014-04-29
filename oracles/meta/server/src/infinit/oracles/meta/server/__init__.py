@@ -49,6 +49,7 @@ class Meta(bottle.Bottle,
                mongo_host = None,
                mongo_port = None,
                enable_emails = True,
+               enable_invitations = True,
                trophonius_expiration_time = 300, # in sec
                apertus_expiration_time = 300, # in sec
                unconfirmed_email_leeway = 604800, # in sec, 7 days.
@@ -104,7 +105,7 @@ class Meta(bottle.Bottle,
     )
     # Could be cleaner.
     self.mailer = mail.Mailer(active = enable_emails)
-    self.invitation = invitation.Invitation(active = enable_emails)
+    self.invitation = invitation.Invitation(active = enable_invitations)
     self.trophonius_expiration_time = int(trophonius_expiration_time)
     self.apertus_expiration_time = int(apertus_expiration_time)
     self.unconfirmed_email_leeway = int(unconfirmed_email_leeway)
@@ -132,6 +133,8 @@ class Meta(bottle.Bottle,
                                        unique = True, sparse = True)
     # - Midnight cron.
     self.__database.users.ensure_index([("_id", 1), ("last_connection", 1)])
+    # - Mailchimp userbase.
+    self.__database.users.ensure_index([("_id", 1), ("os", 1)])
 
     #---------------------------------------------------------------------------
     # Devices

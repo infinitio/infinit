@@ -1,0 +1,17 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User, random_email
+
+with Meta(enable_invitations = True) as meta:
+  windows_list = "windows"
+  linux_list = "linux"
+  meta.invitation.add_list(linux_list, linux_list)
+  bob = User(meta, "bob@infinit.io")
+  bob.login(OS = linux_list)
+  res = meta.invitation.subscribed(email = bob.email,
+                                   list_name = linux_list)
+  assert res == True
+
+  res = meta.invitation.subscribed(email = bob.email,
+                                   list_name = windows_list)
+  assert res == False
