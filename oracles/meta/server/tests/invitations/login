@@ -15,3 +15,5 @@ with Meta(enable_invitations = True) as meta:
   res = meta.invitation.subscribed(email = bob.email,
                                    list_name = windows_list)
   assert res == False
+  bob.logout()
+  bob.login(OS = linux_list)
