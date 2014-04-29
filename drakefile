@@ -141,7 +141,10 @@ def configure(cxx_toolkit = None,
   ## ---- ##
 
   def copy_lib(lib, where = 'lib'):
-    return drake.copy(lib, where, lib.path().dirname())
+    if isinstance(lib, drake.cxx.StaticLib):
+      return lib
+    else:
+      return drake.copy(lib, where, lib.path().dirname())
 
   elle = drake.include('elle',
                        cxx_toolkit,
@@ -209,10 +212,13 @@ def configure(cxx_toolkit = None,
     valgrind = valgrind,
   )
 
-  metrics_lib = drake.copy(
-    metrics.lib, 'lib',
-    metrics.lib.name().dirname()
-  )
+  if cxx_toolkit.os is drake.os.windows:
+    metrics_lib = metrics.lib
+  else:
+    metrics_lib = drake.copy(
+      metrics.lib, 'lib',
+      strip_prefix = True,
+    )
 
   ## ------ ##
   ## Papier ##
@@ -435,12 +441,14 @@ def configure(cxx_toolkit = None,
     valgrind = valgrind,
   )
 
-  trophonius_client_lib = drake.copy(
-    oracles.trophonius.client.lib, 'lib',
-    oracles.trophonius.client.lib.name().dirname())
-  meta_client_lib = drake.copy(
-    oracles.meta.client.lib, 'lib',
-    oracles.meta.client.lib.name().dirname())
+  if cxx_toolkit.os is drake.os.windows:
+    trophonius_client_lib = oracles.trophonius.client.lib
+    meta_client_lib = oracles.meta.client.lib
+  else:
+    trophonius_client_lib = drake.copy(
+      oracles.trophonius.client.lib, 'lib', strip_prefix = True)
+    meta_client_lib = drake.copy(
+      oracles.meta.client.lib, 'lib', strip_prefix = True)
 
   # oracles_enabled = cxx_toolkit.os != drake.os.windows
 
