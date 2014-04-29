@@ -20,6 +20,7 @@ with Meta() as meta:
   throws(lambda: meta.post('user/register', {}), 400)
   throws(lambda: meta.post('user/5241b9d226b9f10fff8be391/connected'), 200)
   throws(lambda: meta.get('users', ''), 200)
+  throws(lambda: meta.post('user/change_password', {}), 400)
   throws(lambda: meta.get('user/email@email.com/view'), 200)
   throws(lambda: meta.get('user/5241b9d226b9f10fff8be391/view'), 200)
   throws(lambda: meta.get('user/from_handle/bob/view'), 200)
