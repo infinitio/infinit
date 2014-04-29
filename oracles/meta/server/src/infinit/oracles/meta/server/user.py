@@ -504,6 +504,40 @@ class Mixin:
       self.invitation.unsubscribe(new_email)
       return self.success({'new_email': new_email})
 
+  @api('/user/change_password', method = 'POST')
+  @require_logged_in
+  def change_password(self, old_password, new_password):
+    """
+    Change the user's password.
+    old_password -- the user's old password
+    new_password -- the user's new password
+    """
+    # Check that the user's passwords are of the correct form.
+    _validators = [
+      (old_password, regexp.PasswordValidator),
+      (new_password, regexp.PasswordValidator),
+    ]
+
+    for arg, validator in _validators:
+      res = validator(arg)
+      if res != 0:
+        return self.fail(res)
+
+    user = self.user
+    if user['password'] != hash_pasword(old_password):
+      return self.fail(error.PASSWORD_NOT_VALID)
+    # Invalidate credentials.
+    self.sessions.remove({'email': self.user['email'], 'device': ''})
+    # Kick them out of the app.
+    self.notifier.notify_some(
+      notifier.INVALID_CREDENTIALS,
+      recipient_ids = {self.user['_id']},
+      message = {'response_details': 'user password changed'})
+    self.database.users.find_and_modify(
+     {'_id': user['_id']},
+     {'$set': {'password': hash_pasword(new_password)}})
+    return self.success()
+
   ## ------ ##
   ## Delete ##
   ## ------ ##
