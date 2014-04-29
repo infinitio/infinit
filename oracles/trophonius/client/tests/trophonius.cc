@@ -85,7 +85,6 @@ public:
   }
 
   ELLE_ATTRIBUTE_RX(reactor::Signal, poked);
-  ELLE_ATTRIBUTE_RX(reactor::Signal, client_connected);
 
   ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::SSLCertificate>,
                  certificate);
@@ -351,7 +350,6 @@ protected:
              *this,
              elle::json::pretty_print(connect_msg));
     this->_login_response(socket);
-    reactor::wait(this->client_connected());
     this->_send_notification(socket, "hello");
   }
 };
@@ -380,7 +378,6 @@ ELLE_TEST_SCHEDULED(notification)
         reactor::wait(tropho.poked());
         client->connect("0", "0", "0");
         reactor::wait(client->connected());
-        tropho.client_connected().signal();
         for (int i = 0; i < reconnections; ++i)
         {
           ELLE_LOG("poll notifications");
@@ -396,7 +393,6 @@ ELLE_TEST_SCHEDULED(notification)
           reactor::wait(client->poked());
           tropho.poked().signal();
           reactor::wait(client->connected());
-          tropho.client_connected().signal();
         }
       });
       scope.run_background("poke server", [&]
@@ -440,7 +436,6 @@ protected:
              *this,
              elle::json::pretty_print(connect_msg));
     this->_login_response(socket);
-    reactor::wait(this->client_connected());
     ELLE_LOG("start serving ping");
     elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
     {
@@ -513,7 +508,6 @@ ELLE_TEST_SCHEDULED(ping)
       client->ping_period(period);
       client->connect("0", "0", "0");
       reactor::wait(client->connected());
-      tropho.client_connected().signal();
       reactor::sleep(run_time);
     });
     scope.wait(run_time);
@@ -746,7 +740,6 @@ ELLE_TEST_SCHEDULED(reconnection)
       reactor::wait(tropho.poked());
       ELLE_LOG("connect");
       client->connect("0", "0", "0");
-      tropho.client_connected().signal();
       ELLE_LOG("read notification 0");
       {
         auto notification =
