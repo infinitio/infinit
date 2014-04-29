@@ -814,16 +814,23 @@ class Mixin:
       ])
       return {'users': res['result']}
 
+  # Historically we used _id but we're moving to id. This function extracts
+  # fields for both cases.
   def extract_user_fields(self, user):
-    return {
-      '_id': user['_id'],
+    res = {
       'public_key': user.get('public_key', ''),
       'fullname': user.get('fullname', ''),
       'handle': user.get('handle', ''),
       'connected_devices': user.get('connected_devices', []),
-      'status': self._is_connected(user['_id']),
       'register_status': user.get('register_status'),
     }
+    if '_id' in user.keys():
+      res.update({'_id': user['_id'],
+                  'status': self._is_connected(user['_id'])})
+    else:
+      res.update({'id': user['id'],
+                  'status': self._is_connected(user['id'])})
+    return res
 
   @api('/user/<id_or_email>/view')
   def view(self, id_or_email):
@@ -903,10 +910,10 @@ class Mixin:
   def full_swaggers(self):
     user = self.user
     query = {'_id': {'$in': list(map(bson.ObjectId, user['swaggers'].keys()))}}
-    res = self.database.users.aggregate([
+    res = [self.extract_user_fields(user) for user in self.database.users.aggregate([
       {'$match': query},
       {'$project': self.user_public_fields},
-    ])['result']
+    ])['result']]
     return self.success({'swaggers': res})
 
 
