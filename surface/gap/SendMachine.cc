@@ -381,6 +381,13 @@ namespace surface
       // XXX: Ensure recipient is an id.
       this->peer_id(this->state().user(this->peer_id(), true).id);
 
+      auto const& peer = this->state().user(this->peer_id());
+
+      bool invitation = false;
+
+      if (peer.ghost())
+        invitation = true;
+
       if (this->state().metrics_reporter())
         this->state().metrics_reporter()->transaction_created(
           this->transaction_id(),
@@ -388,8 +395,8 @@ namespace surface
           this->peer_id(),
           this->data()->files.size(),
           size,
-          this->_message.length()
-          );
+          this->_message.length(),
+          invitation);
 
       // Populate the frete.
       this->frete().save_snapshot();
