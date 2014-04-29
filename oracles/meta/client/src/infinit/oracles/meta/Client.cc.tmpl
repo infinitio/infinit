@@ -14,6 +14,7 @@
 #include <elle/serialize/ListSerializer.hxx>
 #include <elle/serialize/MapSerializer.hxx>
 #include <elle/serialize/SetSerializer.hxx>
+#include <elle/system/platform.hh>
 
 #include <reactor/scheduler.hh>
 
@@ -321,6 +322,7 @@ namespace infinit
             {"email", email},
             {"password", password},
             {"device_id", struuid},
+            {"OS", elle::system::platform::name()},
          }};
 
         auto res = this->_request<LoginResponse>(
