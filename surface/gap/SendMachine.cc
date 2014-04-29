@@ -383,10 +383,10 @@ namespace surface
 
       auto const& peer = this->state().user(this->peer_id());
 
-      bool invitation = false;
+      bool ghost = false;
 
       if (peer.ghost())
-        invitation = true;
+        ghost = true;
 
       if (this->state().metrics_reporter())
         this->state().metrics_reporter()->transaction_created(
@@ -396,7 +396,7 @@ namespace surface
           this->data()->files.size(),
           size,
           this->_message.length(),
-          invitation);
+          ghost);
 
       // Populate the frete.
       this->frete().save_snapshot();

@@ -20,9 +20,9 @@ namespace infinit
       exit_reason,
       fail_reason,
       file_count,
+      ghost,
       how_ended,
       initialization_time,
-      invitation,
       message,
       message_length,
       metric_sender_id,
@@ -84,7 +84,7 @@ namespace infinit
                            int64_t file_count,
                            int64_t total_size,
                            uint32_t message_length,
-                           bool invitation);
+                           bool ghost);
 
       virtual
       void

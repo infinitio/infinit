@@ -60,7 +60,7 @@ namespace infinit
                                           int64_t file_count,
                                           int64_t total_size,
                                           uint32_t message_length,
-                                          bool invitation)
+                                          bool ghost)
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] =
@@ -71,7 +71,7 @@ namespace infinit
       data[this->_key_str(JSONKey::file_count)] = file_count;
       data[this->_key_str(JSONKey::total_size)] = total_size;
       data[this->_key_str(JSONKey::message_length)] = message_length;
-      data[this->_key_str(JSONKey::invitation)] = invitation;
+      data[this->_key_str(JSONKey::ghost)] = ghost;
 
       this->_send(this->_transaction_dest, data);
     }
@@ -289,12 +289,12 @@ namespace infinit
           return "fail_reason";
         case JSONKey::file_count:
           return "file_count";
+        case JSONKey::ghost:
+          return "ghost";
         case JSONKey::how_ended:
           return "how_ended";
         case JSONKey::initialization_time:
           return "initialization_time";
-        case JSONKey::invitation:
-          return "invitation";
         case JSONKey::message:
           return "message";
         case JSONKey::message_length:
