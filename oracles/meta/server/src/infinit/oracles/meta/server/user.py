@@ -166,7 +166,7 @@ class Mixin:
         # Because new is not set, find_and_modify will return the non modified user:
         # - os was not present.
         # - os was present but the os was not in the list.
-        if res is not None and 'os' not in res or OS not in res['os']:
+        if res is not None and ('os' not in res or OS not in res['os']):
           self.invitation.subscribe(list_name = OS,
                                     email = user['email'])
       else:
