@@ -22,7 +22,7 @@ ELLE_SERIALIZE_SIMPLE(papier::Identity,
     archive & elle::serialize::alive_pointer(value._pair);
 
   archive & value._id;
-  archive & value.name;
+  archive & value._description;
   archive & elle::serialize::alive_pointer(value._signature);
 }
 

@@ -4,6 +4,7 @@ import bottle
 import bson
 import uuid
 import elle.log
+import papier
 
 from .utils import api, require_logged_in, require_admin, hash_pasword, json_value
 from . import error, notifier, regexp, conf, invitation, mail
@@ -271,12 +272,11 @@ class Mixin:
 
       elle.log.trace('id: %s' % id)
 
-      import papier
       with elle.log.trace('generate identity'):
         identity, public_key = papier.generate_identity(
-          str(id),
-          email,
-          password,
+          str(id),  # Unique ID.
+          email,    # Description.
+          password, # Password.
           conf.INFINIT_AUTHORITY_PATH,
           conf.INFINIT_AUTHORITY_PASSWORD
           )

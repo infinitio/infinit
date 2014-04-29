@@ -18,9 +18,6 @@ namespace papier
   /// this class represents an identity issued by the Infinit authority
   /// which represents a user.
   ///
-  /// note that the name attribute is supposed to be unique as it plays the
-  /// role of identifier.
-  ///
   class Identity:
     public elle::concept::MakeFileable<Identity>,
     public elle::concept::MakeUniquable<Identity>
@@ -36,9 +33,11 @@ namespace papier
       };
 
   private:
+    // The unique identifier of the identity.
     ELLE_ATTRIBUTE_R(elle::String, id);
-  public: // XXX
-    elle::String                name;
+  public:
+    // The description of the identity. Cosmetic purpose only.
+    ELLE_ATTRIBUTE_R(elle::String, description);
   private: // XXX
     ELLE_ATTRIBUTE(cryptography::KeyPair*, pair);
     ELLE_ATTRIBUTE(cryptography::Signature*, signature);
@@ -64,17 +63,23 @@ namespace papier
     ~Identity();
 
   public:
-    elle::Status        Create(elle::String const&,
-                               const elle::String&,
-                               cryptography::KeyPair const&);
+    elle::Status
+    Create(elle::String const& id,
+           elle::String const& description,
+           cryptography::KeyPair const&);
 
-    elle::Status        Encrypt(const elle::String&);
-    elle::Status        Decrypt(const elle::String&);
+    elle::Status
+    Encrypt(const elle::String&);
+    elle::Status
+    Decrypt(const elle::String&);
 
-    elle::Status        Clear();
+    elle::Status
+    Clear();
 
-    elle::Status        Seal(papier::Authority const&);
-    elle::Status        Validate(papier::Authority const&) const;
+    elle::Status
+    Seal(papier::Authority const&);
+    elle::Status
+    Validate(papier::Authority const&) const;
 
   private:
 
@@ -83,7 +88,8 @@ namespace papier
     //
   public:
     // dumpable
-    elle::Status        Dump(const elle::Natural32 = 0) const;
+    elle::Status
+    Dump(const elle::Natural32 = 0) const;
 
     ELLE_SERIALIZE_FRIEND_FOR(Identity);
   };

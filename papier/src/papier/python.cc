@@ -45,7 +45,7 @@ static
 //std::tuple<std::string, std::string>
 boost::python::tuple
 identity(std::string const& id,
-         std::string const& login,
+         std::string const& description,
          std::string const& password,
          std::string const& authority_file,
          std::string const& authority_password)
@@ -56,10 +56,6 @@ identity(std::string const& id,
 
   elle::io::Path authority_path;
   papier::Identity identity;
-
-  // check the argument.
-  if (login.empty() == true)
-    throw std::runtime_error("unable to create a user without a user name");
 
   if (authority_path.Create(authority_file) == elle::Status::Error)
     throw std::runtime_error("unable to create authority path");
@@ -72,7 +68,7 @@ identity(std::string const& id,
     throw std::runtime_error("unable to decrypt the authority");
 
   // create the identity.
-  if (identity.Create(id, login, pair) == elle::Status::Error)
+  if (identity.Create(id, description, pair) == elle::Status::Error)
     throw std::runtime_error("unable to create the identity");
 
   // encrypt the identity.

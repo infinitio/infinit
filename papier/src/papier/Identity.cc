@@ -38,7 +38,7 @@ namespace papier
 
   Identity::Identity(Identity const& other):
     _id(other._id),
-    name(other.name),
+    _description(other._description),
     _pair(new cryptography::KeyPair{*other._pair}),
     _signature(new cryptography::Signature{*other._signature}),
     code(new cryptography::Code{*other.code})
@@ -63,11 +63,11 @@ namespace papier
   ///
   elle::Status
   Identity::Create(elle::String const& user_id,
-                   const elle::String& user_name,
+                   const elle::String& description,
                    cryptography::KeyPair const& pair)
   {
     this->_id = user_id;
-    this->name = user_name;
+    this->_description = description;
 
     delete this->_pair;
     this->_pair = nullptr;
@@ -146,7 +146,7 @@ namespace papier
     this->_signature = nullptr;
     this->_signature = new cryptography::Signature{
       authority.k().sign(
-        elle::serialize::make_tuple(this->_id, this->name, *this->code))};
+        elle::serialize::make_tuple(this->_id, this->_description, *this->code))};
 
     return elle::Status::Ok;
   }
@@ -168,7 +168,7 @@ namespace papier
     if (authority.K().verify(
           *this->_signature,
           elle::serialize::make_tuple(this->_id,
-                                      this->name,
+                                      this->_description,
                                       *this->code)) == false)
       throw elle::Exception("unable to verify the signature");
 
@@ -192,9 +192,9 @@ namespace papier
     std::cout << alignment << elle::io::Dumpable::Shift
               << "[Id] " << this->_id << std::endl;
 
-    // dump the name.
+    // dump the description.
     std::cout << alignment << elle::io::Dumpable::Shift
-              << "[Name] " << this->name << std::endl;
+              << "[Description] " << this->_description << std::endl;
 
     // dump the pair.
     if (this->_pair != nullptr)
