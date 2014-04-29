@@ -533,9 +533,25 @@ class Mixin:
       notifier.INVALID_CREDENTIALS,
       recipient_ids = {self.user['_id']},
       message = {'response_details': 'user password changed'})
+    self.logout()
+    # Cancel transactions as identity will change.
+    self.cancel_transactions(user)
+
+    with elle.log.trace('generate identity'):
+      identity, public_key = papier.generate_identity(
+        str(user['_id']),  # Unique ID.
+        user['email'],    # Description.
+        new_password,     # Password.
+        conf.INFINIT_AUTHORITY_PATH,
+        conf.INFINIT_AUTHORITY_PASSWORD
+      )
+
     self.database.users.find_and_modify(
      {'_id': user['_id']},
-     {'$set': {'password': hash_pasword(new_password)}})
+     {'$set': {
+      'password': hash_pasword(new_password),
+      'identity': identity,
+      'public_key': public_key}})
     return self.success()
 
   ## ------ ##
