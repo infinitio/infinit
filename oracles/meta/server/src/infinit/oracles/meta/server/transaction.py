@@ -457,6 +457,8 @@ class Mixin:
         user = self.user
       if user is None:
         raise error.Error(error.UNKNOWN_USER)
+      device_id = device_id or str(self.current_device['id'])
+
       transaction = self.transaction(bson.ObjectId(transaction_id), owner_id = user['_id'])
       elle.log.debug("transaction: %s" % transaction)
       is_sender = self.is_sender(transaction, user['_id'], device_id)

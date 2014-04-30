@@ -144,7 +144,7 @@ namespace surface
       | Atttributes |
       `------------*/
       ELLE_ATTRIBUTE_R(uint32_t, id);
-      ELLE_ATTRIBUTE_R(uint32_t, sender);
+      ELLE_ATTRIBUTE_R(bool, sender);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
     protected:
       std::unique_ptr<TransactionMachine> _machine;
@@ -156,9 +156,6 @@ namespace surface
     public:
       bool
       concerns_user(std::string const& peer_id) const;
-
-      bool
-      is_sender(std::string const& user_id) const;
 
       bool
       concerns_device(std::string const& device_id) const;

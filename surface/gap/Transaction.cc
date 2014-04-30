@@ -417,7 +417,7 @@ namespace surface
       // XXX: There is no way to know if you are the sender or the recipient
       // because state is not accessible from transaction.
       // So we assume that the notification CAN'T be our own status.
-      bool is_sender = this->is_sender(update.user_id);
+      bool is_sender = this->sender();
       if (!is_sender && this->_data->recipient_device_id.empty())
       {
         // Transaction has not recipient device id set (transaction is not
@@ -450,12 +450,6 @@ namespace surface
     {
       return this->_data->sender_id == peer_id ||
              this->_data->recipient_id == peer_id;
-    }
-
-    bool
-    Transaction::is_sender(std::string const& user_id) const
-    {
-      return this->concerns_user(user_id) && this->_data->sender_id == user_id;
     }
 
     bool
