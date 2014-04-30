@@ -535,7 +535,7 @@ def configure(cxx_toolkit = None,
     gap_cxx_config_libs.lib('ws2_32')
     gap_cxx_config_libs.lib('gdi32')
     gap_cxx_config_libs.lib('mswsock')
-  gap_lib = drake.cxx.DynLib(
+  gap_lib = Library(
     'lib/gap',
     gap_sources + [
       aws_lib,
