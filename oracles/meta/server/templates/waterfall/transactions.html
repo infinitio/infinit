@@ -73,7 +73,7 @@ def plural(word, c):
         <span class="total_count">${day['count']}</span> <span class="total_size">${size(day['size'], False)}</span>
       </h2>
 
-        %for transaction in sorted(day['transactions'], key = lambda transaction: transaction['size'], reverse = True):
+        %for transaction in sorted(day['transactions'], key = lambda transaction: transaction['time'], reverse = True):
           <div class="transaction">
 
             <div class="summary">
