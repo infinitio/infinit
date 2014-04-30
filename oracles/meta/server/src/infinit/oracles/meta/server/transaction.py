@@ -457,7 +457,10 @@ class Mixin:
         user = self.user
       if user is None:
         raise error.Error(error.UNKNOWN_USER)
-      device_id = device_id or str(self.current_device['id'])
+
+      # current_device is None if we do a delete user / reset account.
+      if self.current_device is not None and device_id is None:
+        device_id = str(self.current_device['id'])
 
       transaction = self.transaction(bson.ObjectId(transaction_id), owner_id = user['_id'])
       elle.log.debug("transaction: %s" % transaction)
@@ -632,31 +635,35 @@ class Mixin:
     return self.success()
 
   def __notify_reachability(self, transaction):
-    # The None check is required because of old transactions in the
-    # database where the endpoints of disconnected users where set to
-    # null instead of removed.
-    if len(transaction['nodes']) == 2 and list(transaction['nodes'].values()).count(None) == 0:
-      def notify(transaction, notified, other):
-        key = self.__user_key(
-          transaction['%s_id' % other],
-          uuid.UUID(transaction['%s_device_id' % other]))
-        endpoints = transaction['nodes'][key]
-        destination = set((transaction['%s_device_id' % notified],))
-        device_ids = (transaction['%s_device_id' % notified],
-                      transaction['%s_device_id' % other])
-        message = {
-          'transaction_id': str(transaction['_id']),
-          'peer_endpoints': endpoints,
-          'devices': list(map(str, device_ids)),
-          'status': True,
-        }
-        self.notifier.notify_some(
-          notifier.PEER_CONNECTION_UPDATE,
-          device_ids = destination,
-          message = message,
-        )
-      notify(transaction, 'sender', 'recipient')
-      notify(transaction, 'recipient', 'sender')
+    with elle.log.trace("notify reachability for transaction %s" % transaction['_id']):
+      # The None check is required because of old transactions in the
+      # database where the endpoints of disconnected users where set to
+      # null instead of removed.
+      if len(transaction['nodes']) == 2 and list(transaction['nodes'].values()).count(None) == 0:
+        elle.log.trace("both nodes connected: %s" % transaction['nodes'])
+        def notify(transaction, notified, other):
+          key = self.__user_key(
+            transaction['%s_id' % other],
+            uuid.UUID(transaction['%s_device_id' % other]))
+          endpoints = transaction['nodes'][key]
+          destination = set((transaction['%s_device_id' % notified],))
+          device_ids = (transaction['%s_device_id' % notified],
+                        transaction['%s_device_id' % other])
+          message = {
+            'transaction_id': str(transaction['_id']),
+            'peer_endpoints': endpoints,
+            'devices': list(map(str, device_ids)),
+            'status': True,
+          }
+          self.notifier.notify_some(
+            notifier.PEER_CONNECTION_UPDATE,
+            device_ids = destination,
+            message = message,
+          )
+        notify(transaction, 'sender', 'recipient')
+        notify(transaction, 'recipient', 'sender')
+      else:
+        elle.log.trace("only one node connected: %s" % transaction['nodes'])
 
   @api('/transaction/connect_device', method = "POST")
   @require_logged_in
