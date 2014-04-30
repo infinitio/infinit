@@ -65,7 +65,6 @@ class Waterfall:
                              groups = [],
                              users = [],
                              status = None):
-    print('LOL')
     if start is None:
       start = datetime.date.today() - datetime.timedelta(7)
     match = {'$gte': calendar.timegm(start.timetuple())}
@@ -152,7 +151,6 @@ class Waterfall:
                                  groups : json_value = [],
                                  users : json_value = [],
                                  status = None,):
-    print('PRELOL')
     data = self.waterfall_transactions(start = start,
                                        end = end,
                                        groups = groups,
