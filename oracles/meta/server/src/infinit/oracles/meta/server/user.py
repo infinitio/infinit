@@ -557,7 +557,7 @@ class Mixin:
   ## ------ ##
   ## Delete ##
   ## ------ ##
-  @api('/user', method='DELETE')
+  @api('/user', method = 'DELETE')
   @require_logged_in
   def delete_user(self):
     """The idea is to just keep the user's id and fullname so that transactions
@@ -1147,8 +1147,8 @@ class Mixin:
   @api('/user/<id>/avatar')
   def get_avatar(self,
                  id: bson.ObjectId,
-                 date: int = 0):
-    print(id)
+                 date: int = 0,
+                 no_place_holder: bool = False):
     user = self._user_by_id(id, ensure_existence = False)
     image = user and user.get('avatar')
     if image:
@@ -1156,9 +1156,11 @@ class Mixin:
       response.content_type = 'image/png'
       return bytes(image)
     else:
-      # Otherwise return the default avatar
-      from bottle import static_file
-      return static_file('place_holder_avatar.png', root = os.path.dirname(__file__), mimetype = 'image/png')
+      if no_place_holder:
+        return self.not_found()
+      else: # Return the default avatar for backwards compatibility.
+        from bottle import static_file
+        return static_file('place_holder_avatar.png', root = os.path.dirname(__file__), mimetype = 'image/png')
 
   @api('/user/avatar', method = 'POST')
   @require_logged_in
