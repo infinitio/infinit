@@ -763,6 +763,7 @@ def configure(cxx_toolkit = None,
     application = drake.include('fist-gui-qt',
                                 cxx_toolkit = cxx_toolkit,
                                 cxx_config = fist_cxx_config,
+                                boost = boost,
                                 qt = qt,
                                 prefix = prefix,
                                 libraries = libraries)
