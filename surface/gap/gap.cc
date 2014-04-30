@@ -99,8 +99,16 @@ gap_null()
 
 void gap_free(gap_State* state)
 {
-  delete state;
-  ELLE_LOG("State successfully destroyed");
+  if (state == nullptr)
+  {
+    ELLE_WARN("State already destroyed");
+  }
+  else
+  {
+    delete state;
+    state = nullptr;
+    ELLE_LOG("State successfully destroyed");
+  }
 }
 
 void gap_enable_debug(gap_State* state)
