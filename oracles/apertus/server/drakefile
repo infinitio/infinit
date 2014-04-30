@@ -52,13 +52,13 @@ def configure(elle,
                         'lib', strip_prefix = True)
 
   protocol_lib = drake.copy(protocol.lib_dynamic, 'lib',
-                            protocol.lib_dynamic.name().dirname())
+                            strip_prefix = True)
 
   reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
-                           reactor.lib_dynamic.name().dirname())
+                           strip_prefix = True)
 
   elle_lib = drake.copy(elle.elle.lib_dynamic, 'lib',
-                        elle.elle.lib_dynamic.name().dirname())
+                        strip_prefix = True)
 
   meta_client_lib = drake.copy(meta_client.lib, 'lib', strip_prefix = True)
 
