@@ -297,7 +297,7 @@ namespace surface
         auto res = compare<std::string>(old_user.connected_devices,
                                         user.connected_devices);
 
-        ELLE_DEBUG("%s: %s newly connected device(s)", this, res.first.size())
+        ELLE_TRACE("%s: %s newly connected device(s): %s", this, res.first.size(), res.first)
           for (auto const& device: res.first)
           {
             ELLE_DEBUG("%s: updating device %s", *this, device);
@@ -314,8 +314,8 @@ namespace surface
             this->handle_notification(std::move(notif));
           }
 
-        ELLE_DEBUG("%s: %s disconnected device(s)", this, res.first.size())
-          for (auto const& device: res.first)
+        ELLE_TRACE("%s: %s disconnected device(s): %s", this, res.second.size(), res.second)
+          for (auto const& device: res.second)
           {
             ELLE_DEBUG("%s: updating device %s", *this, device);
             auto* notif_ptr = new infinit::oracles::trophonius::UserStatusNotification{};
@@ -524,7 +524,6 @@ namespace surface
         ELLE_ASSERT(!swagger.ghost());
       }
       this->swaggers(); // force up-to-date swaggers
-
       {
         reactor::Lock lock(this->_swagger_mutex);
         this->_swagger_indexes.insert(this->_user_indexes.at(swagger.id));
