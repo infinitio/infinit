@@ -31,7 +31,7 @@ class Mixin:
     assert isinstance(owner_id, bson.ObjectId)
     if transaction['recipient_id'] != owner_id:
       return False
-    if device_id is None or len(transaction['recipient_device_id']) == 0:
+    if device_id is None:
       return True
     return transaction['recipient_device_id'] == str(device_id)
 
@@ -463,13 +463,7 @@ class Mixin:
 
       transaction = self.transaction(bson.ObjectId(transaction_id), owner_id = user['_id'])
       elle.log.debug("transaction: %s" % transaction)
-      is_sender = self.is_sender(transaction, user['_id'], device_id)
-      is_recipient = self.is_recipient(transaction, user['_id'], device_id)
-
-      if not (is_sender or is_recipient):
-        elle.log.warn('nor the sender or the recipient')
-        return self.fail(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
-
+      is_sender = self.is_sender(transaction, user['_id'])
       elle.log.debug("%s" % is_sender and "sender" or "recipient")
       if status not in transaction_status.transitions[transaction['status']][is_sender]:
         raise error.Error(
@@ -732,51 +726,45 @@ class Mixin:
                 ):
     """
     Return ip port for a selected node.
-
     device_id -- the id of the device to get ips.
     self_device_id -- the id of your device.
     """
-    try:
-      user = self.user
-      assert str(self_device_id) == self.current_device['id']
+    user = self.user
 
-      transaction = self.transaction(transaction_id, owner_id = user['_id'])
+    transaction = self.transaction(transaction_id, owner_id = user['_id'])
+    is_sender = self.is_sender(transaction, user['_id'])
 
-      # XXX: Ugly.
-      if self.is_sender(transaction, user['_id'], self_device_id):
-        self_key = self.__user_key(transaction['sender_id'], self_device_id)
-        peer_key = self.__user_key(transaction['recipient_id'], device_id)
-      elif self.is_recipient(transaction, user['_id'], self_device_id):
-        self_key = self.__user_key(transaction['recipient_id'], self_device_id)
-        peer_key = self.__user_key(transaction['sender_id'], device_id)
-      else:
-        self.forbidden()
+    # XXX: Ugly.
+    if is_sender:
+      self_key = self.__user_key(transaction['sender_id'], self_device_id)
+      peer_key = self.__user_key(transaction['recipient_id'], device_id)
+    else:
+      self_key = self.__user_key(transaction['recipient_id'], self_device_id)
+      peer_key = self.__user_key(transaction['sender_id'], device_id)
 
-      if (not self_key in transaction['nodes'].keys()) or (not transaction['nodes'][self_key]):
-        return self.fail(error.DEVICE_NOT_FOUND, "you are not not connected to this transaction")
+    if (not self_key in transaction['nodes'].keys()) or (not transaction['nodes'][self_key]):
+      return self.fail(error.DEVICE_NOT_FOUND, "you are not not connected to this transaction")
 
-      if (not peer_key in transaction['nodes'].keys()) or (not transaction['nodes'][peer_key]):
-        return self.fail(error.DEVICE_NOT_FOUND, "This user is not connected to this transaction")
+    if (not peer_key in transaction['nodes'].keys()) or (not transaction['nodes'][peer_key]):
+      return self.fail(error.DEVICE_NOT_FOUND, "This user is not connected to this transaction")
 
-      res = dict();
+    res = dict();
 
-      addrs = {'locals': list(), 'externals': list()}
-      peer_node = transaction['nodes'][peer_key]
+    addrs = {'locals': list(), 'externals': list()}
+    peer_node = transaction['nodes'][peer_key]
 
-      for addr_kind in ['locals', 'externals']:
-        for a in peer_node[addr_kind]:
-          if a and a["ip"] and a["port"]:
-            addrs[addr_kind].append(
-              (a["ip"], str(a["port"])))
+    for addr_kind in ['locals', 'externals']:
+      for a in peer_node[addr_kind]:
+        if a and a["ip"] and a["port"]:
+          addrs[addr_kind].append(
+            (a["ip"], str(a["port"])))
 
-      res['externals'] = ["{}:{}".format(*a) for a in addrs['externals']]
-      res['locals'] =  ["{}:{}".format(*a) for a in addrs['locals']]
-      # XXX: Remove when apertus is ready.
-      res['fallback'] = ["88.190.48.55:9899"]
+    res['externals'] = ["{}:{}".format(*a) for a in addrs['externals']]
+    res['locals'] =  ["{}:{}".format(*a) for a in addrs['locals']]
+    # XXX: Remove when apertus is ready.
+    res['fallback'] = ["88.190.48.55:9899"]
 
-      return self.success(res)
-    except error.Error as e:
-      return self.fail(*e.args)
+    return self.success(res)
 
   @api('/transaction/<transaction_id>/cloud_buffer')
   @require_logged_in

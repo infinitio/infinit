@@ -38,9 +38,7 @@ class Mixin:
   def current_device(self):
     device = bottle.request.session.get('device')
     if device is not None:
-      assert isinstance(device, bson.ObjectId)
-      return self.database.devices.find_one({'_id': device})
-    return None
+      return self.device(device)
 
   @api('/devices')
   @require_logged_in
@@ -94,8 +92,7 @@ class Mixin:
     device = self.database.devices.find_one(query)
     assert device is not None
     # XXX check unique device ?
-    self.database.users.find_and_modify({ '_id': owner['_id'] },
-                                        { '$addToSet': { 'devices': str(id) } })
+    self.database.users.find_and_modify({'_id': owner['_id']}, {'$addToSet': {'devices': str(id)}})
     return device
 
   @api('/device/create', method="POST")
