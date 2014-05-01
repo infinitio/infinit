@@ -457,7 +457,6 @@ class Mixin:
         user = self.user
       if user is None:
         raise error.Error(error.UNKNOWN_USER)
-
       # current_device is None if we do a delete user / reset account.
       if self.current_device is not None and device_id is None:
         device_id = str(self.current_device['id'])
