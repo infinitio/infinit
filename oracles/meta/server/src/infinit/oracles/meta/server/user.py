@@ -1306,7 +1306,7 @@ class Mixin:
     unsubscribed = user.get('unsubscriptions', [])
     return {k: {'status': not k in unsubscribed, 'pretty': mail.subscriptions[k]} for k in mail.subscriptions.keys()}
 
-  @api('/user/mail_subscriptions', method = 'GET')
+  @api('/user/email_subscriptions', method = 'GET')
   @require_logged_in
   def mail_subscriptions(self):
     """
@@ -1315,11 +1315,11 @@ class Mixin:
     user = self.user
     return self.success({"subscriptions": self.__subscriptions(user)})
 
-  def has_email_subscribtion(self, user, name):
+  def has_email_subscription(self, user, name):
     subscription = mail.subscription_name(name)
     return subscription not in user.get('unsubscriptions', [])
 
-  @api('/user/mail_subscription/<name>', method = 'GET')
+  @api('/user/email_subscription/<name>', method = 'GET')
   @require_logged_in
   def get_mail_subscription(self, name):
     """
@@ -1329,7 +1329,7 @@ class Mixin:
     """
     try:
       user = self.user
-      return self.success({name: self.has_email_subscribtion(user, name)})
+      return self.success({name: self.has_email_subscription(user, name)})
     except mail.EmailSubscriptionNotFound as e:
       self.not_found()
 
@@ -1361,14 +1361,13 @@ class Mixin:
                                upsert = False)
 
   # Remove.
-  @api('/user/mail_subscription/<name>', method = 'DELETE')
+  @api('/user/email_subscription/<name>', method = 'DELETE')
   @require_logged_in
   def delete_mail_subscription_logged(self, name):
     """
-    Remove a specify subscription.
+    Remove a specific subscription.
 
     name -- The name of the subscription to edit.
-    value -- The status wanted for the subscription.
     """
     user = self.user
     with elle.log.debug('unsubscribe %s from %s emails' % (user['email'], name)):
@@ -1382,14 +1381,13 @@ class Mixin:
 
 
   # Restore.
-  @api('/user/mail_subscription/<name>', method = 'PUT')
+  @api('/user/email_subscription/<name>', method = 'PUT')
   @require_logged_in
   def restore_mail_subscription(self, name):
     """
-    Restore a specify subscription.
+    Restore a specific subscription.
 
     name -- The name of the subscription to edit.
-    value -- The status wanted for the subscription.
     """
     user = self.user
     with elle.log.debug('restore %s subscription from %s emails' % (user['email'], name)):
@@ -1403,7 +1401,7 @@ class Mixin:
 
 
   # Remove.
-  @api('/user/<hash>/mail_subscription/<name>', method = 'DELETE')
+  @api('/user/<hash>/email_subscription/<name>', method = 'DELETE')
   def delete_mail_subscription(self, hash, name):
     """
     Restore a specify subscription.
@@ -1421,16 +1419,21 @@ class Mixin:
         self.not_found()
     return self.success()
 
-  @api('/user/mail_subscriptions', method = 'PUT')
+  @api('/user/email_subscriptions', method = 'POST')
   @require_logged_in
   def change_mail_subscriptions(self,
-                                filter: json_value):
-    user = self.user
-    filter = isinstance(filter, str) and [filter] or filter
-    subscriptions = list(map(lambda x: mail.subscription_name(str(x)), filter))
-    self.__set_subscription(user, [x for x in mail.subscriptions.keys() \
-                                   if x not in subscriptions])
-    return self.success()
+                                subscriptions):
+    try:
+      user = self.user
+      if subscriptions is None:
+        subscriptions = []
+      subscriptions = isinstance(subscriptions, (str)) and [subscriptions] or subscriptions
+      subscriptions = list(map(lambda x: mail.subscription_name(str(x)), subscriptions))
+      self.__set_subscription(user, [x for x in mail.subscriptions.keys() \
+                                     if x not in subscriptions])
+      return self.success()
+    except mail.EmailSubscriptionNotFound as e:
+        self.not_found()
 
   ## ----- ##
   ## Debug ##

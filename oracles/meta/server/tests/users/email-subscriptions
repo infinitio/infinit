@@ -21,11 +21,11 @@ with Meta(enable_emails = True,
   meta.mailer.sent == 1
 
   bob.login()
-  res = bob.get('user/mail_subscription/accept-file-only-offline')
+  res = bob.get('user/email_subscription/accept-file-only-offline')
   assert res['success']
   assert res['accept-file-only-offline']
 
-  res = bob.delete('user/mail_subscription/accept-file-only-offline')
+  res = bob.delete('user/email_subscription/accept-file-only-offline')
   assert res['success']
   assert res['accept-file-only-offline'] == False
 
@@ -36,7 +36,7 @@ with Meta(enable_emails = True,
   meta.mailer.sent == 1
   bob.login()
 
-  res = bob.put('user/mail_subscription/accept-file-only-offline')
+  res = bob.put('user/email_subscription/accept-file-only-offline')
   assert res['success']
   assert res['accept-file-only-offline'] == True
 
@@ -49,17 +49,38 @@ with Meta(enable_emails = True,
   meta.mailer.sent == 2
 
   bob.login()
-  res = bob.get('user/mail_subscriptions')
+  res = bob.get('user/email_subscriptions')
   assert res['success']
   subscriptions = res['subscriptions']
+  subscription_names = list(subscriptions.keys())
 
   assert list(map(lambda x: x['status'], subscriptions.values())).count(False) == 0
 
   for sub in subscriptions.keys():
-    res = bob.delete('user/mail_subscription/%s' % sub)
+    res = bob.delete('user/email_subscription/%s' % sub)
     assert res['success']
 
-  res = bob.get('user/mail_subscriptions')
+  res = bob.get('user/email_subscriptions')
   assert res['success']
   subscriptions = res['subscriptions']
+  assert list(map(lambda x: x['status'], subscriptions.values())).count(True) == 0
+
+  res = bob.post('user/email_subscriptions?subscriptions=%s' % subscription_names[0])
+  assert res['success']
+  subscriptions = bob.get('user/email_subscriptions')['subscriptions']
+  assert list(map(lambda x: x['status'], subscriptions.values())).count(True) == 1
+
+  res = bob.post('user/email_subscriptions', {'subscriptions': subscription_names[0]})
+  assert res['success']
+  subscriptions = bob.get('user/email_subscriptions')['subscriptions']
+  assert list(map(lambda x: x['status'], subscriptions.values())).count(True) == 1
+
+  res = bob.post('user/email_subscriptions', {'subscriptions': subscription_names})
+  assert res['success']
+  subscriptions = bob.get('user/email_subscriptions')['subscriptions']
+  assert list(map(lambda x: x['status'], subscriptions.values())).count(False) == 0
+
+  res = bob.post('user/email_subscriptions', {'subscriptions': None})
+  assert res['success']
+  subscriptions = bob.get('user/email_subscriptions')['subscriptions']
   assert list(map(lambda x: x['status'], subscriptions.values())).count(True) == 0
