@@ -1,8 +1,19 @@
 #!/usr/bin/env python3
 
-from utils import Meta, User, NoOpMailer
+from utils import Meta, User, NoOpMailer, HTTPException
 
 from infinit.oracles.meta.server.transaction_status import FINISHED
+from bson.objectid import ObjectId
+
+def throws(f, status):
+  assert isinstance(status, int)
+  try:
+    f()
+    assert status == 200
+  except HTTPException as e:
+    if status != 200:
+      assert isinstance(e.status, int)
+      assert e.status == status
 
 class MailService(NoOpMailer):
 
@@ -16,15 +27,17 @@ class MailService(NoOpMailer):
     print(template_name, message)
     for entry in message['merge_vars'][0]['vars']:
       merges[entry['name']] = entry['content']
+    assert 'filename' in merges.keys()
+    assert 'sendername' in merges.keys()
     assert 'note' in merges.keys()
-    assert 'file_url' in merges.keys()
-    assert 'file_url_urlencoded' in merges.keys()
+    assert 'transaction_hash' in merges.keys()
     assert message['to'][0]['email'] == self.__recipient_email
 
 with Meta() as meta:
   bob = User(meta, "bob@infinit.io")
   bob.login()
 
+  # Send something to a ghost user.
   alice_email = 'alice@infinit.io'
   transaction, res = bob.sendfile(recipient_id = alice_email,
                                   initialize = True)
@@ -35,9 +48,25 @@ with Meta() as meta:
                             recipient_email = alice_email)
   assert meta.mailer.sent == 0
 
+  # Finish transaction.
   res = bob.post('transaction/update', {"transaction_id": transaction_id,
                                         "status": FINISHED,
                                         "device_id": str(bob.device_id),
                                         "device_name": bob.device_name})
   assert res['success']
   assert meta.mailer.sent > 0
+
+  # Check that sending a hash that's not real gives a 404.
+  throws(lambda: meta.get('transaction/by_hash/%s' % ('0' * 64)), 404)
+
+  # Fetch the hash from the DB and check Meta's return.
+  db_transaction = \
+    meta.database.transactions.find_one({'_id': ObjectId(transaction_id)})
+  res = meta.get('transaction/by_hash/%s' % db_transaction['transaction_hash'])
+  assert res['success']
+  assert res['sender_id'] == bob.id
+  assert res['sender_fullname'] == bob.fullname
+  assert res['recipient_id']
+  assert res['download_link']
+  assert res['message'] == 'no message'
+  assert len(res['files']) == 3
