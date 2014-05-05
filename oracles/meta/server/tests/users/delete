@@ -4,9 +4,9 @@ import papier
 
 from bson.objectid import ObjectId
 from infinit.oracles.meta.server.transaction_status import CANCELED
-from utils import Meta, Trophonius, User
+from utils import Meta, User
 
-with Meta(force_admin = True) as meta, Trophonius(meta) as trophonius:
+with Meta(force_admin = True) as meta:
 
   def _favorite_and_swagger(user, other_user):
     res = user.post('user/favorite', {'user_id': other_user.id})
