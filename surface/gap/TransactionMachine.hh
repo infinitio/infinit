@@ -326,11 +326,6 @@ namespace surface
       bool
       is_sender() const = 0;
 
-    public:
-      virtual
-      std::string
-      type() const;
-
     protected:
       virtual
       std::unique_ptr<frete::RPCFrete>

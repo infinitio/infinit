@@ -1,6 +1,7 @@
 #include <functional>
 #include <sstream>
 
+#include <elle/Backtrace.hh>
 #include <elle/container/list.hh>
 #include <elle/container/set.hh>
 #include <elle/network/Interface.hh>
@@ -597,20 +598,15 @@ namespace surface
     | Printable |
     `----------*/
 
-    std::string
-    TransactionMachine::type() const
-    {
-      return "TransactionMachine";
-    }
-
     void
     TransactionMachine::print(std::ostream& stream) const
     {
       auto const& data = *this->_data;
       auto const& me = this->state().me();
 
-      stream << this->type() << "(id=" << this->id()
-             << ", (u=" << me.id;
+      stream << elle::demangle(typeid(*this).name())
+             << "(id=" << this->id() << ", "
+             << "(u=" << me.id;
       if (!data.id.empty())
         stream << ", t=" << data.id;
       stream << ")";

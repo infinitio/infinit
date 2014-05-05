@@ -1120,12 +1120,6 @@ namespace surface
         << *this->_snapshot;
     }
 
-    std::string
-    ReceiveMachine::type() const
-    {
-      return "ReceiveMachine";
-    }
-
     void
     ReceiveMachine::cleanup()
     { // our _get knows when it's finished, nothing to do

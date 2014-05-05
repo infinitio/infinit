@@ -1002,12 +1002,6 @@ namespace surface
     | Printable |
     `----------*/
 
-    std::string
-    SendMachine::type() const
-    {
-      return "SendMachine";
-    }
-
     void
     SendMachine::cleanup()
     {

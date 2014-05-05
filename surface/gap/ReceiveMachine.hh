@@ -115,13 +115,6 @@ namespace surface
         return false;
       }
 
-    /*----------.
-    | Printable |
-    `----------*/
-    public:
-      std::string
-      type() const override;
-
     /*---------.
     | Transfer |
     `---------*/

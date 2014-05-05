@@ -113,12 +113,9 @@ namespace surface
     private:
       std::unique_ptr<frete::RPCFrete>
       rpcs(infinit::protocol::ChanneledStream& channels) override;
-    public:
-      /*----------.
-      | Printable |
-      `----------*/
-      std::string
-      type() const override;
+    /*----------.
+    | Printable |
+    `----------*/
     protected:
       virtual
       void cleanup () override;
