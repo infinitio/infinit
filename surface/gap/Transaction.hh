@@ -67,7 +67,7 @@ namespace surface
 
       Transaction(State const& state,
                   uint32_t id,
-                  TransactionMachine::Snapshot data);
+                  TransactionMachine::OldSnapshot data);
 
       Transaction(Transaction&&) = default;
 

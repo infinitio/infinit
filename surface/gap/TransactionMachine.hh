@@ -66,17 +66,33 @@ namespace surface
         None = 99,
       };
 
+    // /*---------.
+    // | Snapshot |
+    // `---------*/
+    // public:
+    //   class Snapshot
+    //     : public elle::Printable
+    //   {
+    //   public:
+    //     Snapshot(TransactionMachine const&);
+
+    //     ELLE_ATTRIBUTE_R(Data, data);
+    //   };
+
+    /*------------.
+    | OldSnapshot |
+    `------------*/
     public:
-      class Snapshot:
+      class OldSnapshot:
         public elle::Printable
       {
       public:
-        Snapshot(Data const& data,
-                 State const state,
-                 std::unordered_set<std::string> const& files = {},
-                 std::string const& message = "");
+        OldSnapshot(Data const& data,
+                    State const state,
+                    std::unordered_set<std::string> const& files = {},
+                    std::string const& message = "");
 
-        ELLE_SERIALIZE_CONSTRUCT(Snapshot){}
+        ELLE_SERIALIZE_CONSTRUCT(OldSnapshot){}
 
       public:
         Data data;
@@ -107,7 +123,7 @@ namespace surface
 
     protected:
       virtual
-      Snapshot
+      OldSnapshot
       _make_snapshot() const;
       virtual
       void

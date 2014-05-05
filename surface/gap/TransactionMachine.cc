@@ -36,7 +36,7 @@ namespace surface
 {
   namespace gap
   {
-    TransactionMachine::Snapshot::Snapshot(
+    TransactionMachine::OldSnapshot::OldSnapshot(
       Data const& data,
       State const state,
       std::unordered_set<std::string> const& files,
@@ -48,9 +48,9 @@ namespace surface
     {}
 
     void
-    TransactionMachine::Snapshot::print(std::ostream& stream) const
+    TransactionMachine::OldSnapshot::print(std::ostream& stream) const
     {
-      stream << "Snapshot(" << this->data << ")";
+      stream << "OldSnapshot(" << this->data << ")";
     }
 
     //---------- TransactionMachine -----------------------------------------------
@@ -166,10 +166,10 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: destroying transaction machine", *this);
     }
 
-    TransactionMachine::Snapshot
+    TransactionMachine::OldSnapshot
     TransactionMachine::_make_snapshot() const
     {
-      return Snapshot{*this->data(), this->_current_state};
+      return OldSnapshot{*this->data(), this->_current_state};
     }
 
     void

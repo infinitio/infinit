@@ -139,10 +139,13 @@ namespace surface
       this->_stop();
     }
 
-    SendMachine::Snapshot
+    SendMachine::OldSnapshot
     SendMachine::_make_snapshot() const
     {
-      return Snapshot{*this->data(), this->_current_state, this->_files, this->_message};
+      return OldSnapshot(*this->data(),
+                         this->_current_state,
+                         this->_files,
+                         this->_message);
     }
 
     SendMachine::SendMachine(surface::gap::State const& state,

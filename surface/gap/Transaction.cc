@@ -143,7 +143,7 @@ namespace surface
 
     Transaction::Transaction(State const& state,
                              uint32_t id,
-                             TransactionMachine::Snapshot snapshot):
+                             TransactionMachine::OldSnapshot snapshot):
       _id(id),
       _sender(state.me().id == snapshot.data.sender_id &&
               state.device().id == snapshot.data.sender_device_id),

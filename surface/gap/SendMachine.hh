@@ -52,7 +52,7 @@ namespace surface
                   boost::filesystem::path const& path,
                   bool);
 
-      Snapshot
+      OldSnapshot
       _make_snapshot() const override;
 
     private:

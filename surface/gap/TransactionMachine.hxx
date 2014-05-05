@@ -3,7 +3,7 @@
 
 # include <elle/serialize/SetSerializer.hxx>
 
-ELLE_SERIALIZE_SIMPLE(surface::gap::TransactionMachine::Snapshot, ar, res, version)
+ELLE_SERIALIZE_SIMPLE(surface::gap::TransactionMachine::OldSnapshot, ar, res, version)
 {
   enforce(version == 0);
 
