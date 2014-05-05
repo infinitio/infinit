@@ -354,7 +354,8 @@ class Mixin:
     )
 
   def cloud_cleanup_transaction(self, transaction):
-    pass # cloud_buffer_token.delete_directory(transaction.id)
+    # cloud_buffer_token.delete_directory(transaction.id)
+    return {}
 
   def on_accept(self, transaction, device_id, device_name):
     with elle.log.trace("accept transaction as %s" % device_id):
@@ -363,12 +364,11 @@ class Mixin:
       device_id = uuid.UUID(device_id)
       if str(device_id) not in self.user['devices']:
         raise error.Error(error.DEVICE_DOESNT_BELONG_TOU_YOU)
-
-      transaction.update({
+      return {
         'recipient_fullname': self.user['fullname'],
         'recipient_device_name' : device_name,
-        'recipient_device_id': str(device_id),
-      })
+        'recipient_device_id': str(device_id)
+      }
 
   def on_finished(self, transaction, device_id, device_name, user):
     elle.log.log('Transaction finished');
@@ -423,6 +423,7 @@ class Mixin:
             'note': transaction['message'],
           }}
       )
+    return {}
 
   @api('/transaction/update', method = 'POST')
   @require_logged_in
@@ -482,24 +483,31 @@ class Mixin:
           "Cannot change status from %s to %s (already finalized)." % (transaction['status'], status)
           )
 
+      diff = {}
       if status == transaction_status.ACCEPTED:
-        self.on_accept(transaction = transaction,
-                       device_id = device_id,
-                       device_name = device_name)
+        diff.update(self.on_accept(transaction = transaction,
+                                   device_id = device_id,
+                                   device_name = device_name))
       elif status == transaction_status.FINISHED:
-        self.on_finished(transaction = transaction,
-                         device_id = device_id,
-                         device_name = device_name,
-                         user = user)
+        diff.update(self.on_finished(transaction = transaction,
+                                     device_id = device_id,
+                                     device_name = device_name,
+                                     user = user))
       elif status in (transaction_status.CANCELED,
                       transaction_status.FAILED,
                       transaction_status.REJECTED):
-        self.cloud_cleanup_transaction(transaction = transaction)
+        diff.update(self.cloud_cleanup_transaction(
+          transaction = transaction))
 
-      transaction['status'] = status
-      transaction['mtime'] = time.time()
-      self.database.transactions.save(transaction)
-
+      diff.update({
+        'status': status,
+        'mtime': time.time()
+      })
+      # Don't update with an empty dictionary: it would empty the
+      # object.
+      if diff:
+        self.database.transactions.update({'_id': transaction['_id']},
+                                          {'$set': diff})
       elle.log.debug("transaction updated")
 
       self.notifier.notify_some(
