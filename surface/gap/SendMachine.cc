@@ -333,7 +333,7 @@ namespace surface
         case TransactionStatus::created:
         case TransactionStatus::none:
         case TransactionStatus::started:
-          elle::unreachable();
+          ELLE_ABORT("%s: invalid status update to %s", *this, status);
       }
     }
 
