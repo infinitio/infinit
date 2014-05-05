@@ -86,6 +86,7 @@ def configure(cxx_toolkit = None,
     cxx_config.lib('ws2_32')
     cxx_config.lib('gdi32')
     cxx_config.lib('mswsock')
+    cxx_config.lib('dbghelp')
   elif cxx_toolkit.os == drake.os.macos:
     platform_defines = ("INFINIT_MACOSX", "HAVE_STATFS")
   else:
@@ -538,6 +539,7 @@ def configure(cxx_toolkit = None,
     gap_cxx_config_libs.lib('ws2_32')
     gap_cxx_config_libs.lib('gdi32')
     gap_cxx_config_libs.lib('mswsock')
+    gap_cxx_config_libs.lib('dbghelp')
   gap_lib = Library(
     'lib/gap',
     gap_sources + [
@@ -642,6 +644,7 @@ def configure(cxx_toolkit = None,
     state_cxx_config_libs.lib('ws2_32')
     state_cxx_config_libs.lib('gdi32')
     state_cxx_config_libs.lib('mswsock')
+    state_cxx_config_libs.lib('dbghelp')
   state_lib = Library(
     'lib/state',
     state_sources + [
