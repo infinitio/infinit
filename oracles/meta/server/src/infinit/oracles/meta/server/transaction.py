@@ -61,7 +61,7 @@ class Mixin:
                                  status = transaction_status.CANCELED,
                                  user = user)
       except error.Error as e:
-        elle.log.warn('unable to cancel transaction (%s): ' % \
+        elle.log.warn('unable to cancel transaction (%s)' % \
                       str(transaction['_id']))
         continue
 
