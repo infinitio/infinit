@@ -454,8 +454,8 @@ class Mixin:
             "hash": hash,
             "new_email_address": new_email,
             "user_fullname": user['fullname']
-            }}
-        )
+          }
+        })
       self.database.users.find_and_modify(
         { "_id": user['_id'] },
         {
@@ -525,7 +525,7 @@ class Mixin:
         )
       # Update user in DB.
       # We keep the user's old email address in the accounts section.
-      self.database.users.find_and_modify(
+      self.database.users.update(
         {'_id': user['_id']},
         {
           '$set':
@@ -620,7 +620,7 @@ class Mixin:
     """
     user = self.user
     # Invalidate credentials.
-    self.sessions.remove({'email': self.user['email'], 'device': ''})
+    self.sessions.remove({'email': user['email'], 'device': ''})
     # Kick them out of the app.
     self.notifier.notify_some(
       notifier.INVALID_CREDENTIALS,
@@ -630,29 +630,38 @@ class Mixin:
     self.invitation.unsubscribe(user['email'])
     self.cancel_transactions(user)
     self.remove_devices(user)
-    user['accounts'] = []
     try:
       user.pop('avatar')
     except:
       elle.log.debug('user has no avatar')
-    user['connected_devices'] = []
-    user['devices'] = []
-    user['email'] = ''
-    user['favorites'] = []
-    user['handle'] = ''
-    user['identity'] = ''
-    user['lw_handle'] = ''
-    user['networks'] = []
-    user['notifications'] = []
-    user['old_notifications'] = []
-    user['password'] = ''
-    user['public_key'] = ''
-    user['register_status'] = 'deleted'
-    user['status'] = False
     swaggers = set(map(bson.ObjectId, user['swaggers'].keys()))
-    user['swaggers'] = {}
-    self.database.users.update({'_id': user['_id']},
-                               user)
+    self.database.users.update(
+      {'_id': user['_id']},
+      {
+        '$set':
+        {
+          'accounts': [],
+          'connected_devices': [],
+          'devices': [],
+          'email': '',
+          'favorites': [],
+          'handle': '',
+          'identity': '',
+          'lw_handle': '',
+          'networks': [],
+          'notifications': [],
+          'old_notifications': [],
+          'password': '',
+          'public_key': '',
+          'register_status': 'deleted',
+          'status': False,
+          'swaggers': {},
+        },
+        '$unset':
+        {
+          'avatar': ''
+        }
+      })
     self.notifier.notify_some(notifier.DELETED_SWAGGER,
       recipient_ids = swaggers,
       message = {'user_id': user['_id']})
