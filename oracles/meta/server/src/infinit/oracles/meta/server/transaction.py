@@ -482,29 +482,19 @@ class Mixin:
           "Cannot change status from %s to %s (already finalized)." % (transaction['status'], status)
           )
 
-      from functools import partial
-
-      cleanup_cb = partial(self.cloud_cleanup_transaction,
-                           transaction = transaction)
-      callbacks = {
-        transaction_status.INITIALIZED: None,
-        transaction_status.ACCEPTED: partial(self.on_accept,
-                                             transaction = transaction,
-                                             device_id = device_id,
-                                             device_name = device_name),
-        transaction_status.FINISHED: partial(self.on_finished,
-                                             transaction = transaction,
-                                             device_id = device_id,
-                                             device_name = device_name,
-                                             user = user),
-        transaction_status.CANCELED: cleanup_cb,
-        transaction_status.FAILED:   cleanup_cb,
-        transaction_status.REJECTED: cleanup_cb
-      }
-
-      cb = callbacks[status]
-      if cb is not None:
-        cb()
+      if status == transaction_status.ACCEPTED:
+        self.on_accept(transaction = transaction,
+                       device_id = device_id,
+                       device_name = device_name)
+      elif status == transaction_status.FINISHED:
+        self.on_finished(transaction = transaction,
+                         device_id = device_id,
+                         device_name = device_name,
+                         user = user)
+      elif status in (transaction_status.CANCELED,
+                      transaction_status.FAILED,
+                      transaction_status.REJECTED):
+        self.cloud_cleanup_transaction(transaction = transaction)
 
       transaction['status'] = status
       transaction['mtime'] = time.time()
