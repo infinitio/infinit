@@ -65,6 +65,30 @@ class Mixin:
                       str(transaction['_id']))
         continue
 
+  @api('/transaction/by_hash/<transaction_hash>')
+  def transaction_by_hash(self, transaction_hash):
+    """
+    Fetch transaction information corresponding to the given hash.
+
+    transaction_hash -- Transaction hash for transaction.
+    """
+    with elle.log.debug('fetch transaction with hash: %s' % transaction_hash):
+      transaction = self.database.transactions.find_one(
+        {'transaction_hash': transaction_hash},
+        fields = {
+          'sender_id': True,
+          'recipient_id': True,
+          'download_link': True,
+          'sender_fullname': True,
+          'files': True,
+          'message': True,
+          '_id': False,
+        })
+      if transaction is None:
+        return self.not_found()
+      else:
+        return self.success(transaction)
+
   @api('/transaction/<id>')
   @require_logged_in
   def transaction_view(self, id: bson.ObjectId):
@@ -370,6 +394,19 @@ class Mixin:
         'recipient_device_id': str(device_id)
       }
 
+  def _hash_transaction(self, transaction):
+    """
+    Generate a unique hash for a transaction based on a random number and the
+    transaction's ID.
+    """
+    import hashlib, random
+    random.seed()
+    random.random()
+    string_to_hash = str(transaction['_id']) + str(random.random())
+    txn_hash = hashlib.sha256(string_to_hash.encode('utf-8')).hexdigest()
+    elle.log.debug('transaction (%s) hash: %s' % (transaction['_id'], txn_hash))
+    return txn_hash
+
   def on_finished(self, transaction, device_id, device_name, user):
     elle.log.log('Transaction finished');
     # Guess if this was a ghost cloud upload or not
@@ -404,6 +441,8 @@ class Mixin:
         ghost_upload_file)
       elle.log.log('Generating cloud GET URL for %s: %s'
         % (ghost_upload_file, ghost_get_url))
+      # Generate hash for transaction and store it in the transaction collection
+      transaction_hash = self._hash_transaction(transaction)
       invitation.invite_user(
         peer_email,
         mailer = self.mailer,
@@ -412,18 +451,18 @@ class Mixin:
         database = self.database,
         merge_vars = {
           peer_email: {
-            'file_url': ghost_get_url,
-            'file_url_urlencoded': urllib.parse.quote(ghost_get_url, ''),
             'filename': files[0],
             'sendername': user['fullname'],
-            'ghost_id': str(recipient.get('_id')),
-            'sender_id': str(user['_id']),
-            'transaction_id': str(transaction_id),
-            'avatar': self.user_avatar_route(recipient['_id']),
             'note': transaction['message'],
+            'transaction_hash': transaction_hash,
           }}
       )
-    return {}
+      return {
+        'transaction_hash': transaction_hash,
+        'download_link': ghost_get_url,
+      }
+    else:
+      return {}
 
   @api('/transaction/update', method = 'POST')
   @require_logged_in
@@ -482,7 +521,6 @@ class Mixin:
           error.TRANSACTION_ALREADY_FINALIZED,
           "Cannot change status from %s to %s (already finalized)." % (transaction['status'], status)
           )
-
       diff = {}
       if status == transaction_status.ACCEPTED:
         diff.update(self.on_accept(transaction = transaction,
