@@ -107,7 +107,7 @@ class Invitation:
       return mailing_list.subscribe(ms = self.ms,
                                     email_address = email)
     else:
-      elle.log.warn("unkown list %s" % list_name)
+      elle.log.warn("unknown list %s" % list_name)
 
   # XXX should be moved to another class.
   @is_active
@@ -117,7 +117,7 @@ class Invitation:
       return mailing_list.unsubscribe(ms = self.ms,
                                       email_address = email)
     else:
-      elle.log.warn("unkown list %s" % list_name)
+      elle.log.warn("unknown list %s" % list_name)
 
   @is_active
   def subscribed(self, email, list_name = 'userbase'):
@@ -126,7 +126,7 @@ class Invitation:
       return mailing_list.contains(ms = self.ms,
                                    email_address = email)
     else:
-      elle.log.warn("unkown list %s" % list_name)
+      elle.log.warn("unknown list %s" % list_name)
 
   @is_active
   def members(self, list_name = 'userbase'):
@@ -134,7 +134,7 @@ class Invitation:
     if mailing_list is not None:
       return mailing_list.members(ms = self.ms)
     else:
-      elle.log.warn("unkown list %s" % list_name)
+      elle.log.warn("unknown list %s" % list_name)
 
 def invite_user(email,
                 mailer,
