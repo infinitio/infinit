@@ -160,6 +160,9 @@ class Meta(bottle.Bottle,
                                                ("recipient_id", 1),
                                                ('status', 1),
                                                ('mtime', 1)])
+    # - Download by link transaction hash.
+    self.__database.transactions.ensure_index([('transaction_hash', 1)],
+                                              unique = True, sparse = True)
 
   def __register(self, method):
     rule = method.__route__
