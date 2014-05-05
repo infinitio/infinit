@@ -397,9 +397,15 @@ namespace surface
         if (this->_passport->Restore(device.passport) == elle::Status::Error)
           throw Exception(gap_wrong_passport, "Cannot load the passport");
         this->_passport->store(elle::io::Path(passport_path));
-        ELLE_TRACE("connecting to trophonius");
-        this->_trophonius.connect(
-          this->me().id, this->device().id, this->_meta.session_id());
+
+        ELLE_TRACE("connecting to trophonius")
+        {
+          // XXX: Throw an exception instead.
+          if (!this->_trophonius.connect(
+                this->me().id, this->device().id, this->_meta.session_id()))
+            throw Exception(
+              gap_trophonius_unreachable, "unable to contact trophonius");
+        }
 
         this->_polling_thread.reset(
           new reactor::Thread{
