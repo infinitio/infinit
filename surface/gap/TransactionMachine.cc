@@ -13,6 +13,7 @@
 #include <infinit/metrics/CompositeReporter.hh>
 #include <surface/gap/State.hh>
 #include <surface/gap/TransactionMachine.hh>
+#include <surface/gap/PeerTransferMachine.hh>
 
 #include <papier/Authority.hh>
 
@@ -89,7 +90,7 @@ namespace surface
       _canceled("canceled"),
       _failed("failed"),
       _station(nullptr),
-      _transfer_machine(new TransferMachine{*this}),
+      _transfer_machine(new PeerTransferMachine(*this)),
       _state(state),
       _data(std::move(data))
     {

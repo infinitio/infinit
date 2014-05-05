@@ -15,6 +15,7 @@
 #include <common/common.hh>
 
 #include <frete/Frete.hh>
+#include <frete/RPCFrete.hh>
 #include <frete/TransferSnapshot.hh>
 
 #include <papier/Identity.hh>

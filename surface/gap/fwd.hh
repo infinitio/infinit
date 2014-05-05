@@ -5,6 +5,7 @@ namespace surface
 {
   namespace gap
   {
+    class PeerTransferMachine;
     class ReceiveMachine;
     class SendMachine;
     class State;

@@ -1,5 +1,7 @@
-#ifndef  SURFACE_GAP_GAP_HH
+#ifndef SURFACE_GAP_GAP_HH
 # define SURFACE_GAP_GAP_HH
+
+
 
 # include <string>
 # include <unordered_map>

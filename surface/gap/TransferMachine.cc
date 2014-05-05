@@ -50,31 +50,31 @@ namespace surface
       auto& cloud_synchronize_state =
         this->_fsm.state_make(
           "cloud synchronize",
-          std::bind(&TransferMachine::_cloud_synchronize_wrapper, this));
+          std::bind(&Transferer::_cloud_synchronize_wrapper, this));
       auto& publish_interfaces_state =
         this->_fsm.state_make(
           "publish interfaces",
-          std::bind(&TransferMachine::_publish_interfaces_wrapper, this));
+          std::bind(&Transferer::_publish_interfaces_wrapper, this));
       auto& connection_state =
         this->_fsm.state_make(
           "connection",
-          std::bind(&TransferMachine::_connection_wrapper, this));
+          std::bind(&Transferer::_connection_wrapper, this));
       auto& wait_for_peer_state =
         this->_fsm.state_make(
           "wait for peer",
-          std::bind(&TransferMachine::_wait_for_peer_wrapper, this));
+          std::bind(&Transferer::_wait_for_peer_wrapper, this));
       auto& transfer_state =
         this->_fsm.state_make(
           "transfer",
-          std::bind(&TransferMachine::_transfer_wrapper, this));
+          std::bind(&Transferer::_transfer_wrapper, this));
       auto& cloud_buffer_state =
         this->_fsm.state_make(
           "cloud buffer",
-          std::bind(&TransferMachine::_cloud_buffer_wrapper, this));
+          std::bind(&Transferer::_cloud_buffer_wrapper, this));
       auto& stopped_state =
         this->_fsm.state_make(
           "stopped",
-          std::bind(&TransferMachine::_stopped_wrapper, this));
+          std::bind(&Transferer::_stopped_wrapper, this));
 
       /*------------.
       | Transitions |
@@ -298,14 +298,14 @@ namespace surface
       this->_fsm.state_changed().connect(
         [this] (reactor::fsm::State& state)
         {
-          ELLE_LOG_COMPONENT("surface.gap.TransferMachine.State");
+          ELLE_LOG_COMPONENT("surface.gap.Transferer.State");
           ELLE_TRACE("%s: entering %s", *this, state);
         });
 
       this->_fsm.transition_triggered().connect(
         [this] (reactor::fsm::Transition& transition)
         {
-          ELLE_LOG_COMPONENT("surface.gap.TransferMachine.Transition");
+          ELLE_LOG_COMPONENT("surface.gap.Transferer.Transition");
           ELLE_TRACE("%s: %s triggered", *this, transition);
         });
 
@@ -438,179 +438,11 @@ namespace surface
     /*----------.
     | Printable |
     `----------*/
+
     void
     Transferer::print(std::ostream& stream) const
     {
       stream << "Transferer(" << this->_owner.id() << ")";
-    }
-
-    ////////////////////////////////////////////////////////////////////////////
-    TransferMachine::TransferMachine(TransactionMachine& owner):
-      Transferer(owner)
-    {}
-
-    void
-    TransferMachine::_publish_interfaces()
-    {
-      auto& station = this->_owner.station();
-      typedef std::vector<std::pair<std::string, uint16_t>> AddressContainer;
-      AddressContainer addresses;
-      // In order to test the fallback, we can fake our local addresses.
-      // It should also work for nated network.
-      if (elle::os::getenv("INFINIT_LOCAL_ADDRESS", "").length() > 0)
-      {
-        addresses.emplace_back(elle::os::getenv("INFINIT_LOCAL_ADDRESS"),
-                               station.port());
-      }
-      else
-      {
-        auto interfaces = elle::network::Interface::get_map(
-          elle::network::Interface::Filter::only_up |
-          elle::network::Interface::Filter::no_loopback |
-          elle::network::Interface::Filter::no_autoip
-          );
-        for (auto const& pair: interfaces)
-          if (pair.second.ipv4_address.size() > 0 &&
-              pair.second.mac_address.size() > 0)
-          {
-            auto const &ipv4 = pair.second.ipv4_address;
-            addresses.emplace_back(ipv4, station.port());
-          }
-      }
-      ELLE_DEBUG("addresses: %s", addresses);
-      AddressContainer public_addresses;
-      this->_owner.state().meta().transaction_endpoints_put(
-        this->_owner.data()->id,
-        this->_owner.state().passport().id(),
-        addresses,
-        public_addresses);
-    }
-
-    std::unique_ptr<station::Host>
-    TransferMachine::_connect()
-    {
-      ELLE_TRACE_SCOPE("%s: connect to peer", *this);
-      std::vector<std::unique_ptr<Round>> rounds;
-      rounds.emplace_back(new AddressRound("local", this->peer_endpoints()));
-      rounds.emplace_back(new FallbackRound("fallback",
-                                            this->_owner.state().meta(),
-                                            this->_owner.data()->id));
-      return elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
-      {
-        reactor::Barrier found;
-        std::unique_ptr<station::Host> host;
-        scope.run_background(
-          "wait_accepted",
-          [&] ()
-          {
-            reactor::wait(this->_owner.station().host_available());
-            std::unique_ptr<station::Host> res =
-              this->_owner.station().accept();
-            ELLE_ASSERT_NEQ(res, nullptr);
-            ELLE_ASSERT_EQ(host, nullptr);
-            host = std::move(res);
-            found.open();
-            ELLE_TRACE("%s: peer connection accepted", *this);
-          });
-        scope.run_background(
-          "rounds",
-          [&]
-          {
-            for (auto& round: rounds)
-            { // try rounds in order: (currently local, apertus)
-              std::unique_ptr<station::Host> res;
-              res = round->connect(this->_owner.station());
-              if (res)
-              {
-                ELLE_ASSERT_EQ(host, nullptr);
-                host = std::move(res);
-                found.open();
-                if (this->_owner.state().metrics_reporter())
-                  this->_owner.state().metrics_reporter()->transaction_connected(
-                  this->_owner.transaction_id(),
-                  round->name()
-                );
-                ELLE_TRACE("%s: connected to peer with %s",
-                           *this, *round);
-                break;
-              }
-              else
-                ELLE_DEBUG("%s: connection round %s failed", *this, *round);
-            }
-          });
-        reactor::wait(found);
-        ELLE_ASSERT(host != nullptr);
-        return std::move(host);
-      };
-      throw Exception(gap_api_error, "unable to connect to peer");
-    }
-
-    void
-    TransferMachine::_connection()
-    {
-      this->_host = this->_connect();
-      ELLE_TRACE_SCOPE("%s: open peer to peer RPCs", *this);
-      this->_serializer.reset(
-        new infinit::protocol::Serializer(this->_host->socket()));
-      this->_channels.reset(
-        new infinit::protocol::ChanneledStream(*this->_serializer));
-      this->_rpcs = this->_owner.rpcs(*this->_channels);
-    }
-
-    void
-    TransferMachine::_wait_for_peer()
-    {
-    }
-
-    void
-    TransferMachine::_transfer()
-    {
-      elle::SafeFinally clear_frete{
-        [this]
-        {
-          this->_rpcs.reset();
-          this->_channels.reset();
-          this->_serializer.reset();
-          this->_host.reset();
-        }};
-      this->_owner._transfer_operation(*this->_rpcs);
-      ELLE_TRACE_SCOPE("%s: end of transfer operation", *this);
-    }
-
-    void
-    TransferMachine::_stopped()
-    {
-    }
-
-    void
-    TransferMachine::_cloud_buffer()
-    {
-      this->_owner._cloud_operation();
-    }
-
-    void
-    TransferMachine::_cloud_synchronize()
-    {
-      this->_owner._cloud_synchronize();
-    }
-
-    void
-    TransferMachine::_initialize()
-    {
-      // Clear eventually left over station host.
-      _host.reset();
-    }
-
-    /*----------.
-    | Printable |
-    `----------*/
-    void
-    TransferMachine::print(std::ostream& stream) const
-    {
-      stream << "TransferMachine(" << this->_owner.id();
-      if (this->_owner.data())
-        stream << ", " << this->_owner.data()->id;
-      stream << ")";
     }
   }
 }

@@ -1,4 +1,9 @@
+#include <boost/filesystem.hpp>
+
 #include <elle/log.hh>
+
+#include <reactor/network/exception.hh>
+#include <reactor/scheduler.hh>
 
 #include <surface/gap/onboarding/TransferMachine.hh>
 

@@ -20,7 +20,7 @@
 # include <station/fwd.hh>
 
 # include <surface/gap/enums.hh>
-# include <surface/gap/Notification.hh>
+# include <surface/gap/fwd.hh>
 # include <surface/gap/TransferMachine.hh>
 
 # include <aws/Credentials.hh>
@@ -208,7 +208,7 @@ namespace surface
 
     protected:
       friend class Transferer;
-      friend class TransferMachine;
+      friend class PeerTransferMachine;
       void
       current_state(State const& state);
 
