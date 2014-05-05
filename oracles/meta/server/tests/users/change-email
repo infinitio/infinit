@@ -84,4 +84,5 @@ with Meta(enable_emails = True,
     'password': u.password,
     'device_id': str(u2.device_id)
   })
+  assert res['success']
 
