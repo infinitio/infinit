@@ -50,10 +50,10 @@ class Invitation:
           ms.listBatchUnsubscribe(id = self.__list_id, emails = email_address)
         else:
           ms.listUnsubscribe(id = self.__list_id, email_address = email_address)
-        elle.log.trace("%s: unsubscribed to %s (%s)" % (email_address, self.__name, self.__list_id))
+        elle.log.trace("%s: unsubscribed from %s (%s)" % (email_address, self.__name, self.__list_id))
         return True
       except:
-        elle.log.warn("couldn't unsubscribe %s to %s (%s)" %  (email_address, self.__name, self.__list_id))
+        elle.log.warn("couldn't unsubscribe %s from %s (%s)" %  (email_address, self.__name, self.__list_id))
         return False
 
     def contains(self, ms, email_address):
