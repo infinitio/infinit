@@ -35,12 +35,13 @@ namespace surface
   namespace gap
   {
     using TransactionStatus = infinit::oracles::Transaction::Status;
+
+    // Common factored constructor.
     SendMachine::SendMachine(surface::gap::State const& state,
                              uint32_t id,
                              std::shared_ptr<TransactionMachine::Data> data,
-                             boost::filesystem::path const& snapshot_path,
                              bool):
-      TransactionMachine(state, id, std::move(data), snapshot_path),
+      TransactionMachine(state, id, std::move(data)),
       _create_transaction_state(
         this->_machine.state_make(
           "create transaction", std::bind(&SendMachine::_create_transaction, this))),
@@ -59,13 +60,11 @@ namespace surface
       this->_machine.transition_add(
         this->_create_transaction_state,
         this->_wait_for_accept_state);
-
       this->_machine.transition_add(
         this->_wait_for_accept_state,
         this->_finish_state,
         reactor::Waitables{&this->finished()},
         true);
-
       this->_machine.transition_add(
         this->_wait_for_accept_state,
         this->_transfer_core_state,
@@ -79,7 +78,6 @@ namespace surface
             TransactionStatus::accepted;
         }
         );
-
       this->_machine.transition_add(
         this->_wait_for_accept_state,
         this->_reject_state,
@@ -93,7 +91,6 @@ namespace surface
             TransactionStatus::rejected;
         }
         );
-
       // Cancel.
       this->_machine.transition_add(this->_create_transaction_state,
                                     this->_cancel_state,
@@ -110,7 +107,6 @@ namespace surface
             ELLE_WARN("%s: error while waiting for accept: %s",
                       *this, elle::exception_string(e));
           });
-
       this->_machine.transition_add_catch(
         this->_wait_for_accept_state, this->_fail_state)
         .action_exception(
@@ -125,7 +121,6 @@ namespace surface
           ELLE_LOG_COMPONENT("surface.gap.SendMachine.State");
           ELLE_TRACE("%s: entering %s", *this, state);
         });
-
       this->_machine.transition_triggered().connect(
         [this] (reactor::fsm::Transition& transition)
         {
@@ -148,11 +143,11 @@ namespace surface
                          this->_message);
     }
 
+    // Construct from server data.
     SendMachine::SendMachine(surface::gap::State const& state,
                              uint32_t id,
-                             std::shared_ptr<TransactionMachine::Data> data,
-                             boost::filesystem::path const& snapshot_path):
-      SendMachine(state, id, std::move(data), snapshot_path, true)
+                             std::shared_ptr<TransactionMachine::Data> data):
+      SendMachine(state, id, std::move(data), true)
     {
       ELLE_ASSERT(this->data() != nullptr);
       ELLE_WARN_SCOPE("%s: constructing machine for transaction data %s "
@@ -189,26 +184,22 @@ namespace surface
       }
     }
 
+    // Construct for send.
     SendMachine::SendMachine(surface::gap::State const& state,
                              uint32_t id,
                              std::string const& recipient,
                              std::unordered_set<std::string>&& files,
                              std::string const& message,
                              std::shared_ptr<TransactionMachine::Data> data):
-      SendMachine(state, id, std::move(data), "", true)
+      SendMachine(state, id, std::move(data), true)
     {
       ELLE_TRACE_SCOPE("%s: construct to send %s to %s",
                        *this, files, recipient);
-
       this->_message = message;
-
       if (files.empty())
         throw Exception(gap_no_file, "no files to send");
-
       std::swap(this->_files, files);
-
       ELLE_ASSERT_NEQ(this->_files.size(), 0u);
-
       // Copy filenames into data structure to be sent to meta.
       this->data()->files.resize(this->_files.size());
       std::transform(
@@ -222,25 +213,23 @@ namespace surface
       this->data()->is_directory = boost::filesystem::is_directory(
         *this->_files.begin());
       ELLE_ASSERT_EQ(this->data()->files.size(), this->_files.size());
-
       this->peer_id(recipient);
       this->_run(this->_create_transaction_state);
     }
 
+    // Construct from snapshot.
     SendMachine::SendMachine(surface::gap::State const& state,
                              uint32_t id,
                              std::unordered_set<std::string> files,
                              TransactionMachine::State current_state,
                              std::string const& message,
                              std::shared_ptr<TransactionMachine::Data> data):
-      SendMachine(state, id, std::move(data), "", true)
+      SendMachine(state, id, std::move(data), true)
     {
       ELLE_TRACE_SCOPE("%s: construct from snapshot starting at %s",
                        *this, current_state);
       this->_files = std::move(files);
-
       ELLE_ASSERT_NEQ(this->_files.size(), 0u);
-
       // Copy filenames into data structure to be sent to meta.
       this->data()->files.resize(this->_files.size());
       std::transform(
@@ -252,7 +241,6 @@ namespace surface
           return boost::filesystem::path(el).filename().string();
         });
       ELLE_ASSERT_EQ(this->data()->files.size(), this->_files.size());
-
       this->_current_state = current_state;
       this->_message = message;
       switch (current_state)

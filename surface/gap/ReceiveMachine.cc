@@ -77,9 +77,8 @@ namespace surface
     ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
                                    uint32_t id,
                                    std::shared_ptr<TransactionMachine::Data> data,
-                                   boost::filesystem::path const& snapshot_path,
                                    bool):
-      TransactionMachine(state, id, std::move(data), snapshot_path),
+      TransactionMachine(state, id, std::move(data)),
       _wait_for_decision_state(
         this->_machine.state_make(
           "wait for decision", std::bind(&ReceiveMachine::_wait_for_decision, this))),
@@ -158,7 +157,7 @@ namespace surface
                                    uint32_t id,
                                    TransactionMachine::State const current_state,
                                    std::shared_ptr<TransactionMachine::Data> data):
-      ReceiveMachine(state, id, std::move(data), "", true)
+      ReceiveMachine(state, id, std::move(data), true)
     {
       ELLE_TRACE_SCOPE("%s: construct from data %s, starting at %s",
                        *this, *this->data(), current_state);
@@ -204,9 +203,8 @@ namespace surface
 
     ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
                                    uint32_t id,
-                                   std::shared_ptr<TransactionMachine::Data> data,
-                                   boost::filesystem::path const& snapshot_path):
-      ReceiveMachine(state, id, std::move(data), snapshot_path, true)
+                                   std::shared_ptr<TransactionMachine::Data> data):
+      ReceiveMachine(state, id, std::move(data), true)
     {
       ELLE_TRACE_SCOPE("%s: constructing machine for transaction %s",
                        *this, data);

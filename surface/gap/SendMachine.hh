@@ -22,7 +22,7 @@ namespace surface
                   std::string const& message,
                   std::shared_ptr<Data> data);
 
-      // Construct from snapshot (with curren_state and files).
+      // Construct from snapshot.
       SendMachine(surface::gap::State const& state,
                   uint32_t id,
                   std::unordered_set<std::string> files,
@@ -30,11 +30,10 @@ namespace surface
                   std::string const& message,
                   std::shared_ptr<TransactionMachine::Data> data);
 
-      // XXX: Add putain de commentaire de la vie.
+      // Construct from server data.
       SendMachine(surface::gap::State const& state,
                   uint32_t id,
-                  std::shared_ptr<TransactionMachine::Data> data,
-                  boost::filesystem::path const& path = "");
+                  std::shared_ptr<TransactionMachine::Data> data);
 
 
       virtual
@@ -49,7 +48,6 @@ namespace surface
       SendMachine(surface::gap::State const& state,
                   uint32_t id,
                   std::shared_ptr<Data> data,
-                  boost::filesystem::path const& path,
                   bool);
 
       OldSnapshot

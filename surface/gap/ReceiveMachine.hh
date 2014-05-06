@@ -35,8 +35,7 @@ namespace surface
       // Construct from notification.
       ReceiveMachine(surface::gap::State const& state,
                      uint32_t id,
-                     std::shared_ptr<TransactionMachine::Data> data,
-                     boost::filesystem::path const& snapshot_path = "");
+                     std::shared_ptr<TransactionMachine::Data> data);
 
       // Construct from snapshot (with current_state).
       ReceiveMachine(surface::gap::State const& state,
@@ -61,7 +60,6 @@ namespace surface
       ReceiveMachine(surface::gap::State const& state,
                      uint32_t id,
                      std::shared_ptr<TransactionMachine::Data> data,
-                     boost::filesystem::path const& snapshot_path,
                      bool);
 
     private:
