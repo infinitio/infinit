@@ -949,7 +949,7 @@ class Mixin:
             recipient_ids = {peer},
           )
 
-  # Used up to 0.9.1 for fetching swaggers
+  # Used up to 0.9.1 for fetching swaggers.
   @api('/user/swaggers')
   @require_logged_in
   def swaggers(self):
@@ -957,7 +957,7 @@ class Mixin:
     with elle.log.trace("%s: get his swaggers" % user['email']):
       return self.success({"swaggers" : list(user["swaggers"].keys())})
 
-  # Replaces /user/swaggers
+  # Replaces /user/swaggers as of 0.9.2.
   @api('/user/full_swaggers')
   @require_logged_in
   def full_swaggers(self):
@@ -1211,7 +1211,7 @@ class Mixin:
     else:
       if no_place_holder:
         return self.not_found()
-      else: # Return the default avatar for backwards compatibility.
+      else: # Return the default avatar for backwards compatibility (< 0.9.2).
         from bottle import static_file
         return static_file('place_holder_avatar.png', root = os.path.dirname(__file__), mimetype = 'image/png')
 
