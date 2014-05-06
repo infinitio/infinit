@@ -308,6 +308,7 @@ class Mixin:
       return self.success({'transactions': res})
 
   # Previous (shitty) transactions fetching API that only returns ids.
+  # This is for backwards compatability < 0.9.1.
   @api('/transactions', method = 'POST')
   @require_logged_in
   def transaction_post(self,
