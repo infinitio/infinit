@@ -1,9 +1,11 @@
 #include <boost/filesystem.hpp>
 
+#include <elle/AtomicFile.hh>
 #include <elle/archive/zip.hh>
 #include <elle/os/environ.hh>
 #include <elle/os/path.hh>
 #include <elle/os/file.hh>
+#include <elle/serialization/json.hh>
 #include <elle/system/system.hh>
 
 #include <elle/serialize/extract.hh>
@@ -152,36 +154,9 @@ namespace surface
       ELLE_ASSERT(this->data() != nullptr);
       ELLE_WARN_SCOPE("%s: constructing machine for transaction data %s "
                       "(not found on local snapshots)", *this, *this->data());
-      // set _files from data
       for (auto const& f: this->data()->files)
-      {
         this->_files.insert(f);
-      }
-      switch (this->data()->status)
-      {
-        case TransactionStatus::created:
-          throw elle::Exception("Unrestorable state created.");
-        case TransactionStatus::initialized:
-          this->_run(this->_wait_for_accept_state);
-          break;
-        case TransactionStatus::accepted:
-          this->_run(this->_transfer_core_state);
-          break;
-        case TransactionStatus::finished:
-          this->_run(this->_finish_state);
-          break;
-        case TransactionStatus::canceled:
-          this->_run(this->_cancel_state);
-          break;
-        case TransactionStatus::failed:
-          this->_run(this->_fail_state);
-          break;
-        case TransactionStatus::rejected:
-          break;
-        case TransactionStatus::started:
-        case TransactionStatus::none:
-          elle::unreachable();
-      }
+      this->_run_from_snapshot();
     }
 
     // Construct for send.
@@ -243,47 +218,88 @@ namespace surface
       ELLE_ASSERT_EQ(this->data()->files.size(), this->_files.size());
       this->_current_state = current_state;
       this->_message = message;
-      switch (current_state)
+      this->current_state(current_state);
+      this->_run_from_snapshot();
+    }
+
+    void
+    SendMachine::_run_from_snapshot()
+    {
+      bool started = false;
+      if (this->data()->id.empty())
       {
-        case TransactionMachine::State::NewTransaction:
-          elle::unreachable();
-        case TransactionMachine::State::SenderCreateTransaction:
-          this->_run(this->_create_transaction_state);
-          break;
-        case TransactionMachine::State::SenderWaitForDecision:
-        case TransactionMachine::State::CloudBufferingBeforeAccept:
-        case TransactionMachine::State::GhostCloudBuffering:
-        case TransactionMachine::State::GhostCloudBufferingFinished:
+        boost::filesystem::path path = Snapshot::path(*this);
+        if (exists(path))
+        {
+          ELLE_TRACE_SCOPE("%s: restore from snapshot: %s", *this, path);
+          elle::AtomicFile source(path);
+          source.read() << [&] (elle::AtomicFile::Read& read)
+          {
+            elle::serialization::json::SerializerIn input(read.stream());
+            Snapshot snapshot(input);
+            started = true;
+            ELLE_TRACE("%s: restore to state %s",
+                       *this, snapshot.current_state())
+            if (snapshot.current_state() == "cancel")
+              this->_run(this->_cancel_state);
+            else if (snapshot.current_state() == "create transaction")
+              this->_run(this->_create_transaction_state);
+            else if (snapshot.current_state() == "end")
+              this->_run(this->_end_state);
+            else if (snapshot.current_state() == "fail")
+              this->_run(this->_fail_state);
+            else if (snapshot.current_state() == "finish")
+              this->_run(this->_finish_state);
+            else if (snapshot.current_state() == "reject")
+              this->_run(this->_reject_state);
+            else if (snapshot.current_state() == "transfer core")
+              this->_run(this->_transfer_core_state);
+            else if (snapshot.current_state() == "wait for accept")
+              this->_run(this->_wait_for_accept_state);
+            else
+            {
+              ELLE_WARN("%s: unkown state in snapshot: %s",
+                        *this, snapshot.current_state());
+              started = false;
+            }
+          };
+        }
+        else
+          ELLE_WARN("%s: missing snapshot: %s", *this, path);
+      }
+      else
+        ELLE_WARN("%s: transaction has no id, cannot restore from snapshot",
+                  *this);
+      // Try to guess a decent starting state from the transaction status.
+      if (started)
+        return;
+      ELLE_TRACE_SCOPE(
+        "%s: deduce starting state from the transaction status: %s",
+        *this, this->data()->status);
+      switch (this->data()->status)
+      {
+        case TransactionStatus::initialized:
+        case TransactionStatus::created:
           this->_run(this->_wait_for_accept_state);
           break;
-        case TransactionMachine::State::RecipientWaitForDecision:
-        case TransactionMachine::State::RecipientAccepted:
-          elle::unreachable();
-        case TransactionMachine::State::PublishInterfaces:
-        case TransactionMachine::State::Connect:
-        case TransactionMachine::State::PeerDisconnected:
-        case TransactionMachine::State::PeerConnectionLost:
-        case TransactionMachine::State::Transfer:
-        case TransactionMachine::State::CloudBuffered:
-        case TransactionMachine::State::CloudSynchronize:
+        case TransactionStatus::accepted:
           this->_run(this->_transfer_core_state);
           break;
-        case TransactionMachine::State::Finished:
+        case TransactionStatus::finished:
           this->_run(this->_finish_state);
           break;
-        case TransactionMachine::State::Rejected:
-          this->_run(this->_reject_state);
-          break;
-        case TransactionMachine::State::Canceled:
+        case TransactionStatus::canceled:
           this->_run(this->_cancel_state);
           break;
-        case TransactionMachine::State::Failed:
+        case TransactionStatus::failed:
           this->_run(this->_fail_state);
           break;
-        default:
+        case TransactionStatus::rejected:
+          break;
+        case TransactionStatus::started:
+        case TransactionStatus::none:
           elle::unreachable();
       }
-      this->current_state(current_state);
     }
 
     void

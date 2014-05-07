@@ -66,19 +66,6 @@ namespace surface
         None = 99,
       };
 
-    // /*---------.
-    // | Snapshot |
-    // `---------*/
-    // public:
-    //   class Snapshot
-    //     : public elle::Printable
-    //   {
-    //   public:
-    //     Snapshot(TransactionMachine const&);
-
-    //     ELLE_ATTRIBUTE_R(Data, data);
-    //   };
-
     /*------------.
     | OldSnapshot |
     `------------*/
@@ -112,8 +99,7 @@ namespace surface
     public:
       TransactionMachine(surface::gap::State const& state,
                          uint32_t id,
-                         std::shared_ptr<TransactionMachine::Data> transaction,
-                         boost::filesystem::path const& path = "");
+                         std::shared_ptr<TransactionMachine::Data> transaction);
 
       virtual
       ~TransactionMachine();
@@ -126,6 +112,8 @@ namespace surface
       OldSnapshot
       _make_snapshot() const;
       virtual
+      void
+      _save_old_snapshot() const;
       void
       _save_snapshot() const;
     protected:
@@ -222,9 +210,33 @@ namespace surface
       State _current_state;
       ELLE_ATTRIBUTE_X(reactor::Signal, state_changed);
 
+    /*---------.
+    | Snapshot |
+    `---------*/
+    public:
+      class Snapshot
+        : public elle::Printable
+      {
+      public:
+        Snapshot(TransactionMachine const& machine);
+        Snapshot(elle::serialization::SerializerIn& source);
+        void
+        serialize(elle::serialization::Serializer& s);
+        static
+        boost::filesystem::path
+        path(TransactionMachine const& machine);
+        ELLE_ATTRIBUTE_R(std::string, current_state);
+
+      protected:
+        virtual
+        void
+        print(std::ostream& stream) const override;
+      };
+
     protected:
       friend class Transferer;
       friend class PeerTransferMachine;
+      friend class Snapshot;
       void
       current_state(State const& state);
 
