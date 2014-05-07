@@ -437,7 +437,7 @@ class Mixin:
         ghost_upload_file = 'archive.zip'
       # Generate GET URL for ghost cloud uploaded file
       ghost_get_url = cloud_buffer_token.generate_get_url(
-        self.aws_region, self.aws_bucket,
+        self.aws_region, self.aws_buffer_bucket,
         transaction_id,
         ghost_upload_file)
       elle.log.log('Generating cloud GET URL for %s: %s'
@@ -831,7 +831,7 @@ class Mixin:
     # if cloud data ever gets shared among transactions.
     token_maker = cloud_buffer_token.CloudBufferToken(
       user['_id'], transaction_id, 'ALL',
-      aws_region = self.aws_region, bucket_name = self.aws_bucket)
+      aws_region = self.aws_region, bucket_name = self.aws_buffer_bucket)
     raw_creds = token_maker.generate_s3_token()
 
     if raw_creds == None:
@@ -845,7 +845,7 @@ class Mixin:
     credentials['expiration']        = raw_creds['Expiration']
     credentials['protocol']          = 'aws'
     credentials['region']            = self.aws_region
-    credentials['bucket']            = self.aws_bucket
+    credentials['bucket']            = self.aws_buffer_bucket
     credentials['folder']            = transaction_id
 
     elle.log.debug("Storing aws_credentials in DB")
