@@ -1,34 +1,31 @@
+#include <surface/gap/TransactionMachine.hh>
+
 #include <functional>
 #include <sstream>
 
+#include <elle/AtomicFile.hh>
 #include <elle/Backtrace.hh>
 #include <elle/container/list.hh>
 #include <elle/container/set.hh>
 #include <elle/network/Interface.hh>
 #include <elle/os/environ.hh>
 #include <elle/printf.hh>
+#include <elle/serialization/Serializer.hh>
+#include <elle/serialization/json.hh>
 #include <elle/serialize/insert.hh>
-
-#include <common/common.hh>
-
-#include <infinit/metrics/CompositeReporter.hh>
-#include <surface/gap/State.hh>
-#include <surface/gap/TransactionMachine.hh>
-#include <surface/gap/PeerTransferMachine.hh>
-
-#include <papier/Authority.hh>
-
-#include <frete/Frete.hh>
-
-#include <station/Station.hh>
 
 #include <reactor/fsm/Machine.hh>
 #include <reactor/exception.hh>
 #include <reactor/Scope.hh>
 
-#include <cryptography/oneway.hh>
-
 #include <CrashReporter.hh>
+#include <common/common.hh>
+#include <frete/Frete.hh>
+#include <infinit/metrics/CompositeReporter.hh>
+#include <papier/Authority.hh>
+#include <station/Station.hh>
+#include <surface/gap/PeerTransferMachine.hh>
+#include <surface/gap/State.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.TransactionMachine");
 
@@ -36,7 +33,47 @@ namespace surface
 {
   namespace gap
   {
+    /*---------.
+    | Snapshot |
+    `---------*/
+
+    TransactionMachine::Snapshot::Snapshot(TransactionMachine const& machine)
+      : _current_state(machine._machine.current_state()->name())
+    {}
+
     TransactionMachine::Snapshot::Snapshot(
+      elle::serialization::SerializerIn& source)
+      : _current_state()
+    {
+      this->serialize(source);
+    }
+
+    void
+    TransactionMachine::Snapshot::serialize(elle::serialization::Serializer& s)
+    {
+      s.serialize("current_state", this->_current_state);
+    }
+
+    boost::filesystem::path
+    TransactionMachine::Snapshot::path(TransactionMachine const& machine)
+    {
+      boost::filesystem::path path =
+        common::infinit::transactions_directory(machine._state.me().id);
+      return path / (machine.transaction_id() + ".fsm");
+    }
+
+    void
+    TransactionMachine::Snapshot::print(std::ostream& stream) const
+    {
+      elle::fprintf(stream, "TransactionMachin::Snapshot(\"%s\")",
+                    this->_current_state);
+    }
+
+    /*-------------------.
+    | TransactionMachine |
+    `-------------------*/
+
+    TransactionMachine::OldSnapshot::OldSnapshot(
       Data const& data,
       State const state,
       std::unordered_set<std::string> const& files,
@@ -48,26 +85,22 @@ namespace surface
     {}
 
     void
-    TransactionMachine::Snapshot::print(std::ostream& stream) const
+    TransactionMachine::OldSnapshot::print(std::ostream& stream) const
     {
-      stream << "Snapshot(" << this->data << ")";
+      stream << "OldSnapshot(" << this->data << ")";
     }
 
     //---------- TransactionMachine -----------------------------------------------
-    TransactionMachine::TransactionMachine(surface::gap::State const& state,
-                                           uint32_t id,
-                                           std::shared_ptr<TransactionMachine::Data> data,
-                                           boost::filesystem::path const& path):
+    TransactionMachine::TransactionMachine(
+      surface::gap::State const& state,
+      uint32_t id,
+      std::shared_ptr<TransactionMachine::Data> data):
       _snapshot_path(
-        path.empty()
-        ? common::infinit::transaction_snapshots_directory(state.me().id) /
-          boost::filesystem::unique_path()
-        : path),
+        common::infinit::transaction_snapshots_directory(state.me().id) /
+        boost::filesystem::unique_path()),
       _id(id),
       _machine(elle::sprintf("transaction (%s) fsm", id)),
       _machine_thread(),
-      _current_state(State::None),
-      _state_changed("state changed"),
       _transfer_core_state(
         this->_machine.state_make(
           "transfer core", std::bind(&TransactionMachine::_transfer_core, this))),
@@ -95,7 +128,7 @@ namespace surface
       _state(state),
       _data(std::move(data))
     {
-      ELLE_TRACE_SCOPE("%s: creating transfer machine: %s", *this, this->_data);
+      ELLE_TRACE_SCOPE("%s: create transfer machine", *this);
 
       // Normal way.
       this->_machine.transition_add(this->_transfer_core_state,
@@ -159,6 +192,9 @@ namespace surface
                      *this, elle::exception_string(e));
             this->_failed.open();
           });
+
+      this->_machine.state_changed().connect(
+        [this] (reactor::fsm::State const&) { this->_save_snapshot(); });
     }
 
     TransactionMachine::~TransactionMachine()
@@ -166,37 +202,43 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: destroying transaction machine", *this);
     }
 
-    TransactionMachine::Snapshot
+    TransactionMachine::OldSnapshot
     TransactionMachine::_make_snapshot() const
     {
-      return Snapshot{*this->data(), this->_current_state};
+      return OldSnapshot(*this->data(), State::None);
+    }
+
+    void
+    TransactionMachine::_save_old_snapshot() const
+    {
+      ELLE_TRACE_SCOPE("%s: save old snapshot to %s",
+                       *this, this->_snapshot_path.string());
+      auto snapshot = this->_make_snapshot();
+      ELLE_DUMP("snapshot data: %s", snapshot);
+      elle::serialize::to_file(this->_snapshot_path.string()) << snapshot;
     }
 
     void
     TransactionMachine::_save_snapshot() const
     {
-      ELLE_TRACE("%s saving snapshot to %s", *this, this->_snapshot_path.string())
+      if (!this->_data->id.empty())
       {
-        auto snapshot = this->_make_snapshot();
-        ELLE_DUMP("snapshot data: %s", snapshot);
-        elle::serialize::to_file(this->_snapshot_path.string()) << snapshot;
+        boost::filesystem::path path = Snapshot::path(*this);
+        ELLE_TRACE_SCOPE("%s: save snapshot to %s", *this, path);
+        elle::AtomicFile destination(path);
+        destination.write() << [&] (elle::AtomicFile::Write& write)
+        {
+          elle::serialization::json::SerializerOut output(write.stream());
+          Snapshot(*this).serialize(output);
+        };
       }
     }
 
     void
-    TransactionMachine::current_state(TransactionMachine::State const& state)
+    TransactionMachine::gap_state(gap_TransactionStatus v)
     {
-      ELLE_TRACE_SCOPE("%s: set new state to %s at progress %s", *this, state,
-                       this->progress());
-      this->_current_state = state;
-      this->_save_snapshot();
-      this->_state_changed.signal();
-    }
-
-    TransactionMachine::State
-    TransactionMachine::current_state() const
-    {
-      return this->_current_state;
+      ELLE_TRACE("%s: change GAP status to %s", *this, v);
+      this->state().enqueue(Transaction::Notification(this->id(), v));
     }
 
     void
@@ -220,7 +262,6 @@ namespace surface
                  *this, elle::exception_string());
         throw;
       }
-
       if (this->_failed.opened())
         throw Exception(gap_error, "an error occured");
     }
@@ -228,17 +269,13 @@ namespace surface
     void
     TransactionMachine::_end()
     {
-      ELLE_TRACE_SCOPE("%s: finish transfer machine", *this);
-      if (this->_failed.opened())
-        ELLE_WARN("fail barrier was opened");
-      if (this->_canceled.opened())
-        ELLE_WARN("cancel barrier was opened");
+      ELLE_TRACE_SCOPE("%s: end", *this);
     }
 
     void
     TransactionMachine::_finish()
     {
-      ELLE_TRACE_SCOPE("%s: machine finished", *this);
+      ELLE_TRACE_SCOPE("%s: finish", *this);
       if (!this->is_sender())
       {
         if (this->state().metrics_reporter())
@@ -248,82 +285,54 @@ namespace surface
           ""
         );
       }
-      this->cleanup();
-      this->current_state(State::Finished);
+      this->gap_state(gap_transaction_finished);
       this->_finalize(infinit::oracles::Transaction::Status::finished);
-      ELLE_DEBUG("%s: finished", *this);
     }
 
     void
     TransactionMachine::_reject()
     {
-      ELLE_TRACE_SCOPE("%s: machine rejected", *this);
-      this->current_state(State::Rejected);
+      ELLE_TRACE_SCOPE("%s: reject", *this);
+      this->gap_state(gap_transaction_rejected);
       this->_finalize(infinit::oracles::Transaction::Status::rejected);
-      ELLE_DEBUG("%s: rejected", *this);
-      this->cleanup();
     }
 
     void
     TransactionMachine::_cancel()
     {
-      ELLE_TRACE_SCOPE("%s: machine canceled", *this);
-      this->current_state(State::Canceled);
+      ELLE_TRACE_SCOPE("%s: cancel", *this);
+      this->gap_state(gap_transaction_canceled);
       this->_finalize(infinit::oracles::Transaction::Status::canceled);
-      ELLE_DEBUG("%s: canceled", *this);
-      this->cleanup();
     }
 
     void
     TransactionMachine::_fail()
     {
-      ELLE_TRACE_SCOPE("%s: machine failed", *this);
-
+      ELLE_TRACE_SCOPE("%s: fail", *this);
       std::string transaction_id;
       if (!this->data()->id.empty())
         transaction_id = this->transaction_id();
       else
         transaction_id = "unknown";
-
       if (this->state().metrics_reporter())
         this->state().metrics_reporter()->transaction_ended(
         transaction_id,
         infinit::oracles::Transaction::Status::failed,
         ""
       );
-
       // Send report for failed transfer
       elle::crash::transfer_failed_report(this->state().meta().protocol(),
                                           this->state().meta().host(),
                                           this->state().meta().port(),
                                           this->state().me().email);
-
-      this->current_state(State::Failed);
+      this->gap_state(gap_transaction_failed);
       this->_finalize(infinit::oracles::Transaction::Status::failed);
-      this->cleanup();
-      ELLE_DEBUG("%s: failed", *this);
     }
 
     void
     TransactionMachine::_finalize(infinit::oracles::Transaction::Status status)
     {
       ELLE_TRACE_SCOPE("%s: finalize machine: %s", *this, status);
-
-      try
-      {
-        if (this->_machine.exception() != std::exception_ptr{})
-          throw this->_machine.exception();
-      }
-      catch (reactor::Terminate const&)
-      {
-        ELLE_TRACE("%s: machine terminated cleanly: %s", *this, elle::exception_string());
-        throw;
-      }
-      catch (...)
-      {
-        ELLE_ERR("%s: transaction failed: %s", *this, elle::exception_string());
-      }
-
       if (!this->_data->empty())
       {
         try
@@ -331,17 +340,12 @@ namespace surface
           this->state().meta().update_transaction(
             this->transaction_id(), status);
         }
-        catch (reactor::Terminate const&)
-        {
-          ELLE_TRACE("%s: machine terminated while canceling transaction: %s",
-                     *this, elle::exception_string());
-          throw;
-        }
         catch (infinit::oracles::meta::Exception const& e)
         {
-          if (e.err == infinit::oracles::meta::Error::transaction_already_finalized)
+          using infinit::oracles::meta::Error;
+          if (e.err == Error::transaction_already_finalized)
             ELLE_TRACE("%s: transaction already finalized", *this);
-          else if (e.err == infinit::oracles::meta::Error::transaction_already_has_this_status)
+          else if (e.err == Error::transaction_already_has_this_status)
             ELLE_TRACE("%s: transaction already in this state", *this);
           else
             ELLE_ERR("%s: unable to finalize the transaction %s: %s",
@@ -355,8 +359,9 @@ namespace surface
       }
       else
       {
-        ELLE_DEBUG("%s: transaction id is still empty", *this);
+        ELLE_ERR("%s: can't finalize transaction: id is still empty", *this);
       }
+      this->cleanup();
     }
 
     void
@@ -364,9 +369,7 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: running transfer machine", *this);
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
       auto& scheduler = *reactor::Scheduler::scheduler();
-
       this->_machine_thread.reset(
         new reactor::Thread{
           scheduler,
@@ -401,9 +404,7 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: update with new peer connection status %s",
                        *this, user_status);
-
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
       if (user_status)
         ELLE_DEBUG("%s: peer is now online", *this)
         {
@@ -422,7 +423,6 @@ namespace surface
     TransactionMachine::cancel()
     {
       ELLE_TRACE_SCOPE("%s: cancel transaction %s", *this, this->data()->id);
-
       if (!this->_canceled.opened())
       {
         if (this->state().metrics_reporter())
@@ -432,7 +432,6 @@ namespace surface
             ""
             );
       }
-
       this->_canceled.open();
     }
 
@@ -482,13 +481,11 @@ namespace surface
     TransactionMachine::join()
     {
       ELLE_TRACE_SCOPE("%s: join machine", *this);
-
       if (this->_machine_thread == nullptr)
       {
         ELLE_WARN("%s: thread already destroyed", *this);
         return;
       }
-
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
       reactor::Thread* current = reactor::Scheduler::scheduler()->current();
       ELLE_ASSERT(current != nullptr);
@@ -516,6 +513,7 @@ namespace surface
     /*-----------.
     | Attributes |
     `-----------*/
+
     std::string const&
     TransactionMachine::transaction_id() const
     {
@@ -533,7 +531,6 @@ namespace surface
         ELLE_ASSERT_EQ(this->_data->id, id);
         return;
       }
-
       this->_data->id = id;
     }
 
@@ -603,7 +600,6 @@ namespace surface
     {
       auto const& data = *this->_data;
       auto const& me = this->state().me();
-
       stream << elle::demangle(typeid(*this).name())
              << "(id=" << this->id() << ", "
              << "(u=" << me.id;
@@ -690,6 +686,5 @@ namespace surface
       }
       return out;
     }
-
   }
 }

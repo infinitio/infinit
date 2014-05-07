@@ -66,17 +66,20 @@ namespace surface
         None = 99,
       };
 
+    /*------------.
+    | OldSnapshot |
+    `------------*/
     public:
-      class Snapshot:
+      class OldSnapshot:
         public elle::Printable
       {
       public:
-        Snapshot(Data const& data,
-                 State const state,
-                 std::unordered_set<std::string> const& files = {},
-                 std::string const& message = "");
+        OldSnapshot(Data const& data,
+                    State const state,
+                    std::unordered_set<std::string> const& files = {},
+                    std::string const& message = "");
 
-        ELLE_SERIALIZE_CONSTRUCT(Snapshot){}
+        ELLE_SERIALIZE_CONSTRUCT(OldSnapshot){}
 
       public:
         Data data;
@@ -96,8 +99,7 @@ namespace surface
     public:
       TransactionMachine(surface::gap::State const& state,
                          uint32_t id,
-                         std::shared_ptr<TransactionMachine::Data> transaction,
-                         boost::filesystem::path const& path = "");
+                         std::shared_ptr<TransactionMachine::Data> transaction);
 
       virtual
       ~TransactionMachine();
@@ -107,9 +109,11 @@ namespace surface
 
     protected:
       virtual
-      Snapshot
+      OldSnapshot
       _make_snapshot() const;
       virtual
+      void
+      _save_old_snapshot() const;
       void
       _save_snapshot() const;
     protected:
@@ -201,22 +205,36 @@ namespace surface
       reactor::fsm::Machine _machine;
       ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, machine_thread);
 
-    protected:
-      // XXX: Remove when ELLE_ATTRIBUTE handle protected methods.
-      State _current_state;
-      ELLE_ATTRIBUTE_X(reactor::Signal, state_changed);
+    /*---------.
+    | Snapshot |
+    `---------*/
+    public:
+      class Snapshot
+        : public elle::Printable
+      {
+      public:
+        Snapshot(TransactionMachine const& machine);
+        Snapshot(elle::serialization::SerializerIn& source);
+        void
+        serialize(elle::serialization::Serializer& s);
+        static
+        boost::filesystem::path
+        path(TransactionMachine const& machine);
+        ELLE_ATTRIBUTE_R(std::string, current_state);
+
+      protected:
+        virtual
+        void
+        print(std::ostream& stream) const override;
+      };
 
     protected:
       friend class Transferer;
       friend class PeerTransferMachine;
-      void
-      current_state(State const& state);
+      friend class Snapshot;
 
       std::function<aws::Credentials(bool)>
       make_aws_credentials_getter();
-    public:
-      State
-      current_state() const;
 
     protected:
       void
@@ -330,6 +348,10 @@ namespace surface
       virtual
       std::unique_ptr<frete::RPCFrete>
       rpcs(infinit::protocol::ChanneledStream& socket) = 0;
+
+    protected:
+      void
+      gap_state(gap_TransactionStatus state);
 
     /*----------.
     | Printable |

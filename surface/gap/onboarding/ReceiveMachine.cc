@@ -38,7 +38,7 @@ namespace surface
       }
 
       void
-      ReceiveMachine::_save_snapshot() const
+      ReceiveMachine::_save_old_snapshot() const
       {
         ELLE_DEBUG("don't save snapshot");
       }
@@ -67,14 +67,11 @@ namespace surface
 
       void
       ReceiveMachine::_accept()
-      {
-        this->current_state(TransactionMachine::State::RecipientAccepted);
-      }
+      {}
 
       void
       ReceiveMachine::_finalize(infinit::oracles::Transaction::Status)
-      {
-      }
+      {}
     }
   }
 }

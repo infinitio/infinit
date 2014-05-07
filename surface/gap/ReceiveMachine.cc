@@ -1,8 +1,10 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
+#include <elle/AtomicFile.hh>
 #include <elle/finally.hh>
 #include <elle/os/environ.hh>
+#include <elle/serialization/json.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
 #include <elle/system/system.hh>
@@ -72,14 +74,11 @@ namespace surface
       return res;
     }
 
-
     using TransactionStatus = infinit::oracles::Transaction::Status;
     ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
                                    uint32_t id,
-                                   std::shared_ptr<TransactionMachine::Data> data,
-                                   boost::filesystem::path const& snapshot_path,
-                                   bool):
-      TransactionMachine(state, id, std::move(data), snapshot_path),
+                                   std::shared_ptr<TransactionMachine::Data> data):
+      TransactionMachine(state, id, std::move(data)),
       _wait_for_decision_state(
         this->_machine.state_make(
           "wait for decision", std::bind(&ReceiveMachine::_wait_for_decision, this))),
@@ -98,42 +97,35 @@ namespace surface
                                     this->_accept_state,
                                     reactor::Waitables{&this->_accepted});
       this->_machine.transition_add(this->_accept_state,
-                                      this->_transfer_core_state);
-
+                                    this->_transfer_core_state);
       this->_machine.transition_add(this->_transfer_core_state,
                                     this->_finish_state);
-
       // Reject way.
       this->_machine.transition_add(this->_wait_for_decision_state,
                                     this->_reject_state,
                                     reactor::Waitables{&this->rejected()});
-
       // Cancel.
       this->_machine.transition_add(_wait_for_decision_state, _cancel_state, reactor::Waitables{&this->canceled()}, true);
       this->_machine.transition_add(_accept_state, _cancel_state, reactor::Waitables{&this->canceled()}, true);
       this->_machine.transition_add(_reject_state, _cancel_state, reactor::Waitables{&this->canceled()}, true);
       this->_machine.transition_add(_transfer_core_state, _cancel_state, reactor::Waitables{&this->canceled()}, true);
-
       // Exception.
       this->_machine.transition_add_catch(_wait_for_decision_state, _fail_state);
       this->_machine.transition_add_catch(_accept_state, _fail_state);
       this->_machine.transition_add_catch(_reject_state, _fail_state);
       this->_machine.transition_add_catch(_transfer_core_state, _fail_state);
-
       this->_machine.state_changed().connect(
         [this] (reactor::fsm::State& state)
         {
           ELLE_LOG_COMPONENT("surface.gap.ReceiveMachine.State");
           ELLE_TRACE("%s: entering %s", *this, state);
         });
-
       this->_machine.transition_triggered().connect(
         [this] (reactor::fsm::Transition& transition)
         {
           ELLE_LOG_COMPONENT("surface.gap.ReceiveMachine.Transition");
           ELLE_TRACE("%s: %s triggered", *this, transition);
         });
-
       try
       {
         this->_snapshot.reset(
@@ -152,65 +144,61 @@ namespace surface
       {
         ELLE_ERR("%s: snap shot was invalid: %s", *this, elle::exception_string());
       }
+      this->_run_from_snapshot();
     }
 
-    ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
-                                   uint32_t id,
-                                   TransactionMachine::State const current_state,
-                                   std::shared_ptr<TransactionMachine::Data> data):
-      ReceiveMachine(state, id, std::move(data), "", true)
+    void
+    ReceiveMachine::_run_from_snapshot()
     {
-      ELLE_TRACE_SCOPE("%s: construct from data %s, starting at %s",
-                       *this, *this->data(), current_state);
-
-      switch (current_state)
+      bool started = false;
+      boost::filesystem::path path = Snapshot::path(*this);
+      if (exists(path))
       {
-        case TransactionMachine::State::NewTransaction:
-          break;
-        case TransactionMachine::State::SenderCreateTransaction:
-        case TransactionMachine::State::SenderWaitForDecision:
-          elle::unreachable();
-        case TransactionMachine::State::RecipientWaitForDecision:
-          this->_run(this->_wait_for_decision_state);
-          break;
-        case TransactionMachine::State::RecipientAccepted:
-          this->_run(this->_accept_state);
-          break;
-        case TransactionMachine::State::PublishInterfaces:
-        case TransactionMachine::State::Connect:
-        case TransactionMachine::State::PeerDisconnected:
-        case TransactionMachine::State::PeerConnectionLost:
-        case TransactionMachine::State::Transfer:
-        case TransactionMachine::State::DataExhausted:
-        case TransactionMachine::State::CloudSynchronize:
-          this->_run(this->_transfer_core_state);
-          break;
-        case TransactionMachine::State::Finished:
-          this->_run(this->_finish_state);
-          break;
-        case TransactionMachine::State::Rejected:
-          this->_run(this->_reject_state);
-          break;
-        case TransactionMachine::State::Canceled:
-          this->_run(this->_cancel_state);
-          break;
-        case TransactionMachine::State::Failed:
-          this->_run(this->_fail_state);
-          break;
-        default:
-          elle::unreachable();
+        ELLE_TRACE_SCOPE("%s: restore from snapshot: %s", *this, path);
+        elle::AtomicFile source(path);
+        source.read() << [&] (elle::AtomicFile::Read& read)
+        {
+          elle::serialization::json::SerializerIn input(read.stream());
+          Snapshot snapshot(input);
+          started = true;
+          ELLE_TRACE("%s: restore to state %s",
+                     *this, snapshot.current_state())
+          if (snapshot.current_state() == "accept")
+            this->_run(this->_accept_state);
+          else if (snapshot.current_state() == "cancel")
+            this->_run(this->_cancel_state);
+          else if (snapshot.current_state() == "end")
+            this->_run(this->_end_state);
+          else if (snapshot.current_state() == "fail")
+            this->_run(this->_fail_state);
+          else if (snapshot.current_state() == "finish")
+            this->_run(this->_finish_state);
+          else if (snapshot.current_state() == "reject")
+            this->_run(this->_reject_state);
+          else if (snapshot.current_state() == "transfer core")
+            this->_run(this->_transfer_core_state);
+          else if (snapshot.current_state() == "wait for decision")
+            this->_run(this->_wait_for_decision_state);
+          else
+          {
+            ELLE_WARN("%s: unkown state in snapshot: %s",
+                      *this, snapshot.current_state());
+            started = false;
+          }
+        };
       }
-    }
-
-    ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
-                                   uint32_t id,
-                                   std::shared_ptr<TransactionMachine::Data> data,
-                                   boost::filesystem::path const& snapshot_path):
-      ReceiveMachine(state, id, std::move(data), snapshot_path, true)
-    {
-      ELLE_TRACE_SCOPE("%s: constructing machine for transaction %s",
-                       *this, data);
-
+      else
+      {
+        if (this->data()->status != TransactionStatus::created &&
+            this->data()->status != TransactionStatus::initialized)
+          ELLE_WARN("%s: missing snapshot: %s", *this, path);
+      }
+      // Try to guess a decent starting state from the transaction status.
+      if (started)
+        return;
+      ELLE_TRACE_SCOPE(
+        "%s: deduce starting state from the transaction status: %s",
+        *this, this->data()->status);
       switch (this->data()->status)
       {
         case TransactionStatus::created:
@@ -316,14 +304,14 @@ namespace surface
     ReceiveMachine::_wait_for_decision()
     {
       ELLE_TRACE_SCOPE("%s: waiting for decision %s", *this, this->transaction_id());
-      this->current_state(TransactionMachine::State::RecipientWaitForDecision);
+      this->gap_state(gap_transaction_waiting_accept);
     }
 
     void
     ReceiveMachine::_accept()
     {
       ELLE_TRACE_SCOPE("%s: accepted %s", *this, this->transaction_id());
-      this->current_state(TransactionMachine::State::RecipientAccepted);
+      this->gap_state(gap_transaction_waiting_accept);
 
       try
       {
@@ -459,6 +447,7 @@ namespace surface
         ELLE_DEBUG("%s: cloud buffering disabled by configuration", *this);
         return;
       }
+      this->gap_state(gap_transaction_transferring);
       auto start_time = boost::posix_time::microsec_clock::universal_time();
       metrics::TransferExitReason exit_reason = metrics::TransferExitReasonUnknown;
       std::string exit_message;
@@ -521,7 +510,7 @@ namespace surface
         if (this->_snapshot)
           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
         ELLE_TRACE("%s: Data exhausted on cloud bufferer", *this);
-        this->current_state(TransactionMachine::State::DataExhausted);
+        this->gap_state(gap_transaction_waiting_data);
       }
       catch (reactor::Terminate const&)
       { // aye aye
@@ -537,7 +526,7 @@ namespace surface
         // send us notifications and wake us up
         ELLE_WARN("%s: cloud download exception, exiting cloud state: %s",
                   *this, e.what());
-        this->current_state(TransactionMachine::State::DataExhausted);
+        this->gap_state(gap_transaction_waiting_data);
         exit_reason = metrics::TransferExitReasonError;
         if (this->_snapshot)
           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
@@ -1133,7 +1122,6 @@ namespace surface
     void
     ReceiveMachine::_cloud_synchronize()
     {
-      this->current_state(TransactionMachine::State::Transfer);
       this->_cloud_operation();
     }
 

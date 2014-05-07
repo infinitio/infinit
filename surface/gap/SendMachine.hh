@@ -1,5 +1,5 @@
-#ifndef SENDMACHINE_HH
-# define SENDMACHINE_HH
+#ifndef SURFACE_GAP_SEND_MACHINE_HH
+# define SURFACE_GAP_SEND_MACHINE_HH
 
 # include <surface/gap/TransactionMachine.hh>
 # include <surface/gap/State.hh>
@@ -13,32 +13,32 @@ namespace surface
     class  SendMachine:
       public TransactionMachine
     {
+    /*-------------.
+    | Construction |
+    `-------------*/
     public:
-      // Construct from send files.
+      /// Construct from send files.
       SendMachine(surface::gap::State const& state,
                   uint32_t id,
                   std::string const& recipient,
                   std::unordered_set<std::string>&& files,
                   std::string const& message,
                   std::shared_ptr<Data> data);
-
-      // Construct from snapshot (with curren_state and files).
+      /// Construct from snapshot.
       SendMachine(surface::gap::State const& state,
                   uint32_t id,
                   std::unordered_set<std::string> files,
-                  TransactionMachine::State current_state,
                   std::string const& message,
                   std::shared_ptr<TransactionMachine::Data> data);
-
-      // XXX: Add putain de commentaire de la vie.
+      /// Construct from server data.
       SendMachine(surface::gap::State const& state,
                   uint32_t id,
-                  std::shared_ptr<TransactionMachine::Data> data,
-                  boost::filesystem::path const& path = "");
-
-
+                  std::shared_ptr<TransactionMachine::Data> data);
       virtual
       ~SendMachine();
+    private:
+      void
+      _run_from_snapshot();
 
     public:
       virtual
@@ -49,10 +49,9 @@ namespace surface
       SendMachine(surface::gap::State const& state,
                   uint32_t id,
                   std::shared_ptr<Data> data,
-                  boost::filesystem::path const& path,
                   bool);
 
-      Snapshot
+      OldSnapshot
       _make_snapshot() const override;
 
     private:
@@ -72,21 +71,21 @@ namespace surface
       _ghost_cloud_upload();
       bool
       _fetch_peer_key(bool assert_success);
-      /*-----------------------.
-      | Machine implementation |
-      `-----------------------*/
+
+    /*-----------------------.
+    | Machine implementation |
+    `-----------------------*/
+    public:
       ELLE_ATTRIBUTE(reactor::fsm::State&, create_transaction_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, wait_for_accept_state);
-
       // Transaction status signals.
       ELLE_ATTRIBUTE_RX(reactor::Barrier, accepted);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, rejected);
-
       ELLE_ATTRIBUTE(std::unique_ptr<frete::Frete>, frete);
 
-      /*-----------------.
-      | Transaction data |
-      `-----------------*/
+    /*-----------------.
+    | Transaction data |
+    `-----------------*/
       /// List of path from transaction data.
       typedef std::unordered_set<std::string> Files;
       ELLE_ATTRIBUTE(Files, files);

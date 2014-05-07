@@ -46,7 +46,7 @@ namespace surface
       }
       catch (std::out_of_range const&)
       {
-        ELLE_WARN("%s: No runner for %s", *this, notif);
+        ELLE_DEBUG("%s: no runner for %s", *this, notif);
       }
     }
 
