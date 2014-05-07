@@ -136,7 +136,7 @@ class Mixin:
       assert isinstance(device_id, uuid.UUID)
       user = self._user_by_id(user_id)
       if str(device_id) not in user['devices']:
-        raise error.Error(error.DEVICE_DOESNT_BELONG_TOU_YOU)
+        raise error.Error(error.DEVICE_DOESNT_BELONG_TO_YOU)
       return self.device(id = str(device_id),
                          owner =  user_id,
                          fields = ['trophonius']).get('trophonius') is not None
@@ -161,7 +161,7 @@ class Mixin:
     except error.Error as e:
       self.fail(*e.args)
     if not str(id) in user['devices']:
-      self.fail(error.DEVICE_DOESNT_BELONG_TOU_YOU)
+      self.fail(error.DEVICE_DOESNT_BELONG_TO_YOU)
       self.database.device.update(query, {"$set": {"name": name}})
     return self.success({
         'id': str(id),
@@ -185,7 +185,7 @@ class Mixin:
       return self.fail(*e.args)
 
     if not str(id) in user.get('devices', []):
-      self.fail(error.DEVICE_DOESNT_BELONG_TOU_YOU)
+      self.fail(error.DEVICE_DOESNT_BELONG_TO_YOU)
     self.database.devices.remove(query)
     self.database.users.update({'_id': user['_id']}, {'$pull': {'devices': str(id)}})
     return self.success({'id': str(id)})

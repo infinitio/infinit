@@ -388,7 +388,7 @@ class Mixin:
         self.bad_request()
       device_id = uuid.UUID(device_id)
       if str(device_id) not in self.user['devices']:
-        raise error.Error(error.DEVICE_DOESNT_BELONG_TOU_YOU)
+        raise error.Error(error.DEVICE_DOESNT_BELONG_TO_YOU)
       return {
         'recipient_fullname': self.user['fullname'],
         'recipient_device_name' : device_name,
@@ -835,7 +835,7 @@ class Mixin:
     raw_creds = token_maker.generate_s3_token()
 
     if raw_creds == None:
-      return self.fail(error.UNKNOWN)
+      return self.fail(error.UNABLE_TO_GET_AWS_CREDENTIALS)
 
     # Only send back required credentials.
     credentials = dict()
