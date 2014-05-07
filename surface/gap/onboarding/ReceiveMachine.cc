@@ -38,7 +38,7 @@ namespace surface
       }
 
       void
-      ReceiveMachine::_save_snapshot() const
+      ReceiveMachine::_save_old_snapshot() const
       {
         ELLE_DEBUG("don't save snapshot");
       }

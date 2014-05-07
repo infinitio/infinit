@@ -129,12 +129,12 @@ namespace surface
                 ELLE_DEBUG("failed at removing snapshot %s: %s",
                            snapshot_path, ec);
             });
-          std::unique_ptr<TransactionMachine::Snapshot> snapshot;
+          std::unique_ptr<TransactionMachine::OldSnapshot> snapshot;
           try
           {
             ELLE_DEBUG("Reloading snapshot from %s", snapshot_path);
             snapshot.reset(
-              new TransactionMachine::Snapshot(
+              new TransactionMachine::OldSnapshot(
                 elle::serialize::from_file(snapshot_path)));
             // FIXME: this should be in the snapshot deserialization.
             // FIXME: this can happen if you kill the client while creating a
@@ -142,7 +142,7 @@ namespace surface
             //        yet. Test and fix that shit.
             if (snapshot->data.id.empty())
             {
-              ELLE_LOG("Snapshot %s is corrupted: empty id", *snapshot);
+              ELLE_LOG("OldSnapshot %s is corrupted: empty id", *snapshot);
               boost::filesystem::remove(snapshot_path);
               continue;
             }

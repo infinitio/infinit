@@ -118,7 +118,7 @@ namespace surface
                state.device().id == this->_data->sender_device_id)
       {
         ELLE_TRACE("%s: start send machine", *this);
-        this->_machine.reset(new SendMachine{state, this->_id, this->_data});
+        this->_machine.reset(new SendMachine(state, this->_id, this->_data));
       }
       else if (state.me().id == this->_data->recipient_id &&
                (this->_data->recipient_device_id.empty() ||
@@ -143,7 +143,7 @@ namespace surface
 
     Transaction::Transaction(State const& state,
                              uint32_t id,
-                             TransactionMachine::Snapshot snapshot):
+                             TransactionMachine::OldSnapshot snapshot):
       _id(id),
       _sender(state.me().id == snapshot.data.sender_id &&
               state.device().id == snapshot.data.sender_device_id),
@@ -191,9 +191,9 @@ namespace surface
                              std::string const& message):
       _id(id),
       _sender(true),
-      _data(new Data{state.me().id, state.me().fullname, state.device().id}),
-      _machine(new SendMachine{
-          state, this->_id, peer_id, std::move(files), message, this->_data}),
+      _data(new Data(state.me().id, state.me().fullname, state.device().id)),
+      _machine(new SendMachine(state, this->_id, peer_id,
+                               std::move(files), message, this->_data)),
       _last_status(gap_TransactionStatus(-1))
     {
       ELLE_TRACE_SCOPE("%s: constructed for send", *this);

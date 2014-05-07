@@ -43,7 +43,7 @@ namespace surface
         _finalize(infinit::oracles::Transaction::Status) override;
 
         void
-        _save_snapshot() const override;
+        _save_old_snapshot() const override;
 
         ELLE_ATTRIBUTE(std::string, file_path);
       };

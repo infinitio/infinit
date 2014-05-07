@@ -1,8 +1,10 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
+#include <elle/AtomicFile.hh>
 #include <elle/finally.hh>
 #include <elle/os/environ.hh>
+#include <elle/serialization/json.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
 #include <elle/system/system.hh>
@@ -77,9 +79,8 @@ namespace surface
     ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
                                    uint32_t id,
                                    std::shared_ptr<TransactionMachine::Data> data,
-                                   boost::filesystem::path const& snapshot_path,
                                    bool):
-      TransactionMachine(state, id, std::move(data), snapshot_path),
+      TransactionMachine(state, id, std::move(data)),
       _wait_for_decision_state(
         this->_machine.state_make(
           "wait for decision", std::bind(&ReceiveMachine::_wait_for_decision, this))),
@@ -98,7 +99,7 @@ namespace surface
                                     this->_accept_state,
                                     reactor::Waitables{&this->_accepted});
       this->_machine.transition_add(this->_accept_state,
-                                      this->_transfer_core_state);
+                                    this->_transfer_core_state);
 
       this->_machine.transition_add(this->_transfer_core_state,
                                     this->_finish_state);
@@ -154,63 +155,82 @@ namespace surface
       }
     }
 
+    // Create from snapshot.
     ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
                                    uint32_t id,
                                    TransactionMachine::State const current_state,
                                    std::shared_ptr<TransactionMachine::Data> data):
-      ReceiveMachine(state, id, std::move(data), "", true)
+      ReceiveMachine(state, id, std::move(data), true)
     {
       ELLE_TRACE_SCOPE("%s: construct from data %s, starting at %s",
                        *this, *this->data(), current_state);
-
-      switch (current_state)
-      {
-        case TransactionMachine::State::NewTransaction:
-          break;
-        case TransactionMachine::State::SenderCreateTransaction:
-        case TransactionMachine::State::SenderWaitForDecision:
-          elle::unreachable();
-        case TransactionMachine::State::RecipientWaitForDecision:
-          this->_run(this->_wait_for_decision_state);
-          break;
-        case TransactionMachine::State::RecipientAccepted:
-          this->_run(this->_accept_state);
-          break;
-        case TransactionMachine::State::PublishInterfaces:
-        case TransactionMachine::State::Connect:
-        case TransactionMachine::State::PeerDisconnected:
-        case TransactionMachine::State::PeerConnectionLost:
-        case TransactionMachine::State::Transfer:
-        case TransactionMachine::State::DataExhausted:
-        case TransactionMachine::State::CloudSynchronize:
-          this->_run(this->_transfer_core_state);
-          break;
-        case TransactionMachine::State::Finished:
-          this->_run(this->_finish_state);
-          break;
-        case TransactionMachine::State::Rejected:
-          this->_run(this->_reject_state);
-          break;
-        case TransactionMachine::State::Canceled:
-          this->_run(this->_cancel_state);
-          break;
-        case TransactionMachine::State::Failed:
-          this->_run(this->_fail_state);
-          break;
-        default:
-          elle::unreachable();
-      }
+      this->current_state(current_state);
+      this->_run_from_snapshot();
     }
 
+    // Create from server data.
     ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
                                    uint32_t id,
-                                   std::shared_ptr<TransactionMachine::Data> data,
-                                   boost::filesystem::path const& snapshot_path):
-      ReceiveMachine(state, id, std::move(data), snapshot_path, true)
+                                   std::shared_ptr<TransactionMachine::Data> data):
+      ReceiveMachine(state, id, std::move(data), true)
     {
       ELLE_TRACE_SCOPE("%s: constructing machine for transaction %s",
                        *this, data);
+      this->_run_from_snapshot();
+    }
 
+    void
+    ReceiveMachine::_run_from_snapshot()
+    {
+      bool started = false;
+      boost::filesystem::path path = Snapshot::path(*this);
+      if (exists(path))
+      {
+        ELLE_TRACE_SCOPE("%s: restore from snapshot: %s", *this, path);
+        elle::AtomicFile source(path);
+        source.read() << [&] (elle::AtomicFile::Read& read)
+        {
+          elle::serialization::json::SerializerIn input(read.stream());
+          Snapshot snapshot(input);
+          started = true;
+          ELLE_TRACE("%s: restore to state %s",
+                     *this, snapshot.current_state())
+          if (snapshot.current_state() == "accept")
+            this->_run(this->_accept_state);
+          else if (snapshot.current_state() == "cancel")
+            this->_run(this->_cancel_state);
+          else if (snapshot.current_state() == "end")
+            this->_run(this->_end_state);
+          else if (snapshot.current_state() == "fail")
+            this->_run(this->_fail_state);
+          else if (snapshot.current_state() == "finish")
+            this->_run(this->_finish_state);
+          else if (snapshot.current_state() == "reject")
+            this->_run(this->_reject_state);
+          else if (snapshot.current_state() == "transfer core")
+            this->_run(this->_transfer_core_state);
+          else if (snapshot.current_state() == "wait for decision")
+            this->_run(this->_wait_for_decision_state);
+          else
+          {
+            ELLE_WARN("%s: unkown state in snapshot: %s",
+                      *this, snapshot.current_state());
+            started = false;
+          }
+        };
+      }
+      else
+      {
+        if (this->data()->status != TransactionStatus::created &&
+            this->data()->status != TransactionStatus::initialized)
+          ELLE_WARN("%s: missing snapshot: %s", *this, path);
+      }
+      // Try to guess a decent starting state from the transaction status.
+      if (started)
+        return;
+      ELLE_TRACE_SCOPE(
+        "%s: deduce starting state from the transaction status: %s",
+        *this, this->data()->status);
       switch (this->data()->status)
       {
         case TransactionStatus::created:
