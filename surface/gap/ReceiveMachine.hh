@@ -1,5 +1,5 @@
-#ifndef RECEIVEMACHINE_HH
-# define RECEIVEMACHINE_HH
+#ifndef SURFACE_GAP_RECEIVE_MACHINE_HH
+# define SURFACE_GAP_RECEIVE_MACHINE_HH
 
 # include <memory>
 # include <string>

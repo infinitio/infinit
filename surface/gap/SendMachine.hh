@@ -1,5 +1,5 @@
-#ifndef SENDMACHINE_HH
-# define SENDMACHINE_HH
+#ifndef SURFACE_GAP_SEND_MACHINE_HH
+# define SURFACE_GAP_SEND_MACHINE_HH
 
 # include <surface/gap/TransactionMachine.hh>
 # include <surface/gap/State.hh>
