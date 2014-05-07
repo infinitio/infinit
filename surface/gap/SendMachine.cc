@@ -53,12 +53,6 @@ namespace surface
       _accepted("accepted barrier"),
       _rejected("rejected barrier")
     {
-      ELLE_TRACE("Creating SendMachine: id %s sid %s sdid %s rid %s rdid %s",
-                this->data()->id,
-                this->data()->sender_id,
-                this->data()->sender_device_id,
-                this->data()->recipient_id,
-                this->data()->recipient_device_id);
       this->_machine.transition_add(
         this->_create_transaction_state,
         this->_wait_for_accept_state);

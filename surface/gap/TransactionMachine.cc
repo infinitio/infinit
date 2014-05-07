@@ -130,7 +130,7 @@ namespace surface
       _state(state),
       _data(std::move(data))
     {
-      ELLE_TRACE_SCOPE("%s: creating transfer machine: %s", *this, this->_data);
+      ELLE_TRACE_SCOPE("%s: create transfer machine", *this);
 
       // Normal way.
       this->_machine.transition_add(this->_transfer_core_state,
