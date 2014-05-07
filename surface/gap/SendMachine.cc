@@ -226,7 +226,7 @@ namespace surface
     SendMachine::_run_from_snapshot()
     {
       bool started = false;
-      if (this->data()->id.empty())
+      if (!this->data()->id.empty())
       {
         boost::filesystem::path path = Snapshot::path(*this);
         if (exists(path))
