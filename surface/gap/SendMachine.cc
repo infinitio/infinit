@@ -134,7 +134,7 @@ namespace surface
     SendMachine::_make_snapshot() const
     {
       return OldSnapshot(*this->data(),
-                         this->_current_state,
+                         State::None,
                          this->_files,
                          this->_message);
     }
@@ -190,13 +190,11 @@ namespace surface
     SendMachine::SendMachine(surface::gap::State const& state,
                              uint32_t id,
                              std::unordered_set<std::string> files,
-                             TransactionMachine::State current_state,
                              std::string const& message,
                              std::shared_ptr<TransactionMachine::Data> data):
       SendMachine(state, id, std::move(data), true)
     {
-      ELLE_TRACE_SCOPE("%s: construct from snapshot starting at %s",
-                       *this, current_state);
+      ELLE_TRACE_SCOPE("%s: construct from snapshot", *this);
       this->_files = std::move(files);
       ELLE_ASSERT_NEQ(this->_files.size(), 0u);
       // Copy filenames into data structure to be sent to meta.
@@ -210,9 +208,7 @@ namespace surface
           return boost::filesystem::path(el).filename().string();
         });
       ELLE_ASSERT_EQ(this->data()->files.size(), this->_files.size());
-      this->_current_state = current_state;
       this->_message = message;
-      this->current_state(current_state);
       this->_run_from_snapshot();
     }
 
@@ -338,6 +334,7 @@ namespace surface
     void
     SendMachine::_create_transaction()
     {
+      this->gap_state(gap_transaction_new);
       ELLE_TRACE_SCOPE("%s: create transaction", *this);
       int64_t size = 0;
       for (auto const& file: this->_files)
@@ -362,7 +359,6 @@ namespace surface
 
       // Change state to SenderCreateTransaction once we've calculated the file
       // size and have the file list.
-      this->current_state(TransactionMachine::State::SenderCreateTransaction);
       ELLE_TRACE("%s: Creating transaction, first_file=%s, dir=%s",
                  *this, first_file,
                  boost::filesystem::is_directory(first_file));
@@ -417,12 +413,10 @@ namespace surface
         this->_ghost_cloud_upload();
       else if (!peer.ghost() && !peer.online())
       {
-        this->current_state(
-          TransactionMachine::State::CloudBufferingBeforeAccept);
         this->_cloud_operation();
       }
       else
-        this->current_state(TransactionMachine::State::SenderWaitForDecision);
+        this->gap_state(gap_transaction_waiting_accept);
     }
 
     void
@@ -511,9 +505,6 @@ namespace surface
     void
     SendMachine::_ghost_cloud_upload()
     {
-      if (this->current_state()
-          == TransactionMachine::State::GhostCloudBufferingFinished)
-        return;
       // exit information for factored metrics writer.
       // needs to stay out of the try, as catch clause will fill those
       auto start_time = boost::posix_time::microsec_clock::universal_time();
@@ -537,12 +528,8 @@ namespace surface
         });
       try
       {
-
         typedef frete::Frete::FileSize FileSize;
-        this->current_state(TransactionMachine::State::GhostCloudBuffering);
-        // Force a machine state snapshot save now that we have the transaction
-        // id.
-        current_state(current_state());
+        this->gap_state(gap_transaction_transferring);
         ELLE_TRACE_SCOPE("%s: ghost_cloud_upload", *this);
         this->_save_transfer_snapshot();
         typedef boost::filesystem::path path;
@@ -741,9 +728,7 @@ namespace surface
             });
         handler.multipart_finalize(source_file_name, upload_id, chunks);
         // mark transfer as raw-finished
-        this->current_state(TransactionMachine::State::GhostCloudBufferingFinished);
-        // For now, mark transfer as finished until we handle smooth mode changes
-        this->current_state(TransactionMachine::State::Finished);
+        this->gap_state(gap_transaction_finished);
         this->finished().open();
         exit_reason = metrics::TransferExitReasonFinished;
       } // try
@@ -768,6 +753,7 @@ namespace surface
         ELLE_DEBUG("%s: cloud buffering disabled by configuration", *this);
         return;
       }
+      this->gap_state(gap_transaction_transferring);
       auto start_time = boost::posix_time::microsec_clock::universal_time();
       metrics::TransferExitReason exit_reason = metrics::TransferExitReasonUnknown;
       std::string exit_message;
@@ -915,7 +901,7 @@ namespace surface
         // acknowledge last block and save snapshot
         frete.encrypted_read_acknowledge(0, 0, 0, this->frete().full_size());
         this->_save_transfer_snapshot();
-        this->current_state(State::CloudBuffered);
+        this->gap_state(gap_transaction_cloud_buffered);
         exit_reason = metrics::TransferExitReasonFinished;
       } // try
       catch(reactor::Terminate const&)

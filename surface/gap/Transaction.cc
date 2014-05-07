@@ -29,8 +29,7 @@ namespace surface
     };
 
     gap_TransactionStatus
-    Transaction::_transaction_status(Transaction::Data const& data,
-                                     TransactionMachine::State state) const
+    Transaction::_transaction_status(Transaction::Data const& data) const
     {
       switch (data.status)
       {
@@ -43,50 +42,8 @@ namespace surface
         case infinit::oracles::Transaction::Status::canceled:
           return gap_transaction_canceled;
         default:
-          switch (state)
-          {
-            case TransactionMachine::State::NewTransaction:
-            case TransactionMachine::State::SenderCreateTransaction:
-            case TransactionMachine::State::None:
-            case TransactionMachine::State::Over:
-              // The sender is pending creating the transaction.
-              return gap_transaction_new;
-            case TransactionMachine::State::SenderWaitForDecision:
-            case TransactionMachine::State::RecipientWaitForDecision:
-            case TransactionMachine::State::RecipientAccepted:
-            case TransactionMachine::State::GhostCloudBufferingFinished:
-              return gap_transaction_waiting_accept;
-            case TransactionMachine::State::CloudSynchronize:
-            case TransactionMachine::State::PeerConnectionLost:
-            case TransactionMachine::State::PeerDisconnected:
-            case TransactionMachine::State::PublishInterfaces:
-              // If the progress is full but the transaction is not finished
-              // yet, it must be cloud buffered.
-              if (this->progress() == 1)
-                return gap_transaction_cloud_buffered;
-              return gap_transaction_connecting;
-            case TransactionMachine::State::Connect:
-              return gap_transaction_connecting;
-            case TransactionMachine::State::DataExhausted:
-              return gap_transaction_waiting_data;
-            case TransactionMachine::State::Transfer:
-            case TransactionMachine::State::CloudBufferingBeforeAccept:
-            case TransactionMachine::State::GhostCloudBuffering:
-              return gap_transaction_transferring;
-            case TransactionMachine::State::Finished:
-              return gap_transaction_finished;
-            case TransactionMachine::State::Rejected:
-              return gap_transaction_rejected;
-            case TransactionMachine::State::Canceled:
-              return gap_transaction_canceled;
-            case TransactionMachine::State::Failed:
-              return gap_transaction_failed;
-            case TransactionMachine::State::CloudBuffered:
-              return gap_transaction_cloud_buffered;
-          }
+          return gap_transaction_new;
       }
-      throw Exception(gap_internal_error,
-                      "no transaction status can be deduced");
     }
 
     // - Exception -------------------------------------------------------------
@@ -117,28 +74,20 @@ namespace surface
       else if (state.me().id == this->_data->sender_id &&
                state.device().id == this->_data->sender_device_id)
       {
-        ELLE_TRACE("%s: start send machine", *this);
+        ELLE_DEBUG("%s: start send machine", *this);
         this->_machine.reset(new SendMachine(state, this->_id, this->_data));
       }
       else if (state.me().id == this->_data->recipient_id &&
                (this->_data->recipient_device_id.empty() ||
                 state.device().id == this->_data->recipient_device_id))
       {
-        ELLE_TRACE("%s: start receive machine", *this);
+        ELLE_DEBUG("%s: start receive machine", *this);
         this->_machine.reset(new ReceiveMachine{state, this->_id, this->_data});
       }
       else
         ELLE_DEBUG("%s: not for our device: %s", *this, state.device().id);
       // Start a thread to forward GUI states change.
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-      this->_machine_state_thread.reset(
-        new reactor::Thread{
-          *reactor::Scheduler::scheduler(),
-          "notify fsm update",
-          [this, &state] ()
-          {
-            this->_notify_on_status_update(state);
-          }});
     }
 
     Transaction::Transaction(State const& state,
@@ -159,7 +108,7 @@ namespace surface
         ELLE_TRACE("%s: create send machine", *this)
           this->_machine.reset(
             new SendMachine(state, this->_id, snapshot.files,
-                            snapshot.state, snapshot.message, this->_data));
+                            snapshot.message, this->_data));
       }
       else if (state.me().id == this->_data->recipient_id &&
                (this->_data->recipient_device_id.empty() ||
@@ -167,21 +116,13 @@ namespace surface
       {
         ELLE_TRACE("%s: create receive machine", *this)
           this->_machine.reset(
-            new ReceiveMachine(state, this->_id, snapshot.state, this->_data));
+            new ReceiveMachine(state, this->_id, this->_data));
       }
       else
       {
         throw Exception(gap_internal_error, "invalid snapshot");
       }
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-      this->_machine_state_thread.reset(
-        new reactor::Thread{
-          *reactor::Scheduler::scheduler(),
-          "notify fsm update",
-          [this, &state]
-          {
-            this->_notify_on_status_update(state);
-          }});
     }
 
     Transaction::Transaction(surface::gap::State const& state,
@@ -198,41 +139,11 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: constructed for send", *this);
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-      this->_machine_state_thread.reset(
-        new reactor::Thread{
-          *reactor::Scheduler::scheduler(),
-          "notify fsm update",
-          [this, &state]
-          {
-            this->_notify_on_status_update(state);
-          }});
     }
 
     Transaction::~Transaction()
     {
-      if (this->_machine_state_thread)
-      {
-        this->_machine_state_thread->terminate_now();
-        this->_machine_state_thread.reset();
-      }
       this->_machine.reset();
-    }
-
-    void
-    Transaction::_notify_on_status_update(surface::gap::State const& state)
-    {
-      while (this->_machine != nullptr)
-      {
-        reactor::Thread& current =
-          *reactor::Scheduler::scheduler()->current();
-
-        current.wait(this->_machine->state_changed());
-        if (this->last_status(
-              this->_transaction_status(
-                *this->data(),
-                this->_machine->current_state())))
-          state.enqueue(Notification(this->id(), this->last_status()));
-      }
     }
 
     void
@@ -312,8 +223,7 @@ namespace surface
     Transaction::last_status() const
     {
       if (this->_last_status == gap_TransactionStatus(-1))
-        return this->_transaction_status(*this->data(),
-                                         TransactionMachine::State::None);
+        return this->_transaction_status(*this->data());
       return this->_last_status;
     }
 
@@ -474,12 +384,7 @@ namespace surface
     bool
     Transaction::final() const
     {
-      if (this->_machine == nullptr)
-        return true;
-
-      if (this->_data == nullptr)
-        return true;
-
+      ELLE_ASSERT(this->_data.get());
       return std::find(Transaction::final_statuses.begin(),
                        Transaction::final_statuses.end(),
                        this->_data->status) != Transaction::final_statuses.end();

@@ -35,27 +35,19 @@ namespace surface
       typedef ::frete::Frete::FileSize FileSize;
       typedef ::frete::Frete::FileID FileID;
 
-
     /*-------------.
     | Construction |
     `-------------*/
     public:
-      /// Construct from notification.
       ReceiveMachine(surface::gap::State const& state,
                      uint32_t id,
-                     std::shared_ptr<TransactionMachine::Data> data);
-
-      /// Construct from snapshot.
-      ReceiveMachine(surface::gap::State const& state,
-                     uint32_t id,
-                     TransactionMachine::State const current_state,
                      std::shared_ptr<TransactionMachine::Data> data);
       virtual
       ~ReceiveMachine();
+
     private:
       void
       _run_from_snapshot();
-
       virtual
       void
       transaction_status_update(infinit::oracles::Transaction::Status status) override;
@@ -63,15 +55,8 @@ namespace surface
     public:
       void
       accept();
-
       void
       reject();
-
-    private:
-      ReceiveMachine(surface::gap::State const& state,
-                     uint32_t id,
-                     std::shared_ptr<TransactionMachine::Data> data,
-                     bool);
 
     private:
       void

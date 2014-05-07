@@ -384,7 +384,12 @@ namespace surface
     Transferer::_publish_interfaces_wrapper()
     {
       ELLE_TRACE_SCOPE("%s: publish interfaces", *this);
-      this->_owner.current_state(TransactionMachine::State::PublishInterfaces);
+      // If the progress is full but the transaction is not finished
+      // yet, it must be cloud buffered.
+      if (this->progress() == 1)
+        this->_owner.gap_state(gap_transaction_cloud_buffered);
+      else
+        this->_owner.gap_state(gap_transaction_connecting);
       this->_publish_interfaces();
     }
 
@@ -392,7 +397,7 @@ namespace surface
     Transferer::_connection_wrapper()
     {
       ELLE_TRACE_SCOPE("%s: connect to peer", *this);
-      this->_owner.current_state(TransactionMachine::State::Connect);
+      this->_owner.gap_state(gap_transaction_connecting);
       this->_connection();
     }
 
@@ -400,7 +405,10 @@ namespace surface
     Transferer::_wait_for_peer_wrapper()
     {
       ELLE_TRACE_SCOPE("%s: wait for peer to connect", *this);
-      this->_owner.current_state(TransactionMachine::State::PeerDisconnected);
+      if (this->progress() == 1)
+        this->_owner.gap_state(gap_transaction_cloud_buffered);
+      else
+        this->_owner.gap_state(gap_transaction_connecting);
       this->_wait_for_peer();
     }
 
@@ -408,7 +416,6 @@ namespace surface
     Transferer::_cloud_buffer_wrapper()
     {
       ELLE_TRACE_SCOPE("%s: cloud buffer", *this);
-      this->_owner.current_state(TransactionMachine::State::Transfer);
       this->_cloud_buffer();
     }
 
@@ -416,7 +423,10 @@ namespace surface
     Transferer::_cloud_synchronize_wrapper()
     {
       ELLE_TRACE_SCOPE("%s: cloud synchronize", *this);
-      this->_owner.current_state(TransactionMachine::State::CloudSynchronize);
+      if (this->progress() == 1)
+        this->_owner.gap_state(gap_transaction_cloud_buffered);
+      else
+        this->_owner.gap_state(gap_transaction_connecting);
       this->_cloud_synchronize();
     }
 
@@ -424,7 +434,7 @@ namespace surface
     Transferer::_transfer_wrapper()
     {
       ELLE_TRACE_SCOPE("%s: transfer", *this);
-      this->_owner.current_state(TransactionMachine::State::Transfer);
+      this->_owner.gap_state(gap_transaction_transferring);
       this->_transfer();
     }
 

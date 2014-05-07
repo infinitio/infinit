@@ -112,9 +112,6 @@ namespace surface
       bool
       last_status(gap_TransactionStatus);
 
-      void
-      _notify_on_status_update(surface::gap::State const& state);
-
     public:
       void
       on_transaction_update(Data const& data);
@@ -148,7 +145,6 @@ namespace surface
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
     protected:
       std::unique_ptr<TransactionMachine> _machine;
-      ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, machine_state_thread);
       ELLE_ATTRIBUTE_r(gap_TransactionStatus, last_status);
       /*--------.
       | Helpers |
@@ -170,8 +166,7 @@ namespace surface
       final() const;
     private:
       gap_TransactionStatus
-      _transaction_status(Transaction::Data const& data,
-                          TransactionMachine::State state) const;
+      _transaction_status(Transaction::Data const& data) const;
 
       /*----------.
       | Printable |

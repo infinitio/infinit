@@ -101,8 +101,6 @@ namespace surface
       _id(id),
       _machine(elle::sprintf("transaction (%s) fsm", id)),
       _machine_thread(),
-      _current_state(State::None),
-      _state_changed("state changed"),
       _transfer_core_state(
         this->_machine.state_make(
           "transfer core", std::bind(&TransactionMachine::_transfer_core, this))),
@@ -207,7 +205,7 @@ namespace surface
     TransactionMachine::OldSnapshot
     TransactionMachine::_make_snapshot() const
     {
-      return OldSnapshot{*this->data(), this->_current_state};
+      return OldSnapshot(*this->data(), State::None);
     }
 
     void
@@ -237,19 +235,10 @@ namespace surface
     }
 
     void
-    TransactionMachine::current_state(TransactionMachine::State const& state)
+    TransactionMachine::gap_state(gap_TransactionStatus v)
     {
-      ELLE_TRACE_SCOPE("%s: set new state to %s at progress %s", *this, state,
-                       this->progress());
-      this->_current_state = state;
-      this->_save_old_snapshot();
-      this->_state_changed.signal();
-    }
-
-    TransactionMachine::State
-    TransactionMachine::current_state() const
-    {
-      return this->_current_state;
+      ELLE_TRACE("%s: change GAP status to %s", *this, v);
+      this->state().enqueue(Transaction::Notification(this->id(), v));
     }
 
     void
@@ -296,7 +285,7 @@ namespace surface
           ""
         );
       }
-      this->current_state(State::Finished);
+      this->gap_state(gap_transaction_finished);
       this->_finalize(infinit::oracles::Transaction::Status::finished);
     }
 
@@ -304,7 +293,7 @@ namespace surface
     TransactionMachine::_reject()
     {
       ELLE_TRACE_SCOPE("%s: reject", *this);
-      this->current_state(State::Rejected);
+      this->gap_state(gap_transaction_rejected);
       this->_finalize(infinit::oracles::Transaction::Status::rejected);
     }
 
@@ -312,7 +301,7 @@ namespace surface
     TransactionMachine::_cancel()
     {
       ELLE_TRACE_SCOPE("%s: cancel", *this);
-      this->current_state(State::Canceled);
+      this->gap_state(gap_transaction_canceled);
       this->_finalize(infinit::oracles::Transaction::Status::canceled);
     }
 
@@ -336,7 +325,7 @@ namespace surface
                                           this->state().meta().host(),
                                           this->state().meta().port(),
                                           this->state().me().email);
-      this->current_state(State::Failed);
+      this->gap_state(gap_transaction_failed);
       this->_finalize(infinit::oracles::Transaction::Status::failed);
     }
 

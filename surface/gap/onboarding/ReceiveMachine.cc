@@ -67,14 +67,11 @@ namespace surface
 
       void
       ReceiveMachine::_accept()
-      {
-        this->current_state(TransactionMachine::State::RecipientAccepted);
-      }
+      {}
 
       void
       ReceiveMachine::_finalize(infinit::oracles::Transaction::Status)
-      {
-      }
+      {}
     }
   }
 }

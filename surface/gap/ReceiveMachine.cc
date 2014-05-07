@@ -74,12 +74,10 @@ namespace surface
       return res;
     }
 
-
     using TransactionStatus = infinit::oracles::Transaction::Status;
     ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
                                    uint32_t id,
-                                   std::shared_ptr<TransactionMachine::Data> data,
-                                   bool):
+                                   std::shared_ptr<TransactionMachine::Data> data):
       TransactionMachine(state, id, std::move(data)),
       _wait_for_decision_state(
         this->_machine.state_make(
@@ -100,41 +98,34 @@ namespace surface
                                     reactor::Waitables{&this->_accepted});
       this->_machine.transition_add(this->_accept_state,
                                     this->_transfer_core_state);
-
       this->_machine.transition_add(this->_transfer_core_state,
                                     this->_finish_state);
-
       // Reject way.
       this->_machine.transition_add(this->_wait_for_decision_state,
                                     this->_reject_state,
                                     reactor::Waitables{&this->rejected()});
-
       // Cancel.
       this->_machine.transition_add(_wait_for_decision_state, _cancel_state, reactor::Waitables{&this->canceled()}, true);
       this->_machine.transition_add(_accept_state, _cancel_state, reactor::Waitables{&this->canceled()}, true);
       this->_machine.transition_add(_reject_state, _cancel_state, reactor::Waitables{&this->canceled()}, true);
       this->_machine.transition_add(_transfer_core_state, _cancel_state, reactor::Waitables{&this->canceled()}, true);
-
       // Exception.
       this->_machine.transition_add_catch(_wait_for_decision_state, _fail_state);
       this->_machine.transition_add_catch(_accept_state, _fail_state);
       this->_machine.transition_add_catch(_reject_state, _fail_state);
       this->_machine.transition_add_catch(_transfer_core_state, _fail_state);
-
       this->_machine.state_changed().connect(
         [this] (reactor::fsm::State& state)
         {
           ELLE_LOG_COMPONENT("surface.gap.ReceiveMachine.State");
           ELLE_TRACE("%s: entering %s", *this, state);
         });
-
       this->_machine.transition_triggered().connect(
         [this] (reactor::fsm::Transition& transition)
         {
           ELLE_LOG_COMPONENT("surface.gap.ReceiveMachine.Transition");
           ELLE_TRACE("%s: %s triggered", *this, transition);
         });
-
       try
       {
         this->_snapshot.reset(
@@ -153,29 +144,6 @@ namespace surface
       {
         ELLE_ERR("%s: snap shot was invalid: %s", *this, elle::exception_string());
       }
-    }
-
-    // Create from snapshot.
-    ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
-                                   uint32_t id,
-                                   TransactionMachine::State const current_state,
-                                   std::shared_ptr<TransactionMachine::Data> data):
-      ReceiveMachine(state, id, std::move(data), true)
-    {
-      ELLE_TRACE_SCOPE("%s: construct from data %s, starting at %s",
-                       *this, *this->data(), current_state);
-      this->current_state(current_state);
-      this->_run_from_snapshot();
-    }
-
-    // Create from server data.
-    ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
-                                   uint32_t id,
-                                   std::shared_ptr<TransactionMachine::Data> data):
-      ReceiveMachine(state, id, std::move(data), true)
-    {
-      ELLE_TRACE_SCOPE("%s: constructing machine for transaction %s",
-                       *this, data);
       this->_run_from_snapshot();
     }
 
@@ -336,14 +304,14 @@ namespace surface
     ReceiveMachine::_wait_for_decision()
     {
       ELLE_TRACE_SCOPE("%s: waiting for decision %s", *this, this->transaction_id());
-      this->current_state(TransactionMachine::State::RecipientWaitForDecision);
+      this->gap_state(gap_transaction_waiting_accept);
     }
 
     void
     ReceiveMachine::_accept()
     {
       ELLE_TRACE_SCOPE("%s: accepted %s", *this, this->transaction_id());
-      this->current_state(TransactionMachine::State::RecipientAccepted);
+      this->gap_state(gap_transaction_waiting_accept);
 
       try
       {
@@ -479,6 +447,7 @@ namespace surface
         ELLE_DEBUG("%s: cloud buffering disabled by configuration", *this);
         return;
       }
+      this->gap_state(gap_transaction_transferring);
       auto start_time = boost::posix_time::microsec_clock::universal_time();
       metrics::TransferExitReason exit_reason = metrics::TransferExitReasonUnknown;
       std::string exit_message;
@@ -541,7 +510,7 @@ namespace surface
         if (this->_snapshot)
           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
         ELLE_TRACE("%s: Data exhausted on cloud bufferer", *this);
-        this->current_state(TransactionMachine::State::DataExhausted);
+        this->gap_state(gap_transaction_waiting_data);
       }
       catch (reactor::Terminate const&)
       { // aye aye
@@ -557,7 +526,7 @@ namespace surface
         // send us notifications and wake us up
         ELLE_WARN("%s: cloud download exception, exiting cloud state: %s",
                   *this, e.what());
-        this->current_state(TransactionMachine::State::DataExhausted);
+        this->gap_state(gap_transaction_waiting_data);
         exit_reason = metrics::TransferExitReasonError;
         if (this->_snapshot)
           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
@@ -1153,7 +1122,6 @@ namespace surface
     void
     ReceiveMachine::_cloud_synchronize()
     {
-      this->current_state(TransactionMachine::State::Transfer);
       this->_cloud_operation();
     }
 

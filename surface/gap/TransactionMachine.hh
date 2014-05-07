@@ -205,11 +205,6 @@ namespace surface
       reactor::fsm::Machine _machine;
       ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, machine_thread);
 
-    protected:
-      // XXX: Remove when ELLE_ATTRIBUTE handle protected methods.
-      State _current_state;
-      ELLE_ATTRIBUTE_X(reactor::Signal, state_changed);
-
     /*---------.
     | Snapshot |
     `---------*/
@@ -237,14 +232,9 @@ namespace surface
       friend class Transferer;
       friend class PeerTransferMachine;
       friend class Snapshot;
-      void
-      current_state(State const& state);
 
       std::function<aws::Credentials(bool)>
       make_aws_credentials_getter();
-    public:
-      State
-      current_state() const;
 
     protected:
       void
@@ -358,6 +348,10 @@ namespace surface
       virtual
       std::unique_ptr<frete::RPCFrete>
       rpcs(infinit::protocol::ChanneledStream& socket) = 0;
+
+    protected:
+      void
+      gap_state(gap_TransactionStatus state);
 
     /*----------.
     | Printable |
