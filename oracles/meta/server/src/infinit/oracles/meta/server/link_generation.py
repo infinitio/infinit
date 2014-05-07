@@ -244,13 +244,13 @@ class Mixin:
     with elle.log.trace('links for %s offset=%s count=%s incl_expired=%s' %
                         (user['_id'], offset, count, incl_expired)):
       if incl_expired:
-        query = {'_id': user['_id']}
+        query = {'sender_id': user['_id']}
       else:
         query = {
           'sender_id': user['_id'],
           'expiry_time': {'$gt': datetime.datetime.utcnow()}
         }
-      res = dict()
+      res = list()
       for link in self.database.links.aggregate([
         {'$match': query},
         {'$sort': {'creation_time': DESCENDING}},
@@ -259,5 +259,5 @@ class Mixin:
       ])['result']:
         link['creation_time'] = link['creation_time'].timestamp()
         link['expiry_time'] = link['expiry_time'].timestamp()
-        res.update({'link': link})
+        res.append(link)
       return {'links': res}
