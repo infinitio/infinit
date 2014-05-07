@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+from bson.objectid import ObjectId
+import infinit.oracles.meta.server.transaction_status as transaction_status
+
+with Meta() as meta:
+  jean = User(meta, 'jeantest@infinit.io')
+  jean.login()
+
+  file_list = [
+    {'name': 'file1', 'size': 42},
+    {'name': 'file2', 'size': 43},
+    {'name': 'file3', 'size': 44},
+  ]
+  res = jean.post('link/generate',
+                  {'file_list': file_list, 'name': 'some files.zip'})
+  assert res['aws_credentials']
+  assert res['destination']
+  assert res['id']
+  assert res['share_link']
+
+  link = meta.database.links.find_one({'_id': ObjectId(res['id'])})
+
+  res = meta.get('link/%s' % link['hash'])
+  assert res['click_count']
+  assert res['files']
+  assert res['progress'] == 0.0
+  assert res['status'] == transaction_status.CREATED
+
+  res = jean.post('link/update',
+                  {'id': str(link['_id']),
+                   'progress': 1.0,
+                   'status': transaction_status.FINISHED})
+  assert res['success']
+
+  res = meta.get('link/%s' % link['hash'])
+  assert res['click_count']
+  assert res['files']
+  assert res['link']
+  assert res['progress']
+  assert res['status'] == transaction_status.FINISHED
+
+  res = jean.get('links')
+  assert len(res['links']) == 1
