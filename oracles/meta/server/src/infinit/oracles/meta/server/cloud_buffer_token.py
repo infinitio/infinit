@@ -20,7 +20,8 @@ def _aws_urlquote(data):
   return urllib.parse.quote(data)
 
 aws_default_region = 'us-east-1'
-aws_default_bucket = 'us-east-1-buffer-dev-infinit-io'
+aws_default_buffer_bucket = 'us-east-1-buffer-dev-infinit-io'
+aws_default_link_bucket = 'us-east-1-links-dev-infinit-io'
 
 class CloudBufferToken:
 
