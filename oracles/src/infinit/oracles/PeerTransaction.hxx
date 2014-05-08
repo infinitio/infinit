@@ -5,7 +5,7 @@
 # include <elle/serialize/NamedValue.hh>
 # include <elle/serialize/ListSerializer.hxx>
 
-ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::Transaction);
+ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::PeerTransaction);
 
 #define DEFAULT_FILL_VALUE_RENAME(_ar_, _res_, _name_, _default_, _new_name_)  \
   try                                                                          \
@@ -21,7 +21,7 @@ ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::Transaction);
 #define DEFAULT_FILL_VALUE(_ar_, _res_, _name_, _default_)                     \
   DEFAULT_FILL_VALUE_RENAME(_ar_, _res_, _name_, _default_, _name_) /* */
 
-ELLE_SERIALIZE_SIMPLE(infinit::oracles::Transaction, ar, res, version)
+ELLE_SERIALIZE_SIMPLE(infinit::oracles::PeerTransaction, ar, res, version)
 {
   enforce(version == 0);
 
@@ -46,10 +46,10 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::Transaction, ar, res, version)
 namespace std
 {
   template<>
-  struct hash<infinit::oracles::Transaction>
+  struct hash<infinit::oracles::PeerTransaction>
   {
   public:
-    std::size_t operator()(infinit::oracles::Transaction const& tr) const
+    std::size_t operator()(infinit::oracles::PeerTransaction const& tr) const
     {
       return std::hash<std::string>()(tr.id);
     }
