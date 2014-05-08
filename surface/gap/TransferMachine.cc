@@ -276,6 +276,18 @@ namespace surface
                   ELLE_ERR("%s: peer wait failed", *this);
                   owner.failed().open();
                 });
+      // On network error while connecting, retry. For instance if the
+      // connection get lost while negociating RPCs, or if the peer fumbles and
+      // closes connection.
+      this->_fsm.transition_add_catch_specific<reactor::network::Exception>(
+        connection_state,
+        connection_state)
+        .action_exception(
+          [this, &owner] (std::exception_ptr e)
+          {
+            ELLE_TRACE("%s: network error on connection: %s",
+                     *this, elle::exception_string(e));
+          });
       this->_fsm.transition_add_catch(
         connection_state,
         stopped_state)
