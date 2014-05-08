@@ -69,8 +69,8 @@ class Mixin:
     name -- Name of file uploaded as it could be an archive of a group of files.
     files -- A dictionary containing the _root_ of the file structure and each
     element's size. E.g.:
-      'files': [{'name': <file name 0>, 'size': <file size 0>}, ...,
-                {'name': <file name n>, 'size': <file size n>}]
+      'files': [[<file name 0>, <file size 0>], ...,
+                [<file name n>, <file size n>]]
     Returns the id, link and AWS credentials.
     """
     with elle.log.trace('generating a link for user (%s)' % self.user['_id']):
@@ -93,8 +93,10 @@ class Mixin:
         'expiry_time': expiry_time,
         'file_list': file_list,
         'hash': None,
+        'modification_time': creation_time,
         'name': name,
         'progress': 0.0,
+        'sender_device_id': self.current_device['id'],
         'sender_id': user['_id'],
         'status': transaction_status.CREATED, # Use same enum as transactions.
       }
@@ -190,8 +192,9 @@ class Mixin:
         {
           '$set':
           {
-            'status': status,
+            'modification_time': datetime.datetime.utcnow(),
             'progress': progress,
+            'status': status,
           }
         }
       )
@@ -236,14 +239,14 @@ class Mixin:
   def links_list(self,
                  offset: int = 0,
                  count: int = 100,
-                 incl_expired: bool = False):
+                 include_expired: bool = False):
     """
     Returns a list of the user's links.
     """
     user = self.user
-    with elle.log.trace('links for %s offset=%s count=%s incl_expired=%s' %
+    with elle.log.trace('links for %s offset=%s count=%s include_expired=%s' %
                         (user['_id'], offset, count, incl_expired)):
-      if incl_expired:
+      if include_expired:
         query = {'sender_id': user['_id']}
       else:
         query = {
@@ -256,6 +259,18 @@ class Mixin:
         {'$sort': {'creation_time': DESCENDING}},
         {'$skip': offset},
         {'$limit': count},
+        {'$project': {
+          'aws_credentials': '$aws_credentials',
+          'click_count': '$click_count',
+          'cloud_location': '$cloud_location',
+          'creation_time': '$creation_time',
+          'expiry_time': '$expiry_time',
+          'file_list': '$file_list',
+          'id': '$_id',
+          'name': '$name',
+          'progress': '$progress',
+          'status': '$status',
+        }}
       ])['result']:
         link['creation_time'] = link['creation_time'].timestamp()
         link['expiry_time'] = link['expiry_time'].timestamp()
