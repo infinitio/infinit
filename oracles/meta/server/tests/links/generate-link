@@ -9,9 +9,9 @@ with Meta() as meta:
   jean.login()
 
   file_list = [
-    {'name': 'file1', 'size': 42},
-    {'name': 'file2', 'size': 43},
-    {'name': 'file3', 'size': 44},
+    ['file1', 42],
+    ['file2', 43],
+    ['file3', 44],
   ]
   res = jean.post('link/generate',
                   {'file_list': file_list, 'name': 'some files.zip'})
@@ -42,7 +42,7 @@ with Meta() as meta:
   assert res['status'] == transaction_status.FINISHED
 
   res = jean.post('link/generate',
-                  {'file_list': [{'name': 'some_file.zip', 'size': 12321}],
+                  {'file_list': [['some_file.zip', 12321]],
                    'name': 'some_file.zip'})
   assert res['aws_credentials']
   assert res['destination']
