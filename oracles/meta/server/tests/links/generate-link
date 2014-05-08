@@ -59,7 +59,7 @@ with Meta() as meta:
   res = jean.get('links')
   assert len(res['links']) == 1
 
-  res = jean.get('links?incl_expired=1')
+  res = jean.get('links?include_expired=1')
   import pprint
   pp = pprint.PrettyPrinter(indent=2)
   pp.pprint('xxx %s' % res)
