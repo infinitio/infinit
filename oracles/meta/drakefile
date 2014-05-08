@@ -10,7 +10,6 @@ check = None
 install = None
 
 def configure(elle,
-              reactor,
               papier_python,
               python_common,
               transaction_lib,
@@ -31,7 +30,6 @@ def configure(elle,
 
   client = drake.include('client',
                          elle = elle,
-                         reactor = reactor,
                          python3 = python3,
                          transaction_lib = transaction_lib,
                          server_python = server.python,

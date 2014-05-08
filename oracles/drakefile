@@ -73,8 +73,7 @@ def configure(elle,
                 lib_cxx_config)
 
   meta = drake.include('meta',
-                       elle = elle.elle,
-                       reactor = elle.reactor,
+                       elle = elle,
                        papier_python = papier_python,
                        python_common = python_built,
                        transaction_lib = lib,

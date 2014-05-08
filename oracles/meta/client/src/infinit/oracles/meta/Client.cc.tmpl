@@ -854,6 +854,63 @@ namespace infinit
           Method::GET);
       }
 
+      /*------.
+      | Links |
+      `------*/
+      CreateLinkTransactionResponse
+      Client::create_link(LinkTransaction::FileList const& file_list,
+                          std::string const& name)
+      {
+        elle::json::Object body;
+        body["file_list"] = file_list;
+        body["name"] = name;
+        reactor::http::Request request =
+          this->_client.request(this->_url("/link/generate"),
+                                Method::POST,
+                                "application/json",
+                                this->_default_configuration);
+        elle::json::write(request, body);
+        this->_handle_errors(request);
+        elle::serialization::json::SerializerIn input(request);
+        return CreateLinkTransactionResponse(input);
+      }
+
+      void
+      Client::update_link(std::string const& id,
+                          double progress,
+                          Transaction::Status status)
+      {
+        elle::json::Object body;
+        body["id"] = id;
+        body["progress"] = progress;
+        body["status"] = status;
+        reactor::http::Request request =
+          this->_client.request(this->_url("/link/update"),
+                                Method::POST,
+                                "application/json",
+                                this->_default_configuration);
+        elle::json::write(request, body);
+        this->_handle_errors(request);
+      }
+
+      LinkTransactionsResponse
+      Client::links(int offset,
+                    int count,
+                    bool include_expired)
+      {
+        std::string url =
+          elle::sprintf("/links?offset=%s&count=%s", offset, count);
+        if (include_expired)
+          url += "&include_expired=1";
+        reactor::http::Request request =
+          this->_client.request(this->_url(url),
+                                Method::GET,
+                                this->_default_configuration);
+        this->_handle_errors(request);
+        elle::serialization::json::SerializerIn input(request);
+        return LinkTransactionsResponse(input);
+      }
+
       /*--------------.
       | Server Status |
       `--------------*/
