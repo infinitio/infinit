@@ -1,15 +1,21 @@
 #ifndef  PLASMA_META_CLIENT_HH
 # define PLASMA_META_CLIENT_HH
 
-# include <infinit/oracles/Transaction.hh>
+# include <infinit/oracles/LinkTransaction.hh>
+# include <infinit/oracles/PeerTransaction.hh>
 
-# include <elle/Exception.hh>
+# include <aws/Credentials.hh>
+
 # include <elle/Buffer.hh>
-# include <elle/HttpClient.hh> // XXX: Remove that. Only for exception.
+# include <elle/Exception.hh>
 # include <elle/format/json/fwd.hh>
+# include <elle/HttpClient.hh> // XXX: Remove that. Only for exception.
 # include <elle/log.hh>
-# include <reactor/http/Request.hh>
+# include <elle/serialization/fwd.hh>
+# include <elle/serialization/SerializerIn.hh>
+# include <elle/serialize/construct.hh>
 # include <reactor/http/Client.hh>
+# include <reactor/http/Request.hh>
 
 # include <boost/uuid/uuid.hpp>
 
@@ -182,13 +188,13 @@ namespace infinit
       struct RemoveSwaggerResponse: Response
       {};
 
-      struct CreateTransactionResponse : Response
+      struct CreatePeerTransactionResponse : Response
       {
         std::string created_transaction_id;
         int remaining_invitations;
       };
 
-      struct UpdateTransactionResponse : Response
+      struct UpdatePeerTransactionResponse : Response
       {
         std::string updated_transaction_id;
       };
@@ -394,23 +400,23 @@ namespace infinit
         // InvitedResponse
         // invited() const;
 
-        Transaction
+        PeerTransaction
         transaction(std::string const& _id) const;
 
-        /// Get the list of transactions that have a spectific status.
-        /// The status can be pass threw 'status' list argument, allowing to
-        /// search for many status matching.
-        /// 'inclusive' is used to inverse the research result, by searching
-        /// inclusivly or exclusivly in the status list.
-        /// NB: If you let the default argument, it returns the 'non finished'
-        /// transactions.
-        /// 'count' is use to set a limit of transactions id to be pulled.
-        std::vector<Transaction>
-        transactions(std::vector<Transaction::Status> const& status = {},
-                     bool negate = true,
+        /// Fetch the list of transactions which have spectific statuses.
+        /// A list of statuses to match can be passed through the 'statuses'
+        /// list argument.
+        /// 'negate' is used to inverse the search result, by either filtering
+        /// for or by the 'statuses'.
+        /// 'count' is use to set a limit to the number of transactions fetched.
+        /// NB: The default arguments return the server's default response:
+        /// all the unfinished transactions.
+        std::vector<PeerTransaction>
+        transactions(std::vector<Transaction::Status> const& statuses = {},
+                     bool negate = false,
                      int count = 0) const;
 
-        CreateTransactionResponse
+        CreatePeerTransactionResponse
         create_transaction(std::string const& recipient_id_or_email,
                            std::list<std::string> const& files,
                            size_t count,
@@ -420,13 +426,13 @@ namespace infinit
                            std::string const& device_uuid,
                            std::string const& message = "") const;
 
-        UpdateTransactionResponse
+        UpdatePeerTransactionResponse
         update_transaction(std::string const& transaction_id,
                            Transaction::Status status,
                            std::string const& device_id = "",
                            std::string const& device_name = "") const;
 
-        UpdateTransactionResponse
+        UpdatePeerTransactionResponse
         accept_transaction(std::string const& transaction_id,
                            std::string const& device_id,
                            std::string const& device_name) const;
