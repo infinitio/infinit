@@ -107,7 +107,7 @@ void export_container(const char* typeName)
 
 using infinit::oracles::meta::Client;
 using infinit::oracles::meta::Admin;
-using infinit::oracles::Transaction;
+using infinit::oracles::PeerTransaction;
 using infinit::oracles::meta::Error;
 using infinit::oracles::meta::Response;
 using infinit::oracles::meta::Exception;
@@ -120,8 +120,8 @@ using infinit::oracles::meta::User;
 using infinit::oracles::meta::UserResponse;
 using infinit::oracles::meta::SelfResponse;
 using infinit::oracles::meta::InviteUserResponse;
-using infinit::oracles::meta::CreateTransactionResponse;
-using infinit::oracles::meta::UpdateTransactionResponse;
+using infinit::oracles::meta::CreatePeerTransactionResponse;
+using infinit::oracles::meta::UpdatePeerTransactionResponse;
 using infinit::oracles::meta::EndpointNodeResponse;
 using infinit::oracles::meta::Device;
 using infinit::oracles::meta::CreateDeviceResponse;
@@ -183,7 +183,7 @@ void export_meta_client()
   export_container<std::vector<std::string>>("vector_string");
   export_container<std::list<std::string>>("list_string");
 
-  py::class_<Transaction>("Transaction");
+  py::class_<PeerTransaction>("PeerTransaction");
   py::class_<Response>("Response")
     .add_property("success", &Response::success)
     .def_readonly("error_details", &Response::error_details)
@@ -230,13 +230,13 @@ void export_meta_client()
   // py::class_<TransactionsResponse, py::bases<Response>>("TransactionsResponse")
   //   .def_readonly("transactions", &TransactionsResponse::transactions)
   // ;
-  py::class_<CreateTransactionResponse, py::bases<Response>>("CreateTransactionResponse")
-    .def_readonly("created_transaction_id", &CreateTransactionResponse::created_transaction_id)
-    .def_readonly("remaining_invitations", &CreateTransactionResponse::remaining_invitations)
+  py::class_<CreatePeerTransactionResponse, py::bases<Response>>("CreatePeerTransactionResponse")
+    .def_readonly("created_transaction_id", &CreatePeerTransactionResponse::created_transaction_id)
+    .def_readonly("remaining_invitations", &CreatePeerTransactionResponse::remaining_invitations)
   ;
 
-  py::class_<UpdateTransactionResponse, py::bases<Response>>("UpdateTransactionResponse")
-    .def_readonly("updated_transaction_id", &UpdateTransactionResponse::updated_transaction_id)
+  py::class_<UpdatePeerTransactionResponse, py::bases<Response>>("UpdatePeerTransactionResponse")
+    .def_readonly("updated_transaction_id", &UpdatePeerTransactionResponse::updated_transaction_id)
   ;
 
   py::class_<EndpointNodeResponse, py::bases<Response>>("EndpointNodeResponse")
