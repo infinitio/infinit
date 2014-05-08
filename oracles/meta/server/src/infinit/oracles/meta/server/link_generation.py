@@ -245,7 +245,7 @@ class Mixin:
     """
     user = self.user
     with elle.log.trace('links for %s offset=%s count=%s include_expired=%s' %
-                        (user['_id'], offset, count, incl_expired)):
+                        (user['_id'], offset, count, include_expired)):
       if include_expired:
         query = {'sender_id': user['_id']}
       else:
