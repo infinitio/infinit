@@ -127,6 +127,7 @@ namespace surface
     void
     PeerTransferMachine::_connection()
     {
+      this->_host.reset();
       this->_host = this->_connect();
       ELLE_TRACE_SCOPE("%s: open peer to peer RPCs", *this);
       this->_serializer.reset(
@@ -177,7 +178,9 @@ namespace surface
     PeerTransferMachine::_initialize()
     {
       // Clear eventually left over station host.
-      _host.reset();
+      // FIXME: now that _connection starts with a _host.reset, I don't think
+      // this is needed anymore.
+      this->_host.reset();
     }
 
     /*----------.
