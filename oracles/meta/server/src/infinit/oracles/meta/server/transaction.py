@@ -550,7 +550,7 @@ class Mixin:
       elle.log.debug("transaction updated")
 
       self.notifier.notify_some(
-        notifier.TRANSACTION,
+        notifier.PEER_TRANSACTION,
         recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
         message = transaction,
       )

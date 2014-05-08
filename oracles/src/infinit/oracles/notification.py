@@ -1,7 +1,7 @@
 notifications = {
   'none': 0,
   'user_status': 8,
-  'transaction': 7,
+  'peer_transaction': 7,
   'new_swagger': 9,
   'deleted_swagger': 10,
   'peer_connection_update': 11,
