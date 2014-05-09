@@ -156,9 +156,9 @@ int main(int argc, char** argv)
         auto hashed_password = state.hash_password(user, password);
         state.login(user, hashed_password);
         // state.update_device("lust");
-        std::unordered_set<std::string> files;
+        std::vector<std::string> files;
         boost::algorithm::split(files, file, boost::is_any_of(","));
-        id = state.send_files(to,  std::unordered_set<std::string>(files), "");
+        id = state.send_files(to, std::move(files), "");
 
         if (id == surface::gap::null_id)
           throw elle::Exception("transaction id is null");

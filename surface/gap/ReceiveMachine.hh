@@ -39,7 +39,7 @@ namespace surface
     | Construction |
     `-------------*/
     public:
-      ReceiveMachine(surface::gap::State const& state,
+      ReceiveMachine(Transaction& state,
                      uint32_t id,
                      std::shared_ptr<TransactionMachine::Data> data);
       virtual
@@ -88,7 +88,7 @@ namespace surface
       `-----------------*/
       ELLE_ATTRIBUTE(std::string, recipient);
       ELLE_ATTRIBUTE(std::unordered_set<std::string>, files);
-      ELLE_ATTRIBUTE(boost::filesystem::path, snapshot_path);
+      ELLE_ATTRIBUTE(boost::filesystem::path, frete_snapshot_path);
       ELLE_ATTRIBUTE_R(std::unique_ptr<frete::TransferSnapshot>, snapshot)
     protected:
       void

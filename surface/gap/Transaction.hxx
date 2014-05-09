@@ -1,6 +1,8 @@
 #ifndef SURFACE_GAP_TRANSACTION_HXX
 # define SURFACE_GAP_TRANSACTION_HXX
 
+# include <elle/serialize/SetSerializer.hxx>
+
 namespace std
 {
   template<>

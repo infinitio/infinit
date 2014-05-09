@@ -12,7 +12,6 @@
 #include <elle/printf.hh>
 #include <elle/serialization/Serializer.hh>
 #include <elle/serialization/json.hh>
-#include <elle/serialize/insert.hh>
 
 #include <reactor/fsm/Machine.hh>
 #include <reactor/exception.hh>
@@ -57,9 +56,7 @@ namespace surface
     boost::filesystem::path
     TransactionMachine::Snapshot::path(TransactionMachine const& machine)
     {
-      boost::filesystem::path path =
-        common::infinit::transactions_directory(machine._state.me().id);
-      return path / (machine.transaction_id() + ".fsm");
+      return machine.transaction().snapshots_directory() / "fsm.snapshot";
     }
 
     void
@@ -73,31 +70,10 @@ namespace surface
     | TransactionMachine |
     `-------------------*/
 
-    TransactionMachine::OldSnapshot::OldSnapshot(
-      Data const& data,
-      State const state,
-      std::unordered_set<std::string> const& files,
-      std::string const& message):
-      data(data),
-      state(state),
-      files(files),
-      message(message)
-    {}
-
-    void
-    TransactionMachine::OldSnapshot::print(std::ostream& stream) const
-    {
-      stream << "OldSnapshot(" << this->data << ")";
-    }
-
-    //---------- TransactionMachine -----------------------------------------------
     TransactionMachine::TransactionMachine(
-      surface::gap::State const& state,
+      Transaction& transaction,
       uint32_t id,
       std::shared_ptr<TransactionMachine::Data> data):
-      _snapshot_path(
-        common::infinit::transaction_snapshots_directory(state.me().id) /
-        boost::filesystem::unique_path()),
       _id(id),
       _machine(elle::sprintf("transaction (%s) fsm", id)),
       _machine_thread(),
@@ -125,10 +101,11 @@ namespace surface
       _failed("failed"),
       _station(nullptr),
       _transfer_machine(new PeerTransferMachine(*this)),
-      _state(state),
+      _transaction(transaction),
+      _state(transaction.state()),
       _data(std::move(data))
     {
-      ELLE_TRACE_SCOPE("%s: create transfer machine", *this);
+      ELLE_TRACE_SCOPE("%s: create transfaction machine", *this);
 
       // Normal way.
       this->_machine.transition_add(this->_transfer_core_state,
@@ -202,36 +179,17 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: destroying transaction machine", *this);
     }
 
-    TransactionMachine::OldSnapshot
-    TransactionMachine::_make_snapshot() const
-    {
-      return OldSnapshot(*this->data(), State::None);
-    }
-
-    void
-    TransactionMachine::_save_old_snapshot() const
-    {
-      ELLE_TRACE_SCOPE("%s: save old snapshot to %s",
-                       *this, this->_snapshot_path.string());
-      auto snapshot = this->_make_snapshot();
-      ELLE_DUMP("snapshot data: %s", snapshot);
-      elle::serialize::to_file(this->_snapshot_path.string()) << snapshot;
-    }
-
     void
     TransactionMachine::_save_snapshot() const
     {
-      if (!this->_data->id.empty())
+      boost::filesystem::path path = Snapshot::path(*this);
+      ELLE_TRACE_SCOPE("%s: save snapshot to %s", *this, path);
+      elle::AtomicFile destination(path);
+      destination.write() << [&] (elle::AtomicFile::Write& write)
       {
-        boost::filesystem::path path = Snapshot::path(*this);
-        ELLE_TRACE_SCOPE("%s: save snapshot to %s", *this, path);
-        elle::AtomicFile destination(path);
-        destination.write() << [&] (elle::AtomicFile::Write& write)
-        {
-          elle::serialization::json::SerializerOut output(write.stream());
-          Snapshot(*this).serialize(output);
-        };
-      }
+        elle::serialization::json::SerializerOut output(write.stream());
+        Snapshot(*this).serialize(output);
+      };
     }
 
     void
@@ -270,6 +228,11 @@ namespace surface
     TransactionMachine::_end()
     {
       ELLE_TRACE_SCOPE("%s: end", *this);
+      boost::system::error_code error;
+      auto path = this->transaction().snapshots_directory();
+      boost::filesystem::remove_all(path, error);
+      if (error)
+        ELLE_WARN("%s: unable to remove snapshot directory %s", *this, path);
     }
 
     void
@@ -367,7 +330,8 @@ namespace surface
     void
     TransactionMachine::_run(reactor::fsm::State& initial_state)
     {
-      ELLE_TRACE_SCOPE("%s: running transfer machine", *this);
+      ELLE_TRACE_SCOPE("%s: start transfaction machine at %s",
+                       *this, initial_state);
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
       auto& scheduler = *reactor::Scheduler::scheduler();
       this->_machine_thread.reset(
@@ -378,7 +342,6 @@ namespace surface
           {
             this->_machine.run(initial_state);
             ELLE_TRACE("%s: machine finished properly", *this);
-            boost::filesystem::remove(this->_snapshot_path);
           }});
     }
 
@@ -652,60 +615,6 @@ namespace surface
     TransactionMachine::reset_transfer()
     {
       this->reset_transfer_signal().signal();
-    }
-
-    std::ostream&
-    operator <<(std::ostream& out,
-                TransactionMachine::State const& t)
-    {
-      switch (t)
-      {
-        case TransactionMachine::State::NewTransaction:
-          return out << "NewTransaction";
-        case TransactionMachine::State::SenderCreateTransaction:
-          return out << "SenderCreateTransaction";
-        case TransactionMachine::State::SenderWaitForDecision:
-          return out << "SenderWaitForDecision";
-        case TransactionMachine::State::RecipientWaitForDecision:
-          return out << "RecipientWaitForDecision";
-        case TransactionMachine::State::RecipientAccepted:
-          return out << "RecipientAccepted";
-        case TransactionMachine::State::PublishInterfaces:
-          return out << "PublishInterfaces";
-        case TransactionMachine::State::Connect:
-          return out << "Connect";
-        case TransactionMachine::State::PeerDisconnected:
-          return out << "PeerDisconnected";
-        case TransactionMachine::State::PeerConnectionLost:
-          return out << "PeerConnectionLost";
-        case TransactionMachine::State::Transfer:
-          return out << "Transfer";
-        case TransactionMachine::State::Finished:
-          return out << "Finished";
-        case TransactionMachine::State::Rejected:
-          return out << "Rejected";
-        case TransactionMachine::State::Canceled:
-          return out << "Canceled";
-        case TransactionMachine::State::Failed:
-          return out << "Failed";
-        case TransactionMachine::State::Over:
-          return out << "Over";
-        case TransactionMachine::State::CloudBuffered:
-          return out << "CloudBuffered";
-        case TransactionMachine::State::CloudBufferingBeforeAccept:
-          return out << "CloudBufferingBeforeAccept";
-        case TransactionMachine::State::None:
-          return out << "None";
-        case TransactionMachine::State::GhostCloudBuffering:
-          return out << "GhostCloudBuffering";
-        case TransactionMachine::State::GhostCloudBufferingFinished:
-          return out << "GhostCloudBufferingFinished";
-        case TransactionMachine::State::DataExhausted:
-          return out << "DataExhausted";
-        case TransactionMachine::State::CloudSynchronize:
-          return out << "CloudSynchronize";
-      }
-      return out;
     }
   }
 }

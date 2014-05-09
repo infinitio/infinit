@@ -9,6 +9,7 @@ namespace surface
     class ReceiveMachine;
     class SendMachine;
     class State;
+    class Transaction;
     class TransactionMachine;
     class Transcaction;
     class TransferMachine;
