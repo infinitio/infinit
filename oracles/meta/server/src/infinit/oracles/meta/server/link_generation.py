@@ -225,7 +225,8 @@ class Mixin:
       download_url = cloud_buffer_token.generate_get_url(
         self.aws_region, self.aws_link_bucket,
         link['_id'],
-        link['name'])
+        link['name'],
+        valid_days = link_lifetime_days)
       return {
         'click_count': link['click_count'],
         'files': link['file_list'],
