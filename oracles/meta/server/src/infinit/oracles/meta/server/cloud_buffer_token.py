@@ -279,13 +279,17 @@ class CloudBufferToken:
     elle.log.debug('%s: url string: %s' % (self, url_string))
     return url_string
 
-#http://docs.aws.amazon.com/AmazonS3/latest/dev/RESTAuthentication.html
+# http://docs.aws.amazon.com/AmazonS3/latest/dev/RESTAuthentication.html
 # at the bottom, 'Query String Request Authentication Alternative'
-def generate_get_url(region, bucket_name, transaction_id, file_path):
+def generate_get_url(region,
+                     bucket_name,
+                     transaction_id,
+                     file_path,
+                     valid_days = 15):
   """ Generate a GET URL that can access relative 'file_path' in bucket
       using the federated token we produced
   """
-  expires = int(time.time()) + 15 * 24 * 60 * 60
+  expires = int(time.time()) + valid_days * 24 * 60 * 60
   string_to_sign = 'GET\n\n\n%s\n/%s/%s/%s' % (
     expires, bucket_name, transaction_id, _aws_urlquote(file_path))
   signature = hmac.new(CloudBufferToken.aws_secret.encode('ascii'),
