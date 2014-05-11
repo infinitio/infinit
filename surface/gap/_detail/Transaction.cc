@@ -159,14 +159,12 @@ namespace surface
           }
         }
       }
-      ELLE_TRACE("%s: load transactions from meta", *this)
-        this->_transaction_resync();
     }
 
     void
     State::_transaction_resync()
     {
-      ELLE_TRACE("%s: resynchronize active transactions from meta", *this)
+      ELLE_TRACE("%s: synchronize active transactions from meta", *this)
         for (auto& transaction: this->meta().transactions())
         {
           this->_on_transaction_update(std::move(transaction));
