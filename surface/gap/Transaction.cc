@@ -340,7 +340,7 @@ namespace surface
     void
     Transaction::on_transaction_update(Data const& data)
     {
-      ELLE_TRACE_SCOPE("%s: update transaction data with %s", *this, data);
+      ELLE_TRACE_SCOPE("%s: update data with %s", *this, data);
       if (this->final())
       {
         ELLE_WARN("%s: transaction already has a final status %s, can't "\
