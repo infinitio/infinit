@@ -614,8 +614,29 @@ namespace surface
       return [this](bool first_time)
       {
          auto& meta = this->state().meta();
-         auto token = meta.get_cloud_buffer_token(this->transaction_id(),
-                                                  !first_time);//force-regenerate
+         int delay = 1;
+         oracles::meta::CloudBufferTokenResponse token;
+         while (true)
+         {
+           try
+           {
+             token = meta.get_cloud_buffer_token(this->transaction_id(),
+                                                      !first_time);//force-regenerate
+             break;
+           }
+           catch(reactor::Terminate const& e)
+           {
+             throw;
+           }
+           catch(...)
+           {
+             ELLE_LOG("%s: get_cloud_buffer_token failed with %s, retrying...",
+                      *this, elle::exception_string());
+             // if meta looses connectivity to provider let's not flood it
+             reactor::sleep(boost::posix_time::seconds(delay));
+             delay = std::min(delay * 2, 60 * 10);
+           }
+         }
          auto credentials = aws::Credentials(token.access_key_id,
                                              token.secret_access_key,
                                              token.session_token,
