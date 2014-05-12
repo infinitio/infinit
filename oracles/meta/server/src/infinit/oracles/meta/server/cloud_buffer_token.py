@@ -83,6 +83,10 @@ class CloudBufferToken:
       self.credentials = self._get_credentials(res_xml)
     except urllib.error.HTTPError as e:
       elle.log.err('%s: unable to fetch token (%s): %s' % (self, e, e.read()))
+      raise e
+    except urllib.error.URLError as e:
+      elle.log.err('%s: unable to fetch token with %s: %s' % (request, self, e))
+      raise e
     return self.credentials
 
   def delete_file(path):
