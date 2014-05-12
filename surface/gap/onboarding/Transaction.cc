@@ -55,7 +55,7 @@ namespace surface
         return data;
       }
 
-      Transaction::Transaction(surface::gap::State const& state,
+      Transaction::Transaction(surface::gap::State& state,
                                uint32_t id,
                                State::User const& peer,
                                std::string const& file_path,
@@ -66,7 +66,7 @@ namespace surface
                                       state.me(), peer, file_path))
       {
         this->_machine.reset(new surface::gap::onboarding::ReceiveMachine(
-          state,
+          *this,
           id,
           this->data(),
           file_path,
@@ -118,9 +118,8 @@ namespace surface
       }
 
       void
-      Transaction::reset(surface::gap::State const& state)
-      {
-      }
+      Transaction::reset()
+      {}
 
       void
       Transaction::print(std::ostream& stream) const

@@ -5,11 +5,11 @@
 
 #include <boost/filesystem/fstream.hpp>
 
+#include <elle/AtomicFile.hh>
 #include <elle/container/map.hh>
 #include <elle/finally.hh>
-#include <elle/serialize/construct.hh>
-#include <elle/serialize/extract.hh>
-#include <elle/serialize/insert.hh>
+#include <elle/serialization/json/SerializerIn.hh>
+#include <elle/serialization/json/SerializerOut.hh>
 #include <elle/system/system.hh>
 
 #include <cryptography/SecretKey.hh>
@@ -57,34 +57,42 @@ namespace frete
     _transfer_snapshot(),
     _snapshot_destination(snapshot_destination)
   {
-    ELLE_TRACE_SCOPE("%s: load snapshot %s",
-                     *this, this->_snapshot_destination);
-    try
+    if (exists(this->_snapshot_destination))
     {
-      this->_transfer_snapshot.reset(
-        new TransferSnapshot(
-          elle::serialize::from_file(this->_snapshot_destination.string())));
-      ELLE_DUMP("%s: Loaded snapshot %s with progress[0] %s",
-                *this,
-                this->_snapshot_destination,
-                (this->_transfer_snapshot->file_count()?
-                  this->_transfer_snapshot->file(0).progress():
-                  0));
-      // reload key from snapshot
-      auto& k = *this->_transfer_snapshot->key_code();
-      _impl->_key.reset(
-        new infinit::cryptography::SecretKey(
-          self_key.k().decrypt<infinit::cryptography::SecretKey>(k)));
-    }
-    catch (boost::filesystem::filesystem_error const&)
-    {
-      ELLE_TRACE("%s: unable to read snapshot file: %s",
-                 *this, elle::exception_string());
-    }
-    catch (std::exception const&) //XXX: Choose the right exception here.
-    {
-      ELLE_WARN("%s: snapshot is invalid: %s",
-                *this, elle::exception_string());
+      ELLE_TRACE_SCOPE("%s: load snapshot %s",
+                       *this, this->_snapshot_destination);
+      try
+      {
+        {
+          elle::AtomicFile file(this->_snapshot_destination);
+          file.read() << [&] (elle::AtomicFile::Read& read)
+          {
+            elle::serialization::json::SerializerIn input(read.stream());
+            this->_transfer_snapshot.reset(new TransferSnapshot(input));
+          };
+        }
+        ELLE_DUMP("%s: Loaded snapshot %s with progress[0] %s",
+                  *this,
+                  this->_snapshot_destination,
+                  (this->_transfer_snapshot->file_count()?
+                   this->_transfer_snapshot->file(0).progress():
+                   0));
+        // reload key from snapshot
+        auto& k = *this->_transfer_snapshot->key_code();
+        _impl->_key.reset(
+          new infinit::cryptography::SecretKey(
+            self_key.k().decrypt<infinit::cryptography::SecretKey>(k)));
+      }
+      catch (boost::filesystem::filesystem_error const&)
+      {
+        ELLE_TRACE("%s: unable to read snapshot file: %s",
+                   *this, elle::exception_string());
+      }
+      catch (std::exception const&) //XXX: Choose the right exception here.
+      {
+        ELLE_WARN("%s: snapshot is invalid: %s",
+                  *this, elle::exception_string());
+      }
     }
     if (this->_transfer_snapshot == nullptr)
     {
@@ -182,8 +190,12 @@ namespace frete
                   this->_transfer_snapshot->file(0).progress():
                   0))
       ELLE_DUMP("files: %s", this->_transfer_snapshot->files());
-    elle::serialize::to_file(this->_snapshot_destination.string()) <<
-      *this->_transfer_snapshot;
+    elle::AtomicFile file(this->_snapshot_destination);
+    file.write() << [&] (elle::AtomicFile::Write& write)
+    {
+      elle::serialization::json::SerializerOut output(write.stream());
+      this->_transfer_snapshot->serialize(output);
+    };
   }
 
   void

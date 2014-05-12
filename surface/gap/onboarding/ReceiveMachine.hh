@@ -16,9 +16,9 @@ namespace surface
         public surface::gap::ReceiveMachine
       {
       public:
-        ReceiveMachine(surface::gap::State const& state,
+        ReceiveMachine(Transaction& transaction,
                        uint32_t id,
-                       std::shared_ptr<TransactionMachine::Data> transaction,
+                       std::shared_ptr<TransactionMachine::Data> data,
                        std::string const& file_path,
                        reactor::Duration duration = 5_sec);
 
@@ -41,9 +41,6 @@ namespace surface
         // Overload because it talks to meta.
         void
         _finalize(infinit::oracles::Transaction::Status) override;
-
-        void
-        _save_old_snapshot() const override;
 
         ELLE_ATTRIBUTE(std::string, file_path);
       };

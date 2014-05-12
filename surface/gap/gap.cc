@@ -1062,22 +1062,18 @@ gap_send_files_by_email(gap_State* state,
 {
   assert(recipient_id != nullptr);
   assert(files != nullptr);
-
-  std::unordered_set<std::string> s;
-
+  std::vector<std::string> files_cxx;
   while (*files != nullptr)
   {
-    s.insert(*files);
+    files_cxx.push_back(*files);
     ++files;
   }
-
   return run<uint32_t>(
     state,
     "send files",
     [&] (surface::gap::State& state) -> uint32_t
     {
-      return state.send_files(recipient_id, std::move(s), message);
-      return 0;
+      return state.send_files(recipient_id, std::move(files_cxx), message);
     });
 }
 
@@ -1089,22 +1085,19 @@ gap_send_files(gap_State* state,
 {
   assert(id != surface::gap::null_id);
   assert(files != nullptr);
-
-  std::unordered_set<std::string> s;
-
+  std::vector<std::string> files_cxx;
   while (*files != nullptr)
   {
-    s.insert(*files);
+    files_cxx.push_back(*files);
     ++files;
   }
-
   return run<uint32_t>(
     state,
     "send files",
     [&] (surface::gap::State& state) -> uint32_t
     {
       return state.send_files(state.users().at(id).id,
-                              std::move(s),
+                              std::move(files_cxx),
                               message);
     });
 }

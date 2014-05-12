@@ -739,7 +739,7 @@ namespace surface
                 for (auto& t: this->_transactions)
                 {
                   if (!t.second->final())
-                    t.second->reset(*this);
+                    t.second->reset();
                   else
                     ELLE_DEBUG("ignore finalized transaction %s", t.second);
                 }

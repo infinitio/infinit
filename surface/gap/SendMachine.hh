@@ -18,20 +18,20 @@ namespace surface
     `-------------*/
     public:
       /// Construct from send files.
-      SendMachine(surface::gap::State const& state,
+      SendMachine(Transaction& state,
                   uint32_t id,
                   std::string const& recipient,
-                  std::unordered_set<std::string>&& files,
+                  std::vector<std::string> files,
                   std::string const& message,
                   std::shared_ptr<Data> data);
       /// Construct from snapshot.
-      SendMachine(surface::gap::State const& state,
+      SendMachine(Transaction& state,
                   uint32_t id,
-                  std::unordered_set<std::string> files,
+                  std::vector<std::string> files,
                   std::string const& message,
                   std::shared_ptr<TransactionMachine::Data> data);
       /// Construct from server data.
-      SendMachine(surface::gap::State const& state,
+      SendMachine(Transaction& state,
                   uint32_t id,
                   std::shared_ptr<TransactionMachine::Data> data);
       virtual
@@ -46,13 +46,10 @@ namespace surface
       transaction_status_update(infinit::oracles::Transaction::Status status) override;
 
     private:
-      SendMachine(surface::gap::State const& state,
+      SendMachine(Transaction& state,
                   uint32_t id,
                   std::shared_ptr<Data> data,
                   bool);
-
-      OldSnapshot
-      _make_snapshot() const override;
 
     private:
       void
@@ -86,8 +83,8 @@ namespace surface
     /*-----------------.
     | Transaction data |
     `-----------------*/
-      /// List of path from transaction data.
-      typedef std::unordered_set<std::string> Files;
+    public:
+      typedef std::vector<std::string> Files;
       ELLE_ATTRIBUTE(Files, files);
       ELLE_ATTRIBUTE(std::string, message);
     protected:

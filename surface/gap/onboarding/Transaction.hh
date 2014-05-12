@@ -19,7 +19,7 @@ namespace surface
         public surface::gap::Transaction
       {
       public:
-        Transaction(surface::gap::State const& state,
+        Transaction(surface::gap::State& state,
                     uint32_t id,
                     State::User const& peer,
                     std::string const& file_path,
@@ -37,7 +37,7 @@ namespace surface
         interrupt() override;
 
         void
-        reset(surface::gap::State const& state) override;
+        reset() override;
 
         surface::gap::onboarding::ReceiveMachine&
         machine();

@@ -4,6 +4,7 @@
 # include <boost/filesystem.hpp>
 
 # include <elle/Printable.hh>
+# include <elle/serialization/fwd.hh>
 
 # include <frete/Frete.hh>
 
@@ -94,6 +95,11 @@ namespace frete
       ELLE_SERIALIZE_CONSTRUCT(File)
       {}
       ELLE_SERIALIZE_FRIEND_FOR(File);
+
+    public:
+      File(elle::serialization::SerializerIn& input);
+      void
+      serialize(elle::serialization::Serializer& s);
     };
 
   /*------.
@@ -176,8 +182,12 @@ namespace frete
   public:
     ELLE_SERIALIZE_CONSTRUCT(TransferSnapshot)
     {}
-
     ELLE_SERIALIZE_FRIEND_FOR(TransferSnapshot);
+
+  public:
+    TransferSnapshot(elle::serialization::SerializerIn& input);
+    void
+    serialize(elle::serialization::Serializer& s);
   };
 }
 

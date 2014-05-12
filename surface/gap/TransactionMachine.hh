@@ -34,86 +34,23 @@ namespace surface
     class TransactionMachine:
       public elle::Printable
     {
+    /*------.
+    | Types |
+    `------*/
     public:
       typedef infinit::oracles::Transaction Data;
-
-      // The values of the enums are used in the snapshot.
-      // To add a state, add it a the end to avoid the invalidation of the locally
-      // stored snapshots.
-      enum class State
-      {
-        NewTransaction = 0,
-        SenderCreateTransaction = 2,
-        SenderWaitForDecision = 4,
-        RecipientWaitForDecision = 5,
-        RecipientAccepted = 6,
-        PublishInterfaces = 9,
-        Connect = 10,
-        PeerDisconnected = 11,
-        PeerConnectionLost = 12,
-        Transfer = 13,
-        Finished = 16,
-        Rejected = 17,
-        Canceled = 18,
-        Failed = 19,
-        Over = 20,
-        CloudBuffered = 21,
-        CloudBufferingBeforeAccept = 22,
-        GhostCloudBuffering = 23,
-        GhostCloudBufferingFinished = 24,
-        DataExhausted = 25,
-        CloudSynchronize = 26,
-        None = 99,
-      };
-
-    /*------------.
-    | OldSnapshot |
-    `------------*/
-    public:
-      class OldSnapshot:
-        public elle::Printable
-      {
-      public:
-        OldSnapshot(Data const& data,
-                    State const state,
-                    std::unordered_set<std::string> const& files = {},
-                    std::string const& message = "");
-
-        ELLE_SERIALIZE_CONSTRUCT(OldSnapshot){}
-
-      public:
-        Data data;
-        State state;
-        std::unordered_set<std::string> files;
-        std::string message;
-        bool archived;
-
-        /*----------.
-        | Printable |
-        `----------*/
-      public:
-        void
-        print(std::ostream& stream) const override;
-      };
+      typedef TransactionMachine Self;
 
     public:
-      TransactionMachine(surface::gap::State const& state,
+      TransactionMachine(Transaction& transaction,
                          uint32_t id,
-                         std::shared_ptr<TransactionMachine::Data> transaction);
+                         std::shared_ptr<TransactionMachine::Data> data);
 
       virtual
       ~TransactionMachine();
 
-    public:
-      ELLE_ATTRIBUTE_RW(boost::filesystem::path, snapshot_path);
-
     protected:
       virtual
-      OldSnapshot
-      _make_snapshot() const;
-      virtual
-      void
-      _save_old_snapshot() const;
       void
       _save_snapshot() const;
     protected:
@@ -315,6 +252,7 @@ namespace surface
     | Transaction |
     `------------*/
     public:
+      ELLE_ATTRIBUTE_R(surface::gap::Transaction&, transaction);
       ELLE_ATTRIBUTE_R(surface::gap::State const&, state);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
       ELLE_ATTRIBUTE(float, progress);
@@ -360,11 +298,6 @@ namespace surface
       void
       print(std::ostream& stream) const override;
     };
-
-
-    std::ostream&
-    operator <<(std::ostream& out,
-                TransactionMachine::State const& t);
   }
 }
 

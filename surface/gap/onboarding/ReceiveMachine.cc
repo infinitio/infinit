@@ -1,6 +1,7 @@
 #include <elle/log.hh>
 
 #include <surface/gap/onboarding/ReceiveMachine.hh>
+#include <surface/gap/onboarding/Transaction.hh>
 #include <surface/gap/onboarding/TransferMachine.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.onboarding.ReceiveMachine");
@@ -12,17 +13,18 @@ namespace surface
     namespace onboarding
     {
       ReceiveMachine::ReceiveMachine(
-        surface::gap::State const& state,
+        Transaction& transaction,
         uint32_t id,
-        std::shared_ptr<TransactionMachine::Data> transaction,
+        std::shared_ptr<TransactionMachine::Data> data,
         std::string const& file_path,
-        reactor::Duration duration):
-          surface::gap::ReceiveMachine(state, id, transaction),
-          _file_path(file_path)
+        reactor::Duration duration)
+        : surface::gap::ReceiveMachine(transaction, id, data)
+        , _file_path(file_path)
       {
         ELLE_TRACE_SCOPE("%s: construction", *this);
-        this->_transfer_machine.reset(new TransferMachine(
-          *this, this->_file_path, state.output_dir(), duration));
+        this->_transfer_machine.reset(
+          new TransferMachine(
+            *this, this->_file_path, this->state().output_dir(), duration));
       }
 
       float
@@ -35,12 +37,6 @@ namespace surface
       ReceiveMachine::accept()
       {
         this->_accepted.open();
-      }
-
-      void
-      ReceiveMachine::_save_old_snapshot() const
-      {
-        ELLE_DEBUG("don't save snapshot");
       }
 
       bool

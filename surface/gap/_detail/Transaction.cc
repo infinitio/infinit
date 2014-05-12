@@ -1,8 +1,11 @@
 #include <atomic>
 
 #include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
 
+#include <elle/AtomicFile.hh>
 #include <elle/memory.hh>
+#include <elle/serialization/json.hh>
 
 #include <surface/gap/State.hh>
 #include <surface/gap/Transaction.hh>
@@ -46,7 +49,7 @@ namespace surface
 
     uint32_t
     State::send_files(std::string const& peer_id,
-                      std::unordered_set<std::string>&& files,
+                      std::vector<std::string> files,
                       std::string const& message)
     {
       auto id = generate_id();
@@ -103,107 +106,65 @@ namespace surface
     State::_transactions_init()
     {
       ELLE_ASSERT(this->_transactions.empty());
-      ELLE_TRACE("%s: load transactions from snapshots", *this)
+      boost::filesystem::path snapshots_path(
+        common::infinit::user_directory(this->me().id));
+      snapshots_path /= "transactions";
+      ELLE_TRACE("%s: load transactions from snapshots at %s",
+                 *this, snapshots_path)
       {
-        std::string snapshots_path =
-          common::infinit::transaction_snapshots_directory(this->me().id);
-        boost::filesystem::create_directories(snapshots_path);
-        using boost::filesystem::recursive_directory_iterator;
-        recursive_directory_iterator iterator(snapshots_path);
-        recursive_directory_iterator end;
-        for (; iterator != end; ++iterator)
+        create_directories(snapshots_path);
+        using boost::filesystem::directory_iterator;
+        for (auto it = directory_iterator(snapshots_path);
+             it != directory_iterator();
+             ++it)
         {
-          auto snapshot_path =
-            boost::filesystem::path{iterator->path().native()}.string();
+          auto snapshot_path = boost::filesystem::path(it->path());
           ELLE_TRACE_SCOPE("%s: load transaction snapshot %s",
                            *this, snapshot_path);
-          elle::SafeFinally delete_snapshot(
-            [&snapshot_path]
-            {
-              ELLE_DEBUG("remove snapshot");
-              boost::system::error_code ec;
-              auto res =
-                boost::filesystem::remove(
-                  boost::filesystem::path{snapshot_path}, ec);
-              if (!res || ec)
-                ELLE_DEBUG("failed at removing snapshot %s: %s",
-                           snapshot_path, ec);
-            });
-          std::unique_ptr<TransactionMachine::OldSnapshot> snapshot;
           try
           {
-            ELLE_DEBUG("Reloading snapshot from %s", snapshot_path);
-            snapshot.reset(
-              new TransactionMachine::OldSnapshot(
-                elle::serialize::from_file(snapshot_path)));
-            // FIXME: this should be in the snapshot deserialization.
-            // FIXME: this can happen if you kill the client while creating a
-            //        transaction and you haven't fetch an id from the server
-            //        yet. Test and fix that shit.
-            if (snapshot->data.id.empty())
+            elle::AtomicFile source(snapshot_path / "transaction.snapshot");
+            source.read() << [&] (elle::AtomicFile::Read& read)
             {
-              ELLE_LOG("OldSnapshot %s is corrupted: empty id", *snapshot);
-              boost::filesystem::remove(snapshot_path);
-              continue;
-            }
-          }
-          catch (std::exception const&)
-          {
-            ELLE_ERR("%s: couldn't load snapshot at %s: %s",
-                     *this, snapshot_path, elle::exception_string());
-            boost::filesystem::remove(snapshot_path);
-            continue;
-          }
-          try
-          {
-            this->user(snapshot->data.sender_id);
-            this->user(snapshot->data.recipient_id);
-
-            auto it = std::find_if(
-              std::begin(this->_transactions),
-              std::end(this->_transactions),
-              [&] (TransactionConstPair const& pair)
+              elle::serialization::json::SerializerIn input(read.stream());
+              Transaction::Snapshot snapshot(input);
+              auto const& data = snapshot.data();
+              if (!data.id.empty())
               {
-                return (!pair.second->data()->id.empty()) &&
-                       (pair.second->data()->id == snapshot->data.id);
-              });
-
-            if (it != std::end(this->_transactions))
-            {
-              throw elle::Exception(
-                elle::sprintf("duplicated snapshot found for transaction %s",
-                              snapshot->data.id));
-            }
-
-            auto transaction = snapshot.release();
-            ELLE_TRACE("%s: update transaction with status from meta", *this)
-            {
-              auto meta_transaction =
-                this->meta().transaction(transaction->data.id);
+                auto it = std::find_if(
+                  std::begin(this->_transactions),
+                  std::end(this->_transactions),
+                  [&] (TransactionConstPair const& pair)
+                  {
+                    return (pair.second->data()->id == data.id);
+                  });
+                if (it != std::end(this->_transactions))
+                  throw elle::Exception(
+                    elle::sprintf(
+                      "duplicate snapshot for transaction %s", data.id));
+              }
               auto _id = generate_id();
               this->_transactions.emplace(
                 _id,
                 elle::make_unique<Transaction>(
-                  *this, _id, std::move(*transaction)));
-              this->_on_transaction_update(meta_transaction);
-            }
+                  *this, _id, std::move(snapshot), snapshot_path));
+            };
           }
-          catch (std::exception const&)
+          catch (elle::Exception const& ) // FIXME: should be elle::Error
           {
-            ELLE_ERR("%s: couldn't create transaction from snapshot at %s: %s",
-                     *this, snapshot_path, elle::exception_string());
+            ELLE_WARN("%s: error while loading snapshot %s: %s",
+                      *this, *it, elle::exception_string());
+            remove_all(*it);
             continue;
           }
         }
       }
-      ELLE_TRACE("%s: load transactions from meta", *this)
-        this->_transaction_resync();
     }
 
     void
     State::_transaction_resync()
     {
-      ELLE_TRACE("%s: resynchronize active transactions from meta", *this)
+      ELLE_TRACE("%s: synchronize active transactions from meta", *this)
         for (auto& transaction: this->meta().transactions())
         {
           this->_on_transaction_update(std::move(transaction));
@@ -260,10 +221,10 @@ namespace surface
     void
     State::_on_transaction_update(infinit::oracles::Transaction const& notif)
     {
-      ELLE_TRACE_SCOPE("%s: receive notification for transaction %s",
+      ELLE_TRACE_SCOPE("%s: receive transaction data %s",
                        *this, notif.id);
       ELLE_ASSERT(!notif.id.empty());
-      ELLE_DUMP("%s: notification: %s", *this, notif)
+      ELLE_DUMP("%s: data: %s", *this, notif)
       ELLE_DEBUG("%s: ensure that both user are fetched", *this)
       {
         this->user(notif.sender_id);
@@ -279,8 +240,7 @@ namespace surface
         });
       if (it == std::end(this->_transactions))
       {
-        ELLE_TRACE_SCOPE("%s: create transaction %s from notification",
-                         *this, notif.id);
+        ELLE_TRACE_SCOPE("%s: create transaction %s", *this, notif.id);
         infinit::oracles::Transaction data = notif;
         auto id = generate_id();
         this->_transactions.emplace(

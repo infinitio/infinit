@@ -258,6 +258,7 @@ namespace infinit
         // Don't check the host name since we have only one certificate but we
         // change hostname between minor versions.
         this->_default_configuration.ssl_verify_host(false);
+        this->_rng.seed(static_cast<unsigned int>(std::time(0)));
       }
 
       Client::~Client()
@@ -767,14 +768,45 @@ namespace infinit
         json["locals"] = convert_endpoints(local_endpoints);
         json["externals"] = convert_endpoints(public_endpoints);
         auto url = elle::sprintf("/transaction/%s/endpoints", transaction_id);
-        reactor::http::Request request =
-          this->_client.request(this->_url(url),
-                                Method::PUT,
-                                "application/json",
-                                this->_default_configuration);
-        elle::json::write(request, json);
-        this->_handle_errors(request);
-        auto response = elle::json::read(request);
+        this->_request(url, Method::PUT, json);
+      }
+
+      elle::json::Json
+      Client::_request(std::string const& url,
+                       Method method,
+                       elle::json::Object const& json) const
+      {
+        int attempts = 0;
+        static const int max_attempts = 5;
+        while (true)
+        {
+          reactor::http::Request request =
+            this->_client.request(this->_url(url),
+                                  method,
+                                  "application/json",
+                                  this->_default_configuration);
+          elle::json::write(request, json);
+          switch (request.status())
+          {
+            case reactor::http::StatusCode::Bad_Gateway:
+            case reactor::http::StatusCode::Service_Unavailable:
+            case reactor::http::StatusCode::Gateway_Timeout:
+            {
+              if (++attempts >= max_attempts)
+                break;
+              ELLE_WARN("%s: error while posting, retrying: %s.\n%s",
+                        *this, request.status(), request.response().string());
+              boost::random::uniform_int_distribution<> random(100, 200);
+              reactor::sleep(3_sec * (random(this->_rng) / 100.));
+              continue;
+            }
+            default:
+              break;
+          }
+
+          this->_handle_errors(request);
+          return elle::json::read(request);
+        }
       }
 
       ConnectDeviceResponse

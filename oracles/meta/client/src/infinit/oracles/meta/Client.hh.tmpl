@@ -1,23 +1,5 @@
-#ifndef  PLASMA_META_CLIENT_HH
+#ifndef PLASMA_META_CLIENT_HH
 # define PLASMA_META_CLIENT_HH
-
-# include <infinit/oracles/LinkTransaction.hh>
-# include <infinit/oracles/PeerTransaction.hh>
-
-# include <aws/Credentials.hh>
-
-# include <elle/Buffer.hh>
-# include <elle/Exception.hh>
-# include <elle/format/json/fwd.hh>
-# include <elle/HttpClient.hh> // XXX: Remove that. Only for exception.
-# include <elle/log.hh>
-# include <elle/serialization/fwd.hh>
-# include <elle/serialization/SerializerIn.hh>
-# include <elle/serialize/construct.hh>
-# include <reactor/http/Client.hh>
-# include <reactor/http/Request.hh>
-
-# include <boost/uuid/uuid.hpp>
 
 # include <algorithm>
 # include <functional>
@@ -27,6 +9,26 @@
 # include <stdexcept>
 # include <string>
 # include <vector>
+
+# include <boost/random.hpp>
+# include <boost/uuid/uuid.hpp>
+
+# include <elle/Buffer.hh>
+# include <elle/Exception.hh>
+# include <elle/HttpClient.hh> // XXX: Remove that. Only for exception.
+# include <elle/format/json/fwd.hh>
+# include <elle/json/json.hh>
+# include <elle/log.hh>
+# include <elle/serialization/fwd.hh>
+# include <elle/serialization/SerializerIn.hh>
+
+# include <aws/Credentials.hh>
+
+# include <reactor/http/Client.hh>
+# include <reactor/http/Request.hh>
+
+# include <infinit/oracles/LinkTransaction.hh>
+# include <infinit/oracles/PeerTransaction.hh>
 
 namespace infinit
 {
@@ -371,10 +373,14 @@ namespace infinit
 
         Client(const Client&) = delete;
         void operator = (const Client&) = delete;
-        /*---------.
-        | Requests |
-        `---------*/
+      /*---------.
+      | Requests |
+      `---------*/
       protected:
+        elle::json::Json
+        _request(std::string const& url,
+                 reactor::http::Method method,
+                 elle::json::Object const& json) const;
         template <typename T>
         T
         _request(std::string const& url,
@@ -399,7 +405,7 @@ namespace infinit
         _url(std::string const& path) const;
         void
         _handle_errors(reactor::http::Request& request) const;
-
+        boost::random::mt19937 mutable _rng;
 
       public:
         DebugResponse
@@ -584,9 +590,9 @@ namespace infinit
         icon(std::string const& user_id,
              elle::ConstWeakBuffer const& icon) const;
 
-          /*----------.
-          | Printable |
-          `----------*/
+      /*----------.
+      | Printable |
+      `----------*/
       public:
         virtual
         void

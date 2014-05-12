@@ -1,6 +1,8 @@
-#include <elle/log.hh>
-
 #include <frete/TransferSnapshot.hh>
+
+#include <elle/log.hh>
+#include <elle/serialization/SerializerIn.hh>
+#include <elle/serialization/SerializerOut.hh>
 
 ELLE_LOG_COMPONENT("frete.Snapshot");
 
@@ -223,5 +225,45 @@ namespace frete
     _progress = 0;
     for (auto const& f: _files)
       _progress += f.second.progress();
+  }
+
+  /*--------------.
+  | Serialization |
+  `--------------*/
+
+  TransferSnapshot::TransferSnapshot(elle::serialization::SerializerIn& input)
+  {
+    this->serialize(input);
+  }
+
+  void
+  TransferSnapshot::serialize(elle::serialization::Serializer& s)
+  {
+    s.serialize("transfers", this->_files);
+    s.serialize("count", this->_count);
+    s.serialize("total_size", this->_total_size);
+    s.serialize("progress", this->_progress);
+    s.serialize("key_code", this->_key_code);
+    s.serialize("archived", this->_archived);
+    if (s.in())
+      // Progress is redundant data, don't trust it
+      this->_recompute_progress();
+  }
+
+  TransferSnapshot::File::File(elle::serialization::SerializerIn& input)
+  {
+    this->serialize(input);
+  }
+
+  void
+  TransferSnapshot::File::serialize(elle::serialization::Serializer& s)
+  {
+    s.serialize("file_id", this->_file_id);
+    s.serialize("root", this->_root);
+    s.serialize("path", this->_path);
+    s.serialize("file_size", this->_size);
+    s.serialize("progress", this->_progress);
+    if (s.in())
+      this->_full_path = boost::filesystem::path(this->_root) / this->_path;
   }
 }

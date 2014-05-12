@@ -1,15 +1,6 @@
-#ifndef TRANSFERMACHINE_HXX
-# define TRANSFERMACHINE_HXX
+#ifndef SURFACE_GAP_TRANSACTION_MACHINE_HXX
+# define SURFACE_GAP_TRANSACTION_MACHINE_HXX
 
-# include <elle/serialize/SetSerializer.hxx>
 
-ELLE_SERIALIZE_SIMPLE(surface::gap::TransactionMachine::OldSnapshot, ar, res, version)
-{
-  enforce(version == 0);
-
-  ar & named("data", res.data);
-  ar & named("files", res.files);
-  ar & named("state", res.state);
-}
 
 #endif

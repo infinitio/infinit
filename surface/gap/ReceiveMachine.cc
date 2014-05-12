@@ -4,6 +4,8 @@
 #include <elle/AtomicFile.hh>
 #include <elle/finally.hh>
 #include <elle/os/environ.hh>
+#include <elle/serialization/json/SerializerIn.hh>
+#include <elle/serialization/json/SerializerOut.hh>
 #include <elle/serialization/json.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
@@ -75,22 +77,21 @@ namespace surface
     }
 
     using TransactionStatus = infinit::oracles::Transaction::Status;
-    ReceiveMachine::ReceiveMachine(surface::gap::State const& state,
-                                   uint32_t id,
-                                   std::shared_ptr<TransactionMachine::Data> data):
-      TransactionMachine(state, id, std::move(data)),
-      _wait_for_decision_state(
+    ReceiveMachine::ReceiveMachine(
+      Transaction& transaction,
+      uint32_t id,
+      std::shared_ptr<TransactionMachine::Data> data)
+      : TransactionMachine(transaction, id, std::move(data))
+      , _wait_for_decision_state(
         this->_machine.state_make(
-          "wait for decision", std::bind(&ReceiveMachine::_wait_for_decision, this))),
-      _accept_state(
+          "wait for decision", std::bind(&ReceiveMachine::_wait_for_decision, this)))
+      , _accept_state(
         this->_machine.state_make(
-          "accept", std::bind(&ReceiveMachine::_accept, this))),
-      _accepted("accepted"),
-      _snapshot_path(boost::filesystem::path(
-                       common::infinit::frete_snapshot_path(
-                         this->data()->recipient_id,
-                         this->data()->id))),
-      _snapshot(nullptr)
+          "accept", std::bind(&ReceiveMachine::_accept, this)))
+      , _accepted("accepted")
+      , _frete_snapshot_path(this->transaction().snapshots_directory()
+                             / "frete.snapshot")
+      , _snapshot(nullptr)
     {
       // Normal way.
       this->_machine.transition_add(this->_wait_for_decision_state,
@@ -128,12 +129,28 @@ namespace surface
         });
       try
       {
-        this->_snapshot.reset(
-          new frete::TransferSnapshot(
-            elle::serialize::from_file(this->_snapshot_path.string())));
-          if (this->_snapshot->file_count())
-            ELLE_DEBUG("Reloaded snapshot, first file at %s",
-              this->_snapshot->file(0).progress());
+        if (exists(this->_frete_snapshot_path))
+        {
+          elle::AtomicFile file(this->_frete_snapshot_path);
+          file.read() << [&] (elle::AtomicFile::Read& read)
+          {
+            elle::serialization::json::SerializerIn input(read.stream());
+            this->_snapshot.reset(new frete::TransferSnapshot(input));
+          };
+        }
+        else
+        {
+          // FIXME: old obsolete snapshots, for backward only.
+          auto path = common::infinit::frete_snapshot_path(
+            this->data()->recipient_id,
+            this->data()->id);
+          this->_snapshot.reset(
+            new frete::TransferSnapshot(
+              elle::serialize::from_file(path)));
+        }
+        if (this->_snapshot->file_count())
+          ELLE_DEBUG("Reloaded snapshot, first file at %s",
+                     this->_snapshot->file(0).progress());
       }
       catch (boost::filesystem::filesystem_error const&)
       {
@@ -760,12 +777,12 @@ namespace surface
 
       try
       {
-        boost::filesystem::remove(this->_snapshot_path);
+        boost::filesystem::remove(this->_frete_snapshot_path);
       }
       catch (std::exception const&)
       {
         ELLE_ERR("couldn't delete snapshot at %s: %s",
-                 this->_snapshot_path, elle::exception_string());
+                 this->_frete_snapshot_path, elle::exception_string());
       }
     }
 
@@ -806,18 +823,25 @@ namespace surface
         *this, index, fullpath, file_size);
 
 
+      try
+      {
+        boost::filesystem::create_directories(fullpath.parent_path());
+      }
+      catch (...)
+      {
+        throw;
+        ELLE_ERR("this one: %s", fullpath);
+      }
       if (tr.complete())
       {
         ELLE_DEBUG("%s: transfer was marked as complete", *this);
         // Handle empty files here
         if (!boost::filesystem::exists(fullpath))
         {
-          boost::filesystem::create_directories(fullpath.parent_path());
           boost::filesystem::ofstream output(fullpath, std::ios::app | std::ios::binary);
         }
         return FileSize(-1);
       }
-      boost::filesystem::create_directories(fullpath.parent_path());
       if (boost::filesystem::exists(fullpath))
       {
         // Check size against snapshot data
@@ -1105,8 +1129,12 @@ namespace surface
     void
     ReceiveMachine::_save_transfer_snapshot()
     {
-      elle::serialize::to_file(this->_snapshot_path.string())
-        << *this->_snapshot;
+      elle::AtomicFile file(this->_frete_snapshot_path.string());
+      file.write() << [&] (elle::AtomicFile::Write& write)
+      {
+        elle::serialization::json::SerializerOut output(write.stream());
+        this->_snapshot->serialize(output);
+      };
     }
 
     void

@@ -1,18 +1,16 @@
 #ifndef SURFACE_GAP_TRANSACTION_HH
 # define SURFACE_GAP_TRANSACTION_HH
 
+# include <unordered_set>
+# include <stdint.h>
+# include <string>
+
+# include <infinit/oracles/trophonius/Client.hh>
 # include <surface/gap/Notification.hh>
 # include <surface/gap/enums.hh>
 # include <surface/gap/fwd.hh>
 # include <surface/gap/Exception.hh>
 # include <surface/gap/TransactionMachine.hh>
-
-# include <infinit/oracles/trophonius/Client.hh>
-
-# include <unordered_set>
-
-# include <stdint.h>
-# include <string>
 
 namespace surface
 {
@@ -59,25 +57,70 @@ namespace surface
       typedef infinit::oracles::Transaction Data;
       static std::vector<infinit::oracles::Transaction::Status> final_statuses;
 
+    /*---------.
+    | Snapshot |
+    `---------*/
     public:
-      Transaction(State const& state,
+      class Snapshot:
+        public elle::Printable
+      {
+      public:
+        Snapshot(
+          bool sender,
+          Data data,
+          boost::optional<std::vector<std::string>> files = {},
+          boost::optional<std::string> message = {});
+      public:
+        ELLE_ATTRIBUTE_R(bool, sender);
+        ELLE_ATTRIBUTE_R(Data, data);
+        ELLE_ATTRIBUTE_R(boost::optional<std::vector<std::string>>, files);
+        ELLE_ATTRIBUTE_R(boost::optional<std::string>, message);
+
+      // Serialization
+      public:
+        Snapshot(elle::serialization::SerializerIn& serializer);
+        void
+        serialize(elle::serialization::Serializer& serializer);
+
+      // Printable
+      public:
+        void
+        print(std::ostream& stream) const override;
+      };
+    private:
+      void
+      _snapshot_save() const;
+      ELLE_ATTRIBUTE_R(boost::filesystem::path, snapshots_directory);
+      ELLE_ATTRIBUTE(boost::filesystem::path, snapshot_path);
+
+    /*-------------.
+    | Construction |
+    `-------------*/
+    public:
+      /// Construct from server data.
+      Transaction(State& state,
                   uint32_t id,
                   Data&& data,
                   bool history = false);
-
-      Transaction(State const& state,
+      /// Construct from snapshot.
+      Transaction(State& state,
                   uint32_t id,
-                  TransactionMachine::OldSnapshot data);
-
-      Transaction(Transaction&&) = default;
-
-      Transaction(surface::gap::State const& state,
+                  Snapshot snapshot,
+                  boost::filesystem::path snapshot_path);
+      /// Construct as new for file sending.
+      Transaction(surface::gap::State& state,
                   uint32_t id,
                   std::string const& peer_id,
-                  std::unordered_set<std::string>&& files,
+                  std::vector<std::string> files,
                   std::string const& message);
-
+      /// Move.
+      Transaction(Transaction&&) = default;
+      /// Destruct.
       ~Transaction();
+    private:
+      ELLE_ATTRIBUTE_R(State&, state);
+      ELLE_ATTRIBUTE(boost::optional<std::vector<std::string>>, files);
+      ELLE_ATTRIBUTE(boost::optional<std::string>, message);
 
     public:
       virtual
@@ -136,19 +179,22 @@ namespace surface
       // Reinitialize everything. Invoked when connection to servers is reset.
       virtual
       void
-      reset(surface::gap::State const& state);
-      /*------------.
-      | Atttributes |
-      `------------*/
+      reset();
+
+    /*------------.
+    | Atttributes |
+    `------------*/
+    public:
       ELLE_ATTRIBUTE_R(uint32_t, id);
       ELLE_ATTRIBUTE_R(uint32_t, sender);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
     protected:
       std::unique_ptr<TransactionMachine> _machine;
       ELLE_ATTRIBUTE_r(gap_TransactionStatus, last_status);
-      /*--------.
-      | Helpers |
-      `--------*/
+
+    /*--------.
+    | Helpers |
+    `--------*/
     public:
       bool
       concerns_user(std::string const& peer_id) const;
@@ -168,9 +214,9 @@ namespace surface
       gap_TransactionStatus
       _transaction_status(Transaction::Data const& data) const;
 
-      /*----------.
-      | Printable |
-      `----------*/
+    /*----------.
+    | Printable |
+    `----------*/
     public:
       virtual
       void
