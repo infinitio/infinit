@@ -4,6 +4,8 @@
 #include <elle/AtomicFile.hh>
 #include <elle/finally.hh>
 #include <elle/os/environ.hh>
+#include <elle/serialization/json/SerializerIn.hh>
+#include <elle/serialization/json/SerializerOut.hh>
 #include <elle/serialization/json.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
@@ -129,9 +131,12 @@ namespace surface
       {
         if (exists(this->_frete_snapshot_path))
         {
-          this->_snapshot.reset(
-            new frete::TransferSnapshot(
-              elle::serialize::from_file(this->_frete_snapshot_path.string())));
+          elle::AtomicFile file(this->_frete_snapshot_path);
+          file.read() << [&] (elle::AtomicFile::Read& read)
+          {
+            elle::serialization::json::SerializerIn input(read.stream());
+            this->_snapshot.reset(new frete::TransferSnapshot(input));
+          };
         }
         else
         {
@@ -818,18 +823,25 @@ namespace surface
         *this, index, fullpath, file_size);
 
 
+      try
+      {
+        boost::filesystem::create_directories(fullpath.parent_path());
+      }
+      catch (...)
+      {
+        throw;
+        ELLE_ERR("this one: %s", fullpath);
+      }
       if (tr.complete())
       {
         ELLE_DEBUG("%s: transfer was marked as complete", *this);
         // Handle empty files here
         if (!boost::filesystem::exists(fullpath))
         {
-          boost::filesystem::create_directories(fullpath.parent_path());
           boost::filesystem::ofstream output(fullpath, std::ios::app | std::ios::binary);
         }
         return FileSize(-1);
       }
-      boost::filesystem::create_directories(fullpath.parent_path());
       if (boost::filesystem::exists(fullpath))
       {
         // Check size against snapshot data
@@ -1117,8 +1129,12 @@ namespace surface
     void
     ReceiveMachine::_save_transfer_snapshot()
     {
-      elle::serialize::to_file(this->_frete_snapshot_path.string())
-        << *this->_snapshot;
+      elle::AtomicFile file(this->_frete_snapshot_path.string());
+      file.write() << [&] (elle::AtomicFile::Write& write)
+      {
+        elle::serialization::json::SerializerOut output(write.stream());
+        this->_snapshot->serialize(output);
+      };
     }
 
     void
