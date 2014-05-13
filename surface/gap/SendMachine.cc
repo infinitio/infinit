@@ -310,8 +310,9 @@ namespace surface
             this->rejected().open();
           break;
         case TransactionStatus::initialized:
-          break;
         case TransactionStatus::created:
+          ELLE_TRACE("%s: ignoring status update to %s", *this, status);
+          break;
         case TransactionStatus::none:
         case TransactionStatus::started:
           ELLE_ABORT("%s: invalid status update to %s", *this, status);
