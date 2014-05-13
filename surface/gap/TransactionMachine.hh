@@ -31,6 +31,12 @@ namespace surface
   {
     class State;
 
+    enum EncryptionLevel
+    {
+      EncryptionLevel_None = 0,
+      EncryptionLevel_Weak = 1,
+      EncryptionLevel_Strong = 2
+    };
     class TransactionMachine:
       public elle::Printable
     {

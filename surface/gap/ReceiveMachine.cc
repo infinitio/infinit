@@ -617,7 +617,8 @@ namespace surface
           total_bytes_transfered = frete.full_size();
         exit_reason = metrics::TransferExitReasonFinished;
         return this->get<frete::RPCFrete>(
-          frete, strong_encryption, name_policy, peer_version);
+          frete, strong_encryption?EncryptionLevel_Strong:EncryptionLevel_Weak,
+          name_policy, peer_version);
       }
       catch(reactor::Terminate const&)
       {
@@ -641,7 +642,7 @@ namespace surface
                         std::string const& name_policy)
     {
       return this->get<TransferBufferer>(
-        frete, true, name_policy,
+        frete, EncryptionLevel_Strong, name_policy,
         elle::Version(INFINIT_VERSION_MAJOR,
                       INFINIT_VERSION_MINOR,
                       INFINIT_VERSION_SUBMINOR));
@@ -650,7 +651,7 @@ namespace surface
     template <typename Source>
     void
     ReceiveMachine::get(Source& source,
-                         bool strong_encryption,
+                         EncryptionLevel encryption,
                          std::string const& name_policy,
                          elle::Version const& peer_version
                          )
@@ -717,13 +718,22 @@ namespace surface
         _root_component_mapping[asked0] = got0;
       }
 
-      auto key = strong_encryption ?
-        infinit::cryptography::SecretKey(
-          this->state().identity().pair().k().decrypt<
-          infinit::cryptography::SecretKey>(source.key_code())) :
-        infinit::cryptography::SecretKey(
+      infinit::cryptography::SecretKey key;
+      switch (encryption)
+      {
+      case EncryptionLevel_Weak:
+        key = infinit::cryptography::SecretKey(
           infinit::cryptography::cipher::Algorithm::aes256,
           this->transaction_id());
+        break;
+      case EncryptionLevel_Strong:
+        key = infinit::cryptography::SecretKey(
+          this->state().identity().pair().k().decrypt<
+          infinit::cryptography::SecretKey>(source.key_code()));
+          break;
+      case EncryptionLevel_None:
+          break;
+      }
 
       _fetch_current_file_index = last_index;
       // Snapshot only has info on files for which transfer started,
@@ -756,8 +766,8 @@ namespace surface
                 elle::sprintf("transfer reader %s", i),
                 std::bind(&ReceiveMachine::_fetcher_thread<Source>,
                           this, std::ref(source), i, name_policy, explicit_ack,
-                          strong_encryption, chunk_size, std::ref(key),
-                            files_info));
+                          encryption, chunk_size, std::ref(key),
+                          files_info));
           scope.run_background(
             "receive writer",
             std::bind(&ReceiveMachine::_disk_thread<Source>,
@@ -921,7 +931,7 @@ namespace surface
     ReceiveMachine::_fetcher_thread(Source& source, int id,
                                     const std::string& name_policy,
                                     bool explicit_ack,
-                                    bool strong_encryption,
+                                    EncryptionLevel encryption,
                                     size_t chunk_size,
                                     const infinit::cryptography::SecretKey& key,
                                     std::vector<std::pair<std::string, FileSize>> const& files_info)
@@ -934,8 +944,8 @@ namespace surface
           break; // some other thread figured out this was over
         }
         ELLE_DEBUG("Reading buffer at %s in mode %s", _fetch_current_position,
-          explicit_ack? "read_encrypt_ack" :
-           strong_encryption? "read_encrypt" : "encrypt"
+          explicit_ack? std::string("read_encrypt_ack") :
+           boost::lexical_cast<std::string>(encryption)
           );
         if (_fetch_current_position >= _fetch_current_file_full_size)
         {
@@ -958,23 +968,35 @@ namespace surface
         // For some reasons this can't be rewritten cleanly: the compiler
         // burst into flames about deleted =(const&), thus ignoring
         // =(&&)  when writing code = f();
-        infinit::cryptography::Code code(
-           explicit_ack ?
-            source.encrypted_read_acknowledge(local_index,
-                                              local_position, chunk_size,
-                                              this->_snapshot->progress())
-            : strong_encryption ?
-              source.encrypted_read(local_index, local_position, chunk_size)
-              :  source.read(local_index, local_position, chunk_size));
+        infinit::cryptography::Code code;
         elle::Buffer buffer;
-        try
+        if (explicit_ack)
+          code = source.encrypted_read_acknowledge(local_index,
+                                              local_position, chunk_size,
+                                              this->_snapshot->progress());
+        else switch(encryption)
         {
-          buffer = key.decrypt<elle::Buffer>(code);
+        case EncryptionLevel_Strong:
+          code = source.encrypted_read(local_index, local_position, chunk_size);
+          break;
+        case EncryptionLevel_Weak:
+          code = source.read(local_index, local_position, chunk_size);
+          break;
+        case EncryptionLevel_None:
+          buffer = std::move(source.read(local_index, local_position, chunk_size).buffer());
+          break;
         }
-        catch(...)
+        if (encryption != EncryptionLevel_None)
         {
-          ELLE_WARN("%s: decryption error on block %s/%s", *this, local_index, local_position);
-          throw;
+          try
+          {
+            buffer = key.decrypt<elle::Buffer>(code);
+          }
+          catch(...)
+          {
+            ELLE_WARN("%s: decryption error on block %s/%s", *this, local_index, local_position);
+            throw;
+          }
         }
         ELLE_DEBUG("Queuing buffer %s/%s size:%s. Writer waits for %s/%s",
           local_index, local_position, buffer.size(),

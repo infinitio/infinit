@@ -122,7 +122,7 @@ namespace surface
       template <typename Source>
       void
       get(Source& source,
-          bool strong_encryption,
+          EncryptionLevel level,
           std::string const& name_policy,
           elle::Version const& peer_version);
     protected:
@@ -179,7 +179,7 @@ namespace surface
       void _fetcher_thread(Source& source, int id,
                            std::string const& name_policy,
                            bool explicit_ack,
-                           bool strong_encryption,
+                           EncryptionLevel encryption,
                            size_t chunk_size,
                            infinit::cryptography::SecretKey const& key,
                            std::vector<std::pair<std::string, FileSize>> const& infos
