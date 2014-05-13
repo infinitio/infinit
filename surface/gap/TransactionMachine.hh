@@ -173,6 +173,7 @@ namespace surface
       friend class PeerTransferMachine;
       friend class Snapshot;
 
+    public:
       std::function<aws::Credentials(bool)>
       make_aws_credentials_getter();
 
