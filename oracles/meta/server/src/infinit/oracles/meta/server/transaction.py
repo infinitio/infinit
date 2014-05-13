@@ -545,15 +545,19 @@ class Mixin:
       # Don't update with an empty dictionary: it would empty the
       # object.
       if diff:
-        self.database.transactions.update({'_id': transaction['_id']},
-                                          {'$set': diff})
-      elle.log.debug("transaction updated")
-
-      self.notifier.notify_some(
-        notifier.TRANSACTION,
-        recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
-        message = transaction,
-      )
+        transaction = self.database.transactions.find_and_modify(
+          {'_id': transaction['_id']},
+          {'$set': diff},
+          new = True,
+        )
+        import sys
+        print('--- %r' % transaction, file = sys.stderr)
+        elle.log.debug("transaction updated")
+        self.notifier.notify_some(
+          notifier.TRANSACTION,
+          recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
+          message = transaction,
+        )
       return transaction_id
 
   @api('/transaction/search')
