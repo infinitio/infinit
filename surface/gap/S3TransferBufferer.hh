@@ -46,11 +46,18 @@ namespace surface
         Files const& files,
         infinit::cryptography::Code const& key);
 
+      /// Recipient constructor from cloud archive.
+      /// Expect just this file in folder and fetch it, no cloud metadata.
+      S3TransferBufferer(
+        infinit::oracles::Transaction& transaction,
+        std::string const& file,
+        std::function<aws::Credentials(bool)> credentials
+        );
       ELLE_ATTRIBUTE_R(FileCount, count);
       ELLE_ATTRIBUTE_R(FileSize, full_size);
       ELLE_ATTRIBUTE_R(Files, files);
       ELLE_ATTRIBUTE_R(infinit::cryptography::Code, key_code);
-
+      ELLE_ATTRIBUTE_R(bool, raw_file);
     /*------.
     | Frete |
     `------*/
@@ -78,10 +85,15 @@ namespace surface
           FileSize offset,
           FileSize size,
           elle::ConstWeakBuffer const& b) override;
+      // get one file of chunked content
       virtual
       elle::Buffer
       get(FileID file,
           FileSize offset) override;
+      // Get one chunk of whole-content-in-one-file
+      virtual
+      elle::Buffer
+      get_chunk(FileID file, FileSize offset, FileSize length);
       virtual
       List
       list() override;
