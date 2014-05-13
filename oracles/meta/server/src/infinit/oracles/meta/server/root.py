@@ -355,3 +355,11 @@ class Mixin:
             'last-sent': time.time(),
           }, upsert = True)
         return self.success({"emails": list(users.keys())})
+
+  @api('/cron/s3-cleanup', method = 'POST')
+  @require_admin
+  def s3_cleanup(self):
+    """ Cleanup all S3 data. Might take some time.
+    """
+    cloud_buffer_token.s3_cleanup(self.database.transactions)
+    return self.success({})

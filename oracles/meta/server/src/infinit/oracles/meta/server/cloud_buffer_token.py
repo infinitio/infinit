@@ -302,3 +302,94 @@ def generate_get_url(region, bucket_name, transaction_id, file_path):
     signature)
   elle.log.debug("Produced get url: %s" % url);
   return url
+
+def get_s3_handle(aws_region = None):
+  """ Return a s3 boto3 object for given region (or default)
+  """
+  if aws_region is None:
+    aws_region = aws_default_region
+  import boto3
+  import botocore
+  # so, there is a mapping from logical name to env/config name, just override
+  # it all
+  # https://botocore.readthedocs.org/en/latest/reference/index.html
+  core_session = botocore.session.Session(env_vars = {
+      'BOTO_DEFAULT_REGION':aws_region
+  })
+  core_session.set_credentials(CloudBufferToken.aws_id, CloudBufferToken.aws_secret)
+  if core_session.get_credentials() is None:
+    raise Exception("No credentials loaded")
+  session = boto3.core.session.Session(core_session)
+  s3 = session.connect_to('s3')
+  return s3
+
+def s3_list(bucket, s3, **kvargs):
+  result = []
+  goon = True
+  marker = None
+  while goon:
+    if marker is None:
+      res = s3.list_objects(bucket=bucket, **kvargs)
+    else:
+      res = s3.list_objects(bucket=bucket,
+                            marker = marker,
+                            **kvargs)
+    goon = res['IsTruncated']
+    if 'delimiter' in kvargs:
+      result.extend(map(lambda e: e['Prefix'], res['CommonPrefixes']))
+    result.extend(map(lambda e: e['Key'], res['Contents']))
+    if goon:
+      marker = result.pop() #we'll get it back next round
+    goon = res['IsTruncated']
+  return result
+
+def clear_s3_transaction_data(transaction_id,
+                              aws_region = None,
+                              bucket_name = None,
+                              s3 = None):
+  """ Clear all data associated with a transaction on S3
+      Right now this is just the folder named after ou transaction_id.
+  """
+  if bucket_name is None:
+    bucket_name = aws_default_bucket
+  if s3 is None:
+    s3 = get_s3_handle(aws_region)
+  result = s3_list(bucket = bucket_name, prefix = transaction_id + '/')
+  chunk = 200
+  pos = 0
+  while pos <= len(result):
+    files = list(map(lambda x: {'Key': x}, result[pos:pos+chunk]))
+    print(files)
+    s3.delete_objects(bucket=bucket_name, delete={'Quiet':True, 'Objects':files})
+    pos += chunk
+  #somehow that seems to also kill the directory so nothing else to do
+
+def s3_cleanup(transactions, aws_region = None, bucket = None):
+  if bucket is None:
+    bucket = aws_default_bucket
+  """ S3 cleanup background job. Might take forever to run.
+      /!\ WARNING:
+      If you run this without an exclusive link between bucket and transaction
+      db, it will remove stuff.
+  """
+  s3 = get_s3_handle(aws_region = aws_region, debug = True)
+  # Cleanup data for dead transactions. WONT SCALE WITHOUT MARKING AS PROCESSED!!
+  for t in transactions.find({
+      'status': {'$in': [transaction_status.FINISHED,
+                         transaction_status.CANCELED]
+    }}, fields=[]):
+    if debug:
+      print("Would clear %s" % t['_id'])
+    else:
+      clear_s3_transaction_data(t['_id'], s3)
+  # Scan S3 for folders not matching any known transaction id
+  # This one is going to crush us to death
+  folders = s3_list(bucket = bucket, s3 = s3, delimiter='/')
+  for f in folders:
+    tid = f[0:-1]
+    t = transactions.find_one(tid)
+    if t is None:
+      if debug:
+        print("Would clear %s" % tid)
+      else:
+        clear_s3_transaction_data(tid, s3 = s3)
