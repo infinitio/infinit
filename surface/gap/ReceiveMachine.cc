@@ -616,7 +616,7 @@ namespace surface
         else // normal termination: snapshot was removed
           total_bytes_transfered = frete.full_size();
         exit_reason = metrics::TransferExitReasonFinished;
-        return this->_get<frete::RPCFrete>(
+        return this->get<frete::RPCFrete>(
           frete, strong_encryption, name_policy, peer_version);
       }
       catch(reactor::Terminate const&)
@@ -640,7 +640,7 @@ namespace surface
     ReceiveMachine::get(TransferBufferer& frete,
                         std::string const& name_policy)
     {
-      return this->_get<TransferBufferer>(
+      return this->get<TransferBufferer>(
         frete, true, name_policy,
         elle::Version(INFINIT_VERSION_MAJOR,
                       INFINIT_VERSION_MINOR,
@@ -649,7 +649,7 @@ namespace surface
 
     template <typename Source>
     void
-    ReceiveMachine::_get(Source& source,
+    ReceiveMachine::get(Source& source,
                          bool strong_encryption,
                          std::string const& name_policy,
                          elle::Version const& peer_version

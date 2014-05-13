@@ -119,7 +119,12 @@ namespace surface
       void
       get(TransferBufferer& bufferer,
           std::string const& name_policy = " (%s)");
-
+      template <typename Source>
+      void
+      get(Source& source,
+          bool strong_encryption,
+          std::string const& name_policy,
+          elle::Version const& peer_version);
     protected:
       void
       cleanup() override;
@@ -166,12 +171,6 @@ namespace surface
       */
       bool _fetch_next_file(const std::string& name_policy,
                             const std::vector<std::pair<std::string, FileSize>>& infos);
-      template <typename Source>
-      void
-      _get(Source& source,
-           bool strong_encryption,
-           std::string const& name_policy,
-           elle::Version const& peer_version);
       template <typename Source>
       void _disk_thread(Source& source,
                           elle::Version peer_version,
