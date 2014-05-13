@@ -40,9 +40,9 @@ namespace surface
     GhostRecipientTransferMachine::run()
     {
       ELLE_DEBUG("%s: run", *this);
-      // We should wait for the file to be there, ie status cloud_uploaded
-      ELLE_TRACE("%s: waiting for cloud_uploaded", *this);
-      _owner.cloud_uploaded().wait();
+      // We should wait for the file to be there, ie status ghost_uploaded
+      ELLE_TRACE("%s: waiting for ghost_uploaded", *this);
+      _owner.ghost_uploaded().wait();
       ELLE_TRACE("%s: fetching raw file from cloud", *this);
       auto archive_info = _owner.archive_info();
       std::string name = archive_info.first;

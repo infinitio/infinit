@@ -263,6 +263,7 @@ namespace surface
           this->_run(this->_transfer_core_state);
           break;
         case TransactionStatus::finished:
+        case TransactionStatus::ghost_uploaded:
           this->_run(this->_finish_state);
           break;
         case TransactionStatus::canceled:
@@ -302,6 +303,7 @@ namespace surface
             this->failed().open();
           break;
         case TransactionStatus::finished:
+        case TransactionStatus::ghost_uploaded:
           ELLE_DEBUG("%s: open finished barrier", *this)
             this->finished().open();
           break;
@@ -398,7 +400,9 @@ namespace surface
 
       auto peer = this->state().user(this->peer_id());
       if (peer.ghost())
+      {
         this->_ghost_cloud_upload();
+      }
       else if (!peer.ghost() && !peer.online())
       {
         this->_cloud_operation();
@@ -707,9 +711,10 @@ namespace surface
               return a.first < b.first;
             });
         handler.multipart_finalize(source_file_name, upload_id, chunks);
-        // mark transfer as raw-finished
-        this->gap_state(gap_transaction_finished);
-        this->finished().open();
+        // mark transfer as raw-finished on this end only
+        this->gap_state(gap_transaction_cloud_buffered);
+        this->state().meta().update_transaction(this->transaction_id(),
+                                                TransactionStatus::ghost_uploaded);
         exit_reason = metrics::TransferExitReasonFinished;
       } // try
       catch(reactor::Terminate const&)

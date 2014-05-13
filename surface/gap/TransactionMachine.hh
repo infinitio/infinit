@@ -241,6 +241,7 @@ namespace surface
       ELLE_ATTRIBUTE_RX(reactor::Barrier, rejected);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, canceled);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, failed);
+      ELLE_ATTRIBUTE_RX(reactor::Barrier, ghost_uploaded);
 
       ELLE_ATTRIBUTE_RX(reactor::Signal, reset_transfer_signal);
 
@@ -297,7 +298,7 @@ namespace surface
       std::unique_ptr<frete::RPCFrete>
       rpcs(infinit::protocol::ChanneledStream& socket) = 0;
 
-    protected:
+    public:
       void
       gap_state(gap_TransactionStatus state);
 

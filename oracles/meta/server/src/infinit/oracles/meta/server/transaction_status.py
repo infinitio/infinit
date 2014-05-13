@@ -24,7 +24,8 @@ transitions = {
     True: [
       CANCELED,
       FAILED,
-      FINISHED
+      FINISHED,
+      GHOST_UPLOADED,
       ],
     False: [
       ACCEPTED,
@@ -37,7 +38,8 @@ transitions = {
     {
     True: [
       CANCELED,
-      FAILED
+      FAILED,
+      GHOST_UPLOADED, # can happen if recipient registers+logins while uploading
       ],
     False: [
       ACCEPTED,
@@ -46,6 +48,7 @@ transitions = {
       FAILED
       ]
     },
+  CLOUD_UPLOADED: { True: [], False: [FINISHED, CANCELED, FAILED]},
   FINISHED: {True: [FINISHED, CANCELED, FAILED], False: [FINISHED, CANCELED, FAILED]},
   CANCELED: {True: [CANCELED, FAILED], False: [CANCELED, FAILED]},
   FAILED: {True: [CANCELED, FAILED], False: [CANCELED, FAILED]},

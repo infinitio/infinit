@@ -236,6 +236,11 @@ namespace surface
           break;
         case TransactionStatus::rejected:
           break;
+        case TransactionStatus::ghost_uploaded:
+          // transfer_core_state will invoke run from the TransferMachine.
+          this->ghost_uploaded().open();
+          this->_run(this->_transfer_core_state);
+          break;
         case TransactionStatus::started:
         case TransactionStatus::none:
           elle::unreachable();
@@ -269,6 +274,8 @@ namespace surface
           ELLE_DEBUG("%s: open finished barrier", *this)
             this->finished().open();
           break;
+        case TransactionStatus::ghost_uploaded:
+          this->ghost_uploaded().open();
         case TransactionStatus::accepted:
         case TransactionStatus::rejected:
         case TransactionStatus::initialized:
