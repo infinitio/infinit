@@ -415,7 +415,7 @@ class Mixin:
     recipient = self.database.users.find_one(transaction['recipient_id'])
     elle.log.log('Peer status: %s' % recipient['register_status'])
     elle.log.log('transaction: %s' % transaction.keys())
-    if recipient['register_status'] == 'ghost':
+    if transaction.get('is_ghost', False):
       peer_email = recipient['email']
       transaction_id = transaction['_id']
       elle.log.trace("send invitation to new user %s for transaction %s" % (
