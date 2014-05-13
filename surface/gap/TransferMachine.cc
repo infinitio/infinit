@@ -28,11 +28,16 @@ namespace surface
     | Construction |
     `-------------*/
 
+    BaseTransferer::BaseTransferer(TransactionMachine& owner)
+    : _peer_online("peer online")
+    , _peer_offline("peer offline")
+    , _owner(owner)
+    {
+    }
+
     Transferer::Transferer(TransactionMachine& owner):
-      _owner(owner),
+      BaseTransferer(owner),
       _fsm(elle::sprintf("transfer (%s) fsm", owner.id())),
-      _peer_online("peer online"),
-      _peer_offline("peer offline"),
       _peer_reachable("peer reachable"),
       _peer_unreachable("peer unreachable")
     {
@@ -121,7 +126,7 @@ namespace surface
       this->_fsm.transition_add(
         wait_for_peer_state,
         cloud_buffer_state,
-        reactor::Waitables{&this->_peer_offline},
+        reactor::Waitables{&this->peer_offline()},
         true)
         .action([&]
                 {
@@ -130,7 +135,7 @@ namespace surface
       this->_fsm.transition_add(
         cloud_buffer_state,
         wait_for_peer_state,
-        reactor::Waitables{&this->_peer_online},
+        reactor::Waitables{&this->peer_online()},
         true)
         .action([&]
                 {
@@ -194,7 +199,7 @@ namespace surface
       this->_fsm.transition_add(
         transfer_state,
         connection_state,
-        reactor::Waitables{&this->_peer_offline},
+        reactor::Waitables{&this->peer_offline()},
         true);
       this->_fsm.transition_add_catch_specific<
         reactor::network::Exception>(
@@ -334,13 +339,13 @@ namespace surface
       // XXX: Best place to do that? (See constructor).
       if (this->_owner.state().user(this->_owner.peer_id()).online())
       {
-        this->_peer_offline.close();
-        this->_peer_online.open();
+        this->peer_offline().close();
+        this->peer_online().open();
       }
       else
       {
-        this->_peer_online.close();
-        this->_peer_offline.open();
+        this->peer_online().close();
+        this->peer_offline().open();
       }
       this->_initialize();
       this->_fsm.run();
@@ -374,13 +379,13 @@ namespace surface
     `-------*/
 
     float
-    Transferer::progress() const
+    BaseTransferer::progress() const
     {
       return this->_owner.progress();
     }
 
     bool
-    Transferer::finished() const
+    BaseTransferer::finished() const
     {
       if (auto owner = dynamic_cast<SendMachine*>(&this->_owner))
         return owner->frete().finished();

@@ -256,7 +256,7 @@ namespace surface
     | Core Machine |
     `-------------*/
     protected:
-      std::unique_ptr<Transferer> _transfer_machine;
+      std::unique_ptr<BaseTransferer> _transfer_machine;
 
     /*------------.
     | Transaction |

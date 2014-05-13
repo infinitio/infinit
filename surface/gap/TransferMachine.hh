@@ -10,8 +10,43 @@ namespace surface
 {
   namespace gap
   {
-    class Transferer:
-      public elle::Printable
+    /// Base class for a Transfer handler
+    class BaseTransferer: public elle::Printable
+    {
+    public:
+      typedef std::vector<std::pair<std::string, int>> Endpoints;
+      BaseTransferer(TransactionMachine& owner);
+
+      /// Run the transfer, return when finished
+      virtual
+      void
+      run() = 0;
+
+      virtual
+      float
+      progress() const;
+
+      virtual
+      bool
+      finished() const;
+
+      /// Notify the peer is available for peer to peer connection.
+      virtual void
+      peer_available(Endpoints const& endpoints) =0;
+      /// Notify the peer is unavailable for peer to peer connection.
+      virtual void
+      peer_unavailable() = 0;
+    protected:
+      // Connection status of the peer according to the servers.
+      ELLE_ATTRIBUTE_RX(reactor::Barrier, peer_online);
+      ELLE_ATTRIBUTE_RX(reactor::Barrier, peer_offline);
+      TransactionMachine& _owner;
+    };
+
+    /// Transferer delegating work to a TransactionMachine owner, with
+    /// a fixed FSM.
+    class Transferer
+      : public BaseTransferer
     {
     /*-------------.
     | Construction |
@@ -26,10 +61,9 @@ namespace surface
     `--------*/
     public:
       void
-      run();
+      run() override;
 
     protected:
-      TransactionMachine& _owner;
       reactor::fsm::Machine _fsm;
 
     /*---------.
@@ -38,15 +72,12 @@ namespace surface
     public:
       /// Notify the peer is available for peer to peer connection.
       void
-      peer_available(std::vector<std::pair<std::string, int>> const& endpoints);
+      peer_available(std::vector<std::pair<std::string, int>> const& endpoints) override;
       /// Notify the peer is unavailable for peer to peer connection.
       void
-      peer_unavailable();
+      peer_unavailable() override;
 
     private:
-      // Connection status of the peer according to the servers.
-      ELLE_ATTRIBUTE_RX(reactor::Barrier, peer_online);
-      ELLE_ATTRIBUTE_RX(reactor::Barrier, peer_offline);
       // Availability of the peer for peer to peer connection.
       ELLE_ATTRIBUTE(reactor::Barrier, peer_reachable);
       ELLE_ATTRIBUTE(reactor::Barrier, peer_unreachable);
@@ -58,13 +89,6 @@ namespace surface
     | Status |
     `-------*/
     public:
-      virtual
-      float
-      progress() const;
-
-      virtual
-      bool
-      finished() const;
 
     /*-------.
     | States |
@@ -119,6 +143,10 @@ namespace surface
       void
       print(std::ostream& stream) const override;
     };
+    /* Transferer with a Frete (p2p RPC client/server), a station Host
+    * (p2p connection), delegating effective state operations to
+    * owner transaction machine.
+    */
   }
 }
 
