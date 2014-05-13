@@ -29,7 +29,7 @@ namespace infinit
       };
 
     public:
-      Transaction() = default;
+      Transaction();
       Transaction(std::string const& sender_id,
                   std::string const& sender_fullname,
                   std::string const& sender_device_id);
@@ -60,7 +60,7 @@ namespace infinit
       Status status;
       double ctime;
       double mtime;
-
+      bool   is_ghost;
       virtual
       void
       print(std::ostream& stream) const override;

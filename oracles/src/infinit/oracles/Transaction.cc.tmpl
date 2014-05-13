@@ -27,8 +27,29 @@ namespace infinit
       is_directory(),
       status(Status::created),
       ctime(),
-      mtime()
+      mtime(),
+      is_ghost()
     {}
+
+    Transaction::Transaction():
+      id(),
+      sender_id(),
+      sender_fullname(),
+      sender_device_id(),
+      recipient_id(),
+      recipient_fullname(),
+      recipient_device_id(),
+      recipient_device_name(),
+      message(),
+      files(),
+      files_count(),
+      total_size(),
+      is_directory(),
+      status(Status::created),
+      ctime(),
+      mtime(),
+      is_ghost()
+      {}
 
     bool
     Transaction::empty() const
@@ -70,6 +91,14 @@ namespace infinit
       s.serialize("mtime", this->mtime);
       s.serialize("is_directory", this->is_directory);
       s.serialize("status", this->status, elle::serialization::as<int>());
+      try
+      {
+        s.serialize("is_ghost", this->is_ghost);
+      }
+      catch(...)
+      { // assume only input serializer can fail with missing field.
+        this->is_ghost = false;
+      }
     }
 
     std::ostream&

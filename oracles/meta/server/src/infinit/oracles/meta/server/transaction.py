@@ -184,6 +184,7 @@ class Mixin:
       elle.log.debug("transaction recipient has id %s" % recipient['_id'])
       _id = user['_id']
 
+      cloud_capable = self.user_version >= (0, 8, 11)
       transaction = {
         'sender_id': _id,
         'sender_fullname': user['fullname'],
@@ -210,6 +211,7 @@ class Mixin:
         'fallback_port_ssl': None,
         'fallback_port_tcp': None,
         'aws_credentials': None,
+        'is_ghost': new_user and cloud_capable,
         'strings': ' '.join([
               user['fullname'],
               user['handle'],
@@ -226,7 +228,6 @@ class Mixin:
       if not peer_email:
         peer_email = recipient['email']
 
-      cloud_capable = self.user_version >= (0, 8, 11)
       #FIXME : send invite email if initiator version will not attempt
       # ghost cloud upload
       if new_user and not cloud_capable:
