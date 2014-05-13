@@ -116,6 +116,9 @@ namespace surface
       void
       reset_transfer();
 
+      /// Return (name, is_an_archive) if we have to put all transfer data
+      /// in one file
+      std::pair<std::string, bool> archive_info();
     public:
       /// Returns if the machine is releated to the given transaction object id.
       bool

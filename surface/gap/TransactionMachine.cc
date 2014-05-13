@@ -616,5 +616,23 @@ namespace surface
     {
       this->reset_transfer_signal().signal();
     }
+    std::pair<std::string, bool>
+    TransactionMachine::archive_info()
+    {
+      auto const& files = this->data()->files;
+      if (files.size() == 1)
+        if (this->data()->is_directory)
+          return std::make_pair(
+            boost::filesystem::path(*files.begin())
+               .filename()
+               .replace_extension("zip")
+               .string(),
+            true);
+        else
+          return std::make_pair(*files.begin(), false);
+      else
+        return std::make_pair("archive.zip", true);
+    }
+
   }
 }
