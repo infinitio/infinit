@@ -13,6 +13,8 @@
 #include <elle/serialization/Serializer.hh>
 #include <elle/serialization/json.hh>
 
+#include <surface/gap/GhostRecipientTransferMachine.hh>
+
 #include <reactor/fsm/Machine.hh>
 #include <reactor/exception.hh>
 #include <reactor/Scope.hh>
@@ -100,13 +102,20 @@ namespace surface
       _canceled("canceled"),
       _failed("failed"),
       _station(nullptr),
-      _transfer_machine(new PeerTransferMachine(*this)),
+      _transfer_machine(nullptr),
       _transaction(transaction),
       _state(transaction.state()),
       _data(std::move(data))
     {
       ELLE_TRACE_SCOPE("%s: create transfaction machine", *this);
 
+      bool is_recipient = state.me().id == this->_data->recipient_id &&
+        (this->_data->recipient_device_id.empty() ||
+         state.device().id == this->_data->recipient_device_id);
+      if (is_recipient && this->_data->is_ghost)
+        _transfer_machine.reset(new GhostRecipientTransferMachine{*this});
+      else
+        _transfer_machine.reset(new PeerTransferMachine{*this});
       // Normal way.
       this->_machine.transition_add(this->_transfer_core_state,
                                     this->_finish_state,
