@@ -13,7 +13,7 @@ namespace surface
     {}
 
     TransferBufferer::TransferBufferer(
-      infinit::oracles::Transaction& transaction):
+      infinit::oracles::PeerTransaction& transaction):
       _transaction(transaction)
     {}
 

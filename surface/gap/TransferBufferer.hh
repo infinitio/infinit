@@ -41,8 +41,8 @@ namespace surface
     | Construction |
     `-------------*/
     public:
-      TransferBufferer(infinit::oracles::Transaction& transaction);
-      ELLE_ATTRIBUTE_R(infinit::oracles::Transaction&, transaction);
+      TransferBufferer(infinit::oracles::PeerTransaction& transaction);
+      ELLE_ATTRIBUTE_R(infinit::oracles::PeerTransaction&, transaction);
 
     /*------.
     | Frete |

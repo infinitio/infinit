@@ -81,7 +81,7 @@ namespace surface
       Transaction& transaction,
       uint32_t id,
       std::shared_ptr<TransactionMachine::Data> data)
-      : TransactionMachine(transaction, id, std::move(data))
+      : Super(transaction, id, std::move(data))
       , _wait_for_decision_state(
         this->_machine.state_make(
           "wait for decision", std::bind(&ReceiveMachine::_wait_for_decision, this)))
@@ -285,8 +285,6 @@ namespace surface
     ReceiveMachine::accept()
     {
       ELLE_TRACE_SCOPE("%s: open accept barrier %s", *this, this->transaction_id());
-      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
       if (!this->_accepted.opened())
       {
         if (this->state().metrics_reporter())
@@ -294,7 +292,6 @@ namespace surface
             this->transaction_id()
             );
       }
-
       this->_accepted.open();
     }
 

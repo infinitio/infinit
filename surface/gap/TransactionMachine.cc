@@ -363,6 +363,27 @@ namespace surface
     }
 
     void
+    TransactionMachine::user_connection_changed(std::string const& user_id,
+                                                std::string const& device_id,
+                                                bool online)
+    {
+      // We don't care about our own status.
+      if (user_id == this->transaction().state().me().id)
+        return;
+      // Check it concerns one of the users.
+      ELLE_ASSERT(user_id == this->_data->sender_id
+                  || user_id == this->_data->recipient_id);
+      // If recipient, check it isn't accepted or it's for the right device.
+      ELLE_ASSERT(user_id != this->_data->recipient_id
+                  || this->_data->recipient_device_id.empty()
+                  || device_id == this->_data->recipient_device_id);
+      // If sender, check  it's for the right device.
+      ELLE_ASSERT(user_id != this->_data->sender_id
+                  || device_id == this->_data->sender_device_id);
+      this->peer_connection_changed(online);
+    }
+
+    void
     TransactionMachine::peer_connection_changed(bool user_status)
     {
       ELLE_TRACE_SCOPE("%s: update with new peer connection status %s",

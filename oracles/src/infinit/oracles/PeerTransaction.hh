@@ -23,9 +23,9 @@ namespace infinit
       PeerTransaction&
       operator =(PeerTransaction const&) = default;
 
-      ELLE_SERIALIZE_CONSTRUCT(PeerTransaction)
-      {}
-
+    /*-----.
+    | Data |
+    `-----*/
     public:
       std::list<std::string> files;
       bool is_directory;
@@ -38,15 +38,38 @@ namespace infinit
       std::string sender_fullname;
       int64_t total_size;
 
-    // Serialization
+
+    /*-----------.
+    | Properties |
+    `-----------*/
+    public:
+      virtual
+      bool
+      concern_user(std::string const& user_id) const override;
+      virtual
+      bool
+      concern_device(std::string const& user_id,
+                     std::string const& device_id) const override;
+
+    /*--------------.
+    | Serialization |
+    `--------------*/
     public:
       PeerTransaction(elle::serialization::SerializerIn& s);
+      virtual
       void
-      serialize(elle::serialization::Serializer& s);
-    };
+      serialize(elle::serialization::Serializer& s) override;
+      ELLE_SERIALIZE_CONSTRUCT(PeerTransaction)
+      {}
 
-    std::ostream&
-    operator <<(std::ostream& out, PeerTransaction const& t);
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      virtual
+      void
+      print(std::ostream& out) const override;
+    };
   }
 }
 

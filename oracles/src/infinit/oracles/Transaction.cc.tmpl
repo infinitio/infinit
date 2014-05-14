@@ -6,6 +6,10 @@ namespace infinit
 {
   namespace oracles
   {
+    /*-------------.
+    | Construction |
+    `-------------*/
+
     Transaction::Transaction(std::string const& sender_id,
                              std::string const& sender_device_id):
       id(),
@@ -16,11 +20,19 @@ namespace infinit
       mtime()
     {}
 
+    /*-----------.
+    | Properties |
+    `-----------*/
+
     bool
     Transaction::empty() const
     {
       return this->id.empty();
     }
+
+    /*----------.
+    | Printable |
+    `----------*/
 
     void
     Transaction::print(std::ostream& stream) const

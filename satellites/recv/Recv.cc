@@ -133,7 +133,7 @@ int main(int argc, char** argv)
             {
               ELLE_TRACE_SCOPE("transaction notification: %s", notif);
               auto& tr = state.transactions().at(notif.id);
-              if (tr->data()->recipient_id != state.me().id)
+              if (!tr->concerns_user(state.me().id))
                 return;
               if (notif.status == gap_transaction_waiting_accept)
               {

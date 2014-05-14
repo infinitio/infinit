@@ -14,12 +14,22 @@ namespace infinit
     class LinkTransaction:
       public Transaction
     {
+    /*------.
+    | Types |
+    `------*/
     public:
       typedef std::pair<std::string, int64_t>  FileNameSizePair;
       typedef std::vector<FileNameSizePair> FileList;
+
+    /*-------------.
+    | Construction |
+    `-------------*/
     public:
       LinkTransaction();
 
+    /*-----.
+    | Data |
+    `-----*/
     public:
       uint32_t click_count;
       std::string cloud_location;
@@ -28,15 +38,34 @@ namespace infinit
       std::string hash;
       std::string name;
 
-    // Serialization
+    /*-----------.
+    | Properties |
+    `-----------*/
+    public:
+      virtual
+      bool
+      concern_user(std::string const& user_id) const override;
+      virtual
+      bool
+      concern_device(std::string const& user_id,
+                     std::string const& device_id) const override;
+
+    /*--------------.
+    | Serialization |
+    `--------------*/
     public:
       LinkTransaction(elle::serialization::SerializerIn& s);
+      virtual
       void
-      serialize(elle::serialization::Serializer& s);
-    };
+      serialize(elle::serialization::Serializer& s) override;
 
-    std::ostream&
-    operator <<(std::ostream& out, LinkTransaction const& t);
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
+      void
+      print(std::ostream& out) const override;
+    };
   }
 }
 

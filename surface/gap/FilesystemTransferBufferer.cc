@@ -18,7 +18,7 @@ namespace surface
     `-------------*/
 
     FilesystemTransferBufferer::FilesystemTransferBufferer(
-      infinit::oracles::Transaction& transaction,
+      infinit::oracles::PeerTransaction& transaction,
       boost::filesystem::path const& root):
       Super(transaction),
       _root(root / transaction.id),
@@ -46,7 +46,7 @@ namespace surface
     }
 
     FilesystemTransferBufferer::FilesystemTransferBufferer(
-      infinit::oracles::Transaction& transaction,
+      infinit::oracles::PeerTransaction& transaction,
       boost::filesystem::path const& root,
       FileCount count,
       FileSize full_size,

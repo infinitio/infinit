@@ -14,16 +14,16 @@
 # include <reactor/network/socket.hh>
 # include <reactor/thread.hh>
 
+# include <aws/Credentials.hh>
+
 # include <frete/Frete.hh>
 # include <infinit/oracles/Transaction.hh>
+# include <oracles/src/infinit/oracles/PeerTransaction.hh>
 # include <papier/fwd.hh>
 # include <station/fwd.hh>
-
 # include <surface/gap/enums.hh>
 # include <surface/gap/fwd.hh>
 # include <surface/gap/TransferMachine.hh>
-
-# include <aws/Credentials.hh>
 
 namespace surface
 {
@@ -38,7 +38,7 @@ namespace surface
     | Types |
     `------*/
     public:
-      typedef infinit::oracles::Transaction Data;
+      typedef infinit::oracles::PeerTransaction Data;
       typedef TransactionMachine Self;
 
     public:
@@ -81,7 +81,13 @@ namespace surface
       void
       peer_unavailable();
 
-      /// Use to notify that the peer status changed to connected or
+      /// Notify a relevant user went online or offline on a device.
+      void
+      user_connection_changed(std::string const& user_id,
+                              std::string const& device_id,
+                              bool online);
+
+      /// Notify that the peer status changed to connected or
       /// disconnected.
       void
       peer_connection_changed(bool user_status);

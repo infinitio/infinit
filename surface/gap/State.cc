@@ -780,6 +780,7 @@ namespace surface
       std::unique_ptr<infinit::oracles::trophonius::Notification>&& notif)
     {
       ELLE_TRACE_SCOPE("%s: new notification %s", *this, *notif);
+      // FIXME: ever heard of virtual methods ?
       switch (notif->notification_type)
       {
         case infinit::oracles::trophonius::NotificationType::user_status:
@@ -790,11 +791,11 @@ namespace surface
             *static_cast<infinit::oracles::trophonius::UserStatusNotification const*>(
               notif.release()));
           break;
-        case infinit::oracles::trophonius::NotificationType::transaction:
+        case infinit::oracles::trophonius::NotificationType::peer_transaction:
           ELLE_ASSERT(
-            dynamic_cast<infinit::oracles::trophonius::TransactionNotification const*>(notif.get()) != nullptr);
+            dynamic_cast<infinit::oracles::trophonius::PeerTransactionNotification const*>(notif.get()) != nullptr);
           this->_on_transaction_update(
-            *static_cast<infinit::oracles::trophonius::TransactionNotification const*>(notif.release()));
+            std::make_shared<infinit::oracles::PeerTransaction>(static_cast<infinit::oracles::trophonius::PeerTransactionNotification&>(*notif)));
           break;
         case infinit::oracles::trophonius::NotificationType::new_swagger:
           ELLE_ASSERT(

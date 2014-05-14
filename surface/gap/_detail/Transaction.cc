@@ -128,7 +128,7 @@ namespace surface
             {
               elle::serialization::json::SerializerIn input(read.stream());
               Transaction::Snapshot snapshot(input);
-              auto const& data = snapshot.data();
+              auto const& data = *snapshot.data();
               if (!data.id.empty())
               {
                 auto it = std::find_if(
@@ -167,7 +167,8 @@ namespace surface
       ELLE_TRACE("%s: synchronize active transactions from meta", *this)
         for (auto& transaction: this->meta().transactions())
         {
-          this->_on_transaction_update(std::move(transaction));
+          this->_on_transaction_update(
+            std::make_shared<infinit::oracles::PeerTransaction>(transaction));
         }
       ELLE_TRACE("%s: resynchronize transaction history from meta", *this)
       {
@@ -190,7 +191,8 @@ namespace surface
           {
             if (!it->second->final())
             {
-              it->second->on_transaction_update(transaction);
+              it->second->on_transaction_update(
+                std::make_shared<infinit::oracles::PeerTransaction>(transaction));
             }
             continue;
           }
@@ -204,8 +206,10 @@ namespace surface
                      *this, transaction)
             this->_transactions.emplace(
               _id,
-              elle::make_unique<Transaction>(*this, _id, std::move(transaction),
-                              true /* history */));
+              elle::make_unique<Transaction>(
+                *this, _id,
+                std::make_shared<infinit::oracles::PeerTransaction>(transaction),
+                true /* history */));
         }
       }
     }
@@ -219,37 +223,32 @@ namespace surface
     }
 
     void
-    State::_on_transaction_update(infinit::oracles::Transaction const& notif)
+    State::_on_transaction_update(
+      std::shared_ptr<infinit::oracles::Transaction> const& notif)
     {
       ELLE_TRACE_SCOPE("%s: receive transaction data %s",
-                       *this, notif.id);
-      ELLE_ASSERT(!notif.id.empty());
-      ELLE_DUMP("%s: data: %s", *this, notif)
-      ELLE_DEBUG("%s: ensure that both user are fetched", *this)
-      {
-        this->user(notif.sender_id);
-        this->user(notif.recipient_id);
-      }
+                       *this, notif->id);
+      ELLE_ASSERT(!notif->id.empty());
+      ELLE_DUMP("%s: data: %s", *this, notif);
       auto it = std::find_if(
         std::begin(this->_transactions),
         std::end(this->_transactions),
         [&] (TransactionConstPair const& pair)
         {
           return (!pair.second->data()->id.empty()) &&
-                 (pair.second->data()->id == notif.id);
+                 (pair.second->data()->id == notif->id);
         });
       if (it == std::end(this->_transactions))
       {
-        ELLE_TRACE_SCOPE("%s: create transaction %s", *this, notif.id);
-        infinit::oracles::Transaction data = notif;
+        ELLE_TRACE_SCOPE("%s: create transaction %s", *this, notif->id);
         auto id = generate_id();
         this->_transactions.emplace(
           id,
-          elle::make_unique<Transaction>(*this, id, std::move(data)));
+          elle::make_unique<Transaction>(*this, id, notif));
       }
       else
       {
-        ELLE_TRACE_SCOPE("%s: update transaction %s", *this, notif.id);
+        ELLE_TRACE_SCOPE("%s: update transaction %s", *this, notif->id);
         it->second->on_transaction_update(notif);
       }
     }

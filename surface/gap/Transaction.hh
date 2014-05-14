@@ -1,16 +1,18 @@
 #ifndef SURFACE_GAP_TRANSACTION_HH
 # define SURFACE_GAP_TRANSACTION_HH
 
-# include <unordered_set>
 # include <stdint.h>
+
 # include <string>
+# include <unordered_set>
+
+# include <boost/filesystem.hpp>
 
 # include <infinit/oracles/trophonius/Client.hh>
+# include <surface/gap/Exception.hh>
 # include <surface/gap/Notification.hh>
 # include <surface/gap/enums.hh>
 # include <surface/gap/fwd.hh>
-# include <surface/gap/Exception.hh>
-# include <surface/gap/TransactionMachine.hh>
 
 namespace surface
 {
@@ -67,12 +69,12 @@ namespace surface
       public:
         Snapshot(
           bool sender,
-          Data data,
+          std::shared_ptr<Data> data,
           boost::optional<std::vector<std::string>> files = {},
           boost::optional<std::string> message = {});
       public:
         ELLE_ATTRIBUTE_R(bool, sender);
-        ELLE_ATTRIBUTE_R(Data, data);
+        ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
         ELLE_ATTRIBUTE_R(boost::optional<std::vector<std::string>>, files);
         ELLE_ATTRIBUTE_R(boost::optional<std::string>, message);
 
@@ -100,7 +102,7 @@ namespace surface
       /// Construct from server data.
       Transaction(State& state,
                   uint32_t id,
-                  Data&& data,
+                  std::shared_ptr<Data> data,
                   bool history = false);
       /// Construct from snapshot.
       Transaction(State& state,
@@ -157,7 +159,7 @@ namespace surface
 
     public:
       void
-      on_transaction_update(Data const& data);
+      on_transaction_update(std::shared_ptr<Data> data);
 
       void
       on_peer_reachability_updated(
@@ -166,9 +168,6 @@ namespace surface
       void
       on_peer_connection_status_updated(
         infinit::oracles::trophonius::UserStatusNotification const& update);
-
-      void
-      peer_connection_status(bool status);
 
       void
       peer_available(std::vector<std::pair<std::string, int>> const& endpoints);
@@ -197,13 +196,11 @@ namespace surface
     `--------*/
     public:
       bool
-      concerns_user(std::string const& peer_id) const;
+      concerns_user(std::string const& user_id) const;
 
       bool
-      is_sender(std::string const& user_id) const;
-
-      bool
-      concerns_device(std::string const& device_id) const;
+      concerns_device(std::string const& user_id,
+                      std::string const& device_id) const;
 
       bool
       has_transaction_id(std::string const& id) const;

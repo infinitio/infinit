@@ -7,6 +7,10 @@ namespace infinit
 {
   namespace oracles
   {
+    /*-------------.
+    | Construction |
+    `-------------*/
+
     PeerTransaction::PeerTransaction():
       Transaction(),
       files(),
@@ -36,6 +40,31 @@ namespace infinit
       sender_fullname(sender_fullname),
       total_size()
     {}
+
+    /*-----------.
+    | Properties |
+    `-----------*/
+
+    bool
+    PeerTransaction::concern_user(std::string const& user_id) const
+    {
+      return this->sender_id == user_id || this->recipient_id == user_id;
+    }
+
+    bool
+    PeerTransaction::concern_device(std::string const& user_id,
+                                    std::string const& device_id) const
+    {
+      auto const& sender_id = this->sender_id;
+      auto const& sender_device_id = this->sender_device_id;
+      auto const& recipient_id = this->recipient_id;
+      auto const& recipient_device_id = this->recipient_device_id;
+      return
+        sender_id == user_id && sender_device_id == device_id
+        ||
+        recipient_id == user_id && (recipient_device_id.empty()
+                                    || recipient_device_id == device_id);
+    }
 
     /*--------------.
     | Serialization |
@@ -67,13 +96,19 @@ namespace infinit
       s.serialize("status", this->status, elle::serialization::as<int>());
     }
 
-    std::ostream&
-    operator <<(std::ostream& out, PeerTransaction const& t)
+    using elle::serialization::Hierarchy;
+    static Hierarchy<Transaction>::Register<PeerTransaction> _register;
+
+    /*----------.
+    | Printable |
+    `----------*/
+
+    void
+    PeerTransaction::print(std::ostream& out) const
     {
-      out << "PeerTransaction(" << t.id << ", " << t.status
-          << " sender_fullname: " << t.sender_fullname
-          << " recipient_fullname: " << t.recipient_fullname << ")";
-      return out;
+      out << "PeerTransaction(" << this->id << ", " << this->status
+          << " sender_fullname: " << this->sender_fullname
+          << " recipient_fullname: " << this->recipient_fullname << ")";
     }
   }
 }

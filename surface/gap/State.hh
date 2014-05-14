@@ -553,7 +553,8 @@ namespace surface
       _transactions_clear();
 
       void
-      _on_transaction_update(infinit::oracles::Transaction const& notif);
+      _on_transaction_update(
+        std::shared_ptr<infinit::oracles::Transaction> const& notif);
 
       void
       _on_peer_reachability_updated(

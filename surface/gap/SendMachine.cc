@@ -1,3 +1,5 @@
+#include <surface/gap/SendMachine.hh>
+
 #include <boost/filesystem.hpp>
 
 #include <elle/AtomicFile.hh>
@@ -29,7 +31,6 @@
 
 #include <surface/gap/FilesystemTransferBufferer.hh>
 #include <surface/gap/S3TransferBufferer.hh>
-#include <surface/gap/SendMachine.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.SendMachine");
 
@@ -42,9 +43,9 @@ namespace surface
     // Common factored constructor.
     SendMachine::SendMachine(Transaction& transaction,
                              uint32_t id,
-                             std::shared_ptr<TransactionMachine::Data> data,
+                             std::shared_ptr<Data> data,
                              bool):
-      TransactionMachine(transaction, id, std::move(data)),
+      Super(transaction, id, std::move(data)),
       _create_transaction_state(
         this->_machine.state_make(
           "create transaction", std::bind(&SendMachine::_create_transaction, this))),

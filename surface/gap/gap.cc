@@ -46,30 +46,6 @@ vector_to_pointer(std::vector<T> const& values)
   return out;
 }
 
-static char**
-_cpp_stringlist_to_c_stringlist(std::list<std::string> const& list)
-{
-  size_t total_size = (1 + list.size()) * sizeof(void*);
-  for (auto const& str : list)
-    total_size += str.size() + 1;
-
-  char** ptr = reinterpret_cast<char**>(malloc(total_size));
-  if (ptr == nullptr)
-    return nullptr;
-
-  char** array = ptr;
-  char* cstr = reinterpret_cast<char*>(ptr + (list.size() + 1));
-  for (auto const& str : list)
-    {
-      *array = cstr;
-      ::strncpy(cstr, str.c_str(), str.size() + 1);
-      ++array;
-      cstr += str.size() + 1;
-    }
-  *array = nullptr;
-  return ptr;
-}
-
 /// - gap ctor & dtor -----------------------------------------------------
 
 gap_State* gap_new(bool production)
@@ -871,109 +847,6 @@ gap_critical_callback(gap_State* state,
 {
   return state->gap_critical_callback(state, cb);
 }
-/// Transaction getters.
-#define DEFINE_TRANSACTION_GETTER(_type_, _field_, _transform_)                \
-_type_                                                                       \
-gap_transaction_ ## _field_(gap_State* state,                                \
-                            uint32_t _id)                                    \
-{                                                                            \
-  assert(_id != surface::gap::null_id);                                      \
-  return run<_type_>(                                                        \
-    state,                                                                   \
-    #_field_,                                                                \
-    [&] (surface::gap::State& state) -> _type_                               \
-    {                                                                        \
-      auto res = _transform_(state.transactions().at(_id)->data()->_field_);  \
-      ELLE_DUMP("fetch "#_field_ ": %s", res);                               \
-      return res;                                                            \
-    });                                                                      \
-    }                                                                        \
-/**/
-
-#define NO_TRANSFORM
-#define GET_CSTR(_expr_) (_expr_).c_str()
-#define GET_USER_ID(_expr_) (state.user_indexes().at(_expr_))
-
-#define DEFINE_TRANSACTION_GETTER_STR(_field_)                                \
-DEFINE_TRANSACTION_GETTER(char const*, _field_, GET_CSTR)                   \
-/**/
-#define DEFINE_TRANSACTION_GETTER_INT(_field_)                                \
-DEFINE_TRANSACTION_GETTER(int, _field_, NO_TRANSFORM)                       \
-/**/
-#define DEFINE_TRANSACTION_GETTER_INT(_field_)                                \
-DEFINE_TRANSACTION_GETTER(int, _field_, NO_TRANSFORM)                       \
-/**/
-#define DEFINE_TRANSACTION_GETTER_DOUBLE(_field_)                             \
-DEFINE_TRANSACTION_GETTER(double, _field_, NO_TRANSFORM)                    \
-/**/
-#define DEFINE_TRANSACTION_GETTER_BOOL(_field_)                               \
-DEFINE_TRANSACTION_GETTER(gap_Bool, _field_, NO_TRANSFORM)                  \
-/**/
-
-DEFINE_TRANSACTION_GETTER(uint32_t, sender_id, GET_USER_ID)
-DEFINE_TRANSACTION_GETTER_STR(sender_fullname)
-DEFINE_TRANSACTION_GETTER_STR(sender_device_id)
-DEFINE_TRANSACTION_GETTER(uint32_t, recipient_id, GET_USER_ID)
-DEFINE_TRANSACTION_GETTER_STR(recipient_fullname)
-DEFINE_TRANSACTION_GETTER_STR(recipient_device_id)
-DEFINE_TRANSACTION_GETTER_STR(message)
-DEFINE_TRANSACTION_GETTER(int64_t, files_count, NO_TRANSFORM)
-DEFINE_TRANSACTION_GETTER(int64_t, total_size, NO_TRANSFORM)
-DEFINE_TRANSACTION_GETTER_DOUBLE(ctime)
-DEFINE_TRANSACTION_GETTER_DOUBLE(mtime)
-DEFINE_TRANSACTION_GETTER_BOOL(is_directory)
-// _transform_ is a cast from plasma::TransactionStatus
-
-gap_TransactionStatus
-gap_transaction_status(gap_State* state,
-                      uint32_t const transaction_id)
-{
-  assert(state != nullptr);
-  assert(transaction_id != surface::gap::null_id);
-
-  return run<gap_TransactionStatus>(
-    state,
-    "transaction state",
-    [&] (surface::gap::State& state)
-    {
-      return state.transactions().at(transaction_id)->last_status();
-    }
-  );
-}
-
-char**
-gap_transaction_files(gap_State* state,
-                      uint32_t const transaction_id)
-{
-  assert(state != nullptr);
-  assert(transaction_id != surface::gap::null_id);
-
-  auto result = run<std::list<std::string>>(
-    state,
-    "transaction_files",
-    [&] (surface::gap::State& state) {
-      return state.transactions().at(transaction_id)->data()->files;
-    }
-  );
-  if (result.status() != gap_ok)
-    return nullptr;
-  return _cpp_stringlist_to_c_stringlist(result.value());
-}
-
-float
-gap_transaction_progress(gap_State* state,
-                         uint32_t id)
-{
-  assert(id != surface::gap::null_id);
-
-  return run<float>(
-    state,
-    "progress",
-    [&] (surface::gap::State& state) -> float
-    {
-      return state.transactions().at(id)->progress();
-    });
-}
 
 // - Notifications -----------------------------------------------------------
 
@@ -1222,7 +1095,8 @@ gap_onboarding_set_peer_status(gap_State* state,
       auto& tr = state.transactions().at(transaction_id);
       if (!dynamic_cast<surface::gap::onboarding::Transaction*>(tr.get()))
         return gap_error;
-      tr->peer_connection_status(status);
+      // FIXME
+      // tr->peer_connection_status(status);
       return gap_ok;
     });
 }

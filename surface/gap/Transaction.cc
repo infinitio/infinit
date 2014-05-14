@@ -1,5 +1,7 @@
 #include <surface/gap/Transaction.hh>
 
+#include <memory>
+
 #include <elle/AtomicFile.hh>
 #include <elle/serialization/json.hh>
 
@@ -66,7 +68,7 @@ namespace surface
       create_directories(this->_snapshots_directory);
       ELLE_TRACE_SCOPE("%s: save snapshot to %s", *this, this->_snapshot_path);
       Snapshot snapshot(this->_sender,
-                        *this->_data,
+                        this->_data,
                         this->_files,
                         this->_message);
       ELLE_DUMP("%s: snapshot data: %s", *this, snapshot);
@@ -80,7 +82,7 @@ namespace surface
 
     Transaction::Snapshot::Snapshot(
       bool sender,
-      Data data,
+      std::shared_ptr<Data> data,
       boost::optional<std::vector<std::string>> files,
       boost::optional<std::string> message)
       : _sender(sender)
@@ -120,22 +122,28 @@ namespace surface
                              uint32_t id,
                              std::string const& peer_id,
                              std::vector<std::string> files,
-                             std::string const& message):
+                             std::string const& message)
       // FIXME: ensure better uniqueness.
-      _snapshots_directory(
+      : _snapshots_directory(
         boost::filesystem::path(common::infinit::user_directory(state.me().id))
-        / "transactions" / boost::filesystem::unique_path()),
-      _snapshot_path(this->_snapshots_directory / "transaction.snapshot"),
-      _state(state),
-      _files(std::move(files)),
-      _message(message),
-      _id(id),
-      _sender(true),
-      _data(new Data(state.me().id, state.me().fullname, state.device().id)),
-      _machine(new SendMachine(*this, this->_id, peer_id,
-                               this->_files.get(), message, this->_data)),
-      _last_status(gap_TransactionStatus(-1))
+        / "transactions" / boost::filesystem::unique_path())
+      , _snapshot_path(this->_snapshots_directory / "transaction.snapshot")
+      , _state(state)
+      , _files(std::move(files))
+      , _message(message)
+      , _id(id)
+      , _sender(true)
+      , _data(nullptr)
+      , _machine(nullptr)
+      , _last_status(gap_TransactionStatus(-1))
     {
+      auto data = std::make_shared<infinit::oracles::PeerTransaction>(
+        state.me().id,
+        state.me().fullname,
+        state.device().id);
+      this->_data = data;
+      this->_machine.reset(new SendMachine(*this, this->_id, peer_id,
+                                           this->_files.get(), message, data));
       ELLE_TRACE_SCOPE("%s: construct to send %s files",
                        *this, this->_files.get().size());
       this->_snapshot_save();
@@ -144,7 +152,7 @@ namespace surface
     // FIXME: Split history transactions.
     Transaction::Transaction(State& state,
                              uint32_t id,
-                             Data&& data,
+                             std::shared_ptr<Data> data,
                              bool history):
       _snapshots_directory(
         boost::filesystem::path(common::infinit::user_directory(state.me().id))
@@ -152,15 +160,14 @@ namespace surface
       _snapshot_path(this->_snapshots_directory / "transaction.snapshot"),
       _state(state),
       _id(id),
-      _sender(state.me().id == data.sender_id &&
-              state.device().id == data.sender_device_id),
-      _data(new Data{std::move(data)}),
+      _sender(state.me().id == data->sender_id &&
+              state.device().id == data->sender_device_id),
+      _data(data),
       _machine(),
       _last_status(gap_TransactionStatus(-1))
     {
       ELLE_TRACE_SCOPE("%s: constructed from data", *this);
-      ELLE_ASSERT(state.me().id == this->_data->sender_id ||
-                  state.me().id == this->_data->recipient_id);
+      ELLE_ASSERT(this->concerns_user(state.me().id));
       if (history)
       {
         ELLE_DEBUG("%s: part of history", *this);
@@ -168,28 +175,31 @@ namespace surface
       }
       auto me = state.me().id;
       auto device = state.device().id;
-      auto sender =
-        me == this->_data->sender_id && device == this->_data->sender_device_id;
-      auto recipient =
-        me == this->_data->recipient_id &&
-        (this->_data->recipient_device_id.empty() ||
-         device == this->_data->recipient_device_id);
-      if (sender)
+      if (auto peer_data =
+          std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
+            this->_data))
       {
-        ELLE_DEBUG("%s: start send machine", *this);
-        this->_machine.reset(new SendMachine(*this, this->_id, this->_data));
+        auto sender =
+          me == peer_data->sender_id && device == peer_data->sender_device_id;
+        auto recipient =
+          me == peer_data->recipient_id &&
+          (peer_data->recipient_device_id.empty() ||
+           device == peer_data->recipient_device_id);
+        if (sender)
+        {
+          ELLE_DEBUG("%s: start send machine", *this);
+          this->_machine.reset(new SendMachine(*this, this->_id, peer_data));
+        }
+        else if (recipient)
+        {
+          ELLE_DEBUG("%s: start receive machine", *this);
+          this->_machine.reset(new ReceiveMachine(*this, this->_id, peer_data));
+        }
+        else
+          ELLE_DEBUG("%s: not for our device: %s", *this, state.device().id);
+        if (sender || recipient)
+          this->_snapshot_save();
       }
-      else if (recipient)
-      {
-        ELLE_DEBUG("%s: start receive machine", *this);
-        this->_machine.reset(new ReceiveMachine(*this, this->_id, this->_data));
-      }
-      else
-        ELLE_DEBUG("%s: not for our device: %s", *this, state.device().id);
-      if (sender || recipient)
-        this->_snapshot_save();
-      // Start a thread to forward GUI states change.
-      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
     }
 
     Transaction::Transaction(State& state,
@@ -203,25 +213,33 @@ namespace surface
       , _message(snapshot.message())
       , _id(id)
       , _sender(snapshot.sender())
-      , _data(new Data(std::move(snapshot.data())))
+      , _data(snapshot.data())
       , _machine()
       , _last_status(gap_TransactionStatus(-1))
     {
       ELLE_TRACE_SCOPE("%s: constructed from snapshot %s",
                        *this, this->_snapshot_path);
-      if (this->_sender)
+      if (auto peer_data =
+          std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
+            this->_data))
       {
-        ELLE_TRACE("%s: create send machine", *this)
-          this->_machine.reset(
-            new SendMachine(*this, this->_id, this->_files.get(),
-                            this->_message.get(), this->_data));
+        if (this->_sender)
+        {
+          ELLE_TRACE("%s: create send machine", *this)
+            this->_machine.reset(
+              new SendMachine(*this, this->_id, this->_files.get(),
+                              this->_message.get(), peer_data));
+        }
+        else
+        {
+          ELLE_TRACE("%s: create receive machine", *this)
+            this->_machine.reset(
+              new ReceiveMachine(*this, this->_id, peer_data));
+        }
       }
       else
-      {
-        ELLE_TRACE("%s: create receive machine", *this)
-          this->_machine.reset(
-            new ReceiveMachine(*this, this->_id, this->_data));
-      }
+        ELLE_ERR("%s: don't know what to do with a %s",
+                 *this, elle::demangle(typeid(*this->_data).name()));
     }
 
     Transaction::~Transaction()
@@ -338,22 +356,22 @@ namespace surface
     }
 
     void
-    Transaction::on_transaction_update(Data const& data)
+    Transaction::on_transaction_update(std::shared_ptr<Data> data)
     {
       ELLE_TRACE_SCOPE("%s: update data with %s", *this, data);
       if (this->final())
       {
         ELLE_WARN("%s: transaction already has a final status %s, can't "\
-                  "change to %s", *this, this->_data->status, data.status);
+                  "change to %s", *this, this->_data->status, data->status);
       }
       // XXX: This is totally wrong, the > is not overloaded, so the transaction
       // status has to be ordered.
-      else if (this->_data->status > data.status)
+      else if (this->_data->status > data->status)
       {
         ELLE_WARN("%s: receive a status update (%s) that is lower than the "
-                  " current %s", *this, this->_data->status, data.status);
+                  " current %s", *this, this->_data->status, data->status);
       }
-      *(this->_data) = data;
+      this->_data = data;
 
       if (this->_machine)
       {
@@ -404,62 +422,27 @@ namespace surface
       ELLE_TRACE_SCOPE(
         "%s: peer went %sline on device %s",
           *this, update.device_status ? "on" : "off", update.device_id);
-      // If the transaction is not running, ignore.
       if (this->_machine == nullptr)
       {
-        ELLE_DEBUG("%s: no machine to notify", *this);
+        ELLE_WARN("%s: no machine to notify", *this);
         return;
       }
       ELLE_ASSERT(this->concerns_user(update.user_id));
-      // XXX: There is no way to know if you are the sender or the recipient
-      // because state is not accessible from transaction.
-      // So we assume that the notification CAN'T be our own status.
-      bool is_sender = this->is_sender(update.user_id);
-      if (!is_sender && this->_data->recipient_device_id.empty())
-      {
-        // Transaction has not recipient device id set (transaction is not
-        //  accepted) so his general connection status is important.
-        ELLE_DEBUG("no recipient device id set, user connection status used")
-          this->peer_connection_status(update.status);
-      }
-      // Check if the transaction is linked to this update, looking for the
-      // device_id in both sender and recipient device ids.
-      if ((is_sender && this->_data->sender_device_id == update.device_id) ||
-          (!is_sender && this->_data->recipient_device_id  == update.device_id))
-      {
-        ELLE_DEBUG("notify machine of the device connection status update")
-          this->peer_connection_status(update.device_status);
-      }
-      else
-      {
-        ELLE_DEBUG("device not linked to the transaction");
-      }
-    }
-
-    void
-    Transaction::peer_connection_status(bool status)
-    {
-      this->_machine->peer_connection_changed(status);
+      this->_machine->user_connection_changed(
+        update.user_id, update.device_id, update.status);
     }
 
     bool
-    Transaction::concerns_user(std::string const& peer_id) const
+    Transaction::concerns_user(std::string const& user_id) const
     {
-      return this->_data->sender_id == peer_id ||
-             this->_data->recipient_id == peer_id;
+      return this->_data->concern_user(user_id);
     }
 
     bool
-    Transaction::is_sender(std::string const& user_id) const
+    Transaction::concerns_device(std::string const& user_id,
+                                 std::string const& device_id) const
     {
-      return this->concerns_user(user_id) && this->_data->sender_id == user_id;
-    }
-
-    bool
-    Transaction::concerns_device(std::string const& device_id) const
-    {
-      return this->_data->sender_device_id == device_id ||
-             this->_data->recipient_device_id == device_id;
+      return this->_data->concern_device(user_id, device_id);
     }
 
     bool

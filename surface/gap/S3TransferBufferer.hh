@@ -33,13 +33,13 @@ namespace surface
       /// Recipient constructor.
       /// The recipient fetches the meta-data from the cloud.
       S3TransferBufferer(
-        infinit::oracles::Transaction& transaction,
+        infinit::oracles::PeerTransaction& transaction,
         std::function<aws::Credentials(bool)> credentials);
 
       /// Sender constructor.
       /// The sender saves the meta-data for the transfer to the cloud.
       S3TransferBufferer(
-        infinit::oracles::Transaction& transaction,
+        infinit::oracles::PeerTransaction& transaction,
         std::function<aws::Credentials(bool)> credentials,
         FileCount count,
         FileSize total_size,

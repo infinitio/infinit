@@ -17,8 +17,8 @@
 # include <frete/fwd.hh>
 # include <frete/Frete.hh>
 
+# include <surface/gap/PeerTransactionMachine.hh>
 # include <surface/gap/State.hh>
-# include <surface/gap/TransactionMachine.hh>
 # include <surface/gap/TransferBufferer.hh>
 
 namespace surface
@@ -26,7 +26,7 @@ namespace surface
   namespace gap
   {
     struct ReceiveMachine:
-      public TransactionMachine
+      public PeerTransactionMachine
     {
     /*------.
     | Types |
@@ -34,6 +34,8 @@ namespace surface
     public:
       typedef ::frete::Frete::FileSize FileSize;
       typedef ::frete::Frete::FileID FileID;
+      typedef ReceiveMachine Self;
+      typedef PeerTransactionMachine Super;
 
     /*-------------.
     | Construction |

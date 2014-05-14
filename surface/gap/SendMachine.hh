@@ -1,7 +1,7 @@
 #ifndef SURFACE_GAP_SEND_MACHINE_HH
 # define SURFACE_GAP_SEND_MACHINE_HH
 
-# include <surface/gap/TransactionMachine.hh>
+# include <surface/gap/PeerTransactionMachine.hh>
 # include <surface/gap/State.hh>
 
 # include <frete/fwd.hh>
@@ -11,8 +11,15 @@ namespace surface
   namespace gap
   {
     class  SendMachine:
-      public TransactionMachine
+      public PeerTransactionMachine
     {
+    /*------.
+    | Types |
+    `------*/
+    public:
+      typedef SendMachine Self;
+      typedef PeerTransactionMachine Super;
+
     /*-------------.
     | Construction |
     `-------------*/
@@ -29,11 +36,11 @@ namespace surface
                   uint32_t id,
                   std::vector<std::string> files,
                   std::string const& message,
-                  std::shared_ptr<TransactionMachine::Data> data);
+                  std::shared_ptr<Data> data);
       /// Construct from server data.
       SendMachine(Transaction& state,
                   uint32_t id,
-                  std::shared_ptr<TransactionMachine::Data> data);
+                  std::shared_ptr<Data> data);
       virtual
       ~SendMachine();
     private:

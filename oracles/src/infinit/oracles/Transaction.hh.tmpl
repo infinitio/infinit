@@ -1,11 +1,12 @@
 #ifndef INFINIT_ORACLES_TRANSACTION_HH
 # define INFINIT_ORACLES_TRANSACTION_HH
 
-# include <elle/Printable.hh>
-
 # include <iosfwd>
 # include <list>
 # include <string>
+
+# include <elle/Printable.hh>
+# include <elle/serialization/Serializer.hh>
 
 <%!
 from infinit.oracles.transaction import statuses
@@ -15,8 +16,9 @@ namespace infinit
 {
   namespace oracles
   {
-    class Transaction:
-      public elle::Printable
+    class Transaction
+      : public elle::Printable
+      , public elle::serialization::VirtuallySerializable
     {
     public:
       enum class Status: int
@@ -26,14 +28,19 @@ namespace infinit
         %endfor
       };
 
+    /*-------------.
+    | Construction |
+    `-------------*/
     public:
       Transaction() = default;
       Transaction(std::string const& sender_id,
                   std::string const& sender_device_id);
-
       virtual
       ~Transaction() = default;
 
+    /*-----.
+    | Data |
+    `-----*/
     public:
       std::string id;
       std::string sender_id;
@@ -42,12 +49,27 @@ namespace infinit
       double ctime;
       double mtime;
 
+    /*-----------.
+    | Properties |
+    `-----------*/
+    public:
+      bool
+      empty() const;
+      virtual
+      bool
+      concern_user(std::string const& user_id) const = 0;
+      virtual
+      bool
+      concern_device(std::string const& user_id,
+                     std::string const& device_id) const = 0;
+
+    /*----------.
+    | Printable |
+    `----------*/
+    public:
       virtual
       void
       print(std::ostream& stream) const override;
-
-      bool
-      empty() const;
     };
 
     std::ostream&
