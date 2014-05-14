@@ -191,13 +191,6 @@ namespace surface
     `--------*/
     public:
       bool
-      concerns_user(std::string const& user_id) const;
-
-      bool
-      concerns_device(std::string const& user_id,
-                      std::string const& device_id) const;
-
-      bool
       has_transaction_id(std::string const& id) const;
 
       bool

@@ -19,25 +19,6 @@ namespace infinit
       name()
     {}
 
-    /*-----------.
-    | Properties |
-    `-----------*/
-
-    bool
-    LinkTransaction::concern_user(std::string const& user_id) const
-    {
-      // FIXME
-      return false;
-    }
-
-    bool
-    LinkTransaction::concern_device(std::string const& user_id,
-                                    std::string const& device_id) const
-    {
-      // FIXME
-      return false;
-    }
-
     /*--------------.
     | Serialization |
     `--------------*/

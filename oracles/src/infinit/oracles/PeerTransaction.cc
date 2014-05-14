@@ -41,31 +41,6 @@ namespace infinit
       total_size()
     {}
 
-    /*-----------.
-    | Properties |
-    `-----------*/
-
-    bool
-    PeerTransaction::concern_user(std::string const& user_id) const
-    {
-      return this->sender_id == user_id || this->recipient_id == user_id;
-    }
-
-    bool
-    PeerTransaction::concern_device(std::string const& user_id,
-                                    std::string const& device_id) const
-    {
-      auto const& sender_id = this->sender_id;
-      auto const& sender_device_id = this->sender_device_id;
-      auto const& recipient_id = this->recipient_id;
-      auto const& recipient_device_id = this->recipient_device_id;
-      return
-        sender_id == user_id && sender_device_id == device_id
-        ||
-        recipient_id == user_id && (recipient_device_id.empty()
-                                    || recipient_device_id == device_id);
-    }
-
     /*--------------.
     | Serialization |
     `--------------*/

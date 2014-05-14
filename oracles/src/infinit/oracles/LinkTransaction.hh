@@ -38,18 +38,6 @@ namespace infinit
       std::string hash;
       std::string name;
 
-    /*-----------.
-    | Properties |
-    `-----------*/
-    public:
-      virtual
-      bool
-      concern_user(std::string const& user_id) const override;
-      virtual
-      bool
-      concern_device(std::string const& user_id,
-                     std::string const& device_id) const override;
-
     /*--------------.
     | Serialization |
     `--------------*/

@@ -38,19 +38,6 @@ namespace infinit
       std::string sender_fullname;
       int64_t total_size;
 
-
-    /*-----------.
-    | Properties |
-    `-----------*/
-    public:
-      virtual
-      bool
-      concern_user(std::string const& user_id) const override;
-      virtual
-      bool
-      concern_device(std::string const& user_id,
-                     std::string const& device_id) const override;
-
     /*--------------.
     | Serialization |
     `--------------*/

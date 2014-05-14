@@ -438,26 +438,6 @@ namespace surface
     }
 
     bool
-    TransactionMachine::concerns_transaction(std::string const& transaction_id)
-    {
-      return this->_data->id == transaction_id;
-    }
-
-    bool
-    TransactionMachine::concerns_user(std::string const& user_id)
-    {
-      return (user_id == this->_data->sender_id) ||
-             (user_id == this->_data->recipient_id);
-    }
-
-    bool
-    TransactionMachine::concerns_device(std::string const& device_id)
-    {
-      return (device_id == this->_data->sender_device_id) ||
-             (device_id == this->_data->recipient_device_id);
-    }
-
-    bool
     TransactionMachine::has_id(uint32_t id)
     {
       return (id == this->id());

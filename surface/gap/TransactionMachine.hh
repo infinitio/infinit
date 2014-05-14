@@ -124,18 +124,6 @@ namespace surface
       reset_transfer();
 
     public:
-      /// Returns if the machine is releated to the given transaction object id.
-      bool
-      concerns_transaction(std::string const& transaction_id);
-
-      /// Returns if the machine is releated to the given user object id.
-      bool
-      concerns_user(std::string const& user_id);
-
-      /// Returns if the machine is releated to the given device object id.
-      bool
-      concerns_device(std::string const& device_id);
-
       /// Returns if the machine is releated to the given transaction id.
       bool
       has_id(uint32_t id);

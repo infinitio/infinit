@@ -167,7 +167,6 @@ namespace surface
       _last_status(gap_TransactionStatus(-1))
     {
       ELLE_TRACE_SCOPE("%s: constructed from data", *this);
-      ELLE_ASSERT(this->concerns_user(state.me().id));
       if (history)
       {
         ELLE_DEBUG("%s: part of history", *this);
@@ -415,19 +414,6 @@ namespace surface
         return;
       }
       this->_machine->peer_unavailable();
-    }
-
-    bool
-    Transaction::concerns_user(std::string const& user_id) const
-    {
-      return this->_data->concern_user(user_id);
-    }
-
-    bool
-    Transaction::concerns_device(std::string const& user_id,
-                                 std::string const& device_id) const
-    {
-      return this->_data->concern_device(user_id, device_id);
     }
 
     bool
