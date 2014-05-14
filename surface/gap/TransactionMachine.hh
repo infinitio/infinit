@@ -81,11 +81,12 @@ namespace surface
       void
       peer_unavailable();
 
-      /// Notify a relevant user went online or offline on a device.
+      /// Notify a user went online or offline on a device.
+      virtual
       void
-      user_connection_changed(std::string const& user_id,
-                              std::string const& device_id,
-                              bool online);
+      notify_user_connection_status(std::string const& user_id,
+                                    std::string const& device_id,
+                                    bool online) = 0;
 
       /// Notify that the peer status changed to connected or
       /// disconnected.

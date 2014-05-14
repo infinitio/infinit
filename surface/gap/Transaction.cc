@@ -414,22 +414,14 @@ namespace surface
       this->_machine->peer_unavailable();
     }
 
-    using infinit::oracles::trophonius::UserStatusNotification;
     void
-    Transaction::on_peer_connection_status_updated(
-      UserStatusNotification const& update)
+    Transaction::notify_user_connection_status(std::string const& user_id,
+                                               std::string const& device_id,
+                                               bool status)
     {
-      ELLE_TRACE_SCOPE(
-        "%s: peer went %sline on device %s",
-          *this, update.device_status ? "on" : "off", update.device_id);
       if (this->_machine == nullptr)
-      {
-        ELLE_WARN("%s: no machine to notify", *this);
         return;
-      }
-      ELLE_ASSERT(this->concerns_user(update.user_id));
-      this->_machine->user_connection_changed(
-        update.user_id, update.device_id, update.status);
+      this->_machine->notify_user_connection_status(user_id, device_id, status);
     }
 
     bool

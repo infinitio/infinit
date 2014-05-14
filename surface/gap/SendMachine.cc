@@ -408,6 +408,17 @@ namespace surface
     }
 
     void
+    SendMachine::notify_user_connection_status(std::string const& user_id,
+                                                  std::string const& device_id,
+                                                  bool online)
+    {
+      if (user_id == this->data()->recipient_id
+          && (this->data()->recipient_device_id.empty() ||
+              device_id == this->data()->recipient_device_id))
+        this->peer_connection_changed(online);
+    }
+
+    void
     SendMachine::_transfer_operation(frete::RPCFrete& frete)
     {
       auto start_time = boost::posix_time::microsec_clock::universal_time();

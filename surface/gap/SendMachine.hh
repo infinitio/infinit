@@ -80,6 +80,11 @@ namespace surface
     | Machine implementation |
     `-----------------------*/
     public:
+      virtual
+      void
+      notify_user_connection_status(std::string const& user_id,
+                                    std::string const& device_id,
+                                    bool online) override;
       ELLE_ATTRIBUTE(reactor::fsm::State&, create_transaction_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, wait_for_accept_state);
       // Transaction status signals.

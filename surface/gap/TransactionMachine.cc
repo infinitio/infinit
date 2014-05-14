@@ -363,10 +363,12 @@ namespace surface
     }
 
     void
-    TransactionMachine::user_connection_changed(std::string const& user_id,
-                                                std::string const& device_id,
-                                                bool online)
+    TransactionMachine::notify_user_connection_status(
+      std::string const& user_id,
+      std::string const& device_id,
+      bool online)
     {
+      if (user_id == this->_data->sender_id)
       // We don't care about our own status.
       if (user_id == this->transaction().state().me().id)
         return;

@@ -166,8 +166,9 @@ namespace surface
         infinit::oracles::trophonius::PeerReachabilityNotification const& update);
 
       void
-      on_peer_connection_status_updated(
-        infinit::oracles::trophonius::UserStatusNotification const& update);
+      notify_user_connection_status(std::string const& user_id,
+                                    std::string const& device_id,
+                                    bool status);
 
       void
       peer_available(std::vector<std::pair<std::string, int>> const& endpoints);

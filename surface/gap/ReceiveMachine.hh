@@ -75,9 +75,15 @@ namespace surface
       void
       _fail();
 
-      /*-----------------------.
-      | Machine implementation |
-      `-----------------------*/
+    /*-----------------------.
+    | Machine implementation |
+    `-----------------------*/
+    public:
+      virtual
+      void
+      notify_user_connection_status(std::string const& user_id,
+                                    std::string const& device_id,
+                                    bool online) override;
       ELLE_ATTRIBUTE(reactor::fsm::State&, wait_for_decision_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, accept_state);
 

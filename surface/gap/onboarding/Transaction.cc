@@ -103,9 +103,10 @@ namespace surface
         {
           ELLE_DEBUG("%s: accepted", *this);
           this->machine().accept();
-          this->_machine->user_connection_changed(this->_data->sender_id,
-                                                  this->_data->sender_device_id,
-                                                  true);
+          this->_machine->notify_user_connection_status(
+            this->_data->sender_id,
+            this->_data->sender_device_id,
+            true);
           this->peer_available(std::vector<std::pair<std::string, int>>());
         }
       }

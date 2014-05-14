@@ -1151,6 +1151,16 @@ namespace surface
     }
 
     void
+    ReceiveMachine::notify_user_connection_status(std::string const& user_id,
+                                                  std::string const& device_id,
+                                                  bool online)
+    {
+      if (user_id == this->data()->sender_id
+          && device_id == this->data()->sender_device_id)
+        this->peer_connection_changed(online);
+    }
+
+    void
     ReceiveMachine::IndexedBuffer::operator=(IndexedBuffer&&b)
     {
       buffer = std::move(b.buffer);
