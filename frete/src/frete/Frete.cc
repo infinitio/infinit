@@ -85,13 +85,13 @@ namespace frete
       }
       catch (boost::filesystem::filesystem_error const&)
       {
-        ELLE_TRACE("%s: unable to read snapshot file: %s",
-                   *this, elle::exception_string());
+        ELLE_TRACE("%s: unable to read snapshot file at %s: %s",
+                   *this, this->_snapshot_destination, elle::exception_string());
       }
       catch (std::exception const&) //XXX: Choose the right exception here.
       {
-        ELLE_WARN("%s: snapshot is invalid: %s",
-                  *this, elle::exception_string());
+        ELLE_WARN("%s: snapshot at %s is invalid: %s",
+                  *this, this->_snapshot_destination, elle::exception_string());
       }
     }
     if (this->_transfer_snapshot == nullptr)
