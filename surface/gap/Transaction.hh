@@ -8,7 +8,7 @@
 
 # include <boost/filesystem.hpp>
 
-# include <infinit/oracles/trophonius/Client.hh>
+# include <infinit/oracles/Transaction.hh>
 # include <surface/gap/Exception.hh>
 # include <surface/gap/Notification.hh>
 # include <surface/gap/enums.hh>

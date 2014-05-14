@@ -5,6 +5,7 @@
 
 # include <frete/Frete.hh>
 
+# include <infinit/oracles/PeerTransaction.hh>
 # include <surface/gap/Transaction.hh>
 
 namespace surface

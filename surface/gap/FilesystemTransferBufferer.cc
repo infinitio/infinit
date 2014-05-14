@@ -3,6 +3,7 @@
 #include <elle/serialize/PairSerializer.hxx>
 #include <elle/serialize/VectorSerializer.hxx>
 #include <elle/serialize/construct.hh>
+#include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
 
 #include <surface/gap/FilesystemTransferBufferer.hh>
