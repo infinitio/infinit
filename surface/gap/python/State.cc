@@ -321,8 +321,7 @@ public:
     std::vector<std::string> files,
     const std::string& message)
   {
-    std::unordered_set<std::string> sfiles(files.begin(), files.end());
-    return send_files(peer, std::move(sfiles), message);
+    return send_files(peer, files, message);
   }
 };
 
