@@ -550,8 +550,6 @@ class Mixin:
           {'$set': diff},
           new = True,
         )
-        import sys
-        print('--- %r' % transaction, file = sys.stderr)
         elle.log.debug("transaction updated")
         self.notifier.notify_some(
           notifier.TRANSACTION,
