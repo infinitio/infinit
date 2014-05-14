@@ -1116,9 +1116,9 @@ gap_onboarding_set_peer_availability(gap_State* state,
       if (!dynamic_cast<surface::gap::onboarding::Transaction*>(tr.get()))
         return gap_error;
       if (status)
-        tr->peer_available(std::vector<std::pair<std::string, int>>());
+        tr->notify_peer_reachable(std::vector<std::pair<std::string, int>>());
       else
-        tr->peer_unavailable();
+        tr->notify_peer_unreachable();
       return gap_ok;
     });
 }

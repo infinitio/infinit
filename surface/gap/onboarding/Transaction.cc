@@ -107,7 +107,7 @@ namespace surface
             this->_data->sender_id,
             this->_data->sender_device_id,
             true);
-          this->peer_available(std::vector<std::pair<std::string, int>>());
+          this->notify_peer_reachable(std::vector<std::pair<std::string, int>>());
         }
       }
 
@@ -120,7 +120,7 @@ namespace surface
       void
       Transaction::interrupt()
       {
-        this->peer_unavailable();
+        this->notify_peer_unreachable();
         this->_machine->interrupt();
       }
 

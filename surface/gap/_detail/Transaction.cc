@@ -275,7 +275,10 @@ namespace surface
                   notif.transaction_id);
         return;
       }
-      it->second->on_peer_reachability_updated(notif);
+      if (notif.status)
+        it->second->notify_peer_reachable(notif.endpoints_local);
+      else
+        it->second->notify_peer_unreachable();
     }
   }
 }

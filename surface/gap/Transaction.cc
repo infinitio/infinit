@@ -372,46 +372,12 @@ namespace surface
                   " current %s", *this, this->_data->status, data->status);
       }
       this->_data = data;
-
       if (this->_machine)
       {
         ELLE_DEBUG("%s: updating machine", *this)
           this->_machine->transaction_status_update(this->_data->status);
         this->_snapshot_save();
       }
-    }
-
-    using infinit::oracles::trophonius::PeerReachabilityNotification;
-    void
-    Transaction::on_peer_reachability_updated(
-      PeerReachabilityNotification const& update)
-    {
-      // If the transaction is not running, ignore.
-      if (this->_machine == nullptr)
-        return;
-      ELLE_TRACE_SCOPE("%s: peer now %savaialble for peer to peer connection",
-                       *this, update.status ? "" : "un");
-      ELLE_ASSERT_EQ(this->_data->id, update.transaction_id);
-      // Notification should only be sent to the sender device and the
-      // recipient device concerned by this transaction.
-      ELLE_DEBUG("notify machine of the peer availability change")
-        if (update.status)
-          this->peer_available(update.endpoints_local);
-        else
-          this->peer_unavailable();
-    }
-
-    void
-    Transaction::peer_available(
-      std::vector<std::pair<std::string, int>> const& endpoints)
-    {
-      this->_machine->peer_available(endpoints);
-    }
-
-    void
-    Transaction::peer_unavailable()
-    {
-      this->_machine->peer_unavailable();
     }
 
     void
@@ -422,6 +388,33 @@ namespace surface
       if (this->_machine == nullptr)
         return;
       this->_machine->notify_user_connection_status(user_id, device_id, status);
+    }
+
+    void
+    Transaction::notify_peer_reachable(
+      std::vector<std::pair<std::string, int>> const& endpoints)
+    {
+      if (this->_machine == nullptr)
+      {
+        ELLE_ERR(
+          "%s: got reachability notification for inactive transaction %s",
+          *this);
+        return;
+      }
+      this->_machine->peer_available(endpoints);
+    }
+
+    void
+    Transaction::notify_peer_unreachable()
+    {
+      if (this->_machine == nullptr)
+      {
+        ELLE_ERR(
+          "%s: got reachability notification for inactive transaction %s",
+          *this);
+        return;
+      }
+      this->_machine->peer_unavailable();
     }
 
     bool

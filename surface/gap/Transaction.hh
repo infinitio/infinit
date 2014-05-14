@@ -162,19 +162,13 @@ namespace surface
       on_transaction_update(std::shared_ptr<Data> data);
 
       void
-      on_peer_reachability_updated(
-        infinit::oracles::trophonius::PeerReachabilityNotification const& update);
-
-      void
       notify_user_connection_status(std::string const& user_id,
                                     std::string const& device_id,
                                     bool status);
-
       void
-      peer_available(std::vector<std::pair<std::string, int>> const& endpoints);
-
+      notify_peer_reachable(std::vector<std::pair<std::string, int>> const& endpoints);
       void
-      peer_unavailable();
+      notify_peer_unreachable();
 
       // Reinitialize everything. Invoked when connection to servers is reset.
       virtual
