@@ -4,6 +4,7 @@
 #include <boost/filesystem/fstream.hpp>
 
 #include <elle/AtomicFile.hh>
+#include <elle/Error.hh>
 #include <elle/memory.hh>
 #include <elle/serialization/json.hh>
 
@@ -242,9 +243,38 @@ namespace surface
       {
         ELLE_TRACE_SCOPE("%s: create transaction %s", *this, notif->id);
         auto id = generate_id();
-        this->_transactions.emplace(
-          id,
-          elle::make_unique<Transaction>(*this, id, notif));
+        try
+        {
+          this->_transactions.emplace(
+            id,
+            elle::make_unique<Transaction>(*this, id, notif));
+        }
+        catch (elle::Error const& e)
+        {
+          ELLE_WARN("%s: unable to create transaction from server data: %s",
+                    *this, elle::exception_string());
+          try
+          {
+            this->meta().update_transaction(
+              notif->id, infinit::oracles::Transaction::Status::failed);
+          }
+          catch (infinit::oracles::meta::Exception const& e)
+          {
+            using infinit::oracles::meta::Error;
+            if (e.err != Error::transaction_operation_not_permitted &&
+                e.err != Error::transaction_already_finalized)
+            {
+              ELLE_ERR("%s: unable to fail transaction: %s",
+                       *this, elle::exception_string());
+              throw;
+            }
+          }
+          catch (...)
+          {
+            ELLE_ERR("%s: unable to fail transaction: %s",
+                     *this, elle::exception_string());
+          }
+        }
       }
       else
       {

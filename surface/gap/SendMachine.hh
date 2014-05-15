@@ -24,22 +24,18 @@ namespace surface
     | Construction |
     `-------------*/
     public:
-      /// Construct from send files.
-      SendMachine(Transaction& state,
+      /// Construct to send files.
+      SendMachine(Transaction& transaction,
                   uint32_t id,
                   std::string const& recipient,
                   std::vector<std::string> files,
                   std::string const& message,
                   std::shared_ptr<Data> data);
       /// Construct from snapshot.
-      SendMachine(Transaction& state,
+      SendMachine(Transaction& transaction,
                   uint32_t id,
                   std::vector<std::string> files,
                   std::string const& message,
-                  std::shared_ptr<Data> data);
-      /// Construct from server data.
-      SendMachine(Transaction& state,
-                  uint32_t id,
                   std::shared_ptr<Data> data);
       virtual
       ~SendMachine();
@@ -53,10 +49,10 @@ namespace surface
       transaction_status_update(infinit::oracles::Transaction::Status status) override;
 
     private:
-      SendMachine(Transaction& state,
+      /// Factored constructor.
+      SendMachine(Transaction& transaction,
                   uint32_t id,
-                  std::shared_ptr<Data> data,
-                  bool);
+                  std::shared_ptr<Data> data);
 
     private:
       void

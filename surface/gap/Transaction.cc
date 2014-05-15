@@ -3,6 +3,7 @@
 #include <memory>
 
 #include <elle/AtomicFile.hh>
+#include <elle/Error.hh>
 #include <elle/serialization/json.hh>
 
 #include <common/common.hh>
@@ -186,8 +187,9 @@ namespace surface
            device == peer_data->recipient_device_id);
         if (sender)
         {
-          ELLE_DEBUG("%s: start send machine", *this);
-          this->_machine.reset(new SendMachine(*this, this->_id, peer_data));
+          ELLE_WARN("%s: can't restore peer send transaction from server",
+                    *this);
+          throw elle::Error("can't restore peer send transaction from server");
         }
         else if (recipient)
         {

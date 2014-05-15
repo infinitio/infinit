@@ -43,8 +43,7 @@ namespace surface
     // Common factored constructor.
     SendMachine::SendMachine(Transaction& transaction,
                              uint32_t id,
-                             std::shared_ptr<Data> data,
-                             bool):
+                             std::shared_ptr<Data> data):
       Super(transaction, id, std::move(data)),
       _create_transaction_state(
         this->_machine.state_make(
@@ -132,28 +131,14 @@ namespace surface
       this->_stop();
     }
 
-    // Construct from server data.
-    SendMachine::SendMachine(Transaction& transaction,
-                             uint32_t id,
-                             std::shared_ptr<TransactionMachine::Data> data):
-      SendMachine(transaction, id, std::move(data), true)
-    {
-      ELLE_ASSERT(this->data() != nullptr);
-      ELLE_WARN_SCOPE("%s: constructing machine for transaction data %s "
-                      "(not found on local snapshots)", *this, *this->data());
-      for (auto const& f: this->data()->files)
-        this->_files.push_back(f);
-      this->_run_from_snapshot();
-    }
-
-    // Construct for send.
+    // Construct to send files.
     SendMachine::SendMachine(Transaction& transaction,
                              uint32_t id,
                              std::string const& recipient,
                              std::vector<std::string> files,
                              std::string const& message,
                              std::shared_ptr<TransactionMachine::Data> data):
-      SendMachine(transaction, id, std::move(data), true)
+      SendMachine(transaction, id, std::move(data))
     {
       ELLE_TRACE_SCOPE("%s: construct to send %s to %s",
                        *this, files, recipient);
@@ -185,7 +170,7 @@ namespace surface
                              std::vector<std::string> files,
                              std::string const& message,
                              std::shared_ptr<TransactionMachine::Data> data):
-      SendMachine(transaction, id, std::move(data), true)
+      SendMachine(transaction, id, std::move(data))
     {
       ELLE_TRACE_SCOPE("%s: construct from snapshot", *this);
       this->_files = std::move(files);
