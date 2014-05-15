@@ -2,7 +2,9 @@
 
 import bottle
 import bson
+import datetime
 import uuid
+
 import elle.log
 import papier
 
@@ -308,7 +310,7 @@ class Mixin:
             {'type':'email', 'id': email}
           ],
           status = False,
-          created_at = time(),
+          creation_time = datetime.datetime.utcnow(),
           email_confirmed = False,
           unconfirmed_email_deadline = time() + self.unconfirmed_email_leeway,
           email_confirmation_hash = str(hash),
@@ -1167,7 +1169,8 @@ class Mixin:
       'favorites': user.get('favorites', []),
       'connected_devices': user.get('connected_devices', []),
       'status': self._is_connected(user['_id']),
-      'created_at': user.get('created_at', 0),
+      # datetime not handled by bottle JSON plugin.
+      # 'creation_time': user.get('creation_time', 0),
       'last_connection': user.get('last_connection', 0),
     })
 
