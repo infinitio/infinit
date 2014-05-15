@@ -2,6 +2,7 @@
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 
 #include <elle/assert.hh>
+#include <elle/python/containers.hh>
 
 #include <surface/gap/State.hh>
 
@@ -290,6 +291,7 @@ bind_conversions()
                                      transaction_notification_to_python_dict>();
 }
 
+
 class PythonState:
   public surface::gap::State
 {
@@ -321,9 +323,24 @@ public:
     std::vector<std::string> files,
     const std::string& message)
   {
-    std::unordered_set<std::string> sfiles(files.begin(), files.end());
-    return send_files(peer, std::move(sfiles), message);
+    return send_files(peer, files, message);
   }
+
+#define TOP(name, ret)                             \
+  ret transaction_ ## name(unsigned int id)        \
+  {                                                \
+    return transactions().at(id)->name();          \
+  }
+
+  TOP(accept, void)
+  TOP(reject, void)
+  TOP(cancel, void)
+  TOP(join, void)
+  TOP(progress, float)
+  TOP(pause, bool)
+  TOP(interrupt, void)
+  TOP(reset, void)
+  #undef TOP
 };
 
 
@@ -336,12 +353,17 @@ BOOST_PYTHON_MODULE(state)
     py::return_value_policy<boost::python::copy_const_reference> by_const_ref;
    typedef
     py::return_value_policy<boost::python::return_by_value> by_value;
+
+  // Binding of some standard types we use.
+  elle::python::container_to_python<std::vector<unsigned int>>();
+  elle::python::container<std::vector<std::string>>();
+
   bind_conversions();
+
   using surface::gap::State;
   typedef infinit::oracles::meta::User User;
-  typedef infinit::oracles::Transaction Transaction;
-  boost::python::class_<std::vector<unsigned int>>("VectorInt")
-        .def(boost::python::vector_indexing_suite<std::vector<unsigned int>>() );
+
+
   boost::python::class_<PythonState, boost::noncopyable>
     ("State",
      boost::python::init<std::string const&,
@@ -353,7 +375,16 @@ BOOST_PYTHON_MODULE(state)
     .def("login", &State::login)
     .def("logout", &State::logout)
     .def("invite", &State::invite)
+    .def("poll", &State::poll)
     .def("users", &State::users, by_const_ref())
+    .def("transaction_accept", &PythonState::transaction_accept)
+    .def("transaction_reject", &PythonState::transaction_reject)
+    .def("transaction_join", &PythonState::transaction_join)
+    .def("transaction_cancel", &PythonState::transaction_cancel)
+    .def("transaction_progress", &PythonState::transaction_progress)
+    .def("transaction_pause", &PythonState::transaction_pause)
+    .def("transaction_interrupt", &PythonState::transaction_interrupt)
+    .def("transaction_reset", &PythonState::transaction_reset)
     .def("swaggers", &PythonState::wrap_swaggers)
     .def("swagger_from_name", (User (State::*)(const std::string&)) &State::swagger)
     .def("swagger_from_id", (User (State::*) (uint32_t)) &State::swagger)

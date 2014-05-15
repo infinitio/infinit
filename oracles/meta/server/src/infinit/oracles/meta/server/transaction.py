@@ -184,6 +184,7 @@ class Mixin:
       elle.log.debug("transaction recipient has id %s" % recipient['_id'])
       _id = user['_id']
 
+      cloud_capable = self.user_version >= (0, 8, 11)
       transaction = {
         'sender_id': _id,
         'sender_fullname': user['fullname'],
@@ -210,6 +211,7 @@ class Mixin:
         'fallback_port_ssl': None,
         'fallback_port_tcp': None,
         'aws_credentials': None,
+        'is_ghost': new_user and cloud_capable,
         'strings': ' '.join([
               user['fullname'],
               user['handle'],
@@ -226,7 +228,6 @@ class Mixin:
       if not peer_email:
         peer_email = recipient['email']
 
-      cloud_capable = self.user_version >= (0, 8, 11)
       #FIXME : send invite email if initiator version will not attempt
       # ghost cloud upload
       if new_user and not cloud_capable:
@@ -414,7 +415,7 @@ class Mixin:
     recipient = self.database.users.find_one(transaction['recipient_id'])
     elle.log.log('Peer status: %s' % recipient['register_status'])
     elle.log.log('transaction: %s' % transaction.keys())
-    if recipient['register_status'] == 'ghost':
+    if transaction.get('is_ghost', False):
       peer_email = recipient['email']
       transaction_id = transaction['_id']
       elle.log.trace("send invitation to new user %s for transaction %s" % (
@@ -537,14 +538,17 @@ class Mixin:
       # Don't update with an empty dictionary: it would empty the
       # object.
       if diff:
-        self.database.transactions.update({'_id': transaction['_id']},
-                                          {'$set': diff})
-      elle.log.debug("transaction updated")
-      self.notifier.notify_some(
-        notifier.PEER_TRANSACTION,
-        recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
-        message = transaction,
-      )
+        transaction = self.database.transactions.find_and_modify(
+          {'_id': transaction['_id']},
+          {'$set': diff},
+          new = True,
+        )
+        elle.log.debug("transaction updated")
+        self.notifier.notify_some(
+          notifier.PEER_TRANSACTION,
+          recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
+          message = transaction,
+        )
       return transaction_id
 
   @api('/transaction/search')

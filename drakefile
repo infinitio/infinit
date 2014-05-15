@@ -509,7 +509,6 @@ def configure(cxx_toolkit = None,
     'surface/gap/onboarding/TransferMachine.cc',
     'surface/gap/onboarding/TransferMachine.hh',
     'surface/gap/onboarding/fwd.hh',
-    'surface/gap/status.hh.tmpl',
     # Get rid of common asap.
     'common/common.cc',
     'common/common.hh',

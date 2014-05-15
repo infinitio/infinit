@@ -296,8 +296,9 @@ namespace surface
             this->rejected().open();
           break;
         case TransactionStatus::initialized:
-          break;
         case TransactionStatus::created:
+          ELLE_TRACE("%s: ignoring status update to %s", *this, status);
+          break;
         case TransactionStatus::none:
         case TransactionStatus::started:
           ELLE_ABORT("%s: invalid status update to %s", *this, status);
@@ -523,15 +524,7 @@ namespace surface
         { // Our users might not appreciate downloading zillion of files from
           // their browser: make an archive
           // make an archive name from data
-          path archive_name;
-          if (this->_files.size() == 1)
-          {
-            ELLE_DEBUG("verifying is_directory on %s", *this->_files.begin());
-            ELLE_ASSERT(this->data()->is_directory); // otherwise effective count is 1
-            archive_name = path(*this->_files.begin()).filename().replace_extension("zip");
-          }
-          else
-            archive_name = "archive.zip";
+          path archive_name = archive_info().first;
           // Use transfer data information to archive the files. This is
           // what was passed by the user, and what we will flatten.
           // That way if user selects a directory it will be preserved.

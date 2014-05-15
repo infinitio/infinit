@@ -17,8 +17,19 @@ namespace infinit
       sender_device_id(sender_device_id),
       status(Status::created),
       ctime(),
-      mtime()
+      mtime(),
+      is_ghost()
     {}
+
+    Transaction::Transaction():
+      id(),
+      sender_id(),
+      sender_device_id(),
+      status(Status::created),
+      ctime(),
+      mtime(),
+      is_ghost()
+      {}
 
     /*-----------.
     | Properties |
@@ -39,6 +50,10 @@ namespace infinit
     {
       stream << *this;
     }
+
+    /*--------------.
+    | Serialization |
+    `--------------*/
 
     std::ostream&
     operator <<(std::ostream& out,

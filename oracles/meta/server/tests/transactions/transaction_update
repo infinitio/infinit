@@ -23,6 +23,7 @@ def S(source, transaction, state):
                                            "device_id": str(source.device_id),
                                            "device_name": source.device_name})
   assert res['success']
+  assert notifier.notification is None
 
 # Not allowed
 def E(source, transaction, state):
@@ -32,6 +33,7 @@ def E(source, transaction, state):
                                            "device_name": source.device_name})
   assert not res['success']
   assert res['error_code'] in [error.TRANSACTION_ALREADY_FINALIZED[0], error.TRANSACTION_OPERATION_NOT_PERMITTED[0]]
+  assert notifier.notification is None
 
 def O(source, transaction, state):
   res = source.post('transaction/update', {"transaction_id": transaction,
@@ -39,6 +41,8 @@ def O(source, transaction, state):
                                            "device_id": str(source.device_id),
                                            "device_name": source.device_name})
   assert res['success']
+  notification_type, recipient_ids, device_ids, status = notifier.notification
+  assert status == state
 
 sender_transitions = dict()
 recipient_transitions = dict()
@@ -97,6 +101,32 @@ def find_path(state):
       return find_path(current_state) + [(False, current_state, state)]
   return []
 
+
+class Notifier():
+
+  def __init__(self):
+    self.__notification = None
+
+  def notify_some(self,
+                  notification_type,
+                  recipient_ids = None,
+                  device_ids = None,
+                  message = None):
+    import infinit.oracles.notification
+    if notification_type != infinit.oracles.notification.notifications['transaction']:
+      return
+    assert self.__notification is None
+    self.__notification = [notification_type, recipient_ids, device_ids, message['status']]
+
+  @property
+  def notification(self):
+    notification = self.__notification
+    self.__notification = None
+    return notification
+
+notifier = Notifier()
+
+
 def transaction(sender, recipient, state):
   _, tr = sender.sendfile(recipient.id)
   transaction_id = tr['created_transaction_id']
@@ -108,9 +138,14 @@ def transaction(sender, recipient, state):
                                              "device_id": str(source.device_id),
                                              "device_name": source.device_name})
     assert res['success']
+    notification_type, recipient_ids, device_ids, status = notifier.notification
+    assert status == path[2]
   return tr['created_transaction_id']
 
 with Meta() as meta:
+
+  meta.notifier = notifier
+
   alice = User(meta, "alice@infinit.io")
   bob = User(meta, "bob@infinit.io")
 

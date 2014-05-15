@@ -32,7 +32,7 @@ namespace infinit
     | Construction |
     `-------------*/
     public:
-      Transaction() = default;
+      Transaction();
       Transaction(std::string const& sender_id,
                   std::string const& sender_device_id);
       virtual
@@ -48,6 +48,7 @@ namespace infinit
       Status status;
       double ctime;
       double mtime;
+      bool is_ghost;
 
     /*-----------.
     | Properties |

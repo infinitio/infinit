@@ -3,6 +3,10 @@
 #include <elle/json/json.hh>
 #include <elle/log.hh>
 #include <elle/format/base64.hh>
+#include <elle/containers.hh>
+
+#include <elle/container/vector.hh>
+
 #include <elle/serialize/construct.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
@@ -32,6 +36,7 @@ namespace surface
         _full_size(),
         _files(),
         _key_code(),
+        _raw_file(false),
         _credentials(credentials),
         _s3_handler(this->_credentials)
     {
@@ -57,6 +62,37 @@ namespace surface
         ELLE_LOG("%s: file not found for aws block meta-data", *this);
         throw DataExhausted();
       }
+    }
+
+    S3TransferBufferer::S3TransferBufferer(
+      infinit::oracles::PeerTransaction& transaction,
+      std::string const& file,
+      std::function<aws::Credentials(bool)> credentials)
+    : Super(transaction)
+    , _count()
+    , _full_size()
+    , _files()
+    , _key_code()
+    , _raw_file(true)
+    , _credentials(credentials)
+    , _s3_handler(this->_credentials)
+    {
+      // That file constraint is mostly for validation, we could
+      // just bool no_metadata=true and get done with it
+      std::vector<std::pair<std::string, FileSize>> files
+        = _s3_handler.list_remote_folder_full();
+      if (files.size() != 1)
+        ELLE_WARN("%s: Expected only one file in cloud folder, got %s", *this, files);
+      auto match = elle::containers::find_pair_first(files, file);
+      if (match == files.end())
+        throw elle::Exception(elle::sprintf(
+          "%s: Could not locate file in cloud data: expected '%s', got '%s'",
+          *this, file, files));
+      auto size = match->second;
+      ELLE_DEBUG("%s: Advertising '%s' of size %s from cloud", *this, file, size);
+      _files.push_back(std::make_pair(file, size));
+      _count = 1;
+      _full_size = size;
     }
 
     // Sender.
@@ -107,8 +143,10 @@ namespace surface
       infinit::cryptography::Code
       S3TransferBufferer::read(FileID f, FileOffset start, FileSize size)
       {
-        // Deprecated.
-        elle::unreachable();
+        if (this->_raw_file)
+          return infinit::cryptography::Code(get_chunk(f, start, size));
+        else  // remote data is in whatever format it is, accept the call
+          return infinit::cryptography::Code(this->get(f, start));
       }
 
       infinit::cryptography::Code
@@ -141,6 +179,28 @@ namespace surface
         // XXX could retry.
         ELLE_ERR("%s: unable to put block: %s", *this, e.error());
         throw;
+      }
+    }
+
+    elle::Buffer
+    S3TransferBufferer::get_chunk(TransferBufferer::FileID file,
+                                    TransferBufferer::FileSize offset,
+                                    TransferBufferer::FileSize size)
+    {
+      ELLE_DEBUG_SCOPE("%s: S3 get: %s (offset: %s, size: %s)",
+                       *this, file, offset, size);
+      try
+      {
+        elle::Buffer res;
+        res = this->_s3_handler.get_object_chunk(_files.at(file).first, offset, size);
+        ELLE_ASSERT_GTE(size, res.size());
+        return res;
+      }
+      catch (aws::FileNotFound const& e)
+      {
+        ELLE_LOG("%s: file not found on aws for chunk %s/%s",
+                 *this, file, offset);
+        throw DataExhausted();
       }
     }
 

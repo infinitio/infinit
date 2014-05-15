@@ -31,6 +31,12 @@ namespace surface
   {
     class State;
 
+    enum EncryptionLevel
+    {
+      EncryptionLevel_None = 0,
+      EncryptionLevel_Weak = 1,
+      EncryptionLevel_Strong = 2
+    };
     class TransactionMachine:
       public elle::Printable
     {
@@ -123,6 +129,9 @@ namespace surface
       void
       reset_transfer();
 
+      /// Return (name, is_an_archive) if we have to put all transfer data
+      /// in one file
+      std::pair<std::string, bool> archive_info();
     public:
       /// Returns if the machine is releated to the given transaction id.
       bool
@@ -165,6 +174,7 @@ namespace surface
       friend class PeerTransferMachine;
       friend class Snapshot;
 
+    public:
       std::function<aws::Credentials(bool)>
       make_aws_credentials_getter();
 

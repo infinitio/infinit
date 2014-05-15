@@ -41,6 +41,13 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::PeerTransaction, ar, res, version)
   ar & named("mtime", res.mtime);
   ar & named("is_directory", res.is_directory);
   ar & named("status", res.status);
+  try
+  { // No way for a proper check
+    ar & named("is_ghost", res.is_ghost);
+  }
+  catch(...)
+  {
+  }
 }
 
 namespace std
