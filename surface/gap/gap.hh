@@ -51,22 +51,6 @@ gap_Status gap_debug(gap_State* state);
 /// Check if meta is alive.
 gap_Status gap_meta_status(gap_State* state);
 
-/// Debug func: Pull notifications.
-gap_Status
-gap_pull_notifications(gap_State*,
-                       int count,
-                       int offset);
-
-
-/// Debug func: Pull notifications.
-gap_Status
-gap_pull_new_notifications(gap_State*,
-                           int count,
-                           int offset);
-
-gap_Status
-gap_notifications_read(gap_State*);
-
 //- Authentication & registration -------------------------------------------
 
 /// Generate a hash for the password.
