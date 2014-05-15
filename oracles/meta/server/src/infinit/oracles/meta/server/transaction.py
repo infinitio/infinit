@@ -501,7 +501,6 @@ class Mixin:
       # current_device is None if we do a delete user / reset account.
       if self.current_device is not None and device_id is None:
         device_id = str(self.current_device['id'])
-
       transaction = self.transaction(bson.ObjectId(transaction_id), owner_id = user['_id'])
       elle.log.debug("transaction: %s" % transaction)
       is_sender = self.is_sender(transaction, user['_id'])
@@ -511,13 +510,7 @@ class Mixin:
           error.TRANSACTION_OPERATION_NOT_PERMITTED,
           "Cannot change status from %s to %s (not permitted)." % (transaction['status'], status)
         )
-
-      if transaction['status'] == status:
-        raise error.Error(
-          error.TRANSACTION_ALREADY_HAS_THIS_STATUS,
-          "Can't change status from %s to %s (same status)." % (transaction['status'], status))
-
-      if transaction['status'] in transaction_status.final:
+      if transaction['status'] != status and transaction['status'] in transaction_status.final:
         raise error.Error(
           error.TRANSACTION_ALREADY_FINALIZED,
           "Cannot change status from %s to %s (already finalized)." % (transaction['status'], status)
@@ -537,7 +530,6 @@ class Mixin:
                       transaction_status.REJECTED):
         diff.update(self.cloud_cleanup_transaction(
           transaction = transaction))
-
       diff.update({
         'status': status,
         'mtime': time.time()
@@ -548,7 +540,6 @@ class Mixin:
         self.database.transactions.update({'_id': transaction['_id']},
                                           {'$set': diff})
       elle.log.debug("transaction updated")
-
       self.notifier.notify_some(
         notifier.PEER_TRANSACTION,
         recipient_ids = {transaction['sender_id'], transaction['recipient_id']},

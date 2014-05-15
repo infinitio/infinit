@@ -22,8 +22,7 @@ def S(source, transaction, state):
                                            "status": state,
                                            "device_id": str(source.device_id),
                                            "device_name": source.device_name})
-  assert not res['success']
-  assert res['error_code'] in [error.TRANSACTION_ALREADY_HAS_THIS_STATUS[0]]
+  assert res['success']
 
 # Not allowed
 def E(source, transaction, state):
