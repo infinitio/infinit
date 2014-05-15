@@ -2,6 +2,7 @@
 
 import bottle
 import bson
+import calendar
 import datetime
 import elle.log
 import papier
@@ -273,7 +274,7 @@ class Mixin:
           'status': '$status',
         }}
       ])['result']:
-        link['creation_time'] = link['creation_time'].timestamp()
-        link['expiry_time'] = link['expiry_time'].timestamp()
+        link['creation_time'] = calendar.timegm(link['creation_time'].timetuple())
+        link['expiry_time'] = calendar.timegm(link['expiry_time'].timetuple())
         res.append(link)
       return {'links': res}
