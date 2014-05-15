@@ -113,7 +113,7 @@ class Notifier():
                   device_ids = None,
                   message = None):
     import infinit.oracles.notification
-    if notification_type != infinit.oracles.notification.notifications['transaction']:
+    if notification_type != infinit.oracles.notification.notifications['peer_transaction']:
       return
     assert self.__notification is None
     self.__notification = [notification_type, recipient_ids, device_ids, message['status']]
