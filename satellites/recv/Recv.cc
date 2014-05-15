@@ -132,7 +132,6 @@ int main(int argc, char** argv)
             try
             {
               ELLE_TRACE_SCOPE("transaction notification: %s", notif);
-              auto& tr = state.transactions().at(notif.id);
               if (notif.status == gap_transaction_waiting_accept)
               {
                 ELLE_LOG("accept transaction %s", notif.id);
