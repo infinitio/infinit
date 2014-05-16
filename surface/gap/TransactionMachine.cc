@@ -5,6 +5,7 @@
 
 #include <elle/AtomicFile.hh>
 #include <elle/Backtrace.hh>
+#include <elle/Error.hh>
 #include <elle/container/list.hh>
 #include <elle/container/set.hh>
 #include <elle/network/Interface.hh>
@@ -66,6 +67,20 @@ namespace surface
                     this->_current_state);
     }
 
+    TransactionMachine::Snapshot
+    TransactionMachine::snapshot() const
+    {
+      boost::filesystem::path path = Snapshot::path(*this);
+      if (!exists(path))
+        throw elle::Error(elle::sprintf("missing snapshot: %s", path));
+      elle::AtomicFile source(path);
+      return source.read() << [&] (elle::AtomicFile::Read& read)
+      {
+        elle::serialization::json::SerializerIn input(read.stream());
+        return Snapshot(input);
+      };
+    }
+
     /*-------------------.
     | TransactionMachine |
     `-------------------*/
@@ -105,7 +120,7 @@ namespace surface
       _state(transaction.state()),
       _data(std::move(data))
     {
-      ELLE_TRACE_SCOPE("%s: create transfaction machine", *this);
+      ELLE_TRACE_SCOPE("%s: create transaction machine", *this);
 
       // Normal way.
       this->_machine.transition_add(this->_transfer_core_state,

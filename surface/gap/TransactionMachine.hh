@@ -60,10 +60,6 @@ namespace surface
       void
       _save_snapshot() const;
     protected:
-      virtual
-      void
-      _save_transfer_snapshot() = 0;
-    protected:
       /// Launch the reactor::chine at the given state.
       void
       _run(reactor::fsm::State& initial_state);
@@ -168,6 +164,8 @@ namespace surface
         void
         print(std::ostream& stream) const override;
       };
+      Snapshot
+      snapshot() const;
 
     protected:
       friend class Transferer;

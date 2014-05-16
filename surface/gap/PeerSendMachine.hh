@@ -1,0 +1,104 @@
+#ifndef SURFACE_GAP_PEER_SEND_MACHINE_HH
+# define SURFACE_GAP_PEER_SEND_MACHINE_HH
+
+# include <memory>
+
+# include <surface/gap/SendMachine.hh>
+# include <surface/gap/fwd.hh>
+
+namespace surface
+{
+  namespace gap
+  {
+    class PeerSendMachine
+      : public SendMachine
+    {
+    /*------.
+    | Types |
+    `------*/
+    public:
+      typedef infinit::oracles::PeerTransaction Data;
+      typedef PeerSendMachine Self;
+      typedef SendMachine Super;
+
+    /*-------------.
+    | Construction |
+    `-------------*/
+    public:
+      /// Construct to send files.
+      PeerSendMachine(Transaction& transaction,
+                      uint32_t id,
+                      std::string recipient,
+                      std::vector<std::string> files,
+                      std::string message,
+                      std::shared_ptr<Data> data);
+      /// Construct from snapshot.
+      PeerSendMachine(Transaction& transaction,
+                      uint32_t id,
+                      std::vector<std::string> files,
+                      std::string message,
+                      std::shared_ptr<Data> data);
+    public:
+      ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
+      ELLE_ATTRIBUTE_R(std::string, message);
+      ELLE_ATTRIBUTE_R(std::string, recipient);
+    private:
+      PeerSendMachine(Transaction& transaction,
+                      uint32_t id,
+                      std::string recipient,
+                      std::vector<std::string> files,
+                      std::string message,
+                      std::shared_ptr<Data> data,
+                      bool);
+      void
+      _run_from_snapshot();
+
+    /*-----------.
+    | Attributes |
+    `-----------*/
+    public:
+      ELLE_ATTRIBUTE_RX(reactor::Barrier, accepted);
+      ELLE_ATTRIBUTE_RX(reactor::Barrier, rejected);
+      ELLE_ATTRIBUTE(std::unique_ptr<frete::Frete>, frete);
+
+    /*-------.
+    | States |
+    `-------*/
+    protected:
+      void
+      _wait_for_accept();
+      reactor::fsm::State& _wait_for_accept_state;
+
+    /*---------------.
+    | Implementation |
+    `---------------*/
+    public:
+      virtual
+      void
+      transaction_status_update(infinit::oracles::Transaction::Status status) override;
+      float
+      progress() const override;
+      std::unique_ptr<frete::RPCFrete>
+      rpcs(infinit::protocol::ChanneledStream& channels) override;
+      frete::Frete&
+      frete();
+    protected:
+      virtual
+      void
+      _create_transaction() override;
+      void
+      _transfer_operation(frete::RPCFrete& frete) override;
+      // chunked upload to cloud
+      void
+      _cloud_operation() override;
+      void
+      _cloud_synchronize() override;
+      bool
+      _fetch_peer_key(bool assert_success);
+      void
+      _save_frete_snapshot();
+    };
+  }
+}
+
+#endif

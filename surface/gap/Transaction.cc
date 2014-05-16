@@ -9,7 +9,7 @@
 #include <common/common.hh>
 #include <surface/gap/Exception.hh>
 #include <surface/gap/ReceiveMachine.hh>
-#include <surface/gap/SendMachine.hh>
+#include <surface/gap/PeerSendMachine.hh>
 #include <surface/gap/TransactionMachine.hh>
 #include <surface/gap/enums.hh>
 
@@ -70,6 +70,7 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: save snapshot to %s", *this, this->_snapshot_path);
       Snapshot snapshot(this->_sender,
                         this->_data,
+                        this->_archived,
                         this->_files,
                         this->_message);
       ELLE_DUMP("%s: snapshot data: %s", *this, snapshot);
@@ -84,12 +85,14 @@ namespace surface
     Transaction::Snapshot::Snapshot(
       bool sender,
       std::shared_ptr<Data> data,
+      bool archived,
       boost::optional<std::vector<std::string>> files,
       boost::optional<std::string> message)
       : _sender(sender)
       , _data(data)
       , _files(files)
       , _message(message)
+      , _archived(archived)
     {}
 
     Transaction::Snapshot::Snapshot(
@@ -106,6 +109,7 @@ namespace surface
       serializer.serialize("sender", this->_sender);
       serializer.serialize("files", this->_files);
       serializer.serialize("message", this->_message);
+      serializer.serialize("archived", this->_archived);
     }
 
     void
@@ -132,6 +136,7 @@ namespace surface
       , _state(state)
       , _files(std::move(files))
       , _message(message)
+      , _archived(false)
       , _id(id)
       , _sender(true)
       , _data(nullptr)
@@ -141,10 +146,12 @@ namespace surface
       auto data = std::make_shared<infinit::oracles::PeerTransaction>(
         state.me().id,
         state.me().fullname,
-        state.device().id);
+        state.device().id,
+        peer_id);
       this->_data = data;
-      this->_machine.reset(new SendMachine(*this, this->_id, peer_id,
-                                           this->_files.get(), message, data));
+      this->_machine.reset(
+        new PeerSendMachine(*this, this->_id, peer_id,
+                            this->_files.get(), message, data));
       ELLE_TRACE_SCOPE("%s: construct to send %s files",
                        *this, this->_files.get().size());
       this->_snapshot_save();
@@ -154,18 +161,21 @@ namespace surface
     Transaction::Transaction(State& state,
                              uint32_t id,
                              std::shared_ptr<Data> data,
-                             bool history):
-      _snapshots_directory(
+                             bool history)
+      : _snapshots_directory(
         boost::filesystem::path(common::infinit::user_directory(state.me().id))
-        / "transactions" / boost::filesystem::unique_path()),
-      _snapshot_path(this->_snapshots_directory / "transaction.snapshot"),
-      _state(state),
-      _id(id),
-      _sender(state.me().id == data->sender_id &&
-              state.device().id == data->sender_device_id),
-      _data(data),
-      _machine(),
-      _last_status(gap_TransactionStatus(-1))
+        / "transactions" / boost::filesystem::unique_path())
+      , _snapshot_path(this->_snapshots_directory / "transaction.snapshot")
+      , _state(state)
+      , _files()
+      , _message()
+      , _archived(false)
+      , _id(id)
+      , _sender(state.me().id == data->sender_id &&
+              state.device().id == data->sender_device_id)
+      , _data(data)
+      , _machine()
+      , _last_status(gap_TransactionStatus(-1))
     {
       ELLE_TRACE_SCOPE("%s: constructed from data", *this);
       if (history)
@@ -201,6 +211,17 @@ namespace surface
         if (sender || recipient)
           this->_snapshot_save();
       }
+      else if (auto link_data =
+          std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
+            this->_data))
+      {
+
+      }
+      else
+      {
+        ELLE_ERR("%s: unkown transaction type: %s",
+                 *this, elle::demangle(typeid(*this->_data).name()));
+      }
     }
 
     Transaction::Transaction(State& state,
@@ -212,6 +233,7 @@ namespace surface
       , _state(state)
       , _files(snapshot.files())
       , _message(snapshot.message())
+      , _archived(snapshot.archived())
       , _id(id)
       , _sender(snapshot.sender())
       , _data(snapshot.data())
@@ -226,10 +248,12 @@ namespace surface
       {
         if (this->_sender)
         {
+          ELLE_ASSERT(this->_message);
+          ELLE_ASSERT(this->_files);
           ELLE_TRACE("%s: create send machine", *this)
             this->_machine.reset(
-              new SendMachine(*this, this->_id, this->_files.get(),
-                              this->_message.get(), peer_data));
+              new PeerSendMachine(*this, this->_id, this->_files.get(),
+                                  this->_message.get(), peer_data));
         }
         else
         {
@@ -395,11 +419,13 @@ namespace surface
     Transaction::notify_peer_reachable(
       std::vector<std::pair<std::string, int>> const& endpoints)
     {
-      if (this->_machine == nullptr)
+      if (!this->_machine)
       {
+        // FIXME: meta send those notifications to all devices, so this is
+        // triggered.
         ELLE_ERR(
-          "%s: got reachability notification for inactive transaction %s",
-          *this);
+          "%s: got reachability notification inactive transaction %s",
+          *this, this->data()->id);
         return;
       }
       this->_machine->peer_available(endpoints);
@@ -408,11 +434,13 @@ namespace surface
     void
     Transaction::notify_peer_unreachable()
     {
-      if (this->_machine == nullptr)
+      if (!this->_machine)
       {
+        // FIXME: meta send those notifications to all devices, so this is
+        // triggered.
         ELLE_ERR(
           "%s: got reachability notification for inactive transaction %s",
-          *this);
+          *this, this->data()->id);
         return;
       }
       this->_machine->peer_unavailable();
@@ -456,6 +484,13 @@ namespace surface
 
       if (this->_machine != nullptr)
         this->_machine->reset_transfer();
+    }
+
+    void
+    Transaction::archived(bool v)
+    {
+      this->_archived = v;
+      this->_snapshot_save();
     }
   }
 }

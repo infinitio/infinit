@@ -100,7 +100,7 @@ namespace surface
       ELLE_ATTRIBUTE_R(std::unique_ptr<frete::TransferSnapshot>, snapshot)
     protected:
       void
-      _save_transfer_snapshot() override;
+      _save_frete_snapshot();
     private:
       std::unique_ptr<frete::RPCFrete>
       rpcs(infinit::protocol::ChanneledStream& channels) override;

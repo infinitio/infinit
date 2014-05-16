@@ -1089,7 +1089,7 @@ namespace surface
           ELLE_DEBUG("%s: write down snapshot", *this)
           {
             ELLE_DUMP("%s: snapshot: %s", *this, *this->_snapshot);
-            this->_save_transfer_snapshot();
+            this->_save_frete_snapshot();
           }
            _store_expected_position += buffer.size();
            ELLE_ASSERT_EQ(_store_expected_position,
@@ -1146,7 +1146,7 @@ namespace surface
     }
 
     void
-    ReceiveMachine::_save_transfer_snapshot()
+    ReceiveMachine::_save_frete_snapshot()
     {
       elle::AtomicFile file(this->_frete_snapshot_path.string());
       file.write() << [&] (elle::AtomicFile::Write& write)

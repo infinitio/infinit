@@ -13,11 +13,15 @@ namespace infinit
     class PeerTransaction:
       public Transaction
     {
+    /*-------------.
+    | Construction |
+    `-------------*/
     public:
       PeerTransaction();
-      PeerTransaction(std::string const& sender_id,
-                      std::string const& sender_fullname,
-                      std::string const& sender_device_id);
+      PeerTransaction(std::string sender_id,
+                      std::string sender_fullname,
+                      std::string sender_device_id,
+                      std::string recipient_id);
       PeerTransaction(PeerTransaction&&) = default;
       PeerTransaction(PeerTransaction const&) = default;
       PeerTransaction&

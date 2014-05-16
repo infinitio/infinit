@@ -53,11 +53,12 @@ namespace surface
                       std::vector<std::string> files,
                       std::string const& message)
     {
+      ELLE_TRACE_SCOPE("%s: send files to %s", *this, peer_id);
       auto id = generate_id();
-      ELLE_TRACE("%s: create send transaction", *this)
-        this->_transactions.emplace(
-          id,
-          elle::make_unique<Transaction>(*this, id, peer_id, std::move(files), message));
+      this->_transactions.emplace(
+        id,
+        elle::make_unique<Transaction>(*this, id, peer_id,
+                                         std::move(files), message));
       return id;
     }
 

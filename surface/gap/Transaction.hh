@@ -70,6 +70,7 @@ namespace surface
         Snapshot(
           bool sender,
           std::shared_ptr<Data> data,
+          bool archived,
           boost::optional<std::vector<std::string>> files = {},
           boost::optional<std::string> message = {});
       public:
@@ -77,6 +78,7 @@ namespace surface
         ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
         ELLE_ATTRIBUTE_R(boost::optional<std::vector<std::string>>, files);
         ELLE_ATTRIBUTE_R(boost::optional<std::string>, message);
+        ELLE_ATTRIBUTE_R(bool, archived);
 
       // Serialization
       public:
@@ -119,10 +121,10 @@ namespace surface
       Transaction(Transaction&&) = default;
       /// Destruct.
       ~Transaction();
-    private:
       ELLE_ATTRIBUTE_R(State&, state);
       ELLE_ATTRIBUTE(boost::optional<std::vector<std::string>>, files);
       ELLE_ATTRIBUTE(boost::optional<std::string>, message);
+      ELLE_ATTRIBUTE_Rw(bool, archived);
 
     public:
       virtual

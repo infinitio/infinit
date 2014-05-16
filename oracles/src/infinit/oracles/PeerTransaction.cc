@@ -25,19 +25,20 @@ namespace infinit
       total_size()
     {}
 
-    PeerTransaction::PeerTransaction(std::string const& sender_id,
-                                     std::string const& sender_fullname,
-                                     std::string const& sender_device_id):
-      Transaction(sender_id, sender_device_id),
+    PeerTransaction::PeerTransaction(std::string sender_id,
+                                     std::string sender_fullname,
+                                     std::string sender_device_id,
+                                     std::string recipient_id):
+      Transaction(std::move(sender_id), std::move(sender_device_id)),
       files(),
       is_directory(),
       files_count(),
       message(),
-      recipient_id(),
+      recipient_id(std::move(recipient_id)),
       recipient_fullname(),
       recipient_device_id(),
       recipient_device_name(),
-      sender_fullname(sender_fullname),
+      sender_fullname(std::move(sender_fullname)),
       total_size()
     {}
 
