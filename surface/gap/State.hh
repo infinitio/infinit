@@ -512,9 +512,9 @@ namespace surface
     //   on_network_update_notification(
     //     infinit::oracles::trophonius::NetworkUpdateNotification const& notif);
 
-      // /*-------------.
-      // | Transactions |
-      // `-------------*/
+      /*-------------.
+      | Transactions |
+      `-------------*/
       class TransactionNotFoundException:
         public Exception
       {
@@ -532,6 +532,18 @@ namespace surface
 
       ELLE_ATTRIBUTE_R(Transactions, transactions);
       Transactions& transactions() {  return this->_transactions; }
+
+      /*------------------.
+      | Link Transactions |
+      `------------------*/
+
+      uint32_t
+      create_link(std::vector<std::string> const& files,
+                  std::string const& message);
+
+      /*------------------.
+      | Peer Transactions |
+      `------------------*/
 
       uint32_t
       send_files(std::string const& peer_id,
