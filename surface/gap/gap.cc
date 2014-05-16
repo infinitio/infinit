@@ -885,9 +885,9 @@ gap_transaction_ ## _field_(gap_State* state,                                 \
     #_field_,                                                                 \
     [&] (surface::gap::State& state) -> _type_                                \
     {                                                                         \
-      using namespace infinit::oracles;                                       \
-      auto peer_data = std::dynamic_pointer_cast<PeerTransaction>(            \
-        state.transactions().at(_id)->data());                                \
+      auto peer_data =                                                        \
+        std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(         \
+          state.transactions().at(_id)->data());                              \
       ELLE_ASSERT(peer_data != nullptr);                                      \
       auto res = _transform_(peer_data->_field_);                             \
       ELLE_DUMP("fetch "#_field_ ": %s", res);                                \
@@ -987,6 +987,98 @@ gap_transaction_progress(gap_State* state,
     });
 }
 
+bool
+gap_is_link_transaction(gap_State* state, uint32_t id)
+{
+  return run<bool>(
+    state,
+    "is link transaction",
+    [&] (surface::gap::State& state) -> bool
+    {
+      auto data =
+        std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
+          state.transactions().at(id)->data());
+      if (data == nullptr)
+        return false;
+      else
+        return true;
+    });
+}
+
+uint32_t
+gap_create_link_transaction(gap_State* state,
+                            std::vector<std::string> const& files,
+                            std::string const& message)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<uint32_t>(
+    state,
+    "create link",
+    [&] (surface::gap::State& state) -> uint32_t
+    {
+      return state.create_link(files, message);
+    });
+}
+
+surface::gap::LinkTransaction
+gap_link_transaction_by_id(gap_State* state,
+                           uint32_t id)
+{
+  ELLE_ASSERT(state != nullptr);
+  ELLE_ASSERT(id != surface::gap::null_id);
+  return run<surface::gap::LinkTransaction>(
+    state,
+    "link transaction by id",
+    [&] (surface::gap::State& state) -> surface::gap::LinkTransaction
+  {
+    auto data =
+      std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
+        state.transactions().at(id)->data());
+    ELLE_ASSERT(data != nullptr);
+    auto status = state.transactions().at(id)->last_status();
+    auto txn = surface::gap::LinkTransaction(id,
+                                             data->name,
+                                             data->mtime,
+                                             data->share_link,
+                                             data->click_count,
+                                             status);
+    return txn;
+  });
+}
+
+std::vector<surface::gap::LinkTransaction>
+gap_link_transactions(gap_State* state)
+{
+  ELLE_ASSERT(state != nullptr);
+  auto ret = run<std::vector<surface::gap::LinkTransaction>>(
+    state,
+    "link transactions",
+    [&]
+    (surface::gap::State& state) -> std::vector<surface::gap::LinkTransaction>
+    {
+      std::vector<surface::gap::LinkTransaction> values;
+      auto const& trs = state.transactions();
+      for(auto it = std::begin(trs); it != std::end(trs); ++it)
+      {
+        auto data =
+          std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
+            it->second->data());
+        if (data != nullptr)
+        {
+          auto status = state.transactions().at(it->first)->last_status();
+          auto txn = surface::gap::LinkTransaction(it->first,
+                                                   data->name,
+                                                   data->mtime,
+                                                   data->share_link,
+                                                   data->click_count,
+                                                   status);
+          values.push_back(txn);
+        }
+      }
+      return values;
+    });
+  return ret;
+}
 
 uint32_t*
 gap_transactions(gap_State* state)
@@ -1000,11 +1092,11 @@ gap_transactions(gap_State* state)
     {
       std::vector<uint32_t> values;
       auto const& trs = state.transactions();
-      using namespace infinit::oracles;
       for(auto it = std::begin(trs); it != std::end(trs); ++it)
       {
         auto peer_data =
-          std::dynamic_pointer_cast<PeerTransaction>(it->second->data());
+          std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
+            it->second->data());
         if (peer_data != nullptr)
           values.push_back(it->first);
       }

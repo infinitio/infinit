@@ -1,14 +1,12 @@
 #ifndef SURFACE_GAP_GAP_HH
 # define SURFACE_GAP_GAP_HH
 
-
-
 # include <string>
 # include <unordered_map>
 # include <vector>
 
-
 # include <surface/gap/enums.hh>
+# include <surface/gap/LinkTransaction.hh>
 
 typedef int gap_Bool;
 
@@ -362,6 +360,25 @@ typedef enum gap_Permission
   // WARNING: negative values are reserved for errors, no value of this
   // enum should have a negative value.
 } gap_Permission;
+
+/// Check if a transaction is a link transaction.
+bool
+gap_is_link_transaction(gap_State* state, uint32_t id);
+
+/// Create a link transaction.
+uint32_t
+gap_create_link_transaction(gap_State* state,
+                            std::vector<std::string> const& files,
+                            std::string const& message);
+
+/// Fetch a transaction by id.
+surface::gap::LinkTransaction
+gap_link_transaction_by_id(gap_State* state,
+                           uint32_t id);
+
+/// Fetch list of link transactions.
+std::vector<surface::gap::LinkTransaction>
+gap_link_transactions(gap_State* state);
 
 /// Get the list of transaction ids involving the user.
 uint32_t*
