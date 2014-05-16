@@ -686,11 +686,15 @@ namespace surface
             // progress. That way we don't produce fake snapshot state data
             // for further cloud upload.
             auto& snapshot = this->frete().transfer_snapshot();
-            // don't use local_chunk for progress or we might go back
-            ELLE_DEBUG("Setting progress to %s",
-              float(next_chunk) / float(chunk_count));
+            // Be careful about setting progress back, chunks finish in parallel
+            float p = float(local_chunk) / float(chunk_count);
             total_bytes_transfered += buffer.size();
-            snapshot->progress(next_chunk * snapshot->total_size() / chunk_count);
+            auto progress_maybe = local_chunk * snapshot->total_size() / chunk_count;
+            if (snapshot->progress() < progress_maybe)
+            {
+              ELLE_DEBUG("Setting progress to %s", p);
+              snapshot->progress(progress_maybe);
+            }
             chunks.push_back(std::make_pair(local_chunk, etag));
           }
         };
@@ -712,6 +716,8 @@ namespace surface
               return a.first < b.first;
             });
         handler.multipart_finalize(source_file_name, upload_id, chunks);
+        this->frete().transfer_snapshot()->progress(
+          this->frete().transfer_snapshot()->total_size());
         // mark transfer as raw-finished
         this->gap_state(gap_transaction_finished);
         this->finished().open();
