@@ -1,7 +1,7 @@
 #ifndef SURFACE_GAP_SEND_MACHINE_HH
 # define SURFACE_GAP_SEND_MACHINE_HH
 
-# include <surface/gap/PeerTransactionMachine.hh>
+# include <surface/gap/TransactionMachine.hh>
 # include <surface/gap/State.hh>
 
 namespace surface
@@ -9,14 +9,14 @@ namespace surface
   namespace gap
   {
     class  SendMachine:
-      public PeerTransactionMachine
+      public TransactionMachine
     {
     /*------.
     | Types |
     `------*/
     public:
       typedef SendMachine Self;
-      typedef PeerTransactionMachine Super;
+      typedef TransactionMachine Super;
 
     /*-------------.
     | Construction |
