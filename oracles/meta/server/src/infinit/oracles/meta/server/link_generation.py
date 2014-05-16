@@ -61,7 +61,83 @@ class Mixin:
       encoded_hash = self._basex_encode(link_hash)
       return encoded_hash[:encoded_hash_length]
 
-  @api('/link/generate', method = 'POST')
+  def _get_aws_credentials(self, user, link_id):
+    """
+    Fetch AWS credentials.
+    """
+    token_maker = cloud_buffer_token.CloudBufferToken(
+        user['_id'], link_id, 'ALL',
+        aws_region = self.aws_region, bucket_name = self.aws_link_bucket)
+    raw_creds = token_maker.generate_s3_token()
+
+    if raw_creds is None:
+      return None
+
+    credentials = dict()
+    credentials['access_key_id']     = raw_creds['AccessKeyId']
+    credentials['bucket']            = self.aws_link_bucket
+    credentials['expiration']        = raw_creds['Expiration']
+    credentials['folder']            = link_id
+    credentials['protocol']          = 'aws'
+    credentials['region']            = self.aws_region
+    credentials['secret_access_key'] = raw_creds['SecretAccessKey']
+    credentials['session_token']     = raw_creds['SessionToken']
+
+    return credentials
+
+  @api('/link/<link_id>/credentials', method = 'GET')
+  @require_logged_in
+  def get_link_credentials(self, link_id: bson.ObjectId):
+    """
+    Fetch AWS credentials from DB.
+    """
+    with elle.log.trace('fetch AWS credentials for user (%s) and link (%s)',
+                        self.user['_id'], link_id):
+      user = self.user
+      link = self.database.links.find_one({'_id': user['_id']})
+      if link is None:
+        self.not_found()
+      if link['sender_id'] != user['_id']:
+        self.forbidden()
+
+      if link['aws_credentials'] is None:
+        credentials = self._get_aws_credentials(user, link_id)
+        if credentials is None:
+          self.fail(error.UNABLE_TO_GET_AWS_CREDENTIALS)
+        self.database.links.update(
+          {'_id': link_id},
+          {'$set': {'aws_credentials': credentials}})
+        return {'aws_credentials': credentials}
+      else:
+        return {'aws_credentials': link['aws_credentials']}
+
+
+  @api('/link/<link_id>/credentials', method = 'POST')
+  @require_logged_in
+  def make_link_credentials(self, link_id: bson.ObjectId):
+    """
+    Generate new AWS credentials and save them to the DB.
+    """
+    with elle.log.trace('generate AWS credentials for user (%s) and link (%s)',
+                        self.user['_id'], link_id):
+      user = self.user
+      link = self.database.links.find_one({'_id': link_id})
+      if link is None:
+        self.not_found()
+      if link['sender_id'] != user['_id']:
+        self.forbidden()
+
+      credentials = self._get_aws_credentials(user, link_id)
+      if credentials is None:
+        self.fail(error.UNABLE_TO_GET_AWS_CREDENTIALS)
+
+      self.database.links.update(
+        {'_id': link_id},
+        {'$set': {'aws_credentials': credentials}})
+      return {'aws_credentials': credentials}
+
+
+  @api('/link', method = 'POST')
   @require_logged_in
   def link_generate(self, file_list, name):
     """
@@ -77,7 +153,7 @@ class Mixin:
     with elle.log.trace('generating a link for user (%s)' % self.user['_id']):
       user = self.user
       if len(file_list) == 0:
-        self.bad_request('no file dictioary')
+        self.bad_request('no file dictionary')
       if len(name) == 0:
         self.bad_request('no name')
 
@@ -89,7 +165,6 @@ class Mixin:
       link = {
         'aws_credentials': None,
         'click_count': 0,
-        'cloud_location': None,
         'creation_time': creation_time,
         'expiry_time': expiry_time,
         'file_list': file_list,
@@ -104,32 +179,14 @@ class Mixin:
 
       link_id = self.database.links.insert(link)
 
-      token_maker = cloud_buffer_token.CloudBufferToken(
-        user['_id'], link_id, 'ALL',
-        aws_region = self.aws_region, bucket_name = self.aws_link_bucket)
-      raw_creds = token_maker.generate_s3_token()
-
-      if raw_creds is None:
-        return self.fail(error.UNABLE_TO_GET_AWS_CREDENTIALS)
-
-      credentials = dict()
-      credentials['access_key_id']     = raw_creds['AccessKeyId']
-      credentials['bucket']            = self.aws_link_bucket
-      credentials['expiration']        = raw_creds['Expiration']
-      credentials['folder']            = link_id
-      credentials['protocol']          = 'aws'
-      credentials['region']            = self.aws_region
-      credentials['secret_access_key'] = raw_creds['SecretAccessKey']
-      credentials['session_token']     = raw_creds['SessionToken']
-
       destination = str('%(protocol)s://%(bucket)s.s3.amazonaws.com/%(link_id)s' %
                         {'protocol': 'https',
                          'bucket': self.aws_link_bucket,
                          'link_id': link_id})
 
-      cloud_location = str('%(destination)s/%(name)s' %
-                           {'destination': destination,
-                            'name': name})
+      credentials = self._get_aws_credentials(user, link_id)
+      if credentials is None:
+        self.fail(error.UNABLE_TO_GET_AWS_CREDENTIALS)
 
       # We will use the DB to ensure that our hash is unique.
       attempt = 1
@@ -144,7 +201,6 @@ class Mixin:
             {'$set': {
               'aws_credentials': credentials,
               'hash': link_hash,
-              'cloud_location': cloud_location,
             }})
           break
         except errors.DuplicateKeyError:
@@ -154,7 +210,8 @@ class Mixin:
           attempt += 1
 
       share_link = str('%(meta_url)s/link/%(hash)s' %
-                       {'meta_url': meta_url,
+                       {'aws_credentials': credentials,
+                        'meta_url': meta_url,
                         'hash': link_hash})
 
       return {
@@ -164,10 +221,10 @@ class Mixin:
         'share_link': share_link,
       }
 
-  @api('/link/update', method = 'POST')
+  @api('/link/<link_id>', method = 'POST')
   @require_logged_in
   def link_update(self,
-                  id: bson.ObjectId,
+                  link_id: bson.ObjectId,
                   progress: float,
                   status: int):
     """
@@ -175,12 +232,13 @@ class Mixin:
     id -- _id of link.
     status -- Current status of link.
     """
-    with elle.log.trace('updating link %s' % id):
+    with elle.log.trace('updating link %s' % link_id):
+      user = self.user
       if progress < 0.0 or progress > 1.0:
         self.bad_request('invalid progress')
       if status not in transaction_status.statuses.values():
         self.bad_request('invalid status')
-      link = self.database.links.find_one({'_id': id})
+      link = self.database.links.find_one({'_id': link_id})
       if link is None:
         self.not_found()
       if status == link['status']:
@@ -188,8 +246,10 @@ class Mixin:
       elif link['status'] in transaction_status.final:
         self.forbidden('cannot change status from %s to %s' %
                        (link['status'], status))
+      if link['sender_id'] != user['_id']:
+        self.forbidden()
       self.database.links.update(
-        {'_id': id},
+        {'_id': link_id},
         {
           '$set':
           {
@@ -264,7 +324,6 @@ class Mixin:
         {'$project': {
           'aws_credentials': '$aws_credentials',
           'click_count': '$click_count',
-          'cloud_location': '$cloud_location',
           'creation_time': '$creation_time',
           'expiry_time': '$expiry_time',
           'file_list': '$file_list',
