@@ -4,6 +4,7 @@ import infinit.oracles.meta.server
 from infinit.oracles.meta.server.mail import Mailer
 from infinit.oracles.meta.server.invitation import Invitation
 from infinit.oracles.meta.server import transaction_status
+from infinit.oracles.meta import version
 
 import http.cookies
 import os
@@ -61,11 +62,14 @@ class Client:
     else:
       return content
 
-  def request(self, url, method, body):
+  def request(self, url, method, body, user_agent = None):
     h = httplib2.Http()
     uri = "http://localhost:%s/%s" % (self.__meta_port,
                                       url)
     headers = {}
+    if user_agent is None:
+      user_agent = 'MetaClient/' + version.version
+    headers['user-agent'] = user_agent
     if body is not None and isinstance(body, dict):
       headers['Content-Type'] = 'application/json'
       body = json.dumps(body)
