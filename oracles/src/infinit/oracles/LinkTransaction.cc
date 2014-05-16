@@ -37,6 +37,7 @@ namespace infinit
       s.serialize("ctime", this->ctime);
       s.serialize("mtime", this->mtime);
       s.serialize("status", this->status, elle::serialization::as<int>());
+      s.serialize("share_link", this->share_link);
     }
 
     using elle::serialization::Hierarchy;

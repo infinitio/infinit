@@ -37,6 +37,7 @@ namespace infinit
       FileList file_list;
       std::string hash;
       std::string name;
+      std::string share_link;
 
     /*--------------.
     | Serialization |
