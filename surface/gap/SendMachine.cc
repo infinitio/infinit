@@ -694,6 +694,10 @@ namespace surface
           }
         };
         int num_threads = 4;
+        std::string env_num_threads =
+          elle::os::getenv("INFINIT_NUM_GHOST_CLOUD_UPLOAD_THREAD", "");
+        if (!env_num_threads.empty())
+          num_threads = boost::lexical_cast<unsigned>(env_num_threads);
         elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
         {
           for (int i=0; i<num_threads; ++i)
