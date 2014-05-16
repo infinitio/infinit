@@ -251,6 +251,7 @@ namespace infinit
         _root_url{elle::sprintf("%s://%s:%d", protocol, server, port)},
         _client{"MetaClient/" INFINIT_VERSION},
         _default_configuration{boost::posix_time::seconds{30},
+                               reactor::DurationOpt(),
                                reactor::http::Version::v10},
         _email{},
         _logged_in{false}

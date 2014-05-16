@@ -258,7 +258,7 @@ namespace infinit
       ELLE_TRACE_SCOPE("%s: send event to %s", *this, url);
       ELLE_DUMP("%s: data: %s", *this, data);
       reactor::http::Request::Configuration cfg(
-        10_sec, reactor::http::Version::v11);
+        10_sec, reactor::DurationOpt(), reactor::http::Version::v11);
       cfg.expected_status(this->_expected_status);
       cfg.header_add("User-Agent", Reporter::user_agent());
       reactor::http::Request r(
