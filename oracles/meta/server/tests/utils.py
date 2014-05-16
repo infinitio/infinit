@@ -37,6 +37,7 @@ class Client:
   def __init__(self, meta):
     self.__cookies = None
     self.__meta_port = meta._Meta__server.port
+    self.user_agent = 'MetaClient/' + version.version
 
   def __get_cookies(self, headers):
     cookies = headers.get('set-cookie', None)
@@ -62,14 +63,12 @@ class Client:
     else:
       return content
 
-  def request(self, url, method, body, user_agent = None):
+  def request(self, url, method, body):
     h = httplib2.Http()
     uri = "http://localhost:%s/%s" % (self.__meta_port,
                                       url)
     headers = {}
-    if user_agent is None:
-      user_agent = 'MetaClient/' + version.version
-    headers['user-agent'] = user_agent
+    headers['user-agent'] = self.user_agent
     if body is not None and isinstance(body, dict):
       headers['Content-Type'] = 'application/json'
       body = json.dumps(body)
