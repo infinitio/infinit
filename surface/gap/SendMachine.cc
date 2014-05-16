@@ -595,12 +595,13 @@ namespace surface
         ELLE_TRACE("%s: using chunk size of %s, with %s chunks",
                    *this, chunk_size, chunk_count);
         // Load our own snapshot that contains the upload uid
-        std::string raw_snapshot_path = common::infinit::frete_snapshot_path(
-          this->data()->sender_id,
-          this->data()->id + "_raw");
+        auto raw_snapshot_path =
+          this->transaction().snapshots_directory() /  "ghost_id.snapshot";
         std::string upload_id;
-        std::ifstream ifs(raw_snapshot_path);
-        ifs >> upload_id;
+        {
+          std::ifstream ifs(raw_snapshot_path.string());
+          ifs >> upload_id;
+        }
         ELLE_DEBUG("%s: tried to reload id from %s, got %s",
                    *this, raw_snapshot_path, upload_id);
         std::vector<aws::S3::MultiPartChunk> chunks;
@@ -611,7 +612,7 @@ namespace surface
         {
           //FIXME: pass correct mime type for non-zip case
           upload_id = handler.multipart_initialize(source_file_name);
-          std::ofstream ofs(raw_snapshot_path);
+          std::ofstream ofs(raw_snapshot_path.string());
           ofs << upload_id;
           ELLE_DEBUG("%s: saved id %s to %s",
                      *this, upload_id, raw_snapshot_path);
