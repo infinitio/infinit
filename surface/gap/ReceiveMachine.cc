@@ -80,8 +80,9 @@ namespace surface
     ReceiveMachine::ReceiveMachine(
       Transaction& transaction,
       uint32_t id,
-      std::shared_ptr<TransactionMachine::Data> data)
+      std::shared_ptr<Data> data)
       : Super(transaction, id, std::move(data))
+      , _data(data)
       , _wait_for_decision_state(
         this->_machine.state_make(
           "wait for decision", std::bind(&ReceiveMachine::_wait_for_decision, this)))

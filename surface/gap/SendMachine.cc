@@ -71,17 +71,6 @@ namespace surface
       this->_stop();
     }
 
-    void
-    SendMachine::notify_user_connection_status(std::string const& user_id,
-                                                  std::string const& device_id,
-                                                  bool online)
-    {
-      if (user_id == this->data()->recipient_id
-          && (this->data()->recipient_device_id.empty() ||
-              device_id == this->data()->recipient_device_id))
-        this->peer_connection_changed(online);
-    }
-
     static std::streamsize const chunk_size = 1 << 18;
 
     void
@@ -271,7 +260,7 @@ namespace surface
               buffer,
               local_chunk);
             // FIXME
-            auto progress = float(next_chunk) / float(chunk_count);
+            // auto progress = float(next_chunk) / float(chunk_count);
             // Now, totally fake progress on the original frete by
             // updating the global progress, and not individual files
             // progress. That way we don't produce fake snapshot state data
@@ -327,6 +316,29 @@ namespace surface
       ELLE_LOG("%s: clearing temporary directory %s",
                *this, tmpdir);
       boost::filesystem::remove_all(tmpdir);
+    }
+
+    std::pair<std::string, bool>
+    SendMachine::archive_info()
+    {
+      // FIXME: fix transaction machines hierarchy
+      using infinit::oracles::PeerTransaction;
+      auto peer_data =
+        std::dynamic_pointer_cast<PeerTransaction>(this->data());
+      ELLE_ASSERT(peer_data.get());
+      auto const& files = peer_data->files;
+      if (files.size() == 1)
+        if (peer_data->is_directory)
+          return std::make_pair(
+            boost::filesystem::path(*files.begin())
+               .filename()
+               .replace_extension("zip")
+               .string(),
+            true);
+        else
+          return std::make_pair(*files.begin(), false);
+      else
+        return std::make_pair("archive.zip", true);
     }
   }
 }

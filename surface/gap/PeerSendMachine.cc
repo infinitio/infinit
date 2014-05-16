@@ -297,7 +297,7 @@ namespace surface
                  boost::filesystem::is_directory(first_file));
       this->transaction_id(
         this->state().meta().create_transaction(
-          this->peer_id(),
+          this->data()->recipient_id,
           this->data()->files,
           this->data()->files.size(),
           this->data()->total_size,
@@ -308,8 +308,9 @@ namespace surface
         );
       ELLE_TRACE("%s: created transaction %s", *this, this->transaction_id());
       // XXX: Ensure recipient is an id.
-      this->peer_id(this->state().user(this->peer_id(), true).id);
-      auto const& peer = this->state().user(this->peer_id());
+      this->data()->recipient_id =
+        this->state().user(this->data()->recipient_id, true).id;
+      auto const& peer = this->state().user(this->data()->recipient_id);
       bool ghost = false;
       if (peer.ghost())
         ghost = true;
@@ -317,7 +318,7 @@ namespace surface
         this->state().metrics_reporter()->transaction_created(
           this->transaction_id(),
           this->state().me().id,
-          this->peer_id(),
+          this->data()->recipient_id,
           this->data()->files.size(),
           size,
           this->_message.length(),
@@ -332,7 +333,7 @@ namespace surface
     PeerSendMachine::_wait_for_accept()
     {
       ELLE_TRACE_SCOPE("%s: waiting for peer to accept or reject", *this);
-      auto peer = this->state().user(this->peer_id());
+      auto peer = this->state().user(this->data()->recipient_id);
       if (peer.ghost())
         this->_ghost_cloud_upload();
       else if (!peer.ghost() && !peer.online())
@@ -602,7 +603,8 @@ namespace surface
       auto& frete = this->frete();
       if (frete.has_peer_key())
         return true;
-      auto k = this->state().user(this->peer_id(), true).public_key;
+      auto k =
+        this->state().user(this->data()->recipient_id, true).public_key;
       if (k.empty() && !assert_success)
         return false;
       ELLE_ASSERT(!k.empty());
@@ -653,6 +655,18 @@ namespace surface
       if (this->_frete != nullptr)
         return this->_frete->progress();
       return 0.0f;
+    }
+
+    void
+    PeerSendMachine::notify_user_connection_status(
+      std::string const& user_id,
+      std::string const& device_id,
+      bool online)
+    {
+      if (user_id == this->data()->recipient_id
+          && (this->data()->recipient_device_id.empty() ||
+              device_id == this->data()->recipient_device_id))
+        this->peer_connection_changed(online);
     }
   }
 }

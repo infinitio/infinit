@@ -332,7 +332,17 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: run fsm %s", *this, this->_fsm);
       // XXX: Best place to do that? (See constructor).
-      if (this->_owner.state().user(this->_owner.peer_id()).online())
+      std::string peer_id;
+      // FIXME: fix transaction machines hierarchy
+      using infinit::oracles::PeerTransaction;
+      auto peer_data =
+        std::dynamic_pointer_cast<PeerTransaction>(this->_owner.data());
+      ELLE_ASSERT(peer_data.get());
+      if (dynamic_cast<PeerSendMachine*>(&this->_owner))
+        peer_id = peer_data->recipient_id;
+      else
+        peer_id = peer_data->sender_id;
+      if (this->_owner.state().user(peer_id).online())
       {
         this->_peer_offline.close();
         this->_peer_online.open();

@@ -378,27 +378,10 @@ namespace surface
     }
 
     void
-    TransactionMachine::notify_user_connection_status(
-      std::string const& user_id,
-      std::string const& device_id,
-      bool online)
-    {
-      if (user_id == this->_data->sender_id)
-      // We don't care about our own status.
-      if (user_id == this->transaction().state().me().id)
-        return;
-      // Check it concerns one of the users.
-      ELLE_ASSERT(user_id == this->_data->sender_id
-                  || user_id == this->_data->recipient_id);
-      // If recipient, check it isn't accepted or it's for the right device.
-      ELLE_ASSERT(user_id != this->_data->recipient_id
-                  || this->_data->recipient_device_id.empty()
-                  || device_id == this->_data->recipient_device_id);
-      // If sender, check  it's for the right device.
-      ELLE_ASSERT(user_id != this->_data->sender_id
-                  || device_id == this->_data->sender_device_id);
-      this->peer_connection_changed(online);
-    }
+    TransactionMachine::notify_user_connection_status(std::string const&,
+                                                      std::string const&,
+                                                      bool)
+    {}
 
     void
     TransactionMachine::peer_connection_changed(bool user_status)
@@ -515,40 +498,6 @@ namespace surface
       this->_data->id = id;
     }
 
-    std::string const&
-    TransactionMachine::peer_id() const
-    {
-      if (this->is_sender())
-      {
-        ELLE_ASSERT(!this->_data->recipient_id.empty());
-        return this->_data->recipient_id;
-      }
-      else
-      {
-        ELLE_ASSERT(!this->_data->sender_id.empty());
-        return this->_data->sender_id;
-      }
-    }
-
-    void
-    TransactionMachine::peer_id(std::string const& id)
-    {
-      if (this->is_sender())
-      {
-        if (!this->_data->recipient_id.empty() && this->_data->recipient_id != id)
-          ELLE_WARN("%s: replace recipient id %s by %s",
-                    *this, this->_data->recipient_id, id);
-        this->_data->recipient_id = id;
-      }
-      else
-      {
-        if (!this->_data->sender_id.empty() && this->_data->sender_id != id)
-          ELLE_WARN("%s: replace sender id %s by %s",
-                    *this, this->_data->sender_id, id);
-        this->_data->sender_id = id;
-      }
-    }
-
     station::Station&
     TransactionMachine::station()
     {
@@ -634,23 +583,5 @@ namespace surface
     {
       this->reset_transfer_signal().signal();
     }
-    std::pair<std::string, bool>
-    TransactionMachine::archive_info()
-    {
-      auto const& files = this->data()->files;
-      if (files.size() == 1)
-        if (this->data()->is_directory)
-          return std::make_pair(
-            boost::filesystem::path(*files.begin())
-               .filename()
-               .replace_extension("zip")
-               .string(),
-            true);
-        else
-          return std::make_pair(*files.begin(), false);
-      else
-        return std::make_pair("archive.zip", true);
-    }
-
   }
 }

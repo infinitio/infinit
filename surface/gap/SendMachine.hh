@@ -41,12 +41,6 @@ namespace surface
     /*-----------------------.
     | Machine implementation |
     `-----------------------*/
-    public:
-      virtual
-      void
-      notify_user_connection_status(std::string const& user_id,
-                                    std::string const& device_id,
-                                    bool online) override;
     protected:
       reactor::fsm::State& _create_transaction_state;
 
@@ -64,6 +58,11 @@ namespace surface
       {
         return true;
       }
+
+      /// Return (name, is_an_archive) if we have to put all transfer data
+      /// in one file
+      std::pair<std::string, bool>
+      archive_info();
 
     protected:
       virtual

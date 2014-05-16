@@ -97,6 +97,11 @@ namespace surface
       _fetch_peer_key(bool assert_success);
       void
       _save_frete_snapshot();
+      virtual
+      void
+      notify_user_connection_status(std::string const& user_id,
+                                    std::string const& device_id,
+                                    bool online) override;
     };
   }
 }

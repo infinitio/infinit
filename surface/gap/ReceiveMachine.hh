@@ -16,7 +16,7 @@
 
 # include <frete/fwd.hh>
 # include <frete/Frete.hh>
-
+# include <oracles/src/infinit/oracles/PeerTransaction.hh>
 # include <surface/gap/TransactionMachine.hh>
 # include <surface/gap/State.hh>
 # include <surface/gap/TransferBufferer.hh>
@@ -32,6 +32,7 @@ namespace surface
     | Types |
     `------*/
     public:
+      typedef infinit::oracles::PeerTransaction Data;
       typedef ::frete::Frete::FileSize FileSize;
       typedef ::frete::Frete::FileID FileID;
       typedef ReceiveMachine Self;
@@ -43,9 +44,10 @@ namespace surface
     public:
       ReceiveMachine(Transaction& state,
                      uint32_t id,
-                     std::shared_ptr<TransactionMachine::Data> data);
+                     std::shared_ptr<Data> data);
       virtual
       ~ReceiveMachine();
+      ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
 
     private:
       void

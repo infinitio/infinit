@@ -44,7 +44,7 @@ namespace surface
     | Types |
     `------*/
     public:
-      typedef infinit::oracles::PeerTransaction Data;
+      typedef infinit::oracles::Transaction Data;
       typedef TransactionMachine Self;
 
     public:
@@ -125,9 +125,6 @@ namespace surface
       void
       reset_transfer();
 
-      /// Return (name, is_an_archive) if we have to put all transfer data
-      /// in one file
-      std::pair<std::string, bool> archive_info();
     public:
       /// Returns if the machine is releated to the given transaction id.
       bool
@@ -271,14 +268,6 @@ namespace surface
     protected:
       void
       transaction_id(std::string const& id);
-
-    public:
-      std::string const&
-      peer_id() const;
-
-    protected:
-      void
-      peer_id(std::string const& id);
 
     public:
       virtual
