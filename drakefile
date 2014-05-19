@@ -605,6 +605,17 @@ def configure(cxx_toolkit = None,
   )
   cli_build << cli_recv_bin
 
+  cli_link_sources = drake.nodes(
+    'satellites/link/Link.cc',
+  )
+  cli_link_bin = drake.cxx.Executable(
+    'bin/8link',
+    cli_link_sources + [gap_lib, elle_lib, reactor_lib, crash_lib],
+    cxx_toolkit,
+    cli_cxx_config
+  )
+  cli_build << cli_link_bin
+
   cli_online_sources = drake.nodes(
     'satellites/online/Online.cc',
   )
