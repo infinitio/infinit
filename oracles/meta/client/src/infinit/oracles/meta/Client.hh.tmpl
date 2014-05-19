@@ -262,19 +262,9 @@ namespace infinit
         ELLE_ATTRIBUTE_R(std::string, id);
         ELLE_ATTRIBUTE_R(std::string, share_link);
 
-        CreateLinkTransactionResponse(elle::serialization::SerializerIn& s)
-        {
-          this->serialize(s);
-        }
-
+        CreateLinkTransactionResponse(elle::serialization::SerializerIn& s);
         void
-        serialize(elle::serialization::Serializer& s)
-        {
-          s.serialize("aws_credentials", this->_aws_credentials);
-          s.serialize("destination", this->_destination);
-          s.serialize("id", this->_id);
-          s.serialize("share_link", this->_share_link);
-        }
+        serialize(elle::serialization::Serializer& s);
       };
 
       class LinkTransactionResponse

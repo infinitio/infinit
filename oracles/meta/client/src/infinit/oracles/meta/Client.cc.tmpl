@@ -890,22 +890,45 @@ namespace infinit
       /*------.
       | Links |
       `------*/
+
+      CreateLinkTransactionResponse::CreateLinkTransactionResponse(
+        elle::serialization::SerializerIn& s)
+      {
+        this->serialize(s);
+      }
+
+      void
+      CreateLinkTransactionResponse::serialize(
+        elle::serialization::Serializer& s)
+      {
+        s.serialize("aws_credentials", this->_aws_credentials);
+        s.serialize("destination", this->_destination);
+        s.serialize("id", this->_id);
+        s.serialize("share_link", this->_share_link);
+      }
+
       CreateLinkTransactionResponse
-      Client::create_link(LinkTransaction::FileList const& file_list,
+      Client::create_link(LinkTransaction::FileList const& files,
                           std::string const& name) const
       {
-        elle::json::Object body;
-        body["file_list"] = file_list;
-        body["name"] = name;
         reactor::http::Request request =
-          this->_client.request(this->_url("/link/generate"),
+          this->_client.request(this->_url("/link"),
                                 Method::POST,
                                 "application/json",
                                 this->_default_configuration);
-        elle::json::write(request, body);
+        {
+          elle::serialization::json::SerializerOut query(request);
+          // FIXME: get rid of const casts when output serialization has his
+          // const API
+          query.serialize("name", const_cast<std::string&>(name));
+          query.serialize("files",
+                          const_cast<LinkTransaction::FileList&>(files));
+        }
         this->_handle_errors(request);
-        elle::serialization::json::SerializerIn input(request);
-        return CreateLinkTransactionResponse(input);
+        {
+          elle::serialization::json::SerializerIn input(request);
+          return CreateLinkTransactionResponse(input);
+        }
       }
 
       void
@@ -914,11 +937,11 @@ namespace infinit
                           Transaction::Status status) const
       {
         elle::json::Object body;
-        body["id"] = id;
         body["progress"] = progress;
-        body["status"] = status;
+        body["status"] = int(status);
+        auto url = elle::sprintf("/link/%s", id);
         reactor::http::Request request =
-          this->_client.request(this->_url("/link/update"),
+          this->_client.request(this->_url(url),
                                 Method::POST,
                                 "application/json",
                                 this->_default_configuration);

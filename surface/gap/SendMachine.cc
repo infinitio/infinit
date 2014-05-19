@@ -49,7 +49,7 @@ namespace surface
         .action_exception(
           [this] (std::exception_ptr e)
           {
-            ELLE_WARN("%s: error while waiting for accept: %s",
+            ELLE_WARN("%s: error while creating transaction: %s",
                       *this, elle::exception_string(e));
           });
       this->_machine.state_changed().connect(
@@ -161,11 +161,12 @@ namespace surface
         std::string source_file_name = source_file_path.filename().string();
         ELLE_TRACE("%s: will ghost-cloud-upload %s of size %s",
                    *this, source_file_path, source_file_size);
-
-        aws::S3 handler(this->make_aws_credentials_getter());
-
+        auto get_credentials = [this] (bool first_time)
+          {
+            return this->_aws_credentials(first_time);
+          };
+        aws::S3 handler(get_credentials);
         typedef frete::Frete::FileSize FileSize;
-
         // AWS constraints: no more than 10k chunks, at least 5Mo block size
         FileSize chunk_size = std::max(FileSize(5*1024*1024), source_file_size / 9500);
         int chunk_count = source_file_size / chunk_size + ((source_file_size % chunk_size)? 1:0);

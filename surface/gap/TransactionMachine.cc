@@ -246,41 +246,6 @@ namespace surface
     }
 
     void
-    TransactionMachine::_finalize(infinit::oracles::Transaction::Status status)
-    {
-      ELLE_TRACE_SCOPE("%s: finalize machine: %s", *this, status);
-      if (!this->_data->empty())
-      {
-        try
-        {
-          this->state().meta().update_transaction(
-            this->transaction_id(), status);
-        }
-        catch (infinit::oracles::meta::Exception const& e)
-        {
-          using infinit::oracles::meta::Error;
-          if (e.err == Error::transaction_already_finalized)
-            ELLE_TRACE("%s: transaction already finalized", *this);
-          else if (e.err == Error::transaction_already_has_this_status)
-            ELLE_TRACE("%s: transaction already in this state", *this);
-          else
-            ELLE_ERR("%s: unable to finalize the transaction %s: %s",
-                     *this, this->transaction_id(), elle::exception_string());
-        }
-        catch (std::exception const&)
-        {
-          ELLE_ERR("%s: unable to finalize the transaction %s: %s",
-                   *this, this->transaction_id(), elle::exception_string());
-        }
-      }
-      else
-      {
-        ELLE_ERR("%s: can't finalize transaction: id is still empty", *this);
-      }
-      this->cleanup();
-    }
-
-    void
     TransactionMachine::_run(reactor::fsm::State& initial_state)
     {
       ELLE_TRACE_SCOPE("%s: start transfaction machine at %s",
@@ -440,46 +405,6 @@ namespace surface
       if (!data.id.empty())
         stream << ", t=" << data.id;
       stream << ")";
-    }
-
-    std::function<aws::Credentials(bool)>
-    TransactionMachine::make_aws_credentials_getter()
-    {
-      return [this](bool first_time)
-      {
-         auto& meta = this->state().meta();
-         int delay = 1;
-         oracles::meta::CloudBufferTokenResponse token;
-         while (true)
-         {
-           try
-           {
-             token = meta.get_cloud_buffer_token(this->transaction_id(),
-                                                      !first_time);//force-regenerate
-             break;
-           }
-           catch(reactor::Terminate const& e)
-           {
-             throw;
-           }
-           catch(...)
-           {
-             ELLE_LOG("%s: get_cloud_buffer_token failed with %s, retrying...",
-                      *this, elle::exception_string());
-             // if meta looses connectivity to provider let's not flood it
-             reactor::sleep(boost::posix_time::seconds(delay));
-             delay = std::min(delay * 2, 60 * 10);
-           }
-         }
-         auto credentials = aws::Credentials(token.access_key_id,
-                                             token.secret_access_key,
-                                             token.session_token,
-                                             token.region,
-                                             token.bucket,
-                                             token.folder,
-                                             token.expiration);
-         return credentials;
-      };
     }
 
     void

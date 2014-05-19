@@ -139,7 +139,7 @@ class Mixin:
 
   @api('/link', method = 'POST')
   @require_logged_in
-  def link_generate(self, file_list, name):
+  def link_generate(self, files, name):
     """
     Generate a link from a list of times and a message.
 
@@ -152,7 +152,7 @@ class Mixin:
     """
     with elle.log.trace('generating a link for user (%s)' % self.user['_id']):
       user = self.user
-      if len(file_list) == 0:
+      if len(files) == 0:
         self.bad_request('no file dictionary')
       if len(name) == 0:
         self.bad_request('no name')
@@ -167,7 +167,7 @@ class Mixin:
         'click_count': 0,
         'creation_time': creation_time,
         'expiry_time': expiry_time,
-        'file_list': file_list,
+        'file_list': files,
         'hash': None,
         'modification_time': creation_time,
         'name': name,
@@ -221,10 +221,10 @@ class Mixin:
         'share_link': share_link,
       }
 
-  @api('/link/<link_id>', method = 'POST')
+  @api('/link/<id>', method = 'POST')
   @require_logged_in
   def link_update(self,
-                  link_id: bson.ObjectId,
+                  id: bson.ObjectId,
                   progress: float,
                   status: int):
     """
@@ -232,13 +232,13 @@ class Mixin:
     id -- _id of link.
     status -- Current status of link.
     """
-    with elle.log.trace('updating link %s' % link_id):
+    with elle.log.trace('updating link %s' % id):
       user = self.user
       if progress < 0.0 or progress > 1.0:
         self.bad_request('invalid progress')
       if status not in transaction_status.statuses.values():
         self.bad_request('invalid status')
-      link = self.database.links.find_one({'_id': link_id})
+      link = self.database.links.find_one({'_id': id})
       if link is None:
         self.not_found()
       if status == link['status']:
@@ -249,7 +249,7 @@ class Mixin:
       if link['sender_id'] != user['_id']:
         self.forbidden()
       self.database.links.update(
-        {'_id': link_id},
+        {'_id': id},
         {
           '$set':
           {

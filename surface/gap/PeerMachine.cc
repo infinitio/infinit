@@ -1,8 +1,10 @@
 #include <elle/log.hh>
 
+#include <infinit/oracles/meta/Client.hh>
 #include <surface/gap/Exception.hh>
 #include <surface/gap/PeerMachine.hh>
 #include <surface/gap/PeerTransferMachine.hh>
+#include <surface/gap/State.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.PeerMachine");
 
@@ -115,6 +117,78 @@ namespace surface
     PeerMachine::progress() const
     {
       return this->_transfer_machine->progress();
+    }
+
+    aws::Credentials
+    PeerMachine::_aws_credentials(bool first_time)
+    {
+      auto& meta = this->state().meta();
+      int delay = 1;
+      infinit::oracles::meta::CloudBufferTokenResponse token;
+      while (true)
+      {
+        try
+        {
+          token =
+            meta.get_cloud_buffer_token(this->transaction_id(), !first_time);
+          break;
+        }
+        catch(reactor::Terminate const& e)
+        {
+          throw;
+        }
+        catch(...)
+        {
+          ELLE_LOG("%s: get_cloud_buffer_token failed with %s, retrying...",
+                   *this, elle::exception_string());
+          // if meta looses connectivity to provider let's not flood it
+          reactor::sleep(boost::posix_time::seconds(delay));
+          delay = std::min(delay * 2, 60 * 10);
+        }
+      }
+      auto credentials = aws::Credentials(token.access_key_id,
+                                          token.secret_access_key,
+                                          token.session_token,
+                                          token.region,
+                                          token.bucket,
+                                          token.folder,
+                                          token.expiration);
+      return credentials;
+    }
+
+    void
+    PeerMachine::_finalize(infinit::oracles::Transaction::Status status)
+    {
+      ELLE_TRACE_SCOPE("%s: finalize machine: %s", *this, status);
+      if (!this->data()->id.empty())
+      {
+        try
+        {
+          this->state().meta().update_transaction(
+            this->transaction_id(), status);
+        }
+        catch (infinit::oracles::meta::Exception const& e)
+        {
+          using infinit::oracles::meta::Error;
+          if (e.err == Error::transaction_already_finalized)
+            ELLE_TRACE("%s: transaction already finalized", *this);
+          else if (e.err == Error::transaction_already_has_this_status)
+            ELLE_TRACE("%s: transaction already in this state", *this);
+          else
+            ELLE_ERR("%s: unable to finalize the transaction %s: %s",
+                     *this, this->transaction_id(), elle::exception_string());
+        }
+        catch (std::exception const&)
+        {
+          ELLE_ERR("%s: unable to finalize the transaction %s: %s",
+                   *this, this->transaction_id(), elle::exception_string());
+        }
+      }
+      else
+      {
+        ELLE_ERR("%s: can't finalize transaction: id is still empty", *this);
+      }
+      this->cleanup();
     }
   }
 }

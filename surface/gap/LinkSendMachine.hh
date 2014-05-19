@@ -43,10 +43,21 @@ namespace surface
       void
       transaction_status_update(
         infinit::oracles::Transaction::Status status) override;
+      virtual
+      aws::Credentials
+      _aws_credentials(bool regenerate) override;
     protected:
       virtual
       void
       _create_transaction() override;
+      virtual
+      void
+      _finalize(infinit::oracles::Transaction::Status) override;
+    private:
+      void
+      _upload();
+      ELLE_ATTRIBUTE(reactor::fsm::State&, upload_state);
+      ELLE_ATTRIBUTE(aws::Credentials, credentials);
     };
   }
 }

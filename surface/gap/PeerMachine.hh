@@ -63,6 +63,12 @@ namespace surface
       peer_unavailable() override;
       void
       _peer_connection_changed(bool user_status);
+      virtual
+      aws::Credentials
+      _aws_credentials(bool regenerate) override;
+      virtual
+      void
+      _finalize(infinit::oracles::Transaction::Status) override;
     };
   }
 }

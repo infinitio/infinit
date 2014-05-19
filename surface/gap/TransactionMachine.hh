@@ -162,10 +162,9 @@ namespace surface
 
     protected:
       friend class Snapshot;
-
-    public:
-      std::function<aws::Credentials(bool)>
-      make_aws_credentials_getter();
+      virtual
+      aws::Credentials
+      _aws_credentials(bool regenerate) = 0;
 
     protected:
       void
@@ -178,7 +177,7 @@ namespace surface
       _cancel();
       virtual
       void
-      _finalize(infinit::oracles::Transaction::Status);
+      _finalize(infinit::oracles::Transaction::Status) = 0;
       // invoked to cleanup data when this transaction will never restart
       virtual
       void

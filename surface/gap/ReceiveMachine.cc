@@ -498,9 +498,12 @@ namespace surface
         }
         else
         {
-         auto get_credentials = this->make_aws_credentials_getter();
+          auto get_credentials = [this] (bool first_time)
+            {
+              return this->_aws_credentials(first_time);
+            };
          _bufferer.reset(new S3TransferBufferer(*this->data(),
-                                               get_credentials));
+                                                get_credentials));
         }
         if (auto& mr = state().metrics_reporter())
         {
