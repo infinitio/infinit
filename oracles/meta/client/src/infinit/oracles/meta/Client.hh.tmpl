@@ -566,17 +566,17 @@ namespace infinit
       public:
         CreateLinkTransactionResponse
         create_link(LinkTransaction::FileList const& file_list,
-                    std::string const& name);
+                    std::string const& name) const;
 
         void
         update_link(std::string const& id,
                     double progress,
-                    Transaction::Status status);
+                    Transaction::Status status) const;
 
         LinkTransactionsResponse
         links(int offset = 0,
               int count = 100,
-              bool include_expired = false);
+              bool include_expired = false) const;
 
       public:
         ServerStatusResponse

@@ -30,7 +30,7 @@ namespace surface
 
     Transferer::Transferer(TransactionMachine& owner):
       _owner(owner),
-      _fsm(elle::sprintf("transfer (%s) fsm", owner.id())),
+      _fsm(elle::sprintf("transfer (%s)", owner.id())),
       _peer_online("peer online"),
       _peer_offline("peer offline"),
       _peer_reachable("peer reachable"),
@@ -330,7 +330,7 @@ namespace surface
     void
     Transferer::run()
     {
-      ELLE_TRACE_SCOPE("%s: run fsm %s", *this, this->_fsm);
+      ELLE_TRACE_SCOPE("%s: run %s", *this, this->_fsm);
       // XXX: Best place to do that? (See constructor).
       std::string peer_id;
       // FIXME: fix transaction machines hierarchy

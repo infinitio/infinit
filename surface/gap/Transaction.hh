@@ -117,6 +117,11 @@ namespace surface
                   std::string const& peer_id,
                   std::vector<std::string> files,
                   std::string const& message);
+      /// Construct as new for link generation.
+      Transaction(surface::gap::State& state,
+                  uint32_t id,
+                  std::vector<std::string> files,
+                  std::string const& message);
       /// Move.
       Transaction(Transaction&&) = default;
       /// Destruct.

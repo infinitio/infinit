@@ -28,6 +28,20 @@ namespace infinit
       this->serialize(s);
     }
 
+    LinkTransaction::LinkTransaction(std::string id,
+                                     std::string fullname,
+                                     std::string device_id,
+                                     std::vector<std::string> files)
+      : Transaction(id, device_id)
+      , click_count(0)
+      , cloud_location()
+      , expiry_time()
+      , file_list()
+      , hash()
+      , name()
+      , share_link()
+    {}
+
     void
     LinkTransaction::serialize(elle::serialization::Serializer& s)
     {

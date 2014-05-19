@@ -30,12 +30,12 @@ namespace surface
     SendMachine::SendMachine(Transaction& transaction,
                              uint32_t id,
                              std::vector<std::string> files,
-                             std::shared_ptr<Data> data):
-      Super(transaction, id, std::move(data)),
-      _create_transaction_state(
+                             std::shared_ptr<Data> data)
+      : Super(transaction, id, std::move(data))
+      , _create_transaction_state(
         this->_machine.state_make(
-          "create transaction", std::bind(&SendMachine::_create_transaction, this))),
-      _files(files)
+          "create transaction", std::bind(&SendMachine::_create_transaction, this)))
+      , _files(files)
     {
       if (this->files().empty())
         throw Exception(gap_no_file, "no files to send");
@@ -321,22 +321,16 @@ namespace surface
     std::pair<std::string, bool>
     SendMachine::archive_info()
     {
-      // FIXME: fix transaction machines hierarchy
-      using infinit::oracles::PeerTransaction;
-      auto peer_data =
-        std::dynamic_pointer_cast<PeerTransaction>(this->data());
-      ELLE_ASSERT(peer_data.get());
-      auto const& files = peer_data->files;
+      auto const& files = this->files();
       if (files.size() == 1)
-        if (peer_data->is_directory)
+      {
+        boost::filesystem::path file(*files.begin());
+        if (is_directory(status(file)))
           return std::make_pair(
-            boost::filesystem::path(*files.begin())
-               .filename()
-               .replace_extension("zip")
-               .string(),
-            true);
+            file.filename().replace_extension("zip").string(), true);
         else
-          return std::make_pair(*files.begin(), false);
+          return std::make_pair(file.filename().string(), false);
+      }
       else
         return std::make_pair("archive.zip", true);
     }

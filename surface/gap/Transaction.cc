@@ -8,6 +8,7 @@
 
 #include <common/common.hh>
 #include <surface/gap/Exception.hh>
+#include <surface/gap/LinkSendMachine.hh>
 #include <surface/gap/ReceiveMachine.hh>
 #include <surface/gap/PeerSendMachine.hh>
 #include <surface/gap/TransactionMachine.hh>
@@ -157,6 +158,40 @@ namespace surface
       this->_snapshot_save();
     }
 
+    // Construct to send files.
+    Transaction::Transaction(State& state,
+                             uint32_t id,
+                             std::vector<std::string> files,
+                             std::string const& message)
+      // FIXME: ensure better uniqueness.
+      : _snapshots_directory(
+        boost::filesystem::path(common::infinit::user_directory(state.me().id))
+        / "transactions" / boost::filesystem::unique_path())
+      , _snapshot_path(this->_snapshots_directory / "transaction.snapshot")
+      , _state(state)
+      , _files(std::move(files))
+      , _message(message)
+      , _archived(false)
+      , _id(id)
+      , _sender(true)
+      , _data(nullptr)
+      , _machine(nullptr)
+      , _last_status(gap_TransactionStatus(-1))
+    {
+      ELLE_TRACE_SCOPE("%s: construct to generate link for %s",
+                       *this, this->_files.get());
+      auto data = std::make_shared<infinit::oracles::LinkTransaction>(
+        state.me().id,
+        state.me().fullname,
+        state.device().id,
+        files);
+      this->_data = data;
+      this->_machine.reset(
+        new LinkSendMachine(*this, this->_id,
+                            this->_files.get(), data));
+      this->_snapshot_save();
+    }
+
     // FIXME: Split history transactions.
     Transaction::Transaction(State& state,
                              uint32_t id,
@@ -185,12 +220,12 @@ namespace surface
       }
       auto me = state.me().id;
       auto device = state.device().id;
+      auto sender =
+        me == this->_data->sender_id && device == this->_data->sender_device_id;
       if (auto peer_data =
           std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
             this->_data))
       {
-        auto sender =
-          me == peer_data->sender_id && device == peer_data->sender_device_id;
         auto recipient =
           me == peer_data->recipient_id &&
           (peer_data->recipient_device_id.empty() ||
@@ -215,7 +250,7 @@ namespace surface
           std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
             this->_data))
       {
-
+          throw elle::Error("can't restore link send transaction from server");
       }
       else
       {
@@ -250,7 +285,7 @@ namespace surface
         {
           ELLE_ASSERT(this->_message);
           ELLE_ASSERT(this->_files);
-          ELLE_TRACE("%s: create send machine", *this)
+          ELLE_TRACE("%s: create peer send machine", *this)
             this->_machine.reset(
               new PeerSendMachine(*this, this->_id, this->_files.get(),
                                   this->_message.get(), peer_data));
@@ -261,6 +296,16 @@ namespace surface
             this->_machine.reset(
               new ReceiveMachine(*this, this->_id, peer_data));
         }
+      }
+      else if (auto link_data =
+               std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
+                 this->_data))
+      {
+        ELLE_ASSERT(this->_files);
+        ELLE_TRACE("%s: create link send machine", *this)
+          this->_machine.reset(
+            new LinkSendMachine(*this, this->_id,
+                                this->_files.get(), link_data));
       }
       else
         ELLE_ERR("%s: don't know what to do with a %s",
@@ -276,20 +321,20 @@ namespace surface
     Transaction::accept()
     {
       ELLE_TRACE_SCOPE("%s: accepting transaction", *this);
-
       if (this->_machine == nullptr)
       {
         ELLE_WARN("%s: machine is empty (it doesn't concern your device)",
                   *this);
         throw BadOperation(BadOperation::Type::accept);
       }
-
-      if (!dynamic_cast<ReceiveMachine*>(this->_machine.get()))
+      // FIXME
+      if (auto machine = dynamic_cast<ReceiveMachine*>(this->_machine.get()))
+        machine->accept();
+      else
       {
         ELLE_ERR("%s: accepting on a send machine", *this);
         throw BadOperation(BadOperation::Type::accept);
       }
-      static_cast<ReceiveMachine*>(this->_machine.get())->accept();
     }
 
     void
@@ -297,14 +342,13 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: rejecting transaction", *this);
       ELLE_ASSERT(this->_machine != nullptr);
-
-      if (!dynamic_cast<ReceiveMachine*>(this->_machine.get()))
+      if (auto machine = dynamic_cast<ReceiveMachine*>(this->_machine.get()))
+        machine->reject();
+      else
       {
         ELLE_ERR("%s: reject on a send machine", *this);
         throw BadOperation(BadOperation::Type::reject);
       }
-
-      static_cast<ReceiveMachine*>(this->_machine.get())->reject();
     }
 
     void
@@ -317,7 +361,6 @@ namespace surface
                   *this);
         throw BadOperation(BadOperation::Type::cancel);
       }
-
       this->_machine->cancel();
     }
 
@@ -331,7 +374,6 @@ namespace surface
                   *this);
         throw BadOperation(BadOperation::Type::join);
       }
-
       this->_machine->join();
     }
 
@@ -340,7 +382,6 @@ namespace surface
     {
       if (this->_last_status == status)
         return false;
-
       this->_last_status = status;
       return true;
     }
@@ -481,7 +522,6 @@ namespace surface
         ELLE_DEBUG("transaction already finalized");
         return;
       }
-
       if (this->_machine != nullptr)
         this->_machine->reset_transfer();
     }

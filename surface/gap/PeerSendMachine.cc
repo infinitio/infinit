@@ -35,8 +35,9 @@ namespace surface
                                      std::string message,
                                      std::shared_ptr<Data> data,
                                      bool)
-      : Super(transaction, id, std::move(files), data)
-      , _data(data)
+      : TransactionMachine(transaction, id, data)
+      , SendMachine(transaction, id, std::move(files), data)
+      , PeerMachine(transaction, id, data)
       , _message(std::move(message))
       , _recipient(std::move(recipient))
       , _accepted("accepted")
@@ -666,7 +667,7 @@ namespace surface
       if (user_id == this->data()->recipient_id
           && (this->data()->recipient_device_id.empty() ||
               device_id == this->data()->recipient_device_id))
-        this->peer_connection_changed(online);
+        this->_peer_connection_changed(online);
     }
   }
 }

@@ -250,8 +250,9 @@ namespace infinit
         _port(port),
         _root_url{elle::sprintf("%s://%s:%d", protocol, server, port)},
         _client{"MetaClient/" INFINIT_VERSION},
-        _default_configuration{boost::posix_time::seconds{30},
-                               reactor::http::Version::v10},
+        _default_configuration(boost::posix_time::seconds{30},
+                               {},
+                               reactor::http::Version::v10),
         _email{},
         _logged_in{false}
       {
@@ -891,7 +892,7 @@ namespace infinit
       `------*/
       CreateLinkTransactionResponse
       Client::create_link(LinkTransaction::FileList const& file_list,
-                          std::string const& name)
+                          std::string const& name) const
       {
         elle::json::Object body;
         body["file_list"] = file_list;
@@ -910,7 +911,7 @@ namespace infinit
       void
       Client::update_link(std::string const& id,
                           double progress,
-                          Transaction::Status status)
+                          Transaction::Status status) const
       {
         elle::json::Object body;
         body["id"] = id;
@@ -928,7 +929,7 @@ namespace infinit
       LinkTransactionsResponse
       Client::links(int offset,
                     int count,
-                    bool include_expired)
+                    bool include_expired) const
       {
         std::string url =
           elle::sprintf("/links?offset=%s&count=%s", offset, count);

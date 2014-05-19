@@ -92,9 +92,6 @@ namespace surface
       _id(id),
       _machine(elle::sprintf("transaction (%s) fsm", id)),
       _machine_thread(),
-      _transfer_core_state(
-        this->_machine.state_make(
-          "transfer core", std::bind(&TransactionMachine::_transfer_core, this))),
       _finish_state(
         this->_machine.state_make(
           "finish", std::bind(&TransactionMachine::_finish, this))),
@@ -115,49 +112,15 @@ namespace surface
       _canceled("canceled"),
       _failed("failed"),
       _station(nullptr),
-      _transfer_machine(new PeerTransferMachine(*this)),
       _transaction(transaction),
       _state(transaction.state()),
       _data(std::move(data))
     {
       ELLE_TRACE_SCOPE("%s: create transaction machine", *this);
-
-      // Normal way.
-      this->_machine.transition_add(this->_transfer_core_state,
-                                    this->_finish_state,
-                                    reactor::Waitables{&this->_finished},
-                                    true);
-
       this->_machine.transition_add(this->_finish_state,
                                     this->_end_state);
-
-      // Cancel way.
-      this->_machine.transition_add(this->_transfer_core_state,
-                                    this->_cancel_state,
-                                    reactor::Waitables{&this->_canceled}, true);
       this->_machine.transition_add(this->_cancel_state,
                                     this->_end_state);
-
-      // Fail way.
-      this->_machine.transition_add_catch(this->_transfer_core_state,
-                                          this->_fail_state)
-        .action_exception(
-          [this] (std::exception_ptr e)
-          {
-            ELLE_WARN("%s: error while transfering: %s",
-                      *this, elle::exception_string(e));
-          });
-
-      this->_machine.transition_add(this->_transfer_core_state,
-                                    this->_fail_state,
-                                    reactor::Waitables{&this->_failed}, true);
-
-      // Reset transfer
-      this->_machine.transition_add(this->_transfer_core_state,
-                                    this->_transfer_core_state,
-                                    reactor::Waitables{&this->_reset_transfer_signal},
-                                    true);
-
       this->_machine.transition_add(this->_fail_state,
                                     this->_end_state);
       // Reject.
@@ -212,31 +175,6 @@ namespace surface
     {
       ELLE_TRACE("%s: change GAP status to %s", *this, v);
       this->state().enqueue(Transaction::Notification(this->id(), v));
-    }
-
-    void
-    TransactionMachine::_transfer_core()
-    {
-      ELLE_TRACE_SCOPE("%s: start transfer core machine", *this);
-      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-      try
-      {
-        this->_transfer_machine->run();
-        ELLE_TRACE("%s: core machine finished properly", *this);
-      }
-      catch (reactor::Terminate const&)
-      {
-        ELLE_TRACE("%s: terminated", *this);
-        throw;
-      }
-      catch (std::exception const&)
-      {
-        ELLE_ERR("%s: something went wrong while transfering: %s",
-                 *this, elle::exception_string());
-        throw;
-      }
-      if (this->_failed.opened())
-        throw Exception(gap_error, "an error occured");
     }
 
     void
@@ -363,45 +301,17 @@ namespace surface
     void
     TransactionMachine::peer_available(
       std::vector<std::pair<std::string, int>> const& endpoints)
-    {
-      ELLE_TRACE_SCOPE("%s: peer is available for peer to peer connection",
-                       *this);
-      this->_transfer_machine->peer_available(endpoints);
-    }
+    {}
 
     void
     TransactionMachine::peer_unavailable()
-    {
-      ELLE_TRACE_SCOPE("%s: peer is unavailable for peer to peer connection",
-                       *this);
-      this->_transfer_machine->peer_unavailable();
-    }
+    {}
 
     void
     TransactionMachine::notify_user_connection_status(std::string const&,
                                                       std::string const&,
                                                       bool)
     {}
-
-    void
-    TransactionMachine::peer_connection_changed(bool user_status)
-    {
-      ELLE_TRACE_SCOPE("%s: update with new peer connection status %s",
-                       *this, user_status);
-      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-      if (user_status)
-        ELLE_DEBUG("%s: peer is now online", *this)
-        {
-          this->_transfer_machine->peer_offline().close();
-          this->_transfer_machine->peer_online().open();
-        }
-      else
-        ELLE_DEBUG("%s: peer is now offline", *this)
-        {
-          this->_transfer_machine->peer_online().close();
-          this->_transfer_machine->peer_offline().open();
-        }
-    }
 
     void
     TransactionMachine::cancel()
@@ -513,12 +423,6 @@ namespace surface
       }
       ELLE_ASSERT(this->_station != nullptr);
       return *this->_station;
-    }
-
-    float
-    TransactionMachine::progress() const
-    {
-      return this->_transfer_machine->progress();
     }
 
     /*----------.

@@ -9,7 +9,7 @@ namespace surface
   namespace gap
   {
     class  SendMachine:
-      public TransactionMachine
+      virtual public TransactionMachine
     {
     /*------.
     | Types |

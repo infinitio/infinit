@@ -49,6 +49,19 @@ namespace surface
     }
 
     uint32_t
+    State::create_link(std::vector<std::string> const& files,
+                std::string const& message)
+    {
+      ELLE_TRACE_SCOPE("%s: create link for %s", *this, files);
+      auto id = generate_id();
+      this->_transactions.emplace(
+        id,
+        elle::make_unique<Transaction>(*this, id,
+                                       std::move(files), message));
+      return id;
+    }
+
+    uint32_t
     State::send_files(std::string const& peer_id,
                       std::vector<std::string> files,
                       std::string const& message)

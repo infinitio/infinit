@@ -4,6 +4,7 @@
 # include <memory>
 
 # include <surface/gap/SendMachine.hh>
+# include <surface/gap/PeerMachine.hh>
 # include <surface/gap/fwd.hh>
 
 namespace surface
@@ -12,14 +13,14 @@ namespace surface
   {
     class PeerSendMachine
       : public SendMachine
+      , public PeerMachine
     {
     /*------.
     | Types |
     `------*/
     public:
-      typedef infinit::oracles::PeerTransaction Data;
+      typedef PeerMachine::Data Data;
       typedef PeerSendMachine Self;
-      typedef SendMachine Super;
 
     /*-------------.
     | Construction |
@@ -39,7 +40,7 @@ namespace surface
                       std::string message,
                       std::shared_ptr<Data> data);
     public:
-      ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
+      using PeerMachine::data;
       ELLE_ATTRIBUTE_R(std::string, message);
       ELLE_ATTRIBUTE_R(std::string, recipient);
     private:

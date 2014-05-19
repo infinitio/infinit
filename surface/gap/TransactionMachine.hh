@@ -74,12 +74,13 @@ namespace surface
       void
       transaction_status_update(infinit::oracles::Transaction::Status status) = 0;
 
-
       /// Notify that the peer is available for peer to peer connection.
+      virtual
       void
       peer_available(std::vector<std::pair<std::string, int>> const& endpoints);
 
       /// Notify that the peer is unavailable for peer to peer connection.
+      virtual
       void
       peer_unavailable();
 
@@ -88,12 +89,7 @@ namespace surface
       void
       notify_user_connection_status(std::string const& user_id,
                                     std::string const& device_id,
-                                    bool online) = 0;
-
-      /// Notify that the peer status changed to connected or
-      /// disconnected.
-      void
-      peer_connection_changed(bool user_status);
+                                    bool online);
 
       /// Cancel the transaction.
       void
@@ -165,8 +161,6 @@ namespace surface
       snapshot() const;
 
     protected:
-      friend class Transferer;
-      friend class PeerTransferMachine;
       friend class Snapshot;
 
     public:
@@ -175,24 +169,16 @@ namespace surface
 
     protected:
       void
-      _transfer_core();
-
-      void
       _finish();
-
       void
       _reject();
-
       void
       _fail();
-
       void
       _cancel();
-
       virtual
       void
       _finalize(infinit::oracles::Transaction::Status);
-
       // invoked to cleanup data when this transaction will never restart
       virtual
       void
@@ -200,26 +186,12 @@ namespace surface
     private:
       void
       _clean();
-
       void
       _end();
 
     protected:
-      virtual
-      void
-      _transfer_operation(frete::RPCFrete& frete) = 0;
-      virtual
-      // Go all the way to the cloud until interrupted.
-      void
-      _cloud_operation() = 0;
-      virtual
-      // Just synchronize what you can with cloud
-      void
-      _cloud_synchronize() = 0;
-    protected:
       // This state has to be protected to allow the children to start the
       // machine in this state.
-      reactor::fsm::State& _transfer_core_state;
       reactor::fsm::State& _finish_state;
       reactor::fsm::State& _reject_state;
       reactor::fsm::State& _cancel_state;
@@ -242,12 +214,6 @@ namespace surface
       station::Station&
       station();
 
-    /*-------------.
-    | Core Machine |
-    `-------------*/
-    protected:
-      std::unique_ptr<Transferer> _transfer_machine;
-
     /*------------.
     | Transaction |
     `------------*/
@@ -255,7 +221,6 @@ namespace surface
       ELLE_ATTRIBUTE_R(surface::gap::Transaction&, transaction);
       ELLE_ATTRIBUTE_R(surface::gap::State const&, state);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
-      ELLE_ATTRIBUTE(float, progress);
     public:
       virtual
       float
@@ -275,11 +240,8 @@ namespace surface
       is_sender() const = 0;
 
     protected:
-      virtual
-      std::unique_ptr<frete::RPCFrete>
-      rpcs(infinit::protocol::ChanneledStream& socket) = 0;
-
-    protected:
+      friend class Transferer;
+      friend class TransferMachine;
       void
       gap_state(gap_TransactionStatus state);
 

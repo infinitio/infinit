@@ -87,7 +87,7 @@ namespace surface
       surface::gap::onboarding::ReceiveMachine&
       Transaction::machine()
       {
-        return *static_cast<surface::gap::onboarding::ReceiveMachine*>(
+        return *dynamic_cast<surface::gap::onboarding::ReceiveMachine*>(
           this->_machine.get());
       }
 
