@@ -407,34 +407,6 @@ namespace surface
               gap_trophonius_unreachable, "unable to contact trophonius");
         }
 
-        this->_polling_thread.reset(
-          new reactor::Thread{
-            scheduler,
-              "poll",
-              [&]
-              {
-                while (true)
-                {
-                  try
-                  {
-                    this->handle_notification(this->_trophonius.poll());
-                  }
-                  catch (elle::Exception const&)
-                  {
-                    ELLE_ERR("%s: an error occured in trophonius, login is " \
-                             "required: %s", *this, elle::exception_string());
-                    // Loging out flush the message queue, which means that
-                    // KickedOut will be the next event polled.
-                    this->logout();
-                    this->enqueue(KickedOut());
-                    this->enqueue(ConnectionStatus(false));
-                    return;
-                  }
-
-                  ELLE_TRACE("%s: notification pulled", *this);
-                }
-              }});
-
         this->_avatar_fetcher_thread.reset(
           new reactor::Thread{
             scheduler,
@@ -474,6 +446,34 @@ namespace surface
         this->_users_init();
         this->_transactions_init();
         this->on_connection_changed(true, true);
+
+        this->_polling_thread.reset(
+          new reactor::Thread{
+            scheduler,
+              "poll",
+              [&]
+              {
+                while (true)
+                {
+                  try
+                  {
+                    this->handle_notification(this->_trophonius.poll());
+                  }
+                  catch (elle::Exception const&)
+                  {
+                    ELLE_ERR("%s: an error occured in trophonius, login is " \
+                             "required: %s", *this, elle::exception_string());
+                    // Loging out flush the message queue, which means that
+                    // KickedOut will be the next event polled.
+                    this->logout();
+                    this->enqueue(KickedOut());
+                    this->enqueue(ConnectionStatus(false));
+                    return;
+                  }
+
+                  ELLE_TRACE("%s: notification pulled", *this);
+                }
+              }});
 
         finally_logout.abort();
       };
