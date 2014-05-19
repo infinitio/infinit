@@ -17,7 +17,9 @@ namespace surface
       : Super::Super(transaction, id, data)
       , Super(transaction, id, std::move(files), data)
       , _data(data)
-    {}
+    {
+      this->_run(this->_create_transaction_state);
+    }
 
     LinkSendMachine::~LinkSendMachine()
     {
