@@ -19,6 +19,11 @@ namespace surface
       , _data(data)
     {}
 
+    LinkSendMachine::~LinkSendMachine()
+    {
+      this->_stop();
+    }
+
     /*---------------.
     | Implementation |
     `---------------*/

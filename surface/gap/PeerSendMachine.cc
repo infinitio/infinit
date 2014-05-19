@@ -142,6 +142,11 @@ namespace surface
       this->_run_from_snapshot();
     }
 
+    PeerSendMachine::~PeerSendMachine()
+    {
+      this->_stop();
+    }
+
     void
     PeerSendMachine::_run_from_snapshot()
     {

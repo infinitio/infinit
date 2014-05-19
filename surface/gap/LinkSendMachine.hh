@@ -28,6 +28,8 @@ namespace surface
                       uint32_t id,
                       std::vector<std::string> files,
                       std::shared_ptr<Data> data);
+      virtual
+      ~LinkSendMachine();
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
 
     /*---------------.

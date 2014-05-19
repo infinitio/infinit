@@ -67,9 +67,7 @@ namespace surface
     }
 
     SendMachine::~SendMachine()
-    {
-      this->_stop();
-    }
+    {}
 
     static std::streamsize const chunk_size = 1 << 18;
 

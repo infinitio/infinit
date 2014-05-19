@@ -39,7 +39,8 @@ namespace surface
                       std::vector<std::string> files,
                       std::string message,
                       std::shared_ptr<Data> data);
-    public:
+      virtual
+      ~PeerSendMachine();
       using PeerMachine::data;
       ELLE_ATTRIBUTE_R(std::string, message);
       ELLE_ATTRIBUTE_R(std::string, recipient);
