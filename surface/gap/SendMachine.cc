@@ -231,6 +231,9 @@ namespace surface
           }
           ELLE_DEBUG("Will resume at chunk %s", next_chunk);
         }
+        auto chunk_uploaded = next_chunk;
+        this->_plain_progress =
+          float(chunk_uploaded) / float(chunk_count);
         if (auto& mr = state().metrics_reporter())
         {
           auto now = boost::posix_time::microsec_clock::universal_time();
@@ -273,8 +276,9 @@ namespace surface
               source_file_name, upload_id,
               buffer,
               local_chunk);
+            ++chunk_uploaded;
             this->_plain_progress =
-              float(local_chunk) / float(chunk_count);
+              float(chunk_uploaded) / float(chunk_count);
             // Now, totally fake progress on the original frete by
             // updating the global progress, and not individual files
             // progress. That way we don't produce fake snapshot state data
