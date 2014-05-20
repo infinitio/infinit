@@ -182,9 +182,7 @@ namespace surface
                        *this, this->_files.get());
       auto data = std::make_shared<infinit::oracles::LinkTransaction>(
         state.me().id,
-        state.me().fullname,
-        state.device().id,
-        files);
+        state.device().id);
       this->_data = data;
       this->_machine.reset(
         new LinkSendMachine(*this, this->_id,
