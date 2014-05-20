@@ -48,11 +48,12 @@ def configure(elle,
     sources = drake.nodes(
       'src/infinit/oracles/Transaction.cc.tmpl',
       'src/infinit/oracles/Transaction.hh.tmpl',
-      'src/infinit/oracles/Transaction.hxx',
+      'src/infinit/oracles/PeerTransaction.hxx',
       'src/infinit/oracles/PeerTransaction.cc',
       'src/infinit/oracles/PeerTransaction.hh',
       'src/infinit/oracles/LinkTransaction.cc',
       'src/infinit/oracles/LinkTransaction.hh',
+      'src/infinit/oracles/PeerTransaction.hh',
     )
 
   elle_lib = drake.copy(elle.elle.lib_dynamic, 'lib', strip_prefix = True)

@@ -4,6 +4,7 @@
 # include <infinit/oracles/Transaction.hh>
 
 # include <elle/serialization/fwd.hh>
+# include <elle/serialize/construct.hh>
 
 # include <vector>
 
@@ -52,6 +53,9 @@ namespace infinit
       void
       serialize(elle::serialization::Serializer& s) override;
 
+      ELLE_SERIALIZE_CONSTRUCT(LinkTransaction)
+      {}
+
     /*----------.
     | Printable |
     `----------*/
@@ -61,5 +65,7 @@ namespace infinit
     };
   }
 }
+
+# include <infinit/oracles/LinkTransaction.hxx>
 
 #endif

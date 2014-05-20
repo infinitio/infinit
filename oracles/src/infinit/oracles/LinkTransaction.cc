@@ -46,16 +46,16 @@ namespace infinit
     LinkTransaction::serialize(elle::serialization::Serializer& s)
     {
       s.serialize("_id", this->id);
-      s.serialize("sender_id", this->sender_id);
-      s.serialize("sender_device_id", this->sender_device_id);
       s.serialize("click_count", this->click_count);
       s.serialize("ctime", this->ctime);
       s.serialize("expiry_time", this->expiry_time);
       s.serialize("hash", this->hash);
       s.serialize("mtime", this->mtime);
       s.serialize("name", this->name);
-      s.serialize("status", this->status, elle::serialization::as<int>());
+      s.serialize("sender_device_id", this->sender_device_id);
+      s.serialize("sender_id", this->sender_id);
       s.serialize("share_link", this->share_link);
+      s.serialize("status", this->status, elle::serialization::as<int>());
     }
 
     using elle::serialization::Hierarchy;
