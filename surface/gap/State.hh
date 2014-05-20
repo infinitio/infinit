@@ -559,7 +559,10 @@ namespace surface
       _transactions_init();
 
       void
-      _transaction_resync();
+      _peer_transaction_resync();
+
+      void
+      _link_transaction_resync();
 
       void
       _transactions_clear();

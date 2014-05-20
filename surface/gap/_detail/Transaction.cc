@@ -177,7 +177,7 @@ namespace surface
     }
 
     void
-    State::_transaction_resync()
+    State::_peer_transaction_resync()
     {
       ELLE_TRACE("%s: synchronize active transactions from meta", *this)
         for (auto& transaction: this->meta().transactions())
@@ -217,7 +217,7 @@ namespace surface
             this->user(transaction.recipient_id);
           }
           auto _id = generate_id();
-          ELLE_TRACE("%s: create history transaction from data: %s",
+          ELLE_TRACE("%s: create historical peer transactions from data: %s",
                      *this, transaction)
             this->_transactions.emplace(
               _id,
@@ -227,6 +227,41 @@ namespace surface
                 true /* history */));
         }
       }
+    }
+
+    void
+    State::_link_transaction_resync()
+    {
+      ELLE_TRACE("%s: synchronize link transactions from meta", *this)
+        for (auto& transaction: this->meta().links())
+        {
+          auto it = std::find_if(
+            std::begin(this->_transactions),
+            std::end(this->_transactions),
+            [&] (TransactionConstPair const& pair)
+            {
+              return (!pair.second->data()->id.empty()) &&
+                     ( pair.second->data()->id == transaction.id);
+            });
+          if (it != std::end(this->_transactions))
+          {
+            if (!it->second->final())
+            {
+              it->second->on_transaction_update(
+                std::make_shared<infinit::oracles::LinkTransaction>(transaction));
+            }
+            continue;
+          }
+          auto _id = generate_id();
+          ELLE_TRACE("%s: create historical link transaction from data: %s",
+                     *this, transaction)
+            this->_transactions.emplace(
+              _id,
+              elle::make_unique<Transaction>(
+                *this, _id,
+                std::make_shared<infinit::oracles::LinkTransaction>(transaction),
+                true /* history */));
+        }
     }
 
     void
