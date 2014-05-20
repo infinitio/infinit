@@ -37,9 +37,6 @@ namespace surface
     `---------------*/
     public:
       virtual
-      float
-      progress() const override;
-      virtual
       void
       transaction_status_update(
         infinit::oracles::Transaction::Status status) override;

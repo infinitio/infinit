@@ -57,13 +57,6 @@ namespace surface
     | Implementation |
     `---------------*/
 
-    float
-    LinkSendMachine::progress() const
-    {
-      // FIXME
-      return 0;
-    }
-
     void
     LinkSendMachine::transaction_status_update(
       infinit::oracles::Transaction::Status status)

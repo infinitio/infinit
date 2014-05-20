@@ -30,18 +30,26 @@ namespace surface
       virtual
       ~SendMachine();
 
+    /*-------------.
+    | Plain upload |
+    `-------------*/
+    public:
+      virtual
+      float
+      progress() const override;
+    protected:
+      // cleartext upload one file to cloud
+      void
+      _plain_upload();
+      ELLE_ATTRIBUTE(float, plain_progress);
+
+    /*----.
+    | FSM |
+    `----*/
     protected:
       virtual
       void
       _create_transaction() = 0;
-      // cleartext upload one file to cloud
-      void
-      _plain_upload();
-
-    /*-----------------------.
-    | Machine implementation |
-    `-----------------------*/
-    protected:
       reactor::fsm::State& _create_transaction_state;
 
     /*-----------------.

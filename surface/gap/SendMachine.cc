@@ -27,15 +27,20 @@ namespace surface
   {
     using TransactionStatus = infinit::oracles::Transaction::Status;
 
-    // Common factored constructor.
+    /*-------------.
+    | Construction |
+    `-------------*/
+
     SendMachine::SendMachine(Transaction& transaction,
                              uint32_t id,
                              std::vector<std::string> files,
                              std::shared_ptr<Data> data)
       : Super(transaction, id, std::move(data))
+      , _plain_progress(0)
       , _create_transaction_state(
         this->_machine.state_make(
-          "create transaction", std::bind(&SendMachine::_create_transaction, this)))
+          "create transaction",
+          std::bind(&SendMachine::_create_transaction, this)))
       , _files(files)
     {
       if (this->files().empty())
@@ -71,6 +76,16 @@ namespace surface
     {}
 
     static std::streamsize const chunk_size = 1 << 18;
+
+    /*-------------.
+    | Plain upload |
+    `-------------*/
+
+    float
+    SendMachine::progress() const
+    {
+      return this->_plain_progress;
+    }
 
     void
     SendMachine::_plain_upload()
@@ -255,14 +270,13 @@ namespace surface
             ELLE_DEBUG("%s: uploading chunk %s", *this, local_chunk);
             auto buffer = elle::system::read_file_chunk(
               source_file_path,
-              local_chunk*chunk_size, chunk_size);
+              local_chunk * chunk_size, chunk_size);
             std::string etag = handler.multipart_upload(
               source_file_name, upload_id,
               buffer,
               local_chunk);
-            // FIXME
-            // auto progress = local_chunk * snapshot->total_size() /
-            // chunk_count;
+            this->_plain_progress =
+              float(local_chunk) / float(chunk_count);
             // Now, totally fake progress on the original frete by
             // updating the global progress, and not individual files
             // progress. That way we don't produce fake snapshot state data
