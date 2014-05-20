@@ -610,7 +610,13 @@ def configure(cxx_toolkit = None,
   )
   cli_link_bin = drake.cxx.Executable(
     'bin/8link',
-    cli_link_sources + [gap_lib, elle_lib, reactor_lib, crash_lib],
+    cli_link_sources + [
+      gap_lib,
+      elle_lib,
+      reactor_lib,
+      crash_lib,
+      oracles.transaction_lib,
+    ],
     cxx_toolkit,
     cli_cxx_config
   )

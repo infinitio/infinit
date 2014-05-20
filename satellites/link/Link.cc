@@ -150,7 +150,13 @@ int main(int argc, char** argv)
           reactor::sleep(100_ms);
         }
         while (!stop);
-
+        auto link =
+          std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
+            state.transactions().at(id)->data());
+        ELLE_ASSERT(link.get());
+        std::cerr << config.meta_protocol() << "://"
+                  << config.meta_host() << ":" << config.meta_port()
+                  << "/link/" << link->hash << std::endl;
         return 0;
       }
     };
