@@ -170,6 +170,9 @@ namespace common
     download_directory()
     {
       static std::string download_dir = _download_directory();
+      static bool no_cache = !elle::os::getenv("INFINIT_NO_DIR_CACHE", "").empty();
+      if (no_cache)
+        download_dir = _download_directory();
       return download_dir;
     }
 
