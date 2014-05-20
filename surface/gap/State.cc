@@ -745,7 +745,8 @@ namespace surface
                 }
             }
             this->_user_resync();
-            this->_transaction_resync();
+            this->_peer_transaction_resync();
+            this->_link_transaction_resync();
             resynched = true;
           }
           catch (reactor::Terminate const&)
