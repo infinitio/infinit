@@ -795,6 +795,12 @@ namespace surface
             *static_cast<infinit::oracles::trophonius::UserStatusNotification const*>(
               notif.release()));
           break;
+        case infinit::oracles::trophonius::NotificationType::link_transaction:
+          ELLE_ASSERT(
+            dynamic_cast<infinit::oracles::trophonius::LinkTransactionNotification const*>(notif.get()) != nullptr);
+          this->_on_transaction_update(
+            std::make_shared<infinit::oracles::LinkTransaction>(static_cast<infinit::oracles::trophonius::LinkTransactionNotification&>(*notif)));
+          break;
         case infinit::oracles::trophonius::NotificationType::peer_transaction:
           ELLE_ASSERT(
             dynamic_cast<infinit::oracles::trophonius::PeerTransactionNotification const*>(notif.get()) != nullptr);
