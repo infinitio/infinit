@@ -1,5 +1,5 @@
-#ifndef INFINIT_ORACLES_TRANSACTION_HXX
-# define INFINIT_ORACLES_TRANSACTION_HXX
+#ifndef INFINIT_ORACLES_PEER_TRANSACTION_HXX
+# define INFINIT_ORACLES_PEER_TRANSACTION_HXX
 
 # include <elle/serialize/Serializer.hh>
 # include <elle/serialize/NamedValue.hh>
