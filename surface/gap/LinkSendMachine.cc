@@ -20,7 +20,6 @@ namespace surface
       , _upload_state(
         this->_machine.state_make(
           "upload", std::bind(&LinkSendMachine::_upload, this)))
-
     {
       this->_run(this->_create_transaction_state);
       this->_machine.transition_add(this->_create_transaction_state,
@@ -47,7 +46,6 @@ namespace surface
         this->_upload_state,
         this->_fail_state,
         reactor::Waitables{&this->failed()}, true);
-
     }
 
     LinkSendMachine::~LinkSendMachine()
@@ -109,6 +107,7 @@ namespace surface
     void
     LinkSendMachine::_upload()
     {
+      this->gap_state(gap_transaction_transferring);
       this->_ghost_cloud_upload();
     }
 
