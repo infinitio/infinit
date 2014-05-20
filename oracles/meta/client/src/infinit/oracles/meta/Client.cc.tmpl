@@ -949,7 +949,7 @@ namespace infinit
         this->_handle_errors(request);
       }
 
-      LinkTransactionsResponse
+      std::vector<LinkTransaction>
       Client::links(int offset,
                     int count,
                     bool include_expired) const
@@ -963,8 +963,10 @@ namespace infinit
                                 Method::GET,
                                 this->_default_configuration);
         this->_handle_errors(request);
+        std::list<LinkTransaction> res;
         elle::serialization::json::SerializerIn input(request);
-        return LinkTransactionsResponse(input);
+        input.serialize("links", res);
+        return std::vector<LinkTransaction>(res.begin(), res.end());
       }
 
       /*--------------.

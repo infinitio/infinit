@@ -267,64 +267,6 @@ namespace infinit
         serialize(elle::serialization::Serializer& s);
       };
 
-      class LinkTransactionResponse
-      {
-      public:
-        LinkTransactionResponse() = default;
-
-        ELLE_ATTRIBUTE_R(aws::Credentials, aws_credentials);
-        ELLE_ATTRIBUTE_R(int32_t, click_count);
-        ELLE_ATTRIBUTE_R(std::string, cloud_location);
-        ELLE_ATTRIBUTE_R(double, creation_time);
-        ELLE_ATTRIBUTE_R(double, expiry_time);
-        ELLE_ATTRIBUTE_R(LinkTransaction::FileList, file_list);
-        ELLE_ATTRIBUTE_R(std::string, id);
-        ELLE_ATTRIBUTE_R(std::string, name);
-        ELLE_ATTRIBUTE_R(double, progress);
-        ELLE_ATTRIBUTE_R(Transaction::Status, status);
-
-        LinkTransactionResponse(elle::serialization::SerializerIn& s)
-        {
-          this->serialize(s);
-        }
-
-        void
-        serialize(elle::serialization::Serializer& s)
-        {
-          s.serialize("aws_credentials", this->_aws_credentials);
-          s.serialize("click_count", this->_click_count);
-          s.serialize("cloud_location", this->_cloud_location);
-          s.serialize("creation_time", this->_creation_time);
-          s.serialize("expiry_time", this->_expiry_time);
-          s.serialize("file_list", this->_file_list);
-          s.serialize("id", this->_id);
-          s.serialize("name", this->_name);
-          s.serialize("progress", this->_progress);
-          s.serialize("status", this->_status, elle::serialization::as<int>());
-        }
-      };
-
-      class LinkTransactionsResponse
-      {
-      public:
-        LinkTransactionsResponse() = default;
-        LinkTransactionsResponse(
-          std::vector<LinkTransactionResponse> const& transactions);
-
-        ELLE_ATTRIBUTE_R(std::vector<LinkTransactionResponse>, transactions);
-
-        LinkTransactionsResponse(elle::serialization::SerializerIn& s)
-        {
-          this->serialize(s);
-        }
-
-        void
-        serialize(elle::serialization::Serializer& s)
-        {
-          s.serialize("transactions", this->_transactions);
-        }
-      };
-
       struct ServerStatusResponse: Response
       {
         bool status;
@@ -563,7 +505,7 @@ namespace infinit
                     double progress,
                     Transaction::Status status) const;
 
-        LinkTransactionsResponse
+        std::vector<LinkTransaction>
         links(int offset = 0,
               int count = 100,
               bool include_expired = false) const;
