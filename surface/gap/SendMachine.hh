@@ -36,7 +36,7 @@ namespace surface
       _create_transaction() = 0;
       // cleartext upload one file to cloud
       void
-      _ghost_cloud_upload();
+      _plain_upload();
 
     /*-----------------------.
     | Machine implementation |

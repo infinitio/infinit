@@ -108,7 +108,7 @@ namespace surface
     LinkSendMachine::_upload()
     {
       this->gap_state(gap_transaction_transferring);
-      this->_ghost_cloud_upload();
+      this->_plain_upload();
     }
 
     void

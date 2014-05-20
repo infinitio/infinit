@@ -341,7 +341,7 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: waiting for peer to accept or reject", *this);
       auto peer = this->state().user(this->data()->recipient_id);
       if (peer.ghost())
-        this->_ghost_cloud_upload();
+        this->_plain_upload();
       else if (!peer.ghost() && !peer.online())
       {
         this->_cloud_operation();

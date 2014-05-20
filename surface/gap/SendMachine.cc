@@ -73,7 +73,7 @@ namespace surface
     static std::streamsize const chunk_size = 1 << 18;
 
     void
-    SendMachine::_ghost_cloud_upload()
+    SendMachine::_plain_upload()
     {
       // exit information for factored metrics writer.
       // needs to stay out of the try, as catch clause will fill those
@@ -100,7 +100,7 @@ namespace surface
       {
         typedef frete::Frete::FileSize FileSize;
         this->gap_state(gap_transaction_transferring);
-        ELLE_TRACE_SCOPE("%s: ghost_cloud_upload", *this);
+        ELLE_TRACE_SCOPE("%s: plain_upload", *this);
         typedef boost::filesystem::path path;
         path source_file_path;
         FileSize source_file_size;
@@ -273,7 +273,7 @@ namespace surface
         };
         int num_threads = 4;
         std::string env_num_threads =
-          elle::os::getenv("INFINIT_NUM_GHOST_CLOUD_UPLOAD_THREAD", "");
+          elle::os::getenv("INFINIT_NUM_PLAIN_UPLOAD_THREAD", "");
         if (!env_num_threads.empty())
           num_threads = boost::lexical_cast<unsigned>(env_num_threads);
         elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
