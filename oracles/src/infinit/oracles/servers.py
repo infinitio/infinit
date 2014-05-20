@@ -80,6 +80,7 @@ class Oracles:
     self.__force_trophonius_port = force_trophonius_port
     self.__setup_client = setup_client
     self.__cleanup_dirs = list()
+    self.__states = list()
 
   def __enter__(self):
     elle.log.trace('starting mongobox')
@@ -104,6 +105,7 @@ class Oracles:
       # Some part of the systems use device_id as an uid (trophonius)
       # So force each State to use its own.
       os.environ['INFINIT_FORCE_NEW_DEVICE_ID'] = '1'
+      os.environ['INFINIT_NO_DIR_CACHE'] = '1'
       # Python will honor environment variables TMPDIR,TEMP,TMP
       if os.environ.get('TEST_INFINIT_HOME', False):
         elle.log.log('Forcing home from environment')
@@ -122,7 +124,11 @@ class Oracles:
     return self
 
   def __exit__(self, *args, **kwargs):
-    # FIXME: teardown created State(s)?
+    for s in self.__states:
+      try:
+        s.logout()
+      except:
+        pass
     for d in self.__cleanup_dirs:
       elle.log.trace('Cleaning up %s' % d)
       shutil.rmtree(d)
@@ -139,7 +145,11 @@ class Oracles:
     return self._mongo
 
   def state(self):
+    """ Construct a new client. That will be delogued on teardown.
+    """
     import state
     meta_proto, meta_host, meta_port = self.meta
     tropho_proto, tropho_host, tropho_port_plain, tropho_port_ssl = self.trophonius
-    return state.State(meta_proto, meta_host, meta_port, tropho_host, tropho_port_ssl)
+    res = state.State(meta_proto, meta_host, meta_port, tropho_host, tropho_port_ssl)
+    self.__states.append(res)
+    return res
