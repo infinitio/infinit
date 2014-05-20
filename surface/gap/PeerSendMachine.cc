@@ -5,6 +5,7 @@
 #include <elle/Error.hh>
 #include <elle/log.hh>
 #include <elle/os/environ.hh>
+#include <elle/os/file.hh>
 #include <elle/serialization/json.hh>
 
 #include <frete/RPCFrete.hh>
@@ -281,7 +282,8 @@ namespace surface
       int64_t size = 0;
       for (auto const& file: this->files())
       {
-        auto _size = boost::filesystem::file_size(file);
+        // Might be a directory, use a function that recurses into them.
+        auto _size = elle::os::file::size(file);
         size += _size;
       }
       ELLE_DEBUG("%s: total file size: %s", *this, size);
