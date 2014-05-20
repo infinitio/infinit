@@ -400,8 +400,8 @@ namespace surface
       ELLE_DUMP_SCOPE("%s: progress transaction", *this);
       if (this->_machine == nullptr)
       {
-        ELLE_WARN("%s: machine is empty (it doesn't concern your device)", *
-                  this);
+        ELLE_WARN("%s: machine is empty (it doesn't concern your device)",
+                  *this);
         throw BadOperation(BadOperation::Type::progress);
       }
       return this->_machine->progress();
@@ -425,18 +425,6 @@ namespace surface
     Transaction::on_transaction_update(std::shared_ptr<Data> data)
     {
       ELLE_TRACE_SCOPE("%s: update data with %s", *this, data);
-      if (this->final())
-      {
-        ELLE_WARN("%s: transaction already has a final status %s, can't "\
-                  "change to %s", *this, this->_data->status, data->status);
-      }
-      // XXX: This is totally wrong, the > is not overloaded, so the transaction
-      // status has to be ordered.
-      else if (this->_data->status > data->status)
-      {
-        ELLE_WARN("%s: receive a status update (%s) that is lower than the "
-                  " current %s", *this, this->_data->status, data->status);
-      }
       this->_data = data;
       if (this->_machine)
       {
