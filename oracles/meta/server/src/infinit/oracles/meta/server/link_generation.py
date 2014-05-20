@@ -169,11 +169,11 @@ class Mixin:
       link = {
         'aws_credentials': None,
         'click_count': 0,
-        'creation_time': creation_time,
+        'ctime': creation_time,
         'expiry_time': expiry_time,
         'file_list': files,
         'hash': None,
-        'modification_time': creation_time,
+        'mtime': creation_time,
         'name': name,
         'progress': 0.0,
         'sender_device_id': self.current_device['id'],
@@ -252,7 +252,7 @@ class Mixin:
         {
           '$set':
           {
-            'modification_time': datetime.datetime.utcnow(),
+            'mtime': datetime.datetime.utcnow(),
             'progress': progress,
             'status': status,
           }
@@ -270,26 +270,53 @@ class Mixin:
       link = self.database.links.find_and_modify(
         {'hash': hash},
         {'$inc': {'click_count': 1}},
-        new = True)
+        new = True,
+        multi = False,
+        fields = {
+          '_id': True,
+          'click_count': True,
+          'ctime': True,
+          'expiry_time': True,
+          'file_list': True,
+          'hash': True,
+          'link': True,
+          'mtime': True,
+          'name': True,
+          'progress': True,
+          'sender_device_id': True,
+          'sender_id': True,
+          'status': True,
+        })
       if link is None:
         self.not_found('link not found')
       if datetime.datetime.utcnow() > link['expiry_time']:
         self.not_found('link expired')
+      link['id'] = link['_id']
+      link.pop('_id')
+      link['ctime'] = calendar.timegm(link['ctime'].timetuple())
+      link['expiry_time'] = calendar.timegm(link['expiry_time'].timetuple())
+      link['mtime'] = calendar.timegm(link['mtime'].timetuple())
+      link['share_link'] = self._make_share_link(link['hash'])
+      self.notifier.notify_some(
+        notifier.LINK_TRANSACTION,
+        recipient_ids = {link['sender_id']},
+        message = link,
+      )
       if link['status'] is not transaction_status.FINISHED:
         return {
           'click_count': link['click_count'],
-          'files': link['file_list'],
+          'file_list': link['file_list'],
           'progress': link['progress'],
           'status': link['status'],
         }
       download_url = cloud_buffer_token.generate_get_url(
         self.aws_region, self.aws_link_bucket,
-        link['_id'],
+        link['id'],
         link['name'],
         valid_days = link_lifetime_days)
       return {
         'click_count': link['click_count'],
-        'files': link['file_list'],
+        'file_list': link['file_list'],
         'link': download_url,
         'progress': link['progress'],
         'status': link['status'],
@@ -323,11 +350,11 @@ class Mixin:
         {'$project': {
           'aws_credentials': '$aws_credentials',
           'click_count': '$click_count',
-          'ctime': '$creation_time',
+          'ctime': '$ctime',
           'expiry_time': '$expiry_time',
           'hash': '$hash',
           'id': '$_id',
-          'mtime': '$modification_time',
+          'mtime': '$mtime',
           'name': '$name',
           'status': '$status',
           'sender_id': '$sender_id',
