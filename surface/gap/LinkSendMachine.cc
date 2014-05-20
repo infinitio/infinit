@@ -92,7 +92,7 @@ namespace surface
       boost::filesystem::path first(*this->files().begin());
       auto response =
         this->state().meta().create_link(files, first.filename().string());
-      this->data()->id = response.id();
+      *this->_data = std::move(response.transaction());
       this->_credentials = std::move(response.aws_credentials());
       this->_save_snapshot();
     }

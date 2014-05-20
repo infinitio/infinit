@@ -158,7 +158,7 @@ namespace surface
       this->_snapshot_save();
     }
 
-    // Construct to send files.
+    // Construct to create link.
     Transaction::Transaction(State& state,
                              uint32_t id,
                              std::vector<std::string> files,
@@ -180,13 +180,12 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: construct to generate link for %s",
                        *this, this->_files.get());
-      auto data = std::make_shared<infinit::oracles::LinkTransaction>(
-        state.me().id,
-        state.device().id);
+      auto data = std::make_shared<infinit::oracles::LinkTransaction>();
+      data->sender_id = state.me().id;
+      data->sender_device_id = state.device().id;
       this->_data = data;
       this->_machine.reset(
-        new LinkSendMachine(*this, this->_id,
-                            this->_files.get(), data));
+        new LinkSendMachine(*this, this->_id, this->_files.get(), data));
       this->_snapshot_save();
     }
 

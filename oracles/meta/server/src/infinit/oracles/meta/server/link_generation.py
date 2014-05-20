@@ -191,6 +191,13 @@ class Mixin:
       credentials = self._get_aws_credentials(user, link_id)
       if credentials is None:
         self.fail(error.UNABLE_TO_GET_AWS_CREDENTIALS)
+      link = self.database.links.find_and_modify(
+        {'_id': link_id},
+        {'$set': {
+          'aws_credentials': credentials,
+        }},
+        new = True,
+      )
 
       # We will use the DB to ensure that our hash is unique.
       attempt = 1
@@ -200,12 +207,13 @@ class Mixin:
           link_hash = self._hash_link_id(link_id)
           elle.log.debug('trying to store created hash (%s), attempt: %s' %
                          (link_hash, attempt))
-          self.database.links.update(
+          link = self.database.links.find_and_modify(
             {'_id': link_id},
             {'$set': {
-              'aws_credentials': credentials,
               'hash': link_hash,
-            }})
+            }},
+            new = True,
+          )
           break
         except errors.DuplicateKeyError:
           if attempt >= 20:
@@ -213,12 +221,40 @@ class Mixin:
             self.abort('unable to generate link')
           attempt += 1
 
-      return {
+      res = {
+        'transaction': self.__client_link(link),
         'aws_credentials': credentials,
-        'destination': destination,
-        'id': link_id,
-        'share_link': self._make_share_link(link_hash),
       }
+      print(res)
+      return res
+
+  def __client_link(self, link):
+    mapping = {
+      'id': '_id',
+    }
+    link = dict(
+      (key, link[key in mapping and mapping[key] or key]) for key in (
+        'id',
+        'click_count',
+        'ctime',
+        'expiry_time',
+        'file_list',
+        'hash',
+        'mtime',
+        'name',
+        'progress',
+        'sender_device_id',
+        'sender_id',
+        'status',
+    ))
+    link['share_link'] = self._make_share_link(link['hash'])
+    if link['status'] is transaction_status.FINISHED:
+      link['link'] = cloud_buffer_token.generate_get_url(
+        self.aws_region, self.aws_link_bucket,
+        link['id'],
+        link['name'],
+        valid_days = link_lifetime_days)
+    return link
 
   @api('/link/<id>', method = 'POST')
   @require_logged_in
@@ -272,55 +308,18 @@ class Mixin:
         {'$inc': {'click_count': 1}},
         new = True,
         multi = False,
-        fields = {
-          '_id': True,
-          'click_count': True,
-          'ctime': True,
-          'expiry_time': True,
-          'file_list': True,
-          'hash': True,
-          'link': True,
-          'mtime': True,
-          'name': True,
-          'progress': True,
-          'sender_device_id': True,
-          'sender_id': True,
-          'status': True,
-        })
+      )
       if link is None:
         self.not_found('link not found')
       if datetime.datetime.utcnow() > link['expiry_time']:
         self.not_found('link expired')
-      link['id'] = link['_id']
-      link.pop('_id')
-      link['ctime'] = calendar.timegm(link['ctime'].timetuple())
-      link['expiry_time'] = calendar.timegm(link['expiry_time'].timetuple())
-      link['mtime'] = calendar.timegm(link['mtime'].timetuple())
-      link['share_link'] = self._make_share_link(link['hash'])
+      link = self.__client_link(link)
       self.notifier.notify_some(
         notifier.LINK_TRANSACTION,
         recipient_ids = {link['sender_id']},
         message = link,
       )
-      if link['status'] is not transaction_status.FINISHED:
-        return {
-          'click_count': link['click_count'],
-          'file_list': link['file_list'],
-          'progress': link['progress'],
-          'status': link['status'],
-        }
-      download_url = cloud_buffer_token.generate_get_url(
-        self.aws_region, self.aws_link_bucket,
-        link['id'],
-        link['name'],
-        valid_days = link_lifetime_days)
-      return {
-        'click_count': link['click_count'],
-        'file_list': link['file_list'],
-        'link': download_url,
-        'progress': link['progress'],
-        'status': link['status'],
-      }
+      return link
 
   @api('/links')
   @require_logged_in
@@ -347,23 +346,6 @@ class Mixin:
         {'$sort': {'creation_time': DESCENDING}},
         {'$skip': offset},
         {'$limit': count},
-        {'$project': {
-          'aws_credentials': '$aws_credentials',
-          'click_count': '$click_count',
-          'ctime': '$ctime',
-          'expiry_time': '$expiry_time',
-          'hash': '$hash',
-          'id': '$_id',
-          'mtime': '$mtime',
-          'name': '$name',
-          'status': '$status',
-          'sender_id': '$sender_id',
-          'sender_device_id': '$sender_device_id',
-        }}
       ])['result']:
-        link['ctime'] = calendar.timegm(link['ctime'].timetuple())
-        link['expiry_time'] = calendar.timegm(link['expiry_time'].timetuple())
-        link['mtime'] = calendar.timegm(link['mtime'].timetuple())
-        link['share_link'] = self._make_share_link(link['hash'])
-        res.append(link)
+        res.append(self.__client_link(link))
       return {'links': res}

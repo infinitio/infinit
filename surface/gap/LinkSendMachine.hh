@@ -2,7 +2,6 @@
 # define SURFACE_GAP_LINK_SEND_MACHINE_HH
 
 # include <oracles/src/infinit/oracles/LinkTransaction.hh>
-
 # include <surface/gap/SendMachine.hh>
 
 namespace surface

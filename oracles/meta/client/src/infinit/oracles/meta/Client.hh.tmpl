@@ -256,11 +256,8 @@ namespace infinit
       {
       public:
         CreateLinkTransactionResponse() = default;
-
+        ELLE_ATTRIBUTE_R(LinkTransaction, transaction);
         ELLE_ATTRIBUTE_R(aws::Credentials, aws_credentials);
-        ELLE_ATTRIBUTE_R(std::string, destination);
-        ELLE_ATTRIBUTE_R(std::string, id);
-        ELLE_ATTRIBUTE_R(std::string, share_link);
 
         CreateLinkTransactionResponse(elle::serialization::SerializerIn& s);
         void

@@ -19,18 +19,6 @@ namespace infinit
       name()
     {}
 
-    LinkTransaction::LinkTransaction(std::string id,
-                                     std::string device_id)
-      : Transaction(id, device_id)
-      , click_count(0)
-      , cloud_location()
-      , expiry_time()
-      , file_list()
-      , hash()
-      , name()
-      , share_link()
-    {}
-
     /*--------------.
     | Serialization |
     `--------------*/
@@ -43,11 +31,12 @@ namespace infinit
     void
     LinkTransaction::serialize(elle::serialization::Serializer& s)
     {
-      s.serialize("_id", this->id);
+      s.serialize("id", this->id);
       s.serialize("click_count", this->click_count);
       s.serialize("ctime", this->ctime);
       s.serialize("expiry_time", this->expiry_time);
       s.serialize("hash", this->hash);
+      s.serialize("link", this->link);
       s.serialize("mtime", this->mtime);
       s.serialize("name", this->name);
       s.serialize("sender_device_id", this->sender_device_id);

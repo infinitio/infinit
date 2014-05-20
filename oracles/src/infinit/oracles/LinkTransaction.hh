@@ -1,12 +1,14 @@
 #ifndef INFINIT_ORACLES_LINK_TRANSACTION_HH
 # define INFINIT_ORACLES_LINK_TRANSACTION_HH
 
-# include <infinit/oracles/Transaction.hh>
+# include <vector>
+
+# include <boost/optional.hpp>
 
 # include <elle/serialization/fwd.hh>
 # include <elle/serialize/construct.hh>
 
-# include <vector>
+# include <infinit/oracles/Transaction.hh>
 
 namespace infinit
 {
@@ -27,8 +29,6 @@ namespace infinit
     `-------------*/
     public:
       LinkTransaction();
-      LinkTransaction(std::string id,
-                      std::string device_id);
 
     /*-----.
     | Data |
@@ -39,6 +39,7 @@ namespace infinit
       double expiry_time;
       FileList file_list;
       std::string hash;
+      boost::optional<std::string> link;
       std::string name;
       std::string share_link;
 
