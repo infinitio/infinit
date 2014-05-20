@@ -13,12 +13,24 @@ import filecmp
 import tempfile
 import traceback
 import sys
+import threading
 
 from utils import expect_raise
 
+def exiter():
+  print('#################### EXIT #############')
+  os._exit(1)
+# Setup emergency timeout in case teardown gets stuck
+abort_timer = threading.Timer(600, exiter)
 
-def transaction_callback(notification, state, rules, default_action):
-  print('TRANSACTION_CB transaction_id=%s status=%s' % (notification['transaction_id'], notification['status']))
+def transaction_callback(notification, state, rules, default_action, statuses):
+  """ Receives a transaction notification and potentially reply with an action
+  Rules is of the form [{'condition':{'key': NOTIF_FIELD, 'value': EXPECTED_VALUE}, 'action': ACTION_NAME}]
+  ACTION_NAME is a transaction action among accept,reject,join,cancel,pause,interrupt,reset
+  NOTIF_FIELD is one of the keys in the notification
+  """
+  statuses[notification['transaction_id']] = notification['status']
+  #print('TRANSACTION_CB transaction_id=%s status=%s' % (notification['transaction_id'], notification['status']))
   action = default_action
   for r in rules:
     for cond in r['conditions']:
@@ -28,34 +40,84 @@ def transaction_callback(notification, state, rules, default_action):
         break
       action = r['action']
   if action:
-    print('TRANSACTION_CB replying %s' % action)
+    #print('TRANSACTION_CB replying %s' % action)
     getattr(state, 'transaction_' + action)(notification['transaction_id'])
 
+
 class TemporaryData:
-  def __init__(self, name, size):
-    self.name = name
+  """ Create temporary file(s) with given names and sizes
+
+  @param name,names: File names (may contain directory elements)
+
+  Will make the following properties available:
+  full_path : full path of first file
+  full_pathes: full path of all files
+  directory: Directory containing generated files (and nothing else)
+  """
+  def __init__(self, name=None, size=None, names = []):
     self.size = size
+    self.names = names
+    if name is not None:
+      self.names = [name] + self.names
     self.full_path = None
+    self.full_pathes = []
+    if size is None:
+      raise Exception('Size must be set')
   def __enter__(self):
     self.directory = tempfile.mkdtemp('infinit-test-files')
-    self.full_path = os.path.join(self.directory, self.name)
-    with open(self.full_path, 'wb') as f:
-      f.write(bytes('a'* self.size,'ascii'))
+    for n in self.names:
+      path = os.path.join(self.directory, n)
+      d = os.path.dirname(path)
+      # Makedirs fail if last component exists with incorrect mode
+      if len(os.path.dirname(n)):
+        os.makedirs(d,  exist_ok = True)
+      self.full_pathes.append(path)
+      with open(path, 'wb') as f:
+        f.write(bytes('a'* self.size,'ascii'))
+    self.full_path = self.full_pathes[0]
     return self
   def __exit__(self, *args, **kvargs):
     shutil.rmtree(self.directory)
 
+# Callable that compares two files or directories for identical content.
 class FileMatch:
   def __init__(self, f1, f2):
     self.f1 = f1
     self.f2 = f2
+  def explain(self):
+    for p in [self.f1, self.f2]:
+      print('------- %s (%s)' % (p, os.path.exists(p)))
+      for (dirpath, dirnames, filenames) in os.walk(p):
+        for f in filenames:
+          full = os.path.join(dirpath, f)
+          print('%s: %s' % (full, os.path.getsize(full)))
+    print('--------')
   def __call__(self):
     try:
-      return filecmp.cmp(self.f1, self.f2, shallow = False)
-    except:
+      if os.path.isdir(self.f1):
+        # Join the relative content file names in both dirs
+        content = set()
+        for p in [self.f1, self.f2]:
+          for (dirpath, dirnames, filenames) in os.walk(p):
+            rel = os.path.relpath(dirpath, p)
+            for f in filenames:
+              content.add(os.path.join(rel, f))
+        (ok, fail, err) = filecmp.cmpfiles(self.f1, self.f2, list(content), shallow = False)
+        return len(fail) == 0 and len(err) == 0
+      else:
+        return filecmp.cmp(self.f1, self.f2, list(content), shallow = False)
+    except Exception as e:
       return False # Probably one of them do not exist
 
-# Run the test until timeout or condition becomes true
+def check_explain(checker):
+  """ Run the checker in verbose mode if possible
+  """
+  val = checker()
+  if not val and hasattr(checker, 'explain'):
+    checker.explain()
+  return val
+
+# Run the test until timeout in seconds or condition becomes true
 def advance(states, timeout, condition):
   i = 0
   while i < timeout * 10 and not condition():
@@ -65,33 +127,64 @@ def advance(states, timeout, condition):
     i = i +1
   return condition()
 
+accept_rules = [{'conditions':[{'key': 'status',
+                                'value': 'transaction_waiting_accept'}],
+                 'action': 'accept'}]
+
 class TestTransfer(unittest.TestCase):
   def test_basic(self):
-    exception = False
+    return self.transfer_test(['100k'], '100k', 100000)
+  def test_multiples(self):
+    return self.transfer_test([''], names=list(map(str, range(10))), size=100)
+  def test_multiples_2(self): # Pass file names instead of dir to send_files
+    names = list(map(str, range(10)))
+    return self.transfer_test(names, names=names, size=100)
+  def test_thousand_files(self):
+    return self.transfer_test([''], names=list(map(str, range(1000))), size=100)
+  def test_empty_files(self):
+    return self.transfer_test([''], names=list(map(str, range(10))), size=0)
+  def transfer_test(self, files, *args, **kvargs):
+    """ Run one transfer
+    @param files: file list passed to send_files (directory or files)
+    @param args,kvargs: Passed to TemporaryData to populate send dir
+    """
+    exception = None
     with infinit.oracles.servers.Oracles(
       mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
       try:
+        statuses = dict()
         s1 = o.state()
         s1.login('mefyl@infinit.io',
                 state.hash_password('mefyl@infinit.io', 'mefyl'))
         s2 = o.state()
         s2.login('mefyl2@infinit.io',
                 state.hash_password('mefyl2@infinit.io', 'mefyl2'))
-        s2.attach_transaction_callback(lambda t: transaction_callback(t, s2, [], 'accept'))
-        advance([s1, s2], 1, lambda : False)
-        with TemporaryData('100k', 100000) as data:
-          s1.send_files("mefyl2@infinit.io", [data.full_path], "hi")
-          checker = FileMatch(data.full_path, os.path.join(o.download_dir, '100k'))
-          advance([s1, s2], 10, checker)
+        s2.attach_transaction_callback(lambda t: transaction_callback(t, s2, accept_rules, '', statuses))
+        # Let both peers login before going on
+        advance([s1, s2], 3, lambda : False)
+        with TemporaryData(*args, **kvargs) as data:
+          files = list(map(lambda x: os.path.join(data.directory, x), files))
+          tid = s1.send_files("mefyl2@infinit.io", files, "hi")
+          # Run until recipient has a tid
+          advance([s1, s2], 5, lambda : len(statuses))
+          self.assertEquals(len(statuses), 1)
+          recipient_tid = list(statuses.keys())[0]
+          file_checker = FileMatch(data.directory, o.download_dir)
+          final_statuses = ['transaction_finished', 'transaction_failed',
+                            'transaction_canceled', 'transaction_rejected']
+          def status_checker():
+            return s2.transaction_last_status(recipient_tid) in final_statuses
+          advance([s1, s2], 90, status_checker)
           advance([s1, s2], 1, lambda : False)
-          self.assertTrue(checker())
-          print("SUCCESS")
-      except Exception :
+          self.assertEquals(s2.transaction_last_status(recipient_tid), 'transaction_finished')
+          self.assertTrue(check_explain(file_checker))
+      except Exception as e:
         # Teardown sequence can get stuck and hide this exception
+        # so display it now
         print("****TEST EXCEPTION")
         traceback.print_exc(file=sys.stdout)
-        exception = True
-      self.assertFalse(exception)
+        exception = e
+      self.assertEquals(exception, None)
 
 utils.run(unittest.main)
 
