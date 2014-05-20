@@ -4,6 +4,7 @@ import infinit.oracles.meta.server
 from infinit.oracles.meta.server.mail import Mailer
 from infinit.oracles.meta.server.invitation import Invitation
 from infinit.oracles.meta.server import transaction_status
+from infinit.oracles.meta import version
 
 import http.cookies
 import os
@@ -36,6 +37,7 @@ class Client:
   def __init__(self, meta):
     self.__cookies = None
     self.__meta_port = meta._Meta__server.port
+    self.user_agent = 'MetaClient/' + version.version
 
   def __get_cookies(self, headers):
     cookies = headers.get('set-cookie', None)
@@ -66,6 +68,7 @@ class Client:
     uri = "http://localhost:%s/%s" % (self.__meta_port,
                                       url)
     headers = {}
+    headers['user-agent'] = self.user_agent
     if body is not None and isinstance(body, dict):
       headers['Content-Type'] = 'application/json'
       body = json.dumps(body)

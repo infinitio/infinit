@@ -185,6 +185,8 @@ class Mixin:
       _id = user['_id']
 
       cloud_capable = self.user_version >= (0, 8, 11)
+      elle.log.debug('Sender agent %s, version %s, cloud_capable %s, peer_new %s peer_ghost %s'
+                     % (self.user_agent, self.user_version, cloud_capable, new_user,  is_ghost))
       transaction = {
         'sender_id': _id,
         'sender_fullname': user['fullname'],
@@ -211,7 +213,7 @@ class Mixin:
         'fallback_port_ssl': None,
         'fallback_port_tcp': None,
         'aws_credentials': None,
-        'is_ghost': new_user and cloud_capable,
+        'is_ghost': is_ghost and cloud_capable,
         'strings': ' '.join([
               user['fullname'],
               user['handle'],
@@ -464,6 +466,7 @@ class Mixin:
         'download_link': ghost_get_url,
       }
     else:
+      elle.log.trace('Recipient is not a ghost, nothing to do')
       return {}
 
   @api('/transaction/update', method = 'POST')

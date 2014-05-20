@@ -124,16 +124,13 @@ class Mixin:
       user = self.__user_from_hash(hash)
     except error.Error as e:
       self.fail(*e.args)
-
     # Cancel all the current transactions.
     self.cancel_transactions(user)
-
     # Remove all the devices from the user because they are based on his old
     # public key.
     # XXX: All the sessions must be cleaned too.
     # XXX: Must be handle by the client.
     self.remove_devices(user)
-
     import papier
     identity, public_key = papier.generate_identity(
       str(user["_id"]),
@@ -142,31 +139,33 @@ class Mixin:
       conf.INFINIT_AUTHORITY_PATH,
       conf.INFINIT_AUTHORITY_PASSWORD
     )
-
-    user_id = self._register(
-      _id = user["_id"],
-      register_status = 'ok',
-      email = user['email'],
-      fullname = user['fullname'],
-      password = hash_pasword(password),
-      identity = identity,
-      public_key = public_key,
-      handle = user['handle'],
-      lw_handle = user['lw_handle'],
-      swaggers = user['swaggers'],
-      networks = [],
-      devices = [],
-      connected_devices = [],
-      connected = False,
-      notifications = [],
-      old_notifications = [],
-      accounts = [
-        {'type': 'email', 'id': user['email']}
-      ],
-      avatar = user.get("avatar"),
-      email_confirmed = True, # User got a reset account mail, email confirmed.
+    self.database.users.find_and_modify(
+      {'_id': user['_id']},
+      {'$set':
+        {
+          'register_status': 'ok',
+          'password': hash_pasword(password),
+          'identity': identity,
+          'public_key': public_key,
+          'networks': [],
+          'devices': [],
+          'connected_devices': [],
+          'connected': False,
+          'notifications': [],
+          'old_notifications': [],
+          'accounts': [
+            {'type': 'email', 'id': user['email']}
+          ],
+          'email_confirmed': True, # User got a reset account mail, email confirmed.
+        },
+        '$unset':
+        {
+          'reset_password_hash': True,
+          'reset_password_hash_validity': True,
+        }
+      }
     )
-    return self.success({'user_id': str(user_id)})
+    return self.success({'user_id': str(user['_id'])})
 
   @api('/lost-password', method = 'POST')
   def declare_lost_password(self, email):

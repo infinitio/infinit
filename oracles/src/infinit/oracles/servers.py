@@ -16,6 +16,7 @@ import subprocess
 import tempfile
 import time
 import os
+import shutil
 import sys
 
 root = os.path.dirname(__file__)
@@ -71,11 +72,15 @@ class Oracles:
 
   def __init__(self, force_admin = False, mongo_dump = None,
                force_meta_port = None,
-               force_trophonius_port = None):
+               force_trophonius_port = None,
+               setup_client = True):
     self.__force_admin = force_admin
     self.__mongo_dump = mongo_dump
     self.__force_meta_port = force_meta_port
     self.__force_trophonius_port = force_trophonius_port
+    self.__setup_client = setup_client
+    self.__cleanup_dirs = list()
+    self.__states = list()
 
   def __enter__(self):
     elle.log.trace('starting mongobox')
@@ -96,9 +101,37 @@ class Oracles:
     self.meta = ('http', '127.0.0.1', self._meta.port)
     self.trophonius = ('tcp', '127.0.0.1', self._trophonius.port_tcp(), self._trophonius.port_ssl())
     self.apertus = ('tcp', '127.0.0.1', self._apertus.port_tcp(), self._apertus.port_ssl())
+    if self.__setup_client:
+      # Some part of the systems use device_id as an uid (trophonius)
+      # So force each State to use its own.
+      os.environ['INFINIT_FORCE_NEW_DEVICE_ID'] = '1'
+      os.environ['INFINIT_NO_DIR_CACHE'] = '1'
+      # Python will honor environment variables TMPDIR,TEMP,TMP
+      if os.environ.get('TEST_INFINIT_HOME', False):
+        elle.log.log('Forcing home from environment')
+        os.environ['INFINIT_HOME'] = os.environ['TEST_INFINIT_HOME']
+      else:
+        self.__cleanup_dirs.append(tempfile.mkdtemp('infinit-test'))
+        os.environ['INFINIT_HOME'] = self.__cleanup_dirs[-1]
+      self.home_dir = os.environ['INFINIT_HOME']
+      if os.environ.get('TEST_INFINIT_DOWNLOAD_DIR', False):
+        elle.log.log('Forcing download dir from environment')
+        os.environ['INFINIT_DOWNLOAD_DIR'] = os.environ['TEST_INFINIT_DOWNLOAD_DIR']
+      else:
+        self.__cleanup_dirs.append(tempfile.mkdtemp('infinit-test-dl'))
+        os.environ['INFINIT_DOWNLOAD_DIR'] = self.__cleanup_dirs[-1]
+      self.download_dir = os.environ['INFINIT_DOWNLOAD_DIR']
     return self
 
   def __exit__(self, *args, **kwargs):
+    for s in self.__states:
+      try:
+        s.logout()
+      except:
+        pass
+    for d in self.__cleanup_dirs:
+      elle.log.trace('Cleaning up %s' % d)
+      shutil.rmtree(d)
     self._trophonius.terminate()
     self._trophonius.stop()
     self._apertus.stop()
@@ -112,7 +145,11 @@ class Oracles:
     return self._mongo
 
   def state(self):
+    """ Construct a new client. That will be delogued on teardown.
+    """
     import state
     meta_proto, meta_host, meta_port = self.meta
     tropho_proto, tropho_host, tropho_port_plain, tropho_port_ssl = self.trophonius
-    return state.State(meta_proto, meta_host, meta_port, tropho_host, tropho_port_ssl)
+    res = state.State(meta_proto, meta_host, meta_port, tropho_host, tropho_port_ssl)
+    self.__states.append(res)
+    return res

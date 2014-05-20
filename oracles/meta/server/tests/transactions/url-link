@@ -36,17 +36,18 @@ class MailService(NoOpMailer):
 with Meta() as meta:
   bob = User(meta, "bob@infinit.io")
   bob.login()
-
-  # Send something to a ghost user.
+  current_sent = meta.mailer.sent
+  # Send something to a ghost user from a cloud-capable sender.
   alice_email = 'alice@infinit.io'
   transaction, res = bob.sendfile(recipient_id = alice_email,
                                   initialize = True)
   assert res['success']
+  assert meta.mailer.sent == current_sent
   transaction_id = res['created_transaction_id']
 
   meta.mailer = MailService("send-file-url",
                             recipient_email = alice_email)
-  assert meta.mailer.sent == 0
+  assert meta.mailer.sent == 0 #We replaced the mailer
 
   # Finish transaction.
   res = bob.post('transaction/update', {"transaction_id": transaction_id,
@@ -70,3 +71,18 @@ with Meta() as meta:
   assert res['download_link']
   assert res['message'] == 'no message'
   assert len(res['files']) == 3
+
+
+  # Now, the recipient is registered as ghost, does ghost mail still works?
+  current_sent = meta.mailer.sent
+  transaction, res = bob.sendfile(recipient_id = alice_email,
+                                  initialize = True)
+  assert res['success']
+  assert meta.mailer.sent == current_sent
+  transaction_id = res['created_transaction_id']
+  res = bob.post('transaction/update', {"transaction_id": transaction_id,
+                                        "status": FINISHED,
+                                        "device_id": str(bob.device_id),
+                                        "device_name": bob.device_name})
+  assert res['success']
+  assert meta.mailer.sent == current_sent + 1

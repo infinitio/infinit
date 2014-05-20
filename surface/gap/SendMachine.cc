@@ -4,6 +4,7 @@
 
 #include <elle/archive/zip.hh>
 #include <elle/container/vector.hh>
+#include <elle/os/environ.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
 #include <elle/system/system.hh>
@@ -173,12 +174,13 @@ namespace surface
         ELLE_TRACE("%s: using chunk size of %s, with %s chunks",
                    *this, chunk_size, chunk_count);
         // Load our own snapshot that contains the upload uid
-        std::string raw_snapshot_path = common::infinit::frete_snapshot_path(
-          this->data()->sender_id,
-          this->data()->id + "_raw");
+        auto raw_snapshot_path =
+          this->transaction().snapshots_directory() /  "ghost_id.snapshot";
         std::string upload_id;
-        std::ifstream ifs(raw_snapshot_path);
-        ifs >> upload_id;
+        {
+          std::ifstream ifs(raw_snapshot_path.string());
+          ifs >> upload_id;
+        }
         ELLE_DEBUG("%s: tried to reload id from %s, got %s",
                    *this, raw_snapshot_path, upload_id);
         std::vector<aws::S3::MultiPartChunk> chunks;
@@ -189,7 +191,7 @@ namespace surface
         {
           //FIXME: pass correct mime type for non-zip case
           upload_id = handler.multipart_initialize(source_file_name);
-          std::ofstream ofs(raw_snapshot_path);
+          std::ofstream ofs(raw_snapshot_path.string());
           ofs << upload_id;
           ELLE_DEBUG("%s: saved id %s to %s",
                      *this, upload_id, raw_snapshot_path);
@@ -259,7 +261,8 @@ namespace surface
               buffer,
               local_chunk);
             // FIXME
-            // auto progress = float(next_chunk) / float(chunk_count);
+            // auto progress = local_chunk * snapshot->total_size() /
+            // chunk_count;
             // Now, totally fake progress on the original frete by
             // updating the global progress, and not individual files
             // progress. That way we don't produce fake snapshot state data
@@ -269,6 +272,10 @@ namespace surface
           }
         };
         int num_threads = 4;
+        std::string env_num_threads =
+          elle::os::getenv("INFINIT_NUM_GHOST_CLOUD_UPLOAD_THREAD", "");
+        if (!env_num_threads.empty())
+          num_threads = boost::lexical_cast<unsigned>(env_num_threads);
         elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
         {
           for (int i=0; i<num_threads; ++i)

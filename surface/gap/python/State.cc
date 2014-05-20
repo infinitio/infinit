@@ -326,6 +326,12 @@ public:
     return send_files(peer, files, message);
   }
 
+  std::string
+  wrap_transaction_last_status(unsigned int id)
+  {
+    return gap_transaction_status_string(transactions().at(id)->last_status());
+  }
+
 #define TOP(name, ret)                             \
   ret transaction_ ## name(unsigned int id)        \
   {                                                \
@@ -340,6 +346,7 @@ public:
   TOP(pause, bool)
   TOP(interrupt, void)
   TOP(reset, void)
+  TOP(final, bool)
   #undef TOP
 };
 
@@ -385,6 +392,8 @@ BOOST_PYTHON_MODULE(state)
     .def("transaction_pause", &PythonState::transaction_pause)
     .def("transaction_interrupt", &PythonState::transaction_interrupt)
     .def("transaction_reset", &PythonState::transaction_reset)
+    .def("transaction_final", &PythonState::transaction_final)
+    .def("transaction_last_status", &PythonState::wrap_transaction_last_status)
     .def("swaggers", &PythonState::wrap_swaggers)
     .def("swagger_from_name", (User (State::*)(const std::string&)) &State::swagger)
     .def("swagger_from_id", (User (State::*) (uint32_t)) &State::swagger)

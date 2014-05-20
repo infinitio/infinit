@@ -305,7 +305,10 @@ namespace surface
       }};
 
       boost::uuids::uuid device_uuid = boost::uuids::nil_generator()();
-      if (boost::filesystem::exists(common::infinit::device_id_path()))
+      bool force_regenerate
+        = !elle::os::getenv("INFINIT_FORCE_NEW_DEVICE_ID", "").empty();
+      if (!force_regenerate
+          && boost::filesystem::exists(common::infinit::device_id_path()))
       {
         ELLE_TRACE("%s: get device uuid from file", *this);
         std::ifstream file(common::infinit::device_id_path());
