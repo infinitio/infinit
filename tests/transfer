@@ -1,0 +1,97 @@
+#! /usr/bin/env python3
+
+import infinit.oracles.servers
+import os
+import state
+import utils
+import unittest
+import time
+import datetime
+import reactor
+import shutil
+import filecmp
+import tempfile
+import traceback
+import sys
+
+from utils import expect_raise
+
+
+def transaction_callback(notification, state, rules, default_action):
+  print('TRANSACTION_CB transaction_id=%s status=%s' % (notification['transaction_id'], notification['status']))
+  action = default_action
+  for r in rules:
+    for cond in r['conditions']:
+      k = cond['key']
+      v = cond['value']
+      if notification.get(k, '<unset>') != v:
+        break
+      action = r['action']
+  if action:
+    print('TRANSACTION_CB replying %s' % action)
+    getattr(state, 'transaction_' + action)(notification['transaction_id'])
+
+class TemporaryData:
+  def __init__(self, name, size):
+    self.name = name
+    self.size = size
+    self.full_path = None
+  def __enter__(self):
+    self.directory = tempfile.mkdtemp('infinit-test-files')
+    self.full_path = os.path.join(self.directory, self.name)
+    with open(self.full_path, 'wb') as f:
+      f.write(bytes('a'* self.size,'ascii'))
+    return self
+  def __exit__(self, *args, **kvargs):
+    shutil.rmtree(self.directory)
+
+class FileMatch:
+  def __init__(self, f1, f2):
+    self.f1 = f1
+    self.f2 = f2
+  def __call__(self):
+    try:
+      return filecmp.cmp(self.f1, self.f2, shallow = False)
+    except:
+      return False # Probably one of them do not exist
+
+# Run the test until timeout or condition becomes true
+def advance(states, timeout, condition):
+  i = 0
+  while i < timeout * 10 and not condition():
+    for s in states:
+      s.poll()
+    reactor.sleep(datetime.timedelta(milliseconds = 100))
+    i = i +1
+  return condition()
+
+class TestTransfer(unittest.TestCase):
+  def test_basic(self):
+    exception = False
+    with infinit.oracles.servers.Oracles(
+      mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
+      try:
+        s1 = o.state()
+        s1.login('mefyl@infinit.io',
+                state.hash_password('mefyl@infinit.io', 'mefyl'))
+        s2 = o.state()
+        s2.login('mefyl2@infinit.io',
+                state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+        s2.attach_transaction_callback(lambda t: transaction_callback(t, s2, [], 'accept'))
+        advance([s1, s2], 1, lambda : False)
+        with TemporaryData('100k', 100000) as data:
+          s1.send_files("mefyl2@infinit.io", [data.full_path], "hi")
+          checker = FileMatch(data.full_path, os.path.join(o.download_dir, '100k'))
+          advance([s1, s2], 10, checker)
+          advance([s1, s2], 1, lambda : False)
+          self.assertTrue(checker())
+          print("SUCCESS")
+      except Exception :
+        # Teardown sequence can get stuck and hide this exception
+        print("****TEST EXCEPTION")
+        traceback.print_exc(file=sys.stdout)
+        exception = True
+      self.assertFalse(exception)
+
+utils.run(unittest.main)
+

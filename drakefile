@@ -748,6 +748,7 @@ def configure(cxx_toolkit = None,
     for name in [
         'basic.py',
         'login',
+        'transfer'
     ]:
       test_node = drake.Node('tests/%s' % name)
       test_node.dependencies_add(oracles.oracles)
