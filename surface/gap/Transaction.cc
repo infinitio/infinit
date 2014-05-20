@@ -422,7 +422,7 @@ namespace surface
     void
     Transaction::on_transaction_update(std::shared_ptr<Data> data)
     {
-      ELLE_TRACE_SCOPE("%s: update data with %s", *this, data);
+      ELLE_TRACE_SCOPE("%s: update data with %s", *this, *data);
       this->_data = data;
       if (this->_machine)
       {
