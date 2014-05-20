@@ -113,6 +113,17 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::UserStatusNotification,
   ar & named("device_status", value.device_status);
 }
 
+ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::LinkTransactionNotification);
+ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::LinkTransactionNotification,
+                      ar,
+                      value,
+                      version)
+{
+  (void)version;
+  ar & base_class<infinit::oracles::trophonius::Notification>(value);
+  ar & base_class<infinit::oracles::LinkTransaction>(value);
+}
+
 ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::PeerTransactionNotification);
 ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::PeerTransactionNotification,
                       ar,
@@ -169,6 +180,13 @@ namespace infinit
         stream << "Notification user " << user_id
                << " went " << (device_status ? "on" : "off")
                << "line on device " << device_id;
+      }
+
+      void
+      LinkTransactionNotification::print(std::ostream& stream) const
+      {
+        stream << this->notification_type << ": "
+               << *static_cast<LinkTransaction const*>(this);
       }
 
       void
@@ -230,6 +248,8 @@ namespace infinit
         {
           case NotificationType::ping:
             return Ptr(new Notification{extractor});
+          case NotificationType::link_transaction:
+            return Ptr(new LinkTransactionNotification{extractor});
           case NotificationType::peer_transaction:
             return Ptr(new PeerTransactionNotification{extractor});
           case NotificationType::peer_connection_update:
