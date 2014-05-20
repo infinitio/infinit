@@ -75,8 +75,6 @@ namespace surface
     SendMachine::~SendMachine()
     {}
 
-    static std::streamsize const chunk_size = 1 << 18;
-
     /*-------------.
     | Plain upload |
     `-------------*/
