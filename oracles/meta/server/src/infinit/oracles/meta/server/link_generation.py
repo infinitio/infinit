@@ -16,7 +16,7 @@ from . import cloud_buffer_token, error, notifier, regexp, conf, invitation, mai
 #
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.LinkGeneration'
 
-meta_url = 'http://127.0.0.1:8080'
+short_host = 'http://127.0.0.1:8080'
 default_alphabet = '23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ'
 encoded_hash_length = 7
 link_lifetime_days = 30 # Time that link will be valid.
@@ -84,6 +84,10 @@ class Mixin:
     credentials['session_token']     = raw_creds['SessionToken']
 
     return credentials
+
+  def _make_share_link(self, hash):
+    return str('%(short_host)s/link/%(hash)s' % {'short_host': short_host,
+                                                 'hash': hash})
 
   @api('/link/<link_id>/credentials', method = 'GET')
   @require_logged_in
@@ -209,16 +213,11 @@ class Mixin:
             self.abort('unable to generate link')
           attempt += 1
 
-      share_link = str('%(meta_url)s/link/%(hash)s' %
-                       {'aws_credentials': credentials,
-                        'meta_url': meta_url,
-                        'hash': link_hash})
-
       return {
         'aws_credentials': credentials,
         'destination': destination,
         'id': link_id,
-        'share_link': share_link,
+        'share_link': self._make_share_link(link_hash),
       }
 
   @api('/link/<id>', method = 'POST')
@@ -324,16 +323,20 @@ class Mixin:
         {'$project': {
           'aws_credentials': '$aws_credentials',
           'click_count': '$click_count',
-          'creation_time': '$creation_time',
+          'ctime': '$creation_time',
           'expiry_time': '$expiry_time',
-          'file_list': '$file_list',
+          'hash': '$hash',
           'id': '$_id',
+          'mtime': '$modification_time',
           'name': '$name',
-          'progress': '$progress',
           'status': '$status',
+          'sender_id': '$sender_id',
+          'sender_device_id': '$sender_device_id',
         }}
       ])['result']:
-        link['creation_time'] = calendar.timegm(link['creation_time'].timetuple())
+        link['ctime'] = calendar.timegm(link['ctime'].timetuple())
         link['expiry_time'] = calendar.timegm(link['expiry_time'].timetuple())
+        link['mtime'] = calendar.timegm(link['mtime'].timetuple())
+        link['share_link'] = self._make_share_link(link['hash'])
         res.append(link)
       return {'links': res}
