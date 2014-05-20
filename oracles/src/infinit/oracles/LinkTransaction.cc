@@ -19,19 +19,8 @@ namespace infinit
       name()
     {}
 
-    /*--------------.
-    | Serialization |
-    `--------------*/
-
-    LinkTransaction::LinkTransaction(elle::serialization::SerializerIn& s)
-    {
-      this->serialize(s);
-    }
-
     LinkTransaction::LinkTransaction(std::string id,
-                                     std::string fullname,
-                                     std::string device_id,
-                                     std::vector<std::string> files)
+                                     std::string device_id)
       : Transaction(id, device_id)
       , click_count(0)
       , cloud_location()
@@ -41,6 +30,15 @@ namespace infinit
       , name()
       , share_link()
     {}
+
+    /*--------------.
+    | Serialization |
+    `--------------*/
+
+    LinkTransaction::LinkTransaction(elle::serialization::SerializerIn& s)
+    {
+      this->serialize(s);
+    }
 
     void
     LinkTransaction::serialize(elle::serialization::Serializer& s)

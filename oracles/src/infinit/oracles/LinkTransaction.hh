@@ -28,9 +28,7 @@ namespace infinit
     public:
       LinkTransaction();
       LinkTransaction(std::string id,
-                      std::string fullname,
-                      std::string device_id,
-                      std::vector<std::string> files);
+                      std::string device_id);
 
     /*-----.
     | Data |
