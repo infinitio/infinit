@@ -121,11 +121,14 @@ def configure(cxx_toolkit = None,
     def _epilogue(self):
       yield '#endif'
     def _variable(self, name, value):
+      if name == 'version' and not production_build:
+        value = '%s-dev' % git.version().split('-')[0]
+      else:
+        value = repr(value).replace("'", '"')
       if name == 'version':
         name = 'INFINIT_VERSION'
       else:
         name = 'INFINIT_VERSION_%s' % name.upper()
-      value = repr(value).replace("'", '"')
       return '# define %s %s' % (name, value)
   version = drake.node('version.hh')
   CxxVersionGenerator(version, git = git)
