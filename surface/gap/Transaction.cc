@@ -185,7 +185,8 @@ namespace surface
       data->sender_device_id = state.device().id;
       this->_data = data;
       this->_machine.reset(
-        new LinkSendMachine(*this, this->_id, this->_files.get(), data));
+        new LinkSendMachine(
+          *this, this->_id, this->_files.get(), message, data));
       this->_snapshot_save();
     }
 
@@ -298,11 +299,12 @@ namespace surface
                std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
                  this->_data))
       {
+        ELLE_ASSERT(this->_message);
         ELLE_ASSERT(this->_files);
         ELLE_TRACE("%s: create link send machine", *this)
           this->_machine.reset(
-            new LinkSendMachine(*this, this->_id,
-                                this->_files.get(), link_data));
+            new LinkSendMachine(*this, this->_id, this->_files.get(),
+                                this->_message.get(), link_data));
       }
       else
         ELLE_ERR("%s: don't know what to do with a %s",
