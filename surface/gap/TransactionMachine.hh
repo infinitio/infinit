@@ -241,8 +241,7 @@ namespace surface
     protected:
       friend class Transferer;
       friend class TransferMachine;
-      void
-      gap_state(gap_TransactionStatus state);
+      ELLE_ATTRIBUTE_Rw(gap_TransactionStatus, gap_status);
 
     /*----------.
     | Printable |

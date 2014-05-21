@@ -409,9 +409,9 @@ namespace surface
       // If the progress is full but the transaction is not finished
       // yet, it must be cloud buffered.
       if (this->progress() == 1)
-        this->_owner.gap_state(gap_transaction_cloud_buffered);
+        this->_owner.gap_status(gap_transaction_cloud_buffered);
       else
-        this->_owner.gap_state(gap_transaction_connecting);
+        this->_owner.gap_status(gap_transaction_connecting);
       this->_publish_interfaces();
     }
 
@@ -419,7 +419,7 @@ namespace surface
     Transferer::_connection_wrapper()
     {
       ELLE_TRACE_SCOPE("%s: connect to peer", *this);
-      this->_owner.gap_state(gap_transaction_connecting);
+      this->_owner.gap_status(gap_transaction_connecting);
       this->_connection();
     }
 
@@ -428,9 +428,9 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: wait for peer to connect", *this);
       if (this->progress() == 1)
-        this->_owner.gap_state(gap_transaction_cloud_buffered);
+        this->_owner.gap_status(gap_transaction_cloud_buffered);
       else
-        this->_owner.gap_state(gap_transaction_connecting);
+        this->_owner.gap_status(gap_transaction_connecting);
       this->_wait_for_peer();
     }
 
@@ -446,9 +446,9 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: cloud synchronize", *this);
       if (this->progress() == 1)
-        this->_owner.gap_state(gap_transaction_cloud_buffered);
+        this->_owner.gap_status(gap_transaction_cloud_buffered);
       else
-        this->_owner.gap_state(gap_transaction_connecting);
+        this->_owner.gap_status(gap_transaction_connecting);
       this->_cloud_synchronize();
     }
 
@@ -456,7 +456,7 @@ namespace surface
     Transferer::_transfer_wrapper()
     {
       ELLE_TRACE_SCOPE("%s: transfer", *this);
-      this->_owner.gap_state(gap_transaction_transferring);
+      this->_owner.gap_status(gap_transaction_transferring);
       this->_transfer();
     }
 

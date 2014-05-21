@@ -100,7 +100,7 @@ namespace surface
     void
     LinkSendMachine::_upload()
     {
-      this->gap_state(gap_transaction_transferring);
+      this->gap_status(gap_transaction_transferring);
       this->_plain_upload();
     }
 

@@ -942,7 +942,7 @@ gap_transaction_status(gap_State* state,
     "transaction state",
     [&] (surface::gap::State& state)
     {
-      return state.transactions().at(transaction_id)->last_status();
+      return state.transactions().at(transaction_id)->status();
     }
   );
 }
@@ -1035,7 +1035,7 @@ gap_link_transaction_by_id(gap_State* state,
       std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
         state.transactions().at(id)->data());
     ELLE_ASSERT(data != nullptr);
-    auto status = state.transactions().at(id)->last_status();
+    auto status = state.transactions().at(id)->status();
     auto txn = surface::gap::LinkTransaction(id,
                                              data->name,
                                              data->mtime,
@@ -1065,7 +1065,7 @@ gap_link_transactions(gap_State* state)
             it->second->data());
         if (data != nullptr)
         {
-          auto status = state.transactions().at(it->first)->last_status();
+          auto status = state.transactions().at(it->first)->status();
           auto txn = surface::gap::LinkTransaction(it->first,
                                                    data->name,
                                                    data->mtime,

@@ -112,7 +112,7 @@ namespace surface
       try
       {
         typedef frete::Frete::FileSize FileSize;
-        this->gap_state(gap_transaction_transferring);
+        this->gap_status(gap_transaction_transferring);
         ELLE_TRACE_SCOPE("%s: plain_upload", *this);
         typedef boost::filesystem::path path;
         path source_file_path;
@@ -306,7 +306,7 @@ namespace surface
             });
         handler.multipart_finalize(source_file_name, upload_id, chunks);
         // mark transfer as raw-finished
-        this->gap_state(gap_transaction_finished);
+        this->gap_status(gap_transaction_finished);
         this->finished().open();
         exit_reason = metrics::TransferExitReasonFinished;
       } // try

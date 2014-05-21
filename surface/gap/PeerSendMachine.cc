@@ -277,7 +277,7 @@ namespace surface
     void
     PeerSendMachine::_create_transaction()
     {
-      this->gap_state(gap_transaction_new);
+      this->gap_status(gap_transaction_new);
       ELLE_TRACE_SCOPE("%s: create transaction", *this);
       int64_t size = 0;
       for (auto const& file: this->files())
@@ -349,7 +349,7 @@ namespace surface
         this->_cloud_operation();
       }
       else
-        this->gap_state(gap_transaction_waiting_accept);
+        this->gap_status(gap_transaction_waiting_accept);
     }
 
     void
@@ -430,7 +430,7 @@ namespace surface
         ELLE_DEBUG("%s: cloud buffering disabled by configuration", *this);
         return;
       }
-      this->gap_state(gap_transaction_transferring);
+      this->gap_status(gap_transaction_transferring);
       auto start_time = boost::posix_time::microsec_clock::universal_time();
       infinit::metrics::TransferExitReason exit_reason = infinit::metrics::TransferExitReasonUnknown;
       std::string exit_message;
@@ -580,7 +580,7 @@ namespace surface
         // acknowledge last block and save snapshot
         frete.encrypted_read_acknowledge(0, 0, 0, this->frete().full_size());
         this->_save_frete_snapshot();
-        this->gap_state(gap_transaction_cloud_buffered);
+        this->gap_status(gap_transaction_cloud_buffered);
         exit_reason = infinit::metrics::TransferExitReasonFinished;
       } // try
       catch(reactor::Terminate const&)

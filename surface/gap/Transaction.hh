@@ -160,10 +160,6 @@ namespace surface
       void
       interrupt();
 
-    protected:
-      bool
-      last_status(gap_TransactionStatus);
-
     public:
       void
       on_transaction_update(std::shared_ptr<Data> data);
@@ -183,15 +179,16 @@ namespace surface
       reset();
 
     /*------------.
-    | Atttributes |
+    | Attributes |
     `------------*/
     public:
+      gap_TransactionStatus
+      status() const;
       ELLE_ATTRIBUTE_R(uint32_t, id);
       ELLE_ATTRIBUTE_R(uint32_t, sender);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
     protected:
       std::unique_ptr<TransactionMachine> _machine;
-      ELLE_ATTRIBUTE_r(gap_TransactionStatus, last_status);
 
     /*--------.
     | Helpers |

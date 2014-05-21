@@ -142,7 +142,6 @@ namespace surface
       , _sender(true)
       , _data(nullptr)
       , _machine(nullptr)
-      , _last_status(gap_TransactionStatus(-1))
     {
       auto data = std::make_shared<infinit::oracles::PeerTransaction>(
         state.me().id,
@@ -176,7 +175,6 @@ namespace surface
       , _sender(true)
       , _data(nullptr)
       , _machine(nullptr)
-      , _last_status(gap_TransactionStatus(-1))
     {
       ELLE_TRACE_SCOPE("%s: construct to generate link for %s",
                        *this, this->_files.get());
@@ -207,7 +205,6 @@ namespace surface
               state.device().id == data->sender_device_id)
       , _data(data)
       , _machine()
-      , _last_status(gap_TransactionStatus(-1))
     {
       ELLE_TRACE_SCOPE("%s: constructed from data", *this);
       if (history)
@@ -270,7 +267,6 @@ namespace surface
       , _sender(snapshot.sender())
       , _data(snapshot.data())
       , _machine()
-      , _last_status(gap_TransactionStatus(-1))
     {
       ELLE_TRACE_SCOPE("%s: constructed from snapshot %s",
                        *this, this->_snapshot_path);
@@ -374,21 +370,37 @@ namespace surface
       this->_machine->join();
     }
 
-    bool
-    Transaction::last_status(gap_TransactionStatus status)
-    {
-      if (this->_last_status == status)
-        return false;
-      this->_last_status = status;
-      return true;
-    }
-
     gap_TransactionStatus
-    Transaction::last_status() const
+    Transaction::status() const
     {
-      if (this->_last_status == gap_TransactionStatus(-1))
-        return this->_transaction_status(*this->data());
-      return this->_last_status;
+      if (this->_machine)
+        return this->_machine->gap_status();
+      typedef infinit::oracles::Transaction::Status Status;
+      switch (this->_data->status)
+      {
+        // If we have no machine, those are for another device, which should be
+        // handled.
+        case Status::accepted:
+        case Status::created:
+        case Status::initialized:
+          // FIXME
+          return gap_transaction_new;
+        // FIXME: What is even this ?
+        case Status::none:
+        case Status::started:
+          return gap_transaction_new;
+        // Final states.
+        case Status::canceled:
+          return gap_transaction_canceled;
+        case Status::failed:
+          return gap_transaction_failed;
+        case Status::finished:
+          return gap_transaction_finished;
+        case Status::rejected:
+          return gap_transaction_rejected;
+        default:
+          elle::unreachable();
+      }
     }
 
     float

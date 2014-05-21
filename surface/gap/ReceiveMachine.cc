@@ -319,14 +319,14 @@ namespace surface
     ReceiveMachine::_wait_for_decision()
     {
       ELLE_TRACE_SCOPE("%s: waiting for decision %s", *this, this->transaction_id());
-      this->gap_state(gap_transaction_waiting_accept);
+      this->gap_status(gap_transaction_waiting_accept);
     }
 
     void
     ReceiveMachine::_accept()
     {
       ELLE_TRACE_SCOPE("%s: accepted %s", *this, this->transaction_id());
-      this->gap_state(gap_transaction_waiting_accept);
+      this->gap_status(gap_transaction_waiting_accept);
 
       try
       {
@@ -462,7 +462,7 @@ namespace surface
         ELLE_DEBUG("%s: cloud buffering disabled by configuration", *this);
         return;
       }
-      this->gap_state(gap_transaction_transferring);
+      this->gap_status(gap_transaction_transferring);
       auto start_time = boost::posix_time::microsec_clock::universal_time();
       metrics::TransferExitReason exit_reason = metrics::TransferExitReasonUnknown;
       std::string exit_message;
@@ -528,7 +528,7 @@ namespace surface
         if (this->_snapshot)
           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
         ELLE_TRACE("%s: Data exhausted on cloud bufferer", *this);
-        this->gap_state(gap_transaction_waiting_data);
+        this->gap_status(gap_transaction_waiting_data);
       }
       catch (reactor::Terminate const&)
       { // aye aye
@@ -544,7 +544,7 @@ namespace surface
         // send us notifications and wake us up
         ELLE_WARN("%s: cloud download exception, exiting cloud state: %s",
                   *this, e.what());
-        this->gap_state(gap_transaction_waiting_data);
+        this->gap_status(gap_transaction_waiting_data);
         exit_reason = metrics::TransferExitReasonError;
         if (this->_snapshot)
           total_bytes_transfered = this->_snapshot->progress() - initial_progress;

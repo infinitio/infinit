@@ -88,45 +88,41 @@ namespace surface
     TransactionMachine::TransactionMachine(
       Transaction& transaction,
       uint32_t id,
-      std::shared_ptr<TransactionMachine::Data> data):
-      _id(id),
-      _machine(elle::sprintf("transaction (%s) fsm", id)),
-      _machine_thread(),
-      _finish_state(
+      std::shared_ptr<TransactionMachine::Data> data)
+      : _id(id)
+      , _machine(elle::sprintf("transaction (%s) fsm", id))
+      , _machine_thread()
+      , _finish_state(
         this->_machine.state_make(
-          "finish", std::bind(&TransactionMachine::_finish, this))),
-      _reject_state(
+          "finish", std::bind(&TransactionMachine::_finish, this)))
+      , _reject_state(
         this->_machine.state_make(
-          "reject", std::bind(&TransactionMachine::_reject, this))),
-      _cancel_state(
+          "reject", std::bind(&TransactionMachine::_reject, this)))
+      , _cancel_state(
         this->_machine.state_make(
-          "cancel", std::bind(&TransactionMachine::_cancel, this))),
-      _fail_state(
+          "cancel", std::bind(&TransactionMachine::_cancel, this)))
+      , _fail_state(
         this->_machine.state_make(
-          "fail", std::bind(&TransactionMachine::_fail, this))),
-      _end_state(
+          "fail", std::bind(&TransactionMachine::_fail, this)))
+      , _end_state(
         this->_machine.state_make(
-          "end", std::bind(&TransactionMachine::_end, this))),
-      _finished("finished"),
-      _rejected("rejected"),
-      _canceled("canceled"),
-      _failed("failed"),
-      _station(nullptr),
-      _transaction(transaction),
-      _state(transaction.state()),
-      _data(std::move(data))
+          "end", std::bind(&TransactionMachine::_end, this)))
+      , _finished("finished")
+      , _rejected("rejected")
+      , _canceled("canceled")
+      , _failed("failed")
+      , _station(nullptr)
+      , _transaction(transaction)
+      , _state(transaction.state())
+      , _data(std::move(data))
+      , _gap_status(gap_transaction_new)
     {
       ELLE_TRACE_SCOPE("%s: create transaction machine", *this);
-      this->_machine.transition_add(this->_finish_state,
-                                    this->_end_state);
-      this->_machine.transition_add(this->_cancel_state,
-                                    this->_end_state);
-      this->_machine.transition_add(this->_fail_state,
-                                    this->_end_state);
+      this->_machine.transition_add(this->_finish_state, this->_end_state);
+      this->_machine.transition_add(this->_cancel_state, this->_end_state);
+      this->_machine.transition_add(this->_fail_state, this->_end_state);
       // Reject.
-      this->_machine.transition_add(this->_reject_state,
-                                    this->_end_state);
-
+      this->_machine.transition_add(this->_reject_state, this->_end_state);
       // The catch transitions just open the barrier to logging purpose.
       // The snapshot will be kept.
       this->_machine.transition_add_catch(this->_fail_state, this->_end_state)
@@ -171,10 +167,14 @@ namespace surface
     }
 
     void
-    TransactionMachine::gap_state(gap_TransactionStatus v)
+    TransactionMachine::gap_status(gap_TransactionStatus v)
     {
-      ELLE_TRACE("%s: change GAP status to %s", *this, v);
-      this->state().enqueue(Transaction::Notification(this->id(), v));
+      if (v != this->_gap_status)
+      {
+        ELLE_TRACE("%s: change GAP status to %s", *this, v);
+        this->_gap_status = v;
+        this->state().enqueue(Transaction::Notification(this->id(), v));
+      }
     }
 
     void
@@ -201,7 +201,7 @@ namespace surface
           ""
         );
       }
-      this->gap_state(gap_transaction_finished);
+      this->gap_status(gap_transaction_finished);
       this->_finalize(infinit::oracles::Transaction::Status::finished);
     }
 
@@ -209,7 +209,7 @@ namespace surface
     TransactionMachine::_reject()
     {
       ELLE_TRACE_SCOPE("%s: reject", *this);
-      this->gap_state(gap_transaction_rejected);
+      this->gap_status(gap_transaction_rejected);
       this->_finalize(infinit::oracles::Transaction::Status::rejected);
     }
 
@@ -217,7 +217,7 @@ namespace surface
     TransactionMachine::_cancel()
     {
       ELLE_TRACE_SCOPE("%s: cancel", *this);
-      this->gap_state(gap_transaction_canceled);
+      this->gap_status(gap_transaction_canceled);
       this->_finalize(infinit::oracles::Transaction::Status::canceled);
     }
 
@@ -241,7 +241,7 @@ namespace surface
                                           this->state().meta().host(),
                                           this->state().meta().port(),
                                           this->state().me().email);
-      this->gap_state(gap_transaction_failed);
+      this->gap_status(gap_transaction_failed);
       this->_finalize(infinit::oracles::Transaction::Status::failed);
     }
 
