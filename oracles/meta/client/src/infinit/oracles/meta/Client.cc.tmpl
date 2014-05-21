@@ -777,8 +777,6 @@ namespace infinit
                        Method method,
                        elle::json::Object const& json) const
       {
-        int attempts = 0;
-        static const int max_attempts = 5;
         while (true)
         {
           reactor::http::Request request =
@@ -793,8 +791,6 @@ namespace infinit
             case reactor::http::StatusCode::Service_Unavailable:
             case reactor::http::StatusCode::Gateway_Timeout:
             {
-              if (++attempts >= max_attempts)
-                break;
               ELLE_WARN("%s: error while posting, retrying: %s.\n%s",
                         *this, request.status(), request.response().string());
               boost::random::uniform_int_distribution<> random(100, 200);
@@ -804,7 +800,6 @@ namespace infinit
             default:
               break;
           }
-
           this->_handle_errors(request);
           return elle::json::read(request);
         }
