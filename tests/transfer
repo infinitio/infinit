@@ -17,20 +17,27 @@ import threading
 
 from utils import expect_raise
 
+ELLE_LOG_COMPONENT = 'test'
+
 def exiter():
   print('#################### EXIT #############')
   os._exit(1)
 # Setup emergency timeout in case teardown gets stuck
 abort_timer = threading.Timer(600, exiter)
 
-def transaction_callback(notification, state, rules, default_action, statuses):
+def transaction_callback(notification, state, rules, default_action,
+                         statuses=None):
   """ Receives a transaction notification and potentially reply with an action
   Rules is of the form [{'condition':{'key': NOTIF_FIELD, 'value': EXPECTED_VALUE}, 'action': ACTION_NAME}]
   ACTION_NAME is a transaction action among accept,reject,join,cancel,pause,interrupt,reset
   NOTIF_FIELD is one of the keys in the notification
+  @param statuses: updated with id->status
   """
-  statuses[notification['transaction_id']] = notification['status']
-  #print('TRANSACTION_CB transaction_id=%s status=%s' % (notification['transaction_id'], notification['status']))
+  if statuses is not None:
+    # in case messages are async, ensure we do not overwrite a final state
+    if statuses.get(notification['transaction_id'], '') not in final_statuses:
+      statuses[notification['transaction_id']] = notification['status']
+  #print('TRANSACTION_CB %s transaction_id=%s status=%s' % (len(statuses), notification['transaction_id'], notification['status']))
   action = default_action
   for r in rules:
     for cond in r['conditions']:
@@ -117,6 +124,11 @@ def check_explain(checker):
     checker.explain()
   return val
 
+def wait_helper(timeout, condition, raise_on_timeout = True):
+  result = advance([], timeout, condition)
+  if not result and raise_on_timeout:
+    raise Exception('timeout of %s reached' % timeout)
+
 # Run the test until timeout in seconds or condition becomes true
 def advance(states, timeout, condition):
   i = 0
@@ -127,64 +139,181 @@ def advance(states, timeout, condition):
     i = i +1
   return condition()
 
+final_statuses = ['transaction_finished', 'transaction_failed',
+                  'transaction_canceled', 'transaction_rejected']
+
 accept_rules = [{'conditions':[{'key': 'status',
                                 'value': 'transaction_waiting_accept'}],
                  'action': 'accept'}]
 
-class TestTransfer(unittest.TestCase):
-  def test_basic(self):
-    return self.transfer_test(['100k'], '100k', 100000)
-  def test_multiples(self):
-    return self.transfer_test([''], names=list(map(str, range(10))), size=100)
-  def test_multiples_2(self): # Pass file names instead of dir to send_files
-    names = list(map(str, range(10)))
-    return self.transfer_test(names, names=names, size=100)
-  def test_thousand_files(self):
-    return self.transfer_test([''], names=list(map(str, range(1000))), size=100)
-  def test_empty_files(self):
-    return self.transfer_test([''], names=list(map(str, range(10))), size=0)
-  def transfer_test(self, files, *args, **kvargs):
-    """ Run one transfer
-    @param files: file list passed to send_files (directory or files)
-    @param args,kvargs: Passed to TemporaryData to populate send dir
-    """
-    exception = None
-    with infinit.oracles.servers.Oracles(
-      mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
-      try:
-        statuses = dict()
-        s1 = o.state()
-        s1.login('mefyl@infinit.io',
-                state.hash_password('mefyl@infinit.io', 'mefyl'))
-        s2 = o.state()
-        s2.login('mefyl2@infinit.io',
-                state.hash_password('mefyl2@infinit.io', 'mefyl2'))
-        s2.attach_transaction_callback(lambda t: transaction_callback(t, s2, accept_rules, '', statuses))
-        # Let both peers login before going on
-        advance([s1, s2], 3, lambda : False)
-        with TemporaryData(*args, **kvargs) as data:
-          files = list(map(lambda x: os.path.join(data.directory, x), files))
-          tid = s1.send_files("mefyl2@infinit.io", files, "hi")
-          # Run until recipient has a tid
-          advance([s1, s2], 5, lambda : len(statuses))
-          self.assertEquals(len(statuses), 1)
-          recipient_tid = list(statuses.keys())[0]
-          file_checker = FileMatch(data.directory, o.download_dir)
-          final_statuses = ['transaction_finished', 'transaction_failed',
-                            'transaction_canceled', 'transaction_rejected']
-          def status_checker():
-            return s2.transaction_last_status(recipient_tid) in final_statuses
-          advance([s1, s2], 90, status_checker)
-          advance([s1, s2], 1, lambda : False)
-          self.assertEquals(s2.transaction_last_status(recipient_tid), 'transaction_finished')
-          self.assertTrue(check_explain(file_checker))
-      except Exception as e:
-        # Teardown sequence can get stuck and hide this exception
-        # so display it now
-        print("****TEST EXCEPTION")
-        traceback.print_exc(file=sys.stdout)
-        exception = e
-      self.assertEquals(exception, None)
+reject_rules = [{'conditions':[{'key': 'status',
+                                'value': 'transaction_waiting_accept'}],
+                 'action': 'reject'}]
 
+test_credentials = [('mefyl@infinit.io', 'mefyl'), ('mefyl2@infinit.io', 'mefyl2')]
+
+class TransferPeer:
+  """ Handles one peer, expecting only one transaction at most.
+  """
+  def __init__(self, oracles, credentials):
+    self.oracles = oracles
+    self.credentials = credentials
+    self.state = None
+    self.statuses = dict() # transaction_id -> status
+    self.rules = []
+    self.poll_thread = None
+    self.interrupt = False
+  def create(self, force=True):
+    if self.state is not None and not force:
+      return
+    self.delete()
+    self.state = self.oracles.state()
+    self.state.attach_transaction_callback(
+      lambda t: transaction_callback(t, self.state, self.rules, '',
+                                     self.statuses))
+    def poller():
+      while not self.interrupt:
+        self.state.poll()
+        reactor.sleep(datetime.timedelta(milliseconds = 100))
+    self.poll_thread = reactor.Thread('state_poller', poller)
+  def delete(self):
+    if self.state is None:
+      return
+    self.state.logout()
+    self.interrupt = True
+    self.poll_thread.wait()
+    self.interrupt = False
+    self.poll_thread = None
+    self.state = None
+  def set_rules(self, rules):
+    """ Set event reply rules as per attach_transaction_callback()"""
+    self.rules[:] = rules # modify in place
+  def login(self):
+    self.create(force=False)
+    self.state.login(self.credentials[0],
+      state.hash_password(self.credentials[0], self.credentials[1]))
+  def logout(self):
+    if self.state is None:
+      return
+    self.state.logout()
+  def wait_transaction_id(self, timeout=10):
+    """ Wait for a transaction id to be available or throw"""
+    wait_helper(timeout, lambda: len(self.statuses))
+    return list(self.statuses.keys())[0]
+  def wait_transaction_progress(self, progress, timeout=1000):
+    """ Wait for transaction progress to be above given threshold or throw"""
+    tid = self.wait_transaction_id(timeout)
+    return wait_helper(timeout, lambda: self.state.transaction_progress(tid) >= progress)
+  def wait_transaction_status(self, status, timeout=1000):
+    tid = self.wait_transaction_id(timeout)
+    return wait_helper(timeout, lambda: self.statuses[tid] == status)
+  def wait_transaction_final(self, timeout=1000):
+    tid = self.wait_transaction_id(timeout)
+    return wait_helper(timeout, lambda: self.statuses[tid] in final_statuses)
+  @property
+  def status(self):
+    tid = self.wait_transaction_id(1000)
+    return self.statuses[tid]
+    #Note: we could also fetch from state.transaction_status(tid)
+  @property
+  def transaction(self):
+    """ Return the transaction metadata"""
+    tid = self.wait_transaction_id(1000)
+    return self.state.transaction(tid)
+
+class Transfer:
+  def __init__(self, credentials, files, *args, **kvargs):
+    self.files = files
+    self.data_args = args
+    self.data_kvargs = kvargs
+    self.peers = [None, None]
+    self.credentials = credentials
+  def __enter__(self):
+    self.oracles = infinit.oracles.servers.Oracles(
+      mongo_dump = '%s/two-users' % os.environ['DUMPS'])
+    self.oracles.__enter__()
+    self.data = TemporaryData(*self.data_args, **self.data_kvargs)
+    self.data.__enter__()
+    self.files = list(map(lambda x: os.path.join(self.data.directory, x), self.files))
+    self.peers = [TransferPeer(self.oracles, self.credentials[0]),
+                  TransferPeer(self.oracles, self.credentials[1])]
+    self.peers[0].create()
+    self.peers[1].create()
+    return self
+  def __exit__(self, *args, **kvargs):
+    self.data.__exit__()
+    self.oracles.__exit__()
+  def start(self):
+    self.sender.state.send_files(self.credentials[1][0], self.files, "Receive this.")
+  @property
+  def sender(self):
+    return self.peers[0]
+  @property
+  def recipient(self):
+    return self.peers[1]
+  def wait_transaction_final(self, timeout):
+    """ Wait for a final state on both ends"""
+    self.sender.wait_transaction_final(timeout)
+    self.recipient.wait_transaction_final(timeout)
+    # We can get the final state notification with still transaction threads
+    # running, and they don't like beings asploded. Yes its a bug of some sort.
+    reactor.sleep(datetime.timedelta(milliseconds = 300))
+  def assertSuccess(self, test, total_size = None, is_directory = None,
+                    files_count = None, files = None):
+    test.assertEqual(self.recipient.status, 'transaction_finished')
+    test.assertEqual(self.sender.status, 'transaction_finished')
+    ts = self.sender.transaction
+    tr = self.recipient.transaction
+    expect = {
+      'message': 'Receive this.',
+      'recipient_fullname': test_credentials[1][0].split('@')[0],
+      'sender_fullname': test_credentials[0][0].split('@')[0],
+    };
+    if total_size is not None:
+      expect['total_size'] = total_size
+    if is_directory is not None:
+      expect['is_directory'] = is_directory
+    if files_count is not None:
+      expect['files_count'] = files_count
+    if files is not None:
+      expect['files'] = files
+    # Filter out unexpected keys
+    ts = { k: ts[k] for k in expect.keys() }
+    tr = { k: tr[k] for k in expect.keys() }
+    test.assertEqual(ts, expect)
+    test.assertEqual(tr, expect)
+    test.assertTrue(check_explain(
+      FileMatch(self.data.directory, self.oracles.download_dir)))
+
+class TestTransfer(unittest.TestCase):
+  def transfer_test(self, files, files_data,
+                    total_size = None, is_directory = None,
+                    files_count = None):
+    with Transfer(test_credentials, files,
+                  **files_data) as transfer:
+      transfer.recipient.login()
+      transfer.sender.login()
+      wait_helper(3, lambda: False, False)
+      transfer.recipient.set_rules(accept_rules)
+      transfer.start()
+      transfer.wait_transaction_final(30)
+      transfer.assertSuccess(self, total_size, is_directory, files_count)
+
+  def test_p2p_basic(self):
+    return self.transfer_test(['100k'], {'name': '100k','size': 100000},
+                              total_size=100000, files_count=1,
+                              is_directory = False
+                              )
+  def test_p2p_multiples(self):
+    return self.transfer_test([''], {'names': list(map(str, range(10))), 'size':100})
+  def test_p2p_multiples_2(self): # Pass file names instead of dir to send_files
+    names = list(map(str, range(10)))
+    return self.transfer_test(names, {'names': names, 'size':100})
+  def test_p2p_many_files(self):
+    names = list(map(str, range(200)))
+    return self.transfer_test(names, {'names': names, 'size':100})
+  def test_p2p_empty_files(self):
+    names = list(map(str, range(10)))
+    return self.transfer_test(names, {'names': names, 'size':0})
 utils.run(unittest.main)
 
