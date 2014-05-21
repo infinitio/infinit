@@ -143,7 +143,7 @@ class Mixin:
 
   @api('/link', method = 'POST')
   @require_logged_in
-  def link_generate(self, files, name):
+  def link_generate(self, files, name, message):
     """
     Generate a link from a list of times and a message.
 
@@ -152,6 +152,7 @@ class Mixin:
     element's size. E.g.:
       'files': [[<file name 0>, <file size 0>], ...,
                 [<file name n>, <file size n>]]
+    message --  A string message.
     Returns the id, link and AWS credentials.
     """
     with elle.log.trace('generating a link for user (%s)' % self.user['_id']):
@@ -173,6 +174,7 @@ class Mixin:
         'expiry_time': expiry_time,
         'file_list': files,
         'hash': None,
+        'message': message,
         'mtime': creation_time,
         'name': name,
         'progress': 0.0,
@@ -220,7 +222,6 @@ class Mixin:
         'transaction': self.__client_link(link),
         'aws_credentials': credentials,
       }
-      print(res)
       return res
 
   def __client_link(self, link):
@@ -236,6 +237,7 @@ class Mixin:
         'expiry_time',
         'files',
         'hash',
+        'message',
         'mtime',
         'name',
         'progress',
