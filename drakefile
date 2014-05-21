@@ -123,8 +123,7 @@ def configure(cxx_toolkit = None,
     def _variable(self, name, value):
       if name == 'version' and not production_build:
         value = '%s-dev' % git.version().split('-')[0]
-      else:
-        value = repr(value).replace("'", '"')
+      value = repr(value).replace("'", '"')
       if name == 'version':
         name = 'INFINIT_VERSION'
       else:
