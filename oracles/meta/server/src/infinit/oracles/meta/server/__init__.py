@@ -178,7 +178,8 @@ class Meta(bottle.Bottle,
                                         ('creation_time', pymongo.DESCENDING)])
 
     # - Download by link hash.
-    self.__database.links.ensure_index([('hash', 1)], unique = True)
+    self.__database.links.ensure_index([('hash', 1)],
+                                       unique = True, sparse = True)
 
   def __register(self, method):
     rule = method.__route__
