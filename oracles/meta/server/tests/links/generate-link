@@ -1,0 +1,61 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+from bson.objectid import ObjectId
+import infinit.oracles.meta.server.transaction_status as transaction_status
+
+with Meta() as meta:
+  jean = User(meta, 'jeantest@infinit.io')
+  jean.login()
+
+  file_list = [
+    ['file1', 42],
+    ['file2', 43],
+    ['file3', 44],
+  ]
+  res = jean.post('link', {'file_list': file_list, 'name': 'some files.zip'})
+  assert res['aws_credentials']
+  assert res['destination']
+  assert res['id']
+  assert res['share_link']
+
+  link = meta.database.links.find_one({'_id': ObjectId(res['id'])})
+
+  res = meta.get('link/%s' % link['hash'])
+  assert res['click_count'] == 1
+  assert len(res['files']) == 3
+  assert res['progress'] == 0.0
+  assert res['status'] == transaction_status.CREATED
+
+  res = jean.post('link/%s' % str(link['_id']),
+                  {'progress': 1.0,
+                   'status': transaction_status.FINISHED})
+  assert res['success']
+
+  res = meta.get('link/%s' % link['hash'])
+  assert res['click_count'] == 2
+  assert len(res['files']) == 3
+  assert res['link']
+  assert res['progress'] == 1.0
+  assert res['status'] == transaction_status.FINISHED
+
+  res = jean.post('link',
+                  {'file_list': [['some_file.zip', 12321]],
+                   'name': 'some_file.zip'})
+  assert res['aws_credentials']
+  assert res['destination']
+  assert res['id']
+  assert res['share_link']
+
+  meta.database.links.find({'sender_id': ObjectId(jean.id)}).count() == 2
+
+  import datetime
+  meta.database.links.find_and_modify(
+    {'_id': ObjectId(res['id'])},
+    {'$set': {'expiry_time': datetime.datetime.utcnow() + datetime.timedelta(days = -1)}})
+
+  res = jean.get('links')
+  assert len(res['links']) == 1
+
+  res = jean.get('links?include_expired=1')
+  assert len(res['links']) == 2

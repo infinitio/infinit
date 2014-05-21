@@ -440,7 +440,7 @@ class Mixin:
         ghost_upload_file = 'archive.zip'
       # Generate GET URL for ghost cloud uploaded file
       ghost_get_url = cloud_buffer_token.generate_get_url(
-        self.aws_region, self.aws_bucket,
+        self.aws_region, self.aws_buffer_bucket,
         transaction_id,
         ghost_upload_file)
       elle.log.log('Generating cloud GET URL for %s: %s'
@@ -505,7 +505,6 @@ class Mixin:
       # current_device is None if we do a delete user / reset account.
       if self.current_device is not None and device_id is None:
         device_id = str(self.current_device['id'])
-
       transaction = self.transaction(bson.ObjectId(transaction_id), owner_id = user['_id'])
       elle.log.debug("transaction: %s" % transaction)
       is_sender = self.is_sender(transaction, user['_id'])
@@ -515,13 +514,7 @@ class Mixin:
           error.TRANSACTION_OPERATION_NOT_PERMITTED,
           "Cannot change status from %s to %s (not permitted)." % (transaction['status'], status)
         )
-
-      if transaction['status'] == status:
-        raise error.Error(
-          error.TRANSACTION_ALREADY_HAS_THIS_STATUS,
-          "Can't change status from %s to %s (same status)." % (transaction['status'], status))
-
-      if transaction['status'] in transaction_status.final:
+      if transaction['status'] != status and transaction['status'] in transaction_status.final:
         raise error.Error(
           error.TRANSACTION_ALREADY_FINALIZED,
           "Cannot change status from %s to %s (already finalized)." % (transaction['status'], status)
@@ -541,7 +534,6 @@ class Mixin:
                       transaction_status.REJECTED):
         diff.update(self.cloud_cleanup_transaction(
           transaction = transaction))
-
       diff.update({
         'status': status,
         'mtime': time.time()
@@ -556,7 +548,7 @@ class Mixin:
         )
         elle.log.debug("transaction updated")
         self.notifier.notify_some(
-          notifier.TRANSACTION,
+          notifier.PEER_TRANSACTION,
           recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
           message = transaction,
         )
@@ -837,7 +829,7 @@ class Mixin:
     # if cloud data ever gets shared among transactions.
     token_maker = cloud_buffer_token.CloudBufferToken(
       user['_id'], transaction_id, 'ALL',
-      aws_region = self.aws_region, bucket_name = self.aws_bucket)
+      aws_region = self.aws_region, bucket_name = self.aws_buffer_bucket)
     raw_creds = token_maker.generate_s3_token()
 
     if raw_creds == None:
@@ -851,7 +843,7 @@ class Mixin:
     credentials['expiration']        = raw_creds['Expiration']
     credentials['protocol']          = 'aws'
     credentials['region']            = self.aws_region
-    credentials['bucket']            = self.aws_bucket
+    credentials['bucket']            = self.aws_buffer_bucket
     credentials['folder']            = transaction_id
 
     elle.log.debug("Storing aws_credentials in DB")

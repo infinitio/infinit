@@ -18,7 +18,7 @@ namespace surface
       public:
         ReceiveMachine(Transaction& transaction,
                        uint32_t id,
-                       std::shared_ptr<TransactionMachine::Data> data,
+                       std::shared_ptr<Data> data,
                        std::string const& file_path,
                        reactor::Duration duration = 5_sec);
 

@@ -4,6 +4,8 @@
 #include <surface/gap/onboarding/Transaction.hh>
 #include <surface/gap/onboarding/ReceiveMachine.hh>
 
+#include <infinit/oracles/PeerTransaction.hh>
+
 ELLE_LOG_COMPONENT("surface.gap.onboarding.Transaction");
 
 namespace surface
@@ -15,39 +17,39 @@ namespace surface
       using TransactionStatus = infinit::oracles::Transaction::Status;
 
       static
-      surface::gap::Transaction::Data
+      std::shared_ptr<infinit::oracles::PeerTransaction>
       transaction_data(State::User const& you,
                        State::User const& sender,
                        std::string const& file_path)
       {
-        surface::gap::Transaction::Data data;
-        data.id = "TransactionID";
-        data.sender_id = sender.id;
-        data.sender_fullname = sender.fullname;
-        data.sender_device_id = "Infinit device id";
-        data.recipient_id = you.id;
-        data.recipient_fullname = you.fullname;
-        data.recipient_device_id = "Your device id";
-        data.recipient_device_name = "Your device";
-        data.message = "Welcome to Infinit! Here's your first file.";
-        data.ctime = ::time(nullptr);
-        data.mtime = ::time(nullptr);
+        auto data = std::make_shared<infinit::oracles::PeerTransaction>();
+        data->id = "TransactionID";
+        data->sender_id = sender.id;
+        data->sender_fullname = sender.fullname;
+        data->sender_device_id = "Infinit device id";
+        data->recipient_id = you.id;
+        data->recipient_fullname = you.fullname;
+        data->recipient_device_id = "Your device id";
+        data->recipient_device_name = "Your device";
+        data->message = "Welcome to Infinit! Here's your first file.";
+        data->ctime = ::time(nullptr);
+        data->mtime = ::time(nullptr);
         try
         {
           auto path = boost::filesystem::path(file_path);
-          data.files = {path.filename().string()};
-          data.total_size = elle::os::file::size(path.string());
-          data.files_count = 1;
-          data.is_directory = false;
-          data.status = TransactionStatus::initialized;
+          data->files = {path.filename().string()};
+          data->total_size = elle::os::file::size(path.string());
+          data->files_count = 1;
+          data->is_directory = false;
+          data->status = TransactionStatus::initialized;
         }
         catch (elle::Exception const& e)
         {
-          data.files = { "Welcome.avi" };
-          data.files_count = 1;
-          data.total_size = 30120;
-          data.is_directory = false;
-          data.status = TransactionStatus::failed;
+          data->files = { "Welcome.avi" };
+          data->files_count = 1;
+          data->total_size = 30120;
+          data->is_directory = false;
+          data->status = TransactionStatus::failed;
           ELLE_WARN("unable to access file, fake transaction failed: %s",
                     e.what());
         }
@@ -64,11 +66,13 @@ namespace surface
                                     id,
                                     transaction_data(
                                       state.me(), peer, file_path))
+        , _data(std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
+                  this->data()))
       {
         this->_machine.reset(new surface::gap::onboarding::ReceiveMachine(
           *this,
           id,
-          this->data(),
+          this->_data,
           file_path,
           transfer_duration));
 
@@ -83,7 +87,7 @@ namespace surface
       surface::gap::onboarding::ReceiveMachine&
       Transaction::machine()
       {
-        return *static_cast<surface::gap::onboarding::ReceiveMachine*>(
+        return *dynamic_cast<surface::gap::onboarding::ReceiveMachine*>(
           this->_machine.get());
       }
 
@@ -99,8 +103,11 @@ namespace surface
         {
           ELLE_DEBUG("%s: accepted", *this);
           this->machine().accept();
-          this->peer_available(std::vector<std::pair<std::string, int>>());
-          this->peer_connection_status(true);
+          this->_machine->notify_user_connection_status(
+            this->_data->sender_id,
+            this->_data->sender_device_id,
+            true);
+          this->notify_peer_reachable(std::vector<std::pair<std::string, int>>());
         }
       }
 
@@ -113,7 +120,7 @@ namespace surface
       void
       Transaction::interrupt()
       {
-        this->peer_unavailable();
+        this->notify_peer_unreachable();
         this->_machine->interrupt();
       }
 

@@ -25,6 +25,7 @@ from . import apertus
 from . import cloud_buffer_token
 from . import device
 from . import invitation
+from . import link_generation
 from . import mail
 from . import notifier
 from . import root
@@ -43,6 +44,7 @@ class Meta(bottle.Bottle,
            trophonius.Mixin,
            apertus.Mixin,
            waterfall.Waterfall,
+           link_generation.Mixin,
          ):
 
   def __init__(self,
@@ -56,7 +58,8 @@ class Meta(bottle.Bottle,
                daily_summary_hour = 18, #in sec.
                email_confirmation_cooldown = 600, # in sec.
                aws_region = None,
-               aws_bucket = None,
+               aws_buffer_bucket = None,
+               aws_link_bucket = None,
                force_admin = False,
                debug = False,
                ):
@@ -114,9 +117,12 @@ class Meta(bottle.Bottle,
     if aws_region is None:
       aws_region = cloud_buffer_token.aws_default_region
     self.aws_region = aws_region
-    if aws_bucket is None:
-      aws_bucket = cloud_buffer_token.aws_default_bucket
-    self.aws_bucket = aws_bucket
+    if aws_buffer_bucket is None:
+      aws_buffer_bucket = cloud_buffer_token.aws_default_buffer_bucket
+    self.aws_buffer_bucket = aws_buffer_bucket
+    if aws_link_bucket is None:
+      aws_link_bucket = cloud_buffer_token.aws_default_link_bucket
+    self.aws_link_bucket = aws_link_bucket
     waterfall.Waterfall.__init__(self)
 
   def __set_constraints(self):
@@ -163,6 +169,16 @@ class Meta(bottle.Bottle,
     # - Download by link transaction hash.
     self.__database.transactions.ensure_index([('transaction_hash', 1)],
                                               unique = True, sparse = True)
+
+    #---------------------------------------------------------------------------
+    # Link Generation
+    #---------------------------------------------------------------------------
+    # - Download by link history.
+    self.__database.links.ensure_index([('sender_id', pymongo.ASCENDING),
+                                        ('creation_time', pymongo.DESCENDING)])
+
+    # - Download by link hash.
+    self.__database.links.ensure_index([('hash', 1)], unique = True)
 
   def __register(self, method):
     rule = method.__route__

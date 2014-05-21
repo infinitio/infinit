@@ -24,8 +24,9 @@ namespace surface
 {
   namespace gap
   {
-    PeerTransferMachine::PeerTransferMachine(TransactionMachine& owner)
+    PeerTransferMachine::PeerTransferMachine(PeerMachine& owner)
       : Transferer(owner)
+      , _owner(owner)
     {}
 
     void

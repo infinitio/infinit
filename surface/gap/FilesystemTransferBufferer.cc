@@ -3,6 +3,7 @@
 #include <elle/serialize/PairSerializer.hxx>
 #include <elle/serialize/VectorSerializer.hxx>
 #include <elle/serialize/construct.hh>
+#include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
 
 #include <surface/gap/FilesystemTransferBufferer.hh>
@@ -18,7 +19,7 @@ namespace surface
     `-------------*/
 
     FilesystemTransferBufferer::FilesystemTransferBufferer(
-      infinit::oracles::Transaction& transaction,
+      infinit::oracles::PeerTransaction& transaction,
       boost::filesystem::path const& root):
       Super(transaction),
       _root(root / transaction.id),
@@ -46,7 +47,7 @@ namespace surface
     }
 
     FilesystemTransferBufferer::FilesystemTransferBufferer(
-      infinit::oracles::Transaction& transaction,
+      infinit::oracles::PeerTransaction& transaction,
       boost::filesystem::path const& root,
       FileCount count,
       FileSize full_size,

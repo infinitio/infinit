@@ -1,30 +1,20 @@
 #include <iostream>
 
-#include <elle/serialization/Serializer.hh>
-#include <elle/serialization/SerializerIn.hh>
-
 #include <infinit/oracles/Transaction.hh>
 
 namespace infinit
 {
   namespace oracles
   {
+    /*-------------.
+    | Construction |
+    `-------------*/
+
     Transaction::Transaction(std::string const& sender_id,
-                             std::string const& sender_fullname,
                              std::string const& sender_device_id):
       id(),
       sender_id(sender_id),
-      sender_fullname(sender_fullname),
       sender_device_id(sender_device_id),
-      recipient_id(),
-      recipient_fullname(),
-      recipient_device_id(),
-      recipient_device_name(),
-      message(),
-      files(),
-      files_count(),
-      total_size(),
-      is_directory(),
       status(Status::created),
       ctime(),
       mtime(),
@@ -34,28 +24,26 @@ namespace infinit
     Transaction::Transaction():
       id(),
       sender_id(),
-      sender_fullname(),
       sender_device_id(),
-      recipient_id(),
-      recipient_fullname(),
-      recipient_device_id(),
-      recipient_device_name(),
-      message(),
-      files(),
-      files_count(),
-      total_size(),
-      is_directory(),
       status(Status::created),
       ctime(),
       mtime(),
       is_ghost()
       {}
 
+    /*-----------.
+    | Properties |
+    `-----------*/
+
     bool
     Transaction::empty() const
     {
       return this->id.empty();
     }
+
+    /*----------.
+    | Printable |
+    `----------*/
 
     void
     Transaction::print(std::ostream& stream) const
@@ -66,40 +54,6 @@ namespace infinit
     /*--------------.
     | Serialization |
     `--------------*/
-
-    Transaction::Transaction(elle::serialization::SerializerIn& s)
-    {
-      this->serialize(s);
-    }
-
-    void
-    Transaction::serialize(elle::serialization::Serializer& s)
-    {
-      s.serialize("_id", this->id);
-      s.serialize("sender_id", this->sender_id);
-      s.serialize("sender_fullname", this->sender_fullname);
-      s.serialize("sender_device_id", this->sender_device_id);
-      s.serialize("recipient_id", this->recipient_id);
-      s.serialize("recipient_fullname", this->recipient_fullname);
-      s.serialize("recipient_device_id", this->recipient_device_id);
-      s.serialize("recipient_device_name", this->recipient_device_name);
-      s.serialize("message", this->message);
-      s.serialize("files", this->files);
-      s.serialize("files_count", this->files_count);
-      s.serialize("total_size", this->total_size);
-      s.serialize("ctime", this->ctime);
-      s.serialize("mtime", this->mtime);
-      s.serialize("is_directory", this->is_directory);
-      s.serialize("status", this->status, elle::serialization::as<int>());
-      try
-      {
-        s.serialize("is_ghost", this->is_ghost);
-      }
-      catch(...)
-      { // assume only input serializer can fail with missing field.
-        this->is_ghost = false;
-      }
-    }
 
     std::ostream&
     operator <<(std::ostream& out,
@@ -114,7 +68,6 @@ namespace infinit
             break;
         %endfor
       }
-
       return out;
     }
 
@@ -122,9 +75,7 @@ namespace infinit
     operator <<(std::ostream& out,
                 Transaction const& t)
     {
-      out << "Transaction(" << t.id << ", " << t.status
-          << " from " << t.sender_fullname
-          << " to " << t.recipient_fullname << ")";
+      out << "Transaction(" << t.id << ", " << t.status << ")";
       return out;
     }
   }

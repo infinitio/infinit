@@ -3,7 +3,7 @@
 
 # include <frete/RPCFrete.hh>
 # include <station/fwd.hh>
-
+# include <surface/gap/PeerMachine.hh>
 # include <surface/gap/TransferMachine.hh>
 
 namespace surface
@@ -17,13 +17,14 @@ namespace surface
     | Construction |
     `-------------*/
     public:
-      PeerTransferMachine(TransactionMachine& owner);
+      PeerTransferMachine(PeerMachine& owner);
       ELLE_ATTRIBUTE(std::unique_ptr<station::Host>, host);
       ELLE_ATTRIBUTE(std::unique_ptr<infinit::protocol::Serializer>,
                      serializer);
       ELLE_ATTRIBUTE(std::unique_ptr<infinit::protocol::ChanneledStream>,
                      channels);
       ELLE_ATTRIBUTE(std::unique_ptr<frete::RPCFrete>, rpcs);
+      ELLE_ATTRIBUTE(PeerMachine&, owner);
 
     private:
       std::unique_ptr<station::Host>

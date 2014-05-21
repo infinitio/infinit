@@ -18,6 +18,7 @@ import time
 import os
 import shutil
 import sys
+import reactor
 
 root = os.path.dirname(__file__)
 
@@ -129,13 +130,15 @@ class Oracles:
         s.logout()
       except:
         pass
+    reactor.sleep(datetime.timedelta(milliseconds = 300))
     for d in self.__cleanup_dirs:
       elle.log.trace('Cleaning up %s' % d)
       shutil.rmtree(d)
+    reactor.sleep(datetime.timedelta(milliseconds = 300))
     self._trophonius.terminate()
     self._trophonius.stop()
     self._apertus.stop()
-    time.sleep(1)
+    reactor.sleep(datetime.timedelta(milliseconds = 300))
     #self._trophonius.wait()
     self._meta.stop()
     self._mongo.__exit__(*args, **kwargs)

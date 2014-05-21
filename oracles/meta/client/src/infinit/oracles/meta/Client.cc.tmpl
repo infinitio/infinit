@@ -132,13 +132,13 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::DeleteDeviceResponse, ar, res)
 | Transactions |
 `-------------*/
 
-SERIALIZE_RESPONSE(infinit::oracles::meta::CreateTransactionResponse, ar, res)
+SERIALIZE_RESPONSE(infinit::oracles::meta::CreatePeerTransactionResponse, ar, res)
 {
   ar & named("created_transaction_id", res.created_transaction_id);
   ar & named("remaining_invitations",  res.remaining_invitations);
 }
 
-SERIALIZE_RESPONSE(infinit::oracles::meta::UpdateTransactionResponse, ar, res)
+SERIALIZE_RESPONSE(infinit::oracles::meta::UpdatePeerTransactionResponse, ar, res)
 {
   ar & named("updated_transaction_id", res.updated_transaction_id);
 }
@@ -250,9 +250,9 @@ namespace infinit
         _port(port),
         _root_url{elle::sprintf("%s://%s:%d", protocol, server, port)},
         _client{"MetaClient/" INFINIT_VERSION},
-        _default_configuration{boost::posix_time::seconds{30},
-                               reactor::DurationOpt(),
-                               reactor::http::Version::v10},
+        _default_configuration(boost::posix_time::seconds{30},
+                               {},
+                               reactor::http::Version::v10),
         _email{},
         _logged_in{false}
       {
@@ -607,7 +607,7 @@ namespace infinit
         return res;
       }
 
-      CreateTransactionResponse
+      CreatePeerTransactionResponse
       Client::create_transaction(std::string const& recipient_id_or_email,
                                  std::list<std::string> const& files,
                                  size_t count,
@@ -629,11 +629,11 @@ namespace infinit
         request["device_id"] = struuid; // Can be determine by session.
         request["message"] = message;
 
-        return this->_request<CreateTransactionResponse>(
+        return this->_request<CreatePeerTransactionResponse>(
           "/transaction/create", Method::POST, request);
       }
 
-      UpdateTransactionResponse
+      UpdatePeerTransactionResponse
       Client::update_transaction(std::string const& transaction_id,
                                  Transaction::Status status,
                                  std::string const& device_id,
@@ -655,11 +655,11 @@ namespace infinit
           request["device_name"] = device_name;
         }
 
-        return this->_request<UpdateTransactionResponse>(
+        return this->_request<UpdatePeerTransactionResponse>(
           "/transaction/update", Method::POST, request);
       }
 
-      UpdateTransactionResponse
+      UpdatePeerTransactionResponse
       Client::accept_transaction(std::string const& transaction_id,
                                  std::string const& device_id,
                                  std::string const& device_name) const
@@ -673,7 +673,7 @@ namespace infinit
                                         device_name);
       }
 
-      Transaction
+      PeerTransaction
       Client::transaction(std::string const& _id) const
       {
         std::string url = sprintf("/transaction/%s", _id);
@@ -683,20 +683,20 @@ namespace infinit
                                 this->_default_configuration);
         this->_handle_errors(request);
         elle::serialization::json::SerializerIn input(request);
-        return Transaction(input);
+        return PeerTransaction(input);
       }
 
-      std::vector<Transaction>
-      Client::transactions(std::vector<Transaction::Status> const& status,
+      std::vector<PeerTransaction>
+      Client::transactions(std::vector<Transaction::Status> const& statuses,
                            bool negate,
                            int count) const
       {
         std::string url;
-        if (status.size() > 0)
+        if (statuses.size() > 0)
         {
           std::stringstream filter;
           std::vector<boost::any> status_json;
-          for (auto s: status)
+          for (auto s: statuses)
             status_json.push_back(boost::any(int(s)));
           elle::json::write(filter, status_json);
           // FIXME: handle query parameters in reactor Request
@@ -710,10 +710,10 @@ namespace infinit
                                 Method::GET,
                                 this->_default_configuration);
         this->_handle_errors(request);
-        std::list<Transaction> res;
+        std::list<PeerTransaction> res;
         elle::serialization::json::SerializerIn input(request);
         input.serialize("transactions", res);
-        return std::vector<Transaction>(res.begin(), res.end());
+        return std::vector<PeerTransaction>(res.begin(), res.end());
       }
 
       MessageResponse
@@ -885,6 +885,86 @@ namespace infinit
           elle::sprintf("/transaction/%s/cloud_buffer?force_regenerate=%s",
                         transaction_id, force_regenerate?"true":"false"),
           Method::GET);
+      }
+
+      /*------.
+      | Links |
+      `------*/
+
+      CreateLinkTransactionResponse::CreateLinkTransactionResponse(
+        elle::serialization::SerializerIn& s)
+      {
+        this->serialize(s);
+      }
+
+      void
+      CreateLinkTransactionResponse::serialize(
+        elle::serialization::Serializer& s)
+      {
+        s.serialize("aws_credentials", this->_aws_credentials);
+        s.serialize("transaction", this->_transaction);
+      }
+
+      CreateLinkTransactionResponse
+      Client::create_link(LinkTransaction::FileList const& files,
+                          std::string const& name) const
+      {
+        reactor::http::Request request =
+          this->_client.request(this->_url("/link"),
+                                Method::POST,
+                                "application/json",
+                                this->_default_configuration);
+        {
+          elle::serialization::json::SerializerOut query(request);
+          // FIXME: get rid of const casts when output serialization has his
+          // const API
+          query.serialize("name", const_cast<std::string&>(name));
+          query.serialize("files",
+                          const_cast<LinkTransaction::FileList&>(files));
+        }
+        this->_handle_errors(request);
+        {
+          elle::serialization::json::SerializerIn input(request);
+          return CreateLinkTransactionResponse(input);
+        }
+      }
+
+      void
+      Client::update_link(std::string const& id,
+                          double progress,
+                          Transaction::Status status) const
+      {
+        elle::json::Object body;
+        body["progress"] = progress;
+        body["status"] = int(status);
+        auto url = elle::sprintf("/link/%s", id);
+        reactor::http::Request request =
+          this->_client.request(this->_url(url),
+                                Method::POST,
+                                "application/json",
+                                this->_default_configuration);
+        elle::json::write(request, body);
+        this->_handle_errors(request);
+      }
+
+      std::vector<LinkTransaction>
+      Client::links(int offset,
+                    int count,
+                    bool include_expired) const
+      {
+        std::string url =
+          elle::sprintf("/links?offset=%s&count=%s", offset, count);
+        if (include_expired)
+          url += "&include_expired=1";
+        reactor::http::Request request =
+          this->_client.request(this->_url(url),
+                                Method::GET,
+                                this->_default_configuration);
+        this->_handle_errors(request);
+        std::list<LinkTransaction> res;
+        elle::serialization::json::SerializerIn input(request);
+        input.serialize("links", res);
+        return std::vector<LinkTransaction>(res.begin(), res.end());
       }
 
       /*--------------.

@@ -1,16 +1,18 @@
 #ifndef SURFACE_GAP_TRANSACTION_HH
 # define SURFACE_GAP_TRANSACTION_HH
 
-# include <unordered_set>
 # include <stdint.h>
-# include <string>
 
-# include <infinit/oracles/trophonius/Client.hh>
+# include <string>
+# include <unordered_set>
+
+# include <boost/filesystem.hpp>
+
+# include <infinit/oracles/Transaction.hh>
+# include <surface/gap/Exception.hh>
 # include <surface/gap/Notification.hh>
 # include <surface/gap/enums.hh>
 # include <surface/gap/fwd.hh>
-# include <surface/gap/Exception.hh>
-# include <surface/gap/TransactionMachine.hh>
 
 namespace surface
 {
@@ -67,14 +69,16 @@ namespace surface
       public:
         Snapshot(
           bool sender,
-          Data data,
+          std::shared_ptr<Data> data,
+          bool archived,
           boost::optional<std::vector<std::string>> files = {},
           boost::optional<std::string> message = {});
       public:
         ELLE_ATTRIBUTE_R(bool, sender);
-        ELLE_ATTRIBUTE_R(Data, data);
+        ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
         ELLE_ATTRIBUTE_R(boost::optional<std::vector<std::string>>, files);
         ELLE_ATTRIBUTE_R(boost::optional<std::string>, message);
+        ELLE_ATTRIBUTE_R(bool, archived);
 
       // Serialization
       public:
@@ -100,7 +104,7 @@ namespace surface
       /// Construct from server data.
       Transaction(State& state,
                   uint32_t id,
-                  Data&& data,
+                  std::shared_ptr<Data> data,
                   bool history = false);
       /// Construct from snapshot.
       Transaction(State& state,
@@ -113,14 +117,19 @@ namespace surface
                   std::string const& peer_id,
                   std::vector<std::string> files,
                   std::string const& message);
+      /// Construct as new for link generation.
+      Transaction(surface::gap::State& state,
+                  uint32_t id,
+                  std::vector<std::string> files,
+                  std::string const& message);
       /// Move.
       Transaction(Transaction&&) = default;
       /// Destruct.
       ~Transaction();
-    private:
       ELLE_ATTRIBUTE_R(State&, state);
       ELLE_ATTRIBUTE(boost::optional<std::vector<std::string>>, files);
       ELLE_ATTRIBUTE(boost::optional<std::string>, message);
+      ELLE_ATTRIBUTE_Rw(bool, archived);
 
     public:
       virtual
@@ -151,30 +160,18 @@ namespace surface
       void
       interrupt();
 
-    protected:
-      bool
-      last_status(gap_TransactionStatus);
-
     public:
       void
-      on_transaction_update(Data const& data);
+      on_transaction_update(std::shared_ptr<Data> data);
 
       void
-      on_peer_reachability_updated(
-        infinit::oracles::trophonius::PeerReachabilityNotification const& update);
-
+      notify_user_connection_status(std::string const& user_id,
+                                    std::string const& device_id,
+                                    bool status);
       void
-      on_peer_connection_status_updated(
-        infinit::oracles::trophonius::UserStatusNotification const& update);
-
+      notify_peer_reachable(std::vector<std::pair<std::string, int>> const& endpoints);
       void
-      peer_connection_status(bool status);
-
-      void
-      peer_available(std::vector<std::pair<std::string, int>> const& endpoints);
-
-      void
-      peer_unavailable();
+      notify_peer_unreachable();
 
       // Reinitialize everything. Invoked when connection to servers is reset.
       virtual
@@ -182,29 +179,21 @@ namespace surface
       reset();
 
     /*------------.
-    | Atttributes |
+    | Attributes |
     `------------*/
     public:
+      gap_TransactionStatus
+      status() const;
       ELLE_ATTRIBUTE_R(uint32_t, id);
       ELLE_ATTRIBUTE_R(uint32_t, sender);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
     protected:
       std::unique_ptr<TransactionMachine> _machine;
-      ELLE_ATTRIBUTE_r(gap_TransactionStatus, last_status);
 
     /*--------.
     | Helpers |
     `--------*/
     public:
-      bool
-      concerns_user(std::string const& peer_id) const;
-
-      bool
-      is_sender(std::string const& user_id) const;
-
-      bool
-      concerns_device(std::string const& device_id) const;
-
       bool
       has_transaction_id(std::string const& id) const;
 

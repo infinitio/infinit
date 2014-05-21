@@ -51,6 +51,7 @@ def configure(elle,
     'src/infinit/oracles/meta/server/device.py',
     'src/infinit/oracles/meta/server/infinit.auth',
     'src/infinit/oracles/meta/server/invitation.py',
+    'src/infinit/oracles/meta/server/link_generation.py',
     'src/infinit/oracles/meta/server/mail.py',
     'src/infinit/oracles/meta/server/notifier.py',
     'src/infinit/oracles/meta/server/place_holder_avatar.png',
@@ -110,7 +111,7 @@ def configure(elle,
   build = drake.Rule('build')
   build_python_path = drake.Path('lib/python')
 
-  elle_python = drake.copy(elle.python, '.', '../../../elle/elle')
+  elle_python = drake.copy(elle.elle.python, '.', '../../../elle/elle')
   papier_python = drake.copy(papier_python, build_python_path,
                              strip_prefix = True)
   python = [version]
@@ -168,7 +169,7 @@ def configure(elle,
   debian = drake.Rule('debian')
   debian << drake.debian.Packager(
     'fist-meta_%s_amd64.deb' % git.version(),
-    package, 'debian', preload = elle.dpkg_preload).package
+    package, 'debian', preload = elle.elle.dpkg_preload).package
 
 
   ## ----- ##
@@ -190,6 +191,7 @@ def configure(elle,
     'invitations/basic',
     'invitations/register',
     'invitations/login',
+    'links/generate-link',
     'root/lost-password',
     'root/reset-password-ghost',
     'root/reset-password-unknown-email',

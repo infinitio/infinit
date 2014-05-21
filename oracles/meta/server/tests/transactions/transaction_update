@@ -22,8 +22,7 @@ def S(source, transaction, state):
                                            "status": state,
                                            "device_id": str(source.device_id),
                                            "device_name": source.device_name})
-  assert not res['success']
-  assert res['error_code'] in [error.TRANSACTION_ALREADY_HAS_THIS_STATUS[0]]
+  assert res['success']
   assert notifier.notification is None
 
 # Not allowed
@@ -114,7 +113,7 @@ class Notifier():
                   device_ids = None,
                   message = None):
     import infinit.oracles.notification
-    if notification_type != infinit.oracles.notification.notifications['transaction']:
+    if notification_type != infinit.oracles.notification.notifications['peer_transaction']:
       return
     assert self.__notification is None
     self.__notification = [notification_type, recipient_ids, device_ids, message['status']]

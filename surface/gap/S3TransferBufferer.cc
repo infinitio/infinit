@@ -29,7 +29,7 @@ namespace surface
 
     // Recipient.
     S3TransferBufferer::S3TransferBufferer(
-      infinit::oracles::Transaction& transaction,
+      infinit::oracles::PeerTransaction& transaction,
       std::function<aws::Credentials(bool)> credentials):
         Super(transaction),
         _count(),
@@ -65,7 +65,7 @@ namespace surface
     }
 
     S3TransferBufferer::S3TransferBufferer(
-      infinit::oracles::Transaction& transaction,
+      infinit::oracles::PeerTransaction& transaction,
       std::string const& file,
       std::function<aws::Credentials(bool)> credentials)
     : Super(transaction)
@@ -97,7 +97,7 @@ namespace surface
 
     // Sender.
     S3TransferBufferer::S3TransferBufferer(
-      infinit::oracles::Transaction& transaction,
+      infinit::oracles::PeerTransaction& transaction,
       std::function<aws::Credentials(bool)> credentials,
       FileCount count,
       FileSize total_size,

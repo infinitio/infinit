@@ -113,15 +113,26 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::UserStatusNotification,
   ar & named("device_status", value.device_status);
 }
 
-ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::TransactionNotification);
-ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::TransactionNotification,
+ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::LinkTransactionNotification);
+ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::LinkTransactionNotification,
                       ar,
                       value,
                       version)
 {
   (void)version;
   ar & base_class<infinit::oracles::trophonius::Notification>(value);
-  ar & base_class<infinit::oracles::Transaction>(value);
+  ar & base_class<infinit::oracles::LinkTransaction>(value);
+}
+
+ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::PeerTransactionNotification);
+ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::PeerTransactionNotification,
+                      ar,
+                      value,
+                      version)
+{
+  (void)version;
+  ar & base_class<infinit::oracles::trophonius::Notification>(value);
+  ar & base_class<infinit::oracles::PeerTransaction>(value);
 }
 
 ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::MessageNotification);
@@ -172,10 +183,17 @@ namespace infinit
       }
 
       void
-      TransactionNotification::print(std::ostream& stream) const
+      LinkTransactionNotification::print(std::ostream& stream) const
       {
         stream << this->notification_type << ": "
-               << *static_cast<Transaction const*>(this);
+               << *static_cast<LinkTransaction const*>(this);
+      }
+
+      void
+      PeerTransactionNotification::print(std::ostream& stream) const
+      {
+        stream << this->notification_type << ": "
+               << *static_cast<PeerTransaction const*>(this);
       }
 
       PeerReachabilityNotification::PeerReachabilityNotification()
@@ -230,8 +248,10 @@ namespace infinit
         {
           case NotificationType::ping:
             return Ptr(new Notification{extractor});
-          case NotificationType::transaction:
-            return Ptr(new TransactionNotification{extractor});
+          case NotificationType::link_transaction:
+            return Ptr(new LinkTransactionNotification{extractor});
+          case NotificationType::peer_transaction:
+            return Ptr(new PeerTransactionNotification{extractor});
           case NotificationType::peer_connection_update:
             elle::unreachable();
           case NotificationType::new_swagger:

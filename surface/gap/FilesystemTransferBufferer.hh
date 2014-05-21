@@ -27,10 +27,10 @@ namespace surface
     `-------------*/
     public:
       /// Recipient constructor.
-      FilesystemTransferBufferer(infinit::oracles::Transaction& transaction,
+      FilesystemTransferBufferer(infinit::oracles::PeerTransaction& transaction,
                                  boost::filesystem::path const& root);
       /// Sender constructor.
-      FilesystemTransferBufferer(infinit::oracles::Transaction& transaction,
+      FilesystemTransferBufferer(infinit::oracles::PeerTransaction& transaction,
                                  boost::filesystem::path const& root,
                                  FileCount count,
                                  FileSize total_size,

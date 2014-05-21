@@ -73,10 +73,12 @@ namespace infinit
         `-----*/
         public:
           class RemoveWard:
-            public elle::SafeFinally
+            public elle::Finally
           {
-          public:
+          protected:
             RemoveWard(Client& c);
+            ~RemoveWard() noexcept(false);
+            friend class elle::With<RemoveWard>;
           };
 
         /*----------.

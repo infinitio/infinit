@@ -4,6 +4,7 @@
 #include <boost/filesystem/fstream.hpp>
 
 #include <elle/AtomicFile.hh>
+#include <elle/Error.hh>
 #include <elle/memory.hh>
 #include <elle/serialization/json.hh>
 
@@ -48,15 +49,29 @@ namespace surface
     }
 
     uint32_t
+    State::create_link(std::vector<std::string> const& files,
+                std::string const& message)
+    {
+      ELLE_TRACE_SCOPE("%s: create link for %s", *this, files);
+      auto id = generate_id();
+      this->_transactions.emplace(
+        id,
+        elle::make_unique<Transaction>(*this, id,
+                                       std::move(files), message));
+      return id;
+    }
+
+    uint32_t
     State::send_files(std::string const& peer_id,
                       std::vector<std::string> files,
                       std::string const& message)
     {
+      ELLE_TRACE_SCOPE("%s: send files to %s", *this, peer_id);
       auto id = generate_id();
-      ELLE_TRACE("%s: create send transaction", *this)
-        this->_transactions.emplace(
-          id,
-          elle::make_unique<Transaction>(*this, id, peer_id, std::move(files), message));
+      this->_transactions.emplace(
+        id,
+        elle::make_unique<Transaction>(*this, id, peer_id,
+                                         std::move(files), message));
       return id;
     }
 
@@ -128,7 +143,7 @@ namespace surface
             {
               elle::serialization::json::SerializerIn input(read.stream());
               Transaction::Snapshot snapshot(input);
-              auto const& data = snapshot.data();
+              auto const& data = *snapshot.data();
               if (!data.id.empty())
               {
                 auto it = std::find_if(
@@ -162,12 +177,13 @@ namespace surface
     }
 
     void
-    State::_transaction_resync()
+    State::_peer_transaction_resync()
     {
       ELLE_TRACE("%s: synchronize active transactions from meta", *this)
         for (auto& transaction: this->meta().transactions())
         {
-          this->_on_transaction_update(std::move(transaction));
+          this->_on_transaction_update(
+            std::make_shared<infinit::oracles::PeerTransaction>(transaction));
         }
       ELLE_TRACE("%s: resynchronize transaction history from meta", *this)
       {
@@ -188,10 +204,8 @@ namespace surface
             });
           if (it != std::end(this->_transactions))
           {
-            if (!it->second->final())
-            {
-              it->second->on_transaction_update(transaction);
-            }
+            it->second->on_transaction_update(
+              std::make_shared<infinit::oracles::PeerTransaction>(transaction));
             continue;
           }
           ELLE_DUMP("ensure that both user are fetched")
@@ -200,14 +214,51 @@ namespace surface
             this->user(transaction.recipient_id);
           }
           auto _id = generate_id();
-          ELLE_TRACE("%s: create history transaction from data: %s",
+          ELLE_TRACE("%s: create historical peer transactions from data: %s",
                      *this, transaction)
             this->_transactions.emplace(
               _id,
-              elle::make_unique<Transaction>(*this, _id, std::move(transaction),
-                              true /* history */));
+              elle::make_unique<Transaction>(
+                *this, _id,
+                std::make_shared<infinit::oracles::PeerTransaction>(transaction),
+                true /* history */));
         }
       }
+    }
+
+    void
+    State::_link_transaction_resync()
+    {
+      ELLE_TRACE("%s: synchronize link transactions from meta", *this)
+        for (auto& transaction: this->meta().links())
+        {
+          auto it = std::find_if(
+            std::begin(this->_transactions),
+            std::end(this->_transactions),
+            [&] (TransactionConstPair const& pair)
+            {
+              return (!pair.second->data()->id.empty()) &&
+                     ( pair.second->data()->id == transaction.id);
+            });
+          if (it != std::end(this->_transactions))
+          {
+            if (!it->second->final())
+            {
+              it->second->on_transaction_update(
+                std::make_shared<infinit::oracles::LinkTransaction>(transaction));
+            }
+            continue;
+          }
+          auto _id = generate_id();
+          ELLE_TRACE("%s: create historical link transaction from data: %s",
+                     *this, transaction)
+            this->_transactions.emplace(
+              _id,
+              elle::make_unique<Transaction>(
+                *this, _id,
+                std::make_shared<infinit::oracles::LinkTransaction>(transaction),
+                true /* history */));
+        }
     }
 
     void
@@ -219,37 +270,61 @@ namespace surface
     }
 
     void
-    State::_on_transaction_update(infinit::oracles::Transaction const& notif)
+    State::_on_transaction_update(
+      std::shared_ptr<infinit::oracles::Transaction> const& notif)
     {
       ELLE_TRACE_SCOPE("%s: receive transaction data %s",
-                       *this, notif.id);
-      ELLE_ASSERT(!notif.id.empty());
-      ELLE_DUMP("%s: data: %s", *this, notif)
-      ELLE_DEBUG("%s: ensure that both user are fetched", *this)
-      {
-        this->user(notif.sender_id);
-        this->user(notif.recipient_id);
-      }
+                       *this, notif->id);
+      ELLE_ASSERT(!notif->id.empty());
+      ELLE_DUMP("%s: data: %s", *this, *notif);
       auto it = std::find_if(
         std::begin(this->_transactions),
         std::end(this->_transactions),
         [&] (TransactionConstPair const& pair)
         {
           return (!pair.second->data()->id.empty()) &&
-                 (pair.second->data()->id == notif.id);
+                 (pair.second->data()->id == notif->id);
         });
       if (it == std::end(this->_transactions))
       {
-        ELLE_TRACE_SCOPE("%s: create transaction %s", *this, notif.id);
-        infinit::oracles::Transaction data = notif;
+        ELLE_TRACE_SCOPE("%s: create transaction %s", *this, notif->id);
         auto id = generate_id();
-        this->_transactions.emplace(
-          id,
-          elle::make_unique<Transaction>(*this, id, std::move(data)));
+        try
+        {
+          this->_transactions.emplace(
+            id,
+            elle::make_unique<Transaction>(*this, id, notif));
+        }
+        catch (elle::Error const& e)
+        {
+          ELLE_WARN("%s: unable to create transaction from server data: %s",
+                    *this, elle::exception_string());
+          try
+          {
+            this->meta().update_transaction(
+              notif->id, infinit::oracles::Transaction::Status::failed);
+          }
+          catch (infinit::oracles::meta::Exception const& e)
+          {
+            using infinit::oracles::meta::Error;
+            if (e.err != Error::transaction_operation_not_permitted &&
+                e.err != Error::transaction_already_finalized)
+            {
+              ELLE_ERR("%s: unable to fail transaction: %s",
+                       *this, elle::exception_string());
+              throw;
+            }
+          }
+          catch (...)
+          {
+            ELLE_ERR("%s: unable to fail transaction: %s",
+                     *this, elle::exception_string());
+          }
+        }
       }
       else
       {
-        ELLE_TRACE_SCOPE("%s: update transaction %s", *this, notif.id);
+        ELLE_TRACE_SCOPE("%s: update transaction %s", *this, notif->id);
         it->second->on_transaction_update(notif);
       }
     }
@@ -276,7 +351,10 @@ namespace surface
                   notif.transaction_id);
         return;
       }
-      it->second->on_peer_reachability_updated(notif);
+      if (notif.status)
+        it->second->notify_peer_reachable(notif.endpoints_local);
+      else
+        it->second->notify_peer_unreachable();
     }
   }
 }

@@ -410,34 +410,6 @@ namespace surface
               gap_trophonius_unreachable, "unable to contact trophonius");
         }
 
-        this->_polling_thread.reset(
-          new reactor::Thread{
-            scheduler,
-              "poll",
-              [&]
-              {
-                while (true)
-                {
-                  try
-                  {
-                    this->handle_notification(this->_trophonius.poll());
-                  }
-                  catch (elle::Exception const&)
-                  {
-                    ELLE_ERR("%s: an error occured in trophonius, login is " \
-                             "required: %s", *this, elle::exception_string());
-                    // Loging out flush the message queue, which means that
-                    // KickedOut will be the next event polled.
-                    this->logout();
-                    this->enqueue(KickedOut());
-                    this->enqueue(ConnectionStatus(false));
-                    return;
-                  }
-
-                  ELLE_TRACE("%s: notification pulled", *this);
-                }
-              }});
-
         this->_avatar_fetcher_thread.reset(
           new reactor::Thread{
             scheduler,
@@ -477,6 +449,34 @@ namespace surface
         this->_users_init();
         this->_transactions_init();
         this->on_connection_changed(true, true);
+
+        this->_polling_thread.reset(
+          new reactor::Thread{
+            scheduler,
+              "poll",
+              [&]
+              {
+                while (true)
+                {
+                  try
+                  {
+                    this->handle_notification(this->_trophonius.poll());
+                  }
+                  catch (elle::Exception const&)
+                  {
+                    ELLE_ERR("%s: an error occured in trophonius, login is " \
+                             "required: %s", *this, elle::exception_string());
+                    // Loging out flush the message queue, which means that
+                    // KickedOut will be the next event polled.
+                    this->logout();
+                    this->enqueue(KickedOut());
+                    this->enqueue(ConnectionStatus(false));
+                    return;
+                  }
+
+                  ELLE_TRACE("%s: notification pulled", *this);
+                }
+              }});
 
         finally_logout.abort();
       };
@@ -748,7 +748,8 @@ namespace surface
                 }
             }
             this->_user_resync();
-            this->_transaction_resync();
+            this->_peer_transaction_resync();
+            this->_link_transaction_resync();
             resynched = true;
           }
           catch (reactor::Terminate const&)
@@ -783,6 +784,7 @@ namespace surface
       std::unique_ptr<infinit::oracles::trophonius::Notification>&& notif)
     {
       ELLE_TRACE_SCOPE("%s: new notification %s", *this, *notif);
+      // FIXME: ever heard of virtual methods ?
       switch (notif->notification_type)
       {
         case infinit::oracles::trophonius::NotificationType::user_status:
@@ -793,11 +795,17 @@ namespace surface
             *static_cast<infinit::oracles::trophonius::UserStatusNotification const*>(
               notif.release()));
           break;
-        case infinit::oracles::trophonius::NotificationType::transaction:
+        case infinit::oracles::trophonius::NotificationType::link_transaction:
           ELLE_ASSERT(
-            dynamic_cast<infinit::oracles::trophonius::TransactionNotification const*>(notif.get()) != nullptr);
+            dynamic_cast<infinit::oracles::trophonius::LinkTransactionNotification const*>(notif.get()) != nullptr);
           this->_on_transaction_update(
-            *static_cast<infinit::oracles::trophonius::TransactionNotification const*>(notif.release()));
+            std::make_shared<infinit::oracles::LinkTransaction>(static_cast<infinit::oracles::trophonius::LinkTransactionNotification&>(*notif)));
+          break;
+        case infinit::oracles::trophonius::NotificationType::peer_transaction:
+          ELLE_ASSERT(
+            dynamic_cast<infinit::oracles::trophonius::PeerTransactionNotification const*>(notif.get()) != nullptr);
+          this->_on_transaction_update(
+            std::make_shared<infinit::oracles::PeerTransaction>(static_cast<infinit::oracles::trophonius::PeerTransactionNotification&>(*notif)));
           break;
         case infinit::oracles::trophonius::NotificationType::new_swagger:
           ELLE_ASSERT(

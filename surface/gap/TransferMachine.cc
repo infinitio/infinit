@@ -13,7 +13,7 @@
 #include <station/src/station/Station.hh>
 #include <surface/gap/ReceiveMachine.hh>
 #include <surface/gap/Rounds.hh>
-#include <surface/gap/SendMachine.hh>
+#include <surface/gap/PeerSendMachine.hh>
 #include <surface/gap/State.hh>
 #include <surface/gap/TransactionMachine.hh>
 #include <surface/gap/TransferMachine.hh>
@@ -30,7 +30,7 @@ namespace surface
 
     Transferer::Transferer(TransactionMachine& owner):
       _owner(owner),
-      _fsm(elle::sprintf("transfer (%s) fsm", owner.id())),
+      _fsm(elle::sprintf("transfer (%s)", owner.id())),
       _peer_online("peer online"),
       _peer_offline("peer offline"),
       _peer_reachable("peer reachable"),
@@ -330,9 +330,19 @@ namespace surface
     void
     Transferer::run()
     {
-      ELLE_TRACE_SCOPE("%s: run fsm %s", *this, this->_fsm);
+      ELLE_TRACE_SCOPE("%s: run %s", *this, this->_fsm);
       // XXX: Best place to do that? (See constructor).
-      if (this->_owner.state().user(this->_owner.peer_id()).online())
+      std::string peer_id;
+      // FIXME: fix transaction machines hierarchy
+      using infinit::oracles::PeerTransaction;
+      auto peer_data =
+        std::dynamic_pointer_cast<PeerTransaction>(this->_owner.data());
+      ELLE_ASSERT(peer_data.get());
+      if (dynamic_cast<PeerSendMachine*>(&this->_owner))
+        peer_id = peer_data->recipient_id;
+      else
+        peer_id = peer_data->sender_id;
+      if (this->_owner.state().user(peer_id).online())
       {
         this->_peer_offline.close();
         this->_peer_online.open();
@@ -382,7 +392,7 @@ namespace surface
     bool
     Transferer::finished() const
     {
-      if (auto owner = dynamic_cast<SendMachine*>(&this->_owner))
+      if (auto owner = dynamic_cast<PeerSendMachine*>(&this->_owner))
         return owner->frete().finished();
       else
         return false; // FIXME
@@ -399,9 +409,9 @@ namespace surface
       // If the progress is full but the transaction is not finished
       // yet, it must be cloud buffered.
       if (this->progress() == 1)
-        this->_owner.gap_state(gap_transaction_cloud_buffered);
+        this->_owner.gap_status(gap_transaction_cloud_buffered);
       else
-        this->_owner.gap_state(gap_transaction_connecting);
+        this->_owner.gap_status(gap_transaction_connecting);
       this->_publish_interfaces();
     }
 
@@ -409,7 +419,7 @@ namespace surface
     Transferer::_connection_wrapper()
     {
       ELLE_TRACE_SCOPE("%s: connect to peer", *this);
-      this->_owner.gap_state(gap_transaction_connecting);
+      this->_owner.gap_status(gap_transaction_connecting);
       this->_connection();
     }
 
@@ -418,9 +428,9 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: wait for peer to connect", *this);
       if (this->progress() == 1)
-        this->_owner.gap_state(gap_transaction_cloud_buffered);
+        this->_owner.gap_status(gap_transaction_cloud_buffered);
       else
-        this->_owner.gap_state(gap_transaction_connecting);
+        this->_owner.gap_status(gap_transaction_connecting);
       this->_wait_for_peer();
     }
 
@@ -436,9 +446,9 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: cloud synchronize", *this);
       if (this->progress() == 1)
-        this->_owner.gap_state(gap_transaction_cloud_buffered);
+        this->_owner.gap_status(gap_transaction_cloud_buffered);
       else
-        this->_owner.gap_state(gap_transaction_connecting);
+        this->_owner.gap_status(gap_transaction_connecting);
       this->_cloud_synchronize();
     }
 
@@ -446,7 +456,7 @@ namespace surface
     Transferer::_transfer_wrapper()
     {
       ELLE_TRACE_SCOPE("%s: transfer", *this);
-      this->_owner.gap_state(gap_transaction_transferring);
+      this->_owner.gap_status(gap_transaction_transferring);
       this->_transfer();
     }
 

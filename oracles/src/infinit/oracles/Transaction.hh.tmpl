@@ -1,13 +1,12 @@
-#ifndef INFINIT_ORACLE_TRANSACTION_HH
-# define INFINIT_ORACLE_TRANSACTION_HH
-
-# include <elle/serialize/construct.hh>
-# include <elle/Printable.hh>
-# include <elle/serialization/fwd.hh>
+#ifndef INFINIT_ORACLES_TRANSACTION_HH
+# define INFINIT_ORACLES_TRANSACTION_HH
 
 # include <iosfwd>
 # include <list>
 # include <string>
+
+# include <elle/Printable.hh>
+# include <elle/serialization/Serializer.hh>
 
 <%!
 from infinit.oracles.transaction import statuses
@@ -17,8 +16,9 @@ namespace infinit
 {
   namespace oracles
   {
-    class Transaction:
-      public elle::Printable
+    class Transaction
+      : public elle::Printable
+      , public elle::serialization::VirtuallySerializable
     {
     public:
       enum class Status: int
@@ -28,51 +28,42 @@ namespace infinit
         %endfor
       };
 
+    /*-------------.
+    | Construction |
+    `-------------*/
     public:
       Transaction();
       Transaction(std::string const& sender_id,
-                  std::string const& sender_fullname,
                   std::string const& sender_device_id);
-      Transaction(Transaction&&) = default;
-      Transaction(Transaction const&) = default;
-      Transaction&
-      operator =(Transaction const&) = default;
-
-      ELLE_SERIALIZE_CONSTRUCT(Transaction)
-      {}
       virtual
       ~Transaction() = default;
 
+    /*-----.
+    | Data |
+    `-----*/
     public:
       std::string id;
       std::string sender_id;
-      std::string sender_fullname;
       std::string sender_device_id;
-      std::string recipient_id;
-      std::string recipient_fullname;
-      std::string recipient_device_id;
-      std::string recipient_device_name;
-      std::string message;
-      std::list<std::string> files;
-      int64_t files_count;
-      int64_t total_size;
-      bool is_directory;
       Status status;
       double ctime;
       double mtime;
-      bool   is_ghost;
-      virtual
-      void
-      print(std::ostream& stream) const override;
+      bool is_ghost;
 
+    /*-----------.
+    | Properties |
+    `-----------*/
+    public:
       bool
       empty() const;
 
-    // Serialization
+    /*----------.
+    | Printable |
+    `----------*/
     public:
-      Transaction(elle::serialization::SerializerIn& s);
+      virtual
       void
-      serialize(elle::serialization::Serializer& s);
+      print(std::ostream& stream) const override;
     };
 
     std::ostream&
@@ -84,7 +75,5 @@ namespace infinit
                 Transaction const& t);
   }
 }
-
-# include <infinit/oracles/Transaction.hxx>
 
 #endif

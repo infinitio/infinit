@@ -36,8 +36,10 @@ namespace infinit
         void
         Client::handle()
         {
-          RemoveWard ward(*this);
-          this->_handle();
+          elle::With<RemoveWard>(*this) << [&](RemoveWard&)
+          {
+            this->_handle();
+          };
         }
 
         void
@@ -93,11 +95,14 @@ namespace infinit
         `-----*/
 
         Client::RemoveWard::RemoveWard(Client& c):
-          elle::SafeFinally(
+          elle::Finally(
             [&c]
             {
               c.trophonius().client_remove(c);
             })
+        {}
+
+        Client::RemoveWard::~RemoveWard() noexcept(false)
         {}
 
         /*----------.

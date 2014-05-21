@@ -9,7 +9,6 @@ config = None
 lib = None
 
 def configure(elle,
-              reactor,
               transaction_lib,
               server_python,
               boost = None,
@@ -24,8 +23,8 @@ def configure(elle,
   cxx_config = cxx_config or drake.cxx.Config()
 
   local_cxx_config = drake.cxx.Config(cxx_config)
-  local_cxx_config += elle.config
-  local_cxx_config += reactor.config
+  local_cxx_config += elle.elle.config
+  local_cxx_config += elle.reactor.config
   local_cxx_config.add_local_include_path('src')
 
   build = drake.Rule('build')
@@ -50,22 +49,23 @@ def configure(elle,
 
   if cxx_toolkit.os is drake.os.windows:
     Library = drake.cxx.StaticLib
-    elle_lib = elle.lib_static
-    reactor_lib = reactor.lib_static
+    elle_lib = elle.elle.lib_static
+    reactor_lib = elle.reactor.lib_static
+    aws_lib = elle.aws.lib_static
   else:
     Library = drake.cxx.DynLib
-    elle_lib = drake.copy(elle.lib_dynamic, 'lib',
+    elle_lib = drake.copy(elle.elle.lib_dynamic, 'lib',
                           strip_prefix = True)
-    reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
+    reactor_lib = drake.copy(elle.reactor.lib_dynamic, 'lib',
                              strip_prefix = True)
-    transaction_lib = drake.copy(transaction_lib, 'lib',
-                                 strip_prefix = True)
+    aws_lib = drake.copy(elle.aws.lib_dynamic, 'lib', strip_prefix = True)
+    transaction_lib = drake.copy(transaction_lib, 'lib', strip_prefix = True)
 
   lib_cxx_config = drake.cxx.Config(local_cxx_config)
   lib_cxx_config.lib_path_runtime('../lib')
   lib = Library(
     'lib/metaclient',
-    sources + [reactor_lib, elle_lib, transaction_lib],
+    sources + [aws_lib, reactor_lib, elle_lib, transaction_lib],
     cxx_toolkit,
     lib_cxx_config)
 

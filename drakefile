@@ -121,11 +121,13 @@ def configure(cxx_toolkit = None,
     def _epilogue(self):
       yield '#endif'
     def _variable(self, name, value):
+      if name == 'version' and not production_build:
+        value = '%s-dev' % git.version().split('-')[0]
+      value = repr(value).replace("'", '"')
       if name == 'version':
         name = 'INFINIT_VERSION'
       else:
         name = 'INFINIT_VERSION_%s' % name.upper()
-      value = repr(value).replace("'", '"')
       return '# define %s %s' % (name, value)
   version = drake.node('version.hh')
   CxxVersionGenerator(version, git = git)
@@ -468,6 +470,12 @@ def configure(cxx_toolkit = None,
     'surface/gap/Exception.hh',
     'surface/gap/FilesystemTransferBufferer.cc',
     'surface/gap/FilesystemTransferBufferer.hh',
+    'surface/gap/LinkSendMachine.cc',
+    'surface/gap/LinkSendMachine.hh',
+    'surface/gap/PeerMachine.cc',
+    'surface/gap/PeerMachine.hh',
+    'surface/gap/PeerSendMachine.cc',
+    'surface/gap/PeerSendMachine.hh',
     'surface/gap/PeerTransferMachine.cc',
     'surface/gap/PeerTransferMachine.hh',
     'surface/gap/ReceiveMachine.cc',
@@ -484,6 +492,8 @@ def configure(cxx_toolkit = None,
     'surface/gap/Transaction.cc',
     'surface/gap/Transaction.hh',
     'surface/gap/Transaction.hxx',
+    'surface/gap/LinkTransaction.cc',
+    'surface/gap/LinkTransaction.hh',
     'surface/gap/TransactionMachine.cc',
     'surface/gap/TransactionMachine.hh',
     'surface/gap/TransactionMachine.hxx',
@@ -596,6 +606,23 @@ def configure(cxx_toolkit = None,
     cli_cxx_config
   )
   cli_build << cli_recv_bin
+
+  cli_link_sources = drake.nodes(
+    'satellites/link/Link.cc',
+  )
+  cli_link_bin = drake.cxx.Executable(
+    'bin/8link',
+    cli_link_sources + [
+      gap_lib,
+      elle_lib,
+      reactor_lib,
+      crash_lib,
+      oracles.transaction_lib,
+    ],
+    cxx_toolkit,
+    cli_cxx_config
+  )
+  cli_build << cli_link_bin
 
   cli_online_sources = drake.nodes(
     'satellites/online/Online.cc',

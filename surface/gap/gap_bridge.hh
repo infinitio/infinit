@@ -18,6 +18,7 @@
 # include <common/common.hh>
 
 # include <surface/gap/State.hh>
+# include <surface/gap/LinkTransaction.hh>
 
 
 /// - Utils -----------------------------------------------------------------

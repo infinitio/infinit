@@ -15,10 +15,11 @@ namespace surface
       ReceiveMachine::ReceiveMachine(
         Transaction& transaction,
         uint32_t id,
-        std::shared_ptr<TransactionMachine::Data> data,
+        std::shared_ptr<Data> data,
         std::string const& file_path,
         reactor::Duration duration)
-        : surface::gap::ReceiveMachine(transaction, id, data)
+        : surface::gap::TransactionMachine(transaction, id, data)
+        , surface::gap::ReceiveMachine(transaction, id, data)
         , _file_path(file_path)
       {
         ELLE_TRACE_SCOPE("%s: construction", *this);

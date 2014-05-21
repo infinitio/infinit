@@ -268,7 +268,7 @@ namespace elle
       }
       reactor::http::Request::Configuration conf{
         reactor::DurationOpt(300_sec),
-        reactor::DurationOpt(),
+        {},
         reactor::http::Version(reactor::http::Version::v10)};
       conf.ssl_verify_host(false);
       reactor::Scheduler sched;

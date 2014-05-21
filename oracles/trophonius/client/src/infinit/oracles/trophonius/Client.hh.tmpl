@@ -1,8 +1,8 @@
 #ifndef INFINIT_ORACLES_TROPHONIUS_CLIENT_HH
 # define INFINIT_ORACLES_TROPHONIUS_CLIENT_HH
 
-
-# include <infinit/oracles/Transaction.hh>
+# include <infinit/oracles/PeerTransaction.hh>
+# include <infinit/oracles/LinkTransaction.hh>
 
 # include <boost/date_time/posix_time/posix_time_types.hpp>
 
@@ -109,13 +109,28 @@ namespace infinit
         print(std::ostream& stream) const override;
       };
 
-      struct TransactionNotification:
+      struct LinkTransactionNotification:
         public Notification,
-        public Transaction
+        public LinkTransaction
       {
-        ELLE_SERIALIZE_CONSTRUCT(TransactionNotification,
+        ELLE_SERIALIZE_CONSTRUCT(LinkTransactionNotification,
                                  Notification,
-                                 Transaction)
+                                 LinkTransaction)
+        {}
+
+        virtual
+        void
+        print(std::ostream& stream) const override;
+      };
+
+
+      struct PeerTransactionNotification:
+        public Notification,
+        public PeerTransaction
+      {
+        ELLE_SERIALIZE_CONSTRUCT(PeerTransactionNotification,
+                                 Notification,
+                                 PeerTransaction)
         {}
 
         virtual

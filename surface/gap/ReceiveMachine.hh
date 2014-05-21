@@ -16,9 +16,9 @@
 
 # include <frete/fwd.hh>
 # include <frete/Frete.hh>
-
+# include <oracles/src/infinit/oracles/PeerTransaction.hh>
+# include <surface/gap/PeerMachine.hh>
 # include <surface/gap/State.hh>
-# include <surface/gap/TransactionMachine.hh>
 # include <surface/gap/TransferBufferer.hh>
 
 namespace surface
@@ -26,7 +26,7 @@ namespace surface
   namespace gap
   {
     struct ReceiveMachine:
-      public TransactionMachine
+      public PeerMachine
     {
     /*------.
     | Types |
@@ -34,6 +34,8 @@ namespace surface
     public:
       typedef ::frete::Frete::FileSize FileSize;
       typedef ::frete::Frete::FileID FileID;
+      typedef ReceiveMachine Self;
+      typedef PeerMachine Super;
 
     /*-------------.
     | Construction |
@@ -41,7 +43,7 @@ namespace surface
     public:
       ReceiveMachine(Transaction& state,
                      uint32_t id,
-                     std::shared_ptr<TransactionMachine::Data> data);
+                     std::shared_ptr<Data> data);
       virtual
       ~ReceiveMachine();
 
@@ -73,9 +75,15 @@ namespace surface
       void
       _fail();
 
-      /*-----------------------.
-      | Machine implementation |
-      `-----------------------*/
+    /*-----------------------.
+    | Machine implementation |
+    `-----------------------*/
+    public:
+      virtual
+      void
+      notify_user_connection_status(std::string const& user_id,
+                                    std::string const& device_id,
+                                    bool online) override;
       ELLE_ATTRIBUTE(reactor::fsm::State&, wait_for_decision_state);
       ELLE_ATTRIBUTE(reactor::fsm::State&, accept_state);
 
@@ -92,7 +100,7 @@ namespace surface
       ELLE_ATTRIBUTE_R(std::unique_ptr<frete::TransferSnapshot>, snapshot)
     protected:
       void
-      _save_transfer_snapshot() override;
+      _save_frete_snapshot();
     private:
       std::unique_ptr<frete::RPCFrete>
       rpcs(infinit::protocol::ChanneledStream& channels) override;

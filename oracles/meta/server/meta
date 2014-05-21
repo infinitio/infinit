@@ -62,9 +62,13 @@ parser.add_option('--aws-region',
                   action = 'store',
                   help  = 'aws region for cloud data',
                   default = None)
-parser.add_option('--aws-bucket',
+parser.add_option('--aws-buffer-bucket',
                   action = 'store',
-                  help = 'aws bucket for cloud data',
+                  help = 'aws bucket for buffering cloud data',
+                  default = None)
+parser.add_option('--aws-link-bucket',
+                  action = 'store',
+                  help = 'aws bucket for link cloud data',
                   default = None)
 
 options, args = parser.parse_args()
@@ -78,7 +82,8 @@ app = infinit.oracles.meta.server.Meta(
   daily_summary_hour = options.daily_summary_hour,
   email_confirmation_cooldown = options.email_confirmation_cooldown,
   aws_region = options.aws_region,
-  aws_bucket = options.aws_bucket)
+  aws_buffer_bucket = options.aws_buffer_bucket,
+  aws_link_bucket = options.aws_link_bucket)
 
 app.port = 0
 

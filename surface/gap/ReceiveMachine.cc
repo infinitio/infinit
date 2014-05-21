@@ -80,8 +80,9 @@ namespace surface
     ReceiveMachine::ReceiveMachine(
       Transaction& transaction,
       uint32_t id,
-      std::shared_ptr<TransactionMachine::Data> data)
-      : TransactionMachine(transaction, id, std::move(data))
+      std::shared_ptr<Data> data)
+      : Super::Super(transaction, id, data)
+      , Super(transaction, id, std::move(data))
       , _wait_for_decision_state(
         this->_machine.state_make(
           "wait for decision", std::bind(&ReceiveMachine::_wait_for_decision, this)))
@@ -285,8 +286,6 @@ namespace surface
     ReceiveMachine::accept()
     {
       ELLE_TRACE_SCOPE("%s: open accept barrier %s", *this, this->transaction_id());
-      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
       if (!this->_accepted.opened())
       {
         if (this->state().metrics_reporter())
@@ -294,7 +293,6 @@ namespace surface
             this->transaction_id()
             );
       }
-
       this->_accepted.open();
     }
 
@@ -321,14 +319,14 @@ namespace surface
     ReceiveMachine::_wait_for_decision()
     {
       ELLE_TRACE_SCOPE("%s: waiting for decision %s", *this, this->transaction_id());
-      this->gap_state(gap_transaction_waiting_accept);
+      this->gap_status(gap_transaction_waiting_accept);
     }
 
     void
     ReceiveMachine::_accept()
     {
       ELLE_TRACE_SCOPE("%s: accepted %s", *this, this->transaction_id());
-      this->gap_state(gap_transaction_waiting_accept);
+      this->gap_status(gap_transaction_waiting_accept);
 
       try
       {
@@ -464,7 +462,7 @@ namespace surface
         ELLE_DEBUG("%s: cloud buffering disabled by configuration", *this);
         return;
       }
-      this->gap_state(gap_transaction_transferring);
+      this->gap_status(gap_transaction_transferring);
       auto start_time = boost::posix_time::microsec_clock::universal_time();
       metrics::TransferExitReason exit_reason = metrics::TransferExitReasonUnknown;
       std::string exit_message;
@@ -500,9 +498,12 @@ namespace surface
         }
         else
         {
-         auto get_credentials = this->make_aws_credentials_getter();
+          auto get_credentials = [this] (bool first_time)
+            {
+              return this->_aws_credentials(first_time);
+            };
          _bufferer.reset(new S3TransferBufferer(*this->data(),
-                                               get_credentials));
+                                                get_credentials));
         }
         if (auto& mr = state().metrics_reporter())
         {
@@ -527,7 +528,7 @@ namespace surface
         if (this->_snapshot)
           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
         ELLE_TRACE("%s: Data exhausted on cloud bufferer", *this);
-        this->gap_state(gap_transaction_waiting_data);
+        this->gap_status(gap_transaction_waiting_data);
       }
       catch (reactor::Terminate const&)
       { // aye aye
@@ -543,7 +544,7 @@ namespace surface
         // send us notifications and wake us up
         ELLE_WARN("%s: cloud download exception, exiting cloud state: %s",
                   *this, e.what());
-        this->gap_state(gap_transaction_waiting_data);
+        this->gap_status(gap_transaction_waiting_data);
         exit_reason = metrics::TransferExitReasonError;
         if (this->_snapshot)
           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
@@ -1092,7 +1093,7 @@ namespace surface
           ELLE_DEBUG("%s: write down snapshot", *this)
           {
             ELLE_DUMP("%s: snapshot: %s", *this, *this->_snapshot);
-            this->_save_transfer_snapshot();
+            this->_save_frete_snapshot();
           }
            _store_expected_position += buffer.size();
            ELLE_ASSERT_EQ(_store_expected_position,
@@ -1149,7 +1150,7 @@ namespace surface
     }
 
     void
-    ReceiveMachine::_save_transfer_snapshot()
+    ReceiveMachine::_save_frete_snapshot()
     {
       elle::AtomicFile file(this->_frete_snapshot_path.string());
       file.write() << [&] (elle::AtomicFile::Write& write)
@@ -1173,6 +1174,16 @@ namespace surface
     ReceiveMachine::_cloud_synchronize()
     {
       this->_cloud_operation();
+    }
+
+    void
+    ReceiveMachine::notify_user_connection_status(std::string const& user_id,
+                                                  std::string const& device_id,
+                                                  bool online)
+    {
+      if (user_id == this->data()->sender_id
+          && device_id == this->data()->sender_device_id)
+        this->_peer_connection_changed(online);
     }
 
     void

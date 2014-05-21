@@ -4,96 +4,60 @@
 # include <surface/gap/TransactionMachine.hh>
 # include <surface/gap/State.hh>
 
-# include <frete/fwd.hh>
-
 namespace surface
 {
   namespace gap
   {
     class  SendMachine:
-      public TransactionMachine
+      virtual public TransactionMachine
     {
+    /*------.
+    | Types |
+    `------*/
+    public:
+      typedef SendMachine Self;
+      typedef TransactionMachine Super;
+
     /*-------------.
     | Construction |
     `-------------*/
-    public:
-      /// Construct from send files.
-      SendMachine(Transaction& state,
+    protected:
+      SendMachine(Transaction& transaction,
                   uint32_t id,
-                  std::string const& recipient,
                   std::vector<std::string> files,
-                  std::string const& message,
                   std::shared_ptr<Data> data);
-      /// Construct from snapshot.
-      SendMachine(Transaction& state,
-                  uint32_t id,
-                  std::vector<std::string> files,
-                  std::string const& message,
-                  std::shared_ptr<TransactionMachine::Data> data);
-      /// Construct from server data.
-      SendMachine(Transaction& state,
-                  uint32_t id,
-                  std::shared_ptr<TransactionMachine::Data> data);
+    public:
       virtual
       ~SendMachine();
-    private:
-      void
-      _run_from_snapshot();
 
+    /*-------------.
+    | Plain upload |
+    `-------------*/
     public:
       virtual
-      void
-      transaction_status_update(infinit::oracles::Transaction::Status status) override;
-
-    private:
-      SendMachine(Transaction& state,
-                  uint32_t id,
-                  std::shared_ptr<Data> data,
-                  bool);
-
-    private:
-      void
-      _create_transaction();
-      void
-      _wait_for_accept();
-      void
-      _transfer_operation(frete::RPCFrete& frete) override;
-      // chunked upload to cloud
-      void
-      _cloud_operation() override;
-      void
-      _cloud_synchronize() override;
+      float
+      progress() const override;
+    protected:
       // cleartext upload one file to cloud
       void
-      _ghost_cloud_upload();
-      bool
-      _fetch_peer_key(bool assert_success);
+      _plain_upload();
+      ELLE_ATTRIBUTE(float, plain_progress);
 
-    /*-----------------------.
-    | Machine implementation |
-    `-----------------------*/
-    public:
-      ELLE_ATTRIBUTE(reactor::fsm::State&, create_transaction_state);
-      ELLE_ATTRIBUTE(reactor::fsm::State&, wait_for_accept_state);
-      // Transaction status signals.
-      ELLE_ATTRIBUTE_RX(reactor::Barrier, accepted);
-      ELLE_ATTRIBUTE_RX(reactor::Barrier, rejected);
-      ELLE_ATTRIBUTE(std::unique_ptr<frete::Frete>, frete);
+    /*----.
+    | FSM |
+    `----*/
+    protected:
+      virtual
+      void
+      _create_transaction() = 0;
+      reactor::fsm::State& _create_transaction_state;
 
     /*-----------------.
     | Transaction data |
     `-----------------*/
     public:
       typedef std::vector<std::string> Files;
-      ELLE_ATTRIBUTE(Files, files);
-      ELLE_ATTRIBUTE(std::string, message);
-    protected:
-      void
-      _save_transfer_snapshot() override;
-
-    public:
-      float
-      progress() const override;
+      ELLE_ATTRIBUTE_R(Files, files);
 
     public:
       virtual
@@ -103,15 +67,11 @@ namespace surface
         return true;
       }
 
-      frete::Frete&
-      frete();
+      /// Return (name, is_an_archive) if we have to put all transfer data
+      /// in one file
+      std::pair<std::string, bool>
+      archive_info();
 
-    private:
-      std::unique_ptr<frete::RPCFrete>
-      rpcs(infinit::protocol::ChanneledStream& channels) override;
-    /*----------.
-    | Printable |
-    `----------*/
     protected:
       virtual
       void cleanup () override;

@@ -143,59 +143,87 @@ struct transaction_to_python_dict
   PyObject*
   convert(surface::gap::Transaction const& transaction)
   {
+    infinit::oracles::Transaction const* data = transaction.data().get();
     auto dict = PyDict_New();
     PyDict_SetItemString(
       dict, "id",
-      PyUnicode_FromString(transaction.data()->id.data()));
+      PyUnicode_FromString(data->id.data()));
     PyDict_SetItemString(
       dict, "sender_id",
-      PyUnicode_FromString(transaction.data()->sender_id.data()));
-    PyDict_SetItemString(
-      dict, "sender_fullname",
-      PyUnicode_FromString(transaction.data()->sender_fullname.data()));
+      PyUnicode_FromString(data->sender_id.data()));
     PyDict_SetItemString(
       dict, "sender_device_id",
-      PyUnicode_FromString(transaction.data()->sender_device_id.data()));
+      PyUnicode_FromString(data->sender_device_id.data()));
     PyDict_SetItemString(
-      dict, "recipient_id",
-      PyUnicode_FromString(transaction.data()->recipient_id.data()));
-    PyDict_SetItemString(
-      dict, "recipient_fullname",
-      PyUnicode_FromString(transaction.data()->recipient_fullname.data()));
-    PyDict_SetItemString(
-      dict, "recipient_device_id",
-      PyUnicode_FromString(transaction.data()->recipient_device_id.data()));
-    PyDict_SetItemString(
-      dict, "recipient_device_name",
-      PyUnicode_FromString(transaction.data()->recipient_device_name.data()));
-    PyDict_SetItemString(
-      dict, "message",
-      PyUnicode_FromString(transaction.data()->message.data()));
-    auto file_list = PyList_New(0);
-    for (std::string const& file: transaction.data()->files)
-    {
-      PyList_Append(file_list, PyUnicode_FromString(file.data()));
-    }
-    PyDict_SetItemString(dict, "files", file_list);
-    PyDict_SetItemString(
-      dict, "files_count",
-      PyLong_FromLong(transaction.data()->files_count));
-    PyDict_SetItemString(
-      dict, "total_size",
-      PyLong_FromLong(transaction.data()->total_size));
-    PyDict_SetItemString(
-      dict, "is_directory",
-      PyBool_FromLong(transaction.data()->is_directory));
+      dict, "is_ghost",
+      PyBool_FromLong(data->is_ghost));
     PyDict_SetItemString(
       dict, "status",
       PyUnicode_FromString(
-        transaction_status_string(transaction.data()->status).data()));
+        transaction_status_string(data->status).data()));
     PyDict_SetItemString(
       dict, "ctime",
-      PyFloat_FromDouble(transaction.data()->ctime));
+      PyFloat_FromDouble(data->ctime));
     PyDict_SetItemString(
       dict, "mtime",
-      PyFloat_FromDouble(transaction.data()->mtime));
+      PyFloat_FromDouble(data->mtime));
+    infinit::oracles::PeerTransaction const* peer_data
+      = dynamic_cast<infinit::oracles::PeerTransaction const*>(data);
+    if (peer_data)
+    {
+      auto file_list = PyList_New(0);
+      for (std::string const& file: peer_data->files)
+      {
+        PyList_Append(file_list, PyUnicode_FromString(file.data()));
+      }
+      PyDict_SetItemString(dict, "files", file_list);
+      PyDict_SetItemString(dict, "is_directory",
+        PyBool_FromLong(peer_data->is_directory));
+      PyDict_SetItemString(dict, "files_count",
+        PyLong_FromLongLong(peer_data->files_count));
+      PyDict_SetItemString(dict, "message",
+        PyUnicode_FromString(peer_data->message.data()));
+      PyDict_SetItemString(dict, "recipient_id",
+        PyUnicode_FromString(peer_data->recipient_id.data()));
+      PyDict_SetItemString(dict, "recipient_fullname",
+        PyUnicode_FromString(peer_data->recipient_fullname.data()));
+      PyDict_SetItemString(dict, "recipient_device_id",
+        PyUnicode_FromString(peer_data->recipient_device_id.data()));
+      PyDict_SetItemString(dict, "recipient_device_name",
+        PyUnicode_FromString(peer_data->recipient_device_name.data()));
+      PyDict_SetItemString(dict, "sender_fullname",
+        PyUnicode_FromString(peer_data->sender_fullname.data()));
+      PyDict_SetItemString(dict, "total_size",
+        PyLong_FromLongLong(peer_data->total_size));
+    }
+    infinit::oracles::LinkTransaction const* link_data
+      = dynamic_cast<infinit::oracles::LinkTransaction const*>(data);
+    if (link_data)
+    {
+      PyDict_SetItemString(dict, "click_count",
+        PyLong_FromLongLong(link_data->click_count));
+      PyDict_SetItemString(dict, "cloud_location",
+        PyUnicode_FromString(link_data->cloud_location.data()));
+      PyDict_SetItemString(dict, "expiry_time",
+        PyFloat_FromDouble(link_data->expiry_time));
+      auto file_list = PyList_New(0);
+      for (auto const& file: link_data->file_list)
+      {
+        auto entry =  PyList_New(0);
+        PyList_Append(entry, PyUnicode_FromString(file.first.data()));
+        PyList_Append(entry, PyLong_FromLongLong(file.second));
+        PyList_Append(file_list, entry);
+      }
+      PyDict_SetItemString(dict, "files", file_list);
+      PyDict_SetItemString(dict, "hash",
+        PyUnicode_FromString(link_data->hash.data()));
+      PyDict_SetItemString(dict, "link",
+        PyUnicode_FromString(link_data->link ? link_data->link->data() : ""));
+      PyDict_SetItemString(dict, "name",
+        PyUnicode_FromString(link_data->name.data()));
+      PyDict_SetItemString(dict, "share_link",
+        PyUnicode_FromString(link_data->share_link.data()));
+    }
     return dict;
   }
 };
@@ -327,9 +355,15 @@ public:
   }
 
   std::string
-  wrap_transaction_last_status(unsigned int id)
+  wrap_transaction_status(unsigned int id)
   {
-    return gap_transaction_status_string(transactions().at(id)->last_status());
+    return gap_transaction_status_string(transactions().at(id)->status());
+  }
+
+  PyObject*
+  transaction(unsigned int id)
+  {
+    return transaction_to_python_dict::convert(*transactions().at(id));
   }
 
 #define TOP(name, ret)                             \
@@ -384,6 +418,7 @@ BOOST_PYTHON_MODULE(state)
     .def("invite", &State::invite)
     .def("poll", &State::poll)
     .def("users", &State::users, by_const_ref())
+    .def("transaction", &PythonState::transaction)
     .def("transaction_accept", &PythonState::transaction_accept)
     .def("transaction_reject", &PythonState::transaction_reject)
     .def("transaction_join", &PythonState::transaction_join)
@@ -393,7 +428,7 @@ BOOST_PYTHON_MODULE(state)
     .def("transaction_interrupt", &PythonState::transaction_interrupt)
     .def("transaction_reset", &PythonState::transaction_reset)
     .def("transaction_final", &PythonState::transaction_final)
-    .def("transaction_last_status", &PythonState::wrap_transaction_last_status)
+    .def("transaction_status", &PythonState::wrap_transaction_status)
     .def("swaggers", &PythonState::wrap_swaggers)
     .def("swagger_from_name", (User (State::*)(const std::string&)) &State::swagger)
     .def("swagger_from_id", (User (State::*) (uint32_t)) &State::swagger)

@@ -1,5 +1,7 @@
 import bottle
 import bson
+import calendar
+import datetime
 import uuid
 
 def jsonify(value):
@@ -11,6 +13,8 @@ def jsonify(value):
   elif isinstance(value, collections.Iterable) \
        and not isinstance(value, str):
     return value.__class__(jsonify(sub) for sub in value)
+  elif isinstance(value, datetime.datetime):
+    return calendar.timegm(value.timetuple())
   else:
     return value
 

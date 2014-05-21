@@ -124,25 +124,27 @@ namespace infinit
         User::_handle_notifications()
         {
           this->_authentified.wait();
-          RemoveWard ward(*this);
-          try
+          elle::With<RemoveWard>(*this) << [&](RemoveWard&)
           {
-            ELLE_DEBUG_SCOPE("%s: start handling notifications", *this);
-            while (true)
+            try
             {
-              auto notification = this->_notifications.get();
-              // Construct any object so that json object isn't destroyed
-              // before being printed.
-              boost::any any(notification);
-              LazyJson json(any);
-              ELLE_TRACE("%s: send notification: %s", *this, json)
-              elle::json::write(*this->_socket, notification);
+              ELLE_DEBUG_SCOPE("%s: start handling notifications", *this);
+              while (true)
+              {
+                auto notification = this->_notifications.get();
+                // Construct any object so that json object isn't destroyed
+                // before being printed.
+                boost::any any(notification);
+                LazyJson json(any);
+                ELLE_TRACE("%s: send notification: %s", *this, json)
+                elle::json::write(*this->_socket, notification);
+              }
             }
-          }
-          catch (reactor::network::Exception const& e)
-          {
-            ELLE_WARN("%s: network error: %s", *this, e.what());
-          }
+            catch (reactor::network::Exception const& e)
+            {
+              ELLE_WARN("%s: network error: %s", *this, e.what());
+            }
+          };
         }
 
         /*-------.
@@ -303,48 +305,52 @@ namespace infinit
         void
         User::_ping()
         {
-          RemoveWard ward(*this);
-          elle::SafeFinally desauthenticate(
-            [&]
-            {
-              this->_authentified.close();
-            });
-          static elle::json::Object const ping_msg(
-            {{std::string("notification_type"), int(208)}}
-          );
-          try
+          elle::With<RemoveWard>(*this) << [&](RemoveWard&)
           {
-            while (true)
+            elle::SafeFinally desauthenticate(
+              [&]
+              {
+                this->_authentified.close();
+              });
+            static elle::json::Object const ping_msg(
+              {{std::string("notification_type"), int(208)}}
+              );
+            try
             {
-              this->_authentified.wait();
-              reactor::sleep(this->trophonius().ping_period());
-              ELLE_DEBUG("%s: send ping", *this);
-              elle::json::write(*this->_socket, ping_msg);
+              while (true)
+              {
+                this->_authentified.wait();
+                reactor::sleep(this->trophonius().ping_period());
+                ELLE_DEBUG("%s: send ping", *this);
+                elle::json::write(*this->_socket, ping_msg);
+              }
             }
-          }
-          catch (reactor::network::Exception const& e)
-          {
-            ELLE_WARN("%s: network error: %s", *this, e.what());
-          }
+            catch (reactor::network::Exception const& e)
+            {
+              ELLE_WARN("%s: network error: %s", *this, e.what());
+            }
+          };
         }
 
         void
         User::_pong()
         {
-          RemoveWard ward(*this);
-          elle::SafeFinally desauthenticate{[&] { this->_authentified.close(); }};
-          auto period = this->trophonius().ping_period() * 2;
-          while (true)
+          elle::With<RemoveWard>(*this) << [&](RemoveWard&)
           {
-            this->_authentified.wait();
-            reactor::sleep(period);
-            if (!this->_pinged)
+            elle::SafeFinally desauthenticate{[&] { this->_authentified.close(); }};
+            auto period = this->trophonius().ping_period() * 2;
+            while (true)
             {
-              ELLE_WARN("%s: didn't receive ping after %s", *this, period);
-              break;
+              this->_authentified.wait();
+              reactor::sleep(period);
+              if (!this->_pinged)
+              {
+                ELLE_WARN("%s: didn't receive ping after %s", *this, period);
+                break;
+              }
+              this->_pinged = false;
             }
-            this->_pinged = false;
-          }
+          };
         }
 
         /*----------.
