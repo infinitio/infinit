@@ -440,7 +440,7 @@ namespace surface
     Transaction::on_transaction_update(std::shared_ptr<Data> data)
     {
       ELLE_TRACE_SCOPE("%s: update data with %s", *this, *data);
-      this->_data = data;
+      *this->_data = *data;
       if (this->_machine && !this->_over)
       {
         ELLE_DEBUG("%s: updating machine", *this)
