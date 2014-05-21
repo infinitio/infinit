@@ -42,6 +42,9 @@ namespace infinit
       total_size()
     {}
 
+    PeerTransaction::~PeerTransaction() noexcept(true)
+    {}
+
     /*--------------.
     | Serialization |
     `--------------*/

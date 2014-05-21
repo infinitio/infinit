@@ -29,6 +29,7 @@ namespace infinit
     `-------------*/
     public:
       LinkTransaction();
+      ~LinkTransaction() noexcept(true);
 
     /*-----.
     | Data |

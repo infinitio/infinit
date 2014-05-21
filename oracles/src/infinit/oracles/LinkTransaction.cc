@@ -28,6 +28,9 @@ namespace infinit
       this->serialize(s);
     }
 
+    LinkTransaction::~LinkTransaction() noexcept(true)
+    {}
+
     void
     LinkTransaction::serialize(elle::serialization::Serializer& s)
     {

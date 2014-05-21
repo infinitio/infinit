@@ -26,6 +26,7 @@ namespace infinit
       PeerTransaction(PeerTransaction const&) = default;
       PeerTransaction&
       operator =(PeerTransaction const&) = default;
+      ~PeerTransaction() noexcept(true);
 
     /*-----.
     | Data |
