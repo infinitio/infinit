@@ -719,18 +719,20 @@ namespace surface
         _root_component_mapping[asked0] = got0;
       }
 
-      infinit::cryptography::SecretKey key;
+      // FIXME: gcc 4.7 don't recognize the move assignment, hence the
+      // unique_ptr instead of key = SecretKey(...)
+      std::unique_ptr<infinit::cryptography::SecretKey> key;
       switch (encryption)
       {
       case EncryptionLevel_Weak:
-        key = infinit::cryptography::SecretKey(
-          infinit::cryptography::cipher::Algorithm::aes256,
-          this->transaction_id());
+        key.reset(new infinit::cryptography::SecretKey(
+                    infinit::cryptography::cipher::Algorithm::aes256,
+                    this->transaction_id()));
         break;
       case EncryptionLevel_Strong:
-        key = infinit::cryptography::SecretKey(
-          this->state().identity().pair().k().decrypt<
-          infinit::cryptography::SecretKey>(source.key_code()));
+        key.reset(new infinit::cryptography::SecretKey(
+                    this->state().identity().pair().k().decrypt<
+                    infinit::cryptography::SecretKey>(source.key_code())));
           break;
       case EncryptionLevel_None:
           break;
@@ -767,7 +769,7 @@ namespace surface
                 elle::sprintf("transfer reader %s", i),
                 std::bind(&ReceiveMachine::_fetcher_thread<Source>,
                           this, std::ref(source), i, name_policy, explicit_ack,
-                          encryption, chunk_size, std::ref(key),
+                          encryption, chunk_size, std::ref(*key),
                           files_info));
           scope.run_background(
             "receive writer",
