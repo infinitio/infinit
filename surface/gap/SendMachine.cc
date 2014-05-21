@@ -117,11 +117,12 @@ namespace surface
         typedef boost::filesystem::path path;
         path source_file_path;
         FileSize source_file_size;
-        if (this->files().size() > 1)
+        auto archive = this->archive_info();
+        if (archive.second)
         {
           // Our users might not appreciate downloading zillion of files from
           // their browser: make an archive make an archive name from data
-          path archive_name = archive_info().first;
+          path archive_name = archive.first;
           // Use transfer data information to archive the files. This is what
           // was passed by the user, and what we will flatten.  That way if user
           // selects a directory it will be preserved.
@@ -168,9 +169,7 @@ namespace surface
           source_file_path = archive_path;
         }
         else
-        {
           source_file_path = *this->_files.begin();
-        }
         source_file_size = boost::filesystem::file_size(source_file_path);
         std::string source_file_name = source_file_path.filename().string();
         ELLE_TRACE("%s: will ghost-cloud-upload %s of size %s",

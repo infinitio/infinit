@@ -1,3 +1,5 @@
+#include <elle/os/file.hh>
+
 #include <surface/gap/LinkSendMachine.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.LinkSendMachine");
@@ -89,12 +91,11 @@ namespace surface
       {
         boost::filesystem::path path(file);
         files.emplace_back(path.filename().string(),
-                           boost::filesystem::file_size(path));
+                           elle::os::file::size(path.string()));
       }
-      boost::filesystem::path first(*this->files().begin());
       auto response =
         this->state().meta().create_link(
-          files, first.filename().string(), this->message());
+          files, this->archive_info().first, this->message());
       *this->_data = std::move(response.transaction());
       this->_credentials = std::move(response.aws_credentials());
       this->_save_snapshot();
