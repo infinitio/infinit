@@ -107,11 +107,15 @@ namespace surface
     void
     LinkSendMachine::_finalize(infinit::oracles::Transaction::Status s)
     {
-      ELLE_ASSERT(!this->data()->id.empty());
+      ELLE_TRACE_SCOPE("%s: finalize transaction: %s", *this, s);
+      if (this->data()->id.empty())
+      {
+        ELLE_WARN("%s: can't finalize not yet created transaction", *this);
+        return;
+      }
       try
       {
-        this->state().meta().update_link(
-          this->data()->id, 0, s);
+        this->state().meta().update_link(this->data()->id, 0, s);
       }
       catch (elle::Exception const&)
       {
