@@ -495,7 +495,8 @@ namespace infinit
       public:
         CreateLinkTransactionResponse
         create_link(LinkTransaction::FileList const& file_list,
-                    std::string const& name) const;
+                    std::string const& name,
+                    std::string const& message) const;
 
         void
         update_link(std::string const& id,

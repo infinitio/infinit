@@ -872,7 +872,8 @@ namespace infinit
 
       CreateLinkTransactionResponse
       Client::create_link(LinkTransaction::FileList const& files,
-                          std::string const& name) const
+                          std::string const& name,
+                          std::string const& message) const
       {
         auto request = this->_request(
           "/link", Method::POST,
@@ -884,6 +885,7 @@ namespace infinit
             query.serialize("name", const_cast<std::string&>(name));
             query.serialize("files",
                             const_cast<LinkTransaction::FileList&>(files));
+            query.serialize("message", const_cast<std::string&>(message));
           });
         elle::serialization::json::SerializerIn input(request);
         return CreateLinkTransactionResponse(input);
