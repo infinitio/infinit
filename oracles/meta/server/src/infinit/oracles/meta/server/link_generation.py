@@ -183,11 +183,6 @@ class Mixin:
 
       link_id = self.database.links.insert(link)
 
-      destination = str('%(protocol)s://%(bucket)s.s3.amazonaws.com/%(link_id)s' %
-                        {'protocol': 'https',
-                         'bucket': self.aws_link_bucket,
-                         'link_id': link_id})
-
       credentials = self._get_aws_credentials(user, link_id)
       if credentials is None:
         self.fail(error.UNABLE_TO_GET_AWS_CREDENTIALS)
