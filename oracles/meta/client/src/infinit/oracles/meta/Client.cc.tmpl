@@ -769,40 +769,10 @@ namespace infinit
         json["locals"] = convert_endpoints(local_endpoints);
         json["externals"] = convert_endpoints(public_endpoints);
         auto url = elle::sprintf("/transaction/%s/endpoints", transaction_id);
-        this->_request(url, Method::PUT, json);
-      }
-
-      elle::json::Json
-      Client::_request(std::string const& url,
-                       Method method,
-                       elle::json::Object const& json) const
-      {
-        while (true)
-        {
-          reactor::http::Request request =
-            this->_client.request(this->_url(url),
-                                  method,
-                                  "application/json",
-                                  this->_default_configuration);
-          elle::json::write(request, json);
-          switch (request.status())
-          {
-            case reactor::http::StatusCode::Bad_Gateway:
-            case reactor::http::StatusCode::Service_Unavailable:
-            case reactor::http::StatusCode::Gateway_Timeout:
-            {
-              ELLE_WARN("%s: error while posting, retrying: %s.\n%s",
-                        *this, request.status(), request.response().string());
-              boost::random::uniform_int_distribution<> random(100, 200);
-              reactor::sleep(3_sec * (random(this->_rng) / 100.));
-              continue;
-            }
-            default:
-              break;
-          }
-          this->_handle_errors(request);
-          return elle::json::read(request);
-        }
+        this->_request(url, Method::PUT, [&] (reactor::http::Request& r)
+                       {
+                         elle::json::write(r, json);
+                       });
       }
 
       ConnectDeviceResponse
@@ -904,24 +874,19 @@ namespace infinit
       Client::create_link(LinkTransaction::FileList const& files,
                           std::string const& name) const
       {
-        reactor::http::Request request =
-          this->_client.request(this->_url("/link"),
-                                Method::POST,
-                                "application/json",
-                                this->_default_configuration);
-        {
-          elle::serialization::json::SerializerOut query(request);
-          // FIXME: get rid of const casts when output serialization has his
-          // const API
-          query.serialize("name", const_cast<std::string&>(name));
-          query.serialize("files",
-                          const_cast<LinkTransaction::FileList&>(files));
-        }
-        this->_handle_errors(request);
-        {
-          elle::serialization::json::SerializerIn input(request);
-          return CreateLinkTransactionResponse(input);
-        }
+        auto request = this->_request(
+          "/link", Method::POST,
+          [&] (reactor::http::Request& request)
+          {
+            elle::serialization::json::SerializerOut query(request);
+            // FIXME: get rid of const casts when output serialization has his
+            // const API
+            query.serialize("name", const_cast<std::string&>(name));
+            query.serialize("files",
+                            const_cast<LinkTransaction::FileList&>(files));
+          });
+        elle::serialization::json::SerializerIn input(request);
+        return CreateLinkTransactionResponse(input);
       }
 
       void
@@ -929,17 +894,16 @@ namespace infinit
                           double progress,
                           Transaction::Status status) const
       {
-        elle::json::Object body;
-        body["progress"] = progress;
-        body["status"] = int(status);
         auto url = elle::sprintf("/link/%s", id);
-        reactor::http::Request request =
-          this->_client.request(this->_url(url),
-                                Method::POST,
-                                "application/json",
-                                this->_default_configuration);
-        elle::json::write(request, body);
-        this->_handle_errors(request);
+        auto request = this->_request(
+          url, Method::POST,
+          [&] (reactor::http::Request& request)
+          {
+            elle::json::Object body;
+            body["progress"] = progress;
+            body["status"] = int(status);
+            elle::json::write(request, body);
+          });
       }
 
       std::vector<LinkTransaction>
@@ -951,15 +915,11 @@ namespace infinit
           elle::sprintf("/links?offset=%s&count=%s", offset, count);
         if (include_expired)
           url += "&include_expired=1";
-        reactor::http::Request request =
-          this->_client.request(this->_url(url),
-                                Method::GET,
-                                this->_default_configuration);
-        this->_handle_errors(request);
-        std::list<LinkTransaction> res;
+        auto request = this->_request(url, Method::GET);
+        std::vector<LinkTransaction> res;
         elle::serialization::json::SerializerIn input(request);
         input.serialize("links", res);
-        return std::vector<LinkTransaction>(res.begin(), res.end());
+        return res;
       }
 
       /*--------------.
@@ -1024,6 +984,48 @@ namespace infinit
           throw elle::http::Exception(
             static_cast<elle::http::ResponseCode>(status),
             elle::sprintf("error %s while POSTing avatar", status));
+        }
+      }
+
+      /*--------.
+      | Helpers |
+      `--------*/
+
+      reactor::http::Request
+      Client::_request(
+        std::string const& url,
+        Method method,
+        std::function<void (reactor::http::Request&)> const& send) const
+      {
+        while (true)
+        {
+          reactor::http::Request request =
+            method == Method::GET ?
+            this->_client.request(this->_url(url),
+                                  method,
+                                  this->_default_configuration) :
+            this->_client.request(this->_url(url),
+                                  method,
+                                  "application/json",
+                                  this->_default_configuration);
+          send(request);
+          switch (request.status())
+          {
+            case reactor::http::StatusCode::Bad_Gateway:
+            case reactor::http::StatusCode::Service_Unavailable:
+            case reactor::http::StatusCode::Gateway_Timeout:
+            {
+              ELLE_WARN("%s: error while posting, retrying: %s.\n%s",
+                        *this, request.status(), request.response().string());
+              boost::random::uniform_int_distribution<> random(100, 200);
+              reactor::sleep(3_sec * (random(this->_rng) / 100.));
+              continue;
+            }
+            default:
+              break;
+          }
+          this->_handle_errors(request);
+          return request;
         }
       }
 

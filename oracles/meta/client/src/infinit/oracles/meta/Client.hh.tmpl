@@ -302,30 +302,30 @@ namespace infinit
 
         Client(const Client&) = delete;
         void operator = (const Client&) = delete;
-      /*---------.
-      | Requests |
-      `---------*/
+
+      /*--------.
+      | Helpers |
+      `--------*/
       protected:
-        elle::json::Json
-        _request(std::string const& url,
-                 reactor::http::Method method,
-                 elle::json::Object const& json) const;
+        reactor::http::Request
+        _request(
+          std::string const& url,
+          reactor::http::Method method,
+          std::function<void (reactor::http::Request&)> const& send =
+            [] (reactor::http::Request&) {}) const;
         template <typename T>
         T
         _request(std::string const& url,
                  reactor::http::Method method) const;
-
         template <typename T>
         T
         _request(std::string const& url,
                  reactor::http::Method method,
                  elle::format::json::Object const& body) const;
-
         reactor::http::Request
         _build_request(std::string const& url,
                        reactor::http::Method method,
                        elle::format::json::Object const& body) const;
-
         template <typename T>
         T
         _deserialize_answer(reactor::http::Request request) const;
