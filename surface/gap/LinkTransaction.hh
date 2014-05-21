@@ -4,7 +4,10 @@
 # include <stdint.h>
 # include <string>
 
+# include <boost/optional.hpp>
+
 # include <surface/gap/enums.hh>
+# include <surface/gap/Notification.hh>
 
 namespace surface
 {
@@ -12,24 +15,25 @@ namespace surface
   {
     /// This class translates transactions so that headers aren't leaked into
     /// the GUI.
-    class LinkTransaction
+    class LinkTransaction:
+      public surface::gap::Notification
     {
     public:
       LinkTransaction() = default;
       LinkTransaction(uint32_t id,
-                      std::string const& name,
+                      std::string name,
                       double mtime,
-                      std::string const& link,
+                      boost::optional<std::string> link,
                       uint32_t click_count,
                       gap_TransactionStatus status);
-
-    public:
       uint32_t id;
       std::string name;
       double mtime;
-      std::string link;
+      boost::optional<std::string> link;
       uint32_t click_count;
       gap_TransactionStatus status;
+
+      static Notification::Type type;
     };
   }
 }

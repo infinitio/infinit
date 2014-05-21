@@ -154,6 +154,12 @@ gap_Status
 gap_transaction_callback(gap_State* state,
                          gap_transaction_callback_t cb);
 
+/// Link updated callback.
+gap_Status
+gap_link_callback(
+  gap_State* state,
+  std::function<void (surface::gap::LinkTransaction const&)>& callback);
+
 /// Transaction getters.
 uint32_t
 gap_transaction_sender_id(gap_State*,

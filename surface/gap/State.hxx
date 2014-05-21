@@ -49,7 +49,6 @@ namespace surface
         ELLE_DEBUG("%s: no runner for %s", *this, notif);
       }
     }
-
   }
 }
 

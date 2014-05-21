@@ -920,6 +920,8 @@ namespace surface
           return out << "Avatar Available";
         case NotificationType_TrophoniusUnavailable:
           return out << "Trophonius Unavailable";
+        case NotificationType_LinkUpdate:
+          return out << "Link Update";
       }
 
       return out;

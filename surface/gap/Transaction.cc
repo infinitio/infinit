@@ -447,6 +447,16 @@ namespace surface
           this->_machine->transaction_status_update(this->_data->status);
         this->_snapshot_save();
       }
+      if (auto link_data =
+          std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(data))
+      {
+        this->state().enqueue(LinkTransaction(this->id(),
+                                              link_data->name,
+                                              link_data->mtime,
+                                              link_data->link,
+                                              link_data->click_count,
+                                              this->status()));
+      }
     }
 
     void
