@@ -13,15 +13,14 @@ with Meta() as meta:
     ['file2', 43],
     ['file3', 44],
   ]
-  res = jean.post('link', {'file_list': file_list, 'name': 'some files.zip'})
+  res = jean.post('link', {'files': file_list, 'name': 'some files.zip'})
   assert res['aws_credentials']
-  assert res['destination']
-  assert res['id']
-  assert res['share_link']
-
-  link = meta.database.links.find_one({'_id': ObjectId(res['id'])})
+  assert res['transaction']
+  link = res['transaction']
+  link = meta.database.links.find_one({'_id': ObjectId(link['id'])})
 
   res = meta.get('link/%s' % link['hash'])
+  print('---', res)
   assert res['click_count'] == 1
   assert len(res['files']) == 3
   assert res['progress'] == 0.0
@@ -40,18 +39,18 @@ with Meta() as meta:
   assert res['status'] == transaction_status.FINISHED
 
   res = jean.post('link',
-                  {'file_list': [['some_file.zip', 12321]],
+                  {'files': [['some_file.zip', 12321]],
                    'name': 'some_file.zip'})
   assert res['aws_credentials']
-  assert res['destination']
-  assert res['id']
-  assert res['share_link']
+  assert res['transaction']
+  link = res['transaction']
+  link = meta.database.links.find_one({'_id': ObjectId(link['id'])})
 
-  meta.database.links.find({'sender_id': ObjectId(jean.id)}).count() == 2
+  assert meta.database.links.find({'sender_id': ObjectId(jean.id)}).count() == 2
 
   import datetime
   meta.database.links.find_and_modify(
-    {'_id': ObjectId(res['id'])},
+    {'_id': ObjectId(link['_id'])},
     {'$set': {'expiry_time': datetime.datetime.utcnow() + datetime.timedelta(days = -1)}})
 
   res = jean.get('links')

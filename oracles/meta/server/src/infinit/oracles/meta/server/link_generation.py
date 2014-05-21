@@ -226,6 +226,7 @@ class Mixin:
   def __client_link(self, link):
     mapping = {
       'id': '_id',
+      'files': 'file_list',
     }
     link = dict(
       (key, link[key in mapping and mapping[key] or key]) for key in (
@@ -233,7 +234,7 @@ class Mixin:
         'click_count',
         'ctime',
         'expiry_time',
-        'file_list',
+        'files',
         'hash',
         'mtime',
         'name',
