@@ -26,6 +26,8 @@ namespace surface
                       boost::optional<std::string> link,
                       uint32_t click_count,
                       gap_TransactionStatus status);
+      ~LinkTransaction() noexcept(true);
+
       uint32_t id;
       std::string name;
       double mtime;

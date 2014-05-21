@@ -18,6 +18,9 @@ namespace surface
       , status(status_)
     {}
 
+    LinkTransaction::~LinkTransaction() noexcept(true)
+    {}
+
     Notification::Type LinkTransaction::type = NotificationType_LinkUpdate;
   }
 }
