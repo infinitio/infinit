@@ -4,18 +4,18 @@ namespace surface
 {
   namespace gap
   {
-    LinkTransaction::LinkTransaction(uint32_t id,
-                                     std::string const& name,
-                                     double mtime,
-                                     std::string const& link,
-                                     uint32_t click_count,
-                                     gap_TransactionStatus status):
-      id(id),
-      name(name),
-      mtime(mtime),
-      link(link),
-      click_count(click_count),
-      status(status)
+    LinkTransaction::LinkTransaction(uint32_t id_,
+                                     std::string const& name_,
+                                     double mtime_,
+                                     std::string const& link_,
+                                     uint32_t click_count_,
+                                     gap_TransactionStatus status_)
+      : id(id_)
+      , name(name_)
+      , mtime(mtime_)
+      , link(link_)
+      , click_count(click_count_)
+      , status(status_)
     {}
   }
 }
