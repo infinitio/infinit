@@ -201,6 +201,7 @@ namespace surface
       /// Whether the transaction is over.
       ELLE_ATTRIBUTE_R(bool, over);
     private:
+      friend class TransactionMachine;
       gap_TransactionStatus
       _transaction_status(Transaction::Data const& data) const;
 

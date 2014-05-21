@@ -696,7 +696,7 @@ namespace surface
         infos = source.files_info();
       else
       {
-        for (int i = 0; i < count; ++i)
+        for (unsigned i = 0; i < count; ++i)
         {
           auto path = source.path(i);
           auto size = source.file_size(i);
@@ -707,7 +707,7 @@ namespace surface
       ELLE_ASSERT(infos.size() >= this->_snapshot->count());
       // reconstruct directory name mapping data so that files in transfer
       // but not yet in snapshot will reuse it
-      for (int i = 0; i < this->_snapshot->file_count(); ++i)
+      for (unsigned i = 0; i < this->_snapshot->file_count(); ++i)
       {
         // get asked/got relative path from output_path
         boost::filesystem::path got = this->_snapshot->file(i).path();
