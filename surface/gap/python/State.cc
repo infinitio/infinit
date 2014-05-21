@@ -355,9 +355,15 @@ public:
   }
 
   std::string
-  wrap_transaction_last_status(unsigned int id)
+  wrap_transaction_status(unsigned int id)
   {
     return gap_transaction_status_string(transactions().at(id)->status());
+  }
+
+  PyObject*
+  transaction(unsigned int id)
+  {
+    return transaction_to_python_dict::convert(*transactions().at(id));
   }
 
 #define TOP(name, ret)                             \
@@ -412,6 +418,7 @@ BOOST_PYTHON_MODULE(state)
     .def("invite", &State::invite)
     .def("poll", &State::poll)
     .def("users", &State::users, by_const_ref())
+    .def("transaction", &PythonState::transaction)
     .def("transaction_accept", &PythonState::transaction_accept)
     .def("transaction_reject", &PythonState::transaction_reject)
     .def("transaction_join", &PythonState::transaction_join)
@@ -421,7 +428,7 @@ BOOST_PYTHON_MODULE(state)
     .def("transaction_interrupt", &PythonState::transaction_interrupt)
     .def("transaction_reset", &PythonState::transaction_reset)
     .def("transaction_final", &PythonState::transaction_final)
-    .def("transaction_last_status", &PythonState::wrap_transaction_last_status)
+    .def("transaction_status", &PythonState::wrap_transaction_status)
     .def("swaggers", &PythonState::wrap_swaggers)
     .def("swagger_from_name", (User (State::*)(const std::string&)) &State::swagger)
     .def("swagger_from_id", (User (State::*) (uint32_t)) &State::swagger)
