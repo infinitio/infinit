@@ -63,8 +63,6 @@ class _State:
 
             # Notifications
             'poll',
-            'pull_notifications',
-            'notifications_read',
 
             # Callback.
             'transaction_callback',
