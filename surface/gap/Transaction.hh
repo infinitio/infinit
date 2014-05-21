@@ -196,9 +196,10 @@ namespace surface
     public:
       bool
       has_transaction_id(std::string const& id) const;
-
       bool
       final() const;
+      /// Whether the transaction is over.
+      ELLE_ATTRIBUTE_R(bool, over);
     private:
       gap_TransactionStatus
       _transaction_status(Transaction::Data const& data) const;

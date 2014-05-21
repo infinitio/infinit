@@ -142,6 +142,7 @@ namespace surface
       , _sender(true)
       , _data(nullptr)
       , _machine(nullptr)
+      , _over(false)
     {
       auto data = std::make_shared<infinit::oracles::PeerTransaction>(
         state.me().id,
@@ -175,6 +176,7 @@ namespace surface
       , _sender(true)
       , _data(nullptr)
       , _machine(nullptr)
+      , _over(false)
     {
       ELLE_TRACE_SCOPE("%s: construct to generate link for %s",
                        *this, this->_files.get());
@@ -205,6 +207,7 @@ namespace surface
               state.device().id == data->sender_device_id)
       , _data(data)
       , _machine()
+      , _over(history)
     {
       ELLE_TRACE_SCOPE("%s: constructed from data", *this);
       if (history)
@@ -267,6 +270,7 @@ namespace surface
       , _sender(snapshot.sender())
       , _data(snapshot.data())
       , _machine()
+      , _over(false)
     {
       ELLE_TRACE_SCOPE("%s: constructed from snapshot %s",
                        *this, this->_snapshot_path);
@@ -435,7 +439,7 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: update data with %s", *this, *data);
       this->_data = data;
-      if (this->_machine)
+      if (this->_machine && !this->_over)
       {
         ELLE_DEBUG("%s: updating machine", *this)
           this->_machine->transaction_status_update(this->_data->status);

@@ -181,6 +181,7 @@ namespace surface
     TransactionMachine::_end()
     {
       ELLE_TRACE_SCOPE("%s: end", *this);
+      this->_transaction._over = true;
       boost::system::error_code error;
       auto path = this->transaction().snapshots_directory();
       boost::filesystem::remove_all(path, error);
