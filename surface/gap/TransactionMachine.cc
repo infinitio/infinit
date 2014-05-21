@@ -251,15 +251,37 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: start transfaction machine at %s",
                        *this, initial_state);
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-      auto& scheduler = *reactor::Scheduler::scheduler();
       this->_machine_thread.reset(
         new reactor::Thread{
-          scheduler,
-          "run",
+          "TransactionMachine::run",
           [&]
           {
-            this->_machine.run(initial_state);
-            ELLE_TRACE("%s: machine finished properly", *this);
+            try
+            {
+              this->_machine.run(initial_state);
+              ELLE_TRACE("%s: machine finished properly", *this);
+            }
+            catch (reactor::Terminate const& e)
+            {
+              throw;
+            }
+            catch (...)
+            {
+              ELLE_WARN("%s: Exception escaped fsm run: %s",
+                        *this, elle::exception_string());
+              // Pretend this did not happen if state is final, or cancel.
+              if (!_transaction.final())
+              {
+                try
+                {
+                  _transaction.cancel();
+                }
+                catch(...)
+                {
+                  // transaction can be in a non-cancelleable state (not initialized)
+                }
+              }
+            }
           }});
     }
 
