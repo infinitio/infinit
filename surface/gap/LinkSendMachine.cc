@@ -13,9 +13,11 @@ namespace surface
     LinkSendMachine::LinkSendMachine(Transaction& transaction,
                                      uint32_t id,
                                      std::vector<std::string> files,
+                                     std::string const& message,
                                      std::shared_ptr<Data> data)
       : Super::Super(transaction, id, data)
       , Super(transaction, id, std::move(files), data)
+      , _message(message)
       , _data(data)
       , _upload_state(
         this->_machine.state_make(
@@ -91,7 +93,8 @@ namespace surface
       }
       boost::filesystem::path first(*this->files().begin());
       auto response =
-        this->state().meta().create_link(files, first.filename().string());
+        this->state().meta().create_link(
+          files, first.filename().string(), this->message());
       *this->_data = std::move(response.transaction());
       this->_credentials = std::move(response.aws_credentials());
       this->_save_snapshot();

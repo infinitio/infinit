@@ -26,9 +26,11 @@ namespace surface
       LinkSendMachine(Transaction& transaction,
                       uint32_t id,
                       std::vector<std::string> files,
+                      std::string const& message,
                       std::shared_ptr<Data> data);
       virtual
       ~LinkSendMachine();
+      ELLE_ATTRIBUTE_R(std::string, message);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
 
     /*---------------.
