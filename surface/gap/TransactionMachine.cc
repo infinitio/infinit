@@ -185,7 +185,8 @@ namespace surface
       auto path = this->transaction().snapshots_directory();
       boost::filesystem::remove_all(path, error);
       if (error)
-        ELLE_WARN("%s: unable to remove snapshot directory %s", *this, path);
+        ELLE_WARN("%s: unable to remove snapshot directory %s: %s",
+                  *this, path, error.message());
     }
 
     void
