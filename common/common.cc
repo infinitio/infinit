@@ -82,6 +82,9 @@ namespace common
     home()
     {
       static std::string infinit_dir = _infinit_home();
+      static bool no_cache = !elle::os::getenv("INFINIT_NO_DIR_CACHE", "").empty();
+      if (no_cache)
+        infinit_dir = _infinit_home();
       return infinit_dir;
     }
 
@@ -141,6 +144,9 @@ namespace common
     home_directory()
     {
       static std::string home_dir = _home_directory();
+      static bool no_cache = !elle::os::getenv("INFINIT_NO_DIR_CACHE", "").empty();
+      if (no_cache)
+        home_dir = _home_directory();
       return home_dir;
     }
 
