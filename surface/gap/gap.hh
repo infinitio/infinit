@@ -225,6 +225,15 @@ float
 gap_transaction_progress(gap_State* state,
                          uint32_t);
 
+bool
+gap_transaction_is_final(gap_State* state,
+                         uint32_t const transaction_id);
+
+bool
+gap_transaction_concern_device(gap_State* state,
+                               uint32_t const transaction_id);
+
+
 /* /// Force transaction to be fetched again from server. */
 /* gap_Status */
 /* gap_transaction_sync(gap_State* state, */

@@ -964,6 +964,69 @@ gap_transaction_status(gap_State* state,
   );
 }
 
+bool
+gap_transaction_is_final(gap_State* state,
+                         uint32_t const transaction_id)
+{
+  assert(state != nullptr);
+  assert(transaction_id != surface::gap::null_id);
+
+  return run<bool>(
+    state,
+    "transaction is final",
+    [&] (surface::gap::State& state)
+    {
+      return state.transactions().at(transaction_id)->final();
+    }
+  );
+}
+
+bool
+gap_transaction_concern_device(gap_State* state,
+                               uint32_t const transaction_id)
+{
+  assert(state != nullptr);
+  assert(transaction_id != surface::gap::null_id);
+
+  return run<bool>(
+    state,
+    "transaction concerns our device",
+    [&] (surface::gap::State& state)
+    {
+      auto const& tr = state.transactions().at(transaction_id);
+      auto const& data = tr->data();
+
+      using namespace infinit::oracles;
+      auto peer_transaction_data =
+        std::dynamic_pointer_cast<PeerTransaction>(
+          state.transactions().at(transaction_id)->data());
+      auto link_transaction_data =
+        std::dynamic_pointer_cast<LinkTransaction>(
+          state.transactions().at(transaction_id)->data());
+      if (peer_transaction_data != nullptr)
+      {
+        auto data = peer_transaction_data;
+        return
+          (data->recipient_id == state.me().id &&
+           (data->recipient_device_id.empty() ||
+            data->recipient_device_id == state.device().id)) ||
+          (data->sender_id == state.me().id &&
+           data->sender_device_id == state.device().id);
+      }
+      else if (link_transaction_data != nullptr)
+      {
+        auto data = link_transaction_data;
+        return (data->sender_id == state.me().id &&
+                data->sender_device_id == state.device().id);
+      }
+      else
+      {
+        return false;
+      }
+    }
+  );
+}
+
 char**
 gap_transaction_files(gap_State* state,
                       uint32_t const transaction_id)
