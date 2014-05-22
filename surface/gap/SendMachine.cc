@@ -220,7 +220,7 @@ namespace surface
           {
             // We expect missing blocks potentially, but only at the end
             //, ie we expect contiguous blocks 0 to (num_blocks - pipeline_size)
-            for (int i=0; i<int(chunks.size()); ++i)
+            for (int i = 0; i < int(chunks.size()); ++i)
               if (chunks[i].first != i)
                 break;
               else
@@ -253,8 +253,8 @@ namespace surface
             if (local_chunk <= max_check_id)
             { // maybe we have it
               bool has_it = false;
-              for (unsigned i=start_check_index;
-                   i<chunks.size() && chunks[i].first <= max_check_id;
+              for (unsigned i = start_check_index;
+                   i < chunks.size() && chunks[i].first <= max_check_id;
                    ++i)
               {
                 if (chunks[i].first == local_chunk)
@@ -293,7 +293,7 @@ namespace surface
           num_threads = boost::lexical_cast<unsigned>(env_num_threads);
         elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
         {
-          for (int i=0; i<num_threads; ++i)
+          for (int i = 0; i < num_threads; ++i)
             scope.run_background(elle::sprintf("cloud %s", i),
                                  std::bind(pipeline_upload, i));
           scope.wait();
