@@ -95,26 +95,7 @@ class Mixin:
     """
     Fetch AWS credentials from DB.
     """
-    with elle.log.trace('fetch AWS credentials for user (%s) and link (%s)',
-                        self.user['_id'], link_id):
-      user = self.user
-      link = self.database.links.find_one({'_id': user['_id']})
-      if link is None:
-        self.not_found()
-      if link['sender_id'] != user['_id']:
-        self.forbidden()
-
-      if link['aws_credentials'] is None:
-        credentials = self._get_aws_credentials(user, link_id)
-        if credentials is None:
-          self.fail(error.UNABLE_TO_GET_AWS_CREDENTIALS)
-        self.database.links.update(
-          {'_id': link_id},
-          {'$set': {'aws_credentials': credentials}})
-        return {'aws_credentials': credentials}
-      else:
-        return {'aws_credentials': link['aws_credentials']}
-
+    return self.__credentials(link_id, False)
 
   @api('/link/<link_id>/credentials', method = 'POST')
   @require_logged_in
@@ -122,24 +103,28 @@ class Mixin:
     """
     Generate new AWS credentials and save them to the DB.
     """
-    with elle.log.trace('generate AWS credentials for user (%s) and link (%s)',
-                        self.user['_id'], link_id):
+    return self.__credentials(link_id, True)
+
+  def __credentials(self, link_id, regenerate = False):
+    with elle.log.trace(
+        'fetch AWS credentials for user (%s) and link (%s)' %
+        (self.user['_id'], link_id)):
       user = self.user
       link = self.database.links.find_one({'_id': link_id})
       if link is None:
         self.not_found()
       if link['sender_id'] != user['_id']:
         self.forbidden()
-
-      credentials = self._get_aws_credentials(user, link_id)
-      if credentials is None:
-        self.fail(error.UNABLE_TO_GET_AWS_CREDENTIALS)
-
-      self.database.links.update(
-        {'_id': link_id},
-        {'$set': {'aws_credentials': credentials}})
-      return {'aws_credentials': credentials}
-
+      if link['aws_credentials'] is None or regenerate:
+        credentials = self._get_aws_credentials(user, link_id)
+        if credentials is None:
+          self.fail(error.UNABLE_TO_GET_AWS_CREDENTIALS)
+        self.database.links.update(
+          {'_id': link_id},
+          {'$set': {'aws_credentials': credentials}})
+        return credentials
+      else:
+        return link['aws_credentials']
 
   @api('/link', method = 'POST')
   @require_logged_in
