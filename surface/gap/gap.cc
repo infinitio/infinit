@@ -994,7 +994,6 @@ gap_transaction_concern_device(gap_State* state,
     [&] (surface::gap::State& state)
     {
       auto const& tr = state.transactions().at(transaction_id);
-      auto const& data = tr->data();
 
       using namespace infinit::oracles;
       auto peer_transaction_data =
