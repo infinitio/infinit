@@ -828,7 +828,7 @@ gap_transaction_callback(gap_State* state,
 gap_Status
 gap_link_callback(
   gap_State* state,
-  std::function<void (surface::gap::LinkTransaction const&)>& callback)
+  std::function<void (surface::gap::LinkTransaction const&)> const& callback)
 {
   return run<gap_Status>(
     state,
