@@ -58,12 +58,30 @@ namespace infinit
 
         try
         {
+          // Retrieve version
+          unsigned char version;
+          ELLE_TRACE("%s: read version", *this)
+          {
+            reactor::network::Buffer tmp(&version, 1);
+            this->_client->read(tmp);
+            ELLE_TRACE("%s: version: %i", *this, version);
+          }
+          this->_sync_bit = version == 0;
+
           // Retrieve TID size.
           unsigned char size;
-          reactor::network::Buffer tmp(&size, 1);
-          ELLE_TRACE("%s: reading for the size of the identifier", *this)
+          if (version != 0)
+          {
+            ELLE_TRACE("%s: old client, version is the TID size", *this);
+            size = version;
+          }
+          else
+          {
+            ELLE_TRACE_SCOPE("%s: read TID size", *this);
+            reactor::network::Buffer tmp(&size, 1);
             this->_client->read(tmp);
-          ELLE_DEBUG("%s: identifier size: %i", *this, size);
+            ELLE_DEBUG("%s: TID size: %i", *this, size);
+          }
 
           // Retrieve TID of the client.
           char tid_array[size + 1];
@@ -86,22 +104,25 @@ namespace infinit
           // Second client, establishing connection.
           else
           {
-            ELLE_TRACE("%s: peer found for TID %s", *this, tid)
-            {
-              // extract both sockets, and remove this from accepters, and peer from clients
-              auto peer_acceptor = std::move(peer_iterator->second);
-              auto peer_socket = std::move(peer_acceptor->_client);
-              // stop timers
-              peer_acceptor->_timeout.terminate_now();
-              _timeout.terminate_now();
-              this->_apertus._clients.erase(peer_iterator);
-              ELLE_DEBUG("%s: connect users", *this);
-              this->_apertus._connect(
-                tid,
-                std::move(this->_client),
-                std::move(peer_socket));
-              ELLE_DEBUG("%s: finish", *this);
-            }
+            ELLE_TRACE_SCOPE("%s: peer found for TID %s", *this, tid);
+            // Extract both sockets and remove this from accepters and peer from
+            // clients.
+            auto peer_acceptor = std::move(peer_iterator->second);
+            auto peer_socket = std::move(peer_acceptor->_client);
+            if (this->_sync_bit)
+              this->_client->write("\x42");
+            if (peer_acceptor->_sync_bit)
+              peer_socket->write("\x42");
+            // Stop timers.
+            peer_acceptor->_timeout.terminate_now();
+            _timeout.terminate_now();
+            this->_apertus._clients.erase(peer_iterator);
+            ELLE_DEBUG("%s: connect users", *this);
+            this->_apertus._connect(
+              tid,
+              std::move(this->_client),
+              std::move(peer_socket));
+            ELLE_DEBUG("%s: finish", *this);
           }
         }
         catch (reactor::Terminate const&)

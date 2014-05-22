@@ -195,7 +195,6 @@ public:
     ELLE_TRACE("%s: send response to %s: %s", *this, socket.peer(), answer);
     socket.write(elle::ConstWeakBuffer(answer));
   }
-
 };
 
 /*--------------------.
@@ -624,7 +623,45 @@ ELLE_TEST_SCHEDULED(many_clients)
     ELLE_LOG("%s/%s OK", nok, nclients*2);
   }
   BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
+}
 
+ELLE_TEST_SCHEDULED(sync_bit)
+{
+  Meta meta;
+  auto tick_rate = 1_sec;
+  infinit::oracles::apertus::Apertus apertus(
+    "http",
+    "localhost",
+    meta.port(),
+    "localhost",
+    0,
+    0,
+    tick_rate);
+  reactor::wait(meta.apertus_registered());
+  BOOST_CHECK_EQUAL(meta.apertuses().size(), 1);
+  BOOST_CHECK_EQUAL(apertus.workers().size(), 0);
+  elle::ConstWeakBuffer header("\x0\x4----", 6);
+  std::string passphrase(32, 'b');
+  reactor::network::FingerprintedSocket socket1(
+    "127.0.0.1",
+    boost::lexical_cast<std::string>(apertus.port_ssl()),
+    fingerprint);
+  reactor::network::FingerprintedSocket socket2(
+    "127.0.0.1",
+    boost::lexical_cast<std::string>(apertus.port_ssl()),
+    fingerprint);
+  socket1.write(header);
+  ELLE_LOG("check nothing goes through")
+    BOOST_CHECK_THROW(socket1.read(1, 500_ms), reactor::network::TimeOut);
+  socket2.write(header);
+  ELLE_LOG("read sync bit from socket 1")
+    BOOST_CHECK_EQUAL(socket1.read(1, 500_ms), "0x42");
+  ELLE_LOG("read sync bit from socket 2")
+    BOOST_CHECK_EQUAL(socket2.read(1, 500_ms), "0x42");
+  std::string some_stuff = "By the Power of Grayskull";
+  socket1.write(some_stuff);
+  BOOST_CHECK_EQUAL(socket2.read_until(some_stuff), some_stuff);
+  BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
 }
 
 ELLE_TEST_SUITE()
@@ -643,5 +680,6 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(wait_for_transfers), 0, timeout);
   suite.add(BOOST_TEST_CASE(two_ways_transfer), 0, timeout);
   suite.add(BOOST_TEST_CASE(client_timeout), 0, timeout);
-  suite.add(BOOST_TEST_CASE(many_clients), 0, timeout*4);
+  suite.add(BOOST_TEST_CASE(many_clients), 0, timeout * 4);
+  suite.add(BOOST_TEST_CASE(sync_bit), 0, timeout);
 }

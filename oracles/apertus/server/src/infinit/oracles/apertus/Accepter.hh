@@ -36,6 +36,7 @@ namespace infinit
         ELLE_ATTRIBUTE(Socket, client);
         ELLE_ATTRIBUTE(reactor::ThreadPtr, accepter);
         ELLE_ATTRIBUTE(reactor::Timer, timeout);
+        ELLE_ATTRIBUTE(bool, sync_bit);
 
         /*----------.
         | Printable |

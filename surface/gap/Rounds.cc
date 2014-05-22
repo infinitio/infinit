@@ -136,9 +136,13 @@ namespace surface
           fingerprint));
       ELLE_DUMP("%s: send transaction key %s (of length: %i)",
                 *this, this->_uid, this->_uid.size());
+      char version = 0;
+      sock->write(elle::ConstWeakBuffer(&version, 1));
       char c = this->_uid.size();
       sock->write(elle::ConstWeakBuffer(&c, 1));
       sock->write(elle::ConstWeakBuffer(this->_uid));
+      // Wait for sync bit.
+      sock->read(1);
       return elle::make_unique<station::Host>(std::move(sock));
     }
 
