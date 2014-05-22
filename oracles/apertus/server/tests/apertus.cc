@@ -655,13 +655,12 @@ ELLE_TEST_SCHEDULED(sync_bit)
     BOOST_CHECK_THROW(socket1.read(1, 500_ms), reactor::network::TimeOut);
   socket2.write(header);
   ELLE_LOG("read sync bit from socket 1")
-    BOOST_CHECK_EQUAL(socket1.read(1, 500_ms), "0x42");
+    BOOST_CHECK_EQUAL(socket1.read(1, 500_ms), "\x42");
   ELLE_LOG("read sync bit from socket 2")
-    BOOST_CHECK_EQUAL(socket2.read(1, 500_ms), "0x42");
+    BOOST_CHECK_EQUAL(socket2.read(1, 500_ms), "\x42");
   std::string some_stuff = "By the Power of Grayskull";
   socket1.write(some_stuff);
   BOOST_CHECK_EQUAL(socket2.read_until(some_stuff), some_stuff);
-  BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
 }
 
 ELLE_TEST_SUITE()
