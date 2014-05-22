@@ -86,7 +86,7 @@ class Mixin:
     return credentials
 
   def _make_share_link(self, hash):
-    return str('%(short_host)s/link/%(hash)s' % {'short_host': short_host,
+    return str('%(short_host)s/%(hash)s' % {'short_host': short_host,
                                                  'hash': hash})
 
   @api('/link/<link_id>/credentials', method = 'GET')
