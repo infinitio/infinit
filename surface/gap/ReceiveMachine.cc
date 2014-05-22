@@ -460,6 +460,7 @@ namespace surface
       if (!elle::os::getenv("INFINIT_NO_CLOUD_BUFFERING", "").empty())
       {
         ELLE_DEBUG("%s: cloud buffering disabled by configuration", *this);
+        this->gap_status(gap_transaction_waiting_data);
         return;
       }
       this->gap_status(gap_transaction_transferring);
