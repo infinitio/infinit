@@ -997,11 +997,9 @@ gap_transaction_concern_device(gap_State* state,
 
       using namespace infinit::oracles;
       auto peer_transaction_data =
-        std::dynamic_pointer_cast<PeerTransaction>(
-          state.transactions().at(transaction_id)->data());
+        std::dynamic_pointer_cast<PeerTransaction>(tr->data());
       auto link_transaction_data =
-        std::dynamic_pointer_cast<LinkTransaction>(
-          state.transactions().at(transaction_id)->data());
+        std::dynamic_pointer_cast<LinkTransaction>(tr->data());
       if (peer_transaction_data != nullptr)
       {
         auto data = peer_transaction_data;
