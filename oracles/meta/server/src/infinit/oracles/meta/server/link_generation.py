@@ -16,7 +16,7 @@ from . import cloud_buffer_token, error, notifier, regexp, conf, invitation, mai
 #
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.LinkGeneration'
 
-short_host = 'http://127.0.0.1:8080'
+short_host = 'http://inft.ly'
 default_alphabet = '23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ'
 encoded_hash_length = 7
 link_lifetime_days = 30 # Time that link will be valid.
@@ -245,21 +245,13 @@ class Mixin:
         'sender_id',
         'status',
     ))
-    # FIXME: until we have the shortener.
-    link['share_link'] = cloud_buffer_token.generate_get_url(
+    link['share_link'] = self._make_share_link(link['hash'])
+    if link['status'] is transaction_status.FINISHED:
+      link['link'] = cloud_buffer_token.generate_get_url(
         self.aws_region, self.aws_link_bucket,
         link['id'],
         link['name'],
         valid_days = link_lifetime_days)
-    if link['status'] is transaction_status.FINISHED:
-      link['link'] = link['share_link']
-    # link['share_link'] = self._make_share_link(link['hash'])
-    # if link['status'] is transaction_status.FINISHED:
-    #   link['link'] = cloud_buffer_token.generate_get_url(
-    #     self.aws_region, self.aws_link_bucket,
-    #     link['id'],
-    #     link['name'],
-    #     valid_days = link_lifetime_days)
     return link
 
   @api('/link/<id>', method = 'POST')
