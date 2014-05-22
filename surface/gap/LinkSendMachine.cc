@@ -1,3 +1,4 @@
+#include <elle/container/vector.hh>
 #include <elle/os/file.hh>
 
 #include <surface/gap/LinkSendMachine.hh>
