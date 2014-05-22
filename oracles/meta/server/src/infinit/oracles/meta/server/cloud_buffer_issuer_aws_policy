@@ -7,7 +7,7 @@
         "Resource": ["arn:aws:s3:::us-east-1-buffer-dev-infinit-io",
                      "arn:aws:s3:::us-east-1-buffer-infinit-io",
                      "arn:aws:s3:::us-east-1-links-dev-infinit-io",
-                     "arn:aws:s3:::us-east-1-links-prod-infinit-io"]
+                     "arn:aws:s3:::us-east-1-links-infinit-io"]
    },
    {
         "Effect":"Allow",
@@ -15,7 +15,7 @@
         "Resource": ["arn:aws:s3:::us-east-1-buffer-dev-infinit-io/*",
                      "arn:aws:s3:::us-east-1-buffer-infinit-io/*",
                      "arn:aws:s3:::us-east-1-links-dev-infinit-io/*",
-                     "arn:aws:s3:::us-east-1-links-prod-infinit-io/*"]
+                     "arn:aws:s3:::us-east-1-links-infinit-io/*"]
    },
    {
         "Effect":"Allow",
