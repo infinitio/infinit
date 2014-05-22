@@ -245,13 +245,21 @@ class Mixin:
         'sender_id',
         'status',
     ))
-    link['share_link'] = self._make_share_link(link['hash'])
-    if link['status'] is transaction_status.FINISHED:
-      link['link'] = cloud_buffer_token.generate_get_url(
+    # FIXME: until we have the shortener.
+    link['share_link'] = cloud_buffer_token.generate_get_url(
         self.aws_region, self.aws_link_bucket,
         link['id'],
         link['name'],
         valid_days = link_lifetime_days)
+    if link['status'] is transaction_status.FINISHED:
+      link['link'] = link['share_link']
+    # link['share_link'] = self._make_share_link(link['hash'])
+    # if link['status'] is transaction_status.FINISHED:
+    #   link['link'] = cloud_buffer_token.generate_get_url(
+    #     self.aws_region, self.aws_link_bucket,
+    #     link['id'],
+    #     link['name'],
+    #     valid_days = link_lifetime_days)
     return link
 
   @api('/link/<id>', method = 'POST')
