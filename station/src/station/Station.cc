@@ -99,6 +99,7 @@ namespace station
       try
       {
         auto host = _negotiate(std::move(socket));
+        ELLE_DEBUG("%s: accept negotiation with %s", *this, *host);
         this->_host_new.push(std::move(host));
         this->_host_available.open();
       }

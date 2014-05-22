@@ -83,14 +83,14 @@ namespace surface
           "wait_accepted",
           [&] ()
           {
-            reactor::wait(this->_owner.station().host_available());
+            ELLE_TRACE_SCOPE("%s: wait for peer connection", *this);
             std::unique_ptr<station::Host> res =
               this->_owner.station().accept();
+            ELLE_TRACE("%s: peer connection accepted", *this);
             ELLE_ASSERT_NEQ(res, nullptr);
             ELLE_ASSERT_EQ(host, nullptr);
             host = std::move(res);
             found.open();
-            ELLE_TRACE("%s: peer connection accepted", *this);
           });
         scope.run_background(
           "rounds",
