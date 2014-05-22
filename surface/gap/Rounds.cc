@@ -142,6 +142,7 @@ namespace surface
       sock->write(elle::ConstWeakBuffer(&c, 1));
       sock->write(elle::ConstWeakBuffer(this->_uid));
       // Wait for sync bit.
+      ELLE_TRACE("%s: wait for peer on apertus", *this);
       sock->read(1);
       return elle::make_unique<station::Host>(std::move(sock));
     }
