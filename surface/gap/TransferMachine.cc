@@ -12,7 +12,6 @@
 
 #include <station/src/station/Station.hh>
 #include <surface/gap/ReceiveMachine.hh>
-#include <surface/gap/Rounds.hh>
 #include <surface/gap/PeerSendMachine.hh>
 #include <surface/gap/State.hh>
 #include <surface/gap/TransactionMachine.hh>
