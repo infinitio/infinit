@@ -13,10 +13,16 @@ namespace surface
       : id(id_)
       , name(std::move(name_))
       , mtime(mtime_)
-      , link(std::move(link_))
+      , link()
       , click_count(click_count_)
       , status(status_)
-    {}
+    {
+      // FIXME: for now the server always return the share link, as an empty
+      // string if not ready. Remove when we remove the old serialization,
+      // can handle optionals and not return an empty string.
+      if (link_ && !link_.get().empty())
+        this->link = std::move(link_);
+    }
 
     LinkTransaction::~LinkTransaction() noexcept(true)
     {}

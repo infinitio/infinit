@@ -453,7 +453,7 @@ namespace surface
         this->state().enqueue(LinkTransaction(this->id(),
                                               link_data->name,
                                               link_data->mtime,
-                                              link_data->link,
+                                              link_data->share_link,
                                               link_data->click_count,
                                               this->status()));
       }
