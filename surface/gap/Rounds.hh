@@ -72,7 +72,7 @@ namespace surface
 
     private:
       ELLE_ATTRIBUTE(infinit::oracles::meta::Client const&, meta);
-      ELLE_ATTRIBUTE(std::string , uid);
+      ELLE_ATTRIBUTE(std::string, uid);
 
     /*----------.
     | Printable |

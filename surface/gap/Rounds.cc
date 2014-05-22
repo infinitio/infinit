@@ -123,20 +123,22 @@ namespace surface
     FallbackRound::connect(station::Station& station)
     {
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-      ELLE_DEBUG("%s: get fallback from meta", *this);
+      ELLE_TRACE("%s: get fallback from meta", *this);
       auto fallback = this->_meta.fallback(this->_uid);
-      ELLE_TRACE("%s: connect to SSL apertus %s:%s",
-                 *this, fallback.fallback_host, fallback.fallback_port_ssl);
+      ELLE_TRACE_SCOPE("%s: connect to SSL apertus %s:%s",
+                       *this,
+                       fallback.fallback_host,
+                       fallback.fallback_port_ssl);
       std::unique_ptr<reactor::network::FingerprintedSocket> sock(
         new reactor::network::FingerprintedSocket(
           fallback.fallback_host,
           boost::lexical_cast<std::string>(fallback.fallback_port_ssl),
           fingerprint));
-      ELLE_LOG("%s: transaction key %s (of length: %i)",
-               *this, this->_uid, this->_uid.size());
-      sock->write(elle::ConstWeakBuffer(
-        elle::sprintf("%c",(char) this->_uid.size())));
-      sock->write(elle::ConstWeakBuffer(elle::sprintf("%s", this->_uid)));
+      ELLE_DUMP("%s: send transaction key %s (of length: %i)",
+                *this, this->_uid, this->_uid.size());
+      char c = this->_uid.size();
+      sock->write(elle::ConstWeakBuffer(&c, 1));
+      sock->write(elle::ConstWeakBuffer(this->_uid));
       return elle::make_unique<station::Host>(std::move(sock));
     }
 
