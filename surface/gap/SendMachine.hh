@@ -42,6 +42,8 @@ namespace surface
       void
       _plain_upload();
       ELLE_ATTRIBUTE(float, plain_progress);
+      typedef std::unordered_map<int, float> PlainProgressChunks;
+      ELLE_ATTRIBUTE(PlainProgressChunks, plain_progress_chunks);
 
     /*----.
     | FSM |

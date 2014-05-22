@@ -82,7 +82,10 @@ namespace surface
     float
     SendMachine::progress() const
     {
-      return this->_plain_progress;
+      auto progress = this->_plain_progress;
+      for (auto const& chunk: this->_plain_progress_chunks)
+        progress += chunk.second;
+      return progress;
     }
 
     void
@@ -271,19 +274,24 @@ namespace surface
             auto buffer = elle::system::read_file_chunk(
               source_file_path,
               local_chunk * chunk_size, chunk_size);
+            auto size = buffer.size();
+            this->_plain_progress_chunks[local_chunk] = 0;
             std::string etag = handler.multipart_upload(
               source_file_name, upload_id,
               buffer,
-              local_chunk);
+              local_chunk,
+              std::function<void (int)>(
+                [this, size, local_chunk, chunk_count] (int uploaded)
+                {
+                  this->_plain_progress_chunks[local_chunk] =
+                    float(uploaded) / size / chunk_count;
+                }));
             ++chunk_uploaded;
             this->_plain_progress =
               float(chunk_uploaded) / float(chunk_count);
-            // Now, totally fake progress on the original frete by
-            // updating the global progress, and not individual files
-            // progress. That way we don't produce fake snapshot state data
-            // for further cloud upload.
-            total_bytes_transfered += buffer.size();
+            total_bytes_transfered += size;
             chunks.push_back(std::make_pair(local_chunk, etag));
+            this->_plain_progress_chunks.erase(local_chunk);
           }
         };
         int num_threads = 4;
