@@ -366,6 +366,19 @@ public:
     return transaction_to_python_dict::convert(*transactions().at(id));
   }
 
+  PyObject*
+  find_transaction(std::string const& uid)
+  {
+    auto t = std::find_if(transactions().begin(), transactions().end(),
+      [&](Transactions::value_type const& v)
+      {
+        return v.second->data()->id == uid;
+      });
+    if (t == transactions().end())
+      return PyLong_FromLongLong(-1);
+    return PyLong_FromLongLong(t->first);
+  }
+
 #define TOP(name, ret)                             \
   ret transaction_ ## name(unsigned int id)        \
   {                                                \
@@ -435,6 +448,7 @@ BOOST_PYTHON_MODULE(state)
     .def("device_status", &State::device_status)
     .def("transactions", (const State::Transactions& (State::*)() const)&State::transactions, by_value())
     .def("send_files", &PythonState::wrap_send_files)
+    .def("find_transaction", &PythonState::find_transaction)
     .def("transactions", static_cast<
       State::Transactions const& (State::*)() const>(&State::transactions),
          by_const_ref())
