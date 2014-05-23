@@ -100,6 +100,7 @@ class TransferPeer:
     self.poll_thread = None
     self.interrupt = False
     self.logged_in = False
+    self.transaction_uid = None # unique id of transaction
   def create(self, force=True):
     if self.state is not None and not force:
       return
@@ -134,33 +135,41 @@ class TransferPeer:
   def logout(self):
     if self.state is None:
       return
+    if len(self.statuses) and self.transaction_uid is None:
+      # store transaction uid so that we can recover transaction even
+      # without any notification
+      self.transaction_uid = self.transaction['id']
     self.state.logout()
     self.logged_in = False
   def check_progress(self, tid, progress):
     """ Check if progress greater than value, throw if it can never be"""
-    if self.state.transaction_progress(tid) >= progress:
+    if self.state.transaction_progress(tid) >= progress or self.status == 'transaction_finished':
       return True
     if self.status in final_statuses:
-      raise Exception('Progress unreachable: state=%s' % self.status)
+      raise Exception('Progress unreachable: state=%s, at %s, expect %s'
+        % (self.status, self.state.transaction_progress(tid), progress))
     return False
+  def fetch_transaction_id(self):
+    """ Try to obtain tid or None"""
+    if len(self.statuses):
+      return list(self.statuses.keys())[0]
+    if self.transaction_uid:
+      id = self.state.find_transaction(self.transaction_uid)
+      if id != -1:
+        return id
+    return None
   def wait_transaction_id(self, timeout=10):
     """ Wait for a transaction id to be available or throw"""
-    wait_helper(timeout, lambda: len(self.statuses))
-    return list(self.statuses.keys())[0]
+    wait_helper(timeout, lambda: self.fetch_transaction_id() is not None)
+    return self.fetch_transaction_id()
   def wait_transaction_progress(self, progress, timeout=1000):
     """ Wait for transaction progress to be above given threshold or throw"""
     tid = self.wait_transaction_id(timeout)
     return wait_helper(timeout, lambda: self.check_progress(tid, progress))
   def wait_transaction_status(self, status, timeout=1000):
-    tid = self.wait_transaction_id(timeout)
-    if self.state.transaction_status(tid) == status:
-      return True
-    return wait_helper(timeout, lambda: self.statuses[tid] == status)
+    return wait_helper(timeout, lambda: self.status == status)
   def wait_transaction_final(self, timeout=1000):
-    tid = self.wait_transaction_id(timeout)
-    if self.state.transaction_status(tid) in final_statuses:
-      return True
-    return wait_helper(timeout, lambda: self.statuses[tid] in final_statuses)
+    return wait_helper(timeout, lambda: self.status in final_statuses)
   @property
   def status(self):
     """ Transaction status string (transaction_{canceled, finished, started...}"""
