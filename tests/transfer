@@ -381,12 +381,12 @@ class TestResumeTransfer(unittest.TestCase):
     names = list(map(str, range(50)))
     return self.transfer_test([''], {'names':  names, 'size': 100},
                               'start s100 s R r100 r S R',
-                              expect_total_size=100000, expect_files_count=1)
+                              expect_total_size=50*100, expect_files_count=1)
   def test_all_cloud_bigger(self):
     names = list(map(str, range(3)))
     return self.transfer_test([''], {'names':  names, 'size': 513000},
                               'start s100 s R r100 r S R',
-                              expect_total_size=100000, expect_files_count=1)
+                              expect_total_size=513000*3, expect_files_count=1)
   # Testing mode switch between p2p and cloud, requires bigger files
   # WARNING FIXME: depends heavily on available bandwith with cloud!
   def test_switch_recipient(self): #sender on, recipient flickers
