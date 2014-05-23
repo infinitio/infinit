@@ -300,7 +300,9 @@ class Meta(bottle.Bottle,
 
   @property
   def admin(self):
-    return self.__force_admin or bottle.request.certificate in [
+    source = bottle.request.environ.get('REMOTE_ADDR')
+    force = self.__force_admin or source == '127.0.0.1'
+    return force or bottle.request.certificate in [
       'antony.mechin@infinit.io',
       'baptiste.fradin@infinit.io',
       'christopher.crone@infinit.io',
