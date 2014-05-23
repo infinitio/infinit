@@ -442,15 +442,17 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: update data with %s", *this, *data);
       ELLE_ASSERT_EQ(typeid(*data), typeid(*this->_data));
-      if (dynamic_cast<infinit::oracles::LinkTransaction*>(data.get()))
+      // FIXME: Ugly, but ensures we don't get sliced.
       {
-        *dynamic_cast<infinit::oracles::LinkTransaction*>(this->_data.get())
-          = *dynamic_cast<infinit::oracles::LinkTransaction*>(data.get());
-      }
-      else
-      {
-        *dynamic_cast<infinit::oracles::PeerTransaction*>(this->_data.get())
-          = *dynamic_cast<infinit::oracles::PeerTransaction*>(data.get());
+        using infinit::oracles::LinkTransaction;
+        using infinit::oracles::PeerTransaction;
+        if (auto link = std::dynamic_pointer_cast<LinkTransaction>(data))
+          *std::dynamic_pointer_cast<LinkTransaction>(this->_data) = *link;
+        else if (auto peer = std::dynamic_pointer_cast<PeerTransaction>(data))
+          *std::dynamic_pointer_cast<PeerTransaction>(this->_data) = *peer;
+        else
+          ELLE_ERR("%s: unkown transaction type: %s",
+                   *this, elle::demangle(typeid(*data).name()));
       }
       if (this->_machine && !this->_over)
       {
