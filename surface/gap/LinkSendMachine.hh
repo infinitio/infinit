@@ -54,8 +54,10 @@ namespace surface
     private:
       void
       _upload();
+      void
+      _run_from_snapshot();
       ELLE_ATTRIBUTE(reactor::fsm::State&, upload_state);
-      ELLE_ATTRIBUTE(aws::Credentials, credentials);
+      ELLE_ATTRIBUTE(boost::optional<aws::Credentials>, credentials);
     };
   }
 }

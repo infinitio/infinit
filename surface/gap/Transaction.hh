@@ -91,7 +91,13 @@ namespace surface
         void
         print(std::ostream& stream) const override;
       };
-    private:
+
+    /*---------.
+    | Snapshot |
+    `---------*/
+    // FIXME: generalize setting the data & saving the snapshot.
+    // private:
+    public:
       void
       _snapshot_save() const;
       ELLE_ATTRIBUTE_R(boost::filesystem::path, snapshots_directory);
