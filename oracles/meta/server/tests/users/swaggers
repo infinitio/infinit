@@ -19,3 +19,6 @@ with Meta(force_admin = True) as meta:
 
   assert u1.id in u2.swaggers
   assert u2.id in u1.swaggers
+
+  assert len(u1.get('user/full_swaggers')['swaggers']) == 1
+  assert len(u2.get('user/full_swaggers')['swaggers']) == 1

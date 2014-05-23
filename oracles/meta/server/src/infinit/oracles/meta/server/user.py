@@ -964,13 +964,21 @@ class Mixin:
   @require_logged_in
   def full_swaggers(self):
     user = self.user
-    query = {'_id': {'$in': list(map(bson.ObjectId, user['swaggers'].keys()))}}
-    res = [self.extract_user_fields(user) for user in self.database.users.aggregate([
-      {'$match': query},
-      {'$project': self.user_public_fields},
-    ])['result']]
-    return self.success({'swaggers': res})
-
+    swaggers = user['swaggers']
+    query = {
+      '_id': {
+        '$in': list(map(bson.ObjectId, swaggers.keys()))
+      }
+    }
+    res = (
+      self.extract_user_fields(user)
+      for user in self.database.users.aggregate([
+          {'$match': query},
+          {'$project': self.user_public_fields},
+      ])['result'])
+    return self.success({
+      'swaggers': sorted(res, key = lambda u: swaggers[str(u['id'])]),
+    })
 
   @api('/user/add_swagger', method = 'POST')
   @require_admin
