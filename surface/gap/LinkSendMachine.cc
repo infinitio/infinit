@@ -168,11 +168,13 @@ namespace surface
     {
       infinit::oracles::LinkTransaction::FileList files;
       // FIXME: handle directories, non existing files, empty list and shit.
+      int64_t total_size = 0;
       for (auto const& file: this->files())
       {
         boost::filesystem::path path(file);
         files.emplace_back(path.filename().string(),
                            elle::os::file::size(path.string()));
+        total_size += elle::os::file::size(file);
       }
       auto response =
         this->state().meta().create_link(
@@ -181,6 +183,13 @@ namespace surface
       this->transaction()._snapshot_save();
       this->_credentials = std::move(response.aws_credentials());
       this->_save_snapshot();
+      if (this->state().metrics_reporter())
+        this->state().metrics_reporter()->link_transaction_created(
+          this->transaction_id(),
+          this->state().me().id,
+          this->files().size(),
+          total_size,
+          this->_message.length());
     }
 
     void
@@ -204,6 +213,14 @@ namespace surface
         this->state().meta().update_link(this->data()->id, 0, s);
         this->data()->status = s;
         this->transaction()._snapshot_save();
+        if (this->state().metrics_reporter())
+        {
+          this->state().metrics_reporter()->transaction_ended(
+            this->transaction_id(),
+            s,
+            ""
+          );
+        }
       }
       catch (elle::Exception const&)
       {

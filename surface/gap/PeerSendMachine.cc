@@ -319,18 +319,15 @@ namespace surface
       this->data()->recipient_id =
         this->state().user(this->data()->recipient_id, true).id;
       auto const& peer = this->state().user(this->data()->recipient_id);
-      bool ghost = false;
-      if (peer.ghost())
-        ghost = true;
       if (this->state().metrics_reporter())
-        this->state().metrics_reporter()->transaction_created(
+        this->state().metrics_reporter()->peer_transaction_created(
           this->transaction_id(),
           this->state().me().id,
           this->data()->recipient_id,
           this->data()->files.size(),
           size,
           this->_message.length(),
-          ghost);
+          peer.ghost());
       // Populate the frete.
       this->frete().save_snapshot();
       this->state().meta().update_transaction(this->transaction_id(),

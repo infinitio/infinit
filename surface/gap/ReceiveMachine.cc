@@ -1210,5 +1210,20 @@ namespace surface
     , file_index(b.file_index)
     {
     }
+
+    void
+    ReceiveMachine::_finalize(infinit::oracles::Transaction::Status s)
+    {
+      if (s == infinit::oracles::Transaction::Status::finished)
+      {
+        if (this->state().metrics_reporter())
+          this->state().metrics_reporter()->transaction_ended(
+          this->transaction_id(),
+          s,
+          ""
+        );
+      }
+      Super::_finalize(s);
+    }
   }
 }

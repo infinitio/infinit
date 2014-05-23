@@ -194,15 +194,6 @@ namespace surface
     TransactionMachine::_finish()
     {
       ELLE_TRACE_SCOPE("%s: finish", *this);
-      if (!this->is_sender())
-      {
-        if (this->state().metrics_reporter())
-          this->state().metrics_reporter()->transaction_ended(
-          this->transaction_id(),
-          infinit::oracles::Transaction::Status::finished,
-          ""
-        );
-      }
       this->gap_status(gap_transaction_finished);
       this->_finalize(infinit::oracles::Transaction::Status::finished);
     }

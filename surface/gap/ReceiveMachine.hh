@@ -52,7 +52,10 @@ namespace surface
       _run_from_snapshot();
       virtual
       void
-      transaction_status_update(infinit::oracles::Transaction::Status status) override;
+      transaction_status_update(
+        infinit::oracles::Transaction::Status status) override;
+      void
+      _finalize(infinit::oracles::Transaction::Status) override;
 
     public:
       void
