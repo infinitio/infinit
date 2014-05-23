@@ -365,7 +365,8 @@ namespace surface
           return std::make_pair(file.filename().string(), false);
       }
       else
-        return std::make_pair("archive.zip", true);
+        return std::make_pair(elle::sprintf("%s files.zip", files.size()),
+                              true);
     }
   }
 }

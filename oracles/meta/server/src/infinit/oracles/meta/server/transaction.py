@@ -426,6 +426,7 @@ class Mixin:
       # This heuristic must be in sync with the sender!
       ghost_upload_file = ''
       files = transaction['files']
+      # FIXME: this name computation is duplicated from client !
       if len(files) == 1:
         if transaction['is_directory']:
           #C++ side is doing a replace_extension
@@ -437,7 +438,7 @@ class Mixin:
         else:
           ghost_upload_file = files[0]
       else:
-        ghost_upload_file = 'archive.zip'
+        ghost_upload_file = '%s files.zip' % len(files)
       # Generate GET URL for ghost cloud uploaded file
       ghost_get_url = cloud_buffer_token.generate_get_url(
         self.aws_region, self.aws_buffer_bucket,
