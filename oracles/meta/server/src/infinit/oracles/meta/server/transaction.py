@@ -638,6 +638,10 @@ class Mixin:
                          owner =  user['_id'])
     if str(device['id']) not in [transaction['sender_device_id'],
                                  transaction['recipient_device_id']]:
+      elle.log.trace('Device mismatch: %s neither %s nor %s'
+        % ( str(device['id']),
+            transaction['sender_device_id'],
+            transaction['recipient_device_id']))
       self.forbidden('transaction is not for this device')
     node = dict()
     node['locals'] = [

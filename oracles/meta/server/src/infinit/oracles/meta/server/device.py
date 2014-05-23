@@ -4,6 +4,7 @@ import bottle
 import bson
 import copy
 import uuid
+import elle.log
 
 from . import conf, error, regexp
 from .utils import api, require_logged_in
@@ -28,6 +29,7 @@ class Mixin:
       query['owner'] = owner
     device = self.database.devices.find_one(query, **kwargs)
     if ensure_existence and device is None:
+      elle.log.trace('Could not fetch device %s for owner %s' % (id, owner))
       raise error.Error(error.DEVICE_NOT_FOUND)
     return device
 
@@ -95,6 +97,7 @@ class Mixin:
     device = self.database.devices.find_one(query)
     assert device is not None
     # XXX check unique device ?
+    elle.log.trace('Registering device %s with owner %s' % (id, owner['_id']))
     self.database.users.find_and_modify({'_id': owner['_id']}, {'$addToSet': {'devices': str(id)}})
     return device
 
