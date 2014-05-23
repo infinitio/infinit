@@ -61,7 +61,7 @@ namespace surface
       AddressContainer public_addresses;
       this->_owner.state().meta().transaction_endpoints_put(
         this->_owner.data()->id,
-        this->_owner.state().passport().id(),
+        this->_owner.state().device().id,
         addresses,
         public_addresses);
     }
