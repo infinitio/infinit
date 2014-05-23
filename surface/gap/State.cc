@@ -15,6 +15,7 @@
 #include <elle/log/TextLogger.hh>
 #include <elle/os/environ.hh>
 #include <elle/os/path.hh>
+#include <elle/serialization/json/SerializerIn.hh>
 #include <elle/serialize/HexadecimalArchive.hh>
 
 #include <reactor/duration.hh>
@@ -157,8 +158,11 @@ namespace surface
                    common::infinit::device_id_path());
         file << _device_uuid << std::endl;
       }
-
-      ELLE_DEBUG("%s: device uuid %s", *this, _device_uuid);
+      ELLE_DEBUG("%s: device uuid: %s", *this, _device_uuid);
+      // Fill configuration.
+      auto& config = this->_configuration;
+      config.s3.multipart_upload.parallelism = 1;
+      config.s3.multipart_upload.chunk_size = 0;
     }
 
     State::~State()
@@ -789,6 +793,14 @@ namespace surface
       // FIXME: ever heard of virtual methods ?
       switch (notif->notification_type)
       {
+        case infinit::oracles::trophonius::NotificationType::configuration:
+        {
+          auto configuration =
+            dynamic_cast<infinit::oracles::trophonius::ConfigurationNotification const*>(notif.get());
+          ELLE_ASSERT(configuration);
+          this->_apply_configuration(std::move(configuration->configuration));
+          break;
+        }
         case infinit::oracles::trophonius::NotificationType::user_status:
           ELLE_ASSERT(
             dynamic_cast<infinit::oracles::trophonius::UserStatusNotification const*>(
@@ -883,9 +895,48 @@ namespace surface
       }
     }
 
+    /*--------------.
+    | Configuration |
+    `--------------*/
+
+    void
+    State::Configuration::serialize(elle::serialization::Serializer& s)
+    {
+      std::cerr << "PIF" << std::endl;
+      s.serialize("s3", this->s3);
+    }
+
+    void
+    State::Configuration::S3::serialize(elle::serialization::Serializer& s)
+    {
+      std::cerr << "PAF" << std::endl;
+      s.serialize("multipart_upload", this->multipart_upload);
+    }
+
+    void
+    State::Configuration::S3::MultipartUpload::serialize(
+      elle::serialization::Serializer& s)
+    {
+      std::cerr << "POUF" << std::endl;
+      s.serialize("chunk_size", this->chunk_size);
+      s.serialize("parallelism", this->parallelism);
+      std::cerr << this->parallelism << std::endl;
+    }
+
+    void
+    State::_apply_configuration(elle::json::Object json)
+    {
+      ELLE_TRACE_SCOPE("%s: apply configuration: %s", *this, json);
+      elle::serialization::json::SerializerIn input(std::move(json));
+      input.partial(true);
+      this->_configuration.serialize(input);
+    }
+
+
     /*----------.
     | Printable |
     `----------*/
+
     void
     State::print(std::ostream& stream) const
     {

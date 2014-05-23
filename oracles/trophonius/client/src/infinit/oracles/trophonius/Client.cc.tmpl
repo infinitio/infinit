@@ -174,6 +174,12 @@ namespace infinit
         stream << this->notification_type;
       }
 
+      ConfigurationNotification::ConfigurationNotification(
+        elle::json::Object json)
+        : Notification(NotificationType::configuration)
+        , configuration(json)
+      {}
+
       void
       UserStatusNotification::print(std::ostream& stream) const
       {
@@ -232,6 +238,11 @@ namespace infinit
               }
             }
             return std::move(res);
+          }
+          case NotificationType::configuration:
+          {
+            return elle::make_unique<ConfigurationNotification>(
+              std::move(json));
           }
           case NotificationType::invalid_credentials:
             throw elle::Exception("invalid trophonius credentials");

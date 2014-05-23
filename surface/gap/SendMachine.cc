@@ -119,7 +119,7 @@ namespace surface
         ELLE_TRACE_SCOPE("%s: plain_upload", *this);
         typedef boost::filesystem::path path;
         path source_file_path;
-        FileSize source_file_size;
+        FileSize file_size;
         auto archive = this->archive_info();
         if (archive.second)
         {
@@ -173,19 +173,23 @@ namespace surface
         }
         else
           source_file_path = *this->_files.begin();
-        source_file_size = boost::filesystem::file_size(source_file_path);
+        file_size = boost::filesystem::file_size(source_file_path);
         std::string source_file_name = source_file_path.filename().string();
         ELLE_TRACE("%s: will ghost-cloud-upload %s of size %s",
-                   *this, source_file_path, source_file_size);
+                   *this, source_file_path, file_size);
         auto get_credentials = [this] (bool first_time)
           {
             return this->_aws_credentials(first_time);
           };
         aws::S3 handler(get_credentials);
         typedef frete::Frete::FileSize FileSize;
+        auto const& config = this->transaction().state().configuration();
         // AWS constraints: no more than 10k chunks, at least 5Mo block size
-        FileSize chunk_size = std::max(FileSize(5*1024*1024), source_file_size / 9500);
-        int chunk_count = source_file_size / chunk_size + ((source_file_size % chunk_size)? 1:0);
+        FileSize default_chunk_size(
+          std::max(config.s3.multipart_upload.chunk_size, 5 * 1024 * 1024));
+        FileSize chunk_size = std::max(default_chunk_size, file_size / 9500);
+        int chunk_count =
+          file_size / chunk_size + ((file_size % chunk_size) ? 1 : 0);
         ELLE_TRACE("%s: using chunk size of %s, with %s chunks",
                    *this, chunk_size, chunk_count);
         // Load our own snapshot that contains the upload uid
@@ -294,7 +298,7 @@ namespace surface
             this->_plain_progress_chunks.erase(local_chunk);
           }
         };
-        int num_threads = 4;
+        int num_threads = config.s3.multipart_upload.parallelism;
         std::string env_num_threads =
           elle::os::getenv("INFINIT_NUM_PLAIN_UPLOAD_THREAD", "");
         if (!env_num_threads.empty())

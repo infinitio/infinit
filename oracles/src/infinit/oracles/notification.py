@@ -8,6 +8,7 @@ notifications = {
   'peer_connection_update': 11,
   'invalid_credentials': 12,
   'deleted_favorite': 13,
+  'configuration': 14,
   'network_update': 128,
   'message': 217,
   'ping': 208,

@@ -576,9 +576,34 @@ namespace surface
       _on_peer_reachability_updated(
         infinit::oracles::trophonius::PeerReachabilityNotification const& notif);
 
-      /*----------.
-      | Printable |
-      `----------*/
+    /*--------------.
+    | Configuration |
+    `--------------*/
+    public:
+      struct Configuration
+      {
+        struct S3
+        {
+          struct MultipartUpload
+          {
+            int chunk_size;
+            int parallelism;
+            void serialize(elle::serialization::Serializer& s);
+          };
+          MultipartUpload multipart_upload;
+          void serialize(elle::serialization::Serializer& s);
+        };
+        S3 s3;
+        void serialize(elle::serialization::Serializer& s);
+      };
+      ELLE_ATTRIBUTE_R(Configuration, configuration);
+    private:
+      void
+      _apply_configuration(elle::json::Object json);
+
+    /*----------.
+    | Printable |
+    `----------*/
     public:
       virtual
       void

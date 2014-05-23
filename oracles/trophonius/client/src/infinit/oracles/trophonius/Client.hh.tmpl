@@ -48,6 +48,13 @@ namespace infinit
         print(std::ostream& stream) const override;
       };
 
+      struct ConfigurationNotification:
+        public Notification
+      {
+        ConfigurationNotification(elle::json::Object json);
+        elle::json::Object configuration;
+      };
+
       namespace json = elle::format::json;
 
       struct ConnectionEnabledNotification:
