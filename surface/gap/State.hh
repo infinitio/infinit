@@ -247,6 +247,7 @@ namespace surface
       | Papiers |
       `--------*/
     private:
+      ELLE_ATTRIBUTE_R(boost::uuids::uuid, device_uuid);
       ELLE_ATTRIBUTE_P(std::unique_ptr<Device>, device, mutable);
       ELLE_ATTRIBUTE_P(reactor::Mutex, device_mutex, mutable);
     public:

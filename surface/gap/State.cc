@@ -131,6 +131,34 @@ namespace surface
         // This is a no-op reporter.
         this->_metrics_reporter.reset(new infinit::metrics::CompositeReporter);
       this->_metrics_reporter->start();
+
+      _device_uuid = boost::uuids::nil_generator()();
+      bool force_regenerate
+        = !elle::os::getenv("INFINIT_FORCE_NEW_DEVICE_ID", "").empty();
+      if (!force_regenerate
+          && boost::filesystem::exists(common::infinit::device_id_path()))
+      {
+        ELLE_TRACE("%s: get device uuid from file", *this);
+        std::ifstream file(common::infinit::device_id_path());
+        std::string struuid;
+        file >> struuid;
+        _device_uuid = boost::uuids::string_generator()(struuid);
+      }
+      else
+      {
+        ELLE_TRACE("%s: create device uuid", *this);
+        boost::filesystem::create_directories(
+          boost::filesystem::path(common::infinit::device_id_path())
+            .parent_path());
+        _device_uuid = boost::uuids::random_generator()();
+        std::ofstream file(common::infinit::device_id_path());
+        if (!file.good())
+          ELLE_ERR("%s: Failed to create device uuid file at %s", *this,
+                   common::infinit::device_id_path());
+        file << _device_uuid << std::endl;
+      }
+
+      ELLE_DEBUG("%s: device uuid %s", *this, _device_uuid);
     }
 
     State::~State()
@@ -304,34 +332,8 @@ namespace surface
         this->_metrics_reporter->user_login(false, fail_reason);
       }};
 
-      boost::uuids::uuid device_uuid = boost::uuids::nil_generator()();
-      bool force_regenerate
-        = !elle::os::getenv("INFINIT_FORCE_NEW_DEVICE_ID", "").empty();
-      if (!force_regenerate
-          && boost::filesystem::exists(common::infinit::device_id_path()))
-      {
-        ELLE_TRACE("%s: get device uuid from file", *this);
-        std::ifstream file(common::infinit::device_id_path());
-        std::string struuid;
-        file >> struuid;
-        device_uuid = boost::uuids::string_generator()(struuid);
-      }
-      else
-      {
-        ELLE_TRACE("%s: create device uuid", *this);
-        boost::filesystem::create_directories(
-          boost::filesystem::path(common::infinit::device_id_path())
-            .parent_path());
-        device_uuid = boost::uuids::random_generator()();
-        std::ofstream file(common::infinit::device_id_path());
-        if (!file.good())
-          ELLE_ERR("%s: Failed to create device uuid file at %s", *this,
-                   common::infinit::device_id_path());
-        file << device_uuid << std::endl;
-      }
 
-      ELLE_DEBUG("%s: device uuid %s", *this, device_uuid);
-      auto res = this->_meta.login(lower_email, password, device_uuid);
+      auto res = this->_meta.login(lower_email, password, _device_uuid);
 
       fail_reason = res.error_details;
 
@@ -392,7 +394,7 @@ namespace surface
           identity_infos.close();
         }
 
-        auto device = this->meta().device(device_uuid);
+        auto device = this->meta().device(_device_uuid);
         this->_device.reset(new Device{device.id, device.name});
         std::string passport_path =
           common::infinit::passport_path(this->me().id);
