@@ -993,6 +993,8 @@ gap_transaction_concern_device(gap_State* state,
     "transaction concerns our device",
     [&] (surface::gap::State& state)
     {
+      auto const& tr = state.transactions().at(transaction_id);
+
       using namespace infinit::oracles;
       auto peer_transaction_data =
         std::dynamic_pointer_cast<PeerTransaction>(tr->data());
