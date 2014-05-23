@@ -131,17 +131,36 @@ namespace infinit
     }
 
     void
-    Reporter::transaction_created(std::string const& transaction_id,
-                                  std::string const& sender_id,
-                                  std::string const& recipient_id,
-                                  int64_t file_count,
-                                  int64_t total_size,
-                                  uint32_t message_length,
-                                  bool invitation)
+    Reporter::link_transaction_created(std::string const& transaction_id,
+                                       std::string const& sender_id,
+                                       int64_t file_count,
+                                       int64_t total_size,
+                                       uint32_t message_length)
     {
       if (this->_no_metrics)
         return;
-      this->_metric_queue.push(std::bind(&Reporter::_transaction_created,
+      this->_metric_queue.push(std::bind(&Reporter::_link_transaction_created,
+                                         this,
+                                         transaction_id,
+                                         sender_id,
+                                         file_count,
+                                         total_size,
+                                         message_length));
+      this->_metric_available.open();
+    }
+
+    void
+    Reporter::peer_transaction_created(std::string const& transaction_id,
+                                       std::string const& sender_id,
+                                       std::string const& recipient_id,
+                                       int64_t file_count,
+                                       int64_t total_size,
+                                       uint32_t message_length,
+                                       bool ghost)
+    {
+      if (this->_no_metrics)
+        return;
+      this->_metric_queue.push(std::bind(&Reporter::_peer_transaction_created,
                                          this,
                                          transaction_id,
                                          sender_id,
@@ -149,7 +168,7 @@ namespace infinit
                                          file_count,
                                          total_size,
                                          message_length,
-                                         invitation));
+                                         ghost));
       this->_metric_available.open();
     }
 
@@ -335,13 +354,21 @@ namespace infinit
     {}
 
     void
-    Reporter::_transaction_created(std::string const& transaction_id,
-                                   std::string const& sender_id,
-                                   std::string const& recipient_id,
-                                   int64_t file_count,
-                                   int64_t total_size,
-                                   uint32_t message_length,
-                                   bool invitation)
+    Reporter::_link_transaction_created(std::string const& transaction_id,
+                                        std::string const& sender_id,
+                                        int64_t file_count,
+                                        int64_t total_size,
+                                        uint32_t message_length)
+    {}
+
+    void
+    Reporter::_peer_transaction_created(std::string const& transaction_id,
+                                        std::string const& sender_id,
+                                        std::string const& recipient_id,
+                                        int64_t file_count,
+                                        int64_t total_size,
+                                        uint32_t message_length,
+                                        bool ghost)
     {}
 
     void

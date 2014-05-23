@@ -54,17 +54,36 @@ namespace infinit
     }
 
     void
-    JSONReporter::_transaction_created(std::string const& transaction_id,
-                                          std::string const& sender_id,
-                                          std::string const& recipient_id,
-                                          int64_t file_count,
-                                          int64_t total_size,
-                                          uint32_t message_length,
-                                          bool ghost)
+    JSONReporter::_link_transaction_created(std::string const& transaction_id,
+                                            std::string const& sender_id,
+                                            int64_t file_count,
+                                            int64_t total_size,
+                                            uint32_t message_length)
     {
       elle::json::Object data;
-      data[this->_key_str(JSONKey::event)] =
-        std::string("created");
+      data[this->_key_str(JSONKey::event)] = std::string("created");
+      data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
+      data[this->_key_str(JSONKey::sender_id)] = sender_id;
+      data[this->_key_str(JSONKey::file_count)] = file_count;
+      data[this->_key_str(JSONKey::total_size)] = total_size;
+      data[this->_key_str(JSONKey::message_length)] = message_length;
+      data[this->_key_str(JSONKey::transaction_type)] =
+        this->_transaction_type_str(LinkTransaction);
+
+      this->_send(this->_transaction_dest, data);
+    }
+
+    void
+    JSONReporter::_peer_transaction_created(std::string const& transaction_id,
+                                            std::string const& sender_id,
+                                            std::string const& recipient_id,
+                                            int64_t file_count,
+                                            int64_t total_size,
+                                            uint32_t message_length,
+                                            bool ghost)
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] = std::string("created");
       data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
       data[this->_key_str(JSONKey::sender_id)] = sender_id;
       data[this->_key_str(JSONKey::recipient_id)] = recipient_id;
@@ -72,6 +91,8 @@ namespace infinit
       data[this->_key_str(JSONKey::total_size)] = total_size;
       data[this->_key_str(JSONKey::message_length)] = message_length;
       data[this->_key_str(JSONKey::ghost)] = ghost;
+      data[this->_key_str(JSONKey::transaction_type)] =
+        this->_transaction_type_str(PeerTransaction);
 
       this->_send(this->_transaction_dest, data);
     }
@@ -313,6 +334,8 @@ namespace infinit
           return "file_size";
         case JSONKey::transaction_id:
           return "transaction";
+        case JSONKey::transaction_type:
+          return "type";
         case JSONKey::transfer_method:
           return "transfer_method";
         case JSONKey::user_agent:
@@ -395,6 +418,20 @@ namespace infinit
           return "terminated";
         case TransferExitReasonUnknown:
           return "unknown";
+        default:
+          elle::unreachable();
+      }
+    }
+
+    std::string
+    JSONReporter::_transaction_type_str(TransactionType type)
+    {
+      switch (type)
+      {
+        case LinkTransaction:
+          return "link";
+        case PeerTransaction:
+          return "peer";
         default:
           elle::unreachable();
       }

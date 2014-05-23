@@ -32,6 +32,7 @@ namespace infinit
       timestamp,
       total_size,
       transaction_id,
+      transaction_type,
       transfer_method,
       user_agent,
       version,
@@ -78,13 +79,21 @@ namespace infinit
 
       virtual
       void
-      _transaction_created(std::string const& transaction_id,
-                           std::string const& sender_id,
-                           std::string const& recipient_id,
-                           int64_t file_count,
-                           int64_t total_size,
-                           uint32_t message_length,
-                           bool ghost);
+      _link_transaction_created(std::string const& transaction_id,
+                                std::string const& sender_id,
+                                int64_t file_count,
+                                int64_t total_size,
+                                uint32_t message_length);
+
+      virtual
+      void
+      _peer_transaction_created(std::string const& transaction_id,
+                                std::string const& sender_id,
+                                std::string const& recipient_id,
+                                int64_t file_count,
+                                int64_t total_size,
+                                uint32_t message_length,
+                                bool ghost);
 
       virtual
       void
@@ -147,6 +156,9 @@ namespace infinit
 
       std::string
       _transfer_exit_reason_str(TransferExitReason method);
+
+      std::string
+      _transaction_type_str(TransactionType type);
     /// Private attributes.
     private:
       ELLE_ATTRIBUTE(std::string, base_url);

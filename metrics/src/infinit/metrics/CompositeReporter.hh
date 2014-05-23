@@ -44,13 +44,21 @@ namespace infinit
 
       virtual
       void
-      _transaction_created(std::string const& transaction_id,
-                           std::string const& sender_id,
-                           std::string const& recipient_id,
-                           int64_t file_count,
-                           int64_t total_size,
-                           uint32_t message_length,
-                           bool invitation);
+      _link_transaction_created(std::string const& transaction_id,
+                                std::string const& sender_id,
+                                int64_t file_count,
+                                int64_t total_size,
+                                uint32_t message_length);
+
+      virtual
+      void
+      _peer_transaction_created(std::string const& transaction_id,
+                                std::string const& sender_id,
+                                std::string const& recipient_id,
+                                int64_t file_count,
+                                int64_t total_size,
+                                uint32_t message_length,
+                                bool ghost);
 
       virtual
       void

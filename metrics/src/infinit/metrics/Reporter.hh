@@ -30,6 +30,12 @@ namespace infinit
         TransferExitReasonUnknown, // not properly caught reason should not happen
       };
 
+      enum TransactionType
+      {
+        LinkTransaction,
+        PeerTransaction,
+      };
+
     class CompositeReporter;
     /// Abstract metrics reporter.
     class Reporter:
@@ -69,13 +75,20 @@ namespace infinit
                             std::string const& connection_method);
 
       void
-      transaction_created(std::string const& transaction_id,
-                          std::string const& sender_id,
-                          std::string const& recipient_id,
-                          int64_t file_count,
-                          int64_t total_size,
-                          uint32_t message_length,
-                          bool ghost);
+      link_transaction_created(std::string const& transaction_id,
+                               std::string const& sender_id,
+                               int64_t file_count,
+                               int64_t total_size,
+                               uint32_t message_length);
+
+      void
+      peer_transaction_created(std::string const& transaction_id,
+                               std::string const& sender_id,
+                               std::string const& recipient_id,
+                               int64_t file_count,
+                               int64_t total_size,
+                               uint32_t message_length,
+                               bool ghost);
 
       void
       transaction_ended(std::string const& transaction_id,
@@ -112,13 +125,21 @@ namespace infinit
 
       virtual
       void
-      _transaction_created(std::string const& transaction_id,
-                           std::string const& sender_id,
-                           std::string const& recipient_id,
-                           int64_t file_count,
-                           int64_t total_size,
-                           uint32_t message_length,
-                           bool ghost);
+      _link_transaction_created(std::string const& transaction_id,
+                                std::string const& sender_id,
+                                int64_t file_count,
+                                int64_t total_size,
+                                uint32_t message_length);
+
+      virtual
+      void
+      _peer_transaction_created(std::string const& transaction_id,
+                                std::string const& sender_id,
+                                std::string const& recipient_id,
+                                int64_t file_count,
+                                int64_t total_size,
+                                uint32_t message_length,
+                                bool ghost);
 
       virtual
       void
