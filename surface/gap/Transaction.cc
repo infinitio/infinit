@@ -441,7 +441,17 @@ namespace surface
     Transaction::on_transaction_update(std::shared_ptr<Data> data)
     {
       ELLE_TRACE_SCOPE("%s: update data with %s", *this, *data);
-      *this->_data = *data;
+      ELLE_ASSERT_EQ(typeid(*data), typeid(*this->_data));
+      if (dynamic_cast<infinit::oracles::LinkTransaction*>(data.get()))
+      {
+        *dynamic_cast<infinit::oracles::LinkTransaction*>(this->_data.get())
+          = *dynamic_cast<infinit::oracles::LinkTransaction*>(data.get());
+      }
+      else
+      {
+        *dynamic_cast<infinit::oracles::PeerTransaction*>(this->_data.get())
+          = *dynamic_cast<infinit::oracles::PeerTransaction*>(data.get());
+      }
       if (this->_machine && !this->_over)
       {
         ELLE_DEBUG("%s: updating machine", *this)
