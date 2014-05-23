@@ -5,6 +5,7 @@
 
 #include <elle/AtomicFile.hh>
 #include <elle/Error.hh>
+#include <elle/container/vector.hh>
 #include <elle/memory.hh>
 #include <elle/serialization/json.hh>
 
