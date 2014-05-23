@@ -902,14 +902,12 @@ namespace surface
     void
     State::Configuration::serialize(elle::serialization::Serializer& s)
     {
-      std::cerr << "PIF" << std::endl;
       s.serialize("s3", this->s3);
     }
 
     void
     State::Configuration::S3::serialize(elle::serialization::Serializer& s)
     {
-      std::cerr << "PAF" << std::endl;
       s.serialize("multipart_upload", this->multipart_upload);
     }
 
@@ -917,10 +915,8 @@ namespace surface
     State::Configuration::S3::MultipartUpload::serialize(
       elle::serialization::Serializer& s)
     {
-      std::cerr << "POUF" << std::endl;
       s.serialize("chunk_size", this->chunk_size);
       s.serialize("parallelism", this->parallelism);
-      std::cerr << this->parallelism << std::endl;
     }
 
     void
