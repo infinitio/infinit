@@ -489,24 +489,25 @@ namespace infinit
         get_cloud_buffer_token(std::string const& transaction_id,
                                bool force_regenerate) const;
 
-        /*------.
-        | Links |
-        `------*/
+      /*------.
+      | Links |
+      `------*/
       public:
         CreateLinkTransactionResponse
         create_link(LinkTransaction::FileList const& file_list,
                     std::string const& name,
                     std::string const& message) const;
-
         void
         update_link(std::string const& id,
                     double progress,
                     Transaction::Status status) const;
-
         std::vector<LinkTransaction>
         links(int offset = 0,
               int count = 100,
               bool include_expired = false) const;
+        aws::Credentials
+        link_credentials(std::string const& id,
+                         bool regenerate = false) const;
 
       public:
         ServerStatusResponse

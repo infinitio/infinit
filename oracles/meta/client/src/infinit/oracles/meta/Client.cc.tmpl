@@ -924,6 +924,17 @@ namespace infinit
         return res;
       }
 
+      aws::Credentials
+      Client::link_credentials(std::string const& id,
+                               bool regenerate) const
+      {
+        std::string url = elle::sprintf("/link/%s/credentials", id);
+        auto request = this->_request(
+          url, regenerate ? Method::POST : Method::GET);
+        elle::serialization::json::SerializerIn input(request);
+        return aws::Credentials(input);
+      }
+
       /*--------------.
       | Server Status |
       `--------------*/
