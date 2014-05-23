@@ -239,13 +239,12 @@ class Transfer:
     if files is not None:
       expect['files'] = files
     # Filter out unexpected keys
-    # FIXME: broken: PeerTransaction content is empty (deserialisation glitch?)
-    #if ts is not None:
-    #  ts = { k: ts[k] for k in expect.keys() }
-    #  test.assertEqual(ts, expect)
-    #if tr is not None:
-    #  tr = { k: tr[k] for k in expect.keys() }
-    #  test.assertEqual(tr, expect)
+    if ts is not None:
+      ts = { k: ts[k] for k in expect.keys() }
+      test.assertEqual(ts, expect)
+    if tr is not None:
+      tr = { k: tr[k] for k in expect.keys() }
+      test.assertEqual(tr, expect)
     test.assertTrue(check_explain(
       FileMatch(self.data.directory, self.oracles.download_dir)))
 
