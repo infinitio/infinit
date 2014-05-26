@@ -8,6 +8,7 @@
 #include <elle/format/json/Dictionary.hh>
 #include <elle/json/json.hh>
 #include <elle/log.hh>
+#include <elle/os/environ.hh>
 #include <elle/print.hh>
 #include <elle/serialization/json.hh>
 #include <elle/serialize/JSONArchive.hh>
@@ -17,6 +18,7 @@
 #include <elle/system/platform.hh>
 
 #include <reactor/scheduler.hh>
+#include <reactor/http/exceptions.hh>
 
 #include <infinit/oracles/meta/Client.hh>
 #include <infinit/oracles/meta/macro.hh>
@@ -225,6 +227,17 @@ namespace infinit
         return !(*this == error);
       }
 
+      static
+      boost::posix_time::time_duration
+      _requests_timeout()
+      {
+        auto env = elle::os::getenv("INFINIT_META_REQUEST_TIMEOUT", "");
+        if (!env.empty())
+          return boost::posix_time::seconds(boost::lexical_cast<int>(env));
+        else
+          return 30_sec;
+      }
+
       User::User(std::string const& id,
                  std::string const& fullname,
                  std::string const& handle,
@@ -250,7 +263,7 @@ namespace infinit
         _port(port),
         _root_url{elle::sprintf("%s://%s:%d", protocol, server, port)},
         _client{"MetaClient/" INFINIT_VERSION},
-        _default_configuration(boost::posix_time::seconds{30},
+        _default_configuration(_requests_timeout(),
                                {},
                                reactor::http::Version::v10),
         _email{},
@@ -1022,33 +1035,41 @@ namespace infinit
       {
         while (true)
         {
-          reactor::http::Request request =
-            method == Method::GET ?
-            this->_client.request(this->_url(url),
-                                  method,
-                                  this->_default_configuration) :
-            this->_client.request(this->_url(url),
-                                  method,
-                                  "application/json",
-                                  this->_default_configuration);
-          send(request);
-          switch (request.status())
+          try
           {
-            case reactor::http::StatusCode::Bad_Gateway:
-            case reactor::http::StatusCode::Service_Unavailable:
-            case reactor::http::StatusCode::Gateway_Timeout:
+            reactor::http::Request request =
+              method == Method::GET ?
+              this->_client.request(this->_url(url),
+                                    method,
+                                    this->_default_configuration) :
+              this->_client.request(this->_url(url),
+                                    method,
+                                    "application/json",
+                                    this->_default_configuration);
+            send(request);
+            switch (request.status())
             {
-              ELLE_WARN("%s: error while posting, retrying: %s.\n%s",
-                        *this, request.status(), request.response().string());
-              boost::random::uniform_int_distribution<> random(100, 200);
-              reactor::sleep(3_sec * (random(this->_rng) / 100.));
-              continue;
+              case reactor::http::StatusCode::Bad_Gateway:
+              case reactor::http::StatusCode::Service_Unavailable:
+              case reactor::http::StatusCode::Gateway_Timeout:
+              {
+                ELLE_WARN("%s: error requesting %s, retrying: %s.\n%s",
+                          *this, url,
+                          request.status(), request.response().string());
+                boost::random::uniform_int_distribution<> random(100, 200);
+                reactor::sleep(3_sec * (random(this->_rng) / 100.));
+                continue;
+              }
+              default:
+                break;
             }
-            default:
-              break;
+            this->_handle_errors(request);
+            return request;
           }
-          this->_handle_errors(request);
-          return request;
+          catch (reactor::http::Timeout const&)
+          {
+            ELLE_WARN("%s: timeout requesting %s, retrying", *this, url);
+          }
         }
       }
 
