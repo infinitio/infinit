@@ -139,7 +139,6 @@ namespace surface
           return boost::filesystem::path(el).filename().string();
         });
       ELLE_ASSERT_EQ(this->data()->files.size(), this->files().size());
-      this->_message = message;
       this->_run_from_snapshot();
     }
 
