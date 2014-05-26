@@ -133,11 +133,13 @@ namespace surface
             meta.get_cloud_buffer_token(this->transaction_id(), !first_time);
           break;
         }
-        catch(reactor::Terminate const& e)
-        {
+        catch(elle::http::Exception const&)
+        { // Permanent error
+          ELLE_LOG("%s: get_cloud_buffer_token failed with %s, aborting...",
+                   *this, elle::exception_string());
           throw;
         }
-        catch(...)
+        catch(infinit::oracles::meta::Exception const&)
         {
           ELLE_LOG("%s: get_cloud_buffer_token failed with %s, retrying...",
                    *this, elle::exception_string());
