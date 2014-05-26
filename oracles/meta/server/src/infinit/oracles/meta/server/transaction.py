@@ -827,7 +827,7 @@ class Mixin:
 
     # Ensure transaction is not in a final state.
     if transaction['status'] in transaction_status.final:
-      return self.fail(error.TRANSACTION_ALREADY_FINALIZED)
+      return self.gone('Transaction already finalized')
 
     res = None
 

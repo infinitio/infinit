@@ -347,6 +347,9 @@ class Meta(bottle.Bottle,
   def forbidden(self, message = None):
     bottle.abort(403, message)
 
+  def gone(self, message = None):
+    bottle.abort(410, message)
+
   def not_found(self, message = None):
     bottle.abort(404, message)
 
