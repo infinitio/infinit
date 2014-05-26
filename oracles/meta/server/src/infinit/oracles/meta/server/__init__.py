@@ -50,6 +50,7 @@ class Meta(bottle.Bottle,
   def __init__(self,
                mongo_host = None,
                mongo_port = None,
+               mongo_replica_set = None,
                enable_emails = True,
                enable_invitations = True,
                trophonius_expiration_time = 300, # in sec
@@ -71,14 +72,20 @@ class Meta(bottle.Bottle,
     if self.__force_admin:
       elle.log.warn('%s: running in force admin mode' % self)
     super().__init__()
-    db_args = {}
-    if mongo_host is not None:
-      db_args['host'] = mongo_host
-    if mongo_port is not None:
-      db_args['port'] = mongo_port
     with elle.log.log('%s: connect to MongoDB on %s:%s' %
                       (self, mongo_host, mongo_port)):
-      self.__database = pymongo.MongoClient(**db_args).meta
+      if mongo_replica_set is not None:
+        self.__mongo = \
+          pymongo.MongoReplicaSetClient(','.join(mongo_replica_set),
+                                        replicaSet = 'fist-meta')
+      else:
+        db_args = {}
+        if mongo_host is not None:
+          db_args['host'] = mongo_host
+        if mongo_port is not None:
+          db_args['port'] = mongo_port
+        self.__mongo = pymongo.MongoClient(**db_args)
+      self.__database = self.__mongo.meta
       self.__set_constraints()
     self.catchall = debug
     bottle.debug(debug)
