@@ -643,20 +643,30 @@ namespace infinit
                    *this,
                    transaction_id,
                    status);
-        json::Dictionary request{};
-        request["transaction_id"] = transaction_id;
-        request["status"] = (int) status;
-
-        if (status == oracles::Transaction::Status::accepted)
-        {
-          ELLE_ASSERT_GT(device_id.length(), 0u);
-          ELLE_ASSERT_GT(device_name.length(), 0u);
-          request["device_id"] = device_id;
-          request["device_name"] = device_name;
-        }
-
-        return this->_request<UpdatePeerTransactionResponse>(
-          "/transaction/update", Method::POST, request);
+        auto request = this->_request(
+          "/transaction/update",
+          Method::POST,
+          [&] (reactor::http::Request& r)
+          {
+            elle::serialization::json::SerializerOut query(r);
+            // FIXME: get rid of const casts when output serialization has his
+            // const API
+            query.serialize("transaction_id",
+                            const_cast<std::string&>(transaction_id));
+            int status_integral = static_cast<int>(status);
+            query.serialize("status", status_integral);
+            if (status == oracles::Transaction::Status::accepted)
+            {
+              ELLE_ASSERT_GT(device_id.length(), 0u);
+              ELLE_ASSERT_GT(device_name.length(), 0u);
+              query.serialize("device_id",
+                              const_cast<std::string&>(device_id));
+              query.serialize("device_name",
+                              const_cast<std::string&>(device_name));
+            }
+          });
+        return this->_deserialize_answer<UpdatePeerTransactionResponse>(
+          std::move(request));
       }
 
       UpdatePeerTransactionResponse
