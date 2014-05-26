@@ -67,6 +67,8 @@ def wait_helper(timeout, condition, raise_on_timeout = True):
 
 # Run the test until timeout in seconds or condition becomes true
 def advance(states, timeout, condition):
+  if timeout is None:
+    timeout = 10000 # whatever, global test timeout will kill us
   i = 0
   while i < timeout * 10 and not condition():
     for s in states:
@@ -91,7 +93,7 @@ test_credentials = [('mefyl@infinit.io', 'mefyl'), ('mefyl2@infinit.io', 'mefyl2
 class TransferPeer:
   """ Handles one peer, expecting only one transaction at most.
   """
-  def __init__(self, oracles, credentials):
+  def __init__(self, oracles, credentials, timeout = None):
     self.oracles = oracles
     self.credentials = credentials
     self.state = None
@@ -101,6 +103,7 @@ class TransferPeer:
     self.interrupt = False
     self.logged_in = False
     self.transaction_uid = None # unique id of transaction
+    self.timeout = timeout
   def create(self, force=True):
     if self.state is not None and not force:
       return
@@ -162,18 +165,18 @@ class TransferPeer:
     """ Wait for a transaction id to be available or throw"""
     wait_helper(timeout, lambda: self.fetch_transaction_id() is not None)
     return self.fetch_transaction_id()
-  def wait_transaction_progress(self, progress, timeout=1000):
+  def wait_transaction_progress(self, progress, timeout=None):
     """ Wait for transaction progress to be above given threshold or throw"""
-    tid = self.wait_transaction_id(timeout)
-    return wait_helper(timeout, lambda: self.check_progress(tid, progress))
-  def wait_transaction_status(self, status, timeout=1000):
-    return wait_helper(timeout, lambda: self.status == status)
-  def wait_transaction_final(self, timeout=1000):
-    return wait_helper(timeout, lambda: self.status in final_statuses)
+    tid = self.wait_transaction_id(timeout or self.timeout)
+    return wait_helper(timeout or self.timeout, lambda: self.check_progress(tid, progress))
+  def wait_transaction_status(self, status, timeout=None):
+    return wait_helper(timeout or self.timeout, lambda: self.status == status)
+  def wait_transaction_final(self, timeout=None):
+    return wait_helper(timeout or self.timeout, lambda: self.status in final_statuses)
   @property
   def status(self):
     """ Transaction status string (transaction_{canceled, finished, started...}"""
-    tid = self.wait_transaction_id(1000)
+    tid = self.wait_transaction_id()
     if self.logged_in:
       return self.state.transaction_status(tid)
     else:
@@ -181,25 +184,29 @@ class TransferPeer:
   @property
   def transaction(self):
     """ Return the transaction metadata"""
-    tid = self.wait_transaction_id(1000)
+    tid = self.wait_transaction_id()
     return self.state.transaction(tid)
 
 class Transfer:
-  def __init__(self, credentials, files, *args, **kvargs):
+  def __init__(self, credentials, files, files_data, message = None, timeout=None):
     self.files = files
-    self.data_args = args
-    self.data_kvargs = kvargs
+    self.data_kvargs = files_data
     self.peers = [None, None]
     self.credentials = credentials
+    self.message = message or 'Receive this.'
+    self.timeout = timeout
   def __enter__(self):
     self.oracles = infinit.oracles.servers.Oracles(
       mongo_dump = '%s/two-users' % os.environ['DUMPS'])
     self.oracles.__enter__()
-    self.data = TemporaryData(*self.data_args, **self.data_kvargs)
+    # WARNING: 0 delay occurred at this stage: trophonius is not logged in
+    # yet
+    reactor.sleep(datetime.timedelta(milliseconds = 1000))
+    self.data = TemporaryData(**self.data_kvargs)
     self.data.__enter__()
     self.files = list(map(lambda x: os.path.join(self.data.directory, x), self.files))
-    self.peers = [TransferPeer(self.oracles, self.credentials[0]),
-                  TransferPeer(self.oracles, self.credentials[1])]
+    self.peers = [TransferPeer(self.oracles, self.credentials[0], timeout=self.timeout),
+                  TransferPeer(self.oracles, self.credentials[1], timeout=self.timeout)]
     self.peers[0].create()
     self.peers[1].create()
     return self
@@ -207,7 +214,8 @@ class Transfer:
     self.data.__exit__()
     self.oracles.__exit__()
   def start(self):
-    self.sender.state.send_files(self.credentials[1][0], self.files, "Receive this.")
+    self.sender.state.send_files(self.credentials[1][0], self.files,
+                                 self.message)
   @property
   def sender(self):
     return self.peers[0]
@@ -235,7 +243,7 @@ class Transfer:
       test.assertEqual(self.sender.status, 'transaction_finished')
       ts = self.sender.transaction
     expect = {
-      'message': 'Receive this.',
+      'message': self.message,
       'recipient_fullname': test_credentials[1][0].split('@')[0],
       'sender_fullname': test_credentials[0][0].split('@')[0],
     };
@@ -267,7 +275,7 @@ class TestBasicTransfer(unittest.TestCase):
     Rest of parameters are stuff that will be validated in transaction metadata
     """
     with Transfer(test_credentials, files,
-                  **files_data) as transfer:
+                  files_data) as transfer:
       transfer.recipient.login()
       transfer.sender.login()
       wait_helper(3, lambda: False, False)
@@ -356,20 +364,22 @@ class TestResumeTransfer(unittest.TestCase):
     return result
   def transfer_test(self, files, files_data, sequence,
                     expect_total_size = None, expect_is_directory = None,
-                    expect_files_count = None, expect_files = None):
+                    expect_files_count = None, expect_files = None,
+                    message = None, timeout = None, assert_success = True):
     if isinstance(sequence, str):
       sequence = self.parse_sequence(sequence)
     with Transfer(test_credentials, files,
-                  **files_data) as transfer:
+                  files_data, timeout=timeout, message=message) as transfer:
       transfer.sender.login()
-      wait_helper(3, lambda: False, False)
+      wait_helper(3, lambda: False, False) #FIXME reduce/remove this
       transfer.recipient.set_rules(accept_rules)
       for e in sequence:
         elle.log.trace('Executing %s' % e[0])
         e[1](transfer)
-      transfer.wait_transaction_final(30)
-      transfer.assertSuccess(self, expect_total_size, expect_is_directory,
-                             expect_files_count, expect_files)
+      transfer.wait_transaction_final(timeout or 30)
+      if assert_success:
+        transfer.assertSuccess(self, expect_total_size, expect_is_directory,
+                               expect_files_count, expect_files)
   #def test_self(self): # tests the test system
   #  return self.transfer_test(['100k'], {'name': '100k','size': 100000},
   #                            'R start 10 20 30 100',
