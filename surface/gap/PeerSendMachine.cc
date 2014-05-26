@@ -589,7 +589,7 @@ namespace surface
       {
         exit_reason = infinit::metrics::TransferExitReasonError;
         exit_message = elle::exception_string();
-        throw;
+        ELLE_LOG("%s: cloud operation failed with %s", *this, exit_message);
       }
     }
 
