@@ -391,6 +391,14 @@ namespace infinit
         return res;
       }
 
+      LoginResponse::Trophonius
+      Client::trophonius()
+      {
+        auto request = this->_request("/trophonius", Method::GET);
+        elle::serialization::json::SerializerIn input(request);
+        return LoginResponse::Trophonius(input);
+      }
+
       RegisterResponse
       Client::register_(std::string const& email,
                         std::string const& fullname,
