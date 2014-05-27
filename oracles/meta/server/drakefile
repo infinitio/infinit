@@ -12,6 +12,7 @@ with open(str(drake.path_source('../../../elle/drake-utils.py')), 'r') as f:
   exec(f.read(), globals(), globals())
 
 def configure(elle,
+              python3,
               python_common,
               papier_python,
               prefix = drake.Path('/usr/local')):
@@ -159,10 +160,13 @@ def configure(elle,
       'version': git.version(),
       'version_major': git.version().split('.')[0],
       'version_minor': git.version().split('.')[1],
+      'python_version_major': python3.version.major,
+      'python_version_minor': python3.version.minor,
   }):
     drake.node('control.tmpl')
     drake.node('postinst.tmpl')
     drake.node('config/meta.tmpl')
+    drake.node('config/meta.xml.tmpl')
   package += drake.copy(drake.nodes('control', 'postinst'),
                         'debian/DEBIAN')
 
