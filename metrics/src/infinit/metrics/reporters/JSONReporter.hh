@@ -26,6 +26,7 @@ namespace infinit
       message,
       message_length,
       metric_sender_id,
+      onboarding,
       recipient_id,
       sender_id,
       status,
@@ -70,7 +71,8 @@ namespace infinit
     private:
       virtual
       void
-      _transaction_accepted(std::string const& transaction_id);
+      _transaction_accepted(std::string const& transaction_id,
+                            bool onboarding);
 
       virtual
       void
@@ -93,13 +95,15 @@ namespace infinit
                                 int64_t file_count,
                                 int64_t total_size,
                                 uint32_t message_length,
-                                bool ghost);
+                                bool ghost,
+                                bool onboarding);
 
       virtual
       void
       _transaction_ended(std::string const& transaction_id,
                          infinit::oracles::Transaction::Status status,
-                         std::string const& info);
+                         std::string const& info,
+                         bool onboarding);
 
 
 
