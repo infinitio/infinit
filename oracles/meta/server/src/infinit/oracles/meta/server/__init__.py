@@ -86,8 +86,8 @@ class Meta(bottle.Bottle,
         if mongo_port is not None:
           db_args['port'] = mongo_port
         self.__mongo = pymongo.MongoClient(**db_args)
-      self.__database = self.__mongo.meta
-      self.__set_constraints()
+    self.__database = self.__mongo.meta
+    self.__set_constraints()
     self.catchall = debug
     bottle.debug(debug)
     # Plugins.
