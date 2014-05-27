@@ -71,13 +71,15 @@ class Meta(bottle.Bottle,
     if self.__force_admin:
       elle.log.warn('%s: running in force admin mode' % self)
     super().__init__()
-    with elle.log.log('%s: connect to MongoDB on %s:%s' %
-                      (self, mongo_host, mongo_port)):
-      if mongo_replica_set is not None:
+    if mongo_replica_set is not None:
+      with elle.log.log(
+          '%s: connect to MongoDB replica set %s' % (self, mongo_replica_set)):
         self.__mongo = \
           pymongo.MongoReplicaSetClient(','.join(mongo_replica_set),
                                         replicaSet = 'fist-meta')
-      else:
+    else:
+      with elle.log.log(
+          '%s: connect to MongoDB on %s:%s' % (self, mongo_host, mongo_port)):
         db_args = {}
         if mongo_host is not None:
           db_args['host'] = mongo_host
