@@ -104,24 +104,20 @@ namespace surface
     State::State(std::string const& meta_protocol,
                  std::string const& meta_host,
                  uint16_t meta_port,
-                 std::string const& trophonius_host,
-                 uint16_t trophonius_port,
                  std::unique_ptr<infinit::metrics::Reporter> metrics):
-      _logger_intializer{},
-      _meta{meta_protocol, meta_host, meta_port},
-      _meta_message{""},
-      _trophonius{
-        trophonius_host,
-        trophonius_port,
+      _logger_intializer(),
+      _meta(meta_protocol, meta_host, meta_port),
+      _meta_message(""),
+      _trophonius(
         [this] (bool status)
-          {
-            this->on_connection_changed(status);
-          },
-        [this] (void)
-          {
-            this->on_reconnection_failed();
-          }
-      },
+        {
+          this->on_connection_changed(status);
+        },
+        [this]
+        {
+          this->on_reconnection_failed();
+        }
+        ),
       _metrics_reporter(std::move(metrics)),
       _me{nullptr},
       _output_dir{common::system::download_directory()},
@@ -278,10 +274,10 @@ namespace surface
       }
     }
 
-
     /*----------------------.
     | Login/Logout/Register |
     `----------------------*/
+
     void
     State::login(std::string const& email,
                  std::string const& password)
@@ -316,12 +312,6 @@ namespace surface
                                         this->_meta_message));
         }
       }
-      ELLE_TRACE("Poking trophonius");
-      if (!this->_trophonius_server_check())
-      {
-        throw Exception(gap_trophonius_unreachable,
-                        "Unable to contact Trophonius");
-      }
 
       std::string lower_email = email;
 
@@ -336,15 +326,24 @@ namespace surface
           infinit::metrics::Reporter::metric_sender_id(lower_email);
           this->_metrics_reporter->user_login(false, "");
         });
-      auto res = this->_meta.login(lower_email, password, _device_uuid);
+      auto login_response =
+        this->_meta.login(lower_email, password, _device_uuid);
       login_failed.abort();
+      this->_trophonius.server(
+        login_response.trophonius.host, login_response.trophonius.port_ssl);
+      ELLE_TRACE("%s: poking trophonius", *this);
+      if (!this->_trophonius_server_check())
+      {
+        throw Exception(gap_trophonius_unreachable,
+                        "Unable to contact Trophonius");
+      }
 
       elle::With<elle::Finally>([&] { this->_meta.logout(); })
         << [&] (elle::Finally& finally_logout)
       {
         ELLE_LOG("%s: logged in as %s", *this, email);
 
-        infinit::metrics::Reporter::metric_sender_id(res.id);
+        infinit::metrics::Reporter::metric_sender_id(login_response.id);
         this->_metrics_reporter->user_login(true, "");
         this->_metrics_heartbeat_thread.reset(
           new reactor::Thread{
@@ -364,10 +363,10 @@ namespace surface
         this->_identity.reset(new papier::Identity());
 
         // Decrypt the identity.
-        if (this->_identity->Restore(res.identity)    == elle::Status::Error ||
-            this->_identity->Decrypt(password)        == elle::Status::Error ||
-            this->_identity->Clear()                  == elle::Status::Error ||
-            this->_identity->Save(identity_clear)     == elle::Status::Error)
+        if (this->_identity->Restore(login_response.identity) == elle::Status::Error ||
+            this->_identity->Decrypt(password) == elle::Status::Error ||
+            this->_identity->Clear() == elle::Status::Error ||
+            this->_identity->Save(identity_clear) == elle::Status::Error)
           throw Exception(gap_internal_error,
                           "Couldn't decrypt the identity file !");
 
@@ -383,13 +382,13 @@ namespace surface
           this->_identity->store(path);
         }
 
-        std::ofstream identity_infos{common::infinit::identity_path(res.id)};
+        std::ofstream identity_infos{common::infinit::identity_path(login_response.id)};
 
         if (identity_infos.good())
         {
-          identity_infos << res.identity << "\n"
-                         << res.email << "\n"
-                         << res.id << "\n"
+          identity_infos << login_response.identity << "\n"
+                         << login_response.email << "\n"
+                         << login_response.id << "\n"
           ;
           identity_infos.close();
         }
