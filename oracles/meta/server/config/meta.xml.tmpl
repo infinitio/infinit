@@ -3,6 +3,10 @@
   <environment>ELLE_LOG_LEVEL=infinit.oracles.meta.*:DEBUG</environment>
   <plugin>python3</plugin>
   <pythonpath>/opt/infinit/meta/lib/python${python_version_major}.${python_version_minor}</pythonpath>
+  <!-- Preload papier to avoid OpenSSL incompatibilities with lazy loading -->
+  <shared-import>papier</shared-import>
+  <!-- Lazy mode is needed for the pymongo replica monitor thread to work -->
+  <lazy/>
   <module>infinit.oracles.meta.server.wsgi</module>
   <master/>
   <processes>4</processes>
