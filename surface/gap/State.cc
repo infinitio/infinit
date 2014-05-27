@@ -111,6 +111,8 @@ namespace surface
       _trophonius(
         [this] (bool status)
         {
+          auto tropho = this->meta.trophonius();
+          this->server(tropho.host, tropho.port_ssl);
           this->on_connection_changed(status);
         },
         [this]
