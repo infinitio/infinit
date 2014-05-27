@@ -76,7 +76,7 @@ namespace infinit
       struct DebugResponse : Response
       {};
 
-      struct LoginResponse : Response
+      struct LoginResponse
       {
         std::string fullname;
         std::string handle;
@@ -85,6 +85,20 @@ namespace infinit
         std::string id;
         // boost::uuids::uuid device_id;
         std::string device_id;
+        struct Trophonius
+        {
+          std::string host;
+          int port;
+          Trophonius() = default;
+          Trophonius(elle::serialization::SerializerIn& s);
+          void
+          serialize(elle::serialization::Serializer& s);
+        };
+        Trophonius trophonius;
+        LoginResponse() = default;
+        LoginResponse(elle::serialization::SerializerIn& s);
+        void
+        serialize(elle::serialization::Serializer& s);
       };
 
       struct LogoutResponse : Response

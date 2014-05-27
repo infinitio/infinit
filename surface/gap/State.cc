@@ -324,23 +324,19 @@ namespace surface
       }
 
       std::string lower_email = email;
-      std::string fail_reason = "";
 
       std::transform(lower_email.begin(),
                      lower_email.end(),
                      lower_email.begin(),
                      ::tolower);
 
-      elle::SafeFinally login_failed{[this, lower_email, fail_reason] {
-        infinit::metrics::Reporter::metric_sender_id(lower_email);
-        this->_metrics_reporter->user_login(false, fail_reason);
-      }};
-
-
+      elle::SafeFinally login_failed(
+        [this, lower_email]
+        {
+          infinit::metrics::Reporter::metric_sender_id(lower_email);
+          this->_metrics_reporter->user_login(false, "");
+        });
       auto res = this->_meta.login(lower_email, password, _device_uuid);
-
-      fail_reason = res.error_details;
-
       login_failed.abort();
 
       elle::With<elle::Finally>([&] { this->_meta.logout(); })
