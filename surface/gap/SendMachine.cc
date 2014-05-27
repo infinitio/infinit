@@ -192,31 +192,23 @@ namespace surface
           file_size / chunk_size + ((file_size % chunk_size) ? 1 : 0);
         ELLE_TRACE("%s: using chunk size of %s, with %s chunks",
                    *this, chunk_size, chunk_count);
-        // Load our own snapshot that contains the upload uid
-        auto raw_snapshot_path =
-          this->transaction().snapshots_directory() /  "ghost_id.snapshot";
-        std::string upload_id;
-        {
-          std::ifstream ifs(raw_snapshot_path.string());
-          ifs >> upload_id;
-        }
-        ELLE_DEBUG("%s: tried to reload id from %s, got %s",
-                   *this, raw_snapshot_path, upload_id);
         std::vector<aws::S3::MultiPartChunk> chunks;
         int next_chunk = 0;
         int max_check_id = 0; // check for chunk presence up to that id
         int start_check_index = 0; // check for presence from that chunks index
-        if (upload_id.empty())
+        std::string upload_id;
+        if (!transaction().plain_upload_uid())
         {
           //FIXME: pass correct mime type for non-zip case
           upload_id = handler.multipart_initialize(source_file_name);
-          std::ofstream ofs(raw_snapshot_path.string());
-          ofs << upload_id;
-          ELLE_DEBUG("%s: saved id %s to %s",
-                     *this, upload_id, raw_snapshot_path);
+          transaction().plain_upload_uid(upload_id);
+          transaction()._snapshot_save();
+          ELLE_TRACE("%s: saved upload ID %s to snapshot",
+                     *this, *transaction().plain_upload_uid());
         }
         else
         { // Fetch block list
+          upload_id = *transaction().plain_upload_uid();
           chunks = handler.multipart_list(source_file_name, upload_id);
           std::sort(chunks.begin(), chunks.end(),
             [](aws::S3::MultiPartChunk const& a, aws::S3::MultiPartChunk const& b)
