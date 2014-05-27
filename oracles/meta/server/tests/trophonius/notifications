@@ -37,7 +37,12 @@ class Trophonius:
     self.expected_notifications = dict()
 
   def __enter__(self):
-    self.meta.put('trophonius/%s' % str(self.uuid), body = {'port': self.meta_accepter.port})
+    self.meta.put('trophonius/%s' % str(self.uuid),
+                  body = {
+                    'port': self.meta_accepter.port,
+                    'port_client': 0,
+                    'port_client_ssl': 0,
+                  })
     return self
 
   def __exit__(self, type, value, traceback):

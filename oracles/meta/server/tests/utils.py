@@ -98,7 +98,11 @@ class Trophonius(Client):
     super().__init__(meta)
     self.__uuid = str(uuid4())
     self.__users = {}
-    self.__args = {"port": 23456}
+    self.__args = {
+      'port': 23456,
+      'port_client': 23457,
+      'port_client_ssl': 23458,
+    }
 
   def __enter__(self):
     res = self.put('trophonius/%s' % self.__uuid, self.__args)
@@ -365,6 +369,7 @@ class User(Client):
       self.device_id = device_id
     params = self.login_paremeters
     params.update(kw)
+    params.update({'pick_trophonius': False})
     res = self.post('login', params)
     assert res['success']
     assert res['device_id'] == str(self.device_id)

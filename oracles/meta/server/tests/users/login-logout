@@ -10,6 +10,7 @@ with Meta() as meta:
                     'device_id': str(uuid4()),
                     'email': 'foo@bar.baz',
                     'password': password,
+                    'pick_trophonius': False,
                   })
   assert res['success']
   assert res['email'] == 'foo@bar.baz'

@@ -180,11 +180,14 @@ namespace infinit
       public:
         Client(ConnectCallback connect_callback,
                ReconnectPokeFailedCallback reconnect_failed_callback);
-
         Client(ConnectCallback connect_callback,
                ReconnectPokeFailedCallback reconnect_failed_callback,
                std::vector<unsigned char> server_fingerprint);
-
+        Client(std::string  host,
+               int port,
+               ConnectCallback connect_callback,
+               ReconnectPokeFailedCallback reconnect_failed_callback,
+               std::vector<unsigned char> server_fingerprint);
         ~Client();
 
       public:

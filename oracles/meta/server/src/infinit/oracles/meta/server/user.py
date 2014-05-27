@@ -128,7 +128,8 @@ class Mixin:
             email,
             password,
             device_id: uuid.UUID,
-            OS: str = None):
+            OS: str = None,
+            pick_trophonius: bool = True):
     if OS is not None:
       OS = OS.strip().lower()
     # FIXME: 0.0.0.0 is the website.
@@ -175,7 +176,8 @@ class Mixin:
       response = self.success(self._login_response(user,
                                                    device = device,
                                                    web = False))
-      response['trophonius'] = self.trophonius_pick()
+      if pick_trophonius:
+        response['trophonius'] = self.trophonius_pick()
       return response
 
   @api('/web-login', method = 'POST')

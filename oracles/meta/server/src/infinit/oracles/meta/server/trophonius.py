@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 import elle.log
+import bottle
 import bson
 import random
 import time
@@ -134,7 +135,7 @@ class Mixin:
     trophonius = self.database.trophonius.find(
       fields = ['ip', 'port', 'port_client', 'port_client_ssl'])
     return {
-      'trophonius': ["%s:%s" % (s['ip'], s['port'])
+      'trophoniuses': ["%s:%s" % (s['ip'], s['port'])
                      for s in trophonius]
     }
 
@@ -144,6 +145,8 @@ class Mixin:
     trophoniuses = \
       list(self.database.trophonius.find(
         fields = ['ip', 'port_client', 'port_client_ssl']))
+    if len(trophoniuses) == 0:
+      bottle.abort(503, 'no notification server available')
     trophonius = \
       trophoniuses[random.randint(0, len(trophoniuses) - 1)]
     return {

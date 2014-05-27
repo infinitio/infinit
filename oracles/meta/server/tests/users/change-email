@@ -84,6 +84,7 @@ with Meta(enable_emails = True,
   res = meta.post('login', {
     'email': new_email_address,
     'password': u.password,
-    'device_id': str(u2.device_id)
+    'device_id': str(u2.device_id),
+    'pick_trophonius': False,
   })
   assert res['success']
