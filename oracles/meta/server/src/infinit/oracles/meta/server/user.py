@@ -175,16 +175,7 @@ class Mixin:
       response = self.success(self._login_response(user,
                                                    device = device,
                                                    web = False))
-      # Pick a random trophonius
-      trophoniuses = \
-        list(self.database.trophonius.find(fields = ['ip', 'port_client', 'port_client_ssl']))
-      trophonius = \
-        trophoniuses[random.randint(0, len(trophoniuses) - 1)]
-      response['trophonius'] = {
-        'host': trophonius['ip'],
-        'port': trophonius['port_client'],
-        'port_ssl': trophonius['port_client_ssl'],
-      }
+      response['trophonius'] = self.trophonius_pick()
       return response
 
   @api('/web-login', method = 'POST')

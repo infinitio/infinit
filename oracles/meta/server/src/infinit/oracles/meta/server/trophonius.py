@@ -2,8 +2,9 @@
 
 import elle.log
 import bson
-import uuid
+import random
 import time
+import uuid
 
 from . import conf, error, regexp
 from .utils import api, require_admin, require_logged_in
@@ -128,11 +129,25 @@ class Mixin:
                               message = {"message": message})
     return self.success()
 
-  @api('/trophonius')
+  @api('/trophoniuses')
   def registered_trophonius(self):
     trophonius = self.database.trophonius.find(
       fields = ['ip', 'port', 'port_client', 'port_client_ssl'])
     return {
       'trophonius': ["%s:%s" % (s['ip'], s['port'])
                      for s in trophonius]
+    }
+
+  @api('/trophonius')
+  @require_logged_in
+  def trophonius_pick(self):
+    trophoniuses = \
+      list(self.database.trophonius.find(
+        fields = ['ip', 'port_client', 'port_client_ssl']))
+    trophonius = \
+      trophoniuses[random.randint(0, len(trophoniuses) - 1)]
+    return {
+      'host': trophonius['ip'],
+      'port': trophonius['port_client'],
+      'port_ssl': trophonius['port_client_ssl'],
     }
