@@ -111,12 +111,12 @@ namespace surface
       _trophonius(
         [this] (bool status)
         {
-          auto tropho = this->meta.trophonius();
-          this->server(tropho.host, tropho.port_ssl);
           this->on_connection_changed(status);
         },
         [this]
         {
+          auto tropho = this->_meta.trophonius();
+          this->_trophonius.server(tropho.host, tropho.port_ssl);
           this->on_reconnection_failed();
         }
         ),
