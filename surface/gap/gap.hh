@@ -422,6 +422,14 @@ gap_send_files(gap_State* state,
                char const* const* files,
                char const* message);
 
+/// Cpp version of gap_send_files.
+/// If the return value is 0, the operation failed.
+uint32_t
+gap_send_files(gap_State* state,
+               uint32_t id,
+               std::vector<std::string> const& files,
+               std::string const& message);
+
 /// Send files along with a message.
 /// If the return value is 0, the operation failed.
 uint32_t
@@ -429,6 +437,14 @@ gap_send_files_by_email(gap_State* state,
                         char const* recipient_id,
                         char const* const* files,
                         char const* message);
+
+/// Cpp version gor send_files_by_email.
+/// If the return value is 0, the operation failed.
+uint32_t
+gap_send_files_by_email(gap_State* state,
+                        std::string const& email,
+                        std::vector<std::string> const& files,
+                        std::string const& message);
 
 /// Cancel transaction.
 /// If the return value is 0, the operation failed.
