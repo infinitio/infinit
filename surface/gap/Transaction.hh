@@ -72,12 +72,15 @@ namespace surface
           std::shared_ptr<Data> data,
           bool archived,
           boost::optional<std::vector<std::string>> files = {},
-          boost::optional<std::string> message = {});
+          boost::optional<std::string> message = {},
+          boost::optional<std::string> plain_upload_uid = {}
+          );
       public:
         ELLE_ATTRIBUTE_R(bool, sender);
         ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
         ELLE_ATTRIBUTE_R(boost::optional<std::vector<std::string>>, files);
         ELLE_ATTRIBUTE_R(boost::optional<std::string>, message);
+        ELLE_ATTRIBUTE_R(boost::optional<std::string>, plain_upload_uid);
         ELLE_ATTRIBUTE_R(bool, archived);
 
       // Serialization
@@ -135,6 +138,7 @@ namespace surface
       ELLE_ATTRIBUTE_R(State&, state);
       ELLE_ATTRIBUTE(boost::optional<std::vector<std::string>>, files);
       ELLE_ATTRIBUTE(boost::optional<std::string>, message);
+      ELLE_ATTRIBUTE_RW(boost::optional<std::string>, plain_upload_uid);
       ELLE_ATTRIBUTE_Rw(bool, archived);
 
     public:

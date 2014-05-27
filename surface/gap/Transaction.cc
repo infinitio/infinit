@@ -89,11 +89,14 @@ namespace surface
       std::shared_ptr<Data> data,
       bool archived,
       boost::optional<std::vector<std::string>> files,
-      boost::optional<std::string> message)
+      boost::optional<std::string> message,
+      boost::optional<std::string> plain_upload_uid
+      )
       : _sender(sender)
       , _data(data)
       , _files(files)
       , _message(message)
+      , _plain_upload_uid(plain_upload_uid)
       , _archived(archived)
     {}
 
@@ -112,6 +115,7 @@ namespace surface
       serializer.serialize("files", this->_files);
       serializer.serialize("message", this->_message);
       serializer.serialize("archived", this->_archived);
+      serializer.serialize("plain_upload_uid", this->_plain_upload_uid);
     }
 
     void
@@ -267,6 +271,7 @@ namespace surface
       , _state(state)
       , _files(snapshot.files())
       , _message(snapshot.message())
+      , _plain_upload_uid(snapshot.plain_upload_uid())
       , _archived(snapshot.archived())
       , _id(id)
       , _sender(snapshot.sender())
