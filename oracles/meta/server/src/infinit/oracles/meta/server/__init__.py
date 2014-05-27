@@ -8,7 +8,6 @@ import bottle
 import elle.log
 import inspect
 import mako.lookup
-import papier
 import pymongo
 import re
 
