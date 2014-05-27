@@ -177,12 +177,13 @@ class Mixin:
                                                    web = False))
       # Pick a random trophonius
       trophoniuses = \
-        list(self.database.trophonius.find(fields = ['ip', 'port']))
+        list(self.database.trophonius.find(fields = ['ip', 'port_client', 'port_client_ssl']))
       trophonius = \
         trophoniuses[random.randint(0, len(trophoniuses) - 1)]
       response['trophonius'] = {
         'host': trophonius['ip'],
-        'port': trophonius['port'],
+        'port': trophonius['port_client'],
+        'port_ssl': trophonius['port_client_ssl'],
       }
       return response
 

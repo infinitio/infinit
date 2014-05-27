@@ -15,7 +15,9 @@ class Mixin:
   @api('/trophonius/<uid>', method = 'PUT')
   def trophonius_put(self,
                      uid: uuid.UUID,
-                     port):
+                     port: int,
+                     port_client: int,
+                     port_client_ssl: int):
     """Register a trophonius.
     """
     assert isinstance(uid, uuid.UUID)
@@ -29,6 +31,8 @@ class Mixin:
         '_id': str(uid),
         'ip': self.remote_ip,
         'port': port,
+        'port_client': port_client,
+        'port_client_ssl': port_client_ssl,
         'time': time.time(),
       },
       upsert = True,
@@ -126,5 +130,9 @@ class Mixin:
 
   @api('/trophonius')
   def registered_trophonius(self):
-    trophonius = self.database.trophonius.find(fields = ['ip', 'port'])
-    return self.success({'trophonius': ["%s:%s" % (s['ip'], s['port']) for s in trophonius]})
+    trophonius = self.database.trophonius.find(
+      fields = ['ip', 'port', 'port_client', 'port_client_ssl'])
+    return {
+      'trophonius': ["%s:%s" % (s['ip'], s['port'])
+                     for s in trophonius]
+    }
