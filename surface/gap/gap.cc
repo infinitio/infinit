@@ -1061,7 +1061,13 @@ gap_transaction_progress(gap_State* state,
     "progress",
     [&] (surface::gap::State& state) -> float
     {
-      return state.transactions().at(id)->progress();
+      auto it = state.transactions().find(id);
+      if (it == state.transactions().end())
+      {
+        ELLE_ERR("gap_transaction_progress: transaction %s doesn't exist", id);
+        return 0;
+      }
+      return it->second->progress();
     });
 }
 
