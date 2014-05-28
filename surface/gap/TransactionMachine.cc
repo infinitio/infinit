@@ -144,8 +144,20 @@ namespace surface
             this->_failed.open();
           });
 
+      this->_machine.transition_triggered().connect(
+        [this] (reactor::fsm::Transition& transition)
+        {
+          ELLE_LOG_COMPONENT("surface.gap.TransactionMachine.Transition");
+          ELLE_TRACE("%s: %s triggered", *this, transition);
+        });
+
       this->_machine.state_changed().connect(
-        [this] (reactor::fsm::State const&) { this->_save_snapshot(); });
+        [this] (reactor::fsm::State const& state)
+        {
+          this->_save_snapshot();
+          ELLE_LOG_COMPONENT("surface.gap.TransactionMachine.State");
+          ELLE_TRACE("%s: entering %s", *this, state);
+        });
     }
 
     TransactionMachine::~TransactionMachine()
@@ -223,12 +235,6 @@ namespace surface
         transaction_id = this->transaction_id();
       else
         transaction_id = "unknown";
-      if (this->state().metrics_reporter())
-        this->state().metrics_reporter()->transaction_ended(
-        transaction_id,
-        infinit::oracles::Transaction::Status::failed,
-        ""
-      );
       // Send report for failed transfer
       elle::crash::transfer_failed_report(this->state().meta().protocol(),
                                           this->state().meta().host(),
@@ -297,15 +303,6 @@ namespace surface
     TransactionMachine::cancel()
     {
       ELLE_TRACE_SCOPE("%s: cancel transaction %s", *this, this->data()->id);
-      if (!this->_canceled.opened())
-      {
-        if (this->state().metrics_reporter())
-          this->state().metrics_reporter()->transaction_ended(
-            this->transaction_id(),
-            infinit::oracles::Transaction::Status::canceled,
-            ""
-            );
-      }
       this->_canceled.open();
     }
 

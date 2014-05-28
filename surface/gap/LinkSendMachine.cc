@@ -140,6 +140,37 @@ namespace surface
     `---------------*/
 
     void
+    LinkSendMachine::cancel()
+    {
+      TransactionMachine::cancel();
+      if (!this->canceled().opened())
+      {
+        bool onboarding = false;
+        if (this->state().metrics_reporter())
+          this->state().metrics_reporter()->transaction_ended(
+            this->transaction_id(),
+            infinit::oracles::Transaction::Status::canceled,
+            "",
+            onboarding);
+      }
+    }
+
+    void
+    LinkSendMachine::_fail()
+    {
+      TransactionMachine::_fail();
+      if (this->state().metrics_reporter())
+      {
+        bool onboarding = false;
+        this->state().metrics_reporter()->transaction_ended(
+        this->transaction_id(),
+        infinit::oracles::Transaction::Status::failed,
+        "",
+        onboarding);
+      }
+    }
+
+    void
     LinkSendMachine::transaction_status_update(
       infinit::oracles::Transaction::Status status)
     {
@@ -215,11 +246,12 @@ namespace surface
         this->transaction()._snapshot_save();
         if (this->state().metrics_reporter())
         {
+          bool onboarding = false;
           this->state().metrics_reporter()->transaction_ended(
             this->transaction_id(),
             s,
-            ""
-          );
+            "",
+            onboarding);
         }
       }
       catch (elle::Exception const&)

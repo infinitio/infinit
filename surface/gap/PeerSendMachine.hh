@@ -77,6 +77,16 @@ namespace surface
     public:
       virtual
       void
+      cancel() override;
+
+    private:
+      virtual
+      void
+      _fail() override;
+
+    public:
+      virtual
+      void
       transaction_status_update(infinit::oracles::Transaction::Status status) override;
       float
       progress() const override;

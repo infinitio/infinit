@@ -1,9 +1,12 @@
 #ifndef SURFACE_GAP_ONBOARDING_RECEIVEMACHINE_HH
 # define SURFACE_GAP_ONBOARDING_RECEIVEMACHINE_HH
 
+# include <aws/Credentials.hh>
+
 # include <elle/attribute.hh>
 
 # include <surface/gap/ReceiveMachine.hh>
+# include <surface/gap/PeerMachine.hh>
 # include <surface/gap/onboarding/fwd.hh>
 
 namespace surface
@@ -12,9 +15,13 @@ namespace surface
   {
     namespace onboarding
     {
-      class ReceiveMachine:
-        public surface::gap::ReceiveMachine
+      class ReceiveMachine
+        : public surface::gap::ReceiveMachine
+        , public surface::gap::PeerMachine
       {
+      public:
+        typedef infinit::oracles::PeerTransaction Data;
+
       public:
         ReceiveMachine(Transaction& transaction,
                        uint32_t id,
@@ -22,14 +29,49 @@ namespace surface
                        std::string const& file_path,
                        reactor::Duration duration = 5_sec);
 
+        virtual
         float
         progress() const override;
 
+        // XXX: not all transactions will need AWS credentials.
+        virtual
+        aws::Credentials
+        _aws_credentials(bool regenerate) override;
+
+        virtual
         void
-        accept();
+        _save_snapshot() const override;
+
+        virtual
+        void
+        _transfer_operation(frete::RPCFrete& frete) override;
+
+        virtual
+        void
+        _cloud_synchronize() override;
+
+        virtual
+        void
+        _cloud_operation() override;
+
+        virtual
+        void
+        cleanup() override;
+
+        virtual
+        void
+        accept() override;
 
         bool
         pause() override;
+
+        virtual
+        void
+        reject() override;
+
+        virtual
+        std::unique_ptr<frete::RPCFrete>
+        rpcs(infinit::protocol::ChanneledStream& socket) override;
 
         void
         interrupt() override;

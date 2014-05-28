@@ -92,6 +92,7 @@ namespace surface
                                     bool online);
 
       /// Cancel the transaction.
+      virtual
       void
       cancel();
 
@@ -162,6 +163,8 @@ namespace surface
 
     protected:
       friend class Snapshot;
+
+      // XXX: not all transactions will need AWS credentials.
       virtual
       aws::Credentials
       _aws_credentials(bool regenerate) = 0;
@@ -171,6 +174,7 @@ namespace surface
       _finish();
       void
       _reject();
+      virtual
       void
       _fail();
       void
