@@ -1105,6 +1105,18 @@ namespace infinit
           {
             ELLE_WARN("%s: timeout requesting %s, retrying", *this, url);
           }
+          catch (reactor::http::ResolutionFailure const&)
+          {
+            ELLE_WARN("%s: resolution failure requesting %s, retrying",
+                      *this, url);
+
+          }
+          catch (reactor::http::RequestError&)
+          {
+            ELLE_ERR("%s: unhandled error requesting %s, retrying: %s",
+                     *this, url, elle::exception_string());
+
+          }
         }
       }
 
