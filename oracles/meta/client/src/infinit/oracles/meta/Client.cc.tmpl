@@ -1062,6 +1062,16 @@ namespace infinit
       | Helpers |
       `--------*/
 
+      void
+      Client::_pacify_retry() const
+      {
+        // FIXME: make this delay exponential.
+        boost::random::uniform_int_distribution<> random(100, 200);
+        auto delay = 3_sec * (random(this->_rng) / 100.);
+        ELLE_TRACE("%s: wait %s before retrying", this, delay);
+        reactor::sleep(delay);
+      }
+
       reactor::http::Request
       Client::_request(
         std::string const& url,
@@ -1091,8 +1101,7 @@ namespace infinit
                 ELLE_WARN("%s: error requesting %s, retrying: %s.\n%s",
                           *this, url,
                           request.status(), request.response().string());
-                boost::random::uniform_int_distribution<> random(100, 200);
-                reactor::sleep(3_sec * (random(this->_rng) / 100.));
+                this->_pacify_retry();
                 continue;
               }
               default:
@@ -1104,6 +1113,20 @@ namespace infinit
           catch (reactor::http::Timeout const&)
           {
             ELLE_WARN("%s: timeout requesting %s, retrying", *this, url);
+          }
+          catch (reactor::http::ResolutionFailure const&)
+          {
+            ELLE_WARN("%s: resolution failure requesting %s, retrying",
+                      *this, url);
+
+            this->_pacify_retry();
+          }
+          catch (reactor::http::RequestError&)
+          {
+            ELLE_ERR("%s: unhandled error requesting %s, retrying: %s",
+                     *this, url, elle::exception_string());
+
+            this->_pacify_retry();
           }
         }
       }
