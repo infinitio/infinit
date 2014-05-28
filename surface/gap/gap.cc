@@ -1438,9 +1438,9 @@ gap_send_user_report(gap_State* state,
     "send user report",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      elle::crash::user_report(state.meta().protocol(),
-                               state.meta().host(),
-                               state.meta().port(),
+      elle::crash::user_report(state.meta(false).protocol(),
+                               state.meta(false).host(),
+                               state.meta(false).port(),
                                user_name,
                                os_description,
                                message,
