@@ -90,8 +90,6 @@ public:
           new surface::gap::State(this->_configuration.meta_protocol(),
                                   this->_configuration.meta_host(),
                                   this->_configuration.meta_port(),
-                                  this->_configuration.trophonius_host(),
-                                  this->_configuration.trophonius_port(),
                                   common::metrics(this->configuration())));
       });
   }

@@ -13,6 +13,7 @@ with Meta() as meta:
 
   user_device_0 = copy.deepcopy(user)
   user_device_0['device_id'] = str(uuid4())
+  user_device_0['pick_trophonius'] = False
 
   # Login a user on device 0.
   client0 = Client(meta)

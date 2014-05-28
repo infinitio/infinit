@@ -178,17 +178,16 @@ namespace infinit
         std::unique_ptr<Impl> _impl;
 
       public:
-        Client(std::string const& server,
-               uint16_t port,
-               ConnectCallback connect_callback,
+        Client(ConnectCallback connect_callback,
                ReconnectPokeFailedCallback reconnect_failed_callback);
-
-        Client(std::string const& server,
-               uint16_t port,
+        Client(ConnectCallback connect_callback,
+               ReconnectPokeFailedCallback reconnect_failed_callback,
+               std::vector<unsigned char> server_fingerprint);
+        Client(std::string  host,
+               int port,
                ConnectCallback connect_callback,
                ReconnectPokeFailedCallback reconnect_failed_callback,
                std::vector<unsigned char> server_fingerprint);
-
         ~Client();
 
       public:
@@ -202,7 +201,8 @@ namespace infinit
         connect(std::string const& _id,
                 std::string const& session_id,
                 std::string const& device_id);
-
+        void
+        server(std::string const& host, int port);
         void
         disconnect();
 

@@ -29,7 +29,7 @@ namespace surface
         data->sender_device_id = "Infinit device id";
         data->recipient_id = you.id;
         data->recipient_fullname = you.fullname;
-        data->recipient_device_id = "Your device id";
+        data->recipient_device_id = "";
         data->recipient_device_name = "Your device";
         data->message = "Welcome to Infinit! Here's your first file.";
         data->ctime = ::time(nullptr);
@@ -53,7 +53,7 @@ namespace surface
           ELLE_WARN("unable to access file, fake transaction failed: %s",
                     e.what());
         }
-        ELLE_DEBUG("onboarding transaction: %s", data);
+        ELLE_DEBUG("onboarding transaction: %s", *data);
         return data;
       }
 
@@ -65,7 +65,7 @@ namespace surface
         : surface::gap::Transaction(state,
                                     id,
                                     transaction_data(
-                                      state.me(), peer, file_path))
+                                      state.me(), peer, file_path), true)
         , _data(std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
                   this->data()))
       {
@@ -83,6 +83,10 @@ namespace surface
       {
         ELLE_DEBUG_SCOPE("%s: destruction", *this);
       }
+
+      void
+      Transaction::_snapshot_save() const
+      {}
 
       surface::gap::onboarding::ReceiveMachine&
       Transaction::machine()

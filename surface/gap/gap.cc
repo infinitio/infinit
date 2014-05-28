@@ -1053,6 +1053,7 @@ float
 gap_transaction_progress(gap_State* state,
                          uint32_t id)
 {
+  assert(state != nullptr);
   assert(id != surface::gap::null_id);
 
   return run<float>(
@@ -1060,7 +1061,13 @@ gap_transaction_progress(gap_State* state,
     "progress",
     [&] (surface::gap::State& state) -> float
     {
-      return state.transactions().at(id)->progress();
+      auto it = state.transactions().find(id);
+      if (it == state.transactions().end())
+      {
+        ELLE_ERR("gap_transaction_progress: transaction %s doesn't exist", id);
+        return 0;
+      }
+      return it->second->progress();
     });
 }
 
@@ -1206,14 +1213,25 @@ gap_send_files_by_email(gap_State* state,
     files_cxx.push_back(*files);
     ++files;
   }
+  return gap_send_files_by_email(state, recipient_id, files_cxx, message);
+}
+
+uint32_t
+gap_send_files_by_email(gap_State* state,
+                        std::string const& email,
+                        std::vector<std::string> const& files,
+                        std::string const& message)
+{
   return run<uint32_t>(
     state,
     "send files",
     [&] (surface::gap::State& state) -> uint32_t
     {
-      return state.send_files(recipient_id, std::move(files_cxx), message);
+      return state.send_files(email, std::move(files), message);
     });
 }
+
+
 
 uint32_t
 gap_send_files(gap_State* state,
@@ -1229,13 +1247,22 @@ gap_send_files(gap_State* state,
     files_cxx.push_back(*files);
     ++files;
   }
+  return gap_send_files(state, id, files_cxx, message);
+}
+
+uint32_t
+gap_send_files(gap_State* state,
+               uint32_t id,
+               std::vector<std::string> const& files,
+               std::string const& message)
+{
   return run<uint32_t>(
     state,
     "send files",
     [&] (surface::gap::State& state) -> uint32_t
     {
       return state.send_files(state.users().at(id).id,
-                              std::move(files_cxx),
+                              std::move(files),
                               message);
     });
 }
@@ -1418,9 +1445,9 @@ gap_send_user_report(gap_State* state,
     "send user report",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      elle::crash::user_report(state.meta().protocol(),
-                               state.meta().host(),
-                               state.meta().port(),
+      elle::crash::user_report(state.meta(false).protocol(),
+                               state.meta(false).host(),
+                               state.meta(false).port(),
                                user_name,
                                os_description,
                                message,

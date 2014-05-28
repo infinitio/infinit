@@ -1,9 +1,11 @@
 # -*- encoding: utf-8 -*-
 
 import elle.log
+import bottle
 import bson
-import uuid
+import random
 import time
+import uuid
 
 from . import conf, error, regexp
 from .utils import api, require_admin, require_logged_in
@@ -15,7 +17,9 @@ class Mixin:
   @api('/trophonius/<uid>', method = 'PUT')
   def trophonius_put(self,
                      uid: uuid.UUID,
-                     port):
+                     port: int,
+                     port_client: int,
+                     port_client_ssl: int):
     """Register a trophonius.
     """
     assert isinstance(uid, uuid.UUID)
@@ -29,6 +33,8 @@ class Mixin:
         '_id': str(uid),
         'ip': self.remote_ip,
         'port': port,
+        'port_client': port_client,
+        'port_client_ssl': port_client_ssl,
         'time': time.time(),
       },
       upsert = True,
@@ -124,7 +130,27 @@ class Mixin:
                               message = {"message": message})
     return self.success()
 
-  @api('/trophonius')
+  @api('/trophoniuses')
   def registered_trophonius(self):
-    trophonius = self.database.trophonius.find(fields = ['ip', 'port'])
-    return self.success({'trophonius': ["%s:%s" % (s['ip'], s['port']) for s in trophonius]})
+    trophonius = self.database.trophonius.find(
+      fields = ['ip', 'port', 'port_client', 'port_client_ssl'])
+    return {
+      'trophoniuses': ["%s:%s" % (s['ip'], s['port'])
+                     for s in trophonius]
+    }
+
+  @api('/trophonius')
+  @require_logged_in
+  def trophonius_pick(self):
+    trophoniuses = \
+      list(self.database.trophonius.find(
+        fields = ['ip', 'port_client', 'port_client_ssl']))
+    if len(trophoniuses) == 0:
+      bottle.abort(503, 'no notification server available')
+    trophonius = \
+      trophoniuses[random.randint(0, len(trophoniuses) - 1)]
+    return {
+      'host': trophonius['ip'],
+      'port': trophonius['port_client'],
+      'port_ssl': trophonius['port_client_ssl'],
+    }

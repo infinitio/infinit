@@ -107,13 +107,15 @@ namespace infinit
     | Transaction Metrics |
     `--------------------*/
     void
-    Reporter::transaction_accepted(std::string const& transaction_id)
+    Reporter::transaction_accepted(std::string const& transaction_id,
+                                   bool onboarding)
     {
       if (this->_no_metrics)
         return;
       this->_metric_queue.push(std::bind(&Reporter::_transaction_accepted,
                                          this,
-                                         transaction_id));
+                                         transaction_id,
+                                         onboarding));
       this->_metric_available.open();
     }
 
@@ -156,7 +158,8 @@ namespace infinit
                                        int64_t file_count,
                                        int64_t total_size,
                                        uint32_t message_length,
-                                       bool ghost)
+                                       bool ghost,
+                                       bool onboarding)
     {
       if (this->_no_metrics)
         return;
@@ -168,14 +171,16 @@ namespace infinit
                                          file_count,
                                          total_size,
                                          message_length,
-                                         ghost));
+                                         ghost,
+                                         onboarding));
       this->_metric_available.open();
     }
 
     void
     Reporter::transaction_ended(std::string const& transaction_id,
                                 infinit::oracles::Transaction::Status status,
-                                std::string const& info)
+                                std::string const& info,
+                                bool onboarding)
     {
       if (this->_no_metrics)
         return;
@@ -183,7 +188,8 @@ namespace infinit
                                          this,
                                          transaction_id,
                                          status,
-                                         info));
+                                         info,
+                                         onboarding));
       this->_metric_available.open();
     }
 
@@ -345,7 +351,8 @@ namespace infinit
     | Default Transaction Implementation |
     `-----------------------------------*/
     void
-    Reporter::_transaction_accepted(std::string const& transaction_id)
+    Reporter::_transaction_accepted(std::string const& transaction_id,
+                                    bool onboarding)
     {}
 
     void
@@ -368,13 +375,15 @@ namespace infinit
                                         int64_t file_count,
                                         int64_t total_size,
                                         uint32_t message_length,
-                                        bool ghost)
+                                        bool ghost,
+                                        bool onboarding)
     {}
 
     void
     Reporter::_transaction_ended(std::string const& transaction_id,
                                  infinit::oracles::Transaction::Status status,
-                                 std::string const& info)
+                                 std::string const& info,
+                                 bool onboarding)
     {}
 
     void

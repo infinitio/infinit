@@ -9,6 +9,7 @@ with Meta() as meta:
   user = {
     'email': 'foo@bar.baz',
     'password': password,
+    'pick_trophonius': False,
   }
 
   user_device_0 = copy.deepcopy(user)

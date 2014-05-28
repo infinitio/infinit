@@ -224,6 +224,37 @@ namespace surface
     `---------------*/
 
     void
+    PeerSendMachine::cancel()
+    {
+      if (!this->canceled().opened())
+      {
+        bool onboarding = false;
+        if (this->state().metrics_reporter())
+          this->state().metrics_reporter()->transaction_ended(
+            this->transaction_id(),
+            infinit::oracles::Transaction::Status::canceled,
+            "",
+            onboarding);
+      }
+      TransactionMachine::cancel();
+    }
+
+    void
+    PeerSendMachine::_fail()
+    {
+      TransactionMachine::_fail();
+      if (this->state().metrics_reporter())
+      {
+        bool onboarding = false;
+        this->state().metrics_reporter()->transaction_ended(
+        this->transaction_id(),
+        infinit::oracles::Transaction::Status::failed,
+        "",
+        onboarding);
+      }
+    }
+
+    void
     PeerSendMachine::transaction_status_update(TransactionStatus status)
     {
       ELLE_TRACE_SCOPE("%s: update with new transaction status %s",
@@ -319,6 +350,8 @@ namespace surface
         this->state().user(this->data()->recipient_id, true).id;
       auto const& peer = this->state().user(this->data()->recipient_id);
       if (this->state().metrics_reporter())
+      {
+        bool onboarding = false;
         this->state().metrics_reporter()->peer_transaction_created(
           this->transaction_id(),
           this->state().me().id,
@@ -326,7 +359,9 @@ namespace surface
           this->data()->files.size(),
           size,
           this->_message.length(),
-          peer.ghost());
+          peer.ghost(),
+          onboarding);
+      }
       // Populate the frete.
       this->frete().save_snapshot();
       this->state().meta().update_transaction(this->transaction_id(),

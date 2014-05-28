@@ -38,7 +38,8 @@ parse_options(int argc, char** argv)
     ("help,h", "display the help")
     ("user,u", value<std::string>(), "the username")
     ("password,p", value<std::string>(), "the password")
-    ("file,f", value<std::string>(), "the file to send, or comma-separated list")
+    ("file,f", value<std::vector<std::string>>(),
+     "the file to send, or comma-separated list")
     ("production,r", value<bool>(), "use production servers");
   variables_map vm;
   try
@@ -76,8 +77,6 @@ int main(int argc, char** argv)
     auto options = parse_options(argc, argv);
     std::string const user = options["user"].as<std::string>();
     std::string const password = options["password"].as<std::string>();
-    std::string const to = options["file"].as<std::string>();
-    std::string const file = options["file"].as<std::string>();
     bool production = false;
     if (options.count("production") != 0)
       production = options["production"].as<bool>();
@@ -100,8 +99,6 @@ int main(int argc, char** argv)
         surface::gap::State state(config.meta_protocol(),
                                   config.meta_host(),
                                   config.meta_port(),
-                                  config.trophonius_host(),
-                                  config.trophonius_port(),
                                   common::metrics(config));
         uint32_t id = surface::gap::null_id;
 
@@ -120,9 +117,9 @@ int main(int argc, char** argv)
           });
         auto hashed_password = state.hash_password(user, password);
         state.login(user, hashed_password);
-        std::vector<std::string> files;
-        boost::algorithm::split(files, file, boost::is_any_of(","));
-        id = state.create_link(std::move(files), "");
+
+        id = state.create_link(options["file"].as<std::vector<std::string>>(),
+                               "");
         ELLE_ASSERT_NEQ(id, surface::gap::null_id);
 
         static const int width = 70;

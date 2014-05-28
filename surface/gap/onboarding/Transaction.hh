@@ -47,6 +47,11 @@ namespace surface
         surface::gap::onboarding::ReceiveMachine&
         machine();
 
+      private:
+        virtual
+        void
+        _snapshot_save() const override;
+
       /*----------.
       | Printable |
       `----------*/

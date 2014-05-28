@@ -123,8 +123,6 @@ namespace surface
       State(std::string const& meta_protocol,
             std::string const& meta_host,
             uint16_t meta_port,
-            std::string const& trophonius_host,
-            uint16_t trophonius_port,
             std::unique_ptr<infinit::metrics::Reporter> metrics = nullptr);
       ~State();
 

@@ -5,7 +5,6 @@ import bson
 import calendar
 import datetime
 import elle.log
-import papier
 
 from pymongo import errors, DESCENDING
 from .utils import api, require_logged_in, require_admin, json_value

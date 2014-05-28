@@ -3,6 +3,7 @@
 import bottle
 import bson
 import datetime
+import random
 import uuid
 
 import elle.log
@@ -28,7 +29,6 @@ class Mixin:
   ## Handle ##
   ## ------ ##
   def generate_dummy(self):
-    import random
     t1 = ['lo', 'ca', 'ki', 'po', 'pe', 'bi', 'mer']
     t2 = ['ri', 'ze', 'te', 'sal', 'ju', 'il']
     t3 = ['yo', 'gri', 'ka', 'tro', 'man', 'et']
@@ -75,7 +75,6 @@ class Mixin:
 
   def unique_handle(self,
                     fullname):
-    import random
     h = self.__generate_handle(fullname)
     while self.user_by_handle(h, ensure_existence = False):
       h += str(int(random.random() * 10))
@@ -129,7 +128,8 @@ class Mixin:
             email,
             password,
             device_id: uuid.UUID,
-            OS: str = None):
+            OS: str = None,
+            pick_trophonius: bool = True):
     if OS is not None:
       OS = OS.strip().lower()
     # FIXME: 0.0.0.0 is the website.
@@ -173,9 +173,12 @@ class Mixin:
                                     email = user['email'])
       else:
         elle.log.debug("%s: no OS specified" % user['email'])
-      return self.success(self._login_response(user,
-                                               device = device,
-                                               web = False))
+      response = self.success(self._login_response(user,
+                                                   device = device,
+                                                   web = False))
+      if pick_trophonius:
+        response['trophonius'] = self.trophonius_pick()
+      return response
 
   @api('/web-login', method = 'POST')
   def web_login(self,

@@ -11,7 +11,7 @@
 . /etc/trophonius.conf
 DAEMON="$TROPHONIUS"
 PIDFILE=/var/run/trophonius.pid
-ARGUMENTS="--meta ${META} --port-ssl ${PORT_SSL} --port-tcp ${PORT_TCP} --syslog"
+ARGUMENTS="--meta ${META} --port-ssl ${PORT_SSL} --port-tcp ${PORT_TCP} --notifications-port ${PORT_NOTIFICATIONS} --syslog"
 
 . /lib/lsb/init-functions
 

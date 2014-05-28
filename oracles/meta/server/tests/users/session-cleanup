@@ -9,6 +9,7 @@ with Meta() as meta:
     'email': 'foo@bar.baz',
     'password': password,
     'device_id': str(uuid4()),
+    'pick_trophonius': False,
   }
 
   # Login a client.

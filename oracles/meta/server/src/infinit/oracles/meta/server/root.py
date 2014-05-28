@@ -268,20 +268,22 @@ class Mixin:
     - clean old apertus instances.
     """
     # Trophonius.
-    res = self.database.trophonius.remove(
+    tropho = self.database.trophonius.remove(
       {"$or": [{"time": {"$lt": time.time() - self.trophonius_expiration_time}},
                {"time": {"$exists": False}}]},
-      multi = True)
+      multi = True)['n']
     # Apertus.
-    res = self.database.apertus.remove(
+    apertus = self.database.apertus.remove(
       {"$or": [{"time": {"$lt": time.time() - self.apertus_expiration_time}},
                {"time": {"$exists": False}}]},
-      multi = True)
-
+      multi = True)['n']
     # import datetime
     # if datetime.datetime.utcnow().hour == self.daily_summary_hour:
     #   self.daily_summary()
-    return self.success(res)
+    return {
+      'trophonius': tropho,
+      'apertus': apertus,
+    }
 
   @api('/cron/daily-summary', method = 'POST')
   @require_admin

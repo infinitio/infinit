@@ -237,14 +237,6 @@ common::infinit::Configuration::Configuration(bool production)
   this->_meta_port = boost::lexical_cast<int>(
     elle::os::getenv("INFINIT_META_PORT", "443"));
 
-  // Trophonius
-  this->_trophonius_host = elle::os::getenv(
-    "INFINIT_TROPHONIUS_HOST",
-    _server_host_name("trophonius", env_production));
-  this->_trophonius_port = boost::lexical_cast<int>(
-    elle::os::getenv("INFINIT_TROPHONIUS_PORT",
-                     env_production ? "443" : "444"));
-
   // Metrics
   this->_metrics_infinit_enabled = boost::lexical_cast<bool>(
     elle::os::getenv("INFINIT_METRICS_INFINIT", env_production ? "1" : "0"));

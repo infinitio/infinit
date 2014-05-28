@@ -29,12 +29,14 @@ namespace infinit
     | Transaction Metrics |
     `--------------------*/
     void
-    JSONReporter::_transaction_accepted(std::string const& transaction_id)
+    JSONReporter::_transaction_accepted(std::string const& transaction_id,
+                                        bool onboarding)
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] =
         std::string("accepted");
       data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
+      data[this->_key_str(JSONKey::onboarding)] = onboarding;
 
       this->_send(this->_transaction_dest, data);
     }
@@ -80,7 +82,8 @@ namespace infinit
                                             int64_t file_count,
                                             int64_t total_size,
                                             uint32_t message_length,
-                                            bool ghost)
+                                            bool ghost,
+                                            bool onboarding)
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] = std::string("created");
@@ -93,6 +96,7 @@ namespace infinit
       data[this->_key_str(JSONKey::ghost)] = ghost;
       data[this->_key_str(JSONKey::transaction_type)] =
         this->_transaction_type_str(PeerTransaction);
+      data[this->_key_str(JSONKey::onboarding)] = onboarding;
 
       this->_send(this->_transaction_dest, data);
     }
@@ -101,7 +105,8 @@ namespace infinit
     JSONReporter::_transaction_ended(
       std::string const& transaction_id,
       infinit::oracles::Transaction::Status status,
-      std::string const& info)
+      std::string const& info,
+      bool onboarding)
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] =
@@ -109,6 +114,7 @@ namespace infinit
       data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
       data[this->_key_str(JSONKey::how_ended)] =
         this->_transaction_status_str(status);
+      data[this->_key_str(JSONKey::onboarding)] = onboarding;
 
       this->_send(this->_transaction_dest, data);
     }
@@ -320,6 +326,8 @@ namespace infinit
           return "message";
         case JSONKey::message_length:
           return "message_length";
+        case JSONKey::onboarding:
+          return "onboarding";
         case JSONKey::metric_sender_id:
           return "user";
         case JSONKey::recipient_id:

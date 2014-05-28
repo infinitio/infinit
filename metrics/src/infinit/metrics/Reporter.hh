@@ -68,7 +68,8 @@ namespace infinit
     /// Transaction metrics.
     public:
       void
-      transaction_accepted(std::string const& transaction_id);
+      transaction_accepted(std::string const& transaction_id,
+                           bool onboarding);
 
       void
       transaction_connected(std::string const& transaction_id,
@@ -88,12 +89,14 @@ namespace infinit
                                int64_t file_count,
                                int64_t total_size,
                                uint32_t message_length,
-                               bool ghost);
+                               bool ghost,
+                               bool onboarding);
 
       void
       transaction_ended(std::string const& transaction_id,
                         infinit::oracles::Transaction::Status status,
-                        std::string const& info);
+                        std::string const& info,
+                        bool onboarding);
 
       /** entering a state that will effectively transfer data
       * @param initialization_time: time in seconds between entering state
@@ -116,7 +119,8 @@ namespace infinit
     protected:
       virtual
       void
-      _transaction_accepted(std::string const& transaction_id);
+      _transaction_accepted(std::string const& transaction_id,
+                            bool onboarding);
 
       virtual
       void
@@ -139,13 +143,15 @@ namespace infinit
                                 int64_t file_count,
                                 int64_t total_size,
                                 uint32_t message_length,
-                                bool ghost);
+                                bool ghost,
+                                bool onboarding);
 
       virtual
       void
       _transaction_ended(std::string const& transaction_id,
                          infinit::oracles::Transaction::Status status,
-                         std::string const& info);
+                         std::string const& info,
+                         bool onboarding);
 
       virtual
       void

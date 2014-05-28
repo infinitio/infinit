@@ -308,17 +308,15 @@ namespace infinit
         std::unique_ptr<reactor::Thread> _connect_callback_thread;
         std::exception_ptr _poll_exception;
 
-        Impl(std::string const& server,
-             uint16_t port,
-             Client::ConnectCallback connect_callback,
+        Impl(Client::ConnectCallback connect_callback,
              Client::ReconnectPokeFailedCallback reconnect_failed_callback):
-          _reconnected{0},
+          _reconnected(0),
           _socket(nullptr),
           _connected(),
           _synchronized(false),
           _pollable(),
-          server(server),
-          port(port),
+          server(),
+          port(),
           request{},
           response{},
           connect_callback{connect_callback},
@@ -854,26 +852,32 @@ namespace infinit
         ELLE_ATTRIBUTE_RW(reactor::Duration, poke_timeout);
       };
 
-      Client::Client(std::string const& server,
-                     uint16_t port,
-                     ConnectCallback connect_callback,
+      Client::Client(ConnectCallback connect_callback,
                      ReconnectPokeFailedCallback reconnect_failed_callback):
-        _impl(new Impl(server, port,
-                       connect_callback,
-                       reconnect_failed_callback)),
+        _impl(new Impl(connect_callback, reconnect_failed_callback)),
         _ping_period(default_ping_period)
       {
         ELLE_ASSERT(connect_callback != nullptr);
       }
 
-      Client::Client(std::string const& server,
-                     uint16_t port,
+      Client::Client(ConnectCallback connect_callback,
+                     ReconnectPokeFailedCallback reconnect_failed_callback,
+                     std::vector<unsigned char> server_fingerprint):
+        Client(connect_callback, reconnect_failed_callback)
+      {
+        this->_impl->_set_test_fingerprint(server_fingerprint);
+      }
+
+      Client::Client(std::string host,
+                     int port,
                      ConnectCallback connect_callback,
                      ReconnectPokeFailedCallback reconnect_failed_callback,
                      std::vector<unsigned char> server_fingerprint):
-        Client(server, port, connect_callback, reconnect_failed_callback)
+        Client(std::move(connect_callback),
+               std::move(reconnect_failed_callback),
+               std::move(server_fingerprint))
       {
-        this->_impl->_set_test_fingerprint(server_fingerprint);
+        this->server(std::move(host), port);
       }
 
       reactor::Barrier const&
@@ -961,7 +965,6 @@ namespace infinit
       {
         ELLE_TRACE_SCOPE("%s: connecting with id %s, session %s, device_id %s",
                          *this, _id, session_id, device_id);
-
         this->_impl->user_id = _id;
         this->_impl->user_session_id = session_id;
         this->_impl->user_device_id = device_id;
@@ -973,6 +976,13 @@ namespace infinit
         }
         this->_impl->_synchronized = true;
         return true;
+      }
+
+      void
+      Client::server(std::string const& host, int port)
+      {
+        this->_impl->server = host;
+        this->_impl->port = port;
       }
 
       void

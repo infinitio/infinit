@@ -14,13 +14,18 @@ with Meta() as meta:
   tropho = uuid4()
   assert not bob.connected
 
-  assert len(meta.get('trophonius')['trophonius']) == 0
-  meta.put('trophonius/%s' % tropho, {"port": 23456})
-  assert len(meta.get('trophonius')['trophonius']) == 1
+  tropho_params = {
+    'port': 23456,
+    'port_client': 0,
+    'port_client_ssl': 0,
+  }
+  assert len(meta.get('trophoniuses')['trophoniuses']) == 0
+  meta.put('trophonius/%s' % tropho, tropho_params)
+  assert len(meta.get('trophoniuses')['trophoniuses']) == 1
   meta.delete('trophonius/%s' % tropho)
-  assert len(meta.get('trophonius')['trophonius']) == 0
+  assert len(meta.get('trophoniuses')['trophoniuses']) == 0
 
-  meta.put('trophonius/%s' % tropho, {"port": 23456})
+  meta.put('trophonius/%s' % tropho, tropho_params)
 
   res = bob.put('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, str(bob.device_id)))
   assert res['success']

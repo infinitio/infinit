@@ -8,7 +8,6 @@ import bottle
 import elle.log
 import inspect
 import mako.lookup
-import papier
 import pymongo
 import re
 
@@ -50,6 +49,7 @@ class Meta(bottle.Bottle,
   def __init__(self,
                mongo_host = None,
                mongo_port = None,
+               mongo_replica_set = None,
                enable_emails = True,
                enable_invitations = True,
                trophonius_expiration_time = 300, # in sec
@@ -71,15 +71,23 @@ class Meta(bottle.Bottle,
     if self.__force_admin:
       elle.log.warn('%s: running in force admin mode' % self)
     super().__init__()
-    db_args = {}
-    if mongo_host is not None:
-      db_args['host'] = mongo_host
-    if mongo_port is not None:
-      db_args['port'] = mongo_port
-    with elle.log.log('%s: connect to MongoDB on %s:%s' %
-                      (self, mongo_host, mongo_port)):
-      self.__database = pymongo.MongoClient(**db_args).meta
-      self.__set_constraints()
+    if mongo_replica_set is not None:
+      with elle.log.log(
+          '%s: connect to MongoDB replica set %s' % (self, mongo_replica_set)):
+        self.__mongo = \
+          pymongo.MongoReplicaSetClient(','.join(mongo_replica_set),
+                                        replicaSet = 'fist-meta')
+    else:
+      with elle.log.log(
+          '%s: connect to MongoDB on %s:%s' % (self, mongo_host, mongo_port)):
+        db_args = {}
+        if mongo_host is not None:
+          db_args['host'] = mongo_host
+        if mongo_port is not None:
+          db_args['port'] = mongo_port
+        self.__mongo = pymongo.MongoClient(**db_args)
+    self.__database = self.__mongo.meta
+    self.__set_constraints()
     self.catchall = debug
     bottle.debug(debug)
     # Plugins.
@@ -303,7 +311,9 @@ class Meta(bottle.Bottle,
 
   @property
   def admin(self):
-    return self.__force_admin or bottle.request.certificate in [
+    source = bottle.request.environ.get('REMOTE_ADDR')
+    force = self.__force_admin or source == '127.0.0.1'
+    return force or bottle.request.certificate in [
       'antony.mechin@infinit.io',
       'baptiste.fradin@infinit.io',
       'christopher.crone@infinit.io',

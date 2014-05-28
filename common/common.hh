@@ -34,10 +34,6 @@ namespace common
       ELLE_ATTRIBUTE_R(std::string, meta_host);
       ELLE_ATTRIBUTE_R(int, meta_port);
 
-      /// Trophonius configuration
-      ELLE_ATTRIBUTE_R(std::string, trophonius_host);
-      ELLE_ATTRIBUTE_R(int, trophonius_port);
-
       /// Metrics configuration
       ELLE_ATTRIBUTE_R(bool, metrics_infinit_enabled);
       ELLE_ATTRIBUTE_R(std::string, metrics_infinit_host);

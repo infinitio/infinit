@@ -95,11 +95,13 @@ namespace infinit
     | Transaction Metrics |
     `--------------------*/
     void
-    CompositeReporter::_transaction_accepted(std::string const& transaction_id)
+    CompositeReporter::_transaction_accepted(std::string const& transaction_id,
+                                             bool onboarding)
     {
       this->_dispatch(std::bind(&Reporter::_transaction_accepted,
                                 std::placeholders::_1,
-                                transaction_id));
+                                transaction_id,
+                                onboarding));
     }
 
     void
@@ -137,7 +139,8 @@ namespace infinit
       int64_t file_count,
       int64_t total_size,
       uint32_t message_length,
-      bool ghost)
+      bool ghost,
+      bool onboarding)
     {
       this->_dispatch(std::bind(&Reporter::_peer_transaction_created,
                                 std::placeholders::_1,
@@ -147,21 +150,24 @@ namespace infinit
                                 file_count,
                                 total_size,
                                 message_length,
-                                ghost));
+                                ghost,
+                                onboarding));
     }
 
     void
     CompositeReporter::_transaction_ended(
       std::string const& transaction_id,
       infinit::oracles::Transaction::Status status,
-      std::string const& info
+      std::string const& info,
+      bool onboarding
     )
     {
         this->_dispatch(std::bind(&Reporter::_transaction_ended,
                         std::placeholders::_1,
                         transaction_id,
                         status,
-                        info));
+                        info,
+                        onboarding));
     }
 
     void

@@ -58,18 +58,6 @@ namespace surface
             ELLE_WARN("%s: error while creating transaction: %s",
                       *this, elle::exception_string(e));
           });
-      this->_machine.state_changed().connect(
-        [this] (reactor::fsm::State& state)
-        {
-          ELLE_LOG_COMPONENT("surface.gap.SendMachine.State");
-          ELLE_TRACE("%s: entering %s", *this, state);
-        });
-      this->_machine.transition_triggered().connect(
-        [this] (reactor::fsm::Transition& transition)
-        {
-          ELLE_LOG_COMPONENT("surface.gap.SendMachine.Transition");
-          ELLE_TRACE("%s: %s triggered", *this, transition);
-        });
     }
 
     SendMachine::~SendMachine()
@@ -357,7 +345,8 @@ namespace surface
           return std::make_pair(file.filename().string(), false);
       }
       else
-        return std::make_pair("archive.zip", true);
+        return std::make_pair(elle::sprintf("%s files.zip", files.size()),
+                              true);
     }
   }
 }

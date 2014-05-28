@@ -8,12 +8,13 @@
 #include <elle/container/vector.hh>
 
 #include <common/common.hh>
+#include <surface/gap/enums.hh>
 #include <surface/gap/Exception.hh>
 #include <surface/gap/LinkSendMachine.hh>
-#include <surface/gap/ReceiveMachine.hh>
+#include <surface/gap/PeerReceiveMachine.hh>
 #include <surface/gap/PeerSendMachine.hh>
+#include <surface/gap/ReceiveMachine.hh>
 #include <surface/gap/TransactionMachine.hh>
-#include <surface/gap/enums.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.Transaction");
 
@@ -242,7 +243,8 @@ namespace surface
         else if (recipient)
         {
           ELLE_DEBUG("%s: start receive machine", *this);
-          this->_machine.reset(new ReceiveMachine(*this, this->_id, peer_data));
+          this->_machine.reset(
+            new PeerReceiveMachine(*this, this->_id, peer_data));
         }
         else
           ELLE_DEBUG("%s: not for our device: %s", *this, state.device().id);
@@ -298,7 +300,7 @@ namespace surface
         {
           ELLE_TRACE("%s: create receive machine", *this)
             this->_machine.reset(
-              new ReceiveMachine(*this, this->_id, peer_data));
+              new PeerReceiveMachine(*this, this->_id, peer_data));
         }
       }
       else if (auto link_data =
