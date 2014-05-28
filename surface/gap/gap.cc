@@ -1053,6 +1053,7 @@ float
 gap_transaction_progress(gap_State* state,
                          uint32_t id)
 {
+  assert(state != nullptr);
   assert(id != surface::gap::null_id);
 
   return run<float>(
