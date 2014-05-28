@@ -209,6 +209,16 @@ class Mixin:
       else:
         return self.fail(error.NOT_LOGGED_IN)
 
+  def kickout(self, reason, user = None):
+    if user is None:
+      user = self.user
+    with elle.log.trace('kickout %s: %s' % (user['_id'], reason)):
+      self.database.sessions.remove({'email': user['email']})
+      self.notifier.notify_some(
+        notifier.INVALID_CREDENTIALS,
+        recipient_ids = {user['_id']},
+        message = {'response_details': reason})
+
   @property
   def user(self):
     elle.log.trace("get user from session")
