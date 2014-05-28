@@ -1063,7 +1063,7 @@ namespace infinit
       `--------*/
 
       void
-      Client::_pacify_retry()
+      Client::_pacify_retry() const
       {
         // FIXME: make this delay exponential.
         boost::random::uniform_int_distribution<> random(100, 200);
@@ -1121,7 +1121,7 @@ namespace infinit
 
             this->_pacify_retry();
           }
-          catch (reactor::http::Error&)
+          catch (reactor::http::RequestError&)
           {
             ELLE_ERR("%s: unhandled error requesting %s, retrying: %s",
                      *this, url, elle::exception_string());
