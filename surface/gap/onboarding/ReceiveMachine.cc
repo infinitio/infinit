@@ -60,6 +60,11 @@ namespace surface
         this->_run(this->_wait_for_decision_state);
       }
 
+      ReceiveMachine::~ReceiveMachine()
+      {
+        this->_stop();
+      }
+
       void
       ReceiveMachine::_save_snapshot() const
       {}

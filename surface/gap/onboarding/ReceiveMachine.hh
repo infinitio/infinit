@@ -29,6 +29,8 @@ namespace surface
                        std::string const& file_path,
                        reactor::Duration duration = 5_sec);
 
+        ~ReceiveMachine();
+
         virtual
         float
         progress() const override;
