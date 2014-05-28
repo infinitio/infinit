@@ -109,8 +109,6 @@ int main(int argc, char** argv)
         surface::gap::State state(config.meta_protocol(),
                                   config.meta_host(),
                                   config.meta_port(),
-                                  config.trophonius_host(),
-                                  config.trophonius_port(),
                                   common::metrics(config));
 
         state.attach_callback<surface::gap::State::ConnectionStatus>(
