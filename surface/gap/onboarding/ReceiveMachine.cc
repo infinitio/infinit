@@ -90,10 +90,6 @@ namespace surface
       {}
 
       void
-      cleanup()
-      {}
-
-      void
       ReceiveMachine::accept()
       {
         if (!this->_accepted.opened())
