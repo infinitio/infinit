@@ -1182,8 +1182,7 @@ class Mixin:
       'favorites': user.get('favorites', []),
       'connected_devices': user.get('connected_devices', []),
       'status': self._is_connected(user['_id']),
-      # datetime not handled by bottle JSON plugin.
-      # 'creation_time': user.get('creation_time', 0),
+      'creation_time': user.get('creation_time', None),
       'last_connection': user.get('last_connection', 0),
     })
 

@@ -17,6 +17,7 @@ with Meta() as meta:
   res = meta.get('user/self')
   assert res['success']
   assert res['email'] == 'foo@bar.baz'
+  assert res['creation_time'] is not None
   res = meta.post('logout')
   assert res['success']
   try:

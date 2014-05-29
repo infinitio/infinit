@@ -14,3 +14,4 @@ with Meta(enable_emails = True) as meta:
   user = meta.database.users.find_one()
   assert user['email'] == email
   assert user['fullname'] == fullname
+  assert 'creation_time' in user
