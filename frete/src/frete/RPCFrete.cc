@@ -101,9 +101,9 @@ namespace frete
   }
 
   void
-  RPCFrete::run()
+  RPCFrete::run(infinit::protocol::ExceptionHandler handler)
   {
-    this->_rpc.run();
+    this->_rpc.run(handler);
   }
 
   RPCFrete::VersionRPC::ReturnType

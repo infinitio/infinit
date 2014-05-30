@@ -70,7 +70,7 @@ namespace frete
     RPCFrete(infinit::protocol::ChanneledStream& channels);
 
     void
-    run();
+    run(infinit::protocol::ExceptionHandler exception_handler = {});
   /*-----------.
   | Attributes |
   `-----------*/
