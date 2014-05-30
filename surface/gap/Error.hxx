@@ -1,5 +1,3 @@
-#include <surface/gap/Error.hh>
-
 namespace infinit
 {
   namespace state

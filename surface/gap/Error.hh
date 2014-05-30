@@ -21,37 +21,39 @@ namespace infinit
     | Construction |
     `-------------*/
     public:
-      Error(std::string const& message);
+      inline Error(std::string const& message);
     };
 
     class LoginError
       : public Error
     {
     public:
-      LoginError(std::string const& message);
+      inline LoginError(std::string const& message);
     };
 
     class CredentialError
       : public LoginError
     {
     public:
-      CredentialError();
+      inline CredentialError();
     };
 
     class UnconfirmedEmailError
       : public LoginError
     {
     public:
-      UnconfirmedEmailError();
+      inline UnconfirmedEmailError();
     };
 
     class AlreadyLoggedIn
       : public LoginError
     {
     public:
-      AlreadyLoggedIn();
+      inline AlreadyLoggedIn();
     };
   }
 }
+
+# include <surface/gap/Error.hxx>
 
 #endif
