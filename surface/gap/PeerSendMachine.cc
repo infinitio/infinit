@@ -392,11 +392,13 @@ namespace surface
       this->_save_frete_snapshot();
       ELLE_TRACE_SCOPE("%s: transfer operation, resuming at %s",
                        *this, this->frete().progress());
-      infinit::metrics::TransferExitReason exit_reason = infinit::metrics::TransferExitReasonUnknown;
+      boost::optional<infinit::metrics::TransferExitReason> exit_reason;
       std::string exit_message;
       frete::Frete::FileSize total_bytes_transfered = 0;
       frete::Frete::FileSize total_size = this->frete().full_size();
       float initial_progress = this->frete().progress();
+      // Canceling from within RPC error handler is troublesome, do it async.
+      bool must_cancel = false;
       if (auto& mr = state().metrics_reporter())
       {
         auto now = boost::posix_time::microsec_clock::universal_time();
@@ -409,6 +411,7 @@ namespace surface
         {
           if (auto& mr = state().metrics_reporter())
           {
+            ELLE_ASSERT(exit_reason); // all codepath set the boost::optional
             auto now = boost::posix_time::microsec_clock::universal_time();
             float duration =
               float((now - start_time).total_milliseconds()) / 1000.0f;
@@ -416,25 +419,53 @@ namespace surface
                                          infinit::metrics::TransferMethodP2P,
                                          duration,
                                          total_bytes_transfered,
-                                         exit_reason,
+                                         *exit_reason,
                                          exit_message);
           }
         });
+      // Handler for exceptions thrown by registered RPC procedures
+      infinit::protocol::ExceptionHandler exception_handler =
+      [&](std::exception_ptr ptr)
+      {
+        ELLE_TRACE("%s: RPC exception handler called with %s",
+                   *this, elle::exception_string());
+        try
+        {
+          std::rethrow_exception(ptr);
+        }
+        catch(boost::filesystem::filesystem_error const& bfs)
+        {
+          ELLE_WARN("%s: filesystem error '%s', canceling transaction",
+                    *this,
+                    elle::exception_string())
+          total_bytes_transfered =
+            total_size * (this->frete().progress() - initial_progress);
+          exit_reason = infinit::metrics::TransferExitReasonError;
+          exit_message = elle::exception_string();
+          must_cancel = true;
+          throw infinit::protocol::LastMessageException(exit_message);
+        }
+      };
       try
       {
         elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
         {
           scope.run_background(
             elle::sprintf("frete get %s", this->id()),
-            [&frete] ()
+            [&frete, &exception_handler] ()
             {
-              frete.run();
+              frete.run(exception_handler);
             });
           scope.wait();
         };
-        exit_reason = infinit::metrics::TransferExitReasonFinished;
-        total_bytes_transfered =
-          total_size * (this->frete().progress() - initial_progress);
+        if (!exit_reason)
+        {
+          exit_reason = infinit::metrics::TransferExitReasonFinished;
+          total_bytes_transfered =
+            total_size * (this->frete().progress() - initial_progress);
+        }
+        if (must_cancel)
+          this->canceled().open();
       }
       catch(reactor::Terminate const&)
       {
@@ -444,13 +475,18 @@ namespace surface
         throw;
       }
       catch(...)
-      {
+      { // Should not happen, RPC is eating everything.
+        ELLE_ERR("%s: Unexpected exception '%s', cleaning and rethrowing...",
+                  *this, elle::exception_string());
         total_bytes_transfered =
          total_size * (this->frete().progress() - initial_progress);
         exit_reason = infinit::metrics::TransferExitReasonError;
         exit_message = elle::exception_string();
+        // Rethrow, exception will exit through fsm::run, let its caller decide
+        // what to do.
         throw;
       }
+      ELLE_TRACE("%s: exiting _transfer_operation normally", *this);
     }
 
     void
