@@ -1209,6 +1209,14 @@ namespace infinit
           ELLE_ERR("%s: error while posting: %s.\n%s",
                    *this, response, request.response().string());
           ELLE_ERR("%s", elle::Backtrace::current());
+          if (response == reactor::http::StatusCode::Found)
+          {
+            auto it = request.headers().find("Location");
+            if (it != request.headers().end())
+              ELLE_ERR("%s: Found location is %s", *this, *it);
+            else
+              ELLE_ERR("%s: Found location header is missing", *this);
+          }
           throw elle::http::Exception(
             static_cast<elle::http::ResponseCode>(response),
             elle::sprintf("error %s while posting on %s",
