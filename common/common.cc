@@ -247,7 +247,7 @@ common::infinit::Configuration::Configuration(bool production)
     elle::os::getenv(
       "INFINIT_METRICS_INFINIT_PORT", "80"));
   this->_metrics_keen_enabled = boost::lexical_cast<bool>(
-    elle::os::getenv("INFINIT_METRICS_KEEN", "1"));
+    elle::os::getenv("INFINIT_METRICS_KEEN", "0"));
   this->_metrics_keen_project =
     elle::os::getenv(
       "INFINIT_METRICS_KEEN_PROJECT", env_production ?
