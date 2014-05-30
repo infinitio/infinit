@@ -21,7 +21,11 @@
 #include <reactor/http/exceptions.hh>
 
 #include <infinit/oracles/meta/Client.hh>
+#include <infinit/oracles/meta/ErrorCode.hh>
 #include <infinit/oracles/meta/macro.hh>
+
+#include <surface/gap/Error.hh>
+
 #include <version.hh>
 
 ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
@@ -367,14 +371,36 @@ namespace infinit
           auto os = elle::system::platform::name();
           output.serialize("OS", os);
         }
-        this->_handle_errors(request);
+        if (request.status() == reactor::http::StatusCode::Forbidden)
         {
           elle::serialization::json::SerializerIn input(request);
-          LoginResponse response(input);
-          // Debugging purpose.
-          this->_email = email;
-          this->_logged_in = true;
-          return response;;
+          int error_code;
+          input.serialize("code", error_code);
+          using ErrorCode = ::oracles::meta::client::ErrorCode;
+          switch (ErrorCode(error_code))
+          {
+            case ErrorCode::email_not_confirmed:
+              throw infinit::state::UnconfirmedEmailError();
+            case ErrorCode::email_password_dont_match:
+              throw infinit::state::CredentialError();
+            case ErrorCode::already_logged_in:
+              throw infinit::state::AlreadyLoggedIn();
+
+            default:
+              throw infinit::state::LoginError("Unknown, good luck!");
+          }
+        }
+        else
+        {
+          this->_handle_errors(request);
+          {
+            elle::serialization::json::SerializerIn input(request);
+            LoginResponse response(input);
+            // Debugging purpose.
+            this->_email = email;
+            this->_logged_in = true;
+            return response;
+          }
         }
       }
 
