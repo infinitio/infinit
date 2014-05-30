@@ -17,6 +17,7 @@
 
 # include <common/common.hh>
 
+# include <surface/gap/Error.hh>
 # include <surface/gap/State.hh>
 # include <surface/gap/LinkTransaction.hh>
 
@@ -237,6 +238,21 @@ run(gap_State* state,
   {
     ELLE_ERR("%s: error: %s", name, elle::exception_string());
     ret = gap_network_error;
+  }
+  catch (infinit::state::UnconfirmedEmailError const&)
+  {
+    ELLE_ERR("%s: error: %s", name, elle::exception_string());
+    ret = gap_email_not_confirmed;
+  }
+  catch (infinit::state::CredentialError const&)
+  {
+    ELLE_ERR("%s: error: %s", name, elle::exception_string());
+    ret = gap_email_password_dont_match;
+  }
+  catch (infinit::state::AlreadyLoggedIn const&)
+  {
+    ELLE_ERR("%s: error: %s", name, elle::exception_string());
+    ret = already_logged_in;
   }
   catch (elle::Exception const&)
   {
