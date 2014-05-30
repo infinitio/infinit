@@ -352,7 +352,16 @@ namespace surface
         this->_peer_offline.open();
       }
       this->_initialize();
-      this->_fsm.run();
+      try
+      {
+        this->_fsm.run();
+      }
+      catch(...)
+      {
+        ELLE_TRACE("%s: exception escaped fsm %s: %s",
+                   *this, this->_fsm, elle::exception_string());
+        throw;
+      }
     }
 
     /*---------.
