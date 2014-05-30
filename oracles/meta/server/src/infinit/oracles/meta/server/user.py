@@ -3,6 +3,7 @@
 import bottle
 import bson
 import datetime
+import json
 import random
 import uuid
 
@@ -84,6 +85,10 @@ class Mixin:
   ## Sessions ##
   ## -------- ##
 
+  def _forbidden_with_error(self, error):
+    ret_msg = json.dumps({'code': error[0], 'message': error[1]})
+    raise bottle.HTTPResponse(body = ret_msg, status = 403)
+
   def _login(self, email, password):
     try:
       user = self.user_by_email_password(
@@ -94,10 +99,11 @@ class Mixin:
         from time import time
         if time() > user['unconfirmed_email_deadline']:
           self.resend_confirmation_email(email)
-          self.fail(error.EMAIL_NOT_CONFIRMED)
+          self._forbidden_with_error(error.EMAIL_NOT_CONFIRMED)
       return user
     except error.Error as e:
-      self.fail(*e.args)
+      args = e.args
+      self._forbidden_with_error(args[0])
 
   def _login_response(self,
                       user,
