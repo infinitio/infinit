@@ -422,8 +422,6 @@ BOOST_PYTHON_MODULE(state)
     ("State",
      boost::python::init<std::string const&,
                          std::string const&,
-                         uint16_t,
-                         std::string const&,
                          uint16_t>())
     .def("logged_in", &State::logged_in)
     .def("login", &State::login)
