@@ -252,7 +252,7 @@ run(gap_State* state,
   catch (infinit::state::AlreadyLoggedIn const&)
   {
     ELLE_ERR("%s: error: %s", name, elle::exception_string());
-    ret = already_logged_in;
+    ret = gap_already_logged_in;
   }
   catch (elle::Exception const&)
   {
