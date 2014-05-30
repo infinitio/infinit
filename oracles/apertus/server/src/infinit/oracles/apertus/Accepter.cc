@@ -95,10 +95,10 @@ namespace infinit
 
           // First client to connect with this TID, it must wait.
           auto peer_iterator = this->_apertus._clients.find(tid);
-          auto self = this->_apertus._take_from_accepters(this);
           if (peer_iterator == this->_apertus._clients.end())
           {
             ELLE_TRACE("%s: first user for TID %s", *this, tid);
+            auto self = this->_apertus._take_from_accepters(this);
             this->_apertus._clients[tid] = std::move(self);
           }
           // Second client, establishing connection.
