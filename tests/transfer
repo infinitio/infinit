@@ -146,6 +146,7 @@ class TransferPeer:
     self.logged_in = False
   def check_progress(self, tid, progress):
     """ Check if progress greater than value, throw if it can never be"""
+    elle.log.trace('Progress is %s' % self.state.transaction_progress(tid))
     if self.state.transaction_progress(tid) >= progress or self.status == 'transaction_finished':
       return True
     if self.status in final_statuses:
@@ -311,6 +312,22 @@ class TestBasicTransfer(unittest.TestCase):
 
 class TestResumeTransfer(unittest.TestCase):
   def parse_sequence(self, sequence):
+    """ Parse a string with parse_sequence_string(), or a list made
+        of strings and actions.
+    """
+    elle.log.trace('processing instruction sequence %s' % sequence)
+    if isinstance(sequence, str):
+      return self.parse_sequence_string(sequence)
+    else:
+      res = []
+      for elem in sequence:
+        elle.log.trace('list processing elem %s' % (elem))
+        if isinstance(elem, str):
+          res += self.parse_sequence_string(elem)
+        else:
+          res.append(('action', elem))
+      return res
+  def parse_sequence_string(self, sequence):
     """ Parse string and generate sequence of test instructions:
     s,r,S,R: logout/login for sender/recipient
     {s,r}<PERCENTAGE>: wait until given progress (ex: s100)
@@ -365,21 +382,26 @@ class TestResumeTransfer(unittest.TestCase):
   def transfer_test(self, files, files_data, sequence,
                     expect_total_size = None, expect_is_directory = None,
                     expect_files_count = None, expect_files = None,
-                    message = None, timeout = None, assert_success = True):
-    if isinstance(sequence, str):
-      sequence = self.parse_sequence(sequence)
+                    message = None, timeout = None, assert_status = 'success'):
+    sequence = self.parse_sequence(sequence)
     with Transfer(test_credentials, files,
                   files_data, timeout=timeout, message=message) as transfer:
       transfer.sender.login()
       wait_helper(3, lambda: False, False) #FIXME reduce/remove this
       transfer.recipient.set_rules(accept_rules)
       for e in sequence:
-        elle.log.trace('Executing %s' % e[0])
+        elle.log.trace('Executing %s(%s)' % (e[0], e[1]))
         e[1](transfer)
       transfer.wait_transaction_final(timeout or 30)
-      if assert_success:
+      if assert_status == 'success':
         transfer.assertSuccess(self, expect_total_size, expect_is_directory,
                                expect_files_count, expect_files)
+      elif assert_status == 'failed':
+        self.assertEqual(transfer.sender.status, 'transaction_failed')
+        self.assertEqual(transfer.recipient.status, 'transaction_failed')
+      elif assert_status == 'canceled':
+        self.assertEqual(transfer.sender.status, 'transaction_canceled')
+        self.assertEqual(transfer.recipient.status, 'transaction_canceled')
   #def test_self(self): # tests the test system
   #  return self.transfer_test(['100k'], {'name': '100k','size': 100000},
   #                            'R start 10 20 30 100',
@@ -419,12 +441,26 @@ class TestResumeTransfer(unittest.TestCase):
   def test_switch_send_p2p(self):
     # sender flickers, recipient always on, no cloud
     # Note: cannot finish with S, sS sequence does not get the finished notification
-    # because transaction goes to history and our python binding doesn't have that 
+    # because transaction goes to history and our python binding doesn't have that
     return self.transfer_test(['big'], {'name': 'big','size': 1000000},
                               'R start r10 s S r20 s S r30 s S r40 s S r50 s S r60 s S r70 s S r80 s S r90 s S r100 s')
   def test_switch_both(self):
     return self.transfer_test(['big'], {'name': 'big','size': 1000000},
                               'start s40 R r10 r s R r20 r R r30 r R r40 r S s80 s R r50 S')
+
+  def _test_cancel_remove_sender_file(self, files, remove):
+    def remove_file(t):
+      filepath = os.path.join(t.data.directory, remove)
+      os.remove(filepath)
+    # Use a file big enough so we dont miss a progress >0 and <1 with our polling
+    return self.transfer_test(files, {'names': files,'size': 50000000},
+                              ['R start r1', remove_file],
+                              timeout = 20,
+                              assert_status = 'canceled')
+  def test_cancel_remove_sender_file_1(self): #remove currently being transfered
+    self._test_cancel_remove_sender_file(['v1'], 'v1')
+  def test_cancel_remove_sender_file_2(self): #remove file further down
+    self._test_cancel_remove_sender_file(['v1', 'v2'], 'v2')
 
 utils.run(unittest.main)
 
