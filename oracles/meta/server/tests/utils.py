@@ -27,8 +27,9 @@ from uuid import uuid4, UUID
 
 class HTTPException(Exception):
 
-  def __init__(self, status, method, url, body):
+  def __init__(self, status, method, url, body, content):
     self.status = int(status)
+    self.content = content
     super().__init__('status %s with %s on /%s with body %s' % \
                      (status, method, url, body))
 
@@ -54,12 +55,14 @@ class Client:
 
   def __convert_result(self, url, method, body, headers, content):
     status = headers['status']
-    if status != '200':
-      raise HTTPException(status, method, url, body)
     if headers['content-type'] == 'application/json':
-      return json.loads(content.decode())
+      content = json.loads(content.decode())
     elif headers['content-type'] == 'text/plain':
-      return content.decode()
+      content = content.decode()
+    else:
+      content = content
+    if status != '200':
+      raise HTTPException(status, method, url, body, content)
     else:
       return content
 
