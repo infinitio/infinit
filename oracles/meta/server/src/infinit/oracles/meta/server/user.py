@@ -10,6 +10,7 @@ import uuid
 import elle.log
 import papier
 
+from .plugins.response import response
 from .utils import api, require_logged_in, require_admin, hash_pasword, json_value
 from . import error, notifier, regexp, conf, invitation, mail
 
@@ -86,8 +87,8 @@ class Mixin:
   ## -------- ##
 
   def _forbidden_with_error(self, error):
-    ret_msg = json.dumps({'code': error[0], 'message': error[1]})
-    raise bottle.HTTPResponse(body = ret_msg, status = 403)
+    ret_msg = {'code': error[0], 'message': error[1]}
+    response(403, ret_msg)
 
   def _login(self, email, password):
     try:
