@@ -146,9 +146,9 @@ class TransferPeer:
     self.logged_in = False
   def check_progress(self, tid, progress):
     """ Check if progress greater than value, throw if it can never be"""
-    elle.log.trace('Progress is %s' % self.state.transaction_progress(tid))
-    if self.state.transaction_progress(tid) >= progress or self.status == 'transaction_finished':
+    if self.status == 'transaction_finished' or self.state.transaction_progress(tid) >= progress:
       return True
+    elle.log.trace('Progress is %s' % self.state.transaction_progress(tid))
     if self.status in final_statuses:
       raise Exception('Progress unreachable: state=%s, at %s, expect %s'
         % (self.status, self.state.transaction_progress(tid), progress))
@@ -223,6 +223,11 @@ class Transfer:
   @property
   def recipient(self):
     return self.peers[1]
+  def trophonius_stop(self):
+    elle.log.trace('stopping tropho')
+    self.oracles.trophonius_stop()
+  def trophonius_start(self):
+    self.oracles.trophonius_start()
   def wait_transaction_final(self, timeout):
     """ Wait for a final state on both ends"""
     if self.sender.logged_in:
@@ -265,6 +270,8 @@ class Transfer:
       test.assertEqual(tr, expect)
     test.assertTrue(check_explain(
       FileMatch(self.data.directory, self.oracles.download_dir)))
+    elle.log.log('assertSuccess succeeded (%s)' %
+      len(list(os.walk(self.oracles.download_dir))[0][2]))
 
 class TestBasicTransfer(unittest.TestCase):
   def transfer_test(self, files, files_data,
@@ -330,6 +337,7 @@ class TestResumeTransfer(unittest.TestCase):
   def parse_sequence_string(self, sequence):
     """ Parse string and generate sequence of test instructions:
     s,r,S,R: logout/login for sender/recipient
+    t,T: stop/start trophonius
     {s,r}<PERCENTAGE>: wait until given progress (ex: s100)
     d<MILLISECONDS>: delay given time
     start: start transfer (call send_files)
@@ -366,6 +374,10 @@ class TestResumeTransfer(unittest.TestCase):
         action(False, lambda t: t.sender.login())
       elif e == 'R':
         action(False, lambda t: t.recipient.login())
+      elif e == 'T':
+        action(False, lambda t: t.trophonius_start())
+      elif e == 't':
+        action(False, lambda t: t.trophonius_stop())
       elif e == 'start':
         action(False, lambda t: t.start())
       elif isInt(e) is not None:
@@ -392,6 +404,7 @@ class TestResumeTransfer(unittest.TestCase):
       for e in sequence:
         elle.log.trace('Executing %s(%s)' % (e[0], e[1]))
         e[1](transfer)
+        elle.log.trace('Finished %s' % e[0])
       transfer.wait_transaction_final(timeout or 30)
       if assert_status == 'success':
         transfer.assertSuccess(self, expect_total_size, expect_is_directory,
@@ -462,5 +475,19 @@ class TestResumeTransfer(unittest.TestCase):
   def test_cancel_remove_sender_file_2(self): #remove file further down
     self._test_cancel_remove_sender_file(['v1', 'v2'], 'v2')
 
+class TestNoTropho(TestResumeTransfer):
+  def test_no_tropho_beg_1(self): #login then tropho down
+    return self.transfer_test(['tnt1'], {'name': 'tnt1','size': 100000},
+                              'R t start d1000 T')
+  def login_fail(self, t):
+    #login throws if no trophonius is available
+    self.assertRaises(Exception, t.recipient.login)
+    self.assertRaises(Exception, t.sender.login)
+  def test_no_tropho_beg_2(self): #login fails when tropho down
+    return self.transfer_test(['tnt2'], {'name': 'tnt2','size': 100000},
+                              ['s t', self.login_fail, 'T S R start d1000 T'])
+  def test_no_tropho_mid(self): # start then tropho down
+    return self.transfer_test(['tnt3'], {'name': 'tnt3','size': 10000000},
+                              'R start r20 t T r30 t T r40 t T r50 t T r60 t T r70 t T r80 t T')
 utils.run(unittest.main)
 
