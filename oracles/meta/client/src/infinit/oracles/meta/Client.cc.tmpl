@@ -1120,9 +1120,14 @@ namespace infinit
             send(request);
             switch (request.status())
             {
+              // Nothing in our API generates any of those that we can handle,
+              // must be some captive portal, misbehaving proxy,
+              // or a temporary server glitch. wait until it goes away.
               case reactor::http::StatusCode::Bad_Gateway:
               case reactor::http::StatusCode::Service_Unavailable:
               case reactor::http::StatusCode::Gateway_Timeout:
+              case reactor::http::StatusCode::Found:
+              case reactor::http::StatusCode::Not_Found:
               {
                 ELLE_WARN("%s: error requesting %s, retrying: %s.\n%s",
                           *this, url,
