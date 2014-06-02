@@ -117,8 +117,8 @@ class Meta(bottle.Bottle,
                mongo_replica_set = None,
                enable_emails = True,
                enable_invitations = True,
-               trophonius_expiration_time = 300, # in sec
-               apertus_expiration_time = 300, # in sec
+               trophonius_expiration_time = 90, # in sec
+               apertus_expiration_time = 90, # in sec
                unconfirmed_email_leeway = 604800, # in sec, 7 days.
                daily_summary_hour = 18, #in sec.
                email_confirmation_cooldown = 600, # in sec.
