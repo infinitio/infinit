@@ -15,7 +15,6 @@
 
 #include <infinit/metrics/CompositeReporter.hh>
 #include <infinit/metrics/reporters/InfinitReporter.hh>
-#include <infinit/metrics/reporters/KeenReporter.hh>
 #include <infinit/metrics/Reporter.hh>
 
 #include <common/common.hh>
@@ -246,18 +245,6 @@ common::infinit::Configuration::Configuration(bool production)
   this->_metrics_infinit_port = boost::lexical_cast<int>(
     elle::os::getenv(
       "INFINIT_METRICS_INFINIT_PORT", "80"));
-  this->_metrics_keen_enabled = boost::lexical_cast<bool>(
-    elle::os::getenv("INFINIT_METRICS_KEEN", "0"));
-  this->_metrics_keen_project =
-    elle::os::getenv(
-      "INFINIT_METRICS_KEEN_PROJECT", env_production ?
-      "532c5a9c00111c0da2000023" :
-      "53307f5ace5e436303000014");
-  this->_metrics_keen_key =
-    elle::os::getenv(
-      "INFINIT_METRICS_KEEN_KEY", env_production ?
-      "19562aa3aed59df3f0a0bb746975d4b61a1789b52b6ee42ffcdd88fbe9fec7bd6f8e6cf4256fee1a08a842edc8212b98b57d3c28b6df94fd1520834390d0796ad2efbf59ee1fca268bdc4c6d03fa438102ae22c7c6e318d98fbe07becfb83ec65b2e844c57bb3db2da1d36903c4ef791" :
-      "d9440867211d34efa94b2dc72673c46b02d3110dbc3271ee83fec6fd97d9be1839a3c02a913cd7091ee310e93c62f95799679ee4ec66707d8742c3649dd756ae32c69828778b2a77ea39121f0d407a49577553c71ad87fd3c38bdf1e9322201e0155fdc21269c6c47834e9907470204f");
 }
 
 std::unique_ptr< ::infinit::metrics::Reporter>
@@ -268,10 +255,6 @@ common::metrics(common::infinit::Configuration const& config)
     res->add_reporter(elle::make_unique< ::infinit::metrics::InfinitReporter>(
                         config.metrics_infinit_host(),
                         config.metrics_infinit_port()));
-  if (config.metrics_keen_enabled())
-    res->add_reporter(elle::make_unique< ::infinit::metrics::KeenReporter>(
-                        config.metrics_keen_project(),
-                        config.metrics_keen_key()));
   return std::unique_ptr< ::infinit::metrics::Reporter>(
     std::move(res));
 }

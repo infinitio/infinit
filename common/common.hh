@@ -38,9 +38,6 @@ namespace common
       ELLE_ATTRIBUTE_R(bool, metrics_infinit_enabled);
       ELLE_ATTRIBUTE_R(std::string, metrics_infinit_host);
       ELLE_ATTRIBUTE_R(int, metrics_infinit_port);
-      ELLE_ATTRIBUTE_R(bool, metrics_keen_enabled);
-      ELLE_ATTRIBUTE_R(std::string, metrics_keen_project);
-      ELLE_ATTRIBUTE_R(std::string, metrics_keen_key);
     };
 
     /// Returns infinit home directory.
