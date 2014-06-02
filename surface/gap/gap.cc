@@ -17,6 +17,7 @@
 #include <CrashReporter.hh>
 
 #include <reactor/scheduler.hh>
+#include <reactor/thread.hh>
 
 #include <boost/range/join.hpp>
 
@@ -1440,20 +1441,30 @@ gap_send_user_report(gap_State* state,
                      std::string const& file,
                      std::string const& os_description)
 {
-  return run<gap_Status>(
-    state,
-    "send user report",
-    [&] (surface::gap::State& state) -> gap_Status
+  // In order to avoid blocking the GUI, let's create a disposable thread and
+  // let it go.
+  // XXX: The gap_Status inside catch_to_gap_status is useless.
+  bool disposable = true;
+  new reactor::Thread(
+    *reactor::Scheduler::scheduler(),
+    "send last crash report",
+    [=] ()
     {
-      elle::crash::user_report(state.meta(false).protocol(),
-                               state.meta(false).host(),
-                               state.meta(false).port(),
-                               user_name,
-                               os_description,
-                               message,
-                               file);
-      return gap_ok;
-    });
+      catch_to_gap_status<gap_Status>(
+        [=] ()
+        {
+          auto& _state = state->state();
+          elle::crash::user_report(_state.meta(false).protocol(),
+                                   _state.meta(false).host(),
+                                   _state.meta(false).port(),
+                                   user_name,
+                                   os_description,
+                                   message,
+                                   file);
+          return gap_ok;
+        }, "send user report");
+    }, disposable);
+  return gap_ok;
 }
 
 gap_Status
@@ -1464,22 +1475,32 @@ gap_send_last_crash_logs(gap_State* state,
                          std::string const& os_description,
                          std::string const& additional_info)
 {
-  return run<gap_Status>(
-    state,
-    "send user report",
-    [&] (surface::gap::State& state) -> gap_Status
+  // In order to avoid blocking the GUI, let's create a disposable thread and
+  // let it go.
+  // XXX: The gap_Status inside catch_to_gap_status is useless.
+  bool disposable = true;
+  new reactor::Thread(
+    *reactor::Scheduler::scheduler(),
+    "send last crash report",
+    [=] ()
     {
-      std::vector<std::string> files;
-      files.push_back(crash_report);
-      files.push_back(state_log);
+      catch_to_gap_status<gap_Status>(
+        [=] ()
+        {
+          std::vector<std::string> files;
+          files.push_back(crash_report);
+          files.push_back(state_log);
 
-      elle::crash::existing_report(state.meta().protocol(),
-                                   state.meta().host(),
-                                   state.meta().port(),
-                                   files,
-                                   user_name,
-                                   os_description,
-                                   additional_info);
-      return gap_ok;
-    });
+          auto& _state = state->state();
+          elle::crash::existing_report(_state.meta().protocol(),
+                                       _state.meta().host(),
+                                       _state.meta().port(),
+                                       files,
+                                       user_name,
+                                       os_description,
+                                       additional_info);
+          return gap_ok;
+        }, "send last crash report");
+    }, disposable);
+  return gap_ok;
 }

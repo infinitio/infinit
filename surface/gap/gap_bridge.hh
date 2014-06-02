@@ -188,26 +188,14 @@ public:
 
 template <typename Type>
 Ret<Type>
-run(gap_State* state,
-    std::string const& name,
-    std::function<Type (surface::gap::State&)> const& function)
+catch_to_gap_status(std::function<Type ()> const& func,
+                    std::string const& name = "bridge")
 {
   ELLE_LOG_COMPONENT("surface.gap.bridge");
-  assert(state != nullptr);
-
   gap_Status ret = gap_ok;
   try
   {
-    reactor::Scheduler& scheduler = state->scheduler();
-    ELLE_DEBUG("running %s", name);
-    return Ret<Type>(
-      ret,
-      scheduler.mt_run<Type>
-      (
-        name,
-        [&] () { return function(state->state()); }
-        )
-      );
+    return Ret<Type>(ret, func());
   }
   catch (elle::http::Exception const& err)
   {
@@ -270,6 +258,30 @@ run(gap_State* state,
     ret = gap_internal_error;
   }
   return Ret<Type>{ret, Type{}};
+}
+
+template <typename Type>
+Ret<Type>
+run(gap_State* state,
+    std::string const& name,
+    std::function<Type (surface::gap::State&)> const& function)
+{
+  ELLE_LOG_COMPONENT("surface.gap.bridge");
+  assert(state != nullptr);
+
+  return catch_to_gap_status<Type>([=] () -> Ret<Type>
+    {
+      reactor::Scheduler& scheduler = state->scheduler();
+      ELLE_DEBUG("running %s", name);
+      return Ret<Type>(
+        gap_ok,
+        scheduler.mt_run<Type>(
+          name,
+          [=] () { return function(state->state()); }
+          )
+        );
+    },
+    name);
 }
 
 #endif
