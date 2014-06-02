@@ -1126,7 +1126,9 @@ namespace infinit
               case reactor::http::StatusCode::Bad_Gateway:
               case reactor::http::StatusCode::Service_Unavailable:
               case reactor::http::StatusCode::Gateway_Timeout:
-              case reactor::http::StatusCode::Found:
+              // Make sure Found is really a transient proxy error before
+              // activating that one.
+              // case reactor::http::StatusCode::Found:
               {
                 ELLE_WARN("%s: error requesting %s, retrying: %s.\n%s",
                           *this, url,
