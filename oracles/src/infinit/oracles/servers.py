@@ -82,6 +82,7 @@ class Oracles:
     self.__setup_client = setup_client
     self.__cleanup_dirs = list()
     self.__states = list()
+    self._trophonius = None
 
   def __enter__(self):
     elle.log.trace('starting mongobox')
@@ -90,17 +91,11 @@ class Oracles:
     elle.log.trace('starting meta')
     self._meta = MetaWrapperProcess(self.__force_admin, self._mongo.port, self.__force_meta_port)
     self._meta.start()
-    elle.log.trace('starting tropho')
-    tropho_tcp_port = 0
-    # Note: we are actually setting the ssl port, which is the one used
-    if self.__force_trophonius_port is not None:
-      tropho_tcp_port = self.__force_trophonius_port
-    self._trophonius = infinit.oracles.trophonius.server.Trophonius(tropho_tcp_port, 0, 'http', '127.0.0.1', self._meta.port, 0, timedelta(seconds=30), timedelta(seconds = 60), timedelta(seconds=10))
+    self.trophonius_start()
     elle.log.trace('starting apertus')
     self._apertus = infinit.oracles.apertus.server.Apertus('http', '127.0.0.1', self._meta.port, '127.0.0.1', 0, 0, timedelta(seconds = 10), timedelta(minutes = 5))
     elle.log.trace('ready')
     self.meta = ('http', '127.0.0.1', self._meta.port)
-    self.trophonius = ('tcp', '127.0.0.1', self._trophonius.port_tcp(), self._trophonius.port_ssl())
     self.apertus = ('tcp', '127.0.0.1', self._apertus.port_tcp(), self._apertus.port_ssl())
     if self.__setup_client:
       # Some part of the systems use device_id as an uid (trophonius)
@@ -135,14 +130,35 @@ class Oracles:
       elle.log.trace('Cleaning up %s' % d)
       shutil.rmtree(d)
     reactor.sleep(datetime.timedelta(milliseconds = 300))
-    self._trophonius.terminate()
-    self._trophonius.stop()
+    if self._trophonius is not None:
+      self._trophonius.terminate()
+      self._trophonius.stop()
     self._apertus.stop()
     reactor.sleep(datetime.timedelta(milliseconds = 300))
     #self._trophonius.wait()
     self._meta.stop()
     self._mongo.__exit__(*args, **kwargs)
-
+  def trophonius_start(self):
+    elle.log.trace('starting tropho')
+    self.trophonius_stop() # there can be only one for now
+    tropho_tcp_port = 0
+    # Note: we are actually setting the ssl port, which is the one used
+    if self.__force_trophonius_port is not None:
+      tropho_tcp_port = self.__force_trophonius_port
+    self._trophonius = infinit.oracles.trophonius.server.Trophonius(
+      tropho_tcp_port, 0, 'http', '127.0.0.1', self._meta.port, 0,
+      timedelta(seconds=30), timedelta(seconds = 60), timedelta(seconds=10))
+    self.trophonius = ('tcp', '127.0.0.1', self._trophonius.port_tcp(), self._trophonius.port_ssl())
+    elle.log.trace('tropho started on %s' % self._trophonius.port_tcp())
+  def trophonius_stop(self):
+    if self._trophonius is not None:
+      elle.log.trace("tropho term")
+      self._trophonius.terminate()
+      elle.log.trace("tropho stop")
+      self._trophonius.stop()
+      elle.log.trace("tropho wait")
+      self._trophonius.wait()
+    self._trophonius = None
   @property
   def mongo(self):
     return self._mongo
