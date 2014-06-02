@@ -875,6 +875,9 @@ class Mixin:
     """
     with elle.log.trace("%s: search %s emails (limit: %s, offset: %s)" %
                         (self.user['_id'], len(emails), limit, offset)):
+      ret_keys = dict(**self.user_public_fields)
+      if 'email' not in ret_keys:
+        ret_keys['email'] = '$email'
       res = self.database.users.aggregate([
         {
           '$match':
@@ -885,7 +888,7 @@ class Mixin:
         },
         {'$limit': limit},
         {'$skip': offset},
-        {'$project': dict(email = '$email', **self.user_public_fields)}
+        {'$project': ret_keys}
       ])
       return {'users': res['result']}
 
