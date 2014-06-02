@@ -58,6 +58,15 @@ parser.add_option('--mongo-port',
                   help = 'Mongodb port',
                   type = int,
                   default = None)
+parser.add_option('--mongo-host',
+                  action = 'append',
+                  help = 'Mongodb host',
+                  type = str,
+                  default = None)
+parser.add_option('--mongo-replica-set',
+                  action = 'store_true',
+                  help = 'Use mongo replica set',
+                  default = False)
 parser.add_option('--aws-region',
                   action = 'store',
                   help  = 'aws region for cloud data',
@@ -73,6 +82,11 @@ parser.add_option('--aws-link-bucket',
 
 options, args = parser.parse_args()
 
+args = {}
+
+if options.mongo_replica_set:
+  args['mongo_replica_set'] = options.mongo_host
+
 app = infinit.oracles.meta.server.Meta(
   debug = options.debug,
   force_admin = options.force_admin,
@@ -83,7 +97,8 @@ app = infinit.oracles.meta.server.Meta(
   email_confirmation_cooldown = options.email_confirmation_cooldown,
   aws_region = options.aws_region,
   aws_buffer_bucket = options.aws_buffer_bucket,
-  aws_link_bucket = options.aws_link_bucket)
+  aws_link_bucket = options.aws_link_bucket,
+  **args)
 
 app.port = 0
 
