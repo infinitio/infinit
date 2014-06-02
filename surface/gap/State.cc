@@ -331,19 +331,20 @@ namespace surface
       auto login_response =
         this->_meta.login(lower_email, password, _device_uuid);
       login_failed.abort();
-      this->_trophonius.server(
-        login_response.trophonius.host, login_response.trophonius.port_ssl);
-      ELLE_TRACE("%s: poking trophonius", *this);
-      if (!this->_trophonius_server_check())
-      {
-        throw Exception(gap_trophonius_unreachable,
-                        "Unable to contact Trophonius");
-      }
 
       elle::With<elle::Finally>([&] { this->_meta.logout(); })
         << [&] (elle::Finally& finally_logout)
       {
         ELLE_LOG("%s: logged in as %s", *this, email);
+
+        this->_trophonius.server(
+          login_response.trophonius.host, login_response.trophonius.port_ssl);
+        ELLE_TRACE("%s: poking trophonius", *this);
+        if (!this->_trophonius_server_check())
+        {
+          throw Exception(gap_trophonius_unreachable,
+                          "Unable to contact Trophonius");
+        }
 
         infinit::metrics::Reporter::metric_sender_id(login_response.id);
         this->_metrics_reporter->user_login(true, "");
