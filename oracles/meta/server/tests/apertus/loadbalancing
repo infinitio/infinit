@@ -17,7 +17,11 @@ class Apertus:
 
   def register_or_ping(self):
     self.meta.put('apertus/%s' % str(self.uuid),
-                  body = {"port_ssl": self.port_ssl, "port_tcp": self.port_tcp})
+                  body = {
+                    'host': '127.0.0.1',
+                    'port_ssl': self.port_ssl,
+                    'port_tcp': self.port_tcp,
+                  })
 
   def __str__(self):
     return "host: 127.0.0.1, port_ssl: %s, port_tcp: %s" % (self.port_ssl,

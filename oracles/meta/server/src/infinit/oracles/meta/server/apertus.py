@@ -17,19 +17,22 @@ class Mixin:
   def apertus_put(self,
                   uid: uuid.UUID,
                   port_ssl,
-                  port_tcp):
+                  port_tcp,
+                  host = None):
     """Register a apertus.
     """
     assert isinstance(uid, uuid.UUID)
     # Upsert is important here  be cause if a apertus crashed and didn't
     # unregister itself, it's important to update the old entry in the database.
+    if host is None:
+      host = self.remote_ip,
     res = self.database.apertus.update(
       {
         '_id': str(uid),
       },
       {
         '$set': {
-        'ip': self.remote_ip,
+        'host': host,
         'port_tcp': port_tcp,
         'port_ssl': port_ssl,
         'time': time.time(),
@@ -86,7 +89,7 @@ class Mixin:
   def choose_apertus(self):
     apertus = self.database.apertus.find(
         {
-          "ip": { "$ne": None },
+          "host": { "$ne": None },
           "port_tcp": { "$ne": None },
           "port_ssl": { "$ne": None },
           "load": { "$ne": None },
@@ -97,7 +100,7 @@ class Mixin:
     apertus = apertus.sort([("load", 1)])
     fallback = apertus[0]
     elle.log.debug('selected fallback: %s' % fallback)
-    return {'fallback_host': fallback['ip'],
+    return {'fallback_host': fallback['host'],
             'fallback_port_ssl': fallback['port_ssl'],
             'fallback_port_tcp': fallback['port_tcp']}
 
@@ -152,7 +155,13 @@ class Mixin:
         }
       )
 
-  apertus_fields = ['ip', 'port', 'load', 'number_of_transfers']
+  apertus_fields = [
+    'host',
+    'port_tcp',
+    'port_ssl',
+    'load',
+    'number_of_transfers',
+  ]
 
   @api('/apertus')
   def registered_apertus(self):
