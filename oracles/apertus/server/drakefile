@@ -158,7 +158,9 @@ def configure(elle,
     drake.node('etc/apertus.conf.tmpl')
   package += drake.copy(drake.nodes('control'), 'debian/DEBIAN')
   package += drake.copy(drake.nodes('etc/apertus.conf',
-                                    'etc/init.d/apertus'),
+                                    'etc/init.d/apertus',
+                                    'etc/rsyslog.d/apertus.conf',
+                                  ),
                         debian_path)
   debian << drake.debian.Packager(
     'fist-apertus_%s_amd64.deb' % git.version(),
