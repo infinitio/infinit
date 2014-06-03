@@ -1492,9 +1492,9 @@ gap_send_last_crash_logs(gap_State* state,
           files.push_back(state_log);
 
           auto& _state = state->state();
-          elle::crash::existing_report(_state.meta().protocol(),
-                                       _state.meta().host(),
-                                       _state.meta().port(),
+          elle::crash::existing_report(_state.meta(false).protocol(),
+                                       _state.meta(false).host(),
+                                       _state.meta(false).port(),
                                        files,
                                        user_name,
                                        os_description,
