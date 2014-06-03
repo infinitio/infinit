@@ -164,18 +164,6 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::FallbackResponse, ar, res)
   ar & named("fallback_port_tcp", res.fallback_port_tcp);
 }
 
-SERIALIZE_RESPONSE(infinit::oracles::meta::CloudBufferTokenResponse, ar, res)
-{
-  ar & named("access_key_id", res.access_key_id);
-  ar & named("secret_access_key", res.secret_access_key);
-  ar & named("session_token", res.session_token);
-  ar & named("expiration", res.expiration);
-  ar & named("protocol", res.protocol);
-  ar & named("region", res.region);
-  ar & named("bucket", res.bucket);
-  ar & named("folder", res.folder);
-}
-
 /*--------------.
 | Server Status |
 `--------------*/
@@ -924,16 +912,26 @@ namespace infinit
           elle::sprintf("/apertus/fallback/%s", _id), Method::GET);
       }
 
-      CloudBufferTokenResponse
+      aws::Credentials
       Client::get_cloud_buffer_token(std::string const& transaction_id,
                                      bool force_regenerate) const
       {
-        // don't trust the sprintf bool printer to match the expected format
-        // for URL query bool argument
-        return this->_request<CloudBufferTokenResponse>(
+        auto url =
           elle::sprintf("/transaction/%s/cloud_buffer?force_regenerate=%s",
-                        transaction_id, force_regenerate?"true":"false"),
-          Method::GET);
+                        transaction_id, force_regenerate ? "true" : "false");
+        try
+        {
+          auto request = this->_request(url, Method::GET);
+          elle::serialization::json::SerializerIn input(request);
+          return aws::Credentials(input);
+        }
+        catch (elle::http::Exception const& e)
+        {
+          if (e.code == elle::http::ResponseCode::gone)
+            throw infinit::state::TransactionFinalized();
+          else
+            throw;
+        }
       }
 
       /*------.

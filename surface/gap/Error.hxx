@@ -7,19 +7,23 @@ namespace infinit
     {}
 
     LoginError::LoginError(std::string const& message)
-      : Error::Error(message)
+      : Error(message)
     {}
 
     CredentialError::CredentialError()
-      : LoginError::LoginError("Email/password are incorrect.")
+      : LoginError("email/password are incorrect")
     {}
 
     UnconfirmedEmailError::UnconfirmedEmailError()
-      : LoginError::LoginError("Email not confirmed.")
+      : LoginError("email not confirmed")
     {}
 
     AlreadyLoggedIn::AlreadyLoggedIn()
-      : LoginError::LoginError("Already logged in.")
+      : LoginError("already logged in")
+    {}
+
+    TransactionFinalized::TransactionFinalized()
+      : Error("transaction is already finalized")
     {}
   }
 }

@@ -51,6 +51,13 @@ namespace infinit
     public:
       inline AlreadyLoggedIn();
     };
+
+    class TransactionFinalized
+      : public Error
+    {
+    public:
+      inline TransactionFinalized();
+    };
   }
 }
 
