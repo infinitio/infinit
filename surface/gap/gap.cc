@@ -1446,7 +1446,7 @@ gap_send_user_report(gap_State* state,
   // XXX: The gap_Status inside catch_to_gap_status is useless.
   bool disposable = true;
   new reactor::Thread(
-    *reactor::Scheduler::scheduler(),
+    state->scheduler(),
     "send last crash report",
     [=] ()
     {
@@ -1480,7 +1480,7 @@ gap_send_last_crash_logs(gap_State* state,
   // XXX: The gap_Status inside catch_to_gap_status is useless.
   bool disposable = true;
   new reactor::Thread(
-    *reactor::Scheduler::scheduler(),
+    state->scheduler(),
     "send last crash report",
     [=] ()
     {
