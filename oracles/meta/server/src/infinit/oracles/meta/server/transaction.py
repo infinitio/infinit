@@ -643,7 +643,15 @@ class Mixin:
         % ( str(device['id']),
             transaction['sender_device_id'],
             transaction['recipient_device_id']))
-      self.forbidden('transaction is not for this device')
+      debug = {
+        'current device': bottle.request.session.get('device'),
+        'sent device': device,
+        'transaction devices': [
+          transaction['sender_device_id'],
+          transaction['recipient_device_id'],
+        ],
+      }
+      self.forbidden('transaction is not for this device: %r' % debug)
     node = dict()
     node['locals'] = [
       {'ip' : v['ip'], 'port' : v['port']}

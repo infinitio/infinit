@@ -17,6 +17,7 @@
 
 # include <common/common.hh>
 
+# include <surface/gap/Error.hh>
 # include <surface/gap/State.hh>
 # include <surface/gap/LinkTransaction.hh>
 
@@ -187,26 +188,14 @@ public:
 
 template <typename Type>
 Ret<Type>
-run(gap_State* state,
-    std::string const& name,
-    std::function<Type (surface::gap::State&)> const& function)
+catch_to_gap_status(std::function<Type ()> const& func,
+                    std::string const& name = "bridge")
 {
   ELLE_LOG_COMPONENT("surface.gap.bridge");
-  assert(state != nullptr);
-
   gap_Status ret = gap_ok;
   try
   {
-    reactor::Scheduler& scheduler = state->scheduler();
-    ELLE_DEBUG("running %s", name);
-    return Ret<Type>(
-      ret,
-      scheduler.mt_run<Type>
-      (
-        name,
-        [&] () { return function(state->state()); }
-        )
-      );
+    return Ret<Type>(ret, func());
   }
   catch (elle::http::Exception const& err)
   {
@@ -238,6 +227,21 @@ run(gap_State* state,
     ELLE_ERR("%s: error: %s", name, elle::exception_string());
     ret = gap_network_error;
   }
+  catch (infinit::state::UnconfirmedEmailError const&)
+  {
+    ELLE_ERR("%s: error: %s", name, elle::exception_string());
+    ret = gap_email_not_confirmed;
+  }
+  catch (infinit::state::CredentialError const&)
+  {
+    ELLE_ERR("%s: error: %s", name, elle::exception_string());
+    ret = gap_email_password_dont_match;
+  }
+  catch (infinit::state::AlreadyLoggedIn const&)
+  {
+    ELLE_ERR("%s: error: %s", name, elle::exception_string());
+    ret = gap_already_logged_in;
+  }
   catch (elle::Exception const&)
   {
     ELLE_ERR("%s: error: %s", name, elle::exception_string());
@@ -254,6 +258,30 @@ run(gap_State* state,
     ret = gap_internal_error;
   }
   return Ret<Type>{ret, Type{}};
+}
+
+template <typename Type>
+Ret<Type>
+run(gap_State* state,
+    std::string const& name,
+    std::function<Type (surface::gap::State&)> const& function)
+{
+  ELLE_LOG_COMPONENT("surface.gap.bridge");
+  assert(state != nullptr);
+
+  return catch_to_gap_status<Type>([=] () -> Ret<Type>
+    {
+      reactor::Scheduler& scheduler = state->scheduler();
+      ELLE_DEBUG("running %s", name);
+      return Ret<Type>(
+        gap_ok,
+        scheduler.mt_run<Type>(
+          name,
+          [=] () { return function(state->state()); }
+          )
+        );
+    },
+    name);
 }
 
 #endif

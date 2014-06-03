@@ -1,6 +1,7 @@
 #include <elle/log.hh>
 
 #include <infinit/oracles/meta/Client.hh>
+#include <surface/gap/Error.hh>
 #include <surface/gap/Exception.hh>
 #include <surface/gap/PeerMachine.hh>
 #include <surface/gap/PeerTransferMachine.hh>
@@ -54,12 +55,19 @@ namespace surface
     void
     PeerMachine::_transfer_core()
     {
-      ELLE_TRACE_SCOPE("%s: start transfer core machine", *this);
+      ELLE_TRACE_SCOPE("%s: start transfer machine", *this);
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
       try
       {
         this->_transfer_machine->run();
-        ELLE_TRACE("%s: core machine finished properly", *this);
+        ELLE_TRACE("%s: transfer machine finished properly", *this);
+      }
+      catch (infinit::state::TransactionFinalized const&)
+      {
+        // Nothing to do, some kind of transition should push us to another
+        // final state.
+        ELLE_TRACE(
+          "%s: transfer machine was stopped because transaction was finalized");
       }
       catch (reactor::Terminate const&)
       {
@@ -96,17 +104,15 @@ namespace surface
     void
     PeerMachine::_peer_connection_changed(bool user_status)
     {
-      ELLE_TRACE_SCOPE("%s: update with new peer connection status %s",
-                       *this, user_status);
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
       if (user_status)
-        ELLE_DEBUG("%s: peer is now online", *this)
+        ELLE_TRACE("%s: peer is now online", *this)
         {
           this->_transfer_machine->peer_offline().close();
           this->_transfer_machine->peer_online().open();
         }
       else
-        ELLE_DEBUG("%s: peer is now offline", *this)
+        ELLE_TRACE("%s: peer is now offline", *this)
         {
           this->_transfer_machine->peer_online().close();
           this->_transfer_machine->peer_offline().open();
@@ -124,20 +130,14 @@ namespace surface
     {
       auto& meta = this->state().meta();
       int delay = 1;
-      infinit::oracles::meta::CloudBufferTokenResponse token;
+      aws::Credentials credentials;
       while (true)
       {
         try
         {
-          token =
+          credentials =
             meta.get_cloud_buffer_token(this->transaction_id(), !first_time);
           break;
-        }
-        catch(elle::http::Exception const&)
-        { // Permanent error
-          ELLE_LOG("%s: get_cloud_buffer_token failed with %s, aborting...",
-                   *this, elle::exception_string());
-          throw;
         }
         catch(infinit::oracles::meta::Exception const&)
         {
@@ -148,13 +148,6 @@ namespace surface
           delay = std::min(delay * 2, 60 * 10);
         }
       }
-      auto credentials = aws::Credentials(token.access_key_id,
-                                          token.secret_access_key,
-                                          token.session_token,
-                                          token.region,
-                                          token.bucket,
-                                          token.folder,
-                                          token.expiration);
       return credentials;
     }
 

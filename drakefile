@@ -468,6 +468,8 @@ def configure(cxx_toolkit = None,
   raw_gap_sources = [
     'surface/gap/Device.hh',
     'surface/gap/Exception.hh',
+    'surface/gap/Error.hh',
+    'surface/gap/Error.hxx',
     'surface/gap/FilesystemTransferBufferer.cc',
     'surface/gap/FilesystemTransferBufferer.hh',
     'surface/gap/LinkSendMachine.cc',

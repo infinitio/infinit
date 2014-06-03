@@ -981,6 +981,7 @@ namespace infinit
       void
       Client::server(std::string const& host, int port)
       {
+        ELLE_TRACE_SCOPE("%s: set server (%s:%s)", *this, host, port);
         this->_impl->server = host;
         this->_impl->port = port;
       }

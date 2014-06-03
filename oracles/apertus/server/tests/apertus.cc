@@ -663,6 +663,39 @@ ELLE_TEST_SCHEDULED(sync_bit)
   BOOST_CHECK_EQUAL(socket2.read_until(some_stuff), some_stuff);
 }
 
+// Used to segfault because acceptance code would yield while holding iterators
+// that would be invalidated by the third client.
+ELLE_TEST_SCHEDULED(concurrency_bug)
+{
+  Meta meta;
+  auto tick_rate = 1_sec;
+  infinit::oracles::apertus::Apertus apertus(
+    "http",
+    "localhost",
+    meta.port(),
+    "localhost",
+    0,
+    0,
+    tick_rate);
+  reactor::wait(meta.apertus_registered());
+  elle::ConstWeakBuffer header("\x00\x01-", 6);
+  reactor::network::FingerprintedSocket socket1(
+    "127.0.0.1",
+    boost::lexical_cast<std::string>(apertus.port_ssl()),
+    fingerprint);
+  reactor::network::FingerprintedSocket socket2(
+    "127.0.0.1",
+    boost::lexical_cast<std::string>(apertus.port_ssl()),
+    fingerprint);
+  reactor::network::FingerprintedSocket socket3(
+    "127.0.0.1",
+    boost::lexical_cast<std::string>(apertus.port_ssl()),
+    fingerprint);
+  socket1.write(header);
+  socket2.write(header);
+  socket3.write(header);
+}
+
 ELLE_TEST_SUITE()
 {
   std::string s = elle::os::getenv("RANDOM_SEED", "");
@@ -681,4 +714,5 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(client_timeout), 0, timeout);
   suite.add(BOOST_TEST_CASE(many_clients), 0, timeout * 4);
   suite.add(BOOST_TEST_CASE(sync_bit), 0, timeout);
+  suite.add(BOOST_TEST_CASE(concurrency_bug), 0, timeout);
 }

@@ -95,10 +95,10 @@ namespace infinit
 
           // First client to connect with this TID, it must wait.
           auto peer_iterator = this->_apertus._clients.find(tid);
-          auto self = this->_apertus._take_from_accepters(this);
           if (peer_iterator == this->_apertus._clients.end())
           {
             ELLE_TRACE("%s: first user for TID %s", *this, tid);
+            auto self = this->_apertus._take_from_accepters(this);
             this->_apertus._clients[tid] = std::move(self);
           }
           // Second client, establishing connection.
@@ -108,15 +108,17 @@ namespace infinit
             // Extract both sockets and remove this from accepters and peer from
             // clients.
             auto peer_acceptor = std::move(peer_iterator->second);
+            this->_apertus._clients.erase(peer_iterator);
             auto peer_socket = std::move(peer_acceptor->_client);
-            if (this->_sync_bit)
-              this->_client->write("\x42");
-            if (peer_acceptor->_sync_bit)
-              peer_socket->write("\x42");
+            ELLE_DEBUG("%s: send sync bit to %s", *this, *this->_client)
+              if (this->_sync_bit)
+                this->_client->write("\x42");
+            ELLE_DEBUG("%s: send sync bit to %s", *this, *peer_socket)
+              if (peer_acceptor->_sync_bit)
+                peer_socket->write("\x42");
             // Stop timers.
             peer_acceptor->_timeout.terminate_now();
             _timeout.terminate_now();
-            this->_apertus._clients.erase(peer_iterator);
             ELLE_DEBUG("%s: connect users", *this);
             this->_apertus._connect(
               tid,

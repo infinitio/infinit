@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import utils
+
 from utils import Meta, User
 from infinit.oracles.meta import error
 
@@ -21,6 +23,9 @@ with Meta() as meta:
   assert res['success']
 
   query['password'] = 'i' * 64
-  res = meta.post("web-login", query)
-  assert not res['success']
-  assert res['error_code'] == error.EMAIL_PASSWORD_DONT_MATCH[0]
+  try:
+    res = meta.post("web-login", query)
+  except utils.HTTPException as e:
+    assert e.status == 403
+  else:
+    raise Exception('invalid login should have yield 403 forbidden')

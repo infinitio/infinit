@@ -94,10 +94,12 @@ namespace infinit
       // Make it generic.
       Response
       Admin::register_apertus(boost::uuids::uuid const& uid,
+                              std::string const& host,
                               uint16_t port_ssl,
                               uint16_t port_tcp)
       {
         json::Dictionary request;
+        request["host"] = host,
         request["port_ssl"] = port_ssl;
         request["port_tcp"] = port_tcp;
 

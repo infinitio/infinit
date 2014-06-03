@@ -3,12 +3,14 @@
 import bottle
 import bson
 import datetime
+import json
 import random
 import uuid
 
 import elle.log
 import papier
 
+from .plugins.response import response
 from .utils import api, require_logged_in, require_admin, hash_pasword, json_value
 from . import error, notifier, regexp, conf, invitation, mail
 
@@ -84,6 +86,10 @@ class Mixin:
   ## Sessions ##
   ## -------- ##
 
+  def _forbidden_with_error(self, error):
+    ret_msg = {'code': error[0], 'message': error[1]}
+    response(403, ret_msg)
+
   def _login(self, email, password):
     try:
       user = self.user_by_email_password(
@@ -94,10 +100,11 @@ class Mixin:
         from time import time
         if time() > user['unconfirmed_email_deadline']:
           self.resend_confirmation_email(email)
-          self.fail(error.EMAIL_NOT_CONFIRMED)
+          self._forbidden_with_error(error.EMAIL_NOT_CONFIRMED)
       return user
     except error.Error as e:
-      self.fail(*e.args)
+      args = e.args
+      self._forbidden_with_error(args[0])
 
   def _login_response(self,
                       user,
@@ -208,6 +215,16 @@ class Mixin:
         return self.success()
       else:
         return self.fail(error.NOT_LOGGED_IN)
+
+  def kickout(self, reason, user = None):
+    if user is None:
+      user = self.user
+    with elle.log.trace('kickout %s: %s' % (user['_id'], reason)):
+      self.database.sessions.remove({'email': user['email']})
+      self.notifier.notify_some(
+        notifier.INVALID_CREDENTIALS,
+        recipient_ids = {user['_id']},
+        message = {'response_details': reason})
 
   @property
   def user(self):
@@ -858,6 +875,9 @@ class Mixin:
     """
     with elle.log.trace("%s: search %s emails (limit: %s, offset: %s)" %
                         (self.user['_id'], len(emails), limit, offset)):
+      ret_keys = dict(**self.user_public_fields)
+      if 'email' not in ret_keys:
+        ret_keys['email'] = '$email'
       res = self.database.users.aggregate([
         {
           '$match':
@@ -868,7 +888,7 @@ class Mixin:
         },
         {'$limit': limit},
         {'$skip': offset},
-        {'$project': dict(email = '$email', **self.user_public_fields)}
+        {'$project': ret_keys}
       ])
       return {'users': res['result']}
 
@@ -1180,8 +1200,7 @@ class Mixin:
       'favorites': user.get('favorites', []),
       'connected_devices': user.get('connected_devices', []),
       'status': self._is_connected(user['_id']),
-      # datetime not handled by bottle JSON plugin.
-      # 'creation_time': user.get('creation_time', 0),
+      'creation_time': user.get('creation_time', None),
       'last_connection': user.get('last_connection', 0),
     })
 

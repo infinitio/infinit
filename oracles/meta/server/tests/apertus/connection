@@ -16,7 +16,9 @@ class Apertus:
 
   def register_or_ping(self):
     self.meta.put('apertus/%s' % str(self.uuid),
-                  body = {"port_ssl": self.port_ssl, "port_tcp": self.port_tcp})
+                  body = {'host': '127.0.0.1',
+                          'port_ssl': self.port_ssl,
+                          'port_tcp': self.port_tcp})
 
   def __enter__(self):
     self.register_or_ping()
@@ -26,8 +28,8 @@ class Apertus:
     self.meta.delete('apertus/%s' % str(self.uuid))
 
 with Meta() as meta:
-  alice = User(meta, "alice@infinit.io")
-  bob = User(meta, "bob@infinit.io")
+  alice = User(meta, 'alice@infinit.io')
+  bob = User(meta, 'bob@infinit.io')
 
   assert len(meta.get('apertus')['apertus']) == 0
 

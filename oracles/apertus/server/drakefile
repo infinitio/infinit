@@ -19,7 +19,9 @@ def configure(elle,
               prefix = drake.Path('/usr/local'),
               python3 = None,
               cxx_toolkit = None,
-              cxx_config = None):
+              cxx_config = None,
+              valgrind = None,
+):
 
   global library
   global build, check, install, tests, python
@@ -91,6 +93,8 @@ def configure(elle,
   test_cxx_config += boost_test
   test_cxx_config += boost_system
   test_cxx_config.lib_path_runtime('../lib')
+  if valgrind is not None:
+    test_cxx_config.define('VALGRIND')
 
   test_sources = drake.nodes(
    'tests/apertus.cc',
@@ -154,7 +158,9 @@ def configure(elle,
     drake.node('etc/apertus.conf.tmpl')
   package += drake.copy(drake.nodes('control'), 'debian/DEBIAN')
   package += drake.copy(drake.nodes('etc/apertus.conf',
-                                    'etc/init.d/apertus'),
+                                    'etc/init.d/apertus',
+                                    'etc/rsyslog.d/apertus.conf',
+                                  ),
                         debian_path)
   debian << drake.debian.Packager(
     'fist-apertus_%s_amd64.deb' % git.version(),

@@ -23,6 +23,7 @@
 
 #include <reactor/http/Request.hh>
 #include <reactor/scheduler.hh>
+#include <reactor/exception.hh>
 
 #include <common/common.hh>
 
@@ -271,32 +272,31 @@ namespace elle
         {},
         reactor::http::Version(reactor::http::Version::v10)};
       conf.ssl_verify_host(false);
-      reactor::Scheduler sched;
-      reactor::Thread thread(
-        sched, "upload report",
-        [&]
+
+      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+      try
+      {
+        reactor::http::Request request(
+          url,
+          reactor::http::Method::POST,
+          "application/json",
+          conf);
+        elle::json::write(request, json_dict);
+        request.wait();
+        if (request.status() != reactor::http::StatusCode::OK)
         {
-          try
-          {
-            reactor::http::Request request(
-              url,
-              reactor::http::Method::POST,
-              "application/json",
-              conf);
-            elle::json::write(request, json_dict);
-            request.wait();
-            if (request.status() != reactor::http::StatusCode::OK)
-            {
-              ELLE_ERR("error while posting report to %s: (%s) %s",
-                       url, request.status(), request.response().string());
-            }
-          }
-          catch (...)
-          {
-            ELLE_ERR("unable to post report to %s", url);
-          }
-        });
-      sched.run();
+          ELLE_ERR("error while posting report to %s: (%s) %s",
+                   url, request.status(), request.response().string());
+        }
+      }
+      catch (reactor::Terminate const&)
+      {
+        throw;
+      }
+      catch (...)
+      {
+        ELLE_ERR("unable to post report to %s", url);
+      }
     }
 
     static

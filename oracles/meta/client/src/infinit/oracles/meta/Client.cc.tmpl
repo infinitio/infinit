@@ -21,7 +21,11 @@
 #include <reactor/http/exceptions.hh>
 
 #include <infinit/oracles/meta/Client.hh>
+#include <infinit/oracles/meta/ErrorCode.hh>
 #include <infinit/oracles/meta/macro.hh>
+
+#include <surface/gap/Error.hh>
+
 #include <version.hh>
 
 ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
@@ -158,18 +162,6 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::FallbackResponse, ar, res)
   ar & named("fallback_host", res.fallback_host);
   ar & named("fallback_port_ssl", res.fallback_port_ssl);
   ar & named("fallback_port_tcp", res.fallback_port_tcp);
-}
-
-SERIALIZE_RESPONSE(infinit::oracles::meta::CloudBufferTokenResponse, ar, res)
-{
-  ar & named("access_key_id", res.access_key_id);
-  ar & named("secret_access_key", res.secret_access_key);
-  ar & named("session_token", res.session_token);
-  ar & named("expiration", res.expiration);
-  ar & named("protocol", res.protocol);
-  ar & named("region", res.region);
-  ar & named("bucket", res.bucket);
-  ar & named("folder", res.folder);
 }
 
 /*--------------.
@@ -367,14 +359,36 @@ namespace infinit
           auto os = elle::system::platform::name();
           output.serialize("OS", os);
         }
-        this->_handle_errors(request);
+        if (request.status() == reactor::http::StatusCode::Forbidden)
         {
           elle::serialization::json::SerializerIn input(request);
-          LoginResponse response(input);
-          // Debugging purpose.
-          this->_email = email;
-          this->_logged_in = true;
-          return response;;
+          int error_code;
+          input.serialize("code", error_code);
+          using ErrorCode = ::oracles::meta::client::ErrorCode;
+          switch (ErrorCode(error_code))
+          {
+            case ErrorCode::email_not_confirmed:
+              throw infinit::state::UnconfirmedEmailError();
+            case ErrorCode::email_password_dont_match:
+              throw infinit::state::CredentialError();
+            case ErrorCode::already_logged_in:
+              throw infinit::state::AlreadyLoggedIn();
+
+            default:
+              throw infinit::state::LoginError("Unknown, good luck!");
+          }
+        }
+        else
+        {
+          this->_handle_errors(request);
+          {
+            elle::serialization::json::SerializerIn input(request);
+            LoginResponse response(input);
+            // Debugging purpose.
+            this->_email = email;
+            this->_logged_in = true;
+            return response;
+          }
         }
       }
 
@@ -898,16 +912,26 @@ namespace infinit
           elle::sprintf("/apertus/fallback/%s", _id), Method::GET);
       }
 
-      CloudBufferTokenResponse
+      aws::Credentials
       Client::get_cloud_buffer_token(std::string const& transaction_id,
                                      bool force_regenerate) const
       {
-        // don't trust the sprintf bool printer to match the expected format
-        // for URL query bool argument
-        return this->_request<CloudBufferTokenResponse>(
+        auto url =
           elle::sprintf("/transaction/%s/cloud_buffer?force_regenerate=%s",
-                        transaction_id, force_regenerate?"true":"false"),
-          Method::GET);
+                        transaction_id, force_regenerate ? "true" : "false");
+        try
+        {
+          auto request = this->_request(url, Method::GET);
+          elle::serialization::json::SerializerIn input(request);
+          return aws::Credentials(input);
+        }
+        catch (elle::http::Exception const& e)
+        {
+          if (e.code == elle::http::ResponseCode::gone)
+            throw infinit::state::TransactionFinalized();
+          else
+            throw;
+        }
       }
 
       /*------.
@@ -1094,14 +1118,12 @@ namespace infinit
             send(request);
             switch (request.status())
             {
-              // Nothing in our API generates any of those that we can handle,
-              // must be some captive portal, misbehaving proxy,
-              // or a temporary server glitch. wait until it goes away.
               case reactor::http::StatusCode::Bad_Gateway:
               case reactor::http::StatusCode::Service_Unavailable:
               case reactor::http::StatusCode::Gateway_Timeout:
-              case reactor::http::StatusCode::Found:
-              case reactor::http::StatusCode::Not_Found:
+              // Make sure Found is really a transient proxy error before
+              // activating that one.
+              // case reactor::http::StatusCode::Found:
               {
                 ELLE_WARN("%s: error requesting %s, retrying: %s.\n%s",
                           *this, url,
@@ -1188,6 +1210,14 @@ namespace infinit
           ELLE_ERR("%s: error while posting: %s.\n%s",
                    *this, response, request.response().string());
           ELLE_ERR("%s", elle::Backtrace::current());
+          if (response == reactor::http::StatusCode::Found)
+          {
+            auto it = request.headers().find("Location");
+            if (it != request.headers().end())
+              ELLE_ERR("%s: Found location is %s", *this, *it);
+            else
+              ELLE_ERR("%s: Found location header is missing", *this);
+          }
           throw elle::http::Exception(
             static_cast<elle::http::ResponseCode>(response),
             elle::sprintf("error %s while posting on %s",

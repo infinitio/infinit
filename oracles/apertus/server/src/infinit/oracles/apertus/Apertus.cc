@@ -7,14 +7,17 @@
 #include <reactor/http/exceptions.hh>
 #include <reactor/network/exception.hh>
 
+#include <elle/Error.hh>
 #include <elle/Exception.hh>
 #include <elle/HttpClient.hh> // XXX: Remove that. Only for exception.
 #include <elle/log.hh>
+#include <elle/network/Interface.hh>
 
 #include <boost/uuid/uuid_io.hpp>
 
 #include <algorithm>
 #include <tuple>
+#include <utility>
 
 extern const std::vector<char> server_certificate;
 extern const std::vector<char> server_key;
@@ -54,7 +57,6 @@ namespace infinit
       {
         try
         {
-          ELLE_LOG("Apertus");
           this->_certificate.reset(new reactor::network::SSLCertificate(
                                      server_certificate, server_key, server_dh1024));
           ELLE_DEBUG("%s: loaded SSL certificate", *this);
@@ -97,7 +99,6 @@ namespace infinit
 
       Apertus::~Apertus()
       {
-        ELLE_LOG("~Apertus");
         this->_monitor.terminate_now();
         if (this->_accepter_ssl)
           this->_accepter_ssl->terminate_now();
@@ -124,7 +125,18 @@ namespace infinit
       void
       Apertus::_register()
       {
+        auto interfaces = elle::network::Interface::get_map(
+          elle::network::Interface::Filter::only_up |
+          elle::network::Interface::Filter::no_loopback |
+          elle::network::Interface::Filter::no_autoip
+          );
+        if (interfaces.size() == 0)
+          throw elle::Error("unable to determine public address");
+        else if (interfaces.size() > 1)
+          ELLE_WARN("%s: got several public interfaces %s, using %s",
+                    *this, interfaces, *interfaces.begin());
         this->_meta.register_apertus(this->_uuid,
+                                     interfaces.begin()->second.ipv4_address,
                                      this->_port_ssl,
                                      this->_port_tcp);
       }
@@ -166,15 +178,13 @@ namespace infinit
       void
       Apertus::stop()
       {
-        ELLE_TRACE_SCOPE("%s: stop ordered", *this);
+        ELLE_LOG_SCOPE("%s: stop", *this);
         this->_accepter_ssl->terminate_now();
         this->_accepter_tcp->terminate_now();
         this->_monitor.terminate_now();
         this->_unregister();
-
         this->_accepters.clear();
         this->_clients.clear();
-
         reactor::Waitables currently_working;
         for (auto const& worker: this->_workers)
         {

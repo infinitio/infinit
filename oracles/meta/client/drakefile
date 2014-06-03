@@ -40,6 +40,7 @@ def configure(elle,
 
   with template_context:
     sources = drake.nodes(
+      'src/infinit/oracles/meta/ErrorCode.hh.tmpl',
       'src/infinit/oracles/meta/Client.cc.tmpl',
       'src/infinit/oracles/meta/Client.hh.tmpl',
       'src/infinit/oracles/meta/Client.hxx',
@@ -105,6 +106,7 @@ def configure(elle,
   )
 
   tests_cxx_config = drake.cxx.Config(local_cxx_config)
+  tests_cxx_config.add_local_include_path('../../../elle/reactor/tests')
   if cxx_toolkit.os is drake.os.windows:
     boost_system = drake.cxx.Config(boost.config_system(static = True))
     boost_test = drake.cxx.Config(boost.config_test(static = True))
