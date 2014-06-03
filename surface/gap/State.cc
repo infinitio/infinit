@@ -489,6 +489,7 @@ namespace surface
     void
     State::logout()
     {
+      reactor::Lock l(this->_login_mutex);
       ELLE_TRACE_SCOPE("%s: logout", *this);
 
       this->_cleanup();
