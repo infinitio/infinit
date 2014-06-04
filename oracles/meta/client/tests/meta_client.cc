@@ -168,6 +168,25 @@ ELLE_TEST_SCHEDULED(already_logged_in)
                       infinit::state::AlreadyLoggedIn);
 }
 
+
+ELLE_TEST_SCHEDULED(cloud_buffer_gone)
+{
+  HTTPServer s;
+  s.register_route("/transaction/tid/cloud_buffer",
+                   reactor::http::Method::GET,
+                   [] (HTTPServer::Headers const&,
+                       HTTPServer::Cookies const&,
+                       elle::Buffer const& body) -> std::string
+                   {
+                     throw HTTPServer::Exception("",
+                                                 reactor::http::StatusCode::Gone,
+                                                 "{}");
+                   });
+  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+  BOOST_CHECK_THROW(c.get_cloud_buffer_token("tid", false),
+                    infinit::state::TransactionFinalized);
+}
+
 ELLE_TEST_SUITE()
 {
   auto& suite = boost::unit_test::framework::master_test_suite();
@@ -179,6 +198,5 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(login_password_dont_match));
   suite.add(BOOST_TEST_CASE(unconfirmed_email));
   suite.add(BOOST_TEST_CASE(already_logged_in));
-
-
+  suite.add(BOOST_TEST_CASE(cloud_buffer_gone));
 }
