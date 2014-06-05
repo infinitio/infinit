@@ -67,7 +67,8 @@ namespace surface
         // Nothing to do, some kind of transition should push us to another
         // final state.
         ELLE_TRACE(
-          "%s: transfer machine was stopped because transaction was finalized");
+          "%s: transfer machine was stopped because transaction was finalized",
+          *this);
       }
       catch (reactor::Terminate const&)
       {
