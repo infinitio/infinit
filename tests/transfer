@@ -298,6 +298,11 @@ class TestBasicTransfer(unittest.TestCase):
                               expect_total_size=100000, expect_files_count=1,
                               expect_is_directory = False
                               )
+  def test_p2p_utf8(self):
+    return self.transfer_test([''], {'names': ['with spaces', 'accentséèà', 'weirdù©€£ ╕⡏'], 'size':100})
+  def test_p2p_utf8_2(self):
+    names = ['with spaces', 'accentséèà', 'weirdù©€£ ╕⡏']
+    return self.transfer_test(names, {'names': names, 'size': 100})
   def test_p2p_multiples(self):
     return self.transfer_test([''], {'names': list(map(str, range(10))), 'size':100})
   def test_p2p_multiples_2(self): # Pass file names instead of dir to send_files
