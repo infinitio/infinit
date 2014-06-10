@@ -247,7 +247,7 @@ namespace surface
     void
     TransactionMachine::_run(reactor::fsm::State& initial_state)
     {
-      ELLE_TRACE_SCOPE("%s: start transfaction machine at %s",
+      ELLE_TRACE_SCOPE("%s: start transaction machine at %s",
                        *this, initial_state);
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
       this->_machine_thread.reset(
