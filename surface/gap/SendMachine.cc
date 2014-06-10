@@ -125,8 +125,9 @@ namespace surface
           if (!exists(archive_path) || !this->transaction().archived())
           {
             ELLE_DEBUG("%s: archiving transfer files into %s", *this, archive_path);
-            elle::archive::zip(sources, archive_path, [](boost::filesystem::path const& path)
-              {
+            auto renaming_callback =
+              [](boost::filesystem::path const& path)
+              { // File renaming callback
                 std::string p(path.string());
                 // Check if p maches our renaming scheme.
                 size_t pos_beg = p.find_last_of('(');
@@ -136,7 +137,7 @@ namespace surface
                 {
                   try
                   {
-                    std::string sequence =  p.substr(pos_beg + 1, pos_end-pos_beg-1);
+                    std::string sequence = p.substr(pos_beg + 1, pos_end-pos_beg-1);
                     unsigned int v = boost::lexical_cast<unsigned int>(sequence);
                     std::string result = p.substr(0, pos_beg+1)
                       + boost::lexical_cast<std::string>(v+1)
@@ -149,7 +150,14 @@ namespace surface
                   }
                 }
                 return path.stem().string() + " (1)" + path.extension().string();
+              };
+            ELLE_TRACE("%s: Begin archiving thread", *this);
+            reactor::background(
+              [&]
+              {
+                elle::archive::zip(sources, archive_path, renaming_callback);
               });
+            ELLE_TRACE("%s: Join archiving thread", *this);
             this->transaction().archived(true);
           }
           else
