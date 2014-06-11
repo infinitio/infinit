@@ -3,7 +3,6 @@
 import decorator
 
 from . import conf
-import mandrill
 
 import elle.log
 from email.header import Header
@@ -67,7 +66,9 @@ class Mailer():
   def __init__(self,
                active = True):
     self.__active = active
-    self.__mandrill = mandrill.Mandrill(apikey = conf.MANDRILL_PASSWORD)
+    if active:
+      import mandrill
+      self.__mandrill = mandrill.Mandrill(apikey = conf.MANDRILL_PASSWORD)
     self.__meta = None
 
   @property
@@ -205,11 +206,13 @@ class Mailer():
                                   message = message)
 
   def __send(self, message):
+    import mandrill
     messenger = mandrill.Messages(self.__mandrill)
     res = messenger.send(message)
 
 
   def __send_template(self, template_name, message):
+    import mandrill
     messenger = mandrill.Messages(self.__mandrill)
     res = messenger.send_template(template_name = template_name,
                                   template_content = [],
