@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 
+import datetime
+
 from utils import Meta, User, NoOpMailer
 from infinit.oracles.meta import error
 
 unconfirmed_email_leeway = 100
 
-with Meta(enable_emails = True,
-          unconfirmed_email_leeway = unconfirmed_email_leeway,
-          email_confirmation_cooldown = 0) as meta:
+with Meta(
+    enable_emails = True,
+    unconfirmed_email_leeway = unconfirmed_email_leeway,
+    email_confirmation_cooldown = datetime.timedelta(seconds = 0)) \
+as meta:
   bob = User(meta)
   alice = User(meta)
 

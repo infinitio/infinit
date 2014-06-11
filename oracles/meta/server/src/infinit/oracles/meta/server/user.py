@@ -406,11 +406,32 @@ class Mixin:
           )
         assert user.get('email_confirmation_hash') is not None
         # XXX: Waiting for mandrill to put cooldown on mail.
+        now = datetime.datetime.utcnow()
+        confirmation_cooldown = now - self.email_confirmation_cooldown
         res = self.database.users.find_and_modify(
-          {"email": email,
-           "$or": [{"last_email_confirmation": {"$lt": time.time() - self.email_confirmation_cooldown}},
-                   {"last_email_confirmation": {"$exists": False}}]},
-          {"$set": {"last_email_confirmation": time.time()}})
+          {
+            "email": email,
+            "$or": [
+              {
+                "last_email_confirmation":
+                {
+                  "$lt": confirmation_cooldown,
+                }
+              },
+              {
+                "last_email_confirmation":
+                {
+                  "$exists": False,
+                }
+              }
+            ]
+          },
+          {
+            "$set":
+            {
+              "last_email_confirmation": now,
+            }
+          })
         if res is not None:
           self.mailer.send_template(
             to = user['email'],

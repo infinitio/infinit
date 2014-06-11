@@ -5,6 +5,7 @@
 import papier
 
 import bottle
+import datetime
 import decorator
 import elle.log
 import inspect
@@ -111,23 +112,24 @@ class Meta(bottle.Bottle,
            link_generation.Mixin,
          ):
 
-  def __init__(self,
-               mongo_host = None,
-               mongo_port = None,
-               mongo_replica_set = None,
-               enable_emails = True,
-               enable_invitations = True,
-               trophonius_expiration_time = 90, # in sec
-               apertus_expiration_time = 90, # in sec
-               unconfirmed_email_leeway = 604800, # in sec, 7 days.
-               daily_summary_hour = 18, #in sec.
-               email_confirmation_cooldown = 600, # in sec.
-               aws_region = None,
-               aws_buffer_bucket = None,
-               aws_link_bucket = None,
-               force_admin = False,
-               debug = False,
-               ):
+  def __init__(
+      self,
+      mongo_host = None,
+      mongo_port = None,
+      mongo_replica_set = None,
+      enable_emails = True,
+      enable_invitations = True,
+      trophonius_expiration_time = 90, # in sec
+      apertus_expiration_time = 90, # in sec
+      unconfirmed_email_leeway = 604800, # in sec, 7 days.
+      daily_summary_hour = 18, #in sec.
+      email_confirmation_cooldown = datetime.timedelta(minutes = 10),
+      aws_region = None,
+      aws_buffer_bucket = None,
+      aws_link_bucket = None,
+      force_admin = False,
+      debug = False,
+  ):
     import os
     system_logger = os.getenv("META_LOG_SYSTEM")
     if system_logger is not None:
@@ -188,7 +190,7 @@ class Meta(bottle.Bottle,
     self.apertus_expiration_time = int(apertus_expiration_time)
     self.unconfirmed_email_leeway = int(unconfirmed_email_leeway)
     self.daily_summary_hour = int(daily_summary_hour)
-    self.email_confirmation_cooldown = int(email_confirmation_cooldown)
+    self.email_confirmation_cooldown = email_confirmation_cooldown
     if aws_region is None:
       aws_region = cloud_buffer_token.aws_default_region
     self.aws_region = aws_region
