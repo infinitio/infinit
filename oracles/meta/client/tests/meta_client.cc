@@ -168,7 +168,6 @@ ELLE_TEST_SCHEDULED(already_logged_in)
                       infinit::state::AlreadyLoggedIn);
 }
 
-
 ELLE_TEST_SCHEDULED(cloud_buffer_gone)
 {
   HTTPServer s;
@@ -187,6 +186,38 @@ ELLE_TEST_SCHEDULED(cloud_buffer_gone)
                     infinit::state::TransactionFinalized);
 }
 
+ELLE_TEST_SCHEDULED(status_found)
+{
+  HTTPServer s;
+  int i = 0;
+  s.register_route(
+    "/trophonius",
+    reactor::http::Method::GET,
+    [&i] (HTTPServer::Headers const&,
+          HTTPServer::Cookies const&,
+          elle::Buffer const& body)
+    {
+      if (i < 3)
+      {
+        ++i;
+        throw HTTPServer::Exception("",
+                                    reactor::http::StatusCode::Found,
+                                    "{}");
+      }
+      else
+      {
+        return
+          "{"
+          "  \"host\": \"hostname\","
+          "  \"port\": 80,"
+          "  \"port_ssl\": 443"
+          "}";
+      }
+    });
+  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+  c.trophonius();
+}
+
 ELLE_TEST_SUITE()
 {
   auto& suite = boost::unit_test::framework::master_test_suite();
@@ -199,4 +230,5 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(unconfirmed_email));
   suite.add(BOOST_TEST_CASE(already_logged_in));
   suite.add(BOOST_TEST_CASE(cloud_buffer_gone));
+  suite.add(BOOST_TEST_CASE(status_found));
 }

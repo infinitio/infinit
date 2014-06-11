@@ -1111,15 +1111,23 @@ namespace infinit
             switch (request.status())
             {
               case reactor::http::StatusCode::Bad_Gateway:
-              case reactor::http::StatusCode::Service_Unavailable:
+              case reactor::http::StatusCode::Found:
               case reactor::http::StatusCode::Gateway_Timeout:
+              case reactor::http::StatusCode::Service_Unavailable:
               // Make sure Found is really a transient proxy error before
               // activating that one.
-              // case reactor::http::StatusCode::Found:
               {
                 ELLE_WARN("%s: error requesting %s, retrying: %s.\n%s",
                           *this, url,
-                          request.status(), request.response().string());
+                          request.status(), request.response().string())
+                  if (request.status() == reactor::http::StatusCode::Found)
+                  {
+                    auto it = request.headers().find("Location");
+                    if (it != request.headers().end())
+                      ELLE_WARN("%s: Found location is %s", *this, *it);
+                    else
+                      ELLE_WARN("%s: Found location header is missing", *this);
+                  }
                 this->_pacify_retry();
                 continue;
               }
@@ -1202,14 +1210,6 @@ namespace infinit
           ELLE_ERR("%s: error while posting: %s.\n%s",
                    *this, response, request.response().string());
           ELLE_ERR("%s", elle::Backtrace::current());
-          if (response == reactor::http::StatusCode::Found)
-          {
-            auto it = request.headers().find("Location");
-            if (it != request.headers().end())
-              ELLE_ERR("%s: Found location is %s", *this, *it);
-            else
-              ELLE_ERR("%s: Found location header is missing", *this);
-          }
           throw elle::http::Exception(
             static_cast<elle::http::ResponseCode>(response),
             elle::sprintf("error %s while posting on %s",
