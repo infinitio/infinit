@@ -1,4 +1,8 @@
 import infinit.oracles.meta.server
+import os
+
+os.environ['META_LOG_SYSTEM'] = 'meta'
+os.environ['META_LOG_LEVEL'] = 'infinit.oracles.meta.*:DEBUG'
 
 application = infinit.oracles.meta.server.Meta(
   mongo_replica_set = ['0.mongo.production.infinit.io'],
