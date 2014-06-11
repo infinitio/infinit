@@ -776,16 +776,16 @@ def configure(cxx_toolkit = None,
     functional_check = drake.Rule('functional/check')
     functional_test_lib = drake.nodes(
     )
-    for name in [
-        'basic.py',
-        'login',
-        'transfer'
+    for (name,args) in [
+        ('basic.py', None),
+        ('login', None),
+        ('transfer', ['TestBasicTransfer'])
     ]:
       test_node = drake.Node('tests/%s' % name)
       test_node.dependencies_add(oracles.oracles)
       test_node.dependencies_add(functional_test_lib)
       test_node.dependency_add(state_python_lib)
-      runner = drake.Runner(exe = test_node, env = python_env)
+      runner = drake.Runner(exe = test_node, env = python_env, args=args)
       check << runner.status
       functional_check << runner.status
 
