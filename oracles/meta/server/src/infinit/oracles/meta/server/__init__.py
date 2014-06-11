@@ -123,7 +123,7 @@ class Meta(bottle.Bottle,
       apertus_expiration_time = 90, # in sec
       unconfirmed_email_leeway = 604800, # in sec, 7 days.
       daily_summary_hour = 18, #in sec.
-      email_confirmation_cooldown = datetime.timedelta(minutes = 10),
+      email_confirmation_cooldown = datetime.timedelta(weeks = 1),
       aws_region = None,
       aws_buffer_bucket = None,
       aws_link_bucket = None,
