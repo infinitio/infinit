@@ -18,6 +18,24 @@ ELLE_LOG_COMPONENT("bite");
 
 typedef reactor::http::tests::Server HTTPServer;
 
+class Client
+  : public infinit::oracles::meta::Client
+{
+public:
+  template <typename ... Args>
+  Client(Args&& ... args)
+    : infinit::oracles::meta::Client(std::forward<Args>(args)...)
+  {}
+
+protected:
+  virtual
+  void
+  _pacify_retry() const override
+  {
+    reactor::sleep(10_ms);
+  }
+};
+
 ELLE_TEST_SCHEDULED(connection_refused)
 {
   infinit::oracles::meta::Client c("http", "127.0.0.1", 21232);
@@ -214,7 +232,7 @@ ELLE_TEST_SCHEDULED(status_found)
           "}";
       }
     });
-  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+  Client c("http", "127.0.0.1", s.port());
   c.trophonius();
 }
 

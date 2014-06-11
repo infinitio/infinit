@@ -332,6 +332,7 @@ namespace infinit
         template <typename T>
         T
         _deserialize_answer(reactor::http::Request request) const;
+        virtual
         void
         _pacify_retry() const;
       private:
