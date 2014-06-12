@@ -924,9 +924,11 @@ class Mixin:
       'register_status': user.get('register_status'),
     }
     if '_id' in user.keys():
+      res['id'] = user['_id']
       res.update({'_id': user['_id'],
                   'status': self._is_connected(user['_id'])})
     else:
+      res['id'] = user['id']
       res.update({'id': user['id'],
                   'status': self._is_connected(user['id'])})
     return res
