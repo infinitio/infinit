@@ -600,7 +600,7 @@ namespace infinit
           // be done.
           if (!this->_connected.opened())
           {
-            ELLE_DEBUG_SCOPE("%s: already reconnected, wait", *this);
+            ELLE_DEBUG_SCOPE("%s: already reconnecting, wait", *this);
             reactor::wait(this->_connected);
             return;
           }
@@ -788,9 +788,7 @@ namespace infinit
             ELLE_DEBUG("%s: read thread: waiting to be connected", *this);
             reactor::wait(this->_connected);
             ELLE_DEBUG("%s: read thread: connected", *this);
-
             auto notif = std::unique_ptr<Notification>();
-
             try
             {
               notif = this->read();
@@ -801,9 +799,7 @@ namespace infinit
               this->_reconnect();
               continue;
             }
-
             ELLE_ASSERT(notif != nullptr);
-
             if (notif->notification_type == NotificationType::ping)
             {
               ELLE_DEBUG("%s: ping received", *this);
@@ -812,6 +808,7 @@ namespace infinit
             }
             else
             {
+              ELLE_DEBUG("%s: enqueue notification", *this);
               this->_notifications.push(std::move(notif));
               if (this->_synchronized)
                 this->_pollable.open();
@@ -827,7 +824,7 @@ namespace infinit
           if (this->_poll_exception)
             std::rethrow_exception(this->_poll_exception);
 
-          ELLE_TRACE("%s new notification", *this);
+          ELLE_TRACE("%s: handle new notification", *this);
           ELLE_ASSERT(!this->_notifications.empty());
           std::unique_ptr<Notification> res(
             this->_notifications.front().release());
