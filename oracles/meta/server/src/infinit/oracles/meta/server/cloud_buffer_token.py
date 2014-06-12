@@ -17,7 +17,8 @@ import elle.log
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.CloudBufferToken'
 
 def _aws_urlquote(data):
-  return urllib.parse.quote(data)
+  # bit.ly and goo.gl shorteners unencode brackets which breaks the signing.
+  return urllib.parse.quote(data, safe='()')
 
 aws_default_region = 'us-east-1'
 aws_default_buffer_bucket = 'us-east-1-buffer-dev-infinit-io'
