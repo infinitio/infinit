@@ -307,6 +307,22 @@ namespace infinit
         return u;
       }
 
+      User::User(elle::serialization::SerializerIn& s)
+      {
+        this->serialize(s);
+      }
+
+      void
+      User::serialize(elle::serialization::Serializer& s)
+      {
+        s.serialize("id", this->id);
+        s.serialize("fullname", this->fullname);
+        s.serialize("handle", this->handle);
+        s.serialize("register_status", this->register_status);
+        s.serialize("connected_devices", this->connected_devices);
+        s.serialize("public_key", this->public_key);
+      }
+
       LoginResponse::LoginResponse(
         elle::serialization::SerializerIn& s)
       {
@@ -461,11 +477,7 @@ namespace infinit
         {
           url += elle::sprintf("&offset=%s", offset);
         }
-        reactor::http::Request request = this->_client.request(
-          this->_url(url),
-          Method::GET,
-          this->_default_configuration);
-        this->_handle_errors(request);
+        auto request = this->_request(url, Method::GET);
         auto json = elle::json::read(request);
         auto const& users =
           boost::any_cast<elle::json::Array>(
@@ -490,37 +502,33 @@ namespace infinit
         {
           url += elle::sprintf("&skip=%s", offset);
         }
-        reactor::http::Request request = this->_client.request(
-          this->_url(url),
-          Method::GET,
-          this->_default_configuration);
-        this->_handle_errors(request);
-        auto json = elle::json::read(request);
-        auto const& users =
-          boost::any_cast<elle::json::Array>(
-            boost::any_cast<elle::json::Object>(json).at("users"));
+        auto request = this->_request(url, Method::GET);
+        elle::serialization::json::SerializerIn input(request);
         std::vector<User> res;
-        for (auto const& user: users)
-          res.push_back(user_from_json(user));
+        input.serialize("users", res);
         return res;
       }
 
-      UserResponse
+      User
       Client::user_from_handle(std::string const& handle) const
       {
         if (handle.size() == 0)
           throw elle::Exception("No handle");
-        return this->_request<UserResponse>(
-          sprintf("/user/from_handle/%s/view", handle), Method::GET);
+        std::string url = elle::sprintf("/user/from_handle/%s/view", handle);
+        auto request = this->_request(url, Method::GET);
+        elle::serialization::json::SerializerIn input(request);
+        return User(input);
       }
 
-      UserResponse
+      User
       Client::user(std::string const& id) const
       {
         if (id.size() == 0)
-          throw elle::Exception("Wrong id");
-        return this->_request<UserResponse>(
-          sprintf("/user/%s/view", id), Method::GET);
+          throw elle::Exception("Invalid id or email");
+        std::string url = elle::sprintf("/user/%s/view", id);
+        auto request = this->_request(url, Method::GET);
+        elle::serialization::json::SerializerIn input(request);
+        return User(input);
       }
 
       SelfResponse
@@ -544,18 +552,10 @@ namespace infinit
       Client::get_swaggers() const
       {
         std::string url = "/user/full_swaggers";
-        reactor::http::Request request =
-          this->_client.request(this->_url(url),
-                                Method::GET,
-                                this->_default_configuration);
-        this->_handle_errors(request);
-        auto json = elle::json::read(request);
-        auto const& swaggers =
-          boost::any_cast<elle::json::Array>(
-            boost::any_cast<elle::json::Object>(json).at("swaggers"));
+        auto request = this->_request(url, Method::GET);
+        elle::serialization::json::SerializerIn input(request);
         std::vector<User> res;
-        for (auto const& swagger: swaggers)
-          res.push_back(user_from_json(swagger));
+        input.serialize("swaggers", res);
         return res;
       }
 

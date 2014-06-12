@@ -167,6 +167,10 @@ namespace infinit
             return false;
         }
 
+        User(elle::serialization::SerializerIn& s);
+        void
+        serialize(elle::serialization::Serializer& s);
+
         /*----------.
         | Printable |
         `----------*/
@@ -368,13 +372,13 @@ namespace infinit
                   std::string const& password,
                   std::string const& activation_code) const;
 
-        UserResponse
+        User
         user(std::string const& id) const;
 
         SelfResponse
         self() const;
 
-        UserResponse
+        User
         user_from_handle(std::string const& handle) const;
 
         UserResponse
