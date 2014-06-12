@@ -90,7 +90,7 @@ if options.mongo_replica_set:
   args['mongo_replica_set'] = options.mongo_host
 
 email_confirmation_cooldown = int(options.email_confirmation_cooldown)
-email_confirmation_cooldown =
+email_confirmation_cooldown = \
   datetime.timedelta(seconds = email_confirmation_cooldown)
 app = infinit.oracles.meta.server.Meta(
   debug = options.debug,
