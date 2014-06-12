@@ -11,12 +11,23 @@
 #include <infinit/oracles/meta/Client.hh>
 #include <surface/gap/Exception.hh>
 #include <surface/gap/Error.hh>
+#include <version.hh>
 
 #include <http_server.hh>
 
 ELLE_LOG_COMPONENT("bite");
 
-typedef reactor::http::tests::Server HTTPServer;
+class HTTPServer
+  : public reactor::http::tests::Server
+{
+public:
+  template <typename ... Args>
+  HTTPServer(Args&& ... args)
+    : reactor::http::tests::Server(std::forward<Args>(args)...)
+  {
+    this->headers()["X-Fist-Meta-Version"] = INFINIT_VERSION;
+  }
+};
 
 class Client
   : public infinit::oracles::meta::Client
@@ -207,6 +218,7 @@ ELLE_TEST_SCHEDULED(cloud_buffer_gone)
 ELLE_TEST_SCHEDULED(status_found)
 {
   HTTPServer s;
+  s.headers().erase("X-Fist-Meta-Version");
   int i = 0;
   s.register_route(
     "/trophonius",

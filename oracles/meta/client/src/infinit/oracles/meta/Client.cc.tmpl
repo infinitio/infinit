@@ -1108,33 +1108,48 @@ namespace infinit
                                     "application/json",
                                     this->_default_configuration);
             send(request);
-            switch (request.status())
+            auto status = request.status();
+            switch (status)
             {
+              case reactor::http::StatusCode::OK:
+                break;
               case reactor::http::StatusCode::Bad_Gateway:
-              case reactor::http::StatusCode::Found:
               case reactor::http::StatusCode::Gateway_Timeout:
               case reactor::http::StatusCode::Service_Unavailable:
-              // Make sure Found is really a transient proxy error before
-              // activating that one.
               {
-                ELLE_WARN("%s: error requesting %s, retrying: %s.\n%s",
-                          *this, url,
-                          request.status(), request.response().string())
-                  if (request.status() == reactor::http::StatusCode::Found)
-                  {
-                    auto it = request.headers().find("Location");
-                    if (it != request.headers().end())
-                      ELLE_WARN("%s: Found location is %s", *this, *it);
-                    else
-                      ELLE_WARN("%s: Found location header is missing", *this);
-                  }
+                ELLE_WARN("%s: transient status %s requesting %s, retrying",
+                          *this, status, url);
                 this->_pacify_retry();
                 continue;
               }
               default:
-                break;
+              {
+                auto watermark = request.headers().find("X-Fist-Meta-Version");
+                if (watermark == request.headers().end())
+                {
+                  ELLE_WARN("%s: status %s requesting %s"
+                            " not coming from meta, retrying",
+                            *this, status, url);
+                  this->_pacify_retry();
+                  continue;
+                }
+                ELLE_ERR("%s: error while posting: %s", *this, status);
+                ELLE_ERR("%s: %s", *this, request.response().string());
+                ELLE_ERR("%s", elle::Backtrace::current());
+                if (status == reactor::http::StatusCode::Found)
+                {
+                  auto it = request.headers().find("Location");
+                  if (it != request.headers().end())
+                    ELLE_WARN("%s: Found location is %s", *this, *it);
+                  else
+                    ELLE_WARN("%s: Found location header is missing", *this);
+                }
+                throw elle::http::Exception(
+                  static_cast<elle::http::ResponseCode>(status),
+                  elle::sprintf("error %s while posting on %s",
+                                status, request.url()));
+              }
             }
-            this->_handle_errors(request);
             return request;
           }
           catch (reactor::http::Timeout const&)
