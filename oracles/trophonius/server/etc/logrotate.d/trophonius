@@ -1,0 +1,11 @@
+/var/log/trophonius.log
+/var/log/trophonius.err
+/var/log/trophonius.debug
+{
+        compress
+        rotate 30
+        daily
+        postrotate
+            /usr/bin/killall -HUP rsyslogd
+        endscript
+}
