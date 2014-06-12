@@ -21,6 +21,7 @@ from .plugins.failure import Plugin as FailurePlugin
 from .plugins.jsongo import Plugin as JsongoPlugin
 from .plugins.response import Plugin as ResponsePlugin
 from .plugins.session import Plugin as SessionPlugin
+from .plugins.watermark import Plugin as WatermarkPlugin
 from infinit.oracles.meta import error
 
 from .utils import api, hash_pasword, require_admin, require_logged_in
@@ -159,7 +160,8 @@ class Meta(bottle.Bottle,
     self.catchall = debug
     bottle.debug(debug)
     # Plugins.
-    self.install(plugins.response.Plugin())
+    self.install(ResponsePlugin())
+    self.install(WatermarkPlugin())
     self.install(FailurePlugin())
     self.__sessions = SessionPlugin(self.__database, 'sessions')
     self.install(self.__sessions)
