@@ -1002,6 +1002,54 @@ ELLE_TEST_SCHEDULED(socket_close_after_poke)
   };
 }
 
+// Test sending a notification and disconnecting concurrently. This use to
+// assert !this->_notifications.empty() because the poll thread would wake up
+// but the disconnection would empty the notifications before it is executed.
+
+class NotifyDisconnectTrophonius
+  : public Trophonius
+{
+public:
+  NotifyDisconnectTrophonius()
+    : Trophonius()
+  {}
+
+protected:
+  virtual
+  void
+  _serve(reactor::network::Socket& socket) override
+  {
+    ELLE_LOG("%s: get login", *this);
+    auto connect_data = elle::json::read(socket);
+    ELLE_LOG("%s: answer login", *this);
+    this->_login_response(socket);
+    ELLE_LOG("%s: send notification", *this);
+    this->_send_notification(socket, "poke");
+  }
+};
+
+ELLE_TEST_SCHEDULED(notify_disconnect)
+{
+  NotifyDisconnectTrophonius tropho;
+  infinit::oracles::trophonius::Client client(
+    "127.0.0.1",
+    tropho.port(),
+    [&client] (bool connected)
+    {
+      if (!connected)
+        client.ping_period(30_sec);
+    },
+    [] (void) {},
+    fingerprint);
+  client.ping_period(0_sec);
+  BOOST_CHECK(client.poke());
+  tropho.poked().signal();
+  client.connect("0", "0", "0");
+  ELLE_LOG("%s: poll", client)
+    client.poll();
+}
+
+// Test suite
 
 ELLE_TEST_SUITE()
 {
@@ -1015,6 +1063,7 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(connection_callback_throws), 0, timeout);
   suite.add(BOOST_TEST_CASE(reconnection_failed_callback), 0, 2 * timeout);
   suite.add(BOOST_TEST_CASE(socket_close_after_poke), 0, timeout);
+  suite.add(BOOST_TEST_CASE(notify_disconnect), 0, timeout);
 }
 
 const std::vector<unsigned char> fingerprint =

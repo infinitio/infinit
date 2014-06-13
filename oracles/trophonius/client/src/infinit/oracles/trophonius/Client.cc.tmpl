@@ -819,11 +819,20 @@ namespace infinit
         std::unique_ptr<Notification>
         poll()
         {
-          this->_pollable.wait();
-
+          // Check that there actually is a notification availble: we may be
+          // awaken because a notification was received, but a ping timeout
+          // disconnects and empties the notifications list before we get a
+          // chance to execute.
+          while (true)
+          {
+            this->_pollable.wait();
+            if (this->_notifications.empty())
+              this->_pollable.close();
+            else
+              break;
+          }
           if (this->_poll_exception)
             std::rethrow_exception(this->_poll_exception);
-
           ELLE_TRACE("%s: handle new notification", *this);
           ELLE_ASSERT(!this->_notifications.empty());
           std::unique_ptr<Notification> res(
@@ -834,9 +843,9 @@ namespace infinit
           return std::move(res);
         }
 
-          /*----------.
-          | Printable |
-          `----------*/
+        /*----------.
+        | Printable |
+        `----------*/
 
         void
         print(std::ostream& stream) const override
