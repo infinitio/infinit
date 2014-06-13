@@ -655,6 +655,23 @@ namespace surface
         exit_reason = infinit::metrics::TransferExitReasonTerminated;
         throw;
       }
+      catch (boost::filesystem::filesystem_error const& e)
+      {
+        exit_message = e.what();
+        exit_reason = infinit::metrics::TransferExitReasonError;
+        if (e.code() == boost::system::errc::no_such_file_or_directory)
+        {
+          ELLE_WARN("%s: source file disappeared, cancel : %s",
+                    *this, e.what());
+          this->cancel();
+        }
+        else
+        {
+          ELLE_WARN("%s: source file corrupted (%s), cancel",
+                    *this, e.what());
+          this->cancel();
+        }
+      }
       catch(...)
       {
         exit_reason = infinit::metrics::TransferExitReasonError;
