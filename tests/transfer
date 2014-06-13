@@ -131,6 +131,8 @@ class TransferPeer:
     self.rules[:] = rules # modify in place
   def login(self):
     self.create(force=False)
+    if self.logged_in:
+      return
     self.statuses = dict() #old transaction_id no longuer has sense
     self.state.login(self.credentials[0],
       state.hash_password(self.credentials[0], self.credentials[1]))
@@ -299,9 +301,13 @@ class TestBasicTransfer(unittest.TestCase):
                               expect_is_directory = False
                               )
   def test_p2p_utf8(self):
+    #  ['with spaces', 'accentséèà', 'weirdù©€£ ╕⡏']
+    names = [b'with spaces', b'accents\xc3\xa9\xc3\xa8\xc3\xa0', b'weird\xc3\xb9\xc2\xa9\xe2\x82\xac\xc2\xa3 \xe2\x95\x95\xe2\xa1\x8f']
+    names = list(map(lambda x: x.decode('utf-8'), names))
     return self.transfer_test([''], {'names': ['with spaces', 'accentséèà', 'weirdù©€£ ╕⡏'], 'size':100})
   def test_p2p_utf8_2(self):
-    names = ['with spaces', 'accentséèà', 'weirdù©€£ ╕⡏']
+    names = [b'with spaces', b'accents\xc3\xa9\xc3\xa8\xc3\xa0', b'weird\xc3\xb9\xc2\xa9\xe2\x82\xac\xc2\xa3 \xe2\x95\x95\xe2\xa1\x8f']
+    names = list(map(lambda x: x.decode('utf-8'), names))
     return self.transfer_test(names, {'names': names, 'size': 100})
   def test_p2p_multiples(self):
     return self.transfer_test([''], {'names': list(map(str, range(10))), 'size':100})
@@ -321,6 +327,9 @@ class TestBasicTransfer(unittest.TestCase):
     names = list(map(str, range(10)))
     return self.transfer_test(names, {'names': names, 'size':0})
 
+class TestBasicTransferBig(TestBasicTransfer):
+  def test_big_file(self):
+    return self.transfer_test('big', {'names': ['big'], 'size': 5000000000}, timeout=500)
 
 class TestResumeTransfer(unittest.TestCase):
   def parse_sequence(self, sequence):
@@ -360,10 +369,10 @@ class TestResumeTransfer(unittest.TestCase):
         result.append(('d', lambda t: wait_helper(1, lambda: False, False)))
       result.append((e, a))
       lastWait = isWait
-    def isInt(s):
+    def isFloat(s):
       """ Integral value of argument or None"""
       try:
-        return int(s)
+        return float(s)
       except:
         return None
     # Wrapper for proper argument capture
@@ -385,13 +394,13 @@ class TestResumeTransfer(unittest.TestCase):
         action(False, lambda t: t.trophonius_stop())
       elif e == 'start':
         action(False, lambda t: t.start())
-      elif isInt(e) is not None:
-        action(True, call(lambda t: t.sender.wait_transaction_progress, int(e) / 100.0))
-      elif e[0] == 's' and isInt(e[1:]) is not None:
-        action(True, call(lambda t: t.sender.wait_transaction_progress, int(e[1:]) / 100.0))
-      elif e[0] == 'r' and isInt(e[1:]) is not None:
-        action(True, call(lambda t: t.recipient.wait_transaction_progress, int(e[1:]) / 100.0))
-      elif e[0] == 'd' and isInt(e[1:]) is not None:
+      elif isFloat(e) is not None:
+        action(True, call(lambda t: t.sender.wait_transaction_progress, float(e) / 100.0))
+      elif e[0] == 's' and isFloat(e[1:]) is not None:
+        action(True, call(lambda t: t.sender.wait_transaction_progress, float(e[1:]) / 100.0))
+      elif e[0] == 'r' and isFloat(e[1:]) is not None:
+        action(True, call(lambda t: t.recipient.wait_transaction_progress, float(e[1:]) / 100.0))
+      elif e[0] == 'd' and isFloat(e[1:]) is not None:
         action(True, call(lambda t: reactor.sleep, datetime.timedelta(milliseconds = int(e[1:]))))
       else:
         raise Exception('Unknown entry "%s"' % e)
@@ -418,12 +427,21 @@ class TestResumeTransfer(unittest.TestCase):
         self.assertEqual(transfer.sender.status, 'transaction_failed')
         self.assertEqual(transfer.recipient.status, 'transaction_failed')
       elif assert_status == 'canceled':
-        self.assertEqual(transfer.sender.status, 'transaction_canceled')
-        self.assertEqual(transfer.recipient.status, 'transaction_canceled')
+        if transfer.sender.logged_in:
+          self.assertEqual(transfer.sender.status, 'transaction_canceled')
+        if transfer.recipient.logged_in:
+          self.assertEqual(transfer.recipient.status, 'transaction_canceled')
   #def test_self(self): # tests the test system
   #  return self.transfer_test(['100k'], {'name': '100k','size': 100000},
   #                            'R start 10 20 30 100',
   #                            expect_total_size=100000, expect_files_count=1)
+  def fail_test_cloud_offline(self):
+    # test with cloud subsystem not working
+    # Test that both peers handle it gracefuly without failing the trasnaction
+    return self.transfer_test(['tco'], {'name': 'tco','size': 1000000},
+                              'start d5 s R S r50 r s R S',
+                              message = 'infinit_test_fail_cloud',
+                              expect_total_size=1000000, expect_files_count=1)
   def test_all_cloud(self): # sender and recipient are never logged in together
     return self.transfer_test(['100k'], {'name': '100k','size': 100000},
                               'start s100 s R r100 r S',
@@ -466,19 +484,25 @@ class TestResumeTransfer(unittest.TestCase):
     return self.transfer_test(['big'], {'name': 'big','size': 1000000},
                               'start s40 R r10 r s R r20 r R r30 r R r40 r S s80 s R r50 S')
 
-  def _test_cancel_remove_sender_file(self, files, remove):
+  def _test_cancel_remove_sender_file(self, files, remove, pre_seq, timeout=10):
+    """ Remove a file mid-test on sender side, and expects a cancelled state
+    """
     def remove_file(t):
       filepath = os.path.join(t.data.directory, remove)
       os.remove(filepath)
     # Use a file big enough so we dont miss a progress >0 and <1 with our polling
     return self.transfer_test(files, {'names': files,'size': 50000000},
-                              ['R start r1', remove_file],
-                              timeout = 20,
+                              [pre_seq, remove_file],
+                              timeout = timeout,
                               assert_status = 'canceled')
   def test_cancel_remove_sender_file_1(self): #remove currently being transfered
-    self._test_cancel_remove_sender_file(['v1'], 'v1')
+    self._test_cancel_remove_sender_file(['v1'], 'v1', 'R d500 start r0.000001')
   def test_cancel_remove_sender_file_2(self): #remove file further down
-    self._test_cancel_remove_sender_file(['v1', 'v2'], 'v2')
+    self._test_cancel_remove_sender_file(['v1', 'v2'], 'v2', 'R d500 start r0.0001')
+  def test_cancel_remove_sender_file_cloud_1(self): #remove currently being transfered
+    self._test_cancel_remove_sender_file(['v1'], 'v1', 'start s0.0000001', timeout=100)
+  def test_cancel_remove_sender_file_cloud_2(self): #remove file further down
+    self._test_cancel_remove_sender_file(['v1', 'v2'], 'v2', 'start s0.0000001', timeout=100)
 
 class TestNoTropho(TestResumeTransfer):
   def test_no_tropho_beg_1(self): #login then tropho down
