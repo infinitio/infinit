@@ -335,7 +335,23 @@ namespace frete
       this->_progress_changed.signal();
     }
     auto path = this->_local_path(file_id);
-    return elle::system::read_file_chunk(path, offset, size);
+    elle::Buffer result = elle::system::read_file_chunk(path, offset, size);
+    if (offset + result.size() > file_size(file_id))
+    {
+      auto& file = this->_transfer_snapshot->file(file_id);
+      std::string message = elle::sprintf(
+        "File size inconsistency on %s: %s > %s",
+        file.path(), offset + result.size(), file.size());
+      ELLE_ERR("%s", message);
+      // The sender will reject it and fail the transfer, so throw on this
+      // end, the error will be clearer
+      throw boost::filesystem::filesystem_error(
+        message,
+        file.path(),
+        boost::system::errc::make_error_code(boost::system::errc::file_too_large)
+      );
+    }
+    return result;
   }
 
   infinit::cryptography::Code
