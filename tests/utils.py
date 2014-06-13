@@ -48,7 +48,11 @@ class TemporaryData:
         os.makedirs(d,  exist_ok = True)
       self.full_pathes.append(path)
       with open(path, 'wb') as f:
-        f.write(bytes('a'* self.size,'ascii'))
+        # Vary the content a bit
+        for i in range(1 + int(self.size / 991)):
+          char = list(map(str, range(10)))[i%10]
+          length = min(991, self.size - i*991)
+          f.write(bytes(char * length, 'ascii'))
     self.full_path = self.full_pathes[0]
     return self
   def __exit__(self, *args, **kvargs):
