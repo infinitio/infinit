@@ -1170,6 +1170,14 @@ namespace infinit
 
             this->_pacify_retry();
           }
+          catch (elle::json::ParserError const& e)
+          {
+            ELLE_ERR("GIVE THE FOLLOWING ERROR TO MEFYL RIGHT AWAY. THX.");
+            ELLE_ERR("https://app.asana.com/0/5058254180090/12894049383956");
+            ELLE_ERR("%s: JSON parse error requesting %s: %s", *this, url, e);
+            ELLE_ERR("%s: body was: %s", *this, request.response.string());
+            throw;
+          }
         }
       }
 
