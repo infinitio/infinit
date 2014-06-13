@@ -107,6 +107,7 @@ namespace surface
         ELLE_TRACE_SCOPE("%s: start plain upload", *this);
         typedef boost::filesystem::path path;
         path source_file_path;
+        FileSize file_size;
         auto archive = this->archive_info();
         if (archive.second)
         {
@@ -168,23 +169,7 @@ namespace surface
         }
         else
           source_file_path = *this->_files.begin();
-        FileSize file_size(0);
-        try
-        {
-          file_size = boost::filesystem::file_size(source_file_path);
-        }
-        catch (boost::filesystem::filesystem_error const& e)
-        {
-          if (e.code() == boost::system::errc::no_such_file_or_directory)
-          {
-            ELLE_WARN("%s: source file %s disappeared, cancel",
-                      *this, source_file_path);
-            this->cancel();
-            return;
-          }
-          else
-            throw;
-        }
+        file_size = boost::filesystem::file_size(source_file_path);
         std::string source_file_name = source_file_path.filename().string();
         ELLE_TRACE("%s: will ghost-cloud-upload %s of size %s",
                    *this, source_file_path, file_size);
@@ -324,6 +309,25 @@ namespace surface
         this->finished().open();
         exit_reason = metrics::TransferExitReasonFinished;
       } // try
+      catch (boost::filesystem::filesystem_error const& e)
+      {
+        exit_message = e.what();
+        exit_reason = infinit::metrics::TransferExitReasonError;
+        if (e.code() == boost::system::errc::no_such_file_or_directory)
+        {
+          ELLE_WARN("%s: source file disappeared, cancel : %s",
+                    *this, e.what());
+          this->cancel();
+          throw;
+        }
+        else
+        {
+          ELLE_WARN("%s: source file corrupted (%s), cancel",
+                    *this, e.what());
+          this->cancel();
+          throw;
+        }
+      }
       catch(reactor::Terminate const&)
       {
         exit_reason = metrics::TransferExitReasonTerminated;
