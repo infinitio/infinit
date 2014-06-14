@@ -689,11 +689,10 @@ namespace infinit
             this->reconnect_failed_callback();
             boost::random::mt19937 rng;
             rng.seed(static_cast<unsigned int>(std::time(0)));
-            boost::random::uniform_int_distribution<> random_ten(0, 10);
-            int rand_num = random_ten(rng);
-            ELLE_LOG("%s: will try to reconnect in 20 + %s seconds",
-                     *this, rand_num);
-            reactor::sleep(20_sec + (boost::posix_time::seconds(rand_num)));
+            boost::random::uniform_int_distribution<> random(0, 10);
+            auto const delay = 20_sec + boost::posix_time::seconds(random(rng));
+            ELLE_LOG("%s: will retry reconnection in %s seconds", *this, delay);
+            reactor::sleep(delay);
           }
           if (this->_connected)
           {
