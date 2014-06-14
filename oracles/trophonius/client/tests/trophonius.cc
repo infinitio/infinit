@@ -105,17 +105,25 @@ protected:
   {
     try
     {
-      while (true)
+      elle::With<reactor::Scope>() << [this] (reactor::Scope& scope)
       {
-        std::unique_ptr<reactor::network::Socket> socket(
-          this->_server->accept());
-        ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
-        auto poke_read = elle::json::read(*socket);
-        auto poke = boost::any_cast<elle::json::Object>(poke_read);
-        elle::json::write(*socket, poke);
-        ELLE_LOG("%s replied to poke", *this);
-        this->_serve(*socket);
-      }
+        while (true)
+        {
+          auto socket = elle::utility::move_on_copy(this->_server->accept());
+          ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
+          auto name = elle::sprintf("serve %s", **socket);
+          scope.run_background(
+            name,
+            [&, socket]
+            {
+              auto poke_read = elle::json::read(**socket);
+              auto poke = boost::any_cast<elle::json::Object>(poke_read);
+              elle::json::write(**socket, poke);
+              ELLE_LOG("%s replied to poke", *this);
+              this->_serve(**socket);
+            });
+        }
+      };
     }
     catch (reactor::network::ConnectionClosed const&)
     {
@@ -1049,6 +1057,64 @@ ELLE_TEST_SCHEDULED(notify_disconnect)
     client.poll();
 }
 
+// Login while reconnecting
+
+class LoginReconnectingTrophonius
+  : public Trophonius
+{
+public:
+  LoginReconnectingTrophonius()
+    : Trophonius()
+    , _iteration(0)
+  {}
+
+protected:
+  virtual
+  void
+  _serve(reactor::network::Socket& socket) override
+  {
+    // connection 0: first client auth, make it work and kick him.
+    // connection 1: read thread reconnection, make it fail immediately.
+    // connection 2: second manual connection, make it work and keep it.
+    // following connection: pong thread and read thread reconnecting,
+    //                       keep them.
+    auto iteration = this->_iteration;
+    ++this->_iteration;
+    ELLE_LOG("%s: connection %s", *this, iteration);
+    if (iteration == 1)
+      return;
+    ELLE_LOG("%s: get login", *this);
+    auto connect_data = elle::json::read(socket);
+    ELLE_LOG("%s: answer login", *this);
+    this->_login_response(socket);
+    if (iteration >= 2)
+      reactor::sleep();
+  }
+
+  ELLE_ATTRIBUTE(int, iteration);
+};
+
+ELLE_TEST_SCHEDULED(login_reconnect)
+{
+  LoginReconnectingTrophonius tropho;
+  infinit::oracles::trophonius::Client client(
+    "127.0.0.1",
+    tropho.port(),
+    [] (bool connected) { if (connected) reactor::sleep(2_sec); },
+    [] (void) {},
+    fingerprint);
+  client.ping_period(100_ms);
+  client.reconnection_cooldown(1_sec);
+  BOOST_CHECK(client.poke());
+  tropho.poked().signal();
+  client.connect("0", "0", "0");
+  reactor::sleep(100_ms);
+  BOOST_CHECK(client.poke());
+  tropho.poked().signal();
+  client.connect("0", "0", "0");
+  reactor::sleep(40_sec);
+}
+
 // Test suite
 
 ELLE_TEST_SUITE()
@@ -1064,6 +1130,7 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(reconnection_failed_callback), 0, 2 * timeout);
   suite.add(BOOST_TEST_CASE(socket_close_after_poke), 0, timeout);
   suite.add(BOOST_TEST_CASE(notify_disconnect), 0, timeout);
+  suite.add(BOOST_TEST_CASE(login_reconnect), 0, timeout);
 }
 
 const std::vector<unsigned char> fingerprint =
