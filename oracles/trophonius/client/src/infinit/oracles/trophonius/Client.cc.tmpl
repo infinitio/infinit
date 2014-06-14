@@ -290,6 +290,7 @@ namespace infinit
       struct Client::Impl:
         public elle::Printable
       {
+        Client& _client;
         int _reconnected;
         std::shared_ptr<reactor::network::FingerprintedSocket> _socket;
         reactor::Barrier _connected;
@@ -308,8 +309,10 @@ namespace infinit
         std::unique_ptr<reactor::Thread> _connect_callback_thread;
         std::exception_ptr _poll_exception;
 
-        Impl(Client::ConnectCallback connect_callback,
+        Impl(Client& client,
+             Client::ConnectCallback connect_callback,
              Client::ReconnectPokeFailedCallback reconnect_failed_callback):
+          _client(client),
           _reconnected(0),
           _socket(nullptr),
           _connected(),
@@ -689,8 +692,9 @@ namespace infinit
             this->reconnect_failed_callback();
             boost::random::mt19937 rng;
             rng.seed(static_cast<unsigned int>(std::time(0)));
-            boost::random::uniform_int_distribution<> random(0, 10);
-            auto const delay = 20_sec + boost::posix_time::seconds(random(rng));
+            boost::random::uniform_int_distribution<> random(100, 150);
+            auto const delay =
+              this->_client.reconnection_cooldown() * random(rng) / 100;
             ELLE_LOG("%s: will retry reconnection in %s seconds", *this, delay);
             reactor::sleep(delay);
           }
@@ -859,7 +863,7 @@ namespace infinit
 
       Client::Client(ConnectCallback connect_callback,
                      ReconnectPokeFailedCallback reconnect_failed_callback):
-        _impl(new Impl(connect_callback, reconnect_failed_callback)),
+        _impl(new Impl(*this, connect_callback, reconnect_failed_callback)),
         _ping_period(default_ping_period)
       {
         ELLE_ASSERT(connect_callback != nullptr);

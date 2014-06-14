@@ -215,6 +215,8 @@ namespace infinit
         ELLE_ATTRIBUTE_rx(reactor::Barrier, connected);
         ELLE_ATTRIBUTE_rw(boost::posix_time::time_duration, ping_period);
         ELLE_ATTRIBUTE_rx(reactor::Signal, poked);
+        ELLE_ATTRIBUTE_RW(boost::posix_time::time_duration,
+                          reconnection_cooldown);
 
       /*----------.
       | Printable |
