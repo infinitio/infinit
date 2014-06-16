@@ -70,18 +70,7 @@ namespace papier
   void
   Passport::print(std::ostream& stream) const
   {
-    stream << "Passport(";
-    std::string u;
-    this->Save(u);
-    if (u.size() < 16)
-      stream << u;
-    else
-    {
-      stream << u.substr(0, 8);
-      stream << "...";
-      stream << u.substr(u.size() - 8, std::string::npos);
-    }
-    stream << ")";
+    elle::fprintf(stream, "Passport(%s)", this->_id);
   }
 
   bool
@@ -89,6 +78,8 @@ namespace papier
   {
     if (this->id() < passport.id())
       return true;
+    else if (passport.id() < this->id())
+      return false;
     return this->owner_K() < passport.owner_K();
   }
 

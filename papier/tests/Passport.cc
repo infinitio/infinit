@@ -59,10 +59,13 @@ ordering()
   papier::Passport p21("device_id_2", "device_name_2", keys1.K(), authority);
   KeyPair keys2;
   papier::Passport p12("device_id_1", "device_name_1", keys2.K(), authority);
+  papier::Passport p22("device_id_2", "device_name_1", keys2.K(), authority);
 
   BOOST_CHECK(p11 < p21);
   BOOST_CHECK(!(p21 < p11));
   BOOST_CHECK((p11 < p12) != (p12 < p11));
+  BOOST_CHECK((p11 < p22) != (p22 < p11));
+  BOOST_CHECK((p12 < p21) != (p21 < p12));
 }
 
 ELLE_TEST_SUITE()
