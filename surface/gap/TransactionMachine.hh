@@ -20,7 +20,6 @@
 # include <infinit/oracles/Transaction.hh>
 # include <oracles/src/infinit/oracles/PeerTransaction.hh>
 # include <papier/fwd.hh>
-# include <station/fwd.hh>
 # include <surface/gap/enums.hh>
 # include <surface/gap/fwd.hh>
 # include <surface/gap/TransferMachine.hh>
@@ -208,14 +207,6 @@ namespace surface
       ELLE_ATTRIBUTE_RX(reactor::Barrier, failed);
 
       ELLE_ATTRIBUTE_RX(reactor::Signal, reset_transfer_signal);
-
-    /*--------.
-    | Station |
-    `--------*/
-      ELLE_ATTRIBUTE(std::unique_ptr<station::Station>, station);
-    protected:
-      station::Station&
-      station();
 
     /*------------.
     | Transaction |

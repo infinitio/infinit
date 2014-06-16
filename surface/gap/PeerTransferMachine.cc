@@ -10,7 +10,8 @@
 
 #include <protocol/exceptions.hh>
 
-#include <station/src/station/Station.hh>
+#include <station/Station.hh>
+
 #include <surface/gap/PeerTransferMachine.hh>
 #include <surface/gap/ReceiveMachine.hh>
 #include <surface/gap/Rounds.hh>
@@ -27,12 +28,15 @@ namespace surface
     PeerTransferMachine::PeerTransferMachine(PeerMachine& owner)
       : Transferer(owner)
       , _owner(owner)
+      , _station(papier::authority(),
+                 this->state().passport(),
+                 elle::sprintf("Station(id=%s, tr=%s)",
+                               this->id(), this->_data->id))
     {}
 
     void
     PeerTransferMachine::_publish_interfaces()
     {
-      auto& station = this->_owner.station();
       typedef std::vector<std::pair<std::string, uint16_t>> AddressContainer;
       AddressContainer addresses;
       // In order to test the fallback, we can fake our local addresses.
@@ -40,7 +44,7 @@ namespace surface
       if (elle::os::getenv("INFINIT_LOCAL_ADDRESS", "").length() > 0)
       {
         addresses.emplace_back(elle::os::getenv("INFINIT_LOCAL_ADDRESS"),
-                               station.port());
+                               this->_station.port());
       }
       else
       {
@@ -54,7 +58,7 @@ namespace surface
               pair.second.mac_address.size() > 0)
           {
             auto const &ipv4 = pair.second.ipv4_address;
-            addresses.emplace_back(ipv4, station.port());
+            addresses.emplace_back(ipv4, this->_station.port());
           }
       }
       ELLE_DEBUG("addresses: %s", addresses);
@@ -85,7 +89,7 @@ namespace surface
           {
             ELLE_TRACE_SCOPE("%s: wait for peer connection", *this);
             std::unique_ptr<station::Host> res =
-              this->_owner.station().accept();
+              this->_station.accept();
             ELLE_TRACE("%s: peer connection accepted", *this);
             ELLE_ASSERT_NEQ(res, nullptr);
             ELLE_ASSERT_EQ(host, nullptr);
@@ -99,7 +103,7 @@ namespace surface
             for (auto& round: rounds)
             { // try rounds in order: (currently local, apertus)
               std::unique_ptr<station::Host> res;
-              res = round->connect(this->_owner.station());
+              res = round->connect(this->_station);
               if (res)
               {
                 ELLE_ASSERT_EQ(host, nullptr);

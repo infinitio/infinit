@@ -23,7 +23,6 @@
 #include <frete/Frete.hh>
 #include <infinit/metrics/CompositeReporter.hh>
 #include <papier/Authority.hh>
-#include <station/Station.hh>
 #include <surface/gap/PeerTransferMachine.hh>
 #include <surface/gap/State.hh>
 
@@ -111,7 +110,6 @@ namespace surface
       , _rejected("rejected")
       , _canceled("canceled")
       , _failed("failed")
-      , _station(nullptr)
       , _transaction(transaction)
       , _state(transaction.state())
       , _data(std::move(data))
@@ -383,23 +381,6 @@ namespace surface
         return;
       }
       this->_data->id = id;
-    }
-
-    station::Station&
-    TransactionMachine::station()
-    {
-      if (!this->_station)
-      {
-        ELLE_TRACE_SCOPE("%s: building station", *this);
-        this->_station.reset(
-          new station::Station(
-            papier::authority(),
-            this->state().passport(),
-            elle::sprintf("Station(id=%s, tr=%s)", this->id(), this->_data->id)
-          ));
-      }
-      ELLE_ASSERT(this->_station != nullptr);
-      return *this->_station;
     }
 
     /*----------.

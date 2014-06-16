@@ -27,6 +27,7 @@ namespace surface
       ELLE_ATTRIBUTE(PeerMachine&, owner);
 
     private:
+      ELLE_ATTRIBUTE(station::Station, station);
       std::unique_ptr<station::Host>
       _connect();
 
