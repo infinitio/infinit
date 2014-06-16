@@ -131,7 +131,6 @@ namespace station
     char version = 0;
     socket->write(elle::ConstWeakBuffer(&version, 1));
     auto remote_protocol = socket->read(1);
-    ELLE_ASSERT_EQ(elle::ConstWeakBuffer(remote_protocol)[0], 0);
     try
     {
       elle::serialize::OutputBinaryArchive output(*socket);
