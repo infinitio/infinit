@@ -84,8 +84,6 @@ public:
     ELLE_LOG("%s: finalize", *this);
   }
 
-  ELLE_ATTRIBUTE_RX(reactor::Signal, poked);
-
   ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::SSLCertificate>,
                  certificate);
   ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::SSLServer>, server);
@@ -193,6 +191,7 @@ public:
     _round(round)
   {}
 
+  ELLE_ATTRIBUTE_RX(reactor::Signal, poked);
   ELLE_ATTRIBUTE_R(int, round);
 
 protected:
@@ -351,7 +350,6 @@ protected:
   _serve(reactor::network::Socket& socket)
   {
     ELLE_LOG("serve notification test");
-    reactor::wait(this->poked());
     auto connect_data = elle::json::read(socket);
     auto connect_msg = boost::any_cast<elle::json::Object>(connect_data);
     ELLE_LOG("%s: got connect message: %s",
@@ -368,48 +366,25 @@ ELLE_TEST_SCHEDULED(notification)
   NotificationTrophonius tropho;
   {
     using namespace infinit::oracles::trophonius;
-    std::unique_ptr<Client> client;
-    client.reset(new Client(
+    Client client(
       "127.0.0.1",
       tropho.port(),
       [] (bool) {}, // connect callback
       [] (void) {}, // reconnection failed callback
-      fingerprint)
-    );
-    elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+      fingerprint);
+    client.connect("0", "0", "0");
+    reactor::wait(client.connected());
+    for (int i = 0; i < reconnections; ++i)
     {
-      // We need to poke the server before connecting so that we have a valid
-      // socket. After that the fake server is controlled by signalling the end
-      // of pokes and connections.
-      scope.run_background("notification check", [&]
-      {
-        reactor::wait(tropho.poked());
-        client->connect("0", "0", "0");
-        reactor::wait(client->connected());
-        for (int i = 0; i < reconnections; ++i)
-        {
-          ELLE_LOG("poll notifications");
-          std::unique_ptr<Notification> notification = client->poll();
-          ELLE_DEBUG("back from poll");
-          BOOST_CHECK_EQUAL(client->reconnected(), i);
-          BOOST_CHECK(notification);
-          ELLE_LOG("got notification type: %s", notification->notification_type);
-          BOOST_CHECK_EQUAL(notification->notification_type,
-                            NotificationType::message);
-          // Wait for us to be connected before running test again.
-          // This is done by forwarding the client's signals to our fake server.
-          reactor::wait(client->poked());
-          tropho.poked().signal();
-          reactor::wait(client->connected());
-        }
-      });
-      scope.run_background("poke server", [&]
-      {
-        BOOST_CHECK_EQUAL(client->poke(), true);
-        tropho.poked().signal();
-      });
-      scope.wait();
-    };
+      ELLE_LOG("poll notifications");
+      std::unique_ptr<Notification> notification = client.poll();
+      ELLE_DEBUG("back from poll");
+      BOOST_CHECK_EQUAL(client.reconnected(), i);
+      BOOST_CHECK(notification);
+      ELLE_LOG("got notification type: %s", notification->notification_type);
+      BOOST_CHECK_EQUAL(notification->notification_type,
+                        NotificationType::message);
+    }
   }
 }
 
@@ -437,7 +412,6 @@ protected:
   void
   _serve(reactor::network::Socket& socket)
   {
-    reactor::wait(this->poked());
     auto connect_data = elle::json::read(socket);
     auto connect_msg = boost::any_cast<elle::json::Object>(connect_data);
     ELLE_LOG("%s: got connect message: %s",
@@ -491,37 +465,20 @@ ELLE_TEST_SCHEDULED(ping)
   boost::posix_time::time_duration const period = 500_ms;
   boost::posix_time::time_duration const run_time = 10_sec;
   int periods = run_time.total_milliseconds() / period.total_milliseconds();
-
   PingTrophonius tropho(period);
-
   using namespace infinit::oracles::trophonius;
-  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
-  {
-    std::unique_ptr<Client> client;
-    client.reset(new Client(
-      "127.0.0.1",
-      tropho.port(),
-      [] (bool) {}, // connect callback
-      [] (void) {}, // reconnection failed callback
-      fingerprint)
-    );
-    scope.run_background("initial poke", [&]
-    {
-      BOOST_CHECK(client->poke());
-      tropho.poked().signal();
-    });
-    scope.run_background("client", [&]
-    {
-      reactor::wait(tropho.poked());
-      client->ping_period(period);
-      client->connect("0", "0", "0");
-      reactor::wait(client->connected());
-      reactor::sleep(run_time);
-    });
-    scope.wait(run_time);
-    BOOST_CHECK_EQUAL(client->reconnected(), 0);
-    BOOST_CHECK_LE(std::abs(tropho.ping_received() - periods), 1);
-  };
+  Client client(
+    "127.0.0.1",
+    tropho.port(),
+    [] (bool) {}, // connect callback
+    [] (void) {}, // reconnection failed callback
+    fingerprint);
+  client.ping_period(period);
+  client.connect("0", "0", "0");
+  reactor::wait(client.connected());
+  reactor::sleep(run_time);
+  BOOST_CHECK_EQUAL(client.reconnected(), 0);
+  BOOST_CHECK_LE(std::abs(tropho.ping_received() - periods), 1);
 }
 
 /*--------.
@@ -547,7 +504,6 @@ protected:
   void
   _serve(reactor::network::Socket& socket)
   {
-    reactor::wait(this->poked());
     auto connect_data = elle::json::read(socket);
     auto connect_msg = boost::any_cast<elle::json::Object>(connect_data);
     ELLE_DEBUG("%s: got connect message: %s",
@@ -592,42 +548,20 @@ ELLE_TEST_SCHEDULED(no_ping)
   boost::posix_time::time_duration const period = 500_ms;
   boost::posix_time::time_duration const run_time = 10_sec;
   int periods = run_time.total_milliseconds() / period.total_milliseconds();
-
   NoPingTrophonius tropho(period);
-
   using namespace infinit::oracles::trophonius;
-  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
-  {
-    std::unique_ptr<Client> client;
-    client.reset(new Client(
-      "127.0.0.1",
-      tropho.port(),
-      [] (bool) {}, // connect callback
-      [] (void) {}, // reconnection failed callback
-      fingerprint)
-    );
-    scope.run_background("initial poke", [&]
-    {
-      BOOST_CHECK(client->poke());
-      tropho.poked().signal();
-      while (true)
-      {
-        reactor::wait(client->poked());
-        tropho.poked().signal();
-      }
-    });
-    scope.run_background("client", [&]
-    {
-      reactor::wait(tropho.poked());
-      client->ping_period(period);
-      client->connect("0", "0", "0");
-    });
-    scope.wait(run_time);
-    // Approximate test as we don't know how long a poke, connect, disconnect
-    // cycle will take.
-    BOOST_CHECK_LT(std::abs(client->reconnected() - (periods / 2)), 5);
-    scope.terminate_now();
-  };
+  Client client(
+    "127.0.0.1",
+    tropho.port(),
+    [] (bool) {}, // connect callback
+    [] (void) {}, // reconnection failed callback
+    fingerprint);
+  client.ping_period(period);
+  client.connect("0", "0", "0");
+  reactor::sleep(run_time);
+  // Approximate test as we don't know how long a poke, connect, disconnect
+  // cycle will take.
+  BOOST_CHECK_LT(std::abs(client.reconnected() - (periods / 2)), 5);
 }
 
 /*-------------.
@@ -651,7 +585,6 @@ protected:
   void
   _serve(reactor::network::Socket& socket)
   {
-    reactor::wait(this->poked());
     auto connect_data = elle::json::read(socket);
     auto connect_msg = boost::any_cast<elle::json::Object>(connect_data);
     ELLE_DEBUG("%s: got connect message: %s",
@@ -725,27 +658,13 @@ ELLE_TEST_SCHEDULED(reconnection)
       fingerprint)
     );
     client->ping_period(1_sec);
-    scope.run_background("forward pokes", [&]
-    {
-      while (true)
-      {
-        reactor::wait(client->poked());
-        tropho.poked().signal();
-      }
-    });
     scope.run_background("end test", [&]
     {
       reactor::wait(end_test);
       scope.terminate_now();
     });
-    scope.run_background("initial poke", [&]
-    {
-      BOOST_CHECK(client->poke());
-      tropho.poked().signal();
-    });
     scope.run_background("client", [&]
     {
-      reactor::wait(tropho.poked());
       ELLE_LOG("connect");
       client->connect("0", "0", "0");
       ELLE_LOG("read notification 0");
@@ -788,7 +707,6 @@ protected:
   void
   _serve(reactor::network::Socket& socket)
   {
-    reactor::wait(this->poked());
     auto connect_data = elle::json::read(socket);
     auto connect_msg = boost::any_cast<elle::json::Object>(connect_data);
     ELLE_DEBUG("%s: got connect message: %s",
@@ -805,35 +723,20 @@ ELLE_TEST_SCHEDULED_THROWS(connection_callback_throws, std::runtime_error)
   bool beacon = false;
   SilentTrophonius tropho;
   using namespace infinit::oracles::trophonius;
-  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
-  {
-    std::unique_ptr<Client> client;
-    client.reset(new Client(
-      "127.0.0.1",
-      tropho.port(),
-      [&] (bool connected) // connect callback
-      {
-        beacon = true;
-        throw std::runtime_error("sync failed");
-      },
-      [] (void) {},  // reconnection failed callback
-      fingerprint)
-    );
-    client->ping_period(100_ms);
-    scope.run_background("initial poke", [&]
+  Client client(
+    "127.0.0.1",
+    tropho.port(),
+    [&] (bool connected) // connect callback
     {
-      BOOST_CHECK(client->poke());
-      tropho.poked().signal();
-    });
-    scope.run_background("client", [&]
-    {
-      reactor::wait(client->poked());
-      ELLE_LOG("connect");
-      client->connect("0", "0", "0");
-      reactor::sleep(1_sec);
-    });
-    scope.wait();
-  };
+      beacon = true;
+      throw std::runtime_error("sync failed");
+    },
+    [] (void) {},  // reconnection failed callback
+    fingerprint);
+  client.ping_period(100_ms);
+  ELLE_LOG("connect");
+  client.connect("0", "0", "0");
+  reactor::sleep(1_sec);
   BOOST_CHECK(beacon);
 }
 
@@ -880,7 +783,6 @@ protected:
   void
   _serve(reactor::network::Socket& socket)
   {
-    reactor::wait(this->poked());
     auto connect_data = elle::json::read(socket);
     auto connect_msg = boost::any_cast<elle::json::Object>(connect_data);
     ELLE_DEBUG("%s: got connect message: %s",
@@ -896,37 +798,21 @@ ELLE_TEST_SCHEDULED(reconnection_failed_callback)
   reactor::Signal end_test;
   bool callback_called = false;
   using namespace infinit::oracles::trophonius;
-  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
-  {
-    std::unique_ptr<Client> client;
-    client.reset(new Client(
-      "127.0.0.1",
-      tropho.port(),
-      [] (bool) {}, // connect callback
-      [&] (void)    // reconnection failed callback
-      {
-        callback_called = true;
-        reactor::Scheduler::scheduler()->terminate();
-      },
-      fingerprint)
-    );
-    client->poke_timeout(500_ms);
-
-    client->ping_period(2_sec);
-    scope.run_background("initial poke", [&]
+  Client client(
+    "127.0.0.1",
+    tropho.port(),
+    [] (bool) {}, // connect callback
+    [&] (void)    // reconnection failed callback
     {
-      BOOST_CHECK(client->poke());
-      tropho.poked().signal();
-    });
-    scope.run_background("client", [&]
-    {
-      reactor::wait(tropho.poked());
-      ELLE_LOG("connect");
-      client->connect("0", "0", "0");
-      reactor::sleep();
-    });
-    scope.wait();
-  };
+      callback_called = true;
+      reactor::Scheduler::scheduler()->terminate();
+    },
+    fingerprint);
+  client.poke_timeout(500_ms);
+  client.ping_period(2_sec);
+  ELLE_LOG("connect");
+  client.connect("0", "0", "0");
+  reactor::sleep();
   BOOST_CHECK(callback_called);
 }
 
@@ -973,7 +859,6 @@ protected:
   void
   _serve(reactor::network::Socket& socket)
   {
-    reactor::wait(this->poked());
     socket.close();
     ELLE_LOG("socket closed");
   }
@@ -983,31 +868,15 @@ ELLE_TEST_SCHEDULED(socket_close_after_poke)
 {
   SocketClosedTrophonius tropho;
   using namespace infinit::oracles::trophonius;
-  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
-  {
-    std::unique_ptr<Client> client;
-    client.reset(new Client(
-      "127.0.0.1",
-      tropho.port(),
-      [] (bool) {}, // connect callback
-      [] (void) {}, // reconnection failed callback
-      fingerprint)
-    );
-
-    client->ping_period(200_ms);
-    scope.run_background("initial poke", [&]
-    {
-      BOOST_CHECK(client->poke());
-      tropho.poked().signal();
-    });
-    scope.run_background("client", [&]
-    {
-      reactor::wait(tropho.poked());
-      ELLE_LOG("try to connect"); // should fail immediately
-      BOOST_CHECK(!client->connect("0", "0", "0"));
-    });
-    scope.wait();
-  };
+  Client client(
+    "127.0.0.1",
+    tropho.port(),
+    [] (bool) {}, // connect callback
+    [] (void) {}, // reconnection failed callback
+    fingerprint);
+  client.ping_period(200_ms);
+  ELLE_LOG("try to connect"); // should fail immediately
+  BOOST_CHECK(!client.connect("0", "0", "0"));
 }
 
 // Test sending a notification and disconnecting concurrently. This use to
@@ -1050,8 +919,6 @@ ELLE_TEST_SCHEDULED(notify_disconnect)
     [] (void) {},
     fingerprint);
   client.ping_period(0_sec);
-  BOOST_CHECK(client.poke());
-  tropho.poked().signal();
   client.connect("0", "0", "0");
   ELLE_LOG("%s: poll", client)
     client.poll();
@@ -1105,12 +972,8 @@ ELLE_TEST_SCHEDULED(login_reconnect)
     fingerprint);
   client.ping_period(100_ms);
   client.reconnection_cooldown(1_sec);
-  BOOST_CHECK(client.poke());
-  tropho.poked().signal();
   client.connect("0", "0", "0");
   reactor::sleep(100_ms);
-  BOOST_CHECK(client.poke());
-  tropho.poked().signal();
   client.connect("0", "0", "0");
   reactor::sleep(40_sec);
 }
@@ -1130,7 +993,7 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(reconnection_failed_callback), 0, 2 * timeout);
   suite.add(BOOST_TEST_CASE(socket_close_after_poke), 0, timeout);
   suite.add(BOOST_TEST_CASE(notify_disconnect), 0, timeout);
-  suite.add(BOOST_TEST_CASE(login_reconnect), 0, timeout);
+  suite.add(BOOST_TEST_CASE(login_reconnect), 0, timeout * 10);
 }
 
 const std::vector<unsigned char> fingerprint =

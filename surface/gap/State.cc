@@ -260,22 +260,6 @@ namespace surface
       return this->_meta_server_check(10_sec);
     }
 
-    bool
-    State::_trophonius_server_check()
-    {
-      ELLE_TRACE_SCOPE("%s: check trophonius availablity", *this);
-      if (this->_trophonius.poke())
-      {
-        ELLE_TRACE("%s: successfully poked Trophonius", *this);
-        return true;
-      }
-      else
-      {
-        ELLE_ERR("%s: Trophonius poke failed", *this);
-        return false;
-      }
-    }
-
     /*----------------------.
     | Login/Logout/Register |
     `----------------------*/
@@ -340,12 +324,6 @@ namespace surface
         this->_trophonius.server(
           login_response.trophonius.host, login_response.trophonius.port_ssl);
         ELLE_TRACE("%s: poking trophonius", *this);
-        if (!this->_trophonius_server_check())
-        {
-          throw Exception(gap_trophonius_unreachable,
-                          "Unable to contact Trophonius");
-        }
-
         infinit::metrics::Reporter::metric_sender_id(login_response.id);
         this->_metrics_reporter->user_login(true, "");
         this->_metrics_heartbeat_thread.reset(
@@ -408,10 +386,18 @@ namespace surface
         ELLE_TRACE("connecting to trophonius")
         {
           // XXX: Throw an exception instead.
-          if (!this->_trophonius.connect(
-                this->me().id, this->device().id, this->_meta.session_id()))
-            throw Exception(
-              gap_trophonius_unreachable, "unable to contact trophonius");
+          try
+          {
+            if (!this->_trophonius.connect(
+                  this->me().id, this->device().id, this->_meta.session_id()))
+              throw Exception(
+                gap_trophonius_unreachable, "unable to connect to trophonius");
+          }
+          catch (oracles::trophonius::client::Unreachable const&)
+          {
+            throw Exception(gap_trophonius_unreachable,
+                            "unable to reach Trophonius");
+          }
         }
 
         this->_avatar_fetcher_thread.reset(

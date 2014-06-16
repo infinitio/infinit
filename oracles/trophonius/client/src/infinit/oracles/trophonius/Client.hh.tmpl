@@ -1,18 +1,19 @@
 #ifndef INFINIT_ORACLES_TROPHONIUS_CLIENT_HH
 # define INFINIT_ORACLES_TROPHONIUS_CLIENT_HH
 
-# include <infinit/oracles/PeerTransaction.hh>
-# include <infinit/oracles/LinkTransaction.hh>
+# include <functional>
+# include <queue>
 
 # include <boost/date_time/posix_time/posix_time_types.hpp>
 
+# include <elle/Error.hh>
 # include <elle/format/json.hh>
 
 # include <reactor/Barrier.hh>
 # include <reactor/signal.hh>
 
-# include <functional>
-# include <queue>
+# include <infinit/oracles/PeerTransaction.hh>
+# include <infinit/oracles/LinkTransaction.hh>
 
 namespace infinit
 {
@@ -26,6 +27,13 @@ namespace infinit
         %for name, value in notifications.items():
           ${name} = ${value},
         %endfor
+      };
+
+      class Unreachable:
+        public elle::Error
+      {
+      public:
+        Unreachable(std::string host, int port);
       };
 
       /// Base class for all notifications.
@@ -214,7 +222,6 @@ namespace infinit
         reconnected() const;
         ELLE_ATTRIBUTE_rx(reactor::Barrier, connected);
         ELLE_ATTRIBUTE_rw(boost::posix_time::time_duration, ping_period);
-        ELLE_ATTRIBUTE_rx(reactor::Signal, poked);
         ELLE_ATTRIBUTE_RW(boost::posix_time::time_duration,
                           reconnection_cooldown);
 
