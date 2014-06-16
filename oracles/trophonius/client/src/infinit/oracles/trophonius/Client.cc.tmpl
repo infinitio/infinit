@@ -328,26 +328,46 @@ namespace infinit
           _ping_period(default_ping_period),
           _ping_timeout(this->_ping_period * 2),
           _ping_signal(),
-          _ping_thread(*reactor::Scheduler::scheduler(),
-                       elle::sprintf("%s ping thread", *this),
-                       [&] () { this->ping_thread(); }),
+          _ping_thread(),
           _pong_signal(),
-          _pong_thread(*reactor::Scheduler::scheduler(),
-                       elle::sprintf("%s pong thread", *this),
-                       [&] () { this->pong_thread(); }),
-          _read_thread(*reactor::Scheduler::scheduler(),
-                       elle::sprintf("%s read thread", *this),
-                       [&] () { this->read_thread(); }),
+          _pong_thread(),
+          _read_thread(),
           _poke_timeout(15_sec)
         {}
 
         ~Impl()
         {
-          this->_ping_thread.terminate_now();
-          this->_pong_thread.terminate_now();
-          this->_read_thread.terminate_now();
+          if (this->_ping_thread)
+            this->_ping_thread->terminate_now();
+          if (this->_pong_thread)
+            this->_pong_thread->terminate_now();
+          if (this->_read_thread)
+            this->_read_thread->terminate_now();
           if (this->_connect_callback_thread)
             this->_connect_callback_thread->terminate_now();
+        }
+
+        void
+        _setup_threads()
+        {
+          if (this->_ping_thread)
+            this->_ping_thread->terminate_now();
+          if (this->_pong_thread)
+            this->_pong_thread->terminate_now();
+          if (this->_read_thread)
+            this->_read_thread->terminate_now();
+          this->_ping_thread.reset(
+            new reactor::Thread(
+              elle::sprintf("%s ping thread", *this),
+              [&] () { this->ping_thread(); }));
+          this->_pong_thread.reset(
+            new reactor::Thread(
+              elle::sprintf("%s pong thread", *this),
+              [&] () { this->pong_thread(); }));
+          this->_read_thread.reset(
+            new reactor::Thread(
+              elle::sprintf("%s read thread", *this),
+              [&] () { this->read_thread(); }));
         }
 
         std::vector<unsigned char> _test_fingerprint;
@@ -448,6 +468,8 @@ namespace infinit
         void
         _connect(bool user_action = false)
         {
+          if (this->_connect_callback_thread)
+            this->_connect_callback_thread->terminate_now();
           if (!this->_poke())
           {
             this->_socket->close();
@@ -668,7 +690,7 @@ namespace infinit
         boost::posix_time::time_duration _ping_period;
         boost::posix_time::time_duration _ping_timeout;
         reactor::Signal _ping_signal;
-        reactor::Thread _ping_thread;
+        std::unique_ptr<reactor::Thread> _ping_thread;
         void
         ping_thread()
         {
@@ -703,7 +725,7 @@ namespace infinit
         }
 
         reactor::Signal _pong_signal;
-        reactor::Thread _pong_thread;
+        std::unique_ptr<reactor::Thread> _pong_thread;
         void
         pong_thread()
         {
@@ -741,7 +763,7 @@ namespace infinit
         }
 
         std::queue<std::unique_ptr<Notification>> _notifications;
-        reactor::Thread _read_thread;
+        std::unique_ptr<reactor::Thread> _read_thread;
         void
         read_thread()
         {
@@ -925,6 +947,7 @@ namespace infinit
         this->_impl->user_id = _id;
         this->_impl->user_session_id = session_id;
         this->_impl->user_device_id = device_id;
+        this->_impl->_setup_threads();
         this->_impl->_connect(true);
         if (!this->_impl->_connected.opened())
         {

@@ -975,14 +975,14 @@ ELLE_TEST_SCHEDULED(login_reconnect)
   client.connect("0", "0", "0");
   reactor::sleep(100_ms);
   client.connect("0", "0", "0");
-  reactor::sleep(40_sec);
+  reactor::sleep(2_sec);
 }
 
 // Test suite
 
 ELLE_TEST_SUITE()
 {
-  auto timeout = RUNNING_ON_VALGRIND ? 15 : 3;
+  auto timeout = RUNNING_ON_VALGRIND ? 15 : 30;
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(poke), 0, timeout);
   suite.add(BOOST_TEST_CASE(notification), 0, timeout);
@@ -993,7 +993,7 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(reconnection_failed_callback), 0, 2 * timeout);
   suite.add(BOOST_TEST_CASE(socket_close_after_poke), 0, timeout);
   suite.add(BOOST_TEST_CASE(notify_disconnect), 0, timeout);
-  suite.add(BOOST_TEST_CASE(login_reconnect), 0, timeout * 10);
+  suite.add(BOOST_TEST_CASE(login_reconnect), 0, timeout);
 }
 
 const std::vector<unsigned char> fingerprint =
