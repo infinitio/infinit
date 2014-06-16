@@ -982,7 +982,7 @@ ELLE_TEST_SCHEDULED(login_reconnect)
 
 ELLE_TEST_SUITE()
 {
-  auto timeout = RUNNING_ON_VALGRIND ? 15 : 30;
+  auto timeout = RUNNING_ON_VALGRIND ? 15 : 3;
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(poke), 0, timeout);
   suite.add(BOOST_TEST_CASE(notification), 0, timeout);
