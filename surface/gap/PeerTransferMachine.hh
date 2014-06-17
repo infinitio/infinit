@@ -19,6 +19,8 @@ namespace surface
     `-------------*/
     public:
       PeerTransferMachine(PeerMachine& owner);
+      virtual
+      ~PeerTransferMachine() noexcept(true) {};
       ELLE_ATTRIBUTE(std::unique_ptr<station::Host>, host);
       ELLE_ATTRIBUTE(std::unique_ptr<infinit::protocol::Serializer>,
                      serializer);
