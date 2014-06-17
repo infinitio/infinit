@@ -29,9 +29,9 @@ namespace surface
       : Transferer(owner)
       , _owner(owner)
       , _station(papier::authority(),
-                 this->state().passport(),
+                 this->_owner.state().passport(),
                  elle::sprintf("Station(id=%s, tr=%s)",
-                               this->id(), this->_data->id))
+                               this->_owner.id(), this->_owner.data()->id))
     {}
 
     void

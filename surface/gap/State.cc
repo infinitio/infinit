@@ -393,7 +393,7 @@ namespace surface
               throw Exception(
                 gap_trophonius_unreachable, "unable to connect to trophonius");
           }
-          catch (oracles::trophonius::client::Unreachable const&)
+          catch (infinit::oracles::trophonius::Unreachable const&)
           {
             throw Exception(gap_trophonius_unreachable,
                             "unable to reach Trophonius");
