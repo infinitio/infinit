@@ -5,6 +5,7 @@
 # include <station/fwd.hh>
 # include <surface/gap/PeerMachine.hh>
 # include <surface/gap/TransferMachine.hh>
+# include <station/Station.hh>
 
 namespace surface
 {
