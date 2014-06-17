@@ -99,6 +99,7 @@ def configure(elle,
   ## Check ##
   ## ----- ##
 
+  tests = drake.TestSuite('tests')
   check = drake.TestSuite('check')
 
   test_sources = drake.nodes(
@@ -132,4 +133,5 @@ def configure(elle,
     tests_cxx_config)
 
   runner = drake.Runner(test_bin)
+  tests << test_bin
   check << runner.status
