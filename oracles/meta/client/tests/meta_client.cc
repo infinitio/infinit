@@ -223,19 +223,50 @@ ELLE_TEST_SCHEDULED(status_found)
   s.register_route(
     "/trophonius",
     reactor::http::Method::GET,
-    [&i] (HTTPServer::Headers const&,
-          HTTPServer::Cookies const&,
-          elle::Buffer const& body)
+    [&i, &s] (HTTPServer::Headers const&,
+              HTTPServer::Cookies const&,
+              elle::Buffer const& body)
     {
-      if (i < 3)
+      if (i++ < 3)
       {
-        ++i;
         throw HTTPServer::Exception("",
                                     reactor::http::StatusCode::Found,
                                     "{}");
       }
       else
       {
+        s.headers()["X-Fist-Meta-Version"] = INFINIT_VERSION;
+        return
+          "{"
+          "  \"host\": \"hostname\","
+          "  \"port\": 80,"
+          "  \"port_ssl\": 443"
+          "}";
+      }
+    });
+  Client c("http", "127.0.0.1", s.port());
+  c.trophonius();
+}
+
+ELLE_TEST_SCHEDULED(json_error_not_meta)
+{
+  HTTPServer s;
+  s.headers().erase("X-Fist-Meta-Version");
+  int i = 0;
+  s.register_route(
+    "/trophonius",
+    reactor::http::Method::GET,
+    [&i, &s] (HTTPServer::Headers const&,
+              HTTPServer::Cookies const&,
+              elle::Buffer const& body)
+    {
+      if (i++ < 3)
+      {
+        return "}";
+      }
+      else
+      {
+        s.headers()["X-Fist-Meta-Version"] = INFINIT_VERSION;
         return
           "{"
           "  \"host\": \"hostname\","
@@ -261,4 +292,5 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(already_logged_in));
   suite.add(BOOST_TEST_CASE(cloud_buffer_gone));
   suite.add(BOOST_TEST_CASE(status_found));
+  suite.add(BOOST_TEST_CASE(json_error_not_meta));
 }
