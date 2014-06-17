@@ -244,9 +244,148 @@ ELLE_TEST_SCHEDULED(connection_close)
   };
 }
 
+enum class NegotiationStatus
+{
+  already_connected,
+  invalid,
+  succeeded,
+};
+
+class StationInstrumentation
+{
+public:
+  StationInstrumentation(station::Station& station)
+    : _station(station)
+    , _server()
+    , _serve_thread("serve",
+                    std::bind(&StationInstrumentation::_serve, std::ref(*this)))
+    , _passport_barrier()
+    , _status_to_barrier()
+    , _status_from_barrier()
+  {
+    this->_server.listen();
+  }
+
+  ~StationInstrumentation()
+  {
+    this->_serve_thread.terminate_now();
+  }
+
+  void
+  _serve()
+  {
+    auto a = this->_server.accept();
+    reactor::network::TCPSocket b("127.0.0.1", this->_station.port());
+    auto forward = [this] (reactor::network::Socket& a,
+                           reactor::network::Socket& b,
+                           reactor::Barrier& status_barrier)
+      {
+        auto protocol = a.read(1);
+        b.write(protocol);
+        b.flush();
+        reactor::wait(this->_passport_barrier);
+        elle::serialize::InputBinaryArchive input(a);
+        elle::serialize::OutputBinaryArchive output(b);
+        papier::Passport passport;
+        input >> passport;
+        output << passport;
+        b.flush();
+        reactor::wait(status_barrier);
+        NegotiationStatus status;
+        input >> status;
+        output << status;
+        b.flush();
+        reactor::sleep();
+      };
+    elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+    {
+      scope.run_background("a -> b",
+                           std::bind(forward, std::ref(*a), std::ref(b),
+                                     std::ref(this->_status_to_barrier)));
+      scope.run_background("b -> a",
+                           std::bind(forward, std::ref(b), std::ref(*a),
+                                     std::ref(this->_status_from_barrier)));
+      reactor::wait(scope);
+    };
+  }
+
+  int
+  port() const
+  {
+    return this->_server.port();
+  }
+
+  ELLE_ATTRIBUTE_R(station::Station&, station);
+  ELLE_ATTRIBUTE_R(reactor::network::TCPServer, server);
+  ELLE_ATTRIBUTE(reactor::Thread, serve_thread);
+  ELLE_ATTRIBUTE_RX(reactor::Barrier, passport_barrier);
+  ELLE_ATTRIBUTE_RX(reactor::Barrier, status_to_barrier);
+  ELLE_ATTRIBUTE_RX(reactor::Barrier, status_from_barrier);
+};
+
+ELLE_TEST_SCHEDULED(connect_close_connect, (bool, swap))
+{
+  Credentials c1("host1");
+  Credentials c2("host2");
+  auto& master = c1.passport < c2.passport ? c1.passport : c2.passport;
+  auto& slave = c1.passport < c2.passport ? c2.passport : c1.passport;
+  station::Station station1(authority, std::min(c1.passport, c2.passport));
+  station::Station station2(authority, std::max(c1.passport, c2.passport));
+  StationInstrumentation instrumentation1(station1);
+  StationInstrumentation instrumentation2(station2);
+  reactor::Barrier sync;
+  std::unique_ptr<station::Host> host;
+  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+  {
+    scope.run_background("1 -> 2", [&]
+    {
+      try
+      {
+        instrumentation2.passport_barrier().open();
+        instrumentation2.status_from_barrier().open();
+        station1.connect("127.0.0.1", instrumentation2.port());
+        instrumentation1.passport_barrier().open();
+        instrumentation1.status_from_barrier().open();
+        if (swap)
+          instrumentation2.status_to_barrier().open();
+        else
+          instrumentation1.status_to_barrier().open();
+        reactor::wait(sync);
+        if (swap)
+          instrumentation1.status_to_barrier().open();
+        else
+          instrumentation2.status_to_barrier().open();
+        reactor::sleep(1_sec);
+      }
+      catch (station::AlreadyConnected const&)
+      {}
+    });
+    scope.run_background("2 -> 1", [&]
+    {
+      bool caught = false;
+      try
+      {
+        host = station2.connect("127.0.0.1", instrumentation1.port());
+        sync.open();
+      }
+      catch (station::AlreadyConnected const&)
+      {}
+      catch (station::ConnectionFailure const&)
+      {
+        // FIXME: conflict will be fixed after 0.9.7.
+        sync.open();
+        caught = true;
+      }
+      if (swap)
+        BOOST_CHECK(caught);
+    });
+    scope.wait();
+  };
+}
+
 ELLE_TEST_SUITE()
 {
-  auto timeout = RUNNING_ON_VALGRIND ? 15 : 3;
+  auto timeout = RUNNING_ON_VALGRIND ? 15 : 30;
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(construction), 0, timeout);
   suite.add(BOOST_TEST_CASE(connection), 0, timeout);
@@ -259,4 +398,8 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(destruct_pending), 0, timeout);
   suite.add(BOOST_TEST_CASE(double_connection), 0, timeout);
   suite.add(BOOST_TEST_CASE(connection_close), 0, timeout);
+  auto connect_close_connect_first = std::bind(&connect_close_connect, true);
+  suite.add(BOOST_TEST_CASE(connect_close_connect_first), 0, timeout);
+  auto connect_close_connect_second = std::bind(&connect_close_connect, false);
+  suite.add(BOOST_TEST_CASE(connect_close_connect_second), 0, timeout);
 }

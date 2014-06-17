@@ -130,7 +130,8 @@ namespace station
     // Exchange protocol version.
     char version = 0;
     socket->write(elle::ConstWeakBuffer(&version, 1));
-    auto remote_protocol = socket->read(1);
+    auto remote_protocol = socket->read(1)[0];
+    (void)remote_protocol;
     try
     {
       elle::serialize::OutputBinaryArchive output(*socket);
@@ -213,9 +214,18 @@ namespace station
       {
         case NegotiationStatus::succeeded:
         {
+          ELLE_LOG("%s: validate peer %s", *this, remote);
+          if (master)
+            ELLE_ASSERT_NCONTAINS(this->_hosts, remote);
+          else if (this->_hosts.find(remote) != this->_hosts.end())
+          {
+            // FIXME: add sequence ids as soon as the station protocol version
+            // is fixed (0.9.7).
+            ELLE_ERR("%s: station conflict, need sequence ids to solve", *this);
+            throw ConnectionFailure(
+              elle::sprintf("%s: conflict on %s", *this, remote));
+          }
           std::unique_ptr<Host> res(new Host(*this, remote, std::move(socket)));
-          ELLE_LOG("%s: validate peer %s", *this, *res);
-          ELLE_ASSERT_NCONTAINS(this->_hosts, remote);
           this->_hosts[remote] = res.get();
           return res;
         }
