@@ -85,7 +85,7 @@ class Mixin:
       {'timestamp': {'$gt': datetime.utcnow() - results_valid}})
     if existing_res:
       return self.success(existing_res)
-    links = self._link_stats()
+    # links = self._link_stats()
     txns = self.database.transactions.aggregate([
       {'$match': {'status': transaction_status.FINISHED}},
       {'$group': {'_id': 'result',
