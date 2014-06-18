@@ -879,7 +879,7 @@ ELLE_TEST_SCHEDULED(socket_close_after_poke)
   BOOST_CHECK(!client.connect("0", "0", "0"));
 }
 
-// Test sending a notification and disconnecting concurrently. This use to
+// Test sending a notification and disconnecting concurrently. This used to
 // assert !this->_notifications.empty() because the poll thread would wake up
 // but the disconnection would empty the notifications before it is executed.
 
