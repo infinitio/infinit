@@ -86,6 +86,11 @@ class Mixin:
     if existing_res:
       return self.success(existing_res)
     # links = self._link_stats()
+    links = {
+      'uploaded_size': 0,
+      'uploaded_links': 0,
+      'total_links': 0,
+    }
     txns = self.database.transactions.aggregate([
       {'$match': {'status': transaction_status.FINISHED}},
       {'$group': {'_id': 'result',
