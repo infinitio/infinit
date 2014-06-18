@@ -274,7 +274,6 @@ void export_meta_client()
     // .def("transactions", &MetaClient::transactions)
     .def("create_transaction", &MetaClient::create_transaction)
     .def("update_transaction", &MetaClient::update_transaction)
-    .def("accept_transaction", &MetaClient::accept_transaction)
     .def("send_message", &MetaClient::send_message)
     .add_property("email",
                   make_function(get_email, by_value()),

@@ -753,20 +753,6 @@ namespace infinit
           std::move(request));
       }
 
-      UpdatePeerTransactionResponse
-      Client::accept_transaction(std::string const& transaction_id,
-                                 std::string const& device_id,
-                                 std::string const& device_name) const
-      {
-        ELLE_TRACE("%s: accept %s transaction on device %s (%s)",
-                   *this, transaction_id, device_name, device_id);
-
-        return this->update_transaction(transaction_id,
-                                        Transaction::Status::accepted,
-                                        device_id,
-                                        device_name);
-      }
-
       PeerTransaction
       Client::transaction(std::string const& _id) const
       {

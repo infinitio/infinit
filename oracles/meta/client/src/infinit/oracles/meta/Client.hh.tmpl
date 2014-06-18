@@ -460,11 +460,6 @@ namespace infinit
                            std::string const& device_id = "",
                            std::string const& device_name = "") const;
 
-        UpdatePeerTransactionResponse
-        accept_transaction(std::string const& transaction_id,
-                           std::string const& device_id,
-                           std::string const& device_name) const;
-
         MessageResponse
         send_message(std::string const& recipient_id,
                      std::string const& sender_id, // DEBUG.
