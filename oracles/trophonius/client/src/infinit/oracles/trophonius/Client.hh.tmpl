@@ -183,7 +183,7 @@ namespace infinit
         typedef std::function<void (void)> ReconnectPokeFailedCallback;
       private:
         struct Impl;
-        std::unique_ptr<Impl> _impl;
+        Impl* _impl;
 
       public:
         Client(ConnectCallback connect_callback,

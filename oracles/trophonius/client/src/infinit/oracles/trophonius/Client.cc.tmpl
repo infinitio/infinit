@@ -334,6 +334,7 @@ namespace infinit
           _poke_timeout(15_sec)
         {}
 
+        virtual
         ~Impl()
         {
           if (this->_ping_thread)
@@ -834,7 +835,8 @@ namespace infinit
       Client::Client(ConnectCallback connect_callback,
                      ReconnectPokeFailedCallback reconnect_failed_callback,
                      std::vector<unsigned char> server_fingerprint):
-        Client(connect_callback, reconnect_failed_callback)
+        Client(std::move(connect_callback),
+               std::move(reconnect_failed_callback))
       {
         this->_impl->_set_test_fingerprint(server_fingerprint);
       }
@@ -879,7 +881,10 @@ namespace infinit
       }
 
       Client::~Client()
-      {}
+      {
+        delete _impl;
+        _impl = nullptr;
+      }
 
       int
       Client::reconnected() const
