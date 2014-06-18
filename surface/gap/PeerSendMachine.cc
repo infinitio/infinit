@@ -374,14 +374,23 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: waiting for peer to accept or reject", *this);
       auto peer = this->state().user(this->data()->recipient_id);
-      if (peer.ghost())
-        this->_plain_upload();
-      else if (!peer.ghost() && !peer.online())
+      try
       {
-        this->_cloud_operation();
+        if (peer.ghost())
+          this->_plain_upload();
+        else if (!peer.ghost() && !peer.online())
+          this->_cloud_operation();
+        else
+          this->gap_status(gap_transaction_waiting_accept);
       }
-      else
-        this->gap_status(gap_transaction_waiting_accept);
+      catch (infinit::state::TransactionFinalized const&)
+      {
+        // Nothing to do, some kind of transition should push us to another
+        // final state.
+        ELLE_TRACE(
+          "%s: transfer machine was stopped because transaction was finalized",
+          *this);
+      }
     }
 
     void
