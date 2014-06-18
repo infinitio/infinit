@@ -237,6 +237,7 @@ class Mixin:
   ## -------- ##
   ## Register ##
   ## -------- ##
+
   def _register(self, **kwargs):
     kwargs['connected'] = False
     user = self.database.users.save(kwargs)
@@ -260,112 +261,125 @@ class Mixin:
       (password, regexp.PasswordValidator),
       (fullname, regexp.FullnameValidator),
     ]
-
     for arg, validator in _validators:
       res = validator(arg)
       if res != 0:
         return self.fail(res)
-
     fullname = fullname.strip()
-
     with elle.log.trace("registration: %s as %s" % (email, fullname)):
       if self.user is not None:
         return self.fail(error.ALREADY_LOGGED_IN)
       email = email.strip().lower()
-
-      source = None
-      if self.database.users.find_one(
-        {
-          'accounts': [{ 'type': 'email', 'id': email}],
-          'register_status': 'ok',
-        }):
-        return self.fail(error.EMAIL_ALREADY_REGISTRED)
-
-      ghost = self.database.users.find_one(
-        {
-          'accounts': [{ 'type': 'email', 'id': email}],
-          'register_status': 'ghost',
-        })
-
-      if ghost is not None:
-        id = ghost['_id']
-      else:
-        id = self.database.users.save({})
-
-      elle.log.trace('id: %s' % id)
-
+      import hashlib
+      hash = str(time.time()) + email
+      hash = hash.encode('utf-8')
+      hash = hashlib.md5(hash).hexdigest()
+      handle = self.unique_handle(fullname)
+      user_content = {
+        'connected': False,
+        'register_status': 'ok',
+        'email': email,
+        'fullname': fullname,
+        'password': hash_pasword(password),
+        'handle': handle,
+        'lw_handle': handle.lower(),
+        'swaggers': {},
+        'networks': [],
+        'devices': [],
+        'connected_devices': [],
+        'notifications': [],
+        'old_notifications': [],
+        'accounts': [
+          {'type':'email', 'id': email}
+        ],
+        'status': False,
+        'creation_time': datetime.datetime.utcnow(),
+        'email_confirmed': False,
+        'unconfirmed_email_deadline':
+          time.time() + self.unconfirmed_email_leeway,
+        'email_confirmation_hash': str(hash),
+      }
+      res = self.database.users.find_and_modify(
+        query = {
+          'accounts.id': email,
+        },
+        update = {
+          '$setOnInsert': user_content,
+        },
+        full_response = True,
+        new = True,
+        upsert = True,
+      )
+      user = res['value']
+      if res['lastErrorObject']['updatedExisting']:
+        if user['register_status'] == 'ghost':
+          user_content.update(user)
+          user_content['register_status'] = 'ok'
+          del user_content['_id']
+          user = self.database.users.find_and_modify(
+            query = {
+              'accounts.id': email,
+              'register_status': 'ghost',
+            },
+            update = {
+              '$set': user_content,
+            },
+            new = True,
+            upsert = False,
+          )
+          if user is None:
+            # The ghost was already transformed - prevent the race
+            # condition.
+            return self.fail(error.EMAIL_ALREADY_REGISTRED)
+        else:
+          # The user existed.
+          return self.fail(error.EMAIL_ALREADY_REGISTRED)
+      user_id = user['_id']
       with elle.log.trace('generate identity'):
         identity, public_key = papier.generate_identity(
-          str(id),  # Unique ID.
+          str(user_id),  # Unique ID.
           email,    # Description.
           password, # Password.
           conf.INFINIT_AUTHORITY_PATH,
           conf.INFINIT_AUTHORITY_PASSWORD
           )
-
-        handle = self.unique_handle(fullname)
-
-        from time import time
-        import hashlib
-        hash = str(time()) + email
-        hash = hash.encode('utf-8')
-        hash = hashlib.md5(hash).hexdigest()
-        user_id = self._register(
-          _id = id,
-          register_status = 'ok',
-          email = email,
-          fullname = fullname,
-          password = hash_pasword(password),
-          identity = identity,
-          public_key = public_key,
-          handle = handle,
-          lw_handle = handle.lower(),
-          swaggers = ghost and ghost['swaggers'] or {},
-          networks = ghost and ghost['networks'] or [],
-          devices = [],
-          connected_devices = [],
-          notifications = ghost and ghost['notifications'] or [],
-          old_notifications = [],
-          accounts = [
-            {'type':'email', 'id': email}
-          ],
-          status = False,
-          creation_time = datetime.datetime.utcnow(),
-          email_confirmed = False,
-          unconfirmed_email_deadline = time() + self.unconfirmed_email_leeway,
-          email_confirmation_hash = str(hash),
-        )
-
-        with elle.log.trace("add user to the mailing list"):
-          self.invitation.subscribe(email)
-
-        assert user_id == id
-
-        self._notify_swaggers(
-          notifier.NEW_SWAGGER,
+        self.database.users.find_and_modify(
           {
-            'user_id' : str(user_id),
+            '_id': user_id,
           },
-          user_id = user_id,
+          {
+            '$set':
+            {
+              'identity': identity,
+              'public_key': public_key,
+            },
+          },
         )
-
-        user = self.user_by_email(email, ensure_existence = True)
-        self.mailer.send_template(
-          to = user['email'],
-          template_name = 'confirm-sign-up',
-          merge_vars = {
-            user['email']: {
-              'hash': str(hash),
-              'fullname': user['fullname'],
-              'user_id': str(user['_id']),
-            }}
-        )
-
-        return self.success({
-          'registered_user_id': user_id,
-          'invitation_source': source or '',
-          'unconfirmed_email_leeway': self.unconfirmed_email_leeway,
-        })
+      with elle.log.trace("add user to the mailing list"):
+        self.invitation.subscribe(email)
+      self._notify_swaggers(
+        notifier.NEW_SWAGGER,
+        {
+          'user_id' : str(user_id),
+        },
+        user_id = user_id,
+      )
+      user = self.user_by_email(email, ensure_existence = True)
+      self.mailer.send_template(
+        to = user['email'],
+        template_name = 'confirm-sign-up',
+        merge_vars = {
+          user['email']: {
+            'hash': str(hash),
+            'fullname': user['fullname'],
+            'user_id': str(user['_id']),
+          }}
+      )
+      return self.success({
+        'registered_user_id': user_id,
+        'invitation_source': '',
+        'unconfirmed_email_leeway': self.unconfirmed_email_leeway,
+      })
 
   def __account_from_hash(self, hash):
     with elle.log.debug('get user account from hash %s' % hash):
@@ -1074,8 +1088,7 @@ class Mixin:
       user_id = self.user['_id']
     else:
       assert isinstance(user_id, bson.ObjectId)
-      user = self._user_by_id(user_id)
-
+    user = self._user_by_id(user_id)
     swaggers = set(map(bson.ObjectId, user['swaggers'].keys()))
     d = {"user_id" : user_id}
     d.update(data)

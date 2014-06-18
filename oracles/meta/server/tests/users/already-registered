@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+
+with Meta(enable_emails = True) as meta:
+  import sys
+  user = User(meta, 'foobar@infinit.io')
+  user.login()
+  favorite = User(meta, 'favorite@infinit.io')
+  query_register = {
+    'email': 'foobar@infinit.io',
+    'password': 'o' * 64,
+    'fullname': 'jeanlouis',
+  }
+  assert not meta.post('user/register', query_register)['success']
+  res = user.post('user/favorite', {'user_id': favorite.id})
+  assert user.favorites == [favorite.id]
+  assert not meta.post('user/register', query_register)['success']
+  assert user.favorites == [favorite.id]
