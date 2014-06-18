@@ -69,7 +69,7 @@ namespace infinit
                 {
                   this->_meta.register_trophonius(
                     this->_uuid, this->notification_port(),
-                    this->port_tcp(), this->port_ssl());
+                    this->port_tcp(), this->port_ssl(), this->_users.size());
                 }
                 catch (elle::Exception const& e)
                 {
@@ -150,7 +150,7 @@ namespace infinit
             {
               this->_meta.register_trophonius(
                 this->_uuid, this->notification_port(),
-                this->port_tcp(), this->port_ssl());
+                this->port_tcp(), this->port_ssl(), 0);
             }
             catch (...)
             {

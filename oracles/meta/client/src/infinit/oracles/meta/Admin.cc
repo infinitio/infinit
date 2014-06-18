@@ -71,12 +71,14 @@ namespace infinit
       Admin::register_trophonius(boost::uuids::uuid const& uid,
                                  int port,
                                  int port_client,
-                                 int port_client_ssl)
+                                 int port_client_ssl,
+                                 int users)
       {
         json::Dictionary request;
         request["port"] = port;
         request["port_client"] = port_client;
         request["port_client_ssl"] = port_client_ssl;
+        request["users"] = users;
 
         return this->_request<Response>(
           sprintf("/trophonius/%s", boost::lexical_cast<std::string>(uid)),

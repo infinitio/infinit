@@ -35,7 +35,8 @@ namespace infinit
         register_trophonius(boost::uuids::uuid const& uuid,
                             int port_notifications,
                             int port_client,
-                            int port_client_ssl);
+                            int port_client_ssl,
+                            int users);
 
         Response
         unregister_trophonius(boost::uuids::uuid const& uuid);
