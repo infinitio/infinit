@@ -5,6 +5,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
+#include <elle/container/list.hh>
 #include <elle/format/json/Dictionary.hh>
 #include <elle/json/exceptions.hh>
 #include <elle/json/json.hh>
@@ -692,20 +693,28 @@ namespace infinit
                                  std::string const& struuid,
                                  std::string const& message) const
       {
-        json::Dictionary request;
-
-        // std::string struuid = boost::lexical_cast<std::string>(device_uuid);
-
-        request["id_or_email"] = recipient_id_or_email;
-        request["files"] = files;
-        request["files_count"] = count;
-        request["total_size"] = size;
-        request["is_directory"] = is_dir;
-        request["device_id"] = struuid; // Can be determine by session.
-        request["message"] = message;
-
-        return this->_request<CreatePeerTransactionResponse>(
-          "/transaction/create", Method::POST, request);
+        ELLE_TRACE("%s: create transaction to %s with files: %s",
+                   *this, recipient_id_or_email, files);
+        auto request = this->_request(
+          "/transaction/create",
+          Method::POST,
+          [&] (reactor::http::Request& r)
+          {
+            elle::serialization::json::SerializerOut query(r);
+            query.serialize("id_or_email",
+                            const_cast<std::string&>(recipient_id_or_email));
+            query.serialize("files",
+                            const_cast<std::list<std::string>&>(files));
+            int64_t count_integral = static_cast<int>(count);
+            query.serialize("files_count", count_integral);
+            int64_t size_integral = static_cast<int>(size);
+            query.serialize("total_size", size_integral);
+            query.serialize("is_directory", is_dir);
+            query.serialize("device_id", const_cast<std::string&>(struuid));
+            query.serialize("message", const_cast<std::string&>(message));
+          });
+        return this->_deserialize_answer<CreatePeerTransactionResponse>(
+          std::move(request));
       }
 
       UpdatePeerTransactionResponse
