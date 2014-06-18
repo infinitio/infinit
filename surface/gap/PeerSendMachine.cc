@@ -1,3 +1,4 @@
+#include <surface/gap/Error.hh>
 #include <surface/gap/PeerSendMachine.hh>
 
 #include <cryptography/PublicKey.hh>
