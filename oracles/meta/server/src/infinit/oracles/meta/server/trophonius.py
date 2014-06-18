@@ -7,6 +7,7 @@ import random
 import time
 import uuid
 
+from .plugins.response import response
 from . import conf, error, regexp
 from .utils import api, require_admin, require_logged_in
 
@@ -146,7 +147,7 @@ class Mixin:
       list(self.database.trophonius.find(
         fields = ['ip', 'port_client', 'port_client_ssl']))
     if len(trophoniuses) == 0:
-      bottle.abort(503, 'no notification server available')
+      response(503, 'no notification server available')
     trophonius = \
       trophoniuses[random.randint(0, len(trophoniuses) - 1)]
     return {

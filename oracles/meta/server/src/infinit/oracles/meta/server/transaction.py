@@ -815,13 +815,14 @@ class Mixin:
     return self.success(res)
 
   @api('/transaction/<transaction_id>/cloud_buffer')
-  @require_logged_in
+  #@require_logged_in
   def cloud_buffer(self, transaction_id : bson.ObjectId,
                    force_regenerate : json_value = True):
     """
     Return AWS credentials giving the user permissions to PUT (sender) or GET
     (recipient) from the cloud buffer.
     """
+    return self.gone('Transaction already finalized')
     user = self.user
     transaction = self.transaction(transaction_id, owner_id = user['_id'])
 

@@ -37,7 +37,7 @@ class api:
             kwargs[arg] = value
           except:
             m = '%r is not a valid %s' % (value, annotation.__name__)
-            bottle.abort(400, m)
+            self.bad_request(m)
       return method(self, *args, **kwargs)
     annotation_mapper.__route__ = self.__route
     annotation_mapper.__method__ = self.__method

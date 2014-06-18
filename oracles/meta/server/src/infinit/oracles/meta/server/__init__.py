@@ -20,6 +20,7 @@ from .plugins.certification import Plugin as CertificationPlugin
 from .plugins.failure import Plugin as FailurePlugin
 from .plugins.jsongo import Plugin as JsongoPlugin
 from .plugins.response import Plugin as ResponsePlugin
+from .plugins.response import response
 from .plugins.session import Plugin as SessionPlugin
 from .plugins.watermark import Plugin as WatermarkPlugin
 from infinit.oracles.meta import error
@@ -295,15 +296,15 @@ class Meta(bottle.Bottle,
             kwargs.update(d)
           else:
             key = iter(d.keys()).__next__()
-            bottle.abort(400, 'unexpected JSON keys: %r' % key)
+            self.bad_request('unexpected JSON keys: %r' % key)
       try:
         explode(bottle.request.json)
       except ValueError:
-        bottle.abort(400, 'invalid JSON')
+        self.bad_request('invalid JSON')
       explode(bottle.request.query)
       for argument, default in arguments.items():
         if not default:
-          bottle.abort(400, 'missing argument: %r' % argument)
+          self.bad_request('missing argument: %r' % argument)
       return method(self, *args, **kwargs)
     # Add route.
     route = bottle.Route(app = self,
@@ -346,19 +347,19 @@ class Meta(bottle.Bottle,
     return self.__sessions
 
   def abort(self, message):
-    bottle.abort(500, message)
+    response(500, message)
 
   def forbidden(self, message = None):
-    bottle.abort(403, message)
+    response(403, message)
 
   def gone(self, message = None):
-    bottle.abort(410, message)
+    response(410, message)
 
   def not_found(self, message = None):
-    bottle.abort(404, message)
+    response(404, message)
 
-  def bad_request(self, text = None):
-    bottle.abort(400, text)
+  def bad_request(self, message = None):
+    response(400, message)
 
   @api('/js/<filename:path>')
   def static_javascript(self, filename):
