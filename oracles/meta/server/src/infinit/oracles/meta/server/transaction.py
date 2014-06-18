@@ -822,7 +822,6 @@ class Mixin:
     Return AWS credentials giving the user permissions to PUT (sender) or GET
     (recipient) from the cloud buffer.
     """
-    return self.gone('Transaction already finalized')
     user = self.user
     transaction = self.transaction(transaction_id, owner_id = user['_id'])
 
