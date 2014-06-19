@@ -5,6 +5,7 @@
 import papier
 
 import bottle
+import bson
 import datetime
 import decorator
 import elle.log
