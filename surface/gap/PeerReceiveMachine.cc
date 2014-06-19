@@ -944,8 +944,10 @@ namespace surface
           if (ec)
           {
             ELLE_ERR("%s: destination file deleted: %s", *this, ec);
-            throw elle::Exception(elle::sprintf("destination file %s deleted",
-                                  current_file_full_path));
+            throw boost::filesystem::filesystem_error(
+              "Destination file stat error",
+              current_file_full_path,
+              ec);
           }
           if (size != _store_expected_position)
           {
@@ -955,7 +957,13 @@ namespace surface
               _store_expected_position,
               size,
               current_file_full_path);
-          throw elle::Exception("destination file corrupted");
+            throw boost::filesystem::filesystem_error(
+              elle::sprintf("Destination file has incorrect size: %s of %s",
+                            size,
+                            _store_expected_position
+                            ),
+              current_file_full_path,
+              boost::system::errc::make_error_code(boost::system::errc::io_error));
           }
           // Write the file.
           ELLE_DUMP("content: %x (%sB)", buffer, buffer.size());
@@ -982,7 +990,13 @@ namespace surface
               ELLE_ERR("%s: end of transfer with unexpected size, "
                        "got %s, expected %s",
                        *this, _store_expected_position, current_file_full_size);
-              throw elle::Exception("transfer size mismatch");
+              throw boost::filesystem::filesystem_error(
+                elle::sprintf("End with incorrect size: %s of %s",
+                              current_file_full_size,
+                              _store_expected_position
+                              ),
+                current_file_full_path,
+                boost::system::errc::make_error_code(boost::system::errc::io_error));
             }
             // cleanup transfer data
             _transfer_stream_map.erase(_store_expected_file);
