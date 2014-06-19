@@ -620,6 +620,7 @@ namespace infinit
                         throw;
                       }
                       this->_synchronized = true;
+                      this->_notifications.open();
                     }));
                 break;
               }
