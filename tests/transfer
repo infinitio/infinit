@@ -240,7 +240,8 @@ class Transfer:
     # running, and they don't like beings asploded. Yes its a bug of some sort.
     reactor.sleep(datetime.timedelta(milliseconds = 300))
   def assertSuccess(self, test, total_size = None, is_directory = None,
-                    files_count = None, files = None):
+                    files_count = None, files = None,
+                    validate_content = True):
     """ Validates transaction success, metadata content, disk file data"""
     ts = None
     tr = None
@@ -270,8 +271,9 @@ class Transfer:
     if tr is not None:
       tr = { k: tr[k] for k in expect.keys() }
       test.assertEqual(tr, expect)
-    test.assertTrue(check_explain(
-      FileMatch(self.data.directory, self.oracles.download_dir)))
+    if validate_content:
+      test.assertTrue(check_explain(
+        FileMatch(self.data.directory, self.oracles.download_dir)))
     elle.log.log('assertSuccess succeeded (%s)' %
       len(list(os.walk(self.oracles.download_dir))[0][2]))
 
@@ -408,7 +410,8 @@ class TestResumeTransfer(unittest.TestCase):
   def transfer_test(self, files, files_data, sequence,
                     expect_total_size = None, expect_is_directory = None,
                     expect_files_count = None, expect_files = None,
-                    message = None, timeout = None, assert_status = 'success'):
+                    message = None, timeout = None, assert_status = 'success',
+                    validate_content = True):
     sequence = self.parse_sequence(sequence)
     with Transfer(test_credentials, files,
                   files_data, timeout=timeout, message=message) as transfer:
@@ -422,7 +425,8 @@ class TestResumeTransfer(unittest.TestCase):
       transfer.wait_transaction_final(timeout or 30)
       if assert_status == 'success':
         transfer.assertSuccess(self, expect_total_size, expect_is_directory,
-                               expect_files_count, expect_files)
+                               expect_files_count, expect_files,
+                               validate_content)
       elif assert_status == 'failed':
         self.assertEqual(transfer.sender.status, 'transaction_failed')
         self.assertEqual(transfer.recipient.status, 'transaction_failed')
@@ -503,6 +507,16 @@ class TestResumeTransfer(unittest.TestCase):
     self._test_cancel_remove_sender_file(['v1'], 'v1', 'start s0.0000001', timeout=100)
   def test_cancel_remove_sender_file_cloud_2(self): #remove file further down
     self._test_cancel_remove_sender_file(['v1', 'v2'], 'v2', 'start s0.0000001', timeout=100)
+  def test_cancel_remove_after_buffered_ok(self):
+    def remove_file(t):
+      filepath = os.path.join(t.data.directory, remove)
+      os.remove(filepath)
+    return self.transfer_test(['v1'], {'names': ['v1'], 'size' : 100},
+                              ['start s100',
+                              lambda t: os.remove(os.path.join(t.data.directory, 'v1')),
+                              'R'],
+                              validate_content = False
+                              )
 
 class TestNoTropho(TestResumeTransfer):
   def test_no_tropho_beg_1(self): #login then tropho down
