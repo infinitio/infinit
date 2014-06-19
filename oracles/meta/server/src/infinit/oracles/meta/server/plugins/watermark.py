@@ -1,10 +1,5 @@
 import bottle
-import bson
-import calendar
-import datetime
-import decorator
 import infinit.oracles.meta.version
-import uuid
 
 class Plugin(object):
 
