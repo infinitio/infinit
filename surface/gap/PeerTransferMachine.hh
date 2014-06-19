@@ -21,7 +21,7 @@ namespace surface
       PeerTransferMachine(PeerMachine& owner);
       virtual
       ~PeerTransferMachine() noexcept(true) {};
-      ELLE_ATTRIBUTE(std::unique_ptr<station::Host>, host);
+
       ELLE_ATTRIBUTE(std::unique_ptr<infinit::protocol::Serializer>,
                      serializer);
       ELLE_ATTRIBUTE(std::unique_ptr<infinit::protocol::ChanneledStream>,
@@ -33,6 +33,8 @@ namespace surface
       ELLE_ATTRIBUTE(station::Station, station);
       std::unique_ptr<station::Host>
       _connect();
+
+      ELLE_ATTRIBUTE(std::unique_ptr<station::Host>, host); /*stay after station!*/
 
     protected:
       virtual
