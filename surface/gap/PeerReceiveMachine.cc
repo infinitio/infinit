@@ -396,6 +396,16 @@ namespace surface
         ELLE_ASSERT_NEQ(this->_snapshot, nullptr);
         total_bytes_transfered = this->_snapshot->progress() - initial_progress;
       }
+      catch (boost::filesystem::filesystem_error const& e)
+      {
+        ELLE_WARN("%s: Local file error: %s", *this, e.what());
+        // Local file error, cancel transaction
+        exit_reason = metrics::TransferExitReasonError;
+        exit_message = e.what();
+        if (this->_snapshot)
+          total_bytes_transfered = this->_snapshot->progress() - initial_progress;
+        this->cancel();
+      }
       catch (TransferBufferer::DataExhausted const&)
       {
         exit_reason = metrics::TransferExitReasonExhausted;
@@ -413,7 +423,7 @@ namespace surface
       }
       catch (std::exception const& e)
       {
-        // We don't ever retry could DL, but the idea is that for
+        // We don't ever retry cloud DL, but the idea is that for
         // cloud to work again, the peer must do something, which will
         // send us notifications and wake us up
         ELLE_WARN("%s: cloud download exception, exiting cloud state: %s",
@@ -494,6 +504,16 @@ namespace surface
         return this->get<frete::RPCFrete>(
           frete, strong_encryption?EncryptionLevel_Strong:EncryptionLevel_Weak,
           name_policy, peer_version);
+      }
+      catch (boost::filesystem::filesystem_error const& e)
+      {
+        ELLE_WARN("%s: Local file error: %s", *this, e.what());
+        // Local file error, cancel transaction
+        exit_reason = metrics::TransferExitReasonError;
+        exit_message = e.what();
+        if (this->_snapshot)
+          total_bytes_transfered = this->_snapshot->progress() - initial_progress;
+        this->cancel();
       }
       catch(reactor::Terminate const&)
       {
