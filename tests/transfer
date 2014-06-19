@@ -517,7 +517,19 @@ class TestResumeTransfer(unittest.TestCase):
                               'R'],
                               validate_content = False
                               )
-
+  def _test_cancel_remove_recipient_file(self, files, remove, pre_seq, timeout=10, size=None):
+    def remove_file(t):
+      filepath = os.path.join(t.oracles.download_dir, remove)
+      os.remove(filepath)
+    # Use a file big enough so we dont miss a progress >0 and <1 with our polling
+    return self.transfer_test(files, {'names': files,'size': size or 50000000},
+                              [pre_seq, remove_file],
+                              timeout = timeout,
+                              assert_status = 'canceled')
+  def test_cancel_remove_recipient_file_1(self):
+    self._test_cancel_remove_recipient_file(['v1'], 'v1', 'R d500 start r0.000001')
+  def test_cancel_remove_recipient_file_cloud(self):
+    self._test_cancel_remove_recipient_file(['v1'], 'v1', 'start s100 R r0.000001', size=1000000)
 class TestNoTropho(TestResumeTransfer):
   def test_no_tropho_beg_1(self): #login then tropho down
     return self.transfer_test(['tnt1'], {'name': 'tnt1','size': 100000},
