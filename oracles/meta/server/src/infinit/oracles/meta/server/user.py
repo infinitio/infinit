@@ -401,7 +401,7 @@ class Mixin:
         self.database.users.find_and_modify(
           query = {"email_confirmation_hash": hash},
           update = {
-            '$unset': {'email_confirmation_hash': True, 'unconfirmed_email_leeway': True},
+            '$unset': {'unconfirmed_email_leeway': True},
             '$set': {'email_confirmed': True}
             })
         return self.success()
