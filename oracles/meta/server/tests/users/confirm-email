@@ -64,10 +64,8 @@ with Meta(enable_emails = True, unconfirmed_email_leeway = 0) as meta:
 
   res = u.post('user/confirm_email/%s' % meta.mailer.email_confirmation_hash)
   assert res['success']
-
   res = u.post('user/confirm_email/%s' % meta.mailer.email_confirmation_hash)
-  assert res['success'] == False
-  assert res['error_code'] == error.OPERATION_NOT_PERMITTED[0]
+  assert res['success']
 
   u.login()
 
