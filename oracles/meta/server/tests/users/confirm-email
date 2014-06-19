@@ -62,11 +62,10 @@ with Meta(enable_emails = True, unconfirmed_email_leeway = 0) as meta:
   else:
     raise Exception('invalid login should have yield 403 forbidden')
 
-  res = u.post('user/confirm_email/%s' % meta.mailer.email_confirmation_hash)
-  assert res['success']
-  res = u.post('user/confirm_email/%s' % meta.mailer.email_confirmation_hash)
-  assert res['success']
-
+  res = u.post('users/%s/confirm-email' % email,
+               {'hash': meta.mailer.email_confirmation_hash})
+  res = u.post('users/%s/confirm-email' % email,
+               {'hash': meta.mailer.email_confirmation_hash})
   u.login()
 
 # Reask hash.
@@ -94,28 +93,24 @@ as meta:
   else:
     raise Exception('invalid login should have yield 403 forbidden')
 
-  res = u.post('user/resend_confirmation_email/%s' % u.email)
-  assert res['success']
+  res = u.post('users/%s/resend-confirmation-email' % u.email)
   assert hasattr(meta.mailer, 'email_reconfirmation_hash')
 
   meta.mailer = MailService()
   # Cooldown.
-  res = u.post('user/resend_confirmation_email/%s' % u.email)
-  assert res['success']
+  res = u.post('users/%s/resend-confirmation-email' % u.email)
   assert not hasattr(meta.mailer, 'email_reconfirmation_hash')
 
   from time import sleep
   sleep(2)
 
-  res = u.post('user/resend_confirmation_email/%s' % u.email)
-  assert res['success']
+  res = u.post('users/%s/resend-confirmation-email' % u.email)
   assert hasattr(meta.mailer, 'email_reconfirmation_hash')
 
-  res = u.post('user/confirm_email/%s' % str(meta.mailer.email_reconfirmation_hash))
-  assert res['success']
+  res = u.post('users/%s/confirm-email' % email,
+               {'hash': str(meta.mailer.email_reconfirmation_hash)})
 
-  res = u.post('user/resend_confirmation_email/%s' % u.email)
-  assert res['success'] == False
+  res = u.post('users/%s/resend-confirmation-email' % u.email)
   assert res['error_code'] == error.EMAIL_ALREADY_CONFIRMED[0]
 
   u.login()

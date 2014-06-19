@@ -45,7 +45,6 @@ as meta:
   assert res['accept-file-only-offline'] == True
 
   res = bob.post('user/resend_confirmation_email/%s' % bob.email)
-  assert res['success']
   bob.logout()
 
   alice.sendfile(bob.email)

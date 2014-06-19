@@ -30,6 +30,7 @@ class Mixin:
   ## ------ ##
   ## Handle ##
   ## ------ ##
+
   def generate_dummy(self):
     t1 = ['lo', 'ca', 'ki', 'po', 'pe', 'bi', 'mer']
     t2 = ['ri', 'ze', 'te', 'sal', 'ju', 'il']
@@ -81,6 +82,8 @@ class Mixin:
     while self.user_by_handle(h, ensure_existence = False):
       h += str(int(random.random() * 10))
     return h
+
+
 
   ## -------- ##
   ## Sessions ##
@@ -391,8 +394,9 @@ class Mixin:
         )
       return user
 
+  # Deprecated
   @api('/user/confirm_email/<hash>', method = 'POST')
-  def confirm_email(self,
+  def _confirm_email(self,
                     hash: str):
     with elle.log.trace('confirm email'):
       try:
@@ -408,12 +412,47 @@ class Mixin:
       except error.Error as e:
         self.fail(*e.args)
 
+  @api('/users/<user>/confirm-email', method = 'POST')
+  def confirm_email(self,
+                    user,
+                    hash: str):
+    with elle.log.trace('confirm email for %s' % user):
+      if '@' in user:
+        query = {
+          'email': user,
+          'email_confirmation_hash': hash,
+        }
+      else:
+        query = {
+          '_id': bson.ObjectId(user),
+          'email_confirmation_hash': hash,
+        }
+      res = self.database.users.find_and_modify(
+        query = query,
+        update = {
+          '$unset': {'unconfirmed_email_leeway': True},
+          '$set': {'email_confirmed': True}
+        })
+      if res is None:
+        response(403,
+                 {'reason': 'invalid confirmation hash or email'})
+
+  # Deprecated
   @api('/user/resend_confirmation_email/<email>', method = 'POST')
-  def resend_confirmation_email(self,
+  def _resend_confirmation_email(self,
                                 email: str):
-    with elle.log.trace('resending confirmation email request for %s' % email):
+    self.resend_confirmation_email(email)
+    return self.success()
+
+  @api('/users/<user>/resend-confirmation-email', method = 'POST')
+  def resend_confirmation_email(self,
+                                user: str):
+    with elle.log.trace(
+        'resending confirmation email request for %s' % user):
       try:
-        user = self.user_by_email(email, ensure_existence = True)
+        user = self.user_by_id_or_email(user)
+        if user is None:
+          response(404, {'reason': 'user not found'})
         if user.get('email_confirmed', True):
           raise error.Error(
             error.EMAIL_ALREADY_CONFIRMED,
@@ -424,26 +463,26 @@ class Mixin:
         confirmation_cooldown = now - self.email_confirmation_cooldown
         res = self.database.users.find_and_modify(
           {
-            "email": email,
-            "$or": [
+            'email': user['email'],
+            '$or': [
               {
-                "last_email_confirmation":
+                'last_email_confirmation':
                 {
-                  "$lt": confirmation_cooldown,
+                  '$lt': confirmation_cooldown,
                 }
               },
               {
-                "last_email_confirmation":
+                'last_email_confirmation':
                 {
-                  "$exists": False,
+                  '$exists': False,
                 }
               }
             ]
           },
           {
-            "$set":
+            '$set':
             {
-              "last_email_confirmation": now,
+              'last_email_confirmation': now,
             }
           })
         if res is not None:
@@ -457,9 +496,9 @@ class Mixin:
                 'user_id': str(user['_id']),
                 }}
             )
-        return self.success()
       except error.Error as e:
         self.fail(*e.args)
+      return {}
 
   @api('/user/<id>/connected')
   def is_connected(self, id: bson.ObjectId):
