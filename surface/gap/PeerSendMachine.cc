@@ -312,11 +312,19 @@ namespace surface
       this->gap_status(gap_transaction_new);
       ELLE_TRACE_SCOPE("%s: create transaction", *this);
       int64_t size = 0;
-      for (auto const& file: this->files())
+      try
       {
-        // Might be a directory, use a function that recurses into them.
-        auto _size = elle::os::file::size(file);
-        size += _size;
+        for (auto const& file: this->files())
+        {
+          // Might be a directory, use a function that recurses into them.
+          auto _size = elle::os::file::size(file);
+          size += _size;
+        }
+      }
+      catch (boost::filesystem::filesystem_error const& e)
+      {
+        ELLE_LOG("%s: Error while scanning files: %s", *this, e.what());
+        throw;
       }
       ELLE_DEBUG("%s: total file size: %s", *this, size);
       this->data()->total_size = size;

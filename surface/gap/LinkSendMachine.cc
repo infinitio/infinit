@@ -200,12 +200,20 @@ namespace surface
       infinit::oracles::LinkTransaction::FileList files;
       // FIXME: handle directories, non existing files, empty list and shit.
       int64_t total_size = 0;
-      for (auto const& file: this->files())
+      try
       {
-        boost::filesystem::path path(file);
-        files.emplace_back(path.filename().string(),
-                           elle::os::file::size(path.string()));
-        total_size += elle::os::file::size(file);
+        for (auto const& file: this->files())
+        {
+          boost::filesystem::path path(file);
+          files.emplace_back(path.filename().string(),
+                             elle::os::file::size(path.string()));
+          total_size += elle::os::file::size(file);
+        }
+      }
+      catch (boost::filesystem::filesystem_error const& e)
+      {
+        ELLE_LOG("%s: Error while scanning files: %s", *this, e.what());
+        throw;
       }
       auto response =
         this->state().meta().create_link(
