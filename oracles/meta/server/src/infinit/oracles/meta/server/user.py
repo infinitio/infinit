@@ -951,12 +951,7 @@ class Mixin:
   def view(self, id_or_email):
     """Get public informations of an user by id or email.
     """
-    id_or_email = id_or_email.lower()
-    if '@' in id_or_email:
-      user = self.user_by_email(id_or_email, ensure_existence = False)
-    else:
-      user = self._user_by_id(bson.ObjectId(id_or_email),
-                              ensure_existence = False)
+    user = self.user_by_id_or_email(id_or_email)
     if user is None:
       return self.fail(error.UNKNOWN_USER)
     else:

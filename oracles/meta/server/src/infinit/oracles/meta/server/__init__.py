@@ -417,3 +417,11 @@ class Meta(bottle.Bottle,
         return (0, 0, 0)
       else:
         return tuple(map(int, match.groups()))
+
+  def user_by_id_or_email(self, id_or_email):
+    id_or_email = id_or_email.lower()
+    if '@' in id_or_email:
+      return self.user_by_email(id_or_email, ensure_existence = False)
+    else:
+      return self._user_by_id(bson.ObjectId(id_or_email),
+                              ensure_existence = False)
