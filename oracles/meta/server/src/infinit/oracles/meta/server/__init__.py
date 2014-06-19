@@ -18,6 +18,7 @@ import re
 
 from .plugins.certification import Plugin as CertificationPlugin
 from .plugins.failure import Plugin as FailurePlugin
+from .plugins.fatal_emails import Plugin as FatalPlugin
 from .plugins.jsongo import Plugin as JsongoPlugin
 from .plugins.response import Plugin as ResponsePlugin
 from .plugins.response import response
@@ -161,6 +162,7 @@ class Meta(bottle.Bottle,
     self.catchall = debug
     bottle.debug(debug)
     # Plugins.
+    self.install(FatalPlugin(self.report_fatal_error))
     self.install(ResponsePlugin())
     self.install(WatermarkPlugin())
     self.install(FailurePlugin())
@@ -425,3 +427,18 @@ class Meta(bottle.Bottle,
     else:
       return self._user_by_id(bson.ObjectId(id_or_email),
                               ensure_existence = False)
+
+  def report_fatal_error(self, route, exception):
+    import traceback
+    e = exception
+    with elle.log.log(
+        '%s: send email for fatal error: %s' % (self, e)):
+      args = (route,
+              ''.join(traceback.format_exception(type(e), e, None)))
+      self.mailer.send(to = 'admin@infinit.io',
+                       fr = 'admin@infinit.io',
+                       subject = 'Meta: fatal error: %s' % e,
+                       body = '''\
+Error while querying %s:
+
+%s''' % args)
