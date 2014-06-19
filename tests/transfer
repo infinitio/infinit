@@ -530,6 +530,14 @@ class TestResumeTransfer(unittest.TestCase):
     self._test_cancel_remove_recipient_file(['v1'], 'v1', 'R d500 start r0.000001')
   def test_cancel_remove_recipient_file_cloud(self):
     self._test_cancel_remove_recipient_file(['v1'], 'v1', 'start s100 R r0.000001', size=1000000)
+  def test_cancel_no_such_file(self):
+    return self.transfer_test(['canard'], {'names': ['coin'], 'size': 1},
+                              'start',
+                              assert_status = 'canceled')
+  def test_cancel_no_such_path(self):
+    return self.transfer_test(['canard/coin'], {'names': ['coin'], 'size': 1},
+                              'start',
+                              assert_status = 'canceled')
 class TestNoTropho(TestResumeTransfer):
   def test_no_tropho_beg_1(self): #login then tropho down
     return self.transfer_test(['tnt1'], {'name': 'tnt1','size': 100000},
