@@ -307,7 +307,6 @@ namespace infinit
         Client::ConnectCallback connect_callback;
         Client::ReconnectPokeFailedCallback reconnect_failed_callback;
         std::unique_ptr<reactor::Thread> _connect_callback_thread;
-        std::exception_ptr _poll_exception;
 
         Impl(Client& client,
              Client::ConnectCallback connect_callback,
@@ -323,7 +322,6 @@ namespace infinit
           response{},
           connect_callback{connect_callback},
           reconnect_failed_callback{reconnect_failed_callback},
-          _poll_exception(),
           _ping_period(default_ping_period),
           _ping_timeout(this->_ping_period * 2),
           _ping_signal(),
@@ -477,7 +475,6 @@ namespace infinit
           }
           ELLE_DEBUG_SCOPE("%s: connect to %s:%s",
                            *this, this->server, this->port);
-          this->_poll_exception = nullptr;
           this->_notifications.close();
 
           if (this->_connected.opened())
@@ -549,9 +546,6 @@ namespace infinit
             this->_disconnect();
 
             ELLE_ERR("%s: failure to connect: %s", *this, e.what());
-            this->_poll_exception = std::make_exception_ptr(e);
-            // Wake up the poll thread to throw this exception.
-            this->_notifications.open();
             // If the action has been initiated by the user, we can throw him
             // the exception.
             if (user_action)
@@ -801,8 +795,6 @@ namespace infinit
           // disconnects and empties the notifications list before we get a
           // chance to execute.
           auto res = this->_notifications.get();
-          if (this->_poll_exception)
-            std::rethrow_exception(this->_poll_exception);
           ELLE_TRACE("%s: handle new notification", *this);
           return std::move(res);
         }
