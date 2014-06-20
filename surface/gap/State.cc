@@ -771,6 +771,18 @@ namespace surface
     }
 
     void
+    State::_on_invalid_trophonius_credentials()
+    {
+      ELLE_WARN("%s: invalid trophonius credentials", *this);
+      // Loging out flush the message queue, which means that
+      // KickedOut will be the next event polled.
+      this->logout();
+      this->enqueue(KickedOut());
+      this->enqueue(ConnectionStatus(false));
+      return;
+    }
+
+    void
     State::handle_notification(
       std::unique_ptr<infinit::oracles::trophonius::Notification>&& notif)
     {
@@ -838,6 +850,9 @@ namespace surface
             *static_cast<infinit::oracles::trophonius::PeerReachabilityNotification const*>(
               notif.release()));
           break;
+        case infinit::oracles::trophonius::NotificationType::invalid_credentials:
+          this->_on_invalid_trophonius_credentials();
+          break;
         case infinit::oracles::trophonius::NotificationType::none:
         case infinit::oracles::trophonius::NotificationType::network_update:
         case infinit::oracles::trophonius::NotificationType::message:
@@ -845,7 +860,6 @@ namespace surface
         case infinit::oracles::trophonius::NotificationType::connection_enabled:
         case infinit::oracles::trophonius::NotificationType::suicide:
           break;
-        case infinit::oracles::trophonius::NotificationType::invalid_credentials:
           elle::unreachable();
       }
     };

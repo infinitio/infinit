@@ -174,6 +174,8 @@ namespace surface
       ELLE_ATTRIBUTE_Rw(std::string, output_dir);
     private:
       void
+      _on_invalid_trophonius_credentials();
+      void
       _cleanup();
 
       /*-------------------.
