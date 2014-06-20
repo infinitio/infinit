@@ -245,8 +245,6 @@ namespace infinit
             return elle::make_unique<ConfigurationNotification>(
               std::move(json));
           }
-          case NotificationType::invalid_credentials:
-            throw elle::Exception("invalid trophonius credentials");
           default:
             ; // Nothing.
         }
@@ -279,6 +277,8 @@ namespace infinit
           case NotificationType::connection_enabled:
             return Ptr(new ConnectionEnabledNotification{extractor});
             // XXX: Handle at upper levels (?)
+          case NotificationType::invalid_credentials:
+            return Ptr(new InvalidCredentialsNotification());
           case NotificationType::suicide:
             SUICIDE();
           default:

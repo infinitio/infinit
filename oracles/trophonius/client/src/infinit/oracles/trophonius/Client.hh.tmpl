@@ -63,6 +63,14 @@ namespace infinit
         elle::json::Object configuration;
       };
 
+      struct InvalidCredentialsNotification:
+        public Notification
+      {
+        InvalidCredentialsNotification()
+          : Notification(NotificationType::invalid_credentials)
+        {}
+      };
+
       namespace json = elle::format::json;
 
       struct ConnectionEnabledNotification:
