@@ -76,7 +76,7 @@ namespace surface
         .action_exception(
           [this] (std::exception_ptr e)
           {
-            ELLE_WARN("%s: error while creating transaction: %s",
+            ELLE_WARN("%s: error while waiting for accept: %s",
                       *this, elle::exception_string(e));
           });
       this->transaction_status_update(data->status);
