@@ -16,8 +16,6 @@
 #include <reactor/Scope.hh>
 #include <reactor/thread.hh>
 
-#include <surface/gap/Error.hh>
-
 ELLE_LOG_COMPONENT("infinit.oracles.trophonius.client.test")
 
 #ifdef VALGRIND
