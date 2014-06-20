@@ -16,6 +16,8 @@
 #include <reactor/Scope.hh>
 #include <reactor/thread.hh>
 
+#include <surface/gap/Error.hh>
+
 ELLE_LOG_COMPONENT("infinit.oracles.trophonius.client.test")
 
 #ifdef VALGRIND
@@ -36,6 +38,7 @@ enum class NotificationCode
   TRANSACTION_NOTIFICATION = 7,
   NEW_SWAGGER_NOTIFICATION = 9,
   PEER_CONNECTION_UPDATE_NOTIFICATION = 11,
+  INVALID_CREDENTAILS_NOTIFICATION = 12,
   NETWORK_UPDATE_NOTIFICATION = 128,
   MESSAGE_NOTIFICATION = 217,
   PING_NOTIFICATION = 208,
@@ -879,6 +882,10 @@ ELLE_TEST_SCHEDULED(socket_close_after_poke)
   BOOST_CHECK(!client.connect("0", "0", "0"));
 }
 
+/*------------------.
+| Notify disconnect |
+`------------------*/
+
 // Test sending a notification and disconnecting concurrently. This used to
 // assert !this->_notifications.empty() because the poll thread would wake up
 // but the disconnection would empty the notifications before it is executed.
@@ -923,6 +930,10 @@ ELLE_TEST_SCHEDULED(notify_disconnect)
   ELLE_LOG("%s: poll", client)
     client.poll();
 }
+
+/*----------------.
+| Login reconnect |
+`----------------*/
 
 // Login while reconnecting
 
@@ -978,6 +989,54 @@ ELLE_TEST_SCHEDULED(login_reconnect)
   reactor::sleep(2_sec);
 }
 
+/*--------------------.
+| Invalid credentials |
+`--------------------*/
+
+// Ensure that client handles invalid credentials message correctly.
+
+class InvalidCredentailsTrophonius
+  : public Trophonius
+{
+public:
+  InvalidCredentailsTrophonius()
+    : Trophonius()
+  {}
+protected:
+  virtual
+  void
+  _serve(reactor::network::Socket& socket) override
+  {
+    ELLE_LOG("%s: get login", *this);
+    auto connect_data = elle::json::read(socket);
+    ELLE_LOG("%s: answer login", *this);
+    this->_login_response(socket);
+    elle::json::Object notification;
+    notification["notification_type"] =
+      int(NotificationCode::INVALID_CREDENTAILS_NOTIFICATION);
+    notification["message"] = std::string("kick!");
+    ELLE_LOG("%s: send invalid credentails", *this);
+    elle::json::write(socket, notification);
+  }
+};
+
+ELLE_TEST_SCHEDULED(invalid_credentials)
+{
+  InvalidCredentailsTrophonius tropho;
+  infinit::oracles::trophonius::Client client(
+    "127.0.0.1",
+    tropho.port(),
+    [] (bool connected) { if (connected) reactor::sleep(2_sec); },
+    [] (void) {},
+    fingerprint);
+  client.connect("0", "0", "0");
+  reactor::wait(client.connected());
+  ELLE_LOG("poll for credentials invalid notification");
+  auto notif = client.poll();
+  BOOST_CHECK_EQUAL(int(notif->notification_type),
+                    int(NotificationCode::INVALID_CREDENTAILS_NOTIFICATION));
+}
+
 // Test suite
 
 ELLE_TEST_SUITE()
@@ -994,6 +1053,7 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(socket_close_after_poke), 0, timeout);
   suite.add(BOOST_TEST_CASE(notify_disconnect), 0, timeout);
   suite.add(BOOST_TEST_CASE(login_reconnect), 0, timeout);
+  suite.add(BOOST_TEST_CASE(invalid_credentials), 0, timeout);
 }
 
 const std::vector<unsigned char> fingerprint =
