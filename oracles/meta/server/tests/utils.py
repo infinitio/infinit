@@ -68,8 +68,7 @@ class Client:
 
   def request(self, url, method, body):
     h = httplib2.Http()
-    uri = "http://localhost:%s/%s" % (self.__meta_port,
-                                      url)
+    uri = "http://localhost:%s/%s" % (self.__meta_port, url)
     headers = {}
     headers['user-agent'] = self.user_agent
     if body is not None and isinstance(body, dict):

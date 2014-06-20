@@ -150,15 +150,16 @@ class Mixin:
   @api('/trophonius')
   @require_logged_in
   def trophonius_pick(self):
-    trophoniuses = \
-      list(self.database.trophonius.find(
-        fields = ['ip', 'port_client', 'port_client_ssl']))
-    if len(trophoniuses) == 0:
+    trophoniuses = self.database.trophonius.find(
+      fields = ['ip', 'port_client', 'port_client_ssl'],
+      sort = [('users', 1)],
+    )
+    try:
+      trophonius = next(trophoniuses)
+      return {
+        'host': trophonius['ip'],
+        'port': trophonius['port_client'],
+        'port_ssl': trophonius['port_client_ssl'],
+      }
+    except StopIteration:
       response(503, 'no notification server available')
-    trophonius = \
-      trophoniuses[random.randint(0, len(trophoniuses) - 1)]
-    return {
-      'host': trophonius['ip'],
-      'port': trophonius['port_client'],
-      'port_ssl': trophonius['port_client_ssl'],
-    }
