@@ -289,3 +289,9 @@ Additional Information
 %(more)s
 
 """.strip()}
+
+report_templates['website'] = {'subject': 'Website Report'.strip(),
+                               'content': """
+%(message)s
+
+""".strip()}
