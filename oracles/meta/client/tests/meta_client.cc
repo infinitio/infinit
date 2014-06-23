@@ -15,7 +15,7 @@
 
 #include <http_server.hh>
 
-ELLE_LOG_COMPONENT("bite");
+ELLE_LOG_COMPONENT("infinit.plasma.meta.Client.tests");
 
 class HTTPServer
   : public reactor::http::tests::Server
