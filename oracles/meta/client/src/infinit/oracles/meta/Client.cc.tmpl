@@ -1021,7 +1021,16 @@ namespace infinit
       {
         std::string url = elle::sprintf("/link/%s/credentials", id);
         auto request = this->_request(
-          url, regenerate ? Method::POST : Method::GET);
+          url, regenerate ? Method::POST : Method::GET,
+          [&] (reactor::http::Request& request)
+          {
+            // If we POST, we must include valid JSON otherwise we get a 400.
+            if (regenerate)
+            {
+              elle::json::Object empty_obj;
+              elle::json::write(request, empty_obj);
+            }
+          });
         SerializerIn input(url, request);
         return aws::Credentials(input);
       }
