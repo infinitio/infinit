@@ -44,7 +44,7 @@ namespace surface
       void
       _transfer_operation(frete::RPCFrete& frete) = 0;
       virtual
-      // Go all the way to the cloud until interrupted.
+      // Go all the way to the cloud until interrupted. Only throws reactor::Terminate
       void
       _cloud_operation() = 0;
       virtual

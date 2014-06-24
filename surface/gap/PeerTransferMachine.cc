@@ -102,6 +102,7 @@ namespace surface
           {
             for (auto& round: rounds)
             { // try rounds in order: (currently local, apertus)
+              ELLE_DEBUG("%s: starting connection round %s", *this, *round);
               std::unique_ptr<station::Host> res;
               res = round->connect(this->_station);
               if (res)

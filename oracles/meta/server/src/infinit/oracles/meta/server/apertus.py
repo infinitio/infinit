@@ -44,7 +44,7 @@ class Mixin:
     if res['updatedExisting']:
       elle.log.dump("ping from apertus: %s" % uid)
     else:
-      elle.log.log("register apertus %s" % uid)
+      elle.log.log("register apertus %s on (%s, %s, %s)" % (uid, self.remote_ip, port_tcp, port_ssl))
     return self.success()
 
   @api('/apertus/<uid>', method = 'DELETE')
