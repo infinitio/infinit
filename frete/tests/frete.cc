@@ -88,6 +88,8 @@ public:
     _root("frete/tests/fs-connection"),
     _empty(this->_root / "empty"),
     _content(this->_root / "content"),
+    _filename_with_whitespace(this->_root / "filename with whitespace"),
+    _filename_with_utf8(this->_root / "é.lol"),
     _dir(this->_root / "dir")
   {
     if (boost::filesystem::exists(this->_root))
@@ -108,6 +110,14 @@ public:
       boost::filesystem::ofstream f(this->_dir / "2", std::ios::binary);
       f << "2";
     }
+    {
+      boost::filesystem::ofstream f(this->_filename_with_whitespace, std::ios::binary);
+      f << "stuff\n";
+    }
+    {
+      boost::filesystem::ofstream f(this->_filename_with_utf8, std::ios::binary);
+      f << "stuff again\n";
+    }
   }
 
   ~DummyHierarchy()
@@ -118,6 +128,8 @@ public:
   ELLE_ATTRIBUTE_R(boost::filesystem::path, root);
   ELLE_ATTRIBUTE_R(boost::filesystem::path, empty);
   ELLE_ATTRIBUTE_R(boost::filesystem::path, content);
+  ELLE_ATTRIBUTE_R(boost::filesystem::path, filename_with_whitespace);
+  ELLE_ATTRIBUTE_R(boost::filesystem::path, filename_with_utf8);
   ELLE_ATTRIBUTE_R(boost::filesystem::path, dir);
 
 private:
@@ -174,6 +186,8 @@ ELLE_TEST_SCHEDULED(connection)
       frete.add(hierarchy.empty());
       frete.add(hierarchy.content());
       frete.add(hierarchy.dir());
+      frete.add(hierarchy.filename_with_whitespace());
+      frete.add(hierarchy.filename_with_utf8());
       rpcs.run();
       reactor::sleep();
     });
@@ -198,7 +212,7 @@ ELLE_TEST_SCHEDULED(connection)
       auto key = infinit::cryptography::SecretKey(
         recipient_key_pair.k().decrypt<infinit::cryptography::SecretKey>(rpcs.key_code()));
       ELLE_DEBUG("Read the number of transaction");
-      BOOST_CHECK_EQUAL(rpcs.count(), 4);
+      BOOST_CHECK_EQUAL(rpcs.count(), 6);
       {
         ELLE_DEBUG("Check the name of the first file");
         BOOST_CHECK_EQUAL(rpcs.path(0), "empty");
@@ -261,10 +275,30 @@ ELLE_TEST_SCHEDULED(connection)
           BOOST_FAIL("recipient files incorrect");
         }
       }
+      ELLE_DEBUG("check if whitespaces work")
+      {
+        BOOST_CHECK_EQUAL(rpcs.path(4), "filename with whitespace");
+        BOOST_CHECK_EQUAL(rpcs.file_size(4), 6);
+        {
+          auto buffer = key.decrypt<elle::Buffer>(rpcs.encrypted_read(4, 0, 1024));
+          BOOST_CHECK_EQUAL(buffer.size(), 6);
+          BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("stuff\n"));
+        }
+      }
+      ELLE_DEBUG("check if utf8 work")
+      {
+        BOOST_CHECK_EQUAL(rpcs.path(5), "é.lol");
+        BOOST_CHECK_EQUAL(rpcs.file_size(5), 12);
+        {
+          auto buffer = key.decrypt<elle::Buffer>(rpcs.encrypted_read(5, 0, 1024));
+          BOOST_CHECK_EQUAL(buffer.size(), 12);
+          BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("stuff again\n"));
+        }
+      }
       ELLE_DEBUG("check errors")
       {
-        BOOST_CHECK_THROW(rpcs.path(4), std::runtime_error);
-        BOOST_CHECK_THROW(rpcs.encrypted_read(4, 0, 1), std::runtime_error);
+        BOOST_CHECK_THROW(rpcs.path(6), std::runtime_error);
+        BOOST_CHECK_THROW(rpcs.encrypted_read(6, 0, 1), std::runtime_error);
       }
       scope.terminate_now();
     });
