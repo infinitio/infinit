@@ -993,7 +993,7 @@ ELLE_TEST_SCHEDULED(login_reconnect)
   client.reconnection_cooldown(1_sec);
   ELLE_LOG("first connection")
     client.connect("0", "0", "0");
-  reactor::sleep(100_ms);
+  reactor::sleep(300_ms);
   ELLE_LOG("second connection")
     client.connect("0", "0", "0");
   ELLE_LOG("final sleep")
