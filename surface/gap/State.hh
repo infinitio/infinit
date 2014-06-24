@@ -595,6 +595,7 @@ namespace surface
         };
         S3 s3;
         void serialize(elle::serialization::Serializer& s);
+        int64_t max_mirror_size; // Copy files to send if below this size
       };
       ELLE_ATTRIBUTE_R(Configuration, configuration);
     private:

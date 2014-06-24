@@ -902,6 +902,7 @@ namespace surface
     State::Configuration::serialize(elle::serialization::Serializer& s)
     {
       s.serialize("s3", this->s3);
+      s.serialize("max_mirror_size", this->max_mirror_size);
     }
 
     void

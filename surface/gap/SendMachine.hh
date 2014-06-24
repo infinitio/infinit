@@ -84,6 +84,12 @@ namespace surface
       archive_info();
 
     protected:
+      /* If possible, copy _files to a safer place out of reach of the user,
+      * and update _files accordingly.
+      * Must be called *before* the first frete creation/snapshoting (where
+      * _files is expanded to yield the definitive file list).
+      */
+      void try_mirroring_files(frete::Frete::FileSize total_size);
       virtual
       void cleanup () override;
     };

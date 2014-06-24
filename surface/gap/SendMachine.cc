@@ -366,6 +366,8 @@ namespace surface
       ELLE_LOG("%s: clearing temporary directory %s",
                *this, tmpdir);
       boost::filesystem::remove_all(tmpdir);
+      boost::filesystem::remove_all(
+        this->transaction().snapshots_directory() / "mirror_files");
     }
 
     std::pair<std::string, bool>
@@ -384,6 +386,112 @@ namespace surface
       else
         return std::make_pair(elle::sprintf("%s files.zip", files.size()),
                               true);
+    }
+
+    void
+    SendMachine::try_mirroring_files(frete::Frete::FileSize total_size)
+    {
+      frete::Frete::FileSize max_mirror_size
+        = transaction().state().configuration().max_mirror_size;
+      if (!max_mirror_size)
+        max_mirror_size = 100 * 1000 * 1000; // 2s copy on 50Mb/s hard drive
+      if (total_size >= max_mirror_size)
+      {
+        ELLE_TRACE("%s: Not mirroring, total size %s above configured maximum %s",
+                   *this,
+                   total_size,
+                   max_mirror_size);
+        return;
+      }
+      // Check disk space
+      boost::system::error_code erc;
+      auto space = boost::filesystem::space(
+        this->transaction().snapshots_directory(), erc);
+      if (erc)
+      {
+        ELLE_TRACE("%s: Not mirroring, failed to get free space: %s",
+                   *this,
+                   erc);
+        return;
+      }
+      if (space.available < total_size * 110 /100)
+      {
+        ELLE_TRACE("%s: not mirroring, free disk space of %s too low for %s",
+                   *this,
+                   space.available,
+                   total_size);
+        return;
+      }
+      // If you change it, also change in crash reporter filter
+      static const char* mirror_dir = "mirror_files"; /* read above!*/
+      boost::filesystem::path mirror_path =
+        this->transaction().snapshots_directory() / "mirror_files";
+      bool validate = false; // set at
+      elle::SafeFinally maybe_cleanup([&] {
+          if (validate)
+            return;
+          ELLE_LOG("%s: File mirroring failure, cleaning up.", *this);
+          boost::filesystem::remove_all(mirror_path, erc);
+      });
+      ELLE_TRACE("%s: trying to mirror files to %s", *this, mirror_path);
+      boost::filesystem::create_directories(mirror_path, erc);
+      if (erc)
+      {
+        ELLE_TRACE("%s: Failed to create mirror directory", *this);
+        return;
+      }
+      std::vector<std::string> moved_files;
+      for (auto const& f: this->_files)
+      {
+        namespace bfs = boost::filesystem;
+        auto target = mirror_path / boost::filesystem::path(f).filename();
+        if (bfs::is_directory(f))
+        {
+          boost::filesystem::copy(f, target, erc);
+          if (erc)
+          {
+            ELLE_TRACE("%s: Error while copying %s: %s",
+                       *this, target, erc);
+            return; // Finally will clean up
+          }
+          auto it = bfs::recursive_directory_iterator(f);
+          for (;it != bfs::recursive_directory_iterator(); ++it)
+          {
+            // Construct target filename
+            bfs::path p(*it);
+            std::vector<bfs::path> components;
+            // level=0: we still push directory name, and file name, hence +2
+            for (int i=0; i<=it.level()+1; ++i, p=p.parent_path())
+            {
+              components.push_back(p.filename());
+            }
+            bfs::path target(mirror_path);
+            for (unsigned i=0; i<components.size(); ++i)
+              target /= components[components.size()-i-1];
+            ELLE_DEBUG("Copying %s -> %s", *it, target);
+            // Use copy for both files and directories, it works
+            // And it creates parent directories before child files
+            boost::filesystem::copy(*it, target, erc);
+            if (erc)
+            {
+              ELLE_TRACE("%s: Error while copying %s: %s", *this, *it, erc);
+              return; // Finally will clean up
+            }
+          }
+        }
+        else
+          boost::filesystem::copy(f, target, erc);
+        if (erc)
+        {
+          ELLE_TRACE("%s: Error while copying %s: %s", *this, f, erc);
+          return; // Finally will clean up
+        }
+        ELLE_DEBUG("%s: Replacing %s with %s", *this, f, target);
+        moved_files.push_back(target.string());
+      }
+      validate = true;
+      this->_files = moved_files;
+      ELLE_TRACE("%s: Mirroring succesful", *this);
     }
   }
 }
