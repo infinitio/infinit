@@ -597,7 +597,7 @@ namespace surface
         void serialize(elle::serialization::Serializer& s);
         int64_t max_mirror_size; // Copy files to send if below this size
       };
-      ELLE_ATTRIBUTE_R(Configuration, configuration);
+      ELLE_ATTRIBUTE_RP(Configuration, configuration, protected:);
     private:
       void
       _apply_configuration(elle::json::Object json);

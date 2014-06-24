@@ -379,6 +379,12 @@ public:
     return PyLong_FromLongLong(t->first);
   }
 
+  void
+  configuration_set_max_mirror_size(uint64_t sz)
+  {
+    _configuration.max_mirror_size = sz;
+  }
+
 #define TOP(name, ret)                             \
   ret transaction_ ## name(unsigned int id)        \
   {                                                \
@@ -452,6 +458,8 @@ BOOST_PYTHON_MODULE(state)
          by_const_ref())
     .def("attach_transaction_callback",
          &PythonState::attach_callback<surface::gap::Transaction::Notification>)
+    .def("configuration_set_max_mirror_size",
+         &PythonState::configuration_set_max_mirror_size)
     ;
     // Static functions.
     boost::python::def("hash_password", &State::hash_password);
