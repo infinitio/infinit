@@ -320,7 +320,8 @@ namespace elle
     bool
     temp_file_excluder(boost::filesystem::path const& p)
     {
-      return p.string().find("mirror_files") != std::string::npos;
+      return p.string().find("mirror_files") != std::string::npos
+          || p.string().find(".zip") != std::string::npos;
     }
 
     void

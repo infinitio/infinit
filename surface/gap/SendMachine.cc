@@ -130,9 +130,10 @@ namespace surface
           std::vector<boost::filesystem::path> sources(
             this->_files.begin(),
             this->_files.end());
-          auto tmpdir = boost::filesystem::temp_directory_path() / transaction_id();
-          boost::filesystem::create_directories(tmpdir);
-          path archive_path = path(tmpdir) / archive_name;
+          path archive_path =
+            this->transaction().snapshots_directory() / "archive";
+          boost::filesystem::create_directories(archive_path);
+          archive_path /= archive_name;
           if (!exists(archive_path) || !this->transaction().archived())
           {
             ELLE_DEBUG("%s: archiving transfer files into %s", *this, archive_path);
@@ -140,7 +141,7 @@ namespace surface
               [](boost::filesystem::path const& path)
               { // File renaming callback
                 std::string p(path.string());
-                // Check if p maches our renaming scheme.
+                // Check if p matches our renaming scheme.
                 size_t pos_beg = p.find_last_of('(');
                 size_t pos_end = p.find_last_of(')');
                 if (pos_beg != p.npos && pos_end != p.npos &&
@@ -358,16 +359,11 @@ namespace surface
       { // Early failure, no transaction_id -> nothing to clean up
         return;
       }
-      // clear temporary session directory
-      std::string tid = transaction_id();
-      ELLE_ASSERT(!tid.empty());
-      ELLE_ASSERT(tid.find('/') == tid.npos);
-      auto tmpdir = boost::filesystem::temp_directory_path() / tid;
-      ELLE_LOG("%s: clearing temporary directory %s",
-               *this, tmpdir);
-      boost::filesystem::remove_all(tmpdir);
+       // clear generated files that may have been generated for the transfer
       boost::filesystem::remove_all(
         this->transaction().snapshots_directory() / "mirror_files");
+      boost::filesystem::remove_all(
+        this->transaction().snapshots_directory() / "archive");
     }
 
     std::pair<std::string, bool>
