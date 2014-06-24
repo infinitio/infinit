@@ -889,11 +889,12 @@ namespace surface
           {
             buffer = key.decrypt<elle::Buffer>(code);
           }
-          catch(...)
+          catch(infinit::cryptography::Exception const& e)
           {
-            ELLE_WARN("%s: decryption error on block %s/%s", *this, local_index, local_position);
+            ELLE_WARN("%s: decryption error on block %s/%s: %s", *this, local_index, local_position, e.what());
             throw;
           }
+          ELLE_ASSERT_NO_OTHER_EXCEPTION
         }
         ELLE_DEBUG("Queuing buffer %s/%s size:%s. Writer waits for %s/%s",
           local_index, local_position, buffer.size(),
