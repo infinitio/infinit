@@ -483,7 +483,8 @@ class TestResumeTransfer(unittest.TestCase):
     # Note: cannot finish with S, sS sequence does not get the finished notification
     # because transaction goes to history and our python binding doesn't have that
     return self.transfer_test(['big'], {'name': 'big','size': 1000000},
-                              'R start r10 s S r20 s S r30 s S r40 s S r50 s S r60 s S r70 s S r80 s S r90 s S r100 s')
+                              'R start r10 s S r20 s S r30 s S r40 s S r50 s S r60 s S r70 s S r80 s S r90 s S r100 s',
+                              timeout = 60)
   def test_switch_both(self):
     return self.transfer_test(['big'], {'name': 'big','size': 1000000},
                               'start s40 R r10 r s R r20 r R r30 r R r40 r S s80 s R r50 S')
@@ -494,9 +495,11 @@ class TestResumeTransfer(unittest.TestCase):
     def remove_file(t):
       filepath = os.path.join(t.data.directory, remove)
       os.remove(filepath)
+    def disable_mirror(t): #Disable file mirroring feature, or delete will have no effect
+      t.sender.state.configuration_set_max_mirror_size(1)
     # Use a file big enough so we dont miss a progress >0 and <1 with our polling
     return self.transfer_test(files, {'names': files,'size': 50000000},
-                              [pre_seq, remove_file],
+                              [disable_mirror, pre_seq, remove_file],
                               timeout = timeout,
                               assert_status = 'canceled')
   def test_cancel_remove_sender_file_1(self): #remove currently being transfered
@@ -529,7 +532,7 @@ class TestResumeTransfer(unittest.TestCase):
   def test_cancel_remove_recipient_file_1(self):
     self._test_cancel_remove_recipient_file(['v1'], 'v1', 'R d500 start r0.000001')
   def test_cancel_remove_recipient_file_cloud(self):
-    self._test_cancel_remove_recipient_file(['v1'], 'v1', 'start s100 R r0.000001', size=1000000)
+    self._test_cancel_remove_recipient_file(['v1'], 'v1', 'start s100 R r0.000001', size=5000000)
   def test_cancel_no_such_file(self):
     return self.transfer_test(['canard'], {'names': ['coin'], 'size': 1},
                               'start',
@@ -538,6 +541,16 @@ class TestResumeTransfer(unittest.TestCase):
     return self.transfer_test(['canard/coin'], {'names': ['coin'], 'size': 1},
                               'start',
                               assert_status = 'canceled')
+  def test_mirror_sender_file(self): # check sender file mirroring feature
+    def remove_file(t):
+      filepath = os.path.join(t.data.directory, 'foo')
+      os.remove(filepath)
+    def ensure_mirror(t):
+      t.sender.state.configuration_set_max_mirror_size(60000000)
+    return self.transfer_test(['foo'], {'name': 'foo','size': 50000000},
+                              [ensure_mirror, 'R start r0.001', remove_file],
+                              validate_content = False)
+
 class TestNoTropho(TestResumeTransfer):
   def test_no_tropho_beg_1(self): #login then tropho down
     return self.transfer_test(['tnt1'], {'name': 'tnt1','size': 100000},
@@ -552,5 +565,6 @@ class TestNoTropho(TestResumeTransfer):
   def test_no_tropho_mid(self): # start then tropho down
     return self.transfer_test(['tnt3'], {'name': 'tnt3','size': 10000000},
                               'R start r20 t T r30 t T r40 t T r50 t T r60 t T r70 t T r80 t T')
+
 utils.run(unittest.main)
 
