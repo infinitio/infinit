@@ -316,6 +316,13 @@ namespace elle
       return base64.str();
     }
 
+    static
+    bool
+    temp_file_excluder(boost::filesystem::path const& p)
+    {
+      return p.string().find("mirror_files") != std::string::npos;
+    }
+
     void
     existing_report(std::string const& meta_protocol,
                     std::string const& meta_host,
@@ -341,7 +348,9 @@ namespace elle
       }
       elle::archive::archive(elle::archive::Format::tar_gzip,
                              archived,
-                             destination);
+                             destination,
+                             elle::archive::Renamer(),
+                             temp_file_excluder);
       _send_report(url, user_name, os_description, "",
                    _to_base64(destination));
     }
