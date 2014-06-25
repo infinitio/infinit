@@ -12,6 +12,7 @@ from . import regexp, error, transaction_status, notifier, invitation, cloud_buf
 import uuid
 import re
 from pymongo import ASCENDING, DESCENDING
+from .plugins.response import response
 
 from infinit.oracles.meta.server.utils import json_value
 
@@ -497,29 +498,28 @@ class Mixin:
                           device_id = None,
                           device_name = None,
                           user = None):
-    with elle.log.trace("update transaction %s: %s" %
+    with elle.log.trace('update transaction %s to status %s' %
                         (transaction_id, status)):
       if user is None:
         user = self.user
       if user is None:
-        raise error.Error(error.UNKNOWN_USER)
+        response(404, {'reason': 'no such user'})
       # current_device is None if we do a delete user / reset account.
       if self.current_device is not None and device_id is None:
         device_id = str(self.current_device['id'])
-      transaction = self.transaction(bson.ObjectId(transaction_id), owner_id = user['_id'])
-      elle.log.debug("transaction: %s" % transaction)
+      transaction_id = bson.ObjectId(transaction_id)
+      transaction = self.transaction(transaction_id,
+                                     owner_id = user['_id'])
       is_sender = self.is_sender(transaction, user['_id'])
-      elle.log.debug("%s" % is_sender and "sender" or "recipient")
-      if status not in transaction_status.transitions[transaction['status']][is_sender]:
-        raise error.Error(
-          error.TRANSACTION_OPERATION_NOT_PERMITTED,
-          "Cannot change status from %s to %s (not permitted)." % (transaction['status'], status)
-        )
-      if transaction['status'] != status and transaction['status'] in transaction_status.final:
-        raise error.Error(
-          error.TRANSACTION_ALREADY_FINALIZED,
-          "Cannot change status from %s to %s (already finalized)." % (transaction['status'], status)
-          )
+      args = (transaction['status'], status)
+      if transaction['status'] != status:
+        allowed = transaction_status.transitions[transaction['status']][is_sender]
+        if status not in allowed:
+          fmt = 'changing status %s to %s not permitted'
+          response(403, {'reason': fmt % args})
+        if transaction['status'] in transaction_status.final:
+          fmt = 'changing final status %s to %s not permitted'
+          response(403, {'reason': fmt % args})
       diff = {}
       if status == transaction_status.ACCEPTED:
         diff.update(self.on_accept(transaction = transaction,

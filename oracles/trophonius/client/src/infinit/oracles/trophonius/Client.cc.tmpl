@@ -579,15 +579,15 @@ namespace infinit
         {
           // If several threads try to reconnect, just wait for the first one to
           // be done.
+          ELLE_TRACE_SCOPE("%s: thread %s trying to reconnect",
+                           *this, *reactor::Scheduler::scheduler()->current());
           if (!this->_connected.opened())
           {
             ELLE_DEBUG_SCOPE("%s: already reconnecting, wait", *this);
             reactor::wait(this->_connected);
             return;
           }
-
           ELLE_DEBUG_SCOPE("%s: reconnect", *this);
-
           this->_disconnect();
           this->connect_callback(false);
           while (true)
@@ -888,6 +888,7 @@ namespace infinit
       bool
       Client::poke(reactor::DurationOpt const& timeout) const
       {
+        ELLE_TRACE_SCOPE("%s: poke", *this);
         try
         {
           return this->_impl->_poke(timeout);

@@ -10,7 +10,7 @@ import uuid
 import elle.log
 import papier
 
-from .plugins.response import response
+from .plugins.response import response, Response
 from .utils import api, require_logged_in, require_admin, hash_pasword, json_value
 from . import error, notifier, regexp, conf, invitation, mail
 
@@ -436,12 +436,16 @@ class Mixin:
       if res is None:
         response(403,
                  {'reason': 'invalid confirmation hash or email'})
+      return {}
 
   # Deprecated
   @api('/user/resend_confirmation_email/<email>', method = 'POST')
   def _resend_confirmation_email(self,
                                 email: str):
-    self.resend_confirmation_email(email)
+    try:
+      self.resend_confirmation_email(email)
+    except Response:
+      self.fail(error.EMAIL_ALREADY_CONFIRMED)
     return self.success()
 
   @api('/users/<user>/resend-confirmation-email', method = 'POST')
@@ -449,55 +453,50 @@ class Mixin:
                                 user: str):
     with elle.log.trace(
         'resending confirmation email request for %s' % user):
-      try:
-        user = self.user_by_id_or_email(user)
-        if user is None:
-          response(404, {'reason': 'user not found'})
-        if user.get('email_confirmed', True):
-          raise error.Error(
-            error.EMAIL_ALREADY_CONFIRMED,
-          )
-        assert user.get('email_confirmation_hash') is not None
-        # XXX: Waiting for mandrill to put cooldown on mail.
-        now = datetime.datetime.utcnow()
-        confirmation_cooldown = now - self.email_confirmation_cooldown
-        res = self.database.users.find_and_modify(
-          {
-            'email': user['email'],
-            '$or': [
-              {
-                'last_email_confirmation':
-                {
-                  '$lt': confirmation_cooldown,
-                }
-              },
-              {
-                'last_email_confirmation':
-                {
-                  '$exists': False,
-                }
-              }
-            ]
-          },
-          {
-            '$set':
+      user = self.user_by_id_or_email(user)
+      if user is None:
+        response(404, {'reason': 'user not found'})
+      if user.get('email_confirmed', True):
+        response(404, {'reason': 'email is already confirmed'})
+      assert user.get('email_confirmation_hash') is not None
+      # XXX: Waiting for mandrill to put cooldown on mail.
+      now = datetime.datetime.utcnow()
+      confirmation_cooldown = now - self.email_confirmation_cooldown
+      res = self.database.users.find_and_modify(
+        {
+          'email': user['email'],
+          '$or': [
             {
-              'last_email_confirmation': now,
+              'last_email_confirmation':
+              {
+                '$lt': confirmation_cooldown,
+              }
+            },
+            {
+              'last_email_confirmation':
+              {
+                '$exists': False,
+              }
             }
-          })
-        if res is not None:
-          self.mailer.send_template(
-            to = user['email'],
-            template_name = 'reconfirm-sign-up',
-            merge_vars = {
-              user['email']: {
-                'hash': user['email_confirmation_hash'],
-                'fullname': user['fullname'],
-                'user_id': str(user['_id']),
-                }}
-            )
-      except error.Error as e:
-        self.fail(*e.args)
+          ]
+        },
+        {
+          '$set':
+          {
+            'last_email_confirmation': now,
+          }
+        })
+      if res is not None:
+        self.mailer.send_template(
+          to = user['email'],
+          template_name = 'reconfirm-sign-up',
+          merge_vars = {
+            user['email']: {
+              'hash': user['email_confirmation_hash'],
+              'fullname': user['fullname'],
+              'user_id': str(user['_id']),
+              }}
+          )
       return {}
 
   @api('/user/<id>/connected')
@@ -1356,34 +1355,24 @@ class Mixin:
       assert user is not None
       device = self.device(id = str(device_id), owner = user_id)
       assert str(device_id) in user['devices']
-
-      connected_before = self._is_connected(user_id)
-      elle.log.debug("%s: was%s connected before" %
-                     (user_id, not connected_before and "n't" or ""))
-      # Add / remove device from db
       update_action = status and '$addToSet' or '$pull'
-
       action = {update_action: {'connected_devices': str(device_id)}}
-
-      elle.log.debug("%s: action: %s" % (user_id, action))
-
+      if status:
+        action['$set'] = {'connected': True}
       self.database.users.update(
         {'_id': user_id},
         action,
         multi = False,
       )
-      user = self.database.users.find_one({"_id": user_id}, fields = ['connected_devices'])
-
-      elle.log.debug("%s: connected devices: %s" %
-                     (user['_id'], user['connected_devices']))
-
-      # Disconnect only user with an empty list of connected device.
-      self.database.users.update(
-          {'_id': user_id},
-          {"$set": {"connected": bool(user["connected_devices"])}},
-          multi = False,
-      )
-
+      if not status:
+        self.database.users.update(
+          {
+            '_id': bson.ObjectId('53aac53d8127149289f511af'),
+            'devices': {'$size': 0},
+          },
+          {
+            '$set': {'connected': False},
+          })
       # XXX:
       # This should not be in user.py, but it's the only place
       # we know the device has been disconnected.

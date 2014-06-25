@@ -78,6 +78,7 @@ public:
       std::bind(&Trophonius::_handle_connection, std::ref(*this))));
   }
 
+  virtual
   ~Trophonius()
   {
     if (this->_accepter)
@@ -944,6 +945,12 @@ public:
     , _iteration(0)
   {}
 
+  virtual
+  ~LoginReconnectingTrophonius()
+  {
+    ELLE_LOG("iterations done: %s", this->_iteration);
+  }
+
 protected:
   virtual
   void
@@ -976,15 +983,22 @@ ELLE_TEST_SCHEDULED(login_reconnect)
   infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     tropho.port(),
-    [] (bool connected) { if (connected) reactor::sleep(2_sec); },
+    [] (bool connected) {
+      ELLE_LOG("reconnection callback: %sconnected", connected ? "" : "dis");
+      if (connected) reactor::sleep(2_sec);
+    },
     [] (void) {},
     fingerprint);
   client.ping_period(100_ms);
   client.reconnection_cooldown(1_sec);
-  client.connect("0", "0", "0");
-  reactor::sleep(100_ms);
-  client.connect("0", "0", "0");
-  reactor::sleep(2_sec);
+  ELLE_LOG("first connection")
+    client.connect("0", "0", "0");
+  reactor::sleep(300_ms);
+  ELLE_LOG("second connection")
+    client.connect("0", "0", "0");
+  ELLE_LOG("final sleep")
+    reactor::sleep(2_sec);
+  ELLE_LOG("done");
 }
 
 /*--------------------.

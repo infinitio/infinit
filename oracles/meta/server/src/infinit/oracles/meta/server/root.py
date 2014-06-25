@@ -304,6 +304,10 @@ class Mixin:
         # Username can contain '@'. If it's not a valid email,
         # the sender address (no-reply@infinit.io) will be used.
         user_email = '@' in user_name and user_name or None
+        if len(file):
+          attachment = ('log.tar.bz', file)
+        else:
+          attachment = None
         self.mailer.send(
           to = email,
           reply_to = user_email,
@@ -316,7 +320,7 @@ class Mixin:
             "message": message,
             "more": more,
           },
-          attachment = ('log.tar.bz', file),
+          attachment = attachment,
         )
       return self.success()
 

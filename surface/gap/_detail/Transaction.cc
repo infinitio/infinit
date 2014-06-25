@@ -89,7 +89,7 @@ namespace surface
       //   behavior of the onboarding to depend on the status of a real user.
       // - The gui has a duplicated model, so popping the onboarding user from
       //   the state will just break the gui model.
-      static User onboarder("contact@infinit.io",
+      static User onboarder("528a95c8e9a23c66a044ef66",
                             "Infinit Team",
                             "Infinit",
                             "ok",

@@ -19,7 +19,6 @@ def configure(cxx_toolkit = None,
               prefix = '/usr',
               boost = None,
               python3 = None,
-              build_type = "Development",
               production_build = False,
               enable_debug = True,
       	      qt = None,
@@ -57,24 +56,9 @@ def configure(cxx_toolkit = None,
     cxx_config.enable_optimization(True)
     cxx_config.define("NDEBUG")
 
-  build_types = {
-    'Development': (),
-    'Production': ("INFINIT_PRODUCTION_BUILD",)
-  }
-
-  if build_type == 'Production':
-    cxx_config.enable_optimization(2)
-
-  if not build_type in build_types.keys():
-    raise Exception(
-      'build type %s is unknown, candidates are: %s' %
-      (build_type, ', '.join(str(t) for t in build_types)))
-
-  for define in build_types[build_type]:
-    if isinstance(define, str):
-      cxx_config.define(define, 1)
-    else:
-      cxx_config.define(define[0], define[1])
+  if production_build:
+    cxx_config.enable_optimization(True)
+    cxx_config.define('INFINIT_PRODUCTION_BUILD')
 
   platform_defines = ()
   if cxx_toolkit.os == drake.os.linux:
@@ -795,7 +779,7 @@ def configure(cxx_toolkit = None,
     if cxx_toolkit.os == drake.os.windows:
       libraries = [gap_lib]
     else:
-      libraries = [gap_lib, elle_lib]
+      libraries = [gap_lib, elle_lib, cryptography_lib]
     fist_cxx_config += boost_filesystem
     fist_cxx_config += boost_system
     application = drake.include('fist-gui-qt',

@@ -15,7 +15,7 @@
 
 #include <http_server.hh>
 
-ELLE_LOG_COMPONENT("bite");
+ELLE_LOG_COMPONENT("infinit.plasma.meta.Client.tests");
 
 class HTTPServer
   : public reactor::http::tests::Server
@@ -279,6 +279,25 @@ ELLE_TEST_SCHEDULED(json_error_not_meta)
   c.trophonius();
 }
 
+ELLE_TEST_SCHEDULED(transactions)
+{
+  HTTPServer s;
+  int i = 0;
+  s.register_route(
+    "/transactions",
+    reactor::http::Method::GET,
+    [&i, &s] (HTTPServer::Headers const&,
+              HTTPServer::Cookies const&,
+              elle::Buffer const& body)
+    {
+      return "{"
+        "  \"transactions\": []"
+        "}";
+    });
+  Client c("http", "127.0.0.1", s.port());
+  BOOST_CHECK(c.transactions().empty());
+}
+
 ELLE_TEST_SUITE()
 {
   auto& suite = boost::unit_test::framework::master_test_suite();
@@ -293,4 +312,5 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(cloud_buffer_gone));
   suite.add(BOOST_TEST_CASE(status_found));
   suite.add(BOOST_TEST_CASE(json_error_not_meta));
+  suite.add(BOOST_TEST_CASE(transactions));
 }

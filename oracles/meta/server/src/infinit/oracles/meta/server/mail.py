@@ -4,6 +4,7 @@ import decorator
 
 from . import conf
 
+import datetime # For website crash reports.
 import elle.log
 from email.header import Header
 from email.mime.text import MIMEText
@@ -287,5 +288,11 @@ Environment
 Additional Information
 ----------------------
 %(more)s
+
+""".strip()}
+
+report_templates['website'] = {'subject': ('Website Report (%s)' % str(datetime.datetime.utcnow())).strip(),
+                               'content': """
+%(message)s
 
 """.strip()}
