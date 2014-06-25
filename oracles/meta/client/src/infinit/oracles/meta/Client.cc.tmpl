@@ -785,7 +785,7 @@ namespace infinit
         }
         else
           url = "/transactions";
-        auto request = this->_request(this->_url(url), Method::GET);
+        auto request = this->_request(url, Method::GET);
         std::list<PeerTransaction> res;
         SerializerIn input(url, request);
         input.serialize("transactions", res);
