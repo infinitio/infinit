@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import Meta, User
+from utils import HTTPException, Meta, User
 from bson import ObjectId
 from functools import reduce
 from pprint import pprint
@@ -31,13 +31,15 @@ def S(source, transaction, state):
 
 # Not allowed
 def E(source, transaction, state):
-  res = source.post('transaction/update', {"transaction_id": transaction,
-                                           "status": state,
-                                           "device_id": str(source.device_id),
-                                           "device_name": source.device_name})
-  assert not res['success']
-  assert res['error_code'] in [error.TRANSACTION_ALREADY_FINALIZED[0], error.TRANSACTION_OPERATION_NOT_PERMITTED[0]]
-  assert notifier.notification is None
+  try:
+    source.post('transaction/update', {"transaction_id": transaction,
+                                       "status": state,
+                                       "device_id": str(source.device_id),
+                                       "device_name": source.device_name})
+  except HTTPException as e:
+    assert e.status == 403
+  else:
+    raise Exception('invalid transition didn\'t err')
 
 def O(source, transaction, state):
   res = source.post('transaction/update', {"transaction_id": transaction,
@@ -69,13 +71,13 @@ for i in STATUS:
 
 s = sender_transitions
 
-s[C][C]  = E; s[C][I]  = O; s[C][A]  = E; s[C][F]  = E; s[C][R]  = E; s[C][CA]  = O; s[C][FA]  = O;
-s[I][C]  = E; s[I][I]  = E; s[I][A]  = E; s[I][F]  = O; s[I][R]  = E; s[I][CA]  = O; s[I][FA]  = O;
-s[A][C]  = E; s[A][I]  = E; s[A][A]  = E; s[A][F]  = E; s[A][R]  = E; s[A][CA]  = O; s[A][FA]  = O;
-s[F][C]  = E; s[F][I]  = E; s[F][A]  = E; s[F][F]  = S; s[F][R]  = E; s[F][CA]  = E; s[F][FA]  = E;
-s[R][C]  = E; s[R][I]  = E; s[R][A]  = E; s[R][F]  = E; s[R][R]  = E; s[R][CA]  = E; s[R][FA]  = E;
-s[CA][C] = E; s[CA][I] = E; s[CA][A] = E; s[CA][F] = E; s[CA][R] = E; s[CA][CA] = S; s[CA][FA] = E;
-s[FA][C] = E; s[FA][I] = E; s[FA][A] = E; s[FA][F] = E; s[FA][R] = E; s[FA][CA] = E; s[FA][FA] = S;
+s[C][C]  = O; s[C][I]  = O; s[C][A]  = E; s[C][F]  = E; s[C][R]  = E; s[C][CA]  = O; s[C][FA]  = O;
+s[I][C]  = E; s[I][I]  = O; s[I][A]  = E; s[I][F]  = O; s[I][R]  = E; s[I][CA]  = O; s[I][FA]  = O;
+s[A][C]  = E; s[A][I]  = E; s[A][A]  = O; s[A][F]  = E; s[A][R]  = E; s[A][CA]  = O; s[A][FA]  = O;
+s[F][C]  = E; s[F][I]  = E; s[F][A]  = E; s[F][F]  = O; s[F][R]  = E; s[F][CA]  = E; s[F][FA]  = E;
+s[R][C]  = E; s[R][I]  = E; s[R][A]  = E; s[R][F]  = E; s[R][R]  = O; s[R][CA]  = E; s[R][FA]  = E;
+s[CA][C] = E; s[CA][I] = E; s[CA][A] = E; s[CA][F] = E; s[CA][R] = E; s[CA][CA] = O; s[CA][FA] = E;
+s[FA][C] = E; s[FA][I] = E; s[FA][A] = E; s[FA][F] = E; s[FA][R] = E; s[FA][CA] = E; s[FA][FA] = O;
 
 # Recipient
 #  C  I  A  F  R  CA FA
@@ -88,20 +90,22 @@ s[FA][C] = E; s[FA][I] = E; s[FA][A] = E; s[FA][F] = E; s[FA][R] = E; s[FA][CA] 
 # [E, E, E, S, S, S, S]) # FA
 
 r = recipient_transitions
-r[C][C]  = E; r[C][I]  = E; r[C][A]  = E; r[C][F]  = E; r[C][R]  = E; r[C][CA]  = E; r[C][FA]  = E;
-r[I][C]  = E; r[I][I]  = E; r[I][A]  = O; r[I][F]  = E; r[I][R]  = O; r[I][CA]  = O; r[I][FA]  = O;
-r[A][C]  = E; r[A][I]  = E; r[A][A]  = S; r[A][F]  = O; r[A][R]  = E; r[A][CA]  = O; r[A][FA]  = O;
-r[F][C]  = E; r[F][I]  = E; r[F][A]  = E; r[F][F]  = S; r[F][R]  = E; r[F][CA]  = E; r[F][FA]  = E;
-r[R][C]  = E; r[R][I]  = E; r[R][A]  = E; r[R][F]  = E; r[R][R]  = S; r[R][CA]  = E; r[R][FA]  = E;
-r[CA][C] = E; r[CA][I] = E; r[CA][A] = E; r[CA][F] = E; r[CA][R] = E; r[CA][CA] = S; r[CA][FA] = E;
-r[FA][C] = E; r[FA][I] = E; r[FA][A] = E; r[FA][F] = E; r[FA][R] = E; r[FA][CA] = E; r[FA][FA] = S;
+r[C][C]  = O; r[C][I]  = E; r[C][A]  = E; r[C][F]  = E; r[C][R]  = E; r[C][CA]  = E; r[C][FA]  = E;
+r[I][C]  = E; r[I][I]  = O; r[I][A]  = O; r[I][F]  = E; r[I][R]  = O; r[I][CA]  = O; r[I][FA]  = O;
+r[A][C]  = E; r[A][I]  = E; r[A][A]  = O; r[A][F]  = O; r[A][R]  = E; r[A][CA]  = O; r[A][FA]  = O;
+r[F][C]  = E; r[F][I]  = E; r[F][A]  = E; r[F][F]  = O; r[F][R]  = E; r[F][CA]  = E; r[F][FA]  = E;
+r[R][C]  = E; r[R][I]  = E; r[R][A]  = E; r[R][F]  = E; r[R][R]  = O; r[R][CA]  = E; r[R][FA]  = E;
+r[CA][C] = E; r[CA][I] = E; r[CA][A] = E; r[CA][F] = E; r[CA][R] = E; r[CA][CA] = O; r[CA][FA] = E;
+r[FA][C] = E; r[FA][I] = E; r[FA][A] = E; r[FA][F] = E; r[FA][R] = E; r[FA][CA] = E; r[FA][FA] = O;
 
 def find_path(state):
   assert state < len(statuses)
   for current_state in STATUS:
-    if sender_transitions[current_state][state] == O:
+    transition = sender_transitions[current_state][state]
+    if transition == O and state != current_state:
       return find_path(current_state) + [(True, current_state, state)]
-    if recipient_transitions[current_state][state] == O:
+    transition = recipient_transitions[current_state][state]
+    if transition == O and state != current_state:
       return find_path(current_state) + [(False, current_state, state)]
   return []
 
@@ -160,6 +164,8 @@ with Meta() as meta:
     for expected_state in STATUS:
       tr = transaction(bob, alice, current_state)
       assert sender_transitions[current_state][expected_state] is not None
+      import sys
+      print(current_state, expected_state, file = sys.stderr)
       sender_transitions[current_state][expected_state](bob, tr, expected_state)
 
   for current_state in STATUS:
