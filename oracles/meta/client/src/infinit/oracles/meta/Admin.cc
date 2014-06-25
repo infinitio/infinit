@@ -12,6 +12,8 @@
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/lexical_cast.hpp>
 
+#include <version.hh>
+
 #include <cstdint>
 
 SERIALIZE_RESPONSE(infinit::oracles::meta::Response, ar, res)
@@ -79,6 +81,7 @@ namespace infinit
         request["port_client"] = port_client;
         request["port_client_ssl"] = port_client_ssl;
         request["users"] = users;
+        request["version"] = INFINIT_VERSION;
 
         return this->_request<Response>(
           sprintf("/trophonius/%s", boost::lexical_cast<std::string>(uid)),
@@ -104,6 +107,7 @@ namespace infinit
         request["host"] = host,
         request["port_ssl"] = port_ssl;
         request["port_tcp"] = port_tcp;
+        request["version"] = INFINIT_VERSION;
 
         return this->_request<Response>(
           sprintf("/apertus/%s", boost::lexical_cast<std::string>(uid)),

@@ -18,7 +18,8 @@ class Mixin:
                   uid: uuid.UUID,
                   port_ssl,
                   port_tcp,
-                  host = None):
+                  host = None,
+                  version = ''):
     """Register a apertus.
     """
     assert isinstance(uid, uuid.UUID)
@@ -36,7 +37,7 @@ class Mixin:
         'port_tcp': port_tcp,
         'port_ssl': port_ssl,
         'time': time.time(),
-
+        'version': version,
         }
       },
       upsert = True,

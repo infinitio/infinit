@@ -21,7 +21,8 @@ class Mixin:
                      port: int,
                      port_client: int,
                      port_client_ssl: int,
-                     users: int = 0):
+                     users: int = 0,
+                     version = ''):
     """Register a trophonius.
     """
     assert isinstance(uid, uuid.UUID)
@@ -39,6 +40,7 @@ class Mixin:
         'port_client_ssl': port_client_ssl,
         'time': time.time(),
         'users': users,
+        'version': version,
       },
       upsert = True,
     )
@@ -142,6 +144,7 @@ class Mixin:
         'port_client',
         'port_client_ssl',
         'users',
+        'version',
       ])
     trophoniuses = list(trophoniuses)
     return {
