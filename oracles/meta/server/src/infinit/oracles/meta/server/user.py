@@ -10,7 +10,7 @@ import uuid
 import elle.log
 import papier
 
-from .plugins.response import response
+from .plugins.response import response, Response
 from .utils import api, require_logged_in, require_admin, hash_pasword, json_value
 from . import error, notifier, regexp, conf, invitation, mail
 
@@ -442,7 +442,10 @@ class Mixin:
   @api('/user/resend_confirmation_email/<email>', method = 'POST')
   def _resend_confirmation_email(self,
                                 email: str):
-    self.resend_confirmation_email(email)
+    try:
+      self.resend_confirmation_email(email)
+    except Response:
+      self.fail(error.EMAIL_ALREADY_CONFIRMED)
     return self.success()
 
   @api('/users/<user>/resend-confirmation-email', method = 'POST')

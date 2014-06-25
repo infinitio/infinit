@@ -110,8 +110,12 @@ as meta:
   res = u.post('users/%s/confirm-email' % email,
                {'hash': str(meta.mailer.email_reconfirmation_hash)})
 
-  res = u.post('users/%s/resend-confirmation-email' % u.email)
-  assert res['error_code'] == error.EMAIL_ALREADY_CONFIRMED[0]
+  try:
+    u.post('users/%s/resend-confirmation-email' % u.email)
+  except utils.HTTPException as e:
+    assert e.status == 404
+  else:
+    raise Exception('invalid username didn\'t err')
 
   u.login()
 
