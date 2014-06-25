@@ -143,8 +143,10 @@ class Mixin:
         'port_client_ssl',
         'users',
       ])
+    trophoniuses = list(trophoniuses)
     return {
-      'trophoniuses': list(trophoniuses),
+      'trophoniuses': trophoniuses,
+      'users': sum(tropho['users'] for tropho in trophoniuses),
     }
 
   @api('/trophonius')
