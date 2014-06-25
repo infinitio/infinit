@@ -82,7 +82,7 @@ namespace surface
     State::User const&
     State::user_sync(State::User const& user) const
     {
-      ELLE_TRACE_SCOPE("%s: user response: %s", *this, user);
+      ELLE_DEBUG_SCOPE("%s: user response: %s", *this, user);
 
       uint32_t id = 0;
       try
@@ -107,7 +107,7 @@ namespace surface
     State::User const&
     State::user_sync(std::string const& id) const
     {
-      ELLE_TRACE_SCOPE("%s: sync user from object id or email: %s", *this, id);
+      ELLE_DEBUG_SCOPE("%s: sync user from object id or email: %s", *this, id);
 
       return this->user_sync(this->meta().user(id));
     }
@@ -116,7 +116,7 @@ namespace surface
     State::user(std::string const& user_id,
                 bool merge) const
     {
-      ELLE_TRACE_SCOPE("%s: user from object id %s", *this, user_id);
+      ELLE_DEBUG_SCOPE("%s: user from object id %s", *this, user_id);
 
       try
       {
@@ -297,7 +297,7 @@ namespace surface
         auto res = compare<std::string>(old_user.connected_devices,
                                         user.connected_devices);
 
-        ELLE_TRACE("%s: %s newly connected device(s): %s", this, res.first.size(), res.first)
+        ELLE_DEBUG("%s: %s newly connected device(s): %s", this, res.first.size(), res.first)
           for (auto const& device: res.first)
           {
             ELLE_DEBUG("%s: updating device %s", *this, device);
@@ -314,7 +314,7 @@ namespace surface
             this->handle_notification(std::move(notif));
           }
 
-        ELLE_TRACE("%s: %s disconnected device(s): %s", this, res.second.size(), res.second)
+        ELLE_DEBUG("%s: %s disconnected device(s): %s", this, res.second.size(), res.second)
           for (auto const& device: res.second)
           {
             ELLE_DEBUG("%s: updating device %s", *this, device);
