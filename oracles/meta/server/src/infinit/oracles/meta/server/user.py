@@ -436,6 +436,7 @@ class Mixin:
       if res is None:
         response(403,
                  {'reason': 'invalid confirmation hash or email'})
+      return {}
 
   # Deprecated
   @api('/user/resend_confirmation_email/<email>', method = 'POST')
@@ -449,55 +450,50 @@ class Mixin:
                                 user: str):
     with elle.log.trace(
         'resending confirmation email request for %s' % user):
-      try:
-        user = self.user_by_id_or_email(user)
-        if user is None:
-          response(404, {'reason': 'user not found'})
-        if user.get('email_confirmed', True):
-          raise error.Error(
-            error.EMAIL_ALREADY_CONFIRMED,
-          )
-        assert user.get('email_confirmation_hash') is not None
-        # XXX: Waiting for mandrill to put cooldown on mail.
-        now = datetime.datetime.utcnow()
-        confirmation_cooldown = now - self.email_confirmation_cooldown
-        res = self.database.users.find_and_modify(
-          {
-            'email': user['email'],
-            '$or': [
-              {
-                'last_email_confirmation':
-                {
-                  '$lt': confirmation_cooldown,
-                }
-              },
-              {
-                'last_email_confirmation':
-                {
-                  '$exists': False,
-                }
-              }
-            ]
-          },
-          {
-            '$set':
+      user = self.user_by_id_or_email(user)
+      if user is None:
+        response(404, {'reason': 'user not found'})
+      if user.get('email_confirmed', True):
+        response(404, {'reason': 'email is already confirmed'})
+      assert user.get('email_confirmation_hash') is not None
+      # XXX: Waiting for mandrill to put cooldown on mail.
+      now = datetime.datetime.utcnow()
+      confirmation_cooldown = now - self.email_confirmation_cooldown
+      res = self.database.users.find_and_modify(
+        {
+          'email': user['email'],
+          '$or': [
             {
-              'last_email_confirmation': now,
+              'last_email_confirmation':
+              {
+                '$lt': confirmation_cooldown,
+              }
+            },
+            {
+              'last_email_confirmation':
+              {
+                '$exists': False,
+              }
             }
-          })
-        if res is not None:
-          self.mailer.send_template(
-            to = user['email'],
-            template_name = 'reconfirm-sign-up',
-            merge_vars = {
-              user['email']: {
-                'hash': user['email_confirmation_hash'],
-                'fullname': user['fullname'],
-                'user_id': str(user['_id']),
-                }}
-            )
-      except error.Error as e:
-        self.fail(*e.args)
+          ]
+        },
+        {
+          '$set':
+          {
+            'last_email_confirmation': now,
+          }
+        })
+      if res is not None:
+        self.mailer.send_template(
+          to = user['email'],
+          template_name = 'reconfirm-sign-up',
+          merge_vars = {
+            user['email']: {
+              'hash': user['email_confirmation_hash'],
+              'fullname': user['fullname'],
+              'user_id': str(user['_id']),
+              }}
+          )
       return {}
 
   @api('/user/<id>/connected')
