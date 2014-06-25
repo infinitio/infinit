@@ -23,6 +23,8 @@ namespace surface
                         std::string const& output_dir,
                         reactor::Duration duration = 5_sec);
 
+         ~TransferMachine() noexcept(true) {};
+
         void
         _publish_interfaces() override;
 
