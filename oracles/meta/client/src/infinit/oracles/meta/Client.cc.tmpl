@@ -91,11 +91,6 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::InviteUserResponse, ar, res)
   ar & named("_id", res._id);
 }
 
-// SERIALIZE_RESPONSE(infinit::oracles::meta::InvitedResponse, ar, res)
-// {
-//   ar & named("emails", res.emails);
-// }
-
 /*--------.
 | Devices |
 `--------*/
@@ -609,12 +604,6 @@ namespace infinit
         return this->_request<DebugResponse>(
           "/user/unfavorite", Method::POST, request);
       }
-
-      // InvitedResponse
-      // Client::invited() const
-      // {
-      //   return this->_get<InvitedResponse>("/user/invited");
-      // }
 
       /*--------.
       | Devices |
