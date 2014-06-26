@@ -934,12 +934,7 @@ class Mixin:
       users = self.database.users.aggregate(pipeline)
       return {'users': users['result']}
 
-  @api('/user/search_emails')
-  @require_logged_in
-  def users_by_emails_search(self,
-                             emails : json_value = {},
-                             limit : int = 50,
-                             offset : int = 0):
+  def __users_by_emails_search(self, emails, limit, offset):
     """Search users for a list of emails.
 
     emails -- list of emails to search with.
@@ -964,6 +959,24 @@ class Mixin:
         {'$project': ret_keys}
       ])
       return {'users': res['result']}
+
+  @api('/user/search_emails', method = 'POST')
+  @require_logged_in
+  def users_by_emails_search(self,
+                             emails,
+                             limit : int = 50,
+                             offset : int = 0):
+    return self.__users_by_emails_search(emails, limit, offset)
+
+  # Backwards compatibility for < 0.9.9
+  @api('/user/search_emails', method = 'GET')
+  @require_logged_in
+  def old_users_by_emails_search(self,
+                                 emails : json_value = [],
+                                 limit : int = 50,
+                                 offset : int = 0):
+    return self.__users_by_emails_search(emails, limit, offset)
+
 
   # Historically we used _id but we're moving to id. This function extracts
   # fields for both cases.
