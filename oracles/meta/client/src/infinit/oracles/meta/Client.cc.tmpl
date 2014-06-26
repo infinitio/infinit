@@ -477,24 +477,19 @@ namespace infinit
       Client::search_users_by_emails(
         std::vector<std::string> const& emails, int limit, int offset) const
       {
-        std::stringstream email_list;
-        std::vector<boost::any> emails_json;
-        for (auto email: emails)
-        {
-          emails_json.push_back(boost::any(std::string(email)));
-        }
-        elle::json::write(email_list, emails_json);
         std::string url = elle::sprintf(
-          "/user/search_emails?emails=%s", email_list.str());
-        if (limit > 0)
-        {
-          url += elle::sprintf("&limit=%s", limit);
-        }
-        if (offset > 0)
-        {
-          url += elle::sprintf("&offset=%s", offset);
-        }
-        auto request = this->_request(url, Method::GET);
+          "/user/search_emails?limit=%s&offset=%s", limit, offset);
+        // Use a POST as otherwise the GET URL is too long to process.
+        auto request = this->_request(
+          url,
+          Method::POST,
+          [&] (reactor::http::Request& r)
+          {
+            elle::serialization::json::SerializerOut query(r);
+            query.serialize("emails",
+                            const_cast<std::vector<std::string>&>(emails));
+          });
+
         auto json = elle::json::read(request);
         auto const& users =
           boost::any_cast<elle::json::Array>(
