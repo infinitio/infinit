@@ -831,10 +831,15 @@ class Mixin:
 
     res = None
 
+    amazon_time_format = '%Y-%m-%dT%H-%M-%SZ'
+    now = time.gmtime(time.time())
+    current_time =  time.strftime(amazon_time_format, now)
+
     if not force_regenerate:
       res = transaction.get('aws_credentials', None)
       if res is not None:
         elle.log.debug('cloud_buffer: returning from cache')
+        res['current_time'] = current_time
         return self.success(res)
     elle.log.debug('Regenerating AWS token')
     # As long as those creds are transaction specific there is no risk
@@ -858,6 +863,7 @@ class Mixin:
     credentials['region']            = self.aws_region
     credentials['bucket']            = self.aws_buffer_bucket
     credentials['folder']            = transaction_id
+    credentials['current_time']      = current_time
 
     elle.log.debug("Storing aws_credentials in DB")
     transaction.update({'aws_credentials': credentials})
