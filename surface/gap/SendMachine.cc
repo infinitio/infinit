@@ -13,6 +13,7 @@
 #include <reactor/exception.hh>
 
 #include <aws/Credentials.hh>
+#include <aws/Exceptions.hh>
 #include <aws/S3.hh>
 
 #include <common/common.hh>
@@ -204,7 +205,45 @@ namespace surface
         int max_check_id = 0; // check for chunk presence up to that id
         int start_check_index = 0; // check for presence from that chunks index
         std::string upload_id;
-        if (!transaction().plain_upload_uid())
+        if (transaction().plain_upload_uid())
+        { // Trying to resume with existing upload id
+          try
+          {
+            // Fetch block list
+            upload_id = *transaction().plain_upload_uid();
+            chunks = handler.multipart_list(source_file_name, upload_id);
+            std::sort(chunks.begin(), chunks.end(),
+              [](aws::S3::MultiPartChunk const& a, aws::S3::MultiPartChunk const& b)
+              {
+                return a.first < b.first;
+              });
+            if (!chunks.empty())
+            {
+              // We expect missing blocks potentially, but only at the end
+              //, ie we expect contiguous blocks 0 to (num_blocks - pipeline_size)
+              for (int i = 0; i < int(chunks.size()); ++i)
+                if (chunks[i].first != i)
+                  break;
+                else
+                  next_chunk = i+1;
+              start_check_index = next_chunk;
+              max_check_id = chunks.back().first;
+            }
+            ELLE_DEBUG("Will resume at chunk %s", next_chunk);
+          }
+          catch (aws::AWSException const& e)
+          {
+            // Error with Code=NoSuchUpload ?
+            ELLE_WARN("%s: Failed to resume upload: %s", *this, e.what());
+            transaction().plain_upload_uid(boost::optional<std::string>());
+          }
+          catch (reactor::Terminate const&)
+          {
+            throw;
+          }
+          ELLE_ASSERT_NO_OTHER_EXCEPTION
+        }
+        if (!transaction().plain_upload_uid()) // Not else! Code above can reset plain_upload_uid
         {
           //FIXME: pass correct mime type for non-zip case
           upload_id = handler.multipart_initialize(source_file_name);
@@ -212,29 +251,6 @@ namespace surface
           transaction()._snapshot_save();
           ELLE_TRACE("%s: saved upload ID %s to snapshot",
                      *this, *transaction().plain_upload_uid());
-        }
-        else
-        { // Fetch block list
-          upload_id = *transaction().plain_upload_uid();
-          chunks = handler.multipart_list(source_file_name, upload_id);
-          std::sort(chunks.begin(), chunks.end(),
-            [](aws::S3::MultiPartChunk const& a, aws::S3::MultiPartChunk const& b)
-            {
-              return a.first < b.first;
-            });
-          if (!chunks.empty())
-          {
-            // We expect missing blocks potentially, but only at the end
-            //, ie we expect contiguous blocks 0 to (num_blocks - pipeline_size)
-            for (int i = 0; i < int(chunks.size()); ++i)
-              if (chunks[i].first != i)
-                break;
-              else
-                next_chunk = i+1;
-            start_check_index = next_chunk;
-            max_check_id = chunks.back().first;
-          }
-          ELLE_DEBUG("Will resume at chunk %s", next_chunk);
         }
         auto chunk_uploaded = next_chunk;
         this->_plain_progress =
@@ -421,7 +437,7 @@ namespace surface
       // If you change it, also change in crash reporter filter
       static const char* mirror_dir = "mirror_files"; /* read above!*/
       boost::filesystem::path mirror_path =
-        this->transaction().snapshots_directory() / "mirror_files";
+        this->transaction().snapshots_directory() / mirror_dir;
       bool validate = false; // set at
       elle::SafeFinally maybe_cleanup([&] {
           if (validate)
