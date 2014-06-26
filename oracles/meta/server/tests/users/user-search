@@ -57,3 +57,17 @@ with Meta() as meta:
   res = bob.get('users?search=jean%20@&limit=10')
   assert len(res['users']) == 1
   bob.logout()
+
+with Meta() as meta:
+  bob = User(meta, email = 'bobbymcferrin@infinit.com', fullname = 'jean @ bob')
+  bob.login()
+  alices = []
+  number_of_alices = 8
+  emails = []
+  for i in range(0, number_of_alices):
+    email = ('alice%s@infinit.com' % i)
+    alices.append(User(meta, email))
+    emails.append(email)
+  res = bob.post('user/search_emails?limit=10&offset=0', {'emails': emails})
+  assert len(res['users']) == 8
+  bob.logout()
