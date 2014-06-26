@@ -266,11 +266,10 @@ run(gap_State* state,
     std::string const& name,
     std::function<Type (surface::gap::State&)> const& function)
 {
-  ELLE_LOG_COMPONENT("surface.gap.bridge");
   assert(state != nullptr);
-
   return catch_to_gap_status<Type>([=] () -> Ret<Type>
     {
+      ELLE_LOG_COMPONENT("surface.gap.bridge");
       reactor::Scheduler& scheduler = state->scheduler();
       ELLE_DEBUG("running %s", name);
       return Ret<Type>(
