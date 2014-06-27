@@ -372,7 +372,10 @@ namespace surface
           peer.ghost(),
           onboarding);
       }
-      try_mirroring_files(size);
+      // Try mirroring files, only if we are not going to make an
+      // archive right away
+      if (!peer.ghost() || !archive_info().second)
+        try_mirroring_files(size);
       // Populate the frete.
       this->frete().save_snapshot();
       this->state().meta().update_transaction(this->transaction_id(),
