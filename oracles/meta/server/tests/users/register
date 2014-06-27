@@ -14,4 +14,22 @@ with Meta(enable_emails = True) as meta:
   user = meta.database.users.find_one()
   assert user['email'] == email
   assert user['fullname'] == fullname
+  assert 'source' not in user.keys()
+  assert 'creation_time' in user
+
+# Check that register source is saved.
+with Meta() as meta:
+  email = 'jeantest@infinit.io'
+  fullname = 'Jean Test'
+
+  u = User(meta,
+           email = email,
+           fullname = fullname,
+           source = 'test')
+  assert meta.invitation.subscribed(email)
+  assert meta.database.users.count() == 1
+  user = meta.database.users.find_one()
+  assert user['email'] == email
+  assert user['fullname'] == fullname
+  assert user['source'] == 'test'
   assert 'creation_time' in user
