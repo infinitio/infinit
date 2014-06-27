@@ -251,6 +251,7 @@ class Mixin:
                email,
                password,
                fullname,
+               source = None,
                activation_code = None):
     """Register a new user.
 
@@ -302,6 +303,8 @@ class Mixin:
           time.time() + self.unconfirmed_email_leeway,
         'email_confirmation_hash': str(hash),
       }
+      if source is not None:
+        user_content['source'] = source
       res = self.database.users.find_and_modify(
         query = {
           'accounts.id': email,
