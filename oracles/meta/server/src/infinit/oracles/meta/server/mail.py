@@ -248,7 +248,7 @@ More
 %(more)s
 """.strip()}
 
-report_templates['backtrace'] = {'subject': 'Crash Report (%(client_os)s)'.strip(),
+report_templates['backtrace'] = {'subject': 'Crash Report %(version)s (%(client_os)s)'.strip(),
                                  'content': """
 Backtrace and state log attached.
 
@@ -269,7 +269,7 @@ Additional Information
 %(more)s
 """.strip()}
 
-report_templates['transaction'] = {'subject': 'Transfer Failed Report (%(client_os)s)'.strip(),
+report_templates['transaction'] = {'subject': 'Transfer Failed Report %(version)s (%(client_os)s)'.strip(),
                                    'content': """
 .infinit directory in attached file.
 
