@@ -445,7 +445,8 @@ namespace surface
           ELLE_LOG("%s: File mirroring failure, cleaning up.", *this);
           boost::filesystem::remove_all(mirror_path, erc);
       });
-      ELLE_TRACE("%s: trying to mirror files to %s", *this, mirror_path);
+      ELLE_TRACE("%s: trying to mirror files (%s > %s) to %s",
+                 *this, total_size, max_mirror_size, mirror_path);
       boost::filesystem::create_directories(mirror_path, erc);
       if (erc)
       {

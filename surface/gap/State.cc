@@ -161,6 +161,7 @@ namespace surface
       auto& config = this->_configuration;
       config.s3.multipart_upload.parallelism = 1;
       config.s3.multipart_upload.chunk_size = 0;
+      config.max_mirror_size = 0;
     }
 
     State::~State()
