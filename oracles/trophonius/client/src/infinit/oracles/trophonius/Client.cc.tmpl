@@ -662,10 +662,10 @@ namespace infinit
             this->reconnect_failed_callback();
             boost::random::mt19937 rng;
             rng.seed(static_cast<unsigned int>(std::time(0)));
-            boost::random::uniform_int_distribution<> random(100, 150);
+            boost::random::uniform_int_distribution<> random(10, 15);
             auto const delay =
-              this->_client.reconnection_cooldown() * random(rng) / 100;
-            ELLE_LOG("%s: will retry reconnection in %s seconds", *this, delay);
+              this->_client.reconnection_cooldown() * random(rng);
+            ELLE_LOG("%s: will retry reconnection in %s", *this, delay);
             reactor::sleep(delay);
           }
           if (this->_connected)
@@ -818,18 +818,22 @@ namespace infinit
       };
 
       Client::Client(ConnectCallback connect_callback,
-                     ReconnectPokeFailedCallback reconnect_failed_callback):
+                     ReconnectPokeFailedCallback reconnect_failed_callback,
+                     boost::posix_time::time_duration reconnection_cooldown):
         _impl(new Impl(*this, connect_callback, reconnect_failed_callback)),
-        _ping_period(default_ping_period)
+        _ping_period(default_ping_period),
+        _reconnection_cooldown(reconnection_cooldown)
       {
         ELLE_ASSERT(connect_callback != nullptr);
       }
 
       Client::Client(ConnectCallback connect_callback,
                      ReconnectPokeFailedCallback reconnect_failed_callback,
-                     std::vector<unsigned char> server_fingerprint):
+                     std::vector<unsigned char> server_fingerprint,
+                     boost::posix_time::time_duration reconnection_cooldown):
         Client(std::move(connect_callback),
-               std::move(reconnect_failed_callback))
+               std::move(reconnect_failed_callback),
+               reconnection_cooldown)
       {
         this->_impl->_set_test_fingerprint(server_fingerprint);
       }
@@ -838,10 +842,12 @@ namespace infinit
                      int port,
                      ConnectCallback connect_callback,
                      ReconnectPokeFailedCallback reconnect_failed_callback,
-                     std::vector<unsigned char> server_fingerprint):
+                     std::vector<unsigned char> server_fingerprint,
+                     boost::posix_time::time_duration reconnection_cooldown):
         Client(std::move(connect_callback),
                std::move(reconnect_failed_callback),
-               std::move(server_fingerprint))
+               std::move(server_fingerprint),
+               reconnection_cooldown)
       {
         this->server(std::move(host), port);
       }
