@@ -4,6 +4,7 @@
 # system one will be loaded through hashlib, by bottle for instance.
 import papier
 
+import bson
 import bottle
 import bson
 import datetime
