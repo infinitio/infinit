@@ -196,17 +196,17 @@ namespace infinit
       public:
         Client(ConnectCallback connect_callback,
                ReconnectPokeFailedCallback reconnect_failed_callback,
-               boost::posix_time::time_duration reconnection_cooldown = 1_sec);
+               boost::posix_time::time_duration reconnection_cooldown = 10_sec);
         Client(ConnectCallback connect_callback,
                ReconnectPokeFailedCallback reconnect_failed_callback,
                std::vector<unsigned char> server_fingerprint,
-               boost::posix_time::time_duration reconnection_cooldown = 1_sec);
+               boost::posix_time::time_duration reconnection_cooldown = 10_sec);
         Client(std::string  host,
                int port,
                ConnectCallback connect_callback,
                ReconnectPokeFailedCallback reconnect_failed_callback,
                std::vector<unsigned char> server_fingerprint,
-               boost::posix_time::time_duration reconnection_cooldown = 1_sec);
+               boost::posix_time::time_duration reconnection_cooldown = 10_sec);
         ~Client();
 
       public:
