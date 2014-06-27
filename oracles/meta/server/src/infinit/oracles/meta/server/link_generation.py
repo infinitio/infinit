@@ -4,6 +4,7 @@ import bottle
 import bson
 import calendar
 import datetime
+import time
 import elle.log
 
 from pymongo import errors, DESCENDING
@@ -81,6 +82,8 @@ class Mixin:
     credentials['region']            = self.aws_region
     credentials['secret_access_key'] = raw_creds['SecretAccessKey']
     credentials['session_token']     = raw_creds['SessionToken']
+    now = time.strftime('%Y-%m-%dT%H-%M-%SZ', time.gmtime())
+    credentials['current_time']      = now
 
     return credentials
 

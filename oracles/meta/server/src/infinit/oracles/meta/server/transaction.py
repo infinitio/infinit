@@ -832,7 +832,7 @@ class Mixin:
     res = None
 
     amazon_time_format = '%Y-%m-%dT%H-%M-%SZ'
-    now = time.gmtime(time.time())
+    now = time.gmtime()
     current_time =  time.strftime(amazon_time_format, now)
 
     if not force_regenerate:
