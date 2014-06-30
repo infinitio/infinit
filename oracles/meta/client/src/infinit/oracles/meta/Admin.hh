@@ -1,8 +1,11 @@
 #ifndef ADMIN_HH
 # define ADMIN_HH
 
-#include <infinit/oracles/meta/Client.hh>
-#include <boost/uuid/uuid.hpp>
+# include <boost/uuid/uuid.hpp>
+
+# include <elle/Version.hh>
+
+# include <infinit/oracles/meta/Client.hh>
 
 namespace infinit
 {
@@ -21,10 +24,11 @@ namespace infinit
               std::string const& host,
               uint16_t port);
 
-        Response
+        void
         connect(boost::uuids::uuid const& uuid,
                 std::string const& user_id,
-                boost::uuids::uuid const& device_uuid);
+                boost::uuids::uuid const& device_uuid,
+                elle::Version const& version);
 
         Response
         disconnect(boost::uuids::uuid const& uuid,

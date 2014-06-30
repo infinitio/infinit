@@ -70,8 +70,9 @@ class Mixin:
   def trophonius_register_user(self,
                                uid: uuid.UUID,
                                id: bson.ObjectId,
-                               device: uuid.UUID):
-    with elle.log.trace("trophonius %s: register user (%s)'s device (%s)" %
+                               device: uuid.UUID,
+                               version = None):
+    with elle.log.trace('trophonius %s: register user %s device %s' %
                         (uid, id, device)):
       assert isinstance(uid, uuid.UUID)
       assert isinstance(device, uuid.UUID)

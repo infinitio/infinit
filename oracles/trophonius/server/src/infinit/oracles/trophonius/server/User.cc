@@ -232,9 +232,10 @@ namespace infinit
                 meta::Response res;
                 try
                 {
-                  res = this->_meta.connect(this->trophonius().uuid(),
-                                            this->_user_id,
-                                            this->_device_id);
+                  this->_meta.connect(this->trophonius().uuid(),
+                                      this->_user_id,
+                                      this->_device_id,
+                                      this->_version);
                 }
                 // FIXME: the meta client exception is bullshit.
                 catch (elle::http::Exception const& e)

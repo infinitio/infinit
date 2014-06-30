@@ -3,6 +3,7 @@
 
 #include <elle/serialize/JSONArchive.hh>
 #include <elle/format/json/Dictionary.hh>
+#include <elle/serialization/json.hh>
 #include <elle/serialize/ListSerializer.hxx>
 #include <elle/serialize/MapSerializer.hxx>
 #include <elle/serialize/SetSerializer.hxx>
@@ -43,17 +44,24 @@ namespace infinit
         Client(protocol, host, port)
       {}
 
-      Response
+      void
       Admin::connect(boost::uuids::uuid const& uid,
                      std::string const& user_id,
-                     boost::uuids::uuid const& device_id)
+                     boost::uuids::uuid const& device_id,
+                     elle::Version const& version)
       {
-        return this->_request<Response>(
-          sprintf("/trophonius/%s/users/%s/%s",
-                  boost::lexical_cast<std::string>(uid),
-                  user_id,
-                  boost::lexical_cast<std::string>(device_id)),
-          Method::PUT);
+        auto url = elle::sprintf("/trophonius/%s/users/%s/%s",
+                                 boost::lexical_cast<std::string>(uid),
+                                 user_id,
+                                 boost::lexical_cast<std::string>(device_id));
+        auto request = this->_request(
+          url, Method::PUT,
+          [&version] (reactor::http::Request& request)
+          {
+            elle::serialization::json::SerializerOut output(request);
+            output.serialize("version", const_cast<elle::Version&>(version));
+          });
+        elle::serialization::json::SerializerIn input(request);
       }
 
       Response
