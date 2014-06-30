@@ -159,7 +159,8 @@ class Mixin:
         'click_count': 0,
         'ctime': creation_time,
         'expiry_time': expiry_time,
-        'file_list': files,
+        'file_list':
+          [{'name': file[0], 'size': file[1]} for file in files],
         'hash': None,
         'message': message,
         'mtime': creation_time,
