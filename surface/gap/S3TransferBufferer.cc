@@ -30,7 +30,9 @@ namespace surface
     // Recipient.
     S3TransferBufferer::S3TransferBufferer(
       infinit::oracles::PeerTransaction& transaction,
-      std::function<aws::Credentials(bool)> credentials):
+      std::function<aws::Credentials(bool)> credentials,
+      aws::S3::ErrorCallback on_error
+      ):
         Super(transaction),
         _count(),
         _full_size(),
@@ -40,6 +42,7 @@ namespace surface
         _credentials(credentials),
         _s3_handler(this->_credentials)
     {
+      _s3_handler.on_error(on_error);
       try
       {
         // Fetch transfer meta-data from cloud.
@@ -67,7 +70,8 @@ namespace surface
     S3TransferBufferer::S3TransferBufferer(
       infinit::oracles::PeerTransaction& transaction,
       std::string const& file,
-      std::function<aws::Credentials(bool)> credentials)
+      std::function<aws::Credentials(bool)> credentials,
+      aws::S3::ErrorCallback on_error)
     : Super(transaction)
     , _count()
     , _full_size()
@@ -77,6 +81,7 @@ namespace surface
     , _credentials(credentials)
     , _s3_handler(this->_credentials)
     {
+      _s3_handler.on_error(on_error);
       // That file constraint is mostly for validation, we could
       // just bool no_metadata=true and get done with it
       std::vector<std::pair<std::string, FileSize>> files
@@ -99,6 +104,7 @@ namespace surface
     S3TransferBufferer::S3TransferBufferer(
       infinit::oracles::PeerTransaction& transaction,
       std::function<aws::Credentials(bool)> credentials,
+      aws::S3::ErrorCallback on_error,
       FileCount count,
       FileSize total_size,
       Files const& files,
@@ -111,6 +117,7 @@ namespace surface
         _credentials(credentials),
         _s3_handler(this->_credentials)
     {
+      _s3_handler.on_error(on_error);
       // Write transfer meta-data to cloud.
       // We binary serialize stuff, then base64-encode to be valid json
       // string, and then json-serialize
@@ -177,7 +184,7 @@ namespace surface
       catch (aws::AWSException const& e)
       {
         // XXX could retry.
-        ELLE_ERR("%s: unable to put block: %s", *this, e.error());
+        ELLE_ERR("%s: unable to put block: %s", *this, e.what());
         throw;
       }
     }
@@ -230,7 +237,7 @@ namespace surface
       catch (aws::AWSException const& e)
       {
         // XXX could retry.
-        ELLE_ERR("%s: unable to get block: %s", *this, e.error());
+        ELLE_ERR("%s: unable to get block: %s", *this, e.what());
         // FIXME: differenciate AWS other exception and "data not here"
         throw;
       }
@@ -269,7 +276,7 @@ namespace surface
       catch (aws::AWSException const& e)
       {
         // XXX could retry.
-        ELLE_ERR("%s: unable to get block: %s", *this, e.error());
+        ELLE_ERR("%s: unable to get block: %s", *this, e.what());
         throw;
       }
     }

@@ -15,6 +15,7 @@
 # include <reactor/thread.hh>
 
 # include <aws/Credentials.hh>
+# include <aws/Exceptions.hh>
 
 # include <frete/Frete.hh>
 # include <infinit/oracles/Transaction.hh>
@@ -67,6 +68,9 @@ namespace surface
       void
       _stop();
 
+      /// Report s3 error to metrics.
+      void
+      _report_s3_error(aws::AWSException const& exception, bool will_retry);
     public:
       /// Use to notify that the transaction has been updated on the remote.
       virtual

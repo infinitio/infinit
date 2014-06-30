@@ -405,5 +405,37 @@ namespace surface
     {
       this->reset_transfer_signal().signal();
     }
+
+    void
+    TransactionMachine::_report_s3_error(aws::AWSException const& exception, bool will_retry)
+    {
+      if (auto& mr = state().metrics_reporter())
+      {
+        int http_status = 0;
+        std::string aws_error_code;
+        std::string message = exception.what();
+        if (exception.inner_exception())
+        {
+          if (auto awserror = dynamic_cast<aws::RequestError*>(
+            exception.inner_exception().get()))
+          {
+            if (auto& ec = awserror->error_code())
+              aws_error_code = *ec;
+            if (auto& hs = awserror->http_status())
+              http_status = static_cast<int>(*hs);
+            message = awserror->what();
+          }
+          else
+            message = *exception.inner_exception()->what();
+        }
+        mr->aws_error(this->transaction_id(),
+                      exception.operation(),
+                      exception.url(),
+                      exception.attempt(),
+                      http_status,
+                      aws_error_code,
+                      (will_retry? "TRANSIENT:":"FATAL:") + message);
+      }
+    }
   }
 }

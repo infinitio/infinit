@@ -190,6 +190,10 @@ namespace surface
             return this->_aws_credentials(first_time);
           };
         aws::S3 handler(get_credentials);
+        handler.on_error([&](aws::AWSException const& exception, bool will_retry)
+          {
+            this->_report_s3_error(exception, will_retry);
+          });
         typedef frete::Frete::FileSize FileSize;
         auto const& config = this->transaction().state().configuration();
         // AWS constraints: no more than 10k chunks, at least 5Mo block size
