@@ -215,7 +215,7 @@ namespace infinit
                                        TransferExitReason reason,
                                        std::string const& message)
     {
-            if (this->_no_metrics)
+      if (this->_no_metrics)
         return;
       this->_metric_queue.push(std::bind(&Reporter::_transaction_transfer_end,
                                           this, transaction_id,
@@ -224,6 +224,23 @@ namespace infinit
       this->_metric_available.open();
     }
 
+    void
+    Reporter::aws_error(std::string const& transaction_id,
+                        std::string const& operation,
+                        std::string const& url,
+                        unsigned int attempt,
+                        int http_status,
+                        std::string const& aws_error_code,
+                        std::string const& message)
+    {
+      if (this->_no_metrics)
+        return;
+      this->_metric_queue.push(std::bind(&Reporter::_aws_error,
+                                          this, transaction_id, operation,
+                                          url, attempt, http_status,
+                                          aws_error_code, message));
+      this->_metric_available.open();
+    }
     /*-------------.
     | User Metrics |
     `-------------*/
@@ -399,6 +416,16 @@ namespace infinit
                                         uint64_t bytes_transfered,
                                         TransferExitReason reason,
                                         std::string const& message)
+    {}
+
+    void
+    Reporter:: _aws_error(std::string const& transaction_id,
+                          std::string const& operation,
+                          std::string const& url,
+                          unsigned int attempt,
+                          int http_status,
+                          std::string const& aws_error_code,
+                          std::string const& message)
     {}
 
     /*----------------------------.

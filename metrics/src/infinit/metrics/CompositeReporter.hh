@@ -83,6 +83,16 @@ namespace infinit
                                uint64_t bytes_transfered,
                                TransferExitReason reason,
                                std::string const& message);
+      virtual
+      void
+      _aws_error(std::string const& transaction_id,
+                 std::string const& operation,
+                 std::string const& url,
+                 unsigned int attempt,
+                 int http_status,
+                 std::string const& aws_error_code,
+                 std::string const& message);
+
     /// User metrics.
     private:
       virtual

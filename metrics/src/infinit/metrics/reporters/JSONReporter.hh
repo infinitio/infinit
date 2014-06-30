@@ -13,6 +13,8 @@ namespace infinit
   {
     enum class JSONKey
     {
+      attempt_number,
+      aws_error_code,
       bytes_transfered,
       connection_method,
       duration,
@@ -21,12 +23,14 @@ namespace infinit
       fail_reason,
       file_count,
       ghost,
+      http_status,
       how_ended,
       initialization_time,
       message,
       message_length,
       metric_sender_id,
       onboarding,
+      operation,
       recipient_id,
       sender_id,
       status,
@@ -35,6 +39,7 @@ namespace infinit
       transaction_id,
       transaction_type,
       transfer_method,
+      url,
       user_agent,
       version,
       who,
@@ -121,6 +126,15 @@ namespace infinit
                                uint64_t bytes_transfered,
                                TransferExitReason reason,
                                std::string const& message);
+      virtual
+      void
+      _aws_error(std::string const& transaction_id,
+                std::string const& operation,
+                std::string const& url,
+                unsigned int attempt,
+                int http_status,
+                std::string const& aws_error_code,
+                std::string const& message);
 
     /// Implementation of user metrics.
     private:

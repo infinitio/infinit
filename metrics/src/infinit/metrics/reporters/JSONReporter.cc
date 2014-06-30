@@ -155,6 +155,27 @@ namespace infinit
        this->_send(this->_transaction_dest, data);
      }
 
+     void
+     JSONReporter::_aws_error(std::string const& transaction_id,
+                              std::string const& operation,
+                              std::string const& url,
+                              unsigned int attempt_number,
+                              int http_status,
+                              std::string const& aws_error_code,
+                              std::string const& message)
+     {
+       elle::json::Object data;
+       data[this->_key_str(JSONKey::event)] = std::string("aws_error");
+       data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
+       data[this->_key_str(JSONKey::operation)] = operation;
+       data[this->_key_str(JSONKey::url)] = url;
+       data[this->_key_str(JSONKey::attempt_number)] = attempt_number;
+       data[this->_key_str(JSONKey::http_status)] = http_status;
+       data[this->_key_str(JSONKey::aws_error_code)] = aws_error_code;
+       data[this->_key_str(JSONKey::message)] = message;
+       this->_send(this->_transaction_dest, data);
+     }
+
     /*-------------.
     | User Metrics |
     `-------------*/
@@ -302,6 +323,10 @@ namespace infinit
     {
       switch (k)
       {
+        case JSONKey::attempt_number:
+          return "attempt_number";
+        case JSONKey::aws_error_code:
+          return "aws_error_code";
         case JSONKey::bytes_transfered:
           return "bytes_transfered";
         case JSONKey::connection_method:
@@ -318,6 +343,8 @@ namespace infinit
           return "file_count";
         case JSONKey::ghost:
           return "ghost";
+        case JSONKey::http_status:
+          return "http_status";
         case JSONKey::how_ended:
           return "how_ended";
         case JSONKey::initialization_time:
@@ -330,6 +357,8 @@ namespace infinit
           return "onboarding";
         case JSONKey::metric_sender_id:
           return "user";
+        case JSONKey::operation:
+          return "operation";
         case JSONKey::recipient_id:
           return "recipient";
         case JSONKey::sender_id:
@@ -346,6 +375,8 @@ namespace infinit
           return "type";
         case JSONKey::transfer_method:
           return "transfer_method";
+        case JSONKey::url:
+          return "url";
         case JSONKey::user_agent:
           return "user_agent";
         case JSONKey::version:

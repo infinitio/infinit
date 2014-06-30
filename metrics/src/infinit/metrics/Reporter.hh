@@ -7,7 +7,7 @@
 # include <reactor/Barrier.hh>
 # include <reactor/signal.hh>
 # include <reactor/thread.hh>
-
+# include <reactor/http/StatusCode.hh>
 # include <infinit/oracles/Transaction.hh>
 
 namespace infinit
@@ -115,6 +115,15 @@ namespace infinit
                                TransferExitReason reason,
                                std::string const& message);
 
+      void
+      aws_error(std::string const& transaction_id,
+                std::string const& operation,
+                std::string const& url,
+                unsigned int attempt,
+                int http_status,
+                std::string const& aws_error_code,
+                std::string const& message);
+
     /// Transaction metrics implementation.
     protected:
       virtual
@@ -167,6 +176,17 @@ namespace infinit
                                uint64_t bytes_transfered,
                                TransferExitReason reason,
                                std::string const& message);
+
+      virtual
+      void
+      _aws_error(std::string const& transaction_id,
+                 std::string const& operation,
+                 std::string const& url,
+                 unsigned int attempt,
+                 int http_status,
+                 std::string const& aws_error_code,
+                 std::string const& message);
+
     /// User metrics.
     public:
       void
