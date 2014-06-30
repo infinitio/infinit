@@ -490,23 +490,18 @@ namespace surface
         ELLE_DEBUG("%s: state was not logged in", *this);
         return;
       }
-
-      elle::SafeFinally logout(
-        [&]
-        {
-          try
-          {
-            this->_meta.logout();
-            this->_metrics_reporter->user_logout(true, "");
-          }
-          catch (elle::Exception const&)
-          {
-            ELLE_WARN("logout failed, ignore exception: %s",
-                      elle::exception_string());
-            this->_meta.logged_in(false);
-          }
-          ELLE_TRACE("%s: logged out", *this);
-        });
+      try
+      {
+        this->_meta.logout();
+        this->_metrics_reporter->user_logout(true, "");
+      }
+      catch (elle::Exception const&)
+      {
+        ELLE_WARN("logout failed, ignore exception: %s",
+                  elle::exception_string());
+        this->_meta.logged_in(false);
+      }
+      ELLE_TRACE("%s: logged out", *this);
     }
 
     void
