@@ -235,6 +235,7 @@ public:
         "Server: Custom HTTP of doom\r\n"
         "Content-Length: %s\r\n"
         "X-Fist-Meta-Version: " INFINIT_VERSION "\r\n"
+        "Connection: Close\r\n"
         "\r\n"
         "%s",
         status, content.size(), content.string()));
