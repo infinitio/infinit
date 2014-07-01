@@ -827,13 +827,13 @@ class Mixin:
 
     # Ensure transaction is not in a final state.
     if transaction['status'] in transaction_status.final:
-      return self.gone('Transaction already finalized')
+      return self.gone('Transaction already finalized(%s)' % transaction['status'])
 
     res = None
 
     amazon_time_format = '%Y-%m-%dT%H-%M-%SZ'
     now = time.gmtime()
-    current_time =  time.strftime(amazon_time_format, now)
+    current_time = time.strftime(amazon_time_format, now)
 
     if not force_regenerate:
       res = transaction.get('aws_credentials', None)
