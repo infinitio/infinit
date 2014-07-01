@@ -88,7 +88,12 @@ reject_rules = [{'conditions':[{'key': 'status',
                                 'value': 'transaction_waiting_accept'}],
                  'action': 'reject'}]
 
-test_credentials = [('mefyl@infinit.io', 'mefyl'), ('mefyl2@infinit.io', 'mefyl2')]
+test_credentials = [('mefyl@infinit.io', 'mefyl', 'mefyl'), ('mefyl2@infinit.io', 'mefyl2', 'mefyl2')]
+
+if os.environ.get('TEST_CREDENTIALS', None) is not None:
+  c = os.environ['TEST_CREDENTIALS']
+  c = c.split(',')
+  test_credentials = [(c[0], c[1], c[2]), (c[3], c[4], c[5])]
 
 class TransferPeer:
   """ Handles one peer, expecting only one transaction at most.
@@ -253,8 +258,8 @@ class Transfer:
       ts = self.sender.transaction
     expect = {
       'message': self.message,
-      'recipient_fullname': test_credentials[1][0].split('@')[0],
-      'sender_fullname': test_credentials[0][0].split('@')[0],
+      'recipient_fullname': test_credentials[1][2],
+      'sender_fullname': test_credentials[0][2],
     };
     if total_size is not None:
       expect['total_size'] = total_size
