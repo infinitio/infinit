@@ -328,6 +328,18 @@ class TestBasicTransfer(unittest.TestCase):
   def test_p2p_empty_files(self):
     names = list(map(str, range(10)))
     return self.transfer_test(names, {'names': names, 'size':0})
+  def _test_p2p_apertus(self):
+    # Fun fact, apertus is only accessible after it reported its bandwidth
+    # for the first time (30s after start), so this test can't work without
+    # some kind of hack
+    os.environ['INFINIT_LOCAL_ADDRESS'] = '10.0.0.1'
+    try:
+      return self.transfer_test(['100k'], {'name': '100k','size': 100000},
+                              expect_total_size=100000, expect_files_count=1,
+                              expect_is_directory = False
+                              )
+    finally:
+      del os.environ['INFINIT_LOCAL_ADDRESS']
 
 class TestBasicTransferBig(TestBasicTransfer):
   def test_big_file(self):
