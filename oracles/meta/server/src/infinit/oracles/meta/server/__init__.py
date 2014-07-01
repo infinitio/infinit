@@ -437,8 +437,8 @@ class Meta(bottle.Bottle,
         '%s: send email for fatal error: %s' % (self, e)):
       args = (route,
               ''.join(traceback.format_exception(type(e), e, None)))
-      self.mailer.send(to = 'admin@infinit.io',
-                       fr = 'admin@infinit.io',
+      self.mailer.send(to = 'infrastructure@infinit.io',
+                       fr = 'infrastructure@infinit.io',
                        subject = 'Meta: fatal error: %s' % e,
                        body = '''\
 Error while querying %s:
