@@ -77,23 +77,28 @@ namespace infinit
           Method::DELETE);
       }
 
-      Response
+      void
       Admin::register_trophonius(boost::uuids::uuid const& uid,
                                  int port,
                                  int port_client,
                                  int port_client_ssl,
                                  int users)
       {
-        json::Dictionary request;
-        request["port"] = port;
-        request["port_client"] = port_client;
-        request["port_client_ssl"] = port_client_ssl;
-        request["users"] = users;
-        request["version"] = INFINIT_VERSION;
-
-        return this->_request<Response>(
-          sprintf("/trophonius/%s", boost::lexical_cast<std::string>(uid)),
-          Method::PUT, request);
+        auto url = elle::sprintf("/trophonius/%s",
+                                 boost::lexical_cast<std::string>(uid));
+        auto request = this->_request(
+          url, Method::PUT,
+          [&] (reactor::http::Request& request)
+          {
+            elle::serialization::json::SerializerOut output(request);
+            output.serialize("port", port);
+            output.serialize("port_client", port_client);
+            output.serialize("port_client_ssl", port_client_ssl);
+            output.serialize("users", users);
+            std::string version = INFINIT_VERSION;
+            output.serialize("version", version);
+          });
+        elle::serialization::json::SerializerIn input(request);
       }
 
       Response

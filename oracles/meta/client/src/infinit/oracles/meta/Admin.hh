@@ -35,7 +35,7 @@ namespace infinit
                    std::string const& user_id,
                    boost::uuids::uuid const& device_uuid);
 
-        Response
+        void
         register_trophonius(boost::uuids::uuid const& uuid,
                             int port_notifications,
                             int port_client,
