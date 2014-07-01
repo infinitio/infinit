@@ -75,6 +75,14 @@ namespace surface
         ELLE_TRACE("%s: terminated", *this);
         throw;
       }
+      catch (elle::Exception const& e)
+      {
+        // This should not happen, exceptions should be intercepted lower in
+        // the stack, and fail or cancel the transaction
+        ELLE_ERR("%s: something went wrong while transfering: %s",
+                 *this, e);
+        throw;
+      }
       catch (std::exception const&)
       {
         ELLE_ERR("%s: something went wrong while transfering: %s",
