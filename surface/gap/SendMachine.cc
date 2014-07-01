@@ -394,8 +394,16 @@ namespace surface
       {
         boost::filesystem::path file(*files.begin());
         if (is_directory(status(file)))
-          return std::make_pair(
-            file.filename().replace_extension("zip").string(), true);
+        {
+          // check for file name of the form '.foo'
+          if (file.filename().extension() == file.filename())
+            return std::make_pair(
+              file.filename().string().substr(1) + ".zip",
+              true);
+          else
+            return std::make_pair(
+              file.filename().replace_extension("zip").string(), true);
+        }
         else
           return std::make_pair(file.filename().string(), false);
       }
