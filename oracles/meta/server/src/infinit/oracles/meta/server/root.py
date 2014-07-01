@@ -25,59 +25,6 @@ class Mixin:
         # 'fallbacks': str(self.__application__.fallback),
     })
 
-  def _link_stats(self):
-    total_links = self.database.links.count()
-    if total_links == 0:
-      return {'uploaded_size': 0, 'uploaded_links': 0, 'total_links': 0}
-    # Map reduce doesn't work with single element.
-    elif total_links == 1:
-      link = self.database.links.find_one()
-      size = 0
-      uploaded_links = 0
-      if link['status'] == 4:
-        uploaded_links = 1
-        for file_pair in link['file_list']:
-          size += file_pair[1]
-      return {
-        'uploaded_size': size,
-        'uploaded_links': uploaded_links,
-        'total_links': 1
-      }
-    query = {'status': 4}
-    mapper = Code('''
-      function()
-      {
-        uploaded_count += 1;
-        this.file_list.forEach(function(file_pair)
-        {
-          emit(this._id, file_pair[1]);
-        });
-      }
-    ''')
-    reducer = Code('''
-      function(key, file_sizes)
-      {
-        return Array.sum(file_sizes)
-      }
-    ''')
-    finalizer = Code('''
-      function(key, size)
-      {
-        return {
-          uploaded_size: size,
-          uploaded_links: uploaded_count
-        }
-      }
-    ''')
-    res = self.database.links.inline_map_reduce(
-      mapper, reducer,
-      query = query,
-      scope = {'uploaded_count': 0},
-      finalize = finalizer
-    )[0]['value']
-    res['total_links'] = total_links
-    return res
-
   @api('/stats')
   def transfer_stats(self):
     results_valid = timedelta(minutes = 5)
@@ -85,39 +32,63 @@ class Mixin:
       {'timestamp': {'$gt': datetime.utcnow() - results_valid}})
     if existing_res:
       return self.success(existing_res)
-    # links = self._link_stats()
-    links = {
-      'uploaded_size': 0,
-      'uploaded_links': 0,
-      'total_links': 0,
-    }
+    links = self.database.links.aggregate([
+      {'$match': {'status': transaction_status.FINISHED}},
+      {'$unwind': '$file_list'},
+      {
+        '$group':
+        {
+          '_id': '$_id',
+          'size': {'$sum': '$file_list.size'},
+        }
+      },
+      {
+        '$group':
+        {
+         '_id': 'result',
+         'count': {'$sum': 1},
+         'size': {'$sum': '$size'},
+       }
+     },
+    ])
+    links = links['result']
+    if links:
+      links = links[0]
+    else:
+      links = {'count': 0, 'size': 0}
     txns = self.database.transactions.aggregate([
       {'$match': {'status': transaction_status.FINISHED}},
-      {'$group': {'_id': 'result',
-                  'total_size': {'$sum': '$total_size'},
-                  'total_transfers': {'$sum': 1},}},
+      {
+        '$group':
+        {
+          '_id': 'result',
+          'size': {'$sum': '$total_size'},
+          'count': {'$sum': 1},
+        }
+      }
     ])
     txns = txns['result']
-    if not len(txns):
-      return self.success({
-        'total_size': links['uploaded_size'],
-        'total_transfers': links['uploaded_links'],
-        'total_created': links['total_links'],
-      })
+    if txns:
+      txns = txns[0]
     else:
-      res = txns[0]
-      del res['_id']
-      res['total_created'] = \
-        self.database.transactions.count() + links['total_links']
-      res['total_transfers'] += links['uploaded_links']
-      res['total_size'] += links['uploaded_size']
-      # Remove existing cached result.
-      res['timestamp'] = datetime.utcnow()
-      self.database.website_stats.update(
-        {'timestamp': {'$lt': res['timestamp']}},
-        res,
-        upsert = True)
-      return self.success(res)
+      txns = {'count': 0, 'size': 0}
+    res = {
+      'total_size': links['size'] + txns['size'],
+      'total_count': links['count'] + txns['count'],
+      'total_transfers': links['count'] + txns['count'], # backward
+      'links_count': links['count'],
+      'links_size': links['size'],
+      'transfers_count': txns['count'],
+      'transfers_size': txns['size'],
+      'total_created': self.database.transactions.count() + self.database.transactions.count(),
+    }
+    # Overwrite existing cached result.
+    res['timestamp'] = datetime.utcnow()
+    self.database.website_stats.update(
+      {'timestamp': {'$lt': res['timestamp']}},
+      res,
+      upsert = True)
+    return res
 
   @api('/status')
   def status(self):
