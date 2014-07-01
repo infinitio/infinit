@@ -83,20 +83,28 @@ class Oracles:
     self.__cleanup_dirs = list()
     self.__states = list()
     self._trophonius = None
+    self._apertus = None
+    self._mongo = None
+    self._meta = None
+    self._use_productionn = os.environ.get('TEST_USE_PRODUCTION', None) is not None
 
   def __enter__(self):
-    elle.log.trace('starting mongobox')
-    self._mongo = mongobox.MongoBox(dump_file = self.__mongo_dump)
-    self._mongo.__enter__()
-    elle.log.trace('starting meta')
-    self._meta = MetaWrapperProcess(self.__force_admin, self._mongo.port, self.__force_meta_port)
-    self._meta.start()
-    self.trophonius_start()
-    elle.log.trace('starting apertus')
-    self._apertus = infinit.oracles.apertus.server.Apertus('http', '127.0.0.1', self._meta.port, '127.0.0.1', 0, 0, timedelta(seconds = 10), timedelta(minutes = 5))
-    elle.log.trace('ready')
-    self.meta = ('http', '127.0.0.1', self._meta.port)
-    self.apertus = ('tcp', '127.0.0.1', self._apertus.port_tcp(), self._apertus.port_ssl())
+    if self._use_productionn:
+      print('\n\n###### USING PRODUCTION SERVERS ####\n\n')
+      self.meta = ('https', 'meta.9.0.api.production.infinit.io', 443)
+    else:
+      elle.log.trace('starting mongobox')
+      self._mongo = mongobox.MongoBox(dump_file = self.__mongo_dump)
+      self._mongo.__enter__()
+      elle.log.trace('starting meta')
+      self._meta = MetaWrapperProcess(self.__force_admin, self._mongo.port, self.__force_meta_port)
+      self._meta.start()
+      self.trophonius_start()
+      elle.log.trace('starting apertus')
+      self._apertus = infinit.oracles.apertus.server.Apertus('http', '127.0.0.1', self._meta.port, '127.0.0.1', 0, 0, timedelta(seconds = 10), timedelta(minutes = 5))
+      elle.log.trace('ready')
+      self.meta = ('http', '127.0.0.1', self._meta.port)
+      self.apertus = ('tcp', '127.0.0.1', self._apertus.port_tcp(), self._apertus.port_ssl())
     if self.__setup_client:
       # Some part of the systems use device_id as an uid (trophonius)
       # So force each State to use its own.
@@ -133,11 +141,14 @@ class Oracles:
     if self._trophonius is not None:
       self._trophonius.terminate()
       self._trophonius.stop()
-    self._apertus.stop()
+    if self._apertus is not None:
+      self._apertus.stop()
     reactor.sleep(datetime.timedelta(milliseconds = 300))
     #self._trophonius.wait()
-    self._meta.stop()
-    self._mongo.__exit__(*args, **kwargs)
+    if self._meta is not None:
+      self._meta.stop()
+    if self._mongo is not None:
+      self._mongo.__exit__(*args, **kwargs)
   def trophonius_start(self):
     elle.log.trace('starting tropho')
     self.trophonius_stop() # there can be only one for now
@@ -168,7 +179,6 @@ class Oracles:
     """
     import state
     meta_proto, meta_host, meta_port = self.meta
-    tropho_proto, tropho_host, tropho_port_plain, tropho_port_ssl = self.trophonius
     res = state.State(meta_proto, meta_host, meta_port)
     self.__states.append(res)
     return res
