@@ -81,7 +81,7 @@ class Mixin:
           'id': str(device),
           'owner': id,
         },
-        {'$set': {'trophonius': str(uid)}}
+        {'$set': {'trophonius': str(uid), 'version': version}}
       )
       try:
         self.set_connection_status(user_id = id,
@@ -148,9 +148,22 @@ class Mixin:
         'version',
       ])
     trophoniuses = list(trophoniuses)
+    versions = dict((version['_id'], version['count'])
+                    for version in
+                    self.database.devices.aggregate([
+                      {'$match': {'trophonius': {'$ne': None}}},
+                      {
+                        '$group':
+                        {
+                          '_id': '$version',
+                          'count': {'$sum': 1},
+                        }
+                      },
+                    ])['result'])
     return {
       'trophoniuses': trophoniuses,
       'users': sum(tropho['users'] for tropho in trophoniuses),
+      'versions': versions,
     }
 
   @api('/trophonius')
