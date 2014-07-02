@@ -417,6 +417,8 @@ def configure(cxx_toolkit = None,
   ## Oracles ##
   ## ------- ##
 
+  cxx_config.add_local_include_path('fist/src')
+
   oracles = drake.include(
     'oracles',
     elle = elle,
@@ -450,61 +452,61 @@ def configure(cxx_toolkit = None,
   )
 
   raw_gap_sources = [
-    'surface/gap/Device.hh',
-    'surface/gap/Exception.hh',
-    'surface/gap/Error.hh',
-    'surface/gap/Error.hxx',
-    'surface/gap/FilesystemTransferBufferer.cc',
-    'surface/gap/FilesystemTransferBufferer.hh',
-    'surface/gap/LinkSendMachine.cc',
-    'surface/gap/LinkSendMachine.hh',
-    'surface/gap/PeerMachine.cc',
-    'surface/gap/PeerMachine.hh',
-    'surface/gap/PeerReceiveMachine.cc',
-    'surface/gap/PeerReceiveMachine.hh',
-    'surface/gap/PeerSendMachine.cc',
-    'surface/gap/PeerSendMachine.hh',
-    'surface/gap/PeerTransferMachine.cc',
-    'surface/gap/PeerTransferMachine.hh',
-    'surface/gap/ReceiveMachine.cc',
-    'surface/gap/ReceiveMachine.hh',
-    'surface/gap/Rounds.cc',
-    'surface/gap/Rounds.hh',
-    'surface/gap/S3TransferBufferer.cc',
-    'surface/gap/S3TransferBufferer.hh',
-    'surface/gap/Self.hh',
-    'surface/gap/SendMachine.cc',
-    'surface/gap/SendMachine.hh',
-    'surface/gap/State.cc',
-    'surface/gap/State.hh',
-    'surface/gap/Transaction.cc',
-    'surface/gap/Transaction.hh',
-    'surface/gap/Transaction.hxx',
-    'surface/gap/LinkTransaction.cc',
-    'surface/gap/LinkTransaction.hh',
-    'surface/gap/TransactionMachine.cc',
-    'surface/gap/TransactionMachine.hh',
-    'surface/gap/TransactionMachine.hxx',
-    'surface/gap/TransferBufferer.cc',
-    'surface/gap/TransferBufferer.hh',
-    'surface/gap/TransferMachine.cc',
-    'surface/gap/TransferMachine.hh',
-    'surface/gap/TransferMachine.hxx',
-    'surface/gap/_detail/Network.cc',
-    'surface/gap/_detail/Papiers.cc',
-    'surface/gap/_detail/Transaction.cc',
-    'surface/gap/_detail/User.cc',
-    'surface/gap/enums.hh.tmpl',
-    'surface/gap/gap.cc',
-    'surface/gap/gap.hh',
-    'surface/gap/gap_bridge.hh',
-    'surface/gap/onboarding/ReceiveMachine.cc',
-    'surface/gap/onboarding/ReceiveMachine.hh',
-    'surface/gap/onboarding/Transaction.cc',
-    'surface/gap/onboarding/Transaction.hh',
-    'surface/gap/onboarding/TransferMachine.cc',
-    'surface/gap/onboarding/TransferMachine.hh',
-    'surface/gap/onboarding/fwd.hh',
+    'fist/src/surface/gap/Device.hh',
+    'fist/src/surface/gap/Exception.hh',
+    'fist/src/surface/gap/Error.hh',
+    'fist/src/surface/gap/Error.hxx',
+    'fist/src/surface/gap/FilesystemTransferBufferer.cc',
+    'fist/src/surface/gap/FilesystemTransferBufferer.hh',
+    'fist/src/surface/gap/LinkSendMachine.cc',
+    'fist/src/surface/gap/LinkSendMachine.hh',
+    'fist/src/surface/gap/PeerMachine.cc',
+    'fist/src/surface/gap/PeerMachine.hh',
+    'fist/src/surface/gap/PeerReceiveMachine.cc',
+    'fist/src/surface/gap/PeerReceiveMachine.hh',
+    'fist/src/surface/gap/PeerSendMachine.cc',
+    'fist/src/surface/gap/PeerSendMachine.hh',
+    'fist/src/surface/gap/PeerTransferMachine.cc',
+    'fist/src/surface/gap/PeerTransferMachine.hh',
+    'fist/src/surface/gap/ReceiveMachine.cc',
+    'fist/src/surface/gap/ReceiveMachine.hh',
+    'fist/src/surface/gap/Rounds.cc',
+    'fist/src/surface/gap/Rounds.hh',
+    'fist/src/surface/gap/S3TransferBufferer.cc',
+    'fist/src/surface/gap/S3TransferBufferer.hh',
+    'fist/src/surface/gap/Self.hh',
+    'fist/src/surface/gap/SendMachine.cc',
+    'fist/src/surface/gap/SendMachine.hh',
+    'fist/src/surface/gap/State.cc',
+    'fist/src/surface/gap/State.hh',
+    'fist/src/surface/gap/Transaction.cc',
+    'fist/src/surface/gap/Transaction.hh',
+    'fist/src/surface/gap/Transaction.hxx',
+    'fist/src/surface/gap/LinkTransaction.cc',
+    'fist/src/surface/gap/LinkTransaction.hh',
+    'fist/src/surface/gap/TransactionMachine.cc',
+    'fist/src/surface/gap/TransactionMachine.hh',
+    'fist/src/surface/gap/TransactionMachine.hxx',
+    'fist/src/surface/gap/TransferBufferer.cc',
+    'fist/src/surface/gap/TransferBufferer.hh',
+    'fist/src/surface/gap/TransferMachine.cc',
+    'fist/src/surface/gap/TransferMachine.hh',
+    'fist/src/surface/gap/TransferMachine.hxx',
+    'fist/src/surface/gap/_detail/Network.cc',
+    'fist/src/surface/gap/_detail/Papiers.cc',
+    'fist/src/surface/gap/_detail/Transaction.cc',
+    'fist/src/surface/gap/_detail/User.cc',
+    'fist/src/surface/gap/enums.hh.tmpl',
+    'fist/src/surface/gap/gap.cc',
+    'fist/src/surface/gap/gap.hh',
+    'fist/src/surface/gap/gap_bridge.hh',
+    'fist/src/surface/gap/onboarding/ReceiveMachine.cc',
+    'fist/src/surface/gap/onboarding/ReceiveMachine.hh',
+    'fist/src/surface/gap/onboarding/Transaction.cc',
+    'fist/src/surface/gap/onboarding/Transaction.hh',
+    'fist/src/surface/gap/onboarding/TransferMachine.cc',
+    'fist/src/surface/gap/onboarding/TransferMachine.hh',
+    'fist/src/surface/gap/onboarding/fwd.hh',
     # Get rid of common asap.
     'common/common.cc',
     'common/common.hh',
@@ -521,6 +523,7 @@ def configure(cxx_toolkit = None,
   install << gap_install
 
   gap_cxx_config = drake.cxx.Config(cxx_config_libs)
+  gap_cxx_config.add_local_include_path('fist/src')
   gap_cxx_config.add_local_include_path('metrics/src')
   gap_cxx_config.add_local_include_path('oracles/src')
   gap_cxx_config.add_local_include_path('oracles/meta/client/src')
@@ -690,7 +693,7 @@ def configure(cxx_toolkit = None,
     state_python_cxx_config += boost_python
     state_python_cxx_config.lib_path_runtime('..')
     state_python_sources = drake.nodes(
-      'surface/gap/python/State.cc',
+      'fist/src/surface/gap/python/State.cc',
     )
     state_python_lib = drake.cxx.Module(
       'lib/python/state',
@@ -718,7 +721,7 @@ def configure(cxx_toolkit = None,
       gap_python_cxx_config += boost_python
     with templating_context:
       gap_python_sources = drake.nodes(
-        'surface/gap/python/pygap.cc.tmpl',
+        'fist/src/surface/gap/python/pygap.cc.tmpl',
       )
 
     gap_python_lib = drake.cxx.Module(
@@ -731,7 +734,7 @@ def configure(cxx_toolkit = None,
     )
 
     gap_python_pyfiles = drake.nodes(
-      'surface/gap/python/gap.py',
+      'fist/src/surface/gap/python/gap.py',
     )
 
     gap_python_pyfile_copy = drake.copy(gap_python_pyfiles,
