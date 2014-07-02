@@ -22,7 +22,7 @@ class Mixin:
                      port_client: int,
                      port_client_ssl: int,
                      users: int = 0,
-                     version = ''):
+                     version = None):
     """Register a trophonius.
     """
     assert isinstance(uid, uuid.UUID)

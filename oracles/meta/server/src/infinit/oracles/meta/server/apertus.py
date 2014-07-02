@@ -19,7 +19,7 @@ class Mixin:
                   port_ssl,
                   port_tcp,
                   host = None,
-                  version = ''):
+                  version = None):
     """Register a apertus.
     """
     assert isinstance(uid, uuid.UUID)
