@@ -1,6 +1,8 @@
 #ifndef SURFACE_GAP_PEER_TRANSFER_MACHINE_HH
 # define SURFACE_GAP_PEER_TRANSFER_MACHINE_HH
 
+# include <reactor/network/upnp.hh>
+
 # include <frete/RPCFrete.hh>
 # include <station/fwd.hh>
 # include <surface/gap/PeerMachine.hh>
@@ -20,7 +22,7 @@ namespace surface
     public:
       PeerTransferMachine(PeerMachine& owner);
       virtual
-      ~PeerTransferMachine() noexcept(true) {};
+      ~PeerTransferMachine() noexcept(true);
 
       ELLE_ATTRIBUTE(std::unique_ptr<infinit::protocol::Serializer>,
                      serializer);
@@ -31,6 +33,11 @@ namespace surface
 
     private:
       ELLE_ATTRIBUTE(station::Station, station);
+      ELLE_ATTRIBUTE(std::shared_ptr<reactor::network::UPNP>, upnp);
+      ELLE_ATTRIBUTE(reactor::network::PortMapping, upnp_mapping);
+      ELLE_ATTRIBUTE(reactor::Thread, upnp_init_thread);
+      void
+      _upnp_init();
       std::unique_ptr<station::Host>
       _connect();
 

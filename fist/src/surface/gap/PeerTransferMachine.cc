@@ -32,7 +32,50 @@ namespace surface
                  this->_owner.state().passport(),
                  elle::sprintf("Station(id=%s, tr=%s)",
                                this->_owner.id(), this->_owner.data()->id))
-    {}
+      , _upnp(reactor::network::UPNP::make())
+      , _upnp_init_thread(elle::sprintf("%s UPNP init thread", *this),
+                      [this] { this->_upnp_init(); })
+    {
+      ELLE_TRACE("%s: created", *this);
+    }
+
+    PeerTransferMachine::~PeerTransferMachine() noexcept(true)
+    {
+      ELLE_TRACE("%s: destroyed", *this);
+      reactor::wait(_upnp_init_thread);
+    }
+
+    void
+    PeerTransferMachine::_upnp_init()
+    {
+      if (!elle::os::getenv("INFINIT_DISABLE_UPNP", "").empty())
+        return;
+      // Try to acquire a port mapping for the station port in the background
+      ELLE_TRACE("%s: Initializing UPNP", *this);
+      try
+      {
+        this->_upnp->initialize();
+        ELLE_TRACE("%s: UPNP initialized, available=%s",
+                   *this, this->_upnp->available());
+      }
+      catch (std::exception const& e)
+      {
+        ELLE_LOG("%s: UPNP initialization failed: %s", *this, e.what());
+        return;
+      }
+      try
+      {
+         this->_upnp_mapping = std::move(
+          this->_upnp->setup_redirect(reactor::network::Protocol::tcp,
+                                      this->_station.port()));
+         ELLE_TRACE("%s: acquired UPNP mapping %s", *this, this->_upnp_mapping);
+      }
+      catch (std::exception const& e)
+      {
+        ELLE_LOG("%s: UPNP mapping failed: %s", *this, e.what());
+        return;
+      }
+    }
 
     void
     PeerTransferMachine::_publish_interfaces()
@@ -60,6 +103,10 @@ namespace surface
             auto const &ipv4 = pair.second.ipv4_address;
             addresses.emplace_back(ipv4, this->_station.port());
           }
+        if (this->_upnp_mapping)
+          addresses.emplace_back(this->_upnp_mapping.external_host,
+                                 boost::lexical_cast<unsigned short>(
+                                   this->_upnp_mapping.external_port));
       }
       ELLE_DEBUG("addresses: %s", addresses);
       AddressContainer public_addresses;
