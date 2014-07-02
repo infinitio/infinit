@@ -148,9 +148,7 @@ class Mixin:
         'version',
       ])
     trophoniuses = list(trophoniuses)
-    versions = dict((version['_id'], version['count'])
-                    for version in
-                    self.database.devices.aggregate([
+    versions = self.database.devices.aggregate([
                       {'$match': {'trophonius': {'$ne': None}}},
                       {
                         '$group':
@@ -159,7 +157,15 @@ class Mixin:
                           'count': {'$sum': 1},
                         }
                       },
-                    ])['result'])
+                    ])['result']
+    def format_version(version):
+      if version is None:
+        return None
+      return '%s.%s.%s' % (version['major'],
+                           version['minor'],
+                           version['subminor'])
+    versions = dict((format_version(version['_id']), version['count'])
+                    for version in versions)
     return {
       'trophoniuses': trophoniuses,
       'users': sum(tropho['users'] for tropho in trophoniuses),
