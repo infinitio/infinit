@@ -88,17 +88,7 @@ namespace infinit
     Reporter::stop()
     {
       if (!this->_metric_queue.empty())
-      {
-        elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
-        {
-          scope.run_background("wait for metrics queue", [&]
-          {
-            reactor::wait(this->_metric_queue_empty);
-            scope.terminate_now();
-          });
-          scope.wait(5_sec);
-        };
-      }
+        reactor::wait(this->_metric_queue_empty, 5_sec);
       if (this->_poll_thread)
         this->_poll_thread->terminate_now();
     }
