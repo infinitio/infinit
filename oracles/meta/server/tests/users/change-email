@@ -44,7 +44,7 @@ with Meta(enable_emails = True,
   new_email_address = 'barfoo@infinit.io'
   res = u.post('user/change_email_request',
                {'new_email': new_email_address, 'password': u.password})
-  assert res['success']
+  assert len(res) == 0
 
   u.logout()
 
@@ -53,7 +53,7 @@ with Meta(enable_emails = True,
     'new_email': new_email_address,
     'password': u.password,
   })
-  assert res['success']
+  assert len(res) == 0
 
   try:
     u.login()
