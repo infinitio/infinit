@@ -537,9 +537,9 @@ class Mixin:
       new_email = new_email.lower().strip()
       # Check if the new address is already in use.
       if self.user_by_email(new_email, ensure_existence = False) is not None:
-        return self.fail(error.EMAIL_ALREADY_REGISTRED)
+        return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTRED)
       if hash_pasword(password) != user['password']:
-        return self.fail(error.PASSWORD_NOT_VALID)
+        return self._forbidden_with_error(error.PASSWORD_NOT_VALID)
       from time import time
       import hashlib
       seed = str(time()) + new_email
@@ -562,7 +562,7 @@ class Mixin:
             "new_main_email_hash": hash,
           }
         })
-      return self.success()
+      return {}
 
   @api('/user/change_email', method = 'POST')
   def change_email(self,
@@ -592,15 +592,15 @@ class Mixin:
       # Check that the hash exists and pull user based on it.
       user = self.database.users.find_one({'new_main_email_hash': hash})
       if user is None:
-        return self.fail(error.UNKNOWN_USER)
+        return self._forbidden_with_error(error.UNKNOWN_USER)
       # Check that the email address matches the one we plan to change to. This is
       # important for the new hashed password.
       new_email = new_email.lower().strip()
       if new_email != user['new_main_email']:
-        return self.fail(error.OPERATION_NOT_PERMITTED)
+        return self._forbidden_with_error(error.OPERATION_NOT_PERMITTED)
       # Check that the email has not been registered.
       if self.user_by_email(new_email, ensure_existence = False) is not None:
-        return self.fail(error.EMAIL_ALREADY_REGISTRED)
+        return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTRED)
       # Invalidate credentials.
       self.sessions.remove({'email': user['email'], 'device': ''})
       # Kick them out of the app.
@@ -644,7 +644,7 @@ class Mixin:
             'accounts': {'type': 'email', 'id': new_email}
           },
         })
-      return self.success()
+      return {}
 
   @api('/user/change_password', method = 'POST')
   @require_logged_in
