@@ -65,21 +65,6 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::meta::User, ar, res, version)
   ar & named("register_status", res.register_status);
 }
 
-SERIALIZE_RESPONSE(infinit::oracles::meta::UserResponse, ar, res)
-{
-  ar & static_cast<infinit::oracles::meta::User&>(res);
-}
-
-SERIALIZE_RESPONSE(infinit::oracles::meta::SelfResponse, ar, res)
-{
-  ar & static_cast<infinit::oracles::meta::User&>(res);
-
-  ar & named("email", res.email);
-  ar & named("identity", res.identity);
-  ar & named("devices", res.devices);
-  ar & named("favorites", res.favorites);
-}
-
 SERIALIZE_RESPONSE(infinit::oracles::meta::RemoveSwaggerResponse, ar, res)
 {
   (void) ar;
@@ -180,6 +165,21 @@ namespace infinit
   {
     namespace meta
     {
+      Self::Self(elle::serialization::SerializerIn& s)
+      {
+        this->serialize(s);
+      }
+
+      void
+      Self::serialize(elle::serialization::Serializer& s)
+      {
+        User::serialize(s);
+        s.serialize("email", this->email);
+        s.serialize("identity", this->identity);
+        s.serialize("devices", this->devices);
+        s.serialize("favorites", this->favorites);
+      }
+
       class SerializerIn
         : public elle::serialization::json::SerializerIn
       {
@@ -543,21 +543,31 @@ namespace infinit
         return User(input);
       }
 
-      SelfResponse
+      Self
       Client::self() const
       {
-        return this->_request<SelfResponse>("/user/self", Method::GET);
+        auto url = "/user/self";
+        auto request = this->_request(url, Method::GET);
+        SerializerIn input(url, request);
+        return Self(input);
       }
 
-      UserResponse
+      User
       Client::user_from_public_key(std::string const& public_key) const
       {
         if (public_key.size() == 0)
           throw elle::Exception("empty public key!");
-        json::Dictionary request;
-        request["public_key"] = public_key;
-        return this->_request<UserResponse>(
-          "/user/from_public_key", Method::POST, request);
+        auto url = "/user/from_public_key";
+        auto request = this->_request(
+          url, Method::POST,
+          [&] (reactor::http::Request& r)
+          {
+            elle::serialization::json::SerializerOut query(r);
+            query.serialize("public_key",
+                            const_cast<std::string&>(public_key));
+          });
+        SerializerIn input(url, request);
+        return User(input);
       }
 
       std::vector<User>

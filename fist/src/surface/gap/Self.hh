@@ -7,7 +7,7 @@ namespace surface
 {
   namespace gap
   {
-    typedef infinit::oracles::meta::SelfResponse Self;
+    typedef infinit::oracles::meta::Self Self;
   }
 }
 
