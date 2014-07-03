@@ -340,14 +340,12 @@ namespace surface
         this->_meta.login(lower_email, password, _device_uuid);
       login_failed.abort();
 
+      ELLE_LOG("%s: logged in as %s", *this, email);
       elle::With<elle::Finally>([&] { this->_meta.logout(); })
         << [&] (elle::Finally& finally_logout)
       {
-        ELLE_LOG("%s: logged in as %s", *this, email);
-
         this->_trophonius.server(
           login_response.trophonius.host, login_response.trophonius.port_ssl);
-        ELLE_TRACE("%s: poking trophonius", *this);
         infinit::metrics::Reporter::metric_sender_id(login_response.id);
         this->_metrics_reporter->user_login(true, "");
         this->_metrics_heartbeat_thread.reset(
@@ -365,17 +363,20 @@ namespace surface
 
         std::string identity_clear;
 
-        this->_identity.reset(new papier::Identity());
+        ELLE_TRACE("%s: decrypt identity", *this)
+        {
+          this->_identity.reset(new papier::Identity());
+          if (this->_identity->Restore(login_response.identity) == elle::Status::Error)
+            throw Exception(gap_internal_error, "unable to restore the identity");
+          if (this->_identity->Decrypt(password) == elle::Status::Error)
+            throw Exception(gap_internal_error, "unable to decrypt the identity");
+          if (this->_identity->Clear() == elle::Status::Error)
+            throw Exception(gap_internal_error, "unable to clear the identity");
+          if (this->_identity->Save(identity_clear) == elle::Status::Error)
+            throw Exception(gap_internal_error, "unable to save the identity");
+        }
 
-        // Decrypt the identity.
-        if (this->_identity->Restore(login_response.identity) == elle::Status::Error ||
-            this->_identity->Decrypt(password) == elle::Status::Error ||
-            this->_identity->Clear() == elle::Status::Error ||
-            this->_identity->Save(identity_clear) == elle::Status::Error)
-          throw Exception(gap_internal_error,
-                          "Couldn't decrypt the identity file !");
-
-        // Store the identity
+        ELLE_TRACE("%s: store identity", *this)
         {
           if (this->_identity->Restore(identity_clear) == elle::Status::Error)
             throw Exception(gap_internal_error,
