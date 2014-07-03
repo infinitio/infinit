@@ -54,7 +54,7 @@ namespace surface
       | Logger |
       `-------*/
       // XXX: LoggerInitializer must be the first member of state.
-      // His construction force the instanciation of the logger.
+      // It's construction forces the instantiation of the logger.
       LoggerInitializer _logger_intializer;
 
       /*--------.
