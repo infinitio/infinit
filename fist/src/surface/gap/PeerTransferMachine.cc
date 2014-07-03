@@ -48,8 +48,12 @@ namespace surface
     void
     PeerTransferMachine::_upnp_init()
     {
-      if (!elle::os::getenv("INFINIT_DISABLE_UPNP", "").empty())
+      if (this->_owner.state().configuration().disable_upnp
+          || !elle::os::getenv("INFINIT_DISABLE_UPNP", "").empty())
+      {
+        ELLE_TRACE("%s: UPNP support disabled by configuration", *this);
         return;
+      }
       // Try to acquire a port mapping for the station port in the background
       ELLE_TRACE("%s: Initializing UPNP", *this);
       try
