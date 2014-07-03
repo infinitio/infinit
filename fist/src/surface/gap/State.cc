@@ -60,13 +60,35 @@ namespace surface
             log_file,
               std::fstream::trunc | std::fstream::out});
 
-        // XXX: Logs should be compressed, but that feature is only used on
-        // Windows. While the archiving / compression (tar) is not available
-        // on Windows, we compresse them when creating a crash report.
-        // static elle::format::gzip::Stream compressed(out, false, 1024);
-        elle::log::logger(
-          std::unique_ptr<elle::log::Logger>{
-            new elle::log::TextLogger(*this->_output)});
+        std::string log_level =
+          "elle.CrashReporter:DEBUG,"
+          "*FIST*:TRACE,"
+          "*FIST.State*:DEBUG,"
+          "frete.Frete:TRACE,"
+          "infinit.surface.gap.Rounds:DEBUG,"
+          "*meta*:TRACE,"
+          "OSX*:DUMP,"
+          "reactor.fsm.*:TRACE,"
+          "reactor.network.upnp:DEBUG,"
+          "station.Station:DEBUG,"
+          "surface.gap.*:TRACE,"
+          "surface.gap.TransferMachine:DEBUG,"
+          "*trophonius*:TRACE";
+        bool display_type = true;
+        bool enable_pid = false;
+        bool enable_tid = true;
+        bool enable_time = true;
+        bool universal_time = false;
+
+        auto logger_ptr = std::unique_ptr<elle::log::Logger>(
+          new elle::log::TextLogger(*this->_output,
+                                    log_level,
+                                    display_type,
+                                    enable_pid,
+                                    enable_tid,
+                                    enable_time,
+                                    universal_time));
+        elle::log::logger(std::move(logger_ptr));
       }
       ELLE_LOG("Infinit Version: %s", INFINIT_VERSION);
     }
