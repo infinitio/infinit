@@ -394,6 +394,7 @@ namespace infinit
           elle::json::Json poke_reply_read;
           ELLE_DEBUG("%s: get poke reply", *this)
           {
+            // FIXME: create and use reactor::timeout.
             boost::asio::deadline_timer timer(
               reactor::scheduler().io_service(),
               timeout ? timeout.get() : this->_poke_timeout);
@@ -411,7 +412,10 @@ namespace infinit
               timer.cancel();
             }
             catch (reactor::Terminate const&)
-            {}
+            {
+              ELLE_WARN("%s: timeout on poke reply", *this);
+              return false;
+            }
           }
           try
           {
