@@ -440,9 +440,12 @@ namespace surface
                   this->_avatar_fetching_barrier.close();
               }
             }});
-        this->user(this->me().id);
-        this->_users_init();
-        this->_transactions_init();
+        ELLE_TRACE("%s: fetch self", *this)
+          this->user(this->me().id);
+        ELLE_TRACE("%s: fetch users", *this)
+          this->_users_init();
+        ELLE_TRACE("%s: fetch transactions", *this)
+          this->_transactions_init();
         this->on_connection_changed(true, true);
         this->_polling_thread.reset(
           new reactor::Thread{
