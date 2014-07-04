@@ -11,6 +11,12 @@
 
 ELLE_LOG_COMPONENT("surface.gap.gap_State")
 
+static const std::vector<unsigned char> trophonius_fingerprint =
+{
+  0xCB, 0xC5, 0x12, 0xBB, 0x86, 0x4D, 0x6B, 0x1C, 0xBC, 0x02,
+  0x3D, 0xD8, 0x44, 0x75, 0xC1, 0x8C, 0x6E, 0xfC, 0x3B, 0x65
+};
+
 gap_State::gap_State(bool production):
   _configuration(production),
   _scheduler{},
@@ -75,6 +81,7 @@ gap_State::gap_State(bool production):
                                 this->_configuration.meta_host(),
                                 this->_configuration.meta_port(),
                                 std::move(device_uuid),
+                                trophonius_fingerprint,
                                 common::metrics(this->configuration())));
     });
 }

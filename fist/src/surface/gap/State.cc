@@ -122,6 +122,7 @@ namespace surface
                  std::string const& meta_host,
                  uint16_t meta_port,
                  boost::uuids::uuid device,
+                 std::vector<unsigned char> trophonius_fingerprint,
                  std::unique_ptr<infinit::metrics::Reporter> metrics):
       _logger_intializer(),
       _meta(meta_protocol, meta_host, meta_port),
@@ -136,7 +137,8 @@ namespace surface
           auto tropho = this->_meta.trophonius();
           this->_trophonius.server(tropho.host, tropho.port_ssl);
           this->on_reconnection_failed();
-        }
+        },
+        trophonius_fingerprint
         ),
       _metrics_reporter(std::move(metrics)),
       _me(),

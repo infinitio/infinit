@@ -148,14 +148,6 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::MessageNotification,
   ar & named("message", value.message);
 }
 
-// Local fingerprint as sha1.
-
-static const std::vector<unsigned char> fingerprint =
-{
-  0xCB, 0xC5, 0x12, 0xBB, 0x86, 0x4D, 0x6B, 0x1C, 0xBC, 0x02,
-  0x3D, 0xD8, 0x44, 0x75, 0xC1, 0x8C, 0x6E, 0xfC, 0x3B, 0x65
-};
-
 namespace infinit
 {
   namespace oracles
@@ -388,21 +380,10 @@ namespace infinit
             auto endpoint = reactor::network::resolve_tcp(
               this->server,
               boost::lexical_cast<std::string>(this->port));
-            if (this->_test_fingerprint.size() == 0)
-            {
-              this->_socket.reset(new reactor::network::FingerprintedSocket(
-                                    endpoint,
-                                    fingerprint,
-                                    15_sec));
-            }
-            else
-            {
-              ELLE_LOG("%s: using passed fingerprint", *this);
-              this->_socket.reset(new reactor::network::FingerprintedSocket(
-                                    endpoint,
-                                    this->_test_fingerprint,
-                                    15_sec));
-            }
+            this->_socket.reset(new reactor::network::FingerprintedSocket(
+                                  endpoint,
+                                  this->_test_fingerprint,
+                                  15_sec));
           }
           ELLE_TRACE_SCOPE("%s: poke", *this);
           std::string const poke_msg("ouch");
@@ -819,22 +800,13 @@ namespace infinit
 
       Client::Client(ConnectCallback connect_callback,
                      ReconnectPokeFailedCallback reconnect_failed_callback,
-                     boost::posix_time::time_duration reconnection_cooldown):
-        _impl(new Impl(*this, connect_callback, reconnect_failed_callback)),
-        _ping_period(default_ping_period),
-        _reconnection_cooldown(reconnection_cooldown)
+                     std::vector<unsigned char> server_fingerprint,
+                     boost::posix_time::time_duration reconnection_cooldown)
+        : _impl(new Impl(*this, connect_callback, reconnect_failed_callback))
+        , _ping_period(default_ping_period)
+        , _reconnection_cooldown(reconnection_cooldown)
       {
         ELLE_ASSERT(connect_callback != nullptr);
-      }
-
-      Client::Client(ConnectCallback connect_callback,
-                     ReconnectPokeFailedCallback reconnect_failed_callback,
-                     std::vector<unsigned char> server_fingerprint,
-                     boost::posix_time::time_duration reconnection_cooldown):
-        Client(std::move(connect_callback),
-               std::move(reconnect_failed_callback),
-               reconnection_cooldown)
-      {
         this->_impl->_set_test_fingerprint(server_fingerprint);
       }
 
