@@ -314,7 +314,12 @@ namespace surface
       login_failed.abort();
 
       ELLE_LOG("%s: logged in as %s", *this, email);
-      elle::With<elle::Finally>([&] { this->_meta.logout(); })
+      elle::With<elle::Finally>([&]
+        {
+          ELLE_WARN("%s: error during login, logout: %s",
+                    *this, elle::exception_string());
+          this->_meta.logout();
+        })
         << [&] (elle::Finally& finally_logout)
       {
         this->_trophonius.server(
@@ -381,7 +386,10 @@ namespace surface
           throw Exception(gap_wrong_passport, "Cannot load the passport");
         this->_passport->store(elle::io::Path(passport_path));
 
-        ELLE_TRACE("connecting to trophonius")
+        ELLE_TRACE("%s: connecting to trophonius on %s:%s",
+                   *this,
+                   login_response.trophonius.host,
+                   login_response.trophonius.port_ssl)
         {
           // XXX: Throw an exception instead.
           try
@@ -432,12 +440,10 @@ namespace surface
                   this->_avatar_fetching_barrier.close();
               }
             }});
-
         this->user(this->me().id);
         this->_users_init();
         this->_transactions_init();
         this->on_connection_changed(true, true);
-
         this->_polling_thread.reset(
           new reactor::Thread{
             scheduler,
