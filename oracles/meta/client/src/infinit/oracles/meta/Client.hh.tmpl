@@ -184,6 +184,7 @@ namespace infinit
       struct Self : User
       {
       public:
+        Self() = default;
         Self(elle::serialization::SerializerIn& s);
         void
         serialize(elle::serialization::Serializer& s);
