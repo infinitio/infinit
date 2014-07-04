@@ -1,4 +1,4 @@
-#ifndef  SURFACE_GAP_STATE_HH
+#ifndef SURFACE_GAP_STATE_HH
 # define SURFACE_GAP_STATE_HH
 
 # include <exception>
@@ -123,6 +123,7 @@ namespace surface
       State(std::string const& meta_protocol,
             std::string const& meta_host,
             uint16_t meta_port,
+            boost::uuids::uuid device,
             std::unique_ptr<infinit::metrics::Reporter> metrics = nullptr);
       ~State();
 

@@ -2,11 +2,6 @@
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/uuid/nil_generator.hpp>
-#include <boost/uuid/random_generator.hpp>
-#include <boost/uuid/string_generator.hpp>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_io.hpp>
 
 #include <openssl/sha.h>
 
@@ -126,6 +121,7 @@ namespace surface
     State::State(std::string const& meta_protocol,
                  std::string const& meta_host,
                  uint16_t meta_port,
+                 boost::uuids::uuid device,
                  std::unique_ptr<infinit::metrics::Reporter> metrics):
       _logger_intializer(),
       _meta(meta_protocol, meta_host, meta_port),
@@ -143,41 +139,16 @@ namespace surface
         }
         ),
       _metrics_reporter(std::move(metrics)),
-      _me{nullptr},
-      _output_dir{common::system::download_directory()},
-      _device{nullptr}
+      _me(),
+      _output_dir(common::system::download_directory()),
+      _device_uuid(std::move(device)),
+      _device()
     {
       ELLE_TRACE_SCOPE("%s: create state", *this);
       if (!this->_metrics_reporter)
         // This is a no-op reporter.
         this->_metrics_reporter.reset(new infinit::metrics::CompositeReporter);
       this->_metrics_reporter->start();
-
-      _device_uuid = boost::uuids::nil_generator()();
-      bool force_regenerate
-        = !elle::os::getenv("INFINIT_FORCE_NEW_DEVICE_ID", "").empty();
-      if (!force_regenerate
-          && boost::filesystem::exists(common::infinit::device_id_path()))
-      {
-        ELLE_TRACE("%s: get device uuid from file", *this);
-        std::ifstream file(common::infinit::device_id_path());
-        std::string struuid;
-        file >> struuid;
-        _device_uuid = boost::uuids::string_generator()(struuid);
-      }
-      else
-      {
-        ELLE_TRACE("%s: create device uuid", *this);
-        boost::filesystem::create_directories(
-          boost::filesystem::path(common::infinit::device_id_path())
-            .parent_path());
-        _device_uuid = boost::uuids::random_generator()();
-        std::ofstream file(common::infinit::device_id_path());
-        if (!file.good())
-          ELLE_ERR("%s: Failed to create device uuid file at %s", *this,
-                   common::infinit::device_id_path());
-        file << _device_uuid << std::endl;
-      }
       ELLE_DEBUG("%s: device uuid: %s", *this, _device_uuid);
       // Fill configuration.
       auto& config = this->_configuration;
