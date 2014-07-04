@@ -117,8 +117,7 @@ using infinit::oracles::meta::LogoutResponse;
 using infinit::oracles::meta::RegisterResponse;
 using infinit::oracles::meta::MessageResponse;
 using infinit::oracles::meta::User;
-using infinit::oracles::meta::UserResponse;
-using infinit::oracles::meta::SelfResponse;
+using infinit::oracles::meta::Self;
 using infinit::oracles::meta::InviteUserResponse;
 using infinit::oracles::meta::CreatePeerTransactionResponse;
 using infinit::oracles::meta::UpdatePeerTransactionResponse;
@@ -200,6 +199,11 @@ void export_meta_client()
                     bool (User::*)(std::string const&) const>(&User::online))
     .def_readonly("connected_devices", &User::connected_devices)
   ;
+  py::class_<Self>("Self")
+    .def_readonly("identity", &Self::identity)
+    .def_readonly("email", &Self::email)
+    .def_readonly("remaining_invitations", &Self::remaining_invitations)
+  ;
   py::class_<Device>("Device")
     .def_readonly("id", &Device::id)
     .def_readonly("name", &Device::name)
@@ -216,12 +220,6 @@ void export_meta_client()
   py::class_<LogoutResponse, py::bases<Response>>("LogoutResponse");
   py::class_<RegisterResponse, py::bases<Response>>("RegisterResponse");
   py::class_<MessageResponse, py::bases<Response>>("MessageResponse");
-  py::class_<UserResponse, py::bases<User, Response>>("UserResponse");
-  py::class_<SelfResponse, py::bases<UserResponse>>("SelfResponse")
-    .def_readonly("identity", &SelfResponse::identity)
-    .def_readonly("email", &SelfResponse::email)
-    .def_readonly("remaining_invitations", &SelfResponse::remaining_invitations)
-  ;
 
   py::class_<InviteUserResponse, py::bases<Response>>("InviteUserResponse")
     .def_readonly("_id", &InviteUserResponse::_id)
