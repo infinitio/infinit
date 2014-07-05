@@ -258,7 +258,7 @@ ELLE_TEST_SCHEDULED(login)
   auto device_id = boost::uuids::random_generator()();
   Server server(identity, device_id);
   surface::gap::State state("http",
-                            "localhost",
+                            "127.0.0.1",
                             server.port(),
                             device_id,
                             fingerprint);
