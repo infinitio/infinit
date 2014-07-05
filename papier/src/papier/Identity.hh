@@ -33,6 +33,7 @@ namespace papier
       };
 
   private:
+    // FIXME: make this a boost::uuids::uuid.
     // The unique identifier of the identity.
     ELLE_ATTRIBUTE_R(elle::String, id);
   public:
