@@ -1,21 +1,8 @@
-#include <boost/filesystem/fstream.hpp>
-#include <boost/uuid/nil_generator.hpp>
-#include <boost/uuid/random_generator.hpp>
-#include <boost/uuid/string_generator.hpp>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_io.hpp>
-
 #include <elle/os/environ.hh>
 
 #include <surface/gap/gap_bridge.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.gap_State")
-
-static const std::vector<unsigned char> trophonius_fingerprint =
-{
-  0xCB, 0xC5, 0x12, 0xBB, 0x86, 0x4D, 0x6B, 0x1C, 0xBC, 0x02,
-  0x3D, 0xD8, 0x44, 0x75, 0xC1, 0x8C, 0x6E, 0xfC, 0x3B, 0x65
-};
 
 gap_State::gap_State(bool production):
   _configuration(production),
@@ -47,31 +34,6 @@ gap_State::gap_State(bool production):
       }
     }}
 {
-  auto device_uuid = boost::uuids::nil_generator()();
-  bool force_regenerate
-    = !elle::os::getenv("INFINIT_FORCE_NEW_DEVICE_ID", "").empty();
-  if (!force_regenerate
-      && boost::filesystem::exists(common::infinit::device_id_path()))
-  {
-    ELLE_TRACE("%s: get device uuid from file", *this);
-    boost::filesystem::ifstream file(common::infinit::device_id_path());
-    std::string struuid;
-    file >> struuid;
-    device_uuid = boost::uuids::string_generator()(struuid);
-  }
-  else
-  {
-    ELLE_TRACE("%s: create device uuid", *this);
-    boost::filesystem::create_directories(
-      boost::filesystem::path(common::infinit::device_id_path())
-      .parent_path());
-    device_uuid = boost::uuids::random_generator()();
-    std::ofstream file(common::infinit::device_id_path());
-    if (!file.good())
-      ELLE_ERR("%s: Failed to create device uuid file at %s", *this,
-               common::infinit::device_id_path());
-    file << device_uuid << std::endl;
-  }
   this->_scheduler.mt_run<void>(
     "creating state",
     [&]
@@ -80,8 +42,8 @@ gap_State::gap_State(bool production):
         new surface::gap::State(this->_configuration.meta_protocol(),
                                 this->_configuration.meta_host(),
                                 this->_configuration.meta_port(),
-                                std::move(device_uuid),
-                                trophonius_fingerprint,
+                                this->_configuration.device_id(),
+                                this->_configuration.trophonius_fingerprint(),
                                 common::metrics(this->configuration())));
     });
 }

@@ -5,6 +5,8 @@
 # include <stdint.h>
 # include <string>
 
+# include <boost/uuid/uuid.hpp>
+
 # include <elle/attribute.hh>
 
 namespace infinit
@@ -34,10 +36,16 @@ namespace common
       ELLE_ATTRIBUTE_R(std::string, meta_host);
       ELLE_ATTRIBUTE_R(int, meta_port);
 
+      /// Trophonius configuration
+      ELLE_ATTRIBUTE_R(std::vector<unsigned char>, trophonius_fingerprint);
+
       /// Metrics configuration
       ELLE_ATTRIBUTE_R(bool, metrics_infinit_enabled);
       ELLE_ATTRIBUTE_R(std::string, metrics_infinit_host);
       ELLE_ATTRIBUTE_R(int, metrics_infinit_port);
+
+      /// Device configuration
+      ELLE_ATTRIBUTE_R(boost::uuids::uuid, device_id);
     };
 
     /// Returns infinit home directory.

@@ -4,7 +4,14 @@
 #include <stdexcept>
 #include <unordered_map>
 
+#include <boost/filesystem/fstream.hpp>
+#include <boost/filesystem/operations.hpp>
 #include <boost/preprocessor/cat.hpp>
+#include <boost/uuid/nil_generator.hpp>
+#include <boost/uuid/random_generator.hpp>
+#include <boost/uuid/string_generator.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 #include <elle/assert.hh>
 #include <elle/os/environ.hh>
@@ -19,6 +26,8 @@
 
 #include <common/common.hh>
 #include <version.hh>
+
+ELLE_LOG_COMPONENT("common")
 
 #define COMMON_DEFAULT_INFINIT_HOME ".infinit"
 
@@ -208,6 +217,12 @@ namespace
   }
 }
 
+static const std::vector<unsigned char> default_trophonius_fingerprint =
+{
+  0xCB, 0xC5, 0x12, 0xBB, 0x86, 0x4D, 0x6B, 0x1C, 0xBC, 0x02,
+  0x3D, 0xD8, 0x44, 0x75, 0xC1, 0x8C, 0x6E, 0xfC, 0x3B, 0x65
+};
+
 common::infinit::Configuration::Configuration(bool production)
 {
   bool env_production = !::elle::os::getenv("INFINIT_PRODUCTION", "").empty();
@@ -245,6 +260,37 @@ common::infinit::Configuration::Configuration(bool production)
   this->_metrics_infinit_port = boost::lexical_cast<int>(
     elle::os::getenv(
       "INFINIT_METRICS_INFINIT_PORT", "80"));
+
+  // Device
+  auto device_uuid = boost::uuids::nil_generator()();
+  bool force_regenerate
+    = !elle::os::getenv("INFINIT_FORCE_NEW_DEVICE_ID", "").empty();
+  if (!force_regenerate
+      && boost::filesystem::exists(common::infinit::device_id_path()))
+  {
+    ELLE_TRACE("%s: get device uuid from file", *this);
+    boost::filesystem::ifstream file(common::infinit::device_id_path());
+    std::string struuid;
+    file >> struuid;
+    device_uuid = boost::uuids::string_generator()(struuid);
+  }
+  else
+  {
+    ELLE_TRACE("%s: create device uuid", *this);
+    boost::filesystem::create_directories(
+      boost::filesystem::path(common::infinit::device_id_path())
+      .parent_path());
+    device_uuid = boost::uuids::random_generator()();
+    std::ofstream file(common::infinit::device_id_path());
+    if (!file.good())
+      ELLE_ERR("%s: Failed to create device uuid file at %s", *this,
+               common::infinit::device_id_path());
+    file << device_uuid << std::endl;
+  }
+  this->_device_id = device_uuid;
+
+  // Trophonius
+  this->_trophonius_fingerprint = default_trophonius_fingerprint;
 }
 
 std::unique_ptr< ::infinit::metrics::Reporter>
