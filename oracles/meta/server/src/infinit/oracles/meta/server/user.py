@@ -532,7 +532,7 @@ class Mixin:
       for arg, validator in _validators:
         res = validator(arg)
         if res != 0:
-          return self.fail(res)
+          return self._forbidden_with_error(error.EMAIL_NOT_VALID)
 
       new_email = new_email.lower().strip()
       # Check if the new address is already in use.
