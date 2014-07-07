@@ -11,7 +11,7 @@ import elle.log
 import papier
 
 from .plugins.response import response, Response
-from .utils import api, require_logged_in, require_admin, hash_pasword, json_value
+from .utils import api, require_logged_in, require_admin, require_logged_in_or_admin, hash_pasword, json_value
 from . import error, notifier, regexp, conf, invitation, mail
 
 from pymongo import DESCENDING
@@ -901,9 +901,8 @@ class Mixin:
       res['email'] = '$email'
     return res
 
-  # XXX Used by waterfall, can't require login until we have admin mode.
   @api('/users')
-  # @require_logged_in
+  @require_logged_in_or_admin
   def users(self, search = None, limit : int = 5, skip : int = 0):
     """Search the ids of the users with handle or fullname matching text.
 
@@ -925,7 +924,7 @@ class Mixin:
           {'handle' : {'$regex' : search, '$options': 'i'}},
         ]
       pipeline.append({'$match': match})
-      if self.user is not None:
+      if self.logged_in:
         pipeline.append({
           '$sort': {'swaggers.%s' % str(self.user['_id']) : -1}
         })
