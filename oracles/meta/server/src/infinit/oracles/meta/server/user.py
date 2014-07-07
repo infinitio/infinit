@@ -1270,7 +1270,8 @@ class Mixin:
     """Return self data."""
     user = self.user
     return self.success({
-      '_id': user['_id'],
+      '_id': user['_id'], # Used until 0.9.9
+      'id': user['_id'],
       'fullname': user['fullname'],
       'handle': user['handle'],
       'register_status': user['register_status'],
