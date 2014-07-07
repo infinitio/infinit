@@ -4,6 +4,8 @@
 #include <elle/assert.hh>
 #include <elle/python/containers.hh>
 
+#include <common/common.hh>
+
 #include <surface/gap/State.hh>
 
 #include <infinit/oracles/meta/Client.hh>
@@ -319,13 +321,22 @@ bind_conversions()
                                      transaction_notification_to_python_dict>();
 }
 
-
 class PythonState:
+  public common::infinit::Configuration,
   public surface::gap::State
 {
 public:
   typedef surface::gap::State Super;
-  using Super::Super;
+  PythonState(std::string const& meta_protocol,
+              std::string const& meta_host,
+              uint16_t meta_port)
+  : common::infinit::Configuration(false)
+  , Super(meta_protocol,
+          meta_host,
+          meta_port,
+          device_id(),
+          trophonius_fingerprint())
+  {}
 
   template <typename T>
   void
@@ -382,7 +393,7 @@ public:
   void
   configuration_set_max_mirror_size(uint64_t sz)
   {
-    _configuration.max_mirror_size = sz;
+    Super::_configuration.max_mirror_size = sz;
   }
 
 #define TOP(name, ret)                             \
