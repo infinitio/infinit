@@ -15,4 +15,4 @@ def targets(action):
   if arch == 'i686' and osyst == 'win':
     yield '//fist-gui-qt/%s' % action
   if action == 'build':
-    yield '//surface/gap/python'
+    yield '//python'
