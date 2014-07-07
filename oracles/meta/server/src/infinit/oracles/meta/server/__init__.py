@@ -401,6 +401,10 @@ class Meta(bottle.Bottle,
     ]
 
   @property
+  def logged_in(self):
+    return self.user is not None
+
+  @property
   def user_agent(self):
     from bottle import request
     return request.environ.get('HTTP_USER_AGENT')
