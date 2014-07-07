@@ -588,7 +588,7 @@ class Mixin:
       for arg, validator in _validators:
         res = validator(arg)
         if res != 0:
-          return self.fail(res)
+          return self._forbidden_with_error(error.EMAIL_NOT_VALID)
       # Check that the hash exists and pull user based on it.
       user = self.database.users.find_one({'new_main_email_hash': hash})
       if user is None:
