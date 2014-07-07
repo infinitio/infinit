@@ -258,7 +258,7 @@ class Mixin:
                   client_os = 'Unknown',
                   message = [],
                   env = [],
-                  version = 'Unknown version',
+                  version = None,
                   email = 'crash@infinit.io',
                   send = False,
                   more = '',
@@ -279,10 +279,12 @@ class Mixin:
           attachment = ('log.tar.bz', file)
         else:
           attachment = None
+        subject = template['subject'] % {'client_os': client_os,
+                                         'version': version}
         self.mailer.send(
           to = email,
           reply_to = user_email,
-          subject = template['subject'] % {"client_os": client_os},
+          subject = subject,
           body = template['content'] % {
             "client_os": client_os,
             "version": version,
