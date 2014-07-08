@@ -25,7 +25,6 @@ gap_State::gap_State(bool production):
       }
       catch (...)
       {
-        ELLE_LOG_COMPONENT("surface.gap.bridge");
         ELLE_ERR("exception escaped from State scheduler: %s",
                  elle::exception_string());
         this->_exception = std::current_exception();
