@@ -19,7 +19,8 @@ ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.LinkGeneration'
 short_host = 'http://inft.ly'
 default_alphabet = '23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ'
 encoded_hash_length = 7
-link_lifetime_days = 30 # Time that link will be valid.
+link_lifetime_days = 1 # Days that each S3 request link is valid.
+link_update_window_hours = 2 # Minimum number of hours an S3 link will be valid.
 
 class Mixin:
 
@@ -89,7 +90,7 @@ class Mixin:
 
   def _make_share_link(self, hash):
     return str('%(short_host)s/%(hash)s' % {'short_host': short_host,
-                                                 'hash': hash})
+                                            'hash': hash})
 
   @api('/link/<link_id>/credentials', method = 'GET')
   @require_logged_in
@@ -132,7 +133,7 @@ class Mixin:
   @require_logged_in
   def link_generate(self, files, name, message):
     """
-    Generate a link from a list of times and a message.
+    Generate a link from a list of files and a message.
 
     name -- Name of file uploaded as it could be an archive of a group of files.
     files -- A dictionary containing the _root_ of the file structure and each
@@ -150,18 +151,19 @@ class Mixin:
         self.bad_request('no name')
 
       creation_time = datetime.datetime.utcnow()
-      expiry_time = \
-        creation_time + datetime.timedelta(days = link_lifetime_days)
 
       # Maintain a list of all elements in document here.
       link = {
         'aws_credentials': None,
         'click_count': 0,
         'ctime': creation_time,
-        'expiry_time': expiry_time,
+        'expiry_time': 0, # Field set when a link has expired.
         'file_list':
           [{'name': file[0], 'size': file[1]} for file in files],
+        'get_url_updated': None,
         'hash': None,
+        'last_accessed': None,
+        'link': None,
         'message': message,
         'mtime': creation_time,
         'name': name,
@@ -201,45 +203,43 @@ class Mixin:
           )
           break
         except errors.DuplicateKeyError:
-          if attempt >= 20:
+          if attempt >= 2:
+            self.report_short_link_problem(attempt)
+          elif attempt >= 20:
             elle.log.err('unable to generate unique link hash')
             self.abort('unable to generate link')
           attempt += 1
 
       res = {
-        'transaction': self.__client_link(link),
+        'transaction': self.__owner_link(link),
         'aws_credentials': credentials,
       }
       return res
 
-  def __client_link(self, link):
+  def __owner_link(self, link):
+    """
+    This function is used to extract the fields needed by the link owner.
+    """
     mapping = {
       'id': '_id',
       'files': 'file_list',
     }
+    link['share_link'] = self._make_share_link(link['hash'])
     link = dict(
       (key, link[key in mapping and mapping[key] or key]) for key in (
         'id',
         'click_count',
         'ctime',
-        'expiry_time',
-        'files',
-        'hash',
+        'expiry_time',    # Needed until 0.9.9.
+        'hash',           # Needed until 0.9.9.
         'message',
         'mtime',
         'name',
-        'progress',
         'sender_device_id',
         'sender_id',
+        'share_link',
         'status',
     ))
-    link['share_link'] = self._make_share_link(link['hash'])
-    if link['status'] is transaction_status.FINISHED:
-      link['link'] = cloud_buffer_token.generate_get_url(
-        self.aws_region, self.aws_link_bucket,
-        link['id'],
-        link['name'],
-        valid_days = link_lifetime_days)
     return link
 
   @api('/link/<id>', method = 'POST')
@@ -251,6 +251,7 @@ class Mixin:
     """
     Update the status of a given link.
     id -- _id of link.
+    progress -- upload progress of link.
     status -- Current status of link.
     """
     with elle.log.trace('updating link %s' % id):
@@ -282,30 +283,86 @@ class Mixin:
       )
       return self.success()
 
+  def __need_update_get_link(self, link):
+    """
+    Function to check if we need to update the S3 GET link.
+    """
+    if link['status'] is not transaction_status.FINISHED:
+      return False
+    elif link.get('get_url_updated', None) is None:
+      return True
+    else:
+      time_to_update = (link['get_url_updated'] +
+                        datetime.timedelta(days = link_lifetime_days,
+                                           hours = -link_update_window_hours))
+      if datetime.datetime.utcnow() >= time_to_update:
+        return True
+      else:
+        return False
+
+  def __client_link(self, link):
+    """
+    This function returns fields required for web clients.
+    """
+    mapping = {
+      'files': 'file_list',
+    }
+    ret_link = dict(
+      (key, link[key in mapping and mapping[key] or key]) for key in (
+        'click_count',
+        'ctime',
+        'files',
+        'message',
+        'mtime',
+        'name',
+        'progress',
+        'sender_id',
+        'status',
+    ))
+    if link.get('link', None) is not None:
+      ret_link['link'] = link['link']
+    return ret_link
 
   @api('/link/<hash>')
   def link_by_hash(self, hash):
     """
-    Find and return the link related to the given hash.
+    Find and return the link related to the given hash for a web client.
     """
     with elle.log.trace('find link for hash: %s' % hash):
+      link = self.database.links.find_one({'hash': hash})
+      if link is None:
+        self.not_found('link not found')
+      elif (link['expiry_time'] is not 0 and
+            datetime.datetime.utcnow() > link['expiry_time']):
+              self.not_found('link expired')
+      time_now = datetime.datetime.utcnow()
+      set_dict = dict()
+      set_dict['last_accessed'] = time_now
+      if self.__need_update_get_link(link):
+        link['link'] = cloud_buffer_token.generate_get_url(
+          self.aws_region, self.aws_link_bucket,
+          link['_id'],
+          link['name'],
+          valid_days = link_lifetime_days)
+        set_dict['link'] = link['link']
+        set_dict['get_url_updated'] = time_now
       link = self.database.links.find_and_modify(
-        {'hash': hash},
-        {'$inc': {'click_count': 1}},
+        {'_id': link['_id']},
+        {
+          '$inc': {'click_count': 1},
+          '$set': set_dict,
+        },
         new = True,
         multi = False,
       )
-      if link is None:
-        self.not_found('link not found')
-      if datetime.datetime.utcnow() > link['expiry_time']:
-        self.not_found('link expired')
-      link = self.__client_link(link)
+      web_link = self.__client_link(link)
+      owner_link = self.__owner_link(link)
       self.notifier.notify_some(
         notifier.LINK_TRANSACTION,
         recipient_ids = {link['sender_id']},
-        message = link,
+        message = owner_link,
       )
-      return link
+      return web_link
 
   @api('/links')
   @require_logged_in
@@ -315,6 +372,9 @@ class Mixin:
                  include_expired: bool = False):
     """
     Returns a list of the user's links.
+    offset -- offset of results.
+    count -- number of results.
+    include_expired -- should include expired links.
     """
     user = self.user
     with elle.log.trace('links for %s offset=%s count=%s include_expired=%s' %
@@ -324,7 +384,10 @@ class Mixin:
       else:
         query = {
           'sender_id': user['_id'],
-          'expiry_time': {'$gt': datetime.datetime.utcnow()}
+          '$or': [
+            {'expiry_time': 0},
+            {'expiry_time': {'$gt': datetime.datetime.utcnow()}},
+          ]
         }
       res = list()
       for link in self.database.links.aggregate([
@@ -333,5 +396,5 @@ class Mixin:
         {'$skip': offset},
         {'$limit': count},
       ])['result']:
-        res.append(self.__client_link(link))
+        res.append(self.__owner_link(link))
       return {'links': res}
