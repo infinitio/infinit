@@ -62,7 +62,7 @@ namespace surface
       `--------*/
       ELLE_ATTRIBUTE(infinit::oracles::meta::Client, meta);
       ELLE_ATTRIBUTE_R(std::string, meta_message);
-      ELLE_ATTRIBUTE_R(infinit::oracles::trophonius::Client, trophonius);
+      ELLE_ATTRIBUTE_RX(infinit::oracles::trophonius::Client, trophonius);
 
       infinit::oracles::meta::Client const&
       meta(bool authentication_required = true) const;
