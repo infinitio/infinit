@@ -564,9 +564,21 @@ class Mixin:
         })
       return {}
 
+  @api('/user/change_email/<hash>', method = 'GET')
+  def new_email_from_hash(self, hash):
+    """
+    When changing a user's email address, this returns the new email address from
+    a given hash.
+    hash -- Hash stored in DB for changing email address (new_main_email_hash).
+    """
+    with elle.log.trace('fetch new email address from hash: %s' % hash):
+      user = self.database.users.find_one({'new_main_email_hash': hash})
+      if user is None:
+        return self.not_found()
+      return {'new_email': user['new_main_email']}
+
   @api('/user/change_email', method = 'POST')
   def change_email(self,
-                   new_email,
                    hash,
                    password):
     """
@@ -575,30 +587,24 @@ class Mixin:
     the user's password. This means that the user is logged out of current
     sessions and that their transactions are cancelled.
 
-    new_email -- Email address we're changing to (used to hash password).
-    hash -- The hash stored on the database for the operation.
+    hash -- The hash stored on the DB for the operation (new_main_email_hash).
     password -- User's password hashed with new email address.
     """
     with elle.log.trace('change mail email associated to %s' % hash):
       _validators = [
-        (new_email, regexp.EmailValidator),
         (password, regexp.PasswordValidator),
       ]
 
       for arg, validator in _validators:
         res = validator(arg)
         if res != 0:
-          return self._forbidden_with_error(error.EMAIL_NOT_VALID)
+          return self._forbidden_with_error(error.PASSWORD_NOT_VALID)
       # Check that the hash exists and pull user based on it.
       user = self.database.users.find_one({'new_main_email_hash': hash})
       if user is None:
         return self._forbidden_with_error(error.UNKNOWN_USER)
-      # Check that the email address matches the one we plan to change to. This is
-      # important for the new hashed password.
-      new_email = new_email.lower().strip()
-      if new_email != user['new_main_email']:
-        return self._forbidden_with_error(error.OPERATION_NOT_PERMITTED)
       # Check that the email has not been registered.
+      new_email = user['new_main_email']
       if self.user_by_email(new_email, ensure_existence = False) is not None:
         return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTRED)
       # Invalidate credentials.
