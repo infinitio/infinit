@@ -325,7 +325,12 @@ protected:
 class ForbiddenTrophoniusMeta:
   public Server<ForbiddenTrophonius>
 {
-  using Server<ForbiddenTrophonius>::Server;
+public:
+  ForbiddenTrophoniusMeta(papier::Identity identity,
+                          boost::uuids::uuid device_id)
+    : Server<ForbiddenTrophonius>(identity, device_id)
+  {}
+
   virtual
   std::string
   _get_trophonius(Headers const& headers,
