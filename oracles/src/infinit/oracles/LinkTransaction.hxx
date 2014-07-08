@@ -28,8 +28,7 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::LinkTransaction, ar, res, version)
   ar & named("id", res.id);
   ar & named("click_count", res.click_count);
   ar & named("ctime", res.ctime);
-  ar & named("expiry_time", res.expiry_time);
-  ar & named("hash", res.hash);
+  ar & named("message", res.message);
   ar & named("mtime", res.mtime);
   ar & named("name", res.name);
   ar & named("sender_device_id", res.sender_device_id);

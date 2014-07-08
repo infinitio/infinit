@@ -14,9 +14,9 @@ namespace infinit
       Transaction(),
       click_count(),
       cloud_location(),
-      expiry_time(),
-      hash(),
-      name()
+      message(),
+      name(),
+      share_link()
     {}
 
     /*--------------.
@@ -37,9 +37,7 @@ namespace infinit
       s.serialize("id", this->id);
       s.serialize("click_count", this->click_count);
       s.serialize("ctime", this->ctime);
-      s.serialize("expiry_time", this->expiry_time);
-      s.serialize("hash", this->hash);
-      s.serialize("link", this->link);
+      s.serialize("message", this->message);
       s.serialize("mtime", this->mtime);
       s.serialize("name", this->name);
       s.serialize("sender_device_id", this->sender_device_id);

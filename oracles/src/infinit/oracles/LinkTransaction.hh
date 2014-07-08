@@ -37,10 +37,8 @@ namespace infinit
     public:
       uint32_t click_count;
       std::string cloud_location;
-      double expiry_time;
       FileList file_list;
-      std::string hash;
-      boost::optional<std::string> link;
+      std::string message;
       std::string name;
       std::string share_link;
 
