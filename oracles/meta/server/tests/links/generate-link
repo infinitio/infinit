@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+import datetime
+from time import sleep
+
 from utils import Meta, User
 from bson.objectid import ObjectId
 import infinit.oracles.meta.server.transaction_status as transaction_status
@@ -8,6 +11,7 @@ with Meta() as meta:
   jean = User(meta, 'jeantest@infinit.io')
   jean.login()
 
+  # Create a link.
   file_list = [
     ['file1', 42],
     ['file2', 43],
@@ -21,14 +25,16 @@ with Meta() as meta:
   link = res['transaction']
   link = meta.database.links.find_one({'_id': ObjectId(link['id'])})
 
+  # Check that the hash works to fetch it while it's uploading.
   res = meta.get('link/%s' % link['hash'])
-  print('---', res)
   assert res['click_count'] == 1
   assert len(res['files']) == 3
   assert res['progress'] == 0.0
   assert res['status'] == transaction_status.CREATED
   assert res['message'] == message
+  assert res.get('link', None) is None
 
+  # Set link status to done.
   res = jean.post('link/%s' % str(link['_id']),
                   {'progress': 1.0,
                    'status': transaction_status.FINISHED})
@@ -40,7 +46,9 @@ with Meta() as meta:
   assert res['link']
   assert res['progress'] == 1.0
   assert res['status'] == transaction_status.FINISHED
+  assert res.get('link', None) is not None
 
+  # Create another link.
   res = jean.post('link', {'files': [['some_file.zip', 12321]],
                            'name': 'some_file.zip',
                            'message': message})
@@ -49,15 +57,44 @@ with Meta() as meta:
   link = res['transaction']
   link = meta.database.links.find_one({'_id': ObjectId(link['id'])})
 
+  # Check that we have two links.
   assert meta.database.links.find({'sender_id': ObjectId(jean.id)}).count() == 2
 
-  import datetime
+  # Set one link to expired.
   meta.database.links.find_and_modify(
     {'_id': ObjectId(link['_id'])},
-    {'$set': {'expiry_time': datetime.datetime.utcnow() + datetime.timedelta(days = -1)}})
+    {'$set': {
+      'expiry_time': datetime.datetime.utcnow() + datetime.timedelta(days = -1)}
+    })
 
+  # Check that when we don't ask for expired links, we don't get them.
   res = jean.get('links')
   assert len(res['links']) == 1
 
+  # Check that we get all links when we include expired.
   res = jean.get('links?include_expired=1')
   assert len(res['links']) == 2
+
+  # Ensure that GET URLs are refreshed only required.
+  res = jean.get('links')
+  owner_link = res['links'][0]
+  web_link = jean.get('link/%s' % owner_link['hash'])
+  old_s3_url = web_link['link']
+
+  # Wait so that a freshly generated link would be different.
+  sleep(1)
+  client_link = jean.get('link/%s' % owner_link['hash'])
+  assert client_link['link'] == old_s3_url
+  assert client_link['click_count'] == owner_link['click_count'] + 2
+
+  meta.database.links.find_and_modify(
+    {'_id': ObjectId(owner_link['id'])},
+    {'$set': {
+      'get_url_updated': (datetime.datetime.utcnow() +
+                          datetime.timedelta(days = -2))
+    }}
+  )
+
+  client_link = jean.get('link/%s' % owner_link['hash'])
+  assert client_link['link'] != old_s3_url
+  assert client_link['click_count'] == owner_link['click_count'] + 3
