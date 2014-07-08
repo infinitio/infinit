@@ -153,9 +153,7 @@ int main(int argc, char** argv)
           std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
             state.transactions().at(id)->data());
         ELLE_ASSERT(link.get());
-        std::cerr << config.meta_protocol() << "://"
-                  << config.meta_host() << ":" << config.meta_port()
-                  << "/link/" << link->hash << std::endl;
+        std::cerr << link->share_link << std::endl;
         return 0;
       }
     };
