@@ -448,3 +448,12 @@ class Meta(bottle.Bottle,
 Error while querying %s:
 
 %s''' % args)
+
+  def report_short_link_problem(self, retries):
+    with elle.log.log('unable to create short link after %s tries' % retries):
+      self.mailer.send(
+        to = 'infrastructure@infinit.io',
+        fr = 'infrastructure@infinit.io',
+        subject = ('Meta: unable to create unique short link after %s tries' %
+                   retries),
+        body = 'No body')
