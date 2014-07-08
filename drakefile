@@ -581,6 +581,7 @@ def configure(cxx_toolkit = None,
         cryptography_lib,
         elle.openssl_lib_crypto,
         elle.openssl_lib_ssl,
+        trophonius_client_lib,
       ],
       cxx_toolkit, gap_tests_cxx_config)
     gap_tests << test

@@ -91,12 +91,13 @@ public:
   }
 
   int
-  port()
+  port() const
   {
     return this->_server.port();
   }
 
-private:
+protected:
+  virtual
   void
   _serve()
   {
@@ -107,20 +108,28 @@ private:
         auto socket = elle::utility::move_on_copy(this->_server.accept());
         scope.run_background(
           elle::sprintf("serve %s", *socket),
-          [socket]
+          [socket, this]
           {
-            socket->write("{\"poke\": \"ouch\"}\n");
-            socket->write("{\"notification_type\": -666, \"response_code\": 200, \"response_details\": \"details\"}\n");
-            reactor::sleep();
+            this->_serve(std::move(socket));
           });
       }
     };
+  }
+
+  virtual
+  void
+  _serve(std::unique_ptr<reactor::network::Socket> socket)
+  {
+    socket->write("{\"poke\": \"ouch\"}\n");
+    socket->write("{\"notification_type\": -666, \"response_code\": 200, \"response_details\": \"details\"}\n");
+    reactor::sleep();
   }
 
   ELLE_ATTRIBUTE(reactor::network::SSLServer, server);
   ELLE_ATTRIBUTE(reactor::Thread, accepter);
 };
 
+template <typename Trophonius = Trophonius>
 class Server
   : public reactor::http::tests::Server
 {
@@ -167,6 +176,10 @@ public:
           this->_device_id,
           this->_trophonius.port());
       });
+    this->register_route(
+      "/trophonius",
+      reactor::http::Method::GET,
+      std::bind(&Server::_get_trophonius, this));
     this->register_route(
       elle::sprintf("/device/%s/view", this->_device_id),
       reactor::http::Method::GET,
@@ -240,6 +253,19 @@ public:
       });
   }
 
+  virtual
+  std::string
+  _get_trophonius() const
+  {
+    return elle::sprintf(
+      "{"
+      "  \"host\": \"127.0.0.1\","
+      "  \"port\": 0,"
+      "  \"port_ssl\": %s"
+      "}",
+      this->_trophonius.port());
+  }
+
   ELLE_ATTRIBUTE_R(boost::uuids::uuid, device_id)
   ELLE_ATTRIBUTE_R(boost::uuids::uuid, session_id)
   ELLE_ATTRIBUTE_R(papier::Identity, identity)
@@ -256,7 +282,7 @@ ELLE_TEST_SCHEDULED(login)
   auto identity = generate_identity(
     keys, boost::lexical_cast<std::string>(user_id), "my identity", password);
   auto device_id = boost::uuids::random_generator()();
-  Server server(identity, device_id);
+  Server<> server(identity, device_id);
   surface::gap::State state("http",
                             "127.0.0.1",
                             server.port(),
@@ -265,10 +291,69 @@ ELLE_TEST_SCHEDULED(login)
   state.login("em@il.com", password);
 }
 
+class ForbiddenTrophonius
+  : public Trophonius
+{
+public:
+  ForbiddenTrophonius()
+    : Trophonius()
+    , _i(0)
+  {}
+
+protected:
+  virtual
+  void
+  _serve(std::unique_ptr<reactor::network::Socket> socket) override
+  {
+    if (++this->_i == 2)
+      return;
+    Trophonius::_serve(std::move(socket));
+  }
+
+  ELLE_ATTRIBUTE(int, i);
+};
+
+class ForbiddenTrophoniusMeta:
+  public Server<ForbiddenTrophonius>
+{
+  using Server<ForbiddenTrophonius>::Server;
+  virtual
+  std::string
+  _get_trophonius() const override
+  {
+    throw Exception(
+      "/trophonius",
+      reactor::http::StatusCode::Forbidden,
+      "{}");
+  }
+};
+
+ELLE_TEST_SCHEDULED(trophonius_forbidden)
+{
+  auto password = "secret";
+  auto user_id = boost::uuids::random_generator()();
+  cryptography::KeyPair keys =
+    cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
+                                    papier::Identity::keypair_length);
+  auto identity = generate_identity(
+    keys, boost::lexical_cast<std::string>(user_id), "my identity", password);
+  auto device_id = boost::uuids::random_generator()();
+  ForbiddenTrophoniusMeta server(identity, device_id);
+  surface::gap::State state("http",
+                            "127.0.0.1",
+                            server.port(),
+                            device_id,
+                            fingerprint);
+  state.trophonius().ping_period(500_ms);
+  state.login("em@il.com", password);
+  reactor::sleep(2_sec);
+}
+
 ELLE_TEST_SUITE()
 {
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(login), 0, 5);
+  suite.add(BOOST_TEST_CASE(trophonius_forbidden), 0, 5);
 }
 
 const std::vector<unsigned char> fingerprint =
