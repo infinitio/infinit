@@ -48,9 +48,11 @@ with Meta(enable_emails = True,
 
   u.logout()
 
+  res = u.get('user/change_email/%s' % meta.mailer.change_email_hash)
+  assert res['new_email'] == new_email_address
+
   res = u.post('user/change_email', {
     'hash': meta.mailer.change_email_hash,
-    'new_email': new_email_address,
     'password': u.password,
   })
   assert len(res) == 0
