@@ -29,7 +29,6 @@ public:
       infinit::cryptography::KeyPair::generate(
         infinit::cryptography::Cryptosystem::rsa, 1024))
   {}
-
 };
 
 KeyPair authority_keys;
@@ -179,7 +178,11 @@ public:
     this->register_route(
       "/trophonius",
       reactor::http::Method::GET,
-      std::bind(&Server::_get_trophonius, this));
+      std::bind(&Server::_get_trophonius,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2,
+                std::placeholders::_3));
     this->register_route(
       elle::sprintf("/device/%s/view", this->_device_id),
       reactor::http::Method::GET,
@@ -255,7 +258,7 @@ public:
 
   virtual
   std::string
-  _get_trophonius() const
+  _get_trophonius(Headers const&, Cookies const&, elle::Buffer const&) const
   {
     return elle::sprintf(
       "{"
@@ -264,6 +267,12 @@ public:
       "  \"port_ssl\": %s"
       "}",
       this->_trophonius.port());
+  }
+
+  void
+  session_id(boost::uuids::uuid id)
+  {
+    this->_session_id = std::move(id);
   }
 
   ELLE_ATTRIBUTE_R(boost::uuids::uuid, device_id)
@@ -319,12 +328,17 @@ class ForbiddenTrophoniusMeta:
   using Server<ForbiddenTrophonius>::Server;
   virtual
   std::string
-  _get_trophonius() const override
+  _get_trophonius(Headers const& headers,
+                  Cookies const& cookies,
+                  elle::Buffer const& body) const override
   {
-    throw Exception(
-      "/trophonius",
-      reactor::http::StatusCode::Forbidden,
-      "{}");
+    if (cookies.at("session-id") !=
+        boost::lexical_cast<std::string>(this->session_id()))
+      throw Exception(
+        "/trophonius",
+        reactor::http::StatusCode::Forbidden,
+        "{}");
+    return Server<ForbiddenTrophonius>::_get_trophonius(headers, cookies, body);
   }
 };
 
@@ -345,8 +359,18 @@ ELLE_TEST_SCHEDULED(trophonius_forbidden)
                             device_id,
                             fingerprint);
   state.trophonius().ping_period(500_ms);
+  state.trophonius().reconnection_cooldown(0_sec);
   state.login("em@il.com", password);
-  reactor::sleep(2_sec);
+  reactor::Signal reconnected;
+  state.trophonius().connected().changed().connect(
+    [&] (bool connected)
+    {
+      if (!connected)
+        server.session_id(boost::uuids::random_generator()());
+      else
+        reconnected.signal();
+    });
+  reactor::wait(reconnected);
 }
 
 ELLE_TEST_SUITE()

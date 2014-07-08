@@ -23,6 +23,7 @@
 
 #include <infinit/metrics/Reporter.hh>
 
+#include <surface/gap/Error.hh>
 #include <surface/gap/ReceiveMachine.hh>
 #include <surface/gap/SendMachine.hh>
 #include <surface/gap/State.hh>
@@ -132,12 +133,7 @@ namespace surface
         {
           this->on_connection_changed(status);
         },
-        [this]
-        {
-          auto tropho = this->_meta.trophonius();
-          this->_trophonius.server(tropho.host, tropho.port_ssl);
-          this->on_reconnection_failed();
-        },
+        boost::bind(&State::on_reconnection_failed, this),
         trophonius_fingerprint
         ),
       _metrics_reporter(std::move(metrics)),
@@ -765,6 +761,15 @@ namespace surface
     void
     State::on_reconnection_failed()
     {
+      try
+      {
+        auto tropho = this->_meta.trophonius();
+        this->_trophonius.server(tropho.host, tropho.port_ssl);
+      }
+      catch (infinit::state::CredentialError const&)
+      {
+        this->_on_invalid_trophonius_credentials();
+      }
       if (this->_meta_server_check())
       {
         ELLE_ERR("%s: able to connect to Meta but not Trophonius", *this);
