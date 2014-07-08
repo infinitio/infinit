@@ -440,10 +440,20 @@ namespace infinit
       LoginResponse::Trophonius
       Client::trophonius()
       {
-        auto url = "/trophonius";
-        auto request = this->_request(url, Method::GET);
-        SerializerIn input(url, request);
-        return LoginResponse::Trophonius(input);
+        try
+        {
+          auto url = "/trophonius";
+          auto request = this->_request(url, Method::GET);
+          SerializerIn input(url, request);
+          return LoginResponse::Trophonius(input);
+        }
+        catch (elle::http::Exception const& e)
+        {
+          if (e.code == elle::http::ResponseCode::forbidden)
+            throw infinit::state::CredentialError();
+          else
+            throw;
+        }
       }
 
       RegisterResponse
