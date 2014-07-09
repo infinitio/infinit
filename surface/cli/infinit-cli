@@ -167,7 +167,6 @@ class InfinitShell(cmd.Cmd):
 
     def _attach_callbacks(self):
         self._state.transaction_callback(self._incomming_transfer_handler)
-        self._state.transaction_status_callback(self._file_transfer_status_handler)
         self._state.message_callback(self._message_handler)
 
     def _check_process_status(self, id_):
@@ -872,7 +871,6 @@ def main():
     sys.path = [
         os.path.join(file_dir, '../lib'),
         os.path.join(file_dir, '../lib/python'),
-        os.path.join(file_dir, '../surface/gap/python'),
     ] + sys.path
 
     import gap
