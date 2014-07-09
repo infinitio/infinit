@@ -39,16 +39,23 @@ class Mixin:
         '$group':
         {
           '_id': '$_id',
+          'click_count': {'$first': '$click_count'},
           'size': {'$sum': '$file_list.size'},
+        }
+      },
+      {
+        '$project':
+        {
+          'size': {'$multiply': ['$size', '$click_count']},
         }
       },
       {
         '$group':
         {
-         '_id': 'result',
-         'count': {'$sum': 1},
-         'size': {'$sum': '$size'},
-       }
+          '_id': 'result',
+          'count': {'$sum': 1},
+          'size': {'$sum': '$size'},
+        }
      },
     ])
     links = links['result']
