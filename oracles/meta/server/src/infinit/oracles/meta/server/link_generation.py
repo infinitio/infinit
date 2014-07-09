@@ -305,10 +305,12 @@ class Mixin:
     This function returns fields required for web clients.
     """
     mapping = {
+      'id': '_id',
       'files': 'file_list',
     }
     ret_link = dict(
       (key, link[key in mapping and mapping[key] or key]) for key in (
+        'id',
         'click_count',
         'ctime',
         'files',
