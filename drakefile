@@ -766,7 +766,7 @@ def configure(cxx_toolkit = None,
 
     gap_python_pyfile_copy = drake.copy(gap_python_pyfiles,
                                         'lib/python',
-                                        'surface/gap/python')
+                                        strip_prefix = True)
 
     infinit_cli_sources = drake.nodes(
       'surface/cli/infinit-cli'
