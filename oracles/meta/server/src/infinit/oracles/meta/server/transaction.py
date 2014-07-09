@@ -462,7 +462,7 @@ class Mixin:
             'sendername': user['fullname'],
             'note': transaction['message'],
             'transaction_hash': transaction_hash,
-            'transaction_id': transaction['_id'],
+            'transaction_id': str(transaction['_id']),
           }}
       )
       return {
