@@ -437,17 +437,22 @@ class Meta(bottle.Bottle,
   def report_fatal_error(self, route, exception):
     import traceback
     e = exception
+    import socket
+    hostname = socket.gethostname()
     with elle.log.log(
         '%s: send email for fatal error: %s' % (self, e)):
-      args = (route,
-              ''.join(traceback.format_exception(type(e), e, None)))
+      args = {
+        'hostname': hostname,
+        'route': route,
+        'backtrace': ''.join(traceback.format_exception(type(e), e, None))
+      }
       self.mailer.send(to = 'infrastructure@infinit.io',
-                       fr = 'infrastructure@infinit.io',
+                       fr = 'root@%s' % hostname,
                        subject = 'Meta: fatal error: %s' % e,
                        body = '''\
-Error while querying %s:
+Error while querying %(route)s:
 
-%s''' % args)
+%(backtrace)s''' % args)
 
   def report_short_link_problem(self, retries):
     with elle.log.log('unable to create short link after %s tries' % retries):
