@@ -204,10 +204,6 @@ struct transaction_to_python_dict
     {
       PyDict_SetItemString(dict, "click_count",
         PyLong_FromLongLong(link_data->click_count));
-      PyDict_SetItemString(dict, "cloud_location",
-        PyUnicode_FromString(link_data->cloud_location.data()));
-      PyDict_SetItemString(dict, "expiry_time",
-        PyFloat_FromDouble(link_data->expiry_time));
       auto file_list = PyList_New(0);
       for (auto const& file: link_data->file_list)
       {
@@ -217,10 +213,7 @@ struct transaction_to_python_dict
         PyList_Append(file_list, entry);
       }
       PyDict_SetItemString(dict, "files", file_list);
-      PyDict_SetItemString(dict, "hash",
-        PyUnicode_FromString(link_data->hash.data()));
-      PyDict_SetItemString(dict, "link",
-        PyUnicode_FromString(link_data->link ? link_data->link->data() : ""));
+      PyDict_SetItemString(dict, "mtime", PyFloat_FromDouble(link_data->mtime));
       PyDict_SetItemString(dict, "name",
         PyUnicode_FromString(link_data->name.data()));
       PyDict_SetItemString(dict, "share_link",
