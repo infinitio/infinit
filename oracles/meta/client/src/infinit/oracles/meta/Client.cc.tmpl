@@ -709,9 +709,9 @@ namespace infinit
                             const_cast<std::string&>(recipient_id_or_email));
             query.serialize("files",
                             const_cast<std::list<std::string>&>(files));
-            int64_t count_integral = static_cast<int>(count);
+            int64_t count_integral = static_cast<int64_t>(count);
             query.serialize("files_count", count_integral);
-            int64_t size_integral = static_cast<int>(size);
+            int64_t size_integral = static_cast<int64_t>(size);
             query.serialize("total_size", size_integral);
             query.serialize("is_directory", is_dir);
             query.serialize("device_id", const_cast<std::string&>(struuid));
