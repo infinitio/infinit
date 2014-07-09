@@ -249,6 +249,7 @@ class Mixin:
               'ghost_id': str(recipient.get('_id')),
               'sender_id': str(user['_id']),
               'avatar': self.user_avatar_route(recipient['_id']),
+              'number_of_other_files': (files_count - 1),
             }}
         )
       if not new_user and not recipient.get('connected', False) and not is_ghost:
