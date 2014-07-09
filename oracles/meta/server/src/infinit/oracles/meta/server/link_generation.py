@@ -157,7 +157,7 @@ class Mixin:
         'aws_credentials': None,
         'click_count': 0,
         'ctime': creation_time,
-        'expiry_time': 0, # Field set when a link has expired.
+        'expiry_time': None, # Field set when a link has expired.
         'file_list':
           [{'name': file[0], 'size': file[1]} for file in files],
         'get_url_updated': None,
@@ -240,6 +240,8 @@ class Mixin:
         'share_link',
         'status',
     ))
+    if link['expiry_time'] is None: # Needed until 0.9.9.
+      link['expiry_time'] = 0
     return link
 
   @api('/link/<id>', method = 'POST')
@@ -334,7 +336,7 @@ class Mixin:
       link = self.database.links.find_one({'hash': hash})
       if link is None:
         self.not_found('link not found')
-      elif (link['expiry_time'] is not 0 and
+      elif (link['expiry_time'] is not None and
             datetime.datetime.utcnow() > link['expiry_time']):
               self.not_found('link expired')
       time_now = datetime.datetime.utcnow()
@@ -387,7 +389,7 @@ class Mixin:
         query = {
           'sender_id': user['_id'],
           '$or': [
-            {'expiry_time': 0},
+            {'expiry_time': None},
             {'expiry_time': {'$gt': datetime.datetime.utcnow()}},
           ]
         }
