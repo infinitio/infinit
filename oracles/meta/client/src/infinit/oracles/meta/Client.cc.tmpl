@@ -515,16 +515,14 @@ namespace infinit
       std::vector<User>
       Client::users_search(std::string const& text, int limit, int offset) const
       {
-        std::string url = elle::sprintf("/users?search=%s", text);
+        std::string url = "/users";
+        reactor::http::Request::QueryDict query;
+        query["search"] = text;
         if (limit > 0)
-        {
-          url += elle::sprintf("&limit=%s", limit);
-        }
+          query["limit"] = elle::sprintf("%s", limit);
         if (offset > 0)
-        {
-          url += elle::sprintf("&skip=%s", offset);
-        }
-        auto request = this->_request(url, Method::GET);
+          query["offset"] = elle::sprintf("%s", offset);
+        auto request = this->_request(url, Method::GET, query);
         SerializerIn input(url, request);
         std::vector<User> res;
         input.serialize("users", res);
@@ -1125,7 +1123,18 @@ namespace infinit
       reactor::http::Request
       Client::_request(
         std::string const& url,
+        reactor::http::Method method,
+        std::function<void (reactor::http::Request&)> const& send) const
+      {
+        return this->_request(url, method, reactor::http::Request::QueryDict(),
+                              send);
+      }
+
+      reactor::http::Request
+      Client::_request(
+        std::string const& url,
         Method method,
+        reactor::http::Request::QueryDict const& query_dict,
         std::function<void (reactor::http::Request&)> const& send) const
       {
         while (true)
@@ -1141,6 +1150,8 @@ namespace infinit
                                     method,
                                     "application/json",
                                     this->_default_configuration);
+            if (!query_dict.empty())
+              request.query_string(query_dict);
             send(request);
             auto status = request.status();
             switch (status)

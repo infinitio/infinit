@@ -319,6 +319,13 @@ namespace infinit
         _request(
           std::string const& url,
           reactor::http::Method method,
+          std::function<void (reactor::http::Request&)> const& send) const;
+        reactor::http::Request
+        _request(
+          std::string const& url,
+          reactor::http::Method method,
+          reactor::http::Request::QueryDict const& query_dict =
+            reactor::http::Request::QueryDict(),
           std::function<void (reactor::http::Request&)> const& send =
             [] (reactor::http::Request&) {}) const;
         template <typename T>
