@@ -58,6 +58,7 @@ ELLE_TEST_SCHEDULED(login_success)
   s.register_route("/login", reactor::http::Method::POST,
                    [] (HTTPServer::Headers const&,
                        HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
                        elle::Buffer const& body) -> std::string
                    {
                      return "{"
@@ -81,6 +82,7 @@ ELLE_TEST_SCHEDULED(forbidden)
   s.register_route("/login", reactor::http::Method::POST,
                    [] (HTTPServer::Headers const&,
                        HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
                        elle::Buffer const& body) -> std::string
                    {
                      throw HTTPServer::Exception(
@@ -100,6 +102,7 @@ ELLE_TEST_SCHEDULED(ill_formed_json)
   s.register_route("/login", reactor::http::Method::POST,
                    [] (HTTPServer::Headers const&,
                        HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
                        elle::Buffer const& body) -> std::string
                    {
                      return "{\"a\a:}";
@@ -117,6 +120,7 @@ ELLE_TEST_SCHEDULED(missing_key)
   s.register_route("/login", reactor::http::Method::POST,
                    [] (HTTPServer::Headers const&,
                        HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
                        elle::Buffer const& body) -> std::string
                    {
                      return "{}";
@@ -134,6 +138,7 @@ ELLE_TEST_SCHEDULED(login_password_dont_match)
   s.register_route("/login", reactor::http::Method::POST,
                    [] (HTTPServer::Headers const&,
                        HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
                        elle::Buffer const& body) -> std::string
                    {
                      ELLE_LOG("body: %s", body);
@@ -157,6 +162,7 @@ ELLE_TEST_SCHEDULED(unconfirmed_email)
   s.register_route("/login", reactor::http::Method::POST,
                    [] (HTTPServer::Headers const&,
                        HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
                        elle::Buffer const& body) -> std::string
                    {
                      ELLE_LOG("body: %s", body);
@@ -180,6 +186,7 @@ ELLE_TEST_SCHEDULED(already_logged_in)
   s.register_route("/login", reactor::http::Method::POST,
                    [] (HTTPServer::Headers const&,
                        HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
                        elle::Buffer const& body) -> std::string
                    {
                      ELLE_LOG("body: %s", body);
@@ -204,6 +211,7 @@ ELLE_TEST_SCHEDULED(cloud_buffer_gone)
                    reactor::http::Method::GET,
                    [] (HTTPServer::Headers const&,
                        HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
                        elle::Buffer const& body) -> std::string
                    {
                      throw HTTPServer::Exception("",
@@ -225,6 +233,7 @@ ELLE_TEST_SCHEDULED(status_found)
     reactor::http::Method::GET,
     [&i, &s] (HTTPServer::Headers const&,
               HTTPServer::Cookies const&,
+              HTTPServer::Parameters const&,
               elle::Buffer const& body)
     {
       if (i++ < 3)
@@ -258,6 +267,7 @@ ELLE_TEST_SCHEDULED(json_error_not_meta)
     reactor::http::Method::GET,
     [&i, &s] (HTTPServer::Headers const&,
               HTTPServer::Cookies const&,
+              HTTPServer::Parameters const&,
               elle::Buffer const& body)
     {
       if (i++ < 3)
@@ -288,6 +298,7 @@ ELLE_TEST_SCHEDULED(transactions)
     reactor::http::Method::GET,
     [&i, &s] (HTTPServer::Headers const&,
               HTTPServer::Cookies const&,
+              HTTPServer::Parameters const&,
               elle::Buffer const& body)
     {
       return "{"
