@@ -146,14 +146,20 @@ public:
     this->register_route(
       "/status",
       reactor::http::Method::GET,
-      [] (Server::Headers const&, Server::Cookies const&, elle::Buffer const&)
+      [] (Server::Headers const&,
+          Server::Cookies const&,
+          Server::Parameters const&,
+          elle::Buffer const&)
       {
         return "{\"status\" : true, \"success\": true}";
       });
     this->register_route(
       "/login",
       reactor::http::Method::POST,
-      [&] (Server::Headers const&, Server::Cookies const&, elle::Buffer const&)
+      [&] (Server::Headers const&,
+           Server::Cookies const&,
+           Server::Parameters const&,
+           elle::Buffer const&)
       {
         std::string identity_serialized;
         this->_identity.Save(identity_serialized);
@@ -182,11 +188,15 @@ public:
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2,
-                std::placeholders::_3));
+                std::placeholders::_3,
+                std::placeholders::_4));
     this->register_route(
       elle::sprintf("/device/%s/view", this->_device_id),
       reactor::http::Method::GET,
-      [&] (Server::Headers const&, Server::Cookies const&, elle::Buffer const&)
+      [&] (Server::Headers const&,
+           Server::Cookies const&,
+           Server::Parameters const&,
+           elle::Buffer const&)
       {
         return elle::sprintf(
           "{"
@@ -202,12 +212,18 @@ public:
     this->register_route(
       "/logout",
       reactor::http::Method::POST,
-      [] (Server::Headers const&, Server::Cookies const&, elle::Buffer const&)
+      [] (Server::Headers const&,
+          Server::Cookies const&,
+          Server::Parameters const&,
+          elle::Buffer const&)
       {
         return "{\"success\": true}";
       });
     auto self =
-      [&] (Server::Headers const&, Server::Cookies const&, elle::Buffer const&)
+      [&] (Server::Headers const&,
+           Server::Cookies const&,
+           Server::Parameters const&,
+           elle::Buffer const&)
       {
         return elle::sprintf(
           "{"
@@ -236,21 +252,30 @@ public:
     this->register_route(
       "/user/full_swaggers",
       reactor::http::Method::GET,
-      [&] (Server::Headers const&, Server::Cookies const&, elle::Buffer const&)
+      [&] (Server::Headers const&,
+           Server::Cookies const&,
+           Server::Parameters const&,
+           elle::Buffer const&)
       {
         return "{\"success\": true, \"swaggers\": []}";
       });
     this->register_route(
       "/transactions",
       reactor::http::Method::GET,
-      [&] (Server::Headers const&, Server::Cookies const&, elle::Buffer const&)
+      [&] (Server::Headers const&,
+           Server::Cookies const&,
+           Server::Parameters const&,
+           elle::Buffer const&)
       {
         return "{\"success\": true, \"transactions\": []}";
       });
     this->register_route(
       "/links",
       reactor::http::Method::GET,
-      [&] (Server::Headers const&, Server::Cookies const&, elle::Buffer const&)
+      [&] (Server::Headers const&,
+           Server::Cookies const&,
+           Server::Parameters const&,
+           elle::Buffer const&)
       {
         return "{\"success\": true, \"links\": []}";
       });
@@ -258,7 +283,10 @@ public:
 
   virtual
   std::string
-  _get_trophonius(Headers const&, Cookies const&, elle::Buffer const&) const
+  _get_trophonius(Headers const&,
+                  Cookies const&,
+                  Parameters const&,
+                  elle::Buffer const&) const
   {
     return elle::sprintf(
       "{"
@@ -335,6 +363,7 @@ public:
   std::string
   _get_trophonius(Headers const& headers,
                   Cookies const& cookies,
+                  Parameters const& parameters,
                   elle::Buffer const& body) const override
   {
     if (cookies.at("session-id") !=
@@ -343,7 +372,7 @@ public:
         "/trophonius",
         reactor::http::StatusCode::Forbidden,
         "{}");
-    return Server<ForbiddenTrophonius>::_get_trophonius(headers, cookies, body);
+    return Server<ForbiddenTrophonius>::_get_trophonius(headers, cookies, parameters, body);
   }
 };
 
