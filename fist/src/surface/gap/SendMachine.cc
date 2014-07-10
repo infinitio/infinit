@@ -50,10 +50,10 @@ namespace surface
       this->_machine.transition_add(this->_create_transaction_state,
                                     this->_cancel_state,
                                     reactor::Waitables{&this->canceled()}, true);
-      // Cancel on file scan error
+      // Fail on file scan error to get a crash report
       this->_machine.transition_add_catch_specific<
         boost::filesystem::filesystem_error>(this->_create_transaction_state,
-                                             this->_cancel_state)
+                                             this->_fail_state)
         .action_exception(
           [this] (std::exception_ptr e)
           {
