@@ -463,6 +463,7 @@ class Mixin:
             'note': transaction['message'],
             'transaction_hash': transaction_hash,
             'transaction_id': str(transaction['_id']),
+            'number_of_other_files': len(files) - 1,
           }}
       )
       return {
