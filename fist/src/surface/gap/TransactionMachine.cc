@@ -426,7 +426,7 @@ namespace surface
             message = awserror->what();
           }
           else
-            message = *exception.inner_exception()->what();
+            message = exception.inner_exception()->what();
         }
         mr->aws_error(this->transaction_id(),
                       exception.operation(),
