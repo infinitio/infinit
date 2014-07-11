@@ -250,7 +250,7 @@ namespace surface
     PeerTransferMachine::print(std::ostream& stream) const
     {
       stream << "PeerTransferMachine(" << this->_owner.id();
-      if (this->_owner.data())
+      if (!this->_owner.data()->id.empty())
         stream << ", " << this->_owner.data()->id;
       stream << ")";
     }
