@@ -30,8 +30,7 @@ namespace surface
       , _owner(owner)
       , _station(papier::authority(),
                  this->_owner.state().passport(),
-                 elle::sprintf("Station(id=%s, tr=%s)",
-                               this->_owner.id(), this->_owner.data()->id))
+                 elle::sprintf("Station(id=%s)", this->_owner.id()))
       , _upnp(reactor::network::UPNP::make())
       , _upnp_init_thread(elle::sprintf("%s UPNP init thread", *this),
                       [this] { this->_upnp_init(); })
@@ -104,13 +103,16 @@ namespace surface
           if (pair.second.ipv4_address.size() > 0 &&
               pair.second.mac_address.size() > 0)
           {
-            auto const &ipv4 = pair.second.ipv4_address;
+            auto const& ipv4 = pair.second.ipv4_address;
             addresses.emplace_back(ipv4, this->_station.port());
+
           }
         if (this->_upnp_mapping)
+        {
           addresses.emplace_back(this->_upnp_mapping.external_host,
                                  boost::lexical_cast<unsigned short>(
                                    this->_upnp_mapping.external_port));
+        }
       }
       ELLE_DEBUG("addresses: %s", addresses);
       AddressContainer public_addresses;
