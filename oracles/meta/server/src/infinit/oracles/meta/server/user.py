@@ -31,16 +31,6 @@ class Mixin:
   ## Handle ##
   ## ------ ##
 
-  def generate_dummy(self):
-    t1 = ['lo', 'ca', 'ki', 'po', 'pe', 'bi', 'mer']
-    t2 = ['ri', 'ze', 'te', 'sal', 'ju', 'il']
-    t3 = ['yo', 'gri', 'ka', 'tro', 'man', 'et']
-    t4 = ['olo', 'ard', 'fou', 'li']
-    h = ''
-    for t in [t1, t2, t3, t4]:
-      h += t[int(random.random() * len(t))]
-    return h
-
   def __generate_handle(self,
                         fullname,
                         enlarge = True):
@@ -61,10 +51,6 @@ class Mixin:
 
       if not enlarge:
         return handle
-
-      if len(handle) < 5:
-        handle += self.generate_dummy()
-        elle.log.debug("enlarged handle: %s" % handle)
 
       return handle
 
