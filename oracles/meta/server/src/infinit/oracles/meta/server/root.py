@@ -263,45 +263,50 @@ class Mixin:
                   type: str,
                   user_name = 'Unknown',
                   client_os = 'Unknown',
-                  message = [],
+                  message = '',
                   env = [],
                   version = None,
                   email = 'crash@infinit.io',
                   send = False,
                   more = '',
+                  transaction_id = '',
                   file = ''):
     """
     Store the existing crash into database and send a mail if set.
     """
     with elle.log.trace('user report: %s to %s' % (user_name, email)):
+      elle.log.trace('to be sent: %s' % type)
+      template_dict = {
+        'client_os': client_os,
+        'version': version,
+        "user_name": user_name,
+        "env": '\n'.join(env),
+        "message": message,
+        "more": more,
+        "transaction_id": transaction_id
+      }
+      template = mail.report_templates.get(type, None)
+      if template is None:
+        self.fail(error.UNKNOWN)
+      # Username can contain '@'. If it's not a valid email,
+      # the sender address (no-reply@infinit.io) will be used.
+      user_email = '@' in user_name and user_name or None
+      if len(file):
+        attachment = ('log.tar.bz', file)
+      else:
+        attachment = None
+      subject = template['subject'] % template_dict
       if send:
-        elle.log.trace('to be sent: %s' % type)
-        template = mail.report_templates.get(type, None)
-        if template is None:
-          self.fail(error.UNKNOWN)
-        # Username can contain '@'. If it's not a valid email,
-        # the sender address (no-reply@infinit.io) will be used.
-        user_email = '@' in user_name and user_name or None
-        if len(file):
-          attachment = ('log.tar.bz', file)
-        else:
-          attachment = None
-        subject = template['subject'] % {'client_os': client_os,
-                                         'version': version}
         self.mailer.send(
           to = email,
           reply_to = user_email,
           subject = subject,
-          body = template['content'] % {
-            "client_os": client_os,
-            "version": version,
-            "user_name": user_name,
-            "env": '\n'.join(env),
-            "message": message,
-            "more": more,
-          },
+          body = template['content'] % template_dict,
           attachment = attachment,
         )
+      else:
+        print('Would send:\nTO: %s\nRCPT TO: %s\nSUBJECT: %s\nBODY:\n%s\n.\n' %
+          (email, user_email, subject, template['content'] % template_dict))
       return self.success()
 
   @api('/genocide', method = 'POST')

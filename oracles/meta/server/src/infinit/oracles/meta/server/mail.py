@@ -269,7 +269,7 @@ Additional Information
 %(more)s
 """.strip()}
 
-report_templates['transaction'] = {'subject': 'Transfer Failed Report %(version)s (%(client_os)s)'.strip(),
+report_templates['transaction'] = {'subject': 'Transfer Failed Report %(version)s (%(client_os)s): %(message)s'.strip(),
                                    'content': """
 .infinit directory in attached file.
 
@@ -278,6 +278,10 @@ OS: %(client_os)s
 Infinit Version: %(version)s
 
 User Name: %(user_name)s
+
+Transaction ID: %(transaction_id)s
+
+Message: %(message)s
 
 -----------
 Environment
