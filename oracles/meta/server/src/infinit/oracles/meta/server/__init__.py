@@ -438,7 +438,7 @@ class Meta(bottle.Bottle,
     import traceback
     e = exception
     import socket
-    hostname = socket.gethostname()
+    hostname = socket.getfqdn()
     with elle.log.log(
         '%s: send email for fatal error: %s' % (self, e)):
       args = {
