@@ -358,7 +358,9 @@ namespace surface
       // XXX: Ensure recipient is an id.
       this->data()->recipient_id =
         this->state().user(this->data()->recipient_id, true).id;
-      auto const& peer = this->state().user(this->data()->recipient_id);
+      // We need to sync the user here as we could have an old pulbic key.
+      // This was the cause of the "unable to apply crypto function" bug.
+      auto const& peer = this->state().user_sync(this->data()->recipient_id);
       if (this->state().metrics_reporter())
       {
         bool onboarding = false;
