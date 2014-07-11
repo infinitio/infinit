@@ -1011,7 +1011,8 @@ class Mixin:
 
   @api('/user/<id_or_email>/view')
   def view(self, id_or_email):
-    """Get public informations of an user by id or email.
+    """
+    Get public user's information by id or email.
     """
     user = self.user_by_id_or_email(id_or_email)
     if user is None:
