@@ -57,6 +57,7 @@ namespace surface
         .action_exception(
           [this] (std::exception_ptr e)
           {
+            this->transaction().failure_reason(elle::exception_string(e));
             ELLE_WARN("%s: filesystem error while creating transaction: %s",
                       *this, elle::exception_string(e));
           });
@@ -66,6 +67,7 @@ namespace surface
         .action_exception(
           [this] (std::exception_ptr e)
           {
+            this->transaction().failure_reason(elle::exception_string(e));
             ELLE_WARN("%s: error while creating transaction: %s",
                       *this, elle::exception_string(e));
           });

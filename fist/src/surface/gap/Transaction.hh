@@ -211,6 +211,8 @@ namespace surface
       final() const;
       /// Whether the transaction is over.
       ELLE_ATTRIBUTE_R(bool, over);
+      /// Recorded lowest failure reason.
+      ELLE_ATTRIBUTE_RW(std::string, failure_reason);
     private:
       friend class TransactionMachine;
       gap_TransactionStatus

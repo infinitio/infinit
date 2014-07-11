@@ -238,7 +238,8 @@ namespace surface
                                           this->state().meta().host(),
                                           this->state().meta().port(),
                                           this->state().me().email,
-                                          transaction_id);
+                                          transaction_id,
+                                          this->transaction().failure_reason());
       this->gap_status(gap_transaction_failed);
       this->_finalize(infinit::oracles::Transaction::Status::failed);
     }

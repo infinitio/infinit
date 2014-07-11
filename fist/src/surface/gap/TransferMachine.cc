@@ -228,6 +228,8 @@ namespace surface
                 {
                   ELLE_TRACE("%s: failing transfer because of exception: %s",
                              *this, elle::exception_string(exception));
+                  owner.transaction().failure_reason(
+                    elle::exception_string(exception));
                   owner.failed().open();
                 });
       this->_fsm.transition_add(
@@ -265,14 +267,18 @@ namespace surface
           {
             ELLE_ERR("%s: interface publication failed: %s",
                      *this, elle::exception_string(exception));
+            owner.transaction().failure_reason(
+              elle::exception_string(exception));
             owner.failed().open();
           });
       this->_fsm.transition_add_catch(
         wait_for_peer_state,
         stopped_state)
-        .action([this, &owner]
+        .action_exception([this, &owner] (std::exception_ptr exception)
                 {
                   ELLE_ERR("%s: peer wait failed", *this);
+                  owner.transaction().failure_reason(
+                    elle::exception_string(exception));
                   owner.failed().open();
                 });
       // On network error while connecting, retry. For instance if the
@@ -295,14 +301,18 @@ namespace surface
           {
             ELLE_ERR("%s: connection failed: %s",
                      *this, elle::exception_string(e));
+            owner.transaction().failure_reason(
+              elle::exception_string(e));
             owner.failed().open();
           });
       this->_fsm.transition_add_catch(
         transfer_state,
         stopped_state)
-        .action([this, &owner]
+        .action_exception([this, &owner] (std::exception_ptr e)
                 {
                   ELLE_ERR("%s: transfer failed", *this);
+                  owner.transaction().failure_reason(
+                    elle::exception_string(e));
                   owner.failed().open();
                 });
 
