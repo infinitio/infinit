@@ -237,7 +237,8 @@ namespace surface
       elle::crash::transfer_failed_report(this->state().meta().protocol(),
                                           this->state().meta().host(),
                                           this->state().meta().port(),
-                                          this->state().me().email);
+                                          this->state().me().email,
+                                          transaction_id);
       this->gap_status(gap_transaction_failed);
       this->_finalize(infinit::oracles::Transaction::Status::failed);
     }
