@@ -72,7 +72,9 @@ namespace elle
     transfer_failed_report(std::string const& meta_protocol,
                            std::string const& meta_host,
                            uint16_t meta_port,
-                           std::string const& user_name = "");
+                           std::string const& user_name="",
+                           std::string const& transaction_id="",
+                           std::string const& reason="");
 
     /// Function for sending user reports.
     void

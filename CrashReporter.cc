@@ -232,7 +232,9 @@ namespace elle
                  std::string const& user_name,
                  std::string const& os_description,
                  std::string const& message,
-                 std::string file)
+                 std::string file,
+                 std::map<std::string, std::string> const& extra_fields = {}
+                 )
     {
       ELLE_TRACE_SCOPE("send report %s to %s", message, url);
       std::vector<boost::any> env_arr;
@@ -250,6 +252,8 @@ namespace elle
         }
       // Create JSON.
       elle::json::Object json_dict;
+      for (auto const& f: extra_fields)
+        json_dict[f.first] = f.second;
       {
         json_dict["user_name"] = user_name;
         json_dict["client_os"] = os_description;
@@ -288,9 +292,11 @@ namespace elle
           ELLE_ERR("error while posting report to %s: (%s) %s",
                    url, request.status(), request.response().string());
         }
+        ELLE_TRACE("Report succesfully sent.");
       }
       catch (reactor::Terminate const&)
       {
+        ELLE_WARN("Crashreporter interrupted while sending!");
         throw;
       }
       catch (...)
@@ -345,7 +351,12 @@ namespace elle
       {
         boost::filesystem::path path(path_str);
         if (boost::filesystem::exists(path))
+        {
+          ELLE_DEBUG("archiving %s", path);
           archived.push_back(path);
+        }
+        else
+          ELLE_DEBUG("ignoring %s", path);
       }
       elle::archive::archive(elle::archive::Format::tar_gzip,
                              archived,
@@ -360,9 +371,12 @@ namespace elle
     transfer_failed_report(std::string const& meta_protocol,
                            std::string const& meta_host,
                            uint16_t meta_port,
-                           std::string const& user_name)
+                           std::string const& user_name,
+                           std::string const& transaction_id,
+                           std::string const& reason)
     {
-      ELLE_TRACE("transaction failed report");
+      ELLE_TRACE("transaction failed report, attaching %s",
+                 common::infinit::home());
       std::string os_description{common::system::platform()};
       std::string url = elle::sprintf("%s://%s:%s/debug/report/transaction",
                                       meta_protocol,
@@ -370,12 +384,14 @@ namespace elle
                                       meta_port);
       elle::filesystem::TemporaryDirectory tmp;
       boost::filesystem::path destination(tmp.path() / "report.tar.bz2");
-      boost::filesystem::path infinit_home_path;
+
       elle::archive::archive(elle::archive::Format::tar_gzip,
                              {common::infinit::home()},
                              destination);
-      _send_report(url, user_name, os_description, "",
-                   _to_base64(destination));
+      _send_report(url, user_name, os_description,
+                   reason,
+                   _to_base64(destination),
+                  {{"transaction_id", transaction_id}});
     }
 
     void
