@@ -904,7 +904,10 @@ class Mixin:
       '_id': False,
     }
     if self.admin:
+      res['creation_time'] = '$creation_time'
       res['email'] = '$email'
+      res['email_confirmed'] = '$email_confirmed'
+      res['os'] = '$os'
     return res
 
   @api('/users')
