@@ -233,7 +233,8 @@ namespace elle
                  std::string const& os_description,
                  std::string const& message,
                  std::string file,
-                 std::map<std::string, std::string> const& extra_fields = {}
+                 std::map<std::string, std::string> const& extra_fields
+                   = std::map<std::string, std::string>() //old gcc dislikes {}
                  )
     {
       ELLE_TRACE_SCOPE("send report %s to %s", message, url);
