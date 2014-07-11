@@ -777,6 +777,10 @@ namespace surface
     float
     PeerSendMachine::progress() const
     {
+      // If we're doing a plain upload, we need to use super's progress method.
+      auto peer = this->state().user(this->data()->recipient_id);
+      if (peer.ghost())
+        return SendMachine::progress();
       if (this->_frete != nullptr)
         return this->_frete->progress();
       return 0.0f;
