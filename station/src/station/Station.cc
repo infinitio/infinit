@@ -93,8 +93,22 @@ namespace station
   {
     while (true)
     {
-      std::unique_ptr<reactor::network::Socket> socket(
-        this->_server.accept());
+      std::unique_ptr<reactor::network::Socket> socket;
+      try
+      {
+        socket = this->_server.accept();
+      }
+      // https://app.asana.com/0/5058254180090/14728698282583
+      catch (reactor::Terminate const&)
+      {
+        throw;
+      }
+      catch (...)
+      {
+        ELLE_ERR("%s: fatal error accepting host: %s",
+                 *this, elle::exception_string());
+        throw;
+      }
       ELLE_TRACE_SCOPE("%s: accept connection from %s", *this, socket->peer());
       try
       {
@@ -111,6 +125,17 @@ namespace station
       {
         ELLE_ERR("%s: host was rejected because of unexpected exception: %s",
                  *this, e.what());
+      }
+      // https://app.asana.com/0/5058254180090/14728698282583
+      catch (reactor::Terminate const&)
+      {
+        throw;
+      }
+      catch (...)
+      {
+        ELLE_ERR("%s: fatal error negotiating host: %s",
+                 *this, elle::exception_string());
+        throw;
       }
     }
   }
