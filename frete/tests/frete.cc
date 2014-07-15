@@ -1,9 +1,10 @@
 #include <boost/filesystem/fstream.hpp>
 
-#include <elle/test.hh>
 #include <elle/Buffer.hh>
+#include <elle/filesystem/TemporaryFile.hh>
 #include <elle/finally.hh>
 #include <elle/log.hh>
+#include <elle/test.hh>
 #include <elle/test.hh>
 
 #include <reactor/Barrier.hh>
@@ -306,10 +307,35 @@ ELLE_TEST_SCHEDULED(connection)
   };
 }
 
+ELLE_TEST_SCHEDULED(invalid_snapshot)
+{
+  auto keys = infinit::cryptography::KeyPair::generate(
+    infinit::cryptography::Cryptosystem::rsa, 2048);
+  elle::filesystem::TemporaryFile f("frete.snapshot");
+  {
+    boost::filesystem::ofstream output(f.path());
+    output <<
+      "{"
+      "  \"transfers\": [],"
+      "  \"count\": 0,"
+      "  \"total_size\": 0,"
+      "  \"progress\": 0,"
+      "  \"key_code\": { \"data\": \"AAAAAFxGRlxGRlxGRlxGRmxvbGlsb2wK\" },"
+      "  \"archived\": false"
+      "}";
+
+  }
+  frete::Frete frete("password", keys, f.path());
+  auto peer_keys = infinit::cryptography::KeyPair::generate(
+    infinit::cryptography::Cryptosystem::rsa, 2048);
+  frete.set_peer_key(peer_keys.K());
+  frete.key_code();
+}
 
 ELLE_TEST_SUITE()
 {
   auto timeout = RUNNING_ON_VALGRIND ? 15 : 3;
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(connection), 0, timeout);
+  suite.add(BOOST_TEST_CASE(invalid_snapshot), 0, timeout);
 }
