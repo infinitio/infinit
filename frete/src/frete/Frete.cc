@@ -6,6 +6,7 @@
 #include <boost/filesystem/fstream.hpp>
 
 #include <elle/AtomicFile.hh>
+#include <elle/Error.hh>
 #include <elle/container/map.hh>
 #include <elle/finally.hh>
 #include <elle/serialization/json/SerializerIn.hh>
@@ -63,42 +64,45 @@ namespace frete
                        *this, this->_snapshot_destination);
       try
       {
+        std::unique_ptr<TransferSnapshot> snapshot;
         {
           elle::AtomicFile file(this->_snapshot_destination);
           file.read() << [&] (elle::AtomicFile::Read& read)
           {
             elle::serialization::json::SerializerIn input(read.stream());
-            this->_transfer_snapshot.reset(new TransferSnapshot(input));
+            snapshot.reset(new TransferSnapshot(input));
           };
         }
         ELLE_DUMP("%s: Loaded snapshot %s with progress[0] %s",
                   *this,
                   this->_snapshot_destination,
-                  (this->_transfer_snapshot->file_count()?
-                   this->_transfer_snapshot->file(0).progress():
+                  (snapshot->file_count()?
+                   snapshot->file(0).progress():
                    0));
         // reload key from snapshot
-        auto& k = *this->_transfer_snapshot->key_code();
         _impl->_key.reset(
           new infinit::cryptography::SecretKey(
-            self_key.k().decrypt<infinit::cryptography::SecretKey>(k)));
+            self_key.k().decrypt<infinit::cryptography::SecretKey>(
+              *snapshot->key_code())));
+        this->_transfer_snapshot = std::move(snapshot);
       }
       catch (boost::filesystem::filesystem_error const&)
       {
         ELLE_TRACE("%s: unable to read snapshot file at %s: %s",
                    *this, this->_snapshot_destination, elle::exception_string());
       }
-      catch (std::exception const&) //XXX: Choose the right exception here.
+      catch (elle::Error const& e)
       {
         ELLE_WARN("%s: snapshot at %s is invalid: %s",
-                  *this, this->_snapshot_destination, elle::exception_string());
+                  *this, this->_snapshot_destination, e);
       }
     }
     if (this->_transfer_snapshot == nullptr)
     {
       this->_transfer_snapshot.reset(new TransferSnapshot());
       // Write encrypted session key to the snapshot
-      this->_transfer_snapshot->set_key_code(self_key.K().encrypt(*_impl->_key));
+      this->_transfer_snapshot->set_key_code(
+        self_key.K().encrypt(*_impl->_key));
       // immediately save the snapshot so that key never changes
       this->save_snapshot();
     }
