@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import Meta, HTTPException
+from utils import Meta, HTTPException, User
 from uuid import uuid4
 
 with Meta() as meta:
@@ -24,3 +24,16 @@ with Meta() as meta:
     res = meta.get('user/self')
   except HTTPException as e:
     assert e.status == 403
+
+  # Check users who put accidental spaces can login.
+  User(meta,
+       email = 'space@blah.com',
+       fullname = 'Space Man')
+  res = meta.post('login',
+                  {
+                    'device_id': str(uuid4()),
+                    'email': 'space@blah.com ',
+                    'password': '0' * 64,
+                    'pick_trophonius': False,
+                  })
+  assert res['success']

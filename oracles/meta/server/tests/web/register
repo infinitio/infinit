@@ -32,3 +32,17 @@ with Meta() as meta:
   res = meta.post("user/register", query)
   assert not res['success']
   assert res['error_code'] == error.FULLNAME_NOT_VALID[0]
+
+  # Check register with space.
+  email = 'foobar2@infinit.io '
+  fullname = 'jean louis'
+
+  query = {
+    'email': email,
+    'password': 'o' * 64,
+    'fullname': 'jeanlouis',
+  }
+  res = meta.post("user/register", query)
+  assert res['success']
+  correct_email = email.replace(' ', '')
+  assert meta.database.users.find({'email': correct_email}).count() == 1
