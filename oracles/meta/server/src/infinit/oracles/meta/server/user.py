@@ -126,6 +126,7 @@ class Mixin:
             device_id: uuid.UUID,
             OS: str = None,
             pick_trophonius: bool = True):
+    email = email.replace(' ', '')
     if OS is not None:
       OS = OS.strip().lower()
     # FIXME: 0.0.0.0 is the website.
@@ -180,6 +181,7 @@ class Mixin:
   def web_login(self,
                 email,
                 password):
+    email = email.replace(' ', '')
     with elle.log.trace("%s: web login" % email):
       user = self._login(email, password)
       elle.log.debug("%s: store session" % email)
@@ -246,6 +248,7 @@ class Mixin:
     fullname -- the user fullname.
     activation_code -- the activation code.
     """
+    email = email.replace(' ', '')
     _validators = [
       (email, regexp.EmailValidator),
       (password, regexp.PasswordValidator),
