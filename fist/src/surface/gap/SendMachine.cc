@@ -374,6 +374,23 @@ namespace surface
       }
     }
 
+    static
+    void
+    force_write_permissions(boost::filesystem::path const& p)
+    {
+      boost::system::error_code erc;
+      auto it = boost::filesystem::recursive_directory_iterator(p);
+      for (;it != boost::filesystem::recursive_directory_iterator(); ++it)
+      {
+        // Construct target filename
+        boost::filesystem::path p(*it);
+        boost::filesystem::permissions(p,
+          boost::filesystem::add_perms | boost::filesystem::owner_write, erc);
+        if (erc)
+          ELLE_WARN("Failed to set write permissions on %s: %s", p, erc.message());
+      }
+    }
+
     void
     SendMachine::cleanup()
     {
@@ -381,11 +398,16 @@ namespace surface
       { // Early failure, no transaction_id -> nothing to clean up
         return;
       }
-       // clear generated files that may have been generated for the transfer
-      boost::filesystem::remove_all(
-        this->transaction().snapshots_directory() / "mirror_files");
-      boost::filesystem::remove_all(
-        this->transaction().snapshots_directory() / "archive");
+      auto base = this->transaction().snapshots_directory();
+      // clear generated files that may have been generated for the transfer
+
+      // It is possible for files to be copied without write permissions, as
+      // attribute are preserved by bfs::copy.
+
+      force_write_permissions(base / "mirror_files");
+      boost::filesystem::remove_all( base / "mirror_files");
+      force_write_permissions(base / "archive");
+      boost::filesystem::remove_all( base / "archive");
     }
 
     std::pair<std::string, bool>
