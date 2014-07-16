@@ -7,6 +7,7 @@
 #include <elle/Error.hh>
 #include <elle/container/vector.hh>
 #include <elle/memory.hh>
+#include <elle/os/path.hh>
 #include <elle/serialization/json.hh>
 
 #include <surface/gap/State.hh>
@@ -172,6 +173,7 @@ namespace surface
           {
             ELLE_WARN("%s: error while loading snapshot %s: %s",
                       *this, *it, elle::exception_string());
+            elle::os::path::force_write_permissions(*it);
             remove_all(*it);
             continue;
           }

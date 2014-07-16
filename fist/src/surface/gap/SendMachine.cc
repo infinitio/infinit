@@ -5,6 +5,7 @@
 #include <elle/archive/zip.hh>
 #include <elle/container/vector.hh>
 #include <elle/os/environ.hh>
+#include <elle/os/path.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
 #include <elle/system/system.hh>
@@ -374,26 +375,10 @@ namespace surface
       }
     }
 
-    static
-    void
-    force_write_permissions(boost::filesystem::path const& p)
-    {
-      boost::system::error_code erc;
-      auto it = boost::filesystem::recursive_directory_iterator(p);
-      for (;it != boost::filesystem::recursive_directory_iterator(); ++it)
-      {
-        // Construct target filename
-        boost::filesystem::path p(*it);
-        boost::filesystem::permissions(p,
-          boost::filesystem::add_perms | boost::filesystem::owner_write, erc);
-        if (erc)
-          ELLE_WARN("Failed to set write permissions on %s: %s", p, erc.message());
-      }
-    }
-
     void
     SendMachine::cleanup()
     {
+      ELLE_TRACE_SCOPE("%s: cleanup", *this);
       if (this->data()->id.empty())
       { // Early failure, no transaction_id -> nothing to clean up
         return;
@@ -404,9 +389,9 @@ namespace surface
       // It is possible for files to be copied without write permissions, as
       // attribute are preserved by bfs::copy.
 
-      force_write_permissions(base / "mirror_files");
+      elle::os::path::force_write_permissions(base / "mirror_files");
       boost::filesystem::remove_all( base / "mirror_files");
-      force_write_permissions(base / "archive");
+      elle::os::path::force_write_permissions(base / "archive");
       boost::filesystem::remove_all( base / "archive");
     }
 
