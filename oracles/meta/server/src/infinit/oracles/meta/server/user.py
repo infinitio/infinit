@@ -1592,6 +1592,24 @@ class Mixin:
     except mail.EmailSubscriptionNotFound as e:
         self.not_found()
 
+  ## --------- ##
+  ## Campaigns ##
+  ## --------- ##
+  @api('/users/campaign/<campaign>')
+  @require_admin
+  def users_from_campaign(self, campaign):
+    with elle.log.debug('users by campaign: %s' % campaign):
+      users = self.database.users.find(
+        {'source': campaign},
+        fields = {
+          '_id': False,
+          'email': True,
+        })
+      res = list()
+      for user in users:
+        res.append(user)
+      return {'users': res}
+
   ## ----- ##
   ## Debug ##
   ## ----- ##
