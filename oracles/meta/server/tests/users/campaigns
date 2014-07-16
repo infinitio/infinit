@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+
+with Meta(force_admin = True) as meta:
+  campaign = 'some_campaign'
+  for i in range(0, 10):
+    fullname = ('Bob %s' % i)
+    email = ('%s@blah.com' % fullname.replace(' ', '_').lower())
+    if i % 2:
+      User(meta,
+           email = email,
+           fullname = fullname,
+           source = campaign)
+    else:
+      User(meta,
+           email = email,
+           fullname = fullname)
+
+  assert meta.database.users.count() == 10
+  res = meta.get('users/campaign/%s' % campaign)
+  assert len(res['users']) == 5
+  some_user = res['users'][2]
+  assert some_user['email']
