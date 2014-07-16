@@ -98,7 +98,7 @@ namespace surface
                         true)
     {
       ELLE_TRACE_SCOPE("%s: construct to send %s to %s",
-                       *this, files, recipient);
+                       *this, this->files(), this->recipient());
       // Copy filenames into data structure to be sent to meta.
       this->data()->files.resize(this->files().size());
       std::transform(
