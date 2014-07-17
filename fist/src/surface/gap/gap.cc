@@ -1447,7 +1447,7 @@ gap_send_user_report(gap_State* state,
   bool disposable = true;
   new reactor::Thread(
     state->scheduler(),
-    "send last crash report",
+    "send user report",
     [=] ()
     {
       catch_to_gap_status<gap_Status>(
