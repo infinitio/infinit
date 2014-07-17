@@ -300,6 +300,9 @@ namespace surface
               source_file_path,
               local_chunk * chunk_size, chunk_size);
             auto size = buffer.size();
+            if (size != chunk_size  && local_chunk != chunk_count -1)
+              ELLE_WARN("%s: chunk %s/%s is too small: %s bytes",
+                        *this, local_chunk, chunk_count, size);
             this->_plain_progress_chunks[local_chunk] = 0;
             std::string etag = handler.multipart_upload(
               source_file_name, upload_id,
@@ -311,6 +314,9 @@ namespace surface
                   this->_plain_progress_chunks[local_chunk] =
                     float(uploaded) / size / chunk_count;
                 }));
+            if (etag.empty())
+              ELLE_WARN("%s: upload of chunk %s/%s gave empty etag",
+                        *this, local_chunk, chunk_count);
             ++chunk_uploaded;
             this->_plain_progress =
               float(chunk_uploaded) / float(chunk_count);
