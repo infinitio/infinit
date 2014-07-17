@@ -378,14 +378,20 @@ namespace surface
     void
     force_write_permissions(boost::filesystem::path const& p)
     {
+      ELLE_TRACE("Recursively setting write permissions on %s", p);
       boost::system::error_code erc;
-      auto it = boost::filesystem::recursive_directory_iterator(p);
+      auto it = boost::filesystem::recursive_directory_iterator(p, erc);
+      if (erc)
+        return;
       for (;it != boost::filesystem::recursive_directory_iterator(); ++it)
       {
         // Construct target filename
         boost::filesystem::path p(*it);
+        auto prev = boost::filesystem::status(p).permissions();
         boost::filesystem::permissions(p,
           boost::filesystem::add_perms | boost::filesystem::owner_write, erc);
+        ELLE_DUMP("Setting write permission on %s: %s -> %s", p, prev,
+          boost::filesystem::status(p).permissions());
         if (erc)
           ELLE_WARN("Failed to set write permissions on %s: %s", p, erc.message());
       }
