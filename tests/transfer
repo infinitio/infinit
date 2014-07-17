@@ -98,132 +98,135 @@ if os.environ.get('TEST_CREDENTIALS', None) is not None:
 class TransferPeer:
   """ Handles one peer, expecting only one transaction at most.
   """
-  def __init__(self, oracles, credentials, timeout = None):
+  def __init__(self, oracles, credentials, timeout = None, device_count = 1):
     self.oracles = oracles
     self.credentials = credentials
-    self.state = None
+    self.states = [None] * device_count # Per device states.
     self.statuses = dict() # transaction_id -> status
     self.rules = []
-    self.poll_thread = None
-    self.interrupt = False
-    self.logged_in = False
+    self.poll_threads = [None] * device_count # Per device polling thread.
+    self.interrupt = [False] * device_count # Interrupts for polling threads.
+    self.logged_in = [] # List of devices logged in
     self.transaction_uid = None # unique id of transaction
     self.timeout = timeout
-  def create(self, force=True):
-    if self.state is not None and not force:
+    self.device_count = device_count
+  def create(self, force = True, device = 0):
+    if self.states[device] is not None and not force:
       return
-    self.delete()
-    self.state = self.oracles.state()
-    self.state.attach_transaction_callback(
-      lambda t: transaction_callback(t, self.state, self.rules, '',
+    self.delete(device)
+    self.states[device] = self.oracles.state()
+    self.states[device].attach_transaction_callback(
+      lambda t: transaction_callback(t, self.states[device], self.rules, '',
                                      self.statuses))
     def poller():
-      while not self.interrupt:
-        self.state.poll()
+      while not self.interrupt[device]:
+        self.states[device].poll()
         reactor.sleep(datetime.timedelta(milliseconds = 100))
-    self.poll_thread = reactor.Thread('state_poller', poller)
-  def delete(self):
-    if self.state is None:
+    self.poll_threads[device] = reactor.Thread('state_poller[%s]' % device, poller)
+  def delete(self, device):
+    if self.states[device] is None:
       return
-    self.state.logout()
-    self.interrupt = True
-    self.poll_thread.wait()
-    self.interrupt = False
-    self.poll_thread = None
-    self.state = None
+    self.states[device].logout()
+    self.interrupt[device] = True
+    self.poll_threads[device].wait()
+    self.interrupt[device] = False
+    self.poll_threads[device] = None
+    self.states[device] = None
   def set_rules(self, rules):
     """ Set event reply rules as per attach_transaction_callback()"""
     self.rules[:] = rules # modify in place
-  def login(self):
-    self.create(force=False)
-    if self.logged_in:
+  def login(self, device = 0):
+    if device in self.logged_in:
       return
+    self.create(force = False, device = device)
     self.statuses = dict() #old transaction_id no longuer has sense
-    self.state.login(self.credentials[0],
+    self.states[device].login(self.credentials[0],
       state.hash_password(self.credentials[0], self.credentials[1]))
-    self.logged_in = True
-  def logout(self):
-    if self.state is None:
+    self.logged_in.append(device)
+  def logout(self, device = 0):
+    if device not in logged_in:
       return
     if len(self.statuses) and self.transaction_uid is None:
       # store transaction uid so that we can recover transaction even
       # without any notification
       self.transaction_uid = self.transaction['id']
-    self.state.logout()
-    self.logged_in = False
-  def check_progress(self, tid, progress):
+    self.states[device].logout()
+    self.logged_in.remove(device)
+  def check_progress(self, tid, progress, device = 0):
     """ Check if progress greater than value, throw if it can never be"""
-    if self.status == 'transaction_finished' or self.state.transaction_progress(tid) >= progress:
+    if self.status == 'transaction_finished' or self.states[device].transaction_progress(tid) >= progress:
       return True
     elle.log.trace('Progress is %s' % self.state.transaction_progress(tid))
     if self.status in final_statuses:
       raise Exception('Progress unreachable: state=%s, at %s, expect %s'
-        % (self.status, self.state.transaction_progress(tid), progress))
+        % (self.status, self.states[device].transaction_progress(tid), progress))
     return False
-  def fetch_transaction_id(self):
+  def fetch_transaction_id(self, device = 0):
     """ Try to obtain tid or None"""
     if len(self.statuses):
       return list(self.statuses.keys())[0]
     if self.transaction_uid:
-      id = self.state.find_transaction(self.transaction_uid)
+      id = self.states[device].find_transaction(self.transaction_uid)
       if id != -1:
         return id
     return None
-  def wait_transaction_id(self, timeout=10):
+  def wait_transaction_id(self, timeout = 10, device = 0):
     """ Wait for a transaction id to be available or throw"""
-    wait_helper(timeout, lambda: self.fetch_transaction_id() is not None)
-    return self.fetch_transaction_id()
-  def wait_transaction_progress(self, progress, timeout=None):
+    wait_helper(timeout, lambda: self.fetch_transaction_id(device) is not None)
+    return self.fetch_transaction_id(device)
+  def wait_transaction_progress(self, progress, timeout = None, device = 0):
     """ Wait for transaction progress to be above given threshold or throw"""
-    tid = self.wait_transaction_id(timeout or self.timeout)
-    return wait_helper(timeout or self.timeout, lambda: self.check_progress(tid, progress))
-  def wait_transaction_status(self, status, timeout=None):
+    tid = self.wait_transaction_id(timeout = timeout or self.timeout, device = device)
+    return wait_helper(timeout or self.timeout, lambda: self.check_progress(tid, progress, device))
+  def wait_transaction_status(self, status, timeout = None):
     return wait_helper(timeout or self.timeout, lambda: self.status == status)
-  def wait_transaction_final(self, timeout=None):
+  def wait_transaction_final(self, timeout = None):
     return wait_helper(timeout or self.timeout, lambda: self.status in final_statuses)
   @property
-  def status(self):
-    """ Transaction status string (transaction_{canceled, finished, started...}"""
-    tid = self.wait_transaction_id()
-    if self.logged_in:
-      return self.state.transaction_status(tid)
+  def status(self, device = 0):
+    """ Transaction status string (transaction_{canceled, finished, started...)"""
+    tid = self.wait_transaction_id(device = device)
+    if device in self.logged_in:
+      return self.states[device].transaction_status(tid)
     else:
       return self.statuses[tid]
   @property
-  def transaction(self):
+  def transaction(self, device = 0):
     """ Return the transaction metadata"""
-    tid = self.wait_transaction_id()
-    return self.state.transaction(tid)
+    tid = self.wait_transaction_id(device)
+    return self.states[device].transaction(tid)
 
 class Transfer:
-  def __init__(self, credentials, files, files_data, message = None, timeout=None):
+  def __init__(self, credentials, files, files_data, message = None, timeout = None, device = 0):
     self.files = files
     self.data_kvargs = files_data
     self.peers = [None, None]
     self.credentials = credentials
     self.message = message or 'Receive this.'
     self.timeout = timeout
+    self.device = device
   def __enter__(self):
     self.oracles = infinit.oracles.servers.Oracles(
       mongo_dump = '%s/two-users' % os.environ['DUMPS'])
     self.oracles.__enter__()
-    # WARNING: 0 delay occurred at this stage: trophonius is not logged in
-    # yet
+    # WARNING: 0 delay occurred at this stage: trophonius is not logged in yet
     reactor.sleep(datetime.timedelta(milliseconds = 1000))
     self.data = TemporaryData(**self.data_kvargs)
     self.data.__enter__()
     self.files = list(map(lambda x: os.path.join(self.data.directory, x), self.files))
-    self.peers = [TransferPeer(self.oracles, self.credentials[0], timeout=self.timeout),
-                  TransferPeer(self.oracles, self.credentials[1], timeout=self.timeout)]
-    self.peers[0].create()
-    self.peers[1].create()
+    self.peers = [
+      TransferPeer(self.oracles, self.credentials[0], timeout = self.timeout),
+      TransferPeer(self.oracles, self.credentials[1], timeout = self.timeout)]
+    self.peers[0].create(device = self.device)
+    self.peers[1].create(device = self.device)
     return self
   def __exit__(self, *args, **kvargs):
     self.data.__exit__()
     self.oracles.__exit__()
-  def start(self):
-    self.sender.state.send_files(self.credentials[1][0], self.files,
-                                 self.message)
+  def start(self, device = 0):
+    self.sender.states[self.device].send_files(self.credentials[1][0],
+                                               self.files,
+                                               self.message)
   @property
   def sender(self):
     return self.peers[0]
