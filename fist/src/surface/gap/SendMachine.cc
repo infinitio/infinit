@@ -5,6 +5,7 @@
 #include <elle/archive/zip.hh>
 #include <elle/container/vector.hh>
 #include <elle/os/environ.hh>
+#include <elle/os/path.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
 #include <elle/system/system.hh>
@@ -406,6 +407,7 @@ namespace surface
     void
     SendMachine::cleanup()
     {
+      ELLE_TRACE_SCOPE("%s: cleanup", *this);
       if (this->data()->id.empty())
       { // Early failure, no transaction_id -> nothing to clean up
         return;
@@ -415,11 +417,10 @@ namespace surface
 
       // It is possible for files to be copied without write permissions, as
       // attribute are preserved by bfs::copy.
-
-      force_write_permissions(base / "mirror_files");
-      boost::filesystem::remove_all( base / "mirror_files");
-      force_write_permissions(base / "archive");
-      boost::filesystem::remove_all( base / "archive");
+      elle::os::path::force_write_permissions(base / "mirror_files");
+      boost::filesystem::remove_all(base / "mirror_files");
+      elle::os::path::force_write_permissions(base / "archive");
+      boost::filesystem::remove_all(base / "archive");
     }
 
     std::pair<std::string, bool>
