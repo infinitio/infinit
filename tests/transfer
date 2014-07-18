@@ -103,10 +103,10 @@ class TransferPeer:
     self.credentials = credentials
     self.states = [None] * device_count # Per device states.
     self.statuses = dict() # transaction_id -> status
-    self.rules = []
+    self.rules = [[]] * device_count # Per device rules.
     self.poll_threads = [None] * device_count # Per device polling thread.
     self.interrupt = [False] * device_count # Interrupts for polling threads.
-    self.logged_in = [] # List of devices logged in
+    self.logged_in = [] # List of devices logged in.
     self.transaction_uid = None # unique id of transaction
     self.timeout = timeout
     self.device_count = device_count
@@ -116,7 +116,7 @@ class TransferPeer:
     self.delete(device)
     self.states[device] = self.oracles.state()
     self.states[device].attach_transaction_callback(
-      lambda t: transaction_callback(t, self.states[device], self.rules, '',
+      lambda t: transaction_callback(t, self.states[device], self.rules[device], '',
                                      self.statuses))
     def poller():
       while not self.interrupt[device]:
@@ -132,9 +132,9 @@ class TransferPeer:
     self.interrupt[device] = False
     self.poll_threads[device] = None
     self.states[device] = None
-  def set_rules(self, rules):
+  def set_rules(self, rules, device = 0):
     """ Set event reply rules as per attach_transaction_callback()"""
-    self.rules[:] = rules # modify in place
+    self.rules[device] = rules # modify in place
   def login(self, device = 0):
     if device in self.logged_in:
       return
@@ -197,14 +197,22 @@ class TransferPeer:
     return self.states[device].transaction(tid)
 
 class Transfer:
-  def __init__(self, credentials, files, files_data, message = None, timeout = None, device = 0):
+  def __init__(self,
+               credentials,
+               files,
+               files_data,
+               message = None,
+               timeout = None,
+               sender_devices = 1,
+               recipient_devices = 1):
     self.files = files
     self.data_kvargs = files_data
     self.peers = [None, None]
     self.credentials = credentials
     self.message = message or 'Receive this.'
     self.timeout = timeout
-    self.device = device
+    self.sender_devices = sender_devices
+    self.recipient_devices = recipient_devices
   def __enter__(self):
     self.oracles = infinit.oracles.servers.Oracles(
       mongo_dump = '%s/two-users' % os.environ['DUMPS'])
@@ -215,18 +223,20 @@ class Transfer:
     self.data.__enter__()
     self.files = list(map(lambda x: os.path.join(self.data.directory, x), self.files))
     self.peers = [
-      TransferPeer(self.oracles, self.credentials[0], timeout = self.timeout),
-      TransferPeer(self.oracles, self.credentials[1], timeout = self.timeout)]
-    self.peers[0].create(device = self.device)
-    self.peers[1].create(device = self.device)
+      TransferPeer(self.oracles, self.credentials[0], timeout = self.timeout, device_count = self.sender_devices),
+      TransferPeer(self.oracles, self.credentials[1], timeout = self.timeout, device_count = self.recipient_devices)]
+    for i in range(0, self.sender_devices):
+      self.peers[0].create(device = i)
+    for i in range(0, self.recipient_devices):
+      self.peers[1].create(device = i)
     return self
   def __exit__(self, *args, **kvargs):
     self.data.__exit__()
     self.oracles.__exit__()
   def start(self, device = 0):
-    self.sender.states[self.device].send_files(self.credentials[1][0],
-                                               self.files,
-                                               self.message)
+    self.sender.states[device].send_files(self.credentials[1][0],
+                                          self.files,
+                                          self.message)
   @property
   def sender(self):
     return self.peers[0]
@@ -585,6 +595,37 @@ class TestNoTropho(TestResumeTransfer):
   def test_no_tropho_mid(self): # start then tropho down
     return self.transfer_test(['tnt3'], {'name': 'tnt3','size': 10000000},
                               'R start r20 t T r30 t T r40 t T r50 t T r60 t T r70 t T r80 t T')
+
+class MutiDeviceBasicTransfer(unittest.TestCase):
+  def transfer_test(self, files, files_data,
+                    expect_total_size = None, expect_is_directory = None,
+                    expect_files_count = None, expect_files = None):
+    """ Run one test transfer
+    @param files: files to announce to send_files (relative)
+    @param files_data: arguments to TemporaryData ctor
+    Rest of parameters are stuff that will be validated in transaction metadata
+    """
+    with Transfer(test_credentials,
+                  files,
+                  files_data,
+                  sender_devices = 2,
+                  recipient_devices = 2) as transfer:
+      transfer.recipient.login(device = 0)
+      # transfer.recipient.login(device = 1)
+      transfer.sender.login(device = 0)
+      transfer.sender.login(device = 1)
+      wait_helper(3, lambda: False, False)
+      transfer.recipient.set_rules(accept_rules, device = 0)
+      transfer.start(device = 0)
+      transfer.wait_transaction_final(30)
+      transfer.assertSuccess(self, expect_total_size, expect_is_directory,
+                             expect_files_count, expect_files)
+
+  def test_p2p_basic(self):
+    return self.transfer_test(['100k'], {'name': '100k','size': 100000},
+                              expect_total_size=100000, expect_files_count=1,
+                              expect_is_directory = False
+                              )
 
 utils.run(unittest.main)
 
