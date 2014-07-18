@@ -271,17 +271,15 @@ Additional Information
 
 report_templates['transaction'] = {'subject': 'Transfer Failed Report %(version)s (%(client_os)s): %(message)s'.strip(),
                                    'content': """
-.infinit directory in attached file.
-
-OS: %(client_os)s
-
-Infinit Version: %(version)s
-
-User Name: %(user_name)s
+Reason: %(message)s
 
 Transaction ID: %(transaction_id)s
 
-Message: %(message)s
+User Name: %(user_name)s
+
+Infinit Version: %(version)s
+
+OS: %(client_os)s
 
 -----------
 Environment
