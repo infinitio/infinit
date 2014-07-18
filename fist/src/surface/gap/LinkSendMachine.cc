@@ -49,6 +49,7 @@ namespace surface
           {
             ELLE_WARN("%s: error while uploading: %s",
                       *this, elle::exception_string(e));
+            this->transaction().failure_reason(elle::exception_string(e));
           });
       this->_machine.transition_add(
         this->_upload_state,
