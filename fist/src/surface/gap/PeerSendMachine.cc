@@ -78,6 +78,7 @@ namespace surface
           {
             ELLE_WARN("%s: error while waiting for accept: %s",
                       *this, elle::exception_string(e));
+            this->transaction().failure_reason(elle::exception_string(e));
           });
       this->transaction_status_update(data->status);
     }
