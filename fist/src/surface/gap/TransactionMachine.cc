@@ -131,6 +131,7 @@ namespace surface
           {
             ELLE_ERR("%s: cancellation failed: %s",
                      *this, elle::exception_string(e));
+            this->transaction().failure_reason(elle::exception_string(e));
             this->_failed.open();
           });
       this->_machine.transition_add_catch(this->_finish_state, this->_end_state)
@@ -139,6 +140,7 @@ namespace surface
           {
             ELLE_ERR("%s: termination failed: %s",
                      *this, elle::exception_string(e));
+            this->transaction().failure_reason(elle::exception_string(e));
             this->_failed.open();
           });
 
