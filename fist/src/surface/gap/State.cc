@@ -668,8 +668,8 @@ namespace surface
                         elle::sprintf("file not found at %s", image_path));
 
       std::ifstream stream{image_path.string()};
-      std::istream_iterator<char> eos;
-      std::istream_iterator<char> iit(stream);   // stdin iterator
+      std::istreambuf_iterator<char> eos;
+      std::istreambuf_iterator<char> iit(stream);   // stdin iterator
 
       elle::Buffer output;
       std::copy(iit, eos, output.begin());
