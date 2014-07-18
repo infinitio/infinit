@@ -327,8 +327,8 @@ namespace elle
     bool
     temp_file_excluder(boost::filesystem::path const& p)
     {
-      return p.string().find("mirror_files") != std::string::npos
-          || p.string().find(".zip") != std::string::npos;
+      return std::find(p.begin(), p.end(), "mirror_files") != p.end()
+        || std::find(p.begin(), p.end(), "archive") != p.end();
     }
 
     void
@@ -388,7 +388,9 @@ namespace elle
 
       elle::archive::archive(elle::archive::Format::tar_gzip,
                              {common::infinit::home()},
-                             destination);
+                             destination,
+                             elle::archive::Renamer(),
+                             temp_file_excluder);
       _send_report(url, user_name, os_description,
                    reason,
                    _to_base64(destination),
@@ -416,13 +418,17 @@ namespace elle
       {
         elle::archive::archive(elle::archive::Format::tar_gzip,
                                {common::infinit::home()},
-                               destination);
+                               destination,
+                               elle::archive::Renamer(),
+                               temp_file_excluder);
       }
       else
       {
         elle::archive::archive(elle::archive::Format::tar_gzip,
                                {user_file, common::infinit::home()},
-                               destination);
+                               destination,
+                               elle::archive::Renamer(),
+                               temp_file_excluder);
       }
       _send_report(url, user_name, os_description, message,
                    _to_base64(destination));
