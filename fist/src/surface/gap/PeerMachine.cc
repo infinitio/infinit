@@ -40,6 +40,7 @@ namespace surface
           {
             ELLE_WARN("%s: error while transfering: %s",
                       *this, elle::exception_string(e));
+            this->transaction().failure_reason(elle::exception_string(e));
           });
       this->_machine.transition_add(
         this->_transfer_core_state,
