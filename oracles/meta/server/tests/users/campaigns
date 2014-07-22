@@ -22,3 +22,4 @@ with Meta(force_admin = True) as meta:
   assert len(res['users']) == 5
   some_user = res['users'][2]
   assert some_user['email']
+  assert some_user['fullname']
