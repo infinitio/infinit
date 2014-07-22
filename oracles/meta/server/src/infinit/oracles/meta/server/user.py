@@ -1607,6 +1607,7 @@ class Mixin:
         fields = {
           '_id': False,
           'email': True,
+          'fullname': True,
         })
       res = list()
       for user in users:
