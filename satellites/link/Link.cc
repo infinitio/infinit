@@ -38,7 +38,7 @@ parse_options(int argc, char** argv)
     ("help,h", "display the help")
     ("user,u", value<std::string>(), "the username")
     ("password,p", value<std::string>(), "the password")
-    ("file,f", value<std::vector<std::string>>(),
+    ("file,f", value<std::string>(),
      "the file to send, or comma-separated list")
     ("production,r", value<bool>(), "use production servers");
   variables_map vm;
@@ -119,9 +119,10 @@ int main(int argc, char** argv)
           });
         auto hashed_password = state.hash_password(user, password);
         state.login(user, hashed_password);
-
-        id = state.create_link(options["file"].as<std::vector<std::string>>(),
-                               "");
+        std::string file_names = options["file"].as<std::string>();
+        std::vector<std::string> files;
+        boost::algorithm::split(files, file_names, boost::is_any_of(","));
+        id = state.create_link(files, "");
         ELLE_ASSERT_NEQ(id, surface::gap::null_id);
 
         static const int width = 70;
