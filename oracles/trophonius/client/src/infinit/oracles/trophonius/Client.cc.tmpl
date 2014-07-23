@@ -26,6 +26,7 @@
 
 #include <reactor/Channel.hh>
 #include <reactor/Scope.hh>
+#include <reactor/Signal.hh>
 #include <reactor/exception.hh>
 #include <reactor/network/buffer.hh>
 #include <reactor/network/exception.hh>
@@ -677,15 +678,15 @@ namespace infinit
 
             if (!this->_connected.opened())
             {
-              ELLE_DEBUG("%s: ping thread: waiting to be connected", *this);
+              ELLE_DUMP("%s: ping thread: waiting to be connected", *this);
               reactor::wait(this->_connected);
-              ELLE_DEBUG("%s: ping thread: connected", *this);
+              ELLE_DUMP("%s: ping thread: connected", *this);
             }
 
             auto socket = this->_socket;
             try
             {
-              ELLE_DEBUG_SCOPE("send ping to %s", socket->peer());
+              ELLE_DUMP_SCOPE("send ping to %s", socket->peer());
               socket->write(elle::ConstWeakBuffer(ping_msg));
             }
             catch (elle::Exception const&)
@@ -707,9 +708,9 @@ namespace infinit
           {
             if (!this->_connected.opened())
             {
-              ELLE_DEBUG("%s: pong thread: waiting to be connected", *this);
+              ELLE_DUMP("%s: pong thread: waiting to be connected", *this);
               reactor::wait(this->_connected);
-              ELLE_DEBUG("%s: pong thread: connected", *this);
+              ELLE_DUMP("%s: pong thread: connected", *this);
             }
 
             if (!this->_pong_signal.wait(this->_ping_timeout))
@@ -724,7 +725,7 @@ namespace infinit
         std::unique_ptr<Notification>
         read()
         {
-          ELLE_DEBUG_SCOPE("%s: read message", *this);
+          ELLE_DUMP_SCOPE("%s: read message", *this);
           auto socket = this->_socket;
           auto buffer = socket->read_until("\n");
           ELLE_TRACE("%s: got message: %f", *this, buffer);
@@ -742,9 +743,9 @@ namespace infinit
           ELLE_TRACE_SCOPE("start read thread");
           while (true)
           {
-            ELLE_DEBUG("%s: read thread: waiting to be connected", *this);
+            ELLE_DUMP("%s: read thread: waiting to be connected", *this);
             reactor::wait(this->_connected);
-            ELLE_DEBUG("%s: read thread: connected", *this);
+            ELLE_DUMP("%s: read thread: connected", *this);
             auto notif = std::unique_ptr<Notification>();
             try
             {
@@ -759,13 +760,13 @@ namespace infinit
             ELLE_ASSERT(notif != nullptr);
             if (notif->notification_type == NotificationType::ping)
             {
-              ELLE_DEBUG("%s: ping received", *this);
+              ELLE_DUMP("%s: ping received", *this);
               this->_pong_signal.signal();
               continue;
             }
             else
             {
-              ELLE_DEBUG("%s: enqueue notification", *this);
+              ELLE_DUMP("%s: enqueue notification", *this);
               this->_notifications.put(std::move(notif));
               if (this->_synchronized)
                 this->_notifications.open();
