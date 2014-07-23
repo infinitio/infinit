@@ -69,7 +69,7 @@ namespace surface
           "station.Station:DEBUG,"
           "surface.gap.*:TRACE,"
           "surface.gap.TransferMachine:DEBUG,"
-          "*trophonius*:TRACE";
+          "*trophonius*:DEBUG";
         bool display_type = true;
         bool enable_pid = false;
         bool enable_tid = true;
