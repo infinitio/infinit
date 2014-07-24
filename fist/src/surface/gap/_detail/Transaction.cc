@@ -278,8 +278,7 @@ namespace surface
     State::_on_transaction_update(
       std::shared_ptr<infinit::oracles::Transaction> const& notif)
     {
-      ELLE_TRACE_SCOPE("%s: receive transaction data %s",
-                       *this, notif->id);
+      ELLE_TRACE_SCOPE("%s: receive transaction data %s", *this, notif->id);
       ELLE_ASSERT(!notif->id.empty());
       ELLE_DUMP("%s: data: %s", *this, *notif);
       auto it = std::find_if(
