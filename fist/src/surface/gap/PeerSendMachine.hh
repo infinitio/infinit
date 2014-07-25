@@ -39,6 +39,10 @@ namespace surface
                       std::vector<std::string> files,
                       std::string message,
                       std::shared_ptr<Data> data);
+      /// Constructor when sending from another device.
+      PeerSendMachine(Transaction& transaction,
+                      uint32_t id,
+                      std::shared_ptr<Data> data);
       virtual
       ~PeerSendMachine();
       using PeerMachine::data;

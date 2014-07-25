@@ -33,6 +33,21 @@ namespace surface
 
     PeerSendMachine::PeerSendMachine(Transaction& transaction,
                                      uint32_t id,
+                                     std::shared_ptr<Data> data)
+      : TransactionMachine(transaction, id, data)
+      , SendMachine(transaction, id, data)
+      , PeerMachine(transaction, id, data)
+      , _message(data->message)
+      , _wait_for_accept_state(
+        this->_machine.state_make(
+          "wait for accept",
+          std::bind(&PeerSendMachine::_wait_for_accept, this)))
+    {
+      this->transaction_status_update(data->status);
+    }
+
+    PeerSendMachine::PeerSendMachine(Transaction& transaction,
+                                     uint32_t id,
                                      std::string recipient,
                                      std::vector<std::string> files,
                                      std::string message,
@@ -66,6 +81,10 @@ namespace surface
         true);
       this->_machine.transition_add(
         this->_wait_for_accept_state,
+        this->_reject_state,
+        reactor::Waitables{&this->_rejected});
+      this->_machine.transition_add(
+        this->_another_device_state,
         this->_reject_state,
         reactor::Waitables{&this->_rejected});
       this->_machine.transition_add(this->_wait_for_accept_state,
@@ -175,6 +194,8 @@ namespace surface
           this->_run(this->_transfer_core_state);
         else if (snapshot.current_state() == "wait for accept")
           this->_run(this->_wait_for_accept_state);
+        else if (snapshot.current_state() == "another device")
+          this->_run(this->_another_device_state);
         else
         {
           ELLE_WARN("%s: unkown state in snapshot: %s",
@@ -197,10 +218,17 @@ namespace surface
       {
         case TransactionStatus::initialized:
         case TransactionStatus::created:
-          if (this->data()->id.empty())
-            this->_run(this->_create_transaction_state);
+          if (this->concerns_this_device())
+          {
+            if (this->data()->id.empty())
+              this->_run(this->_create_transaction_state);
+            else
+              this->_run(this->_wait_for_accept_state);
+          }
           else
-            this->_run(this->_wait_for_accept_state);
+          {
+            this->_run(this->_another_device_state);
+          }
           break;
         case TransactionStatus::accepted:
           this->_run(this->_transfer_core_state);
@@ -287,7 +315,10 @@ namespace surface
           break;
         case TransactionStatus::initialized:
         case TransactionStatus::created:
-          ELLE_TRACE("%s: ignoring status update to %s", *this, status);
+          if (this->concerns_this_device())
+            ELLE_TRACE("%s: ignoring status update to %s", *this, status);
+          else
+            this->_run(this->_another_device_state);
           break;
         case TransactionStatus::none:
         case TransactionStatus::started:
