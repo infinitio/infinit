@@ -62,6 +62,7 @@ namespace surface
     // Transaction status signals.
     protected:
       reactor::Barrier _accepted;
+      reactor::Barrier _accepted_elsewhere;
     /*-----------------.
     | Transaction data |
     `-----------------*/
@@ -84,6 +85,10 @@ namespace surface
       void
       transaction_status_update(
         infinit::oracles::Transaction::Status status) override;
+
+      virtual
+      bool
+      concerns_this_device() override;
 
     /*--------------.
     | Static Method |

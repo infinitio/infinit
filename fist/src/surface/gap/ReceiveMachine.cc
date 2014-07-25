@@ -28,6 +28,10 @@ namespace surface
       this->_machine.transition_add(this->_wait_for_decision_state,
                                     this->_accept_state,
                                     reactor::Waitables{&this->_accepted});
+      // Another device way.
+      this->_machine.transition_add(this->_wait_for_decision_state,
+                                    this->_another_device_state,
+                                    reactor::Waitables{&this->_accepted_elsewhere});
       // Reject way.
       this->_machine.transition_add(this->_wait_for_decision_state,
                                     this->_reject_state,
@@ -52,7 +56,17 @@ namespace surface
       this->_machine.transition_add_catch(_wait_for_decision_state, _fail_state);
       this->_machine.transition_add_catch(_accept_state, _fail_state);
       this->_machine.transition_add_catch(_reject_state, _fail_state);
+    }
 
+    bool
+    ReceiveMachine::concerns_this_device()
+    {
+      using infinit::oracles::PeerTransaction;
+      auto peer_data = std::dynamic_pointer_cast<PeerTransaction>(this->data());
+      if (this->state().device().id == peer_data->sender_device_id)
+        return true;
+      else
+        return false;
     }
 
     ReceiveMachine::~ReceiveMachine()
@@ -81,6 +95,12 @@ namespace surface
             this->finished().open();
           break;
         case TransactionStatus::accepted:
+          if (!this->concerns_this_device())
+          {
+            ELLE_DEBUG("%s: accepted on another device", *this)
+              this->_accepted_elsewhere.open();
+            break;
+          }
         case TransactionStatus::rejected:
         case TransactionStatus::initialized:
           ELLE_DEBUG("%s: ignore status %s", *this, status);
