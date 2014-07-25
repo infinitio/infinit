@@ -33,9 +33,9 @@ namespace surface
     | Construction |
     `-------------*/
 
+    // Constructor for when transaction was started on another device.
     SendMachine::SendMachine(Transaction& transaction,
                              uint32_t id,
-                             std::vector<std::string> files,
                              std::shared_ptr<Data> data)
       : Super(transaction, id, std::move(data))
       , _plain_progress(0)
@@ -43,15 +43,23 @@ namespace surface
         this->_machine.state_make(
           "create transaction",
           std::bind(&SendMachine::_create_transaction, this)))
-      , _files(files)
     {
-      if (this->files().empty())
-        throw Exception(gap_no_file, "no files to send");
       // Cancel.
       this->_machine.transition_add(this->_create_transaction_state,
                                     this->_cancel_state,
                                     reactor::Waitables{&this->canceled()}, true);
-      // Fail on file scan error to get a crash report
+    }
+
+    // Constructor for sender device.
+    SendMachine::SendMachine(Transaction& transaction,
+                             uint32_t id,
+                             std::vector<std::string> files,
+                             std::shared_ptr<Data> data)
+      : SendMachine(transaction, id, data)
+    {
+      this->_files = files;
+      if (this->files().empty())
+        throw Exception(gap_no_file, "no files to send");
       this->_machine.transition_add_catch_specific<
         boost::filesystem::filesystem_error>(this->_create_transaction_state,
                                              this->_fail_state)
@@ -72,6 +80,15 @@ namespace surface
             ELLE_WARN("%s: error while creating transaction: %s",
                       *this, elle::exception_string(e));
           });
+    }
+
+    bool
+    SendMachine::concerns_this_device()
+    {
+      if (this->state().device().id == this->data()->sender_device_id)
+        return true;
+      else
+        return false;
     }
 
     SendMachine::~SendMachine()

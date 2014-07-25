@@ -22,9 +22,14 @@ namespace surface
     | Construction |
     `-------------*/
     protected:
+      /// Constructor for sending device.
       SendMachine(Transaction& transaction,
                   uint32_t id,
                   std::vector<std::string> files,
+                  std::shared_ptr<Data> data);
+      /// Constructor for another device.
+      SendMachine(Transaction& transaction,
+                  uint32_t id,
                   std::shared_ptr<Data> data);
     public:
       virtual
@@ -93,6 +98,10 @@ namespace surface
       void try_mirroring_files(frete::Frete::FileSize total_size);
       virtual
       void cleanup () override;
+
+      virtual
+      bool
+      concerns_this_device() override;
     };
   }
 }
