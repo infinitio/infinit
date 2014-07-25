@@ -42,7 +42,7 @@ namespace surface
     | Construction |
     `-------------*/
     public:
-      PeerReceiveMachine(Transaction& state,
+      PeerReceiveMachine(Transaction& transaction,
                          uint32_t id,
                          std::shared_ptr<Data> data);
       virtual
