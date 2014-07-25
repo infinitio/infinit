@@ -91,6 +91,11 @@ namespace surface
       : _id(id)
       , _machine(elle::sprintf("transaction (%s) fsm", id))
       , _machine_thread()
+      , _performed_cancel(false)
+      , _another_device_state(
+        this->_machine.state_make(
+          "another device",
+          std::bind(&TransactionMachine::_another_device, this)))
       , _finish_state(
         this->_machine.state_make(
           "finish", std::bind(&TransactionMachine::_finish, this)))
@@ -116,6 +121,18 @@ namespace surface
       , _gap_status(gap_transaction_new)
     {
       ELLE_TRACE_SCOPE("%s: create transaction machine", *this);
+      this->_machine.transition_add(
+        this->_another_device_state,
+        this->_cancel_state,
+        reactor::Waitables{&this->canceled()}, true);
+      this->_machine.transition_add(
+        this->_another_device_state,
+        this->_finish_state,
+        reactor::Waitables{&this->finished()}, true);
+      this->_machine.transition_add(
+        this->_another_device_state,
+        this->_fail_state,
+        reactor::Waitables{&this->failed()}, true);
       this->_machine.transition_add(this->_finish_state, this->_end_state);
       this->_machine.transition_add(this->_cancel_state, this->_end_state);
       this->_machine.transition_add(this->_fail_state, this->_end_state);
@@ -187,6 +204,13 @@ namespace surface
         this->_gap_status = v;
         this->state().enqueue(Transaction::Notification(this->id(), v));
       }
+    }
+
+    void
+    TransactionMachine::_another_device()
+    {
+      ELLE_TRACE("%s: transaction running on another device", *this);
+      this->gap_status(gap_transaction_on_other_device);
     }
 
     void
@@ -305,6 +329,7 @@ namespace surface
     TransactionMachine::cancel()
     {
       ELLE_TRACE_SCOPE("%s: cancel transaction %s", *this, this->data()->id);
+      this->_performed_cancel = true;
       this->_canceled.open();
     }
 

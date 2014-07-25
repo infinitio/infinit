@@ -174,6 +174,8 @@ namespace surface
 
     protected:
       void
+      _another_device();
+      void
       _finish();
       void
       _reject();
@@ -196,8 +198,14 @@ namespace surface
       _end();
 
     protected:
+      // When cancelling, only the device where the user clicked cancel should
+      // update Meta, send metrics, etc.
+      bool _performed_cancel;
+
+    protected:
       // This state has to be protected to allow the children to start the
       // machine in this state.
+      reactor::fsm::State& _another_device_state;
       reactor::fsm::State& _finish_state;
       reactor::fsm::State& _reject_state;
       reactor::fsm::State& _cancel_state;
@@ -231,6 +239,10 @@ namespace surface
     protected:
       void
       transaction_id(std::string const& id);
+
+      virtual
+      bool
+      concerns_this_device() = 0;
 
     public:
       virtual
