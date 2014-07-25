@@ -170,6 +170,8 @@ namespace surface
             this->_run(this->_transfer_core_state);
           else if (snapshot.current_state() == "wait for decision")
             this->_run(this->_wait_for_decision_state);
+          else if (snapshot.current_state() == "another device")
+            this->_run(this->_another_device_state);
           else
           {
             ELLE_WARN("%s: unkown state in snapshot: %s",
@@ -197,7 +199,10 @@ namespace surface
           this->_run(this->_wait_for_decision_state);
           break;
         case TransactionStatus::accepted:
-          this->_run(this->_transfer_core_state);
+          if (this->concerns_this_device())
+            this->_run(this->_transfer_core_state);
+          else
+            this->_run(this->_another_device_state);
           break;
         case TransactionStatus::finished:
           this->_run(this->_finish_state);
@@ -1132,12 +1137,14 @@ namespace surface
       if (s == infinit::oracles::Transaction::Status::finished)
       {
         bool onboarding = false;
-        if (this->state().metrics_reporter())
+        if (this->state().metrics_reporter() && this->concerns_this_device())
+        {
           this->state().metrics_reporter()->transaction_ended(
-          this->transaction_id(),
-          s,
-          "",
-          onboarding);
+            this->transaction_id(),
+            s,
+            "",
+            onboarding);
+        }
       }
       PeerMachine::_finalize(s);
     }
