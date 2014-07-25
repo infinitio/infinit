@@ -866,7 +866,8 @@ namespace surface
         case infinit::oracles::trophonius::NotificationType::ping:
         case infinit::oracles::trophonius::NotificationType::connection_enabled:
         case infinit::oracles::trophonius::NotificationType::suicide:
-          break;
+          ELLE_ERR("%s: unhandled notification of type %s received",
+                   *this, notif->notification_type);
           elle::unreachable();
       }
     };
