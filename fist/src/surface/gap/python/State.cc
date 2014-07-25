@@ -248,6 +248,8 @@ gap_transaction_status_string(gap_TransactionStatus status)
   {
     case gap_transaction_new:
       return "transaction_new";
+    case gap_transaction_on_other_device:
+      return "transaction_on_other_device";
     case gap_transaction_waiting_accept:
       return "transaction_waiting_accept";
     case gap_transaction_waiting_data:
