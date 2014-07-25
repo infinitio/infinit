@@ -105,17 +105,21 @@ namespace surface
           {
             auto const& ipv4 = pair.second.ipv4_address;
             addresses.emplace_back(ipv4, this->_station.port());
-
           }
-        if (this->_upnp_mapping)
-        {
-          addresses.emplace_back(this->_upnp_mapping.external_host,
-                                 boost::lexical_cast<unsigned short>(
-                                   this->_upnp_mapping.external_port));
-        }
       }
       ELLE_DEBUG("addresses: %s", addresses);
       AddressContainer public_addresses;
+      if (elle::os::getenv("INFINIT_UPNP_ADDRESS", "").length() > 0)
+      {
+        public_addresses.emplace_back(elle::os::getenv("INFINIT_UPNP_ADDRESS"),
+                               this->_station.port());
+      }
+      else if (this->_upnp_mapping)
+      {
+        public_addresses.emplace_back(this->_upnp_mapping.external_host,
+                                      boost::lexical_cast<unsigned short>(
+                                        this->_upnp_mapping.external_port));
+      }
       this->_owner.state().meta().transaction_endpoints_put(
         this->_owner.data()->id,
         this->_owner.state().device().id,
@@ -164,10 +168,12 @@ namespace surface
                 host = std::move(res);
                 found.open();
                 if (this->_owner.state().metrics_reporter())
+                {
                   this->_owner.state().metrics_reporter()->transaction_connected(
                   this->_owner.transaction_id(),
                   round->name()
                 );
+                }
                 ELLE_TRACE("%s: connected to peer with %s",
                            *this, *round);
                 break;
