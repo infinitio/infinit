@@ -30,13 +30,13 @@ namespace surface
       status(status)
     {}
 
-    std::vector<infinit::oracles::Transaction::Status>
-    Transaction::final_statuses{
+    std::set<infinit::oracles::Transaction::Status>
+    Transaction::final_statuses({
       infinit::oracles::Transaction::Status::rejected,
       infinit::oracles::Transaction::Status::finished,
       infinit::oracles::Transaction::Status::canceled,
       infinit::oracles::Transaction::Status::failed
-    };
+    });
 
     gap_TransactionStatus
     Transaction::_transaction_status(Transaction::Data const& data) const

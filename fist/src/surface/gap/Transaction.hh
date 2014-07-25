@@ -4,6 +4,7 @@
 # include <stdint.h>
 
 # include <string>
+# include <set>
 # include <unordered_set>
 
 # include <boost/filesystem.hpp>
@@ -57,7 +58,7 @@ namespace surface
 
     public:
       typedef infinit::oracles::Transaction Data;
-      static std::vector<infinit::oracles::Transaction::Status> final_statuses;
+      static std::set<infinit::oracles::Transaction::Status> final_statuses;
 
     /*---------.
     | Snapshot |
