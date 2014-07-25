@@ -596,7 +596,7 @@ class TestNoTropho(TestResumeTransfer):
     return self.transfer_test(['tnt3'], {'name': 'tnt3','size': 10000000},
                               'R start r20 t T r30 t T r40 t T r50 t T r60 t T r70 t T r80 t T')
 
-class MutiDeviceBasicTransfer(unittest.TestCase):
+class MultiDeviceBasicTransfer(unittest.TestCase):
   def transfer_test(self, files, files_data,
                     expect_total_size = None, expect_is_directory = None,
                     expect_files_count = None, expect_files = None):
