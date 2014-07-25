@@ -224,38 +224,51 @@ namespace surface
       }
       auto me = state.me().id;
       auto device = state.device().id;
-      auto sender =
-        me == this->_data->sender_id && device == this->_data->sender_device_id;
+      auto sender = this->_data->sender_id;
+      auto sender_device = this->_data->sender_device_id;
       if (auto peer_data =
           std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
             this->_data))
       {
-        auto recipient =
-          me == peer_data->recipient_id &&
-          (peer_data->recipient_device_id.empty() ||
-           device == peer_data->recipient_device_id);
-        if (sender)
+        auto recipient_device = peer_data->recipient_device_id;
+        auto recipient = peer_data->recipient_id;
+        if (me == sender)
         {
-          ELLE_WARN("%s: can't restore peer send transaction from server",
-                    *this);
-          throw elle::Error("can't restore peer send transaction from server");
+          if (me == recipient && device != sender_device)
+          {
+            this->_machine.reset(
+              new PeerReceiveMachine(*this, this->_id, peer_data));
+          }
+          else if (device == sender_device)
+          {
+            ELLE_WARN("%s: can't restore peer send transaction from server",
+                      *this);
+            throw elle::Error("can't restore peer send transaction from server");
+          }
+          else
+          {
+            ELLE_DEBUG("%s: start send machine", *this);
+            this->_machine.reset(
+              new PeerSendMachine(*this, this->_id, peer_data));
+          }
         }
-        else if (recipient)
+        else if (me == recipient)
         {
           ELLE_DEBUG("%s: start receive machine", *this);
           this->_machine.reset(
             new PeerReceiveMachine(*this, this->_id, peer_data));
         }
-        else
-          ELLE_DEBUG("%s: not for our device: %s", *this, state.device().id);
-        if (sender || recipient)
-          this->_snapshot_save();
+        this->_snapshot_save();
       }
       else if (auto link_data =
-          std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
-            this->_data))
+               std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
+                 this->_data))
       {
+        if (device == sender_device)
           throw elle::Error("can't restore link send transaction from server");
+        else
+          this->_machine.reset(
+            new LinkSendMachine(*this, this->_id, link_data));
       }
       else
       {
@@ -397,12 +410,9 @@ namespace surface
         case Status::accepted:
         case Status::created:
         case Status::initialized:
-          // FIXME
-          return gap_transaction_new;
-        // FIXME: What is even this ?
         case Status::none:
         case Status::started:
-          return gap_transaction_new;
+          return gap_transaction_on_other_device;
         // Final states.
         case Status::canceled:
           return gap_transaction_canceled;
@@ -467,6 +477,10 @@ namespace surface
           this->_machine->transaction_status_update(this->_data->status);
         this->_snapshot_save();
       }
+      else if (!this->_machine)
+      {
+        this->state().enqueue(Transaction::Notification(this->id(), this->status()));
+      }
       if (auto link_data =
           std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(data))
       {
@@ -495,10 +509,8 @@ namespace surface
     {
       if (!this->_machine)
       {
-        // FIXME: meta send those notifications to all devices, so this is
-        // triggered.
-        ELLE_ERR(
-          "%s: got reachability notification inactive transaction %s",
+        ELLE_DEBUG(
+          "%s: got reachability notification for transaction on another device %s",
           *this, this->data()->id);
         return;
       }
@@ -512,8 +524,8 @@ namespace surface
       {
         // FIXME: meta send those notifications to all devices, so this is
         // triggered.
-        ELLE_ERR(
-          "%s: got reachability notification for inactive transaction %s",
+        ELLE_DEBUG(
+          "%s: got reachability notification for transaction on another device %s",
           *this, this->data()->id);
         return;
       }
