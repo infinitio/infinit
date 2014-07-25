@@ -147,9 +147,11 @@ int main(int argc, char** argv)
             if (notif.id != id)
               return;
 
-            if (notif.status == gap_transaction_finished)
+            auto& txn = state.transactions().at(id);
+
+            if (surface::gap::Transaction::final_statuses.find(txn->data()->status) != surface::gap::Transaction::final_statuses.end())
             {
-              state.transactions().at(id)->join();
+              txn->join();
               stop = true;
             }
           });
