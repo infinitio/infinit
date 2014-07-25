@@ -513,7 +513,7 @@ class Mixin:
       transaction_id = bson.ObjectId(transaction_id)
       transaction = self.transaction(transaction_id,
                                      owner_id = user['_id'])
-      is_sender = self.is_sender(transaction, user['_id'])
+      is_sender = self.is_sender(transaction, user['_id'], device_id)
       args = (transaction['status'], status)
       if transaction['status'] != status:
         allowed = transaction_status.transitions[transaction['status']][is_sender]
@@ -781,9 +781,10 @@ class Mixin:
     self_device_id -- the id of your device.
     """
     user = self.user
+    device_id = str(self.current_device['id'])
 
     transaction = self.transaction(transaction_id, owner_id = user['_id'])
-    is_sender = self.is_sender(transaction, user['_id'])
+    is_sender = self.is_sender(transaction, user['_id'], device_id)
 
     # XXX: Ugly.
     if is_sender:
