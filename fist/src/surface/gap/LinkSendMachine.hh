@@ -23,6 +23,12 @@ namespace surface
     | Construction |
     `-------------*/
     public:
+      /// Constructor when sending from other device.
+      LinkSendMachine(Transaction& transaction,
+                      uint32_t id,
+                      std::shared_ptr<Data> data);
+
+      /// Constructor for sending device.
       LinkSendMachine(Transaction& transaction,
                       uint32_t id,
                       std::vector<std::string> files,

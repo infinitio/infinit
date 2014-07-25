@@ -18,6 +18,20 @@ namespace surface
 
     LinkSendMachine::LinkSendMachine(Transaction& transaction,
                                      uint32_t id,
+                                     std::shared_ptr<Data> data)
+      : Super::Super(transaction, id, data)
+      , Super(transaction, id, data)
+      , _message(data->message)
+      , _data(data)
+      , _upload_state(
+        this->_machine.state_make(
+          "upload", std::bind(&LinkSendMachine::_upload, this)))
+    {
+      this->_run_from_snapshot();
+    }
+
+    LinkSendMachine::LinkSendMachine(Transaction& transaction,
+                                     uint32_t id,
                                      std::vector<std::string> files,
                                      std::string const& message,
                                      std::shared_ptr<Data> data)
@@ -85,6 +99,8 @@ namespace surface
           this->_run(this->_reject_state);
         else if (snapshot.current_state() == "upload")
           this->_run(this->_upload_state);
+        else if (snapshot.current_state() == "another device")
+          this->_run(this->_another_device_state);
         else
         {
           ELLE_WARN("%s: unkown state in snapshot: %s",
@@ -107,10 +123,17 @@ namespace surface
       {
         case TransactionStatus::initialized:
         case TransactionStatus::created:
-          if (this->data()->id.empty())
-            this->_run(this->_create_transaction_state);
+          if (this->concerns_this_device())
+          {
+            if (this->data()->id.empty())
+              this->_run(this->_create_transaction_state);
+            else
+              this->_run(this->_upload_state);
+          }
           else
-            this->_run(this->_upload_state);
+          {
+            this->_run(this->_another_device_state);
+          }
           break;
         case TransactionStatus::finished:
           this->_run(this->_finish_state);
@@ -255,7 +278,7 @@ namespace surface
         this->state().meta().update_link(this->data()->id, 0, s);
         this->data()->status = s;
         this->transaction()._snapshot_save();
-        if (this->state().metrics_reporter())
+        if (this->state().metrics_reporter() && this->concerns_this_device())
         {
           bool onboarding = false;
           this->state().metrics_reporter()->transaction_ended(
