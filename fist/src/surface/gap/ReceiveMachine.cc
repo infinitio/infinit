@@ -63,7 +63,7 @@ namespace surface
     {
       using infinit::oracles::PeerTransaction;
       auto peer_data = std::dynamic_pointer_cast<PeerTransaction>(this->data());
-      if (this->state().device().id == peer_data->sender_device_id)
+      if (this->state().device().id == peer_data->recipient_device_id)
         return true;
       else
         return false;
