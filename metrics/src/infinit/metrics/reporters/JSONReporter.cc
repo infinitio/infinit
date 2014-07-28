@@ -279,6 +279,16 @@ namespace infinit
           data[this->_key_str(JSONKey::metric_sender_id)] =
             std::string("unknown");
         }
+        if (!Reporter::metric_device_id().empty())
+        {
+          data[this->_key_str(JSONKey::device_id)] =
+            Reporter::metric_device_id();
+        }
+        else
+        {
+          data[this->_key_str(JSONKey::device_id)] =
+            std::string("unknown");
+        }
         ELLE_DUMP("%s: json to be sent: %s",
                   *this, elle::json::pretty_print(data));
         this->_post(destination, data);
@@ -331,6 +341,8 @@ namespace infinit
           return "bytes_transfered";
         case JSONKey::connection_method:
           return "connection_method";
+        case JSONKey::device_id:
+          return "device_id";
         case JSONKey::duration:
           return "duration";
         case JSONKey::event:

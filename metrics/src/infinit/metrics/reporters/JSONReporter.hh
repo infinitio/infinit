@@ -17,6 +17,7 @@ namespace infinit
       aws_error_code,
       bytes_transfered,
       connection_method,
+      device_id,
       duration,
       event,
       exit_reason,
