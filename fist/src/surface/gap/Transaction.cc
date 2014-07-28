@@ -405,8 +405,6 @@ namespace surface
       typedef infinit::oracles::Transaction::Status Status;
       switch (this->_data->status)
       {
-        // If we have no machine, those are for another device, which should be
-        // handled.
         case Status::accepted:
         case Status::created:
         case Status::initialized:
@@ -476,10 +474,6 @@ namespace surface
         ELLE_DEBUG("%s: updating machine", *this)
           this->_machine->transaction_status_update(this->_data->status);
         this->_snapshot_save();
-      }
-      else if (!this->_machine)
-      {
-        this->state().enqueue(Transaction::Notification(this->id(), this->status()));
       }
       if (auto link_data =
           std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(data))
