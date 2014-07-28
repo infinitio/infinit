@@ -259,7 +259,7 @@ class Transfer:
     reactor.sleep(datetime.timedelta(milliseconds = 300))
   def assertSuccess(self, test, total_size = None, is_directory = None,
                     files_count = None, files = None,
-                    validate_content = True):
+                    validate_content = True, credentials = None):
     """ Validates transaction success, metadata content, disk file data"""
     ts = None
     tr = None
@@ -271,9 +271,13 @@ class Transfer:
       ts = self.sender.transaction
     expect = {
       'message': self.message,
-      'recipient_fullname': test_credentials[1][2],
-      'sender_fullname': test_credentials[0][2],
-    };
+    }
+    if credentials is None:
+      expect['recipient_fullname'] = test_credentials[1][2]
+      expect['sender_fullname'] = test_credentials[0][2]
+    else:
+      expect['recipient_fullname'] = credentials[1][2]
+      expect['sender_fullname'] = credentials[0][2]
     if total_size is not None:
       expect['total_size'] = total_size
     if is_directory is not None:
