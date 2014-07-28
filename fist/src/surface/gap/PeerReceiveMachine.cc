@@ -684,7 +684,6 @@ namespace surface
           ELLE_TRACE("finish_transfer exited cleanly");
         }; // scope
       }// if current_transfer
-      // this->finished.open();
       ELLE_LOG("%s: transfer finished", *this);
       if (peer_version >= elle::Version(0, 8, 7))
       {
@@ -1128,8 +1127,7 @@ namespace surface
     : buffer(std::move(b.buffer))
     , start_position(b.start_position)
     , file_index(b.file_index)
-    {
-    }
+    {}
 
     void
     PeerReceiveMachine::_finalize(infinit::oracles::Transaction::Status s)
@@ -1137,7 +1135,7 @@ namespace surface
       if (s == infinit::oracles::Transaction::Status::finished)
       {
         bool onboarding = false;
-        if (this->state().metrics_reporter() && this->concerns_this_device())
+        if (this->state().metrics_reporter())
         {
           this->state().metrics_reporter()->transaction_ended(
             this->transaction_id(),
