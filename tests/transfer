@@ -600,7 +600,7 @@ class TestNoTropho(TestResumeTransfer):
     return self.transfer_test(['tnt3'], {'name': 'tnt3','size': 10000000},
                               'R start r20 t T r30 t T r40 t T r50 t T r60 t T r70 t T r80 t T')
 
-class MultiDeviceBasicTransfer(unittest.TestCase):
+class TestMultiDeviceTransfer(unittest.TestCase):
   def transfer_test(self, files, files_data,
                     expect_total_size = None, expect_is_directory = None,
                     expect_files_count = None, expect_files = None):
@@ -615,7 +615,7 @@ class MultiDeviceBasicTransfer(unittest.TestCase):
                   sender_devices = 2,
                   recipient_devices = 2) as transfer:
       transfer.recipient.login(device = 0)
-      # transfer.recipient.login(device = 1)
+      transfer.recipient.login(device = 1)
       transfer.sender.login(device = 0)
       transfer.sender.login(device = 1)
       wait_helper(3, lambda: False, False)
@@ -630,6 +630,24 @@ class MultiDeviceBasicTransfer(unittest.TestCase):
                               expect_total_size=100000, expect_files_count=1,
                               expect_is_directory = False
                               )
+
+  def test_send_to_self(self):
+    credentials = [('mefyl@infinit.io', 'mefyl', 'mefyl')]
+    credentials.append(credentials[0])
+    files = ['100k']
+    expect_total_size = 100 * 1000
+    files_data = {'name': '100k', 'size': expect_total_size}
+
+    with Transfer(credentials, files, files_data) as transfer:
+      transfer.recipient.login()
+      transfer.sender.login()
+      wait_helper(3, lambda: False, False)
+      transfer.recipient.set_rules(accept_rules)
+      transfer.start()
+      transfer.wait_transaction_final(30)
+      transfer.assertSuccess(self, total_size = expect_total_size,
+                             is_directory = None, files_count = len(files),
+                             credentials = credentials)
 
 utils.run(unittest.main)
 
