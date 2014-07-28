@@ -22,6 +22,10 @@ namespace infinit
       : LoginError("already logged in")
     {}
 
+    VersionRejected::VersionRejected()
+      : LoginError("version rejected")
+    {}
+
     TransactionFinalized::TransactionFinalized()
       : Error("transaction is already finalized")
     {}

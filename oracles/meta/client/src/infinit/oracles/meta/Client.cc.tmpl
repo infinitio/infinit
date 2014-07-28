@@ -405,9 +405,11 @@ namespace infinit
               throw infinit::state::CredentialError();
             case ErrorCode::already_logged_in:
               throw infinit::state::AlreadyLoggedIn();
-
+            case ErrorCode::deprecated:
+              throw infinit::state::VersionRejected();
             default:
-              throw infinit::state::LoginError("Unknown, good luck!");
+              throw infinit::state::LoginError(
+                elle::sprintf("%s: Unknown, good luck!", error_code));
           }
         }
         else
