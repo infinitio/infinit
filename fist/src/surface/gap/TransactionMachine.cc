@@ -91,7 +91,6 @@ namespace surface
       : _id(id)
       , _machine(elle::sprintf("transaction (%s) fsm", id))
       , _machine_thread()
-      , _performed_cancel(false)
       , _another_device_state(
         this->_machine.state_make(
           "another device",
@@ -329,7 +328,6 @@ namespace surface
     TransactionMachine::cancel()
     {
       ELLE_TRACE_SCOPE("%s: cancel transaction %s", *this, this->data()->id);
-      this->_performed_cancel = true;
       this->_canceled.open();
     }
 

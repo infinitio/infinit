@@ -172,10 +172,9 @@ namespace surface
           // This function is triggered by barriers being opened. In the case of
           // a cancel, another device could have caused the change. We only want
           // to update Meta if it was this device that cancelled.
-          if (status != infinit::oracles::Transaction::Status::canceled ||
-              this->_performed_cancel)
-          this->state().meta().update_transaction(
-            this->transaction_id(), status);
+          if (status != infinit::oracles::Transaction::Status::canceled)
+            this->state().meta().update_transaction(
+              this->transaction_id(), status);
         }
         catch (infinit::oracles::meta::Exception const& e)
         {
