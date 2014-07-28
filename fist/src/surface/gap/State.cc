@@ -321,6 +321,7 @@ namespace surface
         this->_trophonius.server(
           login_response.trophonius.host, login_response.trophonius.port_ssl);
         infinit::metrics::Reporter::metric_sender_id(login_response.id);
+        infinit::metrics::Reporter::metric_device_id(login_response.device_id);
         this->_metrics_reporter->user_login(true, "");
         this->_metrics_heartbeat_thread.reset(
           new reactor::Thread{
