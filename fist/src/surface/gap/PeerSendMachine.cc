@@ -43,6 +43,10 @@ namespace surface
           "wait for accept",
           std::bind(&PeerSendMachine::_wait_for_accept, this)))
     {
+      this->_machine.transition_add(
+        this->_another_device_state,
+        this->_end_state,
+        reactor::Waitables{&this->rejected()});
       this->transaction_status_update(data->status);
     }
 
@@ -77,16 +81,12 @@ namespace surface
       this->_machine.transition_add(
         this->_wait_for_accept_state,
         this->_transfer_core_state,
-        reactor::Waitables{&this->_accepted},
+        reactor::Waitables{&this->accepted()},
         true);
       this->_machine.transition_add(
         this->_wait_for_accept_state,
         this->_reject_state,
-        reactor::Waitables{&this->_rejected});
-      this->_machine.transition_add(
-        this->_another_device_state,
-        this->_reject_state,
-        reactor::Waitables{&this->_rejected});
+        reactor::Waitables{&this->rejected()});
       this->_machine.transition_add(this->_wait_for_accept_state,
                                     this->_cancel_state,
                                     reactor::Waitables{&this->canceled()}, true);
@@ -231,7 +231,8 @@ namespace surface
           }
           break;
         case TransactionStatus::accepted:
-          this->_run(this->_transfer_core_state);
+          if (this->concerns_this_device())
+            this->_run(this->_transfer_core_state);
           break;
         case TransactionStatus::finished:
           this->_run(this->_finish_state);
@@ -243,6 +244,7 @@ namespace surface
           this->_run(this->_fail_state);
           break;
         case TransactionStatus::rejected:
+          this->rejected().open();
           break;
         case TransactionStatus::started:
         case TransactionStatus::none:
@@ -294,8 +296,11 @@ namespace surface
       switch (status)
       {
         case TransactionStatus::accepted:
-          ELLE_DEBUG("%s: open accepted barrier", *this)
-            this->accepted().open();
+          if (this->concerns_this_device())
+          {
+            ELLE_DEBUG("%s: open accepted barrier", *this)
+              this->accepted().open();
+          }
           break;
         case TransactionStatus::canceled:
           ELLE_DEBUG("%s: open canceled barrier", *this)
