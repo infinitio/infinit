@@ -23,6 +23,7 @@ namespace surface
         this->_machine.state_make(
           "accept", std::bind(&ReceiveMachine::_accept, this)))
       , _accepted("accepted")
+      , _accepted_elsewhere("accepted elsewhere")
     {
       // Normal way.
       this->_machine.transition_add(this->_wait_for_decision_state,
@@ -102,6 +103,9 @@ namespace surface
             break;
           }
         case TransactionStatus::rejected:
+          ELLE_DEBUG("%s: rejected on another device", *this)
+          this->rejected().open();
+          break;
         case TransactionStatus::initialized:
           ELLE_DEBUG("%s: ignore status %s", *this, status);
           break;
@@ -130,7 +134,7 @@ namespace surface
     void
     ReceiveMachine::reject()
     {
-      ELLE_TRACE_SCOPE("%s: open accept barrier %s",
+      ELLE_TRACE_SCOPE("%s: open reject barrier %s",
                        *this, this->transaction_id());
       this->rejected().open();
     }
