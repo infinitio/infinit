@@ -781,10 +781,9 @@ class Mixin:
     self_device_id -- the id of your device.
     """
     user = self.user
-    device_id = str(self.current_device['id'])
 
     transaction = self.transaction(transaction_id, owner_id = user['_id'])
-    is_sender = self.is_sender(transaction, user['_id'], device_id)
+    is_sender = self.is_sender(transaction, user['_id'], str(self.current_device['id']))
 
     # XXX: Ugly.
     if is_sender:
