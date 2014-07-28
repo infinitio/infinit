@@ -59,11 +59,15 @@ namespace infinit
     public:
       ELLE_ATTRIBUTE_R(std::string, name);
 
-    /// Setter for metric sender id.
+    /// Setter for metric sender id and device id.
     public:
       static
       void
       metric_sender_id(std::string const& metric_sender_id);
+
+      static
+      void
+      metric_device_id(std::string const& device_id);
 
     /// Transaction metrics.
     public:
@@ -261,6 +265,10 @@ namespace infinit
 
       static
       std::string
+      metric_device_id();
+
+      static
+      std::string
       user_agent();
 
     /// Static class attributes.
@@ -270,6 +278,9 @@ namespace infinit
 
       static
       std::string _metric_sender_id;
+
+      static
+      std::string _metric_device_id;
 
       static
       std::string _user_agent;
