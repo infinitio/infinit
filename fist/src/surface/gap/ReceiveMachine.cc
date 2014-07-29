@@ -86,14 +86,20 @@ namespace surface
         case TransactionStatus::canceled:
           ELLE_DEBUG("%s: open canceled barrier", *this)
             this->canceled().open();
+          if (!this->concerns_this_device())
+            this->gap_status(gap_transaction_canceled);
           break;
         case TransactionStatus::failed:
           ELLE_DEBUG("%s: open failed barrier", *this)
             this->failed().open();
+          if (!this->concerns_this_device())
+            this->gap_status(gap_transaction_failed);
           break;
         case TransactionStatus::finished:
           ELLE_DEBUG("%s: open finished barrier", *this)
             this->finished().open();
+          if (!this->concerns_this_device())
+            this->gap_status(gap_transaction_finished);
           break;
         case TransactionStatus::accepted:
           if (!this->concerns_this_device())
@@ -104,7 +110,9 @@ namespace surface
           }
         case TransactionStatus::rejected:
           ELLE_DEBUG("%s: rejected on another device", *this)
-          this->rejected().open();
+            this->rejected().open();
+          if (!this->concerns_this_device())
+            this->gap_status(gap_transaction_rejected);
           break;
         case TransactionStatus::initialized:
           ELLE_DEBUG("%s: ignore status %s", *this, status);
