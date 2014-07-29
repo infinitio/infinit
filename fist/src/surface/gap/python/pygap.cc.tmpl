@@ -379,6 +379,7 @@ BOOST_PYTHON_MODULE(_gap)
 
   py::enum_<gap_TransactionStatus>("TransactionStatus")
     .value("transaction_new", gap_transaction_new)
+    .value("transaction_on_other_device", gap_transaction_on_other_device)
     .value("transaction_waiting_accept", gap_transaction_waiting_accept)
     .value("transaction_waiting_data", gap_transaction_waiting_data)
     .value("transaction_connecting", gap_transaction_connecting)
