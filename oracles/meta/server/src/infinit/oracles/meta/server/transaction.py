@@ -818,7 +818,7 @@ class Mixin:
     return self.success(res)
 
   @api('/transaction/<transaction_id>/cloud_buffer')
-  #@require_logged_in
+  @require_logged_in
   def cloud_buffer(self, transaction_id : bson.ObjectId,
                    force_regenerate : json_value = True):
     """

@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+
+from utils import HTTPException, Meta, User, throws
+
+with Meta() as meta:
+  alice = User(meta, "alice@infinit.io")
+  bob = User(meta, "bob@infinit.io")
+  bob.login()
+  transaction, res = bob.sendfile(recipient_id = alice.id)
+  transaction_id = res['created_transaction_id']
+  bob.get('transaction/%s/cloud_buffer' % transaction_id)
+  bob.logout()
+  throws(
+    lambda: bob.get('transaction/%s/cloud_buffer' % transaction_id),
+    403)
