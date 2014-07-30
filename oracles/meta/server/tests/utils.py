@@ -324,11 +324,18 @@ class Meta:
       self.__client = Client(self)
     return self.__client
 
-def throws(f):
+def throws(f, expected = None):
+  guard = None
+  if isinstance(expected, int):
+    guard = lambda e: e.status == expected
+    expected = HTTPException
+  if expected is None:
+    expected = BaseException
   try:
     f()
-  except:
-    pass
+  except expected as e:
+    if guard is not None:
+      guard(e)
   else:
     raise Exception('exception expected')
 
