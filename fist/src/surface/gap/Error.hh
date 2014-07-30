@@ -52,6 +52,13 @@ namespace infinit
       inline AlreadyLoggedIn();
     };
 
+    class VersionRejected
+      : public LoginError
+    {
+    public:
+      inline VersionRejected();
+    };
+
     class TransactionFinalized
       : public Error
     {
