@@ -116,6 +116,8 @@ class Mixin:
       link = self.database.links.find_one({'_id': link_id})
       if link is None:
         self.not_found()
+      if link['status'] is transaction_status.DELETED:
+        self.not_found()
       if link['sender_id'] != user['_id']:
         self.forbidden()
       if link['aws_credentials'] is None or regenerate:
@@ -256,7 +258,8 @@ class Mixin:
     progress -- upload progress of link.
     status -- Current status of link.
     """
-    with elle.log.trace('updating link %s' % id):
+    with elle.log.trace('updating link %s with status %s and progress %s' %
+                        (id, status, progress)):
       user = self.user
       if progress < 0.0 or progress > 1.0:
         self.bad_request('invalid progress')
@@ -265,14 +268,15 @@ class Mixin:
       link = self.database.links.find_one({'_id': id})
       if link is None:
         self.not_found()
-      if status == link['status']:
+      if status is link['status']:
         return self.success()
-      elif link['status'] in transaction_status.final:
-        self.forbidden('cannot change status from %s to %s' %
-                       (link['status'], status))
+      elif link['status'] in transaction_status.final and \
+        status is not transaction_status.DELETED:
+          self.forbidden('cannot change status from %s to %s' %
+                         (link['status'], status))
       if link['sender_id'] != user['_id']:
         self.forbidden()
-      self.database.links.update(
+      link = self.database.links.find_and_modify(
         {'_id': id},
         {
           '$set':
@@ -281,7 +285,13 @@ class Mixin:
             'progress': progress,
             'status': status,
           }
-        }
+        },
+        new = True,
+      )
+      self.notifier.notify_some(
+        notifier.LINK_TRANSACTION,
+        recipient_ids = {link['sender_id']},
+        message = self.__owner_link(link),
       )
       return self.success()
 
@@ -336,6 +346,8 @@ class Mixin:
       link = self.database.links.find_one({'hash': hash})
       if link is None:
         self.not_found('link not found')
+      elif link['status'] is transaction_status.DELETED:
+        self.not_found('deleted')
       elif (link['expiry_time'] is not None and
             datetime.datetime.utcnow() > link['expiry_time']):
               self.not_found('link expired')
@@ -383,16 +395,15 @@ class Mixin:
     user = self.user
     with elle.log.trace('links for %s offset=%s count=%s include_expired=%s' %
                         (user['_id'], offset, count, include_expired)):
-      if include_expired:
-        query = {'sender_id': user['_id']}
-      else:
-        query = {
-          'sender_id': user['_id'],
-          '$or': [
-            {'expiry_time': None},
-            {'expiry_time': {'$gt': datetime.datetime.utcnow()}},
-          ]
-        }
+      query = {
+        'sender_id': user['_id'],
+        'status': {'$ne': transaction_status.DELETED},
+      }
+      if not include_expired:
+        query['$or'] = [
+          {'expiry_time': None},
+          {'expiry_time': {'$gt': datetime.datetime.utcnow()}},
+        ]
       res = list()
       for link in self.database.links.aggregate([
         {'$match': query},
