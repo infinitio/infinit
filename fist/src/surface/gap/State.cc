@@ -318,8 +318,15 @@ namespace surface
         })
         << [&] (elle::Finally& finally_logout)
       {
-        this->_trophonius.server(
-          login_response.trophonius.host, login_response.trophonius.port_ssl);
+        std::string trophonius_host =
+          elle::os::getenv("INFINIT_TROPHONIUS_HOST",
+                           login_response.trophonius.host);
+        std::string env_port =
+          elle::os::getenv("INFINIT_TROPHONIUS_PORT", "");
+        int trophonius_port = login_response.trophonius.port;
+        if (!env_port.empty())
+          trophonius_port = boost::lexical_cast<int>(env_port);
+        this->_trophonius.server(trophonius_host, trophonius_port);
         infinit::metrics::Reporter::metric_sender_id(login_response.id);
         infinit::metrics::Reporter::metric_device_id(login_response.device_id);
         this->_metrics_reporter->user_login(true, "");
