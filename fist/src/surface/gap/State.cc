@@ -323,7 +323,7 @@ namespace surface
                            login_response.trophonius.host);
         std::string env_port =
           elle::os::getenv("INFINIT_TROPHONIUS_PORT", "");
-        int trophonius_port = login_response.trophonius.port;
+        int trophonius_port = login_response.trophonius.port_ssl;
         if (!env_port.empty())
           trophonius_port = boost::lexical_cast<int>(env_port);
         this->_trophonius.server(trophonius_host, trophonius_port);
