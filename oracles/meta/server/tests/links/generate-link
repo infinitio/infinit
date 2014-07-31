@@ -3,7 +3,7 @@
 import datetime
 from time import sleep
 
-from utils import Meta, User
+from utils import Meta, User, HTTPException
 from bson.objectid import ObjectId
 import infinit.oracles.meta.server.transaction_status as transaction_status
 
@@ -98,3 +98,32 @@ with Meta() as meta:
   client_link = jean.get('link/%s' % owner_link['hash'])
   assert client_link['link'] != old_s3_url
   assert client_link['click_count'] == owner_link['click_count'] + 3
+
+  # Create and then delete a link.
+  file_list = [
+    ['file1', 42],
+  ]
+  message = 'about to be deleted!'
+  res = jean.post('link',
+    {'files': file_list, 'name': 'file1', 'message': message})
+  assert res['aws_credentials']
+  assert res['transaction']
+  link = res['transaction']
+
+  # Set link status to done.
+  res = jean.post('link/%s' % link['id'],
+                  {'progress': 0.0,
+                   'status': transaction_status.DELETED})
+  assert res['success']
+
+  db_link = meta.database.links.find_one({'_id': ObjectId(link['id'])})
+  assert db_link['status'] == transaction_status.DELETED
+  deleted_hash = db_link['hash']
+
+  try:
+    meta.get('link/%s' % deleted_hash)
+    raise Exception('got 200 response when expecting 404')
+  except HTTPException as e:
+    assert e.status == 404
+  else:
+    raise Exception('shouldn\'t have got here')
