@@ -120,6 +120,7 @@ namespace surface
         case TransactionStatus::created:
         case TransactionStatus::started:
         case TransactionStatus::none:
+        case TransactionStatus::deleted:
           elle::unreachable();
       }
     }
