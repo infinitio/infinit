@@ -144,12 +144,11 @@ namespace surface
         case TransactionStatus::failed:
           this->_run(this->_fail_state);
           break;
-        case TransactionStatus::rejected:
-          this->_run(this->_reject_state);
-          break;
-        case TransactionStatus::accepted:
         case TransactionStatus::none:
         case TransactionStatus::started:
+        case TransactionStatus::accepted:
+        case TransactionStatus::rejected:
+        case TransactionStatus::deleted:
           elle::unreachable();
       }
     }
@@ -200,6 +199,47 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: update with new transaction status %s",
                        *this, status);
+      switch (status)
+      {
+        case TransactionStatus::initialized:
+        case TransactionStatus::created:
+          if (this->concerns_this_device())
+          {
+            if (this->data()->id.empty())
+              this->_run(this->_create_transaction_state);
+            else
+              this->_run(this->_upload_state);
+          }
+          else
+          {
+            this->_run(this->_another_device_state);
+          }
+          break;
+        case TransactionStatus::finished:
+          this->finished().open();
+          if (!this->concerns_this_device())
+            this->gap_status(gap_transaction_finished);
+          break;
+        case TransactionStatus::canceled:
+          this->canceled().open();
+          if (!this->concerns_this_device())
+            this->gap_status(gap_transaction_canceled);
+          break;
+        case TransactionStatus::failed:
+          this->failed().open();
+          if (!this->concerns_this_device())
+            this->gap_status(gap_transaction_failed);
+          break;
+        case TransactionStatus::deleted:
+          if (!this->concerns_this_device())
+            this->gap_status(gap_transaction_deleted);
+          break;
+        case TransactionStatus::none:
+        case TransactionStatus::started:
+        case TransactionStatus::accepted:
+        case TransactionStatus::rejected:
+          elle::unreachable();
+      }
     }
 
     aws::Credentials
