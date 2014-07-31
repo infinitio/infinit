@@ -163,7 +163,6 @@ class Mixin:
         'file_list':
           [{'name': file[0], 'size': file[1]} for file in files],
         'get_url_updated': None,
-        'hash': None,
         'last_accessed': None,
         'link': None,
         'message': message,
