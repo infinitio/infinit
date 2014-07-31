@@ -155,6 +155,7 @@ class Mixin:
       creation_time = datetime.datetime.utcnow()
 
       # Maintain a list of all elements in document here.
+      # Do not add a None hash as this causes problems with concurrency.
       link = {
         'aws_credentials': None,
         'click_count': 0,
