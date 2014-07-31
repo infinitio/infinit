@@ -8,4 +8,5 @@ statuses = {
   'none': 998,
   'rejected': 5,
   'started': 999,
+  'deleted': 8,
 }
