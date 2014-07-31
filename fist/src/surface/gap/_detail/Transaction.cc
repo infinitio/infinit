@@ -52,15 +52,39 @@ namespace surface
 
     uint32_t
     State::create_link(std::vector<std::string> const& files,
-                std::string const& message)
+                       std::string const& message)
     {
       ELLE_TRACE_SCOPE("%s: create link for %s", *this, files);
       auto id = generate_id();
       this->_transactions.emplace(
         id,
-        elle::make_unique<Transaction>(*this, id,
-                                       std::move(files), message));
+        elle::make_unique<Transaction>(*this, id, std::move(files), message));
       return id;
+    }
+
+    void
+    State::delete_link(uint32_t id)
+    {
+      ELLE_TRACE_SCOPE("%s: delete transaction with id: %s", *this, id);
+      auto it = this->_transactions.find(id);
+      ELLE_ASSERT_NEQ(it, this->_transactions.end());
+      auto data =
+        std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
+          it->second->data());
+      if (data == nullptr)
+      {
+        ELLE_ERR("%s: can only delete link transactions", *this);
+      }
+      else
+      {
+        if (!it->second->over())
+        {
+          ELLE_DEBUG("%s: cancel transaction before deleting it", *this);
+          it->second->cancel();
+        }
+        this->meta().update_link(
+          data->id, 0.0, infinit::oracles::Transaction::Status::deleted);
+      }
     }
 
     uint32_t
