@@ -217,6 +217,7 @@ namespace surface
           break;
         case TransactionStatus::started:
         case TransactionStatus::none:
+        case TransactionStatus::deleted:
           elle::unreachable();
       }
     }
