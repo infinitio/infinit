@@ -1105,6 +1105,20 @@ gap_create_link_transaction(gap_State* state,
     });
 }
 
+void
+gap_delete_link_transaction(gap_State* state, uint32_t id)
+{
+  ELLE_ASSERT(state != nullptr);
+  run<uint32_t>(
+    state,
+    "delete link",
+    [&] (surface::gap::State& state) -> uint32_t
+    {
+      state.delete_link(id);
+      return id;
+    });
+}
+
 surface::gap::LinkTransaction
 gap_link_transaction_by_id(gap_State* state,
                            uint32_t id)

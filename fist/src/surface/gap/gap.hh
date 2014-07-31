@@ -386,6 +386,10 @@ gap_create_link_transaction(gap_State* state,
                             std::vector<std::string> const& files,
                             std::string const& message);
 
+/// Delete a link transaction.
+void
+gap_delete_link_transaction(gap_State* state, uint32_t id);
+
 /// Fetch a transaction by id.
 surface::gap::LinkTransaction
 gap_link_transaction_by_id(gap_State* state,
