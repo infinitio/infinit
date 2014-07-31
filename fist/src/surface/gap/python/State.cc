@@ -268,6 +268,8 @@ gap_transaction_status_string(gap_TransactionStatus status)
       return "transaction_canceled";
     case gap_transaction_rejected:
       return "transaction_rejected";
+    case gap_transaction_deleted:
+      return "transaction_deleted";
     default:
       elle::unreachable();
   }
