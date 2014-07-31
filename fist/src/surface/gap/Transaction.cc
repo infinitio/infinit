@@ -420,6 +420,8 @@ namespace surface
           return gap_transaction_finished;
         case Status::rejected:
           return gap_transaction_rejected;
+        case Status::deleted:
+          return gap_transaction_deleted;
         default:
           elle::unreachable();
       }
