@@ -248,6 +248,7 @@ namespace surface
           break;
         case TransactionStatus::started:
         case TransactionStatus::none:
+        case TransactionStatus::deleted:
           elle::unreachable();
       }
     }
@@ -335,6 +336,7 @@ namespace surface
           break;
         case TransactionStatus::none:
         case TransactionStatus::started:
+        case TransactionStatus::deleted:
           ELLE_ABORT("%s: invalid status update to %s", *this, status);
       }
     }
