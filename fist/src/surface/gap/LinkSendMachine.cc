@@ -27,7 +27,7 @@ namespace surface
         this->_machine.state_make(
           "upload", std::bind(&LinkSendMachine::_upload, this)))
     {
-      this->_run_from_snapshot();
+      this->transaction_status_update(data->status);
     }
 
     LinkSendMachine::LinkSendMachine(Transaction& transaction,
@@ -203,36 +203,23 @@ namespace surface
       {
         case TransactionStatus::initialized:
         case TransactionStatus::created:
-          if (this->concerns_this_device())
-          {
-            if (this->data()->id.empty())
-              this->_run(this->_create_transaction_state);
-            else
-              this->_run(this->_upload_state);
-          }
-          else
-          {
+          if (!this->concerns_this_device())
             this->_run(this->_another_device_state);
-          }
           break;
         case TransactionStatus::finished:
-          this->finished().open();
-          if (!this->concerns_this_device())
-            this->gap_status(gap_transaction_finished);
+          ELLE_DEBUG("%s: open finished barrier", *this)
+            this->finished().open();
           break;
         case TransactionStatus::canceled:
-          this->canceled().open();
-          if (!this->concerns_this_device())
-            this->gap_status(gap_transaction_canceled);
+          ELLE_DEBUG("%s: open canceled barrier", *this)
+            this->canceled().open();
           break;
         case TransactionStatus::failed:
-          this->failed().open();
-          if (!this->concerns_this_device())
-            this->gap_status(gap_transaction_failed);
+          ELLE_DEBUG("%s: open failed barrier", *this)
+            this->failed().open();
           break;
         case TransactionStatus::deleted:
-          if (!this->concerns_this_device())
-            this->gap_status(gap_transaction_deleted);
+          ELLE_DEBUG("%s: link deleted, do nothing.", *this);
           break;
         case TransactionStatus::none:
         case TransactionStatus::started:
