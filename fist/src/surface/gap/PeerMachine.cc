@@ -169,10 +169,15 @@ namespace surface
       {
         try
         {
-          // Only the recipient should tell Meta that the transaction is done.
+          // Only the recipient should tell Meta the transaction is finished.
           if (status == infinit::oracles::Transaction::Status::finished &&
               this->state().me().id == this->data()->recipient_id &&
               this->state().device().id == this->data()->recipient_device_id)
+          {
+            this->state().meta().update_transaction(
+              this->transaction_id(), status);
+          }
+          else if (status != infinit::oracles::Transaction::Status::finished)
           {
             this->state().meta().update_transaction(
               this->transaction_id(), status);
