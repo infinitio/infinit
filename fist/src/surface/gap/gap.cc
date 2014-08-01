@@ -482,7 +482,7 @@ gap_avatar(gap_State* state,
 
   return run<gap_Status>(
     state,
-    "user avatar url",
+    "user avatar",
     [&] (surface::gap::State& state) -> gap_Status
     {
       auto res = state.user_icon(state.user(user_id).id);
