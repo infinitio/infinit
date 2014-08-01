@@ -126,7 +126,7 @@ namespace surface
         reactor::Waitables{&this->finished()});
       this->_machine.transition_add(
         this->_another_device_state,
-        this->_end_state,
+        this->_cancel_state,
         reactor::Waitables{&this->canceled()});
       this->_machine.transition_add(
         this->_another_device_state,
