@@ -52,11 +52,12 @@ namespace frete
 
   Frete::Frete(std::string const& password,
                infinit::cryptography::KeyPair const& self_key,
-               boost::filesystem::path const& snapshot_destination):
-    _impl(new Impl(password)),
-    _progress_changed("progress changed signal"),
-    _transfer_snapshot(),
-    _snapshot_destination(snapshot_destination)
+               boost::filesystem::path const& snapshot_destination)
+    : _impl(new Impl(password))
+    , _finished()
+    , _progress_changed("progress changed signal")
+    , _transfer_snapshot()
+    , _snapshot_destination(snapshot_destination)
   {
     if (exists(this->_snapshot_destination))
     {
