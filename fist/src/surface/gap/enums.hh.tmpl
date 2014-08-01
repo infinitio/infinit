@@ -9,29 +9,29 @@ extern "C"
   typedef enum
   {
     // The transaction was just created.
-    gap_transaction_new,
+    gap_transaction_new = 0,
     // Transaction on another device.
-    gap_transaction_on_other_device,
+    gap_transaction_on_other_device = 1,
     // Sender or recipient waiting until acceptance.
-    gap_transaction_waiting_accept,
+    gap_transaction_waiting_accept = 2,
     // Recipient exhausted the cloud buffered data.
-    gap_transaction_waiting_data,
+    gap_transaction_waiting_data = 3,
     // Connecting.
-    gap_transaction_connecting,
+    gap_transaction_connecting = 4,
     // Actively transfering.
-    gap_transaction_transferring,
+    gap_transaction_transferring = 5,
     // Uploaded in the cloud, not yet dowloaded.
-    gap_transaction_cloud_buffered,
+    gap_transaction_cloud_buffered = 6,
     // Finished.
-    gap_transaction_finished,
+    gap_transaction_finished = 7,
     // Failed.
-    gap_transaction_failed,
+    gap_transaction_failed = 8,
     // Cancelled.
-    gap_transaction_canceled,
+    gap_transaction_canceled = 9,
     // Rejected.
-    gap_transaction_rejected,
+    gap_transaction_rejected = 10,
     // Deleted.
-    gap_transaction_deleted,
+    gap_transaction_deleted = 11,
   } gap_TransactionStatus;
 
   typedef enum
