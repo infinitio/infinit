@@ -303,6 +303,9 @@ char const*
 gap_user_realid(gap_State* state,
                 uint32_t id);
 
+std::string
+gap_self_device_id(gap_State* state);
+
 /// Get user icon data.
 gap_Status
 gap_avatar(gap_State* state,

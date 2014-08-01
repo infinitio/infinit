@@ -461,6 +461,17 @@ gap_user_realid(gap_State* state,
                           });
 }
 
+std::string
+gap_self_device_id(gap_State* state)
+{
+  return run<std::string>(state,
+                          "self device id",
+                          [&] (surface::gap::State& state) -> std::string
+                          {
+                            return state.device().id;
+                          });
+}
+
 gap_Status
 gap_avatar(gap_State* state,
            uint32_t user_id,
