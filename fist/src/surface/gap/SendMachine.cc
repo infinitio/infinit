@@ -488,7 +488,7 @@ namespace surface
           ELLE_LOG("%s: File mirroring failure, cleaning up.", *this);
           boost::filesystem::remove_all(mirror_path, erc);
       });
-      ELLE_TRACE("%s: trying to mirror files (%s > %s) to %s",
+      ELLE_TRACE("%s: trying to mirror files (%s < %s) to %s",
                  *this, total_size, max_mirror_size, mirror_path);
       boost::filesystem::create_directories(mirror_path, erc);
       if (erc)
@@ -547,7 +547,7 @@ namespace surface
       }
       validate = true;
       this->_files = moved_files;
-      ELLE_TRACE("%s: Mirroring succesful", *this);
+      ELLE_TRACE("%s: Mirroring successfull", *this);
     }
   }
 }
