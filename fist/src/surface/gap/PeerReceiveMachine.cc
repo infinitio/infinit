@@ -94,11 +94,6 @@ namespace surface
       this->_machine.transition_add(this->_transfer_core_state,
                                     this->_finish_state);
 
-      this->_machine.transition_add(
-        _transfer_core_state,
-        _cancel_state,
-        reactor::Waitables{&this->canceled()}, true);
-
       // Exception.
       this->_machine.transition_add_catch(_transfer_core_state, _fail_state);
       try
