@@ -120,11 +120,6 @@ namespace surface
       , _gap_status(gap_transaction_new)
     {
       ELLE_TRACE_SCOPE("%s: create transaction machine", *this);
-      // Transaction can be cancelled on another device.
-      this->_machine.transition_add(
-        this->_another_device_state,
-        this->_cancel_state,
-        reactor::Waitables{&this->canceled()});
       this->_machine.transition_add(
         this->_another_device_state,
         this->_end_state,
