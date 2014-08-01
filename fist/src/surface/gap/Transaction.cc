@@ -302,7 +302,6 @@ namespace surface
       {
         if (this->_sender)
         {
-          ELLE_ASSERT(this->_message);
           ELLE_ASSERT(this->_files);
           ELLE_TRACE("%s: create peer send machine", *this)
             this->_machine.reset(
@@ -320,7 +319,6 @@ namespace surface
                std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
                  this->_data))
       {
-        ELLE_ASSERT(this->_message);
         ELLE_ASSERT(this->_files);
         ELLE_TRACE("%s: create link send machine", *this)
           this->_machine.reset(
