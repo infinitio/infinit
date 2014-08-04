@@ -62,7 +62,7 @@ namespace surface
     void
     TransactionMachine::Snapshot::print(std::ostream& stream) const
     {
-      elle::fprintf(stream, "TransactionMachin::Snapshot(\"%s\")",
+      elle::fprintf(stream, "TransactionMachine::Snapshot(\"%s\")",
                     this->_current_state);
     }
 
