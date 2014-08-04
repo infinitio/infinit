@@ -547,7 +547,7 @@ namespace surface
       }
       validate = true;
       this->_files = moved_files;
-      ELLE_TRACE("%s: Mirroring successfull", *this);
+      ELLE_TRACE("%s: Mirroring successful", *this);
     }
   }
 }
