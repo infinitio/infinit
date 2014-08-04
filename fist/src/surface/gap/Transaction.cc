@@ -267,8 +267,17 @@ namespace surface
         if (device == sender_device)
           throw elle::Error("can't restore link send transaction from server");
         else
+        {
           this->_machine.reset(
             new LinkSendMachine(*this, this->_id, link_data));
+          this->state().enqueue(LinkTransaction(this->id(),
+                                                link_data->name,
+                                                link_data->mtime,
+                                                link_data->share_link,
+                                                link_data->click_count,
+                                                this->status()));
+          this->_snapshot_save();
+        }
       }
       else
       {
