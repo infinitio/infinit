@@ -296,6 +296,13 @@ namespace surface
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
       switch (status)
       {
+        case TransactionStatus::initialized:
+        case TransactionStatus::created:
+          if (this->concerns_this_device())
+            ELLE_TRACE("%s: ignoring status update to %s", *this, status);
+          else
+            this->_run(this->_another_device_state);
+          break;
         case TransactionStatus::accepted:
           if (this->concerns_this_device())
           {
@@ -326,13 +333,6 @@ namespace surface
             this->rejected().open();
           if (!this->concerns_this_device())
             this->gap_status(gap_transaction_rejected);
-          break;
-        case TransactionStatus::initialized:
-        case TransactionStatus::created:
-          if (this->concerns_this_device())
-            ELLE_TRACE("%s: ignoring status update to %s", *this, status);
-          else
-            this->_run(this->_another_device_state);
           break;
         case TransactionStatus::none:
         case TransactionStatus::started:
