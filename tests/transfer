@@ -144,7 +144,7 @@ class TransferPeer:
       state.hash_password(self.credentials[0], self.credentials[1]))
     self.logged_in.append(device)
   def logout(self, device = 0):
-    if device not in logged_in:
+    if device not in self.logged_in:
       return
     if len(self.statuses) and self.transaction_uid is None:
       # store transaction uid so that we can recover transaction even
@@ -156,7 +156,7 @@ class TransferPeer:
     """ Check if progress greater than value, throw if it can never be"""
     if self.status == 'transaction_finished' or self.states[device].transaction_progress(tid) >= progress:
       return True
-    elle.log.trace('Progress is %s' % self.state.transaction_progress(tid))
+    elle.log.trace('Progress is %s' % self.states[device].transaction_progress(tid))
     if self.status in final_statuses:
       raise Exception('Progress unreachable: state=%s, at %s, expect %s'
         % (self.status, self.states[device].transaction_progress(tid), progress))
@@ -365,7 +365,7 @@ class TestBasicTransfer(unittest.TestCase):
 
 class TestBasicTransferBig(TestBasicTransfer):
   def test_big_file(self):
-    return self.transfer_test('big', {'names': ['big'], 'size': 5000000000}, timeout=500)
+    return self.transfer_test('big', {'names': ['big'], 'size': 5000000000})
 
 class TestResumeTransfer(unittest.TestCase):
   def parse_sequence(self, sequence):
@@ -469,10 +469,10 @@ class TestResumeTransfer(unittest.TestCase):
           self.assertEqual(transfer.sender.status, 'transaction_canceled')
         if transfer.recipient.logged_in:
           self.assertEqual(transfer.recipient.status, 'transaction_canceled')
-  #def test_self(self): # tests the test system
-  #  return self.transfer_test(['100k'], {'name': '100k','size': 100000},
-  #                            'R start 10 20 30 100',
-  #                            expect_total_size=100000, expect_files_count=1)
+  def test_self(self): # tests the test system
+   return self.transfer_test(['100k'], {'name': '100k','size': 100000},
+                             'R start 10 20 30 100',
+                             expect_total_size=100000, expect_files_count=1)
   def fail_test_cloud_offline(self):
     # test with cloud subsystem not working
     # Test that both peers handle it gracefuly without failing the trasnaction
@@ -523,14 +523,14 @@ class TestResumeTransfer(unittest.TestCase):
     return self.transfer_test(['big'], {'name': 'big','size': 1000000},
                               'start s40 R r10 r s R r20 r R r30 r R r40 r S s80 s R r50 S')
 
-  def _test_cancel_remove_sender_file(self, files, remove, pre_seq, timeout=10):
+  def _test_cancel_remove_sender_file(self, files, remove, pre_seq, timeout = 10, device = 0):
     """ Remove a file mid-test on sender side, and expects a cancelled state
     """
     def remove_file(t):
       filepath = os.path.join(t.data.directory, remove)
       os.remove(filepath)
     def disable_mirror(t): #Disable file mirroring feature, or delete will have no effect
-      t.sender.state.configuration_set_max_mirror_size(1)
+      t.sender.states[device].configuration_set_max_mirror_size(1)
     # Use a file big enough so we dont miss a progress >0 and <1 with our polling
     return self.transfer_test(files, {'names': files,'size': 50000000},
                               [disable_mirror, pre_seq, remove_file],
@@ -570,17 +570,17 @@ class TestResumeTransfer(unittest.TestCase):
   def test_cancel_no_such_file(self):
     return self.transfer_test(['canard'], {'names': ['coin'], 'size': 1},
                               'start',
-                              assert_status = 'canceled')
+                              assert_status = 'failed')
   def test_cancel_no_such_path(self):
     return self.transfer_test(['canard/coin'], {'names': ['coin'], 'size': 1},
                               'start',
-                              assert_status = 'canceled')
-  def test_mirror_sender_file(self): # check sender file mirroring feature
+                              assert_status = 'failed')
+  def test_mirror_sender_file(self, device = 0): # check sender file mirroring feature
     def remove_file(t):
       filepath = os.path.join(t.data.directory, 'foo')
       os.remove(filepath)
     def ensure_mirror(t):
-      t.sender.state.configuration_set_max_mirror_size(60000000)
+      t.sender.states[device].configuration_set_max_mirror_size(60000000)
     return self.transfer_test(['foo'], {'name': 'foo','size': 50000000},
                               [ensure_mirror, 'R start r0.001', remove_file],
                               validate_content = False)
