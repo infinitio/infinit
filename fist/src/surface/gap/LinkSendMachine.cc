@@ -194,8 +194,7 @@ namespace surface
     }
 
     void
-    LinkSendMachine::transaction_status_update(
-      infinit::oracles::Transaction::Status status)
+    LinkSendMachine::transaction_status_update(TransactionStatus status)
     {
       ELLE_TRACE_SCOPE("%s: update with new transaction status %s",
                        *this, status);
@@ -203,20 +202,33 @@ namespace surface
       {
         case TransactionStatus::initialized:
         case TransactionStatus::created:
-          if (!this->concerns_this_device())
+          if (this->concerns_this_device())
+          {
+            ELLE_TRACE("%s: ignoring status update to %s", *this, status);
+          }
+          else
+          {
             this->_run(this->_another_device_state);
+            this->gap_status(gap_transaction_on_other_device);
+          }
           break;
         case TransactionStatus::finished:
           ELLE_DEBUG("%s: open finished barrier", *this)
             this->finished().open();
+          if (!this->concerns_this_device())
+            this->gap_status(gap_transaction_finished);
           break;
         case TransactionStatus::canceled:
           ELLE_DEBUG("%s: open canceled barrier", *this)
             this->canceled().open();
+          if (!this->concerns_this_device())
+            this->gap_status(gap_transaction_canceled);
           break;
         case TransactionStatus::failed:
           ELLE_DEBUG("%s: open failed barrier", *this)
             this->failed().open();
+          if (!this->concerns_this_device())
+            this->gap_status(gap_transaction_failed);
           break;
         case TransactionStatus::deleted:
           ELLE_DEBUG("%s: link deleted, do nothing.", *this);
