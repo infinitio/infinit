@@ -216,6 +216,11 @@ class Mixin:
         'transaction': self.__owner_link(link),
         'aws_credentials': credentials,
       }
+      self.notifier.notify_some(
+        notifier.LINK_TRANSACTION,
+        recipient_ids = {link['sender_id']},
+        message = self.__owner_link(link),
+      )
       return res
 
   def __owner_link(self, link):
