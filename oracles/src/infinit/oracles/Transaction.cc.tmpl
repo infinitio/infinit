@@ -75,7 +75,10 @@ namespace infinit
     operator <<(std::ostream& out,
                 Transaction const& t)
     {
-      out << "Transaction(" << t.id << ", " << t.status << ")";
+      out << "Transaction(";
+      if (!t.id.empty())
+        out << t.id << ", ";
+      out << t.status << ")";
       return out;
     }
   }
