@@ -510,7 +510,7 @@ namespace surface
         else if (auto peer = std::dynamic_pointer_cast<PeerTransaction>(data))
           *std::dynamic_pointer_cast<PeerTransaction>(this->_data) = *peer;
         else
-          ELLE_ERR("%s: unkown transaction type: %s",
+          ELLE_ERR("%s: unknown transaction type: %s",
                    *this, elle::demangle(typeid(*data).name()));
       }
       if (this->_machine && !this->_over)
