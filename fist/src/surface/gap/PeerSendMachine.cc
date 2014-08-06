@@ -841,13 +841,22 @@ namespace surface
     void
     PeerSendMachine::notify_user_connection_status(
       std::string const& user_id,
+      bool user_status,
       std::string const& device_id,
-      bool online)
+      bool device_status)
     {
-      if (user_id == this->data()->recipient_id
-          && (this->data()->recipient_device_id.empty() ||
-              device_id == this->data()->recipient_device_id))
-        this->_peer_connection_changed(online);
+      auto const& txn = this->data();
+      // User hasn't accepted yet.
+      if (user_id == txn->recipient_id && txn->recipient_device_id.empty())
+      {
+        this->_peer_connection_changed(user_status);
+      }
+      // User has accepted.
+      else if (user_id == txn->recipient_id &&
+               device_id == txn->recipient_device_id)
+      {
+        this->_peer_connection_changed(device_status);
+      }
     }
   }
 }
