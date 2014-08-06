@@ -424,7 +424,7 @@ namespace surface
       // Try mirroring files, only if we are not going to make an
       // archive right away
       if (!peer.ghost() || !archive_info().second)
-        try_mirroring_files(size);
+        this->try_mirroring_files(size);
       // Populate the frete.
       this->frete().save_snapshot();
       this->state().meta().update_transaction(this->transaction_id(),
@@ -438,9 +438,14 @@ namespace surface
       auto peer = this->state().user(this->data()->recipient_id);
       try
       {
+        // Normal p2p case.
+        bool peer_online = peer.online();
+        // Send to self case.
+        if (this->state().me().id == peer.id)
+          peer_online = peer.online_excluding_device(this->state().device().id);
         if (peer.ghost())
           this->_plain_upload();
-        else if (!peer.ghost() && !peer.online())
+        else if (!peer.ghost() && !peer_online)
           this->_cloud_operation();
         else
           this->gap_status(gap_transaction_waiting_accept);
