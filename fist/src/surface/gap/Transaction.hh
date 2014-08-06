@@ -178,8 +178,9 @@ namespace surface
 
       void
       notify_user_connection_status(std::string const& user_id,
+                                    bool user_status,
                                     std::string const& device_id,
-                                    bool status);
+                                    bool device_status);
       void
       notify_peer_reachable(std::vector<std::pair<std::string, int>> const& endpoints);
       void

@@ -498,12 +498,14 @@ namespace surface
 
     void
     Transaction::notify_user_connection_status(std::string const& user_id,
+                                               bool user_status,
                                                std::string const& device_id,
-                                               bool status)
+                                               bool device_status)
     {
       if (this->_machine == nullptr)
         return;
-      this->_machine->notify_user_connection_status(user_id, device_id, status);
+      this->_machine->notify_user_connection_status(user_id, user_status,
+                                                    device_id, device_status);
     }
 
     void
