@@ -194,6 +194,13 @@ namespace surface
       this->_machine.reset(
         new LinkSendMachine(
           *this, this->_id, this->_files.get(), message, data));
+      // Update UI.
+      this->state().enqueue(LinkTransaction(this->id(),
+                                            data->name,
+                                            data->mtime,
+                                            data->share_link,
+                                            data->click_count,
+                                            this->status()));
       this->_snapshot_save();
     }
 
