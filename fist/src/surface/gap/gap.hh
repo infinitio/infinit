@@ -389,10 +389,6 @@ gap_create_link_transaction(gap_State* state,
                             std::vector<std::string> const& files,
                             std::string const& message);
 
-/// Delete a link transaction.
-void
-gap_delete_link_transaction(gap_State* state, uint32_t id);
-
 /// Fetch a transaction by id.
 surface::gap::LinkTransaction
 gap_link_transaction_by_id(gap_State* state,
@@ -458,6 +454,12 @@ gap_send_files_by_email(gap_State* state,
 uint32_t
 gap_cancel_transaction(gap_State* state,
                        uint32_t id);
+
+/// Delete transaction.
+/// This operation can only be performed on LinkTransactions.
+/// If the return value is 0, the operation failed.
+uint32_t
+gap_delete_transaction(gap_State* state, uint32_t id);
 
 /// Reject transaction.
 /// This function can only be used by the recipient of the transaction, if
