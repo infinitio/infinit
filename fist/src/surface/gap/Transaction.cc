@@ -35,7 +35,8 @@ namespace surface
       infinit::oracles::Transaction::Status::rejected,
       infinit::oracles::Transaction::Status::finished,
       infinit::oracles::Transaction::Status::canceled,
-      infinit::oracles::Transaction::Status::failed
+      infinit::oracles::Transaction::Status::failed,
+      infinit::oracles::Transaction::Status::deleted
     });
 
     gap_TransactionStatus
@@ -389,6 +390,40 @@ namespace surface
         throw BadOperation(BadOperation::Type::cancel);
       }
       this->_machine->cancel();
+    }
+
+    void
+    Transaction::delete_()
+    {
+      ELLE_TRACE_SCOPE("%s: delete transaction", *this);
+      if (auto data =
+          std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
+            this->_data))
+      {
+        // If the transaction is running, cancel it.
+        if (this->_machine != nullptr && !this->final())
+        {
+          this->_machine->cancel();
+          // Set the machine's gap status as we don't have a separate state for
+          // deleted.
+          this->_machine->gap_status(gap_transaction_deleted);
+        }
+        // Update Meta.
+        this->state().meta().update_link(
+          data->id, 0.f, infinit::oracles::Transaction::Status::deleted);
+        // Update UI.
+        this->state().enqueue(LinkTransaction(this->id(),
+                                              data->name,
+                                              data->mtime,
+                                              data->share_link,
+                                              data->click_count,
+                                              gap_transaction_deleted));
+      }
+      else
+      {
+        ELLE_WARN("%s: can only delete LinkTransaction");
+        throw BadOperation(BadOperation::Type::delete_);
+      }
     }
 
     void

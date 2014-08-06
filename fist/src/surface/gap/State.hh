@@ -544,9 +544,6 @@ namespace surface
       create_link(std::vector<std::string> const& files,
                   std::string const& message);
 
-      void
-      delete_link(uint32_t id);
-
       /*------------------.
       | Peer Transactions |
       `------------------*/

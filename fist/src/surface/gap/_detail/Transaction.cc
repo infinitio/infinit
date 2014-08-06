@@ -62,31 +62,6 @@ namespace surface
       return id;
     }
 
-    void
-    State::delete_link(uint32_t id)
-    {
-      ELLE_TRACE_SCOPE("%s: delete transaction with id: %s", *this, id);
-      auto it = this->_transactions.find(id);
-      ELLE_ASSERT_NEQ(it, this->_transactions.end());
-      auto data =
-        std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
-          it->second->data());
-      if (data == nullptr)
-      {
-        ELLE_ERR("%s: can only delete link transactions", *this);
-      }
-      else
-      {
-        if (!it->second->over())
-        {
-          ELLE_DEBUG("%s: cancel transaction before deleting it", *this);
-          it->second->cancel();
-        }
-        this->meta().update_link(
-          data->id, 0.0, infinit::oracles::Transaction::Status::deleted);
-      }
-    }
-
     uint32_t
     State::send_files(std::string const& peer_id,
                       std::vector<std::string> files,

@@ -33,6 +33,7 @@ namespace surface
           reject,
           join,
           cancel,
+          delete_,
           progress,
           pause,
           interrupt,
@@ -155,6 +156,11 @@ namespace surface
       virtual
       void
       cancel();
+
+      // Only for LinkTransactions.
+      virtual
+      void
+      delete_();
 
       virtual
       void
