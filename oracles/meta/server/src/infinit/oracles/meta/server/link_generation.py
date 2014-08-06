@@ -402,7 +402,8 @@ class Mixin:
                         (user['_id'], offset, count, include_expired)):
       query = {
         'sender_id': user['_id'],
-        'status': {'$ne': transaction_status.DELETED},
+        'status': {'$nin': [
+          transaction_status.CANCELED, transaction_status.DELETED]},
       }
       if not include_expired:
         query['$or'] = [
