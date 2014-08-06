@@ -304,7 +304,7 @@ namespace surface
             auto* notif_ptr =
               new infinit::oracles::trophonius::UserStatusNotification{};
             notif_ptr->user_id = user.id;
-            notif_ptr->status = user.online();
+            notif_ptr->user_status = user.online();
             notif_ptr->device_id = device;
             notif_ptr->device_status = true;
 
@@ -320,7 +320,7 @@ namespace surface
             ELLE_DEBUG("%s: updating device %s", *this, device);
             auto* notif_ptr = new infinit::oracles::trophonius::UserStatusNotification{};
             notif_ptr->user_id = user.id;
-            notif_ptr->status = user.online();
+            notif_ptr->user_status = user.online();
             notif_ptr->device_id = device;
             notif_ptr->device_status = false;
 
@@ -517,7 +517,7 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: user status notification %s", *this, notif);
       State::User swagger = this->user(notif.user_id);
-      if (swagger.ghost() && notif.status == gap_user_status_online)
+      if (swagger.ghost() && notif.user_status == gap_user_status_online)
       {
         swagger = this->user_sync(notif.user_id);
         ELLE_ASSERT(!swagger.ghost());
@@ -528,9 +528,9 @@ namespace surface
         this->_swagger_indexes.insert(this->_user_indexes.at(swagger.id));
       }
       ELLE_DEBUG("%s's (id: %s) status changed to %s",
-                 swagger.fullname, swagger.id, notif.status);
-      ELLE_ASSERT(notif.status == gap_user_status_online ||
-                  notif.status == gap_user_status_offline);
+                 swagger.fullname, swagger.id, notif.user_status);
+      ELLE_ASSERT(notif.user_status == gap_user_status_online ||
+                  notif.user_status == gap_user_status_offline);
       State::User& user = this->_users.at(this->_user_indexes.at(swagger.id));
       ELLE_DEBUG("%s: device %s status is %s",
                  *this, notif.device_id, notif.device_status);
@@ -575,7 +575,7 @@ namespace surface
       ELLE_DEBUG("enqueue notification for UI")
         this->enqueue<UserStatusNotification>(
           UserStatusNotification(
-            this->_user_indexes.at(swagger.id), notif.status));
+            this->_user_indexes.at(swagger.id), notif.user_status));
     }
   }
 }
