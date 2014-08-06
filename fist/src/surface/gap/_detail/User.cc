@@ -569,9 +569,11 @@ namespace surface
       ELLE_DUMP("%s connected devices: %s", user, user.connected_devices);
       ELLE_DEBUG("signal connection status update to concerned transactions")
         for (auto& transaction: this->transactions())
-          transaction.second->notify_user_connection_status(notif.user_id,
-                                                            notif.device_id,
-                                                            notif.status);
+        {
+          transaction.second->notify_user_connection_status(
+            notif.user_id, notif.user_status,
+            notif.device_id, notif.device_status);
+        }
       ELLE_DEBUG("enqueue notification for UI")
         this->enqueue<UserStatusNotification>(
           UserStatusNotification(
