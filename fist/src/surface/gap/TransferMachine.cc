@@ -337,26 +337,46 @@ namespace surface
     Transferer::run()
     {
       ELLE_TRACE_SCOPE("%s: run %s", *this, this->_fsm);
-      // XXX: Best place to do that? (See constructor).
-      std::string peer_id;
       // FIXME: fix transaction machines hierarchy
       using infinit::oracles::PeerTransaction;
       auto peer_data =
         std::dynamic_pointer_cast<PeerTransaction>(this->_owner.data());
       ELLE_ASSERT(peer_data.get());
-      if (dynamic_cast<PeerSendMachine*>(&this->_owner))
-        peer_id = peer_data->recipient_id;
-      else
-        peer_id = peer_data->sender_id;
-      if (this->_owner.state().user(peer_id).online())
+      // Send to self.
+      if (peer_data->sender_id == peer_data->recipient_id)
       {
-        this->_peer_offline.close();
-        this->_peer_online.open();
+        auto const& self_user = this->_owner.state().user(peer_data->sender_id);
+        auto const& self_device_id = this->_owner.state().device().id;
+        if (self_user.online_excluding_device(self_device_id))
+        {
+          this->_peer_offline.close();
+          this->_peer_online.open();
+        }
+        else
+        {
+          this->_peer_online.close();
+          this->_peer_offline.open();
+        }
+
       }
+      // Normal p2p case.
       else
       {
-        this->_peer_online.close();
-        this->_peer_offline.open();
+        std::string peer_id;
+        if (dynamic_cast<PeerSendMachine*>(&this->_owner))
+          peer_id = peer_data->recipient_id;
+        else
+          peer_id = peer_data->sender_id;
+        if (this->_owner.state().user(peer_id).online())
+        {
+          this->_peer_offline.close();
+          this->_peer_online.open();
+        }
+        else
+        {
+          this->_peer_online.close();
+          this->_peer_offline.open();
+        }
       }
       this->_initialize();
       try
