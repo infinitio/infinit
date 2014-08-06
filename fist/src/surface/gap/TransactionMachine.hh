@@ -91,8 +91,9 @@ namespace surface
       virtual
       void
       notify_user_connection_status(std::string const& user_id,
+                                    bool user_status,
                                     std::string const& device_id,
-                                    bool online);
+                                    bool device_status);
 
       /// Cancel the transaction.
       virtual
