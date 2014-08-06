@@ -201,14 +201,7 @@ namespace surface
       {
         ELLE_TRACE("%s: change GAP status to %s", *this, v);
         this->_gap_status = v;
-        // Only update UI if it's a PeerTransaction. LinkTransactions are sent
-        // to the UI in gap/Transaction.
-        if (auto peer =
-              std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
-                this->data()))
-        {
-          this->state().enqueue(Transaction::Notification(this->id(), v));
-        }
+        this->state().enqueue(Transaction::Notification(this->id(), v));
       }
     }
 
