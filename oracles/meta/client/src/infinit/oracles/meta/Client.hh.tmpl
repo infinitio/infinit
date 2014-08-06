@@ -149,6 +149,26 @@ namespace infinit
                            device_id) != std::end(this->connected_devices);
         }
 
+        // Check if there are devices other than that given online.
+        // This is used when sending to self to determine if we need to cloud
+        // buffer.
+        // A simpler function could be used (such as len(devices) < 2) but
+        // this would only make sense for ourself.
+        bool
+        online_excluding_device(std::string const& device_id) const
+        {
+          bool res = false;
+          for (auto const& device: this->connected_devices)
+          {
+            if (device != device_id)
+            {
+              res = true;
+              break;
+            }
+          }
+          return res;
+        }
+
         bool
         ghost() const
         {
