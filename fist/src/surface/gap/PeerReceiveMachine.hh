@@ -85,8 +85,9 @@ namespace surface
       virtual
       void
       notify_user_connection_status(std::string const& user_id,
+                                    bool user_status,
                                     std::string const& device_id,
-                                    bool online) override;
+                                    bool device_status) override;
 
       /*-----------------.
       | Transaction data |

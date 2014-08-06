@@ -109,6 +109,7 @@ namespace surface
           this->machine().accept();
           this->_machine->notify_user_connection_status(
             this->_data->sender_id,
+            true,
             this->_data->sender_device_id,
             true);
           this->notify_peer_reachable(std::vector<std::pair<std::string, int>>());

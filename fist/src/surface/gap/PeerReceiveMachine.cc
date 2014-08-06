@@ -1096,12 +1096,13 @@ namespace surface
     void
     PeerReceiveMachine::notify_user_connection_status(
       std::string const& user_id,
+      bool user_status,
       std::string const& device_id,
-      bool online)
+      bool device_status)
     {
       if (user_id == this->data()->sender_id
           && device_id == this->data()->sender_device_id)
-        this->_peer_connection_changed(online);
+        this->_peer_connection_changed(device_status);
     }
 
     void
