@@ -110,7 +110,7 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::UserStatusNotification,
   (void)version;
   ar & base_class<infinit::oracles::trophonius::Notification>(value);
   ar & named("user_id", value.user_id);
-  ar & named("status", value.status);
+  ar & named("status", value.user_status);
   ar & named("device_id", value.device_id);
   ar & named("device_status", value.device_status);
 }
