@@ -1372,22 +1372,18 @@ class Mixin:
       assert str(device_id) in user['devices']
       update_action = status and '$addToSet' or '$pull'
       action = {update_action: {'connected_devices': str(device_id)}}
+      # If we're connecting a device, then we are connected.
       if status:
         action['$set'] = {'connected': True}
+      # If we're removing the last connected device, then we're disconnected.
+      else:
+        if len(user['connected_devices']) == 1:
+          action['$set'] = {'connected': False}
       self.database.users.update(
         {'_id': user_id},
         action,
         multi = False,
       )
-      if not status:
-        self.database.users.update(
-          {
-            '_id': bson.ObjectId('53aac53d8127149289f511af'),
-            'devices': {'$size': 0},
-          },
-          {
-            '$set': {'connected': False},
-          })
       # XXX:
       # This should not be in user.py, but it's the only place
       # we know the device has been disconnected.
