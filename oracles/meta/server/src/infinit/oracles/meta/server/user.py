@@ -285,7 +285,6 @@ class Mixin:
         'accounts': [
           {'type':'email', 'id': email}
         ],
-        'status': False,
         'creation_time': datetime.datetime.utcnow(),
         'email_confirmed': False,
         'unconfirmed_email_deadline':
@@ -734,6 +733,7 @@ class Mixin:
         '$set':
         {
           'accounts': [],
+          'connected': False,
           'connected_devices': [],
           'devices': [],
           'email': '',
@@ -747,7 +747,6 @@ class Mixin:
           'password': '',
           'public_key': '',
           'register_status': 'deleted',
-          'status': False,
           'swaggers': {},
         },
         '$unset':
@@ -888,7 +887,7 @@ class Mixin:
       'fullname': '$fullname',
       'handle': '$handle',
       'connected_devices': '$connected_devices',
-      'status': '$status',
+      'status': '$connected',
       'register_status': '$register_status',
       '_id': False,
     }
