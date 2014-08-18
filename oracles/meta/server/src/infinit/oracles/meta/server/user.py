@@ -1374,15 +1374,20 @@ class Mixin:
       # If we're connecting a device, then we are connected.
       if status:
         action['$set'] = {'connected': True}
-      # If we're removing the last connected device, then we're disconnected.
-      else:
-        if len(user['connected_devices']) == 1:
-          action['$set'] = {'connected': False}
       self.database.users.update(
         {'_id': user_id},
         action,
         multi = False,
       )
+      # If we're disconnecting a device, use DB to determine if we're offline.
+      if not status:
+        self.database.users.update(
+          {
+            '_id': user_id,
+            'connected_devices': {'$size': 0}
+          },
+          {'$set': {'connected': False}}
+        )
       # XXX:
       # This should not be in user.py, but it's the only place
       # we know the device has been disconnected.
