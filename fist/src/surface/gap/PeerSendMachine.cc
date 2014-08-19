@@ -488,7 +488,7 @@ namespace surface
         {
           if (auto& mr = state().metrics_reporter())
           {
-            ELLE_ASSERT(exit_reason); // all codepath set the boost::optional
+            ELLE_ASSERT_NEQ(exit_reason, boost::none); // all codepath set the boost::optional
             auto now = boost::posix_time::microsec_clock::universal_time();
             float duration =
               float((now - start_time).total_milliseconds()) / 1000.0f;
