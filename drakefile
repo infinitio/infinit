@@ -72,6 +72,7 @@ def configure(cxx_toolkit = None,
     cxx_config.lib('mswsock')
     cxx_config.lib('dbghelp')
     cxx_config.lib('iphlpapi')
+    cxx_config.lib('crypt32')
   elif cxx_toolkit.os == drake.os.macos:
     platform_defines = ("INFINIT_MACOSX", "HAVE_STATFS")
   else:
