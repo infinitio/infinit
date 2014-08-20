@@ -148,12 +148,21 @@ namespace infinit
       bool onboarding
     )
     {
-        this->_dispatch(std::bind(&Reporter::_transaction_ended,
-                        std::placeholders::_1,
-                        transaction_id,
-                        status,
-                        info,
-                        onboarding));
+      this->_dispatch(std::bind(&Reporter::_transaction_ended,
+                      std::placeholders::_1,
+                      transaction_id,
+                      status,
+                      info,
+                      onboarding));
+    }
+
+
+     void
+    CompositeReporter::_transaction_deleted(std::string const& transaction_id)
+    {
+      this->_dispatch(std::bind(&Reporter::_transaction_deleted,
+                      std::placeholders::_1,
+                      transaction_id));
     }
 
     void

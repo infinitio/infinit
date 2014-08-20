@@ -119,6 +119,16 @@ namespace infinit
       this->_send(this->_transaction_dest, data);
     }
 
+    void
+    JSONReporter::_transaction_deleted(std::string const& transaction_id)
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] = std::string("deleted");
+      data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
+
+      this->_send(this->_transaction_dest, data);
+    }
+
      void
      JSONReporter::_transaction_transfer_begin(std::string const& transaction_id,
                                                TransferMethod method,

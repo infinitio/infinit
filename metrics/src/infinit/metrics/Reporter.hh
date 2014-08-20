@@ -102,6 +102,9 @@ namespace infinit
                         std::string const& info,
                         bool onboarding);
 
+      void
+      transaction_deleted(std::string const& transaction_id);
+
       /** entering a state that will effectively transfer data
       * @param initialization_time: time in seconds between entering state
       *        and effectively sending/receiving the first bytes
@@ -165,6 +168,10 @@ namespace infinit
                          infinit::oracles::Transaction::Status status,
                          std::string const& info,
                          bool onboarding);
+
+      virtual
+      void
+      _transaction_deleted(std::string const& transaction_id);
 
       virtual
       void

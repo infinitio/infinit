@@ -191,6 +191,17 @@ namespace infinit
     }
 
     void
+    Reporter::transaction_deleted(std::string const& transaction_id)
+    {
+      if (this->_no_metrics)
+        return;
+      this->_metric_queue.push(std::bind(&Reporter::_transaction_deleted,
+                                         this,
+                                         transaction_id));
+      this->_metric_available.open();
+    }
+
+    void
     Reporter::transaction_transfer_begin(std::string const& transaction_id,
                                          TransferMethod method,
                                          float initialization_time)
@@ -404,6 +415,10 @@ namespace infinit
                                  infinit::oracles::Transaction::Status status,
                                  std::string const& info,
                                  bool onboarding)
+    {}
+
+    void
+    Reporter::_transaction_deleted(std::string const& transaction_id)
     {}
 
     void

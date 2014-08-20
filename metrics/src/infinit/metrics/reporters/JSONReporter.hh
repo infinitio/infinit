@@ -111,6 +111,9 @@ namespace infinit
                          std::string const& info,
                          bool onboarding);
 
+      virtual
+      void
+      _transaction_deleted(std::string const& transaction_id);
 
 
       virtual

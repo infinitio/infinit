@@ -71,6 +71,10 @@ namespace infinit
 
       virtual
       void
+      _transaction_deleted(std::string const& transaction_id);
+
+      virtual
+      void
       _transaction_transfer_begin(std::string const& transaction_id,
                                  TransferMethod method,
                                  float initialization_time);
