@@ -425,6 +425,7 @@ namespace surface
                                               data->share_link,
                                               data->click_count,
                                               gap_transaction_deleted));
+        this->state().metrics_reporter()->transaction_deleted(data->id);
       }
       else
       {
