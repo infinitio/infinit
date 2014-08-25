@@ -279,12 +279,15 @@ namespace surface
         ELLE_LOG("%s: Error while scanning files: %s", *this, e.what());
         throw;
       }
-      auto response =
-        this->state().meta().create_link(
-          files, this->archive_info().first, this->message());
-      *this->_data = std::move(response.transaction());
-      this->transaction()._snapshot_save();
-      this->_credentials = std::move(response.aws_credentials());
+      {
+        auto lock = this->state().transaction_update_lock.lock();
+        auto response =
+          this->state().meta().create_link(
+            files, this->archive_info().first, this->message());
+        *this->_data = std::move(response.transaction());
+        this->transaction()._snapshot_save();
+        this->_credentials = std::move(response.aws_credentials());
+      }
       if (!archive_info().second) // only mirror if we're not going to archive
         try_mirroring_files(total_size);
       this->_save_snapshot();

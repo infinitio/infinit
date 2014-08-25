@@ -280,6 +280,17 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: receive transaction data %s", *this, notif->id);
       ELLE_ASSERT(!notif->id.empty());
       ELLE_DUMP("%s: data: %s", *this, *notif);
+      // To avoid processing notifications while we are waiting for an
+      // answer from meta.
+      // This is important ONLY when we still have no id (e.g: when creating a
+      // transaction / link).
+      // XXX: When the 2 step link/transaction creation is implemented, get rid
+      // of that code lock.
+      {
+        if (!this->transaction_update_lock.opened())
+          ELLE_LOG("%s: waiting for response from meta", *this);
+        this->transaction_update_lock.wait();
+      }
       auto it = std::find_if(
         std::begin(this->_transactions),
         std::end(this->_transactions),
@@ -304,8 +315,14 @@ namespace surface
                     *this, elle::exception_string());
           try
           {
-            this->meta().update_transaction(
-              notif->id, infinit::oracles::Transaction::Status::failed);
+            if (std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(notif))
+              this->meta().update_transaction(
+                notif->id, infinit::oracles::Transaction::Status::failed);
+            else if (std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(notif))
+              this->meta().update_link(
+                notif->id,
+                0.0f,
+                infinit::oracles::Transaction::Status::failed);
           }
           catch (infinit::oracles::meta::Exception const& e)
           {

@@ -13,6 +13,7 @@
 
 # include <reactor/mutex.hh>
 # include <reactor/scheduler.hh>
+# include <reactor/MultiLockBarrier.hh>
 # include <reactor/thread.hh>
 
 # include <papier/fwd.hh>
@@ -581,6 +582,8 @@ namespace surface
       _on_peer_reachability_updated(
         infinit::oracles::trophonius::PeerReachabilityNotification const& notif);
 
+    public:
+      mutable reactor::MultiLockBarrier transaction_update_lock;
     /*--------------.
     | Configuration |
     `--------------*/

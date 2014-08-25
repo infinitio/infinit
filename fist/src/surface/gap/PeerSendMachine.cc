@@ -390,17 +390,20 @@ namespace surface
       ELLE_TRACE("%s: Creating transaction, first_file=%s, dir=%s",
                  *this, first_file,
                  boost::filesystem::is_directory(first_file));
-      this->transaction_id(
-        this->state().meta().create_transaction(
-          this->data()->recipient_id,
-          this->data()->files,
-          this->data()->files.size(),
-          this->data()->total_size,
-          boost::filesystem::is_directory(first_file),
-          this->state().device().id,
-          this->_message
-          ).created_transaction_id
-        );
+      {
+        auto lock = this->state().transaction_update_lock.lock();
+        this->transaction_id(
+          this->state().meta().create_transaction(
+            this->data()->recipient_id,
+            this->data()->files,
+            this->data()->files.size(),
+            this->data()->total_size,
+            boost::filesystem::is_directory(first_file),
+            this->state().device().id,
+            this->_message
+            ).created_transaction_id
+          );
+      }
       ELLE_TRACE("%s: created transaction %s", *this, this->transaction_id());
       // XXX: Ensure recipient is an id.
       this->data()->recipient_id =
