@@ -408,6 +408,13 @@ namespace surface
       throw Exception(gap_data_not_fetched_yet, "avatar is not available yet");
     }
 
+    void
+    State::user_icon_refresh(uint32_t user_id) const
+    {
+      this->_avatars.erase(user_id);
+      this->user_icon(this->users().at(user_id).id);
+    }
+
     bool
     State::device_status(std::string const& user_id,
                          std::string const& device_id) const

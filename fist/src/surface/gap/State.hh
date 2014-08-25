@@ -412,6 +412,9 @@ namespace surface
       elle::ConstWeakBuffer
       user_icon(std::string const& user_id) const;
 
+      void
+      user_icon_refresh(uint32_t user_id) const;
+
       std::vector<uint32_t>
       users_search(std::string const& text) const;
 
