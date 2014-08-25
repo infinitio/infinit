@@ -105,7 +105,7 @@ class Mixin:
   # FIXME: This is backward compatibility for /transaction/<id>.
   @api('/transaction/<id>/view')
   @require_logged_in
-  def transaction_view(self, id: bson.ObjectId):
+  def transaction_view_old(self, id: bson.ObjectId):
     assert isinstance(id, bson.ObjectId)
     try:
       transaction = self.transaction(id, self.user['_id'])
