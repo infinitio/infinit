@@ -261,8 +261,34 @@ gap_Status gap_set_device_name(gap_State* state,
 
 /// - Self ------------------------------------------------------------------
 /// Get current user email.
-char const*
+std::string
 gap_self_email(gap_State* state);
+
+// Set current user email.
+gap_Status
+gap_set_self_email(gap_State* state,
+                   std::string const& email,
+                   std::string const& password);
+
+/// Get current user fullname.
+std::string
+gap_self_fullname(gap_State* state);
+
+/// Set current user fullname
+gap_Status
+gap_set_self_fullname(gap_State* state, std::string const& fullname);
+
+/// Get current user handle.
+std::string
+gap_self_handle(gap_State* state);
+
+gap_Status
+gap_set_self_handle(gap_State* state, std::string const& handle);
+
+gap_Status
+gap_change_password(gap_State* state,
+                    std::string const& old_password,
+                    std::string const& new_password);
 
 /// Get current user id.
 uint32_t
@@ -312,6 +338,10 @@ gap_avatar(gap_State* state,
            uint32_t user_id,
            void** data,
            size_t* size);
+
+/// Refresh user's icon.
+void
+gap_refresh_avatar(gap_State* state, uint32_t user_id);
 
 /// Retrieve user with its email.
 uint32_t

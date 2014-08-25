@@ -293,16 +293,97 @@ gap_set_device_name(gap_State* state,
 }
 
 /// - Self ----------------------------------------------------------------
-char const*
+std::string
 gap_self_email(gap_State* state)
 {
-  return run<char const*>(state,
+  return run<std::string>(state,
                           "self email",
-                          [&] (surface::gap::State& state) -> char const*
+                          [&] (surface::gap::State& state) -> std::string
                           {
-                            auto email = state.me().email;
-                            return email.c_str();
+                            return state.me().email;
                           });
+}
+
+gap_Status
+gap_set_self_email(gap_State* state,
+                   std::string const& email,
+                   std::string const& password)
+{
+  return run<gap_Status>(state,
+                         "set self email",
+                         [&] (surface::gap::State& state) -> gap_Status
+                        {
+                          auto hashed_password =
+                            state.hash_password(state.me().email, password);
+                          state.meta().change_email(email, hashed_password);
+                          return gap_ok;
+                        });
+}
+
+std::string
+gap_self_fullname(gap_State* state)
+{
+  return run<std::string>(state,
+                          "self fullname",
+                          [&] (surface::gap::State& state) -> std::string
+                          {
+                            return state.me().fullname;
+                          });
+}
+
+gap_Status
+gap_set_self_fullname(gap_State* state, std::string const& fullname)
+{
+  return run<gap_Status>(state,
+                          "set self fullname",
+                          [&] (surface::gap::State& state) -> gap_Status
+                          {
+                            auto handle = state.me().handle;
+                            state.meta().edit_user(fullname, handle);
+                            return gap_ok;
+                          });
+}
+
+std::string
+gap_self_handle(gap_State* state)
+{
+  return run<std::string>(state,
+                          "self handle",
+                          [&] (surface::gap::State& state) -> std::string
+                          {
+                            return state.me().handle;
+                          });
+}
+
+gap_Status
+gap_set_self_handle(gap_State* state, std::string const& handle)
+{
+  return run<gap_Status>(state,
+                         "set self handle",
+                         [&] (surface::gap::State& state) -> gap_Status
+                         {
+                           auto fullname = state.me().fullname;
+                           state.meta().edit_user(fullname, handle);
+                           return gap_ok;
+                         });
+}
+
+gap_Status
+gap_change_password(gap_State* state,
+                    std::string const& old_password,
+                    std::string const& new_password)
+{
+  return run<gap_Status>(
+    state,
+    "change password",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      auto fullname = state.me().fullname;
+      state.meta().change_password(
+        state.hash_password(state.me().email, old_password),
+        state.hash_password(state.me().email, new_password));
+      return gap_ok;
+    });
 }
 
 uint32_t
@@ -490,6 +571,19 @@ gap_avatar(gap_State* state,
       *data = (void*) res.contents();
       *size = res.size();
 
+      return gap_ok;
+    });
+}
+
+void
+gap_refresh_avatar(gap_State* state, uint32_t user_id)
+{
+  run<gap_Status>(
+    state,
+    "refresh user avatar",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.user_icon_refresh(user_id);
       return gap_ok;
     });
 }
