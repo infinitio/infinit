@@ -207,6 +207,16 @@ catch_to_gap_status(std::function<Type ()> const& func,
     ELLE_ERR("%s: error: %s", name, elle::exception_string());
     ret = gap_already_logged_in;
   }
+  catch (infinit::state::EmailAlreadyRegistered const&)
+  {
+    ELLE_ERR("%s: error: %s", name, elle::exception_string());
+    ret = gap_email_already_registred;
+  }
+  catch (infinit::state::HandleAlreadyRegistered const&)
+  {
+    ELLE_ERR("%s: error: %s", name, elle::exception_string());
+    ret = gap_handle_already_registred;
+  }
   catch (elle::Exception const&)
   {
     ELLE_ERR("%s: error: %s", name, elle::exception_string());
