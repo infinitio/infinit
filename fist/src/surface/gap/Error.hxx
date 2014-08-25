@@ -26,6 +26,18 @@ namespace infinit
       : LoginError("version rejected")
     {}
 
+    SelfUserError::SelfUserError(std::string const& message)
+      : Error(message)
+    {}
+
+    EmailAlreadyRegistered::EmailAlreadyRegistered()
+      : SelfUserError("email already registered")
+    {}
+
+    HandleAlreadyRegistered::HandleAlreadyRegistered()
+      : SelfUserError("handle already registered")
+    {}
+
     TransactionFinalized::TransactionFinalized()
       : Error("transaction is already finalized")
     {}

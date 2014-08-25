@@ -59,6 +59,27 @@ namespace infinit
       inline VersionRejected();
     };
 
+    class SelfUserError
+      : public Error
+    {
+    public:
+      inline SelfUserError(std::string const& message);
+    };
+
+    class EmailAlreadyRegistered
+      : public SelfUserError
+    {
+    public:
+      inline EmailAlreadyRegistered();
+    };
+
+    class HandleAlreadyRegistered
+      : public SelfUserError
+    {
+    public:
+      inline HandleAlreadyRegistered();
+    };
+
     class TransactionFinalized
       : public Error
     {
