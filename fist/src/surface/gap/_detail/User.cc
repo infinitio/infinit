@@ -85,19 +85,19 @@ namespace surface
       ELLE_DEBUG_SCOPE("%s: user response: %s", *this, user);
 
       uint32_t id = 0;
-      try
+      if (this->_user_indexes.find(user.id) == this->_user_indexes.end())
+      {
+        id = generate_id();
+        this->_user_indexes[user.id] = id;
+        this->_users.emplace(id, std::move(user));
+      }
+      else
       {
         // If the user already in the cache, we keep his index and replace the
         // data by the new fetched one.
         id = this->_user_indexes.at(user.id);
         ELLE_ASSERT_NEQ(id, 0u);
         this->_users.at(id) = std::move(user);
-      }
-      catch (std::out_of_range const&)
-      {
-        id = generate_id();
-        this->_user_indexes[user.id] = id;
-        this->_users.emplace(id, std::move(user));
       }
 
       ELLE_ASSERT_NEQ(id, 0u);
@@ -118,12 +118,7 @@ namespace surface
     {
       ELLE_DEBUG_SCOPE("%s: user from object id %s", *this, user_id);
 
-      try
-      {
-        uint32_t id = this->_user_indexes.at(user_id);
-        return this->user(id);
-      }
-      catch (std::out_of_range const&)
+      if (this->_user_indexes.find(user_id) == this->_user_indexes.end())
       {
         if (merge)
         {
@@ -137,6 +132,9 @@ namespace surface
 
         throw State::UserNotFoundException(user_id);
       }
+
+      uint32_t id = this->_user_indexes.at(user_id);
+      return this->user(id);
     }
 
     State::User const&
@@ -144,11 +142,7 @@ namespace surface
     {
       ELLE_DUMP_SCOPE("%s: get user from id %s", *this, id);
 
-      try
-      {
-        return this->_users.at(id);
-      }
-      catch (std::out_of_range const&)
+      if (this->_users.find(id) == this->_users.end())
       {
         ELLE_DEBUG("%s: user %s has not been found", *this, id)
           for (auto const& user: this->users())
@@ -156,6 +150,7 @@ namespace surface
 
         throw State::UserNotFoundException(id);
       }
+      return this->_users.at(id);
     }
 
     State::User const&
