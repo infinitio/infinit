@@ -438,7 +438,7 @@ BOOST_PYTHON_MODULE(state)
                          std::string const&,
                          uint16_t>())
     .def("logged_in", &State::logged_in)
-    .def("login", &State::login)
+    .def("login", (void (State::*)(std::string const&, std::string const&)) &State::login)
     .def("logout", &State::logout)
     .def("invite", &State::invite)
     .def("poll", &State::poll)
