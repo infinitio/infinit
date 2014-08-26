@@ -124,23 +124,17 @@ namespace surface
                  uint16_t meta_port,
                  boost::uuids::uuid device,
                  std::vector<unsigned char> trophonius_fingerprint,
-                 std::unique_ptr<infinit::metrics::Reporter> metrics):
-      _logger_intializer(),
-      _meta(meta_protocol, meta_host, meta_port),
-      _meta_message(""),
-      _trophonius(
-        [this] (bool status)
-        {
-          this->on_connection_changed(status);
-        },
-        boost::bind(&State::on_reconnection_failed, this),
-        trophonius_fingerprint
-        ),
-      _metrics_reporter(std::move(metrics)),
-      _me(),
-      _output_dir(common::system::download_directory()),
-      _device_uuid(std::move(device)),
-      _device()
+                 std::unique_ptr<infinit::metrics::Reporter> metrics)
+      : _logger_intializer()
+      , _meta(meta_protocol, meta_host, meta_port)
+      , _meta_message("")
+      , _trophonius_fingerprint(trophonius_fingerprint)
+      , _trophonius(nullptr)
+      , _metrics_reporter(std::move(metrics))
+      , _me()
+      , _output_dir(common::system::download_directory())
+      , _device_uuid(std::move(device))
+      , _device()
     {
       ELLE_TRACE_SCOPE("%s: create state", *this);
       if (!this->_metrics_reporter)
@@ -258,8 +252,10 @@ namespace surface
     `----------------------*/
 
     void
-    State::login(std::string const& email,
-                 std::string const& password)
+    State::login(
+      std::string const& email,
+      std::string const& password,
+      std::unique_ptr<infinit::oracles::trophonius::Client> trophonius)
     {
       ELLE_TRACE_SCOPE("%s: login to meta as %s", *this, email);
 
@@ -318,6 +314,20 @@ namespace surface
         })
         << [&] (elle::Finally& finally_logout)
       {
+        if (trophonius)
+        {
+          this->_trophonius.swap(trophonius);
+        }
+        else
+        {
+          this->_trophonius.reset(new infinit::oracles::trophonius::Client(
+          [this] (bool status)
+          {
+            this->on_connection_changed(status);
+          },
+          std::bind(&State::on_reconnection_failed, this),
+          this->_trophonius_fingerprint));
+        }
         std::string trophonius_host =
           elle::os::getenv("INFINIT_TROPHONIUS_HOST",
                            login_response.trophonius.host);
@@ -326,7 +336,7 @@ namespace surface
         int trophonius_port = login_response.trophonius.port_ssl;
         if (!env_port.empty())
           trophonius_port = boost::lexical_cast<int>(env_port);
-        this->_trophonius.server(trophonius_host, trophonius_port);
+        this->_trophonius->server(trophonius_host, trophonius_port);
         infinit::metrics::Reporter::metric_sender_id(login_response.id);
         infinit::metrics::Reporter::metric_device_id(login_response.device_id);
         this->_metrics_reporter->user_login(true, "");
@@ -398,7 +408,7 @@ namespace surface
           // XXX: Throw an exception instead.
           try
           {
-            if (!this->_trophonius.connect(
+            if (!this->_trophonius->connect(
                   this->me().id, this->device().id, this->_meta.session_id()))
               throw Exception(
                 gap_trophonius_unreachable, "unable to connect to trophonius");
@@ -461,7 +471,7 @@ namespace surface
                 {
                   try
                   {
-                    this->handle_notification(this->_trophonius.poll());
+                    this->handle_notification(this->_trophonius->poll());
                   }
                   catch (elle::Exception const&)
                   {
@@ -527,7 +537,8 @@ namespace surface
         [&]
         {
           ELLE_DEBUG("disconnect trophonius")
-            this->_trophonius.disconnect();
+            if (this->_trophonius)
+              this->_trophonius->disconnect();
 
           ELLE_DEBUG("remove pending callbacks")
             while (!this->_runners.empty())
@@ -772,7 +783,7 @@ namespace surface
       try
       {
         auto tropho = this->_meta.trophonius();
-        this->_trophonius.server(tropho.host, tropho.port_ssl);
+        this->_trophonius->server(tropho.host, tropho.port_ssl);
       }
       catch (infinit::state::CredentialError const&)
       {
