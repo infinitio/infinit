@@ -231,7 +231,8 @@ gap_transaction_is_final(gap_State* state,
 
 bool
 gap_transaction_concern_device(gap_State* state,
-                               uint32_t const transaction_id);
+                               uint32_t const transaction_id,
+                               bool true_if_empty_recipient = true);
 
 
 /* /// Force transaction to be fetched again from server. */
