@@ -107,7 +107,6 @@ namespace surface
             addresses.emplace_back(ipv4, this->_station.port());
           }
       }
-      ELLE_DEBUG("addresses: %s", addresses);
       AddressContainer public_addresses;
       if (elle::os::getenv("INFINIT_UPNP_ADDRESS", "").length() > 0)
       {
@@ -120,6 +119,7 @@ namespace surface
                                       boost::lexical_cast<unsigned short>(
                                         this->_upnp_mapping.external_port));
       }
+      ELLE_DEBUG("addresses: local=%s, public=%s", addresses, public_addresses);
       this->_owner.state().meta().transaction_endpoints_put(
         this->_owner.data()->id,
         this->_owner.state().device().id,
