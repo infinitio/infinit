@@ -112,7 +112,7 @@ namespace surface
             true,
             this->_data->sender_device_id,
             true);
-          this->notify_peer_reachable(std::vector<std::pair<std::string, int>>());
+          this->notify_peer_reachable({}, {});
         }
       }
 

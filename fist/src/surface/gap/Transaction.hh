@@ -188,7 +188,8 @@ namespace surface
                                     std::string const& device_id,
                                     bool device_status);
       void
-      notify_peer_reachable(std::vector<std::pair<std::string, int>> const& endpoints);
+      notify_peer_reachable(std::vector<std::pair<std::string, int>> const& local_endpoints,
+                            std::vector<std::pair<std::string, int>> const& public_endpoints);
       void
       notify_peer_unreachable();
 

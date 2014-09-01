@@ -372,7 +372,8 @@ namespace surface
         return;
       }
       if (notif.status)
-        it->second->notify_peer_reachable(notif.endpoints_local);
+        it->second->notify_peer_reachable(notif.endpoints_local,
+                                          notif.endpoints_public);
       else
         it->second->notify_peer_unreachable();
     }

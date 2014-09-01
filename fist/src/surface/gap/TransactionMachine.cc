@@ -311,7 +311,8 @@ namespace surface
 
     void
     TransactionMachine::peer_available(
-      std::vector<std::pair<std::string, int>> const& endpoints)
+      std::vector<std::pair<std::string, int>> const& local_endpoints,
+      std::vector<std::pair<std::string, int>> const& public_endpoints)
     {}
 
     void

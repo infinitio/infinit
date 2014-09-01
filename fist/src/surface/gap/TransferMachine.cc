@@ -397,10 +397,15 @@ namespace surface
 
     void
     Transferer::peer_available(
-      std::vector<std::pair<std::string, int>> const& endpoints)
+      std::vector<std::pair<std::string, int>> const& local_endpoints,
+      std::vector<std::pair<std::string, int>> const& public_endpoints)
     {
-      ELLE_TRACE_SCOPE("%s: peer is available on %s", *this, endpoints);
-      this->_peer_endpoints = endpoints;
+      ELLE_TRACE_SCOPE("%s: peer is available on %s,%s",
+                       *this,
+                       local_endpoints,
+                       public_endpoints);
+      this->_peer_local_endpoints = local_endpoints;
+      this->_peer_public_endpoints = public_endpoints;
       this->_peer_unreachable.close();
       this->_peer_reachable.open();
     }
@@ -409,7 +414,8 @@ namespace surface
     Transferer::peer_unavailable()
     {
       ELLE_TRACE_SCOPE("%s: peer is unavailable", *this);
-      this->_peer_endpoints.clear();
+      this->_peer_public_endpoints.clear();
+      this->_peer_local_endpoints.clear();
       this->_peer_reachable.close();
       this->_peer_unreachable.open();
     }

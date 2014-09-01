@@ -553,7 +553,8 @@ namespace surface
 
     void
     Transaction::notify_peer_reachable(
-      std::vector<std::pair<std::string, int>> const& endpoints)
+      std::vector<std::pair<std::string, int>> const& local_endpoints,
+      std::vector<std::pair<std::string, int>> const& public_endpoints)
     {
       if (!this->_machine)
       {
@@ -562,7 +563,8 @@ namespace surface
           *this, this->data()->id);
         return;
       }
-      this->_machine->peer_available(endpoints);
+      this->_machine->peer_available(local_endpoints,
+                                     public_endpoints);
     }
 
     void

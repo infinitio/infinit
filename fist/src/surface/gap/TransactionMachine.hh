@@ -80,7 +80,8 @@ namespace surface
       /// Notify that the peer is available for peer to peer connection.
       virtual
       void
-      peer_available(std::vector<std::pair<std::string, int>> const& endpoints);
+      peer_available(std::vector<std::pair<std::string, int>> const& local_endpoints,
+                     std::vector<std::pair<std::string, int>> const& public_endpoints);
 
       /// Notify that the peer is unavailable for peer to peer connection.
       virtual
