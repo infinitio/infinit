@@ -344,7 +344,7 @@ namespace surface
 
     typedef std::pair<frete::Frete::FileSize, frete::Frete::FileID> Position;
     static frete::Frete::FileSize
-    progress_from(std::vector<std::pair<std::string, frete::Frete::FileSize>> const& infos, const Position& p)
+    progress_from(frete::Frete::FilesInfo const& infos, const Position& p)
     {
       frete::Frete::FileSize result = 0;
       for (unsigned i=0; i<p.first; ++i)

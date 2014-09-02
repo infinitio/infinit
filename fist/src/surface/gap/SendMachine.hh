@@ -17,7 +17,7 @@ namespace surface
     public:
       typedef SendMachine Self;
       typedef TransactionMachine Super;
-
+      typedef std::vector<std::string> Files;
     /*-------------.
     | Construction |
     `-------------*/
@@ -25,7 +25,7 @@ namespace surface
       /// Constructor for sending device.
       SendMachine(Transaction& transaction,
                   uint32_t id,
-                  std::vector<std::string> files,
+                  Files files,
                   std::shared_ptr<Data> data);
       /// Constructor for another device.
       SendMachine(Transaction& transaction,
@@ -72,7 +72,6 @@ namespace surface
     | Transaction data |
     `-----------------*/
     public:
-      typedef std::vector<std::string> Files;
       /// List of files and/or directories as selected by the user.
       ELLE_ATTRIBUTE_R(Files, files);
       /// Computed total file size (only set if create_transaction was called)
