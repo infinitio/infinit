@@ -8,6 +8,7 @@
 #include <elle/log.hh>
 #include <elle/os/environ.hh>
 #include <elle/os/file.hh>
+#include <elle/string/conversion.hh>
 #include <elle/serialization/json.hh>
 
 #include <frete/RPCFrete.hh>
@@ -819,7 +820,7 @@ namespace surface
         { // No snapshot yet, fill file list
           ELLE_DEBUG("%s: No snapshot loaded, populating files", *this);
           for (std::string const& file: this->files())
-            this->_frete->add(file);
+            this->_frete->add(elle::string::from_utf8(file));
         }
       }
       return *this->_frete;

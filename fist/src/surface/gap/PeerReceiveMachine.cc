@@ -4,11 +4,15 @@
 #include <elle/AtomicFile.hh>
 #include <elle/finally.hh>
 #include <elle/os/environ.hh>
+#include <elle/os/file.hh>
 #include <elle/serialization/json/SerializerIn.hh>
+#include <elle/string/conversion.hh>
 #include <elle/serialization/json/SerializerOut.hh>
 #include <elle/serialization/json.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
+#include <elle/container/vector.hh>
+#include <elle/container/map.hh>
 #include <elle/system/system.hh>
 
 #include <reactor/exception.hh>
@@ -704,13 +708,16 @@ namespace surface
                                         FileSize file_size,
                                         const std::string& name_policy)
     {
+      ELLE_TRACE_SCOPE("%s: initialize file %s (%s)", *this, index, file_path);
       boost::filesystem::path output_path(this->state().output_dir());
       boost::filesystem::path fullpath;
 
       if (this->_snapshot->has(index))
       {
+        ELLE_DEBUG("already stored in the snapshot");
         auto const& file = this->_snapshot->file(index);
         fullpath = file.full_path();
+        ELLE_DEBUG("fullpath: %s", fullpath);
 
         if (file_size != file.size())
         {
@@ -726,6 +733,7 @@ namespace surface
           output_path, relative_path, name_policy,
           this->_root_component_mapping);
         relative_path = ReceiveMachine::trim(fullpath, output_path);
+        ELLE_DEBUG("adding %s (%s / %s) to the snapshot at index %s", fullpath, relative_path, output_path, index);
         this->_snapshot->add(index, output_path, relative_path, file_size);
       }
 
@@ -757,7 +765,7 @@ namespace surface
       if (boost::filesystem::exists(fullpath))
       {
         // Check size against snapshot data
-        auto size = boost::filesystem::file_size(fullpath);
+        auto size = elle::os::file::size(fullpath);
         if (size < tr.progress())
         { // missing data on disk. Should not happen.
           std::string msg = elle::sprintf("%s: file %s too short, expected %s, got %s",
@@ -782,8 +790,18 @@ namespace surface
                             fullpath, tr.progress(), size));
         }
       }
+      ELLE_DEBUG("add ofstream to %s to the stream map", fullpath);
       _transfer_stream_map[index] =
-        elle::make_unique<boost::filesystem::ofstream>(fullpath, std::ios::app | std::ios::binary);
+        elle::make_unique<boost::filesystem::ofstream>(fullpath.string(), std::ios::app | std::ios::binary);
+      if (!_transfer_stream_map[index]->good())
+      {
+        throw elle::Exception(
+          elle::sprintf("stream to %s is not good", fullpath));
+      }
+      else
+      {
+        ELLE_ASSERT(boost::filesystem::exists(fullpath));
+      }
       return tr.progress();
     }
 
