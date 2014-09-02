@@ -1,6 +1,7 @@
 #include <frete/TransferSnapshot.hh>
 
 #include <elle/log.hh>
+#include <elle/os/file.hh>
 #include <elle/serialization/SerializerIn.hh>
 #include <elle/serialization/SerializerOut.hh>
 
@@ -68,7 +69,7 @@ namespace frete
       throw elle::Exception(elle::sprintf("file %s doesn't exist", file));
 
     auto index = this->_files.size();
-    auto size = boost::filesystem::file_size(file);
+    auto size = elle::os::file::size(file);
     this->_files.insert(std::make_pair(index, File(index, root, path, size)));
     this->_total_size += size;
     this->_count = this->_files.size();
