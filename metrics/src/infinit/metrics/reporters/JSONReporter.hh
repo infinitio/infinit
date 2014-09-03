@@ -78,12 +78,12 @@ namespace infinit
       virtual
       void
       _transaction_accepted(std::string const& transaction_id,
-                            bool onboarding);
+                            bool onboarding) override;
 
       virtual
       void
       _transaction_connected(std::string const& transaction_id,
-                             std::string const& connection_method);
+                             std::string const& connection_method) override;
 
       virtual
       void
@@ -91,7 +91,8 @@ namespace infinit
                                 std::string const& sender_id,
                                 int64_t file_count,
                                 int64_t total_size,
-                                uint32_t message_length);
+                                uint32_t message_length,
+                                bool onboarding) override;
 
       virtual
       void
@@ -102,25 +103,25 @@ namespace infinit
                                 int64_t total_size,
                                 uint32_t message_length,
                                 bool ghost,
-                                bool onboarding);
+                                bool onboarding) override;
 
       virtual
       void
       _transaction_ended(std::string const& transaction_id,
                          infinit::oracles::Transaction::Status status,
                          std::string const& info,
-                         bool onboarding);
+                         bool onboarding) override;
 
       virtual
       void
-      _transaction_deleted(std::string const& transaction_id);
+      _transaction_deleted(std::string const& transaction_id) override;
 
 
       virtual
       void
       _transaction_transfer_begin(std::string const& transaction_id,
                                  TransferMethod method,
-                                 float initialization_time);
+                                 float initialization_time) override;
 
       virtual
       void
@@ -129,7 +130,7 @@ namespace infinit
                                float duration,
                                uint64_t bytes_transfered,
                                TransferExitReason reason,
-                               std::string const& message);
+                               std::string const& message) override;
       virtual
       void
       _aws_error(std::string const& transaction_id,
@@ -138,7 +139,7 @@ namespace infinit
                 unsigned int attempt,
                 int http_status,
                 std::string const& aws_error_code,
-                std::string const& message);
+                std::string const& message) override;
 
     /// Implementation of user metrics.
     private:

@@ -84,7 +84,8 @@ namespace infinit
                                std::string const& sender_id,
                                int64_t file_count,
                                int64_t total_size,
-                               uint32_t message_length);
+                               uint32_t message_length,
+                               bool onboarding = false);
 
       void
       peer_transaction_created(std::string const& transaction_id,
@@ -149,7 +150,8 @@ namespace infinit
                                 std::string const& sender_id,
                                 int64_t file_count,
                                 int64_t total_size,
-                                uint32_t message_length);
+                                uint32_t message_length,
+                                bool onboarding);
 
       virtual
       void

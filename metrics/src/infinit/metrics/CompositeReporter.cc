@@ -106,7 +106,8 @@ namespace infinit
       std::string const& sender_id,
       int64_t file_count,
       int64_t total_size,
-      uint32_t message_length)
+      uint32_t message_length,
+      bool onboarding)
     {
       this->_dispatch(std::bind(&Reporter::_link_transaction_created,
                                 std::placeholders::_1,
@@ -114,7 +115,8 @@ namespace infinit
                                 sender_id,
                                 file_count,
                                 total_size,
-                                message_length));
+                                message_length,
+                                onboarding));
     }
 
     void

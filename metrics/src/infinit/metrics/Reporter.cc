@@ -134,7 +134,8 @@ namespace infinit
                                        std::string const& sender_id,
                                        int64_t file_count,
                                        int64_t total_size,
-                                       uint32_t message_length)
+                                       uint32_t message_length,
+                                       bool onboarding)
     {
       if (this->_no_metrics)
         return;
@@ -144,7 +145,8 @@ namespace infinit
                                          sender_id,
                                          file_count,
                                          total_size,
-                                         message_length));
+                                         message_length,
+                                         onboarding));
       this->_metric_available.open();
     }
 
@@ -396,7 +398,8 @@ namespace infinit
                                         std::string const& sender_id,
                                         int64_t file_count,
                                         int64_t total_size,
-                                        uint32_t message_length)
+                                        uint32_t message_length,
+                                        bool onboarding)
     {}
 
     void
