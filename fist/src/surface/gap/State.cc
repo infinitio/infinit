@@ -153,6 +153,7 @@ namespace surface
       config.s3.multipart_upload.parallelism = 1;
       config.s3.multipart_upload.chunk_size = 0;
       config.max_mirror_size = 0;
+      config.max_compress_size = 0;
       config.disable_upnp = false;
     }
 
@@ -919,6 +920,7 @@ namespace surface
     {
       s.serialize("s3", this->s3);
       s.serialize("max_mirror_size", this->max_mirror_size);
+      s.serialize("max_compress_size", this->max_compress_size);
       s.serialize("disable_upnp", this->disable_upnp);
     }
 

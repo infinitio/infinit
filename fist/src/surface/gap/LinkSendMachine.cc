@@ -290,6 +290,7 @@ namespace surface
       }
       if (!archive_info().second) // only mirror if we're not going to archive
         try_mirroring_files(total_size);
+      this->total_size(total_size);
       this->_save_snapshot();
       if (this->state().metrics_reporter())
         this->state().metrics_reporter()->link_transaction_created(
