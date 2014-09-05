@@ -822,3 +822,8 @@ def configure(cxx_toolkit = None,
                                 prefix = prefix,
                                 libraries = libraries)
     build << application.build
+
+  ## ------- ##
+  ## Mac App ##
+  ## ------- ##
+  mac_app = drake.include('surface/osx')
