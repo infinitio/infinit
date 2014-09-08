@@ -6,6 +6,8 @@
 
 # include <boost/optional.hpp>
 
+# include <elle/Printable.hh>
+
 # include <surface/gap/enums.hh>
 # include <surface/gap/Notification.hh>
 
@@ -15,8 +17,10 @@ namespace surface
   {
     /// This class translates transactions so that headers aren't leaked into
     /// the GUI.
-    class LinkTransaction:
-      public surface::gap::Notification
+    class LinkTransaction
+      : public elle::Printable
+      , public surface::gap::Notification
+
     {
     public:
       LinkTransaction() = default;
@@ -36,6 +40,10 @@ namespace surface
       gap_TransactionStatus status;
 
       static Notification::Type type;
+
+    private:
+      void
+      print(std::ostream& stream) const override;
     };
   }
 }

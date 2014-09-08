@@ -27,6 +27,15 @@ namespace surface
     LinkTransaction::~LinkTransaction() noexcept(true)
     {}
 
+    void
+    LinkTransaction::print(std::ostream& stream) const
+    {
+      stream << "LinkTransaction("
+             << this->id << ", "
+             << this->status << " clicked("
+             << this->click_count << " time(s))";
+    }
+
     Notification::Type LinkTransaction::type = NotificationType_LinkUpdate;
   }
 }
