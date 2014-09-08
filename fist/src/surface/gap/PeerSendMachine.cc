@@ -47,6 +47,7 @@ namespace surface
         this->_another_device_state,
         this->_end_state,
         reactor::Waitables{&this->rejected()});
+      this->_run(this->_another_device_state);
       this->transaction_status_update(data->status);
     }
 
@@ -301,7 +302,7 @@ namespace surface
           if (this->concerns_this_device())
             ELLE_TRACE("%s: ignoring status update to %s", *this, status);
           else
-            this->_run(this->_another_device_state);
+            this->gap_status(gap_transaction_on_other_device);
           break;
         case TransactionStatus::accepted:
           if (this->concerns_this_device())
