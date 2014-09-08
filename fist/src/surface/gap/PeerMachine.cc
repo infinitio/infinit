@@ -96,11 +96,13 @@ namespace surface
 
     void
     PeerMachine::peer_available(
-      std::vector<std::pair<std::string, int>> const& endpoints)
+      std::vector<std::pair<std::string, int>> const& local_endpoints,
+      std::vector<std::pair<std::string, int>> const& public_endpoints
+      )
     {
       ELLE_TRACE_SCOPE("%s: peer is available for peer to peer connection",
                        *this);
-      this->_transfer_machine->peer_available(endpoints);
+      this->_transfer_machine->peer_available(local_endpoints, public_endpoints);
     }
 
     void

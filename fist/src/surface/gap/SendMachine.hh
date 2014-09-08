@@ -75,7 +75,8 @@ namespace surface
       typedef std::vector<std::string> Files;
       /// List of files and/or directories as selected by the user.
       ELLE_ATTRIBUTE_R(Files, files);
-
+      /// Computed total file size (only set if create_transaction was called)
+      ELLE_ATTRIBUTE_RW(int64_t, total_size);
     public:
       virtual
       bool

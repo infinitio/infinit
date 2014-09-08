@@ -57,7 +57,9 @@ namespace surface
       reactor::fsm::State& _transfer_core_state;
       virtual
       void
-      peer_available(std::vector<std::pair<std::string, int>> const& endpoints) override;
+      peer_available(std::vector<std::pair<std::string, int>> const& local_endpoints,
+                     std::vector<std::pair<std::string, int>> const& public_endpoints
+        ) override;
       virtual
       void
       peer_unavailable() override;

@@ -105,17 +105,21 @@ namespace surface
           {
             auto const& ipv4 = pair.second.ipv4_address;
             addresses.emplace_back(ipv4, this->_station.port());
-
           }
-        if (this->_upnp_mapping)
-        {
-          addresses.emplace_back(this->_upnp_mapping.external_host,
-                                 boost::lexical_cast<unsigned short>(
-                                   this->_upnp_mapping.external_port));
-        }
       }
-      ELLE_DEBUG("addresses: %s", addresses);
       AddressContainer public_addresses;
+      if (elle::os::getenv("INFINIT_UPNP_ADDRESS", "").length() > 0)
+      {
+        public_addresses.emplace_back(elle::os::getenv("INFINIT_UPNP_ADDRESS"),
+                               this->_station.port());
+      }
+      else if (this->_upnp_mapping)
+      {
+        public_addresses.emplace_back(this->_upnp_mapping.external_host,
+                                      boost::lexical_cast<unsigned short>(
+                                        this->_upnp_mapping.external_port));
+      }
+      ELLE_DEBUG("addresses: local=%s, public=%s", addresses, public_addresses);
       this->_owner.state().meta().transaction_endpoints_put(
         this->_owner.data()->id,
         this->_owner.state().device().id,
@@ -128,7 +132,11 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: connect to peer", *this);
       std::vector<std::unique_ptr<Round>> rounds;
-      rounds.emplace_back(new AddressRound("local", this->peer_endpoints()));
+      rounds.emplace_back(new AddressRound("local", this->peer_local_endpoints()));
+      auto all_endpoints = this->peer_local_endpoints();
+      for (auto const& ep: this->peer_public_endpoints())
+        all_endpoints.push_back(ep);
+      rounds.emplace_back(new AddressRound("upnp", all_endpoints));
       rounds.emplace_back(new FallbackRound("fallback",
                                             this->_owner.state().meta(),
                                             this->_owner.data()->id));
@@ -154,7 +162,7 @@ namespace surface
           [&]
           {
             for (auto& round: rounds)
-            { // try rounds in order: (currently local, apertus)
+            { // try rounds in order: (currently local, upnp, apertus)
               ELLE_DEBUG("%s: starting connection round %s", *this, *round);
               std::unique_ptr<station::Host> res;
               res = round->connect(this->_station);
@@ -164,10 +172,12 @@ namespace surface
                 host = std::move(res);
                 found.open();
                 if (this->_owner.state().metrics_reporter())
+                {
                   this->_owner.state().metrics_reporter()->transaction_connected(
                   this->_owner.transaction_id(),
                   round->name()
                 );
+                }
                 ELLE_TRACE("%s: connected to peer with %s",
                            *this, *round);
                 break;

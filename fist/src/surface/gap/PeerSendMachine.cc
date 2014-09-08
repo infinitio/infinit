@@ -375,6 +375,7 @@ namespace surface
       }
       ELLE_DEBUG("%s: total file size: %s", *this, size);
       this->data()->total_size = size;
+      this->total_size(size);
       auto first_file = boost::filesystem::path(*(this->files().cbegin()));
       std::list<std::string> file_list{this->files().size()};
       std::transform(

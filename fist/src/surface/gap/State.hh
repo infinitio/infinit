@@ -609,6 +609,7 @@ namespace surface
         S3 s3;
         void serialize(elle::serialization::Serializer& s);
         int64_t max_mirror_size; // Copy files to send if below this size
+        int64_t max_compress_size; // Only compresss archive if content below this size
         bool disable_upnp;
       };
       ELLE_ATTRIBUTE_RP(Configuration, configuration, protected:);

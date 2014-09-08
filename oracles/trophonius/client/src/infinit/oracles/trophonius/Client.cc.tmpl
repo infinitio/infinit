@@ -230,6 +230,15 @@ namespace infinit
                 res->endpoints_local.push_back(
                   PeerReachabilityNotification::Endpoint(ip, port));
               }
+              for (auto const& elt_:
+                boost::any_cast<elle::json::Array>(endpoints.at("externals")))
+              {
+                auto const& elt = boost::any_cast<elle::json::Object>(elt_);
+                auto ip = boost::any_cast<std::string>(elt.at("ip"));
+                auto port = boost::any_cast<int64_t>(elt.at("port"));
+                res->endpoints_public.push_back(
+                  PeerReachabilityNotification::Endpoint(ip, port));
+              }
             }
             return std::move(res);
           }

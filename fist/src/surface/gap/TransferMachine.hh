@@ -38,7 +38,8 @@ namespace surface
     public:
       /// Notify the peer is available for peer to peer connection.
       void
-      peer_available(std::vector<std::pair<std::string, int>> const& endpoints);
+      peer_available(std::vector<std::pair<std::string, int>> const& local_endpoints,
+                     std::vector<std::pair<std::string, int>> const& public_endpoints);
       /// Notify the peer is unavailable for peer to peer connection.
       void
       peer_unavailable();
@@ -52,7 +53,8 @@ namespace surface
       ELLE_ATTRIBUTE(reactor::Barrier, peer_unreachable);
       // The peer endpoints.
       typedef std::vector<std::pair<std::string, int>> Endpoints;
-      ELLE_ATTRIBUTE_R(Endpoints, peer_endpoints);
+      ELLE_ATTRIBUTE_R(Endpoints, peer_local_endpoints);
+      ELLE_ATTRIBUTE_R(Endpoints, peer_public_endpoints);
 
     /*-------.
     | Status |

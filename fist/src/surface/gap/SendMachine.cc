@@ -2,7 +2,7 @@
 
 #include <boost/filesystem.hpp>
 
-#include <elle/archive/zip.hh>
+#include <elle/archive/archive.hh>
 #include <elle/container/vector.hh>
 #include <elle/os/environ.hh>
 #include <elle/os/path.hh>
@@ -188,7 +188,15 @@ namespace surface
             reactor::background(
               [&]
               {
-                elle::archive::zip(sources, archive_path, renaming_callback);
+                int64_t max_compress_size =
+                  this->transaction().state().configuration().max_compress_size;
+                if (max_compress_size == 0)
+                  max_compress_size = 10*1000*1000;
+                bool compress = this->_total_size <= max_compress_size;
+                elle::archive::archive(
+                  compress ? elle::archive::Format::zip
+                           : elle::archive::Format::zip_uncompressed,
+                  sources, archive_path, renaming_callback);
               });
             ELLE_TRACE("%s: Join archiving thread", *this);
             this->transaction().archived(true);

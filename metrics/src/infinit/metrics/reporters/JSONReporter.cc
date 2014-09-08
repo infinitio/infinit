@@ -60,7 +60,8 @@ namespace infinit
                                             std::string const& sender_id,
                                             int64_t file_count,
                                             int64_t total_size,
-                                            uint32_t message_length)
+                                            uint32_t message_length,
+                                            bool onboarding)
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] = std::string("created");
@@ -69,6 +70,7 @@ namespace infinit
       data[this->_key_str(JSONKey::file_count)] = file_count;
       data[this->_key_str(JSONKey::total_size)] = total_size;
       data[this->_key_str(JSONKey::message_length)] = message_length;
+      data[this->_key_str(JSONKey::onboarding)] = onboarding;
       data[this->_key_str(JSONKey::transaction_type)] =
         this->_transaction_type_str(LinkTransaction);
 
