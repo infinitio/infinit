@@ -425,15 +425,16 @@ namespace surface
           this->_machine->gap_status(gap_transaction_deleted);
         }
         // Update Meta.
-        this->state().meta().update_link(
-          data->id, 0.f, infinit::oracles::Transaction::Status::deleted);
+        this->_data->status = infinit::oracles::Transaction::Status::deleted;
+        this->state().meta().update_link(data->id, 0.f, this->_data->status);
         // Update UI.
-        this->state().enqueue(LinkTransaction(this->id(),
-                                              data->name,
-                                              data->mtime,
-                                              data->share_link,
-                                              data->click_count,
-                                              gap_transaction_deleted));
+        this->state().enqueue(
+          LinkTransaction(this->id(),
+                          data->name,
+                          data->mtime,
+                          data->share_link,
+                          data->click_count,
+                          gap_transaction_deleted));
         this->state().metrics_reporter()->transaction_deleted(data->id);
       }
       else
