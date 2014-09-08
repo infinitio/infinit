@@ -219,7 +219,7 @@ namespace surface
       , _archived(false)
       , _id(id)
       , _sender(state.me().id == data->sender_id &&
-              state.device().id == data->sender_device_id)
+                state.device().id == data->sender_device_id)
       , _data(data)
       , _machine()
       , _over(history)
@@ -336,11 +336,20 @@ namespace surface
                std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
                  this->_data))
       {
-        ELLE_ASSERT_NEQ(this->_files, boost::none);
-        ELLE_TRACE("%s: create link send machine", *this)
-          this->_machine.reset(
-            new LinkSendMachine(*this, this->_id, this->_files.get(),
-                                this->_message.get(), link_data));
+        if (this->_sender)
+        {
+          ELLE_ASSERT_NEQ(this->_files, boost::none);
+          ELLE_TRACE("%s: create link send machine", *this)
+            this->_machine.reset(
+              new LinkSendMachine(*this, this->_id, this->_files.get(),
+                                  this->_message.get(), link_data));
+        }
+        else
+        {
+          ELLE_TRACE("%s: create link send machine", *this)
+            this->_machine.reset(
+              new LinkSendMachine(*this, this->_id, link_data));
+        }
       }
       else
         ELLE_ERR("%s: don't know what to do with a %s",
