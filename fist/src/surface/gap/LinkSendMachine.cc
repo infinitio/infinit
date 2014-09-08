@@ -27,6 +27,7 @@ namespace surface
         this->_machine.state_make(
           "upload", std::bind(&LinkSendMachine::_upload, this)))
     {
+      this->_run(this->_another_device_state);
       this->transaction_status_update(data->status);
     }
 
@@ -203,14 +204,9 @@ namespace surface
         case TransactionStatus::initialized:
         case TransactionStatus::created:
           if (this->concerns_this_device())
-          {
             ELLE_TRACE("%s: ignoring status update to %s", *this, status);
-          }
           else
-          {
-            this->_run(this->_another_device_state);
             this->gap_status(gap_transaction_on_other_device);
-          }
           break;
         case TransactionStatus::finished:
           ELLE_DEBUG("%s: open finished barrier", *this)
