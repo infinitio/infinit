@@ -19,3 +19,7 @@ if targets.osyst.startswith('linux'):
      '//oracles/trophonius/server/debian',
      '//oracles/apertus/server/debian',
    ])
+if targets.osyst.startswith('osx'):
+  subprocess.check_call(
+    ['python3', 'drake', '--prefix=../%s' % os.environ['DIR_INSTALL'],
+     '//surface/osx/package'])
