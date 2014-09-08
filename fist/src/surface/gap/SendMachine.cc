@@ -110,6 +110,21 @@ namespace surface
     void
     SendMachine::_plain_upload()
     {
+      static const std::unordered_map<std::string, std::string> mimes = {
+      {"mp3", "audio/mpeg"},
+      {"wav", "audio/wav"},
+      {"mp4", "audio/mp4"},
+      {"m4a", "audio/mp4"},
+      {"aac", "audio/mp4"},
+      {"ogg", "audio/ogg"},
+      {"oga", "audio/ogg"},
+      {"ogv", "video/ogg"},
+      {"webm", "video/webm"},
+      {"avi", "video/avi"},
+      {"mpg", "video/mpeg"},
+      {"mpeg", "video/mpeg"},
+      {"m4v", "video/mp4"},
+      };
       // exit information for factored metrics writer.
       // needs to stay out of the try, as catch clause will fill those
       auto start_time = boost::posix_time::microsec_clock::universal_time();
@@ -278,7 +293,15 @@ namespace surface
         if (!transaction().plain_upload_uid()) // Not else! Code above can reset plain_upload_uid
         {
           //FIXME: pass correct mime type for non-zip case
-          upload_id = handler.multipart_initialize(source_file_name);
+          std::string mime_type("binary/octet-stream");
+          std::string extension = boost::filesystem::path(source_file_name)
+            .extension().string();
+          if (!extension.empty())
+            extension = extension.substr(1);
+          auto it = mimes.find(extension);
+          if (it != mimes.end())
+            mime_type = it->second;
+          upload_id = handler.multipart_initialize(source_file_name, mime_type);
           transaction().plain_upload_uid(upload_id);
           transaction()._snapshot_save();
           ELLE_TRACE("%s: saved upload ID %s to snapshot",
