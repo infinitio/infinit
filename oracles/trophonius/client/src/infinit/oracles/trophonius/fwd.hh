@@ -27,6 +27,7 @@ namespace infinit
       class Client;
       class DeletedFavoriteNotification;
       class DeletedSwaggerNotification;
+      class MessageNotification;
       class NewSwaggerNotification;
       class Notification;
       class PeerReachabilityNotification;
