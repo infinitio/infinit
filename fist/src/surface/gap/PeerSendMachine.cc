@@ -33,7 +33,8 @@ namespace surface
 
     PeerSendMachine::PeerSendMachine(Transaction& transaction,
                                      uint32_t id,
-                                     std::shared_ptr<Data> data)
+                                     std::shared_ptr<Data> data,
+                                     bool run_to_fail)
       : TransactionMachine(transaction, id, data)
       , SendMachine(transaction, id, data)
       , PeerMachine(transaction, id, data)
@@ -47,8 +48,13 @@ namespace surface
         this->_another_device_state,
         this->_end_state,
         reactor::Waitables{&this->rejected()});
-      this->_run(this->_another_device_state);
-      this->transaction_status_update(data->status);
+      if (run_to_fail)
+        this->_run(this->_fail_state);
+      else
+      {
+        this->_run(this->_another_device_state);
+        this->transaction_status_update(data->status);
+      }
     }
 
     PeerSendMachine::PeerSendMachine(Transaction& transaction,

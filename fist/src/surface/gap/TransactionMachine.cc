@@ -56,6 +56,11 @@ namespace surface
     boost::filesystem::path
     TransactionMachine::Snapshot::path(TransactionMachine const& machine)
     {
+      if (!boost::filesystem::exists(machine.transaction().snapshots_directory()))
+      {
+        ELLE_TRACE("create snapshot directoy %s", machine.transaction().snapshots_directory());
+        boost::filesystem::create_directories(machine.transaction().snapshots_directory());
+      }
       return machine.transaction().snapshots_directory() / "fsm.snapshot";
     }
 

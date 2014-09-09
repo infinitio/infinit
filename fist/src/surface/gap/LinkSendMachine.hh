@@ -23,10 +23,12 @@ namespace surface
     | Construction |
     `-------------*/
     public:
-      /// Constructor when sending from other device.
+      /// Constructor when sending from other device or if you have no snapshot
+      /// as sender. In that case, run_to_fail is set to true.
       LinkSendMachine(Transaction& transaction,
                       uint32_t id,
-                      std::shared_ptr<Data> data);
+                      std::shared_ptr<Data> data,
+                      bool run_to_fail = false);
 
       /// Constructor for sending device.
       LinkSendMachine(Transaction& transaction,

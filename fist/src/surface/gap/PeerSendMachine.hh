@@ -39,10 +39,12 @@ namespace surface
                       std::vector<std::string> files,
                       std::string message,
                       std::shared_ptr<Data> data);
-      /// Constructor when sending from another device.
+      /// Constructor when sending from another device or if you have no
+      /// snapshot as sender. In that case, run_to_fail is set to true.
       PeerSendMachine(Transaction& transaction,
                       uint32_t id,
-                      std::shared_ptr<Data> data);
+                      std::shared_ptr<Data> data,
+                      bool run_to_fail = false);
       virtual
       ~PeerSendMachine();
       using PeerMachine::data;
