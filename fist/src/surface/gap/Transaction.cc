@@ -328,14 +328,20 @@ namespace surface
         if (this->_sender)
         {
           ELLE_ASSERT_NEQ(this->_files, boost::none);
-          ELLE_TRACE("%s: create peer send machine", *this)
+          ELLE_TRACE("%s: create peer send machine (this device)", *this)
             this->_machine.reset(
               new PeerSendMachine(*this, this->_id, this->_files.get(),
                                   this->_message.get(), peer_data));
         }
+        else if (peer_data->sender_id == this->state().me().id)
+        {
+          ELLE_TRACE("%s: create peer send machine (another device)", *this)
+            this->_machine.reset(
+              new PeerSendMachine(*this, this->_id, peer_data));
+        }
         else
         {
-          ELLE_TRACE("%s: create receive machine", *this)
+          ELLE_TRACE("%s: create peer receive machine", *this)
             this->_machine.reset(
               new PeerReceiveMachine(*this, this->_id, peer_data));
         }
@@ -347,14 +353,14 @@ namespace surface
         if (this->_sender)
         {
           ELLE_ASSERT_NEQ(this->_files, boost::none);
-          ELLE_TRACE("%s: create link send machine", *this)
+          ELLE_TRACE("%s: create link send machine (this device)", *this)
             this->_machine.reset(
               new LinkSendMachine(*this, this->_id, this->_files.get(),
                                   this->_message.get(), link_data));
         }
         else
         {
-          ELLE_TRACE("%s: create link send machine", *this)
+          ELLE_TRACE("%s: create link send machine (another device)", *this)
             this->_machine.reset(
               new LinkSendMachine(*this, this->_id, link_data));
         }
