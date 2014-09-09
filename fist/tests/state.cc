@@ -13,10 +13,14 @@
 #include <reactor/network/ssl-server.hh>
 #include <reactor/scheduler.hh>
 
+#include <infinit/oracles/trophonius/Client.hh>
+
 #include <papier/Authority.hh>
 #include <papier/Identity.hh>
 #include <papier/Passport.hh>
+
 #include <surface/gap/State.hh>
+
 #include <version.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.State.test");
