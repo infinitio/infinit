@@ -1,16 +1,10 @@
 #include <iostream>
-#include <stdexcept>
 
 #include <boost/program_options.hpp>
 
 #include <elle/Exception.hh>
-#include <elle/os/environ.hh>
-
-#include <reactor/scheduler.hh>
 
 #include <common/common.hh>
-
-#include <CrashReporter.hh>
 
 #include <surface/gap/gap.hh>
 #include <surface/gap/State.hh>
