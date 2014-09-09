@@ -44,6 +44,10 @@ namespace surface
           "wait for accept",
           std::bind(&PeerSendMachine::_wait_for_accept, this)))
     {
+      if (run_to_fail)
+        ELLE_TRACE_SCOPE("%s: run to fail", *this);
+      else
+        ELLE_TRACE_SCOPE("%s: on another device", *this);
       this->_machine.transition_add(
         this->_another_device_state,
         this->_end_state,
@@ -77,6 +81,8 @@ namespace surface
           "wait for accept",
           std::bind(&PeerSendMachine::_wait_for_accept, this)))
     {
+      ELLE_TRACE_SCOPE("%s: generic peer send machine", *this);
+
       this->_machine.transition_add(
         this->_create_transaction_state,
         this->_wait_for_accept_state);
@@ -97,6 +103,9 @@ namespace surface
       this->_machine.transition_add(this->_wait_for_accept_state,
                                     this->_cancel_state,
                                     reactor::Waitables{&this->canceled()}, true);
+      this->_machine.transition_add(this->_wait_for_accept_state,
+                                    this->_fail_state,
+                                    reactor::Waitables{&this->failed()}, true);
       this->_machine.transition_add_catch(
         this->_wait_for_accept_state, this->_fail_state)
         .action_exception(
