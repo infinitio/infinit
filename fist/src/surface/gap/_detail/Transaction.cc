@@ -10,6 +10,8 @@
 #include <elle/os/path.hh>
 #include <elle/serialization/json.hh>
 
+#include <infinit/oracles/trophonius/Client.hh>
+
 #include <surface/gap/State.hh>
 #include <surface/gap/Transaction.hh>
 #include <surface/gap/onboarding/Transaction.hh>

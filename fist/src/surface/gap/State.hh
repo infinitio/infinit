@@ -21,7 +21,8 @@
 # include <infinit/metrics/CompositeReporter.hh>
 # include <infinit/oracles/meta/Client.hh>
 # include <infinit/oracles/Transaction.hh>
-# include <infinit/oracles/trophonius/Client.hh>
+# include <infinit/oracles/trophonius/fwd.hh>
+
 # include <surface/gap/Device.hh>
 # include <surface/gap/Exception.hh>
 # include <surface/gap/gap.hh>
@@ -157,8 +158,13 @@ namespace surface
       void
       login(
         std::string const& email,
+        std::string const& password);
+      /// Login to meta.
+      void
+      login(
+        std::string const& email,
         std::string const& password,
-        std::unique_ptr<infinit::oracles::trophonius::Client> trophonius = nullptr);
+        std::unique_ptr<infinit::oracles::trophonius::Client> trophonius);
 
       /// Logout from meta.
       void

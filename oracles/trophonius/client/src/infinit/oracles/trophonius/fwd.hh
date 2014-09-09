@@ -18,4 +18,21 @@ namespace plasma
   }
 }
 
+namespace infinit
+{
+  namespace oracles
+  {
+    namespace trophonius
+    {
+      class Client;
+      class DeletedFavoriteNotification;
+      class DeletedSwaggerNotification;
+      class NewSwaggerNotification;
+      class Notification;
+      class PeerReachabilityNotification;
+      class UserStatusNotification;
+    }
+  }
+}
+
 #endif

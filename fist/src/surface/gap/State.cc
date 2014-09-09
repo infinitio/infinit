@@ -22,6 +22,7 @@
 #include <papier/Passport.hh>
 
 #include <infinit/metrics/Reporter.hh>
+#include <infinit/oracles/trophonius/Client.hh>
 
 #include <surface/gap/Error.hh>
 #include <surface/gap/ReceiveMachine.hh>
@@ -251,6 +252,15 @@ namespace surface
     /*----------------------.
     | Login/Logout/Register |
     `----------------------*/
+    void
+    State::login(
+      std::string const& email,
+      std::string const& password)
+    {
+      return this->login(
+        email, password,
+        std::unique_ptr<infinit::oracles::trophonius::Client>());
+    }
 
     void
     State::login(
