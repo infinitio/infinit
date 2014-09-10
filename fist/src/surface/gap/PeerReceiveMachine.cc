@@ -342,7 +342,7 @@ namespace surface
         metrics::TransferExitReasonUnknown;
       std::string exit_message;
       uint64_t total_bytes_transfered = 0;
-      frete::Frete::FileSize initial_progress = 0;
+      FileSize initial_progress = 0;
       if (this->_snapshot != nullptr)
         initial_progress = this->_snapshot->progress();
       elle::SafeFinally write_end_message([&,this]
@@ -466,7 +466,7 @@ namespace surface
       metrics::TransferExitReason exit_reason = metrics::TransferExitReasonUnknown;
       std::string exit_message;
       uint64_t total_bytes_transfered = 0;
-      frete::Frete::FileSize initial_progress = 0;
+      FileSize initial_progress = 0;
       if (this->_snapshot != nullptr)
         initial_progress = this->_snapshot->progress();
       elle::SafeFinally write_end_message([&,this]
@@ -591,7 +591,7 @@ namespace surface
       if (last_index > 0)
         --last_index;
 
-      std::vector<std::pair<std::string, FileSize>> infos;
+      FilesInfo infos;
       if (peer_version >= elle::Version(0, 8, 9))
         infos = source.files_info();
       else
@@ -800,7 +800,7 @@ namespace surface
     bool
     PeerReceiveMachine::_fetch_next_file(
       const std::string& name_policy,
-      const std::vector<std::pair<std::string, FileSize>>& infos)
+      FilesInfo const& infos)
     {
       boost::filesystem::path output_path(this->state().output_dir());
       FileSize pos = 0;
@@ -837,7 +837,7 @@ namespace surface
       EncryptionLevel encryption,
       size_t chunk_size,
       const infinit::cryptography::SecretKey& key,
-      std::vector<std::pair<std::string, FileSize>> const& files_info)
+      FilesInfo const& files_info)
     {
       while (true)
       {

@@ -171,10 +171,20 @@ namespace surface
       {
         try
         {
-          // Only the recipient should tell Meta the transaction is finished.
+          // The status should only be set to finished by the recipient unless
+          // the recipient is a ghost.
+          auto peer = this->state().user(this->data()->recipient_id);
+          auto self_id = this->state().me().id;
+          auto self_device_id = this->state().device().id;
           if (status == infinit::oracles::Transaction::Status::finished &&
-              this->state().me().id == this->data()->recipient_id &&
-              this->state().device().id == this->data()->recipient_device_id)
+              peer.ghost())
+          {
+            this->state().meta().update_transaction(
+              this->transaction_id(), status);
+          }
+          else if (status == infinit::oracles::Transaction::Status::finished &&
+                   self_id == this->data()->recipient_id &&
+                   self_device_id == this->data()->recipient_device_id)
           {
             this->state().meta().update_transaction(
               this->transaction_id(), status);

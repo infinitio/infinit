@@ -10,6 +10,8 @@
 #include <elle/os/path.hh>
 #include <elle/serialization/json.hh>
 
+#include <infinit/oracles/trophonius/Client.hh>
+
 #include <surface/gap/State.hh>
 #include <surface/gap/Transaction.hh>
 #include <surface/gap/onboarding/Transaction.hh>
@@ -256,12 +258,18 @@ namespace surface
           auto _id = generate_id();
           ELLE_TRACE("%s: create historical link transaction from data: %s",
                      *this, transaction)
+          {
+            bool history =
+            std::find(Transaction::final_statuses.begin(),
+                      Transaction::final_statuses.end(),
+                      transaction.status) != Transaction::final_statuses.end();
             this->_transactions.emplace(
               _id,
               elle::make_unique<Transaction>(
                 *this, _id,
                 std::make_shared<infinit::oracles::LinkTransaction>(transaction),
-                true /* history */));
+                history /* history */));
+          }
         }
     }
 

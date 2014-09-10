@@ -33,7 +33,8 @@ namespace surface
 
     PeerSendMachine::PeerSendMachine(Transaction& transaction,
                                      uint32_t id,
-                                     std::shared_ptr<Data> data)
+                                     std::shared_ptr<Data> data,
+                                     bool run_to_fail)
       : TransactionMachine(transaction, id, data)
       , SendMachine(transaction, id, data)
       , PeerMachine(transaction, id, data)
@@ -43,11 +44,21 @@ namespace surface
           "wait for accept",
           std::bind(&PeerSendMachine::_wait_for_accept, this)))
     {
+      if (run_to_fail)
+        ELLE_TRACE_SCOPE("%s: run to fail", *this);
+      else
+        ELLE_TRACE_SCOPE("%s: on another device", *this);
       this->_machine.transition_add(
         this->_another_device_state,
         this->_end_state,
         reactor::Waitables{&this->rejected()});
-      this->transaction_status_update(data->status);
+      if (run_to_fail)
+        this->_run(this->_fail_state);
+      else
+      {
+        this->_run(this->_another_device_state);
+        this->transaction_status_update(data->status);
+      }
     }
 
     PeerSendMachine::PeerSendMachine(Transaction& transaction,
@@ -70,6 +81,8 @@ namespace surface
           "wait for accept",
           std::bind(&PeerSendMachine::_wait_for_accept, this)))
     {
+      ELLE_TRACE_SCOPE("%s: generic peer send machine", *this);
+
       this->_machine.transition_add(
         this->_create_transaction_state,
         this->_wait_for_accept_state);
@@ -90,6 +103,9 @@ namespace surface
       this->_machine.transition_add(this->_wait_for_accept_state,
                                     this->_cancel_state,
                                     reactor::Waitables{&this->canceled()}, true);
+      this->_machine.transition_add(this->_wait_for_accept_state,
+                                    this->_fail_state,
+                                    reactor::Waitables{&this->failed()}, true);
       this->_machine.transition_add_catch(
         this->_wait_for_accept_state, this->_fail_state)
         .action_exception(
@@ -301,7 +317,7 @@ namespace surface
           if (this->concerns_this_device())
             ELLE_TRACE("%s: ignoring status update to %s", *this, status);
           else
-            this->_run(this->_another_device_state);
+            this->gap_status(gap_transaction_on_other_device);
           break;
         case TransactionStatus::accepted:
           if (this->concerns_this_device())
@@ -343,7 +359,7 @@ namespace surface
 
     typedef std::pair<frete::Frete::FileSize, frete::Frete::FileID> Position;
     static frete::Frete::FileSize
-    progress_from(std::vector<std::pair<std::string, frete::Frete::FileSize>> const& infos, const Position& p)
+    progress_from(frete::Frete::FilesInfo const& infos, const Position& p)
     {
       frete::Frete::FileSize result = 0;
       for (unsigned i=0; i<p.first; ++i)

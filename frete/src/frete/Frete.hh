@@ -42,7 +42,8 @@ namespace frete
     typedef uint64_t FileOffset;
     typedef uint64_t FileSize;
     typedef Frete Self;
-
+    typedef std::pair<std::string, FileSize> FileInfo;
+    typedef std::vector<FileInfo> FilesInfo;
   /*-------------.
   | Construction |
   `-------------*/
@@ -91,7 +92,7 @@ namespace frete
     FileSize
     file_size(FileID f);
     /// The path and size of all files.
-    std::vector<std::pair<std::string, FileSize>>
+    FilesInfo
     files_info();
     /// The path of a file.
     std::string

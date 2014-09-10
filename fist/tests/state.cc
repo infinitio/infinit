@@ -2,6 +2,7 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include <elle/log.hh>
+#include <elle/memory.hh>
 #include <elle/reactor/tests/http_server.hh>
 #include <elle/serialize/Identity.hh>
 #include <elle/test.hh>
@@ -12,10 +13,14 @@
 #include <reactor/network/ssl-server.hh>
 #include <reactor/scheduler.hh>
 
+#include <infinit/oracles/trophonius/Client.hh>
+
 #include <papier/Authority.hh>
 #include <papier/Identity.hh>
 #include <papier/Passport.hh>
+
 #include <surface/gap/State.hh>
+
 #include <version.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.State.test");
@@ -392,18 +397,20 @@ ELLE_TEST_SCHEDULED(trophonius_forbidden)
                             server.port(),
                             device_id,
                             fingerprint);
-  state.trophonius().ping_period(500_ms);
-  state.trophonius().reconnection_cooldown(0_sec);
-  state.login("em@il.com", password);
   reactor::Signal reconnected;
-  state.trophonius().connected().changed().connect(
+  auto tropho = elle::make_unique<infinit::oracles::trophonius::Client>(
     [&] (bool connected)
     {
       if (!connected)
         server.session_id(boost::uuids::random_generator()());
       else
         reconnected.signal();
-    });
+    },
+    std::bind(&surface::gap::State::on_reconnection_failed, &state),
+    fingerprint);
+  tropho->ping_period(500_ms);
+  tropho->reconnection_cooldown(0_sec);
+  state.login("em@il.com", password, std::move(tropho));
   reactor::wait(reconnected);
 }
 

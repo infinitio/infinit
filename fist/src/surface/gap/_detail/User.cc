@@ -1,11 +1,14 @@
-#include <elle/container/vector.hh>
 #include <sstream>
+#include <stdexcept>
+
+#include <elle/container/vector.hh>
+
+#include <reactor/scheduler.hh>
+
+#include <infinit/oracles/trophonius/Client.hh>
 
 #include <surface/gap/State.hh>
 #include <surface/gap/Exception.hh>
-#include <reactor/scheduler.hh>
-
-#include <stdexcept>
 
 ELLE_LOG_COMPONENT("surface.gap.State.User");
 

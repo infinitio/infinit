@@ -1089,7 +1089,8 @@ gap_transaction_is_final(gap_State* state,
 
 bool
 gap_transaction_concern_device(gap_State* state,
-                               uint32_t const transaction_id)
+                               uint32_t const transaction_id,
+                               bool true_if_empty_recipient)
 {
   assert(state != nullptr);
   assert(transaction_id != surface::gap::null_id);
@@ -1100,25 +1101,18 @@ gap_transaction_concern_device(gap_State* state,
     [&] (surface::gap::State& state)
     {
       auto const& tr = state.transactions().at(transaction_id);
-
       using namespace infinit::oracles;
-      auto peer_transaction_data =
-        std::dynamic_pointer_cast<PeerTransaction>(tr->data());
-      auto link_transaction_data =
-        std::dynamic_pointer_cast<LinkTransaction>(tr->data());
-      if (peer_transaction_data != nullptr)
+      if (auto data = std::dynamic_pointer_cast<PeerTransaction>(tr->data()))
       {
-        auto data = peer_transaction_data;
         return
           (data->recipient_id == state.me().id &&
-           (data->recipient_device_id.empty() ||
+           ((true_if_empty_recipient && data->recipient_device_id.empty()) ||
             data->recipient_device_id == state.device().id)) ||
           (data->sender_id == state.me().id &&
            data->sender_device_id == state.device().id);
       }
-      else if (link_transaction_data != nullptr)
+      else if (auto data = std::dynamic_pointer_cast<LinkTransaction>(tr->data()))
       {
-        auto data = link_transaction_data;
         return (data->sender_id == state.me().id &&
                 data->sender_device_id == state.device().id);
       }

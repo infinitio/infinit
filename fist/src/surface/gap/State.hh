@@ -21,7 +21,8 @@
 # include <infinit/metrics/CompositeReporter.hh>
 # include <infinit/oracles/meta/Client.hh>
 # include <infinit/oracles/Transaction.hh>
-# include <infinit/oracles/trophonius/Client.hh>
+# include <infinit/oracles/trophonius/fwd.hh>
+
 # include <surface/gap/Device.hh>
 # include <surface/gap/Exception.hh>
 # include <surface/gap/gap.hh>
@@ -63,8 +64,11 @@ namespace surface
       `--------*/
       ELLE_ATTRIBUTE(infinit::oracles::meta::Client, meta);
       ELLE_ATTRIBUTE_R(std::string, meta_message);
-      ELLE_ATTRIBUTE_RX(infinit::oracles::trophonius::Client, trophonius);
+      ELLE_ATTRIBUTE(std::vector<unsigned char>, trophonius_fingerprint);
+      ELLE_ATTRIBUTE_RX(std::unique_ptr<infinit::oracles::trophonius::Client>,
+                        trophonius);
 
+    public:
       infinit::oracles::meta::Client const&
       meta(bool authentication_required = true) const;
 
@@ -152,8 +156,15 @@ namespace surface
     public:
       /// Login to meta.
       void
-      login(std::string const& email,
-            std::string const& password);
+      login(
+        std::string const& email,
+        std::string const& password);
+      /// Login to meta.
+      void
+      login(
+        std::string const& email,
+        std::string const& password,
+        std::unique_ptr<infinit::oracles::trophonius::Client> trophonius);
 
       /// Logout from meta.
       void

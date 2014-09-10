@@ -219,7 +219,7 @@ namespace surface
       , _archived(false)
       , _id(id)
       , _sender(state.me().id == data->sender_id &&
-              state.device().id == data->sender_device_id)
+                state.device().id == data->sender_device_id)
       , _data(data)
       , _machine()
       , _over(history)
@@ -251,7 +251,9 @@ namespace surface
           {
             ELLE_WARN("%s: can't restore peer send transaction from server",
                       *this);
-            throw elle::Error("can't restore peer send transaction from server");
+            bool run_to_fail = true;
+            this->_machine.reset(
+              new PeerSendMachine(*this, this->_id, peer_data, run_to_fail));
           }
           else
           {
@@ -273,7 +275,13 @@ namespace surface
                  this->_data))
       {
         if (device == sender_device)
-          throw elle::Error("can't restore link send transaction from server");
+        {
+          ELLE_WARN("%s: can't restore peer send transaction from server (%s)",
+                    *this, *link_data);
+          bool run_to_fail = true;
+          this->_machine.reset(
+            new LinkSendMachine(*this, this->_id, link_data, run_to_fail));
+        }
         else
         {
           this->_machine.reset(
@@ -320,14 +328,20 @@ namespace surface
         if (this->_sender)
         {
           ELLE_ASSERT_NEQ(this->_files, boost::none);
-          ELLE_TRACE("%s: create peer send machine", *this)
+          ELLE_TRACE("%s: create peer send machine (this device)", *this)
             this->_machine.reset(
               new PeerSendMachine(*this, this->_id, this->_files.get(),
                                   this->_message.get(), peer_data));
         }
+        else if (peer_data->sender_id == this->state().me().id)
+        {
+          ELLE_TRACE("%s: create peer send machine (another device)", *this)
+            this->_machine.reset(
+              new PeerSendMachine(*this, this->_id, peer_data));
+        }
         else
         {
-          ELLE_TRACE("%s: create receive machine", *this)
+          ELLE_TRACE("%s: create peer receive machine", *this)
             this->_machine.reset(
               new PeerReceiveMachine(*this, this->_id, peer_data));
         }
@@ -336,11 +350,20 @@ namespace surface
                std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
                  this->_data))
       {
-        ELLE_ASSERT_NEQ(this->_files, boost::none);
-        ELLE_TRACE("%s: create link send machine", *this)
-          this->_machine.reset(
-            new LinkSendMachine(*this, this->_id, this->_files.get(),
-                                this->_message.get(), link_data));
+        if (this->_sender)
+        {
+          ELLE_ASSERT_NEQ(this->_files, boost::none);
+          ELLE_TRACE("%s: create link send machine (this device)", *this)
+            this->_machine.reset(
+              new LinkSendMachine(*this, this->_id, this->_files.get(),
+                                  this->_message.get(), link_data));
+        }
+        else
+        {
+          ELLE_TRACE("%s: create link send machine (another device)", *this)
+            this->_machine.reset(
+              new LinkSendMachine(*this, this->_id, link_data));
+        }
       }
       else
         ELLE_ERR("%s: don't know what to do with a %s",
@@ -416,15 +439,16 @@ namespace surface
           this->_machine->gap_status(gap_transaction_deleted);
         }
         // Update Meta.
-        this->state().meta().update_link(
-          data->id, 0.f, infinit::oracles::Transaction::Status::deleted);
+        this->_data->status = infinit::oracles::Transaction::Status::deleted;
+        this->state().meta().update_link(data->id, 0.f, this->_data->status);
         // Update UI.
-        this->state().enqueue(LinkTransaction(this->id(),
-                                              data->name,
-                                              data->mtime,
-                                              data->share_link,
-                                              data->click_count,
-                                              gap_transaction_deleted));
+        this->state().enqueue(
+          LinkTransaction(this->id(),
+                          data->name,
+                          data->mtime,
+                          data->share_link,
+                          data->click_count,
+                          gap_transaction_deleted));
         this->state().metrics_reporter()->transaction_deleted(data->id);
       }
       else

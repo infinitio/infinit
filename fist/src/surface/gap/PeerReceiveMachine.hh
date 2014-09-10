@@ -36,6 +36,8 @@ namespace surface
       typedef infinit::oracles::PeerTransaction Data;
       typedef ::frete::Frete::FileSize FileSize;
       typedef ::frete::Frete::FileID FileID;
+      typedef ::frete::Frete::FileInfo FileInfo;
+      typedef ::frete::Frete::FilesInfo FilesInfo;
       typedef PeerReceiveMachine Self;
 
     /*-------------.
@@ -167,7 +169,7 @@ namespace surface
       *   Fills all _fetcher state in
       */
       bool _fetch_next_file(const std::string& name_policy,
-                            const std::vector<std::pair<std::string, FileSize>>& infos);
+                            FilesInfo const& infos);
       template <typename Source>
       void _disk_thread(Source& source,
                           elle::Version peer_version,
@@ -179,7 +181,7 @@ namespace surface
                            EncryptionLevel encryption,
                            size_t chunk_size,
                            infinit::cryptography::SecretKey const& key,
-                           std::vector<std::pair<std::string, FileSize>> const& infos
+                           FilesInfo const& infos
                            );
 
       // Transfer bufferer for cloud operations

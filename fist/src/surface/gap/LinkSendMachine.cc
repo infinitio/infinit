@@ -18,7 +18,8 @@ namespace surface
 
     LinkSendMachine::LinkSendMachine(Transaction& transaction,
                                      uint32_t id,
-                                     std::shared_ptr<Data> data)
+                                     std::shared_ptr<Data> data,
+                                     bool run_to_fail)
       : Super::Super(transaction, id, data)
       , Super(transaction, id, data)
       , _message(data->message)
@@ -27,7 +28,13 @@ namespace surface
         this->_machine.state_make(
           "upload", std::bind(&LinkSendMachine::_upload, this)))
     {
-      this->transaction_status_update(data->status);
+      if (run_to_fail)
+        this->_run(this->_fail_state);
+      else
+      {
+        this->_run(this->_another_device_state);
+        this->transaction_status_update(data->status);
+      }
     }
 
     LinkSendMachine::LinkSendMachine(Transaction& transaction,
@@ -203,14 +210,9 @@ namespace surface
         case TransactionStatus::initialized:
         case TransactionStatus::created:
           if (this->concerns_this_device())
-          {
             ELLE_TRACE("%s: ignoring status update to %s", *this, status);
-          }
           else
-          {
-            this->_run(this->_another_device_state);
             this->gap_status(gap_transaction_on_other_device);
-          }
           break;
         case TransactionStatus::finished:
           ELLE_DEBUG("%s: open finished barrier", *this)

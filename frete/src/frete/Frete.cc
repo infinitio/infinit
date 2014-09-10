@@ -263,10 +263,10 @@ namespace frete
     return this->_transfer_snapshot->file(file_id).size();
   }
 
-  std::vector<std::pair<std::string, Frete::FileSize>>
+  Frete::FilesInfo
   Frete::files_info()
   {
-    std::vector<std::pair<std::string, FileSize>> res;
+    Frete::FilesInfo res;
     for (unsigned i = 0; i < this->count(); ++i)
     {
       auto& file = this->_transfer_snapshot->file(i);

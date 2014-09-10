@@ -292,7 +292,7 @@ namespace surface
         }
         if (!transaction().plain_upload_uid()) // Not else! Code above can reset plain_upload_uid
         {
-          //pass correct mime type for known extensions
+          // Pass correct mime type for known extensions
           std::string mime_type("binary/octet-stream");
           std::string extension = boost::filesystem::path(source_file_name)
             .extension().string();
