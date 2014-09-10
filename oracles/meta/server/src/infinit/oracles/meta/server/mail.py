@@ -130,7 +130,7 @@ class Mailer():
            fr = 'Infinit <contact@infinit.io>',
            reply_to = None,
            attachment = None):
-    with elle.log.trace('send no templated mail to %s' % to):
+    with elle.log.trace('send non-templated email to %s' % to):
       message = self.build_message(to = to,
                                    subject = subject,
                                    fr = fr,
@@ -150,7 +150,7 @@ class Mailer():
                     merge_vars = {}):
     to = isinstance(to, str) and [to] or to
     assert isinstance(to, (list, tuple))
-    with elle.log.trace('send templated mail (%s) to %s' % (template_name, to)):
+    with elle.log.trace('send templated email (%s) to %s' % (template_name, to)):
       # If the template can be unsubscribed.
       if template_name in subscriptions.keys():
         for recipient_email in to:

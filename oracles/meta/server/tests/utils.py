@@ -362,7 +362,7 @@ class User(Client):
     self.device_id = uuid4()
 
   @property
-  def login_paremeters(self):
+  def login_parameters(self):
     return {
       'email': self.email,
       'password': self.password,
@@ -378,7 +378,7 @@ class User(Client):
   def login(self, device_id = None, **kw):
     if device_id is not None:
       self.device_id = device_id
-    params = self.login_paremeters
+    params = self.login_parameters
     params.update(kw)
     params.update({'pick_trophonius': False})
     res = self.post('login', params)
