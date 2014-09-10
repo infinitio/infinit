@@ -55,7 +55,7 @@ with Meta(enable_emails = True, unconfirmed_email_leeway = 0) as meta:
   # The unconfirmed email leeway is 0 so login without confirming email
   # should result to a EMAIL_NOT_CONFIRMED error.
   try:
-    u.post('login', u.login_paremeters)
+    u.post('login', u.login_parameters)
   except utils.HTTPException as e:
     assert e.status == 403
     assert e.content['code'] == error.EMAIL_NOT_CONFIRMED[0]
@@ -87,7 +87,7 @@ as meta:
   # The unconfirmed email leeway is 0 so login without confirming email
   # should result to a EMAIL_NOT_CONFIRMED error.
   try:
-    u.post('login', u.login_paremeters)
+    u.post('login', u.login_parameters)
   except utils.HTTPException as e:
     assert e.status == 403
     assert e.content['code'] == error.EMAIL_NOT_CONFIRMED[0]
