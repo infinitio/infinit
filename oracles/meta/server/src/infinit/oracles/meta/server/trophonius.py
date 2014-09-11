@@ -22,7 +22,8 @@ class Mixin:
                      port_client: int,
                      port_client_ssl: int,
                      users: int = 0,
-                     version = None):
+                     version = None,
+                     zone = None):
     """Register a trophonius.
     """
     assert isinstance(uid, uuid.UUID)
@@ -41,6 +42,7 @@ class Mixin:
         'time': time.time(),
         'users': users,
         'version': version,
+        'zone': zone,
       },
       upsert = True,
     )

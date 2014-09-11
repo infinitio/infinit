@@ -41,6 +41,7 @@ parse_options(int argc, char** argv)
      "specify the port to listen on for notifications from meta")
     ("syslog,s", "send logs to the system logger")
     ("version,v", "display version information and exit")
+    ("zone,z", value<std::string>(), "specify the zone to send to meta")
     ;
   variables_map vm;
   try
@@ -127,6 +128,9 @@ int main(int argc, char** argv)
       ping = options["ping-period"].as<int>();
     if (options.count("auth-max-time"))
       auth_max_time = options["auth-max-time"].as<int>();
+    boost::optional<std::string> zone;
+    if (options.count("zone"))
+      zone = options["zone"].as<std::string>();
     reactor::Scheduler s;
     std::unique_ptr<Trophonius> trophonius;
     reactor::Thread main(
@@ -144,7 +148,8 @@ int main(int argc, char** argv)
             boost::posix_time::seconds(ping),
             boost::posix_time::seconds(60),
             boost::posix_time::seconds(auth_max_time),
-            meta_fatal));
+            meta_fatal,
+            zone));
         // Wait for trophonius to be asked to finish.
         reactor::wait(*trophonius);
         trophonius.reset();

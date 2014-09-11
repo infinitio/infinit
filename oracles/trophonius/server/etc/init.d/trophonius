@@ -13,6 +13,10 @@ DAEMON="$TROPHONIUS"
 PIDFILE=/var/run/trophonius.pid
 ARGUMENTS="--meta ${META} --port-ssl ${PORT_SSL} --port-tcp ${PORT_TCP} --notifications-port ${PORT_NOTIFICATIONS} --syslog"
 
+if test -n "$INFINIT_TROPHONIUS_ZONE"; then
+    ARGUMENTS="$ARGUMENTS --zone $INFINIT_TROPHONIUS_ZONE"
+fi
+
 . /lib/lsb/init-functions
 
 command()

@@ -78,11 +78,13 @@ namespace infinit
       }
 
       void
-      Admin::register_trophonius(boost::uuids::uuid const& uid,
-                                 int port,
-                                 int port_client,
-                                 int port_client_ssl,
-                                 int users)
+      Admin::register_trophonius(
+        boost::uuids::uuid const& uid,
+        int port,
+        int port_client,
+        int port_client_ssl,
+        int users,
+        boost::optional<std::string> zone)
       {
         auto url = elle::sprintf("/trophonius/%s",
                                  boost::lexical_cast<std::string>(uid));
@@ -97,6 +99,8 @@ namespace infinit
             output.serialize("users", users);
             std::string version = INFINIT_VERSION;
             output.serialize("version", version);
+            if (zone)
+              output.serialize("zone", zone.get());
           });
         elle::serialization::json::SerializerIn input(request);
       }

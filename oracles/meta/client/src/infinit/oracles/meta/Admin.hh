@@ -36,11 +36,13 @@ namespace infinit
                    boost::uuids::uuid const& device_uuid);
 
         void
-        register_trophonius(boost::uuids::uuid const& uuid,
-                            int port_notifications,
-                            int port_client,
-                            int port_client_ssl,
-                            int users);
+        register_trophonius(
+          boost::uuids::uuid const& uuid,
+          int port_notifications,
+          int port_client,
+          int port_client_ssl,
+          int users,
+          boost::optional<std::string> zone = boost::optional<std::string>());
 
         Response
         unregister_trophonius(boost::uuids::uuid const& uuid);

@@ -44,7 +44,8 @@ namespace infinit
           boost::posix_time::time_duration const& user_ping_period,
           boost::posix_time::time_duration const& meta_ping_period,
           boost::posix_time::time_duration const& user_auth_max_time,
-          bool meta_fatal):
+          bool meta_fatal,
+          boost::optional<std::string> zone):
           Waitable("trophonius"),
           _certificate(nullptr),
           _server_ssl(nullptr),
@@ -83,7 +84,8 @@ namespace infinit
           _terminating(false),
           _ping_period(user_ping_period),
           _user_auth_max_time(user_auth_max_time),
-          _remove_lock()
+          _remove_lock(),
+          _zone(zone)
         {
           elle::SafeFinally kill_accepters{
             [&]
@@ -150,7 +152,7 @@ namespace infinit
             {
               this->_meta.register_trophonius(
                 this->_uuid, this->notification_port(),
-                this->port_tcp(), this->port_ssl(), 0);
+                this->port_tcp(), this->port_ssl(), 0, this->_zone);
             }
             catch (...)
             {
