@@ -988,13 +988,14 @@ class Mixin:
       'register_status': user.get('register_status'),
     }
     if '_id' in user.keys():
-      res['id'] = user['_id']
-      res.update({'_id': user['_id'],
-                  'status': self._is_connected(user['_id'])})
+      user_id = user['_id']
     else:
-      res['id'] = user['id']
-      res.update({'id': user['id'],
-                  'status': self._is_connected(user['id'])})
+      user_id = user['id']
+    res.update({
+      '_id': user_id, # Backwards compatibility.
+      'id': user_id,
+      'status': self._is_connected(user_id),
+    })
     return res
 
   @api('/user/<id_or_email>/view')
