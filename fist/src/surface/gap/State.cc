@@ -5,6 +5,7 @@
 
 #include <openssl/sha.h>
 
+#include <elle/AtomicFile.hh>
 #include <elle/format/gzip.hh>
 #include <elle/log.hh>
 #include <elle/log/TextLogger.hh>
@@ -150,6 +151,7 @@ namespace surface
       config.max_mirror_size = 0;
       config.max_compress_size = 0;
       config.disable_upnp = false;
+      this->_check_first_launch();
     }
 
     State::~State()
@@ -176,6 +178,25 @@ namespace surface
         throw Exception{gap_not_logged_in, "you must be logged in"};
 
       return this->_meta;
+    }
+
+    void
+    State::_check_first_launch()
+    {
+      if (boost::filesystem::exists(common::infinit::first_launch_path()))
+        return;
+
+      if (!boost::filesystem::exists(common::infinit::home()))
+      {
+        boost::filesystem::create_directories(
+          boost::filesystem::path(common::infinit::home()));
+      }
+      elle::AtomicFile f(common::infinit::first_launch_path());
+      f.write() << [] (elle::AtomicFile::Write& write)
+        {
+          write.stream() << "0\n";
+        };
+      this->_metrics_reporter->user_first_launch();
     }
 
     /*---------------------------.

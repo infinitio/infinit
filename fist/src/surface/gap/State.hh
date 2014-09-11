@@ -133,6 +133,10 @@ namespace surface
             std::unique_ptr<infinit::metrics::Reporter> metrics = nullptr);
       ~State();
 
+    private:
+      void
+      _check_first_launch();
+
     public:
       bool
       logged_in() const
@@ -156,9 +160,7 @@ namespace surface
     public:
       /// Login to meta.
       void
-      login(
-        std::string const& email,
-        std::string const& password);
+      login(std::string const& email, std::string const& password);
       /// Login to meta.
       void
       login(
