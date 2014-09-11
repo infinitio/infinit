@@ -1320,17 +1320,54 @@ class Mixin:
                  date: int = 0,
                  no_place_holder: bool = False):
     user = self._user_by_id(id, ensure_existence = False)
-    image = user and user.get('avatar')
-    if image:
-      from bottle import response
-      response.content_type = 'image/png'
-      return bytes(image)
-    else:
+    if user is None:
       if no_place_holder:
         return self.not_found()
       else: # Return the default avatar for backwards compatibility (< 0.9.2).
         from bottle import static_file
-        return static_file('place_holder_avatar.png', root = os.path.dirname(__file__), mimetype = 'image/png')
+        return static_file('place_holder_avatar.png',
+                           root = os.path.dirname(__file__),
+                           mimetype = 'image/png')
+
+    small_image = user.get('small_avatar')
+    if small_image:
+      from bottle import response
+      response.content_type = 'image/png'
+      return bytes(small_image)
+    else:
+      image = user.get('avatar')
+      if image:
+        from io import BytesIO
+        from PIL import Image
+        image_data = BytesIO(bytes(image))
+        image_data.seek(0)
+        small_image = self._small_avatar(Image.open(image_data))
+        small_out = BytesIO()
+        small_image.save(small_out, 'PNG')
+        small_out.seek(0)
+        res = self.database.users.find_and_modify(
+          {'_id': user['_id']},
+          {'$set': {
+            'small_avatar': bson.binary.Binary(small_out.read()),
+          }},
+          new = True,
+          fields = {'small_avatar': True, '_id': False})['small_avatar']
+        from bottle import response
+        response.content_type = 'image/png'
+        return bytes(res)
+      else:
+        if no_place_holder:
+          return self.not_found()
+        else: # Return the default avatar for backwards compatibility (< 0.9.2).
+          from bottle import static_file
+          return static_file('place_holder_avatar.png',
+                             root = os.path.dirname(__file__),
+                             mimetype = 'image/png')
+
+  def _small_avatar(self, avatar):
+    from PIL import Image
+    small_avatar = avatar.resize((256, 256), Image.ANTIALIAS)
+    return small_avatar
 
   @api('/user/avatar', method = 'POST')
   @require_logged_in
@@ -1339,14 +1376,20 @@ class Mixin:
     from io import BytesIO
     from PIL import Image
     image = Image.open(request.body)
-    image.resize((256, 256), Image.ANTIALIAS)
+    small_image = self._small_avatar(image)
     out = BytesIO()
+    small_out = BytesIO()
     image.save(out, 'PNG')
+    small_image.save(small_out, 'PNG')
     out.seek(0)
+    small_out.seek(0)
     import bson.binary
-    self.database.users.find_and_modify(
+    res = self.database.users.find_and_modify(
       query = {"_id": self.user['_id']},
-      update = {'$set': {'avatar': bson.binary.Binary(out.read())}})
+      update = {'$set': {
+        'avatar': bson.binary.Binary(out.read()),
+        'small_avatar': bson.binary.Binary(small_out.read()),
+      }})
     return self.success()
 
   ## ----------------- ##
