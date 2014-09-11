@@ -1385,7 +1385,7 @@ class Mixin:
     small_out.seek(0)
     import bson.binary
     res = self.database.users.find_and_modify(
-      query = {"_id": self.user['_id']},
+      query = {'_id': self.user['_id']},
       update = {'$set': {
         'avatar': bson.binary.Binary(out.read()),
         'small_avatar': bson.binary.Binary(small_out.read()),
