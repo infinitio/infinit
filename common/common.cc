@@ -110,6 +110,12 @@ namespace common
     }
 
     std::string
+    first_launch_path()
+    {
+      return path::join(home(), "first_launch");
+    }
+
+    std::string
     user_directory(std::string const& user_id)
     {
       return path::join(home(), "users", user_id);

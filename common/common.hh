@@ -62,6 +62,11 @@ namespace common
     std::string
     device_id_path();
 
+    /// Returns the path of the file showing that Infinit has been launched
+    /// before.
+    std::string
+    first_launch_path();
+
     /// Returns user directory path.
     std::string
     user_directory(std::string const& user_id);
