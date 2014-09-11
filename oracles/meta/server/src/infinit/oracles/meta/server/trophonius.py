@@ -10,6 +10,7 @@ import uuid
 from .plugins.response import response
 from . import conf, error, regexp
 from .utils import api, require_admin, require_logged_in
+from collections import OrderedDict
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Trophonius'
 
@@ -78,12 +79,19 @@ class Mixin:
                         (uid, id, device)):
       assert isinstance(uid, uuid.UUID)
       assert isinstance(device, uuid.UUID)
+      version = version and OrderedDict(sorted(version.items()))
       self.database.devices.update(
         {
           'id': str(device),
           'owner': id,
         },
-        {'$set': {'trophonius': str(uid), 'version': version}}
+        {
+          '$set':
+          {
+            'trophonius': str(uid),
+            'version': version,
+          }
+        }
       )
       try:
         self.set_connection_status(user_id = id,
