@@ -244,6 +244,15 @@ namespace infinit
       this->_send(this->_user_dest, data);
     }
 
+    void
+    JSONReporter::_user_first_launch()
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] = std::string("app/first_launch");
+
+      this->_send(this->_user_dest, data);
+    }
+
     /*-----.
     | Send |
     `-----*/

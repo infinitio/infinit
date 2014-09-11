@@ -323,6 +323,15 @@ namespace infinit
       this->_metric_available.open();
     }
 
+    void
+    Reporter::user_first_launch()
+    {
+      if (this->_no_metrics)
+        return;
+      this->_metric_queue.push(std::bind(&Reporter::_user_first_launch, this));
+      this->_metric_available.open();
+    }
+
     /*---------------.
     | Queue Handling |
     `---------------*/
@@ -477,6 +486,10 @@ namespace infinit
 
     void
     Reporter::_user_heartbeat()
+    {}
+
+    void
+    Reporter::_user_first_launch()
     {}
 
     /*----------.

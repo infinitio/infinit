@@ -260,5 +260,12 @@ namespace infinit
       this->_dispatch(std::bind(&Reporter::_user_heartbeat,
                                 std::placeholders::_1));
     }
+
+    void
+    CompositeReporter::_user_first_launch()
+    {
+      this->_dispatch(std::bind(&Reporter::_user_first_launch,
+                                std::placeholders::_1));
+    }
   }
 }

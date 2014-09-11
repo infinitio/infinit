@@ -163,6 +163,10 @@ namespace infinit
       void
       _user_heartbeat();
 
+      virtual
+      void
+      _user_first_launch();
+
     /// Private helper functions.
     private:
       std::string

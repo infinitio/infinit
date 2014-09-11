@@ -223,6 +223,9 @@ namespace infinit
       void
       user_heartbeat();
 
+      void
+      user_first_launch();
+
     /// User metrics implementation.
     protected:
       virtual
@@ -251,6 +254,10 @@ namespace infinit
       virtual
       void
       _user_heartbeat();
+
+      virtual
+      void
+      _user_first_launch();
 
     /// Queue handling.
     private:

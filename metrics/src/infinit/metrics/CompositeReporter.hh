@@ -124,6 +124,10 @@ namespace infinit
       void
       _user_heartbeat();
 
+      virtual
+      void
+      _user_first_launch();
+
     /// Dispatch metrics.
     private:
       void
