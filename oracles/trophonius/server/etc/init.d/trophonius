@@ -55,7 +55,7 @@ stop()
         --stop                                  \
         --signal INT                            \
         --exec "$DAEMON"                        \
-        --retry 5                               \
+        --retry 30                              \
         --pidfile "$PIDFILE"
     ret=$?
     log_end_msg $ret
