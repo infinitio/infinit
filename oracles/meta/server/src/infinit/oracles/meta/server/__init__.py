@@ -134,6 +134,7 @@ class Meta(bottle.Bottle,
       aws_link_bucket = None,
       force_admin = False,
       debug = False,
+      zone = None,
   ):
     import os
     system_logger = os.getenv("META_LOG_SYSTEM")
@@ -208,6 +209,7 @@ class Meta(bottle.Bottle,
       aws_link_bucket = cloud_buffer_token.aws_default_link_bucket
     self.aws_link_bucket = aws_link_bucket
     waterfall.Waterfall.__init__(self)
+    self.__zone = zone
 
   def __set_constraints(self):
     #---------------------------------------------------------------------------

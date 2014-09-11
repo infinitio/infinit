@@ -138,9 +138,17 @@ class Mixin:
                               message = {"message": message})
     return self.success()
 
+  @property
+  def __trophonius_query(self):
+    return {
+      'zone': self._Meta__zone,
+    }
+
+
   @api('/trophoniuses')
   def registered_trophonius(self):
     trophoniuses = self.database.trophonius.find(
+      self.__trophonius_query,
       fields = [
         'ip',
         'port',
@@ -178,6 +186,7 @@ class Mixin:
   @require_logged_in
   def trophonius_pick(self):
     trophoniuses = self.database.trophonius.find(
+      self.__trophonius_query,
       fields = ['ip', 'port_client', 'port_client_ssl'],
       sort = [('users', 1)],
     )
