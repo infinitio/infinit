@@ -546,11 +546,7 @@ namespace surface
                    *this, elle::demangle(typeid(*data).name()));
       }
       typedef infinit::oracles::Transaction::Status Status;
-      // There's still a machine when deleting a link that was created during
-      // this session. If the link had finished this->_over is true.
-      // We therefore handle this case explicitly.
-      if (this->_machine &&
-          (!this->_over || this->_data->status == Status::deleted))
+      if (this->_machine && !this->_over)
       {
         ELLE_DEBUG("%s: updating machine", *this)
           this->_machine->transaction_status_update(this->_data->status);
@@ -559,6 +555,10 @@ namespace surface
       if (auto link_data =
           std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(data))
       {
+        // There's still a machine when deleting a link that was created during
+        // this session. We need to handle this case explicitly.
+        if (this->_machine && link_data->status == Status::deleted)
+          this->_machine->gap_status(gap_transaction_deleted);
         this->state().enqueue(LinkTransaction(this->id(),
                                               link_data->name,
                                               link_data->mtime,
