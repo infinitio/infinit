@@ -233,6 +233,7 @@ namespace surface
             this->gap_status(gap_transaction_failed);
           break;
         case TransactionStatus::deleted:
+          ELLE_DEBUG("%s: update to deleted", *this)
           if (!this->concerns_this_device())
             this->gap_status(gap_transaction_deleted);
           break;
