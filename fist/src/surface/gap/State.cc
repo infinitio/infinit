@@ -2,6 +2,7 @@
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 #include <openssl/sha.h>
 
@@ -143,7 +144,9 @@ namespace surface
         // This is a no-op reporter.
         this->_metrics_reporter.reset(new infinit::metrics::CompositeReporter);
       this->_metrics_reporter->start();
-      ELLE_DEBUG("%s: device uuid: %s", *this, _device_uuid);
+      infinit::metrics::Reporter::metric_device_id(
+        boost::lexical_cast<std::string>(this->device_uuid()));
+      ELLE_LOG("%s: device uuid: %s", *this, this->device_uuid());
       // Fill configuration.
       auto& config = this->_configuration;
       config.s3.multipart_upload.parallelism = 1;
@@ -370,7 +373,6 @@ namespace surface
           trophonius_port = boost::lexical_cast<int>(env_port);
         this->_trophonius->server(trophonius_host, trophonius_port);
         infinit::metrics::Reporter::metric_sender_id(login_response.id);
-        infinit::metrics::Reporter::metric_device_id(login_response.device_id);
         this->_metrics_reporter->user_login(true, "");
         this->_metrics_heartbeat_thread.reset(
           new reactor::Thread{
