@@ -545,7 +545,12 @@ namespace surface
           ELLE_ERR("%s: unknown transaction type: %s",
                    *this, elle::demangle(typeid(*data).name()));
       }
-      if (this->_machine && !this->_over)
+      typedef infinit::oracles::Transaction::Status Status;
+      // There's still a machine when deleting a link that was created during
+      // this session. If the link had finished this->_over is true.
+      // We therefore handle this case explicitly.
+      if (this->_machine &&
+          (!this->_over || this->_data->status == Status::deleted))
       {
         ELLE_DEBUG("%s: updating machine", *this)
           this->_machine->transaction_status_update(this->_data->status);
