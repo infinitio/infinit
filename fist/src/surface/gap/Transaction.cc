@@ -249,8 +249,8 @@ namespace surface
           }
           else if (device == sender_device)
           {
-            ELLE_WARN("%s: can't restore peer send transaction from server",
-                      *this);
+            ELLE_WARN("%s: can't restore peer send transaction from server (%s)",
+                      *this, *peer_data);
             bool run_to_fail = true;
             this->_machine.reset(
               new PeerSendMachine(*this, this->_id, peer_data, run_to_fail));
@@ -276,7 +276,7 @@ namespace surface
       {
         if (device == sender_device)
         {
-          ELLE_WARN("%s: can't restore peer send transaction from server (%s)",
+          ELLE_WARN("%s: can't restore link transaction from server (%s)",
                     *this, *link_data);
           bool run_to_fail = true;
           this->_machine.reset(
