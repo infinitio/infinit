@@ -10,7 +10,7 @@ errors = {
   'unable_to_get_aws_credentials': (-300, "Unable to fetch AWS credentials."),
 
   # Device
-  'device_already_registred': (-10008, "This device name has already been taken."),
+  'device_already_registered': (-10008, "This device name has already been taken."),
   'device_doesnt_belong_to_you': (-217, "This device doesn't belong to you."),
   'device_id_not_valid': (-216, "This device id is not valid."),
   'device_not_found': (-20003, "Device not found."),
@@ -32,12 +32,12 @@ errors = {
   # User
   'already_logged_in': (-102, "You are already logged in."),
   'email_already_confirmed': (-106, "Your email has already been confirmed."),
-  'email_already_registred': (-10003, "This email has already been taken."),
+  'email_already_registered': (-10003, "This email has already been taken."),
   'email_not_confirmed': (-105, "Your email has not been confirmed."),
   'email_not_valid': (-210, "This email is not valid."),
   'email_password_dont_match': (-10101, "Login/Password don't match."),
   'fullname_not_valid': (-220, "This fullname is not valid."),
-  'handle_already_registred': (-10005, "This handle has already been taken."),
+  'handle_already_registered': (-10005, "This handle has already been taken."),
   'handle_not_valid': (-211, "This handle is not valid."),
   'no_more_invitation': (-50005, "You don't have any invitations left."),
   'not_logged_in': (-101, "You must be logged in."),
