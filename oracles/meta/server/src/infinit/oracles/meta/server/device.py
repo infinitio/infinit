@@ -81,7 +81,7 @@ class Mixin:
       self.fail(error.DEVICE_NOT_VALID)
     query = {'id': str(id), 'owner': owner['_id']}
     if self.device(ensure_existence = False, **query) is not None:
-      self.fail(error.DEVICE_ALREADY_REGISTRED)
+      self.fail(error.DEVICE_ALREADY_REGISTERED)
     to_save = copy.deepcopy(query)
     to_save['name'] = name.strip()
     self.database.devices.insert(to_save, upsert = True)
