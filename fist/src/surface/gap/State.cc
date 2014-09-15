@@ -658,12 +658,11 @@ namespace surface
     void
     State::register_(std::string const& fullname,
                      std::string const& email,
-                     std::string const& password,
-                     std::string const& activation_code)
+                     std::string const& password)
     {
       // !WARNING! Do not log the password.
-      ELLE_TRACE_SCOPE("%s: register as %s: email %s and activation_code %s",
-                       *this, fullname, email, activation_code);
+      ELLE_TRACE_SCOPE("%s: register as %s: email %s",
+                       *this, fullname, email);
 
       std::string lower_email = email;
 
@@ -682,17 +681,15 @@ namespace surface
         this->_metrics_reporter->user_register(false, error_details);
       }};
 
-      auto res = this->meta(false).register_(
-        lower_email, fullname, password, activation_code);
-
-      error_details = res.error_details;
+      std::string user_id =
+        this->meta(false).register_(lower_email, fullname, password);
 
       register_failed.abort();
 
       ELLE_DEBUG("registered new user %s <%s>", fullname, lower_email);
 
-      elle::SafeFinally registered_metric{[this, res] {
-        infinit::metrics::Reporter::metric_sender_id(res.registered_user_id);
+      elle::SafeFinally registered_metric{[this, user_id] {
+        infinit::metrics::Reporter::metric_sender_id(user_id);
         this->_metrics_reporter->user_register(true, "");
       }};
       this->login(lower_email, password);

@@ -175,8 +175,7 @@ namespace surface
       void
       register_(std::string const& fullname,
                 std::string const& email,
-                std::string const& password,
-                std::string const& activation_code);
+                std::string const& password);
 
       ///
       static
