@@ -222,7 +222,7 @@ class Mailer():
 
 report_templates = dict()
 
-report_templates['user'] = {'subject': 'User Report (%(client_os)s)'.strip(),
+report_templates['user'] = {'subject': 'User Report %(version)s (%(client_os)s)'.strip(),
                             'content': """
 User file and .infinit directory in attached file.
 
