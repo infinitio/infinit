@@ -394,11 +394,10 @@ namespace infinit
 
         ELLE_ATTRIBUTE_RW(bool, logged_in);
 
-        RegisterResponse
+        std::string
         register_(std::string const& email,
                   std::string const& fullname,
-                  std::string const& password,
-                  std::string const& activation_code) const;
+                  std::string const& password) const;
 
         User
         user(std::string const& id) const;
