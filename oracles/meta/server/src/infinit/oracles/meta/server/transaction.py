@@ -285,7 +285,7 @@ class Mixin:
                    count : int = 100,
                    offset : int = 0,
                  ):
-    with elle.log.trace("get %s transactions with(%s) status in %s" % \
+    with elle.log.trace("get %s transactions with%s status in %s" % \
                         (count, negate and "out" or "", filter)):
       user_id = self.user['_id']
       if peer_id is not None:
