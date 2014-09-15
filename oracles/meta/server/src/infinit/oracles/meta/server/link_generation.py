@@ -343,11 +343,11 @@ class Mixin:
     return ret_link
 
   @api('/link/<hash>')
-  def link_by_hash(self, hash):
+  def link_by_hash(self, hash, no_count: bool = False):
     """
     Find and return the link related to the given hash for a web client.
     """
-    with elle.log.trace('find link for hash: %s' % hash):
+    with elle.log.trace('find link for hash %s: %s' % ('leaving click count' if no_count else 'increasing click count', hash)):
       link = self.database.links.find_one({'hash': hash})
       if link is None:
         self.not_found('link not found')
@@ -367,15 +367,25 @@ class Mixin:
           valid_days = link_lifetime_days)
         set_dict['link'] = link['link']
         set_dict['get_url_updated'] = time_now
-      link = self.database.links.find_and_modify(
-        {'_id': link['_id']},
-        {
-          '$inc': {'click_count': 1},
-          '$set': set_dict,
-        },
-        new = True,
-        multi = False,
-      )
+      if no_count:
+        link = self.database.links.find_and_modify(
+          {'_id': link['_id']},
+          {
+            '$set': set_dict,
+          },
+          new = True,
+          multi = False,
+        )
+      else:
+        link = self.database.links.find_and_modify(
+          {'_id': link['_id']},
+          {
+            '$inc': {'click_count': 1},
+            '$set': set_dict,
+          },
+          new = True,
+          multi = False,
+        )
       web_link = self.__client_link(link)
       owner_link = self.__owner_link(link)
       self.notifier.notify_some(
