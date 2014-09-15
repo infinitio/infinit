@@ -11,8 +11,6 @@ from . import error
 from . import conf
 import pymongo
 
-ADMIN_TOKEN = "admintoken"
-
 class api:
 
   functions = []
