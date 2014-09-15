@@ -125,7 +125,7 @@ class Mixin:
                          message = ""):
     """
     Send a file to a specific user.
-    If you pass an email and the user is not registred in infinit,
+    If you pass an email and the user is not registered in infinit,
     create a 'ghost' in the database, waiting for him to register.
 
     id_or_email -- the recipient id or email.
