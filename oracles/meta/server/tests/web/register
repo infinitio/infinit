@@ -18,7 +18,7 @@ with Meta() as meta:
 
   res = meta.post("user/register", query)
   assert not res['success']
-  assert res['error_code'] == error.EMAIL_ALREADY_REGISTRED[0]
+  assert res['error_code'] == error.EMAIL_ALREADY_REGISTERED[0]
 
   query['email'] = 'heab'
 

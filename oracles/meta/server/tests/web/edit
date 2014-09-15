@@ -66,4 +66,4 @@ with Meta() as meta:
   res = meta.post('user/edit', {'fullname': 'jean-louis',
                                 'handle': user2['handle']})
   assert not res['success']
-  assert res['error_code'] == error.HANDLE_ALREADY_REGISTRED[0]
+  assert res['error_code'] == error.HANDLE_ALREADY_REGISTERED[0]
