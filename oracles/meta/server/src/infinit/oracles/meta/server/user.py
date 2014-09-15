@@ -324,10 +324,10 @@ class Mixin:
           if user is None:
             # The ghost was already transformed - prevent the race
             # condition.
-            return self.fail(error.EMAIL_ALREADY_REGISTRED)
+            return self.fail(error.EMAIL_ALREADY_REGISTERED)
         else:
           # The user existed.
-          return self.fail(error.EMAIL_ALREADY_REGISTRED)
+          return self.fail(error.EMAIL_ALREADY_REGISTERED)
       user_id = user['_id']
       with elle.log.trace('generate identity'):
         identity, public_key = papier.generate_identity(
@@ -525,7 +525,7 @@ class Mixin:
       new_email = new_email.lower().strip()
       # Check if the new address is already in use.
       if self.user_by_email(new_email, ensure_existence = False) is not None:
-        return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTRED)
+        return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
       if hash_pasword(password) != user['password']:
         return self._forbidden_with_error(error.PASSWORD_NOT_VALID)
       from time import time
@@ -594,7 +594,7 @@ class Mixin:
       # Check that the email has not been registered.
       new_email = user['new_main_email']
       if self.user_by_email(new_email, ensure_existence = False) is not None:
-        return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTRED)
+        return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
       # Invalidate credentials.
       self.sessions.remove({'email': user['email'], 'device': ''})
       # Kick them out of the app.
@@ -1210,7 +1210,7 @@ class Mixin:
     other = self.database.users.find_one({'lw_handle': lw_handle})
     if other is not None and other['_id'] != user['_id']:
       return self.fail(
-        error.HANDLE_ALREADY_REGISTRED,
+        error.HANDLE_ALREADY_REGISTERED,
         field = 'handle',
         )
     update = {
