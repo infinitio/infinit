@@ -73,11 +73,32 @@ namespace infinit
       inline EmailAlreadyRegistered();
     };
 
+    class EmailNotValid
+      : public SelfUserError
+    {
+    public:
+      inline EmailNotValid();
+    };
+
+    class FullnameNotValid
+      : public SelfUserError
+    {
+    public:
+      inline FullnameNotValid();
+    };
+
     class HandleAlreadyRegistered
       : public SelfUserError
     {
     public:
       inline HandleAlreadyRegistered();
+    };
+
+    class PasswordNotValid
+      : public SelfUserError
+    {
+    public:
+      inline PasswordNotValid();
     };
 
     class TransactionFinalized

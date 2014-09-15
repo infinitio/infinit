@@ -34,8 +34,20 @@ namespace infinit
       : SelfUserError("email already registered")
     {}
 
+    EmailNotValid::EmailNotValid()
+      : SelfUserError("email not valid")
+    {}
+
+    FullnameNotValid::FullnameNotValid()
+      : SelfUserError("fullname not valid")
+    {}
+
     HandleAlreadyRegistered::HandleAlreadyRegistered()
       : SelfUserError("handle already registered")
+    {}
+
+    PasswordNotValid::PasswordNotValid()
+      : SelfUserError("password not valid")
     {}
 
     TransactionFinalized::TransactionFinalized()
