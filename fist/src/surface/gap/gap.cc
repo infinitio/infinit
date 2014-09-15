@@ -211,19 +211,18 @@ gap_logout(gap_State* state)
 
 gap_Status
 gap_register(gap_State* state,
-             char const* fullname,
-             char const* email,
-             char const* password,
-             char const* device_name,
-             char const* activation_code)
+             std::string const& fullname,
+             std::string const& email,
+             std::string const& hashed_password)
 {
-  auto ret = run<gap_Status>(state,
-                             "register",
-                             [&] (surface::gap::State& state) -> gap_Status
-                             {
-                               state.register_(fullname, email, password, activation_code);
-                               return gap_ok;
-                             });
+  auto ret = run<gap_Status>(
+    state,
+    "register",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+     state.register_(fullname, email, hashed_password);
+     return gap_ok;
+    });
   return ret;
 }
 

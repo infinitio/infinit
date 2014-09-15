@@ -87,11 +87,9 @@ gap_logout(gap_State* state);
 /// gap_hash_password() function.
 gap_Status
 gap_register(gap_State* state,
-             char const* fullname,
-             char const* email,
-             char const* hash_password,
-             char const* device_name,
-             char const* activation_code);
+             std::string const& fullname,
+             std::string const& email,
+             std::string const& hashed_password);
 
 //- Swaggers ----------------------------------------------------------------
 
