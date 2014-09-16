@@ -29,9 +29,6 @@ def configure(elle,
   ## ------- ##
 
   git = drake.git.Git()
-  class PythonVersionGenerator(VersionGenerator):
-    def _variable(self, name, value):
-      return '%s = %s' % (name, repr(value))
   version = drake.node('lib/python/infinit/oracles/meta/version.py')
   PythonVersionGenerator(version, git = git)
 
