@@ -69,6 +69,9 @@ namespace infinit
       void
       metric_device_id(std::string const& device_id);
 
+      static void
+      metric_feature_string(std::string const& feature_string);
+
     /// Transaction metrics.
     public:
       void
@@ -285,6 +288,10 @@ namespace infinit
 
       static
       std::string
+      metric_feature_string();
+
+      static
+      std::string
       user_agent();
 
     /// Static class attributes.
@@ -297,6 +304,9 @@ namespace infinit
 
       static
       std::string _metric_device_id;
+
+      static
+      std::string _metric_feature_string;
 
       static
       std::string _user_agent;

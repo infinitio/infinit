@@ -13,6 +13,7 @@
 #include <elle/os/environ.hh>
 #include <elle/os/path.hh>
 #include <elle/serialization/json/SerializerIn.hh>
+#include <elle/serialization/json/SerializerOut.hh>
 #include <elle/serialize/HexadecimalArchive.hh>
 
 #include <reactor/duration.hh>
@@ -154,6 +155,26 @@ namespace surface
       config.max_mirror_size = 0;
       config.max_compress_size = 0;
       config.disable_upnp = false;
+      std::ifstream fconfig(common::infinit::configuration_path());
+      if (fconfig.good())
+      {
+        try
+        {
+            elle::json::Object obj = boost::any_cast<elle::json::Object>(
+              elle::json::read(fconfig));
+            _apply_configuration(obj);
+        }
+        catch(std::exception const& e)
+        {
+          ELLE_ERR("%s: while reading configuration: %s", *this, e.what());
+          std::stringstream str;
+          {
+            elle::serialization::json::SerializerOut output(str);
+            this->_configuration.serialize(output);
+          }
+          ELLE_TRACE("%s: current config: %s", *this, str.str());
+        }
+      }
       this->_check_first_launch();
     }
 
@@ -963,6 +984,7 @@ namespace surface
       s.serialize("max_mirror_size", this->max_mirror_size);
       s.serialize("max_compress_size", this->max_compress_size);
       s.serialize("disable_upnp", this->disable_upnp);
+      s.serialize("features", this->features);
     }
 
     void
@@ -983,9 +1005,17 @@ namespace surface
     State::_apply_configuration(elle::json::Object json)
     {
       ELLE_TRACE_SCOPE("%s: apply configuration: %s", *this, json);
-      elle::serialization::json::SerializerIn input(std::move(json));
+      elle::serialization::json::SerializerIn input(json);
       input.partial(true);
       this->_configuration.serialize(input);
+      // Build and pass feature string to metrics
+      std::string feature_string;
+      for (auto const& f: this->_configuration.features)
+        feature_string += f.first + '=' + f.second + ';';
+      feature_string = feature_string.substr(0, feature_string.length()-1);
+      metrics::Reporter::metric_feature_string(feature_string);
+      std::ofstream fconfig(common::infinit::configuration_path());
+      elle::json::write(fconfig, json);
     }
 
 

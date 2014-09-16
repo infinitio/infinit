@@ -310,6 +310,8 @@ namespace infinit
           data[this->_key_str(JSONKey::device_id)] =
             std::string("unknown");
         }
+        data[this->_key_str(JSONKey::feature_string)] =
+          Reporter::metric_feature_string();
         ELLE_DUMP("%s: json to be sent: %s",
                   *this, elle::json::pretty_print(data));
         this->_post(destination, data);
@@ -416,6 +418,8 @@ namespace infinit
           return "version";
         case JSONKey::who:
           return "who";
+        case JSONKey::feature_string:
+          return "features";
         default:
           elle::unreachable();
       }

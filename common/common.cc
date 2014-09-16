@@ -110,6 +110,12 @@ namespace common
     }
 
     std::string
+    configuration_path()
+    {
+      return path::join(home(), "configuration");
+    }
+
+    std::string
     first_launch_path()
     {
       return path::join(home(), "first_launch");

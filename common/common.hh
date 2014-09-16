@@ -62,6 +62,10 @@ namespace common
     std::string
     device_id_path();
 
+    /// Return the path to the configuration file.
+    std::string
+    configuration_path();
+
     /// Returns the path of the file showing that Infinit has been launched
     /// before.
     std::string
