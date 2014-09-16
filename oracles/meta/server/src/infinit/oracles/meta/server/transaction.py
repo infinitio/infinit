@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
 
 import bson
+import datetime
 import re
 import time
 import unicodedata
@@ -227,6 +228,7 @@ class Mixin:
         }
 
       transaction_id = self.database.transactions.insert(transaction)
+      self.__update_transaction_time(user)
 
       if not peer_email:
         peer_email = recipient['email']
@@ -275,6 +277,17 @@ class Mixin:
           'created_transaction_id': transaction_id,
           'remaining_invitations': user.get('remaining_invitations', 0),
           })
+
+  def __update_transaction_time(self, user):
+    self.database.users.update(
+      {'_id': user['_id']},
+      {
+        '$set':
+        {
+          'last_transaction.time': datetime.datetime.utcnow(),
+        }
+      })
+
 
   @api('/transactions')
   @require_logged_in
@@ -387,13 +400,14 @@ class Mixin:
     # cloud_buffer_token.delete_directory(transaction.id)
     return {}
 
-  def on_accept(self, transaction, device_id, device_name):
+  def on_accept(self, transaction, user, device_id, device_name):
     with elle.log.trace("accept transaction as %s" % device_id):
       if device_id is None or device_name is None:
         self.bad_request()
       device_id = uuid.UUID(device_id)
       if str(device_id) not in self.user['devices']:
         raise error.Error(error.DEVICE_DOESNT_BELONG_TO_YOU)
+      self.__update_transaction_time(user)
       return {
         'recipient_fullname': self.user['fullname'],
         'recipient_device_name' : device_name,
@@ -526,6 +540,7 @@ class Mixin:
       diff = {}
       if status == transaction_status.ACCEPTED:
         diff.update(self.on_accept(transaction = transaction,
+                                   user = user,
                                    device_id = device_id,
                                    device_name = device_name))
       elif status == transaction_status.FINISHED:

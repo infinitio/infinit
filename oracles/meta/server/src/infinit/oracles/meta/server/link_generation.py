@@ -176,6 +176,7 @@ class Mixin:
       }
 
       link_id = self.database.links.insert(link)
+      self.__update_transaction_time(user)
 
       credentials = self._get_aws_credentials(user, link_id)
       if credentials is None:
