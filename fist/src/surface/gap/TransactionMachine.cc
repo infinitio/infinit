@@ -443,6 +443,11 @@ namespace surface
     void
     TransactionMachine::_report_s3_error(aws::AWSException const& exception, bool will_retry)
     {
+      unsigned attempt = exception.attempt();
+      // Avoid flooding the metrics, report every tenth above 10, every hundred
+      // above 100, ...
+      if (attempt > 10 && attempt % (unsigned)pow(10, (unsigned)log10(attempt)))
+        return;
       if (auto& mr = state().metrics_reporter())
       {
         int http_status = 0;
