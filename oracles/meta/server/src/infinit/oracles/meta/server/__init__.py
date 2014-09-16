@@ -255,6 +255,13 @@ class Meta(bottle.Bottle,
     # - Download by link transaction hash.
     self.__database.transactions.ensure_index([('transaction_hash', 1)],
                                               unique = True, sparse = True)
+    # Finding transaction by peer
+    self.__database.transactions.ensure_index(
+      [('sender_id', pymongo.ASCENDING),
+       ('ctime', pymongo.ASCENDING)])
+    self.__database.transactions.ensure_index(
+      [('recipient_id', pymongo.ASCENDING),
+       ('ctime', pymongo.ASCENDING)])
 
     #---------------------------------------------------------------------------
     # Link Generation
