@@ -217,7 +217,7 @@ namespace
     }
     else
     {
-      res = "development.infinit.io";
+      res = "preprod.meta.production.infinit.io";
     }
     return res;
   }
