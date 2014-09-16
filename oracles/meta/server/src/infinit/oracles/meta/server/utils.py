@@ -1,49 +1,8 @@
-import bottle
-import bson
-import datetime
 import decorator
-import inspect
-import iso8601
-import json
-import uuid
-
-from . import error
-from . import conf
 import pymongo
+from infinit.oracles.meta.server import conf
 
-class api:
-
-  functions = []
-
-  def __init__(self, route = None, method = 'GET'):
-    self.__route = route
-    self.__method = method
-
-  def __call__(self, method):
-    import inspect
-    spec = inspect.getfullargspec(method)
-    def annotation_mapper(self, *args, **kwargs):
-      for arg, annotation in spec.annotations.items():
-        value = kwargs.get(arg, None)
-        if arg is not None and value is not None:
-          try:
-            if annotation is datetime.datetime:
-              if not isinstance(value, datetime.datetime):
-                value = iso8601.parse_date(value)
-            else:
-              value = annotation(value)
-            kwargs[arg] = value
-          except:
-            m = '%r is not a valid %s' % (value, annotation.__name__)
-            self.bad_request(m)
-      return method(self, *args, **kwargs)
-    annotation_mapper.__route__ = self.__route
-    annotation_mapper.__method__ = self.__method
-    annotation_mapper.__underlying_method__ = method
-    annotation_mapper.__api__ = None
-    annotation_mapper.__name__ = method.__name__
-    api.functions.append(annotation_mapper)
-    return annotation_mapper
+from infinit.oracles.utils import api, json_value, utf8_string
 
 def require_logged_in(method):
   if hasattr(method, '__api__'):
@@ -80,9 +39,3 @@ def hash_pasword(password):
   seasoned = password + conf.SALT
   seasoned = seasoned.encode('utf-8')
   return hashlib.md5(seasoned).hexdigest()
-
-def json_value(s):
-  return json.loads(utf8_string(s))
-
-def utf8_string(s):
-  return s.encode('latin-1').decode('utf-8')
