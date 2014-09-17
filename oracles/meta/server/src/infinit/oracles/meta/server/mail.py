@@ -18,7 +18,7 @@ ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Mailer'
 import smtplib
 import json
 
-MAILCHIMP_TEMPLATE_SUBJECTS = {
+MANDRILL_TEMPLATE_SUBJECTS = {
   'invitation-beta': '%(sendername)s would like to invite you to Infinit',
   'send-file': '*|sendername|* wants to share *|filename|* with you',
   'send-file-url': '*|sendername|* shared *|filename|* with you',
@@ -39,7 +39,7 @@ subscriptions = {
 }
 
 for key in subscriptions.keys():
-  assert key in MAILCHIMP_TEMPLATE_SUBJECTS.keys()
+  assert key in MANDRILL_TEMPLATE_SUBJECTS.keys()
 
 class EmailSubscriptionNotFound(BaseException):
 
@@ -178,7 +178,7 @@ class Mailer():
         return
 
       message = self.build_message(to = to,
-                                   subject = MAILCHIMP_TEMPLATE_SUBJECTS[template_name],
+                                   subject = MANDRILL_TEMPLATE_SUBJECTS[template_name],
                                    fr = fr,
                                    reply_to = reply_to,
                                    attachment = attachment,
