@@ -192,13 +192,13 @@ namespace surface
       boost::filesystem::path pattern = first;
       for (; !pattern.extension().empty(); pattern = pattern.stem())
         extensions = pattern.extension().string() + extensions;
-      pattern += name_policy;
-      pattern += extensions;
 
       // Ugly.
       for (size_t i = 2; i < std::numeric_limits<size_t>::max(); ++i)
       {
-        boost::filesystem::path replace = elle::sprintf(pattern.string().c_str(), i);
+        boost::filesystem::path replace = pattern;
+        replace += elle::sprintf(name_policy, i);
+        replace += extensions;
         if (!boost::filesystem::exists(start_point / replace))
         {
           if (!toplevel_file)
