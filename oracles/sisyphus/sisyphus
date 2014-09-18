@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+
+SELF = os.path.realpath(__file__)
+sys.path.insert(0, '%s/../lib/python' % os.path.dirname(SELF))
+
+# Do not reorder those lines, or a python native module component will
+# load the system libcrypto.so, which will prevent loading our
+# libcrypto.so through a RPATH on our native module.
+import infinit.oracles.sisyphus
+import infinit.oracles.sisyphus.boulders
+import infinit.oracles.sisyphus.boulders.drip
+import bottle
+import elle.log
+
+import optparse
+usage = "usage: %prog [options]"
+parser = optparse.OptionParser(usage = usage)
+parser.add_option('--port',
+                  action = 'store',
+                  help = 'Port to listen on',
+                  default = '8080')
+parser.add_option('--mongo-port',
+                  action = 'store',
+                  help = 'Mongodb port',
+                  type = int,
+                  default = None)
+parser.add_option('--mongo-host',
+                  action = 'append',
+                  help = 'Mongodb host',
+                  type = str,
+                  default = None)
+parser.add_option('--mongo-replica-set',
+                  action = 'store_true',
+                  help = 'Use mongo replica set',
+                  default = False)
+
+options, _ = parser.parse_args()
+
+args = {}
+if options.mongo_replica_set:
+  args['mongo_replica_set'] = options.mongo_host
+
+app = infinit.oracles.sisyphus.Sisyphus()
+infinit.oracles.sisyphus.boulders.drip.RegisteredNoTransfer(app)
+
+bottle.run(app = app,
+           host = '127.0.0.1',
+           port = int(options.port))
