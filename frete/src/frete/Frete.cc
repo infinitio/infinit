@@ -5,6 +5,7 @@
 
 #include <boost/filesystem/fstream.hpp>
 
+#include <elle/archive/archive.hh>
 #include <elle/AtomicFile.hh>
 #include <elle/Error.hh>
 #include <elle/container/map.hh>
@@ -137,20 +138,51 @@ namespace frete
 
     if (is_directory(path))
     {
+      bool has_symlink = false;
       boost::filesystem::recursive_directory_iterator end;
       for (auto it = boost::filesystem::recursive_directory_iterator(path);
            it != end;
            ++it)
       {
-        auto parent = path.parent_path();
-        boost::filesystem::path relative;
-        auto rel = it->path().begin();
-        for (auto count = parent.begin(); count != parent.end(); ++count)
-          ++rel;
-        for (; rel != it->path().end(); ++rel)
-          relative /= *rel;
-        if (!boost::filesystem::is_directory(*it))
-          this->_add(parent, relative);
+        if (boost::filesystem::is_symlink(it->path()))
+        {
+          has_symlink = true;
+          break;
+        }
+      }
+      if (has_symlink)
+      { // Replace with ziped version of itself
+        boost::filesystem::path archive_name = path.filename();
+        archive_name += ".zip";
+        boost::filesystem::path archive_path =
+         this->_snapshot_destination.parent_path() / "archive";
+        boost::filesystem::create_directories(archive_path);
+        boost::filesystem::path archive_full_path = archive_path / archive_name;
+        reactor::background([&]
+          {
+            std::vector<boost::filesystem::path> pathes;
+            pathes.push_back(path);
+            elle::archive::archive(elle::archive::Format::zip_uncompressed,
+                                   pathes, archive_full_path);
+          });
+        this->_add(archive_path, archive_name);
+      }
+      else
+      {
+        for (auto it = boost::filesystem::recursive_directory_iterator(path);
+             it != end;
+             ++it)
+        {
+          auto parent = path.parent_path();
+          boost::filesystem::path relative;
+          auto rel = it->path().begin();
+          for (auto count = parent.begin(); count != parent.end(); ++count)
+            ++rel;
+          for (; rel != it->path().end(); ++rel)
+            relative /= *rel;
+          if (!boost::filesystem::is_directory(*it))
+            this->_add(parent, relative);
+        }
       }
     }
     else
