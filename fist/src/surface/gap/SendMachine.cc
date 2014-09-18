@@ -571,7 +571,10 @@ namespace surface
             ELLE_DEBUG("Copying %s -> %s", *it, target);
             // Use copy for both files and directories, it works
             // And it creates parent directories before child files
-            boost::filesystem::copy(*it, target, erc);
+            if (bfs::is_symlink(*it))
+              bfs::create_symlink(read_symlink(*it), target, erc);
+            else
+              bfs::copy(*it, target, erc);
             if (erc)
             {
               ELLE_TRACE("%s: Error while copying %s: %s", *this, *it, erc);
