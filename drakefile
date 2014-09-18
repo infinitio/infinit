@@ -825,7 +825,8 @@ def configure(cxx_toolkit = None,
                                 boost = boost,
                                 qt = qt,
                                 prefix = prefix,
-                                libraries = libraries)
+                                libraries = libraries,
+                                boost_test = boost_test)
     build << application.build
 
   ## ------- ##
