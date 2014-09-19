@@ -25,9 +25,11 @@ def configure(elle,
   cxx_config = cxx_config or drake.cxx.Config()
 
   local_cxx_config = drake.cxx.Config(cxx_config)
-  if cxx_toolkit.os is drake.os.windows:
-    boost_program_options = drake.cxx.Config(boost.config_program_options(static = True))
-    boost_python = drake.cxx.Config(boost.config_python(static = True))
+  if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
+    if cxx_toolkit.os is not drake.os.ios:
+      boost_program_options = drake.cxx.Config(boost.config_program_options(static = True))
+    if python3 is not False:
+      boost_python = drake.cxx.Config(boost.config_python(static = True))
     boost_system = drake.cxx.Config(boost.config_system(static = True))
     boost_test = drake.cxx.Config(boost.config_test(static = True))
   else:
@@ -47,7 +49,8 @@ def configure(elle,
     boost_test.library_add(
       drake.copy(boost.test_dynamic,
                  'lib', strip_prefix = True))
-  local_cxx_config += boost_program_options
+  if cxx_toolkit.os is not drake.os.ios:
+    local_cxx_config += boost_program_options
   local_cxx_config += boost_system
   local_cxx_config += elle.elle.config
   local_cxx_config += elle.reactor.config
@@ -103,7 +106,7 @@ def configure(elle,
   build = drake.Rule('build')
   build << trophonius
 
-  if python3 is not None:
+  if python3 is not False:
     python_sources = drake.nodes(
       'src/infinit/oracles/trophonius/server/python.cc',
     )
