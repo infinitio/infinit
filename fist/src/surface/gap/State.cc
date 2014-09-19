@@ -705,6 +705,8 @@ namespace surface
       std::string user_id =
         this->meta(false).register_(lower_email, fullname, password);
 
+      infinit::metrics::Reporter::metric_sender_id(user_id);
+
       register_failed.abort();
 
       ELLE_DEBUG("registered new user %s <%s>", fullname, lower_email);
