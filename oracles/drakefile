@@ -64,7 +64,7 @@ def configure(elle,
 
   lib_cxx_config = drake.cxx.Config(local_cxx_config)
   lib_cxx_config.lib_path_runtime('.')
-  if cxx_toolkit.os is drake.os.windows:
+  if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
     Library = drake.cxx.StaticLib
   else:
     Library = drake.cxx.DynLib
@@ -121,22 +121,22 @@ def configure(elle,
   build << transaction_lib
   build << python_built
 
-  oracles = []
-
-  oracles += drake.copy(trophonius.server.python, '.',
-                        strip_prefix='trophonius/server')
-  oracles += drake.copy(apertus.server.python, '.',
-                        strip_prefix='apertus/server')
-  oracles += drake.copy(meta.server.python, '.',
-                        strip_prefix = 'meta/server')
-  oracles.append(drake.copy(elle.reactor.python_lib, 'lib/python',
-                            strip_prefix = True))
-  mongobox = drake.nodes(
-    'mongobox/mongobox/__init__.py',
-    'mongobox/mongobox/mongobox.py',
-    'mongobox/mongobox/utils.py',
-    'mongobox/mongobox/nose_plugin.py',
-  )
-  oracles += drake.copy(mongobox, 'lib/python',
-                        strip_prefix='mongobox')
-  build << oracles
+  if python3 is not False:
+    oracles = []
+    oracles += drake.copy(trophonius.server.python, '.',
+                          strip_prefix='trophonius/server')
+    oracles += drake.copy(apertus.server.python, '.',
+                          strip_prefix='apertus/server')
+    oracles += drake.copy(meta.server.python, '.',
+                          strip_prefix = 'meta/server')
+    oracles.append(drake.copy(elle.reactor.python_lib, 'lib/python',
+                              strip_prefix = True))
+    mongobox = drake.nodes(
+      'mongobox/mongobox/__init__.py',
+      'mongobox/mongobox/mongobox.py',
+      'mongobox/mongobox/utils.py',
+      'mongobox/mongobox/nose_plugin.py',
+    )
+    oracles += drake.copy(mongobox, 'lib/python',
+                          strip_prefix='mongobox')
+    build << oracles
