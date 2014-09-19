@@ -45,7 +45,7 @@ def configure(cxx_toolkit = None,
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
 
-  if cxx_toolkit.os == drake.os.windows:
+  if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
     Library = drake.cxx.StaticLib
   else:
     Library = drake.cxx.DynLib
@@ -76,6 +76,8 @@ def configure(cxx_toolkit = None,
     cxx_config.lib('crypt32')
   elif cxx_toolkit.os == drake.os.macos:
     platform_defines = ("INFINIT_MACOSX", "HAVE_STATFS")
+  elif cxx_toolkit.os is drake.os.ios:
+    platform_defines = ("INFINIT_IOS")
   else:
     raise Exception("platform %s not supported" % sys.platform)
   for define in platform_defines:
@@ -148,14 +150,15 @@ def configure(cxx_toolkit = None,
   boost = elle.boost
   python3 = elle.python3
   cxx_config += boost.config()
-  if cxx_toolkit.os in (drake.os.macos, drake.os.windows):
+  if cxx_toolkit.os in (drake.os.macos, drake.os.windows, drake.os.ios):
     boost_filesystem = drake.cxx.Config(boost.config_filesystem(static = True))
   else:
     boost_filesystem = drake.cxx.Config(boost.config_filesystem(link = False))
     boost_filesystem.library_add(copy_lib(boost.filesystem_dynamic))
-  if cxx_toolkit.os is drake.os.windows:
+  if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
     boost_program_options = drake.cxx.Config(boost.config_program_options(static = True))
-    boost_python = drake.cxx.Config(boost.config_python(static = True))
+    if cxx_toolkit.os is not drake.os.ios:
+      boost_python = drake.cxx.Config(boost.config_python(static = True))
     boost_signals = drake.cxx.Config(boost.config_signals(static = True))
     boost_system = drake.cxx.Config(boost.config_system(static = True))
     boost_test = drake.cxx.Config(boost.config_test(static = True))
@@ -177,7 +180,7 @@ def configure(cxx_toolkit = None,
   elle_lib = copy_lib(elle.elle.library)
   cryptography_lib = copy_lib(elle.cryptography.library)
   reactor_lib = copy_lib(elle.reactor.library)
-  if python3 is not None:
+  if python3 is not False:
     reactor_python_lib = copy_lib(elle.reactor.python_lib, where='lib/python')
     python_build << reactor_python_lib
   protocol_lib = copy_lib(elle.protocol.library)
@@ -204,7 +207,7 @@ def configure(cxx_toolkit = None,
     valgrind = valgrind,
   )
 
-  if cxx_toolkit.os is drake.os.windows:
+  if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
     metrics_lib = metrics.lib
   else:
     metrics_lib = drake.copy(
@@ -242,7 +245,7 @@ def configure(cxx_toolkit = None,
   papier_build << papier_lib
   papier_python = drake.Rule('papier/build')
   papier_python_lib = None
-  if python3 is not None:
+  if python3 is not False:
     papier_python_cxx_config = drake.cxx.Config(cxx_config)
     papier_python_sources = drake.nodes('papier/src/papier/python.cc')
     papier_python_sources.append(papier_lib)
@@ -435,7 +438,7 @@ def configure(cxx_toolkit = None,
     valgrind = valgrind,
   )
 
-  if cxx_toolkit.os is drake.os.windows:
+  if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
     trophonius_client_lib = oracles.trophonius.client.lib
     meta_client_lib = oracles.meta.client.lib
   else:
@@ -717,7 +720,7 @@ def configure(cxx_toolkit = None,
   ## ------------ ##
 
   state_python_lib = None
-  if python3 is not None:
+  if python3 is not False:
     state_python_cxx_config = drake.cxx.Config(gap_cxx_config)
     state_python_cxx_config += python3
     state_python_cxx_config += boost_python
@@ -740,7 +743,7 @@ def configure(cxx_toolkit = None,
   ## ---------- ##
 
   gap_python_lib = None
-  if python3 is not None:
+  if python3 is not False:
     gap_python_cxx_config = drake.cxx.Config(gap_cxx_config)
     gap_python_cxx_config += python3
     gap_python_cxx_config.lib_path_runtime('..')
