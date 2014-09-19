@@ -29,7 +29,7 @@ def configure(elle,
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
 
-  if cxx_toolkit.os is drake.os.windows:
+  if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
     boost_program_options = drake.cxx.Config(boost.config_program_options(static = True))
     boost_system = drake.cxx.Config(boost.config_system(static = True))
     boost_test = drake.cxx.Config(boost.config_test(static = True))
@@ -169,7 +169,7 @@ def configure(elle,
   ## ------ ##
   ## Python ##
   ## ------ ##
-  if python3 is not None:
+  if python3 is not False:
     python_sources = drake.nodes(
         'src/infinit/oracles/apertus/python.cc',
       )
