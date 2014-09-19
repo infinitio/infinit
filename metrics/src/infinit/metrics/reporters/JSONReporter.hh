@@ -156,6 +156,9 @@ namespace infinit
       void
       _user_logout(bool success, std::string const& info);
 
+      void
+      _user_register(bool success, std::string const& info);
+
       virtual
       void
       _user_unfavorite(std::string const& user_id);

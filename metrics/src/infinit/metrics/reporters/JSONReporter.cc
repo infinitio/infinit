@@ -226,6 +226,18 @@ namespace infinit
     }
 
     void
+    JSONReporter::_user_register(bool success, std::string const& info)
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] = std::string("app/register");
+      data[this->_key_str(JSONKey::status)] = this->_status_string(success);
+      if (!success)
+        data[this->_key_str(JSONKey::fail_reason)] = info;
+
+      this->_send(this->_user_dest, data);
+    }
+
+    void
     JSONReporter::_user_unfavorite(std::string const& user_id)
     {
       elle::json::Object data;
