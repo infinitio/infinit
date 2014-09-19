@@ -114,7 +114,6 @@ using infinit::oracles::meta::Exception;
 using infinit::oracles::meta::DebugResponse;
 using infinit::oracles::meta::LoginResponse;
 using infinit::oracles::meta::LogoutResponse;
-using infinit::oracles::meta::RegisterResponse;
 using infinit::oracles::meta::MessageResponse;
 using infinit::oracles::meta::User;
 using infinit::oracles::meta::Self;
@@ -218,7 +217,6 @@ void export_meta_client()
     .def_readonly("id", &LoginResponse::id)
   ;
   py::class_<LogoutResponse, py::bases<Response>>("LogoutResponse");
-  py::class_<RegisterResponse, py::bases<Response>>("RegisterResponse");
   py::class_<MessageResponse, py::bases<Response>>("MessageResponse");
 
   py::class_<InviteUserResponse, py::bases<Response>>("InviteUserResponse")
