@@ -15,7 +15,8 @@ def configure(elle,
               python3,
               python_common,
               papier_python,
-              prefix = drake.Path('/usr/local')):
+              prefix = drake.Path('/usr/local'),
+              cxx_toolkit = None):
 
   global build, check, install
   global python
@@ -113,14 +114,16 @@ def configure(elle,
   build = drake.Rule('build')
   build_python_path = drake.Path('lib/python')
 
-  elle_python = drake.copy(elle.elle.python, '.', '../../../elle/elle')
-  papier_python = drake.copy(papier_python, build_python_path,
-                             strip_prefix = True)
+  if python3 is not False:
+    elle_python = drake.copy(elle.elle.python, '.', '../../../elle/elle')
+    papier_python = drake.copy(papier_python, build_python_path,
+                               strip_prefix = True)
   python = [version]
   sources_built = drake.copy(sources, build_python_path, 'src')
-  for source in sources_built:
-    source.dependencies_add(elle_python)
-    source.dependency_add(papier_python)
+  if python3 is not False:
+    for source in sources_built:
+      source.dependencies_add(elle_python)
+      source.dependency_add(papier_python)
   python += sources_built
   bottle = drake.nodes('../../bottle/bottle.py')
   python += drake.copy(bottle, build_python_path,
@@ -155,26 +158,27 @@ def configure(elle,
   install = drake.Rule('install')
   install << install_nodes(prefix)
 
-  package = install_nodes('debian/opt/infinit/meta', f = drake.copy)
-  git = drake.git.Git()
-  with drake.templating.Context(content = {
-      'version': git.version(),
-      'version_major': git.version().split('.')[0],
-      'version_minor': git.version().split('.')[1],
-      'python_version_major': python3.version.major,
-      'python_version_minor': python3.version.minor,
-  }):
-    drake.node('control.tmpl')
-    drake.node('postinst.tmpl')
-    drake.node('config/meta.tmpl')
-    drake.node('config/meta.xml.tmpl')
-  package += drake.copy(drake.nodes('control', 'postinst'),
-                        'debian/DEBIAN')
+  if python3 is not False:
+    package = install_nodes('debian/opt/infinit/meta', f = drake.copy)
+    git = drake.git.Git()
+    with drake.templating.Context(content = {
+        'version': git.version(),
+        'version_major': git.version().split('.')[0],
+        'version_minor': git.version().split('.')[1],
+        'python_version_major': python3.version.major,
+        'python_version_minor': python3.version.minor,
+    }):
+      drake.node('control.tmpl')
+      drake.node('postinst.tmpl')
+      drake.node('config/meta.tmpl')
+      drake.node('config/meta.xml.tmpl')
+    package += drake.copy(drake.nodes('control', 'postinst'),
+                          'debian/DEBIAN')
 
-  debian = drake.Rule('debian')
-  debian << drake.debian.Packager(
-    'fist-meta_%s_amd64.deb' % git.version(),
-    package, 'debian', preload = elle.elle.dpkg_preload).package
+    debian = drake.Rule('debian')
+    debian << drake.debian.Packager(
+      'fist-meta_%s_amd64.deb' % git.version(),
+      package, 'debian', preload = elle.elle.dpkg_preload).package
 
 
   ## ----- ##
