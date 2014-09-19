@@ -291,6 +291,20 @@ struct transaction_notification_to_python_dict
   }
 };
 
+struct cxx_map_to_python_dict
+{
+  static
+  PyObject*
+  convert(std::unordered_map<std::string, std::string> const& map)
+  {
+    auto dict = PyDict_New();
+    for (auto const& item: map)
+       PyDict_SetItemString(dict, item.first.c_str(), PyUnicode_FromString(
+         item.second.c_str()));
+    return dict;
+  }
+};
+
 static
 void
 bind_conversions()
@@ -316,6 +330,9 @@ bind_conversions()
   using surface::gap::Transaction;
   boost::python::to_python_converter<const Transaction::Notification,
                                      transaction_notification_to_python_dict>();
+
+  boost::python::to_python_converter<std::unordered_map<std::string, std::string>,
+                                     cxx_map_to_python_dict>();
 }
 
 class PythonState:
@@ -393,6 +410,12 @@ public:
     Super::_configuration.max_mirror_size = sz;
   }
 
+  std::unordered_map<std::string, std::string>
+  features()
+  {
+    return _configuration.features;
+  }
+
 #define TOP(name, ret)                             \
   ret transaction_ ## name(unsigned int id)        \
   {                                                \
@@ -468,6 +491,7 @@ BOOST_PYTHON_MODULE(state)
          &PythonState::attach_callback<surface::gap::Transaction::Notification>)
     .def("configuration_set_max_mirror_size",
          &PythonState::configuration_set_max_mirror_size)
+    .def("features", &PythonState::features)
     ;
     // Static functions.
     boost::python::def("hash_password", &State::hash_password);
