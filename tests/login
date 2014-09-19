@@ -34,6 +34,8 @@ class TestLogin(unittest.TestCase):
       s2 = o.state()
       s2.login('mefyl2@infinit.io',
               state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+      self.assertEqual(s1.features(), {'test_feature': '1'})
+      self.assertEqual(s2.features(), {})
       users1 = s1.users()
       self.assertEqual(len(users1), 1)
       self.assertEqual(len(s1.swaggers()), 0)
