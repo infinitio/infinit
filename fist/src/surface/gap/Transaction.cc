@@ -325,6 +325,7 @@ namespace surface
           std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
             this->_data))
       {
+        // this->_sender is set true when creating a transaction on this device.
         if (this->_sender)
         {
           ELLE_ASSERT_NEQ(this->_files, boost::none);
@@ -333,12 +334,15 @@ namespace surface
               new PeerSendMachine(*this, this->_id, this->_files.get(),
                                   this->_message.get(), peer_data));
         }
-        else if (peer_data->sender_id == this->state().me().id)
+        // Only create a send machine if the transaction is not to self.
+        else if (peer_data->sender_id == this->state().me().id &&
+                 peer_data->recipient_id != this->state().me().id)
         {
           ELLE_TRACE("%s: create peer send machine (another device)", *this)
             this->_machine.reset(
               new PeerSendMachine(*this, this->_id, peer_data));
         }
+        // Otherwise we're the recipient.
         else
         {
           ELLE_TRACE("%s: create peer receive machine", *this)
