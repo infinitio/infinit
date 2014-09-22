@@ -1508,7 +1508,13 @@ class Mixin:
     user -- The user.
     """
     unsubscribed = user.get('unsubscriptions', [])
-    return {k: {'status': not k in unsubscribed, 'pretty': mail.subscriptions[k]} for k in mail.subscriptions.keys()}
+    return {
+      k:
+      {
+        'status': not k in unsubscribed,
+        'pretty': mail.subscriptions[k]
+      } for k in mail.subscriptions.keys()
+    }
 
   @api('/user/email_subscriptions', method = 'GET')
   @require_logged_in
