@@ -7,6 +7,8 @@ import time
 
 import infinit.oracles.sisyphus
 
+from infinit.oracles.utils import key
+
 class Drip(infinit.oracles.sisyphus.Boulder):
 
   def __init__(self, sisyphus, campaign):
@@ -72,6 +74,12 @@ class Drip(infinit.oracles.sisyphus.Boulder):
                           variations = variations)
     return {'%s -> %s' % (start, end): sent}
 
+  def unsubscribe_link(self, user):
+    email = user['email']
+    k = key('/users/%s/email_subscriptions/drip' % email)
+    url = 'http://infinit.io/unsubscribe/drip'
+    return '%s?email=%s&key=%s' % (url, email, k)
+
   def send_email(self, bucket, template, users,
                  variations = None):
     if variations is not None:
@@ -104,6 +112,11 @@ class Drip(infinit.oracles.sisyphus.Boulder):
                 'content': str(user[field]),
               }
               for field in self.user_fields
+            ] + [
+              {
+                'name': 'UNSUB',
+                'content': self.unsubscribe_link(user),
+              }
             ]
           }
           for user in users
