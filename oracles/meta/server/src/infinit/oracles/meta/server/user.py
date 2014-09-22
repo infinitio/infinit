@@ -425,6 +425,25 @@ class Mixin:
       features[k] = v
     return features
 
+  @api('/users/features', method = 'POST')
+  @require_admin
+  def features(self):
+    """ For each feature in abtest, add it to existing users who don't have it.
+    """
+    keys = set(self.__roll_abtest().keys())
+    users = self.database.users.find({}, ['features']) # id is implicit
+    for user in users:
+      if 'features' not in user:
+        user['features'] = {}
+      diff = set(keys) - set(user['features'].keys())
+      if diff:
+        features = self.__roll_abtest()
+        for k in diff:
+          user['features'][k] = features[k]
+        self.database.users.update({'_id': user['_id']},
+                                   {'$set': { 'features': user['features']}})
+    return self.success()
+
   def __account_from_hash(self, hash):
     with elle.log.debug('get user account from hash %s' % hash):
       user = self.database.users.find_one({"email_confirmation_hash": hash})

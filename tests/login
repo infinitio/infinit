@@ -61,4 +61,20 @@ class TestLogin(unittest.TestCase):
       self.assertEqual(f['testb'], 'val')
       self.assertTrue(f['testa'] in ['v1', 'v2'])
 
+  def test_features(self):
+    with infinit.oracles.servers.Oracles(
+      mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
+      # Invoke the features roller, which should inject testa and testb to mefyl2
+      r = requests.post('%s://%s:%s/users/features' % o.meta)
+      self.assertEqual(r.status_code, 200)
+      s2 = o.state()
+      s2.login('mefyl2@infinit.io',
+              state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+      reactor.sleep(datetime.timedelta(milliseconds = 200))
+      f = s2.features()
+      keys = list(f.keys())
+      keys.sort()
+      self.assertEqual(keys, ['testa', 'testb'])
+      self.assertEqual(f['testb'], 'val')
+      self.assertTrue(f['testa'] in ['v1', 'v2'])
 utils.run(unittest.main)
