@@ -11,7 +11,7 @@ import elle.log
 import papier
 
 from .plugins.response import response, Response
-from .utils import api, require_logged_in, require_admin, require_logged_in_or_admin, hash_pasword, json_value
+from .utils import api, require_logged_in, require_admin, require_logged_in_or_admin, hash_pasword, json_value, require_key
 from . import error, notifier, regexp, conf, invitation, mail
 
 from pymongo import DESCENDING
@@ -1573,7 +1573,6 @@ class Mixin:
                                document = document,
                                upsert = False)
 
-  # Remove.
   @api('/user/email_subscription/<name>', method = 'DELETE')
   @require_logged_in
   def delete_mail_subscription_logged(self, name):
@@ -1584,6 +1583,27 @@ class Mixin:
     """
     return self.__modify_subscription(self.user, name, False)
 
+  @api('/user/<hash>/email_subscription/<name>', method = 'DELETE')
+  def delete_mail_subscription(self, hash, name):
+    """
+    Restore a specify subscription.
+
+    hash -- The hash associated to the user.
+    name -- The name of the subscription to edit.
+    """
+    user = self.__user_by_email_hash(hash)
+    return self.__modify_subscription(user, name, False)
+
+  @api('/users/<user>/email_subscriptions/<name>', method = 'DELETE')
+  @require_key
+  def delete_mail_subscription_key(self, user, name):
+    """
+    Remove a specific subscription.
+
+    name -- The name of the subscription to edit.
+    """
+    user = self.user_by_id_or_email(user)
+    return self.__modify_subscription(user, name, False)
 
   # Restore.
   @api('/user/email_subscription/<name>', method = 'PUT')
@@ -1595,18 +1615,6 @@ class Mixin:
     name -- The name of the subscription to edit.
     """
     return self.__modify_subscription(self.user, name, True)
-
-  # Remove.
-  @api('/user/<hash>/email_subscription/<name>', method = 'DELETE')
-  def delete_mail_subscription(self, hash, name):
-    """
-    Restore a specify subscription.
-
-    hash -- The hash associated to the user.
-    name -- The name of the subscription to edit.
-    """
-    return self.__modify_subscription(self.__user_by_email_hash(hash),
-                                      name, False)
 
   @api('/user/email_subscriptions', method = 'POST')
   @require_logged_in
