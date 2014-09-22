@@ -492,6 +492,7 @@ BOOST_PYTHON_MODULE(state)
     .def("configuration_set_max_mirror_size",
          &PythonState::configuration_set_max_mirror_size)
     .def("features", &PythonState::features)
+    .def("register", &State::register_)
     ;
     // Static functions.
     boost::python::def("hash_password", &State::hash_password);
