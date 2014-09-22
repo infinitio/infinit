@@ -263,13 +263,21 @@ namespace surface
         transaction_id = this->transaction_id();
       else
         transaction_id = "unknown";
-      // Send report for failed transfer
-      elle::crash::transfer_failed_report(this->state().meta().protocol(),
-                                          this->state().meta().host(),
-                                          this->state().meta().port(),
-                                          this->state().me().email,
-                                          transaction_id,
-                                          this->transaction().failure_reason());
+      try
+      {
+        // Send report for failed transfer
+        elle::crash::transfer_failed_report(this->state().meta().protocol(),
+                                            this->state().meta().host(),
+                                            this->state().meta().port(),
+                                            this->state().me().email,
+                                            transaction_id,
+                                            this->transaction().failure_reason());
+      }
+      catch (elle::Error const& e)
+      {
+        ELLE_ERR("unable to report transaction failure: %s", e);
+      }
+
       this->gap_status(gap_transaction_failed);
       this->_finalize(infinit::oracles::Transaction::Status::failed);
     }
