@@ -392,7 +392,38 @@ class Mixin:
             'user_id': str(user['_id']),
           }}
       )
+
+      # Inject a set of ABtest features
+      features = self.__roll_abtest()
+      self.database.users.find_and_modify(
+          {
+            '_id': user_id,
+          },
+          {
+            '$set':
+            {
+              'features': features
+            }
+          })
       return user
+
+  def __roll_abtest(self):
+    features = {}
+    abtests = self.database.abtest.find({})
+    for t in abtests:
+      k = t['key']
+      if 'value' in t:
+        v = t['value']
+      else:
+        r = random.random()
+        accum = 0
+        for choice in t['values']:
+          accum += t['values'][choice]
+          if accum >= r:
+            v = choice
+            break
+      features[k] = v
+    return features
 
   def __account_from_hash(self, hash):
     with elle.log.debug('get user account from hash %s' % hash):

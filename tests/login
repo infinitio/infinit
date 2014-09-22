@@ -54,5 +54,11 @@ class TestLogin(unittest.TestCase):
       s2 = o.state()
       s2.login('mefyl3@infinit.io',
               state.hash_password('mefyl3@infinit.io', 'mefyl3'))
+      f = s2.features()
+      keys = list(f.keys())
+      keys.sort()
+      self.assertEqual(keys, ['testa', 'testb'])
+      self.assertEqual(f['testb'], 'val')
+      self.assertTrue(f['testa'] in ['v1', 'v2'])
 
 utils.run(unittest.main)
