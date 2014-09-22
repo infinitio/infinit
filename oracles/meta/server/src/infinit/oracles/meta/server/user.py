@@ -1545,11 +1545,20 @@ class Mixin:
     name -- The name of the subscription to edit.
     value -- The status wanted for the subscription.
     """
-    action = value and "$pop" or "$addToSet"
-    document = { action: {"unsubscriptions": name} }
-    self.database.users.update({'_id': user['_id']},
-                               document = document,
-                               upsert = False)
+    action = value and 'subscribe' or 'unsubscribe'
+    with elle.log.debug(
+        '%s %s from %s emails' % (action, user['email'], name)):
+      try:
+        name = mail.subscription_name(name)
+        action = value and "$pop" or "$addToSet"
+        document = { action: {"unsubscriptions": name} }
+        self.database.users.update({'_id': user['_id']},
+                                   document = document,
+                                   upsert = False)
+        return {name: value}
+      except mail.EmailSubscriptionNotFound as e:
+        self.not_found()
+
 
   def __set_subscription(self, user, unsubscriptions):
     """
@@ -1573,15 +1582,7 @@ class Mixin:
 
     name -- The name of the subscription to edit.
     """
-    user = self.user
-    with elle.log.debug('unsubscribe %s from %s emails' % (user['email'], name)):
-      try:
-        subscription = mail.subscription_name(name)
-        self.__modify_subscription(user, subscription, False)
-        return self.success({name: False})
-      except mail.EmailSubscriptionNotFound as e:
-        self.not_found()
-    return self.success()
+    return self.__modify_subscription(self.user, name, False)
 
 
   # Restore.
@@ -1593,16 +1594,7 @@ class Mixin:
 
     name -- The name of the subscription to edit.
     """
-    user = self.user
-    with elle.log.debug('restore %s subscription from %s emails' % (user['email'], name)):
-      try:
-        subscription = mail.subscription_name(name)
-        self.__modify_subscription(self.user, subscription, True)
-        return self.success({name: True})
-      except mail.EmailSubscriptionNotFound as e:
-        self.not_found()
-    return self.success()
-
+    return self.__modify_subscription(self.user, name, True)
 
   # Remove.
   @api('/user/<hash>/email_subscription/<name>', method = 'DELETE')
@@ -1613,15 +1605,8 @@ class Mixin:
     hash -- The hash associated to the user.
     name -- The name of the subscription to edit.
     """
-    with elle.log.debug('unsubscribe %s from %s emails' % (hash, name)):
-      try:
-        subscription = mail.subscription_name(name)
-        user = self.__user_by_email_hash(hash)
-        self.__modify_subscription(self.user, subscription, False)
-        return self.success({name: False})
-      except mail.EmailSubscriptionNotFound as e:
-        self.not_found()
-    return self.success()
+    return self.__modify_subscription(self.__user_by_email_hash(hash),
+                                      name, False)
 
   @api('/user/email_subscriptions', method = 'POST')
   @require_logged_in
