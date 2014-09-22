@@ -400,7 +400,7 @@ class Mixin:
   @require_logged_in
   def links_list(self,
                  offset: int = 0,
-                 count: int = 100,
+                 count: int = 500,
                  include_expired: bool = False):
     """
     Returns a list of the user's links.
@@ -413,8 +413,6 @@ class Mixin:
                         (user['_id'], offset, count, include_expired)):
       query = {
         'sender_id': user['_id'],
-        'status': {'$nin': [
-          transaction_status.CANCELED, transaction_status.DELETED]},
       }
       if not include_expired:
         query['$or'] = [
