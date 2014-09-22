@@ -6,6 +6,8 @@ import state
 import utils
 import unittest
 
+import reactor
+
 from utils import expect_raise
 
 class TestLogin(unittest.TestCase):
@@ -41,5 +43,16 @@ class TestLogin(unittest.TestCase):
       self.assertEqual(len(s1.swaggers()), 0)
       users2 = s2.users()
       self.assertEqual(len(users2), 1)
+
+  def test_register(self):
+    with infinit.oracles.servers.Oracles(
+      mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
+      s1 = o.state()
+      s1.register('mefyl3', 'mefyl3@infinit.io',
+                  state.hash_password('mefyl3@infinit.io', 'mefyl3'))
+      s1.logout()
+      s2 = o.state()
+      s2.login('mefyl3@infinit.io',
+              state.hash_password('mefyl3@infinit.io', 'mefyl3'))
 
 utils.run(unittest.main)
