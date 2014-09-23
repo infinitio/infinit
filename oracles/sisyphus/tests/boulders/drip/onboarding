@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
 
-import mongobox
+# Meta first, for papier and OpenSSL
 import infinit.oracles.meta.server
+
+import mongobox
