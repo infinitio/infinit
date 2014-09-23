@@ -176,7 +176,13 @@ def configure(elle,
     python_cxx_config = drake.cxx.Config(local_cxx_config)
     python_cxx_config.lib_path_runtime('../../../..')
     python_cxx_config += python3
-    python_cxx_config += boost.config_python()
+    if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
+      python_cxx_config += boost.config_python(static = True)
+    else:
+      python_cxx_config += boost.config_python(link = False)
+      python_cxx_config.library_add(
+        drake.copy(boost.python_dynamic,
+                   'lib', strip_prefix = True))
     datetime = drake.copy(elle.elle.python_plugin_datetime,
                           'lib', True)
     python_lib = drake.cxx.Module(
