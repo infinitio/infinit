@@ -57,7 +57,7 @@ class api:
       spec = method.__underlying_method__.__fullargspec__
     else:
       spec = inspect.getfullargspec(method.__underlying_method__)
-    del spec.args[0] # remove self
+      del spec.args[0] # remove self
     import itertools
     defaults = spec.defaults or []
     spec_args = dict((name, default)

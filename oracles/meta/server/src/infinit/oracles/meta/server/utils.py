@@ -53,10 +53,11 @@ def require_key(method):
     del kwargs['key']
     return method(self, *args, **kwargs)
   spec = inspect.getfullargspec(method)
+  del spec.args[0] # remove self
   if 'key' in spec.args:
     raise Exception(
       'require_key method already has a \'key\' argument')
-  spec.args.insert(1, 'key')
+  spec.args.insert(0, 'key')
   require_key.__fullargspec__ = spec
   return require_key
 
