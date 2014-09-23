@@ -143,7 +143,7 @@ def configure(elle,
   build << transaction_lib
   build << python_built
 
-  if python3 is not False:
+  if python3 is not None:
     oracles = []
 
     oracles += drake.copy(trophonius.server.python, '.',
