@@ -12,6 +12,11 @@ import datetime
 import requests
 import json
 
+import pymongo
+import pymongo.collection
+import pymongo.database
+import pymongo.errors
+
 from utils import expect_raise
 
 class TestLogin(unittest.TestCase):
@@ -34,6 +39,9 @@ class TestLogin(unittest.TestCase):
   def test_login2(self):
     with infinit.oracles.servers.Oracles(
       mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
+      #Remove abtests
+      mongo = pymongo.MongoClient(host='127.0.0.1', port=o._mongo.port)
+      mongo.meta.abtest.remove({})
       s1 = o.state()
       s1.login('mefyl@infinit.io',
               state.hash_password('mefyl@infinit.io', 'mefyl'))
@@ -68,9 +76,7 @@ class TestLogin(unittest.TestCase):
   def test_features(self):
     with infinit.oracles.servers.Oracles(
       mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
-      # Invoke the features roller, which should inject testa and testb to mefyl2
-      r = requests.post('%s://%s:%s/users/features' % o.meta)
-      self.assertEqual(r.status_code, 200)
+      # test that features are injected at login
       s2 = o.state()
       s2.login('mefyl2@infinit.io',
               state.hash_password('mefyl2@infinit.io', 'mefyl2'))

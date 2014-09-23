@@ -175,6 +175,16 @@ class Mixin:
                                                    web = False))
       if pick_trophonius:
         response['trophonius'] = self.trophonius_pick()
+      # Update missing features
+      current_features = {}
+      if 'features' in user:
+        current_features = user['features']
+      new_features = self.__roll_abtest()
+      if set(new_features.keys()) != set(current_features.keys()):
+        for k in set(new_features.keys()) - set(current_features.keys()):
+          current_features[k] = new_features[k]
+        self.database.users.update({'_id': user['_id']},
+                                   {'$set': { 'features': current_features}})
       return response
 
   @api('/web-login', method = 'POST')
