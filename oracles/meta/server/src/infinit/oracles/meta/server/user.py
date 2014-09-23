@@ -721,6 +721,7 @@ class Mixin:
     self.logout()
     self.invitation.unsubscribe(user['email'])
     self.cancel_transactions(user)
+    self.delete_all_links(user)
     self.remove_devices(user)
     try:
       user.pop('avatar')
