@@ -417,9 +417,10 @@ class Mixin:
           })
       return user
 
-  def __roll_abtest(self):
+  def __roll_abtest(self, abtests = None):
     features = {}
-    abtests = self.database.abtest.find({})
+    if abtests is None:
+      abtests = self.database.abtest.find({})
     for t in abtests:
       k = t['key']
       if 'value' in t:
@@ -438,10 +439,11 @@ class Mixin:
   @api('/users/features', method = 'POST')
   @require_admin
   def features(self,
-               reroll = None):
+               reroll = None,
+               abtests = None):
     """ For each feature in abtest, add it to existing users who don't have it.
     """
-    keys = set(self.__roll_abtest().keys())
+    keys = set(self.__roll_abtest(abtests).keys())
     users = self.database.users.find({}, ['features']) # id is implicit
     for user in users:
       if 'features' not in user:
@@ -450,12 +452,24 @@ class Mixin:
       if reroll:
         diff = set(keys)
       if diff:
-        features = self.__roll_abtest()
+        features = self.__roll_abtest(abtests)
         for k in diff:
           user['features'][k] = features[k]
         self.database.users.update({'_id': user['_id']},
                                    {'$set': { 'features': user['features']}})
     return self.success()
+
+  @api('/users/feature/<name>', method='DELETE')
+  @require_admin
+  def feature_remove(self, name):
+    users = self.database.users.find({}, ['features']) # id is implicit
+    for user in users:
+      if not 'features' in user:
+        continue
+      if name in user['features']:
+        del user['features'][name]
+        self.database.users.update({'_id': user['_id']},
+                                   {'$set': { 'features': user['features']}})
 
   def __account_from_hash(self, hash):
     with elle.log.debug('get user account from hash %s' % hash):
