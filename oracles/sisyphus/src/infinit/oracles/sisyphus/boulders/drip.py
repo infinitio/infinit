@@ -21,7 +21,7 @@ class Drip(infinit.oracles.sisyphus.Boulder):
 
   @property
   def user_fields(self):
-    return ['_id',  'email', 'fullname']
+    return ['_id',  'email', 'fullname', 'unsubscriptions']
 
 
   def __distribute(self, n_users, n_variations):
@@ -80,6 +80,10 @@ class Drip(infinit.oracles.sisyphus.Boulder):
     url = 'http://infinit.io/unsubscribe/drip'
     return '%s?email=%s&key=%s' % (url, email, k)
 
+  def __email_enabled(self, user):
+    return 'unsubscriptions' not in user \
+      or 'drip' not in user['unsubscriptions']
+
   def send_email(self, bucket, template, users,
                  variations = None):
     if variations is not None:
@@ -101,7 +105,7 @@ class Drip(infinit.oracles.sisyphus.Boulder):
             'name': user['fullname'],
             'type': 'to',
           }
-          for user in users
+          for user in users if self.__email_enabled(user)
         ],
         'merge_vars': [
           {
@@ -111,7 +115,7 @@ class Drip(infinit.oracles.sisyphus.Boulder):
                 'name': 'USER_%s' % field.capitalize(),
                 'content': str(user[field]),
               }
-              for field in self.user_fields
+              for field in self.user_fields if field in user
             ] + [
               {
                 'name': 'UNSUB',
@@ -119,7 +123,7 @@ class Drip(infinit.oracles.sisyphus.Boulder):
               }
             ]
           }
-          for user in users
+          for user in users  if self.__email_enabled(user)
         ],
       }
       res = self.sisyphus.mandrill.messages.send_template(
@@ -139,7 +143,7 @@ class Drip(infinit.oracles.sisyphus.Boulder):
           'timestamp': time.time(),
           'user': str(user['_id']),
         }
-        for user in users
+        for user in users if self.__email_enabled(user)
       ]
       res = requests.post(
         url,
