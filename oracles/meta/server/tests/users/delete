@@ -3,7 +3,7 @@
 import papier
 
 from bson.objectid import ObjectId
-from infinit.oracles.meta.server.transaction_status import CANCELED
+from infinit.oracles.meta.server.transaction_status import CANCELED, CREATED, DELETED
 from utils import Meta, User
 
 with Meta(force_admin = True) as meta:
@@ -43,8 +43,27 @@ with Meta(force_admin = True) as meta:
   assert len(u2.swaggers) == 2
   assert len(u2.favorites) == 2
 
+  # Create a link.
+  file_list = [
+    ['file1', 42],
+    ['file2', 43],
+    ['file3', 44],
+  ]
+  message = 'salut!'
+  res = u1.post('link',
+    {'files': file_list, 'name': 'some files.zip', 'message': message})
+  assert res['aws_credentials']
+  assert res['transaction']
+  link = res['transaction']
+  link = meta.database.links.find_one({'_id': ObjectId(link['id'])})
+  assert link['status'] == CREATED
+
   # Delete!
   u1.delete('user')
+
+  # Check the link was set to deleted.
+  link = meta.database.links.find_one({'_id': ObjectId(link['_id'])})
+  assert link['status'] == DELETED
 
   try:
     u1.login()
