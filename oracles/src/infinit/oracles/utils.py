@@ -53,8 +53,11 @@ class api:
     rule = method.__route__
     elle.log.debug('%s: register route %s' % (app, rule))
     # Introspect method.
-    spec = inspect.getfullargspec(method.__underlying_method__)
-    del spec.args[0] # remove self
+    if hasattr(method.__underlying_method__, '__fullargspec__'):
+      spec = method.__underlying_method__.__fullargspec__
+    else:
+      spec = inspect.getfullargspec(method.__underlying_method__)
+      del spec.args[0] # remove self
     import itertools
     defaults = spec.defaults or []
     spec_args = dict((name, default)
@@ -126,3 +129,9 @@ def mongo_connection(mongo_host = None,
       if mongo_port is not None:
         db_args['port'] = mongo_port
       return pymongo.MongoClient(**db_args)
+
+def key(url):
+  from hashlib import sha1
+  salt = 'aeVi&ap2'
+  key = '%s-%s' % (url, salt)
+  return sha1(key.encode('latin-1')).hexdigest()

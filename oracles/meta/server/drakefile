@@ -6,6 +6,7 @@ import sys
 build = None
 check = None
 install = None
+meta = None
 python = None
 
 with open(str(drake.path_source('../../../elle/drake-utils.py')), 'r') as f:
@@ -19,7 +20,7 @@ def configure(elle,
               cxx_toolkit = None):
 
   global build, check, install
-  global python
+  global meta, python
 
   python_version = drake.Version(*sys.version_info[0:2])
 
@@ -114,21 +115,23 @@ def configure(elle,
   build = drake.Rule('build')
   build_python_path = drake.Path('lib/python')
 
-  if python3 is not False:
+  if python3 is not None:
     elle_python = drake.copy(elle.elle.python, '.', '../../../elle/elle')
     papier_python = drake.copy(papier_python, build_python_path,
                                strip_prefix = True)
   python = [version]
   sources_built = drake.copy(sources, build_python_path, 'src')
-  if python3 is not False:
+  if python3 is not None:
     for source in sources_built:
       source.dependencies_add(elle_python)
       source.dependency_add(papier_python)
   python += sources_built
+
   bottle = drake.nodes('../../bottle/bottle.py')
   python += drake.copy(bottle, build_python_path,
                             '../../bottle')
   python += drake.copy(python_common, '.', '../..')
+  meta = drake.python.Package('python', build_python_path, python)
   build << python
   build_binary = drake.copy(drake.node('meta'), 'bin')
   build << build_binary
@@ -158,7 +161,7 @@ def configure(elle,
   install = drake.Rule('install')
   install << install_nodes(prefix)
 
-  if python3 is not False:
+  if python3 is not None:
     package = install_nodes('debian/opt/infinit/meta', f = drake.copy)
     git = drake.git.Git()
     with drake.templating.Context(content = {

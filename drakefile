@@ -77,7 +77,7 @@ def configure(cxx_toolkit = None,
   elif cxx_toolkit.os == drake.os.macos:
     platform_defines = ("INFINIT_MACOSX", "HAVE_STATFS")
   elif cxx_toolkit.os is drake.os.ios:
-    platform_defines = ("INFINIT_IOS")
+    platform_defines = ("INFINIT_IOS",)
   else:
     raise Exception("platform %s not supported" % sys.platform)
   for define in platform_defines:
@@ -180,7 +180,7 @@ def configure(cxx_toolkit = None,
   elle_lib = copy_lib(elle.elle.library)
   cryptography_lib = copy_lib(elle.cryptography.library)
   reactor_lib = copy_lib(elle.reactor.library)
-  if python3 is not False:
+  if python3 is not None:
     reactor_python_lib = copy_lib(elle.reactor.python_lib, where='lib/python')
     python_build << reactor_python_lib
   protocol_lib = copy_lib(elle.protocol.library)
@@ -245,7 +245,7 @@ def configure(cxx_toolkit = None,
   papier_build << papier_lib
   papier_python = drake.Rule('papier/build')
   papier_python_lib = None
-  if python3 is not False:
+  if python3 is not None:
     papier_python_cxx_config = drake.cxx.Config(cxx_config)
     papier_python_sources = drake.nodes('papier/src/papier/python.cc')
     papier_python_sources.append(papier_lib)
@@ -720,7 +720,7 @@ def configure(cxx_toolkit = None,
   ## ------------ ##
 
   state_python_lib = None
-  if python3 is not False:
+  if python3 is not None:
     state_python_cxx_config = drake.cxx.Config(gap_cxx_config)
     state_python_cxx_config += python3
     state_python_cxx_config += boost_python
@@ -743,7 +743,7 @@ def configure(cxx_toolkit = None,
   ## ---------- ##
 
   gap_python_lib = None
-  if python3 is not False:
+  if python3 is not None:
     gap_python_cxx_config = drake.cxx.Config(gap_cxx_config)
     gap_python_cxx_config += python3
     gap_python_cxx_config.lib_path_runtime('..')
@@ -825,7 +825,8 @@ def configure(cxx_toolkit = None,
                                 boost = boost,
                                 qt = qt,
                                 prefix = prefix,
-                                libraries = libraries)
+                                libraries = libraries,
+                                boost_test = boost_test)
     build << application.build
 
   ## ------- ##

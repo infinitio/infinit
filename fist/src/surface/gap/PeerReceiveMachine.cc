@@ -5,6 +5,9 @@
 #include <elle/finally.hh>
 #include <elle/os/environ.hh>
 #include <elle/serialization/json/SerializerIn.hh>
+#ifdef INFINIT_WINDOWS
+# include <elle/windows/string_conversion.hh>
+#endif
 #include <elle/serialization/json/SerializerOut.hh>
 #include <elle/serialization/json.hh>
 #include <elle/serialize/extract.hh>
@@ -49,7 +52,7 @@ namespace surface
 
       boost::filesystem::path full_path;
       FileSize start_position; // next expected recieve buffer pos
-      boost::filesystem::ofstream output;
+      std::ofstream output;
     };
 
     static
@@ -750,7 +753,12 @@ namespace surface
         // Handle empty files here
         if (!boost::filesystem::exists(fullpath))
         {
-          boost::filesystem::ofstream output(fullpath, std::ios::app | std::ios::binary);
+          // XXX: Make that cleaner.
+#ifdef INFINIT_WINDOWS
+          std::ofstream output(elle::string::wstring_to_string(fullpath.native()), std::ios::app | std::ios::binary);
+#else
+          std::ofstream output(fullpath.string(), std::ios::app | std::ios::binary);
+#endif
         }
         return FileSize(-1);
       }
@@ -783,7 +791,21 @@ namespace surface
         }
       }
       _transfer_stream_map[index] =
-        elle::make_unique<boost::filesystem::ofstream>(fullpath, std::ios::app | std::ios::binary);
+       // XXX: Make that cleaner.
+#ifdef INFINIT_WINDOWS
+        elle::make_unique<std::ofstream>(elle::string::wstring_to_string(fullpath.native()), std::ios::app | std::ios::binary);
+#else
+        elle::make_unique<std::ofstream>(fullpath.string(), std::ios::app | std::ios::binary);
+#endif
+      if (!_transfer_stream_map[index]->good())
+      {
+        throw elle::Exception(
+          elle::sprintf("stream to %s is not good", fullpath));
+      }
+      else
+      {
+        ELLE_ASSERT(boost::filesystem::exists(fullpath));
+      }
       return tr.progress();
     }
 
@@ -932,7 +954,7 @@ namespace surface
       // it should be there, but a logic error that gives us a
       // nothing-to-do-on-this-first-file state is possible and nonfatal
       // so do not use at
-      boost::filesystem::ofstream* current_stream
+      std::ofstream* current_stream
         = _transfer_stream_map[_store_expected_file].get();
       FileSize current_file_full_size;
       boost::filesystem::path current_file_full_path;

@@ -400,7 +400,7 @@ class Mixin:
   @require_logged_in
   def links_list(self,
                  offset: int = 0,
-                 count: int = 100,
+                 count: int = 500,
                  include_expired: bool = False):
     """
     Returns a list of the user's links.
@@ -413,8 +413,6 @@ class Mixin:
                         (user['_id'], offset, count, include_expired)):
       query = {
         'sender_id': user['_id'],
-        'status': {'$nin': [
-          transaction_status.CANCELED, transaction_status.DELETED]},
       }
       if not include_expired:
         query['$or'] = [
@@ -430,3 +428,18 @@ class Mixin:
       ])['result']:
         res.append(self.__owner_link(link))
       return {'links': res}
+
+  # Used when a user deletes their account.
+  def delete_all_links(self, user):
+    self.database.links.update(
+      {
+        'sender_id': user['_id'],
+        'status': {'$nin': [transaction_status.DELETED]}
+      },
+      {
+        '$set': {
+          'status': transaction_status.DELETED,
+          'mtime': datetime.datetime.utcnow(),
+        }
+      },
+      multi = True)

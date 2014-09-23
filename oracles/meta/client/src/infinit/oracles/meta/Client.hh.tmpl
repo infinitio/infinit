@@ -528,7 +528,7 @@ namespace infinit
                     Transaction::Status status) const;
         std::vector<LinkTransaction>
         links(int offset = 0,
-              int count = 100,
+              int count = 500,
               bool include_expired = false) const;
         aws::Credentials
         link_credentials(std::string const& id,

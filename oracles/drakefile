@@ -1,4 +1,5 @@
 import drake
+import drake.python
 import drake.templating
 
 meta = None
@@ -77,6 +78,18 @@ def configure(elle,
                             cxx_toolkit,
                             lib_cxx_config)
 
+  bottle = drake.nodes('bottle/bottle.py')
+
+  mongobox = drake.nodes(
+    'mongobox/mongobox/__init__.py',
+    'mongobox/mongobox/mongobox.py',
+    'mongobox/mongobox/utils.py',
+    'mongobox/mongobox/nose_plugin.py',
+  )
+  mongobox = drake.python.Package(
+    'mongobox',
+    'lib/python',
+    drake.copy(mongobox, 'lib/python', strip_prefix='mongobox'))
   meta = drake.include('meta',
                        elle = elle,
                        papier_python = papier_python,
@@ -114,15 +127,25 @@ def configure(elle,
                           valgrind = valgrind,
   )
 
+  sisyphus = drake.include('sisyphus',
+                           python = python3,
+                           bottle = bottle,
+                           mongobox = mongobox,
+                           elle = elle,
+                           meta = meta.server.meta,
+                           python_common = python_built,
+  )
+
   for name in ('build', 'check', 'install'):
-    for oracle in [meta, trophonius, apertus]:
+    for oracle in [meta, trophonius, apertus, sisyphus]:
       globals()[name] << getattr(oracle, name)
 
   build << transaction_lib
   build << python_built
 
-  if python3 is not False:
+  if python3 is not None:
     oracles = []
+
     oracles += drake.copy(trophonius.server.python, '.',
                           strip_prefix='trophonius/server')
     oracles += drake.copy(apertus.server.python, '.',
@@ -131,12 +154,5 @@ def configure(elle,
                           strip_prefix = 'meta/server')
     oracles.append(drake.copy(elle.reactor.python_lib, 'lib/python',
                               strip_prefix = True))
-    mongobox = drake.nodes(
-      'mongobox/mongobox/__init__.py',
-      'mongobox/mongobox/mongobox.py',
-      'mongobox/mongobox/utils.py',
-      'mongobox/mongobox/nose_plugin.py',
-    )
-    oracles += drake.copy(mongobox, 'lib/python',
-                          strip_prefix='mongobox')
+    oracles.append(mongobox)
     build << oracles

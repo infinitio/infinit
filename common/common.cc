@@ -58,11 +58,13 @@ namespace
   _download_directory()
   {
     std::string download_dir = elle::os::getenv("INFINIT_DOWNLOAD_DIR", "");
-    if (download_dir.length() > 0 && path::exists(download_dir) && path::is_directory(download_dir))
+    if (download_dir.length() > 0 &&
+        boost::filesystem::exists(download_dir) &&
+        boost::filesystem::is_directory(download_dir))
       return download_dir;
 
     std::string home_dir = _home_directory();
-    std::string probable_download_dir = path::join(home_dir, "/Downloads");
+    std::string probable_download_dir = path::join(home_dir, "Downloads");
 
     if (path::exists(probable_download_dir) && path::is_directory(probable_download_dir))
       return probable_download_dir;

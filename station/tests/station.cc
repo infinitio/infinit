@@ -385,7 +385,7 @@ ELLE_TEST_SCHEDULED(connect_close_connect, (bool, swap))
 
 ELLE_TEST_SUITE()
 {
-  auto timeout = RUNNING_ON_VALGRIND ? 15 : 30;
+  auto timeout = RUNNING_ON_VALGRIND ? 20 : 40;
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(construction), 0, timeout);
   suite.add(BOOST_TEST_CASE(connection), 0, timeout);
