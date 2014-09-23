@@ -7,6 +7,10 @@ import utils
 import unittest
 
 import reactor
+import datetime
+
+import requests
+import json
 
 from utils import expect_raise
 
@@ -77,4 +81,27 @@ class TestLogin(unittest.TestCase):
       self.assertEqual(keys, ['testa', 'testb'])
       self.assertEqual(f['testb'], 'val')
       self.assertTrue(f['testa'] in ['v1', 'v2'])
+
+  def test_features_reroll(self):
+    """ Check we eventually get both possible values when rerolling."""
+    with infinit.oracles.servers.Oracles(
+      mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
+      vals = set()
+      for i in range(20):
+        s = o.state()
+        # Invoke the features roller, in force mode
+        r = requests.post('%s://%s:%s/users/features' % o.meta,
+                        data=json.dumps({'reroll': '1'}),
+                        headers = {'content-type': 'application/json'})
+        self.assertEqual(r.status_code, 200)
+        s.login('mefyl2@infinit.io',
+              state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+        reactor.sleep(datetime.timedelta(milliseconds = 200))
+        f = s.features()
+        self.assertTrue('testa' in f.keys())
+        vals.add(f['testa'])
+        if len(vals) == 2:
+          break;
+        s.logout()
+      self.assertEqual(vals, set(['v1', 'v2']))
 utils.run(unittest.main)

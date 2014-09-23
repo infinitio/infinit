@@ -427,7 +427,8 @@ class Mixin:
 
   @api('/users/features', method = 'POST')
   @require_admin
-  def features(self):
+  def features(self,
+               reroll = None):
     """ For each feature in abtest, add it to existing users who don't have it.
     """
     keys = set(self.__roll_abtest().keys())
@@ -436,6 +437,8 @@ class Mixin:
       if 'features' not in user:
         user['features'] = {}
       diff = set(keys) - set(user['features'].keys())
+      if reroll:
+        diff = set(keys)
       if diff:
         features = self.__roll_abtest()
         for k in diff:
