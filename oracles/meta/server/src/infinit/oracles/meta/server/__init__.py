@@ -176,8 +176,7 @@ class Meta(bottle.Bottle,
     # Configuration.
     self.ignore_trailing_slash = True
     # Routing.
-    for function in api.functions:
-      self.__register(function)
+    api.register(self)
     # Notifier.
     self.notifier = notifier.Notifier(self.__database)
     # Share
@@ -273,58 +272,6 @@ class Meta(bottle.Bottle,
     # - Download by link hash.
     self.__database.links.ensure_index([('hash', 1)],
                                        unique = True, sparse = True)
-
-  def __register(self, method):
-    rule = method.__route__
-    elle.log.debug('%s: register route %s' % (self, rule))
-    # Introspect method.
-    spec = inspect.getfullargspec(method.__underlying_method__)
-    del spec.args[0] # remove self
-    import itertools
-    defaults = spec.defaults or []
-    spec_args = dict((name, default)
-                     for name, default
-                     in itertools.zip_longest(
-                       reversed(spec.args),
-                       reversed([True] * len(defaults))))
-    for arg in re.findall('<(\\w*)(?::\\w*(?::[^>]*)?)?>', rule):
-      if arg in spec_args:
-        del spec_args[arg]
-      elif spec.varkw is None:
-        raise AssertionError(
-          'Rule %r yields %r but %r does not accept it' % (rule, arg, method))
-    # Callback.
-    def callback(*args, **kwargs):
-      arguments = dict(spec_args)
-      def explode(d):
-        if d is None:
-          return
-        for key in dict(arguments):
-          if key in d:
-            kwargs[key] = d[key]
-            del d[key]
-            del arguments[key]
-        if len(d) > 0:
-          if spec.varkw is not None:
-            kwargs.update(d)
-          else:
-            key = iter(d.keys()).__next__()
-            self.bad_request('unexpected JSON keys: %r' % key)
-      try:
-        explode(bottle.request.json)
-      except ValueError:
-        self.bad_request('invalid JSON')
-      explode(bottle.request.query)
-      for argument, default in arguments.items():
-        if not default:
-          self.bad_request('missing argument: %r' % argument)
-      return method(self, *args, **kwargs)
-    # Add route.
-    route = bottle.Route(app = self,
-                         rule = rule,
-                         method = method.__method__,
-                         callback = callback)
-    self.add_route(route)
 
   @property
   def mailer(self):

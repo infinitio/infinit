@@ -6,6 +6,7 @@ import sys
 build = None
 check = None
 install = None
+meta = None
 python = None
 
 with open(str(drake.path_source('../../../elle/drake-utils.py')), 'r') as f:
@@ -19,7 +20,7 @@ def configure(elle,
               cxx_toolkit = None):
 
   global build, check, install
-  global python
+  global meta, python
 
   python_version = drake.Version(*sys.version_info[0:2])
 
@@ -125,10 +126,12 @@ def configure(elle,
       source.dependencies_add(elle_python)
       source.dependency_add(papier_python)
   python += sources_built
+
   bottle = drake.nodes('../../bottle/bottle.py')
   python += drake.copy(bottle, build_python_path,
                             '../../bottle')
   python += drake.copy(python_common, '.', '../..')
+  meta = drake.python.Package('python', build_python_path, python)
   build << python
   build_binary = drake.copy(drake.node('meta'), 'bin')
   build << build_binary

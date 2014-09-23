@@ -36,10 +36,8 @@ MANDRILL_TEMPLATE_SUBJECTS = {
 subscriptions = {
   'accept-file-only-offline': 'Incoming transaction when you are offline',
   'daily-summary': 'Summary of all your pending transaction of the day',
+  'drip': 'Tips and advices about how to use the product',
 }
-
-for key in subscriptions.keys():
-  assert key in MANDRILL_TEMPLATE_SUBJECTS.keys()
 
 class EmailSubscriptionNotFound(BaseException):
 
