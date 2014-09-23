@@ -77,7 +77,7 @@ def configure(cxx_toolkit = None,
   elif cxx_toolkit.os == drake.os.macos:
     platform_defines = ("INFINIT_MACOSX", "HAVE_STATFS")
   elif cxx_toolkit.os is drake.os.ios:
-    platform_defines = ("INFINIT_IOS")
+    platform_defines = ("INFINIT_IOS",)
   else:
     raise Exception("platform %s not supported" % sys.platform)
   for define in platform_defines:
