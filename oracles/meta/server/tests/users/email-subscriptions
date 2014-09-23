@@ -30,7 +30,6 @@ as meta:
   assert res['accept-file-only-offline']
 
   res = bob.delete('user/email_subscription/accept-file-only-offline')
-  assert res['success']
   assert res['accept-file-only-offline'] == False
 
   bob.logout()
@@ -41,7 +40,6 @@ as meta:
   bob.login()
 
   res = bob.put('user/email_subscription/accept-file-only-offline')
-  assert res['success']
   assert res['accept-file-only-offline'] == True
 
   res = bob.post('user/resend_confirmation_email/%s' % bob.email)
@@ -61,7 +59,6 @@ as meta:
 
   for sub in subscriptions.keys():
     res = bob.delete('user/email_subscription/%s' % sub)
-    assert res['success']
 
   res = bob.get('user/email_subscriptions')
   assert res['success']
