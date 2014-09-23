@@ -428,3 +428,18 @@ class Mixin:
       ])['result']:
         res.append(self.__owner_link(link))
       return {'links': res}
+
+  # Used when a user deletes their account.
+  def delete_all_links(self, user):
+    self.database.links.update(
+      {
+        'sender_id': user['_id'],
+        'status': {'$nin': [transaction_status.DELETED]}
+      },
+      {
+        '$set': {
+          'status': transaction_status.DELETED,
+          'mtime': datetime.datetime.utcnow(),
+        }
+      },
+      multi = True)
