@@ -1601,13 +1601,26 @@ class Mixin:
     user = self.__user_by_email_hash(hash)
     return self.__modify_subscription(user, name, False)
 
+  @api('/users/<user>/email_subscriptions/<name>', method = 'PUT')
+  @require_key
+  def mail_subscribe_key(self, user, name):
+    """
+    Subscribe to an email set.
+
+    user -- Email or id of the user to unsubscribe.
+    name -- Name of the email set.
+    """
+    user = self.user_by_id_or_email(user)
+    return self.__modify_subscription(user, name, True)
+
   @api('/users/<user>/email_subscriptions/<name>', method = 'DELETE')
   @require_key
-  def delete_mail_subscription_key(self, user, name):
+  def mail_unsubscribe_key(self, user, name):
     """
-    Remove a specific subscription.
+    Unsubscribe from an email set.
 
-    name -- The name of the subscription to edit.
+    user -- Email or id of the user to unsubscribe.
+    name -- Name of the email set.
     """
     user = self.user_by_id_or_email(user)
     return self.__modify_subscription(user, name, False)
