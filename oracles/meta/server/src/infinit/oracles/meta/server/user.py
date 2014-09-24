@@ -462,7 +462,7 @@ class Mixin:
                                    {'$set': { 'features': user['features']}})
     return self.success()
 
-  @api('/users/feature/<name>', method='DELETE')
+  @api('/features/<name>', method='DELETE')
   @require_admin
   def feature_remove(self, name):
     users = self.database.users.find({}, ['features']) # id is implicit
@@ -473,6 +473,21 @@ class Mixin:
         del user['features'][name]
         self.database.users.update({'_id': user['_id']},
                                    {'$set': { 'features': user['features']}})
+    self.database.abtest.remove({'key': name})
+
+  @api('/features/<name>', method='POST')
+  @require_admin
+  def feature_add(self, name, value = None, values = None):
+    feature = {'key': name}
+    if value is not None:
+      feature['value'] = value
+    elif values is not None:
+      feature['values'] = values
+    else:
+      raise error.ERROR(
+        error.OPERATION_NOT_PERMITTED,
+        "Missing value or values field.")
+    self.database.abtest.insert(feature)
 
   def __account_from_hash(self, hash):
     with elle.log.debug('get user account from hash %s' % hash):
