@@ -425,7 +425,7 @@ class Mixin:
       k = t['key']
       if 'value' in t:
         v = t['value']
-      else:
+      elif 'values' in t:
         r = random.random()
         accum = 0
         for choice in t['values']:
@@ -433,6 +433,9 @@ class Mixin:
           if accum >= r:
             v = choice
             break
+      else:
+        elle.log.warn('Invalid abtest entry: %s' % t)
+        continue
       features[k] = v
     return features
 
