@@ -8,10 +8,10 @@
 #include <elle/Buffer.hh>
 #include <elle/assert.hh>
 #include <elle/finally.hh>
-#include <elle/format/json/Dictionary.hh>
-#include <elle/format/json/Parser.hh>
-#include <elle/format/json/Object.hh>
 #include <elle/format/json/Array.hh>
+#include <elle/format/json/Dictionary.hh>
+#include <elle/format/json/Object.hh>
+#include <elle/format/json/Parser.hh>
 #include <elle/json/exceptions.hh>
 #include <elle/json/json.hh>
 #include <elle/log.hh>
@@ -23,6 +23,7 @@
 #include <elle/serialize/Serializer.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>
+#include <elle/system/platform.hh>
 
 #include <reactor/Channel.hh>
 #include <reactor/Scope.hh>
@@ -505,8 +506,8 @@ namespace infinit
                 version["minor"] = INFINIT_VERSION_MINOR;
                 version["subminor"] = INFINIT_VERSION_SUBMINOR;
                 connection_request["version"] = version;
-
               }
+              connection_request["os"] = elle::system::platform::name();
             }
 
             ELLE_DEBUG("%s: identification", *this)
