@@ -1126,6 +1126,8 @@ namespace surface
     State::_apply_configuration(elle::json::Object json)
     {
       ELLE_TRACE_SCOPE("%s: apply configuration: %s", *this, json);
+      if (json.find("features") != json.end())
+        this->_configuration.features.clear();
       elle::serialization::json::SerializerIn input(json);
       input.partial(true);
       this->_configuration.serialize(input);
