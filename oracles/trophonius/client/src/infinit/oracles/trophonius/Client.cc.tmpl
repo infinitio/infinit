@@ -390,10 +390,19 @@ namespace infinit
             auto endpoint = reactor::network::resolve_tcp(
               this->server,
               boost::lexical_cast<std::string>(this->port));
-            this->_socket.reset(new reactor::network::FingerprintedSocket(
-                                  endpoint,
-                                  this->_test_fingerprint,
-                                  15_sec));
+            try
+            {
+              this->_socket.reset(new reactor::network::FingerprintedSocket(
+                                    endpoint,
+                                    this->_test_fingerprint,
+                                    15_sec));
+            }
+            catch (reactor::network::Exception const& e)
+            {
+              ELLE_ERR("%s: unable to open socket to trophonius: %s",
+                       *this, elle::exception_string());
+              return false;
+            }
           }
           ELLE_TRACE_SCOPE("%s: poke", *this);
           std::string const poke_msg("ouch");
@@ -465,7 +474,8 @@ namespace infinit
             this->_connect_callback_thread->terminate_now();
           if (!this->_poke())
           {
-            this->_socket->close();
+            if (this->_socket)
+              this->_socket->close();
             throw Unreachable(this->server, this->port);
           }
           ELLE_DEBUG_SCOPE("%s: connect to %s:%s",
