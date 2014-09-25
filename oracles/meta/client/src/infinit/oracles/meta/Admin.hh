@@ -41,6 +41,7 @@ namespace infinit
           int port_notifications,
           int port_client,
           int port_client_ssl,
+          std::string const& hostname,
           int users,
           boost::optional<std::string> zone = boost::optional<std::string>());
 

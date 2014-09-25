@@ -1,7 +1,10 @@
+#include <sstream>
+
 #include <boost/uuid/uuid_io.hpp>
 
 #include <elle/json/json.hh>
 #include <elle/log.hh>
+#include <elle/network/hostname.hh>
 #include <elle/test.hh>
 #include <elle/utility/Move.hh>
 
@@ -149,10 +152,27 @@ public:
         {
           if (method == "PUT")
           {
-            auto json_read = elle::json::read(*socket);
-            auto json = boost::any_cast<elle::json::Object>(json_read);
-            BOOST_CHECK(json.find("port") != json.end());
-            auto port = boost::any_cast<int64_t>(json.find("port")->second);
+            ELLE_DEBUG_SCOPE("%s: handle register request for trophonius %s",
+                             *this, id);
+            int port = 0;
+            ELLE_DEBUG("%s: read JSON", *this)
+            {
+              auto json_read = elle::json::read(*socket);
+              {
+                std::stringstream s;
+                elle::json::write(s, json_read);
+                ELLE_DUMP("%s: %s", *this, s.str());
+              }
+              auto json = boost::any_cast<elle::json::Object>(json_read);
+              BOOST_CHECK(json.find("hostname") != json.end());
+              auto hostname = boost::any_cast<std::string>(
+                json.find("hostname")->second);
+              ELLE_DUMP("%s: hostname: %s", *this, hostname);
+              BOOST_CHECK_EQUAL(hostname, elle::network::hostname());
+              BOOST_CHECK(json.find("port") != json.end());
+              ELLE_DUMP("%s: port: %s", *this, port);
+              port = boost::any_cast<int64_t>(json.find("port")->second);
+            }
             this->_register(*socket, id, port);
           }
           else if (method == "DELETE")
