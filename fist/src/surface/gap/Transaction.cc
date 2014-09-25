@@ -76,7 +76,8 @@ namespace surface
                         this->_data,
                         this->_archived,
                         this->_files,
-                        this->_message);
+                        this->_message,
+                        this->_plain_upload_uid);
       ELLE_DUMP("%s: snapshot data: %s", *this, snapshot);
       elle::AtomicFile destination(this->_snapshot_path);
       destination.write() << [&] (elle::AtomicFile::Write& write)
