@@ -4,6 +4,7 @@
 
 #include <elle/archive/archive.hh>
 #include <elle/container/vector.hh>
+#include <elle/container/map.hh>
 #include <elle/os/environ.hh>
 #include <elle/os/path.hh>
 #include <elle/serialize/extract.hh>
@@ -155,6 +156,7 @@ namespace surface
         path source_file_path;
         FileSize file_size;
         auto archive = this->archive_info();
+        ELLE_DEBUG("archive: %s", archive);
         if (archive.second)
         {
           // Our users might not appreciate downloading zillion of files from
@@ -199,7 +201,7 @@ namespace surface
                 }
                 return path.stem().string() + " (1)" + path.extension().string();
               };
-            ELLE_TRACE("%s: Begin archiving thread", *this);
+            ELLE_TRACE("%s: begin archiving thread", *this);
             reactor::background(
               [&]
               {
@@ -213,8 +215,8 @@ namespace surface
                            : elle::archive::Format::zip_uncompressed,
                   sources, archive_path, renaming_callback);
               });
-            ELLE_TRACE("%s: Join archiving thread", *this);
-            this->transaction().archived(true);
+            ELLE_TRACE("%s: join archiving thread", *this)
+              this->transaction().archived(true);
           }
           else
           {
@@ -252,18 +254,21 @@ namespace surface
         int max_check_id = 0; // check for chunk presence up to that id
         int start_check_index = 0; // check for presence from that chunks index
         std::string upload_id;
-        if (transaction().plain_upload_uid())
-        { // Trying to resume with existing upload id
+        if (this->transaction().plain_upload_uid())
+        {
+          ELLE_DEBUG("trying to resume with existing upload id: %s",
+                     this->transaction().plain_upload_uid());
           try
           {
-            // Fetch block list
-            upload_id = *transaction().plain_upload_uid();
+            ELLE_DEBUG("fetch block list");
+            upload_id = *this->transaction().plain_upload_uid();
             chunks = handler.multipart_list(source_file_name, upload_id);
             std::sort(chunks.begin(), chunks.end(),
               [](aws::S3::MultiPartChunk const& a, aws::S3::MultiPartChunk const& b)
               {
                 return a.first < b.first;
               });
+            ELLE_DEBUG("chunks: %s", chunks);
             if (!chunks.empty())
             {
               // We expect missing blocks potentially, but only at the end
@@ -276,13 +281,17 @@ namespace surface
               start_check_index = next_chunk;
               max_check_id = chunks.back().first;
             }
-            ELLE_DEBUG("Will resume at chunk %s", next_chunk);
+            else
+            {
+              ELLE_DEBUG("no chunks found");
+            }
+            ELLE_DEBUG("will resume at chunk %s", next_chunk);
           }
           catch (aws::AWSException const& e)
           {
             // Error with Code=NoSuchUpload ?
             ELLE_WARN("%s: Failed to resume upload: %s", *this, e.what());
-            transaction().plain_upload_uid(boost::optional<std::string>());
+            this->transaction().plain_upload_uid(boost::optional<std::string>());
           }
           catch (reactor::Terminate const&)
           {
@@ -290,8 +299,10 @@ namespace surface
           }
           ELLE_ASSERT_NO_OTHER_EXCEPTION
         }
-        if (!transaction().plain_upload_uid()) // Not else! Code above can reset plain_upload_uid
+        ELLE_DEBUG("plain upload uid: %s", transaction().plain_upload_uid());
+        if (!this->transaction().plain_upload_uid()) // Not else! Code above can reset plain_upload_uid
         {
+          ELLE_DEBUG("plain upload uid still empty");
           // Pass correct mime type for known extensions
           std::string mime_type("binary/octet-stream");
           std::string extension = boost::filesystem::path(source_file_name)
@@ -302,11 +313,12 @@ namespace surface
           if (it != mimes.end())
             mime_type = it->second;
           upload_id = handler.multipart_initialize(source_file_name, mime_type);
-          transaction().plain_upload_uid(upload_id);
-          transaction()._snapshot_save();
+          this->transaction().plain_upload_uid(upload_id);
+          this->transaction()._snapshot_save();
           ELLE_TRACE("%s: saved upload ID %s to snapshot",
-                     *this, *transaction().plain_upload_uid());
+                     *this, *this->transaction().plain_upload_uid());
         }
+        ELLE_DEBUG("next chunk to be uploaded: %s", next_chunk);
         auto chunk_uploaded = next_chunk;
         this->_plain_progress =
           float(chunk_uploaded) / float(chunk_count);
@@ -375,6 +387,7 @@ namespace surface
           }
         };
         int num_threads = config.s3.multipart_upload.parallelism;
+        ELLE_DEBUG("using %s parallel threads", num_threads);
         std::string env_num_threads =
           elle::os::getenv("INFINIT_NUM_PLAIN_UPLOAD_THREAD", "");
         if (!env_num_threads.empty())
