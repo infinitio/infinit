@@ -66,6 +66,19 @@ void gap_hash_free(char* h);
 char const*
 gap_meta_down_message(gap_State*);
 
+/// Set proxy.
+gap_Status
+gap_set_proxy(gap_State* state,
+              gap_ProxyType type,
+              std::string const& host,
+              uint16_t port,
+              std::string const& username,
+              std::string const& password);
+
+/// Unset proxy.
+gap_Status
+gap_unset_proxy(gap_State* state, gap_ProxyType type);
+
 /// Login to meta.
 gap_Status
 gap_login(gap_State* state,

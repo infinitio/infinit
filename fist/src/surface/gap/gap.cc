@@ -18,6 +18,7 @@
 
 #include <reactor/scheduler.hh>
 #include <reactor/thread.hh>
+#include <reactor/network/proxy.hh>
 
 #include <boost/range/join.hpp>
 
@@ -167,6 +168,67 @@ gap_meta_down_message(gap_State* _state)
                             auto meta_message = state.meta_message();
                             return meta_message.c_str();
                           });
+}
+
+gap_Status
+gap_set_proxy(gap_State* _state,
+              gap_ProxyType type,
+              std::string const& host,
+              uint16_t port,
+              std::string const& username,
+              std::string const& password)
+{
+  return run<gap_Status>(
+    _state,
+    "set proxy",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      using ProxyType = reactor::network::ProxyType;
+      using Proxy = reactor::network::Proxy;
+      ProxyType type_;
+      switch (type)
+      {
+        case gap_proxy_http:
+          type_ = ProxyType::HTTP;
+          break;
+          case gap_proxy_https:
+          type_ = ProxyType::HTTPS;
+          break;
+        case gap_proxy_socks:
+          type_ = ProxyType::SOCKS;
+          break;
+      }
+      Proxy proxy_(type_, host, port, username, password);
+      state.set_proxy(proxy_);
+      return gap_ok;
+    });
+}
+
+gap_Status
+gap_unset_proxy(gap_State* _state, gap_ProxyType type)
+{
+  return run<gap_Status>(
+    _state,
+    "unset proxy",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      using ProxyType = reactor::network::ProxyType;
+      ProxyType type_;
+      switch (type)
+      {
+        case gap_proxy_http:
+          type_ = ProxyType::HTTP;
+          break;
+        case gap_proxy_https:
+          type_ = ProxyType::HTTPS;
+          break;
+        case gap_proxy_socks:
+          type_ = ProxyType::SOCKS;
+          break;
+      }
+      state.unset_proxy(type_);
+      return gap_ok;
+    });
 }
 
 gap_Status
