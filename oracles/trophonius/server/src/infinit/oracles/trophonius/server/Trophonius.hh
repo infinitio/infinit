@@ -58,7 +58,6 @@ namespace infinit
             boost::posix_time::time_duration const& user_auth_max_time = 10_sec,
             bool meta_fatal = true,
             boost::optional<std::string> zone = boost::optional<std::string>());
-
           ~Trophonius();
           void
           stop();
@@ -71,10 +70,8 @@ namespace infinit
         private:
           void
           _serve(reactor::network::Server& server);
-
           void
           _serve_notifier();
-
           ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::SSLCertificate>,
                          certificate);
           ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::SSLServer>,
@@ -85,7 +82,6 @@ namespace infinit
           ELLE_ATTRIBUTE_r(int, port_tcp);
           ELLE_ATTRIBUTE(reactor::network::TCPServer, notifications);
           ELLE_ATTRIBUTE(reactor::Barrier, ready);
-
           int
           notification_port() const;
           ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, accepter_ssl);
@@ -96,6 +92,7 @@ namespace infinit
           ELLE_ATTRIBUTE_R(meta::Admin, meta);
           ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, meta_pinger);
           ELLE_ATTRIBUTE(bool, terminating);
+
         /*--------.
         | Clients |
         `--------*/
@@ -105,11 +102,6 @@ namespace infinit
           User&
           user(std::string const& user_id,
                boost::uuids::uuid const& device);
-          // struct hash_user_device
-          //   : public std::unary_function<User*, std::size_t>
-          // {
-          //   std::size_t operator()(User* user) const;
-          // };
           typedef boost::multi_index_container<
             User*,
             bmi::indexed_by<
@@ -123,7 +115,6 @@ namespace infinit
               >
             >
           > Users;
-          // typedef std::unordered_set<User*> Users;
           ELLE_ATTRIBUTE_RX(Users, users);
           typedef std::unordered_set<User*> PendingUsers;
           ELLE_ATTRIBUTE_RX(PendingUsers, users_pending);
@@ -133,6 +124,7 @@ namespace infinit
           ELLE_ATTRIBUTE_R(boost::posix_time::time_duration, user_auth_max_time);
           ELLE_ATTRIBUTE(reactor::RWMutex, remove_lock);
           ELLE_ATTRIBUTE_R(boost::optional<std::string>, zone);
+
         /*----------.
         | Printable |
         `----------*/
