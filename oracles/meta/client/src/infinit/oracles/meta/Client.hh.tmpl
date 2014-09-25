@@ -302,8 +302,8 @@ namespace infinit
       private:
         ELLE_ATTRIBUTE_R(std::string, root_url);
         ELLE_ATTRIBUTE_P(reactor::http::Client, client, mutable);
-        ELLE_ATTRIBUTE(reactor::http::Request::Configuration,
-                       default_configuration);
+        ELLE_ATTRIBUTE_X(reactor::http::Request::Configuration,
+                          default_configuration);
         ELLE_ATTRIBUTE_RW(std::string, email);
         ELLE_ATTRIBUTE(std::string, session_id);
       public:
