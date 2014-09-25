@@ -68,12 +68,7 @@ namespace infinit
                 this->_ready.wait();
                 try
                 {
-                  this->_meta.register_trophonius(
-                    this->_uuid, this->notification_port(),
-                    this->port_tcp(),
-                    this->port_ssl(),
-                    this->_users.size(),
-                    this->_zone);
+                  this->_meta_register();
                 }
                 catch (elle::Exception const& e)
                 {
@@ -153,9 +148,7 @@ namespace infinit
           ELLE_LOG("%s: register to meta", *this)
             try
             {
-              this->_meta.register_trophonius(
-                this->_uuid, this->notification_port(),
-                this->port_tcp(), this->port_ssl(), 0, this->_zone);
+              this->_meta_register();
             }
             catch (...)
             {
@@ -167,6 +160,17 @@ namespace infinit
           this->_ready.open();
 
           kill_accepters.abort();
+        }
+
+        void
+        Trophonius::_meta_register()
+        {
+          this->_meta.register_trophonius(
+            this->_uuid, this->notification_port(),
+            this->port_tcp(),
+            this->port_ssl(),
+            this->_users.size(),
+            this->_zone);
         }
 
         void
