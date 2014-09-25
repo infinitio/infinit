@@ -180,6 +180,8 @@ namespace common
         "linux";
 #elif INFINIT_MACOSX
         "macosx";
+#elif INFINIT_IOS
+        "ios";
 #elif INFINIT_WINDOWS
         "windows";
 #else
