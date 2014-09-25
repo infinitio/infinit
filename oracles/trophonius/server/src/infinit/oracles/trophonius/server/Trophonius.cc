@@ -1,6 +1,7 @@
 #include <boost/functional/hash.hpp>
 
 #include <elle/log.hh>
+#include <elle/network/hostname.hh>
 
 #include <reactor/scheduler.hh>
 #include <reactor/exception.hh>
@@ -169,6 +170,7 @@ namespace infinit
             this->_uuid, this->notification_port(),
             this->port_tcp(),
             this->port_ssl(),
+            elle::network::hostname(),
             this->_users.size(),
             this->_zone);
         }

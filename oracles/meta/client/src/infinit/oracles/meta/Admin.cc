@@ -83,6 +83,7 @@ namespace infinit
         int port,
         int port_client,
         int port_client_ssl,
+        std::string const& hostname,
         int users,
         boost::optional<std::string> zone)
       {
@@ -96,6 +97,7 @@ namespace infinit
             output.serialize("port", port);
             output.serialize("port_client", port_client);
             output.serialize("port_client_ssl", port_client_ssl);
+            output.serialize("hostname", const_cast<std::string&>(hostname));
             output.serialize("users", users);
             std::string version = INFINIT_VERSION;
             output.serialize("version", version);
