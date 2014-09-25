@@ -8,6 +8,8 @@
 # include <reactor/signal.hh>
 # include <reactor/thread.hh>
 # include <reactor/http/StatusCode.hh>
+# include <reactor/network/proxy.hh>
+
 # include <infinit/oracles/Transaction.hh>
 
 namespace infinit
@@ -58,6 +60,15 @@ namespace infinit
     /// Public attributes.
     public:
       ELLE_ATTRIBUTE_R(std::string, name);
+      ELLE_ATTRIBUTE_R(reactor::network::Proxy, proxy);
+
+    /// Proxy management.
+    /// Overridden in CompositeReporter to ensure that all reporters have their
+    /// proxy set.
+    public:
+      virtual
+      void
+      proxy(reactor::network::Proxy const& proxy);
 
     /// Setter for metric sender id and device id.
     public:

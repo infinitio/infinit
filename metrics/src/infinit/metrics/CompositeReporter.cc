@@ -43,6 +43,19 @@ namespace infinit
       this->_reporters.clear();
     }
 
+    /*-----------------.
+    | Proxy Management |
+    `-----------------*/
+    void
+    CompositeReporter::proxy(reactor::network::Proxy const& proxy)
+    {
+      this->_proxy = proxy;
+      for (auto const& reporter: this->_reporters)
+      {
+        reporter->proxy(proxy);
+      }
+    }
+
     /*--------------------.
     | Reporter Management |
     `--------------------*/

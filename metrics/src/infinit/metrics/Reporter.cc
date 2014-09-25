@@ -58,6 +58,7 @@ namespace infinit
 
     Reporter::Reporter(std::string const& name):
       _name(name),
+      _proxy(),
       _metric_available("metric available"),
       _metric_queue()
     {
@@ -73,6 +74,12 @@ namespace infinit
     Reporter::name(std::string name)
     {
       this->_name = name;
+    }
+
+    void
+    Reporter::proxy(reactor::network::Proxy const& proxy)
+    {
+      this->_proxy = proxy;
     }
 
     Reporter::~Reporter()

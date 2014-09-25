@@ -26,6 +26,12 @@ namespace infinit
       void
       stop();
 
+    /// Proxy management.
+    public:
+      virtual
+      void
+      proxy(reactor::network::Proxy const& proxy) override;
+
     /// Reporter management.
     public:
       void
