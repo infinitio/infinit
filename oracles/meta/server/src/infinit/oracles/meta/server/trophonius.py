@@ -22,12 +22,12 @@ class Mixin:
                      port: int,
                      port_client: int,
                      port_client_ssl: int,
+                     hostname: str = None,
                      users: int = 0,
                      version = None,
                      zone = None):
     """Register a trophonius.
     """
-    assert isinstance(uid, uuid.UUID)
     # Upsert is important here  be cause if a trophonius crashed and didn't
     # unregister itself, it's important to update the old entry in the database.
     res = self.database.trophonius.update(
@@ -36,6 +36,7 @@ class Mixin:
       },
       {
         '_id': str(uid),
+        'hostname': hostname,
         'ip': self.remote_ip,
         'port': port,
         'port_client': port_client,
@@ -158,6 +159,7 @@ class Mixin:
     trophoniuses = self.database.trophonius.find(
       self.__trophonius_query,
       fields = [
+        'hostname',
         'ip',
         'port',
         'port_client',
