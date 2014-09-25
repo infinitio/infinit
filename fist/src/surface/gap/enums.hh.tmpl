@@ -43,6 +43,13 @@ extern "C"
 
   typedef enum
   {
+    gap_proxy_http,
+    gap_proxy_https,
+    gap_proxy_socks,
+  } gap_ProxyType;
+
+  typedef enum
+  {
     NotificationType_NewTransaction,
     NotificationType_TransactionUpdate,
     NotificationType_UserStatusUpdate,
