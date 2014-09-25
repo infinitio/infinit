@@ -195,6 +195,88 @@ namespace surface
       ELLE_TRACE("%s: destroying members", *this);
     }
 
+    void
+    State::set_proxy(reactor::network::Proxy const& proxy)
+    {
+      using ProxyType = reactor::network::ProxyType;
+      switch (proxy.type())
+      {
+        case ProxyType::None:
+          break;
+        case ProxyType::HTTP:
+          this->_set_http_proxy(proxy);
+          break;
+        case ProxyType::HTTPS:
+          this->_set_https_proxy(proxy);
+          break;
+        case ProxyType::SOCKS:
+          this->_set_socks_proxy(proxy);
+          break;
+      }
+    }
+
+    void
+    State::unset_proxy(reactor::network::ProxyType const& proxy_type)
+    {
+      using ProxyType = reactor::network::ProxyType;
+      reactor::network::Proxy proxy;
+      switch (proxy_type)
+      {
+        case ProxyType::None:
+          break;
+        case ProxyType::HTTP:
+          this->_set_http_proxy(proxy);
+          break;
+        case ProxyType::HTTPS:
+          this->_set_https_proxy(proxy);
+          break;
+        case ProxyType::SOCKS:
+          this->_set_socks_proxy(proxy);
+          break;
+      }
+    }
+
+    void
+    State::_set_http_proxy(reactor::network::Proxy const& proxy)
+    {
+      ELLE_LOG("%s: set HTTP proxy: %s", *this, proxy);
+      // The == operator of Proxy has been overriden to check only the type
+      // and host of given proxies.
+      bool same = this->_http_proxy == proxy;
+      this->_http_proxy = proxy;
+      if (this->_meta.protocol() == "http")
+        this->_meta.default_configuration().proxy(proxy);
+      this->_metrics_reporter->proxy(proxy);
+      if (!same && !proxy.host().empty())
+        this->_metrics_reporter->user_proxy(proxy.type());
+    }
+
+    void
+    State::_set_https_proxy(reactor::network::Proxy const& proxy)
+    {
+      ELLE_LOG("%s: set HTTPS proxy: %s", *this, proxy);
+      // The == operator of Proxy has been overriden to check only the type
+      // and host of given proxies.
+      bool same = this->_https_proxy == proxy;
+      this->_https_proxy = proxy;
+      if (this->_meta.protocol() == "https")
+        this->_meta.default_configuration().proxy(proxy);
+      if (!same && !proxy.host().empty())
+        this->_metrics_reporter->user_proxy(proxy.type());
+    }
+
+    void
+    State::_set_socks_proxy(reactor::network::Proxy const& proxy)
+    {
+      ELLE_LOG("%s: set SOCKS proxy: %s", *this, proxy);
+      // The == operator of Proxy has been overriden to check only the type
+      // and host of given proxies.
+      bool same = this->_socks_proxy == proxy;
+      this->_socks_proxy = proxy;
+      if (!same && !proxy.host().empty())
+        this->_metrics_reporter->user_proxy(proxy.type());
+    }
+
     infinit::oracles::meta::Client const&
     State::meta(bool authentication_required) const
     {

@@ -15,6 +15,7 @@
 # include <reactor/scheduler.hh>
 # include <reactor/MultiLockBarrier.hh>
 # include <reactor/thread.hh>
+# include <reactor/network/proxy.hh>
 
 # include <papier/fwd.hh>
 
@@ -62,11 +63,32 @@ namespace surface
       /*--------.
       | Servers |
       `--------*/
+      /// Metrics are sent using HTTP.
+      ELLE_ATTRIBUTE_R(reactor::network::Proxy, http_proxy);
+      /// Meta is HTTPS on production.
+      ELLE_ATTRIBUTE_R(reactor::network::Proxy, https_proxy);
+      /// Trophonius and Apertus will likely need SOCKS.
+      ELLE_ATTRIBUTE_R(reactor::network::Proxy, socks_proxy);
       ELLE_ATTRIBUTE(infinit::oracles::meta::Client, meta);
       ELLE_ATTRIBUTE_R(std::string, meta_message);
       ELLE_ATTRIBUTE(std::vector<unsigned char>, trophonius_fingerprint);
       ELLE_ATTRIBUTE_RX(std::unique_ptr<infinit::oracles::trophonius::Client>,
                         trophonius);
+
+    public:
+      void
+      set_proxy(reactor::network::Proxy const& proxy);
+
+      void
+      unset_proxy(reactor::network::ProxyType const& proxy_type);
+
+    private:
+      void
+      _set_http_proxy(reactor::network::Proxy const& proxy);
+      void
+      _set_https_proxy(reactor::network::Proxy const& proxy);
+      void
+      _set_socks_proxy(reactor::network::Proxy const& proxy);
 
     public:
       infinit::oracles::meta::Client const&
