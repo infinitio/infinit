@@ -36,7 +36,7 @@ MANDRILL_TEMPLATE_SUBJECTS = {
 subscriptions = {
   'accept-file-only-offline': 'Incoming transaction when you are offline',
   'daily-summary': 'Summary of all your pending transaction of the day',
-  'drip': 'Tips and advices about how to use the product',
+  'drip': 'Tips and advice about how to use the product',
 }
 
 class EmailSubscriptionNotFound(BaseException):
