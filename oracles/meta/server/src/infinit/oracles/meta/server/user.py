@@ -439,7 +439,7 @@ class Mixin:
       features[k] = v
     return features
 
-  @api('/users/features', method = 'POST')
+  @api('/features', method = 'POST')
   @require_admin
   def features(self,
                reroll = None,

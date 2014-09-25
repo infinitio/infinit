@@ -96,7 +96,7 @@ class TestLogin(unittest.TestCase):
       for i in range(20):
         s = o.state()
         # Invoke the features roller, in force mode
-        r = requests.post('%s://%s:%s/users/features' % o.meta,
+        r = requests.post('%s://%s:%s/features' % o.meta,
                         data=json.dumps({'reroll': '1'}),
                         headers = {'content-type': 'application/json'})
         self.assertEqual(r.status_code, 200)
@@ -114,11 +114,12 @@ class TestLogin(unittest.TestCase):
   def test_features_reroll_custom(self):
     with infinit.oracles.servers.Oracles(
       mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
-      r = requests.post('%s://%s:%s/users/features' % o.meta,
+      r = requests.post('%s://%s:%s/features' % o.meta,
                         data=json.dumps({'reroll': '1',
                                         'abtests': [{'key': 'testc', 'value': '1'},
                                                     {'key':'testa', 'value':'v3'}]}),
                         headers = {'content-type': 'application/json'})
+      self.assertEqual(r.status_code, 200)
       s = o.state()
       s.login('mefyl2@infinit.io',
               state.hash_password('mefyl2@infinit.io', 'mefyl2'))
@@ -159,4 +160,15 @@ class TestLogin(unittest.TestCase):
       self.assertTrue('testd' in f.keys())
       self.assertEqual(f['testc'], 'v3')
       self.assertTrue(f['testd'] in ['v1', 'v2'])
+      r = requests.delete('%s://%s:%s/features/testc' % o.meta)
+      self.assertEqual(r.status_code, 200)
+      r = requests.delete('%s://%s:%s/features/testd' % o.meta)
+      self.assertEqual(r.status_code, 200)
+      s2.logout()
+      reactor.sleep(datetime.timedelta(milliseconds = 200))
+      s2.login('mefyl2@infinit.io',
+              state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+      reactor.sleep(datetime.timedelta(milliseconds = 200))
+      f = s2.features()
+      self.assertTrue('testc' not in f.keys())
 utils.run(unittest.main)
