@@ -819,14 +819,18 @@ namespace infinit
           std::vector<boost::any> status_json;
           for (auto s: statuses)
             status_json.push_back(boost::any(int(s)));
-          elle::json::write(filter, status_json);
+          bool with_endl = false;
+          elle::json::write(filter, status_json, with_endl);
           // FIXME: handle query parameters in reactor Request
           url = elle::sprintf("/transactions?count=%d&negate=%d&filter=%s",
                               count, negate, filter.str());
         }
         else
           url = "/transactions";
-        auto request = this->_request(url, Method::GET);
+        auto request = this->_client.request(this->_url(url),
+                                             Method::GET,
+                                             this->_default_configuration);
+        this->_handle_errors(request);
         std::list<PeerTransaction> res;
         SerializerIn input(url, request);
         input.serialize("transactions", res);
