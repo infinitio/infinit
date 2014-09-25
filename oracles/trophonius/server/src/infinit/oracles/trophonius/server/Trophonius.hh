@@ -72,6 +72,8 @@ namespace infinit
           _serve(reactor::network::Server& server);
           void
           _serve_notifier();
+          void
+          _meta_register();
           ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::SSLCertificate>,
                          certificate);
           ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::SSLServer>,
