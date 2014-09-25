@@ -240,6 +240,9 @@ namespace infinit
       void
       user_first_launch();
 
+      void
+      user_proxy(reactor::network::ProxyType proxy_type);
+
     /// User metrics implementation.
     protected:
       virtual
@@ -272,6 +275,10 @@ namespace infinit
       virtual
       void
       _user_first_launch();
+
+      virtual
+      void
+      _user_proxy(reactor::network::ProxyType proxy_type);
 
     /// Queue handling.
     private:

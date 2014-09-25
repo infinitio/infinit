@@ -134,6 +134,10 @@ namespace infinit
       void
       _user_first_launch();
 
+      virtual
+      void
+      _user_proxy(reactor::network::ProxyType proxy_type);
+
     /// Dispatch metrics.
     private:
       void

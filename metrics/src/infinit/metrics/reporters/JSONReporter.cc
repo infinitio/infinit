@@ -265,6 +265,17 @@ namespace infinit
       this->_send(this->_user_dest, data);
     }
 
+    void
+    JSONReporter::_user_proxy(reactor::network::ProxyType proxy_type)
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] = std::string("app/proxy");
+      data[this->_key_str(JSONKey::proxy_type)] =
+        std::string(elle::sprintf("%s", proxy_type));
+
+      this->_send(this->_user_dest, data);
+    }
+
     /*-----.
     | Send |
     `-----*/
@@ -402,6 +413,8 @@ namespace infinit
           return "message_length";
         case JSONKey::onboarding:
           return "onboarding";
+        case JSONKey::proxy_type:
+          return "proxy_type";
         case JSONKey::metric_sender_id:
           return "user";
         case JSONKey::operation:

@@ -33,6 +33,7 @@ namespace infinit
       metric_sender_id,
       onboarding,
       operation,
+      proxy_type,
       recipient_id,
       sender_id,
       status,
@@ -170,6 +171,10 @@ namespace infinit
       virtual
       void
       _user_first_launch();
+
+      virtual
+      void
+      _user_proxy(reactor::network::ProxyType proxy_type);
 
     /// Private helper functions.
     private:

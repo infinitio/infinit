@@ -280,5 +280,12 @@ namespace infinit
       this->_dispatch(std::bind(&Reporter::_user_first_launch,
                                 std::placeholders::_1));
     }
+
+    void
+    CompositeReporter::_user_proxy(reactor::network::ProxyType proxy_type)
+    {
+      this->_dispatch(
+        std::bind(&Reporter::_user_proxy, std::placeholders::_1, proxy_type));
+    }
   }
 }
