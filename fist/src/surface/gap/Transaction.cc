@@ -124,7 +124,12 @@ namespace surface
     void
     Transaction::Snapshot::print(std::ostream& stream) const
     {
-      elle::fprintf(stream, "Snapshot()");
+      stream << "Snapshot(";
+      if (this->_files)
+        stream << "files: " << this->_files.get();
+      if (this->_plain_upload_uid)
+        stream << ", plain_upload_uid: " << this->_plain_upload_uid.get();
+      stream << ")";
     }
 
     /*-------------.
