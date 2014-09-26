@@ -573,28 +573,68 @@ namespace infinit
       {
         if (handle.size() == 0)
           throw elle::Exception("No handle");
-        std::string url = elle::sprintf("/user/from_handle/%s/view", handle);
-        auto request = this->_request(url, Method::GET);
-        SerializerIn input(url, request);
-        return User(input);
+        std::string url = elle::sprintf("/users/from_handle/%s", handle);
+        auto request = this->_client.request(
+          this->_url(url), Method::GET, this->_default_configuration);
+        if (request.status() == reactor::http::StatusCode::OK)
+        {
+          SerializerIn input(url, request);
+          return User(input);
+        }
+        else if (request.status() == reactor::http::StatusCode::Not_Found)
+        {
+          throw infinit::state::UserNotFoundError(handle);
+        }
+        else
+        {
+          ELLE_ERR("%s: error while getting user by handle (%s): %s: %s",
+                   *this, handle, request.status(),
+                   request.response().string());
+          ELLE_ERR("%s", elle::Backtrace::current());
+          throw elle::http::Exception(
+            static_cast<elle::http::ResponseCode>(request.status()),
+            elle::sprintf("error %s while getting on %s",
+                          request.status(), request.url()));
+        }
       }
 
       User
-      Client::user(std::string const& id) const
+      Client::user(std::string const& id_or_email) const
       {
-        if (id.size() == 0)
+        if (id_or_email.size() == 0)
           throw elle::Exception("Invalid id or email");
-        std::string url = elle::sprintf("/user/%s/view", id);
-        auto request = this->_request(url, Method::GET);
-        SerializerIn input(url, request);
-        return User(input);
+        std::string url = elle::sprintf("/users/%s", id_or_email);
+        auto request = this->_client.request(
+          this->_url(url), Method::GET, this->_default_configuration);
+        if (request.status() == reactor::http::StatusCode::OK)
+        {
+          SerializerIn input(url, request);
+          return User(input);
+        }
+        else if (request.status() == reactor::http::StatusCode::Not_Found)
+        {
+          throw infinit::state::UserNotFoundError(id_or_email);
+        }
+        else
+        {
+          ELLE_ERR("%s: error while getting user by id/email (%s): %s: %s",
+                   *this, id_or_email, request.status(),
+                   request.response().string());
+          ELLE_ERR("%s", elle::Backtrace::current());
+          throw elle::http::Exception(
+            static_cast<elle::http::ResponseCode>(request.status()),
+            elle::sprintf("error %s while getting on %s",
+                          request.status(), request.url()));
+        }
       }
 
       Self
       Client::self() const
       {
         auto url = "/user/self";
-        auto request = this->_request(url, Method::GET);
+        auto request = this->_client.request(
+          this->_url(url), Method::GET, this->_default_configuration);
+        this->_handle_errors(request);
         SerializerIn input(url, request);
         return Self(input);
       }
