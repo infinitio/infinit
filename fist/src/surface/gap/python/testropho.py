@@ -71,9 +71,9 @@ state.OnTransaction(TransactionHandler)
 state.OnTransactionStatus(TransactionStatusHandler)
 state.OnMessage(Message)
 
-#register: fullname, email, hashed_password, device_name, activation_code
+#register: fullname, email, hashed_password
 def __register(name, mail):
-    state.register(name, mail, "mdptmp", "device", "bitebite")
+    state.register(name, mail, "mdptmp")
 def __login(mail):
     state.login(mail, "mdptmp")
 
