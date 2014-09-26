@@ -75,7 +75,8 @@ class Mixin:
                                uid: uuid.UUID,
                                id: bson.ObjectId,
                                device: uuid.UUID,
-                               version = None):
+                               version = None,
+                               os = None):
     with elle.log.trace('trophonius %s: register user %s device %s' %
                         (uid, id, device)):
       assert isinstance(uid, uuid.UUID)
@@ -91,6 +92,7 @@ class Mixin:
           {
             'trophonius': str(uid),
             'version': version,
+            'os': os,
           }
         }
       )
@@ -186,10 +188,23 @@ class Mixin:
                            version['subminor'])
     versions = dict((format_version(version['_id']), version['count'])
                     for version in versions)
+    oses = self.database.devices.aggregate([
+                      {'$match': {'trophonius': {'$ne': None}}},
+                      {
+                        '$group':
+                        {
+                          '_id': '$os',
+                          'count': {'$sum': 1},
+                        }
+                      },
+                    ])['result']
+    oses = dict((os['_id'], os['count'])
+                for os in oses)
     return {
       'trophoniuses': trophoniuses,
       'users': sum(tropho['users'] for tropho in trophoniuses),
       'versions': versions,
+      'oses': oses,
     }
 
   @api('/trophonius')
