@@ -251,7 +251,7 @@ public:
       reactor::http::Method::GET,
       self);
     this->register_route(
-      elle::sprintf("/user/%s/view", this->_identity.id()),
+      elle::sprintf("/users/%s", this->_identity.id()),
       reactor::http::Method::GET,
       self);
     this->register_route(
