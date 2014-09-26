@@ -146,8 +146,11 @@ def configure(elle,
   ## ------ ##
 
   debian = drake.Rule('debian')
-  debian_path = drake.Path('debian/opt/infinit/apertus')
-  package = [drake.copy(apertus, debian_path)]
+  debian_path = drake.Path('debian')
+  package = [
+    drake.copy(apertus,
+               debian_path / 'opt/infinit/apertusmeta/server'),
+  ]
   git = drake.git.Git()
   with drake.templating.Context(content = {
       'version': git.version(),
