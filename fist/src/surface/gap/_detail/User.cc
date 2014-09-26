@@ -8,6 +8,7 @@
 #include <infinit/oracles/trophonius/Client.hh>
 
 #include <surface/gap/State.hh>
+#include <surface/gap/Error.hh>
 #include <surface/gap/Exception.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.State.User");
@@ -111,8 +112,14 @@ namespace surface
     State::user_sync(std::string const& id) const
     {
       ELLE_DEBUG_SCOPE("%s: sync user from object id or email: %s", *this, id);
-
-      return this->user_sync(this->meta().user(id));
+      try
+      {
+        return this->user_sync(this->meta().user(id));
+      }
+      catch (infinit::state::UserNotFoundError const& e)
+      {
+        throw State::UserNotFoundException(id);
+      }
     }
 
     State::User const&
@@ -186,14 +193,22 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: user from handle %s", *this, handle);
       try
       {
-        return this->user([this, handle] (State::UserPair const& pair)
-                          {
-                            return pair.second.handle == handle;
-                          });
+        return this->user(
+          [this, handle] (State::UserPair const& pair)
+          {
+            return pair.second.handle == handle;
+          });
       }
       catch (State::UserNotFoundException const&)
       {
-        return this->user_sync(this->meta().user_from_handle(handle));
+        try
+        {
+          return this->user_sync(this->meta().user_from_handle(handle));
+        }
+        catch (infinit::state::UserNotFoundError const& e)
+        {
+          throw State::UserNotFoundException(handle);
+        }
       }
     }
 
