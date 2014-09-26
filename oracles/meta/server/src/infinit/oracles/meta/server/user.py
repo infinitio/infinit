@@ -999,10 +999,22 @@ class Mixin:
     })
     return res
 
-  @api('/user/<id_or_email>/view')
-  def view(self, id_or_email):
+  @api('/users/<id_or_email>')
+  def view_user(self, id_or_email):
     """
-    Get public user's information by id or email.
+    Get user's public information by user_id or email.
+    """
+    user = self.user_by_id_or_email(id_or_email)
+    if user is None:
+      return self.not_found()
+    else:
+      return self.extract_user_fields(user)
+
+  # Required for version <= 0.9.14.
+  @api('/user/<id_or_email>/view')
+  def view_user_old(self, id_or_email):
+    """
+    Get user's public information by user_id or email.
     """
     user = self.user_by_id_or_email(id_or_email)
     if user is None:
@@ -1010,10 +1022,25 @@ class Mixin:
     else:
       return self.success(self.extract_user_fields(user))
 
-  @api('/user/from_handle/<handle>/view')
+  @api('/users/from_handle/<handle>')
   @require_logged_in
   def view_from_handle(self, handle):
-    """Get user information from handle
+    """
+    Get user information from handle
+    """
+    with elle.log.trace("%s: search user from handle %s" % (self, handle)):
+      user = self.user_by_handle(handle, ensure_existence = False)
+      if user is None:
+        return self.not_found()
+      else:
+        return self.extract_user_fields(user)
+
+  # Required for version <= 0.9.14.
+  @api('/user/from_handle/<handle>/view')
+  @require_logged_in
+  def view_from_handle_old(self, handle):
+    """
+    Get user information from handle
     """
     with elle.log.trace("%s: search user from handle %s" % (self, handle)):
       user = self.user_by_handle(handle, ensure_existence = False)
