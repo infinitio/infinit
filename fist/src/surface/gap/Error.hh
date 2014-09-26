@@ -24,6 +24,26 @@ namespace infinit
       inline Error(std::string const& message);
     };
 
+    /*------------.
+    | User Errors |
+    `------------*/
+    class UserError
+      : public Error
+    {
+    public:
+      inline UserError(std::string const& message);
+    };
+
+    class UserNotFoundError
+      : public UserError
+    {
+    public:
+      inline UserNotFoundError(std::string const& id_or_email);
+    };
+
+    /*-------------.
+    | Login Errors |
+    `-------------*/
     class LoginError
       : public Error
     {
@@ -59,6 +79,9 @@ namespace infinit
       inline VersionRejected();
     };
 
+    /*-----------------.
+    | Self User Errors |
+    `-----------------*/
     class SelfUserError
       : public Error
     {
@@ -101,6 +124,9 @@ namespace infinit
       inline PasswordNotValid();
     };
 
+    /*-------------------.
+    | Transaction Errors |
+    `-------------------*/
     class TransactionFinalized
       : public Error
     {

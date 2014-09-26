@@ -1,11 +1,30 @@
+#include <elle/printf.hh>
+
 namespace infinit
 {
   namespace state
   {
+    /*-----------.
+    | Base Error |
+    `-----------*/
     Error::Error(std::string const& message)
       : Super(message)
     {}
 
+    /*------------.
+    | User Errors |
+    `------------*/
+    UserError::UserError(std::string const& message)
+      : Error(message)
+    {}
+
+    UserNotFoundError::UserNotFoundError(std::string const& id_or_email)
+      : UserError(elle::sprintf("user (%s) not found", id_or_email))
+    {}
+
+    /*-------------.
+    | Login Errors |
+    `-------------*/
     LoginError::LoginError(std::string const& message)
       : Error(message)
     {}
@@ -26,6 +45,9 @@ namespace infinit
       : LoginError("version rejected")
     {}
 
+    /*-----------------.
+    | Self User Errors |
+    `-----------------*/
     SelfUserError::SelfUserError(std::string const& message)
       : Error(message)
     {}
@@ -50,6 +72,9 @@ namespace infinit
       : SelfUserError("password not valid")
     {}
 
+    /*-------------------.
+    | Transaction Errors |
+    `-------------------*/
     TransactionFinalized::TransactionFinalized()
       : Error("transaction is already finalized")
     {}
