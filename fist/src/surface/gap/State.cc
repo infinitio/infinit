@@ -198,6 +198,7 @@ namespace surface
     void
     State::set_proxy(reactor::network::Proxy const& proxy)
     {
+      ELLE_TRACE("%s: set proxy: %s", *this, proxy);
       using ProxyType = reactor::network::ProxyType;
       switch (proxy.type())
       {
@@ -218,6 +219,7 @@ namespace surface
     void
     State::unset_proxy(reactor::network::ProxyType const& proxy_type)
     {
+      ELLE_TRACE("%s: unset proxy: %s", *this, proxy_type);
       using ProxyType = reactor::network::ProxyType;
       reactor::network::Proxy proxy;
       switch (proxy_type)
@@ -239,7 +241,6 @@ namespace surface
     void
     State::_set_http_proxy(reactor::network::Proxy const& proxy)
     {
-      ELLE_LOG("%s: set HTTP proxy: %s", *this, proxy);
       // The == operator of Proxy has been overriden to check only the type
       // and host of given proxies.
       bool same = this->_http_proxy == proxy;
@@ -254,7 +255,6 @@ namespace surface
     void
     State::_set_https_proxy(reactor::network::Proxy const& proxy)
     {
-      ELLE_LOG("%s: set HTTPS proxy: %s", *this, proxy);
       // The == operator of Proxy has been overriden to check only the type
       // and host of given proxies.
       bool same = this->_https_proxy == proxy;
@@ -268,7 +268,6 @@ namespace surface
     void
     State::_set_socks_proxy(reactor::network::Proxy const& proxy)
     {
-      ELLE_LOG("%s: set SOCKS proxy: %s", *this, proxy);
       // The == operator of Proxy has been overriden to check only the type
       // and host of given proxies.
       bool same = this->_socks_proxy == proxy;
