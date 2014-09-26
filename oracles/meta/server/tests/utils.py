@@ -300,7 +300,6 @@ class Meta:
                   email,
                   fullname = None,
                   password = '0' * 64,
-                  activation_code = 'no_activation_code',
                   source = None,
                   ):
     res = self.post('user/register',
@@ -308,7 +307,6 @@ class Meta:
                       'email': email,
                       'password': password,
                       'fullname': fullname or email.split('@')[0],
-                      'activation_code': activation_code,
                       'source': source,
                     })
     assert res['success']
