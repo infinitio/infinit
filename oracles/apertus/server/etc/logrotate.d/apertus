@@ -1,0 +1,11 @@
+/var/log/apertus.debug
+/var/log/apertus.err
+/var/log/apertus.log
+{
+       daily
+       rotate 7
+       delaycompress
+       compress
+       notifempty
+       missingok
+}
