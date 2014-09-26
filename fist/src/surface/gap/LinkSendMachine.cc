@@ -282,6 +282,9 @@ namespace surface
         ELLE_LOG("%s: Error while scanning files: %s", *this, e.what());
         throw;
       }
+      // Mirror files as soon as possible.
+      if (!archive_info().second)
+        try_mirroring_files(total_size);
       {
         auto lock = this->state().transaction_update_lock.lock();
         auto response =
@@ -291,8 +294,6 @@ namespace surface
         this->transaction()._snapshot_save();
         this->_credentials = std::move(response.aws_credentials());
       }
-      if (!archive_info().second) // only mirror if we're not going to archive
-        try_mirroring_files(total_size);
       this->total_size(total_size);
       this->_save_snapshot();
       if (this->state().metrics_reporter())

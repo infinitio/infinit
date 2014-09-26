@@ -390,6 +390,12 @@ namespace surface
         throw;
       }
       ELLE_DEBUG("%s: total file size: %s", *this, size);
+      // Try mirroring files as soon as possible.
+      // Before we only mirrored if we knew that it wasn't a ghost. This took
+      // two meta calls to verify (create + fetch user). By mirroring here,
+      // there is a chance that the mirrored files will not be used.
+      if (!archive_info().second)
+        this->try_mirroring_files(size);
       this->data()->total_size = size;
       this->total_size(size);
       auto first_file = boost::filesystem::path(*(this->files().cbegin()));
@@ -425,9 +431,11 @@ namespace surface
       // XXX: Ensure recipient is an id.
       this->data()->recipient_id =
         this->state().user(this->data()->recipient_id, true).id;
-      // We need to sync the user here as we could have an old pulbic key.
+      // We need to sync the user here as we could have an old public key.
       // This was the cause of the "unable to apply crypto function" bug.
       auto const& peer = this->state().user_sync(this->data()->recipient_id);
+      // Populate the frete.
+      this->frete().save_snapshot();
       if (this->state().metrics_reporter())
       {
         bool onboarding = false;
@@ -441,12 +449,6 @@ namespace surface
           peer.ghost(),
           onboarding);
       }
-      // Try mirroring files, only if we are not going to make an
-      // archive right away
-      if (!peer.ghost() || !archive_info().second)
-        this->try_mirroring_files(size);
-      // Populate the frete.
-      this->frete().save_snapshot();
       this->state().meta().update_transaction(this->transaction_id(),
                                               TransactionStatus::initialized);
     }
