@@ -12,6 +12,7 @@
 #include <elle/HttpClient.hh> // XXX: Remove that. Only for exception.
 #include <elle/log.hh>
 #include <elle/network/Interface.hh>
+#include <elle/network/hostname.hh>
 
 #include <boost/uuid/uuid_io.hpp>
 
@@ -125,18 +126,8 @@ namespace infinit
       void
       Apertus::_register()
       {
-        auto interfaces = elle::network::Interface::get_map(
-          elle::network::Interface::Filter::only_up |
-          elle::network::Interface::Filter::no_loopback |
-          elle::network::Interface::Filter::no_autoip
-          );
-        if (interfaces.size() == 0)
-          throw elle::Error("unable to determine public address");
-        else if (interfaces.size() > 1)
-          ELLE_WARN("%s: got several public interfaces %s, using %s",
-                    *this, interfaces, *interfaces.begin());
         this->_meta.register_apertus(this->_uuid,
-                                     interfaces.begin()->second.ipv4_address,
+                                     elle::network::hostname(),
                                      this->_port_ssl,
                                      this->_port_tcp);
       }

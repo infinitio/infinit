@@ -2,6 +2,7 @@
 
 #include <elle/json/json.hh>
 #include <elle/log.hh>
+#include <elle/network/hostname.hh>
 #include <elle/test.hh>
 #include <elle/os/environ.hh>
 #include <elle/utility/Move.hh>
@@ -118,6 +119,9 @@ public:
           BOOST_CHECK(json.find("port_tcp") != json.end());
           auto port_ssl = json.find("port_ssl")->second;
           auto port_tcp = json.find("port_tcp")->second;
+          BOOST_CHECK_EQUAL(
+            boost::any_cast<std::string>(json.find("host")->second),
+            elle::network::hostname());
           this->_register(*socket, id,
                           boost::any_cast<int64_t>(port_ssl),
                           boost::any_cast<int64_t>(port_tcp));
