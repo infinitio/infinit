@@ -745,9 +745,9 @@ def register(state, args):
     email = args.email
     password = args.password
     dev_name = args.device
-    if fullname is not None and email is not None and password is not None and dev_name is not None:
+    if fullname is not None and email is not None and password is not None:
         # noninteractive register
-        state.register(fullname, email, password, dev_name, 'no_activation_code')
+        state.register(fullname, email, password)
         return
     fullname = None
     email = None
@@ -769,7 +769,7 @@ def register(state, args):
         )
         try:
           print('Registering...')
-          state.register(fullname, email, password, dev_name, 'no_activation_code')
+          state.register(fullname, email, password)
           print('Relogging in...')
           state.logout()
           state.login(email, password)

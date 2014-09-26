@@ -119,10 +119,10 @@ class _State:
     def logged(self):
         return self.__call('is_logged')
 
-    def register(self, fullname, email, password, dev_name, activation_code):
+    def register(self, fullname, email, password):
         self.email = email
         pw_hash = self.__call('hash_password', email, password)
-        self.__call('register', fullname, email, pw_hash, dev_name, activation_code)
+        self.__call('register', fullname, email, pw_hash)
 
     @property
     def _id(self):
