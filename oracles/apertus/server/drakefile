@@ -153,7 +153,7 @@ def configure(elle,
   ]
   git = drake.git.Git()
   with drake.templating.Context(content = {
-      'version': git.version(),
+      'version': git.description(),
       'version_major': git.version().split('.')[0],
       'version_minor': git.version().split('.')[1],
   }):
@@ -167,7 +167,7 @@ def configure(elle,
                                   ),
                         debian_path)
   debian << drake.debian.Packager(
-    'fist-apertus_%s_amd64.deb' % git.version(),
+    'fist-apertus_%s_amd64.deb' % git.description(),
     package, 'debian', preload = elle.elle.dpkg_preload).package
 
   ## ------ ##
