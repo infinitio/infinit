@@ -170,13 +170,14 @@ def configure(elle,
     drake.node('control.tmpl')
     drake.node('etc/trophonius.conf.tmpl')
 
-  package = [trophonius] + drake.nodes(
+  configuration = drake.nodes(
     'etc/trophonius.conf',
     'etc/init.d/trophonius',
     'etc/logrotate.d/trophonius',
     'etc/rsyslog.d/trophonius.conf',
   )
-  package = drake.copy(package, 'debian/opt/infinit/trophonius')
+  package = [drake.copy(trophonius, 'debian/opt/infinit/trophonius')]
+  package += drake.copy(configuration, 'debian')
   package += drake.copy(drake.nodes('control'),
                         'debian/DEBIAN')
   debian = drake.Rule('debian')
