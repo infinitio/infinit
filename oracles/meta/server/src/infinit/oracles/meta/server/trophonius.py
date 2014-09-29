@@ -212,13 +212,13 @@ class Mixin:
   def trophonius_pick(self):
     trophoniuses = self.database.trophonius.find(
       self.__trophonius_query,
-      fields = ['ip', 'port_client', 'port_client_ssl'],
+      fields = ['hostname', 'port_client', 'port_client_ssl'],
       sort = [('users', 1)],
     )
     try:
       trophonius = next(trophoniuses)
       return {
-        'host': trophonius['ip'],
+        'host': trophonius['hostname'],
         'port': trophonius['port_client'],
         'port_ssl': trophonius['port_client_ssl'],
       }
