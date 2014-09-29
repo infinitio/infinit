@@ -162,7 +162,7 @@ def configure(elle,
 
   git = drake.git.Git()
   with drake.templating.Context(content = {
-      'version': git.version(),
+      'version': git.description(),
       'version_major': git.version().split('.')[0],
       'version_minor': git.version().split('.')[1],
       'trophonius_path': '/opt/infinit/trophonius/bin/trophonius',
@@ -181,5 +181,5 @@ def configure(elle,
                         'debian/DEBIAN')
   debian = drake.Rule('debian')
   debian << drake.debian.Packager(
-    'fist-trophonius_%s_amd64.deb' % git.version(),
+    'fist-trophonius_%s_amd64.deb' % git.description(),
     package, 'debian', preload = elle.elle.dpkg_preload).package
