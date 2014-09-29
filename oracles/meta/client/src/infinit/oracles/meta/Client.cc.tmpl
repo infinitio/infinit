@@ -1,3 +1,4 @@
+#include <cmath>
 #include <sstream>
 
 #include <boost/uuid/uuid_io.hpp>
@@ -1308,11 +1309,14 @@ namespace infinit
       `--------*/
 
       void
-      Client::_pacify_retry() const
+      Client::_pacify_retry(int& try_count) const
       {
+        ++try_count;
         // FIXME: make this delay exponential.
-        boost::random::uniform_int_distribution<> random(100, 200);
-        auto delay = 3_sec * (random(this->_rng) / 100.);
+        boost::random::uniform_int_distribution<> random(100, 120);
+        auto randomness = random(this->_rng) / 100.;
+        auto factor = std::pow(2, std::min(try_count, 5));
+        auto delay = 1_sec * factor * randomness;
         ELLE_TRACE("%s: wait %s before retrying", this, delay);
         reactor::sleep(delay);
       }
@@ -1342,6 +1346,7 @@ namespace infinit
         reactor::http::Request::QueryDict const& query_dict,
         std::function<void (reactor::http::Request&)> const& send) const
       {
+        int retry_count = 0;
         while (true)
         {
           try
@@ -1368,7 +1373,7 @@ namespace infinit
                   ELLE_WARN("%s: response requesting %s "
                             "not coming from meta, retrying",
                             *this, url);
-                  this->_pacify_retry();
+                  this->_pacify_retry(retry_count);
                   continue;
                 }
                 break;
@@ -1379,7 +1384,7 @@ namespace infinit
               {
                 ELLE_WARN("%s: transient status %s requesting %s, retrying",
                           *this, status, url);
-                this->_pacify_retry();
+                this->_pacify_retry(retry_count);
                 continue;
               }
               default:
@@ -1389,7 +1394,7 @@ namespace infinit
                   ELLE_WARN("%s: status %s requesting %s"
                             " not coming from meta, retrying",
                             *this, status, url);
-                  this->_pacify_retry();
+                  this->_pacify_retry(retry_count);
                   continue;
                 }
                 ELLE_ERR("%s: error while posting: %s", *this, status);
@@ -1420,14 +1425,14 @@ namespace infinit
             ELLE_WARN("%s: resolution failure requesting %s, retrying",
                       *this, url);
 
-            this->_pacify_retry();
+            this->_pacify_retry(retry_count);
           }
           catch (reactor::http::RequestError&)
           {
             ELLE_ERR("%s: unhandled error requesting %s, retrying: %s",
                      *this, url, elle::exception_string());
 
-            this->_pacify_retry();
+            this->_pacify_retry(retry_count);
           }
         }
       }
