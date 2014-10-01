@@ -66,6 +66,10 @@ void gap_hash_free(char* h);
 char const*
 gap_meta_down_message(gap_State*);
 
+/// Set connection status
+gap_Status
+gap_internet_connection(gap_State* state, bool connected);
+
 /// Set proxy.
 gap_Status
 gap_set_proxy(gap_State* state,

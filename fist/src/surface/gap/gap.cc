@@ -171,6 +171,20 @@ gap_meta_down_message(gap_State* _state)
 }
 
 gap_Status
+gap_internet_connection(gap_State* _state, bool connected)
+{
+  return run<gap_Status>(
+    _state,
+    "set internet connection",
+    [&] (surface::gap::State& state)
+    {
+      state.internet_connection(connected);
+      return gap_ok;
+    }
+  );
+}
+
+gap_Status
 gap_set_proxy(gap_State* _state,
               gap_ProxyType type,
               std::string const& host,
