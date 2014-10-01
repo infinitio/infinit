@@ -19,45 +19,46 @@ def configure(
 ):
   global build, check, install
 
-  git = drake.git.Git()
-  version = drake.node(
-    'lib/python/infinit/oracles/sisyphus/version.py')
-  PythonVersionGenerator(version, git = git)
+  if python is not None:
+    git = drake.git.Git()
+    version = drake.node(
+      'lib/python/infinit/oracles/sisyphus/version.py')
+    PythonVersionGenerator(version, git = git)
 
-  sources = drake.nodes(
-    'src/infinit/oracles/sisyphus/__init__.py',
-    'src/infinit/oracles/sisyphus/boulders/__init__.py',
-    'src/infinit/oracles/sisyphus/boulders/drip.py',
-  )
+    sources = drake.nodes(
+      'src/infinit/oracles/sisyphus/__init__.py',
+      'src/infinit/oracles/sisyphus/boulders/__init__.py',
+      'src/infinit/oracles/sisyphus/boulders/drip.py',
+    )
 
-  build = drake.Rule('build')
-  build_python_path = drake.Path('lib/python')
-  sources_built = drake.copy(sources, build_python_path, 'src')
-  elle_python = drake.copy(elle.elle.python, '.', '../../elle/elle')
-  for source in sources_built:
-    source.dependencies_add(elle_python)
-  build_binary = drake.copy(drake.node('sisyphus'), 'bin')
-  build << sources_built
-  build << version
-  build << drake.copy(bottle, build_python_path, True)
-  build << build_binary
-  build << drake.copy(python_common, '.', '..')
-
-  check = drake.Rule('check')
-  for name in (
-      'boulders/drip/onboarding',
-  ):
-    test = drake.node('tests/%s' % name)
+    build = drake.Rule('build')
+    build_python_path = drake.Path('lib/python')
+    sources_built = drake.copy(sources, build_python_path, 'src')
+    elle_python = drake.copy(elle.elle.python, '.', '../../elle/elle')
     for source in sources_built:
-      test.dependency_add(source)
-    test.dependency_add(meta)
-    test.dependency_add(mongobox)
-    runner = drake.Runner(
-      test,
-      env = {
-        'PYTHONPATH': ':'.join(map(str, chain(meta.pythonpath, mongobox.pythonpath)))
-      })
-    runner.reporting = drake.Runner.Reporting.on_failure
-    check << runner.status
+      source.dependencies_add(elle_python)
+    build_binary = drake.copy(drake.node('sisyphus'), 'bin')
+    build << sources_built
+    build << version
+    build << drake.copy(bottle, build_python_path, True)
+    build << build_binary
+    build << drake.copy(python_common, '.', '..')
 
-  install = drake.Rule('install')
+    check = drake.Rule('check')
+    for name in (
+        'boulders/drip/onboarding',
+    ):
+      test = drake.node('tests/%s' % name)
+      for source in sources_built:
+        test.dependency_add(source)
+      test.dependency_add(meta)
+      test.dependency_add(mongobox)
+      runner = drake.Runner(
+        test,
+        env = {
+          'PYTHONPATH': ':'.join(map(str, chain(meta.pythonpath, mongobox.pythonpath)))
+        })
+      runner.reporting = drake.Runner.Reporting.on_failure
+      check << runner.status
+
+    install = drake.Rule('install')
