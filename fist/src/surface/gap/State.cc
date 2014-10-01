@@ -724,6 +724,10 @@ namespace surface
         this->_polling_thread->terminate_now();
         this->_polling_thread.reset();
       }
+
+      // Ensure that Trophonius is killed before logging out of meta.
+      if (this->_trophonius)
+        this->_trophonius.reset();
     }
 
     std::string
