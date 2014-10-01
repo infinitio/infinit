@@ -258,6 +258,8 @@ namespace surface
             ELLE_WARN("%s: can't restore peer send transaction from server (%s)",
                       *this, *peer_data);
             bool run_to_fail = true;
+            this->failure_reason(
+              "sender device missing peer transaction snapshot");
             this->_machine.reset(
               new PeerSendMachine(*this, this->_id, peer_data, run_to_fail));
           }
@@ -285,6 +287,8 @@ namespace surface
           ELLE_WARN("%s: can't restore link transaction from server (%s)",
                     *this, *link_data);
           bool run_to_fail = true;
+          this->failure_reason(
+            "sender device missing link transaction snapshot");
           this->_machine.reset(
             new LinkSendMachine(*this, this->_id, link_data, run_to_fail));
         }
@@ -543,6 +547,13 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: update data with %s", *this, *data);
       ELLE_ASSERT_EQ(typeid(*data), typeid(*this->_data));
+      typedef infinit::oracles::Transaction::Status Status;
+      if (this->_data->status != Status::deleted &&
+          data->status == Status::deleted &&
+          this->failure_reason().empty())
+      {
+        this->failure_reason("fail on other side");
+      }
       // FIXME: Ugly, but ensures we don't get sliced.
       {
         using infinit::oracles::LinkTransaction;
@@ -555,7 +566,6 @@ namespace surface
           ELLE_ERR("%s: unknown transaction type: %s",
                    *this, elle::demangle(typeid(*data).name()));
       }
-      typedef infinit::oracles::Transaction::Status Status;
       if (this->_machine && !this->_over)
       {
         ELLE_DEBUG("%s: updating machine", *this)
