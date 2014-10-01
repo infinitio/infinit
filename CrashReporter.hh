@@ -17,6 +17,7 @@
 
 namespace elle
 {
+#ifndef INFINIT_IOS
   namespace signal
   {
 
@@ -54,6 +55,7 @@ namespace elle
       std::unique_ptr<Impl> _impl;
     };
   } // End of signal.
+#endif // INFINIT_IOS
 
   namespace crash
   {

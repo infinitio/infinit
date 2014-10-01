@@ -35,6 +35,7 @@ ELLE_LOG_COMPONENT("elle.CrashReporter");
 
 namespace elle
 {
+#ifndef INFINIT_IOS
   namespace signal
   {
     namespace
@@ -53,7 +54,7 @@ namespace elle
             {SIGFPE,  "SIGFPE"},  // Floating point exception
             {SIGSEGV, "SIGSEGV"}, // Invalid memory reference
             {SIGTERM, "SIGTERM"}, // Termination signal
-#ifndef INFINIT_WINDOWS
+# ifndef INFINIT_WINDOWS
             {SIGKILL, "SIGKILL"}, // Kill signal
             {SIGHUP,  "SIGHUP"},  // Hangup detected on controlling terminal or death of controlling process
             {SIGQUIT, "SIGQUIT"}, // Quit from keyboard
@@ -66,7 +67,7 @@ namespace elle
             {SIGTSTP, "SIGTSTP"}, // Stop typed at tty
             {SIGTTIN, "SIGTTIN"}, // tty input for background process
             {SIGTTOU, "SIGTTOU"}, // tty output for background process
-#endif
+# endif // INFINIT_WINDOWS
           }
         };
 
@@ -224,6 +225,7 @@ namespace elle
       this->_impl->release();
     }
   } // End of signal.
+#endif // INFINIT_IOS
 
   namespace crash
   {
