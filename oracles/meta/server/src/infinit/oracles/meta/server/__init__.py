@@ -148,8 +148,12 @@ class Meta(bottle.Bottle,
       with elle.log.log(
           '%s: connect to MongoDB replica set %s' % (self, mongo_replica_set)):
         self.__mongo = \
-          pymongo.MongoReplicaSetClient(','.join(mongo_replica_set),
-                                        replicaSet = 'fist-meta')
+          pymongo.MongoReplicaSetClient(
+            ','.join(mongo_replica_set),
+            replicaSet = 'fist-meta',
+            socketTimeoutMS = 1000,
+            connectTimeoutMS = 1000,
+          )
     else:
       with elle.log.log(
           '%s: connect to MongoDB on %s:%s' % (self, mongo_host, mongo_port)):
