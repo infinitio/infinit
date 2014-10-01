@@ -184,6 +184,11 @@ namespace surface
 
       try
       {
+        // We do this to ensure that Trophonius is properly killed. Trophonius
+        // cannot be reset inside the _clean_up or logout functions as these
+        // can be run by Trophonius's threads.
+        this->_cleanup();
+        this->_trophonius.reset();
         this->logout();
         this->_metrics_reporter->stop();
       }
@@ -724,10 +729,6 @@ namespace surface
         this->_polling_thread->terminate_now();
         this->_polling_thread.reset();
       }
-
-      // Ensure that Trophonius is killed before logging out of meta.
-      if (this->_trophonius)
-        this->_trophonius.reset();
     }
 
     std::string
