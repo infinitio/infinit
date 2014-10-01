@@ -112,7 +112,6 @@ class Mixin:
   @api('/check')
   def check(self):
     table = self.database.check
-    table.__class__ = pymongo.collection.Collection
     try:
       table.update({}, {}, upsert = True)
     except:
