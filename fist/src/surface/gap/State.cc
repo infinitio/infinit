@@ -134,6 +134,8 @@ namespace surface
       , _meta_message("")
       , _trophonius_fingerprint(trophonius_fingerprint)
       , _trophonius(nullptr)
+      , _forced_trophonius_host()
+      , _forced_trophonius_port(0)
       , _metrics_reporter(std::move(metrics))
       , _me()
       , _output_dir(common::system::download_directory())
@@ -176,6 +178,7 @@ namespace surface
         }
       }
       this->_check_first_launch();
+      this->_check_forced_trophonius();
     }
 
     State::~State()
@@ -394,6 +397,17 @@ namespace surface
     }
 
     void
+    State::_check_forced_trophonius()
+    {
+      std::string host_str = elle::os::getenv("INFINIT_TROPHONIUS_HOST", "");
+      std::string port_str = elle::os::getenv("INFINIT_TROPHONIUS_PORT", "");
+      if (!host_str.empty())
+        this->_forced_trophonius_host = host_str;
+      if (!port_str.empty())
+        this->_forced_trophonius_port = boost::lexical_cast<int>(port_str);
+    }
+
+    void
     State::login(
       std::string const& email,
       std::string const& password,
@@ -470,14 +484,12 @@ namespace surface
           std::bind(&State::on_reconnection_failed, this),
           this->_trophonius_fingerprint));
         }
-        std::string trophonius_host =
-          elle::os::getenv("INFINIT_TROPHONIUS_HOST",
-                           login_response.trophonius.host);
-        std::string env_port =
-          elle::os::getenv("INFINIT_TROPHONIUS_PORT", "");
+        std::string trophonius_host = login_response.trophonius.host;
         int trophonius_port = login_response.trophonius.port_ssl;
-        if (!env_port.empty())
-          trophonius_port = boost::lexical_cast<int>(env_port);
+        if (!this->_forced_trophonius_host.empty())
+          trophonius_host = this->_forced_trophonius_host;
+        if (this->_forced_trophonius_port != 0)
+          trophonius_port = this->_forced_trophonius_port;
         this->_trophonius->server(trophonius_host, trophonius_port);
         infinit::metrics::Reporter::metric_sender_id(login_response.id);
         this->_metrics_reporter->user_login(true, "");
@@ -923,7 +935,13 @@ namespace surface
       try
       {
         auto tropho = this->_meta.trophonius();
-        this->_trophonius->server(tropho.host, tropho.port_ssl);
+        std::string host = tropho.host;
+        int port = tropho.port;
+        if (!this->_forced_trophonius_host.empty())
+          host = this->_forced_trophonius_host;
+        if (this->_forced_trophonius_port != 0)
+          port = this->_forced_trophonius_port;
+        this->_trophonius->server(host, port);
       }
       catch (infinit::state::CredentialError const&)
       {

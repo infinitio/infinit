@@ -74,7 +74,16 @@ namespace surface
       ELLE_ATTRIBUTE(std::vector<unsigned char>, trophonius_fingerprint);
       ELLE_ATTRIBUTE_RX(std::unique_ptr<infinit::oracles::trophonius::Client>,
                         trophonius);
+      ELLE_ATTRIBUTE(std::string, forced_trophonius_host);
+      ELLE_ATTRIBUTE(int, forced_trophonius_port);
 
+    private:
+      void
+      _check_forced_trophonius();
+
+      /*--------.
+      | Network |
+      `--------*/
     public:
       void
       set_proxy(reactor::network::Proxy const& proxy);
