@@ -45,66 +45,27 @@ from . import waterfall
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.Meta'
 
-def reconnect_mongocall(f):
+def reconnect(original):
   def result(f, *args, **kwargs):
+    import sys
     i = 0
     while True:
       try:
         return f(*args, **kwargs)
       except pymongo.errors.AutoReconnect as e:
-        if i < 5:
-          i += 1
         import time
-        elle.log.warn('database unreachable, will try autoreconect in %ss: %s' % (i, e))
-        time.sleep(pow(2, i))
-  return decorator.decorator(result, f)
+        delay = pow(2, 1 + i / 2)
+        elle.log.warn('database unreachable, will try autoreconect in %ss: %s' % (delay, e))
+        time.sleep(delay)
+        if i < 10:
+          i += 1
+  return decorator.decorator(result, original)
 
-class ReconnectingDatabase(pymongo.database.Database):
+pymongo.cursor.Cursor._Cursor__send_message = reconnect(pymongo.cursor.Cursor._Cursor__send_message)
+pymongo.connection.Connection._send_message = reconnect(pymongo.connection.Connection._send_message)
+pymongo.connection.Connection._send_message_with_response = reconnect(pymongo.connection.Connection._send_message_with_response)
+pymongo.MongoReplicaSetClient._send_message = reconnect(pymongo.MongoReplicaSetClient._send_message)
 
-  def __getattr__(self, key):
-    res = pymongo.database.Database.__getattr__(self, key)
-    res.__class__ = ReconnectingCollection
-    return res
-
-  def __getitem__(self, key):
-    res = pymongo.database.Database.__getitem__(self, key)
-    res.__class__ = ReconnectingCollection
-    return res
-
-class ReconnectingCollection(pymongo.collection.Collection):
-  pass
-
-for m in set(m for m in dir(pymongo.collection.Collection)
-             if not m.startswith('_')
-             and callable(getattr(pymongo.collection.Collection, m))):
-  def closure(m):
-    original = getattr(pymongo.collection.Collection, m)
-    @reconnect_mongocall
-    def wrapper(*args, **kwargs):
-      res = original(*args, **kwargs)
-      if isinstance(res, pymongo.cursor.Cursor):
-        res.__class__ = ReconnectingCursor
-      return res
-    wrapper.__name__ = m
-    setattr(ReconnectingCollection, m, wrapper)
-  closure(m)
-
-
-class ReconnectingCursor(pymongo.cursor.Cursor):
-  pass
-
-for m in set(m for m in dir(pymongo.cursor.Cursor)
-             if not m.startswith('_')
-             and callable(getattr(pymongo.cursor.Cursor, m))
-             or m in ['__next__']):
-  def closure(m):
-    original = getattr(pymongo.cursor.Cursor, m)
-    @reconnect_mongocall
-    def wrapper(*args, **kwargs):
-      return original(*args, **kwargs)
-    wrapper.__name__ = m
-    setattr(ReconnectingCursor, m, wrapper)
-  closure(m)
 
 class Meta(bottle.Bottle,
            root.Mixin,
@@ -164,7 +125,6 @@ class Meta(bottle.Bottle,
           db_args['port'] = mongo_port
         self.__mongo = pymongo.MongoClient(**db_args)
     self.__database = self.__mongo.meta
-    self.__database.__class__ = ReconnectingDatabase
     self.__set_constraints()
     self.catchall = debug
     bottle.debug(debug)
