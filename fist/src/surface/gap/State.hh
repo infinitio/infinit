@@ -86,6 +86,9 @@ namespace surface
       `--------*/
     public:
       void
+      internet_connection(bool connected);
+
+      void
       set_proxy(reactor::network::Proxy const& proxy);
 
       void

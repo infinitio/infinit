@@ -204,6 +204,19 @@ namespace surface
     }
 
     void
+    State::internet_connection(bool connected)
+    {
+      if (connected)
+      {
+        ELLE_TRACE("%s: got internet connection", *this);
+      }
+      else
+      {
+        ELLE_TRACE("%s: lost internet connection", *this);
+      }
+    }
+
+    void
     State::set_proxy(reactor::network::Proxy const& proxy)
     {
       ELLE_TRACE("%s: set proxy: %s", *this, proxy);
