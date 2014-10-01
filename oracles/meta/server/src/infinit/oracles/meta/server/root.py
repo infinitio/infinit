@@ -1,7 +1,10 @@
 # -*- encoding: utf-8 -*-
 
 import bottle
+import pymongo
+import pymongo.read_preferences
 import time
+
 from bson.code import Code
 from datetime import datetime, timedelta
 
@@ -105,6 +108,31 @@ class Mixin:
     #     "status" : False,
     #     "message" : "<p>Infinit is under maintainance</p>",
     #   })
+
+  @api('/check')
+  def check(self):
+    table = self.database.check
+    table.__class__ = pymongo.collection.Collection
+    try:
+      table.update({}, {}, upsert = True)
+    except:
+      primary = False
+    else:
+      primary = True
+    try:
+      pref = pymongo.read_preferences.ReadPreference.NEAREST
+      table.count(read_preference = pref)
+    except:
+      secondary = False
+    else:
+      secondary = True
+    res = {
+      'database':
+      {
+        'primary': primary,
+        'secondary': secondary,
+      }
+    }
 
   @api('/ghostify', method = 'POST')
   @require_admin
