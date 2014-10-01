@@ -11,6 +11,7 @@
 #include <elle/archive/archive.hh>
 #include <elle/filesystem/TemporaryDirectory.hh>
 #include <elle/json/json.hh>
+#include <elle/finally.hh>
 #include <elle/format/base64.hh>
 #include <elle/format/gzip.hh>
 #include <elle/log.hh>
@@ -331,6 +332,24 @@ namespace elle
         || std::find(p.begin(), p.end(), "archive") != p.end();
     }
 
+    // Copy the file to the specified destination. If the copy failed, the
+    // destination is set to the source and the cleanup function is aborted.
+    static
+    void
+    copy_file(boost::filesystem::path const& source,
+              boost::filesystem::path& dest,
+              elle::SafeFinally& cleaner)
+    {
+      boost::system::error_code erc;
+      boost::filesystem::copy(source, dest , erc);
+      if (erc)
+      {
+        ELLE_TRACE("error while copying %s: %s", dest, erc);
+        dest = source;
+        cleaner.abort();
+      }
+    }
+
     void
     existing_report(std::string const& meta_protocol,
                     std::string const& meta_host,
@@ -363,7 +382,8 @@ namespace elle
                              archived,
                              destination,
                              elle::archive::Renamer(),
-                             temp_file_excluder);
+                             temp_file_excluder,
+                             true);
       _send_report(url, user_name, os_description, "",
                    _to_base64(destination));
     }
@@ -386,11 +406,35 @@ namespace elle
       elle::filesystem::TemporaryDirectory tmp;
       boost::filesystem::path destination(tmp.path() / "report.tar.bz2");
 
-      elle::archive::archive(elle::archive::Format::tar_gzip,
-                             {common::infinit::home()},
-                             destination,
-                             elle::archive::Renamer(),
-                             temp_file_excluder);
+      if (elle::os::inenv("INFINIT_LOG_FILE"))
+      {
+        std::string log_path = elle::os::getenv("INFINIT_LOG_FILE", "");
+        boost::filesystem::path home(common::infinit::home());
+        boost::filesystem::path copied_log = home / "current_state.log";
+        elle::SafeFinally cleanup{
+          [&] {
+            boost::system::error_code erc;
+            boost::filesystem::remove(copied_log, erc);
+            if (erc)
+              ELLE_WARN("removing copied file %s failed: %s", copied_log, erc);
+          }};
+        copy_file(log_path, copied_log, cleanup);
+        elle::archive::archive(elle::archive::Format::tar_gzip,
+                               {copied_log, common::infinit::home()},
+                               destination,
+                               elle::archive::Renamer(),
+                               temp_file_excluder,
+                               true);
+      }
+      else
+      {
+        elle::archive::archive(elle::archive::Format::tar_gzip,
+                               {common::infinit::home()},
+                               destination,
+                               elle::archive::Renamer(),
+                               temp_file_excluder,
+                               true);
+      }
       _send_report(url, user_name, os_description,
                    reason,
                    _to_base64(destination),
@@ -413,22 +457,33 @@ namespace elle
                                       meta_port);
       elle::filesystem::TemporaryDirectory tmp;
       boost::filesystem::path destination(tmp.path() / "report.tar.bz2");
-      boost::filesystem::path infinit_home_path;
       if (user_file.size() == 0)
       {
         elle::archive::archive(elle::archive::Format::tar_gzip,
                                {common::infinit::home()},
                                destination,
                                elle::archive::Renamer(),
-                               temp_file_excluder);
+                               temp_file_excluder,
+                               true);
       }
       else
       {
+        boost::filesystem::path home(common::infinit::home());
+        boost::filesystem::path copied_log = home / "current_state.log";
+        elle::SafeFinally cleanup{
+          [&] {
+            boost::system::error_code erc;
+            boost::filesystem::remove(copied_log, erc);
+            if (erc)
+              ELLE_WARN("removing copied file %s failed: %s", copied_log, erc);
+          }};
+        copy_file(user_file, copied_log, cleanup);
         elle::archive::archive(elle::archive::Format::tar_gzip,
-                               {user_file, common::infinit::home()},
+                               {copied_log, common::infinit::home()},
                                destination,
                                elle::archive::Renamer(),
-                               temp_file_excluder);
+                               temp_file_excluder,
+                               true);
       }
       _send_report(url, user_name, os_description, message,
                    _to_base64(destination));

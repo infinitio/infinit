@@ -91,7 +91,7 @@ class Notifier:
             "$in": list(set(devices_trophonius.values()))
           }
         },
-        fields = ['ip', 'port', '_id']
+        fields = ['hostname', 'port', '_id']
       ))
 
       elle.log.debug("trophonius to contact: %s" % trophonius)
@@ -110,8 +110,8 @@ class Notifier:
         notification["user_id"] = str(owner)
         elle.log.debug("notification to be sent: %s" % notification)
         try:
-          s = socket.create_connection(address = (tropho['ip'], tropho['port']),
-                                       timeout = 4)
+          s = socket.create_connection(
+            address = (tropho['hostname'], tropho['port']), timeout = 4)
           json_str = json.dumps(notification, ensure_ascii = False) + '\n'
           s.send(json_str.encode('utf-8'))
         except Exception as e:

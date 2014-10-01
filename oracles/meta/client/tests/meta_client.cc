@@ -41,7 +41,7 @@ public:
 protected:
   virtual
   void
-  _pacify_retry() const override
+  _pacify_retry(int& retry_count) const override
   {
     reactor::sleep(10_ms);
   }

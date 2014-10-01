@@ -775,8 +775,8 @@ namespace infinit
                                  std::string const& struuid,
                                  std::string const& message) const
       {
-        ELLE_TRACE("%s: create transaction to %s with files: %s",
-                   *this, recipient_id_or_email, files);
+        ELLE_TRACE("%s: create transaction to %s with files: %s (size: %s)",
+                   *this, recipient_id_or_email, files, size);
         auto request = this->_request(
           "/transaction/create",
           Method::POST,
