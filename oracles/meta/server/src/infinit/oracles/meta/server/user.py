@@ -220,6 +220,8 @@ class Mixin:
   @property
   def user(self):
     elle.log.trace("get user from session")
+    if not hasattr(bottle.request, 'session'):
+      return None
     email = bottle.request.session.get('email', None)
     if email is not None:
       return self.user_by_email(email, ensure_existence = False)
