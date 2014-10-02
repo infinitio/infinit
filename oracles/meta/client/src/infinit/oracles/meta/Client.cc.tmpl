@@ -1383,6 +1383,7 @@ namespace infinit
               }
               case reactor::http::StatusCode::Bad_Gateway:
               case reactor::http::StatusCode::Gateway_Timeout:
+              case reactor::http::StatusCode::Internal_Server_Error:
               case reactor::http::StatusCode::Service_Unavailable:
               {
                 ELLE_WARN("%s: transient status %s requesting %s, retrying",
