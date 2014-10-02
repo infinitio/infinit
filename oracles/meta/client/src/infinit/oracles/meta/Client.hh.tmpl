@@ -332,7 +332,8 @@ namespace infinit
         _request(
           std::string const& url,
           reactor::http::Method method,
-          std::function<void (reactor::http::Request&)> const& send) const;
+          std::function<void (reactor::http::Request&)> const& send,
+          bool throw_on_status = true) const;
         reactor::http::Request
         _request(
           std::string const& url,
@@ -340,7 +341,8 @@ namespace infinit
           reactor::http::Request::QueryDict const& query_dict =
             reactor::http::Request::QueryDict(),
           std::function<void (reactor::http::Request&)> const& send =
-            [] (reactor::http::Request&) {}) const;
+            [] (reactor::http::Request&) {},
+          bool throw_on_status = true) const;
         template <typename T>
         T
         _request(std::string const& url,

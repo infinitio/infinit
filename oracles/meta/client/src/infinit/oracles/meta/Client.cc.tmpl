@@ -372,20 +372,21 @@ namespace infinit
       {
         std::string struuid = boost::lexical_cast<std::string>(device_uuid);
 
-        auto url = this->_url("/login");
-        auto request = this->_client.request(url,
-                                             Method::POST,
-                                             "application/json",
-                                             this->_default_configuration);
-        {
-          elle::serialization::json::SerializerOut output(request);
-          output.serialize("email", const_cast<std::string&>(email));
-          output.serialize("password", const_cast<std::string&>(password));
-          std::string struuid = boost::lexical_cast<std::string>(device_uuid);
-          output.serialize("device_id", struuid);
-          auto os = elle::system::platform::name();
-          output.serialize("OS", os);
-        }
+        auto url = "/login";
+        auto request = this->_request(
+          url,
+          Method::POST,
+          [&] (reactor::http::Request& r)
+          {
+            elle::serialization::json::SerializerOut output(r);
+            output.serialize("email", const_cast<std::string&>(email));
+            output.serialize("password", const_cast<std::string&>(password));
+            std::string struuid = boost::lexical_cast<std::string>(device_uuid);
+            output.serialize("device_id", struuid);
+            auto os = elle::system::platform::name();
+            output.serialize("OS", os);
+          },
+          false);
         if (request.status() == reactor::http::StatusCode::Forbidden)
         {
           SerializerIn input(url, request);
@@ -1333,18 +1334,20 @@ namespace infinit
       Client::_request(
         std::string const& url,
         reactor::http::Method method,
-        std::function<void (reactor::http::Request&)> const& send) const
+        std::function<void (reactor::http::Request&)> const& send,
+        bool throw_on_status) const
       {
-        return this->_request(url, method, reactor::http::Request::QueryDict(),
-                              send);
+        return this->_request(
+          url, method,
+          reactor::http::Request::QueryDict(), send, throw_on_status);
       }
-
       reactor::http::Request
       Client::_request(
         std::string const& url,
         Method method,
         reactor::http::Request::QueryDict const& query_dict,
-        std::function<void (reactor::http::Request&)> const& send) const
+        std::function<void (reactor::http::Request&)> const& send,
+        bool throw_on_status) const
       {
         int retry_count = 0;
         while (true)
@@ -1397,21 +1400,24 @@ namespace infinit
                   this->_pacify_retry(retry_count);
                   continue;
                 }
-                ELLE_ERR("%s: error while posting: %s", *this, status);
-                ELLE_ERR("%s: %s", *this, request.response().string());
-                ELLE_ERR("%s", elle::Backtrace::current());
-                if (status == reactor::http::StatusCode::Found)
+                if (throw_on_status)
                 {
-                  auto it = request.headers().find("Location");
-                  if (it != request.headers().end())
-                    ELLE_WARN("%s: Found location is %s", *this, *it);
-                  else
-                    ELLE_WARN("%s: Found location header is missing", *this);
+                  ELLE_ERR("%s: error while posting: %s", *this, status);
+                  ELLE_ERR("%s: %s", *this, request.response().string());
+                  ELLE_ERR("%s", elle::Backtrace::current());
+                  if (status == reactor::http::StatusCode::Found)
+                  {
+                    auto it = request.headers().find("Location");
+                    if (it != request.headers().end())
+                      ELLE_WARN("%s: Found location is %s", *this, *it);
+                    else
+                      ELLE_WARN("%s: Found location header is missing", *this);
+                  }
+                  throw elle::http::Exception(
+                    static_cast<elle::http::ResponseCode>(status),
+                    elle::sprintf("error %s while posting on %s",
+                                  status, request.url()));
                 }
-                throw elle::http::Exception(
-                  static_cast<elle::http::ResponseCode>(status),
-                  elle::sprintf("error %s while posting on %s",
-                                status, request.url()));
               }
             }
             return request;
