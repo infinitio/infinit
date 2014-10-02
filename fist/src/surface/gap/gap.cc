@@ -1677,6 +1677,7 @@ gap_send_last_crash_logs(gap_State* state,
           files.push_back(state_log);
 
           auto& _state = state->state();
+          _state.metrics_reporter()->user_crashed();
           elle::crash::existing_report(_state.meta(false).protocol(),
                                        _state.meta(false).host(),
                                        _state.meta(false).port(),
