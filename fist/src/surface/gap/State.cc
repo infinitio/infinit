@@ -15,6 +15,7 @@
 #include <elle/serialization/json/SerializerIn.hh>
 #include <elle/serialization/json/SerializerOut.hh>
 #include <elle/serialize/HexadecimalArchive.hh>
+#include <elle/system/platform.hh>
 
 #include <reactor/duration.hh>
 #include <reactor/http/exceptions.hh>
@@ -90,7 +91,8 @@ namespace surface
                                     universal_time));
         elle::log::logger(std::move(logger_ptr));
       }
-      ELLE_LOG("Infinit Version: %s", INFINIT_VERSION);
+      ELLE_LOG("Infinit Version: %s running on %s", INFINIT_VERSION,
+               elle::system::platform::os_description());
     }
 
     LoggerInitializer::~LoggerInitializer()
