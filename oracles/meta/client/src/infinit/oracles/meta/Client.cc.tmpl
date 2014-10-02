@@ -438,20 +438,17 @@ namespace infinit
       LoginResponse::Trophonius
       Client::trophonius()
       {
-        try
+        auto url = "/trophonius";
+        auto request = this->_request(url, Method::GET, false);
+        switch (request.status())
         {
-          auto url = "/trophonius";
-          auto request = this->_request(url, Method::GET);
-          SerializerIn input(url, request);
-          return LoginResponse::Trophonius(input);
-        }
-        catch (elle::http::Exception const& e)
-        {
-          if (e.code == elle::http::ResponseCode::forbidden)
+          case reactor::http::StatusCode::Forbidden:
             throw infinit::state::CredentialError();
-          else
-            throw;
+          default:
+            this->_handle_errors(request);
         }
+        SerializerIn input(url, request);
+        return LoginResponse::Trophonius(input);
       }
 
       std::string
