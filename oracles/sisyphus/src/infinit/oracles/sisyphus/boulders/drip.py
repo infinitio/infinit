@@ -6,13 +6,12 @@ import json
 import requests
 import time
 
-import infinit.oracles.sisyphus
-
+from .. import Boulder
 from infinit.oracles.utils import key
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.boulders.drip'
 
-class Drip(infinit.oracles.sisyphus.Boulder):
+class Drip(Boulder):
 
   def __init__(self, sisyphus, campaign):
     super().__init__(sisyphus)
