@@ -3,7 +3,7 @@ import datetime
 import elle
 
 from infinit.oracles.utils import api, mongo_connection
-import infinit.oracles.sisyphus.version
+from . import version
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.Sisyphus'
 
@@ -36,7 +36,7 @@ class Sisyphus(bottle.Bottle):
   @api('/')
   def status(self):
     return {
-      'version': infinit.oracles.sisyphus.version.version,
+      'version': version.version,
     }
 
   @api('/cron')
