@@ -20,9 +20,10 @@ class Plugin(object):
   def remove(self, query):
     with elle.log.trace("remove session for %s" % query):
       assert len(query)
-      sid = bottle.request.session_id
-      if sid is not None:
-        query.update({'_id': {'$ne': sid}})
+      if hasattr(bottle.request, 'session'):
+        sid = bottle.request.session_id
+        if sid is not None:
+          query.update({'_id': {'$ne': sid}})
       res = self.__database.sessions.remove(query)
       elle.log.debug("res: %s" % res)
 

@@ -237,12 +237,35 @@ class Mixin:
     return user
 
   @api('/user/register', method = 'POST')
-  def register(self,
-               email,
-               password,
-               fullname,
-               source = None,
-               activation_code = None):
+  def user_register_api(self,
+                        email,
+                        password,
+                        fullname,
+                        source = None,
+                        activation_code = None):
+    if self.user is not None:
+      return self.fail(error.ALREADY_LOGGED_IN)
+    try:
+      user = self.user_register(email = email,
+                                password = password,
+                                fullname = fullname,
+                                source = source,
+                                activation_code = activation_code)
+      return self.success({
+        'registered_user_id': user['_id'],
+        'invitation_source': '',
+        'unconfirmed_email_leeway': self.unconfirmed_email_leeway,
+      })
+    except Exception as e:
+      return self.fail(e.args[0])
+
+
+  def user_register(self,
+                    email,
+                    password,
+                    fullname,
+                    source = None,
+                    activation_code = None):
     """Register a new user.
 
     email -- the account email.
@@ -259,11 +282,9 @@ class Mixin:
     for arg, validator in _validators:
       res = validator(arg)
       if res != 0:
-        return self.fail(res)
+        raise Exception(res)
     fullname = fullname.strip()
     with elle.log.trace("registration: %s as %s" % (email, fullname)):
-      if self.user is not None:
-        return self.fail(error.ALREADY_LOGGED_IN)
       email = email.strip().lower()
       import hashlib
       hash = str(time.time()) + email
@@ -326,10 +347,10 @@ class Mixin:
           if user is None:
             # The ghost was already transformed - prevent the race
             # condition.
-            return self.fail(error.EMAIL_ALREADY_REGISTERED)
+            raise Exception(error.EMAIL_ALREADY_REGISTERED)
         else:
           # The user existed.
-          return self.fail(error.EMAIL_ALREADY_REGISTERED)
+          raise Exception(error.EMAIL_ALREADY_REGISTERED)
       user_id = user['_id']
       with elle.log.trace('generate identity'):
         identity, public_key = papier.generate_identity(
@@ -371,11 +392,7 @@ class Mixin:
             'user_id': str(user['_id']),
           }}
       )
-      return self.success({
-        'registered_user_id': user_id,
-        'invitation_source': '',
-        'unconfirmed_email_leeway': self.unconfirmed_email_leeway,
-      })
+      return user
 
   def __account_from_hash(self, hash):
     with elle.log.debug('get user account from hash %s' % hash):
@@ -695,9 +712,20 @@ class Mixin:
   ## ------ ##
   ## Delete ##
   ## ------ ##
+
   @api('/user', method = 'DELETE')
   @require_logged_in
-  def delete_user(self):
+  def user_delete_self(self):
+    user = self.user
+    self.logout()
+    self.user_delete(user)
+
+  @api('/users/<user>', method = 'DELETE')
+  @require_admin
+  def user_delete_specifyc(self, user: str):
+    self.user_delete(self.user_by_id_or_email(user))
+
+  def user_delete(self, user):
     """The idea is to just keep the user's id and fullname so that transactions
        can still be shown properly to other users. We will leave them in other
        users's swagger lists as we may want to generate the transaction history
@@ -712,7 +740,6 @@ class Mixin:
        Considerations:
        - Keep the process as atomic at the DB level as possible.
     """
-    user = self.user
     # Invalidate credentials.
     self.sessions.remove({'email': user['email'], 'device': ''})
     # Kick them out of the app.
@@ -720,7 +747,6 @@ class Mixin:
       notifier.INVALID_CREDENTIALS,
       recipient_ids = {user['_id']},
       message = {'response_details': 'user deleted'})
-    self.logout()
     self.invitation.unsubscribe(user['email'])
     self.cancel_transactions(user)
     self.delete_all_links(user)
@@ -760,12 +786,11 @@ class Mixin:
     self.notifier.notify_some(notifier.DELETED_SWAGGER,
       recipient_ids = swaggers,
       message = {'user_id': user['_id']})
-    self.remove_user_as_favorite_and_notify(user['_id'])
+    self.remove_user_as_favorite_and_notify(user)
     return self.success()
 
-  def remove_user_as_favorite_and_notify(self, user_id = None):
-    if user_id is None:
-      user_id = self.user['_id']
+  def remove_user_as_favorite_and_notify(self, user):
+    user_id = user['_id']
     recipient_ids = [str(u['_id']) for u in self.database.users.find(
       {'favorites': user_id},
       fields = ['_id']
@@ -782,9 +807,8 @@ class Mixin:
       multi = True,
     )
 
-  def remove_swaggers_and_notify(self, user_id = None):
-    if user_id is None:
-      user_id = self.user['_id']
+  def remove_swaggers_and_notify(self, user):
+    user_id = user['_id']
     swaggers = self.database.users.find_one(
       {'_id': user_id},
       fields = ['swaggers']
