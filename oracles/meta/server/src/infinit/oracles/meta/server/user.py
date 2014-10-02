@@ -308,7 +308,7 @@ class Mixin:
         'accounts': [
           {'type':'email', 'id': email}
         ],
-        'creation_time': datetime.datetime.utcnow(),
+        'creation_time': self.now,
         'email_confirmed': False,
         'unconfirmed_email_deadline':
           time.time() + self.unconfirmed_email_leeway,
@@ -470,7 +470,7 @@ class Mixin:
         response(404, {'reason': 'email is already confirmed'})
       assert user.get('email_confirmation_hash') is not None
       # XXX: Waiting for mandrill to put cooldown on mail.
-      now = datetime.datetime.utcnow()
+      now = self.now
       confirmation_cooldown = now - self.email_confirmation_cooldown
       res = self.database.users.find_and_modify(
         {

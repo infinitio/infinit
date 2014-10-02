@@ -382,3 +382,7 @@ Error while querying %(route)s:
         subject = ('Meta: unable to create unique short link after %s tries' %
                    retries),
         body = 'No body')
+
+  @property
+  def now(self):
+    return datetime.datetime.utcnow()
