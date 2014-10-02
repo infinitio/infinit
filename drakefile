@@ -247,6 +247,9 @@ def configure(cxx_toolkit = None,
   papier_python_lib = None
   if python3 is not None:
     papier_python_cxx_config = drake.cxx.Config(cxx_config)
+    if cxx_toolkit.os is drake.os.macos:
+      papier_python_cxx_config.flag('-framework')
+      papier_python_cxx_config.flag('CoreServices')
     papier_python_sources = drake.nodes('papier/src/papier/python.cc')
     papier_python_sources.append(papier_lib)
     papier_python_cxx_config += boost_filesystem
@@ -689,7 +692,7 @@ def configure(cxx_toolkit = None,
   state_cxx_config_libs += boost_signals
   state_cxx_config_libs += boost_system
   state_cxx_config_libs += boost_thread
-  if cxx_toolkit.os == drake.os.windows:
+  if cxx_toolkit.os is drake.os.windows:
     state_cxx_config_libs.lib('shlwapi')
     state_cxx_config_libs.lib('ws2_32')
     state_cxx_config_libs.lib('gdi32')

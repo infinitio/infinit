@@ -508,7 +508,9 @@ namespace infinit
                 version["subminor"] = INFINIT_VERSION_SUBMINOR;
                 connection_request["version"] = version;
               }
-              connection_request["os"] = elle::system::platform::name();
+              connection_request["os"] = elle::system::platform::os_name();
+              connection_request["os_version"] =
+                elle::system::platform::os_version();
             }
 
             ELLE_DEBUG("%s: identification", *this)

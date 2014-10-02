@@ -383,7 +383,7 @@ namespace infinit
             output.serialize("password", const_cast<std::string&>(password));
             std::string struuid = boost::lexical_cast<std::string>(device_uuid);
             output.serialize("device_id", struuid);
-            auto os = elle::system::platform::name();
+            auto os = elle::system::platform::os_name();
             output.serialize("OS", os);
           },
           false);
