@@ -44,7 +44,7 @@ if options.mongo_replica_set:
   args['mongo_replica_set'] = options.mongo_host
 
 app = infinit.oracles.sisyphus.Sisyphus()
-infinit.oracles.sisyphus.boulders.drip.RegisteredNoTransfer(app)
+infinit.oracles.sisyphus.boulders.drip.Onboarding(app)
 
 bottle.run(app = app,
            host = '127.0.0.1',

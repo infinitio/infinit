@@ -190,7 +190,7 @@ class Drip(infinit.oracles.sisyphus.Boulder):
 #    -> unactivated_1 -> unactivated_2 -> unactivated_3
 #
 
-class RegisteredNoTransfer(Drip):
+class Onboarding(Drip):
 
   def __init__(self, sisyphus):
     super().__init__(sisyphus, 'onboarding')
