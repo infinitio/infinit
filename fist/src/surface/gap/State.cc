@@ -949,7 +949,7 @@ namespace surface
       {
         auto tropho = this->_meta.trophonius();
         std::string host = tropho.host;
-        int port = tropho.port;
+        int port = tropho.port_ssl;
         if (!this->_forced_trophonius_host.empty())
           host = this->_forced_trophonius_host;
         if (this->_forced_trophonius_port != 0)
