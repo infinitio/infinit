@@ -332,6 +332,7 @@ namespace infinit
           _pong_signal(),
           _pong_thread(),
           _read_thread(),
+          _connect_timeout(20_sec),
           _poke_timeout(15_sec)
         {}
 
@@ -514,7 +515,7 @@ namespace infinit
               elle::json::write(*this->_socket, connection_request);
 
             ELLE_DEBUG("%s: wait for confirmation", *this);
-            auto notif = read();
+            auto notif = read(this->connect_timeout());
 
             ELLE_ASSERT(notif != nullptr);
             ELLE_DEBUG("%s: read: %s", *this, *notif);
@@ -536,6 +537,12 @@ namespace infinit
 
             ELLE_LOG("%s: connected", *this);
             this->_connected.open();
+          }
+          catch (reactor::network::TimeOut const& e)
+          {
+            ELLE_WARN("%s: timeout after %s while connecting", *this,
+                      this->connect_timeout());
+            return;
           }
           catch (reactor::network::Exception const& e)
           {
@@ -743,11 +750,11 @@ namespace infinit
         }
 
         std::unique_ptr<Notification>
-        read()
+        read(reactor::Duration timeout)
         {
           ELLE_DUMP_SCOPE("%s: read message", *this);
           auto socket = this->_socket;
-          auto buffer = socket->read_until("\n");
+          auto buffer = socket->read_until("\n", timeout);
           ELLE_TRACE("%s: got message: %f", *this, buffer);
           elle::InputStreamBuffer<elle::Buffer> streambuffer(buffer);
           std::istream input(&streambuffer);
@@ -767,9 +774,18 @@ namespace infinit
             reactor::wait(this->_connected);
             ELLE_DUMP("%s: read thread: connected", *this);
             auto notif = std::unique_ptr<Notification>();
+            // The read timeout should never be less than the ping timeout.
+            reactor::Duration read_timeout = this->_ping_timeout * 3;
             try
             {
-              notif = this->read();
+              notif = this->read(read_timeout);
+            }
+            catch (reactor::network::TimeOut const& e)
+            {
+              ELLE_WARN("%s: timeout after %s while reading", *this,
+                        read_timeout);
+              this->_reconnect();
+              continue;
             }
             catch (elle::Exception const& e)
             {
@@ -820,6 +836,7 @@ namespace infinit
 
         typedef reactor::Channel<std::unique_ptr<Notification>> Notifications;
         ELLE_ATTRIBUTE(Notifications, notifications);
+        ELLE_ATTRIBUTE_RW(reactor::Duration, connect_timeout);
         ELLE_ATTRIBUTE_RW(reactor::Duration, poke_timeout);
       };
 
@@ -917,6 +934,12 @@ namespace infinit
       Client::poke_timeout(reactor::Duration const& timeout)
       {
         this->_impl->poke_timeout(timeout);
+      }
+
+      void
+      Client::connect_timeout(reactor::Duration const& timeout)
+      {
+        this->_impl->connect_timeout(timeout);
       }
 
       bool
