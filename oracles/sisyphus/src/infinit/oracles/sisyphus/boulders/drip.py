@@ -57,7 +57,7 @@ class Drip(infinit.oracles.sisyphus.Boulder):
       start_condition = {field: {'$in': start}}
     condition.update(start_condition)
     condition[field_lock] = {'$exists': False}
-    # Uncomment this to go in full test mode.
+    # # Uncomment this to go in full test mode.
     # print('%s -> %s: %s' % (start, end, meta.users.find(condition).count()))
     # return {}
     meta.users.update(
@@ -247,6 +247,22 @@ class RegisteredNoTransfer(Drip):
       {
         # Did a transaction
         'last_transaction.time': {'$exists': True},
+      },
+      variations = ('var1', 'var2'),
+    )
+    response.update(transited)
+    # unactivated_1 -> unactivated_2
+    transited = self.transition(
+      'unactivated_1',
+      'unactivated_2',
+      {
+        # Registered more than 3 days ago.
+        'creation_time':
+        {
+          '$lt': datetime.datetime.utcnow() - datetime.timedelta(days = 4),
+        },
+        # Never did a transaction
+        'last_transaction.time': {'$exists': False},
       },
       variations = ('var1', 'var2'),
     )
