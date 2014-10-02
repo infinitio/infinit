@@ -14,8 +14,8 @@ class Sisyphus(bottle.Bottle):
                mongo_host = None,
                mongo_port = None,
                mongo_replica_set = None,
+               mandrill = None,
   ):
-    import mandrill
     super().__init__()
     self.__mongo = mongo_connection(
       mongo_host = mongo_host,
@@ -23,7 +23,12 @@ class Sisyphus(bottle.Bottle):
       mongo_replica_set = mongo_replica_set)
     self.__boulders = set()
     api.register(self)
-    self.__mandrill = mandrill.Mandrill(apikey = 'ca159fe5-a0f7-47eb-b9e1-2a8f03b9da86')
+    if mandrill is not None:
+      self.__mandrill = mandrill
+    else:
+      import mandrill
+
+      self.__mandrill = mandrill.Mandrill(apikey = 'ca159fe5-a0f7-47eb-b9e1-2a8f03b9da86')
 
   @property
   def mongo(self):
