@@ -573,28 +573,16 @@ namespace infinit
         if (handle.size() == 0)
           throw elle::Exception("No handle");
         std::string url = elle::sprintf("/users/from_handle/%s", handle);
-        auto request = this->_client.request(
-          this->_url(url), Method::GET, this->_default_configuration);
-        if (request.status() == reactor::http::StatusCode::OK)
+        auto request = this->_request(this->_url(url), Method::GET, false);
+        switch (request.status())
         {
-          SerializerIn input(url, request);
-          return User(input);
+          case reactor::http::StatusCode::Not_Found:
+            throw infinit::state::UserNotFoundError(handle);
+          default:
+            this->_handle_errors(request);
         }
-        else if (request.status() == reactor::http::StatusCode::Not_Found)
-        {
-          throw infinit::state::UserNotFoundError(handle);
-        }
-        else
-        {
-          ELLE_ERR("%s: error while getting user by handle (%s): %s: %s",
-                   *this, handle, request.status(),
-                   request.response().string());
-          ELLE_ERR("%s", elle::Backtrace::current());
-          throw elle::http::Exception(
-            static_cast<elle::http::ResponseCode>(request.status()),
-            elle::sprintf("error %s while getting on %s",
-                          request.status(), request.url()));
-        }
+        SerializerIn input(url, request);
+        return User(input);
       }
 
       User
