@@ -1049,6 +1049,46 @@ ELLE_TEST_SCHEDULED(invalid_credentials)
                     int(NotificationCode::INVALID_CREDENTAILS_NOTIFICATION));
 }
 
+/*---------------------.
+| Connect Read Timeout |
+`---------------------*/
+
+// Ensure that client handles read timeouts on connection correctly.
+
+class ConnectReadTimeoutTrophonius
+  : public Trophonius
+{
+public:
+  ConnectReadTimeoutTrophonius()
+    : Trophonius()
+  {}
+
+protected:
+  virtual
+  void
+  _serve(reactor::network::Socket& socket) override
+  {
+    ELLE_LOG("%s: get login", *this);
+    auto connect_data = elle::json::read(socket);
+    reactor::Scheduler::scheduler()->current()->Waitable::wait();
+  }
+};
+
+ELLE_TEST_SCHEDULED(connect_read_timeout)
+{
+  ConnectReadTimeoutTrophonius tropho;
+  infinit::oracles::trophonius::Client client(
+    "127.0.0.1",
+    tropho.port(),
+    [] (bool connected) { if (connected) reactor::sleep(2_sec); },
+    [] (void) {},
+    fingerprint);
+  client.connect_timeout(500_ms);
+  bool res = client.connect("0", "0", "0");
+  BOOST_CHECK_EQUAL(res, false);
+}
+
+
 // Test suite
 
 ELLE_TEST_SUITE()
@@ -1066,6 +1106,7 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(notify_disconnect), 0, timeout);
   suite.add(BOOST_TEST_CASE(login_reconnect), 0, timeout);
   suite.add(BOOST_TEST_CASE(invalid_credentials), 0, timeout);
+  suite.add(BOOST_TEST_CASE(connect_read_timeout), 0, timeout);
 }
 
 const std::vector<unsigned char> fingerprint =
