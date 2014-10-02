@@ -40,7 +40,7 @@ class Sisyphus(bottle.Bottle):
     }
 
   @api('/cron')
-  def status(self):
+  def cron(self):
     response = {}
     for boulder in self.__boulders:
       response[str(boulder)] = boulder.run()
