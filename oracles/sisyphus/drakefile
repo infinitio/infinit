@@ -34,15 +34,17 @@ def configure(
     build = drake.Rule('build')
     build_python_path = drake.Path('lib/python')
     sources_built = drake.copy(sources, build_python_path, 'src')
+    sources_built.append(version)
     elle_python = drake.copy(elle.elle.python, '.', '../../elle/elle')
     for source in sources_built:
       source.dependencies_add(elle_python)
+    sisyphus = drake.python.Package(
+      'python',
+      build_python_path,
+      sources_built + drake.copy(python_common, '.', '..') + drake.copy(bottle, build_python_path, True) + [version])
     build_binary = drake.copy(drake.node('sisyphus'), 'bin')
-    build << sources_built
-    build << version
-    build << drake.copy(bottle, build_python_path, True)
+    build << sisyphus
     build << build_binary
-    build << drake.copy(python_common, '.', '..')
 
     check = drake.Rule('check')
     for name in (
