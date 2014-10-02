@@ -566,8 +566,7 @@ gap_Status
 gap_send_user_report(gap_State* state,
                      std::string const& user_name,
                      std::string const& message,
-                     std::string const& file,
-                     std::string const& os_description);
+                     std::string const& file);
 
 /// Send existing crash log to the server
 gap_Status
@@ -575,7 +574,6 @@ gap_send_last_crash_logs(gap_State* state,
                          std::string const& user_name,
                          std::string const& crash_report,
                          std::string const& state_log,
-                         std::string const& os_description,
                          std::string const& additional_info);
 
 #endif

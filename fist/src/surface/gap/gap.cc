@@ -1626,8 +1626,7 @@ gap_Status
 gap_send_user_report(gap_State* state,
                      std::string const& user_name,
                      std::string const& message,
-                     std::string const& file,
-                     std::string const& os_description)
+                     std::string const& file)
 {
   // In order to avoid blocking the GUI, let's create a disposable thread and
   // let it go.
@@ -1646,7 +1645,6 @@ gap_send_user_report(gap_State* state,
                                    _state.meta(false).host(),
                                    _state.meta(false).port(),
                                    user_name,
-                                   os_description,
                                    message,
                                    file);
           return gap_ok;
@@ -1660,7 +1658,6 @@ gap_send_last_crash_logs(gap_State* state,
                          std::string const& user_name,
                          std::string const& crash_report,
                          std::string const& state_log,
-                         std::string const& os_description,
                          std::string const& additional_info)
 {
   // In order to avoid blocking the GUI, let's create a disposable thread and
@@ -1685,7 +1682,6 @@ gap_send_last_crash_logs(gap_State* state,
                                        _state.meta(false).port(),
                                        files,
                                        user_name,
-                                       os_description,
                                        additional_info);
           return gap_ok;
         }, "send last crash report");
