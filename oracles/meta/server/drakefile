@@ -16,8 +16,7 @@ def configure(elle,
               python3,
               python_common,
               papier_python,
-              prefix = drake.Path('/usr/local'),
-              cxx_toolkit = None):
+              prefix = drake.Path('/usr/local')):
 
   global build, check, install
   global meta, python
