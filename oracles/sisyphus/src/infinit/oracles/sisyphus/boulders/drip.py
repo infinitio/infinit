@@ -19,8 +19,9 @@ class Drip(Boulder):
     self.__lock = bson.ObjectId()
     self.sisyphus.mongo.meta.users.ensure_index(
       [
-        ('emailing.lock', pymongo.ASCENDING),
-      ])
+        (self.field_lock, pymongo.ASCENDING),
+      ],
+      sparse = True)
 
   @property
   def campaign(self):
@@ -33,6 +34,10 @@ class Drip(Boulder):
   @property
   def lock_id(self):
     return self.__lock
+
+  @property
+  def field_lock(self):
+    return 'emailing.%s.lock' % self.campaign
 
   def __distribute(self, n_users, n_variations):
     import random
@@ -47,7 +52,6 @@ class Drip(Boulder):
   def transition(self, start, end, condition, variations = None):
     meta = self.sisyphus.mongo.meta
     field = 'emailing.%s.state' % self.campaign
-    field_lock = 'emailing.%s.lock' % self.campaign
     if start is None:
       start_condition = {field: {'$exists': False}}
     elif isinstance(start, str):
@@ -55,7 +59,7 @@ class Drip(Boulder):
     else:
       start_condition = {field: {'$in': start}}
     condition.update(start_condition)
-    condition[field_lock] = {'$exists': False}
+    condition[self.field_lock] = {'$exists': False}
     # # Uncomment this to go in full test mode.
     # print('%s -> %s: %s' % (start, end, meta.users.find(condition).count()))
     # return {}
@@ -64,13 +68,13 @@ class Drip(Boulder):
       {
         '$set':
         {
-          field_lock: self.lock_id,
+          self.field_lock: self.lock_id,
         },
       },
       multi = True,
     )
     users = list(meta.users.find(
-      {field_lock: self.lock_id},
+      {self.field_lock: self.lock_id},
       fields = self.user_fields,
     ))
     template = 'drip-%s-%s' % (self.campaign, end.replace('_', '-'))
@@ -80,7 +84,7 @@ class Drip(Boulder):
                             users,
                             variations = variations)
       meta.users.update(
-        {field_lock: self.lock_id},
+        {self.field_lock: self.lock_id},
         {
           '$set':
           {
@@ -88,7 +92,7 @@ class Drip(Boulder):
           },
           '$unset':
           {
-            field_lock: True,
+            self.field_lock: True,
           },
         },
         multi = True,
@@ -199,6 +203,7 @@ class Onboarding(Drip):
       [
         ('emailing.onboarding.state', pymongo.ASCENDING),
         ('register_status', pymongo.ASCENDING),
+        ('creation_time', pymongo.ASCENDING),
       ])
 
   @property
@@ -259,6 +264,8 @@ class Onboarding(Drip):
       'unactivated_1',
       'unactivated_2',
       {
+        # Fully registered
+        'register_status': 'ok',
         # Registered more than 3 days ago.
         'creation_time':
         {
