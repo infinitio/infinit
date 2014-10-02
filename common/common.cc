@@ -172,24 +172,6 @@ namespace common
       return home_dir;
     }
 
-    std::string const&
-    platform()
-    {
-      static std::string const platform_ =
-#ifdef INFINIT_LINUX
-        "linux";
-#elif INFINIT_MACOSX
-        "macosx";
-#elif INFINIT_IOS
-        "ios";
-#elif INFINIT_WINDOWS
-        "windows";
-#else
-# error "this platform is not supported"
-#endif
-        return platform_;
-    }
-
     unsigned int
     architecture()
     {

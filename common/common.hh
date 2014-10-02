@@ -105,10 +105,6 @@ namespace common
     std::string const&
     download_directory();
 
-    /// Returns the platform name (linux, macosx or windows)
-    std::string const&
-    platform();
-
     /// Returns the architecture in bits.
     unsigned int
     architecture();
