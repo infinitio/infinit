@@ -1334,6 +1334,19 @@ namespace infinit
       Client::_request(
         std::string const& url,
         reactor::http::Method method,
+        bool throw_on_status) const
+      {
+        return this->_request(
+          url, method,
+          reactor::http::Request::QueryDict(),
+          [] (reactor::http::Request&) {},
+          throw_on_status);
+      }
+
+      reactor::http::Request
+      Client::_request(
+        std::string const& url,
+        reactor::http::Method method,
         std::function<void (reactor::http::Request&)> const& send,
         bool throw_on_status) const
       {
@@ -1341,6 +1354,7 @@ namespace infinit
           url, method,
           reactor::http::Request::QueryDict(), send, throw_on_status);
       }
+
       reactor::http::Request
       Client::_request(
         std::string const& url,

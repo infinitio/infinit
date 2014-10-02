@@ -332,14 +332,18 @@ namespace infinit
         _request(
           std::string const& url,
           reactor::http::Method method,
+          bool throw_on_status = true) const;
+        reactor::http::Request
+        _request(
+          std::string const& url,
+          reactor::http::Method method,
           std::function<void (reactor::http::Request&)> const& send,
           bool throw_on_status = true) const;
         reactor::http::Request
         _request(
           std::string const& url,
           reactor::http::Method method,
-          reactor::http::Request::QueryDict const& query_dict =
-            reactor::http::Request::QueryDict(),
+          reactor::http::Request::QueryDict const& query_dict,
           std::function<void (reactor::http::Request&)> const& send =
             [] (reactor::http::Request&) {},
           bool throw_on_status = true) const;
