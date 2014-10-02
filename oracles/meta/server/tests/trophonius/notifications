@@ -25,6 +25,10 @@ class Trophonius:
       representation = str(client.recv(65535), 'utf-8')
       representation = representation[:-1] # remove \n
       d = json.loads(representation)
+      if d['notification']['notification_type'] == 14:
+        self.socket.listen(1)
+        self.poll()
+        return
       d['notification'].pop('timestamp')
       assert expected[d['device_id']] == d['notification']
       self.socket.listen(1)
