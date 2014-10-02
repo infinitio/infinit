@@ -58,7 +58,7 @@ def configure(
       runner = drake.Runner(
         test,
         env = {
-          'PYTHONPATH': ':'.join(map(str, chain(meta.pythonpath, mongobox.pythonpath)))
+          'PYTHONPATH': ':'.join(map(str, chain((drake.path_build(build_python_path / 'infinit/oracles'),), meta.pythonpath, mongobox.pythonpath)))
         })
       runner.reporting = drake.Runner.Reporting.on_failure
       check << runner.status

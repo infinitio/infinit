@@ -2,5 +2,53 @@
 
 # Meta first, for papier and OpenSSL
 import infinit.oracles.meta.server
+from infinit.oracles.meta.server.utils import hash_pasword
 
+import bottle
+import hashlib
 import mongobox
+
+import sisyphus
+
+class Meta(infinit.oracles.meta.server.Meta):
+
+  def __enter__(self):
+    def run():
+      try:
+        bottle.run(app = self,
+                   quiet = True,
+                   server = self.__server)
+      except KeyboardInterrupt:
+        pass
+    import threading
+    self.__server = bottle.WSGIRefServer(port = 0)
+    self.__thread = threading.Thread(target = run)
+    self.__thread.daemon = True
+    self.__thread.start()
+    while self.__server.port == 0 and self.__thread.is_alive():
+      import time
+      time.sleep(.1)
+    return self
+
+
+  def __exit__(self, *args, **kwargs):
+    pass
+
+
+class Mandrill:
+
+  @property
+  def emails(self):
+    return []
+
+
+with mongobox.MongoBox() as mongo:
+  with Meta(mongo_port = mongo.port) as meta:
+    mandrill = Mandrill()
+    sisyphus = sisyphus.Sisyphus(mongo_port = mongo.port,
+                                 mandrill = mandrill)
+    sisyphus.cron()
+    assert not mandrill.emails
+
+    meta.register('em@ail.com', '*' * 64, 'Foo Bar')
+    sisyphus.cron()
