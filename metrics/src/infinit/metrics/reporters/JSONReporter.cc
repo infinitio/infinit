@@ -2,6 +2,7 @@
 
 #include <elle/log.hh>
 #include <elle/os/environ.hh>
+#include <elle/system/platform.hh>
 
 #include <reactor/exception.hh>
 #include <reactor/http/exceptions.hh>
@@ -292,6 +293,8 @@ namespace infinit
       version["subminor"] = INFINIT_VERSION_SUBMINOR;
       elle::json::Object infinit;
       infinit["version"] = std::move(version);
+      // Should use elle::system::platform::name() but use this for backwards
+      // compatibility.
       infinit["os"] = std::string(
 #ifdef INFINIT_LINUX
         "Linux"
@@ -303,6 +306,7 @@ namespace infinit
 # error "machine not supported"
 #endif
          );
+      infinit["os_version"] = elle::system::platform::os_version();
       data["infinit"] = std::move(infinit);
       try
       {
