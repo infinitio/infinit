@@ -201,6 +201,10 @@ class Onboarding(Drip):
         ('register_status', pymongo.ASCENDING),
       ])
 
+  @property
+  def now(self):
+    return datetime.datetime.utcnow()
+
   def run(self):
     response = {}
     # -> activated
@@ -213,7 +217,7 @@ class Onboarding(Drip):
         # Registered more than a day ago.
         'creation_time':
         {
-          '$lt': datetime.datetime.utcnow() - datetime.timedelta(days = 1),
+          '$lt': self.now - datetime.timedelta(days = 1),
         },
         # Did a transaction
         'last_transaction.time': {'$exists': True},
@@ -231,7 +235,7 @@ class Onboarding(Drip):
         # Registered more than a day ago.
         'creation_time':
         {
-          '$lt': datetime.datetime.utcnow() - datetime.timedelta(days = 1),
+          '$lt': self.now - datetime.timedelta(days = 1),
         },
         # Never did a transaction
         'last_transaction.time': {'$exists': False},
@@ -258,7 +262,7 @@ class Onboarding(Drip):
         # Registered more than 3 days ago.
         'creation_time':
         {
-          '$lt': datetime.datetime.utcnow() - datetime.timedelta(days = 4),
+          '$lt': self.now - datetime.timedelta(days = 4),
         },
         # Never did a transaction
         'last_transaction.time': {'$exists': False},
@@ -274,7 +278,7 @@ class Onboarding(Drip):
     #     # Registered more than 3 days ago.
     #     'creation_time':
     #     {
-    #       '$lt': datetime.datetime.utcnow() - datetime.timedelta(days = 3),
+    #       '$lt': self.now - datetime.timedelta(days = 3),
     #     },
     #     # Never did a transaction
     #     'last_transaction.time': {'$exists': True},
@@ -289,7 +293,7 @@ class Onboarding(Drip):
     #     # Registered more than 7 days ago.
     #     'creation_time':
     #     {
-    #       '$lt': datetime.datetime.utcnow() - datetime.timedelta(days = 7),
+    #       '$lt': self.now - datetime.timedelta(days = 7),
     #     },
     #     # Never did a transaction
     #     'last_transaction.time': {'$exists': True},
@@ -304,7 +308,7 @@ class Onboarding(Drip):
     #     # Did a transaction
     #     'last_transaction.time':
     #     {
-    #       '$lt': datetime.datetime.utcnow() - datetime.timedelta(days = 7),
+    #       '$lt': self.now - datetime.timedelta(days = 7),
     #     },
     #   },
     # )
