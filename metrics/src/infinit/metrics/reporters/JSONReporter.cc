@@ -277,6 +277,15 @@ namespace infinit
       this->_send(this->_user_dest, data);
     }
 
+    void
+    JSONReporter::_user_crashed()
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] = std::string("app/crashed");
+
+      this->_send(this->_user_dest, data);
+    }
+
     /*-----.
     | Send |
     `-----*/

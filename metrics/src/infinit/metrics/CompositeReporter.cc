@@ -287,5 +287,12 @@ namespace infinit
       this->_dispatch(
         std::bind(&Reporter::_user_proxy, std::placeholders::_1, proxy_type));
     }
+
+    void
+    CompositeReporter::_user_crashed()
+    {
+      this->_dispatch(
+        std::bind(&Reporter::_user_crashed, std::placeholders::_1));
+    }
   }
 }

@@ -243,6 +243,9 @@ namespace infinit
       void
       user_proxy(reactor::network::ProxyType proxy_type);
 
+      void
+      user_crashed();
+
     /// User metrics implementation.
     protected:
       virtual
@@ -279,6 +282,10 @@ namespace infinit
       virtual
       void
       _user_proxy(reactor::network::ProxyType proxy_type);
+
+      virtual
+      void
+      _user_crashed();
 
     /// Queue handling.
     private:

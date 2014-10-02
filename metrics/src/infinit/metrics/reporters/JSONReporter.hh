@@ -176,6 +176,10 @@ namespace infinit
       void
       _user_proxy(reactor::network::ProxyType proxy_type);
 
+      virtual
+      void
+      _user_crashed();
+
     /// Private helper functions.
     private:
       std::string

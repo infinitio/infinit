@@ -138,6 +138,10 @@ namespace infinit
       void
       _user_proxy(reactor::network::ProxyType proxy_type);
 
+      virtual
+      void
+      _user_crashed();
+
     /// Dispatch metrics.
     private:
       void
