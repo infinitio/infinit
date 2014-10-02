@@ -66,7 +66,6 @@ namespace elle
                     uint16_t meta_port,
                     std::vector<std::string> const& files,
                     std::string const& user_name = "",
-                    std::string const& os_description = "",
                     std::string const& info = "");
 
     /// Function for sending a report when a transfer fails.
@@ -84,7 +83,6 @@ namespace elle
                 std::string const& meta_host,
                 uint16_t meta_port,
                 std::string const& user_name = "",
-                std::string const& os_description = "",
                 std::string const& message = "",
                 std::string const& user_file = "");
 

@@ -233,7 +233,6 @@ namespace elle
     static
     _send_report(std::string const& url,
                  std::string const& user_name,
-                 std::string const& os_description,
                  std::string const& message,
                  std::string file,
                  std::map<std::string, std::string> const& extra_fields
@@ -260,7 +259,7 @@ namespace elle
         json_dict[f.first] = f.second;
       {
         json_dict["user_name"] = user_name;
-        json_dict["client_os"] = os_description;
+        json_dict["client_os"] = elle::system::platform::os_description();
         if (!message.empty())
           json_dict["message"] = message;
         json_dict["env"] = env_arr;
@@ -358,7 +357,6 @@ namespace elle
                     uint16_t meta_port,
                     std::vector<std::string> const& files,
                     std::string const& user_name,
-                    std::string const& os_description,
                     std::string const& info)
     {
       ELLE_TRACE("report last crash");
@@ -386,8 +384,7 @@ namespace elle
                              elle::archive::Renamer(),
                              temp_file_excluder,
                              true);
-      _send_report(url, user_name, os_description, "",
-                   _to_base64(destination));
+      _send_report(url, user_name, "", _to_base64(destination));
     }
 
     void
@@ -400,7 +397,6 @@ namespace elle
     {
       ELLE_TRACE("transaction failed report, attaching %s",
                  common::infinit::home());
-      std::string os_description{common::system::platform()};
       std::string url = elle::sprintf("%s://%s:%s/debug/report/transaction",
                                       meta_protocol,
                                       meta_host,
@@ -437,9 +433,7 @@ namespace elle
                                temp_file_excluder,
                                true);
       }
-      _send_report(url, user_name, os_description,
-                   reason,
-                   _to_base64(destination),
+      _send_report(url, user_name, reason, _to_base64(destination),
                   {{"transaction_id", transaction_id}});
     }
 
@@ -448,7 +442,6 @@ namespace elle
                 std::string const& meta_host,
                 uint16_t meta_port,
                 std::string const& user_name,
-                std::string const& os_description,
                 std::string const& message,
                 std::string const& user_file)
     {
@@ -487,8 +480,7 @@ namespace elle
                                temp_file_excluder,
                                true);
       }
-      _send_report(url, user_name, os_description, message,
-                   _to_base64(destination));
+      _send_report(url, user_name, message, _to_base64(destination));
     }
   }
 }
