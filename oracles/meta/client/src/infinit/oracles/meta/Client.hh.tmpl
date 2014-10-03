@@ -228,12 +228,6 @@ namespace infinit
         std::string updated_transaction_id;
       };
 
-      struct EndpointNodeResponse : Response
-      {
-        std::vector<std::string>      externals;
-        std::vector<std::string>      locals;
-      };
-
       struct FallbackResponse: Response
       {
         std::string fallback_host;
@@ -444,11 +438,6 @@ namespace infinit
                                   adapter_type const& public_endpoints) const;
 
       public:
-        EndpointNodeResponse
-        device_endpoints(std::string const& transaction_id,
-                         std::string const& self_device_id,
-                         std::string const& device_id) const;
-
         FallbackResponse
         fallback(std::string const& _id) const;
 
