@@ -601,9 +601,7 @@ namespace infinit
       Client::self() const
       {
         auto url = "/user/self";
-        auto request = this->_client.request(
-          this->_url(url), Method::GET, this->_default_configuration);
-        this->_handle_errors(request);
+        auto request = this->_request(this->_url(url), Method::GET);
         SerializerIn input(url, request);
         return Self(input);
       }
