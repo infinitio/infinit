@@ -228,10 +228,6 @@ namespace infinit
         std::string updated_transaction_id;
       };
 
-      struct ConnectDeviceResponse:
-        public Response
-      {};
-
       struct EndpointNodeResponse : Response
       {
         std::vector<std::string>      externals;
@@ -446,12 +442,6 @@ namespace infinit
                                   std::string const& device_id,
                                   adapter_type const& local_endpoints,
                                   adapter_type const& public_endpoints) const;
-
-        ConnectDeviceResponse
-        connect_device(std::string const& transaction_id,
-                       std::string const& device_id,
-                       adapter_type const& local_endpoints,
-                       adapter_type const& public_endpoints) const;
 
       public:
         EndpointNodeResponse

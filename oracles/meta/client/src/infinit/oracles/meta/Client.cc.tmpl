@@ -69,12 +69,6 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::EndpointNodeResponse, ar, res)
   ar & named("locals", res.locals);
 }
 
-SERIALIZE_RESPONSE(infinit::oracles::meta::ConnectDeviceResponse, ar, res)
-{
-  (void) ar;
-  (void) res;
-}
-
 SERIALIZE_RESPONSE(infinit::oracles::meta::FallbackResponse, ar, res)
 {
   ar & named("fallback_host", res.fallback_host);
@@ -785,47 +779,6 @@ namespace infinit
                        {
                          elle::json::write(r, json);
                        });
-      }
-
-      ConnectDeviceResponse
-      Client::connect_device(std::string const& transaction_id,
-                             std::string const& device_id,
-                             adapter_type const& local_endpoints,
-                             adapter_type const& public_endpoints) const
-      {
-        json::Dictionary request{
-          std::map<std::string, std::string>{
-            {"_id", transaction_id},
-            {"device_id", device_id},
-              }
-        };
-
-        json::Array local_addrs;
-        for (auto& a: local_endpoints)
-        {
-          json::Dictionary endpoint;
-
-          endpoint["ip"] = a.first;
-          endpoint["port"] = a.second;
-          local_addrs.push_back(endpoint);
-        }
-
-        request["locals"] = local_addrs;
-
-        json::Array public_addrs;
-        for (auto& a : public_endpoints)
-        {
-          json::Dictionary pub_addr;
-
-          pub_addr["ip"] = a.first;
-          pub_addr["port"] = a.second;
-          public_addrs.push_back(pub_addr);
-        }
-
-        request["externals"] = public_addrs;
-
-        return this->_request<ConnectDeviceResponse>(
-          "/transaction/connect_device", Method::POST, request);
       }
 
       EndpointNodeResponse
