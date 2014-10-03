@@ -984,19 +984,16 @@ namespace infinit
         auto url =
           elle::sprintf("/transaction/%s/cloud_buffer?force_regenerate=%s",
                         transaction_id, force_regenerate ? "true" : "false");
-        try
+        auto request = this->_request(url, Method::GET, false);
+        switch (request.status())
         {
-          auto request = this->_request(url, Method::GET);
-          SerializerIn input(url, request);
-          return aws::Credentials(input);
-        }
-        catch (elle::http::Exception const& e)
-        {
-          if (e.code == elle::http::ResponseCode::gone)
+          case reactor::http::StatusCode::Gone:
             throw infinit::state::TransactionFinalized();
-          else
-            throw;
+          default:
+            this->_handle_errors(request);
         }
+        SerializerIn input(url, request);
+        return aws::Credentials(input);
       }
 
       /*------.
