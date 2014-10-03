@@ -415,10 +415,9 @@ namespace infinit
                         std::string const& fullname,
                         std::string const& password) const
       {
-        auto url = this->_url("/user/register");
         std::string source = "app";
         auto request = this->_request(
-          url,
+          "/user/register",
           Method::POST,
           [&] (reactor::http::Request& request)
           {
@@ -525,7 +524,7 @@ namespace infinit
         if (handle.size() == 0)
           throw elle::Exception("No handle");
         std::string url = elle::sprintf("/users/from_handle/%s", handle);
-        auto request = this->_request(this->_url(url), Method::GET, false);
+        auto request = this->_request(url, Method::GET, false);
         switch (request.status())
         {
           case reactor::http::StatusCode::Not_Found:
@@ -1033,9 +1032,8 @@ namespace infinit
       Client::change_email(std::string const& email,
                            std::string const& password) const
       {
-        auto url = this->_url("/user/change_email_request");
         auto request = this->_request(
-          url,
+          "/user/change_email_request",
           Method::POST,
           [&] (reactor::http::Request& request)
           {
@@ -1072,9 +1070,8 @@ namespace infinit
       Client::change_password(std::string const& old_password,
                               std::string const& new_password) const
       {
-        auto url = this->_url("/user/change_password");
         auto request = this->_request(
-          url,
+          "/user/change_password",
           Method::POST,
           [&] (reactor::http::Request& request)
           {
@@ -1107,9 +1104,8 @@ namespace infinit
       Client::edit_user(std::string const& fullname,
                          std::string const& handle) const
       {
-        auto url = this->_url("/user/edit");
         auto request = this->_request(
-          url,
+          "/user/edit",
           Method::POST,
           [&] (reactor::http::Request& request)
           {
@@ -1142,7 +1138,7 @@ namespace infinit
         std::string url = elle::sprintf("/user/%s/avatar?no_place_holder=1",
                                         user_id);
         reactor::http::Request request =
-          this->_request(this->_url(url), Method::GET, false);
+          this->_request(url, Method::GET, false);
         switch (request.status())
         {
           case reactor::http::StatusCode::Not_Found:
@@ -1159,7 +1155,7 @@ namespace infinit
                    elle::ConstWeakBuffer const& icon) const
       {
         this->_request(
-          this->_url("/user/avatar"),
+          "/user/avatar",
           reactor::http::Method::POST,
           [&icon] (reactor::http::Request& request)
           {
