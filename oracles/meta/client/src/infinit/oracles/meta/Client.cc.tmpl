@@ -560,7 +560,7 @@ namespace infinit
       Client::self() const
       {
         auto url = "/user/self";
-        auto request = this->_request(this->_url(url), Method::GET);
+        auto request = this->_request(url, Method::GET);
         SerializerIn input(url, request);
         return Self(input);
       }
