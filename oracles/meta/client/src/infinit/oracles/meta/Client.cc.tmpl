@@ -48,12 +48,6 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::meta::User, ar, res, version)
   ar & named("register_status", res.register_status);
 }
 
-SERIALIZE_RESPONSE(infinit::oracles::meta::RemoveSwaggerResponse, ar, res)
-{
-  (void) ar;
-  (void) res;
-}
-
 SERIALIZE_RESPONSE(infinit::oracles::meta::InviteUserResponse, ar, res)
 {
   ar & named("_id", res._id);
@@ -612,15 +606,17 @@ namespace infinit
         return res;
       }
 
-      RemoveSwaggerResponse
-      Client::remove_swagger(std::string const& _id) const
+      void
+      Client::remove_swagger(std::string const& id) const
       {
-        json::Dictionary request{std::map<std::string, std::string>{
-            {"_id", _id},
-              }};
-
-        return this->_request<RemoveSwaggerResponse>(
-          "/user/remove_swagger", Method::POST, request);
+        this->_request(
+          "/user/remove_swagger",
+          Method::POST,
+          [&] (reactor::http::Request& request)
+          {
+            elle::serialization::json::SerializerOut query(request);
+            query.serialize("_id", const_cast<std::string&>(id));
+          });
       }
 
       void

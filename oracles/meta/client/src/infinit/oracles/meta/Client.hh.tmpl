@@ -208,14 +208,6 @@ namespace infinit
         std::string _id;
       };
 
-      // struct InvitedResponse: Response
-      // {
-      //   std::vector<std::map<std::string, std::string>> emails;
-      // };
-
-      struct RemoveSwaggerResponse: Response
-      {};
-
       struct CreatePeerTransactionResponse : Response
       {
         std::string created_transaction_id;
@@ -435,7 +427,7 @@ namespace infinit
         InviteUserResponse
         invite_user(std::string const& email) const;
 
-        RemoveSwaggerResponse
+        void
         remove_swagger(std::string const& _id) const;
 
         // InvitedResponse
