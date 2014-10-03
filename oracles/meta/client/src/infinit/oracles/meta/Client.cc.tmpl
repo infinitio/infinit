@@ -33,12 +33,6 @@
 
 ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
 
-SERIALIZE_RESPONSE(infinit::oracles::meta::DebugResponse, ar, res)
-{
-  (void) ar;
-  (void) res;
-}
-
 /*------.
 | Users |
 `------*/
@@ -286,17 +280,10 @@ namespace infinit
         this->_default_configuration.cookies()["session-id"] = session_id;
       }
 
-      // - API calls ------------------------------------------------------------
-
-      DebugResponse
-      Client::status() const
-      {
-        return this->_request<DebugResponse>("/status", Method::GET);
-      }
-
       /*------.
       | Users |
       `------*/
+
       static
       User
       user_from_json(boost::any const& json_)
@@ -868,12 +855,6 @@ namespace infinit
           "/debug", Method::POST, request);
 
         return res;
-      }
-
-      DebugResponse
-      Client::debug() const
-      {
-        return this->_request<DebugResponse>("/scratchit", Method::GET);
       }
 
       void

@@ -72,10 +72,6 @@ namespace infinit
         bool operator !=(Error const& error) const;
       };
 
-      /////////////////////////
-      struct DebugResponse : Response
-      {};
-
       struct LoginResponse
       {
         std::string fullname;
@@ -374,12 +370,6 @@ namespace infinit
         boost::random::mt19937 mutable _rng;
 
       public:
-        DebugResponse
-        status() const;
-
-        DebugResponse
-        debug() const;
-
         LoginResponse
         login(std::string const& email,
               std::string const& password,
