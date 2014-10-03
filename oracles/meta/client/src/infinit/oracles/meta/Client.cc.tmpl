@@ -416,8 +416,9 @@ namespace infinit
                         std::string const& password) const
       {
         std::string source = "app";
+        auto url = "/user/register";
         auto request = this->_request(
-          "/user/register",
+          url,
           Method::POST,
           [&] (reactor::http::Request& request)
           {
@@ -1032,8 +1033,9 @@ namespace infinit
       Client::change_email(std::string const& email,
                            std::string const& password) const
       {
+        auto url = "/user/change_email_request";
         auto request = this->_request(
-          "/user/change_email_request",
+          url,
           Method::POST,
           [&] (reactor::http::Request& request)
           {
@@ -1070,8 +1072,9 @@ namespace infinit
       Client::change_password(std::string const& old_password,
                               std::string const& new_password) const
       {
+        auto url = "/user/change_password";
         auto request = this->_request(
-          "/user/change_password",
+          url,
           Method::POST,
           [&] (reactor::http::Request& request)
           {
@@ -1104,8 +1107,9 @@ namespace infinit
       Client::edit_user(std::string const& fullname,
                          std::string const& handle) const
       {
+        auto url = "/user/edit";
         auto request = this->_request(
-          "/user/edit",
+          url,
           Method::POST,
           [&] (reactor::http::Request& request)
           {
