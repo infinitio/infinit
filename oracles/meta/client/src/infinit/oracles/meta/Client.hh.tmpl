@@ -427,7 +427,7 @@ namespace infinit
                            std::string const& device_uuid,
                            std::string const& message = "") const;
 
-        UpdatePeerTransactionResponse
+        void
         update_transaction(std::string const& transaction_id,
                            Transaction::Status status,
                            std::string const& device_id = "",

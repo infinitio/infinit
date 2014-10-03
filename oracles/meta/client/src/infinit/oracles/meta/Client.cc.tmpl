@@ -52,11 +52,6 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::meta::User, ar, res, version)
 | Transactions |
 `-------------*/
 
-SERIALIZE_RESPONSE(infinit::oracles::meta::UpdatePeerTransactionResponse, ar, res)
-{
-  ar & named("updated_transaction_id", res.updated_transaction_id);
-}
-
 namespace infinit
 {
   namespace oracles
@@ -676,7 +671,7 @@ namespace infinit
         return id;
       }
 
-      UpdatePeerTransactionResponse
+      void
       Client::update_transaction(std::string const& transaction_id,
                                  Transaction::Status status,
                                  std::string const& device_id,
@@ -708,8 +703,6 @@ namespace infinit
                               const_cast<std::string&>(device_name));
             }
           });
-        return this->_deserialize_answer<UpdatePeerTransactionResponse>(
-          std::move(request));
       }
 
       PeerTransaction
