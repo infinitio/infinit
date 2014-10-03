@@ -63,13 +63,6 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::UpdatePeerTransactionResponse, ar, re
   ar & named("updated_transaction_id", res.updated_transaction_id);
 }
 
-SERIALIZE_RESPONSE(infinit::oracles::meta::FallbackResponse, ar, res)
-{
-  ar & named("fallback_host", res.fallback_host);
-  ar & named("fallback_port_ssl", res.fallback_port_ssl);
-  ar & named("fallback_port_tcp", res.fallback_port_tcp);
-}
-
 /*--------------.
 | Server Status |
 `--------------*/
@@ -121,6 +114,19 @@ namespace infinit
       Device::print(std::ostream& stream) const
       {
         stream << "Device(" << this->name << ")";
+      }
+
+      Fallback::Fallback(elle::serialization::SerializerIn& s)
+      {
+        this->serialize(s);
+      }
+
+      void
+      Fallback::serialize(elle::serialization::Serializer& s)
+      {
+        s.serialize("fallback_host", this->fallback_host);
+        s.serialize("fallback_port_ssl", this->fallback_port_ssl);
+        s.serialize("fallback_port_tcp", this->fallback_port_tcp);
       }
 
       class SerializerIn
@@ -775,11 +781,13 @@ namespace infinit
                        });
       }
 
-      FallbackResponse
-      Client::fallback(std::string const& _id) const
+      Fallback
+      Client::fallback(std::string const& id) const
       {
-        return this->_request<FallbackResponse>(
-          elle::sprintf("/apertus/fallback/%s", _id), Method::GET);
+        auto url = elle::sprintf("/apertus/fallback/%s", id);
+        auto request = this->_request(url, Method::GET);
+        SerializerIn input(url, request);
+        return Fallback(input);
       }
 
       aws::Credentials

@@ -217,6 +217,19 @@ namespace infinit
         print(std::ostream& stream) const override;
       };
 
+      struct Fallback
+      {
+      public:
+        Fallback() = default;
+        Fallback(elle::serialization::SerializerIn& s);
+        std::string fallback_host;
+        int fallback_port_ssl;
+        int fallback_port_tcp;
+      protected:
+        void
+        serialize(elle::serialization::Serializer& s);
+      };
+
       struct CreatePeerTransactionResponse : Response
       {
         std::string created_transaction_id;
@@ -226,13 +239,6 @@ namespace infinit
       struct UpdatePeerTransactionResponse : Response
       {
         std::string updated_transaction_id;
-      };
-
-      struct FallbackResponse: Response
-      {
-        std::string fallback_host;
-        int fallback_port_ssl;
-        int fallback_port_tcp;
       };
 
       class CreateLinkTransactionResponse
@@ -438,7 +444,7 @@ namespace infinit
                                   adapter_type const& public_endpoints) const;
 
       public:
-        FallbackResponse
+        Fallback
         fallback(std::string const& _id) const;
 
         aws::Credentials
