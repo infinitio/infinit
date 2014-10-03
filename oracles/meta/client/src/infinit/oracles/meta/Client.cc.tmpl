@@ -591,28 +591,17 @@ namespace infinit
         if (id_or_email.size() == 0)
           throw elle::Exception("Invalid id or email");
         std::string url = elle::sprintf("/users/%s", id_or_email);
-        auto request = this->_client.request(
-          this->_url(url), Method::GET, this->_default_configuration);
-        if (request.status() == reactor::http::StatusCode::OK)
+        auto request = this->_request(
+          this->_url(url), Method::GET, false);
+        switch (request.status())
         {
-          SerializerIn input(url, request);
-          return User(input);
+          case reactor::http::StatusCode::Not_Found:
+            throw infinit::state::UserNotFoundError(id_or_email);
+          default:
+            this->_handle_errors(request);
         }
-        else if (request.status() == reactor::http::StatusCode::Not_Found)
-        {
-          throw infinit::state::UserNotFoundError(id_or_email);
-        }
-        else
-        {
-          ELLE_ERR("%s: error while getting user by id/email (%s): %s: %s",
-                   *this, id_or_email, request.status(),
-                   request.response().string());
-          ELLE_ERR("%s", elle::Backtrace::current());
-          throw elle::http::Exception(
-            static_cast<elle::http::ResponseCode>(request.status()),
-            elle::sprintf("error %s while getting on %s",
-                          request.status(), request.url()));
-        }
+        SerializerIn input(url, request);
+        return User(input);
       }
 
       Self
