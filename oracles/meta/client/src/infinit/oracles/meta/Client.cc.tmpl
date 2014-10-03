@@ -543,8 +543,7 @@ namespace infinit
         if (id_or_email.size() == 0)
           throw elle::Exception("Invalid id or email");
         std::string url = elle::sprintf("/users/%s", id_or_email);
-        auto request = this->_request(
-          this->_url(url), Method::GET, false);
+        auto request = this->_request(url, Method::GET, false);
         switch (request.status())
         {
           case reactor::http::StatusCode::Not_Found:
