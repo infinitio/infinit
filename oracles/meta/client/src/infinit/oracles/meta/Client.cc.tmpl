@@ -1375,10 +1375,7 @@ namespace infinit
                     else
                       ELLE_WARN("%s: Found location header is missing", *this);
                   }
-                  throw elle::http::Exception(
-                    static_cast<elle::http::ResponseCode>(status),
-                    elle::sprintf("error %s while posting on %s",
-                                  status, request.url()));
+                  this->_handle_errors(request);
                 }
               }
             }
@@ -1429,16 +1426,7 @@ namespace infinit
           request << body.repr() << "\n";
           request.finalize();
         }
-
-        auto status = request.status();
-        if (status != reactor::http::StatusCode::OK)
-        {
-          ELLE_ERR("%s: error while posting: %s (%s)",
-                   *this, status, request.response().string());
-          throw elle::http::Exception(
-            static_cast<elle::http::ResponseCode>(status),
-            elle::sprintf("error %s while posting on %s", status, url));
-        }
+        this->_handle_errors(request);
         return request;
       }
 
