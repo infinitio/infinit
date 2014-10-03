@@ -52,17 +52,14 @@ namespace infinit
         elle::serialization::json::SerializerIn input(request);
       }
 
-      Response
+      void
       Admin::disconnect(boost::uuids::uuid const& uid,
                         std::string const& user_id,
                         boost::uuids::uuid const& device_id)
       {
-        return this->_request<Response>(
-          sprintf("/trophonius/%s/users/%s/%s",
-                  boost::lexical_cast<std::string>(uid),
-                  user_id,
-                  boost::lexical_cast<std::string>(device_id)),
-          Method::DELETE);
+        std::string const url =
+          elle::sprintf("/trophonius/%s/users/%s/%s", uid, user_id, device_id);
+        this->_request(url, Method::DELETE);
       }
 
       void
@@ -95,68 +92,78 @@ namespace infinit
         elle::serialization::json::SerializerIn input(request);
       }
 
-      Response
+      void
       Admin::unregister_trophonius(boost::uuids::uuid const& uid)
       {
-        return this->_request<Response>(
-          sprintf("/trophonius/%s", boost::lexical_cast<std::string>(uid)),
-          Method::DELETE);
+        this->_request(sprintf("/trophonius/%s", uid), Method::DELETE);
       }
 
-      // Make it generic.
-      Response
+      void
       Admin::register_apertus(boost::uuids::uuid const& uid,
                               std::string const& host,
                               uint16_t port_ssl,
                               uint16_t port_tcp)
       {
-        json::Dictionary request;
-        request["host"] = host,
-        request["port_ssl"] = port_ssl;
-        request["port_tcp"] = port_tcp;
-        request["version"] = INFINIT_VERSION;
-
-        return this->_request<Response>(
-          sprintf("/apertus/%s", boost::lexical_cast<std::string>(uid)),
-          Method::PUT, request);
+        std::string const url = sprintf("/apertus/%s", uid);
+        this->_request(
+          url,
+          Method::PUT,
+          [&] (reactor::http::Request& request)
+          {
+            elle::serialization::json::SerializerOut output(request);
+            output.serialize("host", const_cast<std::string&>(host));
+            int port_ssl_ = port_ssl;
+            output.serialize("port_ssl", port_ssl_);
+            int port_tcp_ = port_tcp;
+            output.serialize("port_tcp", port_tcp_);
+            std::string version = INFINIT_VERSION;
+            output.serialize("version", version);
+          });
       }
 
-      Response
+      void
       Admin::unregister_apertus(boost::uuids::uuid const& uid)
       {
-        return this->_request<Response>(
-          sprintf("/apertus/%s", boost::lexical_cast<std::string>(uid)),
-          Method::DELETE);
+        std::string const url = sprintf("/apertus/%s", uid);
+        this->_request(url, Method::DELETE);
       }
 
-      Response
+      void
       Admin::apertus_update_bandwidth(boost::uuids::uuid const& uid,
                                       uint32_t bandwidth,
                                       uint32_t number_of_transfers)
       {
-        json::Dictionary request;
-        request["bandwidth"] = bandwidth;
-        request["number_of_transfers"] = number_of_transfers;
-
-        return this->_request<Response>(
-          sprintf("/apertus/%s/bandwidth",
-                  boost::lexical_cast<std::string>(uid)),
-          Method::POST, request);
+        std::string const url = sprintf("/apertus/%s/bandwidth", uid);
+        this->_request(
+          url,
+          Method::POST,
+          [&] (reactor::http::Request& request)
+          {
+            elle::serialization::json::SerializerOut output(request);
+            int bandwidth_ = bandwidth;
+            output.serialize("bandwidth", bandwidth_);
+            int number = number_of_transfers;
+            output.serialize("number_of_transfers", number);
+          });
       }
 
-      Response
+      void
       Admin::genocide() const
       {
-        json::Dictionary request;
-        return this->_request<Response>("/genocide", Method::DELETE, request);
+        this->_request("/genocide", Method::DELETE);
       }
 
-      Response
+      void
       Admin::ghostify(std::string const& email) const
       {
-        json::Dictionary request;
-        request["email"] = email;
-        return this->_request<Response>("/ghostify", Method::POST, request);
+        this->_request(
+          "/ghostify",
+          Method::POST,
+          [&] (reactor::http::Request& request)
+          {
+            elle::serialization::json::SerializerOut output(request);
+            output.serialize("email", const_cast<std::string&>(email));
+          });
       }
 
       void
@@ -166,7 +173,7 @@ namespace infinit
         this->_request(
           "/user/add_swagger",
           Method::PUT,
-          [] (reactor::http::Request& request)
+          [&] (reactor::http::Request& request)
           {
             elle::serialization::json::SerializerOut output(request);
             output.serialize("user1", const_cast<std::string&>(user1));
