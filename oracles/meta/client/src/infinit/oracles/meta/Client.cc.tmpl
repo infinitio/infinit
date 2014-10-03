@@ -805,11 +805,7 @@ namespace infinit
       Client::transaction(std::string const& _id) const
       {
         std::string url = sprintf("/transaction/%s", _id);
-        reactor::http::Request request =
-          this->_client.request(this->_url(url),
-                                Method::GET,
-                                this->_default_configuration);
-        this->_handle_errors(request);
+        reactor::http::Request request = this->_request(url, Method::GET);
         SerializerIn input(url, request);
         return PeerTransaction(input);
       }
@@ -834,10 +830,7 @@ namespace infinit
         }
         else
           url = "/transactions";
-        auto request = this->_client.request(this->_url(url),
-                                             Method::GET,
-                                             this->_default_configuration);
-        this->_handle_errors(request);
+        auto request = this->_request(url, Method::GET);
         std::list<PeerTransaction> res;
         SerializerIn input(url, request);
         input.serialize("transactions", res);
