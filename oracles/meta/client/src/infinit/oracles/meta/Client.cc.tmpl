@@ -63,12 +63,6 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::UpdatePeerTransactionResponse, ar, re
   ar & named("updated_transaction_id", res.updated_transaction_id);
 }
 
-SERIALIZE_RESPONSE(infinit::oracles::meta::MessageResponse, ar, res)
-{
-  (void) ar;
-  (void) res;
-}
-
 SERIALIZE_RESPONSE(infinit::oracles::meta::EndpointNodeResponse, ar, res)
 {
   ar & named("externals", res.externals);
@@ -761,29 +755,6 @@ namespace infinit
         SerializerIn input(url, request);
         input.serialize("transactions", res);
         return std::vector<PeerTransaction>(res.begin(), res.end());
-      }
-
-      MessageResponse
-      Client::send_message(std::string const& recipient_id,
-                           std::string const& sender_id,
-                           std::string const& message) const
-      {
-        json::Dictionary request{std::map<std::string, std::string>
-          {
-            {"recipient_id", recipient_id},
-            {"sender_id", sender_id},
-            {"message", message},
-              }};
-
-        // FIXME: Time.h ????
-        request["time"] = 0;
-        request["notification_id"] = 217;
-
-        // FIXME: /user/message
-        auto res = this->_request<MessageResponse>(
-          "/debug", Method::POST, request);
-
-        return res;
       }
 
       void
