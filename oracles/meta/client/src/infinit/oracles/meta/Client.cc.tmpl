@@ -646,22 +646,32 @@ namespace infinit
           "/user/remove_swagger", Method::POST, request);
       }
 
-      Response
+      void
       Client::favorite(std::string const& user) const
       {
-        json::Dictionary request;
-        request["user_id"] = user;
-        return this->_request<DebugResponse>(
-          "/user/favorite", Method::POST, request);
+        this->_request(
+          "/user/favorite",
+          Method::POST,
+          [&] (reactor::http::Request& request)
+          {
+            elle::serialization::json::SerializerOut query(request);
+            query.serialize("user_id",
+                            const_cast<std::string&>(user));
+          });
       }
 
-      Response
+      void
       Client::unfavorite(std::string const& user) const
       {
-        json::Dictionary request;
-        request["user_id"] = user;
-        return this->_request<DebugResponse>(
-          "/user/unfavorite", Method::POST, request);
+        this->_request(
+          "/user/unfavorite",
+          Method::POST,
+          [&] (reactor::http::Request& request)
+          {
+            elle::serialization::json::SerializerOut query(request);
+            query.serialize("user_id",
+                            const_cast<std::string&>(user));
+          });
       }
 
       /*--------.
