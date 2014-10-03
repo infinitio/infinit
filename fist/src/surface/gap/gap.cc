@@ -262,6 +262,19 @@ gap_login(gap_State* _state,
                          });
 }
 
+std::unordered_map<std::string, std::string>
+gap_fetch_features(gap_State* _state)
+{
+  return run<std::unordered_map<std::string, std::string>>(
+    _state,
+    "fetch features",
+    [&] (surface::gap::State& state) ->
+      std::unordered_map<std::string, std::string>
+    {
+      return state.configuration().features;
+    });
+}
+
 gap_Bool
 gap_logged_in(gap_State* state)
 {

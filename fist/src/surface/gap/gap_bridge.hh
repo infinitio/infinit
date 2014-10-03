@@ -2,24 +2,25 @@
 # define GAP_BRIDGE_HH
 
 # include <exception>
-# include <thread>
 # include <memory>
 # include <stdint.h>
+# include <thread>
+# include <unordered_map>
 
 # include <elle/attribute.hh>
 # include <elle/HttpClient.hh>
 # include <elle/log.hh>
 
-# include <reactor/network/exception.hh>
 # include <reactor/http/exceptions.hh>
+# include <reactor/network/exception.hh>
 # include <reactor/scheduler.hh>
 # include <reactor/thread.hh>
 
 # include <common/common.hh>
 
 # include <surface/gap/Error.hh>
-# include <surface/gap/State.hh>
 # include <surface/gap/LinkTransaction.hh>
+# include <surface/gap/State.hh>
 
 
 /// - Utils -----------------------------------------------------------------

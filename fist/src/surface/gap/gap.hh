@@ -89,6 +89,10 @@ gap_login(gap_State* state,
           char const* email,
           char const* hash_password);
 
+/// Fetch features.
+std::unordered_map<std::string, std::string>
+gap_fetch_features(gap_State* state);
+
 /// Check is user is already logged.
 gap_Bool
 gap_logged_in(gap_State* state);
