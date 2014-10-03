@@ -203,6 +203,23 @@ namespace infinit
         std::list<std::string> favorites;
       };
 
+      struct Device
+        : public elle::Printable
+      {
+      public:
+        Device() = default;
+        Device(elle::serialization::SerializerIn& s);
+        std::string id; // boost::uuids::uuid
+        std::string name;
+        std::string passport;
+      protected:
+        void
+        serialize(elle::serialization::Serializer& s);
+        virtual
+        void
+        print(std::ostream& stream) const override;
+      };
+
       struct InviteUserResponse : Response
       {
         std::string _id;
@@ -228,17 +245,6 @@ namespace infinit
         std::vector<std::string>      externals;
         std::vector<std::string>      locals;
       };
-
-      struct Device
-      {
-        // boost::uuids::uuid
-        std::string id;
-        std::string name;
-        std::string passport;
-      };
-
-      struct UpdateDeviceResponse : Response, Device
-      {};
 
       struct FallbackResponse: Response
       {
@@ -400,7 +406,7 @@ namespace infinit
         // SwaggerResponse
         // get_swagger(std::string const& id) const;
 
-        UpdateDeviceResponse
+        Device
         update_device(boost::uuids::uuid const& device_uuid,
                       std::string const& name) const;
 

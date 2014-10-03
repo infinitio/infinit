@@ -53,17 +53,6 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::InviteUserResponse, ar, res)
   ar & named("_id", res._id);
 }
 
-/*--------.
-| Devices |
-`--------*/
-
-SERIALIZE_RESPONSE(infinit::oracles::meta::UpdateDeviceResponse, ar, res)
-{
-  ar & named("id", res.id);
-  ar & named("passport", res.passport);
-  ar & named("name", res.name);
-}
-
 /*-------------.
 | Transactions |
 `-------------*/
@@ -136,6 +125,25 @@ namespace infinit
         s.serialize("identity", this->identity);
         s.serialize("devices", this->devices);
         s.serialize("favorites", this->favorites);
+      }
+
+      Device::Device(elle::serialization::SerializerIn& s)
+      {
+        this->serialize(s);
+      }
+
+      void
+      Device::serialize(elle::serialization::Serializer& s)
+      {
+        s.serialize("id", this->id);
+        s.serialize("name", this->name);
+        s.serialize("passport", this->passport);
+      }
+
+      void
+      Device::print(std::ostream& stream) const
+      {
+        stream << "Device(" << this->name << ")";
       }
 
       class SerializerIn
@@ -631,24 +639,29 @@ namespace infinit
       | Devices |
       `--------*/
 
-      UpdateDeviceResponse
+      Device
       Client::update_device(boost::uuids::uuid const& device_uuid,
                             std::string const& name) const
       {
         std::string struuid = boost::lexical_cast<std::string>(device_uuid);
-
-        json::Dictionary request{std::map<std::string, std::string>{
-            {"id", struuid},
-            {"name", name},
-        }};
-
-        return this->_request<UpdateDeviceResponse>(
-          "/device/update", Method::POST, request);
-      }
+        std::string url = "/device/update";
+        auto request = this->_request(
+          url,
+          Method::POST,
+          [&] (reactor::http::Request& request)
+          {
+            elle::serialization::json::SerializerOut query(request);
+            query.serialize("id", struuid);
+            query.serialize("name", const_cast<std::string&>(name));
+          });
+        SerializerIn input(url, request);
+        return Device(input);
+        }
 
       /*------.
       | Users |
       `------*/
+
       InviteUserResponse
       Client::invite_user(std::string const& email) const
       {
