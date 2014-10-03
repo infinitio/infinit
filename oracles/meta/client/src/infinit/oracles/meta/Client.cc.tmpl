@@ -1227,53 +1227,29 @@ namespace infinit
         std::string url = elle::sprintf("/user/%s/avatar?no_place_holder=1",
                                         user_id);
         reactor::http::Request request =
-          this->_client.request(this->_url(url),
-                                Method::GET,
-                                this->_default_configuration);
-
-        // If there is no avatar on the server, return an empty buffer.
-        if (request.status() == reactor::http::StatusCode::OK)
+          this->_request(this->_url(url), Method::GET, false);
+        switch (request.status())
         {
-          return request.response();
+          case reactor::http::StatusCode::Not_Found:
+            // If there is no avatar on the server, return an empty buffer.
+            return elle::Buffer();
+          default:
+            this->_handle_errors(request);
         }
-        else if (request.status() == reactor::http::StatusCode::Not_Found)
-        {
-          return elle::Buffer();
-        }
-        else
-        {
-          ELLE_ERR("%s: error while getting avatar for (%s): %s: %s",
-                   *this, user_id, request.status(),
-                   request.response().string());
-          ELLE_ERR("%s", elle::Backtrace::current());
-          throw elle::http::Exception(
-            static_cast<elle::http::ResponseCode>(request.status()),
-            elle::sprintf("error %s while getting on %s",
-                          request.status(), request.url()));
-        }
+        return request.response();
       }
 
       void
       Client::icon(std::string const& user_id,
                    elle::ConstWeakBuffer const& icon) const
       {
-        reactor::http::Request request =
-          this->_client.request(
-            elle::sprintf("%s/user/avatar", this->_root_url),
-            reactor::http::Method::POST,
-            "application/octet-stream",
-            this->_default_configuration);
-
-        request.write((char const*) icon.contents(), icon.size());
-        request.finalize();
-
-        auto status = request.status();
-        if (status != reactor::http::StatusCode::OK)
-        {
-          throw elle::http::Exception(
-            static_cast<elle::http::ResponseCode>(status),
-            elle::sprintf("error %s while POSTing avatar", status));
-        }
+        this->_request(
+          this->_url("/user/avatar"),
+          reactor::http::Method::POST,
+          [&icon] (reactor::http::Request& request)
+          {
+            request.write((char const*) icon.contents(), icon.size());
+          });
       }
 
       /*--------.
