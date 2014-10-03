@@ -111,9 +111,7 @@ using infinit::oracles::PeerTransaction;
 using infinit::oracles::meta::Error;
 using infinit::oracles::meta::Response;
 using infinit::oracles::meta::Exception;
-using infinit::oracles::meta::DebugResponse;
 using infinit::oracles::meta::LoginResponse;
-using infinit::oracles::meta::LogoutResponse;
 using infinit::oracles::meta::MessageResponse;
 using infinit::oracles::meta::User;
 using infinit::oracles::meta::Self;
@@ -122,7 +120,6 @@ using infinit::oracles::meta::CreatePeerTransactionResponse;
 using infinit::oracles::meta::UpdatePeerTransactionResponse;
 using infinit::oracles::meta::EndpointNodeResponse;
 using infinit::oracles::meta::Device;
-using infinit::oracles::meta::CreateDeviceResponse;
 using infinit::oracles::meta::UpdateDeviceResponse;
 using infinit::oracles::meta::AddSwaggerResponse;
 
@@ -208,7 +205,6 @@ void export_meta_client()
     .def_readonly("name", &Device::name)
     .def_readonly("passport", &Device::passport)
   ;
-  py::class_<DebugResponse, py::bases<Response>>("DebugResponse");
   py::class_<LoginResponse>("LoginResponse")
     .def_readonly("fullname", &LoginResponse::fullname)
     .def_readonly("handle", &LoginResponse::handle)
@@ -216,7 +212,6 @@ void export_meta_client()
     .def_readonly("identity", &LoginResponse::identity)
     .def_readonly("id", &LoginResponse::id)
   ;
-  py::class_<LogoutResponse, py::bases<Response>>("LogoutResponse");
   py::class_<MessageResponse, py::bases<Response>>("MessageResponse");
 
   py::class_<InviteUserResponse, py::bases<Response>>("InviteUserResponse")
@@ -243,8 +238,6 @@ void export_meta_client()
   py::class_<AddSwaggerResponse>("AddSwaggerResponse")
   ;
 
-  py::class_<CreateDeviceResponse, py::bases<Response, Device>>("CreateDeviceResponse")
-  ;
   py::class_<UpdateDeviceResponse, py::bases<Response, Device>>("UpdateDeviceResponse")
   ;
 
@@ -253,7 +246,6 @@ void export_meta_client()
 
   py::class_<MetaClient, boost::noncopyable>(
     "Meta", py::init<std::string const&, std::string const&, int>())
-    .def("debug", &MetaClient::debug)
     .def("login", &MetaClient::login)
     .def("logout", &MetaClient::logout)
     .def("user", &MetaClient::user)
@@ -263,7 +255,6 @@ void export_meta_client()
     .def("user_from_public_key", &MetaClient::user_from_public_key)
     .def("users_search", &MetaClient::users_search)
     .def("get_swaggers", &MetaClient::get_swaggers)
-    .def("create_device", &MetaClient::create_device)
     .def("update_device", &MetaClient::update_device)
     .def("invite_user", &MetaClient::invite_user)
     .def("transaction", &MetaClient::transaction)
