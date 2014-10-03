@@ -48,11 +48,6 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::meta::User, ar, res, version)
   ar & named("register_status", res.register_status);
 }
 
-SERIALIZE_RESPONSE(infinit::oracles::meta::InviteUserResponse, ar, res)
-{
-  ar & named("_id", res._id);
-}
-
 /*-------------.
 | Transactions |
 `-------------*/
@@ -661,20 +656,6 @@ namespace infinit
       /*------.
       | Users |
       `------*/
-
-      InviteUserResponse
-      Client::invite_user(std::string const& email) const
-      {
-        json::Dictionary request{std::map<std::string, std::string>
-          {
-            {"email", email}
-          }};
-
-        auto res = this->_request<InviteUserResponse>(
-          "/user/invite", Method::POST, request);
-
-        return res;
-      }
 
       CreatePeerTransactionResponse
       Client::create_transaction(std::string const& recipient_id_or_email,

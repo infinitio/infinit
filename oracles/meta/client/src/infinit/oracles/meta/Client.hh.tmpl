@@ -220,11 +220,6 @@ namespace infinit
         print(std::ostream& stream) const override;
       };
 
-      struct InviteUserResponse : Response
-      {
-        std::string _id;
-      };
-
       struct CreatePeerTransactionResponse : Response
       {
         std::string created_transaction_id;
@@ -410,14 +405,8 @@ namespace infinit
         update_device(boost::uuids::uuid const& device_uuid,
                       std::string const& name) const;
 
-        InviteUserResponse
-        invite_user(std::string const& email) const;
-
         void
         remove_swagger(std::string const& _id) const;
-
-        // InvitedResponse
-        // invited() const;
 
         PeerTransaction
         transaction(std::string const& _id) const;

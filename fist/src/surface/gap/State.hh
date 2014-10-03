@@ -472,9 +472,6 @@ namespace surface
       device_status(std::string const& user_id,
                     std::string const& device_id) const;
 
-      std::string
-      invite(std::string const& email);
-
       ///- Swaggers --------------------------------------------------------------
       UserIndexes
       swaggers();

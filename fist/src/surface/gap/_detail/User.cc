@@ -446,15 +446,6 @@ namespace surface
       return status;
     }
 
-    std::string
-    State::invite(std::string const& email)
-    {
-      ELLE_TRACE_METHOD(email);
-
-      auto response = this->meta().invite_user(email);
-      return response._id;
-    }
-
     ///- Swaggers --------------------------------------------------------------
     State::UserIndexes
     State::swaggers()
