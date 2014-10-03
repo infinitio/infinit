@@ -237,16 +237,8 @@ namespace infinit
         std::string passport;
       };
 
-      struct DeviceResponse : Response, Device
-      {};
-
       struct UpdateDeviceResponse : Response, Device
       {};
-
-      struct DeleteDeviceResponse : Response
-      {
-        std::string id;
-      };
 
       struct FallbackResponse: Response
       {
@@ -411,9 +403,6 @@ namespace infinit
         UpdateDeviceResponse
         update_device(boost::uuids::uuid const& device_uuid,
                       std::string const& name) const;
-
-        DeviceResponse
-        device(boost::uuids::uuid const& device_uuid) const;
 
         InviteUserResponse
         invite_user(std::string const& email) const;
