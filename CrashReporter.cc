@@ -452,7 +452,7 @@ namespace elle
                                       meta_port);
       elle::filesystem::TemporaryDirectory tmp;
       boost::filesystem::path destination(tmp.path() / "report.tar.bz2");
-      if (user_file.size() == 0)
+      if (user_file.length() == 0)
       {
         elle::archive::archive(elle::archive::Format::tar_gzip,
                                {common::infinit::home()},
@@ -463,18 +463,8 @@ namespace elle
       }
       else
       {
-        boost::filesystem::path home(common::infinit::home());
-        boost::filesystem::path copied_log = home / "current_state.log";
-        elle::SafeFinally cleanup{
-          [&] {
-            boost::system::error_code erc;
-            boost::filesystem::remove(copied_log, erc);
-            if (erc)
-              ELLE_WARN("removing copied file %s failed: %s", copied_log, erc);
-          }};
-        copy_file(user_file, copied_log, cleanup);
         elle::archive::archive(elle::archive::Format::tar_gzip,
-                               {copied_log, common::infinit::home()},
+                               {user_file, common::infinit::home()},
                                destination,
                                elle::archive::Renamer(),
                                temp_file_excluder,
