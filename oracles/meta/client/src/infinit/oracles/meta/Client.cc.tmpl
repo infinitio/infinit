@@ -458,54 +458,47 @@ namespace infinit
       {
         auto url = this->_url("/user/register");
         std::string source = "app";
-        auto request = this->_client.request(url,
-                                             Method::POST,
-                                             "application/json",
-                                             this->_default_configuration);
-        {
-          elle::serialization::json::SerializerOut output(request);
-          output.serialize("email", const_cast<std::string&>(email));
-          output.serialize("fullname", const_cast<std::string&>(fullname));
-          output.serialize("password", const_cast<std::string&>(password));
-          output.serialize("source", const_cast<std::string&>(source));
-        }
+        auto request = this->_request(
+          url,
+          Method::POST,
+          [&] (reactor::http::Request& request)
+          {
+            elle::serialization::json::SerializerOut output(request);
+            output.serialize("email", const_cast<std::string&>(email));
+            output.serialize("fullname", const_cast<std::string&>(fullname));
+            output.serialize("password", const_cast<std::string&>(password));
+            output.serialize("source", const_cast<std::string&>(source));
+          });
         std::string user_id = "";
-        if (request.status() == reactor::http::StatusCode::OK)
+        SerializerIn input(url, request);
+        bool success;
+        input.serialize("success", success);
+        if (success)
         {
-          SerializerIn input(url, request);
-          bool success;
-          input.serialize("success", success);
-          if (success)
-          {
-            input.serialize("registered_user_id", user_id);
-          }
-          else
-          {
-            int error_code;
-            input.serialize("error_code", error_code);
-            using ErrorCode = ::oracles::meta::client::ErrorCode;
-            switch(ErrorCode(error_code))
-            {
-              case ErrorCode::already_logged_in:
-                throw infinit::state::AlreadyLoggedIn();
-              case ErrorCode::email_already_registered:
-                throw infinit::state::EmailAlreadyRegistered();
-              case ErrorCode::email_not_valid:
-                throw infinit::state::EmailNotValid();
-              case ErrorCode::password_not_valid:
-                throw infinit::state::PasswordNotValid();
-              case ErrorCode::fullname_not_valid:
-                throw infinit::state::FullnameNotValid();
-
-              default:
-                throw infinit::state::SelfUserError(
-                  elle::sprintf("Unknown registration error: %s", error_code));
-            }
-          }
+          input.serialize("registered_user_id", user_id);
         }
         else
         {
-          this->_handle_errors(request);
+          int error_code;
+          input.serialize("error_code", error_code);
+          using ErrorCode = ::oracles::meta::client::ErrorCode;
+          switch(ErrorCode(error_code))
+          {
+            case ErrorCode::already_logged_in:
+              throw infinit::state::AlreadyLoggedIn();
+            case ErrorCode::email_already_registered:
+              throw infinit::state::EmailAlreadyRegistered();
+            case ErrorCode::email_not_valid:
+              throw infinit::state::EmailNotValid();
+            case ErrorCode::password_not_valid:
+              throw infinit::state::PasswordNotValid();
+            case ErrorCode::fullname_not_valid:
+              throw infinit::state::FullnameNotValid();
+
+            default:
+              throw infinit::state::SelfUserError(
+                elle::sprintf("Unknown registration error: %s", error_code));
+          }
         }
         return user_id;
       }
