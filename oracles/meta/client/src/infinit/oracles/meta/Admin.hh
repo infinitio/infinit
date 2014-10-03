@@ -13,10 +13,6 @@ namespace infinit
   {
     namespace meta
     {
-      struct AddSwaggerResponse: Response
-      {
-      };
-
       class Admin: public Client
       {
       public:
@@ -63,7 +59,7 @@ namespace infinit
                                  uint32_t bandwidth,
                                  uint32_t number_of_transfers);
 
-        AddSwaggerResponse
+        void
         add_swaggers(std::string const& user1, std::string const& user2) const;
 
         Response

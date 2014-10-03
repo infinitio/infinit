@@ -17,18 +17,6 @@
 
 #include <cstdint>
 
-SERIALIZE_RESPONSE(infinit::oracles::meta::Response, ar, res)
-{
-  (void) ar;
-  (void) res;
-}
-
-SERIALIZE_RESPONSE(infinit::oracles::meta::AddSwaggerResponse, ar, res)
-{
-  (void) ar;
-  (void) res;
-}
-
 namespace infinit
 {
   namespace oracles
@@ -171,15 +159,19 @@ namespace infinit
         return this->_request<Response>("/ghostify", Method::POST, request);
       }
 
-      AddSwaggerResponse
+      void
       Admin::add_swaggers(std::string const& user1,
                           std::string const& user2) const
       {
-        json::Dictionary request;
-        request["user1"] = user1;
-        request["user2"] = user2;
-        return this->_request<AddSwaggerResponse>(
-          "/user/add_swagger", Method::PUT, request);
+        this->_request(
+          "/user/add_swagger",
+          Method::PUT,
+          [] (reactor::http::Request& request)
+          {
+            elle::serialization::json::SerializerOut output(request);
+            output.serialize("user1", const_cast<std::string&>(user1));
+            output.serialize("user2", const_cast<std::string&>(user2));
+          });
       }
     }
   }
