@@ -57,13 +57,6 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::InviteUserResponse, ar, res)
 | Devices |
 `--------*/
 
-SERIALIZE_RESPONSE(infinit::oracles::meta::CreateDeviceResponse, ar, res)
-{
-  ar & named("id", res.id);
-  ar & named("passport", res.passport);
-  ar & named("name", res.name);
-}
-
 SERIALIZE_RESPONSE(infinit::oracles::meta::DeviceResponse, ar, res)
 {
   ar & named("id", res.id);
@@ -76,11 +69,6 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::UpdateDeviceResponse, ar, res)
   ar & named("id", res.id);
   ar & named("passport", res.passport);
   ar & named("name", res.name);
-}
-
-SERIALIZE_RESPONSE(infinit::oracles::meta::DeleteDeviceResponse, ar, res)
-{
-  ar & named("id", res.id);
 }
 
 /*-------------.
@@ -650,15 +638,6 @@ namespace infinit
       /*--------.
       | Devices |
       `--------*/
-      CreateDeviceResponse
-      Client::create_device(std::string const& name) const
-      {
-        json::Dictionary request{std::map<std::string, std::string>{
-            {"name", name},
-        }};
-        return this->_request<CreateDeviceResponse>(
-          "/device/create", Method::POST, request);
-      }
 
       UpdateDeviceResponse
       Client::update_device(boost::uuids::uuid const& device_uuid,
@@ -682,19 +661,6 @@ namespace infinit
 
         return this->_request<DeviceResponse>(
           sprintf("/device/%s/view", struuid), Method::GET);
-      }
-
-      DeleteDeviceResponse
-      Client::delete_device(boost::uuids::uuid const& device_uuid) const
-      {
-        std::string struuid = boost::lexical_cast<std::string>(device_uuid);
-
-        json::Dictionary request{std::map<std::string, std::string>{
-            {"id", struuid},
-         }};
-
-        return this->_request<DeleteDeviceResponse>(
-          "/device/delete", Method::POST, request);
       }
 
       /*------.
