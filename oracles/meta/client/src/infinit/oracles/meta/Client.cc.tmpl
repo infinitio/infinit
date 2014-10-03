@@ -63,19 +63,6 @@ SERIALIZE_RESPONSE(infinit::oracles::meta::UpdatePeerTransactionResponse, ar, re
   ar & named("updated_transaction_id", res.updated_transaction_id);
 }
 
-/*--------------.
-| Server Status |
-`--------------*/
-
-SERIALIZE_RESPONSE(infinit::oracles::meta::ServerStatusResponse, ar, res)
-{
-  ar & named("status", res.status);
-  if (res.status)
-    res.message = "";
-  else
-    ar & named("message", res.message);
-}
-
 namespace infinit
 {
   namespace oracles
@@ -114,6 +101,19 @@ namespace infinit
       Device::print(std::ostream& stream) const
       {
         stream << "Device(" << this->name << ")";
+      }
+
+      ServerStatus::ServerStatus(elle::serialization::SerializerIn& s)
+      {
+        this->serialize(s);
+      }
+
+      void
+      ServerStatus::serialize(elle::serialization::Serializer& s)
+      {
+        s.serialize("status", this->status);
+        if (this->status)
+          s.serialize("message", this->message);
       }
 
       Fallback::Fallback(elle::serialization::SerializerIn& s)
@@ -906,10 +906,13 @@ namespace infinit
       | Server Status |
       `--------------*/
 
-      ServerStatusResponse
+      ServerStatus
       Client::server_status() const
       {
-        return this->_request<ServerStatusResponse>("/status", Method::GET);
+        std::string const url = "/status";
+        auto request = this->_request(url, Method::GET);
+        SerializerIn input(url, request);
+        return ServerStatus(input);
       }
 
       /*----------.

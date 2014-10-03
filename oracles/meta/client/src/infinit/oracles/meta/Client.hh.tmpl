@@ -217,6 +217,18 @@ namespace infinit
         print(std::ostream& stream) const override;
       };
 
+      struct ServerStatus
+      {
+      public:
+        ServerStatus() = default;
+        ServerStatus(elle::serialization::SerializerIn& s);
+        bool status;
+        std::string message;
+      protected:
+        void
+        serialize(elle::serialization::Serializer& s);
+      };
+
       struct Fallback
       {
       public:
@@ -251,12 +263,6 @@ namespace infinit
         CreateLinkTransactionResponse(elle::serialization::SerializerIn& s);
         void
         serialize(elle::serialization::Serializer& s);
-      };
-
-      struct ServerStatusResponse: Response
-      {
-        bool status;
-        std::string message;
       };
 
       typedef elle::ConstWeakBuffer UserIcon;
@@ -472,9 +478,8 @@ namespace infinit
                          bool regenerate = false) const;
 
       public:
-        ServerStatusResponse
+        ServerStatus
         server_status() const;
-
 
       /*----------.
       | Self User |
