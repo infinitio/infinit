@@ -37,12 +37,6 @@ ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
 | Users |
 `------*/
 
-SERIALIZE_RESPONSE(infinit::oracles::meta::LogoutResponse, ar, res)
-{
-  (void) ar;
-  (void) res;
-}
-
 ELLE_SERIALIZE_SIMPLE(infinit::oracles::meta::User, ar, res, version)
 {
   enforce(version == 0);
@@ -409,17 +403,13 @@ namespace infinit
         }
       }
 
-      LogoutResponse
+      void
       Client::logout()
       {
-        auto res = this->_request<LogoutResponse>("/logout", Method::POST);
-        if (res.success())
-        {
-          // Debugging purpose.
-          this->_email = "";
-          this->_logged_in = false;
-        }
-        return res;
+        this->_request("/logout", Method::POST);
+        // Debugging purpose.
+        this->_email = "";
+        this->_logged_in = false;
       }
 
       LoginResponse::Trophonius

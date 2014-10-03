@@ -98,9 +98,6 @@ namespace infinit
         serialize(elle::serialization::Serializer& s);
       };
 
-      struct LogoutResponse : Response
-      {};
-
       struct MessageResponse : Response
       {};
 
@@ -375,7 +372,7 @@ namespace infinit
               std::string const& password,
               boost::uuids::uuid const& device_uuid);
 
-        LogoutResponse
+        void
         logout();
 
         LoginResponse::Trophonius
