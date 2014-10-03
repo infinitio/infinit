@@ -14,10 +14,6 @@
 #include <elle/os/environ.hh>
 #include <elle/print.hh>
 #include <elle/serialization/json.hh>
-#include <elle/serialize/JSONArchive.hh>
-#include <elle/serialize/ListSerializer.hxx>
-#include <elle/serialize/MapSerializer.hxx>
-#include <elle/serialize/SetSerializer.hxx>
 #include <elle/system/platform.hh>
 
 #include <reactor/scheduler.hh>
@@ -32,21 +28,6 @@
 #include <version.hh>
 
 ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
-
-/*------.
-| Users |
-`------*/
-
-ELLE_SERIALIZE_SIMPLE(infinit::oracles::meta::User, ar, res, version)
-{
-  enforce(version == 0);
-  ar & named("_id", res.id);
-  ar & named("public_key", res.public_key);
-  ar & named("fullname", res.fullname);
-  ar & named("handle", res.handle);
-  ar & named("connected_devices", res.connected_devices);
-  ar & named("register_status", res.register_status);
-}
 
 /*-------------.
 | Transactions |

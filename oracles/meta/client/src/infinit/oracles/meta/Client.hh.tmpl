@@ -46,19 +46,6 @@ namespace infinit
         %endfor
       };
 
-      /// Base class for every response
-      struct Response
-      {
-        bool _success;
-        Error error_code;
-        std::string error_details;
-
-        bool success() const
-        {
-          return _success;
-        }
-      };
-
       class Exception
         : public elle::Exception
       {
@@ -240,11 +227,6 @@ namespace infinit
       protected:
         void
         serialize(elle::serialization::Serializer& s);
-      };
-
-      struct UpdatePeerTransactionResponse : Response
-      {
-        std::string updated_transaction_id;
       };
 
       class CreateLinkTransactionResponse
