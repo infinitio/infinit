@@ -242,12 +242,6 @@ namespace infinit
         serialize(elle::serialization::Serializer& s);
       };
 
-      struct CreatePeerTransactionResponse : Response
-      {
-        std::string created_transaction_id;
-        int remaining_invitations;
-      };
-
       struct UpdatePeerTransactionResponse : Response
       {
         std::string updated_transaction_id;
@@ -423,7 +417,7 @@ namespace infinit
                      bool negate = false,
                      int count = 0) const;
 
-        CreatePeerTransactionResponse
+        std::string
         create_transaction(std::string const& recipient_id_or_email,
                            std::list<std::string> const& files,
                            size_t count,

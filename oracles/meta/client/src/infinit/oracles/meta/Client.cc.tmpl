@@ -52,12 +52,6 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::meta::User, ar, res, version)
 | Transactions |
 `-------------*/
 
-SERIALIZE_RESPONSE(infinit::oracles::meta::CreatePeerTransactionResponse, ar, res)
-{
-  ar & named("created_transaction_id", res.created_transaction_id);
-  ar & named("remaining_invitations",  res.remaining_invitations);
-}
-
 SERIALIZE_RESPONSE(infinit::oracles::meta::UpdatePeerTransactionResponse, ar, res)
 {
   ar & named("updated_transaction_id", res.updated_transaction_id);
@@ -645,7 +639,7 @@ namespace infinit
       | Users |
       `------*/
 
-      CreatePeerTransactionResponse
+      std::string
       Client::create_transaction(std::string const& recipient_id_or_email,
                                  std::list<std::string> const& files,
                                  size_t count,
@@ -657,8 +651,9 @@ namespace infinit
       {
         ELLE_TRACE("%s: create transaction to %s with files: %s (size: %s)",
                    *this, recipient_id_or_email, files, size);
+        std::string const url = "/transaction/create";
         auto request = this->_request(
-          "/transaction/create",
+          url,
           Method::POST,
           [&] (reactor::http::Request& r)
           {
@@ -675,8 +670,10 @@ namespace infinit
             query.serialize("device_id", const_cast<std::string&>(struuid));
             query.serialize("message", const_cast<std::string&>(message));
           });
-        return this->_deserialize_answer<CreatePeerTransactionResponse>(
-          std::move(request));
+        SerializerIn input(url, request);
+        std::string id;
+        input.serialize("created_transaction_id", id);
+        return id;
       }
 
       UpdatePeerTransactionResponse
