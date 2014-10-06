@@ -4,6 +4,7 @@
 #include <boost/lexical_cast.hpp>
 
 #include <elle/printf.hh>
+#include <elle/serialization/json.hh>
 
 #include <infinit/oracles/meta/Admin.hh>
 #include <infinit/oracles/meta/macro.hh>
