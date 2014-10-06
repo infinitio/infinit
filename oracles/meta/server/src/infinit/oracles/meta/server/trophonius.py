@@ -170,41 +170,43 @@ class Mixin:
         'version',
       ])
     trophoniuses = list(trophoniuses)
-    versions = self.database.devices.aggregate([
-                      {'$match': {'trophonius': {'$ne': None}}},
-                      {
-                        '$group':
-                        {
-                          '_id': '$version',
-                          'count': {'$sum': 1},
-                        }
-                      },
-                    ])['result']
     def format_version(version):
       if version is None:
         return None
       return '%s.%s.%s' % (version['major'],
                            version['minor'],
                            version['subminor'])
-    versions = dict((format_version(version['_id']), version['count'])
-                    for version in versions)
-    oses = self.database.devices.aggregate([
-                      {'$match': {'trophonius': {'$ne': None}}},
-                      {
-                        '$group':
-                        {
-                          '_id': '$os',
-                          'count': {'$sum': 1},
-                        }
-                      },
-                    ])['result']
-    oses = dict((os['_id'], os['count'])
-                for os in oses)
+
+    oses_per_version = self.database.devices.aggregate([
+      {'$match': {'trophonius': {'$ne': None}}},
+      {
+        '$group':
+        {
+          '_id': {'os': '$os', 'version': '$version'},
+          'count': {'$sum': 1},
+        }
+      },
+    ])['result']
+
+    versions = {}
+    oses = {}
+    oses_on_version = {}
+
+    for os_version in oses_per_version:
+      version = format_version(os_version['_id'].get('version', None))
+      os = os_version['_id'].get('os', None)
+      versions.setdefault(version, 0)
+      oses.setdefault(os, 0)
+      versions[version] += os_version['count']
+      oses[os] += os_version['count']
+      oses_on_version.setdefault('%s on version %s' % (os, version), os_version['count'])
+
     return {
       'trophoniuses': trophoniuses,
       'users': sum(tropho['users'] for tropho in trophoniuses),
       'versions': versions,
       'oses': oses,
+      'oses_per_version': oses_on_version
     }
 
   @api('/trophonius')

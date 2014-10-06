@@ -50,6 +50,7 @@ namespace infinit
           ELLE_ATTRIBUTE_R(std::string, user_id);
           ELLE_ATTRIBUTE(std::string, session_id);
           ELLE_ATTRIBUTE_R(elle::Version, version);
+          ELLE_ATTRIBUTE(std::string, os);
 
         /*-----.
         | Meta |

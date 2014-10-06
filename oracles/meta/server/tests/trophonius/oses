@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+from infinit.oracles.meta import error
+from uuid import uuid4
+from copy import copy
+
+def fill_os_and_version(user, os, version):
+  user.os = os
+  def version_to_dict(version):
+    ma, mi, su = version.split('.')
+    return {"major": ma, "minor": mi, "subminor": su}
+  user.version = version_to_dict(version)
+
+def login(user, tropho, send_os = True):
+  user.login()
+  user.send_os = send_os
+  tropho.register_user(user)
+
+class Tropho:
+  def __init__(self, meta):
+    self.__meta = meta
+    self.__uuid = uuid4()
+    self.__users = 0
+
+    self.__params = {
+      'port': 23456,
+      'port_client': 0,
+      'port_client_ssl': 0,
+    }
+
+  @property
+  def uuid(self):
+    return self.__uuid
+
+  def register(self):
+    self.__params.update({"users": self.__users})
+    meta.put('trophonius/%s' % str(self.__uuid), self.__params)
+
+  def unregister(self):
+    meta.delete('trophonius/%s' % str(self.__uuid))
+
+  def register_user(self, user):
+    self.__users += 1
+    user_data = {
+      "version": user.version,
+    }
+
+    if user.send_os:
+      user_data.update(
+        {
+          "os": user.os,
+        })
+
+    res = user.put('trophonius/%s/users/%s/%s' % (str(self.__uuid), user.id, str(user.device_id)), user_data)
+    self.register()
+
+  def unregister_user(self, user):
+    self.__users -= 1
+    res = user.delete('trophonius/%s/users/%s/%s' % (str(self.__uuid), user.id, str(user.device_id)))
+    self.register()
+
+with Meta() as meta:
+
+  alice_device1 = User(meta, 'alice@infinit.io')
+  alice_device2 = copy(alice_device1)
+  alice_device2.device_id = uuid4()
+  bob_device1 = User(meta, 'bob@infinit.io')
+  bob_device2 = copy(bob_device1)
+  bob_device2.device_id = uuid4()
+  fill_os_and_version(alice_device1, "Windows", "0.9.14")
+  fill_os_and_version(alice_device2, "OSX", "0.9.15")
+  fill_os_and_version(bob_device1, "OSX", "0.9.14")
+  fill_os_and_version(bob_device2, "Windows", "0.9.12")
+
+  tropho = Tropho(meta)
+  assert len(meta.get('trophoniuses')['trophoniuses']) == 0
+  tropho.register()
+  assert len(meta.get('trophoniuses')['trophoniuses']) == 1
+  tropho.unregister()
+  assert len(meta.get('trophoniuses')['trophoniuses']) == 0
+  tropho.register()
+  tropho2 = Tropho(meta)
+  tropho2.register()
+  print(meta.get('trophoniuses'))
+  assert len(meta.get('trophoniuses')['trophoniuses']) == 2
+
+  assert meta.get('trophoniuses')['users'] == 0
+  login(bob_device1, tropho)
+  assert meta.get('trophoniuses')['users'] == 1
+  login(alice_device1, tropho2)
+  assert meta.get('trophoniuses')['users'] == 2
+  trophoniuses = meta.get('trophoniuses')
+  t1, t2 = trophoniuses['trophoniuses']
+  assert (str(tropho.uuid), str(tropho2.uuid)) == (t1['_id'], t2['_id'])
+  assert t1['users'] == 1
+  assert t2['users'] == 1
+
+  oses = meta.get('trophoniuses')['oses']
+  assert len(oses) == 2
+  assert oses['Windows'] == 1
+  assert oses['OSX'] == 1
+
+  login(alice_device2, tropho2, send_os = False)
+
+  oses = meta.get('trophoniuses')['oses']
+  assert len(oses) == 3
+  assert oses['Windows'] == 1
+  assert oses['OSX'] == 1
+
+  # Check if null entries are handled well.
+  entry = meta.database.devices.find_one()
+  entry.pop('_id')
+  entry['id'] = str(bob_device2.device_id)
+  entry.pop('os')
+  meta.database.devices.insert(entry)
+
+  oses = meta.get('trophoniuses')['oses']
+  assert len(oses) == 3
+  assert oses['Windows'] == 1
+  assert oses['OSX'] == 1
+
+  versions = meta.get('trophoniuses')['versions']
+  print(versions)
+  assert versions['0.9.15'] == 1
+  assert versions['0.9.14'] == 3
+
+  os_per_version = meta.get('trophoniuses')['oses_per_version']
+  print(os_per_version)
+  assert os_per_version["Windows on version 0.9.14"] == 1
+  assert os_per_version["OSX on version 0.9.14"] == 1
+  assert os_per_version["None on version 0.9.14"] == 1
+  assert os_per_version["None on version 0.9.15"] == 1
