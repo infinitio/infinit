@@ -3,7 +3,9 @@
 
 #include <elle/log.hh>
 #include <elle/memory.hh>
+#include <elle/os/path.hh>
 #include <elle/reactor/tests/http_server.hh>
+#include <elle/system/home_directory.hh>
 #include <elle/test.hh>
 #include <elle/utility/Move.hh>
 
@@ -324,11 +326,14 @@ ELLE_TEST_SCHEDULED(login)
     keys, boost::lexical_cast<std::string>(user_id), "my identity", password);
   auto device_id = boost::uuids::random_generator()();
   Server<> server(identity, device_id);
+  std::string download_dir =
+    elle::os::path::join(elle::system::home_directory().string(), "Downloads");
   surface::gap::State state("http",
                             "127.0.0.1",
                             server.port(),
                             device_id,
-                            fingerprint);
+                            fingerprint,
+                            download_dir);
   state.login("em@il.com", password);
 }
 
@@ -391,11 +396,14 @@ ELLE_TEST_SCHEDULED(trophonius_forbidden)
     keys, boost::lexical_cast<std::string>(user_id), "my identity", password);
   auto device_id = boost::uuids::random_generator()();
   ForbiddenTrophoniusMeta server(identity, device_id);
+  std::string download_dir =
+    elle::os::path::join(elle::system::home_directory().string(), "Downloads");
   surface::gap::State state("http",
                             "127.0.0.1",
                             server.port(),
                             device_id,
-                            fingerprint);
+                            fingerprint,
+                            download_dir);
   reactor::Signal reconnected;
   auto tropho = elle::make_unique<infinit::oracles::trophonius::Client>(
     [&] (bool connected)
