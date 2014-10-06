@@ -380,6 +380,9 @@ namespace infinit
         update_device(boost::uuids::uuid const& device_uuid,
                       std::string const& name) const;
 
+        Device
+        device(boost::uuids::uuid const& device_id) const;
+
         void
         remove_swagger(std::string const& _id) const;
 

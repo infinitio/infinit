@@ -611,6 +611,16 @@ namespace infinit
         return Device(input);
       }
 
+      Device
+      Client::device(boost::uuids::uuid const& device_id) const
+      {
+        std::string const url = elle::sprintf("/device/%s/view", device_id);
+
+        auto request = this->_request(url, Method::GET);
+        SerializerIn input(url, request);
+        return Device(input);
+      }
+
       /*------.
       | Users |
       `------*/
