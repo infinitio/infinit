@@ -55,24 +55,6 @@ namespace
   }
 
   std::string
-  _download_directory()
-  {
-    std::string download_dir = elle::os::getenv("INFINIT_DOWNLOAD_DIR", "");
-    if (download_dir.length() > 0 &&
-        boost::filesystem::exists(download_dir) &&
-        boost::filesystem::is_directory(download_dir))
-      return download_dir;
-
-    std::string home_dir = _home_directory();
-    std::string probable_download_dir = path::join(home_dir, "Downloads");
-
-    if (path::exists(probable_download_dir) && path::is_directory(probable_download_dir))
-      return probable_download_dir;
-
-    return home_dir;
-  }
-
-  std::string
   _infinit_home()
   {
     return elle::os::getenv(
@@ -178,16 +160,6 @@ namespace common
       return sizeof(void*) * 8;
     }
 
-    std::string const&
-    download_directory()
-    {
-      static std::string download_dir = _download_directory();
-      static bool no_cache = !elle::os::getenv("INFINIT_NO_DIR_CACHE", "").empty();
-      if (no_cache)
-        download_dir = _download_directory();
-      return download_dir;
-    }
-
   } //!system
 }
 
@@ -222,6 +194,13 @@ static const std::vector<unsigned char> default_trophonius_fingerprint =
 };
 
 common::infinit::Configuration::Configuration(bool production)
+  : common::infinit::Configuration::Configuration(
+      production,
+      path::join(elle::system::home_directory().string(), "Downloads"))
+{}
+
+common::infinit::Configuration::Configuration(bool production,
+                                              std::string const& download_dir)
 {
   bool env_production = !::elle::os::getenv("INFINIT_PRODUCTION", "").empty();
   bool env_development = !::elle::os::getenv("INFINIT_DEVELOPMENT", "").empty();
@@ -289,6 +268,21 @@ common::infinit::Configuration::Configuration(bool production)
 
   // Trophonius
   this->_trophonius_fingerprint = default_trophonius_fingerprint;
+
+  // Download directory
+  this->_download_dir = elle::os::getenv("INFINIT_DOWNLOAD_DIR",
+                                         download_dir);
+    if (this->download_dir().length() > 0 &&
+        boost::filesystem::exists(this->download_dir()) &&
+        boost::filesystem::is_directory(this->download_dir()))
+    {
+      ELLE_TRACE("%s: set download directory: %s", *this, this->download_dir());
+    }
+    else
+    {
+      ELLE_ERR("%s: failed to set download directory: %s",
+                 *this, this->download_dir());
+    }
 }
 
 std::unique_ptr< ::infinit::metrics::Reporter>

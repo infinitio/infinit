@@ -27,7 +27,10 @@ namespace common
     class Configuration
     {
     public:
+      /// Create a configuration with the default download directory:
+      /// HOME/Downloads.
       Configuration(bool production);
+      Configuration(bool production, std::string const& download_dir);
 
       ELLE_ATTRIBUTE_R(bool, production);
 
@@ -46,6 +49,9 @@ namespace common
 
       /// Device configuration
       ELLE_ATTRIBUTE_R(boost::uuids::uuid, device_id);
+
+      /// Download directory
+      ELLE_ATTRIBUTE_R(std::string, download_dir);
     };
 
     /// Returns infinit home directory.
@@ -100,10 +106,6 @@ namespace common
     /// Returns the user home directory.
     std::string const&
     home_directory();
-
-    /// Returns download directory at {HOME}/Downloads if exists else home directory.
-    std::string const&
-    download_directory();
 
     /// Returns the architecture in bits.
     unsigned int
