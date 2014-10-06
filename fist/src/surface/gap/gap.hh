@@ -18,7 +18,7 @@ typedef struct gap_State gap_State;
 
 /// Create a new state.
 /// Returns NULL on failure.
-gap_State* gap_new(bool production);
+gap_State* gap_new(bool production, std::string const& download_dir);
 
 /// Release a state.
 void gap_free(gap_State* state);
@@ -559,10 +559,9 @@ gap_onboarding_interrupt_transfer(gap_State* state,
 
 // Set output directory.
 gap_Status
-gap_set_output_dir(gap_State* state,
-                   char const* output_path);
+gap_set_output_dir(gap_State* state, std::string const& output_path);
 
-char const*
+std::string
 gap_get_output_dir(gap_State* state);
 
 /// Send user report

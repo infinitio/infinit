@@ -76,11 +76,11 @@ _cpp_stringlist_to_c_stringlist(std::list<std::string> const& list)
 
 /// - gap ctor & dtor -----------------------------------------------------
 
-gap_State* gap_new(bool production)
+gap_State* gap_new(bool production, std::string const& download_dir)
 {
   try
   {
-    gap_State* state = new gap_State(production);
+    gap_State* state = new gap_State(production, download_dir);
     return state;
   }
   catch (std::exception const& err)
@@ -1530,11 +1530,8 @@ gap_join_transaction(gap_State* state,
 }
 
 gap_Status
-gap_set_output_dir(gap_State* state,
-                   char const* output_path)
+gap_set_output_dir(gap_State* state, std::string const& output_path)
 {
-  assert(output_path != nullptr);
-
   return run<gap_Status>(
     state,
     "set output dir",
@@ -1545,19 +1542,18 @@ gap_set_output_dir(gap_State* state,
     });
 }
 
-char const*
+std::string
 gap_get_output_dir(gap_State* state)
 {
   assert(state != nullptr);
 
-  auto ret = run<std::string>(
+  return run<std::string>(
     state,
     "join transaction",
     [&] (surface::gap::State& state) -> std::string
     {
       return state.output_dir();
     });
-  return ret.value().c_str();
 }
 
 uint32_t
