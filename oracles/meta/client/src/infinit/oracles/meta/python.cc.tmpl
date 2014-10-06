@@ -109,19 +109,11 @@ using infinit::oracles::meta::Client;
 using infinit::oracles::meta::Admin;
 using infinit::oracles::PeerTransaction;
 using infinit::oracles::meta::Error;
-using infinit::oracles::meta::Response;
 using infinit::oracles::meta::Exception;
 using infinit::oracles::meta::LoginResponse;
-using infinit::oracles::meta::MessageResponse;
 using infinit::oracles::meta::User;
 using infinit::oracles::meta::Self;
-using infinit::oracles::meta::InviteUserResponse;
-using infinit::oracles::meta::CreatePeerTransactionResponse;
-using infinit::oracles::meta::UpdatePeerTransactionResponse;
-using infinit::oracles::meta::EndpointNodeResponse;
 using infinit::oracles::meta::Device;
-using infinit::oracles::meta::UpdateDeviceResponse;
-using infinit::oracles::meta::AddSwaggerResponse;
 
 class MetaClient:
   public Client
@@ -179,11 +171,7 @@ void export_meta_client()
   export_container<std::list<std::string>>("list_string");
 
   py::class_<PeerTransaction>("PeerTransaction");
-  py::class_<Response>("Response")
-    .add_property("success", &Response::success)
-    .def_readonly("error_details", &Response::error_details)
-    .def_readonly("error_code", &Response::error_code)
-  ;
+
   py::class_<User>("User")
     .def_readonly("id", &User::id)
     .def_readonly("fullname", &User::fullname)
@@ -212,34 +200,7 @@ void export_meta_client()
     .def_readonly("identity", &LoginResponse::identity)
     .def_readonly("id", &LoginResponse::id)
   ;
-  py::class_<MessageResponse, py::bases<Response>>("MessageResponse");
 
-  py::class_<InviteUserResponse, py::bases<Response>>("InviteUserResponse")
-    .def_readonly("_id", &InviteUserResponse::_id)
-  ;
-
-  // py::class_<TransactionsResponse, py::bases<Response>>("TransactionsResponse")
-  //   .def_readonly("transactions", &TransactionsResponse::transactions)
-  // ;
-  py::class_<CreatePeerTransactionResponse, py::bases<Response>>("CreatePeerTransactionResponse")
-    .def_readonly("created_transaction_id", &CreatePeerTransactionResponse::created_transaction_id)
-    .def_readonly("remaining_invitations", &CreatePeerTransactionResponse::remaining_invitations)
-  ;
-
-  py::class_<UpdatePeerTransactionResponse, py::bases<Response>>("UpdatePeerTransactionResponse")
-    .def_readonly("updated_transaction_id", &UpdatePeerTransactionResponse::updated_transaction_id)
-  ;
-
-  py::class_<EndpointNodeResponse, py::bases<Response>>("EndpointNodeResponse")
-    .def_readonly("externals", &EndpointNodeResponse::externals)
-    .def_readonly("locals", &EndpointNodeResponse::locals)
-  ;
-
-  py::class_<AddSwaggerResponse>("AddSwaggerResponse")
-  ;
-
-  py::class_<UpdateDeviceResponse, py::bases<Response, Device>>("UpdateDeviceResponse")
-  ;
 
   void (MetaClient::*set_email)(std::string const &) = &MetaClient::email;
   std::string const& (MetaClient::*get_email)() const = &MetaClient::email;
@@ -256,12 +217,10 @@ void export_meta_client()
     .def("users_search", &MetaClient::users_search)
     .def("get_swaggers", &MetaClient::get_swaggers)
     .def("update_device", &MetaClient::update_device)
-    .def("invite_user", &MetaClient::invite_user)
     .def("transaction", &MetaClient::transaction)
     // .def("transactions", &MetaClient::transactions)
     .def("create_transaction", &MetaClient::create_transaction)
     .def("update_transaction", &MetaClient::update_transaction)
-    .def("send_message", &MetaClient::send_message)
     .add_property("email",
                   make_function(get_email, by_value()),
                   set_email)
