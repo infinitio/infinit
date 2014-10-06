@@ -24,7 +24,8 @@ namespace infinit
         connect(boost::uuids::uuid const& uuid,
                 std::string const& user_id,
                 boost::uuids::uuid const& device_uuid,
-                elle::Version const& version);
+                elle::Version const& version,
+                std::string const& os);
 
         void
         disconnect(boost::uuids::uuid const& uuid,

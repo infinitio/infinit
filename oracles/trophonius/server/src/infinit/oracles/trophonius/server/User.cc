@@ -29,6 +29,8 @@ namespace infinit
           _device_id(boost::uuids::nil_uuid()),
           _user_id(),
           _session_id(),
+          _version(),
+          _os(),
           // Meta
           _meta(this->trophonius().meta().protocol(),
                 this->trophonius().meta().host(),
@@ -183,8 +185,7 @@ namespace infinit
                       auto minor = boost::any_cast<int64_t>(version.at("minor"));
                       auto subminor = boost::any_cast<int64_t>(version.at("subminor"));
                       this->_version = elle::Version(major, minor, subminor);
-                      ELLE_DEBUG("%s: client version: %s",
-                                 *this, this->_version);
+                      ELLE_LOG("%s: client version: %s", *this, this->_version);
                     }
                     catch (...)
                     {
@@ -194,6 +195,13 @@ namespace infinit
                   }
                   else
                     ELLE_WARN("%s: client didn't send his version", *this);
+                  if (json.find("os") != json.end())
+                  {
+                    this->_os =
+                      boost::any_cast<std::string>(json.at("os"));
+                  }
+                  else
+                    ELLE_WARN("%s: client didn't send his os", *this);
                 }
                 catch (std::runtime_error const& e)
                 {
@@ -228,7 +236,8 @@ namespace infinit
                   this->_meta.connect(this->trophonius().uuid(),
                                       this->_user_id,
                                       this->_device_id,
-                                      this->_version);
+                                      this->_version,
+                                      this->_os);
                 }
                 // FIXME: the meta client exception is bullshit.
                 catch (elle::http::Exception const& e)

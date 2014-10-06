@@ -29,7 +29,8 @@ namespace infinit
       Admin::connect(boost::uuids::uuid const& uid,
                      std::string const& user_id,
                      boost::uuids::uuid const& device_id,
-                     elle::Version const& version)
+                     elle::Version const& version,
+                     std::string const& os)
       {
         auto url = elle::sprintf("/trophonius/%s/users/%s/%s",
                                  boost::lexical_cast<std::string>(uid),
@@ -37,10 +38,11 @@ namespace infinit
                                  boost::lexical_cast<std::string>(device_id));
         auto request = this->_request(
           url, Method::PUT,
-          [&version] (reactor::http::Request& request)
+          [&version, &os] (reactor::http::Request& request)
           {
             elle::serialization::json::SerializerOut output(request);
             output.serialize("version", const_cast<elle::Version&>(version));
+            output.serialize("os", const_cast<std::string&>(os));
           });
         elle::serialization::json::SerializerIn input(request);
       }
