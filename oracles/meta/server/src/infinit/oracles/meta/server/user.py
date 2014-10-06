@@ -179,7 +179,7 @@ class Mixin:
       current_features = {}
       if 'features' in user:
         current_features = user['features']
-      new_features = self.__roll_abtest()
+      new_features = self.__roll_abtest(False)
       if set(new_features.keys()) != set(current_features.keys()):
         for k in set(new_features.keys()) - set(current_features.keys()):
           current_features[k] = new_features[k]
@@ -404,7 +404,7 @@ class Mixin:
       )
 
       # Inject a set of ABtest features
-      features = self.__roll_abtest()
+      features = self.__roll_abtest(True)
       self.database.users.find_and_modify(
           {
             '_id': user_id,
@@ -417,11 +417,13 @@ class Mixin:
           })
       return user
 
-  def __roll_abtest(self, abtests = None):
+  def __roll_abtest(self, from_register, abtests = None):
     features = {}
     if abtests is None:
       abtests = self.database.abtest.find({})
     for t in abtests:
+      if not from_register and t.get('register_only', False):
+        continue
       k = t['key']
       if 'value' in t:
         v = t['value']
@@ -446,7 +448,7 @@ class Mixin:
                abtests = None):
     """ For each feature in abtest, add it to existing users who don't have it.
     """
-    keys = set(self.__roll_abtest(abtests).keys())
+    keys = set(self.__roll_abtest(False, abtests).keys())
     users = self.database.users.find({}, ['features']) # id is implicit
     for user in users:
       if 'features' not in user:
@@ -455,7 +457,7 @@ class Mixin:
       if reroll:
         diff = set(keys)
       if diff:
-        features = self.__roll_abtest(abtests)
+        features = self.__roll_abtest(False, abtests)
         for k in diff:
           user['features'][k] = features[k]
         self.database.users.update({'_id': user['_id']},
