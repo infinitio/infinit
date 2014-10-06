@@ -1,5 +1,6 @@
 #include <sstream>
 
+#include <boost/algorithm/string.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
 #include <elle/json/json.hh>
