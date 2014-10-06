@@ -424,8 +424,7 @@ namespace surface
             boost::filesystem::is_directory(first_file),
             this->state().device().id,
             this->_message
-            ).created_transaction_id
-          );
+            ));
       }
       ELLE_TRACE("%s: created transaction %s", *this, this->transaction_id());
       // XXX: Ensure recipient is an id.

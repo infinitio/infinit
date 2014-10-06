@@ -560,7 +560,7 @@ namespace surface
         }
 
         auto device = this->meta().device(_device_uuid);
-        this->_device.reset(new Device{device.id, device.name});
+        this->_device.reset(new Device(device));
         std::string passport_path =
           common::infinit::passport_path(this->me().id);
         this->_passport.reset(new papier::Passport());

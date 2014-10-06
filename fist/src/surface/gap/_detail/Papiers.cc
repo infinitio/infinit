@@ -38,7 +38,7 @@ namespace surface
       auto res = this->_meta.update_device(
         boost::uuids::string_generator()(this->_device->id),
         name);
-      this->_device.reset(new Device{res.id, name});
+      this->_device.reset(new Device(res));
       auto passport_string = res.passport;
 
       if (this->_passport != nullptr)
