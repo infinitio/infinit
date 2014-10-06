@@ -1,8 +1,6 @@
 #ifndef PLASMA_META_CLIENT_HXX
 # define PLASMA_META_CLIENT_HXX
 
-# include <elle/Buffer.hh>
-
 # include <infinit/oracles/meta/Client.hh>
 
 namespace std
