@@ -130,6 +130,7 @@ namespace surface
                  uint16_t meta_port,
                  boost::uuids::uuid device,
                  std::vector<unsigned char> trophonius_fingerprint,
+                 std::string const& download_dir,
                  std::unique_ptr<infinit::metrics::Reporter> metrics)
       : _logger_intializer()
       , _meta(meta_protocol, meta_host, meta_port)
@@ -140,7 +141,7 @@ namespace surface
       , _forced_trophonius_port(0)
       , _metrics_reporter(std::move(metrics))
       , _me()
-      , _output_dir(common::system::download_directory())
+      , _output_dir(download_dir)
       , _device_uuid(std::move(device))
       , _device()
     {

@@ -11,6 +11,8 @@
 #include <elle/assert.hh>
 #include <elle/log.hh>
 #include <elle/os/environ.hh>
+#include <elle/os/path.hh>
+#include <elle/system/home_directory.hh>
 
 #include <reactor/scheduler.hh>
 
@@ -50,7 +52,9 @@ parse_options(int argc, char** argv)
     ("help,h", "display the help")
     ("user,u", value<std::string>(), "the username")
     ("password,p", value<std::string>(), "the password")
-    ("production,r", value<bool>(), "send metrics to production");
+    ("production,r", value<bool>(), "send metrics to production")
+    ("output,o", value<std::string>(),
+     "output directory (default: ~/Downloads");
 
   variables_map vm;
   try
@@ -96,6 +100,19 @@ int main(int argc, char** argv)
     bool production = false;
     if (options.count("production") != 0)
       production = options["production"].as<bool>();
+    std::string download_dir =
+      elle::os::path::join(elle::system::home_directory().string(),
+                           "Downloads");
+    if (options.count("output") != 0)
+      download_dir = options["output"].as<std::string>();
+
+    if (!boost::filesystem::exists(download_dir) ||
+        !boost::filesystem::is_directory(download_dir))
+    {
+      throw elle::Exception(
+        elle::sprintf("Download directory (%s) must exist and be a directory",
+                      download_dir));
+    }
 
     reactor::Scheduler sched;
 
@@ -105,12 +122,13 @@ int main(int argc, char** argv)
       "recv",
       [&] () -> int
       {
-        common::infinit::Configuration config(production);
+        common::infinit::Configuration config(production, download_dir);
         surface::gap::State state(config.meta_protocol(),
                                   config.meta_host(),
                                   config.meta_port(),
                                   config.device_id(),
                                   config.trophonius_fingerprint(),
+                                  config.download_dir(),
                                   common::metrics(config));
 
         state.attach_callback<surface::gap::State::ConnectionStatus>(

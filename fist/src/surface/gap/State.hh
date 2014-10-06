@@ -164,6 +164,7 @@ namespace surface
             uint16_t meta_port,
             boost::uuids::uuid device,
             std::vector<unsigned char> trophonius_fingerprint,
+            std::string const& download_dir,
             std::unique_ptr<infinit::metrics::Reporter> metrics = nullptr);
       ~State();
 

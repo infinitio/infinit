@@ -4,6 +4,8 @@
 #include <boost/program_options.hpp>
 
 #include <elle/Exception.hh>
+#include <elle/os/path.hh>
+#include <elle/system/home_directory.hh>
 
 #include <common/common.hh>
 
@@ -109,6 +111,7 @@ int main(int argc, char** argv)
                                   config.meta_port(),
                                   config.device_id(),
                                   config.trophonius_fingerprint(),
+                                  config.download_dir(),
                                   common::metrics(config));
         uint32_t id = surface::gap::null_id;
 
