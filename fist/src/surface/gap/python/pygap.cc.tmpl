@@ -395,7 +395,8 @@ BOOST_PYTHON_MODULE(_gap)
 
   //- gap ctor and dtor -------------------------------------------------------
 
-  py::class_<gap_State, boost::noncopyable>("State", py::init<bool>());
+  py::class_<gap_State, boost::noncopyable>("State", py::init<bool,
+                                                              std::string>());
 
   py::def("new",
           &gap_new,
