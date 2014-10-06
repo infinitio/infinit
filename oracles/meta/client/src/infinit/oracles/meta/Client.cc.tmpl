@@ -122,7 +122,7 @@ namespace infinit
       ServerStatus::serialize(elle::serialization::Serializer& s)
       {
         s.serialize("status", this->status);
-        if (this->status)
+        if (!this->status)
           s.serialize("message", this->message);
       }
 
