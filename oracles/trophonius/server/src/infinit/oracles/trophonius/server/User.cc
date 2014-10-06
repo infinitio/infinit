@@ -69,14 +69,8 @@ namespace infinit
             return;
           try
           {
-            auto res = this->_meta.disconnect(
+            this->_meta.disconnect(
               this->trophonius().uuid(), this->_user_id, this->_device_id);
-            if (!res.success())
-            {
-              // XXX.
-              ELLE_WARN("%s: unable to disconnect user: %s",
-                        *this, res.error_details);
-            }
           }
           catch (reactor::network::Exception const& e) // XXX.
           {
@@ -229,7 +223,6 @@ namespace infinit
                 this->trophonius().users().insert(this);
                 this->trophonius().users_pending().erase(this);
                 this->_cancel_timeout();
-                meta::Response res;
                 try
                 {
                   this->_meta.connect(this->trophonius().uuid(),
@@ -256,7 +249,7 @@ namespace infinit
                 elle::json::Object response;
                 response["notification_type"] = int(-666);
                 response["response_code"] = int(200);
-                response["response_details"] = std::string(res.error_details);
+                response["response_details"] = "";
                 elle::json::write(*this->_socket, response);
                 this->_authentified.open();
                 continue;
@@ -299,7 +292,7 @@ namespace infinit
           }
           catch (...)
           {
-            ELLE_WARN("%s: unknown error: %s", *this, elle::exception_string());
+            ELLE_ERR("%s: unknown error: %s", *this, elle::exception_string());
           }
         }
 
