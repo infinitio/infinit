@@ -107,10 +107,10 @@ namespace surface
             elle::serialization::json::SerializerIn input(read.stream());
             this->_snapshot.reset(new frete::TransferSnapshot(input));
           };
+          if (this->_snapshot->file_count())
+            ELLE_DEBUG("Reloaded snapshot, first file at %s",
+                       this->_snapshot->file(0).progress());
         }
-        if (this->_snapshot->file_count())
-          ELLE_DEBUG("Reloaded snapshot, first file at %s",
-                     this->_snapshot->file(0).progress());
       }
       catch (boost::filesystem::filesystem_error const&)
       {
