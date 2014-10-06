@@ -208,6 +208,7 @@ namespace infinit
       {
       public:
         ServerStatus() = default;
+        ServerStatus(bool status, std::string message);
         ServerStatus(elle::serialization::SerializerIn& s);
         bool status;
         std::string message;

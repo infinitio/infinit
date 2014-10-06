@@ -39,6 +39,33 @@ namespace infinit
   {
     namespace meta
     {
+      /*--------.
+      | Helpers |
+      `--------*/
+
+      static
+      boost::posix_time::time_duration
+      _requests_timeout()
+      {
+        auto env = elle::os::getenv("INFINIT_META_REQUEST_TIMEOUT", "");
+        if (!env.empty())
+          return boost::posix_time::seconds(boost::lexical_cast<int>(env));
+        else
+          return 30_sec;
+      }
+
+      static
+      bool
+      watermark(reactor::http::Request const& request)
+      {
+        static const std::string header = "X-Fist-Meta-Version";
+        return request.headers().find(header) != request.headers().end();
+      }
+
+      /*-----.
+      | Self |
+      `-----*/
+
       Self::Self(elle::serialization::SerializerIn& s)
       {
         this->serialize(s);
@@ -53,6 +80,10 @@ namespace infinit
         s.serialize("devices", this->devices);
         s.serialize("favorites", this->favorites);
       }
+
+      /*-------.
+      | Device |
+      `-------*/
 
       Device::Device(elle::serialization::SerializerIn& s)
       {
@@ -73,10 +104,19 @@ namespace infinit
         stream << "Device(" << this->name << ")";
       }
 
+      /*-------------.
+      | ServerStatus |
+      `-------------*/
+
       ServerStatus::ServerStatus(elle::serialization::SerializerIn& s)
       {
         this->serialize(s);
       }
+
+      ServerStatus::ServerStatus(bool status_, std::string message_)
+        : status(status_)
+        , message(std::move(message))
+      {}
 
       void
       ServerStatus::serialize(elle::serialization::Serializer& s)
@@ -85,6 +125,10 @@ namespace infinit
         if (this->status)
           s.serialize("message", this->message);
       }
+
+      /*---------.
+      | Fallback |
+      `---------*/
 
       Fallback::Fallback(elle::serialization::SerializerIn& s)
       {
@@ -98,6 +142,28 @@ namespace infinit
         s.serialize("fallback_port_ssl", this->fallback_port_ssl);
         s.serialize("fallback_port_tcp", this->fallback_port_tcp);
       }
+
+      /*-----.
+      | User |
+      `-----*/
+
+      User::User(std::string const& id,
+                 std::string const& fullname,
+                 std::string const& handle,
+                 std::string const& register_status,
+                 User::Devices const& devices,
+                 std::string const& public_key):
+        id(id),
+        fullname(fullname),
+        handle(handle),
+        register_status(register_status),
+        connected_devices(devices),
+        public_key(public_key)
+      {}
+
+      /*-------------.
+      | SerializerIn |
+      `-------------*/
 
       class SerializerIn
         : public elle::serialization::json::SerializerIn
@@ -119,6 +185,10 @@ namespace infinit
 
       using elle::sprintf;
       using reactor::http::Method;
+
+      /*----------.
+      | Exception |
+      `----------*/
 
       Exception::Exception(Error const& error, std::string const& message)
         : elle::Exception(message)
@@ -143,34 +213,12 @@ namespace infinit
         return !(*this == error);
       }
 
-      static
-      boost::posix_time::time_duration
-      _requests_timeout()
-      {
-        auto env = elle::os::getenv("INFINIT_META_REQUEST_TIMEOUT", "");
-        if (!env.empty())
-          return boost::posix_time::seconds(boost::lexical_cast<int>(env));
-        else
-          return 30_sec;
-      }
-
-      User::User(std::string const& id,
-                 std::string const& fullname,
-                 std::string const& handle,
-                 std::string const& register_status,
-                 User::Devices const& devices,
-                 std::string const& public_key):
-        id(id),
-        fullname(fullname),
-        handle(handle),
-        register_status(register_status),
-        connected_devices(devices),
-        public_key(public_key)
-      {}
-
       namespace json = elle::format::json;
 
-      // - Ctor & dtor ----------------------------------------------------------
+      /*-------------.
+      | Construction |
+      `-------------*/
+
       Client::Client(std::string const& protocol,
                      std::string const& server,
                      uint16_t port):
@@ -890,10 +938,54 @@ namespace infinit
       ServerStatus
       Client::server_status() const
       {
-        std::string const url = "/status";
-        auto request = this->_request(url, Method::GET);
-        SerializerIn input(url, request);
-        return ServerStatus(input);
+        try
+        {
+          std::string const url = "/status";
+          auto request = this->_client.request(this->_url(url),
+                                               Method::GET,
+                                               this->_default_configuration);
+          reactor::wait(request);
+          if (!watermark(request))
+            return ServerStatus(
+              false,
+              "no internet connectivity: check your proxy credentials");
+          auto status = request.status();
+          switch (status)
+          {
+            case reactor::http::StatusCode::OK:
+            {
+              SerializerIn input(url, request);
+              return ServerStatus(input);
+            }
+            case reactor::http::StatusCode::Bad_Gateway:
+            case reactor::http::StatusCode::Gateway_Timeout:
+            case reactor::http::StatusCode::Internal_Server_Error:
+            case reactor::http::StatusCode::Service_Unavailable:
+            {
+              return ServerStatus(false, "service temporarily unavailable");
+            }
+            default:
+            {
+              return ServerStatus(
+                false,
+                elle::sprintf("service temporarily unavailable: %s", status));
+            }
+          }
+        }
+        catch (reactor::http::Timeout const&)
+        {
+          return ServerStatus(
+            false, "no internet connectivity: network timeout");
+        }
+        catch (reactor::http::ResolutionFailure const&)
+        {
+          return ServerStatus(
+            false, "no internet connectivity: resolution failure");
+        }
+        catch (reactor::http::RequestError const& e)
+        {
+          return ServerStatus(false, elle::sprintf("unknown error: %s", e));
+        }
       }
 
       /*----------.
@@ -1055,14 +1147,6 @@ namespace infinit
         reactor::sleep(delay);
       }
 
-      static
-      bool
-      watermark(reactor::http::Request const& request)
-      {
-        static const std::string header = "X-Fist-Meta-Version";
-        return request.headers().find(header) != request.headers().end();
-      }
-
       reactor::http::Request
       Client::_request(
         std::string const& url,
@@ -1175,14 +1259,12 @@ namespace infinit
           {
             ELLE_WARN("%s: resolution failure requesting %s, retrying",
                       *this, url);
-
             this->_pacify_retry(retry_count);
           }
           catch (reactor::http::RequestError&)
           {
             ELLE_ERR("%s: unhandled error requesting %s, retrying: %s",
                      *this, url, elle::exception_string());
-
             this->_pacify_retry(retry_count);
           }
         }
