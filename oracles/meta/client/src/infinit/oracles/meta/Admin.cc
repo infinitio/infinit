@@ -1,21 +1,13 @@
-#include <infinit/oracles/meta/Admin.hh>
-#include <infinit/oracles/meta/macro.hh>
-
-#include <elle/serialize/JSONArchive.hh>
-#include <elle/format/json/Dictionary.hh>
-#include <elle/serialization/json.hh>
-#include <elle/serialize/ListSerializer.hxx>
-#include <elle/serialize/MapSerializer.hxx>
-#include <elle/serialize/SetSerializer.hxx>
-
-#include <elle/printf.hh>
+#include <cstdint>
 
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/lexical_cast.hpp>
 
-#include <version.hh>
+#include <elle/printf.hh>
 
-#include <cstdint>
+#include <infinit/oracles/meta/Admin.hh>
+#include <infinit/oracles/meta/macro.hh>
+#include <version.hh>
 
 namespace infinit
 {

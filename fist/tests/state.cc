@@ -4,7 +4,6 @@
 #include <elle/log.hh>
 #include <elle/memory.hh>
 #include <elle/reactor/tests/http_server.hh>
-#include <elle/serialize/Identity.hh>
 #include <elle/test.hh>
 #include <elle/utility/Move.hh>
 

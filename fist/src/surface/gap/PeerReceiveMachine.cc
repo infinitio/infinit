@@ -10,8 +10,6 @@
 #endif
 #include <elle/serialization/json/SerializerOut.hh>
 #include <elle/serialization/json.hh>
-#include <elle/serialize/extract.hh>
-#include <elle/serialize/insert.hh>
 #include <elle/system/system.hh>
 
 #include <reactor/exception.hh>
@@ -109,16 +107,6 @@ namespace surface
             elle::serialization::json::SerializerIn input(read.stream());
             this->_snapshot.reset(new frete::TransferSnapshot(input));
           };
-        }
-        else
-        {
-          // FIXME: old obsolete snapshots, for backward only.
-          auto path = common::infinit::frete_snapshot_path(
-            this->data()->recipient_id,
-            this->data()->id);
-          this->_snapshot.reset(
-            new frete::TransferSnapshot(
-              elle::serialize::from_file(path)));
         }
         if (this->_snapshot->file_count())
           ELLE_DEBUG("Reloaded snapshot, first file at %s",

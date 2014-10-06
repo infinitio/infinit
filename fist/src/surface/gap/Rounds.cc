@@ -15,7 +15,6 @@
 
 #include <elle/With.hh>
 #include <elle/format/json/Dictionary.hh>
-#include <elle/serialize/JSONArchive.hh>
 #include <elle/container/vector.hh>
 
 #include <boost/algorithm/string.hpp>

@@ -7,8 +7,6 @@
 #include <elle/container/map.hh>
 #include <elle/os/environ.hh>
 #include <elle/os/path.hh>
-#include <elle/serialize/extract.hh>
-#include <elle/serialize/insert.hh>
 #include <elle/system/system.hh>
 
 #include <reactor/thread.hh>
