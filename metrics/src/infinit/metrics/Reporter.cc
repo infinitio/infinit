@@ -193,7 +193,8 @@ namespace infinit
     Reporter::transaction_ended(std::string const& transaction_id,
                                 infinit::oracles::Transaction::Status status,
                                 std::string const& info,
-                                bool onboarding)
+                                bool onboarding,
+                                bool caused_by_user)
     {
       if (this->_no_metrics)
         return;
@@ -202,7 +203,8 @@ namespace infinit
                                          transaction_id,
                                          status,
                                          info,
-                                         onboarding));
+                                         onboarding,
+                                         caused_by_user));
       this->_metric_available.open();
     }
 
@@ -465,7 +467,8 @@ namespace infinit
     Reporter::_transaction_ended(std::string const& transaction_id,
                                  infinit::oracles::Transaction::Status status,
                                  std::string const& info,
-                                 bool onboarding)
+                                 bool onboarding,
+                                 bool caused_by_user)
     {}
 
     void

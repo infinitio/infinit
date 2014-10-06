@@ -155,7 +155,7 @@ namespace surface
 
       virtual
       void
-      cancel();
+      cancel(bool user_request = false);
 
       // Only for LinkTransactions.
       virtual
@@ -207,6 +207,7 @@ namespace surface
       ELLE_ATTRIBUTE_R(uint32_t, id);
       ELLE_ATTRIBUTE_R(uint32_t, sender);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
+      ELLE_ATTRIBUTE_R(bool, canceled_by_user);
     protected:
       std::unique_ptr<TransactionMachine> _machine;
 

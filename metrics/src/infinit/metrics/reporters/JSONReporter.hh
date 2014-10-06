@@ -15,6 +15,7 @@ namespace infinit
     {
       attempt_number,
       aws_error_code,
+      by_user,
       bytes_transfered,
       connection_method,
       device_id,
@@ -112,7 +113,8 @@ namespace infinit
       _transaction_ended(std::string const& transaction_id,
                          infinit::oracles::Transaction::Status status,
                          std::string const& info,
-                         bool onboarding) override;
+                         bool onboarding,
+                         bool caused_by_user) override;
 
       virtual
       void

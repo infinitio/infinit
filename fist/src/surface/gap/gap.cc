@@ -1465,7 +1465,7 @@ gap_cancel_transaction(gap_State* state,
     "cancel transaction",
     [&] (surface::gap::State& state) -> uint32_t
     {
-      state.transactions().at(id)->cancel();
+      state.transactions().at(id)->cancel(true);
       return id;
     });
 }

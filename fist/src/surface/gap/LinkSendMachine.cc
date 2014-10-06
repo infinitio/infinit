@@ -181,7 +181,8 @@ namespace surface
             this->transaction_id(),
             infinit::oracles::Transaction::Status::canceled,
             "",
-            onboarding);
+            onboarding,
+            this->transaction().canceled_by_user());
       }
     }
 
@@ -196,7 +197,8 @@ namespace surface
         this->transaction_id(),
         infinit::oracles::Transaction::Status::failed,
         "",
-        onboarding);
+        onboarding,
+        this->transaction().canceled_by_user());
       }
     }
 
@@ -333,7 +335,8 @@ namespace surface
             this->transaction_id(),
             s,
             "",
-            onboarding);
+            onboarding,
+            this->transaction().canceled_by_user());
         }
       }
       catch (elle::Exception const&)

@@ -154,6 +154,7 @@ namespace surface
       , _id(id)
       , _sender(true)
       , _data(nullptr)
+      , _canceled_by_user(false)
       , _machine(nullptr)
       , _over(false)
     {
@@ -188,6 +189,7 @@ namespace surface
       , _id(id)
       , _sender(true)
       , _data(nullptr)
+      , _canceled_by_user(false)
       , _machine(nullptr)
       , _over(false)
     {
@@ -227,6 +229,7 @@ namespace surface
       , _sender(state.me().id == data->sender_id &&
                 state.device().id == data->sender_device_id)
       , _data(data)
+      , _canceled_by_user(false)
       , _machine()
       , _over(history)
     {
@@ -326,6 +329,7 @@ namespace surface
       , _id(id)
       , _sender(snapshot.sender())
       , _data(snapshot.data())
+      , _canceled_by_user(false)
       , _machine()
       , _over(false)
     {
@@ -424,7 +428,7 @@ namespace surface
     }
 
     void
-    Transaction::cancel()
+    Transaction::cancel(bool user_request)
     {
       ELLE_TRACE_SCOPE("%s: canceling transaction", *this);
       if (this->_machine == nullptr)
@@ -433,6 +437,7 @@ namespace surface
                   *this);
         throw BadOperation(BadOperation::Type::cancel);
       }
+      _canceled_by_user = true;
       this->_machine->cancel();
     }
 

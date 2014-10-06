@@ -160,7 +160,8 @@ namespace infinit
       std::string const& transaction_id,
       infinit::oracles::Transaction::Status status,
       std::string const& info,
-      bool onboarding
+      bool onboarding,
+      bool caused_by_user
     )
     {
       this->_dispatch(std::bind(&Reporter::_transaction_ended,
@@ -168,7 +169,8 @@ namespace infinit
                       transaction_id,
                       status,
                       info,
-                      onboarding));
+                      onboarding,
+                      caused_by_user));
     }
 
 

@@ -74,7 +74,8 @@ namespace infinit
       _transaction_ended(std::string const& transaction_id,
                          infinit::oracles::Transaction::Status status,
                          std::string const& info,
-                         bool onboarding);
+                         bool onboarding,
+                         bool caused_by_user);
 
       virtual
       void

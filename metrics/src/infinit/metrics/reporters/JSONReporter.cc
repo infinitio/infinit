@@ -109,7 +109,8 @@ namespace infinit
       std::string const& transaction_id,
       infinit::oracles::Transaction::Status status,
       std::string const& info,
-      bool onboarding)
+      bool onboarding,
+      bool by_user)
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] =
@@ -118,7 +119,7 @@ namespace infinit
       data[this->_key_str(JSONKey::how_ended)] =
         this->_transaction_status_str(status);
       data[this->_key_str(JSONKey::onboarding)] = onboarding;
-
+      data[this->_key_str(JSONKey::by_user)] = by_user;
       this->_send(this->_transaction_dest, data);
     }
 
@@ -399,6 +400,8 @@ namespace infinit
           return "attempt_number";
         case JSONKey::aws_error_code:
           return "aws_error_code";
+        case JSONKey::by_user:
+          return "by_user";
         case JSONKey::bytes_transfered:
           return "bytes_transfered";
         case JSONKey::connection_method:

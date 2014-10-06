@@ -115,7 +115,8 @@ namespace infinit
       transaction_ended(std::string const& transaction_id,
                         infinit::oracles::Transaction::Status status,
                         std::string const& info,
-                        bool onboarding);
+                        bool onboarding,
+                        bool caused_by_user = false);
 
       void
       transaction_deleted(std::string const& transaction_id);
@@ -183,7 +184,8 @@ namespace infinit
       _transaction_ended(std::string const& transaction_id,
                          infinit::oracles::Transaction::Status status,
                          std::string const& info,
-                         bool onboarding);
+                         bool onboarding,
+                         bool caused_by_user);
 
       virtual
       void

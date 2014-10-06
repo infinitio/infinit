@@ -284,7 +284,8 @@ namespace surface
             this->transaction_id(),
             infinit::oracles::Transaction::Status::canceled,
             "",
-            onboarding);
+            onboarding,
+            this->transaction().canceled_by_user());
       }
       TransactionMachine::cancel();
     }

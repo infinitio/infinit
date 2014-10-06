@@ -170,7 +170,8 @@ namespace surface
             this->transaction_id(),
             s,
             "",
-            onboarding);
+            onboarding,
+            this->transaction().canceled_by_user());
         }
       }
     }
