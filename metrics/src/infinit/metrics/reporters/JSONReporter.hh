@@ -22,7 +22,7 @@ namespace infinit
       event,
       exit_reason,
       fail_reason,
-      feature_string,
+      features,
       file_count,
       ghost,
       http_status,

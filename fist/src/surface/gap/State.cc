@@ -1132,12 +1132,8 @@ namespace surface
       elle::serialization::json::SerializerIn input(json);
       input.partial(true);
       this->_configuration.serialize(input);
-      // Build and pass feature string to metrics
-      std::string feature_string;
-      for (auto const& f: this->_configuration.features)
-        feature_string += f.first + '=' + f.second + ';';
-      feature_string = feature_string.substr(0, feature_string.length()-1);
-      metrics::Reporter::metric_feature_string(feature_string);
+
+      metrics::Reporter::metric_features(this->_configuration.features);
       std::ofstream fconfig(common::infinit::configuration_path());
       elle::json::write(fconfig, json);
     }
