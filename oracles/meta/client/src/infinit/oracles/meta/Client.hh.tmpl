@@ -298,22 +298,6 @@ namespace infinit
           reactor::http::Request::QueryDict const& query_dict,
           boost::optional<Sender> const& send = boost::optional<Sender>(),
           bool throw_on_status = true) const;
-        template <typename T>
-        T
-        _request(std::string const& url,
-                 reactor::http::Method method) const;
-        template <typename T>
-        T
-        _request(std::string const& url,
-                 reactor::http::Method method,
-                 elle::format::json::Object const& body) const;
-        reactor::http::Request
-        _build_request(std::string const& url,
-                       reactor::http::Method method,
-                       elle::format::json::Object const& body) const;
-        template <typename T>
-        T
-        _deserialize_answer(reactor::http::Request request) const;
         virtual
         void
         _pacify_retry(int& retry_count) const;

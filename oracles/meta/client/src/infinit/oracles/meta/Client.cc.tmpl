@@ -1273,34 +1273,6 @@ namespace infinit
         }
       }
 
-      reactor::http::Request
-      Client::_build_request(std::string const& url,
-                             reactor::http::Method method,
-                             elle::format::json::Object const& body) const
-      {
-        ELLE_LOG_COMPONENT("oracles.meta.client");
-        ELLE_TRACE_SCOPE("%s: %s on %s", *this, method, url);
-
-        reactor::http::Request request = &body ?
-          this->_client.request(
-            this->_root_url + url,
-            method,
-            "application/json",
-            this->_default_configuration) :
-          this->_client.request(
-            this->_root_url + url,
-            method,
-            this->_default_configuration);
-
-        if (&body)
-        {
-          request << body.repr() << "\n";
-          request.finalize();
-        }
-        this->_handle_errors(request);
-        return request;
-      }
-
       std::string
       Client::_url(std::string const& url) const
       {
