@@ -1,3 +1,4 @@
+#include <boost/algorithm/string.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
 #include <elle/json/json.hh>
@@ -194,6 +195,7 @@ public:
     std::string answer(
       "HTTP/1.1 200 OK\r\n"
       "Server: Custom HTTP of doom\r\n"
+      "X-Fist-Meta-Version: 1.0\r\n"
       "Content-Length: " + std::to_string(content.size()) + "\r\n");
     answer += "\r\n" + content.string();
     ELLE_TRACE("%s: send response to %s: %s", *this, socket.peer(), answer);
