@@ -662,7 +662,7 @@ namespace infinit
                         *this,
                         e.what());
             }
-            catch (elle::json::ParserError const& e)
+            catch (elle::json::ParseError const& e)
             {
               ELLE_WARN("%s: JSON parsing error during reconnect: %s",
                        *this,
@@ -919,7 +919,7 @@ namespace infinit
         {
           ELLE_ERR("%s: failure to poke trophonius: %s", *this, e.what());
         }
-        catch (elle::json::ParserError const& e)
+        catch (elle::json::ParseError const& e)
         {
           ELLE_ERR("%s: JSON parsing error: %s", *this, e.what());
         }

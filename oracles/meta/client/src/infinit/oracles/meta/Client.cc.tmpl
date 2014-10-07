@@ -173,7 +173,7 @@ namespace infinit
         try
           : elle::serialization::json::SerializerIn(input)
         {}
-        catch (elle::json::ParserError const& e)
+        catch (elle::json::ParseError const& e)
         {
           ELLE_ERR("GIVE THE FOLLOWING ERROR TO MEFYL RIGHT AWAY. THX.");
           ELLE_ERR("https://app.asana.com/0/5058254180090/12894049383956");
