@@ -882,14 +882,14 @@ namespace surface
     State::output_dir(std::string const& dir)
     {
       if (!fs::exists(dir))
-        throw Exception{gap_error,
-                        "directory doesn't exist."};
+        throw Exception{gap_error, "directory doesn't exist."};
 
       if (!fs::is_directory(dir))
-        throw Exception{gap_error,
-                        "not a directroy."};
+        throw Exception{gap_error, "not a directory."};
 
       this->_output_dir = dir;
+
+      this->_metrics_reporter->user_changed_download_dir();
     }
 
     void
