@@ -249,7 +249,7 @@ namespace infinit
       user_crashed();
 
       void
-      user_changed_download_dir();
+      user_changed_download_dir(bool fallback);
 
     /// User metrics implementation.
     protected:
@@ -294,7 +294,7 @@ namespace infinit
 
       virtual
       void
-      _user_changed_download_dir();
+      _user_changed_download_dir(bool fallback);
 
     /// Queue handling.
     private:

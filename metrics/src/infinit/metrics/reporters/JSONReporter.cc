@@ -288,11 +288,12 @@ namespace infinit
     }
 
     void
-    JSONReporter::_user_changed_download_dir()
+    JSONReporter::_user_changed_download_dir(bool fallback)
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] =
         std::string("app/changed_download_dir");
+      data[this->_key_str(JSONKey::fallback)] = fallback;
 
       this->_send(this->_user_dest, data);
     }
@@ -426,6 +427,8 @@ namespace infinit
           return "exit_reason";
         case JSONKey::fail_reason:
           return "fail_reason";
+        case JSONKey::fallback:
+          return "fallback";
         case JSONKey::file_count:
           return "file_count";
         case JSONKey::ghost:

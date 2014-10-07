@@ -298,11 +298,11 @@ namespace infinit
     }
 
     void
-    CompositeReporter::_user_changed_download_dir()
+    CompositeReporter::_user_changed_download_dir(bool fallback)
     {
       this->_dispatch(
         std::bind(&Reporter::_user_changed_download_dir,
-                  std::placeholders::_1));
+                  std::placeholders::_1, fallback));
     }
   }
 }

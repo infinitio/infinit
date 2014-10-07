@@ -368,12 +368,12 @@ namespace infinit
     }
 
     void
-    Reporter::user_changed_download_dir()
+    Reporter::user_changed_download_dir(bool fallback)
     {
       if (this->_no_metrics)
         return;
       this->_metric_queue.push(
-        std::bind(&Reporter::_user_changed_download_dir, this));
+        std::bind(&Reporter::_user_changed_download_dir, this, fallback));
       this->_metric_available.open();
     }
 
@@ -553,7 +553,7 @@ namespace infinit
     {}
 
     void
-    Reporter::_user_changed_download_dir()
+    Reporter::_user_changed_download_dir(bool fallback)
     {}
 
     /*----------.

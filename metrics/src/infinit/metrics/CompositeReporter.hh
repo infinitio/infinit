@@ -145,7 +145,7 @@ namespace infinit
 
       virtual
       void
-      _user_changed_download_dir();
+      _user_changed_download_dir(bool fallback);
 
     /// Dispatch metrics.
     private:

@@ -23,6 +23,7 @@ namespace infinit
       event,
       exit_reason,
       fail_reason,
+      fallback,
       features,
       file_count,
       ghost,
@@ -184,7 +185,7 @@ namespace infinit
 
       virtual
       void
-      _user_changed_download_dir();
+      _user_changed_download_dir(bool fallback);
 
     /// Private helper functions.
     private:
