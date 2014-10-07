@@ -1,4 +1,6 @@
 #include <boost/uuid/nil_generator.hpp>
+#include <boost/uuid/uuid_io.hpp>
+#include <boost/uuid/uuid.hpp>
 
 #include <elle/test.hh>
 #include <elle/log.hh>
@@ -8,6 +10,7 @@
 
 #include <reactor/scheduler.hh>
 
+#include <infinit/oracles/meta/Admin.hh>
 #include <infinit/oracles/meta/Client.hh>
 #include <surface/gap/Exception.hh>
 #include <surface/gap/Error.hh>
@@ -309,6 +312,38 @@ ELLE_TEST_SCHEDULED(transactions)
   BOOST_CHECK(c.transactions().empty());
 }
 
+ELLE_TEST_SCHEDULED(trophonius)
+{
+  HTTPServer s;
+  int i = 0;
+  boost::uuids::uuid id;
+  s.register_route(
+    elle::sprintf("/trophonius/%s", id),
+    reactor::http::Method::PUT,
+    [&i, &s] (HTTPServer::Headers const&,
+              HTTPServer::Cookies const&,
+              HTTPServer::Parameters const&,
+              elle::Buffer const& body)
+    {
+      return "{}";
+    });
+  s.register_route(
+    elle::sprintf("/trophonius/%s", id),
+    reactor::http::Method::DELETE,
+    [&i, &s] (HTTPServer::Headers const&,
+              HTTPServer::Cookies const&,
+              HTTPServer::Parameters const&,
+              elle::Buffer const& body)
+    {
+      return "{}";
+    });
+  infinit::oracles::meta::Admin c("http", "127.0.0.1", s.port());
+  ELLE_LOG("register trophonius")
+    c.register_trophonius(id, 1, 2, 3, "localhost", 0);
+  ELLE_LOG("unregister trophonius")
+    c.unregister_trophonius(id);
+}
+
 ELLE_TEST_SUITE()
 {
   auto& suite = boost::unit_test::framework::master_test_suite();
@@ -324,4 +359,5 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(status_found));
   suite.add(BOOST_TEST_CASE(json_error_not_meta));
   suite.add(BOOST_TEST_CASE(transactions));
+  suite.add(BOOST_TEST_CASE(trophonius));
 }

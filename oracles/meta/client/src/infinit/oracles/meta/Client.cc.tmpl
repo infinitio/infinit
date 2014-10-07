@@ -1185,8 +1185,10 @@ namespace infinit
         {
           try
           {
+            // FIXME: The content-type should not be deduced from the method but
+            // from whether there is a send method.
             reactor::http::Request request =
-              method == Method::GET ?
+              (method == Method::GET || method == Method::DELETE) ?
               this->_client.request(this->_url(url),
                                     method,
                                     this->_default_configuration) :
