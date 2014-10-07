@@ -14,7 +14,8 @@ oracles = None
 
 transaction_lib = None
 
-def configure(elle,
+def configure(production_build,
+              elle,
               papier_python,
               boost = None,
               python3 = None,
@@ -91,6 +92,7 @@ def configure(elle,
     'lib/python',
     drake.copy(mongobox, 'lib/python', strip_prefix='mongobox'))
   meta = drake.include('meta',
+                       production_build = production_build,
                        elle = elle,
                        papier_python = papier_python,
                        python_common = python_built,

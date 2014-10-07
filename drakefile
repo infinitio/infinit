@@ -431,6 +431,7 @@ def configure(cxx_toolkit = None,
 
   oracles = drake.include(
     'oracles',
+    production_build = production_build,
     elle = elle,
     papier_python = papier_python_lib,
     boost = boost,

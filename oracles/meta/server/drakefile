@@ -12,7 +12,8 @@ python = None
 with open(str(drake.path_source('../../../elle/drake-utils.py')), 'r') as f:
   exec(f.read(), globals(), globals())
 
-def configure(elle,
+def configure(production_build,
+              elle,
               python3,
               python_common,
               papier_python,
@@ -31,6 +32,13 @@ def configure(elle,
 
   git = drake.git.Git()
   version = drake.node('lib/python/infinit/oracles/meta/version.py')
+
+
+  class PythonVersionGenerator(VersionGenerator):
+    def _variable(self, name, value):
+      if name == 'version' and not production_build:
+        value = '%s-dev' % git.version().split('-')[0]
+      return '%s = %s' % (name, repr(value))
   PythonVersionGenerator(version, git = git)
 
   ## ------- ##
