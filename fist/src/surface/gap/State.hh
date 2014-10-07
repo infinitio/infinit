@@ -221,7 +221,13 @@ namespace surface
       std::string
       user_directory();
 
-      ELLE_ATTRIBUTE_Rw(std::string, output_dir);
+      ELLE_ATTRIBUTE_R(std::string, output_dir);
+      /// Set the output directory.
+      /// Fallback is true when it was not a user action. i.e.: existing path
+      /// is not suitable any more and was changed by the application.
+      void
+      set_output_dir(std::string const& dir, bool fallback);
+
     private:
       void
       _on_invalid_trophonius_credentials();

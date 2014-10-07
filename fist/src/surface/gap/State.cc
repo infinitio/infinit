@@ -879,7 +879,7 @@ namespace surface
     }
 
     void
-    State::output_dir(std::string const& dir)
+    State::set_output_dir(std::string const& dir, bool fallback)
     {
       if (!fs::exists(dir))
         throw Exception{gap_error, "directory doesn't exist."};
@@ -889,7 +889,7 @@ namespace surface
 
       this->_output_dir = dir;
 
-      this->_metrics_reporter->user_changed_download_dir();
+      this->_metrics_reporter->user_changed_download_dir(fallback);
     }
 
     void
