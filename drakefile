@@ -619,6 +619,16 @@ def configure(cxx_toolkit = None,
   )
   cli_build << cli_send_bin
 
+  cli_archive_sources = drake.nodes(
+    'satellites/archive/Archive.cc',
+  )
+  cli_archive_bin = drake.cxx.Executable(
+    'bin/8archive',
+    cli_archive_sources + [gap_lib, elle_lib, reactor_lib, crash_lib],
+    cxx_toolkit,
+    cli_cxx_config
+  )
+
   cli_recv_sources = drake.nodes(
     'satellites/recv/Recv.cc',
   )
