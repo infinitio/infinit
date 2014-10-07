@@ -279,6 +279,7 @@ namespace infinit
       | Helpers |
       `--------*/
       protected:
+        typedef std::function<void (reactor::http::Request&)> Sender;
         reactor::http::Request
         _request(
           std::string const& url,
@@ -288,15 +289,14 @@ namespace infinit
         _request(
           std::string const& url,
           reactor::http::Method method,
-          std::function<void (reactor::http::Request&)> const& send,
+          Sender const& send,
           bool throw_on_status = true) const;
         reactor::http::Request
         _request(
           std::string const& url,
           reactor::http::Method method,
           reactor::http::Request::QueryDict const& query_dict,
-          std::function<void (reactor::http::Request&)> const& send =
-            [] (reactor::http::Request&) {},
+          boost::optional<Sender> const& send = boost::optional<Sender>(),
           bool throw_on_status = true) const;
         template <typename T>
         T

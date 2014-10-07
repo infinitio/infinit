@@ -1156,7 +1156,7 @@ namespace infinit
         return this->_request(
           url, method,
           reactor::http::Request::QueryDict(),
-          [] (reactor::http::Request&) {},
+          boost::optional<Sender>(),
           throw_on_status);
       }
 
@@ -1164,7 +1164,7 @@ namespace infinit
       Client::_request(
         std::string const& url,
         reactor::http::Method method,
-        std::function<void (reactor::http::Request&)> const& send,
+        Sender const& send,
         bool throw_on_status) const
       {
         return this->_request(
@@ -1177,7 +1177,7 @@ namespace infinit
         std::string const& url,
         Method method,
         reactor::http::Request::QueryDict const& query_dict,
-        std::function<void (reactor::http::Request&)> const& send,
+        boost::optional<Sender> const& send,
         bool throw_on_status) const
       {
         int retry_count = 0;
@@ -1188,17 +1188,18 @@ namespace infinit
             // FIXME: The content-type should not be deduced from the method but
             // from whether there is a send method.
             reactor::http::Request request =
-              (method == Method::GET || method == Method::DELETE) ?
-              this->_client.request(this->_url(url),
-                                    method,
-                                    this->_default_configuration) :
+              send ?
               this->_client.request(this->_url(url),
                                     method,
                                     "application/json",
+                                    this->_default_configuration) :
+              this->_client.request(this->_url(url),
+                                    method,
                                     this->_default_configuration);
             if (!query_dict.empty())
               request.query_string(query_dict);
-            send(request);
+            if (send)
+              send.get()(request);
             auto status = request.status();
             switch (status)
             {
