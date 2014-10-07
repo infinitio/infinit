@@ -755,6 +755,9 @@ def configure(cxx_toolkit = None,
       gap_python_cxx_config.define('BOOST_PYTHON_STATIC_LIB')
       gap_python_cxx_config += boost_python
     else:
+      if cxx_toolkit.os is drake.os.macos:
+        gap_python_cxx_config.flag('-framework')
+        gap_python_cxx_config.flag('CoreServices')
       gap_python_cxx_config += boost_python
     with templating_context:
       gap_python_sources = drake.nodes(
