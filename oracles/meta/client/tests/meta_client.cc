@@ -75,8 +75,17 @@ ELLE_TEST_SCHEDULED(login_success)
                        " \"identity\": \"identity\""
                        " }";
                    });
+  s.register_route("/logout", reactor::http::Method::POST,
+                   [] (HTTPServer::Headers const&,
+                       HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
+                       elle::Buffer const& body) -> std::string
+                   {
+                     return "{}";
+                   });
   infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
   c.login("jean@infinit.io", "password", boost::uuids::nil_uuid());
+  c.logout();
 }
 
 ELLE_TEST_SCHEDULED(forbidden)
