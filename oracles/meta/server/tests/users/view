@@ -3,10 +3,10 @@
 from utils import Meta, User
 
 with Meta() as meta:
-  u1 = User(meta, "foobar@infinit.io")
+  u1 = User(meta, 'foobar@infinit.io')
 
-  res = meta.get('user/%s/view' % u1.id)
-  assert res['success']
+  res = meta.get('users/%s' % u1.id)
+  assert res['id'] == u1.id
 
-  res = meta.get('user/%s/view' % u1.email)
-  assert res['success']
+  res = meta.get('users/%s' % u1.email)
+  assert res['id'] == u1.id
