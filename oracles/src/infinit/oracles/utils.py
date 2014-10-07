@@ -88,11 +88,10 @@ class api:
           else:
             key = iter(d.keys()).__next__()
             app.bad_request('unexpected JSON keys: %r' % key)
-      if bottle.request.body.readlines() != []:
-        try:
-          explode(bottle.request.json)
-        except ValueError:
-          app.bad_request('invalid JSON')
+      try:
+        explode(bottle.request.json)
+      except ValueError:
+        app.bad_request('invalid JSON')
       explode(bottle.request.query)
       for argument, default in arguments.items():
         if not default:
