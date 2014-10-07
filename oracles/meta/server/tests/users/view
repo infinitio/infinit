@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import Meta, User
+from utils import Meta, User, HTTPException
 
 with Meta() as meta:
   u1 = User(meta, 'foobar@infinit.io')
@@ -10,3 +10,8 @@ with Meta() as meta:
 
   res = meta.get('users/%s' % u1.email)
   assert res['id'] == u1.id
+
+  try:
+    meta.get('users/invalid-id')
+  except HTTPException as e:
+    assert e.status == 400

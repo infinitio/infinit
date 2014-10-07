@@ -351,8 +351,12 @@ class Meta(bottle.Bottle,
     if '@' in id_or_email:
       return self.user_by_email(id_or_email, ensure_existence = False)
     else:
-      return self._user_by_id(bson.ObjectId(id_or_email),
-                              ensure_existence = False)
+      try:
+        id = bson.ObjectId(id_or_email)
+        return self._user_by_id(id, ensure_existence = False)
+      except bson.errors.InvalidId:
+        self.bad_request('invalid user id: %r' % id_or_email)
+
 
   def report_fatal_error(self, route, exception):
     import traceback
