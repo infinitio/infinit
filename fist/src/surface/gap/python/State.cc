@@ -2,7 +2,9 @@
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 
 #include <elle/assert.hh>
+#include <elle/os/path.hh>
 #include <elle/python/containers.hh>
+#include <elle/system/home_directory.hh>
 
 #include <common/common.hh>
 
@@ -349,7 +351,9 @@ public:
           meta_host,
           meta_port,
           device_id(),
-          trophonius_fingerprint())
+          trophonius_fingerprint(),
+          elle::os::path::join(elle::system::home_directory().string(),
+                               "Downloads"))
   {}
 
   template <typename T>
@@ -463,7 +467,6 @@ BOOST_PYTHON_MODULE(state)
     .def("logged_in", &State::logged_in)
     .def("login", (void (State::*)(std::string const&, std::string const&)) &State::login)
     .def("logout", &State::logout)
-    .def("invite", &State::invite)
     .def("poll", &State::poll)
     .def("users", &State::users, by_const_ref())
     .def("transaction", &PythonState::transaction)
