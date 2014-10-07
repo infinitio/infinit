@@ -1,3 +1,4 @@
+#include <boost/algorithm/string.hpp>
 #include <boost/program_options.hpp>
 
 #include <elle/Exception.hh>
