@@ -1530,14 +1530,16 @@ gap_join_transaction(gap_State* state,
 }
 
 gap_Status
-gap_set_output_dir(gap_State* state, std::string const& output_path)
+gap_set_output_dir(gap_State* state,
+                   std::string const& output_path,
+                   bool fallback)
 {
   return run<gap_Status>(
     state,
     "set output dir",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      state.output_dir(output_path);
+      state.set_output_dir(output_path, fallback);
       return gap_ok;
     });
 }

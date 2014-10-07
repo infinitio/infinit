@@ -559,7 +559,9 @@ gap_onboarding_interrupt_transfer(gap_State* state,
 
 // Set output directory.
 gap_Status
-gap_set_output_dir(gap_State* state, std::string const& output_path);
+gap_set_output_dir(gap_State* state,
+                   std::string const& output_path,
+                   bool fallback);
 
 std::string
 gap_get_output_dir(gap_State* state);
