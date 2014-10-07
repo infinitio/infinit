@@ -367,6 +367,16 @@ namespace infinit
       this->_metric_available.open();
     }
 
+    void
+    Reporter::user_changed_download_dir()
+    {
+      if (this->_no_metrics)
+        return;
+      this->_metric_queue.push(
+        std::bind(&Reporter::_user_changed_download_dir, this));
+      this->_metric_available.open();
+    }
+
     /*---------------.
     | Queue Handling |
     `---------------*/
@@ -537,8 +547,13 @@ namespace infinit
     void
     Reporter::_user_proxy(reactor::network::ProxyType proxy_type)
     {}
+
     void
     Reporter::_user_crashed()
+    {}
+
+    void
+    Reporter::_user_changed_download_dir()
     {}
 
     /*----------.

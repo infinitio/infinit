@@ -143,6 +143,10 @@ namespace infinit
       void
       _user_crashed();
 
+      virtual
+      void
+      _user_changed_download_dir();
+
     /// Dispatch metrics.
     private:
       void

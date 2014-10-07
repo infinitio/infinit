@@ -287,6 +287,16 @@ namespace infinit
       this->_send(this->_user_dest, data);
     }
 
+    void
+    JSONReporter::_user_changed_download_dir()
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] =
+        std::string("app/changed_download_dir");
+
+      this->_send(this->_user_dest, data);
+    }
+
     /*-----.
     | Send |
     `-----*/

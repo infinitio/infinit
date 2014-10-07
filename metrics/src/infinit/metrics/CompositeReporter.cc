@@ -296,5 +296,13 @@ namespace infinit
       this->_dispatch(
         std::bind(&Reporter::_user_crashed, std::placeholders::_1));
     }
+
+    void
+    CompositeReporter::_user_changed_download_dir()
+    {
+      this->_dispatch(
+        std::bind(&Reporter::_user_changed_download_dir,
+                  std::placeholders::_1));
+    }
   }
 }

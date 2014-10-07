@@ -248,6 +248,9 @@ namespace infinit
       void
       user_crashed();
 
+      void
+      user_changed_download_dir();
+
     /// User metrics implementation.
     protected:
       virtual
@@ -288,6 +291,10 @@ namespace infinit
       virtual
       void
       _user_crashed();
+
+      virtual
+      void
+      _user_changed_download_dir();
 
     /// Queue handling.
     private:

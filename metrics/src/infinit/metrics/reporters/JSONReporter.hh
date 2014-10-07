@@ -182,6 +182,10 @@ namespace infinit
       void
       _user_crashed();
 
+      virtual
+      void
+      _user_changed_download_dir();
+
     /// Private helper functions.
     private:
       std::string
