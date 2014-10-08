@@ -467,25 +467,22 @@ namespace surface
                      lower_email.begin(),
                      ::tolower);
 
-      elle::SafeFinally login_failed(
-        [this, lower_email]
-        {
-          infinit::metrics::Reporter::metric_sender_id(lower_email);
-          this->_metrics_reporter->user_login(false, "");
-        });
-      auto login_response =
-        this->_meta.login(lower_email, password, _device_uuid);
-      login_failed.abort();
-
-      ELLE_LOG("%s: logged in as %s", *this, email);
+      std::string failure_reason;
       elle::With<elle::Finally>([&]
         {
+          failure_reason = elle::exception_string();
           ELLE_WARN("%s: error during login, logout: %s",
-                    *this, elle::exception_string());
-          this->_meta.logout();
+                    *this, failure_reason);
+          infinit::metrics::Reporter::metric_sender_id(lower_email);
+          this->_metrics_reporter->user_login(false, failure_reason);
+          if (this->_meta.logged_in())
+            this->_meta.logout();
         })
         << [&] (elle::Finally& finally_logout)
       {
+        auto login_response =
+          this->_meta.login(lower_email, password, _device_uuid);
+        ELLE_LOG("%s: logged in as %s", *this, email);
         if (trophonius)
         {
           this->_trophonius.swap(trophonius);
