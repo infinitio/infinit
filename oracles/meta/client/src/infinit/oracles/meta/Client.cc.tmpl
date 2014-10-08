@@ -1118,8 +1118,7 @@ namespace infinit
       }
 
       void
-      Client::icon(std::string const& user_id,
-                   elle::ConstWeakBuffer const& icon) const
+      Client::icon(elle::ConstWeakBuffer const& icon) const
       {
         this->_request(
           "/user/avatar",
