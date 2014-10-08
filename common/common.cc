@@ -193,15 +193,13 @@ static const std::vector<unsigned char> default_trophonius_fingerprint =
   0x3D, 0xD8, 0x44, 0x75, 0xC1, 0x8C, 0x6E, 0xfC, 0x3B, 0x65
 };
 
-common::infinit::Configuration::Configuration(bool production)
-  : common::infinit::Configuration::Configuration(
-      production,
-      path::join(elle::system::home_directory().string(), "Downloads"))
-{}
-
 common::infinit::Configuration::Configuration(bool production,
-                                              std::string const& download_dir)
+                                              boost::optional<std::string> download_dir)
 {
+  std::string download_directory = (!download_dir || download_dir.get().empty())
+    ? path::join(elle::system::home_directory().string(), "Downloads")
+    : download_dir.get();
+
   bool env_production = !::elle::os::getenv("INFINIT_PRODUCTION", "").empty();
   bool env_development = !::elle::os::getenv("INFINIT_DEVELOPMENT", "").empty();
   if (env_production && env_development)
@@ -271,7 +269,7 @@ common::infinit::Configuration::Configuration(bool production,
 
   // Download directory
   this->_download_dir = elle::os::getenv("INFINIT_DOWNLOAD_DIR",
-                                         download_dir);
+                                         download_directory);
     if (this->download_dir().length() > 0 &&
         boost::filesystem::exists(this->download_dir()) &&
         boost::filesystem::is_directory(this->download_dir()))

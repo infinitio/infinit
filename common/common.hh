@@ -6,6 +6,7 @@
 # include <string>
 
 # include <boost/uuid/uuid.hpp>
+# include <boost/optional.hpp>
 
 # include <elle/attribute.hh>
 
@@ -29,8 +30,9 @@ namespace common
     public:
       /// Create a configuration with the default download directory:
       /// HOME/Downloads.
-      Configuration(bool production);
-      Configuration(bool production, std::string const& download_dir);
+      Configuration(bool production,
+                    boost::optional<std::string> download_dir =
+                      boost::optional<std::string>{});
 
       ELLE_ATTRIBUTE_R(bool, production);
 
