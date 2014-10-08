@@ -297,6 +297,8 @@ namespace infinit
           reactor::http::Method method,
           reactor::http::Request::QueryDict const& query_dict,
           boost::optional<Sender> const& send = boost::optional<Sender>(),
+          boost::optional<std::string> const& content_type =
+            boost::optional<std::string>(),
           bool throw_on_status = true) const;
         virtual
         void

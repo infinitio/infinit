@@ -1120,13 +1120,16 @@ namespace infinit
       void
       Client::icon(elle::ConstWeakBuffer const& icon) const
       {
+        std::string content_type = "application/octet-stream";
         this->_request(
           "/user/avatar",
           reactor::http::Method::POST,
-          [&icon] (reactor::http::Request& request)
+          reactor::http::Request::QueryDict(),
+          Sender([&icon] (reactor::http::Request& request)
           {
             request.write((char const*) icon.contents(), icon.size());
-          });
+          }),
+          content_type);
       }
 
       /*--------.
@@ -1156,6 +1159,7 @@ namespace infinit
           url, method,
           reactor::http::Request::QueryDict(),
           boost::optional<Sender>(),
+          boost::optional<std::string>(),
           throw_on_status);
       }
 
@@ -1167,8 +1171,12 @@ namespace infinit
         bool throw_on_status) const
       {
         return this->_request(
-          url, method,
-          reactor::http::Request::QueryDict(), send, throw_on_status);
+          url,
+          method,
+          reactor::http::Request::QueryDict(),
+          send,
+          boost::optional<std::string>(),
+          throw_on_status);
       }
 
       reactor::http::Request
@@ -1177,6 +1185,7 @@ namespace infinit
         Method method,
         reactor::http::Request::QueryDict const& query_dict,
         boost::optional<Sender> const& send,
+        boost::optional<std::string> const& content_type_,
         bool throw_on_status) const
       {
         int retry_count = 0;
@@ -1186,14 +1195,19 @@ namespace infinit
           {
             // FIXME: The content-type should not be deduced from the method but
             // from whether there is a send method.
+            std::string content_type;
+            if (content_type_)
+              content_type = content_type_.get();
+            else if (send)
+              content_type = "application/json";
             reactor::http::Request request =
-              send ?
+              content_type.empty() ?
               this->_client.request(this->_url(url),
                                     method,
-                                    "application/json",
                                     this->_default_configuration) :
               this->_client.request(this->_url(url),
                                     method,
+                                    content_type,
                                     this->_default_configuration);
             if (!query_dict.empty())
               request.query_string(query_dict);
