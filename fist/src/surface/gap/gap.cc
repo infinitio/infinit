@@ -432,6 +432,7 @@ gap_set_self_fullname(gap_State* state, std::string const& fullname)
                           {
                             auto handle = state.me().handle;
                             state.meta().edit_user(fullname, handle);
+                            state.user_sync(state.me().id);
                             return gap_ok;
                           });
 }
@@ -456,6 +457,7 @@ gap_set_self_handle(gap_State* state, std::string const& handle)
                          {
                            auto fullname = state.me().fullname;
                            state.meta().edit_user(fullname, handle);
+                           state.user_sync(state.me().id);
                            return gap_ok;
                          });
 }
