@@ -868,6 +868,13 @@ namespace surface
     }
 
     void
+    State::update_me()
+    {
+      this->_me.reset(nullptr);
+      this->me();
+    }
+
+    void
     State::set_avatar(boost::filesystem::path const& image_path)
     {
       if (!boost::filesystem::exists(image_path))

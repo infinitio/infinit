@@ -186,6 +186,9 @@ namespace surface
       me() const;
 
       void
+      update_me();
+
+      void
       set_avatar(boost::filesystem::path const& image_path);
 
       void
