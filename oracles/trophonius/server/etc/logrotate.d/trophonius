@@ -3,7 +3,7 @@
 /var/log/trophonius.debug
 {
         compress
-        rotate 30
+        rotate 3
         daily
         postrotate
             /usr/bin/killall -HUP rsyslogd
