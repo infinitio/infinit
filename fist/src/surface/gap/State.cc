@@ -887,7 +887,7 @@ namespace surface
     void
     State::set_avatar(elle::Buffer const& avatar)
     {
-      this->meta().icon(this->me().id, avatar);
+      this->meta().icon(avatar);
     }
 
     std::string
