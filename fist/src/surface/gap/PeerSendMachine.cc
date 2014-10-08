@@ -395,8 +395,9 @@ namespace surface
       // Before we only mirrored if we knew that it wasn't a ghost. This took
       // two meta calls to verify (create + fetch user). By mirroring here,
       // there is a chance that the mirrored files will not be used.
-      if (!archive_info().second)
-        this->try_mirroring_files(size);
+      // Note: If the recipient is a ghost, the archive will be created from
+      // mirrored files.
+      this->try_mirroring_files(size);
       this->data()->total_size = size;
       this->total_size(size);
       auto first_file = boost::filesystem::path(*(this->files().cbegin()));
