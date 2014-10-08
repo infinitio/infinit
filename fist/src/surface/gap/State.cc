@@ -828,24 +828,29 @@ namespace surface
 
       std::string error_details = "";
 
-      elle::SafeFinally register_failed{[this, lower_email, error_details] {
-        infinit::metrics::Reporter::metric_sender_id(lower_email);
-        this->_metrics_reporter->user_register(false, error_details);
-      }};
+      elle::SafeFinally register_failed{[this, lower_email, &error_details] {
+          infinit::metrics::Reporter::metric_sender_id(lower_email);
+          this->_metrics_reporter->user_register(false, error_details);
+        }};
 
-      std::string user_id =
-        this->meta(false).register_(lower_email, fullname, password);
+      try
+      {
+        ELLE_DEBUG("register");
+        std::string user_id =
+          this->meta(false).register_(lower_email, fullname, password);
 
-      infinit::metrics::Reporter::metric_sender_id(user_id);
-
-      register_failed.abort();
-
-      ELLE_DEBUG("registered new user %s <%s>", fullname, lower_email);
-
-      elle::SafeFinally registered_metric{[this, user_id] {
         infinit::metrics::Reporter::metric_sender_id(user_id);
-        this->_metrics_reporter->user_register(true, "");
-      }};
+
+        register_failed.abort();
+        ELLE_DEBUG("registered new user %s <%s>", fullname, lower_email);
+        infinit::metrics::Reporter::metric_sender_id(user_id);
+      }
+      catch (elle::Error const& error)
+      {
+        error_details = error.what();
+        throw;
+      }
+      this->_metrics_reporter->user_register(true, "");
       this->login(lower_email, password);
     }
 
