@@ -681,16 +681,36 @@ namespace surface
       }
       try
       {
-        this->_meta.logout();
-        this->_metrics_reporter->user_logout(true, "");
+        reactor::Barrier timed_out;
+        reactor::Duration timeout = 10_sec;
+        bool logout_success =
+          elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+          {
+            bool success = false;
+            scope.run_background("logout with timeout", [&]
+            {
+              this->_meta.logout();
+              success = true;
+              ELLE_TRACE("%s: logged out", *this);
+              this->_metrics_reporter->user_logout(true, "");
+            });
+            scope.wait(timeout);
+            return success;
+          };
+        if (!logout_success)
+        {
+          ELLE_WARN("logout failed, timed out after %s", timeout);
+          this->_meta.logged_in(false);
+          this->_metrics_reporter->user_logout(false, "timed out");
+        }
       }
       catch (elle::Exception const&)
       {
         ELLE_WARN("logout failed, ignore exception: %s",
                   elle::exception_string());
         this->_meta.logged_in(false);
+        this->_metrics_reporter->user_logout(false, elle::exception_string());
       }
-      ELLE_TRACE("%s: logged out", *this);
     }
 
     void
