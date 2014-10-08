@@ -211,6 +211,10 @@ gap_set_proxy(gap_State* _state,
         case gap_proxy_socks:
           type_ = ProxyType::SOCKS;
           break;
+
+        default:
+          ELLE_ERR("unknown proxy type: %s", type);
+          return gap_error;
       }
       Proxy proxy_(type_, host, port, username, password);
       state.set_proxy(proxy_);
