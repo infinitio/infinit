@@ -353,6 +353,28 @@ ELLE_TEST_SCHEDULED(trophonius)
     c.unregister_trophonius(id);
 }
 
+ELLE_TEST_SCHEDULED(upload_avatar)
+{
+  HTTPServer s;
+  int i = 0;
+  s.register_route(
+    "/user/avatar",
+    reactor::http::Method::POST,
+    [&i, &s] (HTTPServer::Headers const& headers,
+              HTTPServer::Cookies const&,
+              HTTPServer::Parameters const&,
+              elle::Buffer const& body)
+    {
+      BOOST_CHECK_EQUAL(headers.at("Content-Type"), "application/octet-stream");
+      return "";
+    });
+  infinit::oracles::meta::Admin c("http", "127.0.0.1", s.port());
+  elle::Buffer image("4242424242424242424242", 2);
+
+  ELLE_LOG("upload avatar")
+    c.icon(image);
+}
+
 ELLE_TEST_SUITE()
 {
   auto& suite = boost::unit_test::framework::master_test_suite();
@@ -369,4 +391,5 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(json_error_not_meta));
   suite.add(BOOST_TEST_CASE(transactions));
   suite.add(BOOST_TEST_CASE(trophonius));
+  suite.add(BOOST_TEST_CASE(upload_avatar));
 }
