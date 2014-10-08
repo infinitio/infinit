@@ -13,9 +13,9 @@ class Trophonius:
     def __init__(self, trophonius):
       self.index = 0
       self.trophonius = trophonius
-      self.port = 1000 + int(random() * 64535)
       self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-      self.socket.bind(("localhost", self.port))
+      self.socket.bind(("localhost", 0))
+      self.port = self.socket.getsockname()[1]
       self.socket.listen(2)
 
     def poll(self):
