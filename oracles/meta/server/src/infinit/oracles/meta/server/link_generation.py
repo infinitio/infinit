@@ -234,7 +234,7 @@ class Mixin:
 
   def __owner_link(self, link):
     """
-    This function is used to extract the fields needed by the link owner.
+    Extract the fields needed by the link owner.
     """
     mapping = {
       'id': '_id',
