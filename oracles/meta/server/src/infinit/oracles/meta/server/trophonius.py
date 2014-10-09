@@ -189,8 +189,8 @@ class Mixin:
                            version['minor'],
                            version['subminor'])
 
-    oses_per_version = self.database.devices.aggregate([
-      {'$match': {'trophonius': {'$ne': None}}},
+    clients = self.database.devices.aggregate([
+      {'$match': {'trophonius': {'$in': [t['_id'] for t in trophoniuses]}}},
       {
         '$group':
         {
@@ -202,23 +202,25 @@ class Mixin:
 
     versions = {}
     oses = {}
-    oses_on_version = {}
 
-    for os_version in oses_per_version:
-      version = format_version(os_version['_id'].get('version', None))
-      os = os_version['_id'].get('os', None)
+    for client in clients:
+      version = format_version(client['_id'].get('version', None))
       versions.setdefault(version, 0)
-      oses.setdefault(os, 0)
-      versions[version] += os_version['count']
-      oses[os] += os_version['count']
-      oses_on_version.setdefault('%s on version %s' % (os, version), os_version['count'])
-
+      versions[version] += client['count']
+      os = client['_id'].get('os', None)
+      # No null keys in JSON, sadly.
+      if os is None:
+        os = 'unknown'
+      oses.setdefault(os, {})
+      oses[os].setdefault('total', 0)
+      oses[os].setdefault(version, 0)
+      oses[os]['total'] += client['count']
+      oses[os][version] += client['count']
     return {
       'trophoniuses': trophoniuses,
       'users': sum(tropho['users'] for tropho in trophoniuses),
       'versions': versions,
       'oses': oses,
-      'oses_per_version': oses_on_version
     }
 
   @api('/trophonius')
