@@ -190,7 +190,7 @@ class Mixin:
                            version['subminor'])
 
     clients = self.database.devices.aggregate([
-      {'$match': {'trophonius': {'$ne': None}}},
+      {'$match': {'trophonius': {'$in': [t['_id'] for t in trophoniuses]}}},
       {
         '$group':
         {
