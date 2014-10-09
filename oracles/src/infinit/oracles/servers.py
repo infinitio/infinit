@@ -179,6 +179,6 @@ class Oracles:
     """
     import state
     meta_proto, meta_host, meta_port = self.meta
-    res = state.State(meta_proto, meta_host, meta_port)
+    res = state.State(meta_proto, meta_host, meta_port, self.download_dir)
     self.__states.append(res)
     return res
