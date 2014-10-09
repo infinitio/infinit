@@ -44,15 +44,15 @@ class GestapoDatabase(pymongo.database.Database):
 
   def __getattr__(self, name):
     res = super().__getattr__(name)
-    if res.__class__ is pymongo.collection.Collection:
+    if res.__class__ is pymongo.collection.Collection and name != '$cmd':
       res.__class__ = GestapoCollection
     return res
 
 class GestapoCollection(pymongo.collection.Collection):
 
-  def find(self, spec = None, fields = None):
+  def find(self, spec = None, fields = None, *args, **kwargs):
     self.__check(spec)
-    return super().find(spec = spec, fields = fields)
+    return super().find(spec = spec, fields = fields, *args, **kwargs)
 
   def update(self, spec, document, multi = False):
     self.__check(spec)
@@ -67,7 +67,7 @@ class GestapoCollection(pymongo.collection.Collection):
     print('  ', explanation)
     if explanation['cursor'] == 'BasicCursor':
       raise Exception('table scan on condition: %s' % condition)
-    if explanation['scanAndOrder']:
+    if explanation.get('scanAndOrder', False):
       raise Exception('scan and order on condition: %s' % condition)
     nplans = len(list(e for e in explanation['allPlans']
                       if e['cursor'] != 'BasicCursor'))
