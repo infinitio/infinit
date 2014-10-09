@@ -48,7 +48,7 @@ def configure(elle,
     'src/infinit/metrics/reporters/JSONReporter.hh',
   )
 
-  if cxx_toolkit.os == drake.os.windows:
+  if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
     Library = drake.cxx.StaticLib
   else:
     Library = drake.cxx.DynLib
