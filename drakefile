@@ -100,22 +100,6 @@ def configure(cxx_toolkit = None,
   cxx_config.warnings.delete_non_virtual_dtor = \
     drake.cxx.Config.Warnings.Error
 
-  ## -------- ##
-  ## Valgrind ##
-  ## -------- ##
-
-  if valgrind is not False:
-    if valgrind is True or valgrind is None:
-      try:
-        valgrind = drake.valgrind.Valgrind()
-      except Exception as e:
-        if valgrind is True:
-          raise
-        else:
-          valgrind = None
-  else:
-    valgrind = None
-
   ## ------- ##
   ## Version ##
   ## ------- ##
@@ -168,6 +152,7 @@ def configure(cxx_toolkit = None,
                        valgrind_tests = valgrind_tests)
   boost = elle.boost
   python3 = elle.python3
+  valgrind = elle.valgrind
   cxx_config += boost.config()
   if cxx_toolkit.os in (drake.os.macos, drake.os.windows, drake.os.ios):
     boost_filesystem = drake.cxx.Config(boost.config_filesystem(static = True))
