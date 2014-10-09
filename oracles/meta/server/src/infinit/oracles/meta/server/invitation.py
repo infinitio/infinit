@@ -4,6 +4,8 @@ import elle.log
 from . import conf, mail
 import decorator
 
+from itertools import chain
+
 def _generate_code(email):
   import hashlib
   import time
@@ -76,8 +78,8 @@ class Invitation:
       from mailsnake import MailSnake
       self.ms = MailSnake(conf.MAILCHIMP_APIKEY)
     self.lists = {}
-    for lists in [os_lists, general_lists]:
-      list(map(lambda x: self.add_list(name = x, list_id = lists[x]), lists))
+    for name, list_id in chain(os_lists.items(), general_lists.items()):
+      self.add_list(name = name, list_id = list_id)
 
   def add_list(self, name, list_id):
     with elle.log.trace("add list: %s (%s)" % (name, list_id)):
