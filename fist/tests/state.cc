@@ -20,6 +20,7 @@
 #include <papier/Identity.hh>
 #include <papier/Passport.hh>
 
+#include <surface/gap/Exception.hh>
 #include <surface/gap/State.hh>
 
 #include <version.hh>
@@ -421,11 +422,77 @@ ELLE_TEST_SCHEDULED(trophonius_forbidden)
   reactor::wait(reconnected);
 }
 
+/*-------------------.
+| Trophonius Timeout |
+`-------------------*/
+
+// Ensure that if the Trophonius connection stalls after the poke that it is
+// timed out.
+
+class TimeoutTrophonius
+  : public Trophonius
+{
+public:
+  TimeoutTrophonius()
+    : Trophonius()
+  {}
+
+protected:
+  virtual
+  void
+  _serve(std::unique_ptr<reactor::network::Socket> socket) override
+  {
+    ELLE_WARN("xxxx first connection to tropho");
+    socket->write("{\"poke\": \"ouch\"}\n");
+    auto connect_data = elle::json::read(*socket);
+    reactor::Scheduler::scheduler()->current()->Waitable::wait();
+  }
+};
+
+class TimeoutTrophoniusMeta:
+  public Server<TimeoutTrophonius>
+{
+public:
+  TimeoutTrophoniusMeta(papier::Identity identity,
+                          boost::uuids::uuid device_id)
+    : Server<TimeoutTrophonius>(identity, device_id)
+  {}
+};
+
+ELLE_TEST_SCHEDULED(trophonius_timeout)
+{
+  auto password = "secret";
+  auto user_id = boost::uuids::random_generator()();
+  cryptography::KeyPair keys =
+    cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
+                                    papier::Identity::keypair_length);
+  auto identity = generate_identity(
+    keys, boost::lexical_cast<std::string>(user_id), "my identity", password);
+  auto device_id = boost::uuids::random_generator()();
+  TimeoutTrophoniusMeta server(identity, device_id);
+  std::string download_dir =
+    elle::os::path::join(elle::system::home_directory().string(), "Downloads");
+  surface::gap::State state("http",
+                            "127.0.0.1",
+                            server.port(),
+                            device_id,
+                            fingerprint,
+                            download_dir);
+  auto tropho = elle::make_unique<infinit::oracles::trophonius::Client>(
+    [&] (bool connected) {},
+    std::bind(&surface::gap::State::on_reconnection_failed, &state),
+    fingerprint);
+  tropho->connect_timeout(500_ms);
+  BOOST_CHECK_THROW(state.login("em@il.com", password, std::move(tropho)),
+                    surface::gap::Exception);
+}
+
 ELLE_TEST_SUITE()
 {
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(login), 0, 5);
   suite.add(BOOST_TEST_CASE(trophonius_forbidden), 0, 5);
+  suite.add(BOOST_TEST_CASE(trophonius_timeout), 0, 5);
 }
 
 const std::vector<unsigned char> fingerprint =
