@@ -68,21 +68,15 @@ with Meta() as meta:
   bob_device1 = User(meta, 'bob@infinit.io')
   bob_device2 = copy(bob_device1)
   bob_device2.device_id = uuid4()
-  fill_os_and_version(alice_device1, "Windows", "0.9.14")
-  fill_os_and_version(alice_device2, "OSX", "0.9.15")
-  fill_os_and_version(bob_device1, "OSX", "0.9.14")
-  fill_os_and_version(bob_device2, "Windows", "0.9.12")
+  fill_os_and_version(alice_device1, 'Windows', '0.9.14')
+  fill_os_and_version(alice_device2, 'OS X', '0.9.15')
+  fill_os_and_version(bob_device1, 'OS X', '0.9.14')
+  fill_os_and_version(bob_device2, 'Windows', '0.9.12')
 
   tropho = Tropho(meta)
-  assert len(meta.get('trophoniuses')['trophoniuses']) == 0
-  tropho.register()
-  assert len(meta.get('trophoniuses')['trophoniuses']) == 1
-  tropho.unregister()
-  assert len(meta.get('trophoniuses')['trophoniuses']) == 0
   tropho.register()
   tropho2 = Tropho(meta)
   tropho2.register()
-  print(meta.get('trophoniuses'))
   assert len(meta.get('trophoniuses')['trophoniuses']) == 2
 
   assert meta.get('trophoniuses')['users'] == 0
@@ -98,15 +92,18 @@ with Meta() as meta:
 
   oses = meta.get('trophoniuses')['oses']
   assert len(oses) == 2
-  assert oses['Windows'] == 1
-  assert oses['OSX'] == 1
+  assert oses['Windows']['total'] == 1
+  assert oses['OS X']['total'] == 1
 
   login(alice_device2, tropho2, send_os = False)
 
   oses = meta.get('trophoniuses')['oses']
+  import sys
+  print('OSES', oses, file = sys.stderr)
   assert len(oses) == 3
-  assert oses['Windows'] == 1
-  assert oses['OSX'] == 1
+  assert oses['Windows']['total'] == 1
+  assert oses['OS X']['total'] == 1
+  assert oses['unknown']['total'] == 1
 
   # Check if null entries are handled well.
   entry = meta.database.devices.find_one()
@@ -116,18 +113,15 @@ with Meta() as meta:
   meta.database.devices.insert(entry)
 
   oses = meta.get('trophoniuses')['oses']
+  import sys
+  print('OSES', oses, file = sys.stderr)
   assert len(oses) == 3
-  assert oses['Windows'] == 1
-  assert oses['OSX'] == 1
+  assert oses['Windows']['0.9.14'] == 1
+  assert oses['OS X']['0.9.14'] == 1
+  assert oses['unknown']['0.9.14'] == 1
+  assert oses['unknown']['0.9.15'] == 1
 
   versions = meta.get('trophoniuses')['versions']
   print(versions)
   assert versions['0.9.15'] == 1
   assert versions['0.9.14'] == 3
-
-  os_per_version = meta.get('trophoniuses')['oses_per_version']
-  print(os_per_version)
-  assert os_per_version["Windows on version 0.9.14"] == 1
-  assert os_per_version["OSX on version 0.9.14"] == 1
-  assert os_per_version["None on version 0.9.14"] == 1
-  assert os_per_version["None on version 0.9.15"] == 1
