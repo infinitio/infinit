@@ -321,6 +321,8 @@ namespace infinit
         "Linux"
 #elif defined(INFINIT_MACOSX)
         "OS X"
+#elif defined(INFINIT_IOS)
+        "iOS"
 #elif defined(INFINIT_WINDOWS)
         "Windows"
 #else
