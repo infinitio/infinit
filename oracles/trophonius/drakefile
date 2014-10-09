@@ -17,7 +17,9 @@ def configure(elle,
               prefix = drake.Path('/usr/local'),
               cxx_toolkit = None,
               cxx_config = None,
-              valgrind = None):
+              valgrind = None,
+              valgrind_tests = False,
+):
 
   global client, server
   global build, check, install
@@ -31,6 +33,7 @@ def configure(elle,
                          cxx_toolkit = cxx_toolkit,
                          cxx_config = cxx_config,
                          valgrind = valgrind,
+                         valgrind_tests = valgrind_tests,
   )
 
   client = drake.include('client',
@@ -43,6 +46,7 @@ def configure(elle,
                          cxx_toolkit = cxx_toolkit,
                          cxx_config = cxx_config,
                          valgrind = valgrind,
+                         valgrind_tests = valgrind_tests,
   )
 
   for name in ('build', 'check', 'install'):

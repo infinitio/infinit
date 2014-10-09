@@ -22,7 +22,9 @@ def configure(production_build,
               prefix = drake.Path('/usr/local'),
               cxx_toolkit = None,
               cxx_config = None,
-              valgrind = None):
+              valgrind = None,
+              valgrind_tests = False
+):
 
   global transaction_lib
   global meta, trophonius, apertus, oracles
@@ -101,7 +103,10 @@ def configure(production_build,
                        boost = boost,
                        prefix = prefix,
                        cxx_toolkit = cxx_toolkit,
-                       cxx_config = local_cxx_config)
+                       cxx_config = local_cxx_config,
+                       valgrind = valgrind,
+                       valgrind_tests = valgrind_tests,
+  )
 
   trophonius = drake.include('trophonius',
                              elle = elle,
@@ -114,6 +119,7 @@ def configure(production_build,
                              cxx_toolkit = cxx_toolkit,
                              cxx_config = local_cxx_config,
                              valgrind = valgrind,
+                             valgrind_tests = valgrind_tests,
   )
 
   apertus = drake.include('apertus',
@@ -127,6 +133,7 @@ def configure(production_build,
                           cxx_toolkit = cxx_toolkit,
                           cxx_config = cxx_config,
                           valgrind = valgrind,
+                          valgrind_tests = valgrind_tests,
   )
 
   sisyphus = drake.include('sisyphus',

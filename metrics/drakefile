@@ -12,8 +12,7 @@ def configure(elle,
               boost = None,
               prefix = drake.Path('/usr/local'),
               cxx_toolkit = None,
-              cxx_config = None,
-              valgrind = None):
+              cxx_config = None):
 
   global metrics
   global build, check, install, lib

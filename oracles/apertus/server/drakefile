@@ -21,6 +21,7 @@ def configure(elle,
               cxx_toolkit = None,
               cxx_config = None,
               valgrind = None,
+              valgrind_tests = False,
 ):
 
   global library
@@ -111,10 +112,13 @@ def configure(elle,
 
   tests = drake.Rule('tests')
   tests << test_exe
-
-  test_runner = drake.Runner(exe = test_exe)
+  if valgrind_tests:
+    runner = drake.valgrind.ValgrindRunner(exe = test_exe,
+                                           valgrind = valgrind)
+  else:
+    runner = drake.Runner(exe = test_exe)
   check = drake.Rule('check')
-  check << test_runner.status
+  check << runner.status
 
   ## ---------- ##
   ## Executable ##

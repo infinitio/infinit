@@ -19,6 +19,7 @@ def configure(elle,
               cxx_toolkit = None,
               cxx_config = None,
               valgrind = None,
+              valgrind_tests = False,
 ):
 
   global client, server
@@ -37,6 +38,7 @@ def configure(elle,
                          cxx_toolkit = cxx_toolkit,
                          cxx_config = cxx_config,
                          valgrind = valgrind,
+                         valgrind_tests = valgrind_tests,
   )
   for name in ('build', 'tests', 'check', 'install'):
     globals()[name] = drake.Rule(name)

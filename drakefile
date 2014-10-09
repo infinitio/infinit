@@ -1,13 +1,14 @@
+import os
+import sys
+import platform
+
 import drake
 import drake.cxx
 import drake.cxx.boost
 import drake.cxx.qt
 import drake.git
 import drake.templating
-
-import os
-import sys
-import platform
+import drake.valgrind
 
 with open(str(drake.path_source('elle/drake-utils.py')), 'r') as f:
   exec(f.read(), globals(), globals())
@@ -23,7 +24,8 @@ def configure(cxx_toolkit = None,
               production_build = False,
               enable_debug = True,
       	      qt = None,
-              valgrind = None):
+              valgrind = None,
+              valgrind_tests = False):
 
   ## ----- ##
   ## Rules ##
@@ -98,6 +100,22 @@ def configure(cxx_toolkit = None,
   cxx_config.warnings.delete_non_virtual_dtor = \
     drake.cxx.Config.Warnings.Error
 
+  ## -------- ##
+  ## Valgrind ##
+  ## -------- ##
+
+  if valgrind is not False:
+    if valgrind is True or valgrind is None:
+      try:
+        valgrind = drake.valgrind.Valgrind()
+      except Exception as e:
+        if valgrind is True:
+          raise
+        else:
+          valgrind = None
+  else:
+    valgrind = None
+
   ## ------- ##
   ## Version ##
   ## ------- ##
@@ -146,7 +164,8 @@ def configure(cxx_toolkit = None,
                        python_version = python_version,
                        prefix = prefix,
                        boost = boost,
-                       valgrind = valgrind)
+                       valgrind = valgrind,
+                       valgrind_tests = valgrind_tests)
   boost = elle.boost
   python3 = elle.python3
   cxx_config += boost.config()
@@ -204,7 +223,6 @@ def configure(cxx_toolkit = None,
     prefix = prefix,
     cxx_toolkit = cxx_toolkit,
     cxx_config = cxx_config,
-    valgrind = valgrind,
   )
 
   if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
@@ -440,6 +458,7 @@ def configure(cxx_toolkit = None,
     cxx_toolkit = cxx_toolkit,
     cxx_config = cxx_config,
     valgrind = valgrind,
+    valgrind_tests = valgrind_tests,
   )
 
   if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:

@@ -18,7 +18,10 @@ def configure(production_build,
               python3 = None,
               prefix = drake.Path('/usr/local'),
               cxx_toolkit = None,
-              cxx_config = None):
+              cxx_config = None,
+              valgrind = None,
+              valgrind_tests = False,
+):
 
   global client, server
   global build, check, install
@@ -39,7 +42,10 @@ def configure(production_build,
                          boost = boost,
                          prefix = prefix,
                          cxx_toolkit = cxx_toolkit,
-                         cxx_config = cxx_config)
+                         cxx_config = cxx_config,
+                         valgrind = valgrind,
+                         valgrind_tests = valgrind_tests,
+  )
 
   for name in ('build', 'check', 'install'):
     globals()[name] = drake.Rule(name)

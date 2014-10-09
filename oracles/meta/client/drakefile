@@ -1,6 +1,7 @@
 import drake
 import drake.cxx
 import drake.cxx.boost
+import drake.valgrind
 
 build = None
 check = None
@@ -15,7 +16,10 @@ def configure(elle,
               python3 = None,
               prefix = drake.Path('/usr/local'),
               cxx_toolkit = None,
-              cxx_config = None):
+              cxx_config = None,
+              valgrind = None,
+              valgrind_tests = False,
+):
 
   global build, check, install, config, lib
 
@@ -131,7 +135,10 @@ def configure(elle,
     test_sources + [lib, reactor_lib, elle_lib, aws_lib],
     cxx_toolkit,
     tests_cxx_config)
-
-  runner = drake.Runner(test_bin)
+  if valgrind_tests:
+    runner = drake.valgrind.ValgrindRunner(test_bin,
+                                           valgrind = valgrind)
+  else:
+    runner = drake.Runner(test_bin)
   tests << test_bin
   check << runner.status
