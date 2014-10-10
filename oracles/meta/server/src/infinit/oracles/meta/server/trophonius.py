@@ -218,8 +218,12 @@ class Mixin:
   @api('/trophonius')
   @require_logged_in
   def trophonius_pick(self):
+    query = self.__trophonius_query
+    query.update({
+      'shutting_down': {'$ne': True}, # False or absent
+    })
     trophoniuses = self.database.trophonius.find(
-      self.__trophonius_query,
+      query,
       fields = ['hostname', 'port_client', 'port_client_ssl'],
       sort = [('users', 1)],
     )
