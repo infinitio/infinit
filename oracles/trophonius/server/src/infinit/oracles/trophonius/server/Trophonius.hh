@@ -52,7 +52,7 @@ namespace infinit
             std::string const& meta_protocol,
             std::string const& meta_host,
             int meta_port,
-            int notifications_port = 0,
+            int port_notifications = 0,
             boost::posix_time::time_duration const& user_ping_period = 30_sec,
             boost::posix_time::time_duration const& meta_ping_period = 60_sec,
             boost::posix_time::time_duration const& user_auth_max_time = 10_sec,
@@ -82,10 +82,9 @@ namespace infinit
                          server_tcp);
           ELLE_ATTRIBUTE_r(int, port_ssl);
           ELLE_ATTRIBUTE_r(int, port_tcp);
+          ELLE_ATTRIBUTE_r(int, port_notifications);
           ELLE_ATTRIBUTE(reactor::network::TCPServer, notifications);
           ELLE_ATTRIBUTE(reactor::Barrier, ready);
-          int
-          notification_port() const;
           ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, accepter_ssl);
           ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, accepter_tcp);
           ELLE_ATTRIBUTE(bool, meta_fatal);

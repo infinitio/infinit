@@ -25,7 +25,9 @@ class Mixin:
                      hostname: str = None,
                      users: int = 0,
                      version = None,
-                     zone = None):
+                     zone = None,
+                     shutting_down = False,
+  ):
     """Register a trophonius.
     """
     # Upsert is important here  be cause if a trophonius crashed and didn't
@@ -45,6 +47,7 @@ class Mixin:
         'users': users,
         'version': version,
         'zone': zone,
+        'shutting_down': shutting_down,
       },
       upsert = True,
     )
@@ -166,6 +169,7 @@ class Mixin:
         'port',
         'port_client',
         'port_client_ssl',
+        'shutting_down',
         'users',
         'version',
       ])
