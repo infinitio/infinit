@@ -442,7 +442,6 @@ protected:
   void
   _serve(std::unique_ptr<reactor::network::Socket> socket) override
   {
-    ELLE_WARN("xxxx first connection to tropho");
     socket->write("{\"poke\": \"ouch\"}\n");
     auto connect_data = elle::json::read(*socket);
     reactor::Scheduler::scheduler()->current()->Waitable::wait();
@@ -485,6 +484,7 @@ ELLE_TEST_SCHEDULED(trophonius_timeout)
   tropho->connect_timeout(500_ms);
   BOOST_CHECK_THROW(state.login("em@il.com", password, std::move(tropho)),
                     surface::gap::Exception);
+  BOOST_CHECK_EQUAL(state.logged_in(), false);
 }
 
 ELLE_TEST_SUITE()
