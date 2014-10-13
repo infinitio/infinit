@@ -156,8 +156,8 @@ namespace surface
       FileID   _fetch_current_file_index;
       FileSize _fetch_current_position;
       FileSize _fetch_current_file_full_size; // cached
-      typedef std::unordered_map<FileID, std::unique_ptr<std::ofstream>> TransferDataMap;
-      TransferDataMap _transfer_stream_map;
+      typedef std::unordered_map<FileID, boost::filesystem::path> DestinationPathMap;
+      DestinationPathMap _destination_files_map;
       /** Initialize transfer data for given file index
        *  @return start position or -1 for nothing to do at this index.
        */
