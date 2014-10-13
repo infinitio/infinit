@@ -742,12 +742,8 @@ namespace surface
         // Handle empty files here
         if (!boost::filesystem::exists(fullpath))
         {
-          // XXX: Make that cleaner.
-#ifdef INFINIT_WINDOWS
-          std::ofstream output(elle::string::wstring_to_string(fullpath.native()), std::ios::app | std::ios::binary);
-#else
-          std::ofstream output(fullpath.string(), std::ios::app | std::ios::binary);
-#endif
+          // Touch the file.
+          elle::system::write_file(fullpath);
         }
         return FileSize(-1);
       }
@@ -779,22 +775,8 @@ namespace surface
                             fullpath, tr.progress(), size));
         }
       }
-      _transfer_stream_map[index] =
-       // XXX: Make that cleaner.
-#ifdef INFINIT_WINDOWS
-        elle::make_unique<std::ofstream>(elle::string::wstring_to_string(fullpath.native()), std::ios::app | std::ios::binary);
-#else
-        elle::make_unique<std::ofstream>(fullpath.string(), std::ios::app | std::ios::binary);
-#endif
-      if (!_transfer_stream_map[index]->good())
-      {
-        throw elle::Exception(
-          elle::sprintf("stream to %s is not good", fullpath));
-      }
-      else
-      {
-        ELLE_ASSERT(boost::filesystem::exists(fullpath));
-      }
+      // Touch the file.
+      elle::system::write_file(fullpath);
       return tr.progress();
     }
 
@@ -813,7 +795,6 @@ namespace surface
       const std::string& name_policy,
       FilesInfo const& infos)
     {
-      boost::filesystem::path output_path(this->state().output_dir());
       FileSize pos = 0;
       // switch to next file until we find one for which there is something to do
       while (_fetch_current_file_index < infos.size())
@@ -943,10 +924,8 @@ namespace surface
       // it should be there, but a logic error that gives us a
       // nothing-to-do-on-this-first-file state is possible and nonfatal
       // so do not use at
-      std::ofstream* current_stream
-        = _transfer_stream_map[_store_expected_file].get();
-      FileSize current_file_full_size;
       boost::filesystem::path current_file_full_path;
+      FileSize current_file_full_size;
       {
         frete::TransferSnapshot::File& f = _snapshot->file(_store_expected_file);
         current_file_full_size = f.size();
@@ -973,7 +952,6 @@ namespace surface
                      data.file_index, data.start_position,
                      data.buffer.size(),
                      current_file_full_path);
-          ELLE_ASSERT(current_stream);
           // If this assert fails, packets were received out of order.
           ELLE_ASSERT_EQ(_store_expected_file, data.file_index);
           ELLE_ASSERT_EQ(_store_expected_position, data.start_position);
@@ -1005,8 +983,7 @@ namespace surface
           }
           // Write the file.
           ELLE_DUMP("content: %x (%sB)", buffer, buffer.size());
-          current_stream->write((char const*) buffer.contents(), buffer.size());
-          current_stream->flush();
+          elle::system::write_file(current_file_full_path, buffer);
           this->_snapshot->file_progress_increment(_store_expected_file, buffer.size());
           // OLD clients need this RPC to update progress
           if (peer_version < elle::Version(0, 8, 7))
@@ -1036,9 +1013,8 @@ namespace surface
                 current_file_full_path,
                 boost::system::errc::make_error_code(boost::system::errc::io_error));
             }
-            // cleanup transfer data
-            _transfer_stream_map.erase(_store_expected_file);
           }
+
           // Update our expected file if needed
           while (_store_expected_position == current_file_full_size)
           {
@@ -1053,8 +1029,8 @@ namespace surface
             current_file_full_size = f.size();
             current_file_full_path = f.full_path();
             if (_store_expected_position != current_file_full_size)
-            { // We need blocks for that one, good
-              current_stream = _transfer_stream_map.at(_store_expected_file).get();
+            {
+              // We need blocks for that one.
               break;
             }
           }
