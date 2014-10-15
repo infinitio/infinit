@@ -71,35 +71,40 @@ class Mixin:
                      id = None):
     """Create a device.
     """
-    if id is not None:
-      assert isinstance(id, uuid.UUID)
-    else:
-      id = uuid.uuid4()
-    if name is None:
-      name = str(id)
-    if regexp.Validator(regexp.DeviceName, error.DEVICE_NOT_VALID)(name) != 0:
-      self.fail(error.DEVICE_NOT_VALID)
-    query = {'id': str(id), 'owner': owner['_id']}
-    if self.device(ensure_existence = False, **query) is not None:
-      self.fail(error.DEVICE_ALREADY_REGISTERED)
-    to_save = copy.deepcopy(query)
-    to_save['name'] = name.strip()
-    self.database.devices.insert(to_save, upsert = True)
-    import papier
-    to_save['passport'] = papier.generate_passport(
-      str(id),
-      name,
-      owner['public_key'],
-      conf.INFINIT_AUTHORITY_PATH,
-      conf.INFINIT_AUTHORITY_PASSWORD
-    )
-    self.database.devices.update(query, to_save)
-    device = self.database.devices.find_one(query)
-    assert device is not None
-    # XXX check unique device ?
-    elle.log.trace('Registering device %s with owner %s' % (id, owner['_id']))
-    self.database.users.find_and_modify({'_id': owner['_id']}, {'$addToSet': {'devices': str(id)}})
-    return device
+    with elle.log.trace('create device %s with owner %s' %
+                        (id, owner['_id'])):
+      if id is not None:
+        assert isinstance(id, uuid.UUID)
+      else:
+        id = uuid.uuid4()
+      id = str(id)
+      if name is None:
+        name = id
+      if regexp.Validator(regexp.DeviceName,
+                          error.DEVICE_NOT_VALID)(name):
+        self.fail(error.DEVICE_NOT_VALID)
+      import papier
+      device = {
+        'id': id,
+        'name': name.strip(),
+        'owner': owner['_id'],
+        'passport': papier.generate_passport(
+          id,
+          name,
+          owner['public_key'],
+          conf.INFINIT_AUTHORITY_PATH,
+          conf.INFINIT_AUTHORITY_PASSWORD
+        ),
+      }
+      try:
+        self.database.devices.insert(device)
+      except pymongo.errors.DuplicateKeyError:
+        self.fail(error.DEVICE_ALREADY_REGISTERED)
+      self.database.users.find_and_modify(
+        {'_id': owner['_id']},
+        {'$addToSet': {'devices': id}},
+      )
+      return device
 
   @api('/device/create', method="POST")
   @require_logged_in
