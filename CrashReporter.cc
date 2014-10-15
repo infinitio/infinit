@@ -172,6 +172,7 @@ namespace elle
 
       Handler _handler;
       std::vector<int> _sigs;
+      std::unordered_map<int, Handler> _previous_handler;
     public:
       SyncImpl(Handler const& handler):
         _handler{handler}
@@ -186,9 +187,18 @@ namespace elle
 
         for (int sig: this->_sigs)
         {
-          ELLE_DEBUG("handling %s synchronously", strsignal(sig));
+          ELLE_DEBUG("handling %s synchronously (%s)", strsignal(sig), this->_handler);
           // To avoid handler to be override.
-          ELLE_ASSERT(::signal(sig, this->_handler) == SIG_DFL);
+          this->_previous_handler[sig] = ::signal(sig, this->_handler);
+          if (this->_previous_handler[sig] == SIG_ERR)
+          {
+            ELLE_WARN("%s: impossible set handler for %s", *this, strsignal(sig));
+          }
+          else if (this->_previous_handler[sig] != SIG_DFL)
+          {
+            ELLE_WARN("%s: handler for %s replaced (%s)",
+                      *this, strsignal(sig), this->_previous_handler[sig]);
+          }
         }
       }
 
@@ -198,9 +208,20 @@ namespace elle
       {
         for (int sig: this->_sigs)
         {
+          elle::SafeFinally pop{[&] { this->_previous_handler.erase(sig); }};
           ELLE_DEBUG("releasing %s (sync).", strsignal(sig));
-          // Restore handler, according to the hypothesis that nobody erased it.
-          ELLE_ASSERT(::signal(sig, SIG_DFL) == this->_handler);
+          // Restore handler, according to the hypothesis that nobody erased
+          if (this->_previous_handler[sig] == SIG_ERR)
+          {
+            ELLE_WARN("%s: handler for %s has been ignored", *this, strsignal(sig));
+            continue;
+          }
+          auto old_handler = ::signal(sig, this->_previous_handler[sig]);
+          if (old_handler != this->_handler)
+          {
+            ELLE_WARN("%s: our handler for %s was replaced by %s", *this, strsignal(sig), old_handler);
+            ::signal(sig, old_handler);
+          }
         }
       }
     };
