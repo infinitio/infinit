@@ -756,34 +756,42 @@ ELLE_TEST_SCHEDULED(replace, (bool, ssl))
   auto& t = meta.trophonius(trophonius);
   BOOST_CHECK(t.clients.find(id) == t.clients.end());
   {
-    ELLE_LOG("connect the first client");
-    std::unique_ptr<reactor::network::Socket> socket1(
-        connect_socket(ssl, trophonius));
-    authentify(*socket1, 1, 1);
-    check_authentication_success(*socket1);
-    BOOST_CHECK(t.clients.find(id) != t.clients.end());
-    meta.send_notification(1,
-                           "00000000-0000-0000-0000-000000000001",
-                           "00000000-0000-0000-0000-000000000001");
-    ELLE_LOG("read notification from the first client")
-      BOOST_CHECK_EQUAL(read_notification(*socket1), 1);
-    ELLE_LOG("connect a replacement client");
-    std::unique_ptr<reactor::network::Socket> socket2(
-        connect_socket(ssl, trophonius));
-    authentify(*socket2, 1, 1);
-    check_authentication_success(*socket2);
-    BOOST_CHECK(t.clients.find(id) != t.clients.end());
-    meta.send_notification(2,
-                           "00000000-0000-0000-0000-000000000001",
-                           "00000000-0000-0000-0000-000000000001");
+    std::unique_ptr<reactor::network::Socket> client1;
+    std::unique_ptr<reactor::network::Socket> client2;
+    ELLE_LOG("connect first client")
+    {
+      client1 = connect_socket(ssl, trophonius);
+      authentify(*client1, 1, 1);
+      check_authentication_success(*client1);
+      BOOST_CHECK(t.clients.find(id) != t.clients.end());
+    }
+    ELLE_LOG("read notification from first client")
+    {
+      meta.send_notification(1,
+                             "00000000-0000-0000-0000-000000000001",
+                             "00000000-0000-0000-0000-000000000001");
+      BOOST_CHECK_EQUAL(read_notification(*client1), 1);
+    }
+    ELLE_LOG("connect replacement client")
+    {
+      client2 = connect_socket(ssl, trophonius);
+      authentify(*client2, 1, 1);
+      check_authentication_success(*client2);
+      BOOST_CHECK(t.clients.find(id) != t.clients.end());
+    }
     // Check the first socket was disconnected.
-    ELLE_LOG("check the old client is disconnected")
-      BOOST_CHECK_THROW(elle::json::read(*socket1),
-                        reactor::network::ConnectionClosed);
-    ELLE_LOG("read notification from the new client")
-      BOOST_CHECK_EQUAL(read_notification(*socket2), 2);
+    BOOST_CHECK_THROW(client1->read(1, 100_ms),
+                      reactor::network::ConnectionClosed);
+    ELLE_LOG("read notification from replacement client")
+    {
+      meta.send_notification(2,
+                             "00000000-0000-0000-0000-000000000001",
+                             "00000000-0000-0000-0000-000000000001");
+      BOOST_CHECK_EQUAL(read_notification(*client2), 2);
+    }
   }
-  reactor::sleep(100_ms); // XXX: wait for tropho to disconnect it.
+  // Let trophonius see we disconnected.
+  reactor::sleep(100_ms);
   BOOST_CHECK(t.clients.find(id) == t.clients.end());
 }
 
