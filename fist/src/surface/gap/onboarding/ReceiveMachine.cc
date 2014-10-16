@@ -100,6 +100,7 @@ namespace surface
               this->transaction_id(),
               onboarding);
         }
+        this->data()->recipient_device_id = this->state().device().id;
         surface::gap::ReceiveMachine::accept();
       }
 
