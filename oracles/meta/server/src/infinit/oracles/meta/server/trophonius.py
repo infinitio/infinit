@@ -236,3 +236,11 @@ class Mixin:
       }
     except StopIteration:
       response(503, 'no notification server available')
+
+  def trophonius_clean(self):
+    # Trophonius.
+    tropho = self.database.trophonius.remove(
+      {"$or": [{"time": {"$lt": time.time() - self.trophonius_expiration_time}},
+               {"time": {"$exists": False}}]},
+      multi = True)
+    return tropho['n']

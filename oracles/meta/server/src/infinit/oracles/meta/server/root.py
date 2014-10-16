@@ -357,11 +357,7 @@ class Mixin:
     - clean old trophonius instances.
     - clean old apertus instances.
     """
-    # Trophonius.
-    tropho = self.database.trophonius.remove(
-      {"$or": [{"time": {"$lt": time.time() - self.trophonius_expiration_time}},
-               {"time": {"$exists": False}}]},
-      multi = True)['n']
+    tropho = self.trophonius_clean();
     # Apertus.
     apertus = self.database.apertus.remove(
       {"$or": [{"time": {"$lt": time.time() - self.apertus_expiration_time}},
