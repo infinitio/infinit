@@ -916,17 +916,18 @@ namespace infinit
                                bool regenerate) const
       {
         std::string url = elle::sprintf("/link/%s/credentials", id);
-        auto request = this->_request(
-          url, regenerate ? Method::POST : Method::GET,
-          [&] (reactor::http::Request& request)
-          {
-            // If we POST, we must include valid JSON otherwise we get a 400.
-            if (regenerate)
+        auto request = regenerate
+          ? this->_request(
+            url,
+            Method::POST,
+            [&] (reactor::http::Request& request)
             {
+              // If we POST, we must include valid JSON otherwise we get a 400.
               elle::json::Object empty_obj;
               elle::json::write(request, empty_obj);
-            }
-          });
+            },
+            true)
+          : this->_request(url, Method::GET);
         SerializerIn input(url, request);
         return aws::Credentials(input);
       }
