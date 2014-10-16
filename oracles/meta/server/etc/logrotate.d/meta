@@ -1,0 +1,11 @@
+/var/log/meta.log
+/var/log/meta.err
+/var/log/meta.debug
+{
+        compress
+        rotate 3
+        daily
+        postrotate
+            /usr/bin/killall -HUP rsyslogd
+        endscript
+}

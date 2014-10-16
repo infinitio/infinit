@@ -163,6 +163,7 @@ def configure(production_build,
                  where / 'etc/uwsgi/apps-available', 'config'))
     res.append(f(drake.node('etc/rsyslog.d/meta.conf'),
                  where))
+    res.append(f(drake.node('etc/logrotate.d/meta'), where))
     return res
 
   install = drake.Rule('install')
