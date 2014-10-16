@@ -104,6 +104,7 @@ namespace infinit
             ELLE_DEBUG("%s: loaded SSL certificate", *this);
             this->_server_ssl.reset(new reactor::network::SSLServer(
               std::move(this->_certificate)));
+            this->_server_ssl->shutdown_asynchronous(true);
             this->_server_ssl->listen(this->_port_ssl);
             this->_port_ssl = this->_server_ssl->port();
             this->_accepter_ssl.reset(new reactor::Thread(
