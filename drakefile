@@ -827,7 +827,7 @@ def configure(cxx_toolkit = None,
     if cxx_toolkit.os == drake.os.windows:
       libraries = [gap_lib]
     else:
-      libraries = [gap_lib, elle_lib, cryptography_lib]
+      libraries = [gap_lib, elle_lib, cryptography_lib, crash_lib]
     fist_cxx_config += boost_filesystem
     fist_cxx_config += boost_system
     application = drake.include('fist-gui-qt',
