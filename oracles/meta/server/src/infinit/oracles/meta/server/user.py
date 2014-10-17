@@ -1115,6 +1115,11 @@ class Mixin:
       user_id = user['_id']
     else:
       user_id = user['id']
+    if self.admin:
+      res['creation_time'] = user.get('creation_time', '')
+      res['email'] = user.get('email', '')
+      res['email_confirmed'] = user.get('email_confirmed', '')
+      res['os'] = user.get('os', '')
     res.update({
       '_id': user_id, # Backwards compatibility.
       'id': user_id,
