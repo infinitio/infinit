@@ -124,7 +124,7 @@ protected:
 
   virtual
   void
-  _serve(std::unique_ptr<reactor::network::Socket> socket)
+  _serve(std::unique_ptr<reactor::network::SSLSocket> socket)
   {
     socket->write("{\"poke\": \"ouch\"}\n");
     socket->write("{\"notification_type\": -666, \"response_code\": 200, \"response_details\": \"details\"}\n");
@@ -350,7 +350,7 @@ public:
 protected:
   virtual
   void
-  _serve(std::unique_ptr<reactor::network::Socket> socket) override
+  _serve(std::unique_ptr<reactor::network::SSLSocket> socket) override
   {
     if (++this->_i == 2)
       return;
@@ -440,7 +440,7 @@ public:
 protected:
   virtual
   void
-  _serve(std::unique_ptr<reactor::network::Socket> socket) override
+  _serve(std::unique_ptr<reactor::network::SSLSocket> socket) override
   {
     ELLE_WARN("xxxx first connection to tropho");
     socket->write("{\"poke\": \"ouch\"}\n");
