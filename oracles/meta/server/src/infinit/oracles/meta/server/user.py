@@ -1024,7 +1024,7 @@ class Mixin:
 
   @api('/users')
   @require_logged_in_or_admin
-  def users(self, search = None, limit : int = 5, skip : int = 0):
+  def users(self, search = None, limit : int = 5, skip : int = 0, ids = None):
     """Search the ids of the users with handle or fullname matching text.
 
     search -- the query.
@@ -1039,6 +1039,12 @@ class Mixin:
         # addresses.
         'register_status':'ok',
       }
+      if ids is not None:
+        for c in "'\"[]":
+          ids = ids.replace(c, '')
+        ids = ids.split(",")
+        ids = map(lambda x: bson.ObjectId(x.strip()), ids)
+        match['_id'] = {'$in' : list(ids)}
       if search is not None:
         match['$or'] = [
           {'fullname' : {'$regex' : search,  '$options': 'i'}},
