@@ -375,6 +375,51 @@ ELLE_TEST_SCHEDULED(upload_avatar)
     c.icon(image);
 }
 
+ELLE_TEST_SCHEDULED(link_credentials)
+{
+  static const std::string response{
+    "{"
+    "  \"access_key_id\": \"access key id\","
+    "  \"secret_access_key\": \"secret access key\","
+    "  \"session_token\": \"session token\","
+    "  \"region\": \"region\","
+    "  \"bucket\": \"bucket\","
+    "  \"folder\": \"folder\","
+    "  \"expiration\": \"never\","
+    "  \"current_time\": \"\""
+    "}"
+    };
+  static const std::string id{"id"};
+
+  HTTPServer s;
+  s.register_route(
+    elle::sprintf("/link/%s/credentials", id),
+    reactor::http::Method::POST,
+    [&s] (HTTPServer::Headers const& headers,
+          HTTPServer::Cookies const&,
+          HTTPServer::Parameters const&,
+          elle::Buffer const& body)
+    {
+      BOOST_CHECK_EQUAL(headers.at("Content-Type"), "application/json");
+      return response;
+    });
+
+  s.register_route(
+    elle::sprintf("/link/%s/credentials", id),
+    reactor::http::Method::GET,
+    [&s] (HTTPServer::Headers const& headers,
+          HTTPServer::Cookies const&,
+          HTTPServer::Parameters const&,
+          elle::Buffer const& body)
+    {
+      BOOST_CHECK(headers.find("Content-Type") == headers.end());
+      return response;
+    });
+  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+  c.link_credentials(id, false);
+  c.link_credentials(id, true);
+}
+
 ELLE_TEST_SUITE()
 {
   auto& suite = boost::unit_test::framework::master_test_suite();
@@ -392,4 +437,5 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(transactions));
   suite.add(BOOST_TEST_CASE(trophonius));
   suite.add(BOOST_TEST_CASE(upload_avatar));
+  suite.add(BOOST_TEST_CASE(link_credentials));
 }
