@@ -27,13 +27,14 @@
 
 #include <reactor/Channel.hh>
 #include <reactor/Scope.hh>
-#include <reactor/signal.hh>
+#include <reactor/TimeoutGuard.hh>
 #include <reactor/exception.hh>
 #include <reactor/network/buffer.hh>
 #include <reactor/network/exception.hh>
 #include <reactor/network/fingerprinted-socket.hh>
 #include <reactor/network/resolve.hh>
 #include <reactor/scheduler.hh>
+#include <reactor/signal.hh>
 #include <reactor/thread.hh>
 
 #include <infinit/oracles/trophonius/Client.hh>
@@ -419,24 +420,13 @@ namespace infinit
           elle::json::Json poke_reply_read;
           ELLE_DEBUG("%s: get poke reply", *this)
           {
-            // FIXME: create and use reactor::timeout.
-            boost::asio::deadline_timer timer(
-              reactor::scheduler().io_service(),
-              timeout ? timeout.get() : this->_poke_timeout);
-            auto thread = reactor::scheduler().current();
-            timer.async_wait(
-              [thread] (const boost::system::error_code& error)
-              {
-                if (error == boost::asio::error::operation_aborted)
-                  return;
-                thread->terminate();
-              });
             try
             {
+              reactor::TimeoutGuard guard(
+                timeout ? timeout.get() : this->_poke_timeout);
               poke_reply_read = elle::json::read(*this->_socket);
-              timer.cancel();
             }
-            catch (reactor::Terminate const&)
+            catch (reactor::Timeout const&)
             {
               ELLE_WARN("%s: timeout on poke reply", *this);
               return false;
