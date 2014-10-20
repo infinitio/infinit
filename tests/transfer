@@ -135,11 +135,23 @@ class TransferPeer:
   def set_rules(self, rules, device = 0):
     """ Set event reply rules as per attach_transaction_callback()"""
     self.rules[device] = rules # modify in place
+  def register(self, device = 0):
+    if device in self.logged_in:
+      return
+    self.create(force = False, device = device)
+    self.statuses = dict() #old transaction_id no longuer has sense
+    elle.log.log('Logging in with %s' % self.credentials[0])
+    self.states[device].register(self.credentials[2],
+      self.credentials[0],
+      state.hash_password(self.credentials[0], self.credentials[1])
+      )
+    self.logged_in.append(device)
   def login(self, device = 0):
     if device in self.logged_in:
       return
     self.create(force = False, device = device)
     self.statuses = dict() #old transaction_id no longuer has sense
+    elle.log.log('Logging in with %s' % self.credentials[0])
     self.states[device].login(self.credentials[0],
       state.hash_password(self.credentials[0], self.credentials[1]))
     self.logged_in.append(device)
@@ -424,6 +436,8 @@ class TestResumeTransfer(unittest.TestCase):
         action(False, lambda t: t.sender.login())
       elif e == 'R':
         action(False, lambda t: t.recipient.login())
+      elif e == 'X':
+        action(False, lambda t: t.recipient.register())
       elif e == 'T':
         action(False, lambda t: t.trophonius_start())
       elif e == 't':
@@ -445,9 +459,9 @@ class TestResumeTransfer(unittest.TestCase):
                     expect_total_size = None, expect_is_directory = None,
                     expect_files_count = None, expect_files = None,
                     message = None, timeout = None, assert_status = 'success',
-                    validate_content = True):
+                    validate_content = True, credentials = None):
     sequence = self.parse_sequence(sequence)
-    with Transfer(test_credentials, files,
+    with Transfer(credentials or test_credentials, files,
                   files_data, timeout=timeout, message=message) as transfer:
       transfer.sender.login()
       wait_helper(3, lambda: False, False) #FIXME reduce/remove this
@@ -460,7 +474,8 @@ class TestResumeTransfer(unittest.TestCase):
       if assert_status == 'success':
         transfer.assertSuccess(self, expect_total_size, expect_is_directory,
                                expect_files_count, expect_files,
-                               validate_content)
+                               validate_content,
+                               credentials)
       elif assert_status == 'failed':
         self.assertEqual(transfer.sender.status, 'transaction_failed')
         self.assertEqual(transfer.recipient.status, 'transaction_failed')
@@ -584,6 +599,21 @@ class TestResumeTransfer(unittest.TestCase):
     return self.transfer_test(['foo'], {'name': 'foo','size': 50000000},
                               [ensure_mirror, 'R start r0.001', remove_file],
                               validate_content = False)
+
+class TestGhostUpload(TestResumeTransfer):
+  credentials = [test_credentials[0], ('user@infinit.io', 'user', 'user@infinit.io')]
+  def test_basic(self):
+    return self.transfer_test(['f1'], {'name': 'f1', 'size': 100000},
+                              'start s100 X r100',
+                              credentials = TestGhostUpload.credentials)
+  def test_interference(self):
+        return self.transfer_test(['f1'], {'name': 'f1', 'size': 1000000},
+                              'start s0.0001 X r100',
+                              credentials = TestGhostUpload.credentials)
+  def test_resume(self):
+        return self.transfer_test(['f1'], {'name': 'f1', 'size': 1000000},
+                              'start s100 X r10 r R r20 r R',
+                              credentials = TestGhostUpload.credentials)
 
 class TestNoTropho(TestResumeTransfer):
   def test_no_tropho_beg_1(self): #login then tropho down
