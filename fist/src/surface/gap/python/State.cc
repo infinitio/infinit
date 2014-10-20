@@ -135,7 +135,8 @@ transaction_status_string(infinit::oracles::Transaction::Status status)
       return "accepted";
     case Transaction::Status::none:
       return "none";
-
+    case Transaction::Status::ghost_uploaded:
+      return "ghost-uploaded";
     default:
       elle::unreachable();
   }
