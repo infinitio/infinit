@@ -290,5 +290,10 @@ namespace surface
     GhostReceiveMachine::cleanup()
     {
     }
+
+    GhostReceiveMachine::~GhostReceiveMachine()
+    {
+      this->_stop();
+    }
   }
 }

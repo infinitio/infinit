@@ -22,6 +22,7 @@ namespace surface
       GhostReceiveMachine(Transaction& transaction,
                           uint32_t id,
                           std::shared_ptr<Data> data);
+      ~GhostReceiveMachine();
       virtual
       float
       progress() const override;
