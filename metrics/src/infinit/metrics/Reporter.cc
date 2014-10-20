@@ -123,26 +123,20 @@ namespace infinit
     Reporter::transaction_accepted(std::string const& transaction_id,
                                    bool onboarding)
     {
-      if (this->_no_metrics)
-        return;
-      this->_metric_queue.push(std::bind(&Reporter::_transaction_accepted,
+      this->_push(std::bind(&Reporter::_transaction_accepted,
                                          this,
                                          transaction_id,
                                          onboarding));
-      this->_metric_available.open();
     }
 
     void
     Reporter::transaction_connected(std::string const& transaction_id,
                                     std::string const& connection_method)
     {
-      if (this->_no_metrics)
-        return;
-      this->_metric_queue.push(std::bind(&Reporter::_transaction_connected,
+      this->_push(std::bind(&Reporter::_transaction_connected,
                                          this,
                                          transaction_id,
                                          connection_method));
-      this->_metric_available.open();
     }
 
     void
@@ -153,9 +147,7 @@ namespace infinit
                                        uint32_t message_length,
                                        bool onboarding)
     {
-      if (this->_no_metrics)
-        return;
-      this->_metric_queue.push(std::bind(&Reporter::_link_transaction_created,
+      this->_push(std::bind(&Reporter::_link_transaction_created,
                                          this,
                                          transaction_id,
                                          sender_id,
@@ -163,7 +155,6 @@ namespace infinit
                                          total_size,
                                          message_length,
                                          onboarding));
-      this->_metric_available.open();
     }
 
     void
@@ -176,9 +167,7 @@ namespace infinit
                                        bool ghost,
                                        bool onboarding)
     {
-      if (this->_no_metrics)
-        return;
-      this->_metric_queue.push(std::bind(&Reporter::_peer_transaction_created,
+      this->_push(std::bind(&Reporter::_peer_transaction_created,
                                          this,
                                          transaction_id,
                                          sender_id,
@@ -188,7 +177,6 @@ namespace infinit
                                          message_length,
                                          ghost,
                                          onboarding));
-      this->_metric_available.open();
     }
 
     void
@@ -198,27 +186,21 @@ namespace infinit
                                 bool onboarding,
                                 bool caused_by_user)
     {
-      if (this->_no_metrics)
-        return;
-      this->_metric_queue.push(std::bind(&Reporter::_transaction_ended,
+      this->_push(std::bind(&Reporter::_transaction_ended,
                                          this,
                                          transaction_id,
                                          status,
                                          info,
                                          onboarding,
                                          caused_by_user));
-      this->_metric_available.open();
     }
 
     void
     Reporter::transaction_deleted(std::string const& transaction_id)
     {
-      if (this->_no_metrics)
-        return;
-      this->_metric_queue.push(std::bind(&Reporter::_transaction_deleted,
+      this->_push(std::bind(&Reporter::_transaction_deleted,
                                          this,
                                          transaction_id));
-      this->_metric_available.open();
     }
 
     void
@@ -226,13 +208,10 @@ namespace infinit
                                          TransferMethod method,
                                          float initialization_time)
     {
-      if (this->_no_metrics)
-        return;
-      this->_metric_queue.push(std::bind(&Reporter::_transaction_transfer_begin,
+      this->_push(std::bind(&Reporter::_transaction_transfer_begin,
                                           this,
                                           transaction_id,
                                           method, initialization_time));
-      this->_metric_available.open();
     }
 
     void
@@ -243,13 +222,10 @@ namespace infinit
                                        TransferExitReason reason,
                                        std::string const& message)
     {
-      if (this->_no_metrics)
-        return;
-      this->_metric_queue.push(std::bind(&Reporter::_transaction_transfer_end,
+      this->_push(std::bind(&Reporter::_transaction_transfer_end,
                                           this, transaction_id,
                                           method, duration, bytes_transfered,
                                           reason, message));
-      this->_metric_available.open();
     }
 
     void
@@ -261,13 +237,10 @@ namespace infinit
                         std::string const& aws_error_code,
                         std::string const& message)
     {
-      if (this->_no_metrics)
-        return;
-      this->_metric_queue.push(std::bind(&Reporter::_aws_error,
+      this->_push(std::bind(&Reporter::_aws_error,
                                           this, transaction_id, operation,
                                           url, attempt, http_status,
                                           aws_error_code, message));
-      this->_metric_available.open();
     }
     /*-------------.
     | User Metrics |
@@ -275,113 +248,91 @@ namespace infinit
     void
     Reporter::user_favorite(std::string const& user_id)
     {
-      if (this->_no_metrics)
-        return;
-      this->_metric_queue.push(std::bind(&Reporter::_user_favorite,
+      this->_push(std::bind(&Reporter::_user_favorite,
                                          this,
                                          user_id));
-      this->_metric_available.open();
     }
 
     void
     Reporter::user_login(bool success, std::string const& info)
     {
-      if (this->_no_metrics)
-        return;
       ELLE_DUMP("%s: got user_login metric", *this);
-      this->_metric_queue.push(std::bind(&Reporter::_user_login,
+      this->_push(std::bind(&Reporter::_user_login,
                                          this,
                                          success,
                                          info));
-      this->_metric_available.open();
     }
 
     void
     Reporter::user_logout(bool success, std::string const& info)
     {
-      if (this->_no_metrics)
-        return;
-      this->_metric_queue.push(std::bind(&Reporter::_user_logout,
+      this->_push(std::bind(&Reporter::_user_logout,
                                          this,
                                          success,
                                          info));
-      this->_metric_available.open();
     }
 
     void
     Reporter::user_register(bool success, std::string const& info)
     {
-      if (this->_no_metrics)
-        return;
-      this->_metric_queue.push(std::bind(&Reporter::_user_register,
+      this->_push(std::bind(&Reporter::_user_register,
                                          this,
                                          success,
                                          info));
-      this->_metric_available.open();
     }
 
     void
     Reporter::user_unfavorite(std::string const& user_id)
     {
-      if (this->_no_metrics)
-        return;
-      this->_metric_queue.push(std::bind(&Reporter::_user_unfavorite,
+      this->_push(std::bind(&Reporter::_user_unfavorite,
                                          this,
                                          user_id));
-      this->_metric_available.open();
     }
 
     void
     Reporter::user_heartbeat()
     {
-      if (this->_no_metrics)
-        return;
-      this->_metric_queue.push(std::bind(&Reporter::_user_heartbeat,
-                                         this));
-      this->_metric_available.open();
+      this->_push(std::bind(&Reporter::_user_heartbeat, this));
     }
 
     void
     Reporter::user_first_launch()
     {
-      if (this->_no_metrics)
-        return;
-      this->_metric_queue.push(std::bind(&Reporter::_user_first_launch, this));
-      this->_metric_available.open();
+      this->_push(std::bind(&Reporter::_user_first_launch, this));
     }
 
     void
     Reporter::user_proxy(reactor::network::ProxyType proxy_type)
     {
-      if (this->_no_metrics)
-        return;
-      this->_metric_queue.push(
+      this->_push(
         std::bind(&Reporter::_user_proxy, this, proxy_type));
-      this->_metric_available.open();
     }
 
     void
     Reporter::user_crashed()
     {
-      if (this->_no_metrics)
-        return;
-      this->_metric_queue.push(std::bind(&Reporter::_user_crashed, this));
-      this->_metric_available.open();
+      this->_push(std::bind(&Reporter::_user_crashed, this));
     }
 
     void
     Reporter::user_changed_download_dir(bool fallback)
     {
-      if (this->_no_metrics)
-        return;
-      this->_metric_queue.push(
+      this->_push(
         std::bind(&Reporter::_user_changed_download_dir, this, fallback));
-      this->_metric_available.open();
     }
 
     /*---------------.
     | Queue Handling |
     `---------------*/
+    void
+    Reporter::_push(Metric const& metric)
+    {
+      if (this->_no_metrics)
+        return;
+      this->_metric_queue.push(metric);
+      this->_metric_available.open();
+    }
+
     void
     Reporter::_poll()
     {

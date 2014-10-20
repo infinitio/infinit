@@ -44,6 +44,8 @@ namespace infinit
       public elle::Printable
     {
     friend CompositeReporter;
+      typedef std::function<void()> Metric;
+
     public:
       Reporter(std::string const& name);
 
@@ -299,6 +301,9 @@ namespace infinit
     /// Queue handling.
     private:
       void
+      _push(Metric const& func);
+
+      void
       _poll();
 
     /// Protected variable setters.
@@ -349,7 +354,7 @@ namespace infinit
     /// Private attributes.
     private:
       ELLE_ATTRIBUTE(reactor::Barrier, metric_available);
-      ELLE_ATTRIBUTE(std::queue<std::function<void()>>, metric_queue);
+      ELLE_ATTRIBUTE(std::queue<Metric>, metric_queue);
       ELLE_ATTRIBUTE(reactor::Signal, metric_queue_empty);
       ELLE_ATTRIBUTE(bool, no_metrics);
       ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, poll_thread);
