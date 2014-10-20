@@ -24,7 +24,8 @@ transitions = {
     True: [
       CANCELED,
       FAILED,
-      FINISHED
+      FINISHED,
+      GHOST_UPLOADED,
       ],
     False: [
       ACCEPTED,
@@ -46,6 +47,7 @@ transitions = {
       FAILED
       ]
     },
+  GHOST_UPLOADED: {True: [CANCELED], False: [ACCEPTED, REJECTED, CANCELED, FAILED, FINISHED]},
   FINISHED: {True: [FINISHED, CANCELED, FAILED], False: [FINISHED, CANCELED, FAILED]},
   CANCELED: {True: [CANCELED, FAILED], False: [CANCELED, FAILED]},
   FAILED: {True: [CANCELED, FAILED], False: [CANCELED, FAILED]},

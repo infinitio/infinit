@@ -548,6 +548,8 @@ class Mixin:
                                      device_id = device_id,
                                      device_name = device_name,
                                      user = user))
+        if is_sender and transaction.get('is_ghost'):
+          status = transaction_status.GHOST_UPLOADED
       elif status in (transaction_status.CANCELED,
                       transaction_status.FAILED,
                       transaction_status.REJECTED):

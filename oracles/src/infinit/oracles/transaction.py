@@ -9,4 +9,5 @@ statuses = {
   'rejected': 5,
   'started': 999,
   'deleted': 8,
+  'ghost_uploaded': 9,
 }
