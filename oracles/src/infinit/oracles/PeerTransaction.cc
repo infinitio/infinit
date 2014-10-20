@@ -72,6 +72,7 @@ namespace infinit
       s.serialize("ctime", this->ctime);
       s.serialize("mtime", this->mtime);
       s.serialize("is_directory", this->is_directory);
+      s.serialize("is_ghost", this->is_ghost);
       s.serialize("status", this->status, elle::serialization::as<int>());
     }
 

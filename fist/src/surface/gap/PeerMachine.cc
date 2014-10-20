@@ -177,7 +177,7 @@ namespace surface
           auto self_id = this->state().me().id;
           auto self_device_id = this->state().device().id;
           if (status == infinit::oracles::Transaction::Status::finished &&
-              peer.ghost())
+              (peer.ghost() || transaction().data()->is_ghost))
           {
             this->state().meta().update_transaction(
               this->transaction_id(), status);

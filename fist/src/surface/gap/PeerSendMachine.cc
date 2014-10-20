@@ -466,8 +466,10 @@ namespace surface
         // Send to self case.
         if (this->state().me().id == peer.id)
           peer_online = peer.online_excluding_device(this->state().device().id);
-        if (peer.ghost())
+        if (data()->is_ghost)
+        {
           this->_plain_upload();
+        }
         else if (!peer.ghost() && !peer_online)
           this->_cloud_operation();
         else
@@ -853,8 +855,7 @@ namespace surface
     PeerSendMachine::progress() const
     {
       // If we're doing a plain upload, we need to use super's progress method.
-      auto peer = this->state().user(this->data()->recipient_id);
-      if (peer.ghost())
+      if (data()->is_ghost)
         return SendMachine::progress();
       if (this->_frete != nullptr)
         return this->_frete->progress();
