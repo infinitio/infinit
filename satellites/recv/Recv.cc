@@ -52,6 +52,7 @@ parse_options(int argc, char** argv)
     ("help,h", "display the help")
     ("user,u", value<std::string>(), "the username")
     ("password,p", value<std::string>(), "the password")
+    ("reject,n", value<bool>(), "Reject all incoming transfers")
     ("production,r", value<bool>(), "send metrics to production")
     ("output,o", value<std::string>(),
      "output directory (default: ~/Downloads");
@@ -100,6 +101,9 @@ int main(int argc, char** argv)
     bool production = false;
     if (options.count("production") != 0)
       production = options["production"].as<bool>();
+    bool reject = false;
+    if (options.count("reject") != 0)
+      reject = options["reject"].as<bool>();
     std::string download_dir =
       elle::os::path::join(elle::system::home_directory().string(),
                            "Downloads");
@@ -153,7 +157,10 @@ int main(int argc, char** argv)
               if (notif.status == gap_transaction_waiting_accept)
               {
                 ELLE_LOG("accept transaction %s", notif.id);
-                state.transactions().at(notif.id)->accept();
+                if (reject)
+                  state.transactions().at(notif.id)->reject();
+                else
+                  state.transactions().at(notif.id)->accept();
               }
               else if (notif.status == gap_transaction_finished)
               {
