@@ -48,8 +48,10 @@ parse_options(int argc, char** argv)
   options_description options("Allowed options");
   options.add_options()
     ("help,h", "display the help")
-    ("user,u", value<std::string>(), "the username")
+    ("user,u", value<std::string>(), "the username(email)")
     ("password,p", value<std::string>(), "the password")
+    ("fullname,f", value<std::string>(), "full user name")
+    ("register,g", value<bool>(), "Register new account")
     ("production,r", value<bool>(), "send metrics to production");
 
   variables_map vm;
@@ -97,6 +99,13 @@ int main(int argc, char** argv)
     if (options.count("production") != 0)
       production = options["production"].as<bool>();
 
+    std::string fullname;
+    if (options.count("fullname") != 0)
+      fullname = options["fullname"].as<std::string>();
+    bool register_ = false;
+    if (options.count("register") != 0)
+      register_ = options["register"].as<bool>();
+
     reactor::Scheduler sched;
 
     reactor::VThread<int> t
@@ -134,7 +143,10 @@ int main(int argc, char** argv)
           });
 
         auto hashed_password = state.hash_password(user, password);
-        state.login(user, hashed_password);
+        if (register_)
+          state.register_(fullname, user, hashed_password);
+        else
+          state.login(user, hashed_password);
 
         do
         {
