@@ -204,6 +204,7 @@ namespace surface
         case TransactionStatus::started:
         case TransactionStatus::none:
         case TransactionStatus::deleted:
+        case TransactionStatus::ghost_uploaded:
           elle::unreachable();
       }
     }

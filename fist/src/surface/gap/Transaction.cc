@@ -10,6 +10,7 @@
 #include <common/common.hh>
 #include <surface/gap/enums.hh>
 #include <surface/gap/Exception.hh>
+#include <surface/gap/GhostReceiveMachine.hh>
 #include <surface/gap/LinkSendMachine.hh>
 #include <surface/gap/PeerReceiveMachine.hh>
 #include <surface/gap/PeerSendMachine.hh>
@@ -52,6 +53,8 @@ namespace surface
           return gap_transaction_failed;
         case infinit::oracles::Transaction::Status::canceled:
           return gap_transaction_canceled;
+        case infinit::oracles::Transaction::Status::ghost_uploaded:
+          return gap_transaction_cloud_buffered;
         default:
           return gap_transaction_new;
       }
@@ -251,8 +254,17 @@ namespace surface
         auto recipient = peer_data->recipient_id;
         if (me == sender)
         {
+          if (this->_data->is_ghost && this->_data->status ==
+            infinit::oracles::Transaction::Status::ghost_uploaded)
+          {
+            ELLE_TRACE("%s is sender and status is ghost_upload, nothing to do",
+                       *this);
+            return;
+          }
           if (me == recipient && device != sender_device)
           {
+            if (this->_data->is_ghost)
+              ELLE_WARN("Impossible state, restoring a ghost transaction to self");
             this->_machine.reset(
               new PeerReceiveMachine(*this, this->_id, peer_data));
           }
@@ -267,7 +279,7 @@ namespace surface
               new PeerSendMachine(*this, this->_id, peer_data, run_to_fail));
           }
           else
-          {
+          { // The sender is an other device
             ELLE_DEBUG("%s: start send machine", *this);
             this->_machine.reset(
               new PeerSendMachine(*this, this->_id, peer_data));
@@ -275,9 +287,17 @@ namespace surface
         }
         else if (me == recipient)
         {
-          ELLE_DEBUG("%s: start receive machine", *this);
-          this->_machine.reset(
-            new PeerReceiveMachine(*this, this->_id, peer_data));
+          if (this->_data->is_ghost)
+          {
+            this->_machine.reset(
+              new GhostReceiveMachine(*this, this->_id, peer_data));
+          }
+          else
+          {
+            ELLE_DEBUG("%s: start receive machine", *this);
+            this->_machine.reset(
+              new PeerReceiveMachine(*this, this->_id, peer_data));
+          }
         }
         this->_snapshot_save();
       }
@@ -339,6 +359,12 @@ namespace surface
           std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
             this->_data))
       {
+        if (this->_data->is_ghost && this->_data->status == infinit::oracles::Transaction::Status::ghost_uploaded &&
+          (this->_sender || peer_data->sender_id == this->state().me().id))
+        {
+          ELLE_TRACE("%s sender of ghost_uploaded transaction", *this);
+          return;
+        }
         // this->_sender is set true when creating a transaction on this device.
         if (this->_sender)
         {
@@ -359,9 +385,19 @@ namespace surface
         // Otherwise we're the recipient.
         else
         {
-          ELLE_TRACE("%s: create peer receive machine", *this)
-            this->_machine.reset(
-              new PeerReceiveMachine(*this, this->_id, peer_data));
+          if (this->_data->is_ghost)
+          {
+            ELLE_TRACE("%s: create ghost receive machine", *this)
+              this->_machine.reset(
+                  new GhostReceiveMachine(*this, this->_id, peer_data));
+
+          }
+          else
+          {
+            ELLE_TRACE("%s: create peer receive machine", *this)
+              this->_machine.reset(
+                new PeerReceiveMachine(*this, this->_id, peer_data));
+          }
         }
       }
       else if (auto link_data =

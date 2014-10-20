@@ -251,6 +251,7 @@ namespace surface
             this->_run(this->_transfer_core_state);
           break;
         case TransactionStatus::finished:
+        case TransactionStatus::ghost_uploaded:
           this->_run(this->_finish_state);
           break;
         case TransactionStatus::canceled:
@@ -340,6 +341,7 @@ namespace surface
             this->gap_status(gap_transaction_failed);
           break;
         case TransactionStatus::finished:
+        case TransactionStatus::ghost_uploaded:
           ELLE_DEBUG("%s: open finished barrier", *this)
             this->finished().open();
           if (!this->concerns_this_device())
