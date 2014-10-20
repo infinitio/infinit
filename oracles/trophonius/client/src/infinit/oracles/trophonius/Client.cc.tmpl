@@ -340,13 +340,17 @@ namespace infinit
         ~Impl()
         {
           if (this->_ping_thread)
-            this->_ping_thread->terminate_now();
+            ELLE_DEBUG("%s: terminate ping thread", *this)
+              this->_ping_thread->terminate_now();
           if (this->_pong_thread)
-            this->_pong_thread->terminate_now();
+            ELLE_DEBUG("%s: terminate pong thread", *this)
+              this->_pong_thread->terminate_now();
           if (this->_read_thread)
-            this->_read_thread->terminate_now();
+            ELLE_DEBUG("%s: terminate read thread", *this)
+              this->_read_thread->terminate_now();
           if (this->_connect_callback_thread)
-            this->_connect_callback_thread->terminate_now();
+            ELLE_DEBUG("%s: terminate connect callback thread", *this)
+              this->_connect_callback_thread->terminate_now();
         }
 
         void
@@ -897,6 +901,7 @@ namespace infinit
 
       Client::~Client()
       {
+        ELLE_TRACE_SCOPE("%s: terminate", *this);
         delete _impl;
         _impl = nullptr;
       }
