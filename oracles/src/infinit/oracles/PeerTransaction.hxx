@@ -48,6 +48,13 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::PeerTransaction, ar, res, version)
   catch(...)
   {
   }
+    try
+  { // No way for a proper check
+    ar & named("download_link", res.download_link);
+  }
+  catch(...)
+  {
+  }
 }
 
 namespace std

@@ -73,6 +73,12 @@ namespace infinit
       s.serialize("mtime", this->mtime);
       s.serialize("is_directory", this->is_directory);
       s.serialize("is_ghost", this->is_ghost);
+      try {
+        s.serialize("download_link", this->download_link);
+      } catch(...) {
+        ELLE_LOG_COMPONENT("infinite.oracles.PeerTransaction");
+        ELLE_WARN("could not (de)serialize download_link");
+      }
       s.serialize("status", this->status, elle::serialization::as<int>());
     }
 

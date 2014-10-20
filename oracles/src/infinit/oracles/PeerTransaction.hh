@@ -41,6 +41,7 @@ namespace infinit
       std::string recipient_device_id;
       std::string recipient_device_name;
       std::string sender_fullname;
+      std::string download_link;
       int64_t total_size;
 
     /*--------------.
