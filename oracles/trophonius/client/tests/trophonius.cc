@@ -90,7 +90,7 @@ public:
                  certificate);
   ELLE_ATTRIBUTE(std::unique_ptr<reactor::network::SSLServer>, server);
   ELLE_ATTRIBUTE_R(int, port);
-  ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, accepter);
+  ELLE_ATTRIBUTE_R(std::unique_ptr<reactor::Thread>, accepter);
 
 protected:
   reactor::network::SSLServer&
@@ -193,7 +193,11 @@ public:
     _round(round)
   {}
 
-  ELLE_ATTRIBUTE_RX(reactor::Signal, poked);
+  ~PokeTrophonius()
+  {
+    reactor::wait(*this->accepter());
+  }
+
   ELLE_ATTRIBUTE_R(int, round);
 
 protected:
@@ -204,14 +208,12 @@ protected:
     ELLE_DEBUG("server in round: %s", this->_round);
     if (this->round() == 0) // Normal case.
     {
-      std::unique_ptr<reactor::network::Socket> socket(
-        this->server().accept());
+      auto socket = this->server().accept();
       ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
       auto poke_read = elle::json::read(*socket);
       auto poke = boost::any_cast<elle::json::Object>(poke_read);
       elle::json::write(*socket, poke);
       ELLE_LOG("%s replied to poke", *this);
-      reactor::wait(this->poked());
     }
     else if (this->round() == 1) // No poke reply.
     {
@@ -219,12 +221,10 @@ protected:
         this->server().accept());
       ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
       auto poke_read = elle::json::read(*socket);
-      reactor::wait(this->poked());
     }
     else if (this->round() == 2) // Unable to resolve.
     {
       // Do nothing.
-      reactor::wait(this->poked());
     }
     else if (this->round() == 3) // Wrong JSON reply.
     {
@@ -236,7 +236,6 @@ protected:
       rubbish["poke"] = std::string("rubbish");
       elle::json::write(*socket, rubbish);
       ELLE_LOG("%s replied incorrect JSON to poke", *this);
-      reactor::wait(this->poked());
     }
     else if (this->round() == 4) // HTML reply.
     {
@@ -248,12 +247,10 @@ protected:
         "<h1>Some random HTML</h1>\n<p>shouldn't break anything</p>");
       socket->write(rubbish);
       ELLE_LOG("%s replied HTML to poke", *this);
-      reactor::wait(this->poked());
     }
     else if (this->round() == 5) // Connection refused.
     {
       // Do nothing.
-      reactor::wait(this->poked());
     }
   }
 
@@ -266,74 +263,79 @@ protected:
 
 };
 
-ELLE_TEST_SCHEDULED(poke)
+ELLE_TEST_SCHEDULED(poke_success)
 {
-  using namespace infinit::oracles::trophonius;
-  std::unique_ptr<PokeTrophonius> tropho;
-  int total_rounds = 6;
-  reactor::Duration poke_timeout = 200_ms;
-  std::unique_ptr<Client> client;
-  for (int round = 0; round < total_rounds; round++)
-  {
-    if (round == total_rounds - 1)
-      tropho.reset(new PokeTrophonius(false, round));
-    else
-      tropho.reset(new PokeTrophonius(round));
+  PokeTrophonius tropho(0);
+  infinit::oracles::trophonius::Client client(
+    "127.0.0.1",
+    tropho.port(),
+    [] (bool) {},
+    [] (void) {},
+    fingerprint);
+  BOOST_CHECK(client.poke(1_sec));
+}
 
-    reactor::sleep(50_ms);
+ELLE_TEST_SCHEDULED(poke_no_reply)
+{
+  PokeTrophonius tropho(1);
+  infinit::oracles::trophonius::Client client(
+    "127.0.0.1",
+    tropho.port(),
+    [] (bool) {},
+    [] (void) {},
+    fingerprint);
+  BOOST_CHECK_EQUAL(client.poke(1_sec), false);
+}
 
-    client.reset(new Client(
-      "127.0.0.1",
-      tropho->port(),
-      [] (bool) {}, // connect callback
-      [] (void) {}, // reconnection failed callback
-      fingerprint)
-    );
-    ELLE_LOG("round: %s", round);
-    BOOST_CHECK_EQUAL(tropho->round(), round);
-    if (round == 0) // Normal case.
-    {
-      ELLE_LOG("normal case");
-      BOOST_CHECK_EQUAL(client->poke(poke_timeout), true);
-      tropho->poked().signal();
-    }
-    else if (round == 1) // No poke reply.
-    {
-      ELLE_LOG("no poke reply");
-      BOOST_CHECK_EQUAL(client->poke(poke_timeout), false);
-      tropho->poked().signal();
-    }
-    else if (round == 2) // Unable to resolve.
-    {
-      ELLE_LOG("unable to resolve");
-      client.reset(new Client(
+ELLE_TEST_SCHEDULED(poke_resolution_failure)
+{
+  infinit::oracles::trophonius::Client client(
         "does.not.exist",
-        tropho->port(),
+        8000,
         [] (bool) {}, // connect callback
         [] (void) {}, // reconnection failed callback
-        fingerprint)
-      );
-      BOOST_CHECK_EQUAL(client->poke(poke_timeout), false);
-      tropho->poked().signal();
-    }
-    else if (round == 3) // Wrong JSON reply.
-    {
-      ELLE_LOG("wrong json reply");
-      BOOST_CHECK_EQUAL(client->poke(poke_timeout), false);
-      tropho->poked().signal();
-    }
-    else if (round == 4) // HTML response
-    {
-      ELLE_LOG("HTML response");
-      BOOST_CHECK_EQUAL(client->poke(poke_timeout), false);
-      tropho->poked().signal();
-    }
-    else if (round == 5) // Connection refused.
-    {
-      ELLE_LOG("connection refused");
-      BOOST_CHECK_EQUAL(client->poke(poke_timeout), false);
-    }
+        fingerprint);
+  BOOST_CHECK(!client.poke(30_sec));
+}
+
+ELLE_TEST_SCHEDULED(poke_json)
+{
+  PokeTrophonius tropho(3);
+  infinit::oracles::trophonius::Client client(
+    "127.0.0.1",
+    tropho.port(),
+    [] (bool) {},
+    [] (void) {},
+    fingerprint);
+  BOOST_CHECK_EQUAL(client.poke(30_sec), false);
+}
+
+ELLE_TEST_SCHEDULED(poke_html)
+{
+  PokeTrophonius tropho(4);
+  infinit::oracles::trophonius::Client client(
+    "127.0.0.1",
+    tropho.port(),
+    [] (bool) {},
+    [] (void) {},
+    fingerprint);
+  BOOST_CHECK_EQUAL(client.poke(30_sec), false);
+}
+
+ELLE_TEST_SCHEDULED(poke_connection_refused)
+{
+  int port;
+  {
+    PokeTrophonius tropho(5);
+    port = tropho.port();
   }
+  infinit::oracles::trophonius::Client client(
+    "127.0.0.1",
+    port,
+    [] (bool) {},
+    [] (void) {},
+    fingerprint);
+  BOOST_CHECK_EQUAL(client.poke(200_ms), false);
 }
 
 /*-------------.
@@ -615,8 +617,10 @@ protected:
     else
     {
       this->_send_notification(socket, "2");
-      // Wait forever.
-      reactor::Scheduler::scheduler()->current()->Waitable::wait();
+      while (true)
+      {
+        auto ping = elle::json::read(socket);
+      }
     }
   }
 
@@ -627,72 +631,55 @@ private:
 ELLE_TEST_SCHEDULED(reconnection)
 {
   reactor::Barrier reconnecting;
-  reactor::Signal end_test;
   bool synchronized = false;
   bool first_connect = true;
   ReconnectionTrophonius tropho;
   using namespace infinit::oracles::trophonius;
-  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+  infinit::oracles::trophonius::Client client(
+    "127.0.0.1",
+    tropho.port(),
+    [&] (bool connected) // connect callback
+    {
+      if (connected)
+      {
+        if (first_connect)
+        {
+          // Wait to check that the client doesn't get notification '2' yet.
+          reactor::sleep(1_sec);
+          synchronized = true;
+          first_connect = false;
+        }
+      }
+      else
+      {
+        ELLE_LOG("client got disconnected");
+        reconnecting.open();
+      }
+    },
+    [] (void) {},  // reconnection failed callback
+    fingerprint);
+  client.ping_period(1_sec);
+  ELLE_LOG("connect")
+    client.connect("0", "0", "0");
+  ELLE_LOG("read notification 0");
   {
-    std::unique_ptr<Client> client;
-    client.reset(new Client(
-      "127.0.0.1",
-      tropho.port(),
-      [&] (bool connected) // connect callback
-      {
-        if (connected)
-        {
-          if (first_connect)
-          {
-            // Wait to check that the client doesn't get notification '2' yet.
-            reactor::sleep(1_sec);
-            synchronized = true;
-            first_connect = false;
-          }
-        }
-        else
-        {
-          ELLE_LOG("client got disconnected");
-          reconnecting.open();
-        }
-      },
-      [] (void) {},  // reconnection failed callback
-      fingerprint)
-    );
-    client->ping_period(1_sec);
-    scope.run_background("end test", [&]
+    auto notification =
+      elle::cast<MessageNotification>::runtime(client.poll());
+    BOOST_CHECK_EQUAL(notification->message, "0");
+  }
+  reactor::wait(reconnecting);
+  reactor::wait(client.connected());
+  ELLE_LOG("waited for ping timeout")
+  {
+    // Check notification 1 was discarded
+    ELLE_LOG("read notification 2")
     {
-      reactor::wait(end_test);
-      scope.terminate_now();
-    });
-    scope.run_background("client", [&]
-    {
-      ELLE_LOG("connect");
-      client->connect("0", "0", "0");
-      ELLE_LOG("read notification 0");
-      {
-        auto notification =
-          elle::cast<MessageNotification>::runtime(client->poll());
-          BOOST_CHECK_EQUAL(notification->message, "0");
-      }
-      reactor::wait(reconnecting);
-      reactor::wait(client->connected());
-      ELLE_LOG("waited for ping timeout")
-      {
-        // Check notification 1 was discarded
-        ELLE_LOG("read notification 2")
-        {
-          auto notification =
-            elle::cast<MessageNotification>::runtime(client->poll());
-          BOOST_CHECK(synchronized);
-          BOOST_CHECK_EQUAL(notification->message, "2");
-          end_test.signal();
-        }
-      }
-    });
-    scope.wait();
-    scope.terminate_now();
-  };
+      auto notification =
+        elle::cast<MessageNotification>::runtime(client.poll());
+      BOOST_CHECK(synchronized);
+      BOOST_CHECK_EQUAL(notification->message, "2");
+    }
+  }
 }
 
 /*---------------------------.
@@ -715,8 +702,7 @@ protected:
                *this,
                elle::json::pretty_print(connect_msg));
     this->_login_response(socket);
-    // Wait forever.
-    reactor::Scheduler::scheduler()->current()->Waitable::wait();
+    reactor::sleep();
   }
 };
 
@@ -730,14 +716,18 @@ ELLE_TEST_SCHEDULED_THROWS(connection_callback_throws, std::runtime_error)
     tropho.port(),
     [&] (bool connected) // connect callback
     {
-      beacon = true;
-      throw std::runtime_error("sync failed");
+      if (connected)
+      {
+        ELLE_LOG("fail connect callback");
+        beacon = true;
+        throw std::runtime_error("sync failed");
+      }
     },
     [] (void) {},  // reconnection failed callback
     fingerprint);
   client.ping_period(100_ms);
-  ELLE_LOG("connect");
-  client.connect("0", "0", "0");
+  ELLE_LOG("connect")
+    client.connect("0", "0", "0");
   reactor::sleep(1_sec);
   BOOST_CHECK(beacon);
 }
@@ -797,8 +787,7 @@ protected:
 ELLE_TEST_SCHEDULED(reconnection_failed_callback)
 {
   ReconnectionFailTrophohius tropho;
-  reactor::Signal end_test;
-  bool callback_called = false;
+  reactor::Barrier callback_called;
   using namespace infinit::oracles::trophonius;
   Client client(
     "127.0.0.1",
@@ -806,16 +795,16 @@ ELLE_TEST_SCHEDULED(reconnection_failed_callback)
     [] (bool) {}, // connect callback
     [&] (void)    // reconnection failed callback
     {
-      callback_called = true;
-      reactor::Scheduler::scheduler()->terminate();
+      ELLE_LOG("reconnection failed callback called");
+      callback_called.open();
     },
     fingerprint);
   client.poke_timeout(500_ms);
   client.ping_period(2_sec);
   ELLE_LOG("connect");
   client.connect("0", "0", "0");
-  reactor::sleep();
-  BOOST_CHECK(callback_called);
+  reactor::wait(callback_called);
+  ELLE_LOG("BYE FFS");
 }
 
 /*------------------------.
@@ -971,7 +960,8 @@ protected:
     ELLE_LOG("%s: answer login", *this);
     this->_login_response(socket);
     if (iteration >= 2)
-      reactor::sleep();
+      while (true)
+        socket.read_until("\n");
   }
 
   ELLE_ATTRIBUTE(int, iteration);
@@ -1070,7 +1060,8 @@ protected:
   {
     ELLE_LOG("%s: get login", *this);
     auto connect_data = elle::json::read(socket);
-    reactor::Scheduler::scheduler()->current()->Waitable::wait();
+    while (true)
+      socket.read_until("\n");
   }
 };
 
@@ -1093,9 +1084,24 @@ ELLE_TEST_SCHEDULED(connect_read_timeout)
 
 ELLE_TEST_SUITE()
 {
-  auto timeout = RUNNING_ON_VALGRIND ? 15 : 3;
+  auto timeout = RUNNING_ON_VALGRIND ? 20 : 5;
   auto& suite = boost::unit_test::framework::master_test_suite();
-  suite.add(BOOST_TEST_CASE(poke), 0, timeout);
+  {
+    boost::unit_test::test_suite* poke = BOOST_TEST_SUITE("poke");
+    boost::unit_test::framework::master_test_suite().add(poke);
+    auto success = &poke_success;
+    poke->add(BOOST_TEST_CASE(success));
+    auto no_reply = &poke_no_reply;
+    poke->add(BOOST_TEST_CASE(no_reply));
+    auto resolution_failure = &poke_resolution_failure;
+    poke->add(BOOST_TEST_CASE(resolution_failure));
+    auto json = &poke_json;
+    poke->add(BOOST_TEST_CASE(json));
+    auto html = &poke_html;
+    poke->add(BOOST_TEST_CASE(html));
+    auto connection_refused = &poke_connection_refused;
+    poke->add(BOOST_TEST_CASE(connection_refused));
+  }
   suite.add(BOOST_TEST_CASE(notification), 0, timeout);
   suite.add(BOOST_TEST_CASE(ping), 0, 5 * timeout);
   suite.add(BOOST_TEST_CASE(no_ping), 0, 5 * timeout);
