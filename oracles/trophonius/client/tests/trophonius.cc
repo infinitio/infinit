@@ -272,7 +272,16 @@ ELLE_TEST_SCHEDULED(poke_success)
     [] (bool) {},
     [] (void) {},
     fingerprint);
-  BOOST_CHECK(client.poke(1_sec));
+  try
+  {
+    client.connect("", "", "");
+  }
+  catch (infinit::oracles::trophonius::Unreachable const&)
+  {
+    BOOST_ERROR("trophonius was unreachable");
+  }
+  catch (infinit::oracles::trophonius::ConnectionError const&)
+  {}
 }
 
 ELLE_TEST_SCHEDULED(poke_no_reply)
@@ -284,7 +293,8 @@ ELLE_TEST_SCHEDULED(poke_no_reply)
     [] (bool) {},
     [] (void) {},
     fingerprint);
-  BOOST_CHECK_EQUAL(client.poke(1_sec), false);
+  BOOST_CHECK_THROW(client.connect("", "", ""),
+                    infinit::oracles::trophonius::Unreachable);
 }
 
 ELLE_TEST_SCHEDULED(poke_resolution_failure)
@@ -295,7 +305,8 @@ ELLE_TEST_SCHEDULED(poke_resolution_failure)
         [] (bool) {}, // connect callback
         [] (void) {}, // reconnection failed callback
         fingerprint);
-  BOOST_CHECK(!client.poke(30_sec));
+  BOOST_CHECK_THROW(client.connect("", "", ""),
+                    infinit::oracles::trophonius::Unreachable);
 }
 
 ELLE_TEST_SCHEDULED(poke_json)
@@ -307,7 +318,8 @@ ELLE_TEST_SCHEDULED(poke_json)
     [] (bool) {},
     [] (void) {},
     fingerprint);
-  BOOST_CHECK_EQUAL(client.poke(30_sec), false);
+  BOOST_CHECK_THROW(client.connect("", "", ""),
+                    infinit::oracles::trophonius::Unreachable);
 }
 
 ELLE_TEST_SCHEDULED(poke_html)
@@ -319,7 +331,8 @@ ELLE_TEST_SCHEDULED(poke_html)
     [] (bool) {},
     [] (void) {},
     fingerprint);
-  BOOST_CHECK_EQUAL(client.poke(30_sec), false);
+  BOOST_CHECK_THROW(client.connect("", "", ""),
+                    infinit::oracles::trophonius::Unreachable);
 }
 
 ELLE_TEST_SCHEDULED(poke_connection_refused)
@@ -335,7 +348,8 @@ ELLE_TEST_SCHEDULED(poke_connection_refused)
     [] (bool) {},
     [] (void) {},
     fingerprint);
-  BOOST_CHECK_EQUAL(client.poke(200_ms), false);
+  BOOST_CHECK_THROW(client.connect("", "", ""),
+                    infinit::oracles::trophonius::Unreachable);
 }
 
 /*-------------.
@@ -598,8 +612,10 @@ protected:
     if (this->_first)
     {
       this->_first = false;
-      this->_send_notification(socket, "0");
-      this->_send_notification(socket, "1");
+      ELLE_LOG("send notification 0")
+        this->_send_notification(socket, "0");
+      ELLE_LOG("send notification 1")
+        this->_send_notification(socket, "1");
       ELLE_LOG("wait for disconnection")
       // Read pings until disconnected.
       {
@@ -616,7 +632,8 @@ protected:
     }
     else
     {
-      this->_send_notification(socket, "2");
+      ELLE_LOG("send notification 2")
+        this->_send_notification(socket, "2");
       while (true)
       {
         auto ping = elle::json::read(socket);
@@ -702,7 +719,13 @@ protected:
                *this,
                elle::json::pretty_print(connect_msg));
     this->_login_response(socket);
-    reactor::sleep();
+    try
+    {
+      while (true)
+        socket.read_until("\n");
+    }
+    catch (reactor::network::ConnectionClosed const&)
+    {}
   }
 };
 
@@ -756,8 +779,7 @@ protected:
     try
     {
       ELLE_LOG("first connection to server");
-      std::unique_ptr<reactor::network::Socket> socket(
-        this->server().accept());
+      auto socket = this->server().accept();
       ELLE_TRACE("%s: accept connection from %s", *this, socket->peer());
       auto poke_read = elle::json::read(*socket);
       auto poke = boost::any_cast<elle::json::Object>(poke_read);
@@ -768,6 +790,17 @@ protected:
     catch (reactor::network::ConnectionClosed const&)
     {
       ELLE_LOG("%s: ignore connection closed on killing accepter", *this);
+    }
+    while (true)
+    {
+      auto socket = this->server().accept();
+      try
+      {
+        while (true)
+          socket->read_until("\n");
+      }
+      catch (reactor::network::ConnectionClosed const&)
+      {}
     }
   }
 
@@ -781,6 +814,13 @@ protected:
                *this,
                elle::json::pretty_print(connect_msg));
     this->_login_response(socket);
+    try
+    {
+      while (true)
+        socket.read_until("\n");
+    }
+    catch (reactor::network::ConnectionClosed const&)
+    {}
   }
 };
 
@@ -866,8 +906,9 @@ ELLE_TEST_SCHEDULED(socket_close_after_poke)
     [] (void) {}, // reconnection failed callback
     fingerprint);
   client.ping_period(200_ms);
-  ELLE_LOG("try to connect"); // should fail immediately
-  BOOST_CHECK(!client.connect("0", "0", "0"));
+  ELLE_LOG("try to connect") // should fail immediately
+    BOOST_CHECK_THROW(client.connect("0", "0", "0"),
+                      infinit::oracles::trophonius::ConnectionError);
 }
 
 /*------------------.
@@ -1075,8 +1116,8 @@ ELLE_TEST_SCHEDULED(connect_read_timeout)
     [] (void) {},
     fingerprint);
   client.connect_timeout(500_ms);
-  bool res = client.connect("0", "0", "0");
-  BOOST_CHECK_EQUAL(res, false);
+  BOOST_CHECK_THROW(client.connect("0", "0", "0"),
+                    infinit::oracles::trophonius::ConnectionError);
 }
 
 

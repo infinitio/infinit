@@ -29,11 +29,26 @@ namespace infinit
         %endfor
       };
 
-      class Unreachable:
-        public elle::Error
+      /*-----------.
+      | Exceptions |
+      `-----------*/
+
+      class ConnectionError
+        : public elle::Error
       {
       public:
-        Unreachable(std::string host, int port);
+        typedef elle::Error Super;
+        ConnectionError(std::string host, int port, std::string message);
+        ELLE_ATTRIBUTE_R(std::string, host);
+        ELLE_ATTRIBUTE_R(int, port);
+      };
+
+      class Unreachable
+        : public ConnectionError
+      {
+      public:
+        typedef ConnectionError Super;
+        Unreachable(std::string host, int port, std::string message);
       };
 
       /// Base class for all notifications.
@@ -207,16 +222,13 @@ namespace infinit
         ~Client();
 
       public:
-        bool
-        poke(reactor::DurationOpt const& timeout =
-             reactor::DurationOpt()) const;
         void
         poke_timeout(reactor::Duration const& timeout);
 
         void
         connect_timeout(reactor::Duration const& timeout);
 
-        bool
+        void
         connect(std::string const& _id,
                 std::string const& session_id,
                 std::string const& device_id);

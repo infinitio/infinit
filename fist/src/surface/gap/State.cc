@@ -571,18 +571,15 @@ namespace surface
                    login_response.trophonius.host,
                    login_response.trophonius.port_ssl)
         {
-          // XXX: Throw an exception instead.
           try
           {
-            if (!this->_trophonius->connect(
-                  this->me().id, this->device().id, this->_meta.session_id()))
-              throw Exception(
-                gap_trophonius_unreachable, "unable to connect to trophonius");
+            this->_trophonius->connect(
+              this->me().id, this->device().id, this->_meta.session_id());
           }
-          catch (infinit::oracles::trophonius::Unreachable const&)
+          catch (infinit::oracles::trophonius::ConnectionError const&)
           {
             throw Exception(gap_trophonius_unreachable,
-                            "unable to reach Trophonius");
+                            elle::exception_string());
           }
         }
 

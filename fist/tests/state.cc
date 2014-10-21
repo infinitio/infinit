@@ -11,6 +11,7 @@
 
 #include <cryptography/KeyPair.hh>
 
+#include <reactor/network/exception.hh>
 #include <reactor/network/ssl-server.hh>
 #include <reactor/scheduler.hh>
 
@@ -128,7 +129,13 @@ protected:
   {
     socket->write("{\"poke\": \"ouch\"}\n");
     socket->write("{\"notification_type\": -666, \"response_code\": 200, \"response_details\": \"details\"}\n");
-    reactor::sleep();
+    try
+    {
+      while (true)
+        socket->read_until("\n");
+    }
+    catch (reactor::network::ConnectionClosed const&)
+    {}
   }
 
   ELLE_ATTRIBUTE(reactor::network::SSLServer, server);
@@ -445,7 +452,13 @@ protected:
     ELLE_WARN("xxxx first connection to tropho");
     socket->write("{\"poke\": \"ouch\"}\n");
     auto connect_data = elle::json::read(*socket);
-    reactor::Scheduler::scheduler()->current()->Waitable::wait();
+    try
+    {
+      while (true)
+        socket->read_until("\n");
+    }
+    catch (reactor::network::ConnectionClosed const&)
+    {}
   }
 };
 

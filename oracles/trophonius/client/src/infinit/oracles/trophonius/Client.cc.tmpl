@@ -7,6 +7,7 @@
 
 #include <elle/Buffer.hh>
 #include <elle/assert.hh>
+#include <elle/cast.hh>
 #include <elle/finally.hh>
 #include <elle/format/json/Array.hh>
 #include <elle/format/json/Dictionary.hh>
@@ -299,7 +300,6 @@ namespace infinit
         int _reconnected;
         std::shared_ptr<reactor::network::FingerprintedSocket> _socket;
         reactor::Barrier _connected;
-        bool _synchronized;
         std::string server;
         uint16_t port;
         boost::asio::streambuf request;
@@ -317,9 +317,8 @@ namespace infinit
              Client::ReconnectPokeFailedCallback reconnect_failed_callback):
           _client(client),
           _reconnected(0),
-          _socket(nullptr),
+          _socket(),
           _connected(),
-          _synchronized(false),
           server(),
           port(),
           request{},
@@ -340,41 +339,91 @@ namespace infinit
         virtual
         ~Impl()
         {
-          if (this->_ping_thread)
-            ELLE_DEBUG("%s: terminate ping thread", *this)
-              this->_ping_thread->terminate_now();
-          if (this->_pong_thread)
-            ELLE_DEBUG("%s: terminate pong thread", *this)
-              this->_pong_thread->terminate_now();
-          if (this->_read_thread)
-            ELLE_DEBUG("%s: terminate read thread", *this)
-              this->_read_thread->terminate_now();
-          if (this->_connect_callback_thread)
-            ELLE_DEBUG("%s: terminate connect callback thread", *this)
-              this->_connect_callback_thread->terminate_now();
+          this->_threads_teardown();
         }
 
         void
-        _setup_threads()
+        _threads_setup()
         {
-          if (this->_ping_thread)
-            this->_ping_thread->terminate_now();
-          if (this->_pong_thread)
-            this->_pong_thread->terminate_now();
-          if (this->_read_thread)
-            this->_read_thread->terminate_now();
-          this->_ping_thread.reset(
-            new reactor::Thread(
-              elle::sprintf("%s ping thread", *this),
-              [&] () { this->ping_thread(); }));
-          this->_pong_thread.reset(
-            new reactor::Thread(
-              elle::sprintf("%s pong thread", *this),
-              [&] () { this->pong_thread(); }));
-          this->_read_thread.reset(
-            new reactor::Thread(
-              elle::sprintf("%s read thread", *this),
-              [&] () { this->read_thread(); }));
+          if (!this->_ping_thread)
+          {
+            ELLE_TRACE_SCOPE("%s: start ping thread", *this);
+            this->_ping_thread.reset(
+              new reactor::Thread(
+                elle::sprintf("%s ping thread", *this),
+                [&] () { this->ping_thread(); }));
+          }
+          if (!this->_pong_thread)
+          {
+            ELLE_TRACE_SCOPE("%s: start pong thread", *this);
+            this->_pong_thread.reset(
+              new reactor::Thread(
+                elle::sprintf("%s pong thread", *this),
+                [&] () { this->pong_thread(); }));
+          }
+          if (!this->_read_thread)
+          {
+            ELLE_TRACE_SCOPE("%s: start read thread", *this);
+            this->_read_thread.reset(
+              new reactor::Thread(
+                elle::sprintf("%s read thread", *this),
+                [&] () { this->read_thread(); }));
+          }
+        }
+
+        // Cleanup and reset all threads.
+        //
+        // * We might be called from one of the read/ping/pong thread trying to
+        //   reconnect, so don't suicide or delete (reset) oneself.
+        //
+        // * Terminate all threads and then wait for them to prevent one of them
+        //   from reentering the teardown processus while we wait on another
+        //   one.
+
+        void
+        _threads_teardown()
+        {
+          std::unique_ptr<reactor::Thread> ping_thread;
+          std::unique_ptr<reactor::Thread> pong_thread;
+          std::unique_ptr<reactor::Thread> read_thread;
+          std::unique_ptr<reactor::Thread> connect_callback_thread;
+          reactor::Waitables waited;
+          auto current = reactor::scheduler().current();
+          auto stop =
+            [&] (std::unique_ptr<reactor::Thread>& t)
+            {
+              return t.get() && t.get() != current;
+            };
+          if (stop(this->_ping_thread))
+            ELLE_DEBUG("%s: terminate ping thread", *this)
+            {
+              this->_ping_thread->terminate();
+              waited.push_back(this->_ping_thread.get());
+              ping_thread = std::move(this->_ping_thread);
+            }
+          if (stop(this->_pong_thread))
+            ELLE_DEBUG("%s: terminate pong thread", *this)
+            {
+              this->_pong_thread->terminate();
+              waited.push_back(this->_pong_thread.get());
+              pong_thread = std::move(this->_pong_thread);
+            }
+          if (stop(this->_read_thread))
+            ELLE_DEBUG("%s: terminate read thread", *this)
+            {
+              this->_read_thread->terminate();
+              waited.push_back(this->_read_thread.get());
+              read_thread = std::move(this->_read_thread);
+            }
+          if (this->_connect_callback_thread)
+            ELLE_DEBUG("%s: terminate connect callback thread", *this)
+            {
+              this->_connect_callback_thread->terminate();
+              waited.push_back(this->_connect_callback_thread.get());
+              connect_callback_thread =
+                std::move(this->_connect_callback_thread);
+            }
+          reactor::wait(waited);
         }
 
         std::vector<unsigned char> _test_fingerprint;
@@ -384,21 +433,16 @@ namespace infinit
           _test_fingerprint = new_fingerprint;
         }
 
-        bool
+        void
         _poke(reactor::DurationOpt const& timeout = reactor::DurationOpt())
         {
           ELLE_TRACE("%s: connect to %s:%s", *this, this->server, this->port)
           {
-            if (this->_socket)
-            {
-              ELLE_DEBUG("%s: close old socket", *this);
-              this->_socket->close();
-            }
-            auto endpoint = reactor::network::resolve_tcp(
-              this->server,
-              boost::lexical_cast<std::string>(this->port));
             try
             {
+              auto endpoint = reactor::network::resolve_tcp(
+                this->server,
+                boost::lexical_cast<std::string>(this->port));
               this->_socket.reset(new reactor::network::FingerprintedSocket(
                                     endpoint,
                                     this->_test_fingerprint,
@@ -406,181 +450,167 @@ namespace infinit
             }
             catch (reactor::network::Exception const& e)
             {
-              ELLE_ERR("%s: unable to open socket to trophonius: %s",
-                       *this, elle::exception_string());
-              return false;
+              throw Unreachable(
+                this->server, this->port,
+                elle::sprintf("connection error: %s",
+                              elle::exception_string()));
             }
           }
-          ELLE_TRACE_SCOPE("%s: poke", *this);
-          std::string const poke_msg("ouch");
-          elle::json::Object poke_obj;
-          poke_obj["poke"] = poke_msg;
-          ELLE_DEBUG("%s: send poke message: %s", *this, poke_msg)
-            elle::json::write(*this->_socket, poke_obj);
-          elle::json::Json poke_reply_read;
-          ELLE_DEBUG("%s: get poke reply", *this)
+          ELLE_TRACE("%s: poke", *this)
           {
+            std::string const poke_msg("ouch");
+            elle::json::Object poke_obj;
+            poke_obj["poke"] = poke_msg;
             try
             {
-              reactor::TimeoutGuard guard(
-                timeout ? timeout.get() : this->_poke_timeout);
-              poke_reply_read = elle::json::read(*this->_socket);
+              ELLE_DEBUG("%s: send poke message: %s", *this, poke_msg)
+                elle::json::write(*this->_socket, poke_obj);
             }
-            catch (reactor::Timeout const&)
+            catch (reactor::network::Exception const& e)
             {
-              ELLE_WARN("%s: timeout on poke reply", *this);
-              return false;
+              throw Unreachable(
+                this->server, this->port,
+                elle::sprintf("network error sending poke: %s",
+                              elle::exception_string()));
             }
-          }
-          try
-          {
-            auto const& poke_reply =
-              boost::any_cast<elle::json::Object>(poke_reply_read);
-            std::string reply_msg =
-              boost::any_cast<std::string>(poke_reply.at("poke"));
-            if (reply_msg == poke_msg)
+            elle::json::Json poke_reply_read;
+            ELLE_DEBUG("%s: get poke reply", *this)
             {
-              ELLE_DEBUG("%s: got correct poke reply", *this);
-              return true;
+              try
+              {
+                reactor::TimeoutGuard guard(
+                  timeout ? timeout.get() : this->_poke_timeout);
+                poke_reply_read = elle::json::read(*this->_socket);
+              }
+              catch (reactor::Timeout const&)
+              {
+                throw Unreachable(
+                  this->server, this->port,
+                  elle::sprintf("poke timeout after %s", this->_poke_timeout));
+              }
+              catch (elle::json::ParseError const& e)
+              {
+                throw Unreachable(
+                  this->server, this->port,
+                  elle::sprintf("JSON parse error in poke response: %s", e));
+              }
+              catch (reactor::network::Exception const& e)
+              {
+                throw Unreachable(
+                  this->server, this->port,
+                  elle::sprintf("network error reading poke response: %s",
+                                elle::exception_string()));
+              }
             }
-            else
+            try
             {
-              ELLE_WARN("%s: incorrect poke reply: %s", *this, reply_msg);
-              return false;
+              auto const& poke_reply =
+                boost::any_cast<elle::json::Object>(poke_reply_read);
+              std::string reply_msg =
+                boost::any_cast<std::string>(poke_reply.at("poke"));
+              if (reply_msg == poke_msg)
+              {
+                ELLE_DEBUG("%s: got correct poke reply", *this);
+              }
+              else
+              {
+                throw Unreachable(
+                  this->server, this->port, "invalid poke reply");
+              }
             }
-          }
-          catch (boost::bad_any_cast const&)
-          {
-            ELLE_WARN("%s: invalid poke reply", *this);
-            return false;
+            catch (boost::bad_any_cast const&)
+            {
+                throw Unreachable(
+                  this->server, this->port, "invalid poke reply");
+            }
           }
         }
 
         void
-        _close_socket_on_exception()
+        _connect(std::string const& user_id,
+                 std::string const& device_id,
+                 std::string const& session_id)
         {
-          if (this->_socket)
-            this->_socket->close();
-        }
-
-        void
-        _connect(bool user_action = false)
-        {
-          if (this->_connect_callback_thread)
-            this->_connect_callback_thread->terminate_now();
-          if (!this->_poke())
-          {
-            if (this->_socket)
-              this->_socket->close();
-            throw Unreachable(this->server, this->port);
-          }
-          ELLE_DEBUG_SCOPE("%s: connect to %s:%s",
+          ELLE_TRACE_SCOPE("%s: connect to %s:%s",
                            *this, this->server, this->port);
-          this->_notifications.close();
-
-          if (this->_connected.opened())
-            return;
-
+          ELLE_ASSERT(!this->_connected.opened());
+          this->_poke();
+          this->user_id = user_id;
+          this->user_device_id = device_id;
+          this->user_session_id = session_id;
+          auto const connection_timeout = this->connect_timeout();
           try
           {
-            if (this->user_id.empty() ||
-                this->user_session_id.empty() ||
-                this->user_device_id.empty())
+            ELLE_DEBUG_SCOPE("%s: authenticate", *this);
+            elle::json::Object request;
             {
-              throw elle::Exception("some of the attributes are empty");
-            }
-
-            elle::json::Object connection_request;
-            {
-              connection_request["user_id"] = this->user_id;
-              connection_request["session_id"] = this->user_session_id;
-              connection_request["device_id"] = this->user_device_id;
+              request["user_id"] = this->user_id;
+              request["session_id"] = this->user_session_id;
+              request["device_id"] = this->user_device_id;
               {
                 elle::json::Object version;
                 version["major"] = INFINIT_VERSION_MAJOR;
                 version["minor"] = INFINIT_VERSION_MINOR;
                 version["subminor"] = INFINIT_VERSION_SUBMINOR;
-                connection_request["version"] = version;
+                request["version"] = version;
               }
-              connection_request["os"] = elle::system::platform::os_name();
-              connection_request["os_version"] =
+              request["os"] = elle::system::platform::os_name();
+              request["os_version"] =
                 elle::system::platform::os_version();
             }
-
-            ELLE_DEBUG("%s: identification", *this)
-              elle::json::write(*this->_socket, connection_request);
-
-            ELLE_DEBUG("%s: wait for confirmation", *this);
-            auto notif = read(this->connect_timeout());
-
-            ELLE_ASSERT(notif != nullptr);
-            ELLE_DEBUG("%s: read: %s", *this, *notif);
-
-            if (notif->notification_type != NotificationType::connection_enabled)
-            {
-              throw elle::Exception("wrong first notification");
-            }
-
-            ELLE_ASSERT(dynamic_cast<ConnectionEnabledNotification*>(notif.get()));
-
-            auto notification = std::unique_ptr<ConnectionEnabledNotification>(
-              static_cast<ConnectionEnabledNotification*>(notif.release()));
-
+            ELLE_DUMP("%s: authentication request: %s", *this, request);
+            elle::json::write(*this->_socket, request);
+            ELLE_DEBUG("%s: read authentication response", *this);
+            auto notif = read(connection_timeout);
+            ELLE_DUMP("%s: authentication response: %s", *this, *notif);
+            if (notif->notification_type !=
+                NotificationType::connection_enabled)
+              throw elle::Error("wrong first notification");
+            auto notification =
+              elle::cast<ConnectionEnabledNotification>::runtime(notif);
+            ELLE_ASSERT(notification.get());
             if (notification->response_code != 200)
-            {
-              throw elle::Exception(notification->response_details);
-            }
-
-            ELLE_LOG("%s: connected", *this);
+              throw elle::Error(notification->response_details);
+            ELLE_LOG("%s: connected to %s:%s", *this, this->server, this->port);
+            this->_threads_setup();
             this->_connected.open();
           }
           catch (reactor::network::TimeOut const& e)
           {
-            ELLE_WARN("%s: timeout after %s while connecting", *this,
-                      this->connect_timeout());
-            return;
+            throw ConnectionError(
+              this->server, this->port,
+              elle::sprintf("authentication timeout after %s",
+                            connection_timeout));
           }
           catch (reactor::network::Exception const& e)
           {
-            // In the case that we have a network exception, we need to
-            // poke again to get a working socket.
-            ELLE_WARN("%s: connection failed: %s",
-                      *this, e.what());
-            return;
+            throw ConnectionError(
+              this->server, this->port,
+              elle::sprintf("network error during authentication: %s", e));
           }
           catch (elle::Exception const& e)
           {
-            // If an error occured, the connection to trophonius is broken and
-            // requiere a new data (user_id, token, ...).
-            this->_disconnect();
-
-            ELLE_ERR("%s: failure to connect: %s", *this, e.what());
-            // If the action has been initiated by the user, we can throw him
-            // the exception.
-            if (user_action)
-              throw;
-            return;
+            ELLE_ERR("%s: unexpected authentication exception: %s", *this, e);
+            throw ConnectionError(
+              this->server, this->port,
+              elle::sprintf("error during authentication: %s", e));
           }
         }
 
         void
         _disconnect()
         {
-          ELLE_DEBUG_SCOPE("%s: disconnect", *this);
+          ELLE_TRACE_SCOPE("%s: disconnect", *this);
           this->_connected.close();
-          this->_synchronized = false;
           this->_notifications.close();
           this->_notifications.clear();
+          this->_threads_teardown();
           if (this->_connect_callback_thread)
           {
             this->_connect_callback_thread->terminate_now();
             this->_connect_callback_thread.reset();
           }
-          if (this->_socket)
-          {
-            this->_socket->close();
-            this->_socket.reset();
-          }
+          this->_socket.reset();
         }
 
         void
@@ -588,85 +618,45 @@ namespace infinit
         {
           // If several threads try to reconnect, just wait for the first one to
           // be done.
-          ELLE_TRACE_SCOPE("%s: thread %s trying to reconnect",
+          ELLE_TRACE_SCOPE("%s: thread %s reconnect",
                            *this, *reactor::Scheduler::scheduler()->current());
-          if (!this->_connected.opened())
-          {
-            ELLE_DEBUG_SCOPE("%s: already reconnecting, wait", *this);
-            reactor::wait(this->_connected);
-            return;
-          }
-          ELLE_DEBUG_SCOPE("%s: reconnect", *this);
+          ELLE_ASSERT(this->_connected.opened());
           this->_disconnect();
           this->connect_callback(false);
           while (true)
           {
             try
             {
-              this->_connect();
-              if (this->_connected.opened())
-              {
-                auto& sched = *reactor::Scheduler::scheduler();
-                this->_connect_callback_thread.reset(
-                  new reactor::Thread(
-                    sched,
-                    "reconnection callback",
-                    [&]
+              this->_connect(
+                this->user_id, this->user_device_id, this->user_session_id);
+              this->_connect_callback_thread.reset(
+                new reactor::Thread(
+                  "reconnection callback",
+                  [&]
+                  {
+                    ELLE_LOG("%s: running reconnection callback", *this);
+                    try
                     {
-                      ELLE_LOG("%s: running reconnection callback", *this);
-                      try
-                      {
-                        this->connect_callback(true);
-                      }
-                      catch (reactor::Terminate const&)
-                      {
-                        throw;
-                      }
-                      catch (...)
-                      {
-                        ELLE_ERR("%s: connection callback failed: %s",
-                                 *this, elle::exception_string());
-                        throw;
-                      }
-                      this->_synchronized = true;
-                      this->_notifications.open();
-                    }));
-                break;
-              }
-              else
-              {
-                ELLE_WARN("%s: unable to authenticate with trophonius",
-                          *this);
-              }
+                      this->connect_callback(true);
+                    }
+                    catch (reactor::Terminate const&)
+                    {
+                      throw;
+                    }
+                    catch (...)
+                    {
+                      ELLE_ERR("%s: connection callback failed: %s",
+                               *this, elle::exception_string());
+                      throw;
+                    }
+                    this->_notifications.open();
+                  }));
+              break;
             }
-            catch (Unreachable const&)
+            catch (ConnectionError const& e)
             {
-              ELLE_WARN("%s: wrong response or timeout on reconnection",
-                        *this);
-            }
-            catch (reactor::network::ResolutionError const& e)
-            {
-              ELLE_WARN("%s: no connection to network for reconnection: %s",
-                        *this,
-                        e.what());
-            }
-            catch (reactor::network::Exception const& e)
-            {
-              ELLE_WARN("%s: network error on reconnection: %s",
-                        *this,
-                        e.what());
-            }
-            catch (elle::json::ParseError const& e)
-            {
-              ELLE_WARN("%s: JSON parsing error during reconnect: %s",
-                       *this,
-                       e.what());
-            }
-            catch (elle::Exception const&)
-            {
-              ELLE_ERR("%s: unable to reconnect to trophonius: %s",
-                        *this,
-                        elle::exception_string());
+              ELLE_WARN("%s: unable to reconnect: %s",
+                        *this, elle::exception_string());
             }
             this->reconnect_failed_callback();
             boost::random::mt19937 rng;
@@ -677,11 +667,9 @@ namespace infinit
             ELLE_LOG("%s: will retry reconnection in %s", *this, delay);
             reactor::sleep(delay);
           }
-          if (this->_connected)
-          {
-            ELLE_LOG("%s: reconnected to trophonius", *this);
-            this->_reconnected++;
-          }
+          ELLE_ASSERT(this->_connected.opened());
+          ELLE_LOG("%s: reconnected to trophonius", *this);
+          ++this->_reconnected;
         }
 
         boost::posix_time::time_duration _ping_period;
@@ -800,8 +788,6 @@ namespace infinit
             {
               ELLE_DUMP("%s: enqueue notification", *this);
               this->_notifications.put(std::move(notif));
-              if (this->_synchronized)
-                this->_notifications.open();
             }
           }
         }
@@ -826,10 +812,11 @@ namespace infinit
         print(std::ostream& stream) const override
         {
           stream << "trophonius::Client("
-                 << this->user_id << ", "
-                 << this->user_device_id << ")";
+                 << "\"" << this->user_id << "\", "
+                 << "\"" << this->user_device_id << "\")";
         }
 
+        friend class Client;
         typedef reactor::Channel<std::unique_ptr<Notification>> Notifications;
         ELLE_ATTRIBUTE(Notifications, notifications);
         ELLE_ATTRIBUTE_RW(reactor::Duration, connect_timeout);
@@ -902,31 +889,6 @@ namespace infinit
         return this->_impl->_reconnected;
       }
 
-      bool
-      Client::poke(reactor::DurationOpt const& timeout) const
-      {
-        ELLE_TRACE_SCOPE("%s: poke", *this);
-        try
-        {
-          return this->_impl->_poke(timeout);
-        }
-        catch (reactor::network::Exception const& e)
-        {
-          ELLE_ERR("%s: failure to poke trophonius: %s", *this, e.what());
-        }
-        catch (elle::json::ParseError const& e)
-        {
-          ELLE_ERR("%s: JSON parsing error: %s", *this, e.what());
-        }
-        catch (elle::Exception const& e)
-        {
-          ELLE_ERR("%s: error trying to poke trophonius: %s", *this, e.what());
-          throw;
-        }
-        this->_impl->_close_socket_on_exception();
-        return false;
-      }
-
       void
       Client::poke_timeout(reactor::Duration const& timeout)
       {
@@ -939,25 +901,16 @@ namespace infinit
         this->_impl->connect_timeout(timeout);
       }
 
-      bool
+      void
       Client::connect(std::string const& _id,
                       std::string const& device_id,
                       std::string const& session_id)
       {
-        ELLE_TRACE_SCOPE("%s: connecting with id %s, session %s, device_id %s",
-                         *this, _id, session_id, device_id);
-        this->_impl->user_id = _id;
-        this->_impl->user_session_id = session_id;
-        this->_impl->user_device_id = device_id;
-        this->_impl->_setup_threads();
-        this->_impl->_connect(true);
-        if (!this->_impl->_connected.opened())
-        {
-          ELLE_ERR("%s: unable to authenticate with trophonius", *this);
-          return false;
-        }
-        this->_impl->_synchronized = true;
-        return true;
+        ELLE_TRACE_SCOPE(
+          "%s: connecting with id \"%s\", session \"%s\", device_id \"%s\"",
+          *this, _id, session_id, device_id);
+        this->_impl->_connect(_id, device_id, session_id);
+        this->_impl->_notifications.open();
       }
 
       void
@@ -1003,9 +956,21 @@ namespace infinit
         stream << *this->_impl;
       }
 
-      Unreachable::Unreachable(std::string host, int port)
-        : elle::Error(
-          elle::sprintf("unable to reach trophonius on %s:%s", host, port))
+      /*-----------.
+      | Exceptions |
+      `-----------*/
+
+      ConnectionError::ConnectionError(
+        std::string host, int port, std::string message)
+        : Super(elle::sprintf("unable connect to trophonius on %s:%s: %s",
+                              host, port, message))
+        , _host(std::move(host))
+        , _port(std::move(port))
+      {}
+
+      Unreachable::Unreachable(std::string host, int port, std::string message)
+        : Super(std::move(host), std::move(port),
+                elle::sprintf("unreachable: %s", message))
       {}
     }
   }
