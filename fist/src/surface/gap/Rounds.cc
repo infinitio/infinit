@@ -133,6 +133,7 @@ namespace surface
           fallback.fallback_host,
           boost::lexical_cast<std::string>(fallback.fallback_port_ssl),
           fingerprint));
+      sock->shutdown_asynchronous(true);
       ELLE_DUMP("%s: send transaction key %s (of length: %i)",
                 *this, this->_uid, this->_uid.size());
       char version = 0;

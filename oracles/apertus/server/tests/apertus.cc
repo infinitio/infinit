@@ -684,22 +684,28 @@ ELLE_TEST_SCHEDULED(concurrency_bug)
     0,
     tick_rate);
   reactor::wait(meta.apertus_registered());
-  elle::ConstWeakBuffer header("\x00\x01-", 6);
+  elle::ConstWeakBuffer header("\x00\x01-", 3);
   reactor::network::FingerprintedSocket socket1(
     "127.0.0.1",
     boost::lexical_cast<std::string>(apertus.port_ssl()),
     fingerprint);
+  socket1.shutdown_asynchronous(true);
   reactor::network::FingerprintedSocket socket2(
     "127.0.0.1",
     boost::lexical_cast<std::string>(apertus.port_ssl()),
     fingerprint);
+  socket2.shutdown_asynchronous(true);
   reactor::network::FingerprintedSocket socket3(
     "127.0.0.1",
     boost::lexical_cast<std::string>(apertus.port_ssl()),
     fingerprint);
-  socket1.write(header);
-  socket2.write(header);
-  socket3.write(header);
+  socket3.shutdown_asynchronous(true);
+  ELLE_LOG("%s: send header 1", socket1)
+    socket1.write(header);
+  ELLE_LOG("%s: send header 2", socket2)
+    socket2.write(header);
+  ELLE_LOG("%s: send header 3", socket3)
+    socket3.write(header);
 }
 
 ELLE_TEST_SUITE()
