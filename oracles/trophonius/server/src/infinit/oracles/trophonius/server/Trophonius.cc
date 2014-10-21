@@ -35,6 +35,16 @@ namespace infinit
                                         user_id, device_id))
         {}
 
+        static
+        boost::uuids::uuid
+        generate_uuid()
+        {
+          boost::mt19937 rng;
+          rng.seed(std::time(0));
+          boost::uuids::basic_random_generator<boost::mt19937> gen(&rng);
+          return gen();
+        }
+
         Trophonius::Trophonius(
           int port_ssl,
           int port_tcp,
@@ -60,7 +70,7 @@ namespace infinit
           _meta_accepter(
             elle::sprintf("%s meta accepter", *this),
             std::bind(&Trophonius::_serve_notifier, std::ref(*this))),
-          _uuid(boost::uuids::random_generator()()),
+          _uuid(generate_uuid()),
           _meta(meta_protocol, meta_host, meta_port),
           _meta_pinger(
             reactor::Scheduler::scheduler()->every(
