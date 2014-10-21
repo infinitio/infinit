@@ -325,7 +325,7 @@ ELLE_TEST_SCHEDULED(trophonius)
 {
   HTTPServer s;
   int i = 0;
-  boost::uuids::uuid id;
+  boost::uuids::uuid id = boost::uuids::nil_generator()();
   s.register_route(
     elle::sprintf("/trophonius/%s", id),
     reactor::http::Method::PUT,
