@@ -488,6 +488,7 @@ namespace surface
         // If the transaction is running, cancel it.
         if (this->_machine != nullptr && !this->final())
         {
+          _canceled_by_user = true;
           this->_machine->cancel();
           // Set the machine's gap status as we don't have a separate state for
           // deleted.
