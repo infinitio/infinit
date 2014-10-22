@@ -282,6 +282,7 @@ ELLE_TEST_SCHEDULED(poke_success)
   }
   catch (infinit::oracles::trophonius::ConnectionError const&)
   {}
+  BOOST_CHECK(!client.connected().opened());
 }
 
 ELLE_TEST_SCHEDULED(poke_no_reply)
@@ -295,6 +296,7 @@ ELLE_TEST_SCHEDULED(poke_no_reply)
     fingerprint);
   BOOST_CHECK_THROW(client.connect("", "", ""),
                     infinit::oracles::trophonius::Unreachable);
+  BOOST_CHECK(!client.connected());
 }
 
 ELLE_TEST_SCHEDULED(poke_resolution_failure)
@@ -307,6 +309,7 @@ ELLE_TEST_SCHEDULED(poke_resolution_failure)
         fingerprint);
   BOOST_CHECK_THROW(client.connect("", "", ""),
                     infinit::oracles::trophonius::Unreachable);
+  BOOST_CHECK(!client.connected());
 }
 
 ELLE_TEST_SCHEDULED(poke_json)
@@ -320,6 +323,7 @@ ELLE_TEST_SCHEDULED(poke_json)
     fingerprint);
   BOOST_CHECK_THROW(client.connect("", "", ""),
                     infinit::oracles::trophonius::Unreachable);
+  BOOST_CHECK(!client.connected());
 }
 
 ELLE_TEST_SCHEDULED(poke_html)
@@ -333,6 +337,7 @@ ELLE_TEST_SCHEDULED(poke_html)
     fingerprint);
   BOOST_CHECK_THROW(client.connect("", "", ""),
                     infinit::oracles::trophonius::Unreachable);
+  BOOST_CHECK(!client.connected());
 }
 
 ELLE_TEST_SCHEDULED(poke_connection_refused)
@@ -350,6 +355,7 @@ ELLE_TEST_SCHEDULED(poke_connection_refused)
     fingerprint);
   BOOST_CHECK_THROW(client.connect("", "", ""),
                     infinit::oracles::trophonius::Unreachable);
+  BOOST_CHECK(!client.connected());
 }
 
 /*-------------.
@@ -391,7 +397,7 @@ ELLE_TEST_SCHEDULED(notification)
       [] (void) {}, // reconnection failed callback
       fingerprint);
     client.connect("0", "0", "0");
-    reactor::wait(client.connected());
+    BOOST_CHECK(client.connected());
     for (int i = 0; i < reconnections; ++i)
     {
       ELLE_LOG("poll notifications");
@@ -493,7 +499,7 @@ ELLE_TEST_SCHEDULED(ping)
     fingerprint);
   client.ping_period(period);
   client.connect("0", "0", "0");
-  reactor::wait(client.connected());
+  BOOST_CHECK(client.connected());
   reactor::sleep(run_time);
   BOOST_CHECK_EQUAL(client.reconnected(), 0);
   BOOST_CHECK_LE(std::abs(tropho.ping_received() - periods), 1);
@@ -576,6 +582,7 @@ ELLE_TEST_SCHEDULED(no_ping)
     fingerprint);
   client.ping_period(period);
   client.connect("0", "0", "0");
+  BOOST_CHECK(client.connected());
   reactor::sleep(run_time);
   // Approximate test as we don't know how long a poke, connect, disconnect
   // cycle will take.
@@ -659,6 +666,7 @@ ELLE_TEST_SCHEDULED(reconnection)
     {
       if (connected)
       {
+        BOOST_CHECK(client.connected());
         if (first_connect)
         {
           // Wait to check that the client doesn't get notification '2' yet.
@@ -670,6 +678,7 @@ ELLE_TEST_SCHEDULED(reconnection)
       else
       {
         ELLE_LOG("client got disconnected");
+        BOOST_CHECK(!client.connected());
         reconnecting.open();
       }
     },
@@ -677,7 +686,10 @@ ELLE_TEST_SCHEDULED(reconnection)
     fingerprint);
   client.ping_period(1_sec);
   ELLE_LOG("connect")
+  {
     client.connect("0", "0", "0");
+    BOOST_CHECK(client.connected());
+  }
   ELLE_LOG("read notification 0");
   {
     auto notification =
@@ -844,7 +856,7 @@ ELLE_TEST_SCHEDULED(reconnection_failed_callback)
   ELLE_LOG("connect");
   client.connect("0", "0", "0");
   reactor::wait(callback_called);
-  ELLE_LOG("BYE FFS");
+  BOOST_CHECK(!client.connected());
 }
 
 /*------------------------.
