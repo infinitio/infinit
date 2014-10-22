@@ -433,9 +433,10 @@ namespace infinit
           _test_fingerprint = new_fingerprint;
         }
 
-        void
+        std::shared_ptr<reactor::network::FingerprintedSocket>
         _poke(reactor::DurationOpt const& timeout = reactor::DurationOpt())
         {
+          std::shared_ptr<reactor::network::FingerprintedSocket> socket;
           ELLE_TRACE("%s: connect to %s:%s", *this, this->server, this->port)
           {
             try
@@ -443,10 +444,8 @@ namespace infinit
               auto endpoint = reactor::network::resolve_tcp(
                 this->server,
                 boost::lexical_cast<std::string>(this->port));
-              this->_socket.reset(new reactor::network::FingerprintedSocket(
-                                    endpoint,
-                                    this->_test_fingerprint,
-                                    15_sec));
+              socket = std::make_shared<reactor::network::FingerprintedSocket>(
+                endpoint, this->_test_fingerprint, 15_sec);
             }
             catch (reactor::network::Exception const& e)
             {
@@ -464,7 +463,7 @@ namespace infinit
             try
             {
               ELLE_DEBUG("%s: send poke message: %s", *this, poke_msg)
-                elle::json::write(*this->_socket, poke_obj);
+                elle::json::write(*socket, poke_obj);
             }
             catch (reactor::network::Exception const& e)
             {
@@ -480,7 +479,7 @@ namespace infinit
               {
                 reactor::TimeoutGuard guard(
                   timeout ? timeout.get() : this->_poke_timeout);
-                poke_reply_read = elle::json::read(*this->_socket);
+                poke_reply_read = elle::json::read(*socket);
               }
               catch (reactor::Timeout const&)
               {
@@ -524,6 +523,7 @@ namespace infinit
                   this->server, this->port, "invalid poke reply");
             }
           }
+          return socket;
         }
 
         void
@@ -534,7 +534,7 @@ namespace infinit
           ELLE_TRACE_SCOPE("%s: connect to %s:%s",
                            *this, this->server, this->port);
           ELLE_ASSERT(!this->_connected.opened());
-          this->_poke();
+          auto socket = this->_poke();
           this->user_id = user_id;
           this->user_device_id = device_id;
           this->user_session_id = session_id;
@@ -559,9 +559,9 @@ namespace infinit
                 elle::system::platform::os_version();
             }
             ELLE_DUMP("%s: authentication request: %s", *this, request);
-            elle::json::write(*this->_socket, request);
+            elle::json::write(*socket, request);
             ELLE_DEBUG("%s: read authentication response", *this);
-            auto notif = read(connection_timeout);
+            auto notif = read(connection_timeout, socket);
             ELLE_DUMP("%s: authentication response: %s", *this, *notif);
             if (notif->notification_type !=
                 NotificationType::connection_enabled)
@@ -572,6 +572,7 @@ namespace infinit
             if (notification->response_code != 200)
               throw elle::Error(notification->response_details);
             ELLE_LOG("%s: connected to %s:%s", *this, this->server, this->port);
+            this->_socket = std::move(socket);
             this->_threads_setup();
             this->_connected.open();
           }
@@ -734,10 +735,10 @@ namespace infinit
         }
 
         std::unique_ptr<Notification>
-        read(reactor::Duration timeout)
+        read(reactor::Duration timeout,
+             std::shared_ptr<reactor::network::Socket> socket)
         {
           ELLE_DUMP_SCOPE("%s: read message", *this);
-          auto socket = this->_socket;
           auto buffer = socket->read_until("\n", timeout);
           ELLE_TRACE("%s: got message: %f", *this, buffer);
           elle::InputStreamBuffer<elle::Buffer> streambuffer(buffer);
@@ -762,7 +763,7 @@ namespace infinit
             reactor::Duration read_timeout = this->_ping_timeout * 3;
             try
             {
-              notif = this->read(read_timeout);
+              notif = this->read(read_timeout, this->_socket);
             }
             catch (reactor::network::TimeOut const& e)
             {
