@@ -403,8 +403,7 @@ namespace surface
               return a.first < b.first;
             });
         handler.multipart_finalize(source_file_name, upload_id, chunks);
-        // mark transfer as raw-finished
-        this->gap_status(gap_transaction_finished);
+        // Let the finished state update gap and meta.
         this->finished().open();
         exit_reason = metrics::TransferExitReasonFinished;
       } // try
