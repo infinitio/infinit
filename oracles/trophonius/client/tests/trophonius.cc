@@ -29,6 +29,14 @@ extern const std::vector<char> server_certificate;
 extern const std::vector<char> server_key;
 extern const std::vector<char> server_dh1024;
 
+template <typename T>
+static
+auto
+valgrind(T base) -> decltype(base * 42)
+{
+  return base * (RUNNING_ON_VALGRIND ? 50 : 1);
+}
+
 enum class NotificationCode
 {
   NONE_NOTIFICATION = 0,
@@ -1227,7 +1235,7 @@ namespace ssl_shutdown
       [] (bool connected) {},
       [] (void) {},
       fingerprint);
-    client.connect_timeout(200_ms);
+    client.connect_timeout(valgrind(200_ms));
     client.connect("0", "0", "0");
   }
 }
