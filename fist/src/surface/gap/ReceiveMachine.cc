@@ -117,6 +117,7 @@ namespace surface
         case TransactionStatus::initialized:
           ELLE_DEBUG("%s: ignore status %s", *this, status);
           break;
+        case TransactionStatus::ghost_uploaded: // intercepted by inherited machine
         case TransactionStatus::created:
         case TransactionStatus::started:
         case TransactionStatus::none:
