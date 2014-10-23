@@ -445,7 +445,7 @@ namespace infinit
                 this->server,
                 boost::lexical_cast<std::string>(this->port));
               socket = std::make_shared<reactor::network::FingerprintedSocket>(
-                endpoint, this->_test_fingerprint, 15_sec);
+                endpoint, this->_test_fingerprint, this->connect_timeout());
             }
             catch (reactor::network::Exception const& e)
             {
