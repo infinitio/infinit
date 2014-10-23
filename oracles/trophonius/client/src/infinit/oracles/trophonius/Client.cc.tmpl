@@ -446,6 +446,7 @@ namespace infinit
                 boost::lexical_cast<std::string>(this->port));
               socket = std::make_shared<reactor::network::FingerprintedSocket>(
                 endpoint, this->_test_fingerprint, this->connect_timeout());
+              socket->shutdown_asynchronous(true);
             }
             catch (reactor::network::Exception const& e)
             {
@@ -573,6 +574,7 @@ namespace infinit
               throw elle::Error(notification->response_details);
             ELLE_LOG("%s: connected to %s:%s", *this, this->server, this->port);
             this->_socket = std::move(socket);
+            this->_socket->shutdown_asynchronous(false);
             this->_threads_setup();
             this->_connected.open();
           }
@@ -622,6 +624,9 @@ namespace infinit
           ELLE_TRACE_SCOPE("%s: thread %s reconnect",
                            *this, *reactor::Scheduler::scheduler()->current());
           ELLE_ASSERT(this->_connected.opened());
+          // Since we're reconnecting because of network issue anyway, we don't
+          // really care about a proper SSL shutdown before reconnecting.
+          this->_socket->shutdown_asynchronous(true);
           this->_disconnect();
           this->connect_callback(false);
           while (true)
@@ -695,9 +700,9 @@ namespace infinit
               ELLE_DUMP("%s: ping thread: connected", *this);
             }
 
-            auto socket = this->_socket;
             try
             {
+              auto socket = this->_socket;
               ELLE_DUMP_SCOPE("send ping to %s", socket->peer());
               socket->write(elle::ConstWeakBuffer(ping_msg));
             }
