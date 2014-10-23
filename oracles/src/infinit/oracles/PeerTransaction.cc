@@ -77,14 +77,14 @@ namespace infinit
       try
       {
         s.serialize("is_ghost", this->is_ghost);
+        if (this->is_ghost)
+          s.serialize("download_link", this->download_link);
       }
       catch (elle::serialization::Error const&)
       {
         ELLE_ASSERT(s.in());
         this->is_ghost = false;
       }
-      if (this->is_ghost)
-        s.serialize("download_link", this->download_link);
       s.serialize("status", this->status, elle::serialization::as<int>());
     }
 

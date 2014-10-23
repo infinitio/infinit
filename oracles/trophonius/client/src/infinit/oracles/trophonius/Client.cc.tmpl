@@ -18,6 +18,7 @@
 #include <elle/log.hh>
 #include <elle/memory.hh>
 #include <elle/print.hh>
+#include <elle/serialization/json.hh>
 #include <elle/serialize/JSONArchive.hh>
 #include <elle/serialize/ListSerializer.hxx>
 #include <elle/serialize/NamedValue.hh>
@@ -129,17 +130,6 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::LinkTransactionNotification,
   ar & base_class<infinit::oracles::LinkTransaction>(value);
 }
 
-ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::PeerTransactionNotification);
-ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::PeerTransactionNotification,
-                      ar,
-                      value,
-                      version)
-{
-  (void)version;
-  ar & base_class<infinit::oracles::trophonius::Notification>(value);
-  ar & base_class<infinit::oracles::PeerTransaction>(value);
-}
-
 ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::MessageNotification);
 ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::MessageNotification,
                       ar,
@@ -164,6 +154,12 @@ namespace infinit
       /*--------------.
       | Notifications |
       `--------------*/
+
+      PeerTransactionNotification::PeerTransactionNotification(
+        elle::serialization::SerializerIn& input)
+        : Notification(NotificationType::peer_transaction)
+        , PeerTransaction(input)
+      {}
 
       void
       Notification::print(std::ostream& stream) const
@@ -190,13 +186,6 @@ namespace infinit
       {
         stream << this->notification_type << ": "
                << *static_cast<LinkTransaction const*>(this);
-      }
-
-      void
-      PeerTransactionNotification::print(std::ostream& stream) const
-      {
-        stream << this->notification_type << ": "
-               << *static_cast<PeerTransaction const*>(this);
       }
 
       PeerReachabilityNotification::PeerReachabilityNotification()
@@ -250,6 +239,11 @@ namespace infinit
             return elle::make_unique<ConfigurationNotification>(
               std::move(json));
           }
+          case NotificationType::peer_transaction:
+          {
+            elle::serialization::json::SerializerIn input(json);
+            return elle::make_unique<PeerTransactionNotification>(input);
+          }
           default:
             ; // Nothing.
         }
@@ -266,7 +260,7 @@ namespace infinit
           case NotificationType::link_transaction:
             return Ptr(new LinkTransactionNotification{extractor});
           case NotificationType::peer_transaction:
-            return Ptr(new PeerTransactionNotification{extractor});
+            elle::unreachable();
           case NotificationType::peer_connection_update:
             elle::unreachable();
           case NotificationType::new_swagger:

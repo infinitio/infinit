@@ -161,19 +161,12 @@ namespace infinit
         print(std::ostream& stream) const override;
       };
 
-
-      struct PeerTransactionNotification:
-        public Notification,
-        public PeerTransaction
+      class PeerTransactionNotification
+        : public Notification
+        , public PeerTransaction
       {
-        ELLE_SERIALIZE_CONSTRUCT(PeerTransactionNotification,
-                                 Notification,
-                                 PeerTransaction)
-        {}
-
-        virtual
-        void
-        print(std::ostream& stream) const override;
+      public:
+        PeerTransactionNotification(elle::serialization::SerializerIn& input);
       };
 
       struct PeerReachabilityNotification:

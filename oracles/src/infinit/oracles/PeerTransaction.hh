@@ -4,7 +4,6 @@
 # include <infinit/oracles/Transaction.hh>
 
 # include <elle/serialization/fwd.hh>
-# include <elle/serialize/construct.hh>
 
 namespace infinit
 {
@@ -41,7 +40,7 @@ namespace infinit
       std::string recipient_device_id;
       std::string recipient_device_name;
       std::string sender_fullname;
-      std::string download_link;
+      boost::optional<std::string> download_link;
       int64_t total_size;
 
     /*--------------.
@@ -52,8 +51,6 @@ namespace infinit
       virtual
       void
       serialize(elle::serialization::Serializer& s) override;
-      ELLE_SERIALIZE_CONSTRUCT(PeerTransaction)
-      {}
 
     /*----------.
     | Printable |
