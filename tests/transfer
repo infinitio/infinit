@@ -379,7 +379,7 @@ class TestBasicTransferBig(TestBasicTransfer):
   def test_big_file(self):
     return self.transfer_test('big', {'names': ['big'], 'size': 5000000000})
 
-class TestResumeTransfer(unittest.TestCase):
+class TestSequencer:
   def parse_sequence(self, sequence):
     """ Parse a string with parse_sequence_string(), or a list made
         of strings and actions.
@@ -484,6 +484,8 @@ class TestResumeTransfer(unittest.TestCase):
           self.assertEqual(transfer.sender.status, 'transaction_canceled')
         if transfer.recipient.logged_in:
           self.assertEqual(transfer.recipient.status, 'transaction_canceled')
+
+class TestResumeTransfer(TestSequencer, unittest.TestCase):
   def test_self(self): # tests the test system
    return self.transfer_test(['100k'], {'name': '100k','size': 100000},
                              'R start 10 20 30 100',
@@ -600,7 +602,7 @@ class TestResumeTransfer(unittest.TestCase):
                               [ensure_mirror, 'R start r0.001', remove_file],
                               validate_content = False)
 
-class TestGhostUpload(TestResumeTransfer):
+class TestGhostUpload(TestSequencer, unittest.TestCase):
   credentials = [test_credentials[0], ('user@infinit.io', 'user', 'user@infinit.io')]
   def test_basic(self):
     return self.transfer_test(['f1'], {'name': 'f1', 'size': 100000},
@@ -615,7 +617,7 @@ class TestGhostUpload(TestResumeTransfer):
                               'start s100 X r10 r R r20 r R',
                               credentials = TestGhostUpload.credentials)
 
-class TestNoTropho(TestResumeTransfer):
+class TestNoTropho(TestSequencer, unittest.TestCase):
   def test_no_tropho_beg_1(self): #login then tropho down
     return self.transfer_test(['tnt1'], {'name': 'tnt1','size': 100000},
                               'R t start d1000 T')
