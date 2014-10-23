@@ -24,6 +24,16 @@ extern const std::vector<char> server_certificate;
 extern const std::vector<char> server_key;
 extern const std::vector<char> server_dh1024;
 
+static
+boost::uuids::uuid
+generate_uuid()
+{
+  boost::mt19937 rng;
+  rng.seed(std::time(0));
+  boost::uuids::basic_random_generator<boost::mt19937> gen(&rng);
+  return gen();
+}
+
 ELLE_LOG_COMPONENT("infinit.oracles.apertus.Apertus");
 namespace infinit
 {
@@ -42,7 +52,7 @@ namespace infinit
         _accepter_ssl(nullptr),
         _accepter_tcp(nullptr),
         _meta(meta_protocol, meta_host, meta_port),
-        _uuid(boost::uuids::random_generator()()),
+        _uuid(generate_uuid()),
         _host(host),
         _port_ssl(port_ssl),
         _port_tcp(port_tcp),
