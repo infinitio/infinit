@@ -117,6 +117,7 @@ def configure(elle,
                                            valgrind = valgrind)
   else:
     runner = drake.Runner(exe = test_exe)
+  runner.reporting = drake.Runner.Reporting.on_failure
   check = drake.Rule('check')
   check << runner.status
 
