@@ -1132,6 +1132,105 @@ ELLE_TEST_SCHEDULED(connect_read_timeout)
                     infinit::oracles::trophonius::ConnectionError);
 }
 
+/*---------------------.
+| SSL shutdown timeout |
+`---------------------*/
+
+namespace ssl_shutdown
+{
+  class TimeoutConnectTrophonius
+    : public Trophonius
+  {
+  protected:
+    virtual
+    void
+    _handle_connection() override
+    {
+      auto socket = this->server().accept();
+      reactor::sleep();
+    }
+
+    virtual
+    void
+    _serve(reactor::network::Socket&) override
+    {}
+  };
+
+  ELLE_TEST_SCHEDULED(timeout_connect)
+  {
+    TimeoutConnectTrophonius tropho;
+    infinit::oracles::trophonius::Client client(
+      "127.0.0.1",
+      tropho.port(),
+      [] (bool connected) {},
+      [] (void) {},
+      fingerprint);
+    client.poke_timeout(50_ms);
+    client.connect_timeout(50_ms);
+    BOOST_CHECK_THROW(client.connect("0", "0", "0"),
+                      infinit::oracles::trophonius::ConnectionError);
+  }
+
+  class TimeoutReconnectTrophonius
+    : public Trophonius
+  {
+  protected:
+    virtual
+    void
+    _serve(reactor::network::Socket& socket) override
+    {
+      auto connect_data = elle::json::read(socket);
+      this->_login_response(socket);
+      reactor::wait(this->_done);
+    }
+    ELLE_ATTRIBUTE_RX(reactor::Barrier, done);
+  };
+
+  ELLE_TEST_SCHEDULED(timeout_reconnect)
+  {
+    TimeoutReconnectTrophonius tropho;
+    infinit::oracles::trophonius::Client client(
+      "127.0.0.1",
+      tropho.port(),
+      [&] (bool connected)
+      {
+        if (connected)
+          tropho.done().open();
+      },
+      [] (void) {},
+      fingerprint);
+    client.ping_period(100_ms);
+    client.connect("0", "0", "0");
+    reactor::wait(tropho.done());
+  }
+
+  class TimeoutDisconnectTrophonius
+    : public Trophonius
+  {
+  protected:
+    virtual
+    void
+    _serve(reactor::network::Socket& socket) override
+    {
+      auto connect_data = elle::json::read(socket);
+      this->_login_response(socket);
+      reactor::sleep();
+    }
+  };
+
+  ELLE_TEST_SCHEDULED(timeout_disconnect)
+  {
+    TimeoutDisconnectTrophonius tropho;
+    infinit::oracles::trophonius::Client client(
+      "127.0.0.1",
+      tropho.port(),
+      [] (bool connected) {},
+      [] (void) {},
+      fingerprint);
+    client.connect_timeout(200_ms);
+    client.connect("0", "0", "0");
+  }
+}
 
 // Test suite
 
@@ -1166,6 +1265,14 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(login_reconnect), 0, timeout);
   suite.add(BOOST_TEST_CASE(invalid_credentials), 0, timeout);
   suite.add(BOOST_TEST_CASE(connect_read_timeout), 0, timeout);
+  {
+    using namespace ssl_shutdown;
+    boost::unit_test::test_suite* s = BOOST_TEST_SUITE("ssl_shutdown");
+    suite.add(s);
+    s->add(BOOST_TEST_CASE(timeout_connect), 0, timeout);
+    s->add(BOOST_TEST_CASE(timeout_reconnect), 0, timeout);
+    s->add(BOOST_TEST_CASE(timeout_disconnect), 0, timeout);
+  }
 }
 
 const std::vector<unsigned char> fingerprint =
