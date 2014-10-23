@@ -28,6 +28,14 @@ ELLE_LOG_COMPONENT("infinit.oracles.apertus.server.test")
 # define RUNNING_ON_VALGRIND 0
 #endif
 
+template <typename T>
+static
+auto
+valgrind(T base, int factor = 10) -> decltype(base * 42)
+{
+  return base * (RUNNING_ON_VALGRIND ? factor : 1);
+}
+
 static const std::vector<unsigned char> fingerprint =
 {
   0x98, 0x55, 0xEF, 0x72, 0x1D, 0xFC, 0x1B, 0xF5, 0xEA, 0xF5,
@@ -302,7 +310,7 @@ ELLE_TEST_SCHEDULED(simple_transfer)
   Meta meta;
   BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
   {
-    auto tick_rate = 1_sec;
+    auto tick_rate = valgrind(1_sec);
     infinit::oracles::apertus::Apertus apertus(
       "http",
       "localhost",
@@ -353,7 +361,7 @@ ELLE_TEST_SCHEDULED(ssl_tcp_transfer)
   Meta meta;
   BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
   {
-    auto tick_rate = 1_sec;
+    auto tick_rate = valgrind(1_sec);
     infinit::oracles::apertus::Apertus apertus(
       "http",
       "localhost",
@@ -404,7 +412,7 @@ ELLE_TEST_SCHEDULED(wait_for_transfers)
   Meta meta;
   BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
   {
-    auto tick_rate = 1_sec;
+    auto tick_rate = valgrind(1_sec);
     infinit::oracles::apertus::Apertus apertus(
       "http",
       "localhost",
@@ -503,10 +511,10 @@ ELLE_TEST_SCHEDULED(client_timeout)
 
 ELLE_TEST_SCHEDULED(two_ways_transfer)
 {
-   Meta meta;
+  Meta meta;
   BOOST_CHECK_EQUAL(meta.apertuses().size(), 0);
   {
-    auto tick_rate = 1_sec;
+    auto tick_rate = valgrind(1_sec);
     infinit::oracles::apertus::Apertus apertus(
       "http",
       "localhost",
@@ -715,7 +723,7 @@ ELLE_TEST_SUITE()
     std::srand(std::time(0));
   else
     std::srand(boost::lexical_cast<int>(s));
-  auto timeout = RUNNING_ON_VALGRIND ? 20 : 5;
+  auto timeout = valgrind(5);
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(register_unregister), 0, timeout);
   suite.add(BOOST_TEST_CASE(no_update_after_stop), 0, timeout);
