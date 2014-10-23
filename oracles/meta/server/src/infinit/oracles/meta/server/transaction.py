@@ -456,13 +456,17 @@ class Mixin:
       else:
         ghost_upload_file = '%s files.zip' % len(files)
       # Generate GET URL for ghost cloud uploaded file
+      # FIXME: AFAICT nothing prevent us from generating this directly
+      # on transaction creation and greatly simplify the client and
+      # server code.
       ghost_get_url = cloud_buffer_token.generate_get_url(
         self.aws_region, self.aws_buffer_bucket,
         transaction_id,
         ghost_upload_file)
       elle.log.log('Generating cloud GET URL for %s: %s'
         % (ghost_upload_file, ghost_get_url))
-      # Generate hash for transaction and store it in the transaction collection
+      # Generate hash for transaction and store it in the transaction
+      # collection.
       transaction_hash = self._hash_transaction(transaction)
       invitation.invite_user(
         peer_email,

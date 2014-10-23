@@ -107,14 +107,16 @@ namespace surface
         std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
           transaction().data());
       ELLE_ASSERT(!!peer_data);
-      std::string url = peer_data->download_link;
-      if (url.empty())
+      std::string url;
+      if (peer_data->download_link)
+        url = peer_data->download_link.get();
+      else
       {
         ELLE_WARN("%s: empty url, re-fetching transaction from meta");
         State& state = transaction().state();
         infinit::oracles::PeerTransaction pt =
           state.meta().transaction(transaction().data()->id);
-        url = pt.download_link;
+        url = pt.download_link.get();
       }
       ELLE_TRACE("%s accepting on url '%s'", *this, url);
       if (boost::filesystem::exists(snapshot_path()))
