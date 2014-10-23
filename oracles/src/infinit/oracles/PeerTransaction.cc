@@ -72,7 +72,17 @@ namespace infinit
       s.serialize("ctime", this->ctime);
       s.serialize("mtime", this->mtime);
       s.serialize("is_directory", this->is_directory);
-      s.serialize("is_ghost", this->is_ghost);
+      // FIXME: this is backward compatibility for old snapshots (< 0.9.18), to
+      // be removed in a few releases.
+      try
+      {
+        s.serialize("is_ghost", this->is_ghost);
+      }
+      catch (elle::serialization::Error const&)
+      {
+        ELLE_ASSERT(s.in());
+        this->is_ghost = false;
+      }
       if (this->is_ghost)
         s.serialize("download_link", this->download_link);
       s.serialize("status", this->status, elle::serialization::as<int>());
