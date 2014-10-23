@@ -171,6 +171,7 @@ namespace surface
       {
         try
         {
+          this->data()->status = status;
           // The status should only be set to finished by the recipient unless
           // the recipient is a ghost.
           auto peer = this->state().user(this->data()->recipient_id);
