@@ -59,7 +59,8 @@ namespace surface
 
     public:
       typedef infinit::oracles::Transaction Data;
-      static std::set<infinit::oracles::Transaction::Status> final_statuses;
+      static std::set<infinit::oracles::Transaction::Status> sender_final_statuses;
+      static std::set<infinit::oracles::Transaction::Status> recipient_final_statuses;
 
     /*---------.
     | Snapshot |

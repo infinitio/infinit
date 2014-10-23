@@ -32,12 +32,22 @@ namespace surface
     {}
 
     std::set<infinit::oracles::Transaction::Status>
-    Transaction::final_statuses({
+    Transaction::recipient_final_statuses({
       infinit::oracles::Transaction::Status::rejected,
       infinit::oracles::Transaction::Status::finished,
       infinit::oracles::Transaction::Status::canceled,
       infinit::oracles::Transaction::Status::failed,
       infinit::oracles::Transaction::Status::deleted
+    });
+
+    std::set<infinit::oracles::Transaction::Status>
+    Transaction::sender_final_statuses({
+      infinit::oracles::Transaction::Status::rejected,
+      infinit::oracles::Transaction::Status::finished,
+      infinit::oracles::Transaction::Status::canceled,
+      infinit::oracles::Transaction::Status::failed,
+      infinit::oracles::Transaction::Status::deleted,
+      infinit::oracles::Transaction::Status::ghost_uploaded
     });
 
     gap_TransactionStatus
@@ -683,9 +693,14 @@ namespace surface
     Transaction::final() const
     {
       ELLE_ASSERT(this->_data.get());
-      return std::find(Transaction::final_statuses.begin(),
-                       Transaction::final_statuses.end(),
-                       this->_data->status) != Transaction::final_statuses.end();
+      if (_sender)
+        return std::find(Transaction::sender_final_statuses.begin(),
+                         Transaction::sender_final_statuses.end(),
+                         this->_data->status) != Transaction::sender_final_statuses.end();
+     else
+       return std::find(Transaction::recipient_final_statuses.begin(),
+                        Transaction::recipient_final_statuses.end(),
+                         this->_data->status) != Transaction::recipient_final_statuses.end();
     }
 
     void

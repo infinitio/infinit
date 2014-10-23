@@ -260,9 +260,9 @@ namespace surface
                      *this, transaction)
           {
             bool history =
-            std::find(Transaction::final_statuses.begin(),
-                      Transaction::final_statuses.end(),
-                      transaction.status) != Transaction::final_statuses.end();
+            std::find(Transaction::sender_final_statuses.begin(),
+                      Transaction::sender_final_statuses.end(),
+                      transaction.status) != Transaction::sender_final_statuses.end();
             this->_transactions.emplace(
               _id,
               elle::make_unique<Transaction>(

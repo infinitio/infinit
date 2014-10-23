@@ -19,6 +19,8 @@
 #include <signal.h>
 #endif
 
+ELLE_LOG_COMPONENT("8send");
+
 bool stop = false;
 
 static
@@ -147,10 +149,13 @@ int main(int argc, char** argv)
               return;
 
             auto& txn = state.transactions().at(id);
-
-            if (surface::gap::Transaction::final_statuses.find(txn->data()->status) != surface::gap::Transaction::final_statuses.end())
+            ELLE_LOG("New status: %s", (int)txn->data()->status);
+            if (surface::gap::Transaction::sender_final_statuses.find(txn->data()->status)
+              != surface::gap::Transaction::sender_final_statuses.end())
             {
+              ELLE_LOG("Joinging...");
               txn->join();
+              ELLE_LOG("Exiting")
               stop = true;
             }
           });
