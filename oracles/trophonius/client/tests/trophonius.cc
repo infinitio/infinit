@@ -37,6 +37,19 @@ valgrind(T base) -> decltype(base * 42)
   return base * (RUNNING_ON_VALGRIND ? 50 : 1);
 }
 
+static
+void
+exhaust(reactor::network::Socket& socket)
+{
+  try
+  {
+    while (true)
+      socket.read_some(BUFSIZ);
+  }
+  catch (reactor::network::ConnectionClosed const&)
+  {}
+}
+
 enum class NotificationCode
 {
   NONE_NOTIFICATION = 0,
@@ -739,13 +752,7 @@ protected:
                *this,
                elle::json::pretty_print(connect_msg));
     this->_login_response(socket);
-    try
-    {
-      while (true)
-        socket.read_until("\n");
-    }
-    catch (reactor::network::ConnectionClosed const&)
-    {}
+    exhaust(socket);
   }
 };
 
@@ -814,13 +821,7 @@ protected:
     while (true)
     {
       auto socket = this->server().accept();
-      try
-      {
-        while (true)
-          socket->read_until("\n");
-      }
-      catch (reactor::network::ConnectionClosed const&)
-      {}
+      exhaust(*socket);
     }
   }
 
@@ -834,13 +835,7 @@ protected:
                *this,
                elle::json::pretty_print(connect_msg));
     this->_login_response(socket);
-    try
-    {
-      while (true)
-        socket.read_until("\n");
-    }
-    catch (reactor::network::ConnectionClosed const&)
-    {}
+    exhaust(socket);
   }
 };
 
@@ -1021,8 +1016,7 @@ protected:
     ELLE_LOG("%s: answer login", *this);
     this->_login_response(socket);
     if (iteration >= 2)
-      while (true)
-        socket.read_until("\n");
+      exhaust(socket);
   }
 
   ELLE_ATTRIBUTE(int, iteration);
@@ -1121,8 +1115,7 @@ protected:
   {
     ELLE_LOG("%s: get login", *this);
     auto connect_data = elle::json::read(socket);
-    while (true)
-      socket.read_until("\n");
+    exhaust(socket);
   }
 };
 
