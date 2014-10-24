@@ -117,7 +117,7 @@ protected:
           elle::sprintf("serve %s", *socket),
           [socket, this]
           {
-            this->_serve(std::move(socket));
+            this->_serve(std::move(*socket));
           });
       }
     };
