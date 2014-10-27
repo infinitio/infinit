@@ -366,15 +366,19 @@ class Meta(bottle.Bottle,
     with elle.log.log(
         '%s: send email for fatal error: %s' % (self, e)):
       args = {
+        'backtrace': ''.join(
+          traceback.format_exception(type(e), e, None)),
         'hostname': hostname,
         'route': route,
-        'backtrace': ''.join(traceback.format_exception(type(e), e, None))
+        'user': self.user,
       }
       self.mailer.send(to = 'infrastructure@infinit.io',
                        fr = 'root@%s' % hostname,
                        subject = 'Meta: fatal error: %s' % e,
                        body = '''\
 Error while querying %(route)s:
+
+User: %(user)s
 
 %(backtrace)s''' % args)
 
