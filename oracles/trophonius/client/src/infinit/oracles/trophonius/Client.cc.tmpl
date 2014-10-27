@@ -514,8 +514,8 @@ namespace infinit
             }
             catch (boost::bad_any_cast const&)
             {
-                throw Unreachable(
-                  this->server, this->port, "invalid poke reply");
+              throw Unreachable(
+                this->server, this->port, "invalid poke reply");
             }
           }
           return socket;

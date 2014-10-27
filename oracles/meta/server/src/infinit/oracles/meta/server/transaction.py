@@ -78,13 +78,14 @@ class Mixin:
       transaction = self.database.transactions.find_one(
         {'transaction_hash': transaction_hash},
         fields = {
-          'sender_id': True,
-          'recipient_id': True,
+          '_id': False,
           'download_link': True,
-          'sender_fullname': True,
           'files': True,
           'message': True,
-          '_id': False,
+          'recipient_id': True,
+          'sender_fullname': True,
+          'sender_id': True,
+          'total_size': True,
         })
       if transaction is None:
         return self.not_found()
