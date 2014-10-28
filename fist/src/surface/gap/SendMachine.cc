@@ -329,6 +329,8 @@ namespace surface
             float((now - start_time).total_milliseconds()) / 1000.0f);
         }
         // start pipelined upload
+        elle::system::FileHandle file(source_file_path,
+                                      elle::system::FileHandle::READ);
         auto pipeline_upload = [&, this](int id)
         {
           while (true)
@@ -355,9 +357,7 @@ namespace surface
             }
             // upload it
             ELLE_DEBUG("%s: uploading chunk %s", *this, local_chunk);
-            auto buffer = elle::system::read_file_chunk(
-              source_file_path,
-              local_chunk * chunk_size, chunk_size);
+            auto buffer = file.read((int64_t)local_chunk * (int64_t)chunk_size, chunk_size);
             auto size = buffer.size();
             if (size != chunk_size  && local_chunk != chunk_count -1)
               ELLE_WARN("%s: chunk %s/%s is too small: %s bytes",
