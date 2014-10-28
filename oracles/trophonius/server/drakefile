@@ -182,7 +182,7 @@ def configure(elle,
     'etc/trophonius.conf',
     'etc/init.d/trophonius',
     'etc/logrotate.d/trophonius',
-    'etc/rsyslog.d/trophonius.conf',
+    'etc/rsyslog.d/00-trophonius.conf',
   )
   package = [drake.copy(trophonius, 'debian/opt/infinit/trophonius')]
   package += drake.copy(configuration, 'debian')
