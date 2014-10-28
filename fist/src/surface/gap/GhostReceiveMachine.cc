@@ -5,6 +5,7 @@
 #include <elle/AtomicFile.hh>
 #include <elle/serialization/json/SerializerIn.hh>
 #include <elle/serialization/json/SerializerOut.hh>
+#include <elle/system/system.hh>
 #include <reactor/http/Request.hh>
 #include <reactor/http/exceptions.hh>
 
@@ -197,7 +198,7 @@ namespace surface
             if (erc)
               _previous_progress = 0;
             ELLE_TRACE("%s: resuming at %s", *this, _previous_progress);
-            boost::filesystem::ofstream stream(_path, std::ios::app|std::ios::binary);
+            elle::system::FileHandle file(_path, elle::system::FileHandle::APPEND);
             using namespace reactor::http;
             Request::Configuration config
               = Request::Configuration(reactor::DurationOpt(), 60_sec);
@@ -207,12 +208,11 @@ namespace surface
             _request->finalize();
             // Waiting for the status here will wait for full download.
             static const int buffer_size = 16000;
-            char* buffer = new char[buffer_size];
-            elle::SafeFinally cleanup([&] { delete[] buffer;});
+            elle::Buffer buffer(buffer_size);
             while (true)
             {
               ELLE_DUMP("%s: read", *this);
-              _request->read(buffer, buffer_size);
+              _request->read((char*)buffer.contents(), buffer_size);
               int bytes_read = _request->gcount();
               ELLE_DUMP("%s: read %s,  progress %s", *this, bytes_read, progress());
               StatusCode s = _request->status();
@@ -220,10 +220,11 @@ namespace surface
                 && s != StatusCode::Partial_Content)
                  throw std::runtime_error( // Consider this as fatal.
                    elle::sprintf("HTTP error %s : %s",
-                                 s, std::string(buffer, bytes_read)));
+                                 s, buffer.string()));
               if (!bytes_read)
                 break;
-              stream.write(buffer, bytes_read);
+              buffer.size(bytes_read);
+              file.write(buffer);
               total_bytes_transfered += bytes_read;
             }
             exit_reason = infinit::metrics::TransferExitReasonFinished;
