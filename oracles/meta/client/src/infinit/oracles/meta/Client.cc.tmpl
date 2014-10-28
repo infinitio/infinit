@@ -669,11 +669,25 @@ namespace infinit
         return Device(input);
       }
 
-      /*------.
-      | Users |
-      `------*/
+      /*------------------.
+      | Peer Transactions |
+      `------------------*/
 
-      std::string
+      CreatePeerTransactionResponse::CreatePeerTransactionResponse(
+        elle::serialization::SerializerIn& s)
+      {
+        this->serialize(s);
+      }
+
+      void
+      CreatePeerTransactionResponse::serialize(
+        elle::serialization::Serializer& s)
+      {
+        s.serialize("created_transaction_id", this->_created_transaction_id);
+        s.serialize("recipient_is_ghost", this->_recipient_is_ghost);
+      }
+
+      CreatePeerTransactionResponse
       Client::create_transaction(std::string const& recipient_id_or_email,
                                  std::list<std::string> const& files,
                                  size_t count,
@@ -705,9 +719,7 @@ namespace infinit
             query.serialize("message", const_cast<std::string&>(message));
           });
         SerializerIn input(url, request);
-        std::string id;
-        input.serialize("created_transaction_id", id);
-        return id;
+        return CreatePeerTransactionResponse(input);
       }
 
       void
