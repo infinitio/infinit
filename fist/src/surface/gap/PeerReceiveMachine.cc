@@ -925,12 +925,15 @@ namespace surface
       // it should be there, but a logic error that gives us a
       // nothing-to-do-on-this-first-file state is possible and nonfatal
       // so do not use at
-      boost::filesystem::path current_file_full_path;
+      elle::system::FileHandle current_file_handle;
       FileSize current_file_full_size;
+      boost::filesystem::path current_file_full_path;
       {
         frete::TransferSnapshot::File& f = _snapshot->file(_store_expected_file);
         current_file_full_size = f.size();
         current_file_full_path = f.full_path();
+        current_file_handle = elle::system::FileHandle(current_file_full_path,
+                                                       elle::system::FileHandle::APPEND);
       }
       while (true)
       {
@@ -956,35 +959,10 @@ namespace surface
           // If this assert fails, packets were received out of order.
           ELLE_ASSERT_EQ(_store_expected_file, data.file_index);
           ELLE_ASSERT_EQ(_store_expected_position, data.start_position);
-          boost::system::error_code ec;
-          auto size = boost::filesystem::file_size(current_file_full_path, ec);
-          if (ec)
-          {
-            ELLE_ERR("%s: destination file deleted: %s", *this, ec);
-            throw boost::filesystem::filesystem_error(
-              "Destination file stat error",
-              current_file_full_path,
-              ec);
-          }
-          if (size != _store_expected_position)
-          {
-            ELLE_ERR(
-              "%s: expected file size %s and actual file size %s are different on %s",
-              *this,
-              _store_expected_position,
-              size,
-              current_file_full_path);
-            throw boost::filesystem::filesystem_error(
-              elle::sprintf("Destination file has incorrect size: %s of %s",
-                            size,
-                            _store_expected_position
-                            ),
-              current_file_full_path,
-              boost::system::errc::make_error_code(boost::system::errc::io_error));
-          }
+
           // Write the file.
           ELLE_DUMP("content: %x (%sB)", buffer, buffer.size());
-          elle::system::write_file(current_file_full_path, buffer);
+          current_file_handle.write(buffer);
           this->_snapshot->file_progress_increment(_store_expected_file, buffer.size());
           // OLD clients need this RPC to update progress
           if (peer_version < elle::Version(0, 8, 7))
@@ -1029,6 +1007,8 @@ namespace surface
             _store_expected_position = f.progress();
             current_file_full_size = f.size();
             current_file_full_path = f.full_path();
+            current_file_handle = elle::system::FileHandle(current_file_full_path,
+                                                           elle::system::FileHandle::APPEND);
             if (_store_expected_position != current_file_full_size)
             {
               // We need blocks for that one.
