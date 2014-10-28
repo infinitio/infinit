@@ -202,6 +202,9 @@ namespace frete
       throw elle::Exception(
         elle::sprintf("given path %s doesn't exist", full_path));
     this->_transfer_snapshot->add(root, path);
+    // Open the file by making a cache fetch
+    if (count() <= _max_count_for_full_cache)
+      _fetch_cache(count()-1);
   }
 
   float
@@ -274,6 +277,7 @@ namespace frete
     this->_transfer_snapshot->file_progress_end(this->count() - 1);
     this->_progress_changed.signal();
     this->_finished.open();
+    this->_cache.clear();
   }
 
   frete::Frete::FileCount
@@ -371,8 +375,9 @@ namespace frete
         snapshot.file_progress_end(file_id - 1);
       this->_progress_changed.signal();
     }
-    auto path = this->_local_path(file_id);
-    elle::Buffer result = elle::system::read_file_chunk(path, offset, size);
+    elle::system::FileHandle& handle = _fetch_cache(file_id);
+
+    elle::Buffer result = handle.read(offset, size);
     if (offset + result.size() > file_size(file_id))
     {
       auto& file = this->_transfer_snapshot->file(file_id);
@@ -389,6 +394,44 @@ namespace frete
       );
     }
     return result;
+  }
+
+  unsigned int Frete::_max_count_for_full_cache = 20;
+
+  elle::system::FileHandle&
+  Frete::_fetch_cache(FileID file_id)
+  {
+    auto it = _cache.find(file_id);
+    if (it == _cache.end())
+    {
+      elle::system::FileHandle handle(this->_local_path(file_id),
+                                      elle::system::FileHandle::READ);
+      _cache[file_id].first = std::move(handle);
+    }
+    if (count() > _max_count_for_full_cache)
+    { // partial cache only, cleanup check
+      // kill all entries that got unused more than x times in a row.
+      std::vector<int> to_kill;
+      for (auto& e: _cache)
+      {
+        if (e.first == file_id)
+        {
+          e.second.second=0;
+        }
+        else
+        {
+          e.second.second++;
+          if (e.second.second > 10)
+            to_kill.push_back(e.first);
+        }
+      }
+      for(int i: to_kill)
+      {
+        _cache.erase(i);
+      }
+    }
+    // we might have moved things that modified the element address. Fetch again.
+    return _cache[file_id].first;
   }
 
   infinit::cryptography::Code

@@ -12,6 +12,7 @@
 # include <elle/Version.hh>
 # include <elle/container/map.hh>
 # include <elle/serialize/BinaryArchive.hh>
+# include <elle/system/system.hh>
 
 # include <protocol/ChanneledStream.hh>
 # include <protocol/Serializer.hh>
@@ -153,6 +154,16 @@ namespace frete
     virtual
     void
     print(std::ostream& stream) const;
+
+  private:
+    // Keep a cache of opened file for each id. Entries get removed after
+    // 'x' successive cache miss
+    elle::system::FileHandle& _fetch_cache(FileID id);
+    // If file count is below this number, kepp a cache FileHandle for all files
+    static unsigned int _max_count_for_full_cache;
+    typedef std::pair<elle::system::FileHandle, int> HandleCounter;
+    typedef std::map<unsigned int, HandleCounter> Cache;
+    Cache _cache;
   };
 }
 
