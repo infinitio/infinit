@@ -778,6 +778,8 @@ namespace surface
       }
       // Touch the file.
       elle::system::write_file(fullpath);
+      // Imediatly save snapshot to prevent a new call to eligible_name()
+      this->_save_frete_snapshot();
       return tr.progress();
     }
 
