@@ -277,6 +277,7 @@ class Mixin:
       return self.success({
           'created_transaction_id': transaction_id,
           'remaining_invitations': user.get('remaining_invitations', 0),
+          'recipient_is_ghost': is_ghost,
           })
 
   def __update_transaction_time(self, user):
