@@ -419,7 +419,7 @@ namespace surface
                  boost::filesystem::is_directory(first_file));
       {
         auto lock = this->state().transaction_update_lock.lock();
-        this->transaction_id(
+        auto transaction_response =
           this->state().meta().create_transaction(
             this->data()->recipient_id,
             this->data()->files,
@@ -428,7 +428,9 @@ namespace surface
             boost::filesystem::is_directory(first_file),
             this->state().device().id,
             this->_message
-            ));
+            );
+        this->transaction_id(transaction_response.created_transaction_id());
+        this->data()->is_ghost = transaction_response.recipient_is_ghost();
       }
       ELLE_TRACE("%s: created transaction %s", *this, this->transaction_id());
       // XXX: Ensure recipient is an id.
@@ -468,10 +470,8 @@ namespace surface
         // Send to self case.
         if (this->state().me().id == peer.id)
           peer_online = peer.online_excluding_device(this->state().device().id);
-        if (data()->is_ghost)
-        {
+        if (this->data()->is_ghost)
           this->_plain_upload();
-        }
         else if (!peer.ghost() && !peer_online)
           this->_cloud_operation();
         else
