@@ -161,7 +161,7 @@ namespace frete
     elle::system::FileHandle& _fetch_cache(FileID id);
     // If file count is below this number, kepp a cache FileHandle for all files
     static unsigned int _max_count_for_full_cache;
-    typedef std::pair<elle::system::FileHandle, int> HandleCounter;
+    typedef std::pair<std::unique_ptr<elle::system::FileHandle>, int> HandleCounter;
     typedef std::map<unsigned int, HandleCounter> Cache;
     Cache _cache;
   };

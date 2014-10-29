@@ -404,8 +404,8 @@ namespace frete
     auto it = _cache.find(file_id);
     if (it == _cache.end())
     {
-      elle::system::FileHandle handle(this->_local_path(file_id),
-                                      elle::system::FileHandle::READ);
+      auto handle = elle::make_unique<elle::system::FileHandle>(
+        this->_local_path(file_id), elle::system::FileHandle::READ);
       _cache[file_id].first = std::move(handle);
     }
     if (count() > _max_count_for_full_cache)
@@ -431,7 +431,7 @@ namespace frete
       }
     }
     // we might have moved things that modified the element address. Fetch again.
-    return _cache[file_id].first;
+    return *_cache[file_id].first.get();
   }
 
   infinit::cryptography::Code
