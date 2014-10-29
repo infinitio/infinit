@@ -118,6 +118,7 @@ namespace infinit
       data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
       data[this->_key_str(JSONKey::how_ended)] =
         this->_transaction_status_str(status);
+      data[this->_key_str(JSONKey::message)] = info;
       data[this->_key_str(JSONKey::onboarding)] = onboarding;
       data[this->_key_str(JSONKey::by_user)] = by_user;
       this->_send(this->_transaction_dest, data);

@@ -284,7 +284,8 @@ namespace surface
         this->state().metrics_reporter()->transaction_ended(
           this->transaction_id(),
           status,
-          "",
+          status == infinit::oracles::Transaction::Status::failed?
+            transaction().failure_reason() : "",
           false,
           this->transaction().canceled_by_user());
     }

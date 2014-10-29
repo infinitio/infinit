@@ -293,7 +293,7 @@ namespace surface
         this->state().metrics_reporter()->transaction_ended(
         this->transaction_id(),
         infinit::oracles::Transaction::Status::failed,
-        "",
+        transaction().failure_reason(),
         onboarding);
       }
     }
@@ -1107,7 +1107,8 @@ namespace surface
           this->state().metrics_reporter()->transaction_ended(
             this->transaction_id(),
             s,
-            "",
+            s == infinit::oracles::Transaction::Status::failed?
+              transaction().failure_reason() : "",
             onboarding,
             this->transaction().canceled_by_user());
         }

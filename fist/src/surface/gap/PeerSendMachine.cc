@@ -301,7 +301,7 @@ namespace surface
         this->state().metrics_reporter()->transaction_ended(
         this->transaction_id(),
         infinit::oracles::Transaction::Status::failed,
-        "",
+        transaction().failure_reason(),
         onboarding);
       }
     }
@@ -335,6 +335,8 @@ namespace surface
             this->gap_status(gap_transaction_canceled);
           break;
         case TransactionStatus::failed:
+          if (this->transaction().failure_reason().empty())
+            this->transaction().failure_reason("peer failure");
           ELLE_DEBUG("%s: open failed barrier", *this)
             this->failed().open();
           if (!this->concerns_this_device())
