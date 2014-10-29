@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 
+import bottle
 import bson
 import datetime
 import re
@@ -484,6 +485,9 @@ class Mixin:
           peer_email: {
             'filename': files[0],
             'sendername': user['fullname'],
+            'sender_email': user['email'],
+            'sender_avatar': 'https://%s/user/%s/avatar' %
+              (bottle.request.urlparts[1], user['_id']),
             'note': transaction['message'],
             'transaction_hash': transaction_hash,
             'transaction_id': str(transaction['_id']),
