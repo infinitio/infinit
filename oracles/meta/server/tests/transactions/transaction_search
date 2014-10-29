@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import Meta, User
+from utils import HTTPException, Meta, User
 from bson import ObjectId
 from functools import reduce
 import sys
@@ -60,4 +60,9 @@ with Meta() as meta:
     x.extend(y)
     return x
   assert set(t['_id'] for t in res['transactions']) == set(reduce(concat_list, transaction_ids.values()))
-  assert not bob.get('transaction/%s/view' % bob.id)['success']
+  try:
+    bob.get('transaction/%s' % bob.id)
+  except HTTPException as e:
+    assert e.status == 404
+  else:
+    raise Exception('unexisistent transaction was found')

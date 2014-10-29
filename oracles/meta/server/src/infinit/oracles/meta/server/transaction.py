@@ -42,11 +42,11 @@ class Mixin:
     assert isinstance(id, bson.ObjectId)
     transaction = self.database.transactions.find_one(id)
     if transaction is None:
-      raise error.Error(error.TRANSACTION_DOESNT_EXIST)
+      self.not_found('transaction %s doesn\'t exist' % id)
     if owner_id is not None:
       assert isinstance(owner_id, bson.ObjectId)
       if not owner_id in (transaction['sender_id'], transaction['recipient_id']):
-        raise error.Error(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
+        self.forbidden('transaction %s doesn\'t belong to you' % id)
     return transaction
 
   def cancel_transactions(self, user):
@@ -96,14 +96,7 @@ class Mixin:
   @api('/transaction/<id>')
   @require_logged_in
   def transaction_view(self, id: bson.ObjectId):
-    try:
-      return self.transaction(id, self.user['_id'])
-    except error.Error as e:
-      # Am I giving too much information ?
-      if e.args == error.TRANSACTION_DOESNT_BELONG_TO_YOU:
-        self.forbidden('transaction %s doesn\'t belong to you' % id)
-      else:
-        self.not_found('transaction %s doesn\'t exist' % id)
+    return self.transaction(id, self.user['_id'])
 
   # FIXME: This is backward compatibility for /transaction/<id>.
   @api('/transaction/<id>/view')
