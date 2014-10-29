@@ -15,7 +15,7 @@ with Meta() as meta:
 
   alice.login()
 
-  res = alice.get('transaction/%s/view' % transaction_id)
+  res = alice.get('transaction/%s' % transaction_id)
 
   for key in transaction.keys():
     if key in ['id_or_email', 'device_id']: # Special cases.

@@ -43,7 +43,7 @@ with Meta() as meta:
   throws(lambda: meta.post('user/avatar', {}), 403)
   throws(lambda: meta.post('debug', {}), 400)
   # Transaction
-  throws(lambda: meta.get('transaction/5241b9d226b9f10fff8be391/view'), 403)
+  throws(lambda: meta.get('transaction/5241b9d226b9f10fff8be391'), 403)
   throws(lambda: meta.post('transaction/create', {}), 400)
   throws(lambda: meta.get('transactions'), 200)
   throws(lambda: meta.post('transaction/update'), 400)
