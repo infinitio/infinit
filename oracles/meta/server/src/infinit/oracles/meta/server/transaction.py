@@ -98,17 +98,6 @@ class Mixin:
   def transaction_view(self, id: bson.ObjectId):
     return self.transaction(id, self.user['_id'])
 
-  # FIXME: This is backward compatibility for /transaction/<id>.
-  @api('/transaction/<id>/view')
-  @require_logged_in
-  def transaction_view_old(self, id: bson.ObjectId):
-    assert isinstance(id, bson.ObjectId)
-    try:
-      transaction = self.transaction(id, self.user['_id'])
-      return self.success(transaction)
-    except error.Error as e:
-      return self.fail(*e.args)
-
   @api('/transaction/create', method = 'POST')
   @require_logged_in
   def transaction_create(self,
