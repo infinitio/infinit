@@ -171,7 +171,8 @@ class Mixin:
             notifications = [],
             networks = [],
             swaggers = {},
-            accounts=[{'type':'email', 'id':peer_email}]
+            accounts = [{'type':'email', 'id':peer_email}],
+            features = self.__roll_abtest(True)
           )
           recipient = self.database.users.find_one(recipient_id)
       else:
@@ -470,10 +471,13 @@ class Mixin:
       # Generate hash for transaction and store it in the transaction
       # collection.
       transaction_hash = self._hash_transaction(transaction)
+      mail_template = 'send-file-url'
+      if 'features' in recipient and 'send_file_url_template' in recipient['features']:
+        mail_template = recipient['features']['send_file_url_template']
       invitation.invite_user(
         peer_email,
         mailer = self.mailer,
-        mail_template = 'send-file-url',
+        mail_template = mail_template,
         source = (user['fullname'], user['email']),
         database = self.database,
         merge_vars = {
