@@ -5,7 +5,6 @@
 #include <elle/finally.hh>
 #include <elle/log.hh>
 #include <elle/test.hh>
-#include <elle/test.hh>
 
 #include <reactor/Barrier.hh>
 #include <reactor/Scope.hh>
@@ -23,12 +22,6 @@
 #include <frete/RPCFrete.hh>
 
 ELLE_LOG_COMPONENT("frete.tests");
-
-#ifdef VALGRIND
-# include <valgrind/valgrind.h>
-#else
-# define RUNNING_ON_VALGRIND 0
-#endif
 
 #ifdef INFINIT_WINDOWS
 # define SEPARATOR "\\"
