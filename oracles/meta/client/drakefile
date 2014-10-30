@@ -142,5 +142,6 @@ def configure(elle,
                                            valgrind = valgrind)
   else:
     runner = drake.Runner(test_bin)
+  runner.reporting = drake.Runner.Reporting.on_failure
   tests << test_bin
   check << runner.status
