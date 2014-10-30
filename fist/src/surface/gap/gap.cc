@@ -1218,6 +1218,23 @@ gap_transaction_concern_device(gap_State* state,
   );
 }
 
+uint32_t
+gap_transaction_canceler_id(gap_State* state, uint32_t id)
+{
+  return run<uint32_t>(
+    state,
+    "transaction canceler",
+    [&] (surface::gap::State& state)
+    {
+      uint32_t res = 0;
+      auto data = std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
+        state.transactions().at(id)->data());
+      if (!data->canceler.user_id.empty())
+        res = state.user_indexes().at(data->canceler.user_id);
+      return res;
+    });
+}
+
 char**
 gap_transaction_files(gap_State* state,
                       uint32_t const transaction_id)

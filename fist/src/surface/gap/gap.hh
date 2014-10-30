@@ -254,6 +254,9 @@ gap_transaction_concern_device(gap_State* state,
                                uint32_t const transaction_id,
                                bool true_if_empty_recipient = true);
 
+uint32_t
+gap_transaction_canceler_id(gap_State* state, uint32_t id);
+
 
 /* /// Force transaction to be fetched again from server. */
 /* gap_Status */
