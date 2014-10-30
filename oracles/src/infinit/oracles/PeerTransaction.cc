@@ -7,39 +7,65 @@ namespace infinit
 {
   namespace oracles
   {
+    TransactionCanceler::TransactionCanceler()
+      : user_id()
+      , device_id()
+    {}
+
+    TransactionCanceler::TransactionCanceler(std::string const& user_id,
+                                             std::string const& device_id)
+      : user_id(user_id)
+      , device_id(device_id)
+    {}
+
+    TransactionCanceler::TransactionCanceler(
+      elle::serialization::SerializerIn& s)
+    {
+      this->serialize(s);
+    }
+
+    void
+    TransactionCanceler::serialize(elle::serialization::Serializer& s)
+    {
+      s.serialize("user", this->user_id);
+      s.serialize("device", this->device_id);
+    }
+
     /*-------------.
     | Construction |
     `-------------*/
 
-    PeerTransaction::PeerTransaction():
-      Transaction(),
-      files(),
-      is_directory(),
-      files_count(),
-      message(),
-      recipient_id(),
-      recipient_fullname(),
-      recipient_device_id(),
-      recipient_device_name(),
-      sender_fullname(),
-      total_size()
+    PeerTransaction::PeerTransaction()
+      : Transaction()
+      , files()
+      , is_directory()
+      , files_count()
+      , message()
+      , recipient_id()
+      , recipient_fullname()
+      , recipient_device_id()
+      , recipient_device_name()
+      , sender_fullname()
+      , total_size()
+      , canceler()
     {}
 
     PeerTransaction::PeerTransaction(std::string sender_id,
                                      std::string sender_fullname,
                                      std::string sender_device_id,
-                                     std::string recipient_id):
-      Transaction(std::move(sender_id), std::move(sender_device_id)),
-      files(),
-      is_directory(),
-      files_count(),
-      message(),
-      recipient_id(std::move(recipient_id)),
-      recipient_fullname(),
-      recipient_device_id(),
-      recipient_device_name(),
-      sender_fullname(std::move(sender_fullname)),
-      total_size()
+                                     std::string recipient_id)
+      : Transaction(std::move(sender_id), std::move(sender_device_id))
+      , files()
+      , is_directory()
+      , files_count()
+      , message()
+      , recipient_id(std::move(recipient_id))
+      , recipient_fullname()
+      , recipient_device_id()
+      , recipient_device_name()
+      , sender_fullname(std::move(sender_fullname))
+      , total_size()
+      , canceler()
     {}
 
     PeerTransaction::~PeerTransaction() noexcept(true)
@@ -84,6 +110,15 @@ namespace infinit
       {
         ELLE_ASSERT(s.in());
         this->is_ghost = false;
+      }
+      try
+      {
+        s.serialize("canceler", this->canceler);
+      }
+      catch (elle::serialization::Error const&)
+      {
+        canceler.user_id = "";
+        canceler.device_id = "";
       }
       s.serialize("status", this->status, elle::serialization::as<int>());
     }

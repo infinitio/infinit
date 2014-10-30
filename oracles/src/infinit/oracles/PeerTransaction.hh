@@ -9,6 +9,21 @@ namespace infinit
 {
   namespace oracles
   {
+    class TransactionCanceler
+    {
+    public:
+      TransactionCanceler();
+      TransactionCanceler(std::string const& user_id,
+                          std::string const& device_id);
+
+    std::string user_id;
+    std::string device_id;
+    public:
+      TransactionCanceler(elle::serialization::SerializerIn& s);
+      void
+      serialize(elle::serialization::Serializer& s);
+    };
+
     class PeerTransaction:
       public Transaction
     {
@@ -42,6 +57,7 @@ namespace infinit
       std::string sender_fullname;
       boost::optional<std::string> download_link;
       int64_t total_size;
+      TransactionCanceler canceler;
 
     /*--------------.
     | Serialization |
