@@ -560,8 +560,11 @@ class Mixin:
                                      user = user))
         if is_sender and transaction.get('is_ghost'):
           status = transaction_status.GHOST_UPLOADED
-      elif status in (transaction_status.CANCELED,
-                      transaction_status.FAILED,
+      elif status == transaction_status.CANCELED:
+        if not transaction.get('canceler', None):
+          diff.update({'canceler': {'user': user['_id'], 'device': device_id}})
+          diff.update(self.cloud_cleanup_transaction(transaction = transaction))
+      elif status in (transaction_status.FAILED,
                       transaction_status.REJECTED):
         diff.update(self.cloud_cleanup_transaction(
           transaction = transaction))
