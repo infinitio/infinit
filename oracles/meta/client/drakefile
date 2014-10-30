@@ -112,6 +112,8 @@ def configure(elle,
 
   tests_cxx_config = drake.cxx.Config(local_cxx_config)
   tests_cxx_config.add_local_include_path('../../../elle/reactor/tests')
+  if valgrind is not None:
+    tests_cxx_config.define('VALGRIND')
   if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
     boost_system = drake.cxx.Config(boost.config_system(static = True))
     boost_test = drake.cxx.Config(boost.config_test(static = True))
