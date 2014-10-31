@@ -194,7 +194,9 @@ namespace surface
       void
       set_avatar(elle::Buffer const& avatar);
 
+      ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, login_thread);
       ELLE_ATTRIBUTE(reactor::Mutex, login_mutex);
+      ELLE_ATTRIBUTE(reactor::Barrier, logout_request);
     public:
       /// Login to meta.
       void

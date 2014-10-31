@@ -435,6 +435,7 @@ namespace surface
 
       reactor::Scheduler& scheduler = *reactor::Scheduler::scheduler();
 
+      this->_logout_request.close();
       reactor::Lock l(this->_login_mutex);
 
       // Ensure we don't have an old Meta message
@@ -566,22 +567,26 @@ namespace surface
           throw Exception(gap_wrong_passport, "Cannot load the passport");
         this->_passport->store(elle::io::Path(passport_path));
 
-        ELLE_TRACE("%s: connecting to trophonius on %s:%s",
-                   *this,
-                   login_response.trophonius.host,
-                   login_response.trophonius.port_ssl)
-        {
-          try
+        _login_thread.reset(new reactor::Thread(
+          "login thread",
+          [&]
           {
-            this->_trophonius->connect(
-              this->me().id, this->device().id, this->_meta.session_id());
-          }
-          catch (infinit::oracles::trophonius::ConnectionError const&)
-          {
-            throw Exception(gap_trophonius_unreachable,
-                            elle::exception_string());
-          }
-        }
+            ELLE_TRACE("%s: connecting to trophonius on %s:%s",
+                       *this,
+                       login_response.trophonius.host,
+                       login_response.trophonius.port_ssl)
+            {
+              this->_trophonius->connect(
+                this->me().id, this->device().id, this->_meta.session_id());
+              reactor::wait(_trophonius->connected());
+            }
+          }));
+        reactor::wait(*_login_thread);
+        ELLE_TRACE("%s: connected to trophonius or %s",
+                   *this, !!this->_logout_request);
+        if (this->_logout_request)
+          throw Exception(gap_error, "Aborted");
+
 
         this->_avatar_fetcher_thread.reset(
           new reactor::Thread{
@@ -659,6 +664,9 @@ namespace surface
     void
     State::logout()
     {
+      if (this->_login_thread)
+        this->_login_thread->terminate_now();
+      this->_logout_request.open();
       reactor::Lock l(this->_login_mutex);
       ELLE_TRACE_SCOPE("%s: logout", *this);
 
