@@ -293,7 +293,8 @@ namespace surface
       ELLE_ATTRIBUTE_R(std::unique_ptr<reactor::Thread>, polling_thread);
 
       void
-      on_connection_changed(bool connection_status, bool first_connection=false);
+      on_connection_changed(infinit::oracles::trophonius::ConnectionState const&,
+                            bool first_connection=false);
 
       void
       on_reconnection_failed();

@@ -491,7 +491,7 @@ namespace surface
         else
         {
           this->_trophonius.reset(new infinit::oracles::trophonius::Client(
-          [this] (bool status)
+          [this] (infinit::oracles::trophonius::ConnectionState const& status)
           {
             this->on_connection_changed(status);
           },
@@ -628,7 +628,9 @@ namespace surface
           this->_users_init();
         ELLE_TRACE("%s: fetch transactions", *this)
           this->_transactions_init();
-        this->on_connection_changed(true, true);
+        this->on_connection_changed(
+          infinit::oracles::trophonius::ConnectionState{true, elle::Error(""), false},
+          true);
         this->_polling_thread.reset(
           new reactor::Thread{
             scheduler,
@@ -927,21 +929,26 @@ namespace surface
     }
 
     void
-    State::on_connection_changed(bool connection_status, bool first_connection)
+    State::on_connection_changed(infinit::oracles::trophonius::ConnectionState const& connection_state,
+                                 bool first_connection)
     {
       ELLE_TRACE_SCOPE(
-        "%s: %sconnection %s",
+        "%s: %sconnection %s %s",
         *this,
         first_connection? "first " : "re",
-        connection_status ? "established" : "lost");
+        connection_state.connected ? "established" : "lost",
+        connection_state.still_trying ? "for now" : "forever"  );
 
-      if (connection_status)
+      if (connection_state.connected)
       {
         bool resynched{false};
         do
         {
           if (!this->logged_in())
+          {
+            ELLE_TRACE("%s: not logged in, aborting", *this);
             return;
+          }
 
           try
           {
@@ -975,8 +982,12 @@ namespace surface
         }
         while (!resynched);
       }
-
-      this->enqueue<ConnectionStatus>(ConnectionStatus(connection_status));
+      else
+      { // not connected
+        if (!connection_state.still_trying)
+          logout();
+      }
+      this->enqueue<ConnectionStatus>(ConnectionStatus(connection_state.connected));
     }
 
     void
