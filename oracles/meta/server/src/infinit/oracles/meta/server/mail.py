@@ -21,7 +21,6 @@ import json
 MANDRILL_TEMPLATE_SUBJECTS = {
   'invitation-beta': '%(sendername)s would like to invite you to Infinit',
   'send-file': '*|sendername|* wants to share *|filename|* with you',
-  'send-file-url': '*|sendername|* shared *|filename|* with you',
   'send-invitation-no-file': '*|sendername|* wants to use Infinit with you',
   'accept-file-only-offline': '*|sendername|* wants to share *|filename|* with you',
   'lost-password': '[Infinit] Reset your password',
@@ -93,19 +92,20 @@ class Mailer():
   @is_active
   def build_message(self,
                     to,
-                    subject,
                     fr,
                     reply_to,
                     attachment,
+                    subject = None,
                     template_bulk = None):
     to = isinstance(to, str) and [to] or to
     assert isinstance(to, (list, tuple))
     message = {
       'to': list(map(lambda x: {'email': x}, to)),
-      'subject': subject,
       'headers': {},
       'attachments': [],
     }
+    if subject is not None:
+      message['subject'] = subject
     from_name, from_email = parseaddr(fr)
     message['from_email'] = from_email
     message['from_name'] = from_name
@@ -175,12 +175,13 @@ class Mailer():
         elle.log.debug('no recipient remaining')
         return
 
-      message = self.build_message(to = to,
-                                   subject = MANDRILL_TEMPLATE_SUBJECTS[template_name],
-                                   fr = fr,
-                                   reply_to = reply_to,
-                                   attachment = attachment,
-                                   template_bulk = template_name)
+      message = self.build_message(
+        to = to,
+        subject = MANDRILL_TEMPLATE_SUBJECTS.get(template_name, None),
+        fr = fr,
+        reply_to = reply_to,
+        attachment = attachment,
+        template_bulk = template_name)
 
     # Turn human logic to mandrill logic.
     # {
