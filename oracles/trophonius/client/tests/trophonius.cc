@@ -18,24 +18,10 @@
 
 ELLE_LOG_COMPONENT("infinit.oracles.trophonius.client.test")
 
-#ifdef VALGRIND
-# include <valgrind/valgrind.h>
-#else
-# define RUNNING_ON_VALGRIND 0
-#endif
-
 extern const std::vector<unsigned char> fingerprint;
 extern const std::vector<char> server_certificate;
 extern const std::vector<char> server_key;
 extern const std::vector<char> server_dh1024;
-
-template <typename T>
-static
-auto
-valgrind(T base) -> decltype(base * 42)
-{
-  return base * (RUNNING_ON_VALGRIND ? 50 : 1);
-}
 
 static
 void
