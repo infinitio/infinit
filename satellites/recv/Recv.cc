@@ -148,12 +148,12 @@ int main(int argc, char** argv)
             ELLE_TRACE("user status notification: %s", notif);
           });
 
-        state.attach_callback<surface::gap::Transaction::Notification>(
-          [&] (surface::gap::Transaction::Notification const& notif)
+        state.attach_callback<surface::gap::PeerTransaction>(
+          [&] (surface::gap::PeerTransaction const& notif)
           {
             try
             {
-              ELLE_TRACE_SCOPE("transaction notification: %s", notif);
+              ELLE_TRACE_SCOPE("peer transaction notification: %s", notif);
               if (notif.status == gap_transaction_waiting_accept)
               {
                 ELLE_LOG("accept transaction %s", notif.id);
@@ -176,8 +176,7 @@ int main(int argc, char** argv)
 
           });
 
-        auto hashed_password = state.hash_password(user, password);
-        state.login(user, hashed_password);
+        state.login(user, password);
 
         do
         {

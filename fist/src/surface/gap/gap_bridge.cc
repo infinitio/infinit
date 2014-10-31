@@ -30,7 +30,7 @@ gap_State::gap_State(bool production,
                  elle::exception_string());
         this->_exception = std::current_exception();
         if (this->_critical_callback)
-          this->_critical_callback(elle::exception_string());
+          this->_critical_callback();
       }
     }}
 {

@@ -7,9 +7,10 @@
 
 #include <infinit/oracles/trophonius/Client.hh>
 
-#include <surface/gap/State.hh>
 #include <surface/gap/Error.hh>
 #include <surface/gap/Exception.hh>
+#include <surface/gap/State.hh>
+#include <surface/gap/User.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.State.User");
 
@@ -50,8 +51,9 @@ namespace surface
       status(status)
     {}
 
-    State::NewSwaggerNotification::NewSwaggerNotification(uint32_t id):
-      id(id)
+    State::NewSwaggerNotification::NewSwaggerNotification(
+      surface::gap::User const& user):
+        user(user)
     {}
 
     State::DeletedSwaggerNotification::DeletedSwaggerNotification(uint32_t id):
@@ -351,31 +353,48 @@ namespace surface
         this->user(user_id);
     }
 
-    std::vector<uint32_t>
+    std::vector<surface::gap::User>
     State::users_search(std::string const& text) const
     {
       ELLE_TRACE_METHOD(text);
       auto users = this->meta().users_search(text);
-      std::vector<uint32_t> res;
+      std::vector<surface::gap::User> res;
       for (auto const& user: users)
       {
         this->user_sync(user);
-        res.push_back(this->_user_indexes.at(user.id));
+        surface::gap::User ret_user(
+          this->_user_indexes.at(user.id),
+          user.online(),
+          user.fullname,
+          user.handle,
+          user.id,
+          user.deleted(),
+          user.ghost());
+        res.push_back(ret_user);
       }
       return res;
     }
 
-    std::unordered_map<std::string, uint32_t>
+    std::unordered_map<std::string, surface::gap::User>
     State::users_by_emails(std::vector<std::string> const& emails) const
     {
-      auto users = this->meta().search_users_by_emails(emails);
-      std::unordered_map<std::string, uint32_t> res;
-      for (auto const& user: users)
+      auto result_list = this->meta().search_users_by_emails(emails);
+      std::unordered_map<std::string, surface::gap::User> res;
+      for (auto const& result: result_list)
       {
-        this->user_sync(user.second);
-        std::pair<std::string, uint32_t> item;
-        item.first = user.first;
-        item.second = this->_user_indexes.at(user.second.id);
+        this->user_sync(result.second);
+        auto const& user = result.second;
+        std::pair<std::string, surface::gap::User> item;
+        item.first = result.first;
+        surface::gap::User ret_user(
+          this->_user_indexes.at(user.id),
+          user.online(),
+          user.fullname,
+          user.handle,
+          user.id,
+          user.deleted(),
+          user.ghost());
+        item.second = ret_user;
         res.insert(item);
       }
       return res;
@@ -496,7 +515,16 @@ namespace surface
         reactor::Lock lock(this->_swagger_mutex);
         this->_swagger_indexes.insert(id);
       }
-      this->enqueue<NewSwaggerNotification>(NewSwaggerNotification(id));
+      auto user = this->user(id);
+      surface::gap::User res(
+        id,
+        user.online(),
+        user.fullname,
+        user.handle,
+        user.id,
+        user.deleted(),
+        user.ghost());
+      this->enqueue(res);
     }
 
     void

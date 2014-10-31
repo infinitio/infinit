@@ -139,8 +139,8 @@ int main(int argc, char** argv)
           [&] (surface::gap::State::UserStatusNotification const& notif)
           {});
 
-        state.attach_callback<surface::gap::Transaction::Notification>(
-          [&] (surface::gap::Transaction::Notification const& notif)
+        state.attach_callback<surface::gap::PeerTransaction>(
+          [&] (surface::gap::PeerTransaction const& notif)
           {
             if (id == surface::gap::null_id)
               return;
@@ -159,8 +159,7 @@ int main(int argc, char** argv)
               stop = true;
             }
           });
-        auto hashed_password = state.hash_password(user, password);
-        state.login(user, hashed_password);
+        state.login(user, password);
         // state.update_device("lust");
         std::vector<std::string> files;
         boost::algorithm::split(files, file, boost::is_any_of(","));

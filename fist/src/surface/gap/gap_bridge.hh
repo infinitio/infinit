@@ -32,16 +32,14 @@ class gap_State
   ELLE_ATTRIBUTE_R(std::thread, scheduler_thread);
   ELLE_ATTRIBUTE(std::unique_ptr<surface::gap::State>, state);
   ELLE_ATTRIBUTE_R(std::exception_ptr, exception);
-  ELLE_ATTRIBUTE_R(std::function<void (std::string const&)>, critical_callback);
+  ELLE_ATTRIBUTE_R(std::function<void ()>, critical_callback);
 
   gap_Status
-  gap_critical_callback(gap_State* state,
-                        gap_critical_callback_t cb)
+  gap_critical_callback(
+    gap_State* state,
+    std::function<void ()> const& callback)
   {
-    this->_critical_callback = [&] (std::string const& error)
-      {
-        cb(error.c_str());
-      };
+    this->_critical_callback = callback;
     return gap_ok;
   }
 

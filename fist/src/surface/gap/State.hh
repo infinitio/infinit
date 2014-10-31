@@ -30,6 +30,7 @@
 # include <surface/gap/Notification.hh>
 # include <surface/gap/Self.hh>
 # include <surface/gap/Transaction.hh>
+# include <surface/gap/User.hh>
 
 namespace surface
 {
@@ -218,8 +219,7 @@ namespace surface
       ///
       static
       std::string
-      hash_password(std::string const& email,
-                    std::string const& password);
+      hash_password(std::string const& email, std::string const& password);
 
       std::string
       user_directory();
@@ -375,9 +375,9 @@ namespace surface
       public:
         static Notification::Type type;
 
-        NewSwaggerNotification(uint32_t id);
+        NewSwaggerNotification(surface::gap::User const& user);
 
-        uint32_t id;
+        surface::gap::User user;
       };
 
       class DeletedSwaggerNotification:
@@ -472,10 +472,10 @@ namespace surface
       void
       user_icon_refresh(uint32_t user_id) const;
 
-      std::vector<uint32_t>
+      std::vector<surface::gap::User>
       users_search(std::string const& text) const;
 
-      std::unordered_map<std::string, uint32_t>
+      std::unordered_map<std::string, surface::gap::User>
       users_by_emails(std::vector<std::string> const& emails) const;
 
       bool
@@ -677,8 +677,7 @@ namespace surface
     };
 
     std::ostream&
-    operator <<(std::ostream& out,
-                NotificationType const& t);
+    operator <<(std::ostream& out, NotificationType const& t);
   }
 }
 

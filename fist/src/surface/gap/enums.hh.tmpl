@@ -50,8 +50,7 @@ extern "C"
 
   typedef enum
   {
-    NotificationType_NewTransaction,
-    NotificationType_TransactionUpdate,
+    NotificationType_PeerTransactionUpdate,
     NotificationType_UserStatusUpdate,
     NotificationType_NewSwagger,
     NotificationType_DeletedSwagger,
@@ -60,7 +59,7 @@ extern "C"
     NotificationType_KickedOut,
     NotificationType_AvatarAvailable,
     NotificationType_TrophoniusUnavailable,
-    NotificationType_LinkUpdate,
+    NotificationType_LinkTransactionUpdate,
   } NotificationType;
 
   typedef enum

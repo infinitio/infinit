@@ -9,36 +9,124 @@
 #include <surface/gap/gap_bridge.hh>
 #include <surface/gap/State.hh>
 
-static boost::python::str
-_gap_user_directory(gap_State* state)
+struct peer_transaction_to_dict
 {
-  assert(state != nullptr);
-  boost::python::str o;
-  char const* udir;
-  if (gap_user_directory(state, &udir) == nullptr)
+  static
+  PyObject*
+  convert(surface::gap::PeerTransaction const& txn)
   {
-    return boost::python::str();
+    auto dict = PyDict_New();
+    PyDict_SetItemString(dict, "id", PyLong_FromLong(txn.id));
+    PyDict_SetItemString(dict, "status", PyLong_FromLong(txn.status));
+    PyDict_SetItemString(dict, "sender_id", PyLong_FromLong(txn.sender_id));
+    PyDict_SetItemString(dict, "sender_device_id",
+                         PyUnicode_FromString(txn.sender_device_id.c_str()));
+    PyDict_SetItemString(dict, "recipient_id",
+                         PyLong_FromLongLong(txn.recipient_id));
+    PyDict_SetItemString(dict, "recipient_device_id",
+                         PyUnicode_FromString(txn.recipient_device_id.c_str()));
+    PyDict_SetItemString(dict, "mtime", PyFloat_FromDouble(txn.mtime));
+    auto file_list = PyList_New(0);
+    for (auto const& file: txn.file_names)
+    {
+      PyList_Append(file_list, PyUnicode_FromString(file.c_str()));
+    }
+    PyDict_SetItemString(dict, "files", file_list);
+    PyDict_SetItemString(dict, "total_size",
+                         PyLong_FromLongLong(txn.total_size));
+    PyDict_SetItemString(dict, "is_directory",
+                         PyBool_FromLong(txn.is_directory));
+    PyDict_SetItemString(dict, "message",
+                         PyUnicode_FromString(txn.message.c_str()));
+    PyDict_SetItemString(dict, "cancel_user",
+                         PyUnicode_FromString(txn.canceler.user_id.c_str()));
+    return dict;
   }
-  boost::python::str ret{std::string{udir}};
-  free((void *)udir);
-  return ret;
+};
+
+struct link_transaction_to_dict
+{
+  static
+  PyObject*
+  convert(surface::gap::LinkTransaction const& txn)
+  {
+    auto dict = PyDict_New();
+    PyDict_SetItemString(dict, "id", PyLong_FromLong(txn.id));
+    PyDict_SetItemString(dict, "name", PyUnicode_FromString(txn.name.c_str()));
+    PyDict_SetItemString(dict, "mtime", PyFloat_FromDouble(txn.mtime));
+    if (txn.link)
+    {
+      PyDict_SetItemString(dict, "link",
+                           PyUnicode_FromString(txn.link.get().c_str()));
+    }
+    PyDict_SetItemString(dict, "click_count", PyLong_FromLong(txn.click_count));
+    PyDict_SetItemString(dict, "status", PyLong_FromLong(txn.status));
+    PyDict_SetItemString(dict, "sender_device_id",
+                         PyUnicode_FromString(txn.sender_device_id.c_str()));
+    return dict;
+  }
+};
+
+struct user_to_dict
+{
+  static
+  PyObject*
+  convert(surface::gap::User const& user)
+  {
+    auto dict = PyDict_New();
+    PyDict_SetItemString(dict, "id", PyLong_FromLongLong(user.id));
+    PyDict_SetItemString(dict, "status", PyBool_FromLong(user.status));
+    PyDict_SetItemString(dict, "fulname",
+                         PyUnicode_FromString(user.fullname.c_str()));
+    PyDict_SetItemString(dict, "handle",
+                         PyUnicode_FromString(user.handle.c_str()));
+    PyDict_SetItemString(dict, "meta_id",
+                         PyUnicode_FromString(user.meta_id.c_str()));
+    PyDict_SetItemString(dict, "deleted", PyBool_FromLong(user.deleted));
+    PyDict_SetItemString(dict, "ghost", PyBool_FromLong(user.ghost));
+    return dict;
+  }
+};
+
+static
+void
+bind_conversions()
+{
+  // Peer Transaction.
+  boost::python::to_python_converter<const surface::gap::PeerTransaction,
+                                     peer_transaction_to_dict>();
+  // Link Transaction.
+  boost::python::to_python_converter<const surface::gap::PeerTransaction,
+                                     peer_transaction_to_dict>();
+  // User.
+  boost::python::to_python_converter<const surface::gap::User,
+                                     user_to_dict>();
 }
 
 static boost::python::object
-_get_transactions(gap_State* state)
+_get_peer_transactions(gap_State* state)
 {
   assert(state != nullptr);
-
   boost::python::list transactions_;
-  uint32_t* transactions = gap_transactions(state);
-  uint32_t* todel = transactions;
-  if (transactions != nullptr)
+  std::vector<surface::gap::PeerTransaction> transactions =
+    gap_peer_transactions(state);
+  for (auto const& transaction: transactions)
   {
-    while (*transactions != 0)
-    {
-      transactions_.append(boost::python::object(*(transactions++)));
-    }
-    gap_transactions_free(todel);
+    transactions_.append(transaction);
+  }
+  return transactions_;
+}
+
+static boost::python::object
+_get_link_transactions(gap_State* state)
+{
+  assert(state != nullptr);
+  boost::python::list transactions_;
+  std::vector<surface::gap::LinkTransaction> transactions =
+    gap_link_transactions(state);
+  for (auto const& transaction: transactions)
+  {
+    transactions_.append(transaction);
   }
   return transactions_;
 }
@@ -47,39 +135,13 @@ static boost::python::object
 _get_swaggers(gap_State* state)
 {
   assert(state != nullptr);
-
   boost::python::list swaggers_;
-  uint32_t* swaggers = gap_swaggers(state);
-  uint32_t* todel = swaggers;
-  if (swaggers != nullptr)
+  std::vector<surface::gap::User> swaggers = gap_swaggers(state);
+  for (auto const& user: swaggers)
   {
-    while (*swaggers != 0)
-    {
-      swaggers_.append(boost::python::object(*(swaggers++)));
-    }
-    gap_swaggers_free(todel);
+    swaggers_.append(boost::python::object(user));
   }
-
   return swaggers_;
-}
-
-static
-boost::python::object
-_transaction_files(gap_State* state,
-                   uint32_t const id)
-{
-  assert(state != nullptr);
-
-  boost::python::list files;
-  char** res = gap_transaction_files(state, id);
-  if (res != nullptr)
-  {
-    char** user = res;
-    while (*user != nullptr)
-      files.append(boost::python::object(std::string{*(user++)}));
-    free(res);
-  }
-  return files;
 }
 
 static boost::python::object
@@ -87,33 +149,13 @@ _search_users(gap_State* state, std::string text)
 {
   assert(state != nullptr);
   assert(text.length() > 0);
-
   boost::python::list users_;
-  std::vector<uint32_t> users = gap_users_search(state, text);
-  if (users.size() != 0)
+  std::vector<surface::gap::User> users = gap_users_search(state, text);
+  for (auto const& user: users)
   {
-    for (auto user: users)
-    {
-      users_.append(boost::python::object(user));
-    }
+    users_.append(user);
   }
-
   return users_;
-}
-
-static std::string
-_hash_password(gap_State* state, std::string email, std::string password)
-{
-  assert(state != nullptr);
-
-  char* hash = gap_hash_password(state, email.c_str(), password.c_str());
-
-  if (hash == nullptr)
-    throw std::runtime_error("Couldn't hash the password");
-
-  std::string res(hash);
-  gap_hash_free(hash);
-  return res;
 }
 
 static
@@ -123,22 +165,14 @@ _send_files_by_email(gap_State* state,
                      boost::python::list const& files)
 {
   boost::python::ssize_t len = boost::python::len(files);
-  char const** list = (char const**) calloc(sizeof(char*), (len + 1));
-
-  if (list == nullptr)
-    throw std::bad_alloc();
-
+  std::vector<std::string> list;
   for (int i = 0; i < len; ++i)
   {
-    list[i] = boost::python::extract<char const*>(files[i]);
+    list.push_back(boost::python::extract<std::string>(files[i]));
   }
-
   auto id = gap_send_files_by_email(state,
-                                    recipient.c_str(),
+                                    recipient,
                                     list, "Sent by command line");
-
-  free(list);
-
   return id;
 }
 
@@ -149,26 +183,19 @@ _send_files(gap_State* state,
             boost::python::list const& files)
 {
   boost::python::ssize_t len = boost::python::len(files);
-  char const** list = (char const**) calloc(sizeof(char*), (len + 1));
-
-  if (list == nullptr)
-    throw std::bad_alloc();
-
+  std::vector<std::string> list;
   for (int i = 0; i < len; ++i)
   {
-    list[i] = boost::python::extract<char const*>(files[i]);
+    list.push_back(boost::python::extract<std::string>(files[i]));
   }
-
   auto id = gap_send_files(state, peer_id, list, "sent from cmdline");
-
-  free(list);
-
   return id;
 }
 
 namespace
 {
-  namespace detail {
+  namespace detail
+  {
     static
     std::string
     parse_python_exception()
@@ -183,7 +210,7 @@ namespace
 
       std::string ret("Unfetchable Python error");
 
-      if(type_ptr != NULL)
+      if (type_ptr != NULL)
       {
         py::handle<> h_type(type_ptr);
         py::str type_pstr(h_type);
@@ -194,7 +221,7 @@ namespace
           ret = "Unknown exception type";
       }
 
-      if(value_ptr != NULL)
+      if (value_ptr != NULL)
       {
         py::handle<> h_val(value_ptr);
         py::str a(h_val);
@@ -205,7 +232,7 @@ namespace
           ret += std::string(": Unparsable Python error: ");
       }
 
-      if(traceback_ptr != NULL)
+      if (traceback_ptr != NULL)
       {
         py::handle<> h_tb(traceback_ptr);
         py::object tb(py::import("traceback"));
@@ -268,17 +295,17 @@ namespace
   _gap_new_swagger_callback(gap_State* state,
                             boost::python::object cb)
   {
-    auto cpp_cb = [cb] (surface::gap::State::NewSwaggerNotification const& notif)
-      {
-        wrap_call(cb)(notif.id);
-      };
+    auto cpp_cb = [cb] (surface::gap::User const& user)
+    {
+      wrap_call(cb)(user);
+    };
 
     run<int>(
       state,
       "new swagger callback",
       [&] (surface::gap::State& state) -> int
       {
-        state.attach_callback<surface::gap::State::NewSwaggerNotification>(cpp_cb);
+        state.attach_callback<surface::gap::User>(cpp_cb);
         return 0;
       });
   }
@@ -360,6 +387,8 @@ BOOST_PYTHON_MODULE(_gap)
   namespace py = boost::python;
   typedef py::return_value_policy<py::return_by_value> by_value;
 
+  bind_conversions();
+
   //////////////////////////
   // value MUST be gap_EnumName_name
   py::enum_<gap_Status>("Status")
@@ -395,24 +424,20 @@ BOOST_PYTHON_MODULE(_gap)
 
   //- gap ctor and dtor -------------------------------------------------------
 
-  py::class_<gap_State, boost::noncopyable>("State", py::init<bool,
-                                                              std::string>());
+  py::class_<gap_State, boost::noncopyable>("State",
+                                            py::init<bool, std::string>());
 
   py::def("new",
           &gap_new,
           py::return_value_policy<py::return_opaque_pointer>());
   py::def("free", &gap_free);
 
-  py::def("enable_debug", &gap_enable_debug);
-
   //- Authentication and registration -----------------------------------------
 
-  py::def("hash_password", &_hash_password, by_value());
   py::def("login", &gap_login);
   py::def("is_logged", &gap_logged_in);
   py::def("logout", &gap_logout);
   py::def("register", &gap_register);
-  py::def("user_directory", *_gap_user_directory);
 
   //- Notifications ------------------------------------------------------------
 
@@ -427,10 +452,6 @@ BOOST_PYTHON_MODULE(_gap)
   py::def("new_swagger_callback", &_gap_new_swagger_callback);
   py::def("user_status_callback", &_gap_user_status_callback);
 
-   //- Infinit services status -------------------------------------------------
-
-  py::def("meta_status", &gap_meta_status);
-
   //- Device ------------------------------------------------------------------
 
   py::def("device_status", &gap_device_status);
@@ -440,45 +461,24 @@ BOOST_PYTHON_MODULE(_gap)
 
   py::def("user_fullname", &gap_user_fullname, by_value());
   py::def("user_handle", &gap_user_handle, by_value());
-  py::def("_id", &gap_self_id, by_value());
-  py::def("email", &gap_self_email, by_value());
-  py::def("remaining_invitations", &gap_self_remaining_invitations);
+  py::def("id", &gap_self_id, by_value());
   py::def("search_users", &_search_users);
   py::def("get_swaggers", &_get_swaggers);
 
-  //- Permissions -------------------------------------------------------------
-
-  py::enum_<gap_Permission>("Permission")
-    .value("gap_read", gap_read)
-    .value("gap_write", gap_write)
-    .value("gap_exec", gap_exec)
-    .export_values()
-  ;
-
   //- Transactions- ------------------------------------------------------------
 
-  py::def("transactions", &_get_transactions);
+  py::def("peer_transactions", &_get_peer_transactions);
+  py::def("peer_transaction_by_id", &gap_peer_transaction_by_id);
+  py::def("link_transactions", &_get_link_transactions);
+  py::def("link_transaction_by_id", &gap_link_transaction_by_id);
   py::def("send_files", &_send_files, by_value());
   py::def("send_files_by_email", &_send_files_by_email, by_value());
   py::def("cancel_transaction", &gap_cancel_transaction);
   py::def("accept_transaction", &gap_accept_transaction);
   py::def("reject_transaction", &gap_reject_transaction);
-  py::def("join_transaction", &gap_join_transaction);
   py::def("set_output_dir", &gap_set_output_dir);
   py::def("get_output_dir", &gap_get_output_dir);
   py::def("transaction_progress", &gap_transaction_progress);
-  py::def("transaction_sender_id", &gap_transaction_sender_id);
-  py::def("transaction_sender_fullname", &gap_transaction_sender_fullname);
-  py::def("transaction_sender_device_id", &gap_transaction_sender_device_id);
-  py::def("transaction_recipient_id", &gap_transaction_recipient_id);
-  py::def("transaction_recipient_fullname", &gap_transaction_recipient_fullname);
-  py::def("transaction_recipient_device_id", &gap_transaction_recipient_device_id);
-  py::def("transaction_files", &_transaction_files);
-  py::def("transaction_files_count", &gap_transaction_files_count);
-  py::def("transaction_total_size", &gap_transaction_total_size);
-  py::def("transaction_is_directory", &gap_transaction_is_directory);
-  py::def("transaction_status", &gap_transaction_status);
-  py::def("transaction_message", &gap_transaction_message);
 
   py::def("send_user_report", &gap_send_user_report);
   py::def("send_last_crash_logs", &gap_send_last_crash_logs);

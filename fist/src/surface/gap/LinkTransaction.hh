@@ -20,7 +20,6 @@ namespace surface
     class LinkTransaction
       : public elle::Printable
       , public surface::gap::Notification
-
     {
     public:
       LinkTransaction() = default;
@@ -29,7 +28,8 @@ namespace surface
                       double mtime,
                       boost::optional<std::string> link,
                       uint32_t click_count,
-                      gap_TransactionStatus status);
+                      gap_TransactionStatus status,
+                      std::string const& sender_device_id);
       ~LinkTransaction() noexcept(true);
 
       uint32_t id;
@@ -38,6 +38,7 @@ namespace surface
       boost::optional<std::string> link;
       uint32_t click_count;
       gap_TransactionStatus status;
+      std::string sender_device_id;
 
       static Notification::Type type;
 

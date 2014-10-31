@@ -23,14 +23,6 @@ namespace surface
 {
   namespace gap
   {
-    Notification::Type Transaction::Notification::type =
-      NotificationType_TransactionUpdate;
-    Transaction::Notification::Notification(uint32_t id,
-                                            gap_TransactionStatus status):
-      id(id),
-      status(status)
-    {}
-
     std::set<infinit::oracles::Transaction::Status>
     Transaction::recipient_final_statuses({
       infinit::oracles::Transaction::Status::rejected,
@@ -221,7 +213,8 @@ namespace surface
                                             data->mtime,
                                             data->share_link,
                                             data->click_count,
-                                            this->status()));
+                                            this->status(),
+                                            data->sender_device_id));
       this->_snapshot_save();
     }
 
@@ -334,7 +327,8 @@ namespace surface
                                                 link_data->mtime,
                                                 link_data->share_link,
                                                 link_data->click_count,
-                                                this->status()));
+                                                this->status(),
+                                                data->sender_device_id));
           this->_snapshot_save();
         }
       }
@@ -514,7 +508,8 @@ namespace surface
                           data->mtime,
                           data->share_link,
                           data->click_count,
-                          gap_transaction_deleted));
+                          gap_transaction_deleted,
+                          data->sender_device_id));
         this->state().metrics_reporter()->transaction_deleted(data->id);
       }
       else
@@ -636,7 +631,8 @@ namespace surface
                                               link_data->mtime,
                                               link_data->share_link,
                                               link_data->click_count,
-                                              this->status()));
+                                              this->status(),
+                                              link_data->sender_device_id));
       }
     }
 

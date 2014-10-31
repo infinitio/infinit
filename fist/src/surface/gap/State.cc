@@ -461,6 +461,7 @@ namespace surface
       }
 
       std::string lower_email = email;
+      std::string hashed_password = hash_password(email, password);
 
       std::transform(lower_email.begin(),
                      lower_email.end(),
@@ -481,7 +482,7 @@ namespace surface
         << [&] (elle::Finally& finally_logout)
       {
         auto login_response =
-          this->_meta.login(lower_email, password, _device_uuid);
+          this->_meta.login(lower_email, hashed_password, _device_uuid);
         ELLE_LOG("%s: logged in as %s", *this, email);
         if (trophonius)
         {
@@ -526,7 +527,7 @@ namespace surface
           this->_identity.reset(new papier::Identity());
           if (this->_identity->Restore(login_response.identity) == elle::Status::Error)
             throw Exception(gap_internal_error, "unable to restore the identity");
-          if (this->_identity->Decrypt(password) == elle::Status::Error)
+          if (this->_identity->Decrypt(hashed_password) == elle::Status::Error)
             throw Exception(gap_internal_error, "unable to decrypt the identity");
           if (this->_identity->Clear() == elle::Status::Error)
             throw Exception(gap_internal_error, "unable to clear the identity");
@@ -774,8 +775,7 @@ namespace surface
     }
 
     std::string
-    State::hash_password(std::string const& email,
-                         std::string const& password)
+    State::hash_password(std::string const& email, std::string const& password)
     {
       // !WARNING! Do not log the password.
       ELLE_TRACE_FUNCTION(email);
@@ -814,6 +814,7 @@ namespace surface
                        *this, fullname, email);
 
       std::string lower_email = email;
+      std::string hashed_password = hash_password(email, password);
 
       std::transform(lower_email.begin(),
                      lower_email.end(),
@@ -834,7 +835,7 @@ namespace surface
       {
         ELLE_DEBUG("register");
         std::string user_id =
-          this->meta(false).register_(lower_email, fullname, password);
+          this->meta(false).register_(lower_email, fullname, hashed_password);
 
         infinit::metrics::Reporter::metric_sender_id(user_id);
 
@@ -1180,33 +1181,30 @@ namespace surface
     }
 
     std::ostream&
-    operator <<(std::ostream& out,
-                NotificationType const& t)
+    operator <<(std::ostream& out, NotificationType const& t)
     {
       switch (t)
       {
-        case NotificationType_NewTransaction:
-          return out << "NewTransaction";
-        case NotificationType_TransactionUpdate:
-          return out << "TransactionUpdate";
+        case NotificationType_PeerTransactionUpdate:
+          return out << "Peer Transaction Update";
         case NotificationType_UserStatusUpdate:
-          return out << "UserStatusUpdate";
+          return out << "User Status Update";
         case NotificationType_NewSwagger:
-          return out << "NewSwagger";
+          return out << "New Swagger";
         case NotificationType_DeletedSwagger:
-          return out << "DeletedSwagger";
+          return out << "Deleted Swagger";
         case NotificationType_DeletedFavorite:
-          return out << "DeletedFavorite";
+          return out << "Deleted Favorite";
         case NotificationType_ConnectionStatus:
-          return out << "ConnectionStatus";
+          return out << "Connection Status";
         case NotificationType_KickedOut:
           return out << "Kicked Out";
         case NotificationType_AvatarAvailable:
           return out << "Avatar Available";
         case NotificationType_TrophoniusUnavailable:
           return out << "Trophonius Unavailable";
-        case NotificationType_LinkUpdate:
-          return out << "Link Update";
+        case NotificationType_LinkTransactionUpdate:
+          return out << "Link Transaction Update";
       }
 
       return out;
