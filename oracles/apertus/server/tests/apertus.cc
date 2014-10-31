@@ -22,20 +22,6 @@
 
 ELLE_LOG_COMPONENT("infinit.oracles.apertus.server.test")
 
-#ifdef VALGRIND
-# include <valgrind/valgrind.h>
-#else
-# define RUNNING_ON_VALGRIND 0
-#endif
-
-template <typename T>
-static
-auto
-valgrind(T base, int factor = 10) -> decltype(base * 42)
-{
-  return base * (RUNNING_ON_VALGRIND ? factor : 1);
-}
-
 static const std::vector<unsigned char> fingerprint =
 {
   0x98, 0x55, 0xEF, 0x72, 0x1D, 0xFC, 0x1B, 0xF5, 0xEA, 0xF5,
