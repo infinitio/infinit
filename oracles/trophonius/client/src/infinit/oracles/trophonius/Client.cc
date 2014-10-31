@@ -932,23 +932,6 @@ namespace infinit
         return this->_impl->poll();
       }
 
-      std::ostream&
-      operator <<(std::ostream& out,
-                  NotificationType t)
-      {
-        switch (t)
-        {
-        <%! from infinit.oracles.notification import notifications %>
-        %for name, value in notifications.items():
-          case NotificationType::${name}:
-            out << "${name}";
-            break;
-        %endfor
-        }
-
-        return out;
-      }
-
       void
       Client::print(std::ostream& stream) const
       {

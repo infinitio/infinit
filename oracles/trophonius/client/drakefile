@@ -62,7 +62,8 @@ def configure(elle,
 
   with template_context:
     sources = drake.nodes(
-      'src/infinit/oracles/trophonius/Client.cc.tmpl',
+      'src/infinit/oracles/trophonius/Client.cc',
+      'src/infinit/oracles/trophonius/ClientPrinter.cc.tmpl',
       'src/infinit/oracles/trophonius/Client.hh.tmpl',
       'src/infinit/oracles/trophonius/fwd.hh',
     )
