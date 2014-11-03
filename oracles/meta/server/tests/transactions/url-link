@@ -2,7 +2,7 @@
 
 from utils import Meta, User, NoOpMailer, HTTPException
 
-from infinit.oracles.meta.server.transaction_status import FINISHED
+from infinit.oracles.meta.server.transaction_status import GHOST_UPLOADED, FINISHED
 from bson.objectid import ObjectId
 
 def throws(f, status):
@@ -51,7 +51,7 @@ with Meta() as meta:
 
   # Finish transaction.
   res = bob.post('transaction/update', {"transaction_id": transaction_id,
-                                        "status": FINISHED,
+                                        "status": GHOST_UPLOADED,
                                         "device_id": str(bob.device_id),
                                         "device_name": bob.device_name})
   assert res['success']
@@ -81,7 +81,7 @@ with Meta() as meta:
   assert meta.mailer.sent == current_sent
   transaction_id = res['created_transaction_id']
   res = bob.post('transaction/update', {"transaction_id": transaction_id,
-                                        "status": FINISHED,
+                                        "status": GHOST_UPLOADED,
                                         "device_id": str(bob.device_id),
                                         "device_name": bob.device_name})
   assert res['success']
