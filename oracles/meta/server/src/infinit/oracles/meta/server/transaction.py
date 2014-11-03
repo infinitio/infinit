@@ -413,7 +413,7 @@ class Mixin:
     elle.log.debug('transaction (%s) hash: %s' % (transaction['_id'], txn_hash))
     return txn_hash
 
-  def on_finished(self, transaction, device_id, device_name, user):
+  def on_ghost_uploaded(self, transaction, device_id, device_name, user):
     elle.log.log('Transaction finished');
     # Guess if this was a ghost cloud upload or not
     recipient = self.database.users.find_one(transaction['recipient_id'])
@@ -539,13 +539,11 @@ class Mixin:
                                    user = user,
                                    device_id = device_id,
                                    device_name = device_name))
-      elif status == transaction_status.FINISHED:
-        diff.update(self.on_finished(transaction = transaction,
+      elif status == transaction_status.GHOST_UPLOADED:
+        diff.update(self.on_ghost_uploaded(transaction = transaction,
                                      device_id = device_id,
                                      device_name = device_name,
                                      user = user))
-        if is_sender and transaction.get('is_ghost'):
-          status = transaction_status.GHOST_UPLOADED
       elif status == transaction_status.CANCELED:
         if not transaction.get('canceler', None):
           diff.update({'canceler': {'user': user['_id'], 'device': device_id}})
