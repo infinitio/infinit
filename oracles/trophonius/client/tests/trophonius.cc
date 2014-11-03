@@ -262,6 +262,7 @@ protected:
     {
       // Do nothing.
     }
+    _handle_connection();
   }
 
   virtual
@@ -381,11 +382,16 @@ ELLE_TEST_SCHEDULED(poke_json)
           reactor::yield();
           reactor::yield();
         }, // reconnection failed callback
-        fingerprint);
+        fingerprint, 1_sec);
   BOOST_CHECK_NO_THROW(client.connect("", "", ""));
   b.wait();b.close();b.wait();
   BOOST_CHECK_EQUAL(reconnectCount, 1);
   BOOST_CHECK_EQUAL(connectCount, 1);
+  BOOST_CHECK(!client.connected());
+  BOOST_CHECK_EQUAL(success, false);
+  b.close(); b.wait(); b.close(); b.wait();
+  BOOST_CHECK_EQUAL(reconnectCount, 2);
+  BOOST_CHECK_EQUAL(connectCount, 2);
   BOOST_CHECK(!client.connected());
   BOOST_CHECK_EQUAL(success, false);
 
