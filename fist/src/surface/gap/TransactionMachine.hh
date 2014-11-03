@@ -177,6 +177,7 @@ namespace surface
     protected:
       void
       _another_device();
+      virtual
       void
       _finish();
       void
