@@ -280,7 +280,7 @@ ELLE_TEST_SCHEDULED(poke_success)
   infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     tropho.port(),
-    [] (bool) {},
+    [] (infinit::oracles::trophonius::ConnectionState const& s) {},
     [] (void) {},
     fingerprint);
   try
@@ -306,9 +306,9 @@ ELLE_TEST_SCHEDULED(poke_no_reply)
   infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     tropho.port(),
-    [&] (bool v) {
+    [&] (infinit::oracles::trophonius::ConnectionState const& s) {
           connectCount++;
-          success = v;
+          success = s.connected;
           b.open();
           reactor::yield();
           reactor::yield();
@@ -337,9 +337,9 @@ ELLE_TEST_SCHEDULED(poke_resolution_failure)
   infinit::oracles::trophonius::Client client(
         "does.not.exist",
         8000,
-        [&] (bool v) {
+        [&] (infinit::oracles::trophonius::ConnectionState const& s) {
           connectCount++;
-          success = v;
+          success = s.connected;
           b.open();
           reactor::yield();
           reactor::yield();
@@ -369,9 +369,9 @@ ELLE_TEST_SCHEDULED(poke_json)
   infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     tropho.port(),
-        [&] (bool v) {
+        [&] (infinit::oracles::trophonius::ConnectionState const& s) {
           connectCount++;
-          success = v;
+          success = s.connected;
           b.open();
           reactor::yield();
           reactor::yield();
@@ -407,9 +407,9 @@ ELLE_TEST_SCHEDULED(poke_html)
   infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     tropho.port(),
-    [&] (bool v) {
+    [&] (infinit::oracles::trophonius::ConnectionState const& s) {
           connectCount++;
-          success = v;
+          success = s.connected;
           b.open();
           reactor::yield();
           reactor::yield();
@@ -443,9 +443,9 @@ ELLE_TEST_SCHEDULED(poke_connection_refused)
   infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     port,
-    [&] (bool v) {
+    [&] (infinit::oracles::trophonius::ConnectionState const& s) {
           connectCount++;
-          success = v;
+          success = s.connected;
           b.open();
           reactor::yield();
           reactor::yield();
@@ -501,7 +501,7 @@ ELLE_TEST_SCHEDULED(notification)
     Client client(
       "127.0.0.1",
       tropho.port(),
-      [] (bool) {}, // connect callback
+      [] (infinit::oracles::trophonius::ConnectionState const& connected) {}, // connect callback
       [] (void) {}, // reconnection failed callback
       fingerprint);
     client.connect("0", "0", "0");
@@ -603,7 +603,7 @@ ELLE_TEST_SCHEDULED(ping)
   Client client(
     "127.0.0.1",
     tropho.port(),
-    [] (bool) {}, // connect callback
+    [] (infinit::oracles::trophonius::ConnectionState const& connected) {}, // connect callback
     [] (void) {}, // reconnection failed callback
     fingerprint);
   client.ping_period(period);
@@ -687,7 +687,7 @@ ELLE_TEST_SCHEDULED(no_ping)
   Client client(
     "127.0.0.1",
     tropho.port(),
-    [] (bool) {}, // connect callback
+    [] (infinit::oracles::trophonius::ConnectionState const& connected) {}, // connect callback
     [] (void) {}, // reconnection failed callback
     fingerprint);
   client.ping_period(period);
@@ -773,9 +773,9 @@ ELLE_TEST_SCHEDULED(reconnection)
   infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     tropho.port(),
-    [&] (bool connected) // connect callback
+    [&] (infinit::oracles::trophonius::ConnectionState const& s) // connect callback
     {
-      if (connected)
+      if (s.connected)
       {
         BOOST_CHECK(client.connected());
         if (first_connect)
@@ -855,9 +855,9 @@ ELLE_TEST_SCHEDULED_THROWS(connection_callback_throws, std::runtime_error)
   Client client(
     "127.0.0.1",
     tropho.port(),
-    [&] (bool connected) // connect callback
+    [&] (infinit::oracles::trophonius::ConnectionState const& s) // connect callback
     {
-      if (connected)
+      if (s.connected)
       {
         ELLE_LOG("fail connect callback");
         beacon = true;
@@ -938,7 +938,7 @@ ELLE_TEST_SCHEDULED(reconnection_failed_callback)
   Client client(
     "127.0.0.1",
     tropho.port(),
-    [] (bool) {}, // connect callback
+    [] (infinit::oracles::trophonius::ConnectionState const& s) {}, // connect callback
     [&] (void)    // reconnection failed callback
     {
       ELLE_LOG("reconnection failed callback called");
@@ -1012,9 +1012,9 @@ ELLE_TEST_SCHEDULED(socket_close_after_poke)
   infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     tropho.port(),
-        [&] (bool v) {
+        [&] (infinit::oracles::trophonius::ConnectionState const& s) {
           connectCount++;
-          success = v;
+          success = s.connected;
           b.open();
           reactor::yield();
           reactor::yield();
@@ -1071,9 +1071,9 @@ ELLE_TEST_SCHEDULED(notify_disconnect)
   infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     tropho.port(),
-    [&client] (bool connected)
+    [&client] (infinit::oracles::trophonius::ConnectionState const& s)
     {
-      if (!connected)
+      if (!s.connected)
         client.ping_period(30_sec);
     },
     [] (void) {},
@@ -1137,9 +1137,9 @@ ELLE_TEST_SCHEDULED(login_reconnect)
   infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     tropho.port(),
-    [] (bool connected) {
-      ELLE_LOG("reconnection callback: %sconnected", connected ? "" : "dis");
-      if (connected) reactor::sleep(2_sec);
+    [] (infinit::oracles::trophonius::ConnectionState const& s) {
+      ELLE_LOG("reconnection callback: %sconnected", s.connected ? "" : "dis");
+      if (s.connected) reactor::sleep(2_sec);
     },
     [] (void) {},
     fingerprint);
@@ -1192,7 +1192,9 @@ ELLE_TEST_SCHEDULED(invalid_credentials)
   infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     tropho.port(),
-    [] (bool connected) { if (connected) reactor::sleep(2_sec); },
+    [] (infinit::oracles::trophonius::ConnectionState const& s) {
+      if (s.connected) reactor::sleep(2_sec);
+    },
     [] (void) {},
     fingerprint);
   client.connect("0", "0", "0");
@@ -1238,9 +1240,9 @@ ELLE_TEST_SCHEDULED(connect_read_timeout)
   infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     tropho.port(),
-        [&] (bool v) {
+        [&] (infinit::oracles::trophonius::ConnectionState const& s) {
           connectCount++;
-          success = v;
+          success = s.connected;
           b.open();
           reactor::yield();
           reactor::yield();
@@ -1295,9 +1297,9 @@ namespace ssl_shutdown
     infinit::oracles::trophonius::Client client(
       "127.0.0.1",
       tropho.port(),
-        [&] (bool v) {
+        [&] (infinit::oracles::trophonius::ConnectionState const& s) {
           connectCount++;
-          success = v;
+          success = s.connected;
           b.open();
           reactor::yield();
           reactor::yield();
@@ -1340,9 +1342,9 @@ namespace ssl_shutdown
     infinit::oracles::trophonius::Client client(
       "127.0.0.1",
       tropho.port(),
-      [&] (bool connected)
+      [&] (infinit::oracles::trophonius::ConnectionState const& connected)
       {
-        if (connected)
+        if (connected.connected)
           tropho.done().open();
       },
       [] (void) {},
@@ -1372,7 +1374,7 @@ namespace ssl_shutdown
     infinit::oracles::trophonius::Client client(
       "127.0.0.1",
       tropho.port(),
-      [] (bool connected) {},
+      [] (infinit::oracles::trophonius::ConnectionState const& connected) {},
       [] (void) {},
       fingerprint);
     client.connect_timeout(valgrind(200_ms));

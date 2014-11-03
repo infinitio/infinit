@@ -933,11 +933,12 @@ namespace surface
                                  bool first_connection)
     {
       ELLE_TRACE_SCOPE(
-        "%s: %sconnection %s %s",
+        "%s: %sconnection %s %s %s",
         *this,
         first_connection? "first " : "re",
         connection_state.connected ? "established" : "lost",
-        connection_state.still_trying ? "for now" : "forever"  );
+        connection_state.still_trying ? "for now" : "forever",
+        connection_state.connected ? "" : connection_state.last_error.what());
 
       if (connection_state.connected)
       {
