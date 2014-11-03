@@ -9,7 +9,7 @@ import unicodedata
 import urllib.parse
 
 import elle.log
-from .utils import api, require_logged_in
+from .utils import api, require_logged_in, require_logged_in_or_admin
 from . import regexp, error, transaction_status, notifier, invitation, cloud_buffer_token, mail
 import uuid
 import re
@@ -94,9 +94,9 @@ class Mixin:
         return self.success(transaction)
 
   @api('/transaction/<id>')
-  @require_logged_in
+  @require_logged_in_or_admin
   def transaction_view(self, id: bson.ObjectId):
-    return self.transaction(id, self.user['_id'])
+    return self.transaction(id, None if self.admin else self.user['_id'])
 
   @api('/transaction/create', method = 'POST')
   @require_logged_in
