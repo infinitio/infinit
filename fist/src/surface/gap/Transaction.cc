@@ -369,7 +369,10 @@ namespace surface
           std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
             this->_data))
       {
-        if (this->_data->is_ghost && this->_data->status == infinit::oracles::Transaction::Status::ghost_uploaded &&
+        using TransactionStatus =
+          infinit::oracles::Transaction::Status;
+        if (this->_data->is_ghost &&
+            this->_data->status == TransactionStatus::ghost_uploaded &&
           (this->_sender || peer_data->sender_id == this->state().me().id))
         {
           ELLE_TRACE("%s sender of ghost_uploaded transaction", *this);
@@ -562,6 +565,8 @@ namespace surface
           return gap_transaction_rejected;
         case Status::deleted:
           return gap_transaction_deleted;
+        case Status::ghost_uploaded:
+          return gap_transaction_cloud_buffered;
         default:
           elle::unreachable();
       }
