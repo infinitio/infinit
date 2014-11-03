@@ -207,23 +207,6 @@ gap_update_avatar(gap_State* state, void const* data, size_t size);
 
 /// - User ------------------------------------------------------------------
 
-/// Retrieve user fullname.
-std::string
-gap_user_fullname(gap_State* state, uint32_t id);
-
-/// Retrieve user handle.
-std::string
-gap_user_handle(gap_State* state, uint32_t id);
-
-bool
-gap_user_ghost(gap_State* state, uint32_t id);
-
-bool
-gap_user_deleted(gap_State* state, uint32_t id);
-
-std::string
-gap_user_meta_id(gap_State* state, uint32_t id);
-
 std::string
 gap_self_device_id(gap_State* state);
 
@@ -237,6 +220,9 @@ gap_avatar(gap_State* state,
 /// Refresh user's icon.
 void
 gap_refresh_avatar(gap_State* state, uint32_t id);
+
+surface::gap::User
+gap_user_by_id(gap_State* state, uint32_t id);
 
 /// Retrieve user with its email.
 surface::gap::User

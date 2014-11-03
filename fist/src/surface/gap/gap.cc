@@ -441,73 +441,25 @@ gap_update_avatar(gap_State* state, void const* data, size_t size)
 
 /// - User ----------------------------------------------------------------
 
-std::string
-gap_user_fullname(gap_State* state, uint32_t id)
+surface::gap::User
+gap_user_by_id(gap_State* state, uint32_t id)
 {
   ELLE_ASSERT(id != surface::gap::null_id);
-  return run<std::string>(
+  return run<surface::gap::User>(
     state,
-    "user fullname",
-    [&] (surface::gap::State& state) -> std::string
+    "user by id",
+    [&] (surface::gap::State& state) -> surface::gap::User
     {
       auto const& user = state.user(id);
-      return user.fullname;
-    });
-}
-
-std::string
-gap_user_handle(gap_State* state, uint32_t id)
-{
-  ELLE_ASSERT(id != surface::gap::null_id);
-  return run<std::string>(
-    state,
-    "user handle",
-    [&] (surface::gap::State& state) -> std::string
-    {
-      auto const& user = state.user(id);
-      return user.handle;
-    });
-}
-
-bool
-gap_user_ghost(gap_State* state, uint32_t id)
-{
-  ELLE_ASSERT(id != surface::gap::null_id);
-  return run<bool>(
-    state,
-    "user ghost",
-    [&] (surface::gap::State& state)
-    {
-     auto const& user = state.user(id);
-     return user.ghost();
-    });
-}
-
-bool
-gap_user_deleted(gap_State* state, uint32_t id)
-{
-  ELLE_ASSERT(id != surface::gap::null_id);
-  return run<bool>(
-    state,
-    "user deleted",
-    [&] (surface::gap::State& state)
-    {
-      auto const& user = state.user(id);
-      return user.deleted();
-    });
-}
-
-std::string
-gap_user_meta_id(gap_State* state, uint32_t id)
-{
-  ELLE_ASSERT(id != surface::gap::null_id);
-  return run<std::string>(
-    state,
-    "user handle",
-    [&] (surface::gap::State& state) -> std::string
-    {
-      auto const& user = state.user(id);
-      return user.id;
+      surface::gap::User res(
+        state.user_indexes().at(user.id),
+        user.online(),
+        user.fullname,
+        user.handle,
+        user.id,
+        user.deleted(),
+        user.ghost());
+      return res;
     });
 }
 
