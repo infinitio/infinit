@@ -404,7 +404,14 @@ class Mixin:
       )
 
       # Inject a set of ABtest features
-      features = self.__roll_abtest(True)
+      if 'features' in user:
+        features = user['features']
+      else:
+        features = dict()
+      new_features = self.__roll_abtest(True)
+      for k in new_features:
+        if k not in features:
+          features[k] = new_features[k]
       self.database.users.find_and_modify(
           {
             '_id': user_id,
