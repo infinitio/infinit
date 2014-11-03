@@ -180,8 +180,10 @@ namespace surface
           if (status == infinit::oracles::Transaction::Status::finished &&
               (peer.ghost() || transaction().data()->is_ghost))
           {
+            ELLE_TRACE_SCOPE("%s: notifying meta of finished state", *this);
             this->state().meta().update_transaction(
-              this->transaction_id(), status);
+              this->transaction_id(),
+              infinit::oracles::Transaction::Status::ghost_uploaded);
           }
           else if (status == infinit::oracles::Transaction::Status::finished &&
                    self_id == this->data()->recipient_id &&
