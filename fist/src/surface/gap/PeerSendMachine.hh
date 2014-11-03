@@ -90,6 +90,10 @@ namespace surface
       void
       _fail() override;
 
+      virtual
+      void
+      _finish() override;
+
     public:
       virtual
       void
