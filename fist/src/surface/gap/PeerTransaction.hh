@@ -47,7 +47,7 @@ namespace surface
       std::string recipient_device_id;
       double mtime;
       std::list<std::string> file_names;
-      uint64_t total_size;
+      int64_t total_size;
       bool is_directory;
       std::string message;
       TransactionCanceler canceler;
