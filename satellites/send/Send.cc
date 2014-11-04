@@ -102,11 +102,10 @@ int main(int argc, char** argv)
         sched.terminate();
       });
 
-    reactor::VThread<int> t
-    {
+    reactor::Thread main(
       sched,
-      "sendto",
-      [&] () -> int
+      "send",
+      [&]
       {
         common::infinit::Configuration config(production);
         surface::gap::State state(config.meta_protocol(),
@@ -116,59 +115,30 @@ int main(int argc, char** argv)
                                   config.trophonius_fingerprint(),
                                   config.download_dir(),
                                   common::metrics(config));
-        uint32_t id = surface::gap::null_id;
-
-        state.attach_callback<surface::gap::State::ConnectionStatus>(
-          [&] (surface::gap::State::ConnectionStatus const& notif)
-          {}
-        );
-
-        state.attach_callback<surface::gap::State::TrophoniusUnavailable>(
-          [&]
-          (surface::gap::State::TrophoniusUnavailable const& notif)
-          {}
-        );
-
-        state.attach_callback<surface::gap::State::KickedOut>(
-          [&]
-          (surface::gap::State::KickedOut const& notif)
-          {}
-        );
-
-        state.attach_callback<surface::gap::State::UserStatusNotification>(
-          [&] (surface::gap::State::UserStatusNotification const& notif)
-          {});
-
+        auto hashed_password = state.hash_password(user, password);
+        state.login(user, hashed_password);
+        std::vector<std::string> files;
+        boost::algorithm::split(files, file, boost::is_any_of(","));
+        auto id = state.send_files(to, std::move(files), "");
         state.attach_callback<surface::gap::Transaction::Notification>(
           [&] (surface::gap::Transaction::Notification const& notif)
           {
-            if (id == surface::gap::null_id)
-              return;
-
             if (notif.id != id)
-              return;
-
-            auto& txn = state.transactions().at(id);
-            ELLE_LOG("New status: %s", (int)txn->data()->status);
-            if (surface::gap::Transaction::sender_final_statuses.find(txn->data()->status)
-              != surface::gap::Transaction::sender_final_statuses.end())
             {
-              ELLE_LOG("Joinging...");
+              ELLE_DEBUG("received notification for another transaction: %s",
+                         notif);
+              return;
+            }
+            ELLE_TRACE_SCOPE("received notification: %s", notif);
+            auto& txn = state.transactions().at(id);
+            if (contains(surface::gap::Transaction::sender_final_statuses,
+                         txn->data()->status))
+            {
               txn->join();
-              ELLE_LOG("Exiting")
+              ELLE_TRACE_SCOPE("transaction is finished");
               stop = true;
             }
           });
-        auto hashed_password = state.hash_password(user, password);
-        state.login(user, hashed_password);
-        // state.update_device("lust");
-        std::vector<std::string> files;
-        boost::algorithm::split(files, file, boost::is_any_of(","));
-        id = state.send_files(to, std::move(files), "");
-
-        if (id == surface::gap::null_id)
-          throw elle::Exception("transaction id is null");
-
         static const int width = 70;
         std::cout << std::endl;
         float previous_progress = 0.0;
@@ -194,38 +164,12 @@ int main(int argc, char** argv)
           reactor::sleep(100_ms);
         }
         while (stop != true);
-
-        return 0;
-      }
-    };
-
+      });
     sched.run();
-
-    // bool stop = false;
-    // std::string transaction_id;
-    // state.notification_manager().transaction_callback(
-    //   [&] (plasma::trophonius::TransactionNotification const& t, bool)
-    //   {
-    //     if (state.transaction_id(mid) != t.id)
-    //       return;
-
-    //     transaction_id = t.id;
-
-    //     if (t.status == plasma::TransactionStatus::finished ||
-    //         t.status == plasma::TransactionStatus::canceled)
-    //       stop = true;
-    //   });
-
-    // while (!stop)
-    //   state.notification_manager().poll(1);
-
-    // state.join_transaction(transaction_id);
   }
   catch (std::runtime_error const& e)
   {
     std::cerr << argv[0] << ": " << e.what() << "." << std::endl;
     return 1;
   }
-
-  return 0;
 }
