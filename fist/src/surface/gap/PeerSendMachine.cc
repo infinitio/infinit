@@ -410,7 +410,8 @@ namespace surface
       // This was the cause of the "unable to apply crypto function" bug.
       auto const& peer = this->state().user_sync(this->data()->recipient_id);
       // Populate the frete.
-      this->frete().save_snapshot();
+      if (!this->data()->is_ghost)
+        this->frete().save_snapshot();
       if (this->state().metrics_reporter())
       {
         bool onboarding = false;
@@ -811,6 +812,7 @@ namespace surface
       if (this->_frete == nullptr)
       {
         ELLE_TRACE_SCOPE("%s: initialize frete", *this);
+        ELLE_ASSERT(!this->data()->is_ghost);
         this->_frete = elle::make_unique<frete::Frete>(
           this->transaction_id(),
           this->state().identity().pair(),
