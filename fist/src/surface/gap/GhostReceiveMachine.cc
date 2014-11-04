@@ -158,6 +158,7 @@ namespace surface
         };
       }
 
+      this->gap_status(gap_transaction_transferring);
       int attempt = 0;
       while (true)
       {
