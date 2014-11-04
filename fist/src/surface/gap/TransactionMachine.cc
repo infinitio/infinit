@@ -340,9 +340,12 @@ namespace surface
     {}
 
     void
-    TransactionMachine::cancel()
+    TransactionMachine::cancel(std::string const& reason)
     {
       ELLE_TRACE_SCOPE("%s: cancel transaction %s", *this, this->data()->id);
+      if (!this->canceled().opened())
+        this->_metrics_ended(infinit::oracles::Transaction::Status::canceled,
+                             reason);
       this->_canceled.open();
     }
 
@@ -483,6 +486,25 @@ namespace surface
                       aws_error_code,
                       (will_retry? "TRANSIENT:":"FATAL:") + message);
       }
+    }
+
+    /*--------.
+    | Metrics |
+    `--------*/
+
+    void
+    TransactionMachine::_metrics_ended(
+      infinit::oracles::Transaction::Status status,
+      std::string reason)
+    {
+      bool onboarding = false;
+      if (this->state().metrics_reporter())
+        this->state().metrics_reporter()->transaction_ended(
+          this->transaction_id(),
+          status,
+          reason,
+          onboarding,
+          this->transaction().canceled_by_user());
     }
   }
 }

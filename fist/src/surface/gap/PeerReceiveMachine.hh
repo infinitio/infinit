@@ -62,9 +62,6 @@ namespace surface
       accept() override;
       virtual
       void
-      cancel() override;
-      virtual
-      void
       reject() override;
 
     private:

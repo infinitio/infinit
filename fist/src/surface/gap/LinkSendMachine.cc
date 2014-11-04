@@ -171,23 +171,6 @@ namespace surface
     `---------------*/
 
     void
-    LinkSendMachine::cancel()
-    {
-      TransactionMachine::cancel();
-      if (!this->canceled().opened())
-      {
-        bool onboarding = false;
-        if (this->state().metrics_reporter())
-          this->state().metrics_reporter()->transaction_ended(
-            this->transaction_id(),
-            infinit::oracles::Transaction::Status::canceled,
-            "",
-            onboarding,
-            this->transaction().canceled_by_user());
-      }
-    }
-
-    void
     LinkSendMachine::_fail()
     {
       TransactionMachine::_fail();

@@ -487,7 +487,7 @@ namespace surface
         throw BadOperation(BadOperation::Type::cancel);
       }
       _canceled_by_user = true;
-      this->_machine->cancel();
+      this->_machine->cancel("user canceled");
     }
 
     void
@@ -502,7 +502,7 @@ namespace surface
         if (this->_machine != nullptr && !this->final())
         {
           _canceled_by_user = true;
-          this->_machine->cancel();
+          this->_machine->cancel("user deleted transaction");
           // Set the machine's gap status as we don't have a separate state for
           // deleted.
           this->_machine->gap_status(gap_transaction_deleted);

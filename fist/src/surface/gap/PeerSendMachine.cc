@@ -275,23 +275,6 @@ namespace surface
     `---------------*/
 
     void
-    PeerSendMachine::cancel()
-    {
-      if (!this->canceled().opened())
-      {
-        bool onboarding = false;
-        if (this->state().metrics_reporter())
-          this->state().metrics_reporter()->transaction_ended(
-            this->transaction_id(),
-            infinit::oracles::Transaction::Status::canceled,
-            "",
-            onboarding,
-            this->transaction().canceled_by_user());
-      }
-      TransactionMachine::cancel();
-    }
-
-    void
     PeerSendMachine::_fail()
     {
       TransactionMachine::_fail();
@@ -790,13 +773,13 @@ namespace surface
         {
           ELLE_WARN("%s: source file disappeared, cancel : %s",
                     *this, e.what());
-          this->cancel();
+          this->cancel("source file missing");
         }
         else
         {
           ELLE_WARN("%s: source file corrupted (%s), cancel",
                     *this, e.what());
-          this->cancel();
+          this->cancel(elle::sprintf("source file error: %s", e.what()));
         }
       }
       catch(...)

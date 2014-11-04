@@ -80,11 +80,6 @@ namespace surface
     /*---------------.
     | Implementation |
     `---------------*/
-    public:
-      virtual
-      void
-      cancel() override;
-
     private:
       virtual
       void
