@@ -1041,11 +1041,11 @@ class Mixin:
     with elle.log.trace('search %s (limit: %s, skip: %s)' % \
                         (search, limit, skip)):
       pipeline = []
-      match = {
+      match = {}
+      if not self.admin:
         # User must not be a ghost as ghost fullnames are their email
         # addresses.
-        'register_status':'ok',
-      }
+        match['register_status'] = 'ok'
       if ids is not None:
         for c in "'\"[]":
           ids = ids.replace(c, '')
