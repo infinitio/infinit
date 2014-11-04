@@ -44,11 +44,6 @@ namespace surface
     /*---------------.
     | Implementation |
     `---------------*/
-    private:
-      virtual
-      void
-      _fail() override;
-
     public:
       virtual
       void

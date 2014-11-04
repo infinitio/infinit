@@ -275,21 +275,6 @@ namespace surface
     `---------------*/
 
     void
-    PeerSendMachine::_fail()
-    {
-      TransactionMachine::_fail();
-      if (this->state().metrics_reporter())
-      {
-        bool onboarding = false;
-        this->state().metrics_reporter()->transaction_ended(
-        this->transaction_id(),
-        infinit::oracles::Transaction::Status::failed,
-        transaction().failure_reason(),
-        onboarding);
-      }
-    }
-
-    void
     PeerSendMachine::transaction_status_update(TransactionStatus status)
     {
       ELLE_TRACE_SCOPE("%s: update with new transaction status %s",

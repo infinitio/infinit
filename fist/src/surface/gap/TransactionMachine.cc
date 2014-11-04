@@ -258,6 +258,8 @@ namespace surface
     TransactionMachine::_fail()
     {
       ELLE_TRACE_SCOPE("%s: fail", *this);
+      this->_metrics_ended(infinit::oracles::Transaction::Status::failed,
+                           transaction().failure_reason());
       std::string transaction_id;
       if (!this->data()->id.empty())
         transaction_id = this->transaction_id();
@@ -277,7 +279,6 @@ namespace surface
       {
         ELLE_ERR("unable to report transaction failure: %s", e);
       }
-
       this->gap_status(gap_transaction_failed);
       this->_finalize(infinit::oracles::Transaction::Status::failed);
     }

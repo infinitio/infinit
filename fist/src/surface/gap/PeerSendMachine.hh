@@ -83,10 +83,6 @@ namespace surface
     private:
       virtual
       void
-      _fail() override;
-
-      virtual
-      void
       _finish() override;
 
     public:
