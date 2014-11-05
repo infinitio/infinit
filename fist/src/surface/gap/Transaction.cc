@@ -560,13 +560,12 @@ namespace surface
         case Status::failed:
           return gap_transaction_failed;
         case Status::finished:
+        case Status::ghost_uploaded:
           return gap_transaction_finished;
         case Status::rejected:
           return gap_transaction_rejected;
         case Status::deleted:
           return gap_transaction_deleted;
-        case Status::ghost_uploaded:
-          return gap_transaction_cloud_buffered;
         default:
           elle::unreachable();
       }
