@@ -22,29 +22,31 @@ namespace surface
       GhostReceiveMachine(Transaction& transaction,
                           uint32_t id,
                           std::shared_ptr<Data> data);
-      ~GhostReceiveMachine();
+
       virtual
+      ~GhostReceiveMachine();
+
       float
       progress() const override;
-      virtual
+
       void
       _accept() override;
+
       virtual
       void
       _wait_for_cloud_upload();
-      virtual
+
       void
       transaction_status_update(
         infinit::oracles::Transaction::Status status) override;
 
     protected:
-      virtual
       aws::Credentials
-      _aws_credentials(bool regenerate) override{throw std::runtime_error("Not implemented");}
-      virtual
+      _aws_credentials(bool regenerate) override;
+
       void
       _finalize(infinit::oracles::Transaction::Status) override;
-      virtual
+
       void
       cleanup() override;
 

@@ -13,7 +13,6 @@
 
 ELLE_LOG_COMPONENT("surface.gap.GhostReceiveMachine");
 
-
 namespace surface
 {
   namespace gap
@@ -112,6 +111,7 @@ namespace surface
       else
         ReceiveMachine::transaction_status_update(status);
     }
+
     float
     GhostReceiveMachine::progress() const
     {
@@ -126,6 +126,7 @@ namespace surface
       return (float)(p.download_current + _previous_progress)
            / (float)(_previous_progress +  p.download_total);
     }
+
     void
     GhostReceiveMachine::_accept()
     {
@@ -235,7 +236,6 @@ namespace surface
             Request::Configuration config
               = Request::Configuration(reactor::DurationOpt(), 60_sec);
             config.header_add("Range", elle::sprintf("bytes=%s-", _previous_progress));
-
             _request = elle::make_unique<Request>(url, Method::GET, config);
             _request->finalize();
             // Waiting for the status here will wait for full download.
@@ -297,6 +297,7 @@ namespace surface
                                               this->state().device().id,
                                               this->state().device().name);
     }
+
     void
     GhostReceiveMachine::_wait_for_cloud_upload()
     {
@@ -320,6 +321,12 @@ namespace surface
             transaction().failure_reason() : "",
           false,
           this->transaction().canceled_by_user());
+    }
+
+    aws::Credentials
+    GhostReceiveMachine::_aws_credentials(bool regenerate)
+    {
+      throw elle::Error("Not implemented");
     }
 
     void
