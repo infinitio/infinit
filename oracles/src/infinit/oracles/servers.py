@@ -164,14 +164,16 @@ class Oracles:
       timedelta(seconds=30), timedelta(seconds = 60), timedelta(seconds=10))
     self.trophonius = ('tcp', '127.0.0.1', self._trophonius.port_tcp(), self._trophonius.port_ssl())
     elle.log.trace('tropho started on %s' % self._trophonius.port_tcp())
-  def trophonius_stop(self):
+  def trophonius_stop(self, wait = True):
     if self._trophonius is not None:
       elle.log.trace("tropho term")
       self._trophonius.terminate()
       elle.log.trace("tropho stop")
       self._trophonius.stop()
       elle.log.trace("tropho wait")
-      self._trophonius.wait()
+      if wait:
+        self._trophonius.wait()
+      elle.log.trace("tropho stopped")
     self._trophonius = None
   @property
   def mongo(self):
@@ -185,3 +187,18 @@ class Oracles:
     res = state.State(meta_proto, meta_host, meta_port, self.download_dir)
     self.__states.append(res)
     return res
+  def kill_meta(self):
+    elle.log.trace("Killing meta")
+    self._meta.stop()
+  def resurect_meta(self):
+    elle.log.trace("Restarting meta")
+    self._meta = MetaWrapperProcess(self.__force_admin, self._mongo.port, self.meta[2])
+    self._meta.start()
+  def kill_trophonius(self):
+    elle.log.trace("Killing trophonius")
+    self.trophonius_stop(False)
+  def resurect_trophonius(self):
+    elle.log.trace("Restarting trophonius")
+    self._trophonius = infinit.oracles.trophonius.server.Trophonius(
+      self.trophonius[3], self.trophonius[2], 'http', '127.0.0.1', self._meta.port, 0,
+      timedelta(seconds=30), timedelta(seconds = 60), timedelta(seconds=10))
