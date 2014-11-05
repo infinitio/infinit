@@ -36,25 +36,111 @@ class TestLogin(unittest.TestCase):
       self.assertEqual(me['fullname'], 'mefyl')
       self.assertEqual(me['handle'], 'mefyl')
 
+  def test_login_abort(self):
+    import state
+    import reactor
+    s = state.State('http', '127.0.0.1', 42, '/')
+    rresult = []
+    def login():
+      try:
+        # this login call will block forever on its own
+        try:
+          result = s.login('foo', state.hash_password('foo', 'bar'))
+        except:
+          result = False
+        rresult.append(result)
+      except Exception as e:
+        print(e)
+    t = reactor.Thread('login', login)
+    reactor.sleep(datetime.timedelta(milliseconds = 500))
+    self.assertEqual([], rresult)
+    s.logout() # should make login abort
+    reactor.sleep(datetime.timedelta(milliseconds = 500))
+    self.assertEqual([False], rresult)
+
+  def test_login_retry(self):
+    # test automatic retry on trophonius down
+    with infinit.oracles.servers.Oracles(
+      mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
+      s1 = o.state()
+      s1.reconnection_cooldown(datetime.timedelta(milliseconds=100))
+      last_statuses = []
+      def status(s):
+        print('Status update: %s' % s)
+        last_statuses.append(s)
+      s1.attach_connection_callback(status)
+      s1.login('mefyl@infinit.io',
+              state.hash_password('mefyl@infinit.io', 'mefyl'))
+      self.assertTrue(s1.logged_in())
+      o.kill_trophonius()
+      reactor.sleep(datetime.timedelta(milliseconds = 500))
+      for i in range(10):
+        s1.poll()
+      self.assertFalse(last_statuses[-1]['status'])
+      self.assertTrue(last_statuses[-1]['still_trying'])
+      o.resurect_trophonius()
+      reactor.sleep(datetime.timedelta(seconds = 5))
+      for i in range(10):
+        s1.poll()
+      self.assertTrue(s1.logged_in())
+      self.assertTrue(last_statuses[-1]['status'])
+
+  def test_login_retry2(self):
+    # test automatic retry on everything down
+    with infinit.oracles.servers.Oracles(
+      mongo_dump = '%s/two-users' % os.environ['DUMPS'],
+      with_apertus = False) as o:
+      s1 = o.state()
+      s1.reconnection_cooldown(datetime.timedelta(milliseconds=100))
+      last_statuses = []
+      def status(s):
+        print('Status update: %s' % s)
+        last_statuses.append(s)
+      s1.attach_connection_callback(status)
+      s1.login('mefyl@infinit.io',
+              state.hash_password('mefyl@infinit.io', 'mefyl'))
+      self.assertTrue(s1.logged_in())
+      o.kill_trophonius()
+      o.kill_meta()
+      reactor.sleep(datetime.timedelta(milliseconds = 500))
+      for i in range(10):
+        s1.poll()
+      self.assertFalse(last_statuses[-1]['status'])
+      self.assertTrue(last_statuses[-1]['still_trying'])
+      o.resurect_meta()
+      o.resurect_trophonius()
+      reactor.sleep(datetime.timedelta(seconds = 5))
+      for i in range(10):
+        s1.poll()
+      self.assertTrue(s1.logged_in())
+      self.assertTrue(last_statuses[-1]['status'])
+
   def test_login2(self):
     with infinit.oracles.servers.Oracles(
       mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
       #Remove abtests
       mongo = pymongo.MongoClient(host='127.0.0.1', port=o._mongo.port)
       mongo.meta.abtest.remove({})
-      s1 = o.state()
-      s1.login('mefyl@infinit.io',
-              state.hash_password('mefyl@infinit.io', 'mefyl'))
       s2 = o.state()
       s2.login('mefyl2@infinit.io',
               state.hash_password('mefyl2@infinit.io', 'mefyl2'))
-      self.assertEqual(s1.features(), {'test_feature': '1'})
+      s1 = o.state()
+      s1.login('mefyl@infinit.io',
+              state.hash_password('mefyl@infinit.io', 'mefyl'))
+      reactor.sleep(datetime.timedelta(milliseconds = 500))
       self.assertEqual(s2.features(), {})
+      self.assertEqual(s1.features(), {'test_feature': '1'})
       users1 = s1.users()
       self.assertEqual(len(users1), 1)
       self.assertEqual(len(s1.swaggers()), 0)
       users2 = s2.users()
       self.assertEqual(len(users2), 1)
+
+  def test_login_fail(self):
+    with infinit.oracles.servers.Oracles(
+      mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
+      s = o.state()
+      self.assertRaises(Exception, s.login("nosuchuser@infinit.io", state.hash_password('foo', 'bar')))
 
   def test_register(self):
     with infinit.oracles.servers.Oracles(

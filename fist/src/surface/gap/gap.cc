@@ -955,7 +955,7 @@ gap_connection_callback(gap_State* state,
 {
   auto cpp_cb = [cb] (surface::gap::State::ConnectionStatus const& notif)
     {
-      cb((gap_UserStatus) notif.status);
+      cb((gap_Bool) notif.status, notif.still_trying, notif.last_error.c_str());
     };
 
   return run<gap_Status>(

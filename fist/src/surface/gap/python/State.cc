@@ -370,6 +370,21 @@ public:
         cb(dict);
       });
   }
+  void
+  attach_connection_callback(boost::python::object cb) const
+  {
+    Super::attach_callback<surface::gap::State::ConnectionStatus>(
+      [cb] (surface::gap::State::ConnectionStatus const& notif)
+      {
+        auto dict = PyDict_New();
+        PyDict_SetItemString(dict, "last_error", PyUnicode_FromString(notif.last_error.c_str()));
+        PyDict_SetItemString(dict, "status", notif.status? Py_True : Py_False);
+        PyDict_SetItemString(dict, "still_trying", notif.still_trying? Py_True : Py_False);
+        boost::python::handle<> handle(dict);
+        boost::python::object odict(handle);
+        cb(odict);
+      });
+  }
   std::vector<unsigned int>
   wrap_swaggers()
   {
@@ -494,10 +509,14 @@ BOOST_PYTHON_MODULE(state)
          by_const_ref())
     .def("attach_transaction_callback",
          &PythonState::attach_callback<surface::gap::Transaction::Notification>)
+    .def("attach_connection_callback", &PythonState::attach_connection_callback)
     .def("configuration_set_max_mirror_size",
          &PythonState::configuration_set_max_mirror_size)
     .def("features", &PythonState::features)
     .def("register", &State::register_)
+    .def("reconnection_cooldown",
+      static_cast<void(State::*)(boost::posix_time::time_duration const&)>
+      (&State::reconnection_cooldown))
     ;
     // Static functions.
     boost::python::def("hash_password", &State::hash_password);

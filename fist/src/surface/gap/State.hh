@@ -10,6 +10,7 @@
 # include <elle/format/json/fwd.hh>
 # include <elle/Printable.hh>
 # include <elle/threading/Monitor.hh>
+# include <elle/utility/Move.hh>
 
 # include <reactor/mutex.hh>
 # include <reactor/scheduler.hh>
@@ -137,9 +138,13 @@ namespace surface
       {
       public:
         static Notification::Type type;
-        ConnectionStatus(bool status);
+        ConnectionStatus(bool status,
+                         bool still_trying,
+                         std::string const& last_error);
 
-        bool status;
+        bool status;       ///< Connection status
+        bool still_trying; ///< Is the State still trying to connect
+        std::string last_error;
       };
 
       class KickedOut:
@@ -196,17 +201,24 @@ namespace surface
 
       ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, login_thread);
       ELLE_ATTRIBUTE(reactor::Mutex, login_mutex);
-      ELLE_ATTRIBUTE(reactor::Barrier, logout_request);
+      ELLE_ATTRIBUTE(reactor::Barrier, logged_in);
+      ELLE_ATTRIBUTE(reactor::Barrier, logged_out);
     public:
-      /// Login to meta.
+      /// Login to meta. Keeps trying, returns on success or throw on definitive failure
       void
       login(std::string const& email, std::string const& password);
+      /// Login to meta.
+      void
+      login(std::string const& email, std::string const& password,
+            reactor::DurationOpt timeout);
       /// Login to meta.
       void
       login(
         std::string const& email,
         std::string const& password,
-        std::unique_ptr<infinit::oracles::trophonius::Client> trophonius);
+        std::unique_ptr<infinit::oracles::trophonius::Client> trophonius,
+        reactor::DurationOpt timeout = reactor::DurationOpt()
+        );
 
       /// Logout from meta.
       void
@@ -234,6 +246,12 @@ namespace surface
       set_output_dir(std::string const& dir, bool fallback);
 
     private:
+      ELLE_ATTRIBUTE_RW(boost::posix_time::time_duration,
+        reconnection_cooldown);
+      void
+      _login(std::string const& email,
+             std::string const& password,
+             elle::utility::Move<std::unique_ptr<infinit::oracles::trophonius::Client>> trophonius);
       void
       _on_invalid_trophonius_credentials();
       void
@@ -666,6 +684,8 @@ namespace surface
         Features features;
       };
       ELLE_ATTRIBUTE_RP(Configuration, configuration, protected:);
+      ELLE_ATTRIBUTE(std::string, email);
+      ELLE_ATTRIBUTE(std::string, password);
     private:
       void
       _apply_configuration(elle::json::Object json);
@@ -682,6 +702,9 @@ namespace surface
     std::ostream&
     operator <<(std::ostream& out,
                 NotificationType const& t);
+    std::ostream&
+    operator <<(std::ostream& out,
+                State::ConnectionStatus const& s);
   }
 }
 

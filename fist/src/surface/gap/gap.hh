@@ -143,7 +143,7 @@ gap_avatar_available_callback(gap_State* state,
                               gap_avatar_available_callback_t cb);
 
 // Own connection status changed.
-typedef void (*gap_connection_callback_t)(gap_UserStatus const);
+typedef void (*gap_connection_callback_t)(gap_Bool, gap_Bool, const char*);
 
 gap_Status
 gap_connection_callback(gap_State* state,
