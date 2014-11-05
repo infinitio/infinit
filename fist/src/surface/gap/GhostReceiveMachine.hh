@@ -30,6 +30,9 @@ namespace surface
       progress() const override;
 
       void
+      accept() override;
+
+      void
       _accept() override;
 
       virtual

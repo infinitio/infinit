@@ -128,14 +128,24 @@ namespace surface
     }
 
     void
+    GhostReceiveMachine::accept()
+    {
+      if (!this->_accepted.opened())
+      {
+        bool onboarding = false;
+        if (this->state().metrics_reporter())
+          this->state().metrics_reporter()->transaction_accepted(
+            this->transaction_id(),
+            onboarding);
+      }
+      ReceiveMachine::accept();
+    }
+
+    void
     GhostReceiveMachine::_accept()
     {
       ELLE_TRACE("%s accepting", *this);
       ReceiveMachine::_accept();
-      if (this->state().metrics_reporter())
-        this->state().metrics_reporter()->transaction_accepted(
-          this->transaction_id(), false);
-
       auto peer_data =
         std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
           transaction().data());
