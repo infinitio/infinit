@@ -140,7 +140,7 @@ class TestLogin(unittest.TestCase):
     with infinit.oracles.servers.Oracles(
       mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
       s = o.state()
-      self.assertRaises(Exception, s.login("nosuchuser@infinit.io", state.hash_password('foo', 'bar')))
+      expect_raise(lambda: s.login("nosuchuser@infinit.io", state.hash_password('foo', 'bar')))
 
   def test_register(self):
     with infinit.oracles.servers.Oracles(
