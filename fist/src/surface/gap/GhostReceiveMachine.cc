@@ -39,39 +39,70 @@ namespace surface
       this->_machine.transition_add(this->_wait_for_cloud_upload_state,
                                     this->_wait_for_decision_state,
                                     reactor::Waitables{&this->_cloud_uploaded});
-      ELLE_TRACE("%s: starting with status %s", *this, this->data()->status);
-      switch (this->data()->status)
+      try
       {
-        case TransactionStatus::created:
-        case TransactionStatus::initialized:
-          this->_run(this->_wait_for_cloud_upload_state);
-          break;
-        case TransactionStatus::ghost_uploaded:
-          this->_run(this->_wait_for_decision_state);
-          break;
-        case TransactionStatus::accepted:
-          if (this->concerns_this_device())
-            this->_run(this->_accept_state);
-          else
-            this->_run(this->_another_device_state);
-          break;
-        case TransactionStatus::finished:
-          this->_run(this->_finish_state);
-          break;
-        case TransactionStatus::canceled:
-          this->_run(this->_cancel_state);
-          break;
-        case TransactionStatus::failed:
-          this->_run(this->_fail_state);
-          break;
-        case TransactionStatus::rejected:
-          break;
-        case TransactionStatus::started:
-        case TransactionStatus::none:
-        case TransactionStatus::deleted:
-          elle::unreachable();
+        this->_run_from_snapshot();
+      }
+      catch (elle::Error const&)
+      {
+        ELLE_TRACE("%s: starting with status %s", *this, this->data()->status);
+        switch (this->data()->status)
+        {
+          case TransactionStatus::created:
+          case TransactionStatus::initialized:
+            this->_run(this->_wait_for_cloud_upload_state);
+            break;
+          case TransactionStatus::ghost_uploaded:
+            this->_run(this->_wait_for_decision_state);
+            break;
+          case TransactionStatus::accepted:
+            if (this->concerns_this_device())
+              this->_run(this->_accept_state);
+            else
+              this->_run(this->_another_device_state);
+            break;
+          case TransactionStatus::finished:
+            this->_run(this->_finish_state);
+            break;
+          case TransactionStatus::canceled:
+            this->_run(this->_cancel_state);
+            break;
+          case TransactionStatus::failed:
+            this->_run(this->_fail_state);
+            break;
+          case TransactionStatus::rejected:
+            break;
+          case TransactionStatus::started:
+          case TransactionStatus::none:
+          case TransactionStatus::deleted:
+            elle::unreachable();
+        }
       }
     }
+
+    void
+    GhostReceiveMachine::_run_from_snapshot()
+    {
+      auto snapshot = this->snapshot();
+      ELLE_TRACE_SCOPE("%s: restore from snapshot", *this);
+      if (snapshot.current_state() == "cancel")
+        this->_run(this->_cancel_state);
+      else if (snapshot.current_state() == "ghost_uploaded")
+        this->_run(this->_wait_for_decision_state);
+      else if (snapshot.current_state() == "accept")
+        this->_run(this->_accept_state);
+      else if (snapshot.current_state() == "end")
+        this->_run(this->_end_state);
+      else if (snapshot.current_state() == "fail")
+        this->_run(this->_fail_state);
+      else if (snapshot.current_state() == "finish")
+        this->_run(this->_finish_state);
+      else if (snapshot.current_state() == "reject")
+        this->_run(this->_reject_state);
+      else
+        throw elle::Error("unknown state");
+    }
+
     void
     GhostReceiveMachine::transaction_status_update(TransactionStatus status)
     {

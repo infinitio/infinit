@@ -47,6 +47,11 @@ namespace surface
       virtual
       void
       cleanup() override;
+
+    private:
+      void
+      _run_from_snapshot();
+
       reactor::Barrier _cloud_uploaded;
       reactor::fsm::State& _wait_for_cloud_upload_state;
       ELLE_ATTRIBUTE_R(boost::filesystem::path, snapshot_path);
