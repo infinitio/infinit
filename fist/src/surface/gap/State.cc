@@ -457,13 +457,22 @@ namespace surface
       this->_login_watcher_thread = reactor::scheduler().current();
       elle::SafeFinally reset_login_thread([&] { this->_login_watcher_thread = nullptr;});
       //Wait for logged-in or logged-out status
+      std::exception_ptr eptr;
       elle::With<reactor::Scope>() << [&](reactor::Scope& s)
       {
          s.run_background("waiter1", [&] { reactor::wait(this->_logged_in); s.terminate_now(); });
          s.run_background("waiter2", [&] { reactor::wait(this->_logged_out); s.terminate_now(); });
-         reactor::wait(s, timeout);
+         try {
+           reactor::wait(s, timeout);
+         }
+         catch(...)
+         {
+           eptr = std::current_exception();
+         }
          s.terminate_now();
       };
+      if (eptr)
+        std::rethrow_exception(eptr);
       ELLE_TRACE("Login user thread unblocked");
       if (!this->_logged_in)
         throw elle::Error("Login failure");
@@ -715,6 +724,7 @@ namespace surface
         this->_logged_out.open();                                  \
         if (_login_watcher_thread)                                 \
           _login_watcher_thread->raise(std::make_exception_ptr(e));\
+        return;                                                    \
       }
       RETHROW(state::CredentialError)
       RETHROW(state::UnconfirmedEmailError)

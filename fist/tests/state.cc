@@ -23,6 +23,9 @@
 
 #include <surface/gap/Exception.hh>
 #include <surface/gap/State.hh>
+#include <surface/gap/Error.hh>
+
+#include <infinit/oracles/meta/ErrorCode.hh>
 
 #include <version.hh>
 
@@ -153,6 +156,7 @@ public:
     , _session_id(boost::uuids::random_generator()())
     , _identity(std::move(identity))
     , _trophonius()
+    , _login_result(0)
   {
     this->headers()["X-Fist-Meta-Version"] = INFINIT_VERSION;
     this->headers()["Set-Cookie"] =
@@ -175,25 +179,30 @@ public:
            Server::Parameters const&,
            elle::Buffer const&)
       {
-        std::string identity_serialized;
-        this->_identity.Save(identity_serialized);
-        return elle::sprintf(
-          "{"
-          "  \"_id\" : \"0000\","
-          "  \"fullname\" : \"Jean-Kader\","
-          "  \"handle\" : \"BOBBY\","
-          "  \"email\" : \"em@il.com\","
-          "  \"identity\" : \"%s\","
-          "  \"device_id\" : \"%s\","
-          "  \"trophonius\" : {"
-          "    \"host\": \"127.0.0.1\","
-          "    \"port\": 0,"
-          "    \"port_ssl\": %s"
-          "  }"
-          "}",
-          identity_serialized,
-          this->_device_id,
-          this->_trophonius.port());
+        if (_login_result == 0)
+        {
+          std::string identity_serialized;
+          this->_identity.Save(identity_serialized);
+          return elle::sprintf(
+            "{"
+            "  \"_id\" : \"0000\","
+            "  \"fullname\" : \"Jean-Kader\","
+            "  \"handle\" : \"BOBBY\","
+            "  \"email\" : \"em@il.com\","
+            "  \"identity\" : \"%s\","
+            "  \"device_id\" : \"%s\","
+            "  \"trophonius\" : {"
+            "    \"host\": \"127.0.0.1\","
+            "    \"port\": 0,"
+            "    \"port_ssl\": %s"
+            "  }"
+            "}",
+            identity_serialized,
+            this->_device_id,
+            this->_trophonius.port());
+        }
+        throw Exception("/login", reactor::http::StatusCode::Forbidden,
+                        elle::sprintf("{\"code\": %s}", _login_result));
       });
     this->register_route(
       "/trophonius",
@@ -321,6 +330,7 @@ public:
   ELLE_ATTRIBUTE_R(boost::uuids::uuid, session_id)
   ELLE_ATTRIBUTE_R(papier::Identity, identity)
   ELLE_ATTRIBUTE_R(Trophonius, trophonius);
+  ELLE_ATTRIBUTE_RW(int, login_result);
 };
 
 ELLE_TEST_SCHEDULED(login)
@@ -345,6 +355,39 @@ ELLE_TEST_SCHEDULED(login)
   ELLE_LOG("Logging in");
   state.login("em@il.com", password);
   ELLE_LOG("Done");
+}
+
+
+ELLE_TEST_SCHEDULED(login_failure)
+{
+  auto password = "secret";
+  auto user_id = boost::uuids::random_generator()();
+  cryptography::KeyPair keys =
+    cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
+                                    papier::Identity::keypair_length);
+  auto identity = generate_identity(
+    keys, boost::lexical_cast<std::string>(user_id), "my identity", password);
+  auto device_id = boost::uuids::random_generator()();
+  Server<> server(identity, device_id);
+  std::string download_dir =
+    elle::os::path::join(elle::system::home_directory().string(), "Downloads");
+  surface::gap::State state("http",
+                            "127.0.0.1",
+                            server.port(),
+                            device_id,
+                            fingerprint,
+                            download_dir);
+  using ErrorCode = ::oracles::meta::client::ErrorCode;
+  server.login_result((int)ErrorCode::email_not_confirmed);
+  BOOST_CHECK_THROW(state.login("em@il.com", password), std::exception);
+  server.login_result((int)ErrorCode::email_password_dont_match);
+  BOOST_CHECK_THROW(state.login("em@il.com", password), std::exception);
+  server.login_result((int)ErrorCode::deprecated);
+  BOOST_CHECK_THROW(state.login("em@il.com", password), std::exception);
+  server.login_result((int)ErrorCode::already_logged_in);
+  BOOST_CHECK_THROW(state.login("em@il.com", password), std::exception);
+  server.login_result(0);
+  BOOST_CHECK_NO_THROW(state.login("em@il.com", password));
 }
 
 class ForbiddenTrophonius
@@ -517,6 +560,7 @@ ELLE_TEST_SUITE()
 {
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(login), 0, 20);
+  suite.add(BOOST_TEST_CASE(login_failure), 0, 20);
   suite.add(BOOST_TEST_CASE(trophonius_forbidden), 0, 20);
   suite.add(BOOST_TEST_CASE(trophonius_timeout), 0, 10);
 }
