@@ -464,6 +464,7 @@ namespace surface
          reactor::wait(s, timeout);
          s.terminate_now();
       };
+      ELLE_TRACE("Login user thread unblocked");
       if (!this->_logged_in)
         throw elle::Error("Login failure");
     }
@@ -536,7 +537,7 @@ namespace surface
           {
             this->_trophonius.swap(*trophonius);
           }
-          else
+          else if (!this->_trophonius)
           {
             this->_trophonius.reset(new infinit::oracles::trophonius::Client(
             [this] (infinit::oracles::trophonius::ConnectionState const& status)
@@ -788,6 +789,8 @@ namespace surface
         this->_meta.logged_in(false);
         this->_metrics_reporter->user_logout(false, elle::exception_string());
       }
+      if (this->_trophonius)
+        this->_trophonius->disconnect();
       this->_logged_out.open();
     }
 
@@ -1043,6 +1046,7 @@ namespace surface
             this->_peer_transaction_resync();
             this->_link_transaction_resync();
             resynched = true;
+            ELLE_TRACE("Opening logged_in barrier");
             _logged_in.open();
           }
           catch (reactor::Terminate const&)
