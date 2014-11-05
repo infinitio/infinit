@@ -342,7 +342,9 @@ ELLE_TEST_SCHEDULED(login)
                             device_id,
                             fingerprint,
                             download_dir);
+  ELLE_LOG("Logging in");
   state.login("em@il.com", password);
+  ELLE_LOG("Done");
 }
 
 class ForbiddenTrophonius
@@ -414,9 +416,10 @@ ELLE_TEST_SCHEDULED(trophonius_forbidden)
                             download_dir);
   reactor::Signal reconnected;
   auto tropho = elle::make_unique<infinit::oracles::trophonius::Client>(
-    [&] (bool connected)
+    [&] (infinit::oracles::trophonius::ConnectionState connected)
     {
-      if (!connected)
+      ELLE_LOG("Received update: %s", connected.connected);
+      if (!connected.connected)
         server.session_id(boost::uuids::random_generator()());
       else
         reconnected.signal();
@@ -425,7 +428,9 @@ ELLE_TEST_SCHEDULED(trophonius_forbidden)
     fingerprint);
   tropho->ping_period(500_ms);
   tropho->reconnection_cooldown(0_sec);
+  ELLE_LOG("Logging in...");
   state.login("em@il.com", password, std::move(tropho));
+  ELLE_LOG("Logged in, waiting for reconnected");
   reactor::wait(reconnected);
 }
 
@@ -450,6 +455,8 @@ protected:
   _serve(std::unique_ptr<reactor::network::SSLSocket> socket) override
   {
     socket->write("{\"poke\": \"ouch\"}\n");
+    reactor::sleep(1_sec);
+    socket->write("{\"notification_type\": -666, \"response_code\": 200, \"response_details\": \"details\"}\n");
     auto connect_data = elle::json::read(*socket);
     try
     {
@@ -491,21 +498,27 @@ ELLE_TEST_SCHEDULED(trophonius_timeout)
                             fingerprint,
                             download_dir);
   auto tropho = elle::make_unique<infinit::oracles::trophonius::Client>(
-    [&] (bool connected) {},
+    [&] (infinit::oracles::trophonius::ConnectionState connected) {},
     std::bind(&surface::gap::State::on_reconnection_failed, &state),
-    fingerprint);
-  tropho->connect_timeout(500_ms);
-  BOOST_CHECK_THROW(state.login("em@il.com", password, std::move(tropho)),
-                    surface::gap::Exception);
-  BOOST_CHECK_EQUAL(state.logged_in(), false);
+    fingerprint, 500_ms);
+  auto trophoPtr = tropho.get();
+  state.reconnection_cooldown(100_ms);
+  tropho->connect_timeout(100_ms);
+  reactor::Thread thread("fix_login", [&]
+    {
+      reactor::sleep(2_sec);
+      trophoPtr->connect_timeout(1_min);
+    });
+  BOOST_CHECK_NO_THROW(state.login("em@il.com", password, std::move(tropho)));
+  BOOST_CHECK_EQUAL(state.logged_in(), true);
 }
 
 ELLE_TEST_SUITE()
 {
   auto& suite = boost::unit_test::framework::master_test_suite();
-  suite.add(BOOST_TEST_CASE(login), 0, 5);
-  suite.add(BOOST_TEST_CASE(trophonius_forbidden), 0, 5);
-  suite.add(BOOST_TEST_CASE(trophonius_timeout), 0, 5);
+  suite.add(BOOST_TEST_CASE(login), 0, 20);
+  suite.add(BOOST_TEST_CASE(trophonius_forbidden), 0, 20);
+  suite.add(BOOST_TEST_CASE(trophonius_timeout), 0, 10);
 }
 
 const std::vector<unsigned char> fingerprint =
