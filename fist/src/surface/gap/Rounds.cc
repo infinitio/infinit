@@ -131,7 +131,7 @@ namespace surface
       std::unique_ptr<reactor::network::FingerprintedSocket> sock(
         new reactor::network::FingerprintedSocket(
           fallback.fallback_host,
-          boost::lexical_cast<std::string>(fallback.fallback_port_ssl),
+          std::to_string(fallback.fallback_port_ssl),
           fingerprint));
       sock->shutdown_asynchronous(true);
       ELLE_DUMP("%s: send transaction key %s (of length: %i)",
