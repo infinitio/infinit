@@ -686,6 +686,7 @@ namespace surface
       ELLE_ATTRIBUTE_RP(Configuration, configuration, protected:);
       ELLE_ATTRIBUTE(std::string, email);
       ELLE_ATTRIBUTE(std::string, password);
+      ELLE_ATTRIBUTE(reactor::Thread*, login_watcher_thread);
     private:
       void
       _apply_configuration(elle::json::Object json);

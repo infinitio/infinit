@@ -149,6 +149,7 @@ namespace surface
       , _reconnection_cooldown(10_sec)
       , _device_uuid(std::move(device))
       , _device()
+      , _login_watcher_thread(nullptr)
     {
       this->_logged_out.open();
       ELLE_TRACE_SCOPE("%s: create state", *this);
@@ -453,6 +454,8 @@ namespace surface
         "login",
         [=] { this->_login(email, password, tropho);
         }));
+      this->_login_watcher_thread = reactor::scheduler().current();
+      elle::SafeFinally reset_login_thread([&] { this->_login_watcher_thread = nullptr;});
       //Wait for logged-in or logged-out status
       elle::With<reactor::Scope>() << [&](reactor::Scope& s)
       {
@@ -703,13 +706,20 @@ namespace surface
         this->_logged_in.open();
         return;
       }
-      catch(state::CredentialError const& l)
-      { // Permanent failure, abort
-        this->enqueue(ConnectionStatus(false, false, l.what()));
-        ELLE_WARN("%s: login fatal failure: %s", *this, l);
-        this->_logged_out.open();
-        return;
+      #define RETHROW(ExceptionType)                              \
+      catch(ExceptionType const& e)                                \
+      { /* Permanent failure, abort*/                              \
+        this->enqueue(ConnectionStatus(false, false, e.what()));   \
+        ELLE_WARN("%s: login fatal failure: %s", *this, e);        \
+        this->_logged_out.open();                                  \
+        if (_login_watcher_thread)                                 \
+          _login_watcher_thread->raise(std::make_exception_ptr(e));\
       }
+      RETHROW(state::CredentialError)
+      RETHROW(state::UnconfirmedEmailError)
+      RETHROW(state::VersionRejected)
+      RETHROW(state::AlreadyLoggedIn)
+      #undef RETHROW
       catch(elle::Exception const& e)
       { // Assume temporary failure and retry
         this->enqueue(ConnectionStatus(false, true, e.what()));
