@@ -706,7 +706,15 @@ namespace infinit
               this->connect_callback(ConnectionState{false,
                 elle::Error(elle::exception_string()), true});
             }
-            this->reconnect_failed_callback();
+            try
+            {
+              this->reconnect_failed_callback();
+            }
+            catch(elle::Exception const& e)
+            {
+              ELLE_WARN("%s: reconnection callback failed with %s",
+                        *this, e);
+            }
             boost::random::mt19937 rng;
             rng.seed(static_cast<unsigned int>(std::time(0)));
             boost::random::uniform_int_distribution<> random(100, 150);
