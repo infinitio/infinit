@@ -682,6 +682,10 @@ namespace surface
   }
 }
 
+std::ostream&
+operator <<(std::ostream& out,
+            gap_TransactionStatus status);
+
 #include <surface/gap/State.hxx>
 
 #endif

@@ -1213,3 +1213,49 @@ namespace surface
     }
   }
 }
+
+std::ostream&
+operator <<(std::ostream& out,
+            gap_TransactionStatus status)
+{
+  switch (status)
+  {
+    case gap_transaction_new:
+      out << "new";
+      break;
+    case gap_transaction_on_other_device:
+      out << "on_other_device";
+      break;
+    case gap_transaction_waiting_accept:
+      out << "waiting_accept";
+      break;
+    case gap_transaction_waiting_data:
+      out << "waiting_data";
+      break;
+    case gap_transaction_connecting:
+      out << "connecting";
+      break;
+    case gap_transaction_transferring:
+      out << "transferring";
+      break;
+    case gap_transaction_cloud_buffered:
+      out << "cloud_buffered";
+      break;
+    case gap_transaction_finished:
+      out << "finished";
+      break;
+    case gap_transaction_failed:
+      out << "failed";
+      break;
+    case gap_transaction_canceled:
+      out << "canceled";
+      break;
+    case gap_transaction_rejected :
+      out << "rejected ";
+      break;
+    case gap_transaction_deleted :
+      out << "deleted ";
+      break;
+  }
+  return out;
+}
