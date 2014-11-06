@@ -384,7 +384,7 @@ namespace surface
       ELLE_ASSERT_EQ(file_list.size(), this->files().size());
       // Change state to SenderCreateTransaction once we've calculated the file
       // size and have the file list.
-      ELLE_TRACE("%s: Creating transaction, first_file=%s, dir=%s",
+      ELLE_TRACE("%s: create transaction, first_file=%s, dir=%s",
                  *this, first_file,
                  boost::filesystem::is_directory(first_file));
       {
@@ -427,6 +427,7 @@ namespace surface
       }
       this->state().meta().update_transaction(this->transaction_id(),
                                               TransactionStatus::initialized);
+      this->transaction().data()->status = TransactionStatus::initialized;
     }
 
     void
