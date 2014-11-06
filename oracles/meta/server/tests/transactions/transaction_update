@@ -90,7 +90,7 @@ s[FA][C] = E; s[FA][I] = E; s[FA][A] = E; s[FA][F] = E; s[FA][R] = E; s[FA][CA] 
 # [E, E, E, S, S, S, S]) # FA
 
 r = recipient_transitions
-r[C][C]  = O; r[C][I]  = E; r[C][A]  = E; r[C][F]  = E; r[C][R]  = E; r[C][CA]  = E; r[C][FA]  = E;
+r[C][C]  = O; r[C][I]  = E; r[C][A]  = E; r[C][F]  = E; r[C][R]  = E; r[C][CA]  = O; r[C][FA]  = E;
 r[I][C]  = E; r[I][I]  = O; r[I][A]  = O; r[I][F]  = E; r[I][R]  = O; r[I][CA]  = O; r[I][FA]  = O;
 r[A][C]  = E; r[A][I]  = E; r[A][A]  = O; r[A][F]  = O; r[A][R]  = E; r[A][CA]  = O; r[A][FA]  = O;
 r[F][C]  = E; r[F][I]  = E; r[F][A]  = E; r[F][F]  = O; r[F][R]  = E; r[F][CA]  = E; r[F][FA]  = E;
@@ -172,4 +172,5 @@ with Meta() as meta:
     for expected_state in STATUS:
       tr = transaction(bob, alice, current_state)
       assert recipient_transitions[current_state][expected_state] is not None
+      print(current_state, expected_state, file = sys.stderr)
       recipient_transitions[current_state][expected_state](alice, tr, expected_state)

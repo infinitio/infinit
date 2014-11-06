@@ -59,15 +59,6 @@ namespace surface
       _create_transaction() = 0;
       reactor::fsm::State& _create_transaction_state;
 
-      // These functions are implemented by subclasses so that the correct
-      // metrics are sent.
-      virtual
-      void
-      cancel() = 0;
-      virtual
-      void
-      _fail() = 0;
-
     /*-----------------.
     | Transaction data |
     `-----------------*/

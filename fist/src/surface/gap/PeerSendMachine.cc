@@ -275,38 +275,6 @@ namespace surface
     `---------------*/
 
     void
-    PeerSendMachine::cancel()
-    {
-      if (!this->canceled().opened())
-      {
-        bool onboarding = false;
-        if (this->state().metrics_reporter())
-          this->state().metrics_reporter()->transaction_ended(
-            this->transaction_id(),
-            infinit::oracles::Transaction::Status::canceled,
-            "",
-            onboarding,
-            this->transaction().canceled_by_user());
-      }
-      TransactionMachine::cancel();
-    }
-
-    void
-    PeerSendMachine::_fail()
-    {
-      TransactionMachine::_fail();
-      if (this->state().metrics_reporter())
-      {
-        bool onboarding = false;
-        this->state().metrics_reporter()->transaction_ended(
-        this->transaction_id(),
-        infinit::oracles::Transaction::Status::failed,
-        transaction().failure_reason(),
-        onboarding);
-      }
-    }
-
-    void
     PeerSendMachine::transaction_status_update(TransactionStatus status)
     {
       ELLE_TRACE_SCOPE("%s: update with new transaction status %s",
@@ -442,7 +410,8 @@ namespace surface
       // This was the cause of the "unable to apply crypto function" bug.
       auto const& peer = this->state().user_sync(this->data()->recipient_id);
       // Populate the frete.
-      this->frete().save_snapshot();
+      if (!this->data()->is_ghost)
+        this->frete().save_snapshot();
       if (this->state().metrics_reporter())
       {
         bool onboarding = false;
@@ -785,13 +754,13 @@ namespace surface
         {
           ELLE_WARN("%s: source file disappeared, cancel : %s",
                     *this, e.what());
-          this->cancel();
+          this->cancel("source file missing");
         }
         else
         {
           ELLE_WARN("%s: source file corrupted (%s), cancel",
                     *this, e.what());
-          this->cancel();
+          this->cancel(elle::sprintf("source file error: %s", e.what()));
         }
       }
       catch(...)
@@ -838,6 +807,7 @@ namespace surface
       if (this->_frete == nullptr)
       {
         ELLE_TRACE_SCOPE("%s: initialize frete", *this);
+        ELLE_ASSERT(!this->data()->is_ghost);
         this->_frete = elle::make_unique<frete::Frete>(
           this->transaction_id(),
           this->state().identity().pair(),

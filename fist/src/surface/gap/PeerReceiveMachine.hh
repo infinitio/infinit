@@ -62,9 +62,6 @@ namespace surface
       accept() override;
       virtual
       void
-      cancel() override;
-      virtual
-      void
       reject() override;
 
     private:
@@ -77,8 +74,6 @@ namespace surface
       _cloud_operation() override;
       void
       _cloud_synchronize() override;
-      void
-      _fail();
 
     /*-----------------------.
     | Machine implementation |

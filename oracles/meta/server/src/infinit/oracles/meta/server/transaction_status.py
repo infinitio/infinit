@@ -17,7 +17,9 @@ transitions = {
       CANCELED,
       FAILED
       ],
-    False: [],
+    False: [
+      CANCELED,
+      ],
     },
   INITIALIZED:
     {

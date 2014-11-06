@@ -27,6 +27,8 @@ statuses = {
   5: ("rejected"),
   6: ("canceled"),
   7: ("failed"),
+  8: ('deleted'),
+  9: ('ghost_uploaded'),
 }
 
 statuses_back = dict((value, key) for key, value in statuses.items())
