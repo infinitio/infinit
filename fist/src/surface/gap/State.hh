@@ -76,6 +76,8 @@ namespace surface
                         trophonius);
       ELLE_ATTRIBUTE(std::string, forced_trophonius_host);
       ELLE_ATTRIBUTE(int, forced_trophonius_port);
+      ELLE_ATTRIBUTE_RW(boost::optional<std::string>, s3_hostname);
+
 
     private:
       void
