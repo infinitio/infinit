@@ -85,10 +85,6 @@ namespace surface
       void
       _finish() override;
 
-      virtual
-      void
-      _finish() override;
-
     public:
       virtual
       void
