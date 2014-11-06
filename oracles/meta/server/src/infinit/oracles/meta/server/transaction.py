@@ -93,6 +93,16 @@ class Mixin:
       else:
         return self.success(transaction)
 
+  @api('/transaction/download/<transaction_hash>', method='POST')
+  def transaction_download(self, transaction_hash:str):
+    res = self.database.transactions.update(
+          {'transaction_hash': transaction_hash},
+          {'$set': {'status': transaction_status.FINISHED}})
+    if res['updatedExisting']:
+      return self.success()
+    else:
+      return self.not_found()
+
   @api('/transaction/<id>')
   @require_logged_in_or_admin
   def transaction_view(self, id: bson.ObjectId):
