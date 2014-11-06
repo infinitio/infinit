@@ -128,6 +128,12 @@ namespace infinit
       void
       _user_changed_download_dir(bool fallback) override;
 
+      /// UI metrics:
+      void
+      _ui(std::string const& event,
+          std::string const& from,
+          Additional const&) override;
+
     /// Dispatch metrics.
     private:
       void

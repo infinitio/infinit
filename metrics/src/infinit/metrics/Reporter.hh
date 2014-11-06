@@ -45,6 +45,8 @@ namespace infinit
     {
     friend CompositeReporter;
       typedef std::function<void()> Metric;
+    public:
+      typedef std::unordered_map<std::string, std::string> Additional;
 
     public:
       Reporter(std::string const& name);
@@ -297,6 +299,21 @@ namespace infinit
       virtual
       void
       _user_changed_download_dir(bool fallback);
+
+      /// UI metrics.
+    public:
+      void
+      ui(std::string const& event,
+         std::string const& from,
+         Additional const& additional);
+
+      /// UI metrics implementation.
+    protected:
+      virtual
+      void
+      _ui(std::string const& event,
+          std::string const& from,
+          Additional const& additional);
 
     /// Queue handling.
     private:

@@ -169,6 +169,14 @@ namespace infinit
       void
       _user_changed_download_dir(bool fallback) override;
 
+    /// Implementations of UI metrics.
+    private:
+      void
+      _ui(std::string const& event,
+          std::string const& from,
+          Additional const& additional) override;
+
+
     /// Private helper functions.
     private:
       std::string
@@ -193,6 +201,7 @@ namespace infinit
       ELLE_ATTRIBUTE(std::string, base_url);
       ELLE_ATTRIBUTE(std::string, transaction_dest);
       ELLE_ATTRIBUTE(std::string, user_dest);
+      ELLE_ATTRIBUTE(std::string, ui_dest);
       ELLE_ATTRIBUTE_R(reactor::http::StatusCode, expected_status);
     };
   }

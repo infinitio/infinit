@@ -321,6 +321,13 @@ namespace infinit
         std::bind(&Reporter::_user_changed_download_dir, this, fallback));
     }
 
+    void
+    Reporter::ui(std::string const& event,
+                 std::string const& from,
+                 Additional const& additional)
+    {
+      this->_push(std::bind(&Reporter::_ui, this, event, from, additional));
+    }
     /*---------------.
     | Queue Handling |
     `---------------*/
@@ -509,6 +516,14 @@ namespace infinit
     Reporter::_user_changed_download_dir(bool fallback)
     {}
 
+    /*--------------------------.
+    | Default UI Implementation |
+    `--------------------------*/
+    void
+    Reporter::_ui(std::string const& event,
+                  std::string const& from,
+                  Additional const&)
+    {}
     /*----------.
     | Printable |
     `----------*/

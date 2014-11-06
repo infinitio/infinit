@@ -304,5 +304,13 @@ namespace infinit
         std::bind(&Reporter::_user_changed_download_dir,
                   std::placeholders::_1, fallback));
     }
+
+    void
+    CompositeReporter::_ui(std::string const& event,
+                           std::string const& from,
+                           Additional const& additional)
+    {
+      this->_dispatch(std::bind(&Reporter::_ui, std::placeholders::_1, event, from, additional));
+    }
   }
 }
