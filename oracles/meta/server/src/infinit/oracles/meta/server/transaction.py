@@ -95,13 +95,20 @@ class Mixin:
 
   @api('/transaction/download/<transaction_hash>', method='POST')
   def transaction_download(self, transaction_hash:str):
-    res = self.database.transactions.update(
+    transaction = self.database.transactions.find_and_modify(
           {'transaction_hash': transaction_hash},
-          {'$set': {'status': transaction_status.FINISHED}})
-    if res['updatedExisting']:
-      return self.success()
-    else:
-      return self.not_found()
+          {'$set': {'status': transaction_status.FINISHED}},
+          new = True,
+          )
+    if transaction is None:
+      self.not_found()
+
+    self.notifier.notify_some(
+      notifier.PEER_TRANSACTION,
+      recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
+      message = transaction,
+      )
+    return dict()
 
   @api('/transaction/<id>')
   @require_logged_in_or_admin
