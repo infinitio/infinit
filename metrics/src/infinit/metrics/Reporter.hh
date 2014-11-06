@@ -16,27 +16,27 @@ namespace infinit
 {
   namespace metrics
   {
-     enum TransferMethod
-      {
-        TransferMethodP2P,
-        TransferMethodCloud,
-        TransferMethodGhostCloud,
-      };
+    enum TransferMethod
+    {
+      TransferMethodP2P,
+      TransferMethodCloud,
+      TransferMethodGhostCloud,
+    };
 
-      enum TransferExitReason
-      {
-        TransferExitReasonFinished,
-        TransferExitReasonExhausted, // no more data from that source
-        TransferExitReasonError, // specific error
-        TransferExitReasonTerminated, // terminated by fsm state change
-        TransferExitReasonUnknown, // not properly caught reason should not happen
-      };
+    enum TransferExitReason
+    {
+      TransferExitReasonFinished,
+      TransferExitReasonExhausted, // no more data from that source
+      TransferExitReasonError, // specific error
+      TransferExitReasonTerminated, // terminated by fsm state change
+      TransferExitReasonUnknown, // not properly caught reason should not happen
+    };
 
-      enum TransactionType
-      {
-        LinkTransaction,
-        PeerTransaction,
-      };
+    enum TransactionType
+    {
+      LinkTransaction,
+      PeerTransaction,
+    };
 
     class CompositeReporter;
     /// Abstract metrics reporter.

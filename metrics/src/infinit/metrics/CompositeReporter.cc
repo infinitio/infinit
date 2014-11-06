@@ -209,13 +209,13 @@ namespace infinit
     }
 
     void
-    CompositeReporter:: _aws_error(std::string const& transaction_id,
-                                   std::string const& operation,
-                                   std::string const& url,
-                                   unsigned int attempt,
-                                   int http_status,
-                                   std::string const& aws_error_code,
-                                   std::string const& message)
+    CompositeReporter::_aws_error(std::string const& transaction_id,
+                                  std::string const& operation,
+                                  std::string const& url,
+                                  unsigned int attempt,
+                                  int http_status,
+                                  std::string const& aws_error_code,
+                                  std::string const& message)
     {
        this->_dispatch(std::bind(&Reporter::_aws_error,
                                  std::placeholders::_1,
