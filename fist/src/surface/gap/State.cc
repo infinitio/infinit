@@ -1287,6 +1287,13 @@ namespace surface
     }
 
 
+    void
+    State::change_password(std::string const& old_password,
+                           std::string const& new_password)
+    {
+      meta().change_password(old_password, new_password);
+    }
+
     /*----------.
     | Printable |
     `----------*/

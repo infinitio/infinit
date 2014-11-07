@@ -349,6 +349,9 @@ namespace surface
       void
       update_device(std::string const& name) const;
 
+      void
+      change_password(std::string const& old_password,
+                      std::string const& new_password);
       // Could be factorized.
       /*------.
       | Users |

@@ -517,6 +517,7 @@ BOOST_PYTHON_MODULE(state)
     .def("reconnection_cooldown",
       static_cast<void(State::*)(boost::posix_time::time_duration const&)>
       (&State::reconnection_cooldown))
+    .def("change_password", &State::change_password)
     ;
     // Static functions.
     boost::python::def("hash_password", &State::hash_password);
