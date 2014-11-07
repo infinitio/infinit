@@ -60,6 +60,8 @@ class Mixin:
       },
       fields = ['_id']):
       try:
+        # FIXME: _transaction_update will re-perform a mongo search on
+        # the transaction id ...
         self._transaction_update(str(transaction['_id']),
                                  status = transaction_status.CANCELED,
                                  user = user)
