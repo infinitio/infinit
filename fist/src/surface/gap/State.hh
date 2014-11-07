@@ -237,6 +237,12 @@ namespace surface
       void
       set_output_dir(std::string const& dir, bool fallback);
 
+      /// Ensure that State's model is cleared and that there are no pending
+      /// notifications for the UI.
+      /// If the user is logged in, this will log the user out.
+      void
+      clean();
+
     private:
       ELLE_ATTRIBUTE_RW(boost::posix_time::time_duration,
         reconnection_cooldown);

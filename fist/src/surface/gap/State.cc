@@ -808,6 +808,15 @@ namespace surface
     }
 
     void
+    State::clean()
+    {
+      if (this->_logged_in)
+        this->logout();
+      else
+        this->_cleanup();
+    }
+
+    void
     State::_cleanup()
     {
       ELLE_TRACE_SCOPE("%s: cleaning up the state", *this);
