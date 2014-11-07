@@ -1126,8 +1126,7 @@ namespace surface
     {
       ELLE_WARN("%s: invalid trophonius credentials", *this);
       this->logout();
-      this->enqueue(ConnectionStatus(false, true, "Invalid trophonius credentials"));
-      this->login(this->_email, this->_password, 0_sec);
+      this->enqueue(ConnectionStatus(false, false, "Invalid trophonius credentials"));
       return;
     }
 
