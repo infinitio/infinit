@@ -51,7 +51,7 @@ ELLE_TEST_SCHEDULED(login)
   while (state_transaction.data()->status ==
          infinit::oracles::Transaction::Status::created)
   {
-    reactor::sleep(100_ms);
+    reactor::sleep(10_ms);
     state.poll();
   }
   BOOST_CHECK_EQUAL(state_transaction.data()->status,
