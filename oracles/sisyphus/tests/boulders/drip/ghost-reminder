@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+
+# utils first, beware of system OpenSSL.
+from utils import *
+
+import sisyphus
+import sisyphus.boulders.drip
+
+
+class GhostReminder(sisyphus.boulders.drip.GhostReminder):
+
+  def __init__(self, sisyphus):
+    super().__init__(sisyphus)
+    self.__now = datetime.datetime.utcnow()
+
+  @property
+  def now(self):
+    return self.__now
+
+  @now.setter
+  def now(self, value):
+    self.__now = value
+
+with mongobox.MongoBox() as mongo:
+  with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
+    mandrill = Mandrill()
+    sisy = sisyphus.Sisyphus(mongo_port = mongo.port,
+                                 mandrill = mandrill)
+    sisy._Sisyphus__mongo.__class__ = GestapoMongoClient
+    reminder = GhostReminder(sisy)
+    # Check nothing is sent with no users
+    sisy.cron()
+    assert not mandrill.emails
+
+    # Create a ghost transaction
+    device = 'device'
+    sender = meta.user_register('sender@infinit.io',
+                                '*' * 64, 'Foo Bar')
+    tid = meta.transaction_create(sender, 'ghost@infinit.io',
+                                  ['foobar'], 1, 42, False, device)
+    tid = tid['created_transaction_id']
+    meta._transaction_update(tid, 1, device, None, sender)
+
+    # Create a real trasnsaction to test mongo queries complexity
+    bystander = meta.user_register('bystander@infinit.io',
+                                   '*' * 64, 'Foo Bar')
+    meta.transaction_create(sender, 'bystander@infinit.io',
+                            ['foobar'], 1, 42, False, device)
+
+    # Check nothing is sent for a fresh transaction
+    sisy.cron()
+    assert not mandrill.emails
+
+    # Check nothing is sent while the transaction is not uploaded.
+    reminder.now = reminder.now + datetime.timedelta(days = 2)
+    meta.now = reminder.now
+    sisy.cron()
+    assert not mandrill.emails
+
+    # Finish upload.
+    meta._transaction_update(tid, 4, device, None, sender)
+
+    # Check nothing is sent less than a day after upload
+    reminder.now = reminder.now + datetime.timedelta(hours = 8)
+    meta.now = reminder.now
+    sisy.cron()
+    assert not mandrill.emails
+
+    # Check nothing reminder 1 is sent 24h after upload
+    reminder.now = reminder.now + datetime.timedelta(days = 2)
+    meta.now = reminder.now
+    sisy.cron()
+    mandrill.emails == ['ghost@infinit.io']
+    sisy.cron()
+    assert not mandrill.emails
+
+    # Check nothing reminder 2 is sent 72h after upload
+    reminder.now = reminder.now + datetime.timedelta(days = 2)
+    meta.now = reminder.now
+    sisy.cron()
+    mandrill.emails == ['ghost@infinit.io']
+    sisy.cron()
+    assert not mandrill.emails

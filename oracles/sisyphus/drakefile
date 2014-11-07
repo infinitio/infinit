@@ -48,11 +48,13 @@ def configure(
 
     check = drake.Rule('check')
     for name in (
+        'boulders/drip/ghost-reminder',
         'boulders/drip/onboarding',
     ):
       test = drake.node('tests/%s' % name)
       for source in sources_built:
         test.dependency_add(source)
+      test.dependency_add(drake.node('tests/boulders/drip/utils.py'))
       test.dependency_add(meta)
       test.dependency_add(mongobox)
       runner = drake.Runner(
