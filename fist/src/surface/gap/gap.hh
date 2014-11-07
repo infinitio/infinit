@@ -84,6 +84,9 @@ gap_set_proxy(gap_State* state,
 gap_Status
 gap_unset_proxy(gap_State* state, gap_ProxyType type);
 
+void
+gap_clean_state(gap_State* state);
+
 /// Login to meta.
 gap_Status
 gap_login(gap_State* state,

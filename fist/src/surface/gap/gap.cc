@@ -249,6 +249,19 @@ gap_unset_proxy(gap_State* _state, gap_ProxyType type)
     });
 }
 
+void
+gap_clean_state(gap_State* state)
+{
+  run<gap_Status>(
+    state,
+    "flush state",
+    [&] (surface::gap::State& state)
+    {
+      state.clean();
+      return gap_ok;
+    });
+}
+
 gap_Status
 gap_login(gap_State* _state,
           char const* email,
@@ -472,7 +485,6 @@ gap_change_password(gap_State* state,
     "change password",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      auto fullname = state.me().fullname;
       state.meta().change_password(
         state.hash_password(state.me().email, old_password),
         state.hash_password(state.me().email, new_password));
