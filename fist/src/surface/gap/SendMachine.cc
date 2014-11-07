@@ -117,7 +117,7 @@ namespace surface
       {}
 
       virtual
-      std::string
+      aws::URL
       hostname(aws::Credentials const& credentials) const override
       {
         auto replace = this->_state.s3_hostname();

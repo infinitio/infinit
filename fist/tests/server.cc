@@ -508,7 +508,9 @@ State::State(Server& server,
     std::move(device_id), fingerprint,
     elle::os::path::join(elle::system::home_directory().string(), "Downloads"))
 {
-  this->s3_hostname(elle::sprintf("http://localhost:%s/s3", server.port()));
+  this->s3_hostname(aws::URL{"http://",
+                             elle::sprintf("localhost:%s", server.port()),
+                             "/s3"});
 }
 
 const std::vector<unsigned char> fingerprint =
