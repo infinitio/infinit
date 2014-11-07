@@ -174,36 +174,13 @@ public:
     this->register_route(
       "/login",
       reactor::http::Method::POST,
-      [&] (Server::Headers const&,
-           Server::Cookies const&,
-           Server::Parameters const&,
-           elle::Buffer const&)
-      {
-        if (_login_result == 0)
-        {
-          std::string identity_serialized;
-          this->_identity.Save(identity_serialized);
-          return elle::sprintf(
-            "{"
-            "  \"_id\" : \"0000\","
-            "  \"fullname\" : \"Jean-Kader\","
-            "  \"handle\" : \"BOBBY\","
-            "  \"email\" : \"em@il.com\","
-            "  \"identity\" : \"%s\","
-            "  \"device_id\" : \"%s\","
-            "  \"trophonius\" : {"
-            "    \"host\": \"127.0.0.1\","
-            "    \"port\": 0,"
-            "    \"port_ssl\": %s"
-            "  }"
-            "}",
-            identity_serialized,
-            this->_device_id,
-            this->_trophonius.port());
-        }
-        throw Exception("/login", reactor::http::StatusCode::Forbidden,
-                        elle::sprintf("{\"code\": %s}", _login_result));
-      });
+      std::bind(&Server::_post_login,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2,
+                std::placeholders::_3,
+                std::placeholders::_4));
+
     this->register_route(
       "/trophonius",
       reactor::http::Method::GET,
@@ -302,6 +279,38 @@ public:
       {
         return "{\"success\": true, \"links\": []}";
       });
+  }
+
+  std::string
+  _post_login(Headers const&,
+        Cookies const&,
+        Parameters const&,
+        elle::Buffer const&)
+  {
+    if (_login_result == 0)
+    {
+       std::string identity_serialized;
+       this->_identity.Save(identity_serialized);
+       return elle::sprintf(
+         "{"
+         "  \"_id\" : \"0000\","
+         "  \"fullname\" : \"Jean-Kader\","
+         "  \"handle\" : \"BOBBY\","
+         "  \"email\" : \"em@il.com\","
+         "  \"identity\" : \"%s\","
+         "  \"device_id\" : \"%s\","
+         "  \"trophonius\" : {"
+         "    \"host\": \"127.0.0.1\","
+         "    \"port\": 0,"
+         "    \"port_ssl\": %s"
+         "  }"
+         "}",
+         identity_serialized,
+         this->_device_id,
+         this->_trophonius.port());
+     }
+     throw Exception("/login", reactor::http::StatusCode::Forbidden,
+                     elle::sprintf("{\"code\": %s}", _login_result));
   }
 
   virtual
