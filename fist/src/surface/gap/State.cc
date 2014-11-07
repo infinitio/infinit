@@ -576,7 +576,7 @@ namespace surface
             new reactor::Thread{
               *reactor::Scheduler::scheduler(),
                 "metrics heartbeat",
-                [this]
+                [&]
                 {
                   while (true)
                   {
@@ -650,7 +650,7 @@ namespace surface
             new reactor::Thread{
               scheduler,
               "avatar fetched",
-              [this]
+              [&]
               {
                 while (true)
                 {
@@ -693,7 +693,7 @@ namespace surface
             new reactor::Thread{
               scheduler,
                 "poll",
-                [this]
+                [&]
                 {
                   while (true)
                   {
