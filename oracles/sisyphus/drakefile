@@ -16,6 +16,7 @@ def configure(
     elle,
     meta,
     python_common,
+    production_build,
 ):
   global build, check, install
 
@@ -23,7 +24,8 @@ def configure(
     git = drake.git.Git()
     version = drake.node(
       'lib/python/infinit/oracles/sisyphus/version.py')
-    PythonVersionGenerator(version, git = git)
+    PythonVersionGenerator(version, git = git,
+                           production_build = production_build)
 
     sources = drake.nodes(
       'src/infinit/oracles/sisyphus/__init__.py',
