@@ -170,6 +170,36 @@ class TestLogin(unittest.TestCase):
       self.assertTrue(last_statuses[-1]['status'])
       self.assertTrue(s.logged_in())
 
+  def test_login_tropho_disconnect(self):
+    import platform
+    if platform.system() == 'Windows':
+      return
+    with infinit.oracles.servers.Oracles(
+      mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
+      s = o.state()
+      last_statuses = []
+      def status(s):
+        print('Status update: %s' % s)
+        last_statuses.append(s)
+      s.attach_connection_callback(status)
+      s.login('mefyl@infinit.io',
+              state.hash_password('mefyl@infinit.io', 'mefyl'))
+      for i in range(10):
+        s.poll()
+      self.assertTrue(last_statuses[-1]['status'])
+      last_statuses.clear()
+      import signal
+      import threading
+      #send SIGUSR1 to tropho
+      signal.pthread_kill(threading.get_ident(), signal.SIGUSR1)
+      for i in range(10):
+        s.poll()
+        reactor.sleep(datetime.timedelta(milliseconds = 100))
+      self.assertEqual(len(last_statuses), 2)
+      self.assertTrue(last_statuses[0]['still_trying'])
+      self.assertFalse(last_statuses[0]['status'])
+      self.assertTrue(last_statuses[1]['status'])
+
   def test_register(self):
     with infinit.oracles.servers.Oracles(
       mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
