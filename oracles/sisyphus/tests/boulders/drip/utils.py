@@ -61,31 +61,38 @@ class GestapoCollection(pymongo.collection.Collection):
 
   def __check(self, condition, fields = None):
     explanation = super().find(condition, fields = fields).explain()
-    # print(explanation['cursor'])
-    # print('  ', condition)
-    # print('  ', fields)
-    # print('  ', explanation)
-    if explanation['cursor'] == 'BasicCursor':
-      raise Exception('table scan on condition: %s' % condition)
-    if explanation.get('scanAndOrder', False):
-      raise Exception('scan and order on condition: %s' % condition)
-    nplans = len(list(e for e in explanation['allPlans']
-                      if e['cursor'] != 'BasicCursor'))
-    if nplans > 1:
-      raise Exception('%s viable plans for condition: %s' % \
-                      (nplans, condition))
-    ns = explanation['nscanned']
-    nso = explanation['nscannedObjects']
-    n = explanation['n']
-    # print(ns, nso, n)
-    if ns - nso > MongoExpectation.instance.index_miss:
-      raise Exception('too many index scans (%s) for %s' \
-                      ' object scans on condition: %s' % \
-                      (ns, nso, condition))
-    if nso - n > MongoExpectation.instance.object_miss:
-      raise Exception('too many object scans (%s) for %s' \
-                      ' results on condition: %s' % \
-                      (nso, n, condition))
+    try:
+      # print(explanation['cursor'])
+      # print('  ', condition)
+      # print('  ', fields)
+      # print('  ', explanation)
+      if explanation['cursor'] == 'BasicCursor':
+        raise Exception('table scan on condition: %s' % condition)
+      if explanation.get('scanAndOrder', False):
+        raise Exception('scan and order on condition: %s' % condition)
+      nplans = len(list(e for e in explanation['allPlans']
+                        if e['cursor'] != 'BasicCursor'))
+      if nplans > 1:
+        raise Exception('%s viable plans for condition: %s' % \
+                        (nplans, condition))
+      ns = explanation['nscanned']
+      nso = explanation['nscannedObjects']
+      n = explanation['n']
+      # print(ns, nso, n)
+      if ns - nso > MongoExpectation.instance.index_miss:
+        raise Exception('too many index scans (%s) for %s' \
+                        ' object scans on condition: %s' % \
+                        (ns, nso, condition))
+      if nso - n > MongoExpectation.instance.object_miss:
+        raise Exception('too many object scans (%s) for %s' \
+                        ' results on condition: %s' % \
+                        (nso, n, condition))
+    except Exception as e:
+      import sys
+      print('fatal error interpreting explanation: %s' % e,
+            file = sys.stderr)
+      print('explanation: %s' % explanation, file = sys.stderr)
+      raise
 
 class Meta(infinit.oracles.meta.server.Meta):
 
