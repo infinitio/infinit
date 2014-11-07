@@ -105,15 +105,17 @@ def configure(cxx_toolkit = None,
   ## ------- ##
 
   git = drake.git.Git()
+
   class CxxVersionGenerator(VersionGenerator):
+
     def _prologue(self):
       yield '#ifndef INFINIT_VERSION_HH'
       yield '# define INFINIT_VERSION_HH'
+
     def _epilogue(self):
       yield '#endif'
+
     def _variable(self, name, value):
-      if name == 'version' and not production_build:
-        value = '%s-dev' % git.version().split('-')[0]
       value = repr(value).replace("'", '"')
       if name == 'version':
         name = 'INFINIT_VERSION'
@@ -121,7 +123,8 @@ def configure(cxx_toolkit = None,
         name = 'INFINIT_VERSION_%s' % name.upper()
       return '# define %s %s' % (name, value)
   version = drake.node('version.hh')
-  CxxVersionGenerator(version, git = git)
+  CxxVersionGenerator(version, git = git,
+                      production_build = production_build)
 
   architecture = platform.architecture()[0]
   if architecture == "32bit":
