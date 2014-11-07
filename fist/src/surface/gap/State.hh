@@ -147,14 +147,6 @@ namespace surface
         std::string last_error;
       };
 
-      class KickedOut:
-        public Notification
-      {
-      public:
-        static Notification::Type type;
-        KickedOut() = default;
-      };
-
       class TrophoniusUnavailable:
         public Notification
       {

@@ -121,8 +121,6 @@ namespace surface
     Notification::Type State::ConnectionStatus::type =
       NotificationType_ConnectionStatus;
 
-    Notification::Type State::KickedOut::type = NotificationType_KickedOut;
-
     Notification::Type State::TrophoniusUnavailable::type =
       NotificationType_TrophoniusUnavailable;
 
@@ -414,7 +412,7 @@ namespace surface
       std::string const& email,
       std::string const& password)
     {
-      login(email, password, reactor::DurationOpt());
+      this->login(email, password, reactor::DurationOpt());
     }
 
     void
@@ -452,17 +450,32 @@ namespace surface
       auto tropho = elle::utility::move_on_copy(std::move(trophonius));
       this-> _login_thread.reset(new reactor::Thread(
         "login",
-        [=] { this->_login(email, password, tropho);
+        [=]
+        {
+          this->_login(email, password, tropho);
         }));
       this->_login_watcher_thread = reactor::scheduler().current();
-      elle::SafeFinally reset_login_thread([&] { this->_login_watcher_thread = nullptr;});
+      elle::SafeFinally reset_login_thread(
+        [&]
+        {
+          this->_login_watcher_thread = nullptr;
+        });
       //Wait for logged-in or logged-out status
       std::exception_ptr eptr;
-      elle::With<reactor::Scope>() << [&](reactor::Scope& s)
+      elle::With<reactor::Scope>() << [&] (reactor::Scope& s)
       {
-         s.run_background("waiter1", [&] { reactor::wait(this->_logged_in); s.terminate_now(); });
-         s.run_background("waiter2", [&] { reactor::wait(this->_logged_out); s.terminate_now(); });
-         try {
+         s.run_background("waiter1",
+          [&]
+          {
+            reactor::wait(this->_logged_in); s.terminate_now();
+          });
+         s.run_background("waiter2",
+          [&]
+          {
+            reactor::wait(this->_logged_out); s.terminate_now();
+          });
+         try
+         {
            reactor::wait(s, timeout);
          }
          catch(...)
@@ -478,11 +491,13 @@ namespace surface
         throw elle::Error("Login failure");
     }
 
+    typedef infinit::oracles::trophonius::Client TrophoniusClient;
+    typedef infinit::oracles::trophonius::ConnectionState ConnectionState;
     void
     State::_login(
       std::string const& email,
       std::string const& password,
-      elle::utility::Move<std::unique_ptr<infinit::oracles::trophonius::Client>> trophonius)
+      elle::utility::Move<std::unique_ptr<TrophoniusClient>> trophonius)
     {
       this->_email = email;
       this->_password = password;
@@ -508,8 +523,7 @@ namespace surface
         {
           if (this->_meta_message.empty())
           {
-            throw Exception(gap_meta_unreachable,
-                            "Unable to contact Meta");
+            throw Exception(gap_meta_unreachable, "Unable to contact Meta");
           }
           else
           {
@@ -607,7 +621,8 @@ namespace surface
             this->_identity->store(path);
           }
 
-          std::ofstream identity_infos{common::infinit::identity_path(login_response.id)};
+          std::ofstream identity_infos{
+            common::infinit::identity_path(login_response.id)};
 
           if (identity_infos.good())
           {
@@ -663,8 +678,8 @@ namespace surface
                   }
                   catch (elle::Exception const& e)
                   {
-                    ELLE_ERR("%s: unable to fetch %s avatar: %s", *this, user_id,
-                             e.what());
+                    ELLE_ERR("%s: unable to fetch %s avatar: %s", *this,
+                             user_id, e.what());
                     // The UI will ask for the avatar again if it needs it, so
                     // remove the request from the queue if there's a problem.
                     this->_avatar_to_fetch.erase(user_id);
@@ -681,7 +696,7 @@ namespace surface
           ELLE_TRACE("%s: fetch transactions", *this)
             this->_transactions_init();
           this->on_connection_changed(
-            infinit::oracles::trophonius::ConnectionState{true, elle::Error(""), false},
+            ConnectionState{true, elle::Error(""), false},
             true);
           this->_polling_thread.reset(
             new reactor::Thread{
@@ -699,10 +714,7 @@ namespace surface
                     {
                       ELLE_ERR("%s: an error occured in trophonius, login is " \
                                "required: %s", *this, elle::exception_string());
-                      // Loging out flush the message queue, which means that
-                      // KickedOut will be the next event polled.
                       this->logout();
-                      this->enqueue(KickedOut());
                       this->enqueue(ConnectionStatus(false, false, e.what()));
                       return;
                     }
@@ -1016,7 +1028,7 @@ namespace surface
     }
 
     void
-    State::on_connection_changed(infinit::oracles::trophonius::ConnectionState const& connection_state,
+    State::on_connection_changed(ConnectionState const& connection_state,
                                  bool first_connection)
     {
       ELLE_TRACE_SCOPE(
@@ -1113,10 +1125,7 @@ namespace surface
     State::_on_invalid_trophonius_credentials()
     {
       ELLE_WARN("%s: invalid trophonius credentials", *this);
-      // Loging out flush the message queue, which means that
-      // KickedOut will be the next event polled.
       this->logout();
-      this->enqueue(KickedOut());
       this->enqueue(ConnectionStatus(false, true, "Invalid trophonius credentials"));
       this->login(this->_email, this->_password, 0_sec);
       return;
@@ -1313,8 +1322,6 @@ namespace surface
           return out << "DeletedFavorite";
         case NotificationType_ConnectionStatus:
           return out << "ConnectionStatus";
-        case NotificationType_KickedOut:
-          return out << "Kicked Out";
         case NotificationType_AvatarAvailable:
           return out << "Avatar Available";
         case NotificationType_TrophoniusUnavailable:
