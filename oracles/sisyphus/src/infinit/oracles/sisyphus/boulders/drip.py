@@ -387,6 +387,14 @@ class GhostReminder(Drip):
   def now(self):
     return datetime.datetime.utcnow()
 
+  @property
+  def delay_first_reminder(self):
+    return datetime.timedelta(days = 1)
+
+  @property
+  def delay_second_reminder(self):
+    return datetime.timedelta(days = 3)
+
   def run(self):
     response = {}
     # -> reminded-1
@@ -401,7 +409,7 @@ class GhostReminder(Drip):
         # Ghost uploaded more than 24h ago
         'modification_time':
         {
-          '$lt': self.now - datetime.timedelta(days = 1),
+          '$lt': self.now - self.delay_first_reminder,
         },
       },
     )
@@ -417,7 +425,7 @@ class GhostReminder(Drip):
         # Ghost uploaded more than 24h ago
         'modification_time':
         {
-          '$lt': self.now - datetime.timedelta(days = 3),
+          '$lt': self.now - self.delay_second_reminder,
         },
       },
     )
