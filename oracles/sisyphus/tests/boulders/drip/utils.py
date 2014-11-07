@@ -70,11 +70,15 @@ class GestapoCollection(pymongo.collection.Collection):
         raise Exception('table scan on condition: %s' % condition)
       if explanation.get('scanAndOrder', False):
         raise Exception('scan and order on condition: %s' % condition)
-      nplans = len(list(e for e in explanation['allPlans']
-                        if e['cursor'] != 'BasicCursor'))
-      if nplans > 1:
-        raise Exception('%s viable plans for condition: %s' % \
-                        (nplans, condition))
+      # The buildfarm doesn't have the allPlans key, but I can't tell
+      # whether it's never present or it's omitted if there's only one
+      # plan.
+      if 'allPlans' in explanation:
+        nplans = len(list(e for e in explanation['allPlans']
+                          if e['cursor'] != 'BasicCursor'))
+        if nplans > 1:
+          raise Exception('%s viable plans for condition: %s' % \
+                          (nplans, condition))
       ns = explanation['nscanned']
       nso = explanation['nscannedObjects']
       n = explanation['n']
