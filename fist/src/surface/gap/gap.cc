@@ -955,7 +955,7 @@ gap_connection_callback(gap_State* state,
 {
   auto cpp_cb = [cb] (surface::gap::State::ConnectionStatus const& notif)
     {
-      cb((gap_Bool) notif.status, notif.still_trying, notif.last_error.c_str());
+      cb(notif.status, notif.still_trying, notif.last_error);
     };
 
   return run<gap_Status>(
@@ -964,25 +964,6 @@ gap_connection_callback(gap_State* state,
     [&] (surface::gap::State& state) -> gap_Status
     {
       state.attach_callback<surface::gap::State::ConnectionStatus>(cpp_cb);
-      return gap_ok;
-    });
-}
-
-gap_Status
-gap_kicked_out_callback(gap_State* state,
-                        gap_kicked_out_callback_t cb)
-{
-  auto cpp_cb = [cb] (surface::gap::State::KickedOut const&)
-    {
-      cb();
-    };
-
-  return run<gap_Status>(
-    state,
-    "kicked out callback",
-    [&] (surface::gap::State& state) -> gap_Status
-    {
-      state.attach_callback<surface::gap::State::KickedOut>(cpp_cb);
       return gap_ok;
     });
 }

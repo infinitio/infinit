@@ -143,20 +143,11 @@ gap_avatar_available_callback(gap_State* state,
                               gap_avatar_available_callback_t cb);
 
 // Own connection status changed.
-typedef void (*gap_connection_callback_t)(gap_Bool, gap_Bool, const char*);
+typedef void (*gap_connection_callback_t)(bool, bool, std::string const&);
 
 gap_Status
 gap_connection_callback(gap_State* state,
                         gap_connection_callback_t cb);
-
-
-// Kicked out callback.
-// Triggered when your credentials are no longer valid.
-typedef void (*gap_kicked_out_callback_t)();
-
-gap_Status
-gap_kicked_out_callback(gap_State* state,
-                        gap_kicked_out_callback_t cb);
 
 /// Trophonius unavailable callback.
 /// Triggered when you can connect to Meta but not to Trophonius.
