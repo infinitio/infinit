@@ -111,9 +111,28 @@ class Mixin:
     return dict()
 
   @api('/transaction/<id>')
-  @require_logged_in_or_admin
-  def transaction_view(self, id: bson.ObjectId):
-    return self.transaction(id, None if self.admin else self.user['_id'])
+  def transaction_view(self, id: bson.ObjectId, key = None):
+    if self.admin:
+      return self.transaction(id, None)
+    elif self.logged_in:
+      return self.transaction(id, self.user['_id'])
+    else:
+      transaction = self.database.transactions.find_one(
+        { '_id': id },
+        fields = {
+          '_id': False,
+          'download_link': True,
+          'files': True,
+          'message': True,
+          'recipient_id': True,
+          'sender_fullname': True,
+          'sender_id': True,
+          'total_size': True,
+        })
+      if transaction is None:
+        self.not_found()
+      else:
+        return transaction
 
   @api('/transaction/create', method = 'POST')
   @require_logged_in
