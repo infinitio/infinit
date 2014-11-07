@@ -244,6 +244,8 @@ class Mixin:
         'total_size': total_size,
         'is_directory': is_directory,
 
+        'creation_time': self.now,
+        'modification_time': self.now,
         'ctime': time.time(),
         'mtime': time.time(),
         'status': transaction_status.CREATED,
@@ -607,7 +609,8 @@ class Mixin:
           transaction = transaction))
       diff.update({
         'status': status,
-        'mtime': time.time()
+        'mtime': time.time(),
+        'modification_time': self.now,
       })
       # Don't update with an empty dictionary: it would empty the
       # object.
