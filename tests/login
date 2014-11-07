@@ -142,6 +142,34 @@ class TestLogin(unittest.TestCase):
       s = o.state()
       expect_raise(lambda: s.login("nosuchuser@infinit.io", state.hash_password('foo', 'bar')))
 
+  def test_login_change_password(self):
+    with infinit.oracles.servers.Oracles(
+      mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
+      s = o.state()
+      last_statuses = []
+      def status(s):
+        print('Status update: %s' % s)
+        last_statuses.append(s)
+      s.attach_connection_callback(status)
+      s.login('mefyl@infinit.io',
+              state.hash_password('mefyl@infinit.io', 'mefyl'))
+      for i in range(10):
+        s.poll()
+      self.assertTrue(last_statuses[-1]['status'])
+      s.change_password(state.hash_password('mefyl@infinit.io', 'mefyl'),
+                        state.hash_password('mefyl@infinit.io', 'newpassword'))
+      for i in range(10):
+        s.poll()
+        reactor.sleep(datetime.timedelta(milliseconds = 100))
+      self.assertFalse(last_statuses[-1]['status'])
+      self.assertFalse(s.logged_in())
+      s.login('mefyl@infinit.io',
+              state.hash_password('mefyl@infinit.io', 'newpassword'))
+      for i in range(10):
+        s.poll()
+      self.assertTrue(last_statuses[-1]['status'])
+      self.assertTrue(s.logged_in())
+
   def test_register(self):
     with infinit.oracles.servers.Oracles(
       mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
