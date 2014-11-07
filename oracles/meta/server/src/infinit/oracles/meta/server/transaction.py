@@ -483,6 +483,8 @@ class Mixin:
         merge_vars = {
           peer_email: {
             'filename': files[0],
+            'recipient_email': recipient['email'],
+            'recipient_name': recipient['fullname'],
             'sendername': user['fullname'],
             'sender_email': user['email'],
             'sender_avatar': 'https://%s/user/%s/avatar' %
