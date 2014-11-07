@@ -101,6 +101,8 @@ namespace infinit
         public:
           void
           client_remove(Client& c);
+          void
+          disconnect_all_users();
           User&
           user(std::string const& user_id,
                boost::uuids::uuid const& device);
