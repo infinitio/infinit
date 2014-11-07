@@ -461,7 +461,6 @@ namespace surface
           this->_login_watcher_thread = nullptr;
         });
       //Wait for logged-in or logged-out status
-      std::exception_ptr eptr;
       elle::With<reactor::Scope>() << [&] (reactor::Scope& s)
       {
          s.run_background("waiter1",
@@ -474,18 +473,10 @@ namespace surface
           {
             reactor::wait(this->_logged_out); s.terminate_now();
           });
-         try
-         {
-           reactor::wait(s, timeout);
-         }
-         catch(...)
-         {
-           eptr = std::current_exception();
-         }
+         reactor::wait(s, timeout);
          s.terminate_now();
       };
-      if (eptr)
-        std::rethrow_exception(eptr);
+
       ELLE_TRACE("Login user thread unblocked");
       if (!this->_logged_in)
         throw elle::Error("Login failure");
