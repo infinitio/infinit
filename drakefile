@@ -160,6 +160,7 @@ def configure(cxx_toolkit = None,
     boost_filesystem = drake.cxx.Config(boost.config_filesystem(link = False))
     boost_filesystem.library_add(copy_lib(boost.filesystem_dynamic))
   if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
+    boost_date_time = drake.cxx.Config(boost.config_date_time(static = True))
     boost_program_options = drake.cxx.Config(boost.config_program_options(static = True))
     if cxx_toolkit.os is not drake.os.ios:
       boost_python = drake.cxx.Config(boost.config_python(static = True))
@@ -168,6 +169,8 @@ def configure(cxx_toolkit = None,
     boost_test = drake.cxx.Config(boost.config_test(static = True))
     boost_thread = drake.cxx.Config(boost.config_thread(static = True))
   else:
+    boost_date_time = drake.cxx.Config(boost.config_date_time(link = False))
+    boost_date_time.library_add(copy_lib(boost.date_time_dynamic))
     boost_program_options = drake.cxx.Config(boost.config_program_options(link = False))
     boost_program_options.library_add(copy_lib(boost.program_options_dynamic))
     boost_python = drake.cxx.Config(boost.config_python(link = False))
@@ -584,12 +587,16 @@ def configure(cxx_toolkit = None,
   gap_tests_cxx_config = drake.cxx.Config(gap_cxx_config)
   gap_tests_cxx_config += boost_test
   gap_tests_cxx_config += boost_system
+  gap_tests_cxx_config += boost_date_time
   gap_tests_cxx_config.lib_path_runtime('../../lib')
-  for name in ('state',):
+  for name in ('state', 'ghost-invite',):
+    sources = drake.nodes('fist/tests/%s.cc' % name)
+    if name != 'state':
+      sources.append(drake.node('fist/tests/server.cc'))
     test = drake.cxx.Executable(
       'fist/tests/%s' % name,
+      sources +
       [
-        drake.node('fist/tests/%s.cc' % name),
         gap_lib,
         elle_lib,
         reactor_lib,
@@ -598,10 +605,12 @@ def configure(cxx_toolkit = None,
         elle.openssl_lib_crypto,
         elle.openssl_lib_ssl,
         trophonius_client_lib,
+        oracles.transaction_lib,
       ],
       cxx_toolkit, gap_tests_cxx_config)
     gap_tests << test
     runner = drake.Runner(exe = test)
+    runner.reporting = drake.Runner.Reporting.on_failure
     gap_check << runner.status
 
   ## --- ##
@@ -847,3 +856,5 @@ def configure(cxx_toolkit = None,
   ## Mac App ##
   ## ------- ##
   mac_app = drake.include('surface/osx')
+
+  drake.cxx.CompilationDatabase('compile_commands.json')

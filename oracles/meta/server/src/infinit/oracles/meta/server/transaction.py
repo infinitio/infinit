@@ -60,6 +60,8 @@ class Mixin:
       },
       fields = ['_id']):
       try:
+        # FIXME: _transaction_update will re-perform a mongo search on
+        # the transaction id ...
         self._transaction_update(str(transaction['_id']),
                                  status = transaction_status.CANCELED,
                                  user = user)
@@ -92,6 +94,23 @@ class Mixin:
         return self.not_found()
       else:
         return self.success(transaction)
+
+  @api('/transaction/download/<transaction_hash>', method='POST')
+  def transaction_download(self, transaction_hash:str):
+    transaction = self.database.transactions.find_and_modify(
+          {'transaction_hash': transaction_hash},
+          {'$set': {'status': transaction_status.FINISHED}},
+          new = True,
+          )
+    if transaction is None:
+      self.not_found()
+
+    self.notifier.notify_some(
+      notifier.PEER_TRANSACTION,
+      recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
+      message = transaction,
+      )
+    return dict()
 
   @api('/transaction/<id>')
   @require_logged_in_or_admin
@@ -466,6 +485,8 @@ class Mixin:
         merge_vars = {
           peer_email: {
             'filename': files[0],
+            'recipient_email': recipient['email'],
+            'recipient_name': recipient['fullname'],
             'sendername': user['fullname'],
             'sender_email': user['email'],
             'sender_avatar': 'https://%s/user/%s/avatar' %

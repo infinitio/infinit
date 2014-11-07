@@ -160,10 +160,35 @@ namespace surface
 
     boost::filesystem::path
     ReceiveMachine::eligible_name(boost::filesystem::path start_point,
-                                  boost::filesystem::path const path,
+                                  boost::filesystem::path const path_,
                                   std::string const& name_policy,
                                   std::map<boost::filesystem::path, boost::filesystem::path>& mapping)
     {
+      // Turn plateform specific reserved characters from path to hyphens.
+      static const std::unordered_set<char> characters_forbidden_in_filenames{
+#ifdef INFINIT_WINDOWS
+        '|', '<', '>', '"', '?', '*', ':',
+#endif
+      };
+      boost::filesystem::path path = characters_forbidden_in_filenames.empty()
+        ? path_
+        : [&path_]
+          {
+            std::string path_as_string = path_.string();
+            std::transform(
+              path_as_string.begin(),
+              path_as_string.end(),
+              path_as_string.begin(),
+              [] (char a) -> char
+              {
+                if (characters_forbidden_in_filenames.find(a) !=
+                    characters_forbidden_in_filenames.end())
+                  return '-';
+                return a;
+              });
+            return boost::filesystem::path(path_as_string);
+          }();
+
       boost::filesystem::path first = *path.begin();
       // Take care of toplevel files with no directory information, we can't
       // add that to the mapping.

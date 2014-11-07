@@ -18,6 +18,8 @@
 # include <reactor/thread.hh>
 # include <reactor/network/proxy.hh>
 
+# include <aws/S3.hh>
+
 # include <papier/fwd.hh>
 
 # include <infinit/metrics/CompositeReporter.hh>
@@ -77,6 +79,8 @@ namespace surface
                         trophonius);
       ELLE_ATTRIBUTE(std::string, forced_trophonius_host);
       ELLE_ATTRIBUTE(int, forced_trophonius_port);
+      ELLE_ATTRIBUTE_RW(boost::optional<aws::URL>, s3_hostname);
+
 
     private:
       void
@@ -709,6 +713,10 @@ namespace surface
                 State::ConnectionStatus const& s);
   }
 }
+
+std::ostream&
+operator <<(std::ostream& out,
+            gap_TransactionStatus status);
 
 #include <surface/gap/State.hxx>
 
