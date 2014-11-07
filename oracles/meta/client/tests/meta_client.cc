@@ -377,18 +377,21 @@ ELLE_TEST_SCHEDULED(upload_avatar)
 
 ELLE_TEST_SCHEDULED(link_credentials)
 {
-  static const std::string response{
-    "{"
+  using namespace boost::posix_time;
+  hours plus_one_hour(1);
+  ptime now = second_clock::universal_time();
+  ptime expiration = now + plus_one_hour;
+  static const std::string response =
+    elle::sprintf("{"
     "  \"access_key_id\": \"access key id\","
     "  \"secret_access_key\": \"secret access key\","
     "  \"session_token\": \"session token\","
     "  \"region\": \"region\","
     "  \"bucket\": \"bucket\","
     "  \"folder\": \"folder\","
-    "  \"expiration\": \"never\","
-    "  \"current_time\": \"\""
-    "}"
-    };
+    "  \"expiration\": \"%s\","
+    "  \"current_time\": \"%s\""
+    "}", to_iso_extended_string(expiration), to_iso_extended_string(now));
   static const std::string id{"id"};
 
   HTTPServer s;
