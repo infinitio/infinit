@@ -222,9 +222,8 @@ class Mixin:
       elle.log.debug("transaction recipient has id %s" % recipient['_id'])
       _id = sender['_id']
 
-      cloud_capable = self.user_version >= (0, 8, 11)
-      elle.log.debug('Sender agent %s, version %s, cloud_capable %s, peer_new %s peer_ghost %s'
-                     % (self.user_agent, self.user_version, cloud_capable, new_user,  is_ghost))
+      elle.log.debug('Sender agent %s, version %s, peer_new %s peer_ghost %s'
+                     % (self.user_agent, self.user_version, new_user,  is_ghost))
       transaction = {
         'sender_id': _id,
         'sender_fullname': sender['fullname'],
@@ -253,7 +252,7 @@ class Mixin:
         'fallback_port_ssl': None,
         'fallback_port_tcp': None,
         'aws_credentials': None,
-        'is_ghost': is_ghost and cloud_capable,
+        'is_ghost': is_ghost,
         'strings': ' '.join([
               sender['fullname'],
               sender['handle'],
@@ -271,27 +270,6 @@ class Mixin:
       if not peer_email:
         peer_email = recipient['email']
 
-      #FIXME : send invite email if initiator version will not attempt
-      # ghost cloud upload
-      if new_user and not cloud_capable:
-        elle.log.debug("Client not cloud_capable, inviting now")
-        invitation.invite_user(
-          peer_email,
-          mailer = self.mailer,
-          mail_template = 'send-file',
-          source = (user['fullname'], user['email']),
-          database = self.database,
-          merge_vars = {
-            peer_email: {
-              'filename': files[0],
-              'note': message,
-              'sendername': user['fullname'],
-              'ghost_id': str(recipient.get('_id')),
-              'sender_id': str(user['_id']),
-              'avatar': self.user_avatar_route(recipient['_id']),
-              'number_of_other_files': (files_count - 1),
-            }}
-        )
       if not new_user and not recipient.get('connected', False) and not is_ghost:
         elle.log.debug("recipient is disconnected")
         template_id = 'accept-file-only-offline'
