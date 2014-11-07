@@ -485,7 +485,7 @@ gap_change_password(gap_State* state,
     "change password",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      state.meta().change_password(
+      state.change_password(
         state.hash_password(state.me().email, old_password),
         state.hash_password(state.me().email, new_password));
       return gap_ok;
