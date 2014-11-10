@@ -177,11 +177,13 @@ namespace surface
           auto peer = this->state().user(this->data()->recipient_id);
           auto self_id = this->state().me().id;
           auto self_device_id = this->state().device().id;
-          if (status == infinit::oracles::Transaction::Status::finished &&
-              (peer.ghost() || transaction().data()->is_ghost))
+          if (status == infinit::oracles::Transaction::Status::ghost_uploaded)
           {
+            ELLE_ASSERT(peer.ghost() || transaction().data()->is_ghost);
+            ELLE_TRACE_SCOPE("%s: notifying meta of finished state", *this);
             this->state().meta().update_transaction(
-              this->transaction_id(), status);
+              this->transaction_id(),
+              status);
           }
           else if (status == infinit::oracles::Transaction::Status::finished &&
                    self_id == this->data()->recipient_id &&

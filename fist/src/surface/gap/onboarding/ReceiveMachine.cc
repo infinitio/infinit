@@ -175,6 +175,25 @@ namespace surface
             this->transaction().canceled_by_user());
         }
       }
+
+      /*--------.
+      | Metrics |
+      `--------*/
+
+      void
+      ReceiveMachine::_metrics_ended(
+        infinit::oracles::Transaction::Status status,
+        std::string reason)
+      {
+        bool onboarding = true;
+        if (this->state().metrics_reporter())
+          this->state().metrics_reporter()->transaction_ended(
+            this->transaction_id(),
+            infinit::oracles::Transaction::Status::canceled,
+            reason,
+            onboarding,
+            this->transaction().canceled_by_user());
+      }
     }
   }
 }

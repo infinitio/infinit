@@ -106,6 +106,30 @@ namespace surface
       return progress;
     }
 
+    class S3
+      : public aws::S3
+    {
+    public:
+      S3(State& state,
+         std::function<aws::Credentials(bool)> query_credentials)
+        : aws::S3(query_credentials)
+        , _state(state)
+      {}
+
+      virtual
+      aws::URL
+      hostname(aws::Credentials const& credentials) const override
+      {
+        auto replace = this->_state.s3_hostname();
+        if (!replace)
+          return aws::S3::hostname(credentials);
+        else
+          return *replace;
+      }
+
+      ELLE_ATTRIBUTE(State&, state);
+    };
+
     void
     SendMachine::_plain_upload()
     {
@@ -232,7 +256,7 @@ namespace surface
           {
             return this->_aws_credentials(first_time);
           };
-        aws::S3 handler(get_credentials);
+        S3 handler(this->transaction().state(), get_credentials);
         handler.on_error([&](aws::AWSException const& exception, bool will_retry)
           {
             this->_report_s3_error(exception, will_retry);
@@ -415,14 +439,14 @@ namespace surface
         {
           ELLE_WARN("%s: source file disappeared, cancel : %s",
                     *this, e.what());
-          this->cancel();
+          this->cancel("source file missing");
           throw;
         }
         else
         {
           ELLE_WARN("%s: source file corrupted (%s), cancel",
                     *this, e.what());
-          this->cancel();
+          this->cancel(elle::sprintf("source file error: %s", e.what()));
           throw;
         }
       }

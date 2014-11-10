@@ -13,7 +13,6 @@
 
 ELLE_LOG_COMPONENT("surface.gap.GhostReceiveMachine");
 
-
 namespace surface
 {
   namespace gap
@@ -39,39 +38,70 @@ namespace surface
       this->_machine.transition_add(this->_wait_for_cloud_upload_state,
                                     this->_wait_for_decision_state,
                                     reactor::Waitables{&this->_cloud_uploaded});
-      ELLE_TRACE("%s: starting with status %s", *this, this->data()->status);
-      switch (this->data()->status)
+      try
       {
-        case TransactionStatus::created:
-        case TransactionStatus::initialized:
-          this->_run(this->_wait_for_cloud_upload_state);
-          break;
-        case TransactionStatus::ghost_uploaded:
-          this->_run(this->_wait_for_decision_state);
-          break;
-        case TransactionStatus::accepted:
-          if (this->concerns_this_device())
-            this->_run(this->_accept_state);
-          else
-            this->_run(this->_another_device_state);
-          break;
-        case TransactionStatus::finished:
-          this->_run(this->_finish_state);
-          break;
-        case TransactionStatus::canceled:
-          this->_run(this->_cancel_state);
-          break;
-        case TransactionStatus::failed:
-          this->_run(this->_fail_state);
-          break;
-        case TransactionStatus::rejected:
-          break;
-        case TransactionStatus::started:
-        case TransactionStatus::none:
-        case TransactionStatus::deleted:
-          elle::unreachable();
+        this->_run_from_snapshot();
+      }
+      catch (elle::Error const&)
+      {
+        ELLE_TRACE("%s: starting with status %s", *this, this->data()->status);
+        switch (this->data()->status)
+        {
+          case TransactionStatus::created:
+          case TransactionStatus::initialized:
+            this->_run(this->_wait_for_cloud_upload_state);
+            break;
+          case TransactionStatus::ghost_uploaded:
+            this->_run(this->_wait_for_decision_state);
+            break;
+          case TransactionStatus::accepted:
+            if (this->concerns_this_device())
+              this->_run(this->_accept_state);
+            else
+              this->_run(this->_another_device_state);
+            break;
+          case TransactionStatus::finished:
+            this->_run(this->_finish_state);
+            break;
+          case TransactionStatus::canceled:
+            this->_run(this->_cancel_state);
+            break;
+          case TransactionStatus::failed:
+            this->_run(this->_fail_state);
+            break;
+          case TransactionStatus::rejected:
+            break;
+          case TransactionStatus::started:
+          case TransactionStatus::none:
+          case TransactionStatus::deleted:
+            elle::unreachable();
+        }
       }
     }
+
+    void
+    GhostReceiveMachine::_run_from_snapshot()
+    {
+      auto snapshot = this->snapshot();
+      ELLE_TRACE_SCOPE("%s: restore from snapshot", *this);
+      if (snapshot.current_state() == "cancel")
+        this->_run(this->_cancel_state);
+      else if (snapshot.current_state() == "ghost_uploaded")
+        this->_run(this->_wait_for_decision_state);
+      else if (snapshot.current_state() == "accept")
+        this->_run(this->_accept_state);
+      else if (snapshot.current_state() == "end")
+        this->_run(this->_end_state);
+      else if (snapshot.current_state() == "fail")
+        this->_run(this->_fail_state);
+      else if (snapshot.current_state() == "finish")
+        this->_run(this->_finish_state);
+      else if (snapshot.current_state() == "reject")
+        this->_run(this->_reject_state);
+      else
+        throw elle::Error("unknown state");
+    }
+
     void
     GhostReceiveMachine::transaction_status_update(TransactionStatus status)
     {
@@ -81,6 +111,7 @@ namespace surface
       else
         ReceiveMachine::transaction_status_update(status);
     }
+
     float
     GhostReceiveMachine::progress() const
     {
@@ -95,15 +126,26 @@ namespace surface
       return (float)(p.download_current + _previous_progress)
            / (float)(_previous_progress +  p.download_total);
     }
+
+    void
+    GhostReceiveMachine::accept()
+    {
+      if (!this->_accepted.opened())
+      {
+        bool onboarding = false;
+        if (this->state().metrics_reporter())
+          this->state().metrics_reporter()->transaction_accepted(
+            this->transaction_id(),
+            onboarding);
+      }
+      ReceiveMachine::accept();
+    }
+
     void
     GhostReceiveMachine::_accept()
     {
       ELLE_TRACE("%s accepting", *this);
       ReceiveMachine::_accept();
-      if (this->state().metrics_reporter())
-        this->state().metrics_reporter()->transaction_accepted(
-          this->transaction_id(), false);
-
       auto peer_data =
         std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
           transaction().data());
@@ -158,6 +200,7 @@ namespace surface
         };
       }
 
+      this->gap_status(gap_transaction_transferring);
       int attempt = 0;
       while (true)
       {
@@ -203,7 +246,6 @@ namespace surface
             Request::Configuration config
               = Request::Configuration(reactor::DurationOpt(), 60_sec);
             config.header_add("Range", elle::sprintf("bytes=%s-", _previous_progress));
-
             _request = elle::make_unique<Request>(url, Method::GET, config);
             _request->finalize();
             // Waiting for the status here will wait for full download.
@@ -265,6 +307,7 @@ namespace surface
                                               this->state().device().id,
                                               this->state().device().name);
     }
+
     void
     GhostReceiveMachine::_wait_for_cloud_upload()
     {
@@ -288,6 +331,12 @@ namespace surface
             transaction().failure_reason() : "",
           false,
           this->transaction().canceled_by_user());
+    }
+
+    aws::Credentials
+    GhostReceiveMachine::_aws_credentials(bool regenerate)
+    {
+      throw elle::Error("Not implemented");
     }
 
     void

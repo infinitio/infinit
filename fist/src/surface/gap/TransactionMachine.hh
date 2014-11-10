@@ -97,9 +97,8 @@ namespace surface
                                     bool device_status);
 
       /// Cancel the transaction.
-      virtual
       void
-      cancel();
+      cancel(std::string const& reason);
 
       /// Pause the transfer.
       /// XXX: Not implemented yet.
@@ -177,6 +176,7 @@ namespace surface
     protected:
       void
       _another_device();
+      virtual
       void
       _finish();
       void
@@ -250,6 +250,15 @@ namespace surface
       friend class Transferer;
       friend class TransferMachine;
       ELLE_ATTRIBUTE_Rw(gap_TransactionStatus, gap_status);
+
+    /*--------.
+    | Metrics |
+    `--------*/
+    protected:
+      virtual
+      void
+      _metrics_ended(infinit::oracles::Transaction::Status status,
+                     std::string reason = "");
 
     /*----------.
     | Printable |

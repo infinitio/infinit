@@ -87,6 +87,15 @@ namespace surface
         _finalize(infinit::oracles::Transaction::Status) override;
 
         ELLE_ATTRIBUTE(std::string, file_path);
+
+      /*--------.
+      | Metrics |
+      `--------*/
+      protected:
+      virtual
+      void
+      _metrics_ended(infinit::oracles::Transaction::Status status,
+                     std::string reason = "") override;
       };
     }
   }

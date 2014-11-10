@@ -9,7 +9,7 @@ import unicodedata
 import urllib.parse
 
 import elle.log
-from .utils import api, require_logged_in
+from .utils import api, require_logged_in, require_logged_in_or_admin
 from . import regexp, error, transaction_status, notifier, invitation, cloud_buffer_token, mail
 import uuid
 import re
@@ -60,6 +60,8 @@ class Mixin:
       },
       fields = ['_id']):
       try:
+        # FIXME: _transaction_update will re-perform a mongo search on
+        # the transaction id ...
         self._transaction_update(str(transaction['_id']),
                                  status = transaction_status.CANCELED,
                                  user = user)
@@ -93,10 +95,27 @@ class Mixin:
       else:
         return self.success(transaction)
 
+  @api('/transaction/download/<transaction_hash>', method='POST')
+  def transaction_download(self, transaction_hash:str):
+    transaction = self.database.transactions.find_and_modify(
+          {'transaction_hash': transaction_hash},
+          {'$set': {'status': transaction_status.FINISHED}},
+          new = True,
+          )
+    if transaction is None:
+      self.not_found()
+
+    self.notifier.notify_some(
+      notifier.PEER_TRANSACTION,
+      recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
+      message = transaction,
+      )
+    return dict()
+
   @api('/transaction/<id>')
-  @require_logged_in
+  @require_logged_in_or_admin
   def transaction_view(self, id: bson.ObjectId):
-    return self.transaction(id, self.user['_id'])
+    return self.transaction(id, None if self.admin else self.user['_id'])
 
   @api('/transaction/create', method = 'POST')
   @require_logged_in
@@ -413,7 +432,7 @@ class Mixin:
     elle.log.debug('transaction (%s) hash: %s' % (transaction['_id'], txn_hash))
     return txn_hash
 
-  def on_finished(self, transaction, device_id, device_name, user):
+  def on_ghost_uploaded(self, transaction, device_id, device_name, user):
     elle.log.log('Transaction finished');
     # Guess if this was a ghost cloud upload or not
     recipient = self.database.users.find_one(transaction['recipient_id'])
@@ -466,6 +485,8 @@ class Mixin:
         merge_vars = {
           peer_email: {
             'filename': files[0],
+            'recipient_email': recipient['email'],
+            'recipient_name': recipient['fullname'],
             'sendername': user['fullname'],
             'sender_email': user['email'],
             'sender_avatar': 'https://%s/user/%s/avatar' %
@@ -539,13 +560,11 @@ class Mixin:
                                    user = user,
                                    device_id = device_id,
                                    device_name = device_name))
-      elif status == transaction_status.FINISHED:
-        diff.update(self.on_finished(transaction = transaction,
+      elif status == transaction_status.GHOST_UPLOADED:
+        diff.update(self.on_ghost_uploaded(transaction = transaction,
                                      device_id = device_id,
                                      device_name = device_name,
                                      user = user))
-        if is_sender and transaction.get('is_ghost'):
-          status = transaction_status.GHOST_UPLOADED
       elif status == transaction_status.CANCELED:
         if not transaction.get('canceler', None):
           diff.update({'canceler': {'user': user['_id'], 'device': device_id}})

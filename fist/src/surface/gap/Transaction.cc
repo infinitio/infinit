@@ -363,7 +363,10 @@ namespace surface
           std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
             this->_data))
       {
-        if (this->_data->is_ghost && this->_data->status == infinit::oracles::Transaction::Status::ghost_uploaded &&
+        using TransactionStatus =
+          infinit::oracles::Transaction::Status;
+        if (this->_data->is_ghost &&
+            this->_data->status == TransactionStatus::ghost_uploaded &&
           (this->_sender || peer_data->sender_id == this->state().me().id))
         {
           ELLE_TRACE("%s sender of ghost_uploaded transaction", *this);
@@ -478,7 +481,7 @@ namespace surface
         throw BadOperation(BadOperation::Type::cancel);
       }
       _canceled_by_user = true;
-      this->_machine->cancel();
+      this->_machine->cancel("user canceled");
     }
 
     void
@@ -493,7 +496,7 @@ namespace surface
         if (this->_machine != nullptr && !this->final())
         {
           _canceled_by_user = true;
-          this->_machine->cancel();
+          this->_machine->cancel("user deleted transaction");
           // Set the machine's gap status as we don't have a separate state for
           // deleted.
           this->_machine->gap_status(gap_transaction_deleted);
@@ -552,6 +555,7 @@ namespace surface
         case Status::failed:
           return gap_transaction_failed;
         case Status::finished:
+        case Status::ghost_uploaded:
           return gap_transaction_finished;
         case Status::rejected:
           return gap_transaction_rejected;

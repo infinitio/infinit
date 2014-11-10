@@ -251,23 +251,6 @@ namespace surface
     }
 
     void
-    PeerReceiveMachine::cancel()
-    {
-      if (!this->canceled().opened())
-      {
-        bool onboarding = false;
-        if (this->state().metrics_reporter())
-          this->state().metrics_reporter()->transaction_ended(
-            this->transaction_id(),
-            infinit::oracles::Transaction::Status::canceled,
-            "",
-            onboarding,
-            this->transaction().canceled_by_user());
-      }
-      TransactionMachine::cancel();
-    }
-
-    void
     PeerReceiveMachine::reject()
     {
       if (!this->rejected().opened())
@@ -281,21 +264,6 @@ namespace surface
             onboarding);
       }
       ReceiveMachine::reject();
-    }
-
-    void
-    PeerReceiveMachine::_fail()
-    {
-      TransactionMachine::_fail();
-      if (this->state().metrics_reporter())
-      {
-        bool onboarding = false;
-        this->state().metrics_reporter()->transaction_ended(
-        this->transaction_id(),
-        infinit::oracles::Transaction::Status::failed,
-        transaction().failure_reason(),
-        onboarding);
-      }
     }
 
     void
@@ -398,13 +366,13 @@ namespace surface
       }
       catch (boost::filesystem::filesystem_error const& e)
       {
-        ELLE_WARN("%s: Local file error: %s", *this, e.what());
+        ELLE_WARN("%s: local file error: %s", *this, e.what());
         // Local file error, cancel transaction
         exit_reason = metrics::TransferExitReasonError;
         exit_message = e.what();
         if (this->_snapshot)
           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
-        this->cancel();
+        this->cancel(exit_message);
       }
       catch (TransferBufferer::DataExhausted const&)
       {
@@ -513,7 +481,7 @@ namespace surface
         exit_message = e.what();
         if (this->_snapshot)
           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
-        this->cancel();
+        this->cancel(exit_message);
       }
       catch(reactor::Terminate const&)
       {

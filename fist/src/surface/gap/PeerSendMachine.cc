@@ -275,38 +275,6 @@ namespace surface
     `---------------*/
 
     void
-    PeerSendMachine::cancel()
-    {
-      if (!this->canceled().opened())
-      {
-        bool onboarding = false;
-        if (this->state().metrics_reporter())
-          this->state().metrics_reporter()->transaction_ended(
-            this->transaction_id(),
-            infinit::oracles::Transaction::Status::canceled,
-            "",
-            onboarding,
-            this->transaction().canceled_by_user());
-      }
-      TransactionMachine::cancel();
-    }
-
-    void
-    PeerSendMachine::_fail()
-    {
-      TransactionMachine::_fail();
-      if (this->state().metrics_reporter())
-      {
-        bool onboarding = false;
-        this->state().metrics_reporter()->transaction_ended(
-        this->transaction_id(),
-        infinit::oracles::Transaction::Status::failed,
-        transaction().failure_reason(),
-        onboarding);
-      }
-    }
-
-    void
     PeerSendMachine::transaction_status_update(TransactionStatus status)
     {
       ELLE_TRACE_SCOPE("%s: update with new transaction status %s",
@@ -416,7 +384,7 @@ namespace surface
       ELLE_ASSERT_EQ(file_list.size(), this->files().size());
       // Change state to SenderCreateTransaction once we've calculated the file
       // size and have the file list.
-      ELLE_TRACE("%s: Creating transaction, first_file=%s, dir=%s",
+      ELLE_TRACE("%s: create transaction, first_file=%s, dir=%s",
                  *this, first_file,
                  boost::filesystem::is_directory(first_file));
       {
@@ -442,7 +410,8 @@ namespace surface
       // This was the cause of the "unable to apply crypto function" bug.
       auto const& peer = this->state().user_sync(this->data()->recipient_id);
       // Populate the frete.
-      this->frete().save_snapshot();
+      if (!this->data()->is_ghost)
+        this->frete().save_snapshot();
       if (this->state().metrics_reporter())
       {
         bool onboarding = false;
@@ -458,6 +427,7 @@ namespace surface
       }
       this->state().meta().update_transaction(this->transaction_id(),
                                               TransactionStatus::initialized);
+      this->transaction().data()->status = TransactionStatus::initialized;
     }
 
     void
@@ -487,6 +457,17 @@ namespace surface
           "%s: transfer machine was stopped because transaction was finalized",
           *this);
       }
+    }
+
+    void
+    PeerSendMachine::_finish()
+    {
+      ELLE_TRACE_SCOPE("%s: finish", *this);
+      this->gap_status(gap_transaction_finished);
+      if (transaction().data()->is_ghost)
+        this->_finalize(infinit::oracles::Transaction::Status::ghost_uploaded);
+      else
+        this->_finalize(infinit::oracles::Transaction::Status::finished);
     }
 
     void
@@ -774,13 +755,13 @@ namespace surface
         {
           ELLE_WARN("%s: source file disappeared, cancel : %s",
                     *this, e.what());
-          this->cancel();
+          this->cancel("source file missing");
         }
         else
         {
           ELLE_WARN("%s: source file corrupted (%s), cancel",
                     *this, e.what());
-          this->cancel();
+          this->cancel(elle::sprintf("source file error: %s", e.what()));
         }
       }
       catch(...)
@@ -827,6 +808,7 @@ namespace surface
       if (this->_frete == nullptr)
       {
         ELLE_TRACE_SCOPE("%s: initialize frete", *this);
+        ELLE_ASSERT(!this->data()->is_ghost);
         this->_frete = elle::make_unique<frete::Frete>(
           this->transaction_id(),
           this->state().identity().pair(),

@@ -111,14 +111,15 @@ namespace infinit
         ELLE_ASSERT(s.in());
         this->is_ghost = false;
       }
+      // Added in 0.9.20.
       try
       {
         s.serialize("canceler", this->canceler);
       }
       catch (elle::serialization::Error const&)
       {
-        canceler.user_id = "";
-        canceler.device_id = "";
+        this->canceler.user_id = "";
+        this->canceler.device_id = "";
       }
       s.serialize("status", this->status, elle::serialization::as<int>());
     }

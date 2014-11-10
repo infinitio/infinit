@@ -161,10 +161,10 @@ namespace surface
     FilesystemTransferBufferer::_filename(FileID file,
                                           FileOffset offset)
     {
-      auto dir = this->_root / boost::lexical_cast<std::string>(file);
+      auto dir = this->_root / std::to_string(file);
       create_directory(dir);
       return dir / boost::filesystem::path(
-        boost::lexical_cast<std::string>(offset));
+        std::to_string(offset));
     }
 
     TransferBufferer::List
