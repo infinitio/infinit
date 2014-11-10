@@ -538,6 +538,8 @@ namespace infinit
           this->user_id = user_id;
           this->user_device_id = device_id;
           this->user_session_id = session_id;
+          if (_connect_thread)
+            _connect_thread->terminate_now();
           _connect_thread.reset(
             new reactor::Thread(
               "reconnection",
