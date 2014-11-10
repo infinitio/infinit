@@ -174,6 +174,7 @@ class TestLogin(unittest.TestCase):
     import platform
     if platform.system() == 'Windows':
       return
+    os.environ['TROPHONIUS_LISTEN_SIGNALS'] = '1'
     with infinit.oracles.servers.Oracles(
       mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
       s = o.state()
@@ -199,7 +200,7 @@ class TestLogin(unittest.TestCase):
       self.assertTrue(last_statuses[0]['still_trying'])
       self.assertFalse(last_statuses[0]['status'])
       self.assertTrue(last_statuses[1]['status'])
-
+    os.environ['TROPHONIUS_LISTEN_SIGNALS'] = ''
   def test_register(self):
     with infinit.oracles.servers.Oracles(
       mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:

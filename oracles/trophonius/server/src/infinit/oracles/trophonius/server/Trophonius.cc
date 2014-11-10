@@ -2,6 +2,7 @@
 
 #include <elle/log.hh>
 #include <elle/network/hostname.hh>
+#include <elle/os/environ.hh>
 
 #include <reactor/scheduler.hh>
 #include <reactor/exception.hh>
@@ -97,8 +98,9 @@ namespace infinit
           _zone(zone)
         {
  #ifndef INFINIT_WINDOWS
-          reactor::scheduler().signal_handle(SIGUSR1,
-            std::bind(&Trophonius::disconnect_all_users, this));
+          if (!elle::os::getenv("TROPHONIUS_LISTEN_SIGNALS","").empty())
+            reactor::scheduler().signal_handle(SIGUSR1,
+              std::bind(&Trophonius::disconnect_all_users, this));
  #endif
           elle::SafeFinally kill_accepters{
             [&]
