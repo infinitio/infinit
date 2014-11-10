@@ -3,6 +3,8 @@
 # utils first, beware of system OpenSSL.
 from utils import *
 
+from infinit.oracles.transaction import statuses
+
 import sisyphus
 import sisyphus.boulders.drip
 
@@ -47,7 +49,8 @@ with mongobox.MongoBox() as mongo:
     tid = meta.transaction_create(sender, 'ghost@infinit.io',
                                   ['foobar'], 1, 42, False, device)
     tid = tid['created_transaction_id']
-    meta._transaction_update(tid, 1, device, None, sender)
+    meta._transaction_update(tid, statuses['initialized'],
+                             device, None, sender)
 
     # Create a real trasnsaction to test mongo queries complexity
     bystander = meta.user_register('bystander@infinit.io',
@@ -66,7 +69,8 @@ with mongobox.MongoBox() as mongo:
     assert not mandrill.emails
 
     # Finish upload.
-    meta._transaction_update(tid, 9, device, None, sender)
+    meta._transaction_update(tid, statuses['ghost_uploaded'],
+                             device, None, sender)
 
     # Check nothing is sent less than a day after upload
     reminder.now += reminder.delay_first_reminder / 2

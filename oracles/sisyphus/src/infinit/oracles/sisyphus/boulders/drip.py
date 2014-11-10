@@ -11,6 +11,7 @@ from itertools import chain
 from .. import Boulder
 from .. import version
 from infinit.oracles.utils import key
+from infinit.oracles.transaction import statuses
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.boulders.drip'
 
@@ -407,7 +408,7 @@ class GhostReminder(Drip):
         # Fully registered
         'is_ghost': True,
         # Ghost uploaded
-        'status': 9,
+        'status': statuses['ghost_uploaded'],
         # Ghost uploaded more than 24h ago
         'modification_time':
         {
@@ -424,7 +425,7 @@ class GhostReminder(Drip):
         # Fully registered
         'is_ghost': True,
         # Ghost uploaded
-        'status': 9,
+        'status': statuses['ghost_uploaded'],
         # Ghost uploaded more than 24h ago
         'modification_time':
         {
