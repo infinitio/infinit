@@ -21,6 +21,14 @@ class GhostReminder(sisyphus.boulders.drip.GhostReminder):
   def now(self, value):
     self.__now = value
 
+def check_mail(mails, sender, recipient):
+  assert len(mails) == 1
+  mail = mails[0]
+  assert mail[0] == recipient
+  content = mail[1]
+  assert content['SENDER_EMAIL'] == sender
+  assert content['RECIPIENT_EMAIL'] == recipient
+
 with mongobox.MongoBox() as mongo:
   with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
     mandrill = Mandrill()
@@ -70,7 +78,8 @@ with mongobox.MongoBox() as mongo:
     reminder.now += reminder.delay_first_reminder
     meta.now = reminder.now
     sisy.cron()
-    mandrill.emails == ['ghost@infinit.io']
+    check_mail(mandrill.emails,
+               'sender@infinit.io', 'ghost@infinit.io')
     sisy.cron()
     assert not mandrill.emails
 
@@ -79,6 +88,7 @@ with mongobox.MongoBox() as mongo:
       reminder.delay_second_reminder - reminder.delay_first_reminder
     meta.now = reminder.now
     sisy.cron()
-    mandrill.emails == ['ghost@infinit.io']
+    check_mail(mandrill.emails,
+               'sender@infinit.io', 'ghost@infinit.io')
     sisy.cron()
     assert not mandrill.emails
