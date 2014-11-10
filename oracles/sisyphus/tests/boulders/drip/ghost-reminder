@@ -58,7 +58,7 @@ with mongobox.MongoBox() as mongo:
     assert not mandrill.emails
 
     # Finish upload.
-    meta._transaction_update(tid, 4, device, None, sender)
+    meta._transaction_update(tid, 9, device, None, sender)
 
     # Check nothing is sent less than a day after upload
     reminder.now += reminder.delay_first_reminder / 2

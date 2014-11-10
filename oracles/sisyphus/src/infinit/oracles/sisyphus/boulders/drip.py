@@ -407,7 +407,7 @@ class GhostReminder(Drip):
         # Fully registered
         'is_ghost': True,
         # Ghost uploaded
-        'status': 4,
+        'status': 9,
         # Ghost uploaded more than 24h ago
         'modification_time':
         {
@@ -423,7 +423,7 @@ class GhostReminder(Drip):
         # Fully registered
         'is_ghost': True,
         # Ghost uploaded
-        'status': 4,
+        'status': 9,
         # Ghost uploaded more than 24h ago
         'modification_time':
         {
