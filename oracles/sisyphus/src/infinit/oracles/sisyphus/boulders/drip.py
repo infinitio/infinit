@@ -70,7 +70,7 @@ class Drip(Boulder):
     condition[self.field_lock] = {'$exists': False}
     # Uncomment this to go in full test mode.
     # import sys
-    # print('%s -> %s: %s' % (start, end, meta.users.find(condition).count()), file = sys.stderr)
+    # print('%s -> %s: %s' % (start, end, self.__table.find(condition).count()), file = sys.stderr)
     # print(condition, file = sys.stderr)
     # return {}
     self.__table.update(
