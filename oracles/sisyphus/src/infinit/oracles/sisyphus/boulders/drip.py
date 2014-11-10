@@ -139,7 +139,6 @@ class Drip(Boulder):
             res[slug] = self.send_email(bucket, slug, targets)
         return res
       else:
-        print()
         template_content = {}
         message = {
           'to': [
@@ -222,7 +221,6 @@ class Drip(Boulder):
 
   def transaction_vars(self, name, transaction):
     name = name.upper()
-    print(transaction)
     return {
       '%s_ID' % name: str(transaction['_id']),
       '%s_FILENAME' % name: transaction['files'][0],
