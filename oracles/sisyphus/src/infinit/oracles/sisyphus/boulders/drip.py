@@ -9,6 +9,7 @@ import time
 from itertools import chain
 
 from .. import Boulder
+from .. import version
 from infinit.oracles.utils import key
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.boulders.drip'
@@ -209,8 +210,11 @@ class Drip(Boulder):
 
   def user_vars(self, name, user):
     name = name.upper()
+    meta = 'https://meta.%s.%s.api.production.infinit.io' \
+           % (version.minor, version.major)
+    avatar = '%s/user/%s/avatar' % (meta, user['_id'])
     return {
-      '%s_AVATAR' % name: 'https://meta.%s.%s.api.production.infinit.io/user/%s/avatar',
+      '%s_AVATAR' % name: avatar,
       '%s_EMAIL' % name: user['email'],
       '%s_FULLNAME' % name: user['fullname'],
       '%s_ID' % name: str(user['_id']),
