@@ -415,7 +415,8 @@ class GhostReminder(Drip):
         },
       },
     )
-    # -> reminded-2
+    response.update(transited)
+    # reminded-1 -> reminded-2
     transited = self.transition(
       'reminded-1',
       'reminded-2',
@@ -431,6 +432,8 @@ class GhostReminder(Drip):
         },
       },
     )
+    response.update(transited)
+    return response
 
   @property
   def fields(self):
