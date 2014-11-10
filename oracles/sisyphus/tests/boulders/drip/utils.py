@@ -163,7 +163,6 @@ class Mandrill:
           if v['rcpt'] == email:
             human = \
               dict((var['name'], var['content']) for var in v['vars'])
-            print(human)
             assert human['USER_EMAIL'] == email
             assert 'USER_FULLNAME' in human
             assert 'UNSUB' in human
