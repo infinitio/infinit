@@ -372,11 +372,11 @@ class Onboarding(Drip):
 class GhostReminder(Drip):
 
   def __init__(self, sisyphus):
-    super().__init__(sisyphus, 'ghost_reminder', 'transactions')
+    super().__init__(sisyphus, 'ghost-reminder', 'transactions')
     self.sisyphus.mongo.meta.transactions.ensure_index(
       [
         # Find transactions in any bucket
-        ('emailing.ghost_reminder.state', pymongo.ASCENDING),
+        ('emailing.ghost-reminder.state', pymongo.ASCENDING),
         # That are ghost
         ('is_ghost', pymongo.ASCENDING),
         # In status ghost uploaded
