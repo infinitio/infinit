@@ -396,5 +396,5 @@ User: %(user)s
     return datetime.datetime.utcnow()
 
   def check_key(self, k):
-    if k != key(bottle.request.path):
+    if k is None or k != key(bottle.request.path):
       self.forbidden()

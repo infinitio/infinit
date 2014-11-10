@@ -117,6 +117,7 @@ class Mixin:
     elif self.logged_in:
       return self.transaction(id, self.user['_id'])
     else:
+      self.check_key(key)
       transaction = self.database.transactions.find_one(
         { '_id': id },
         fields = {
