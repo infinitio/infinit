@@ -529,18 +529,18 @@ class Mixin:
   @api('/users/<user>/confirm-email', method = 'POST')
   def confirm_email(self,
                     user,
-                    hash: str):
+                    hash: str = None,
+                    key: str = None):
     with elle.log.trace('confirm email for %s' % user):
       if '@' in user:
-        query = {
-          'email': user,
-          'email_confirmation_hash': hash,
-        }
+        query = {'email': user}
       else:
-        query = {
-          '_id': bson.ObjectId(user),
-          'email_confirmation_hash': hash,
-        }
+        query = {'_id': bson.ObjectId(user)}
+      if not self.admin:
+        if key is not None:
+          self.check_key(key)
+        elif hash is not None:
+          query['email_confirmation_hash'] = hash
       res = self.database.users.find_and_modify(
         query = query,
         update = {
@@ -548,8 +548,7 @@ class Mixin:
           '$set': {'email_confirmed': True}
         })
       if res is None:
-        response(403,
-                 {'reason': 'invalid confirmation hash or email'})
+        self.forbidden(403, 'invalid confirmation hash or email')
       return {}
 
   # Deprecated
