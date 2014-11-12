@@ -113,9 +113,6 @@ gap_avatar_available_callback(
   gap_State* state,
   std::function<void (uint32_t id)> const& callback);
 
-// Own connection status changed.
-typedef void (*gap_connection_callback_t)(bool, bool, std::string const&);
-
 gap_Status
 gap_connection_callback(
   gap_State* state,

@@ -797,13 +797,17 @@ gap_avatar_available_callback(
 gap_Status
 gap_connection_callback(
   gap_State* state,
-  std::function<void (bool status)> const& callback)
+  std::function<void (bool status,
+                      bool still_retrying,
+                      std::string const& last_error)> const& callback)
 {
   auto cb_wrapper =
     [callback]
     (surface::gap::State::ConnectionStatus const& notification)
     {
-      cb(notif.status, notif.still_trying, notif.last_error);
+      callback(notification.status,
+               notification.still_trying,
+               notification.last_error);
     };
   return run<gap_Status>(
     state,
