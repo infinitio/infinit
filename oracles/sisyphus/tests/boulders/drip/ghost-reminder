@@ -31,6 +31,14 @@ def check_mail(mails, sender, recipient):
   assert content['SENDER_EMAIL'] == sender
   assert content['RECIPIENT_EMAIL'] == recipient
 
+def create_transaction(sender, recipient):
+  tid = meta.transaction_create(sender, recipient,
+                                ['foobar'], 1, 42, False, device)
+  tid = tid['created_transaction_id']
+  meta._transaction_update(tid, statuses['initialized'],
+                             'device', None, sender)
+  return tid
+
 with mongobox.MongoBox() as mongo:
   with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
     mandrill = Mandrill()
@@ -38,6 +46,11 @@ with mongobox.MongoBox() as mongo:
                                  mandrill = mandrill)
     sisy._Sisyphus__mongo.__class__ = GestapoMongoClient
     reminder = GhostReminder(sisy)
+
+    def forward(duration):
+      reminder.now += duration
+      meta.now = reminder.now
+
     # Check nothing is sent with no users
     sisy.cron()
     assert not mandrill.emails
@@ -46,25 +59,21 @@ with mongobox.MongoBox() as mongo:
     device = 'device'
     sender = meta.user_register('sender@infinit.io',
                                 '*' * 64, 'Foo Bar')
-    tid = meta.transaction_create(sender, 'ghost@infinit.io',
-                                  ['foobar'], 1, 42, False, device)
-    tid = tid['created_transaction_id']
-    meta._transaction_update(tid, statuses['initialized'],
-                             device, None, sender)
+    ghost_email = 'ghost@infinit.io'
+    tid = create_transaction(sender, ghost_email)
+    ghost = meta.user_by_email(ghost_email)
 
-    # Create a real trasnsaction to test mongo queries complexity
+    # Create a real transsaction to test mongo queries complexity
     bystander = meta.user_register('bystander@infinit.io',
                                    '*' * 64, 'Foo Bar')
-    meta.transaction_create(sender, 'bystander@infinit.io',
-                            ['foobar'], 1, 42, False, device)
+    create_transaction(sender, 'bystander@infinit.io')
 
     # Check nothing is sent for a fresh transaction
     sisy.cron()
     assert not mandrill.emails
 
     # Check nothing is sent while the transaction is not uploaded.
-    reminder.now = reminder.now + reminder.delay_first_reminder * 2
-    meta.now = reminder.now
+    forward(reminder.delay_first_reminder * 2)
     sisy.cron()
     assert not mandrill.emails
 
@@ -73,26 +82,48 @@ with mongobox.MongoBox() as mongo:
                              device, None, sender)
 
     # Check nothing is sent less than a day after upload
-    reminder.now += reminder.delay_first_reminder / 2
-    meta.now = reminder.now
+    forward(reminder.delay_first_reminder / 2)
     sisy.cron()
     assert not mandrill.emails
 
     # Check reminder 1 is sent 24h after upload
-    reminder.now += reminder.delay_first_reminder
-    meta.now = reminder.now
+    forward(reminder.delay_first_reminder)
     sisy.cron()
     check_mail(mandrill.emails,
-               'sender@infinit.io', 'ghost@infinit.io')
+               'sender@infinit.io', ghost_email)
     sisy.cron()
     assert not mandrill.emails
 
-    # Check nothing reminder 2 is sent 72h after upload
-    reminder.now += \
-      reminder.delay_second_reminder - reminder.delay_first_reminder
-    meta.now = reminder.now
+    # Check reminder 2 is sent 72h after upload
+    forward(
+      reminder.delay_second_reminder - reminder.delay_first_reminder)
     sisy.cron()
     check_mail(mandrill.emails,
-               'sender@infinit.io', 'ghost@infinit.io')
+               'sender@infinit.io', ghost_email)
+    sisy.cron()
+    assert not mandrill.emails
+
+    # Check reminder 1 is not sent for downloaded transactions
+    tid = create_transaction(sender, ghost_email)
+    meta._transaction_update(tid, statuses['ghost_uploaded'],
+                             device, None, sender)
+    forward(reminder.delay_first_reminder * 2)
+    meta._transaction_update(tid, statuses['finished'],
+                             device, None, ghost)
+    sisy.cron()
+    assert not mandrill.emails
+
+    # Check reminder 2 is not sent for downloaded transactions
+    tid = create_transaction(sender, ghost_email)
+    meta._transaction_update(tid, statuses['ghost_uploaded'],
+                             device, None, sender)
+    forward(reminder.delay_first_reminder * 2)
+    sisy.cron()
+    check_mail(mandrill.emails, 'sender@infinit.io', ghost_email)
+    forward(
+      reminder.delay_second_reminder - reminder.delay_first_reminder)
+    assert not mandrill.emails
+    meta._transaction_update(tid, statuses['finished'],
+                             device, None, ghost)
     sisy.cron()
     assert not mandrill.emails
