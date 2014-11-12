@@ -9,7 +9,8 @@ import unicodedata
 import urllib.parse
 
 import elle.log
-from .utils import api, require_logged_in, require_logged_in_or_admin
+from .utils import \
+  api, require_logged_in, require_logged_in_or_admin, require_key
 from . import regexp, error, transaction_status, notifier, invitation, cloud_buffer_token, mail
 import uuid
 import re
@@ -93,22 +94,23 @@ class Mixin:
       else:
         return self.success(transaction)
 
-  @api('/transaction/download/<transaction_hash>', method='POST')
-  def transaction_download(self, transaction_hash:str):
+  @api('/transactions/<id>/downloaded', method='POST')
+  @require_key
+  def transaction_download(self, id: bson.ObjectId):
     transaction = self.database.transactions.find_and_modify(
-          {'transaction_hash': transaction_hash},
-          {'$set': {'status': transaction_status.FINISHED}},
-          new = True,
-          )
+      id,
+      {'$set': {'status': transaction_status.FINISHED}},
+      new = True,
+    )
     if transaction is None:
       self.not_found()
-
     self.notifier.notify_some(
       notifier.PEER_TRANSACTION,
-      recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
+      recipient_ids = {transaction['sender_id'],
+                       transaction['recipient_id']},
       message = transaction,
-      )
-    return dict()
+    )
+    return {}
 
   @api('/transaction/<id>')
   def transaction_view(self, id: bson.ObjectId, key = None):
