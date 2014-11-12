@@ -85,6 +85,10 @@ parser.add_option('--zone',
                   action = 'store',
                   help = 'trophonius zone',
                   default = None)
+parser.add_option('--listen-all',
+                  action = 'store_true',
+                  help = 'listen on 0.0.0.0, default is to listen on 127.0.0.1',
+                  default = False)
 
 options, args = parser.parse_args()
 
@@ -122,6 +126,11 @@ if options.port_file is not None:
   t = threading.Thread(target = lambda : write_port_file())
   t.start()
 
+if options.listen_all:
+  host = '0.0.0.0'
+else:
+  host = '127.0.0.1'
+
 bottle.run(app = app,
-           host = '127.0.0.1',
+           host = host,
            port = int(options.port))
