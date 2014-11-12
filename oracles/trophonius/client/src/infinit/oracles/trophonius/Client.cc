@@ -305,6 +305,7 @@ namespace infinit
         Client::ConnectCallback connect_callback;
         Client::ReconnectPokeFailedCallback reconnect_failed_callback;
         std::unique_ptr<reactor::Thread> _connect_callback_thread;
+        std::unique_ptr<reactor::Thread> _connect_thread;
 
         Impl(Client& client,
              Client::ConnectCallback connect_callback,
@@ -381,6 +382,7 @@ namespace infinit
           std::unique_ptr<reactor::Thread> pong_thread;
           std::unique_ptr<reactor::Thread> read_thread;
           std::unique_ptr<reactor::Thread> connect_callback_thread;
+          std::unique_ptr<reactor::Thread> connect_thread;
           reactor::Waitables waited;
           auto current = reactor::scheduler().current();
           auto stop =
@@ -416,6 +418,14 @@ namespace infinit
               waited.push_back(this->_connect_callback_thread.get());
               connect_callback_thread =
                 std::move(this->_connect_callback_thread);
+            }
+            if (this->_connect_thread)
+            ELLE_DEBUG("%s: terminate connect callback thread", *this)
+            {
+              this->_connect_thread->terminate();
+              waited.push_back(this->_connect_thread.get());
+              connect_thread =
+                std::move(this->_connect_thread);
             }
           reactor::wait(waited);
         }
@@ -525,16 +535,33 @@ namespace infinit
                  std::string const& device_id,
                  std::string const& session_id)
         {
-          ELLE_TRACE_SCOPE("%s: connect to %s:%s",
-                           *this, this->server, this->port);
-          ELLE_ASSERT(!this->_connected.opened());
-          auto socket = this->_poke();
           this->user_id = user_id;
           this->user_device_id = device_id;
           this->user_session_id = session_id;
+          if (_connect_thread)
+            _connect_thread->terminate_now();
+          _connect_thread.reset(
+            new reactor::Thread(
+              "reconnection",
+              [&]
+              {
+                this->_reconnect({}, true);
+              }
+              ));
+        }
+
+
+        void
+        _connect()
+        {
           auto const connection_timeout = this->connect_timeout();
           try
           {
+            ELLE_TRACE_SCOPE("%s: connect to %s:%s",
+                           *this, this->server, this->port);
+            ELLE_ASSERT(!this->_connected.opened());
+            auto socket = this->_poke();
+
             ELLE_DEBUG_SCOPE("%s: authenticate", *this);
             elle::json::Object request;
             {
@@ -610,54 +637,86 @@ namespace infinit
         }
 
         void
-        _reconnect()
+        _reconnect(boost::optional<elle::Exception> reason = {}, bool first_time = false)
         {
           // If several threads try to reconnect, just wait for the first one to
           // be done.
           ELLE_TRACE_SCOPE("%s: thread %s reconnect",
                            *this, *reactor::Scheduler::scheduler()->current());
-          ELLE_ASSERT(this->_connected.opened());
-          // Since we're reconnecting because of network issue anyway, we don't
-          // really care about a proper SSL shutdown before reconnecting.
-          this->_socket->shutdown_asynchronous(true);
-          this->_disconnect();
-          this->connect_callback(false);
+          if (this->_connected.opened())
+          {
+            // Since we're reconnecting because of network issue anyway, we don't
+            // really care about a proper SSL shutdown before reconnecting.
+            this->_socket->shutdown_asynchronous(true);
+            this->_disconnect();
+          }
+          if (!first_time)
+            this->connect_callback({false,
+                                   reason ? *reason : elle::Error("Unknown error"),
+                                   true});
           while (true)
           {
             try
             {
-              this->_connect(
-                this->user_id, this->user_device_id, this->user_session_id);
-              this->_connect_callback_thread.reset(
-                new reactor::Thread(
-                  "reconnection callback",
-                  [&]
-                  {
-                    ELLE_LOG("%s: running reconnection callback", *this);
-                    try
+              this->_connect();
+              if (!first_time)
+                this->_connect_callback_thread.reset(
+                  new reactor::Thread(
+                    "reconnection callback",
+                    [&]
                     {
-                      this->connect_callback(true);
-                    }
-                    catch (reactor::Terminate const&)
-                    {
-                      throw;
-                    }
-                    catch (...)
-                    {
-                      ELLE_ERR("%s: connection callback failed: %s",
-                               *this, elle::exception_string());
-                      throw;
-                    }
-                    this->_notifications.open();
-                  }));
+                      ELLE_LOG("%s: running reconnection callback", *this);
+                      try
+                      {
+                        this->connect_callback(ConnectionState{true, elle::Error(""), false});
+                      }
+                      catch (reactor::Terminate const&)
+                      {
+                        throw;
+                      }
+                      catch (...)
+                      {
+                        ELLE_ERR("%s: connection callback failed: %s",
+                                 *this, elle::exception_string());
+                        throw;
+                      }
+                      this->_notifications.open();
+                    }));
               break;
             }
             catch (ConnectionError const& e)
             {
-              ELLE_WARN("%s: unable to reconnect: %s",
+              ELLE_WARN("%s: unable to reconnect(transient): %s",
                         *this, elle::exception_string());
+              this->connect_callback(ConnectionState{false, e, true});
             }
-            this->reconnect_failed_callback();
+            catch (reactor::Terminate const&)
+            {
+              throw;
+            }
+            catch (elle::Exception const& e)
+            {
+              ELLE_WARN("%s: unable to reconnect(fatal): %s",
+                        *this, elle::exception_string());
+              this->connect_callback(ConnectionState{false, e, true});
+              throw e;
+            }
+            catch (...)
+            {
+              ELLE_WARN("%s: unable to reconnect(fatal): %s",
+                        *this, elle::exception_string());
+              this->connect_callback(ConnectionState{false,
+                elle::Error(elle::exception_string()), true});
+            }
+            try
+            {
+              this->reconnect_failed_callback();
+            }
+            catch(elle::Exception const& e)
+            {
+              ELLE_WARN("%s: reconnection callback failed with %s",
+                        *this, e);
+            }
             boost::random::mt19937 rng;
             rng.seed(static_cast<unsigned int>(std::time(0)));
             boost::random::uniform_int_distribution<> random(100, 150);
@@ -668,7 +727,8 @@ namespace infinit
           }
           ELLE_ASSERT(this->_connected.opened());
           ELLE_LOG("%s: reconnected to trophonius", *this);
-          ++this->_reconnected;
+          if (!first_time)
+            ++this->_reconnected;
         }
 
         boost::posix_time::time_duration _ping_period;
@@ -699,11 +759,11 @@ namespace infinit
               ELLE_DUMP_SCOPE("send ping to %s", socket->peer());
               socket->write(elle::ConstWeakBuffer(ping_msg));
             }
-            catch (elle::Exception const&)
+            catch (elle::Exception const& e)
             {
               ELLE_WARN("couldn't send ping to tropho: %s",
                         elle::exception_string());
-              this->_reconnect();
+              this->_reconnect(e);
             }
           }
         }
@@ -727,7 +787,7 @@ namespace infinit
             {
               ELLE_WARN("%s: didn't receive ping from tropho in %s",
                         *this, this->_ping_timeout);
-              this->_reconnect();
+              this->_reconnect(elle::Error("Ping timeout"));
             }
           }
         }
@@ -767,13 +827,13 @@ namespace infinit
             {
               ELLE_WARN("%s: timeout after %s while reading", *this,
                         read_timeout);
-              this->_reconnect();
+              this->_reconnect(e);
               continue;
             }
             catch (elle::Exception const& e)
             {
               ELLE_WARN("%s: error while reading: %s", *this, e.what());
-              this->_reconnect();
+              this->_reconnect(e);
               continue;
             }
             ELLE_ASSERT(notif != nullptr);
@@ -930,23 +990,6 @@ namespace infinit
       Client::poll()
       {
         return this->_impl->poll();
-      }
-
-      std::ostream&
-      operator <<(std::ostream& out,
-                  NotificationType t)
-      {
-        switch (t)
-        {
-        <%! from infinit.oracles.notification import notifications %>
-        %for name, value in notifications.items():
-          case NotificationType::${name}:
-            out << "${name}";
-            break;
-        %endfor
-        }
-
-        return out;
       }
 
       void

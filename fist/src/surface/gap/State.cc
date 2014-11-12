@@ -111,13 +111,15 @@ namespace surface
     /*--------------.
     | Notifications |
     `--------------*/
-    State::ConnectionStatus::ConnectionStatus(bool status):
-      status(status)
+    State::ConnectionStatus::ConnectionStatus(bool status,
+                                              bool still_trying,
+                                              std::string const& last_error)
+      : status(status)
+      , still_trying(still_trying)
+      , last_error(last_error)
     {}
     Notification::Type State::ConnectionStatus::type =
       NotificationType_ConnectionStatus;
-
-    Notification::Type State::KickedOut::type = NotificationType_KickedOut;
 
     Notification::Type State::TrophoniusUnavailable::type =
       NotificationType_TrophoniusUnavailable;
@@ -142,9 +144,12 @@ namespace surface
       , _metrics_reporter(std::move(metrics))
       , _me()
       , _output_dir(download_dir)
+      , _reconnection_cooldown(10_sec)
       , _device_uuid(std::move(device))
       , _device()
+      , _login_watcher_thread(nullptr)
     {
+      this->_logged_out.open();
       ELLE_TRACE_SCOPE("%s: create state", *this);
       if (!this->_metrics_reporter)
         // This is a no-op reporter.
@@ -407,9 +412,18 @@ namespace surface
       std::string const& email,
       std::string const& password)
     {
-      return this->login(
+      this->login(email, password, reactor::DurationOpt());
+    }
+
+    void
+    State::login(
+      std::string const& email,
+      std::string const& password,
+      reactor::DurationOpt timeout)
+    {
+      this->login(
         email, password,
-        std::unique_ptr<infinit::oracles::trophonius::Client>());
+        std::unique_ptr<infinit::oracles::trophonius::Client>(), timeout);
     }
 
     void
@@ -427,240 +441,322 @@ namespace surface
     State::login(
       std::string const& email,
       std::string const& password,
-      std::unique_ptr<infinit::oracles::trophonius::Client> trophonius)
+      std::unique_ptr<infinit::oracles::trophonius::Client> trophonius,
+      reactor::DurationOpt timeout)
     {
-      ELLE_TRACE_SCOPE("%s: login to meta as %s", *this, email);
-
-      ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
-      reactor::Scheduler& scheduler = *reactor::Scheduler::scheduler();
-
-      reactor::Lock l(this->_login_mutex);
-
-      // Ensure we don't have an old Meta message
-      this->_meta_message.clear();
-
-      if (this->logged_in())
-        throw Exception(gap_already_logged_in, "already logged in");
-
-      this->_cleanup();
-
-      if (!this->_meta_server_check())
+      if (this->_logged_in)
+        this->logout();
+      this->_logged_out.close();
+      auto tropho = elle::utility::move_on_copy(std::move(trophonius));
+      this-> _login_thread.reset(new reactor::Thread(
+        "login",
+        [=]
+        {
+          this->_login(email, password, tropho);
+        }));
+      this->_login_watcher_thread = reactor::scheduler().current();
+      elle::SafeFinally reset_login_thread(
+        [&]
+        {
+          this->_login_watcher_thread = nullptr;
+        });
+      //Wait for logged-in or logged-out status
+      elle::With<reactor::Scope>() << [&] (reactor::Scope& s)
       {
-        if (this->_meta_message.empty())
-        {
-          throw Exception(gap_meta_unreachable,
-                          "Unable to contact Meta");
-        }
-        else
-        {
-          throw Exception(gap_meta_down_with_message,
-                          elle::sprintf("Meta down with message: %s",
-                                        this->_meta_message));
-        }
-      }
-
-      std::string lower_email = email;
-      std::string hashed_password = hash_password(email, password);
-
-      std::transform(lower_email.begin(),
-                     lower_email.end(),
-                     lower_email.begin(),
-                     ::tolower);
-
-      std::string failure_reason;
-      elle::With<elle::Finally>([&]
-        {
-          failure_reason = elle::exception_string();
-          ELLE_WARN("%s: error during login, logout: %s",
-                    *this, failure_reason);
-          infinit::metrics::Reporter::metric_sender_id(lower_email);
-          this->_metrics_reporter->user_login(false, failure_reason);
-          if (this->_meta.logged_in())
-            this->_meta.logout();
-        })
-        << [&] (elle::Finally& finally_logout)
-      {
-        auto login_response =
-          this->_meta.login(lower_email, hashed_password, _device_uuid);
-        ELLE_LOG("%s: logged in as %s", *this, email);
-        if (trophonius)
-        {
-          this->_trophonius.swap(trophonius);
-        }
-        else
-        {
-          this->_trophonius.reset(new infinit::oracles::trophonius::Client(
-          [this] (bool status)
+         s.run_background("waiter1",
+          [&]
           {
-            this->on_connection_changed(status);
-          },
-          std::bind(&State::on_reconnection_failed, this),
-          this->_trophonius_fingerprint));
+            reactor::wait(this->_logged_in); s.terminate_now();
+          });
+         s.run_background("waiter2",
+          [&]
+          {
+            reactor::wait(this->_logged_out); s.terminate_now();
+          });
+         reactor::wait(s, timeout);
+         s.terminate_now();
+      };
+
+      ELLE_TRACE("Login user thread unblocked");
+      if (!this->_logged_in)
+        throw elle::Error("Login failure");
+    }
+
+    typedef infinit::oracles::trophonius::Client TrophoniusClient;
+    typedef infinit::oracles::trophonius::ConnectionState ConnectionState;
+    void
+    State::_login(
+      std::string const& email,
+      std::string const& password,
+      elle::utility::Move<std::unique_ptr<TrophoniusClient>> trophonius)
+    {
+      this->_email = email;
+      this->_password = password;
+      while(true) try
+      {
+        ELLE_TRACE_SCOPE("%s: login to meta as %s", *this, email);
+
+        ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
+
+        reactor::Scheduler& scheduler = *reactor::Scheduler::scheduler();
+
+        reactor::Lock l(this->_login_mutex);
+
+        // Ensure we don't have an old Meta message
+        this->_meta_message.clear();
+
+        if (this->logged_in())
+          throw Exception(gap_already_logged_in, "already logged in");
+
+        this->_cleanup();
+
+        if (!this->_meta_server_check())
+        {
+          if (this->_meta_message.empty())
+          {
+            throw Exception(gap_meta_unreachable, "Unable to contact Meta");
+          }
+          else
+          {
+            throw Exception(gap_meta_down_with_message,
+                            elle::sprintf("Meta down with message: %s",
+                                          this->_meta_message));
+          }
         }
-        std::string trophonius_host = login_response.trophonius.host;
-        int trophonius_port = login_response.trophonius.port_ssl;
-        if (!this->_forced_trophonius_host.empty())
-          trophonius_host = this->_forced_trophonius_host;
-        if (this->_forced_trophonius_port != 0)
-          trophonius_port = this->_forced_trophonius_port;
-        this->_trophonius->server(trophonius_host, trophonius_port);
-        infinit::metrics::Reporter::metric_sender_id(login_response.id);
-        this->_metrics_reporter->user_login(true, "");
-        this->_metrics_heartbeat_thread.reset(
-          new reactor::Thread{
-            *reactor::Scheduler::scheduler(),
-              "metrics heartbeat",
-              [&]
-              {
-                while (true)
+
+        std::string lower_email = email;
+        std::string hashed_password = hash_password(email, password);
+
+        std::transform(lower_email.begin(),
+                       lower_email.end(),
+                       lower_email.begin(),
+                       ::tolower);
+
+        std::string failure_reason;
+        elle::With<elle::Finally>([&]
+          {
+            failure_reason = elle::exception_string();
+            ELLE_WARN("%s: error during login, logout: %s",
+                      *this, failure_reason);
+            infinit::metrics::Reporter::metric_sender_id(lower_email);
+            this->_metrics_reporter->user_login(false, failure_reason);
+            if (this->_meta.logged_in())
+              this->_meta.logout();
+          })
+          << [&] (elle::Finally& finally_logout)
+        {
+          auto login_response =
+            this->_meta.login(lower_email, hashed_password, _device_uuid);
+          ELLE_LOG("%s: logged in as %s", *this, email);
+          if (*trophonius)
+          {
+            this->_trophonius.swap(*trophonius);
+          }
+          else if (!this->_trophonius)
+          {
+            this->_trophonius.reset(new infinit::oracles::trophonius::Client(
+            [this] (infinit::oracles::trophonius::ConnectionState const& status)
+            {
+              this->on_connection_changed(status);
+            },
+            std::bind(&State::on_reconnection_failed, this),
+            this->_trophonius_fingerprint,
+            this->_reconnection_cooldown
+            ));
+          }
+          std::string trophonius_host = login_response.trophonius.host;
+          int trophonius_port = login_response.trophonius.port_ssl;
+          if (!this->_forced_trophonius_host.empty())
+            trophonius_host = this->_forced_trophonius_host;
+          if (this->_forced_trophonius_port != 0)
+            trophonius_port = this->_forced_trophonius_port;
+          this->_trophonius->server(trophonius_host, trophonius_port);
+          infinit::metrics::Reporter::metric_sender_id(login_response.id);
+          this->_metrics_reporter->user_login(true, "");
+          this->_metrics_heartbeat_thread.reset(
+            new reactor::Thread{
+              *reactor::Scheduler::scheduler(),
+                "metrics heartbeat",
+                [&]
                 {
-                  reactor::sleep(360_min);
-                  this->_metrics_reporter->user_heartbeat();
-                }
-              }});
+                  while (true)
+                  {
+                    reactor::sleep(360_min);
+                    this->_metrics_reporter->user_heartbeat();
+                  }
+                }});
 
-        std::string identity_clear;
+          std::string identity_clear;
 
-        ELLE_TRACE("%s: decrypt identity", *this)
-        {
-          this->_identity.reset(new papier::Identity());
-          if (this->_identity->Restore(login_response.identity) == elle::Status::Error)
-            throw Exception(gap_internal_error, "unable to restore the identity");
-          if (this->_identity->Decrypt(hashed_password) == elle::Status::Error)
-            throw Exception(gap_internal_error, "unable to decrypt the identity");
-          if (this->_identity->Clear() == elle::Status::Error)
-            throw Exception(gap_internal_error, "unable to clear the identity");
-          if (this->_identity->Save(identity_clear) == elle::Status::Error)
-            throw Exception(gap_internal_error, "unable to save the identity");
-        }
+          ELLE_TRACE("%s: decrypt identity", *this)
+          {
+            this->_identity.reset(new papier::Identity());
+            if (this->_identity->Restore(login_response.identity) == elle::Status::Error)
+              throw Exception(gap_internal_error, "unable to restore the identity");
+            if (this->_identity->Decrypt(hashed_password) == elle::Status::Error)
+              throw Exception(gap_internal_error, "unable to decrypt the identity");
+            if (this->_identity->Clear() == elle::Status::Error)
+              throw Exception(gap_internal_error, "unable to clear the identity");
+            if (this->_identity->Save(identity_clear) == elle::Status::Error)
+              throw Exception(gap_internal_error, "unable to save the identity");
+          }
 
-        ELLE_TRACE("%s: store identity", *this)
-        {
-          if (this->_identity->Restore(identity_clear) == elle::Status::Error)
-            throw Exception(gap_internal_error,
-                            "Cannot save the identity file.");
-          auto user_id = this->_identity->id();
-          elle::io::Path path(elle::os::path::join(
-                                common::infinit::user_directory(user_id),
-                                user_id + ".idy"));
-          this->_identity->store(path);
-        }
+          ELLE_TRACE("%s: store identity", *this)
+          {
+            if (this->_identity->Restore(identity_clear) == elle::Status::Error)
+              throw Exception(gap_internal_error,
+                              "Cannot save the identity file.");
+            auto user_id = this->_identity->id();
+            elle::io::Path path(elle::os::path::join(
+                                  common::infinit::user_directory(user_id),
+                                  user_id + ".idy"));
+            this->_identity->store(path);
+          }
 
-        std::ofstream identity_infos{common::infinit::identity_path(login_response.id)};
+          std::ofstream identity_infos{
+            common::infinit::identity_path(login_response.id)};
 
-        if (identity_infos.good())
-        {
-          identity_infos << login_response.identity << "\n"
-                         << login_response.email << "\n"
-                         << login_response.id << "\n"
-          ;
-          identity_infos.close();
-        }
+          if (identity_infos.good())
+          {
+            identity_infos << login_response.identity << "\n"
+                           << login_response.email << "\n"
+                           << login_response.id << "\n"
+            ;
+            identity_infos.close();
+          }
 
-        auto device = this->meta().device(_device_uuid);
-        this->_device.reset(new Device(device));
-        std::string passport_path =
-          common::infinit::passport_path(this->me().id);
-        this->_passport.reset(new papier::Passport());
-        if (this->_passport->Restore(device.passport) == elle::Status::Error)
-          throw Exception(gap_wrong_passport, "Cannot load the passport");
-        this->_passport->store(elle::io::Path(passport_path));
+          auto device = this->meta().device(_device_uuid);
+          this->_device.reset(new Device(device));
+          std::string passport_path =
+            common::infinit::passport_path(this->me().id);
+          this->_passport.reset(new papier::Passport());
+          if (this->_passport->Restore(device.passport) == elle::Status::Error)
+            throw Exception(gap_wrong_passport, "Cannot load the passport");
+          this->_passport->store(elle::io::Path(passport_path));
 
-        ELLE_TRACE("%s: connecting to trophonius on %s:%s",
-                   *this,
-                   login_response.trophonius.host,
-                   login_response.trophonius.port_ssl)
-        {
-          try
+          ELLE_TRACE("%s: connecting to trophonius on %s:%s",
+                     *this,
+                     login_response.trophonius.host,
+                     login_response.trophonius.port_ssl)
           {
             this->_trophonius->connect(
               this->me().id, this->device().id, this->_meta.session_id());
+            reactor::wait(_trophonius->connected());
           }
-          catch (infinit::oracles::trophonius::ConnectionError const&)
-          {
-            throw Exception(gap_trophonius_unreachable,
-                            elle::exception_string());
-          }
-        }
 
-        this->_avatar_fetcher_thread.reset(
-          new reactor::Thread{
-            scheduler,
-            "avatar fetched",
-            [&]
-            {
-              while (true)
-              {
-                this->_avatar_fetching_barrier.wait();
+          ELLE_TRACE("%s: connected to trophonius",
+                     *this);
 
-                ELLE_ASSERT(!this->_avatar_to_fetch.empty());
-                auto user_id = *this->_avatar_to_fetch.begin();
-                auto id = this->_user_indexes.at(this->user(user_id).id);
-                try
-                {
-                  this->_avatars.insert(
-                    std::make_pair(id,
-                                   this->_meta.icon(user_id)));
-                  this->_avatar_to_fetch.erase(user_id);
-                  this->enqueue(AvatarAvailableNotification(id));
-                }
-                catch (elle::Exception const& e)
-                {
-                  ELLE_ERR("%s: unable to fetch %s avatar: %s", *this, user_id,
-                           e.what());
-                  // The UI will ask for the avatar again if it needs it, so
-                  // remove the request from the queue if there's a problem.
-                  this->_avatar_to_fetch.erase(user_id);
-                }
-
-                if (this->_avatar_to_fetch.empty())
-                  this->_avatar_fetching_barrier.close();
-              }
-            }});
-        ELLE_TRACE("%s: fetch self", *this)
-          this->user(this->me().id);
-        ELLE_TRACE("%s: fetch users", *this)
-          this->_users_init();
-        ELLE_TRACE("%s: fetch transactions", *this)
-          this->_transactions_init();
-        this->on_connection_changed(true, true);
-        this->_polling_thread.reset(
-          new reactor::Thread{
-            scheduler,
-              "poll",
+          this->_avatar_fetcher_thread.reset(
+            new reactor::Thread{
+              scheduler,
+              "avatar fetched",
               [&]
               {
                 while (true)
                 {
+                  this->_avatar_fetching_barrier.wait();
+
+                  ELLE_ASSERT(!this->_avatar_to_fetch.empty());
+                  auto user_id = *this->_avatar_to_fetch.begin();
+                  auto id = this->_user_indexes.at(this->user(user_id).id);
                   try
                   {
-                    this->handle_notification(this->_trophonius->poll());
+                    this->_avatars.insert(
+                      std::make_pair(id,
+                                     this->_meta.icon(user_id)));
+                    this->_avatar_to_fetch.erase(user_id);
+                    this->enqueue(AvatarAvailableNotification(id));
                   }
-                  catch (elle::Exception const&)
+                  catch (elle::Exception const& e)
                   {
-                    ELLE_ERR("%s: an error occured in trophonius, login is " \
-                             "required: %s", *this, elle::exception_string());
-                    // Loging out flush the message queue, which means that
-                    // KickedOut will be the next event polled.
-                    this->logout();
-                    this->enqueue(KickedOut());
-                    this->enqueue(ConnectionStatus(false));
-                    return;
+                    ELLE_ERR("%s: unable to fetch %s avatar: %s", *this,
+                             user_id, e.what());
+                    // The UI will ask for the avatar again if it needs it, so
+                    // remove the request from the queue if there's a problem.
+                    this->_avatar_to_fetch.erase(user_id);
                   }
 
-                  ELLE_TRACE("%s: notification pulled", *this);
+                  if (this->_avatar_to_fetch.empty())
+                    this->_avatar_fetching_barrier.close();
                 }
               }});
+          ELLE_TRACE("%s: fetch self", *this)
+            this->user(this->me().id);
+          ELLE_TRACE("%s: fetch users", *this)
+            this->_users_init();
+          ELLE_TRACE("%s: fetch transactions", *this)
+            this->_transactions_init();
+          this->on_connection_changed(
+            ConnectionState{true, elle::Error(""), false},
+            true);
+          this->_polling_thread.reset(
+            new reactor::Thread{
+              scheduler,
+                "poll",
+                [&]
+                {
+                  while (true)
+                  {
+                    try
+                    {
+                      this->handle_notification(this->_trophonius->poll());
+                    }
+                    catch (elle::Exception const& e)
+                    {
+                      ELLE_ERR("%s: an error occured in trophonius, login is " \
+                               "required: %s", *this, elle::exception_string());
+                      this->logout();
+                      this->enqueue(ConnectionStatus(false, false, e.what()));
+                      return;
+                    }
 
-        finally_logout.abort();
-      };
+                    ELLE_TRACE("%s: notification pulled", *this);
+                  }
+                }});
+
+          finally_logout.abort();
+        };
+        this->_logged_in.open();
+        return;
+      }
+      #define RETHROW(ExceptionType)                              \
+      catch(ExceptionType const& e)                                \
+      { /* Permanent failure, abort*/                              \
+        this->enqueue(ConnectionStatus(false, false, e.what()));   \
+        ELLE_WARN("%s: login fatal failure: %s", *this, e);        \
+        this->_logged_out.open();                                  \
+        if (_login_watcher_thread)                                 \
+          _login_watcher_thread->raise(std::make_exception_ptr(e));\
+        return;                                                    \
+      }
+      RETHROW(state::CredentialError)
+      RETHROW(state::UnconfirmedEmailError)
+      RETHROW(state::VersionRejected)
+      RETHROW(state::AlreadyLoggedIn)
+      #undef RETHROW
+      catch(elle::Exception const& e)
+      { // Assume temporary failure and retry
+        this->enqueue(ConnectionStatus(false, true, e.what()));
+        ELLE_WARN("%s: login failure: %s", *this, e);
+        // XX notify
+        boost::random::mt19937 rng;
+        rng.seed(static_cast<unsigned int>(std::time(0)));
+        boost::random::uniform_int_distribution<> random(100, 150);
+        auto const delay =
+          reconnection_cooldown() * random(rng) / 100;
+        ELLE_LOG("%s: will retry reconnection in %s", *this, delay);
+        reactor::sleep(delay);
+      }
     }
 
     void
     State::logout()
     {
+      if (this->_login_thread)
+        this->_login_thread->terminate_now();
       reactor::Lock l(this->_login_mutex);
+      this->_logged_in.close();
       ELLE_TRACE_SCOPE("%s: logout", *this);
 
       this->_cleanup();
@@ -672,6 +768,7 @@ namespace surface
       if (!this->logged_in())
       {
         ELLE_DEBUG("%s: state was not logged in", *this);
+        this->_logged_out.open();
         return;
       }
       try
@@ -706,6 +803,18 @@ namespace surface
         this->_meta.logged_in(false);
         this->_metrics_reporter->user_logout(false, elle::exception_string());
       }
+      if (this->_trophonius)
+        this->_trophonius->disconnect();
+      this->_logged_out.open();
+    }
+
+    void
+    State::clean()
+    {
+      if (this->_logged_in)
+        this->logout();
+      else
+        this->_cleanup();
     }
 
     void
@@ -920,21 +1029,27 @@ namespace surface
     }
 
     void
-    State::on_connection_changed(bool connection_status, bool first_connection)
+    State::on_connection_changed(ConnectionState const& connection_state,
+                                 bool first_connection)
     {
       ELLE_TRACE_SCOPE(
-        "%s: %sconnection %s",
+        "%s: %sconnection %s %s %s",
         *this,
         first_connection? "first " : "re",
-        connection_status ? "established" : "lost");
+        connection_state.connected ? "established" : "lost",
+        connection_state.still_trying ? "for now" : "forever",
+        connection_state.connected ? "" : connection_state.last_error.what());
 
-      if (connection_status)
+      if (connection_state.connected)
       {
         bool resynched{false};
         do
         {
           if (!this->logged_in())
+          {
+            ELLE_TRACE("%s: not logged in, aborting", *this);
             return;
+          }
 
           try
           {
@@ -954,6 +1069,8 @@ namespace surface
             this->_peer_transaction_resync();
             this->_link_transaction_resync();
             resynched = true;
+            ELLE_TRACE("Opening logged_in barrier");
+            _logged_in.open();
           }
           catch (reactor::Terminate const&)
           {
@@ -968,8 +1085,16 @@ namespace surface
         }
         while (!resynched);
       }
-
-      this->enqueue<ConnectionStatus>(ConnectionStatus(connection_status));
+      else
+      { // not connected
+        _logged_in.close();
+        if (!connection_state.still_trying)
+          logout();
+      }
+      this->enqueue<ConnectionStatus>(ConnectionStatus(
+        connection_state.connected,
+        connection_state.still_trying,
+        connection_state.last_error.what()));
     }
 
     void
@@ -1001,11 +1126,8 @@ namespace surface
     State::_on_invalid_trophonius_credentials()
     {
       ELLE_WARN("%s: invalid trophonius credentials", *this);
-      // Loging out flush the message queue, which means that
-      // KickedOut will be the next event polled.
       this->logout();
-      this->enqueue(KickedOut());
-      this->enqueue(ConnectionStatus(false));
+      this->enqueue(ConnectionStatus(false, false, "Invalid trophonius credentials"));
       return;
     }
 
@@ -1166,6 +1288,13 @@ namespace surface
     }
 
 
+    void
+    State::change_password(std::string const& old_password,
+                           std::string const& new_password)
+    {
+      meta().change_password(old_password, new_password);
+    }
+
     /*----------.
     | Printable |
     `----------*/
@@ -1196,9 +1325,7 @@ namespace surface
         case NotificationType_DeletedFavorite:
           return out << "Deleted Favorite";
         case NotificationType_ConnectionStatus:
-          return out << "Connection Status";
-        case NotificationType_KickedOut:
-          return out << "Kicked Out";
+          return out << "ConnectionStatus";
         case NotificationType_AvatarAvailable:
           return out << "Avatar Available";
         case NotificationType_TrophoniusUnavailable:
@@ -1208,6 +1335,14 @@ namespace surface
       }
 
       return out;
+    }
+
+    std::ostream&
+    operator <<(std::ostream& out,
+                State::ConnectionStatus const& s)
+    {
+      return out << elle::sprintf("ConnectionStatus(%s, %s, %s)",
+        s.status, s.still_trying, s.last_error);
     }
   }
 }

@@ -1058,15 +1058,20 @@ class Mixin:
           {'handle' : {'$regex' : search, '$options': 'i'}},
         ]
       pipeline.append({'$match': match})
+      #project before sort to workaround mongo bug
+      # https://jira.mongodb.org/browse/SERVER-13715
+      fields = self.user_public_fields
+      swagger_field = 'swaggers.%s' % str(self.user['_id'])
+      fields.update({swagger_field : '$' + swagger_field})
+      pipeline.append({
+        '$project': fields,
+      })
       if self.logged_in:
         pipeline.append({
-          '$sort': {'swaggers.%s' % str(self.user['_id']) : -1}
+          '$sort': {swagger_field : -1}
         })
       pipeline.append({'$skip': skip})
       pipeline.append({'$limit': limit})
-      pipeline.append({
-        '$project': self.user_public_fields,
-      })
       users = self.database.users.aggregate(pipeline)
       return {'users': users['result']}
 

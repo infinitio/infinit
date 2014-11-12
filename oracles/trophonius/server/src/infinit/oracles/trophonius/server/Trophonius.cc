@@ -2,6 +2,7 @@
 
 #include <elle/log.hh>
 #include <elle/network/hostname.hh>
+#include <elle/os/environ.hh>
 
 #include <reactor/scheduler.hh>
 #include <reactor/exception.hh>
@@ -96,6 +97,11 @@ namespace infinit
           _remove_lock(),
           _zone(zone)
         {
+ #ifndef INFINIT_WINDOWS
+          if (!elle::os::getenv("TROPHONIUS_LISTEN_SIGNALS","").empty())
+            reactor::scheduler().signal_handle(SIGUSR1,
+              std::bind(&Trophonius::disconnect_all_users, this));
+ #endif
           elle::SafeFinally kill_accepters{
             [&]
             {
@@ -207,26 +213,8 @@ namespace infinit
           this->_meta_accepter.terminate_now();
           this->_meta_pinger->terminate_now();
 
-          while (!this->_users.empty())
-          {
-            // Remove the client from the set first or it will try to clean
-            // itself up.
-            auto it = this->_users.begin();
-            auto client = *it;
-            this->_users.erase(it);
-            client->terminate();
-            delete client;
-          }
-          while (!this->_users_pending.empty())
-          {
-            // Remove the client from the set first or it will try to clean
-            // itself up.
-            auto it = this->_users_pending.begin();
-            auto client = *it;
-            this->_users_pending.erase(it);
-            client->terminate();
-            delete client;
-          }
+          disconnect_all_users();
+
           while (!this->_metas.empty())
           {
             // Remove the client from the set first or it will try to clean
@@ -362,7 +350,30 @@ namespace infinit
               [&c] {delete &c;});
           }
         }
-
+        void
+        Trophonius::disconnect_all_users()
+        {
+          while (!this->_users.empty())
+          {
+            // Remove the client from the set first or it will try to clean
+            // itself up.
+            auto it = this->_users.begin();
+            auto client = *it;
+            this->_users.erase(it);
+            client->terminate();
+            delete client;
+          }
+          while (!this->_users_pending.empty())
+          {
+            // Remove the client from the set first or it will try to clean
+            // itself up.
+            auto it = this->_users_pending.begin();
+            auto client = *it;
+            this->_users_pending.erase(it);
+            client->terminate();
+            delete client;
+          }
+        }
         /*----------.
         | Printable |
         `----------*/

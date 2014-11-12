@@ -54,6 +54,8 @@ gap_Status
 gap_unset_proxy(gap_State* state, gap_ProxyType type);
 
 //- Authentication & registration -------------------------------------------
+void
+gap_clean_state(gap_State* state);
 
 /// Login to meta.
 gap_Status
@@ -112,18 +114,14 @@ gap_avatar_available_callback(
   std::function<void (uint32_t id)> const& callback);
 
 // Own connection status changed.
+typedef void (*gap_connection_callback_t)(bool, bool, std::string const&);
+
 gap_Status
 gap_connection_callback(
   gap_State* state,
-  std::function<void (bool status)> const& callback);
-
-
-// Kicked out callback.
-// Triggered when your credentials are no longer valid.
-gap_Status
-gap_kicked_out_callback(
-  gap_State* state,
-  std::function<void ()> const& callback);
+  std::function<void (bool status,
+                      bool still_retrying,
+                      std::string const& last_error)> const& callback);
 
 /// Trophonius unavailable callback.
 /// Triggered when you can connect to Meta but not to Trophonius.

@@ -127,6 +127,8 @@ int main(int argc, char** argv)
           [&] (surface::gap::State::ConnectionStatus const& notif)
           {
             ELLE_TRACE_SCOPE("connection status notification: %s", notif);
+            if (!notif.status && !notif.still_trying)
+              stop = true;
           }
         );
 
