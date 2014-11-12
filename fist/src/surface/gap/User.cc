@@ -11,7 +11,8 @@ namespace surface
                std::string const& meta_id_,
                bool deleted_,
                bool ghost_)
-      : status(status_)
+      : id(id_)
+      , status(status_)
       , fullname(fullname_)
       , handle(handle_)
       , meta_id(meta_id_)
