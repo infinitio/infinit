@@ -79,17 +79,14 @@ namespace infinit
 
     /// Implementation of transaction metrics.
     private:
-      virtual
       void
       _transaction_accepted(std::string const& transaction_id,
                             bool onboarding) override;
 
-      virtual
       void
       _transaction_connected(std::string const& transaction_id,
                              std::string const& connection_method) override;
 
-      virtual
       void
       _link_transaction_created(std::string const& transaction_id,
                                 std::string const& sender_id,
@@ -98,7 +95,6 @@ namespace infinit
                                 uint32_t message_length,
                                 bool onboarding) override;
 
-      virtual
       void
       _peer_transaction_created(std::string const& transaction_id,
                                 std::string const& sender_id,
@@ -109,7 +105,6 @@ namespace infinit
                                 bool ghost,
                                 bool onboarding) override;
 
-      virtual
       void
       _transaction_ended(std::string const& transaction_id,
                          infinit::oracles::Transaction::Status status,
@@ -117,18 +112,15 @@ namespace infinit
                          bool onboarding,
                          bool caused_by_user) override;
 
-      virtual
       void
       _transaction_deleted(std::string const& transaction_id) override;
 
 
-      virtual
       void
       _transaction_transfer_begin(std::string const& transaction_id,
                                  TransferMethod method,
                                  float initialization_time) override;
 
-      virtual
       void
       _transaction_transfer_end(std::string const& transaction_id,
                                TransferMethod method,
@@ -136,7 +128,6 @@ namespace infinit
                                uint64_t bytes_transfered,
                                TransferExitReason reason,
                                std::string const& message) override;
-      virtual
       void
       _aws_error(std::string const& transaction_id,
                 std::string const& operation,
@@ -148,44 +139,43 @@ namespace infinit
 
     /// Implementation of user metrics.
     private:
-      virtual
       void
-      _user_favorite(std::string const& user_id);
-
-      virtual
-      void
-      _user_login(bool success, std::string const& info);
-
-      virtual
-      void
-      _user_logout(bool success, std::string const& info);
+      _user_favorite(std::string const& user_id) override;
 
       void
-      _user_register(bool success, std::string const& info);
+      _user_login(bool success, std::string const& info) override;
 
-      virtual
       void
-      _user_unfavorite(std::string const& user_id);
+      _user_logout(bool success, std::string const& info) override;
 
-      virtual
       void
-      _user_heartbeat();
+      _user_register(bool success, std::string const& info) override;
 
-      virtual
       void
-      _user_first_launch();
+      _user_unfavorite(std::string const& user_id) override;
 
-      virtual
       void
-      _user_proxy(reactor::network::ProxyType proxy_type);
+      _user_heartbeat() override;
 
-      virtual
       void
-      _user_crashed();
+      _user_first_launch() override;
 
-      virtual
       void
-      _user_changed_download_dir(bool fallback);
+      _user_proxy(reactor::network::ProxyType proxy_type) override;
+
+      void
+      _user_crashed() override;
+
+      void
+      _user_changed_download_dir(bool fallback) override;
+
+    /// Implementations of UI metrics.
+    private:
+      void
+      _ui(std::string const& event,
+          std::string const& from,
+          Additional const& additional) override;
+
 
     /// Private helper functions.
     private:
@@ -211,6 +201,7 @@ namespace infinit
       ELLE_ATTRIBUTE(std::string, base_url);
       ELLE_ATTRIBUTE(std::string, transaction_dest);
       ELLE_ATTRIBUTE(std::string, user_dest);
+      ELLE_ATTRIBUTE(std::string, ui_dest);
       ELLE_ATTRIBUTE_R(reactor::http::StatusCode, expected_status);
     };
   }

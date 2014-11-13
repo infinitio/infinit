@@ -65,6 +65,57 @@ extern "C"
 
   typedef enum
   {
+    UIMetrics_AddFilesSendView, // Add files via send view buttons.
+    UIMetrics_AddFilesContextual, // Add files via contextual menu.
+    UIMetrics_AddFilesMenu, // Add files via the icon's menu.
+    UIMetrics_AddFilesDropOnSendView, // Add files by dropping on the send view.
+    UIMetrics_AddFilesDropOnIcon, // Add files by dropping files on the icon.
+
+    UIMetrics_OpenPanelMenu, // Open infinit via the icon's menu.
+    UIMetrics_OpenPanelIcon, // Open infinit by clicking the icon.
+    UIMetrics_OpenPanelOtherInstance, // Open infinit by launching another instance.
+
+    UIMetrics_ConversationAccept, // Accept transfer via the conversation view.
+    UIMetrics_ConversationCancel, // Cancel transfer via the conversation view.
+    UIMetrics_ConversationReject, // Reject transfer via the conversation view.
+
+    UIMetrics_MainCopyLink, // Copy link url.
+    UIMetrics_MainOpenLink, // Open link url.
+    UIMetrics_MainDeleteLink, // Delete link.
+
+    UIMetrics_FavouritesPersonDrop, // Drop files on the a favourite.
+    UIMetrics_ContextualSend, // Contextual menu.
+    UIMetrics_ConversationSend, // Create a transaction for a specific user from conversation view.
+
+    UIMetrics_FavouritesLinkDrop, // Drop files on the link 'favourite'.
+    UIMetrics_StatusIconLinkDrop, // XXX: Drop files on the status.
+    UIMetrics_ContextualLink, // Get a link from contextual.
+
+    UIMetrics_SendCreateTransaction, // Create transaction from transfer draft.
+    UIMetrics_SendCreateLink, // Create link from transfer draft.
+
+    UIMetrics_SelectPeer, // Peer selected in the send view.
+    UIMetrics_UnselectPeer, // Peer unselected in the send view.
+
+    UIMetrics_ScreenshotModalYes, // Auto upload screenshot access given.
+    UIMetrics_ScreenshotModalNo, // Auto upload screenshot access denied.
+    UIMetrics_UploadScreenshot, // Auto upload screenshot.
+
+    UIMetrics_MainSend, // Go to send view from main view.
+    UIMetrics_MainPeople, // Go to people from main view.
+    UIMetrics_MainLinks, // Go to link view from main view.
+    UIMetrics_SendTrash, // Cancel transaction draft.
+
+    UIMetrics_HaveAddressbookAccess, // Address book access given.
+    UIMetrics_NoAdressbookAccess, // Address book access denied.
+
+    UIMetrics_DesktopNotification, // Desktop notification clicked.
+
+    UIMetrics_Preferences, // Open preferences.
+  } UIMetricsType;
+
+  typedef enum
+  {
     gap_ok = 1,
     gap_error = 0,
     gap_network_error = -2,

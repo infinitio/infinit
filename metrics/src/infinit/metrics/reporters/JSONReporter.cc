@@ -2,6 +2,7 @@
 
 #include <elle/log.hh>
 #include <elle/os/environ.hh>
+#include <elle/container/map.hh>
 #include <elle/system/platform.hh>
 
 #include <reactor/exception.hh>
@@ -23,6 +24,7 @@ namespace infinit
       Reporter::Reporter(name),
       _transaction_dest("transactions"),
       _user_dest("users"),
+      _ui_dest("ui"),
       _expected_status(expected_status)
     {}
 
@@ -295,8 +297,22 @@ namespace infinit
       data[this->_key_str(JSONKey::event)] =
         std::string("app/changed_download_dir");
       data[this->_key_str(JSONKey::fallback)] = fallback;
-
       this->_send(this->_user_dest, data);
+    }
+
+    void
+    JSONReporter::_ui(std::string const& event,
+                      std::string const& from,
+                      Additional const& additional)
+    {
+      ELLE_TRACE_SCOPE("%s: send ui metric: %s(%s) with extra arguments %s",
+                       *this, event, from, additional);
+      elle::json::Object data;
+      for (auto const& pair: additional)
+        data.emplace(pair.first, pair.second);
+      data[this->_key_str(JSONKey::event)] = event;
+      data["method"] = from;
+      this->_send(this->_ui_dest, data);
     }
 
     /*-----.
