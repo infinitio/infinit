@@ -9,7 +9,8 @@ import unicodedata
 import urllib.parse
 
 import elle.log
-from .utils import api, require_logged_in, require_logged_in_or_admin
+from .utils import \
+  api, require_logged_in, require_logged_in_or_admin, require_key
 from . import regexp, error, transaction_status, notifier, invitation, cloud_buffer_token, mail
 import uuid
 import re
@@ -95,31 +96,68 @@ class Mixin:
       else:
         return self.success(transaction)
 
-  @api('/transaction/download/<transaction_hash>', method='POST')
-  def transaction_download(self, transaction_hash:str):
+  @api('/transactions/<id>/downloaded', method='POST')
+  @require_key
+  def transaction_download(self, id: bson.ObjectId):
     transaction = self.database.transactions.find_and_modify(
-          {'transaction_hash': transaction_hash},
-          {'$set': {'status': transaction_status.FINISHED}},
-          new = True,
-          )
+      {'_id': id},
+      {'$set': {'status': transaction_status.FINISHED}},
+      new = True,
+    )
     if transaction is None:
       self.not_found()
-
     self.notifier.notify_some(
       notifier.PEER_TRANSACTION,
-      recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
+      recipient_ids = {transaction['sender_id'],
+                       transaction['recipient_id']},
       message = transaction,
-      )
-    return dict()
+    )
+    return {}
 
   @api('/transaction/<id>')
-  @require_logged_in_or_admin
-  def transaction_view(self, id: bson.ObjectId):
-    return self.transaction(id, None if self.admin else self.user['_id'])
+  def transaction_view(self, id: bson.ObjectId, key = None):
+    if self.admin:
+      return self.transaction(id, None)
+    elif self.logged_in:
+      return self.transaction(id, self.user['_id'])
+    else:
+      self.check_key(key)
+      transaction = self.database.transactions.find_one(
+        { '_id': id },
+        fields = {
+          '_id': False,
+          'download_link': True,
+          'files': True,
+          'message': True,
+          'recipient_id': True,
+          'sender_fullname': True,
+          'sender_id': True,
+          'total_size': True,
+        })
+      if transaction is None:
+        self.not_found()
+      else:
+        return transaction
 
   @api('/transaction/create', method = 'POST')
   @require_logged_in
+  def transaction_create_api(self,
+                             id_or_email,
+                             files,
+                             files_count,
+                             total_size,
+                             is_directory,
+                             device_id, # Can be determine by session.
+                             message = ""):
+    return self.transaction_create(
+      self.user,
+      id_or_email,
+      files, files_count, total_size, is_directory,
+      device_id,
+      message)
+
   def transaction_create(self,
+                         sender,
                          id_or_email,
                          files,
                          files_count,
@@ -144,7 +182,6 @@ class Mixin:
     Using an id that doesn't exist.
     """
     with elle.log.trace("create transaction (recipient %s)" % id_or_email):
-      user = self.user
       id_or_email = id_or_email.strip().lower()
 
       # if self.database.devices.find_one(bson.ObjectId(device_id)) is None:
@@ -188,14 +225,13 @@ class Mixin:
         return self.fail(error.USER_ID_NOT_VALID)
       is_ghost = recipient['register_status'] == 'ghost'
       elle.log.debug("transaction recipient has id %s" % recipient['_id'])
-      _id = user['_id']
+      _id = sender['_id']
 
-      cloud_capable = self.user_version >= (0, 8, 11)
-      elle.log.debug('Sender agent %s, version %s, cloud_capable %s, peer_new %s peer_ghost %s'
-                     % (self.user_agent, self.user_version, cloud_capable, new_user,  is_ghost))
+      elle.log.debug('Sender agent %s, version %s, peer_new %s peer_ghost %s'
+                     % (self.user_agent, self.user_version, new_user,  is_ghost))
       transaction = {
         'sender_id': _id,
-        'sender_fullname': user['fullname'],
+        'sender_fullname': sender['fullname'],
         'sender_device_id': device_id, # bson.ObjectId(device_id),
 
         'recipient_id': recipient['_id'],
@@ -212,6 +248,8 @@ class Mixin:
         'total_size': total_size,
         'is_directory': is_directory,
 
+        'creation_time': self.now,
+        'modification_time': self.now,
         'ctime': time.time(),
         'mtime': time.time(),
         'status': transaction_status.CREATED,
@@ -219,11 +257,11 @@ class Mixin:
         'fallback_port_ssl': None,
         'fallback_port_tcp': None,
         'aws_credentials': None,
-        'is_ghost': is_ghost and cloud_capable,
+        'is_ghost': is_ghost,
         'strings': ' '.join([
-              user['fullname'],
-              user['handle'],
-              user['email'],
+              sender['fullname'],
+              sender['handle'],
+              sender['email'],
               recipient['fullname'],
               recipient.get('handle', ""),
               recipient['email'],
@@ -232,32 +270,11 @@ class Mixin:
         }
 
       transaction_id = self.database.transactions.insert(transaction)
-      self.__update_transaction_time(user)
+      self.__update_transaction_time(sender)
 
       if not peer_email:
         peer_email = recipient['email']
 
-      #FIXME : send invite email if initiator version will not attempt
-      # ghost cloud upload
-      if new_user and not cloud_capable:
-        elle.log.debug("Client not cloud_capable, inviting now")
-        invitation.invite_user(
-          peer_email,
-          mailer = self.mailer,
-          mail_template = 'send-file',
-          source = (user['fullname'], user['email']),
-          database = self.database,
-          merge_vars = {
-            peer_email: {
-              'filename': files[0],
-              'note': message,
-              'sendername': user['fullname'],
-              'ghost_id': str(recipient.get('_id')),
-              'sender_id': str(user['_id']),
-              'avatar': self.user_avatar_route(recipient['_id']),
-              'number_of_other_files': (files_count - 1),
-            }}
-        )
       if not new_user and not recipient.get('connected', False) and not is_ghost:
         elle.log.debug("recipient is disconnected")
         template_id = 'accept-file-only-offline'
@@ -265,21 +282,21 @@ class Mixin:
         self.mailer.send_template(
           to = peer_email,
           template_name = template_id,
-          reply_to = "%s <%s>" % (user['fullname'], user['email']),
+          reply_to = "%s <%s>" % (sender['fullname'], sender['email']),
           merge_vars = {
             peer_email: {
               'filename': files[0],
               'note': message,
-              'sendername': user['fullname'],
+              'sendername': sender['fullname'],
               'avatar': self.user_avatar_route(recipient['_id']),
             }}
           )
 
-      self._increase_swag(user['_id'], recipient['_id'])
+      self._increase_swag(sender['_id'], recipient['_id'])
 
       return self.success({
           'created_transaction_id': transaction_id,
-          'remaining_invitations': user.get('remaining_invitations', 0),
+          'remaining_invitations': sender.get('remaining_invitations', 0),
           'recipient_is_ghost': is_ghost,
           })
 
@@ -539,7 +556,7 @@ class Mixin:
       if user is None:
         response(404, {'reason': 'no such user'})
       # current_device is None if we do a delete user / reset account.
-      if self.current_device is not None and device_id is None:
+      if device_id is None and self.current_device is not None:
         device_id = str(self.current_device['id'])
       transaction_id = bson.ObjectId(transaction_id)
       transaction = self.transaction(transaction_id,
@@ -575,7 +592,8 @@ class Mixin:
           transaction = transaction))
       diff.update({
         'status': status,
-        'mtime': time.time()
+        'mtime': time.time(),
+        'modification_time': self.now,
       })
       # Don't update with an empty dictionary: it would empty the
       # object.

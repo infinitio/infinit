@@ -46,10 +46,12 @@ class Sisyphus(bottle.Bottle):
 
   @api('/cron')
   def cron(self):
-    response = {}
-    for boulder in self.__boulders:
-      response[str(boulder)] = boulder.run()
-    return response
+    with elle.log.trace('%s: run jobs' % self):
+      response = {}
+      for boulder in self.__boulders:
+        with elle.log.trace('%s: run %s' % (self, boulder)):
+          response[str(boulder)] = boulder.run()
+      return response
 
   def __lshift__(self, boulder):
     self.__boulders.add(boulder)
