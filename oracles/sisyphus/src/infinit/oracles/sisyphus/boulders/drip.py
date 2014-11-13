@@ -227,7 +227,7 @@ class Drip(Boulder):
       '%s_FILENAME' % name: transaction['files'][0],
       '%s_FILES_COUNT' % name: transaction['files_count'],
       '%s_FILES_COUNT_OTHER' % name: transaction['files_count'] - 1,
-      '%s_KEY' % name: key('/transaction/%s' % transaction['_id']),
+      '%s_KEY' % name: key('/transactions/%s' % transaction['_id']),
       '%s_MESSAGE' % name: transaction['message'],
     }
 
