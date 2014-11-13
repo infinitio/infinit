@@ -98,7 +98,7 @@ class Mixin:
   @require_key
   def transaction_download(self, id: bson.ObjectId):
     transaction = self.database.transactions.find_and_modify(
-      id,
+      {'_id': id},
       {'$set': {'status': transaction_status.FINISHED}},
       new = True,
     )
