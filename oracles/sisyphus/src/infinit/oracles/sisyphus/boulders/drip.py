@@ -140,46 +140,22 @@ class Drip(Boulder):
             res[slug] = self.send_email(bucket, slug, targets)
         return res
       else:
-        template_content = {}
-        message = {
-          'to': [
-            {
-              'email': user['email'],
-              'name': user['fullname'],
-              'type': 'to',
-            }
-            for user, elt in users if self.__email_enabled(user)
-          ],
-          'merge_vars': [
-            {
-              'rcpt': user['email'],
-              'vars': [
-                {
-                  'name': 'USER_%s' % field.upper(),
-                  'content': str(user[field]),
-                }
-                for field in self.user_fields if field in user
-              ] + [
-                {
-                  'name': 'UNSUB',
-                  'content': self.unsubscribe_link(user, bucket, template),
-                }
-              ] + [
-                {
-                  'name': key,
-                  'content': value,
-                } for key, value in self._vars(elt, user).items()
-
-              ]
-            }
-            for user, elt in users if self.__email_enabled(user)
-          ],
-        }
-        res = self.sisyphus.mandrill.messages.send_template(
-          template_name = template,
-          template_content = template_content,
-          message = message,
-          async = True,
+        recipients = [
+          {
+            'email': user['email'],
+            'name': user['fullname'],
+            'vars': dict(chain(
+              (('USER_%s' % field.upper(), user[field])
+               for field in self.user_fields if field in user),
+              (('UNSUB', self.unsubscribe_link(user, bucket, template)),),
+              self._vars(elt, user).items(),
+            ))
+          }
+          for user, elt in users if self.__email_enabled(user)
+        ]
+        res = self.sisyphus.emailer.send_template(
+          template,
+          recipients,
         )
         elle.log.debug('mandrill answer: %s' % res)
         url = 'http://metrics.9.0.api.production.infinit.io/collections/users'
