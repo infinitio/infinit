@@ -266,6 +266,9 @@ namespace surface
               if (!bytes_read)
                 break;
               buffer.size(bytes_read);
+              // Because writing on the disk is not asynchronous, it might block
+              // this thread (especially on Windows) if the filesystem is slow.
+              reactor::yield();
               file.write(buffer);
               total_bytes_transfered += bytes_read;
             }
