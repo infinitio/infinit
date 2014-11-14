@@ -8,6 +8,7 @@ import bottle
 import datetime
 import hashlib
 import mongobox
+import uuid
 
 import pymongo
 import pymongo.collection
@@ -171,6 +172,13 @@ class Mandrill:
             break
         if not found:
           raise Exception('missing merge_vars for %s' % email)
+      return [
+        {
+          'email': to['email'],
+          'status': 'queued',
+          '_id': str(uuid.uuid4()),
+        }
+        for to in message['to']]
 
   @property
   def messages(self):
