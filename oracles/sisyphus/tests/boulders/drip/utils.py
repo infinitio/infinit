@@ -175,7 +175,8 @@ class Mandrill:
       return [
         {
           'email': to['email'],
-          'status': 'queued',
+          'status': 'sent',
+          'reject_reason': None,
           '_id': str(uuid.uuid4()),
         }
         for to in message['to']]
