@@ -299,6 +299,7 @@ def configure(cxx_toolkit = None,
       cxx_toolkit, papier_cxx_config_tests)
     papier_tests << test
     runner = drake.Runner(exe = test)
+    runner.reporting = drake.Runner.Reporting.on_failure
     papier_check << runner.status
 
 
@@ -355,6 +356,7 @@ def configure(cxx_toolkit = None,
       cxx_toolkit, station_cxx_config_tests)
     station_tests << test
     runner = drake.Runner(exe = test)
+    runner.reporting = drake.Runner.Reporting.on_failure
     station_check << runner.status
 
   ## ----- ##
@@ -404,6 +406,7 @@ def configure(cxx_toolkit = None,
       cxx_toolkit, frete_cxx_config_tests)
     frete_tests << test
     runner = drake.Runner(exe = test)
+    runner.reporting = drake.Runner.Reporting.on_failure
     frete_check << runner.status
 
   ## ----- ##
