@@ -340,7 +340,9 @@ class Mixin:
       user = res['value']
       if res['lastErrorObject']['updatedExisting']:
         if user['register_status'] == 'ghost':
-          user_content.update(user)
+          # Keep ghost creation time
+          user_content['creation_time'] = user['creation_time']
+          user_content['register_time'] = self.now
           user_content['register_status'] = 'ok'
           del user_content['_id']
           user = self.database.users.find_and_modify(
