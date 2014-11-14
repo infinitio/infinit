@@ -57,6 +57,7 @@ gap_new(bool production, std::string const& download_dir)
 
 void gap_free(gap_State* state)
 {
+  ELLE_ASSERT(state != nullptr);
   if (state == nullptr)
   {
     ELLE_WARN("State already destroyed");
@@ -78,6 +79,7 @@ gap_null()
 gap_Status
 gap_internet_connection(gap_State* state, bool connected)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
     "set internet connection",
@@ -97,6 +99,7 @@ gap_set_proxy(gap_State* state,
               std::string const& username,
               std::string const& password)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
     "set proxy",
@@ -130,6 +133,7 @@ gap_set_proxy(gap_State* state,
 gap_Status
 gap_unset_proxy(gap_State* state, gap_ProxyType type)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
     "unset proxy",
@@ -158,6 +162,7 @@ gap_unset_proxy(gap_State* state, gap_ProxyType type)
 void
 gap_clean_state(gap_State* state)
 {
+  ELLE_ASSERT(state != nullptr);
   run<gap_Status>(
     state,
     "flush state",
@@ -173,6 +178,7 @@ gap_login(gap_State* state,
           std::string const& email,
           std::string const& password)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
     "login",
@@ -186,6 +192,7 @@ gap_login(gap_State* state,
 std::unordered_map<std::string, std::string>
 gap_fetch_features(gap_State* state)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<std::unordered_map<std::string, std::string>>(
     state,
     "fetch features",
@@ -199,6 +206,7 @@ gap_fetch_features(gap_State* state)
 bool
 gap_logged_in(gap_State* state)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<bool>(
     state,
     "logged",
@@ -211,6 +219,7 @@ gap_logged_in(gap_State* state)
 gap_Status
 gap_logout(gap_State* state)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
     "logout",
@@ -227,6 +236,7 @@ gap_register(gap_State* state,
              std::string const& email,
              std::string const& password)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
     "register",
@@ -240,6 +250,7 @@ gap_register(gap_State* state,
 gap_Status
 gap_poll(gap_State* state)
 {
+  ELLE_ASSERT(state != nullptr);
   gap_Status ret = gap_ok;
   try
   {
@@ -277,6 +288,7 @@ gap_poll(gap_State* state)
 gap_Status
 gap_device_status(gap_State* state)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
     "device status",
@@ -292,6 +304,7 @@ gap_device_status(gap_State* state)
 gap_Status
 gap_set_device_name(gap_State* state, std::string const& name)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
     "set device name",
@@ -306,6 +319,7 @@ gap_set_device_name(gap_State* state, std::string const& name)
 std::string
 gap_self_email(gap_State* state)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<std::string>(
     state,
     "self email",
@@ -320,6 +334,7 @@ gap_set_self_email(gap_State* state,
                    std::string const& email,
                    std::string const& password)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
   state,
   "set self email",
@@ -335,6 +350,7 @@ gap_set_self_email(gap_State* state,
 std::string
 gap_self_fullname(gap_State* state)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<std::string>(
     state,
     "self fullname",
@@ -347,6 +363,7 @@ gap_self_fullname(gap_State* state)
 gap_Status
 gap_set_self_fullname(gap_State* state, std::string const& fullname)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
     "set self fullname",
@@ -363,6 +380,7 @@ gap_set_self_fullname(gap_State* state, std::string const& fullname)
 std::string
 gap_self_handle(gap_State* state)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<std::string>(
     state,
     "self handle",
@@ -375,6 +393,7 @@ gap_self_handle(gap_State* state)
 gap_Status
 gap_set_self_handle(gap_State* state, std::string const& handle)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
     "set self handle",
@@ -392,6 +411,7 @@ gap_change_password(gap_State* state,
                     std::string const& old_password,
                     std::string const& new_password)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
     "change password",
@@ -407,6 +427,8 @@ gap_change_password(gap_State* state,
 uint32_t
 gap_self_id(gap_State* state)
 {
+  ELLE_ASSERT(state != nullptr);
+  ELLE_ASSERT(state != nullptr);
   return run<uint32_t>(
     state,
     "self id",
@@ -419,6 +441,7 @@ gap_self_id(gap_State* state)
 std::vector<uint32_t>
 gap_self_favorites(gap_State* state)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<std::vector<uint32_t>>(
     state,
     "favorites",
@@ -438,6 +461,7 @@ gap_self_favorites(gap_State* state)
 gap_Status
 gap_update_avatar(gap_State* state, void const* data, size_t size)
 {
+  ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(data != nullptr);
   elle::Buffer picture(data, size);
   return run<gap_Status>(
@@ -455,6 +479,7 @@ gap_update_avatar(gap_State* state, void const* data, size_t size)
 surface::gap::User
 gap_user_by_id(gap_State* state, uint32_t id)
 {
+  ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
   return run<surface::gap::User>(
     state,
@@ -477,6 +502,7 @@ gap_user_by_id(gap_State* state, uint32_t id)
 std::string
 gap_self_device_id(gap_State* state)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<std::string>(
     state,
     "self device id",
@@ -487,11 +513,9 @@ gap_self_device_id(gap_State* state)
 }
 
 gap_Status
-gap_avatar(gap_State* state,
-           uint32_t id,
-           void** data,
-           size_t* size)
+gap_avatar(gap_State* state, uint32_t id, void** data, size_t* size)
 {
+  ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
   return run<gap_Status>(
     state,
@@ -508,6 +532,7 @@ gap_avatar(gap_State* state,
 void
 gap_refresh_avatar(gap_State* state, uint32_t id)
 {
+  ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
   run<gap_Status>(
     state,
@@ -522,6 +547,7 @@ gap_refresh_avatar(gap_State* state, uint32_t id)
 surface::gap::User
 gap_user_by_email(gap_State* state, std::string const& email)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<surface::gap::User>(
     state,
     "user by email",
@@ -543,6 +569,7 @@ gap_user_by_email(gap_State* state, std::string const& email)
 surface::gap::User
 gap_user_by_handle(gap_State* state, std::string const& handle)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<surface::gap::User>(
     state,
     "user by handle",
@@ -564,6 +591,7 @@ gap_user_by_handle(gap_State* state, std::string const& handle)
 std::vector<surface::gap::User>
 gap_users_search(gap_State* state, std::string const& text)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<std::vector<surface::gap::User>>(
     state,
     "users search",
@@ -576,7 +604,8 @@ gap_users_search(gap_State* state, std::string const& text)
 std::unordered_map<std::string, surface::gap::User>
 gap_users_by_emails(gap_State* state, std::vector<std::string> emails)
 {
-  assert(emails.size() != 0);
+  ELLE_ASSERT(state != nullptr);
+  ELLE_ASSERT(emails.size() != 0);
   return run<std::unordered_map<std::string, surface::gap::User>>(
     state,
     "emails and users",
@@ -587,11 +616,10 @@ gap_users_by_emails(gap_State* state, std::vector<std::string> emails)
 }
 
 gap_UserStatus
-gap_user_status(gap_State* state,
-                uint32_t id)
+gap_user_status(gap_State* state, uint32_t id)
 {
-  assert(id != surface::gap::null_id);
-
+  ELLE_ASSERT(state != nullptr);
+  ELLE_ASSERT(id != surface::gap::null_id);
   return run<gap_UserStatus>(
     state,
     "user status",
@@ -604,6 +632,7 @@ gap_user_status(gap_State* state,
 std::vector<surface::gap::User>
 gap_swaggers(gap_State* state)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<std::vector<surface::gap::User>>(
     state,
     "swaggers",
@@ -630,6 +659,8 @@ gap_swaggers(gap_State* state)
 gap_Status
 gap_favorite(gap_State* state, uint32_t id)
 {
+  ELLE_ASSERT(state != nullptr);
+  ELLE_ASSERT(id != surface::gap::null_id);
   return run<gap_Status>(
     state,
     "favorite",
@@ -652,6 +683,8 @@ gap_favorite(gap_State* state, uint32_t id)
 gap_Status
 gap_unfavorite(gap_State* state, uint32_t id)
 {
+  ELLE_ASSERT(state != nullptr);
+  ELLE_ASSERT(id != surface::gap::null_id);
   return run<gap_Status>(
     state,
     "favorite",
@@ -676,6 +709,8 @@ gap_unfavorite(gap_State* state, uint32_t id)
 bool
 gap_is_favorite(gap_State* state, uint32_t id)
 {
+  ELLE_ASSERT(state != nullptr);
+  ELLE_ASSERT(id != surface::gap::null_id);
   return run<bool>(
     state,
     "is_favorite",
@@ -696,6 +731,7 @@ gap_new_swagger_callback(
   gap_State* state,
   std::function<void (surface::gap::User const&)> const& callback)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
     "new swagger callback",
@@ -711,6 +747,7 @@ gap_deleted_swagger_callback(
   gap_State* state,
   std::function<void (uint32_t id)> const& callback)
 {
+  ELLE_ASSERT(state != nullptr);
   auto cb_wrapper =
     [callback]
     (surface::gap::State::DeletedSwaggerNotification const& notification)
@@ -733,6 +770,7 @@ gap_deleted_favorite_callback(
   gap_State* state,
   std::function<void (uint32_t id)> const& callback)
 {
+  ELLE_ASSERT(state != nullptr);
   auto cb_wrapper =
     [callback]
     (surface::gap::State::DeletedFavoriteNotification const& notification)
@@ -755,6 +793,7 @@ gap_user_status_callback(
   gap_State* state,
   std::function<void (uint32_t id, bool status)> const& callback)
 {
+  ELLE_ASSERT(state != nullptr);
   auto cb_wrapper =
     [callback]
     (surface::gap::State::UserStatusNotification const& notification)
@@ -777,6 +816,7 @@ gap_avatar_available_callback(
   gap_State* state,
   std::function<void (uint32_t id)> const& callback)
 {
+  ELLE_ASSERT(state != nullptr);
   auto cb_wrapper =
     [callback]
     (surface::gap::State::AvatarAvailableNotification const& notification)
@@ -801,6 +841,7 @@ gap_connection_callback(
                       bool still_retrying,
                       std::string const& last_error)> const& callback)
 {
+  ELLE_ASSERT(state != nullptr);
   auto cb_wrapper =
     [callback]
     (surface::gap::State::ConnectionStatus const& notification)
@@ -824,6 +865,7 @@ gap_trophonius_unavailable_callback(
   gap_State* state,
   std::function<void ()> const& callback)
 {
+  ELLE_ASSERT(state != nullptr);
   auto cb_wrapper =
     [callback]
     (surface::gap::State::TrophoniusUnavailable const& notification)
@@ -846,6 +888,7 @@ gap_peer_transaction_callback(
   gap_State* state,
   std::function<void (surface::gap::PeerTransaction const&)> const& callback)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
     "transaction callback",
@@ -861,6 +904,7 @@ gap_link_callback(
   gap_State* state,
   std::function<void (surface::gap::LinkTransaction const&)> const& callback)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
     "link callback",
@@ -876,12 +920,14 @@ gap_critical_callback(
   gap_State* state,
   std::function<void ()> const& callback)
 {
+  ELLE_ASSERT(state != nullptr);
   return state->gap_critical_callback(state, callback);
 }
 
 surface::gap::PeerTransaction
 gap_peer_transaction_by_id(gap_State* state, uint32_t id)
 {
+  ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
   return run<surface::gap::PeerTransaction>(
     state,
@@ -913,6 +959,7 @@ gap_peer_transaction_by_id(gap_State* state, uint32_t id)
 bool
 gap_transaction_is_final(gap_State* state, uint32_t id)
 {
+  ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
   return run<bool>(
     state,
@@ -929,6 +976,7 @@ gap_transaction_concern_device(gap_State* state,
                                uint32_t id,
                                bool true_if_empty_recipient)
 {
+  ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
   return run<bool>(
     state,
@@ -962,6 +1010,7 @@ gap_transaction_concern_device(gap_State* state,
 float
 gap_transaction_progress(gap_State* state, uint32_t id)
 {
+  ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
   return run<float>(
     state,
@@ -981,6 +1030,7 @@ gap_transaction_progress(gap_State* state, uint32_t id)
 bool
 gap_is_link_transaction(gap_State* state, uint32_t id)
 {
+  ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
   return run<bool>(
     state,
@@ -1013,8 +1063,7 @@ gap_create_link_transaction(gap_State* state,
 }
 
 surface::gap::LinkTransaction
-gap_link_transaction_by_id(gap_State* state,
-                           uint32_t id)
+gap_link_transaction_by_id(gap_State* state, uint32_t id)
 {
   ELLE_ASSERT(id != surface::gap::null_id);
   return run<surface::gap::LinkTransaction>(
@@ -1076,6 +1125,7 @@ gap_link_transactions(gap_State* state)
 std::vector<surface::gap::PeerTransaction>
 gap_peer_transactions(gap_State* state)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<std::vector<surface::gap::PeerTransaction>>(
     state,
     "transactions",
@@ -1117,6 +1167,7 @@ gap_send_files_by_email(gap_State* state,
                         std::vector<std::string> const& files,
                         std::string const& message)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<uint32_t>(
     state,
     "send files",
@@ -1132,6 +1183,8 @@ gap_send_files(gap_State* state,
                std::vector<std::string> const& files,
                std::string const& message)
 {
+  ELLE_ASSERT(state != nullptr);
+  ELLE_ASSERT(id != surface::gap::null_id);
   return run<uint32_t>(
     state,
     "send files",
@@ -1144,10 +1197,10 @@ gap_send_files(gap_State* state,
 }
 
 uint32_t
-gap_cancel_transaction(gap_State* state,
-                       uint32_t id)
+gap_cancel_transaction(gap_State* state, uint32_t id)
 {
-  assert(id != surface::gap::null_id);
+  ELLE_ASSERT(state != nullptr);
+  ELLE_ASSERT(id != surface::gap::null_id);
   return run<uint32_t>(
     state,
     "cancel transaction",
@@ -1162,6 +1215,7 @@ uint32_t
 gap_delete_transaction(gap_State* state, uint32_t id)
 {
   ELLE_ASSERT(state != nullptr);
+  ELLE_ASSERT(id != surface::gap::null_id);
   return run<uint32_t>(
     state,
     "delete link",
@@ -1173,10 +1227,10 @@ gap_delete_transaction(gap_State* state, uint32_t id)
 }
 
 uint32_t
-gap_reject_transaction(gap_State* state,
-                       uint32_t id)
+gap_reject_transaction(gap_State* state, uint32_t id)
 {
-  assert(id != surface::gap::null_id);
+  ELLE_ASSERT(state != nullptr);
+  ELLE_ASSERT(id != surface::gap::null_id);
   return run<uint32_t>(
     state,
     "reject transaction",
@@ -1188,10 +1242,10 @@ gap_reject_transaction(gap_State* state,
 }
 
 uint32_t
-gap_accept_transaction(gap_State* state,
-                       uint32_t id)
+gap_accept_transaction(gap_State* state, uint32_t id)
 {
-  assert(id != surface::gap::null_id);
+  ELLE_ASSERT(state != nullptr);
+  ELLE_ASSERT(id != surface::gap::null_id);
   return run<uint32_t>(
     state,
     "accept transaction",
@@ -1207,6 +1261,7 @@ gap_set_output_dir(gap_State* state,
                    std::string const& output_path,
                    bool fallback)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
     "set output dir",
@@ -1220,8 +1275,7 @@ gap_set_output_dir(gap_State* state,
 std::string
 gap_get_output_dir(gap_State* state)
 {
-  assert(state != nullptr);
-
+  ELLE_ASSERT(state != nullptr);
   return run<std::string>(
     state,
     "join transaction",
@@ -1235,6 +1289,7 @@ uint32_t
 gap_onboarding_receive_transaction(
   gap_State* state, std::string const& file_path, uint32_t transfer_time_sec)
 {
+  ELLE_ASSERT(state != nullptr);
   auto transfer_time =
     reactor::Duration(boost::posix_time::seconds(transfer_time_sec));
   return run<uint32_t>(
@@ -1250,6 +1305,8 @@ gap_onboarding_receive_transaction(
 gap_Status
 gap_onboarding_set_peer_status(gap_State* state, uint32_t id, bool status)
 {
+  ELLE_ASSERT(state != nullptr);
+  ELLE_ASSERT(id != surface::gap::null_id);
   return run<gap_Status>(
     state,
     "change onboarding peer status",
@@ -1268,6 +1325,8 @@ gap_onboarding_set_peer_status(gap_State* state, uint32_t id, bool status)
 gap_Status
 gap_onboarding_set_peer_availability(gap_State* state, uint32_t id, bool status)
 {
+  ELLE_ASSERT(state != nullptr);
+  ELLE_ASSERT(id != surface::gap::null_id);
   return run<gap_Status>(
     state,
     "change onboarding peer availability",
@@ -1288,6 +1347,8 @@ gap_onboarding_set_peer_availability(gap_State* state, uint32_t id, bool status)
 gap_Status
 gap_onboarding_interrupt_transfer(gap_State* state, uint32_t id)
 {
+  ELLE_ASSERT(state != nullptr);
+  ELLE_ASSERT(id != surface::gap::null_id);
   return run<gap_Status>(
     state,
     "interrupt onboarding transfer",
@@ -1307,6 +1368,7 @@ gap_send_user_report(gap_State* state,
                      std::string const& message,
                      std::string const& file)
 {
+  ELLE_ASSERT(state != nullptr);
   // In order to avoid blocking the GUI, let's create a disposable thread and
   // let it go.
   // XXX: The gap_Status inside catch_to_gap_status is useless.
@@ -1339,6 +1401,7 @@ gap_send_last_crash_logs(gap_State* state,
                          std::string const& state_log,
                          std::string const& additional_info)
 {
+  ELLE_ASSERT(state != nullptr);
   // In order to avoid blocking the GUI, let's create a disposable thread and
   // let it go.
   // XXX: The gap_Status inside catch_to_gap_status is useless.
