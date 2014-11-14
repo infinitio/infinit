@@ -129,7 +129,7 @@ class Drip(Boulder):
     with elle.log.trace('%s: send %s to %s users' %
                         (self.campaign, template, len(users))):
       if len(users) == 0:
-        return 0
+        return []
       if variations is not None:
         distribution = self.__distribute(len(users), len(variations))
         res = {}
@@ -176,7 +176,7 @@ class Drip(Boulder):
           data = json.dumps({'events': metrics}),
         )
         elle.log.debug('metrics answer: %s' % res)
-        return len(users)
+        return [user['email'] for user, elt in users]
 
   def _user(self, elt):
     return elt
