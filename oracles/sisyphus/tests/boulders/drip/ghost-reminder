@@ -3,11 +3,14 @@
 # utils first, beware of system OpenSSL.
 from utils import *
 
+import elle.log
+
 from infinit.oracles.transaction import statuses
 
 import sisyphus
 import sisyphus.boulders.drip
 
+ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.boulders.drip'
 
 class GhostReminder(sisyphus.boulders.drip.GhostReminder):
 
@@ -38,9 +41,9 @@ def check_mail(mails, sender, recipient):
   assert 'TRANSACTION_KEY' in content
   assert 'TRANSACTION_MESSAGE' in content
 
-def create_transaction(sender, recipient):
-  tid = meta.transaction_create(sender, recipient,
-                                ['foobar'], 1, 42, False, device)
+def create_transaction(sender, recipient, files = ['foobar']):
+  tid = meta.transaction_create(
+    sender, recipient, files, 1, 42, False, device)
   tid = tid['created_transaction_id']
   meta._transaction_update(tid, statuses['initialized'],
                              'device', None, sender)
@@ -57,6 +60,8 @@ with mongobox.MongoBox() as mongo:
     def forward(duration):
       reminder.now += duration
       meta.now = reminder.now
+    delay_diff = \
+      reminder.delay_second_reminder - reminder.delay_first_reminder
 
     # Check nothing is sent with no users
     sisy.cron()
@@ -102,8 +107,7 @@ with mongobox.MongoBox() as mongo:
     assert not mandrill.emails
 
     # Check reminder 2 is sent 72h after upload
-    forward(
-      reminder.delay_second_reminder - reminder.delay_first_reminder)
+    forward(delay_diff)
     sisy.cron()
     check_mail(mandrill.emails,
                'sender@infinit.io', ghost_email)
@@ -134,3 +138,57 @@ with mongobox.MongoBox() as mongo:
                              device, None, ghost)
     sisy.cron()
     assert not mandrill.emails
+
+    with elle.log.log('test two recipients'):
+      ghost_email_1 = 'ghost1@infinit.io'
+      ghost_email_2 = 'ghost2@infinit.io'
+      tid_1 = create_transaction(sender, ghost_email_1, files = ['1'])
+      tid_2 = create_transaction(sender, ghost_email_2, files = ['2'])
+      meta._transaction_update(tid_1, statuses['ghost_uploaded'],
+                               device, None, sender)
+      meta._transaction_update(tid_2, statuses['ghost_uploaded'],
+                               device, None, sender)
+      forward((reminder.delay_first_reminder +
+               reminder.delay_second_reminder) * 2)
+      sisy.cron()
+      mails = mandrill.emails
+      assert len(mails) == 4
+      mail_1 = 0
+      mail_2 = 0
+      for mail in mails:
+        if mail[0] == 'ghost1@infinit.io':
+          mail_1 += 1
+          assert mail[1]['TRANSACTION_FILENAME'] == '1'
+        elif mail[0] == 'ghost2@infinit.io':
+          mail_2 += 1
+          assert mail[1]['TRANSACTION_FILENAME'] == '2'
+        else:
+          raise Exception('unexpected recipient: %s' % mail[0])
+      assert mail_1 == 2
+      assert mail_2 == 2
+
+    with elle.log.log('test same recipient twice'):
+      ghost_email = 'lucky.ghost@infinit.io'
+      tid_1 = create_transaction(sender, ghost_email, files = ['A'])
+      tid_2 = create_transaction(sender, ghost_email, files = ['B'])
+      meta._transaction_update(tid_1, statuses['ghost_uploaded'],
+                               device, None, sender)
+      meta._transaction_update(tid_2, statuses['ghost_uploaded'],
+                               device, None, sender)
+      forward(reminder.delay_first_reminder + delay_diff / 2)
+      sisy.cron()
+      mails = mandrill.emails
+      assert len(mails) == 2
+      mail_a = False
+      mail_b = False
+      for mail in mails:
+        assert mail[0] == ghost_email
+        if mail[1]['TRANSACTION_FILENAME'] == 'A':
+          assert not mail_a
+          mail_a = True
+        elif mail[1]['TRANSACTION_FILENAME'] == 'B':
+          assert not mail_b
+          mail_b = True
+        else:
+          raise Exception('unexpected filename: %s' % mail[0])
+      assert mail_a and mail_b

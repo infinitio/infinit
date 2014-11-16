@@ -340,9 +340,8 @@ class Mixin:
       user = res['value']
       if res['lastErrorObject']['updatedExisting']:
         if user['register_status'] == 'ghost':
-          user_content.update(user)
-          user_content['register_status'] = 'ok'
-          del user_content['_id']
+          for field in ['swaggers', 'features']:
+            user_content[field] = user[field]
           user = self.database.users.find_and_modify(
             query = {
               'accounts.id': email,
