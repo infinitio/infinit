@@ -1060,11 +1060,11 @@ class Mixin:
         pipeline.append({
           '$sort': {'swaggers.%s' % str(self.user['_id']) : -1}
         })
-      pipeline.append({'$skip': skip})
-      pipeline.append({'$limit': limit})
       pipeline.append({
         '$project': self.user_public_fields,
       })
+      pipeline.append({'$skip': skip})
+      pipeline.append({'$limit': limit})
       users = self.database.users.aggregate(pipeline)
       return {'users': users['result']}
 
