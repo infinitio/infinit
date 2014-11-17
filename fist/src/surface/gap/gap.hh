@@ -277,7 +277,7 @@ gap_link_transactions(gap_State* state);
 std::vector<surface::gap::PeerTransaction>
 gap_peer_transactions(gap_State* state);
 
-/// Cpp version of gap_send_files.
+/// C++ version of gap_send_files.
 /// If the return value is 0, the operation failed.
 uint32_t
 gap_send_files(gap_State* state,
@@ -285,7 +285,7 @@ gap_send_files(gap_State* state,
                std::vector<std::string> const& files,
                std::string const& message);
 
-/// Cpp version gor send_files_by_email.
+/// C++ version for send_files_by_email.
 /// If the return value is 0, the operation failed.
 uint32_t
 gap_send_files_by_email(gap_State* state,
