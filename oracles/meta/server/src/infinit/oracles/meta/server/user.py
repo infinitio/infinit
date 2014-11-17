@@ -1056,8 +1056,11 @@ class Mixin:
           {'handle' : {'$regex' : search, '$options': 'i'}},
         ]
       pipeline.append({'$match': match})
+      # Mongo 2.6 requires a project after a match with an or.
+      fields = self.user_public_fields
+      fields['swaggers'] = '$swaggers'
       pipeline.append({
-        '$project': self.user_public_fields,
+        '$project': fields,
       })
       if self.logged_in:
         pipeline.append({
@@ -1066,6 +1069,8 @@ class Mixin:
       pipeline.append({'$skip': skip})
       pipeline.append({'$limit': limit})
       users = self.database.users.aggregate(pipeline)
+      for user in users['result']:
+        del user['swaggers']
       return {'users': users['result']}
 
   def __users_by_emails_search(self, emails, limit, offset):
