@@ -54,7 +54,7 @@ with mongobox.MongoBox() as mongo:
     mandrill = Mandrill()
     sisy = sisyphus.Sisyphus(mongo_port = mongo.port,
                                  mandrill = mandrill)
-    sisy._Sisyphus__mongo.__class__ = GestapoMongoClient
+    gestapo(sisy._Sisyphus__mongo)
     reminder = GhostReminder(sisy)
 
     def forward(duration):
