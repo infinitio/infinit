@@ -18,3 +18,12 @@
 	path = fist-gui-qt
 	url = git@git.infinit.io:fist-gui-qt.git
 	branch = develop
+[submodule "surface/ios"]
+	path = surface/ios
+	url = git@git.infinit.io:ios-app
+	branch = develop
+[submodule "surface/objcpp-gap"]
+	path = surface/objcpp-gap
+	url = git@git.infinit.io:objc++-gap
+	branch = develop
+
