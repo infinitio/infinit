@@ -340,9 +340,8 @@ class Mixin:
       user = res['value']
       if res['lastErrorObject']['updatedExisting']:
         if user['register_status'] == 'ghost':
-          user_content.update(user)
-          user_content['register_status'] = 'ok'
-          del user_content['_id']
+          for field in ['swaggers', 'features']:
+            user_content[field] = user[field]
           user = self.database.users.find_and_modify(
             query = {
               'accounts.id': email,
@@ -529,18 +528,18 @@ class Mixin:
   @api('/users/<user>/confirm-email', method = 'POST')
   def confirm_email(self,
                     user,
-                    hash: str):
+                    hash: str = None,
+                    key: str = None):
     with elle.log.trace('confirm email for %s' % user):
       if '@' in user:
-        query = {
-          'email': user,
-          'email_confirmation_hash': hash,
-        }
+        query = {'email': user}
       else:
-        query = {
-          '_id': bson.ObjectId(user),
-          'email_confirmation_hash': hash,
-        }
+        query = {'_id': bson.ObjectId(user)}
+      if not self.admin:
+        if key is not None:
+          self.check_key(key)
+        elif hash is not None:
+          query['email_confirmation_hash'] = hash
       res = self.database.users.find_and_modify(
         query = query,
         update = {
@@ -548,8 +547,7 @@ class Mixin:
           '$set': {'email_confirmed': True}
         })
       if res is None:
-        response(403,
-                 {'reason': 'invalid confirmation hash or email'})
+        self.forbidden(403, 'invalid confirmation hash or email')
       return {}
 
   # Deprecated
@@ -1058,11 +1056,9 @@ class Mixin:
           {'handle' : {'$regex' : search, '$options': 'i'}},
         ]
       pipeline.append({'$match': match})
-      #project before sort to workaround mongo bug
-      # https://jira.mongodb.org/browse/SERVER-13715
+      # Mongo 2.6 requires a project after a match with an or.
       fields = self.user_public_fields
-      swagger_field = 'swaggers.%s' % str(self.user['_id'])
-      fields.update({swagger_field : '$' + swagger_field})
+      fields['swaggers'] = '$swaggers'
       pipeline.append({
         '$project': fields,
       })
@@ -1073,6 +1069,8 @@ class Mixin:
       pipeline.append({'$skip': skip})
       pipeline.append({'$limit': limit})
       users = self.database.users.aggregate(pipeline)
+      for user in users['result']:
+        del user['swaggers']
       return {'users': users['result']}
 
   def __users_by_emails_search(self, emails, limit, offset):

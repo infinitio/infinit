@@ -39,26 +39,22 @@ namespace infinit
 
     /// Transaction metrics.
     private:
-      virtual
       void
       _transaction_accepted(std::string const& transaction_id,
-                            bool onboarding);
+                            bool onboarding) override;
 
-      virtual
       void
       _transaction_connected(std::string const& transaction_id,
-                             std::string const& connection_method);
+                             std::string const& connection_method) override;
 
-      virtual
       void
       _link_transaction_created(std::string const& transaction_id,
                                 std::string const& sender_id,
                                 int64_t file_count,
                                 int64_t total_size,
                                 uint32_t message_length,
-                                bool onboarding);
+                                bool onboarding) override;
 
-      virtual
       void
       _peer_transaction_created(std::string const& transaction_id,
                                 std::string const& sender_id,
@@ -67,35 +63,30 @@ namespace infinit
                                 int64_t total_size,
                                 uint32_t message_length,
                                 bool ghost,
-                                bool onboarding);
+                                bool onboarding) override;
 
-      virtual
       void
       _transaction_ended(std::string const& transaction_id,
                          infinit::oracles::Transaction::Status status,
                          std::string const& info,
                          bool onboarding,
-                         bool caused_by_user);
+                         bool caused_by_user) override;
 
-      virtual
       void
-      _transaction_deleted(std::string const& transaction_id);
+      _transaction_deleted(std::string const& transaction_id) override;
 
-      virtual
       void
       _transaction_transfer_begin(std::string const& transaction_id,
                                  TransferMethod method,
-                                 float initialization_time);
+                                 float initialization_time) override;
 
-      virtual
       void
       _transaction_transfer_end(std::string const& transaction_id,
                                TransferMethod method,
                                float duration,
                                uint64_t bytes_transfered,
                                TransferExitReason reason,
-                               std::string const& message);
-      virtual
+                               std::string const& message) override;
       void
       _aws_error(std::string const& transaction_id,
                  std::string const& operation,
@@ -103,49 +94,45 @@ namespace infinit
                  unsigned int attempt,
                  int http_status,
                  std::string const& aws_error_code,
-                 std::string const& message);
+                 std::string const& message) override;
 
     /// User metrics.
     private:
-      virtual
       void
-      _user_favorite(std::string const& user_id);
+      _user_favorite(std::string const& user_id) override;
 
-      virtual
       void
-      _user_login(bool success, std::string const& info);
+      _user_login(bool success, std::string const& info) override;
 
-      virtual
       void
-      _user_logout(bool success, std::string const& info);
+      _user_logout(bool success, std::string const& info) override;
 
-      virtual
       void
-      _user_register(bool success, std::string const& info);
+      _user_register(bool success, std::string const& info) override;
 
-      virtual
       void
-      _user_unfavorite(std::string const& user_id);
+      _user_unfavorite(std::string const& user_id) override;
 
-      virtual
       void
-      _user_heartbeat();
+      _user_heartbeat() override;
 
-      virtual
       void
-      _user_first_launch();
+      _user_first_launch() override;
 
-      virtual
       void
-      _user_proxy(reactor::network::ProxyType proxy_type);
+      _user_proxy(reactor::network::ProxyType proxy_type) override;
 
-      virtual
       void
-      _user_crashed();
+      _user_crashed() override;
 
-      virtual
       void
-      _user_changed_download_dir(bool fallback);
+      _user_changed_download_dir(bool fallback) override;
+
+      /// UI metrics:
+      void
+      _ui(std::string const& event,
+          std::string const& from,
+          Additional const&) override;
 
     /// Dispatch metrics.
     private:

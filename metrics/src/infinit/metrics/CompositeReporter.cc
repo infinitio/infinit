@@ -209,13 +209,13 @@ namespace infinit
     }
 
     void
-    CompositeReporter:: _aws_error(std::string const& transaction_id,
-                                   std::string const& operation,
-                                   std::string const& url,
-                                   unsigned int attempt,
-                                   int http_status,
-                                   std::string const& aws_error_code,
-                                   std::string const& message)
+    CompositeReporter::_aws_error(std::string const& transaction_id,
+                                  std::string const& operation,
+                                  std::string const& url,
+                                  unsigned int attempt,
+                                  int http_status,
+                                  std::string const& aws_error_code,
+                                  std::string const& message)
     {
        this->_dispatch(std::bind(&Reporter::_aws_error,
                                  std::placeholders::_1,
@@ -303,6 +303,14 @@ namespace infinit
       this->_dispatch(
         std::bind(&Reporter::_user_changed_download_dir,
                   std::placeholders::_1, fallback));
+    }
+
+    void
+    CompositeReporter::_ui(std::string const& event,
+                           std::string const& from,
+                           Additional const& additional)
+    {
+      this->_dispatch(std::bind(&Reporter::_ui, std::placeholders::_1, event, from, additional));
     }
   }
 }

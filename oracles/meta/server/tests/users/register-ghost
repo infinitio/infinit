@@ -1,0 +1,16 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+
+with Meta() as meta:
+  alice_email = "alice@infinit.io"
+  bob = User(meta, "bob@infinit.io")
+  bob.login()
+  transaction, res = bob.sendfile(recipient_id = alice_email)
+  assert res['success']
+  transaction_id = res['created_transaction_id']
+  ghost = meta.get('user/%s/view' % alice_email)
+  expected_fullname = "alice in chains"
+  alice = User(meta, alice_email, fullname = expected_fullname)
+  alice.login()
+  assert alice.fullname == expected_fullname

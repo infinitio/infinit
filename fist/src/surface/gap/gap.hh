@@ -349,6 +349,14 @@ gap_set_output_dir(gap_State* state,
 std::string
 gap_get_output_dir(gap_State* state);
 
+
+typedef std::unordered_map<std::string, std::string> Additionals;
+/// Metrics.
+gap_Status
+gap_send_metric(gap_State* state,
+                UIMetricsType metric,
+                Additionals additional = Additionals{});
+
 /// Send user report
 gap_Status
 gap_send_user_report(gap_State* state,

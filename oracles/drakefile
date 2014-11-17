@@ -143,6 +143,7 @@ def configure(production_build,
                            elle = elle,
                            meta = meta.server.meta,
                            python_common = python_built,
+                           production_build = production_build,
   )
 
   for name in ('build', 'check', 'install'):

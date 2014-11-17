@@ -16,27 +16,27 @@ namespace infinit
 {
   namespace metrics
   {
-     enum TransferMethod
-      {
-        TransferMethodP2P,
-        TransferMethodCloud,
-        TransferMethodGhostCloud,
-      };
+    enum TransferMethod
+    {
+      TransferMethodP2P,
+      TransferMethodCloud,
+      TransferMethodGhostCloud,
+    };
 
-      enum TransferExitReason
-      {
-        TransferExitReasonFinished,
-        TransferExitReasonExhausted, // no more data from that source
-        TransferExitReasonError, // specific error
-        TransferExitReasonTerminated, // terminated by fsm state change
-        TransferExitReasonUnknown, // not properly caught reason should not happen
-      };
+    enum TransferExitReason
+    {
+      TransferExitReasonFinished,
+      TransferExitReasonExhausted, // no more data from that source
+      TransferExitReasonError, // specific error
+      TransferExitReasonTerminated, // terminated by fsm state change
+      TransferExitReasonUnknown, // not properly caught reason should not happen
+    };
 
-      enum TransactionType
-      {
-        LinkTransaction,
-        PeerTransaction,
-      };
+    enum TransactionType
+    {
+      LinkTransaction,
+      PeerTransaction,
+    };
 
     class CompositeReporter;
     /// Abstract metrics reporter.
@@ -44,6 +44,10 @@ namespace infinit
       public elle::Printable
     {
     friend CompositeReporter;
+      typedef std::function<void()> Metric;
+    public:
+      typedef std::unordered_map<std::string, std::string> Additional;
+
     public:
       Reporter(std::string const& name);
 
@@ -296,8 +300,26 @@ namespace infinit
       void
       _user_changed_download_dir(bool fallback);
 
+      /// UI metrics.
+    public:
+      void
+      ui(std::string const& event,
+         std::string const& from,
+         Additional const& additional);
+
+      /// UI metrics implementation.
+    protected:
+      virtual
+      void
+      _ui(std::string const& event,
+          std::string const& from,
+          Additional const& additional);
+
     /// Queue handling.
     private:
+      void
+      _push(Metric const& func);
+
       void
       _poll();
 
@@ -349,7 +371,7 @@ namespace infinit
     /// Private attributes.
     private:
       ELLE_ATTRIBUTE(reactor::Barrier, metric_available);
-      ELLE_ATTRIBUTE(std::queue<std::function<void()>>, metric_queue);
+      ELLE_ATTRIBUTE(std::queue<Metric>, metric_queue);
       ELLE_ATTRIBUTE(reactor::Signal, metric_queue_empty);
       ELLE_ATTRIBUTE(bool, no_metrics);
       ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, poll_thread);

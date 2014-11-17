@@ -1362,6 +1362,143 @@ gap_onboarding_interrupt_transfer(gap_State* state, uint32_t id)
     });
 }
 
+// Metrics.
+gap_Status
+gap_send_metric(gap_State* state,
+                UIMetricsType metric,
+                std::unordered_map<std::string, std::string> additional)
+{
+  return run<gap_Status>(
+    state,
+    "gap send metrics",
+    [&] (surface::gap::State& state)
+    {
+      switch (metric)
+      {
+        // Adding files.
+        case UIMetrics_AddFilesSendView:
+          state.metrics_reporter()->ui("add files", "send view", additional);
+          break;
+        case UIMetrics_AddFilesContextual:
+          state.metrics_reporter()->ui("add files", "contextual", additional);
+          break;
+        case UIMetrics_AddFilesMenu:
+          state.metrics_reporter()->ui("add files", "menu", additional);
+          break;
+        case UIMetrics_AddFilesDropOnSendView:
+          state.metrics_reporter()->ui("add files", "drop", additional);
+          break;
+        case UIMetrics_AddFilesDropOnIcon:
+          state.metrics_reporter()->ui("add files", "status icon drop", additional);
+          break;
+        // Show dock.
+        case UIMetrics_OpenPanelIcon:
+          state.metrics_reporter()->ui("open infinit", "status icon", additional);
+          break;
+        case UIMetrics_OpenPanelMenu:
+          state.metrics_reporter()->ui("open infinit", "menu", additional);
+          break;
+        case UIMetrics_OpenPanelOtherInstance:
+          state.metrics_reporter()->ui("open infinit", "other instance", additional);
+          break;
+        // Actions on Transactions.
+        case UIMetrics_ConversationAccept:
+          state.metrics_reporter()->ui("accept", "conversation view", additional);
+          break;
+        case UIMetrics_ConversationCancel:
+          state.metrics_reporter()->ui("cancel", "conversation view", additional);
+          break;
+        case UIMetrics_ConversationReject:
+          state.metrics_reporter()->ui("rejecte", "conversation view", additional);
+          break;
+        // Actions on Links.
+        case UIMetrics_MainCopyLink:
+          state.metrics_reporter()->ui("copy link", "main view", additional);
+          break;
+        case UIMetrics_MainOpenLink:
+          state.metrics_reporter()->ui("open link", "main view", additional);
+          break;
+        case UIMetrics_MainDeleteLink:
+          state.metrics_reporter()->ui("delete link", "main view", additional);
+          break;
+        // Way to start transaction.
+        case UIMetrics_FavouritesPersonDrop:
+          state.metrics_reporter()->ui("create transaction", "favourites", additional);
+          break;
+        case UIMetrics_ContextualSend:
+          state.metrics_reporter()->ui("create transaction", "contextual", additional);
+          break;
+        case UIMetrics_ConversationSend:
+          state.metrics_reporter()->ui("create transaction", "conversation view", additional);
+          break;
+        // Way to start a link.
+        case UIMetrics_FavouritesLinkDrop:
+          state.metrics_reporter()->ui("create link", "favourites", additional);
+          break;
+        case UIMetrics_ContextualLink:
+          state.metrics_reporter()->ui("create link", "contextual", additional);
+          break;
+        case UIMetrics_StatusIconLinkDrop:
+          state.metrics_reporter()->ui("create link", "status icon drop", additional);
+          break;
+        // Validate transfer draft.
+        case UIMetrics_SendCreateTransaction:
+          state.metrics_reporter()->ui("create transaction", "send view", additional);
+          break;
+        case UIMetrics_SendCreateLink:
+          state.metrics_reporter()->ui("create link", "send view", additional);
+          break;
+        // Peer selection.
+        case UIMetrics_SelectPeer:
+          state.metrics_reporter()->ui("select peer", "send view", additional);
+          break;
+        case UIMetrics_UnselectPeer:
+          state.metrics_reporter()->ui("unselect peer", "send view", additional);
+          break;
+        // Screenshots.
+        case UIMetrics_UploadScreenshot:
+          state.metrics_reporter()->ui("upload screenshots", "automatic", additional);
+          break;
+        case UIMetrics_ScreenshotModalNo:
+          state.metrics_reporter()->ui("upload screenshots", "no", additional);
+          break;
+        case UIMetrics_ScreenshotModalYes:
+          state.metrics_reporter()->ui("upload screenshots", "yes", additional);
+          break;
+        // Navigation.
+        case UIMetrics_MainSend:
+          state.metrics_reporter()->ui("send", "main", additional);
+          break;
+        case UIMetrics_MainPeople:
+          state.metrics_reporter()->ui("people", "main", additional);
+          break;
+        case UIMetrics_MainLinks:
+          state.metrics_reporter()->ui("link", "main", additional);
+          break;
+        case UIMetrics_SendTrash:
+          state.metrics_reporter()->ui("cancel", "send view", additional);
+          break;
+        // Address book.
+        case UIMetrics_HaveAddressbookAccess:
+          state.metrics_reporter()->ui("addressbook", "yes", additional);
+          break;
+        case UIMetrics_NoAdressbookAccess:
+          state.metrics_reporter()->ui("addressbook", "no", additional);
+          break;
+        // Other.
+        case UIMetrics_DesktopNotification:
+          state.metrics_reporter()->ui("desktop notification", "click", additional);
+          break;
+        case UIMetrics_Preferences:
+          state.metrics_reporter()->ui("preference", "click", additional);
+          break;
+        default:
+          elle::unreachable();
+      }
+      return gap_ok;
+    });
+}
+
 gap_Status
 gap_send_user_report(gap_State* state,
                      std::string const& user_name,

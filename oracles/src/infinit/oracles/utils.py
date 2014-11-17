@@ -19,7 +19,10 @@ class api:
 
   def __call__(self, method):
     import inspect
-    spec = inspect.getfullargspec(method)
+    if hasattr(method, '__fullargspec__'):
+      spec = method.__fullargspec__
+    else:
+      spec = inspect.getfullargspec(method)
     def annotation_mapper(self, *args, **kwargs):
       for arg, annotation in spec.annotations.items():
         value = kwargs.get(arg, None)

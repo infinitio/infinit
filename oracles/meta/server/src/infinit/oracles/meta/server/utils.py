@@ -48,8 +48,7 @@ def require_key(method):
       # For now, this will be refused by the API as the 'key'
       # parameter is missing.
       self.forbidden()
-    if kwargs['key'] != key(bottle.request.path):
-      self.forbidden()
+    self.check_key(kwargs['key'])
     del kwargs['key']
     return method(self, *args, **kwargs)
   spec = inspect.getfullargspec(method)

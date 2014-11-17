@@ -134,19 +134,19 @@ namespace surface
     SendMachine::_plain_upload()
     {
       static const std::unordered_map<std::string, std::string> mimes = {
-      {"mp3", "audio/mpeg"},
-      {"wav", "audio/wav"},
-      {"mp4", "audio/mp4"},
-      {"m4a", "audio/mp4"},
-      {"aac", "audio/mp4"},
-      {"ogg", "audio/ogg"},
-      {"oga", "audio/ogg"},
-      {"ogv", "video/ogg"},
-      {"webm", "video/webm"},
-      {"avi", "video/avi"},
-      {"mpg", "video/mpeg"},
-      {"mpeg", "video/mpeg"},
-      {"m4v", "video/mp4"},
+        {"mp3", "audio/mpeg"},
+        {"wav", "audio/wav"},
+        {"mp4", "video/mp4"},
+        {"m4a", "audio/mp4"},
+        {"aac", "audio/mp4"},
+        {"ogg", "audio/ogg"},
+        {"oga", "audio/ogg"},
+        {"ogv", "video/ogg"},
+        {"webm", "video/webm"},
+        {"avi", "video/avi"},
+        {"mpg", "video/mpeg"},
+        {"mpeg", "video/mpeg"},
+        {"m4v", "video/mp4"},
       };
       // exit information for factored metrics writer.
       // needs to stay out of the try, as catch clause will fill those

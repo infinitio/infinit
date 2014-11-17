@@ -47,10 +47,13 @@ def configure(cxx_toolkit = None,
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
 
-  if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
-    Library = drake.cxx.StaticLib
-  else:
-    Library = drake.cxx.DynLib
+  prefer_static = cxx_toolkit.os in [drake.os.windows, drake.os.ios]
+  def library(*args, **kwargs):
+    lib_dyn, lib_static = (
+      Library(*args, **kwargs)
+      for Library in (drake.cxx.DynLib, drake.cxx.StaticLib))
+    lib = lib_static if prefer_static else lib_dyn
+    return lib_dyn, lib_static, lib
 
   if enable_debug:
     cxx_config.define("DEBUG")
@@ -105,15 +108,17 @@ def configure(cxx_toolkit = None,
   ## ------- ##
 
   git = drake.git.Git()
+
   class CxxVersionGenerator(VersionGenerator):
+
     def _prologue(self):
       yield '#ifndef INFINIT_VERSION_HH'
       yield '# define INFINIT_VERSION_HH'
+
     def _epilogue(self):
       yield '#endif'
+
     def _variable(self, name, value):
-      if name == 'version' and not production_build:
-        value = '%s-dev' % git.version().split('-')[0]
       value = repr(value).replace("'", '"')
       if name == 'version':
         name = 'INFINIT_VERSION'
@@ -121,7 +126,8 @@ def configure(cxx_toolkit = None,
         name = 'INFINIT_VERSION_%s' % name.upper()
       return '# define %s %s' % (name, value)
   version = drake.node('version.hh')
-  CxxVersionGenerator(version, git = git)
+  CxxVersionGenerator(version, git = git,
+                      production_build = production_build)
 
   architecture = platform.architecture()[0]
   if architecture == "32bit":
@@ -242,11 +248,11 @@ def configure(cxx_toolkit = None,
   cxx_config_libs.add_local_include_path('papier/src')
   papier_cxx_config = drake.cxx.Config(cxx_config_libs)
   papier_cxx_config.add_local_include_path('papier/src')
-  papier_lib = Library(
+  papier_lib_dyn, papier_lib_static, papier_lib = library(
     'lib/papier',
     papier_sources + [elle_lib, cryptography_lib],
     cxx_toolkit,
-    papier_cxx_config
+    papier_cxx_config,
   )
   papier_build << papier_lib
   papier_python = drake.Rule('papier/build')
@@ -293,6 +299,7 @@ def configure(cxx_toolkit = None,
       cxx_toolkit, papier_cxx_config_tests)
     papier_tests << test
     runner = drake.Runner(exe = test)
+    runner.reporting = drake.Runner.Reporting.on_failure
     papier_check << runner.status
 
 
@@ -319,7 +326,7 @@ def configure(cxx_toolkit = None,
   station_cxx_config = drake.cxx.Config(papier_cxx_config)
   station_cxx_config.add_local_include_path('station/src')
 
-  station_lib = Library(
+  station_lib_dyn, station_lib_static, station_lib = library(
     'lib/station',
     station_sources + [papier_lib, cryptography_lib,
                        reactor_lib, elle_lib],
@@ -349,6 +356,7 @@ def configure(cxx_toolkit = None,
       cxx_toolkit, station_cxx_config_tests)
     station_tests << test
     runner = drake.Runner(exe = test)
+    runner.reporting = drake.Runner.Reporting.on_failure
     station_check << runner.status
 
   ## ----- ##
@@ -368,11 +376,11 @@ def configure(cxx_toolkit = None,
   cxx_config.add_local_include_path('frete/src')
   cxx_config_libs.add_local_include_path('frete/src')
   frete_cxx_config = drake.cxx.Config(cxx_config_libs)
-  frete_lib = Library(
+  frete_lib_dyn, frete_lib_static, frete_lib = library(
     'lib/frete',
     frete_sources + [protocol_lib, reactor_lib, elle_lib, cryptography_lib],
     cxx_toolkit,
-    frete_cxx_config
+    frete_cxx_config,
   )
 
   frete_build << frete_lib
@@ -398,6 +406,7 @@ def configure(cxx_toolkit = None,
       cxx_toolkit, frete_cxx_config_tests)
     frete_tests << test
     runner = drake.Runner(exe = test)
+    runner.reporting = drake.Runner.Reporting.on_failure
     frete_check << runner.status
 
   ## ----- ##
@@ -409,11 +418,11 @@ def configure(cxx_toolkit = None,
     'CrashReporter.hh'
   )
   crash_cxx_config = drake.cxx.Config(cxx_config_libs)
-  crash_lib = Library(
+  crash_lib_dynamic, crash_lib_static, crash_lib = library(
     'lib/crash',
     crash_sources + [elle_lib, reactor_lib],
     cxx_toolkit,
-    crash_cxx_config
+    crash_cxx_config,
   )
 
   ## ----- ##
@@ -566,7 +575,7 @@ def configure(cxx_toolkit = None,
     gap_cxx_config_libs.lib('mswsock')
     gap_cxx_config_libs.lib('dbghelp')
     gap_cxx_config_libs.lib('iphlpapi')
-  gap_lib = Library(
+  gap_lib_dyn, gap_lib_static, gap_lib = library(
     'lib/gap',
     gap_sources + [
       aws_lib,
@@ -583,7 +592,7 @@ def configure(cxx_toolkit = None,
       cryptography_lib,
     ],
     cxx_toolkit,
-    gap_cxx_config_libs
+    gap_cxx_config_libs,
   )
 
   gap_build << gap_lib
@@ -719,7 +728,7 @@ def configure(cxx_toolkit = None,
     state_cxx_config_libs.lib('mswsock')
     state_cxx_config_libs.lib('dbghelp')
     state_cxx_config_libs.lib('iphlpapi')
-  state_lib = Library(
+  state_lib_dyn, state_lib_static, state_lib = library(
     'lib/state',
     state_sources + [
       aws_lib,
@@ -736,7 +745,7 @@ def configure(cxx_toolkit = None,
       cryptography_lib,
     ],
     cxx_toolkit,
-    state_cxx_config_libs
+    state_cxx_config_libs,
   )
 
   ## ------------ ##

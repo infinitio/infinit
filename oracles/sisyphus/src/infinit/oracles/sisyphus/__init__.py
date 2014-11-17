@@ -3,10 +3,10 @@ import datetime
 import elle
 
 from infinit.oracles.utils import api, mongo_connection
+from . import emailer
 from . import version
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.Sisyphus'
-
 
 class Sisyphus(bottle.Bottle):
 
@@ -27,16 +27,16 @@ class Sisyphus(bottle.Bottle):
       self.__mandrill = mandrill
     else:
       import mandrill
-
       self.__mandrill = mandrill.Mandrill(apikey = 'ca159fe5-a0f7-47eb-b9e1-2a8f03b9da86')
+    self.__emailer = emailer.MandrillEmailer(self.__mandrill)
 
   @property
   def mongo(self):
     return self.__mongo
 
   @property
-  def mandrill(self):
-    return self.__mandrill
+  def emailer(self):
+    return self.__emailer
 
   @api('/')
   def status(self):
@@ -46,10 +46,12 @@ class Sisyphus(bottle.Bottle):
 
   @api('/cron')
   def cron(self):
-    response = {}
-    for boulder in self.__boulders:
-      response[str(boulder)] = boulder.run()
-    return response
+    with elle.log.trace('%s: run jobs' % self):
+      response = {}
+      for boulder in self.__boulders:
+        with elle.log.trace('%s: run %s' % (self, boulder)):
+          response[str(boulder)] = boulder.run()
+      return response
 
   def __lshift__(self, boulder):
     self.__boulders.add(boulder)
