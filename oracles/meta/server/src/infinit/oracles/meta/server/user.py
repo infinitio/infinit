@@ -1056,13 +1056,13 @@ class Mixin:
           {'handle' : {'$regex' : search, '$options': 'i'}},
         ]
       pipeline.append({'$match': match})
+      pipeline.append({
+        '$project': self.user_public_fields,
+      })
       if self.logged_in:
         pipeline.append({
           '$sort': {'swaggers.%s' % str(self.user['_id']) : -1}
         })
-      pipeline.append({
-        '$project': self.user_public_fields,
-      })
       pipeline.append({'$skip': skip})
       pipeline.append({'$limit': limit})
       users = self.database.users.aggregate(pipeline)
