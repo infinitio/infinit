@@ -330,35 +330,39 @@ namespace
   }
 
   void
-  _gap_transaction_callback(gap_State* state,
-                            boost::python::object cb)
+  _gap_link_transaction_callback(gap_State* state, boost::python::object cb)
   {
-    auto cpp_cb = [cb] (surface::gap::Transaction::Notification const& notif)
+    auto cpp_cb = [cb] (surface::gap::LinkTransaction const& transaction)
     {
-      wrap_call(cb)(notif.id, notif.status);
+      wrap_call(cb)(transaction);
     };
 
     run<int>(
       state,
-      "transaction callback",
+      "link transaction callback",
       [&] (surface::gap::State& state) -> int
       {
-        state.attach_callback<surface::gap::Transaction::Notification>(cpp_cb);
+        state.attach_callback<surface::gap::LinkTransaction>(cpp_cb);
         return 0;
       });
-
   }
 
   void
-  _gap_message_callback(gap_State* state,
-                        boost::python::object cb)
+  _gap_peer_transaction_callback(gap_State* state, boost::python::object cb)
   {
-    using namespace infinit::oracles::trophonius;
-    auto cpp_cb = [cb] (MessageNotification const& notif) {
-        wrap_call(cb)(notif.sender_id.c_str(), notif.message.c_str());
+    auto cpp_cb = [cb] (surface::gap::PeerTransaction const& transaction)
+    {
+      wrap_call(cb)(transaction);
     };
 
-    // reinterpret_cast<surface::gap::State*>(state)->notification_manager().message_callback(cpp_cb);
+    run<int>(
+      state,
+      "peer transaction callback",
+      [&] (surface::gap::State& state) -> int
+      {
+        state.attach_callback<surface::gap::PeerTransaction>(cpp_cb);
+        return 0;
+      });
   }
 
   void
@@ -446,8 +450,8 @@ BOOST_PYTHON_MODULE(_gap)
   ///////////////////////////
   // Callbacks.
 
-  py::def("transaction_callback", &_gap_transaction_callback);
-  py::def("message_callback", &_gap_message_callback);
+  py::def("link_transaction_callback", &_gap_link_transaction_callback);
+  py::def("peer_transaction_callback", &_gap_peer_transaction_callback);
   py::def("on_error_callback", &_gap_on_error_callback);
   py::def("new_swagger_callback", &_gap_new_swagger_callback);
   py::def("user_status_callback", &_gap_user_status_callback);
