@@ -88,6 +88,7 @@ public:
   virtual
   ~Trophonius()
   {
+    ELLE_LOG("%s: entering destructor", *this);
     if (this->_accepter)
       this->_accepter->terminate_now();
     ELLE_LOG("%s: finalize", *this);
@@ -202,7 +203,9 @@ public:
 
   ~PokeTrophonius()
   {
-    reactor::wait(*this->accepter());
+    ELLE_DEBUG("~PokeTrophonius:  Waiting for accepter");
+    //reactor::wait(*this->accepter());
+    ELLE_DEBUG("~PokeTrophonius: done");
   }
 
   ELLE_ATTRIBUTE_R(int, round);
@@ -259,6 +262,7 @@ protected:
     {
       // Do nothing.
     }
+    _handle_connection();
   }
 
   virtual
@@ -276,7 +280,7 @@ ELLE_TEST_SCHEDULED(poke_success)
   infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     tropho.port(),
-    [] (bool) {},
+    [] (infinit::oracles::trophonius::ConnectionState const& s) {},
     [] (void) {},
     fingerprint);
   try
@@ -295,60 +299,142 @@ ELLE_TEST_SCHEDULED(poke_success)
 ELLE_TEST_SCHEDULED(poke_no_reply)
 {
   PokeTrophonius tropho(1);
+  reactor::Barrier b;
+  bool success = false;
+  int connectCount = 0;
+  int reconnectCount = 0;
   infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     tropho.port(),
-    [] (bool) {},
-    [] (void) {},
+    [&] (infinit::oracles::trophonius::ConnectionState const& s) {
+          connectCount++;
+          success = s.connected;
+          b.open();
+          reactor::yield();
+          reactor::yield();
+        }, // connect callback
+        [&] (void) {
+          reconnectCount++;
+          b.open();
+          reactor::yield();
+          reactor::yield();
+        }, // reconnection failed callback
     fingerprint);
-  BOOST_CHECK_THROW(client.connect("", "", ""),
-                    infinit::oracles::trophonius::Unreachable);
+  BOOST_CHECK_NO_THROW(client.connect("", "", ""));
+  b.wait();b.close();b.wait();
+  BOOST_CHECK_EQUAL(reconnectCount, 1);
+  BOOST_CHECK_EQUAL(connectCount, 1);
   BOOST_CHECK(!client.connected());
+  BOOST_CHECK_EQUAL(success, false);
 }
 
 ELLE_TEST_SCHEDULED(poke_resolution_failure)
 {
+  reactor::Barrier b;
+  bool success = false;
+  int connectCount = 0;
+  int reconnectCount = 0;
   infinit::oracles::trophonius::Client client(
         "does.not.exist",
         8000,
-        [] (bool) {}, // connect callback
-        [] (void) {}, // reconnection failed callback
+        [&] (infinit::oracles::trophonius::ConnectionState const& s) {
+          connectCount++;
+          success = s.connected;
+          b.open();
+          reactor::yield();
+          reactor::yield();
+        }, // connect callback
+        [&] (void) {
+          reconnectCount++;
+          b.open();
+          reactor::yield();
+          reactor::yield();
+        }, // reconnection failed callback
         fingerprint);
-  BOOST_CHECK_THROW(client.connect("", "", ""),
-                    infinit::oracles::trophonius::Unreachable);
+  BOOST_CHECK_NO_THROW(client.connect("", "", ""));
+  b.wait();b.close();b.wait();
+  BOOST_CHECK_EQUAL(reconnectCount, 1);
+  BOOST_CHECK_EQUAL(connectCount, 1);
   BOOST_CHECK(!client.connected());
+  BOOST_CHECK_EQUAL(success, false);
 }
 
 ELLE_TEST_SCHEDULED(poke_json)
 {
   PokeTrophonius tropho(3);
+  reactor::Barrier b;
+  bool success = false;
+  int connectCount = 0;
+  int reconnectCount = 0;
   infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     tropho.port(),
-    [] (bool) {},
-    [] (void) {},
-    fingerprint);
-  BOOST_CHECK_THROW(client.connect("", "", ""),
-                    infinit::oracles::trophonius::Unreachable);
+        [&] (infinit::oracles::trophonius::ConnectionState const& s) {
+          connectCount++;
+          success = s.connected;
+          b.open();
+          reactor::yield();
+          reactor::yield();
+        }, // connect callback
+        [&] (void) {
+          reconnectCount++;
+          b.open();
+          reactor::yield();
+          reactor::yield();
+        }, // reconnection failed callback
+        fingerprint, 1_sec);
+  BOOST_CHECK_NO_THROW(client.connect("", "", ""));
+  b.wait();b.close();b.wait();
+  BOOST_CHECK_EQUAL(reconnectCount, 1);
+  BOOST_CHECK_EQUAL(connectCount, 1);
   BOOST_CHECK(!client.connected());
+  BOOST_CHECK_EQUAL(success, false);
+  b.close(); b.wait(); b.close(); b.wait();
+  BOOST_CHECK_EQUAL(reconnectCount, 2);
+  BOOST_CHECK_EQUAL(connectCount, 2);
+  BOOST_CHECK(!client.connected());
+  BOOST_CHECK_EQUAL(success, false);
+
 }
 
 ELLE_TEST_SCHEDULED(poke_html)
 {
+  reactor::Barrier b;
+  bool success = false;
+  int connectCount = 0;
+  int reconnectCount = 0;
   PokeTrophonius tropho(4);
   infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     tropho.port(),
-    [] (bool) {},
-    [] (void) {},
-    fingerprint);
-  BOOST_CHECK_THROW(client.connect("", "", ""),
-                    infinit::oracles::trophonius::Unreachable);
+    [&] (infinit::oracles::trophonius::ConnectionState const& s) {
+          connectCount++;
+          success = s.connected;
+          b.open();
+          reactor::yield();
+          reactor::yield();
+        }, // connect callback
+    [&] (void) {
+          reconnectCount++;
+          b.open();
+          reactor::yield();
+          reactor::yield();
+        }, // reconnection failed callback
+        fingerprint);
+  BOOST_CHECK_NO_THROW(client.connect("", "", ""));
+  b.wait();b.close();b.wait();
+  BOOST_CHECK_EQUAL(reconnectCount, 1);
+  BOOST_CHECK_EQUAL(connectCount, 1);
   BOOST_CHECK(!client.connected());
+  BOOST_CHECK_EQUAL(success, false);
 }
 
 ELLE_TEST_SCHEDULED(poke_connection_refused)
 {
+  reactor::Barrier b;
+  bool success = false;
+  int connectCount = 0;
+  int reconnectCount = 0;
   int port;
   {
     PokeTrophonius tropho(5);
@@ -357,12 +443,27 @@ ELLE_TEST_SCHEDULED(poke_connection_refused)
   infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     port,
-    [] (bool) {},
-    [] (void) {},
-    fingerprint);
-  BOOST_CHECK_THROW(client.connect("", "", ""),
-                    infinit::oracles::trophonius::Unreachable);
+    [&] (infinit::oracles::trophonius::ConnectionState const& s) {
+          connectCount++;
+          success = s.connected;
+          b.open();
+          reactor::yield();
+          reactor::yield();
+        }, // connect callback
+    [&] (void) {
+          reconnectCount++;
+          b.open();
+          reactor::yield();
+          reactor::yield();
+        }, // reconnection failed callback
+        fingerprint);
+  BOOST_CHECK_NO_THROW(client.connect("", "", ""));
+  b.wait();b.close();b.wait();
+  BOOST_CHECK_EQUAL(reconnectCount, 1);
+  BOOST_CHECK_EQUAL(connectCount, 1);
   BOOST_CHECK(!client.connected());
+  BOOST_CHECK_EQUAL(success, false);
+
 }
 
 /*-------------.
@@ -400,10 +501,11 @@ ELLE_TEST_SCHEDULED(notification)
     Client client(
       "127.0.0.1",
       tropho.port(),
-      [] (bool) {}, // connect callback
+      [] (infinit::oracles::trophonius::ConnectionState const& connected) {}, // connect callback
       [] (void) {}, // reconnection failed callback
       fingerprint);
     client.connect("0", "0", "0");
+    reactor::wait(client.connected());
     BOOST_CHECK(client.connected());
     for (int i = 0; i < reconnections; ++i)
     {
@@ -501,11 +603,12 @@ ELLE_TEST_SCHEDULED(ping)
   Client client(
     "127.0.0.1",
     tropho.port(),
-    [] (bool) {}, // connect callback
+    [] (infinit::oracles::trophonius::ConnectionState const& connected) {}, // connect callback
     [] (void) {}, // reconnection failed callback
     fingerprint);
   client.ping_period(period);
   client.connect("0", "0", "0");
+  reactor::wait(client.connected());
   BOOST_CHECK(client.connected());
   reactor::sleep(run_time);
   BOOST_CHECK_EQUAL(client.reconnected(), 0);
@@ -584,11 +687,12 @@ ELLE_TEST_SCHEDULED(no_ping)
   Client client(
     "127.0.0.1",
     tropho.port(),
-    [] (bool) {}, // connect callback
+    [] (infinit::oracles::trophonius::ConnectionState const& connected) {}, // connect callback
     [] (void) {}, // reconnection failed callback
     fingerprint);
   client.ping_period(period);
   client.connect("0", "0", "0");
+  reactor::wait(client.connected());
   BOOST_CHECK(client.connected());
   reactor::sleep(run_time);
   // Approximate test as we don't know how long a poke, connect, disconnect
@@ -669,9 +773,9 @@ ELLE_TEST_SCHEDULED(reconnection)
   infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     tropho.port(),
-    [&] (bool connected) // connect callback
+    [&] (infinit::oracles::trophonius::ConnectionState const& s) // connect callback
     {
-      if (connected)
+      if (s.connected)
       {
         BOOST_CHECK(client.connected());
         if (first_connect)
@@ -695,6 +799,7 @@ ELLE_TEST_SCHEDULED(reconnection)
   ELLE_LOG("connect")
   {
     client.connect("0", "0", "0");
+    reactor::wait(client.connected());
     BOOST_CHECK(client.connected());
   }
   ELLE_LOG("read notification 0");
@@ -750,9 +855,9 @@ ELLE_TEST_SCHEDULED_THROWS(connection_callback_throws, std::runtime_error)
   Client client(
     "127.0.0.1",
     tropho.port(),
-    [&] (bool connected) // connect callback
+    [&] (infinit::oracles::trophonius::ConnectionState const& s) // connect callback
     {
-      if (connected)
+      if (s.connected)
       {
         ELLE_LOG("fail connect callback");
         beacon = true;
@@ -764,7 +869,8 @@ ELLE_TEST_SCHEDULED_THROWS(connection_callback_throws, std::runtime_error)
   client.ping_period(100_ms);
   ELLE_LOG("connect")
     client.connect("0", "0", "0");
-  reactor::sleep(1_sec);
+    for (int i=0; i<30 && !beacon; ++i)
+      reactor::sleep(valgrind(100_ms));
   BOOST_CHECK(beacon);
 }
 
@@ -833,7 +939,7 @@ ELLE_TEST_SCHEDULED(reconnection_failed_callback)
   Client client(
     "127.0.0.1",
     tropho.port(),
-    [] (bool) {}, // connect callback
+    [] (infinit::oracles::trophonius::ConnectionState const& s) {}, // connect callback
     [&] (void)    // reconnection failed callback
     {
       ELLE_LOG("reconnection failed callback called");
@@ -900,16 +1006,34 @@ ELLE_TEST_SCHEDULED(socket_close_after_poke)
 {
   SocketClosedTrophonius tropho;
   using namespace infinit::oracles::trophonius;
-  Client client(
+  reactor::Barrier b;
+  bool success = false;
+  int connectCount = 0;
+  int reconnectCount = 0;
+  infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     tropho.port(),
-    [] (bool) {}, // connect callback
-    [] (void) {}, // reconnection failed callback
-    fingerprint);
+        [&] (infinit::oracles::trophonius::ConnectionState const& s) {
+          connectCount++;
+          success = s.connected;
+          b.open();
+          reactor::yield();
+          reactor::yield();
+        }, // connect callback
+        [&] (void) {
+          reconnectCount++;
+          b.open();
+          reactor::yield();
+          reactor::yield();
+        }, // reconnection failed callback
+        fingerprint);
   client.ping_period(200_ms);
-  ELLE_LOG("try to connect") // should fail immediately
-    BOOST_CHECK_THROW(client.connect("0", "0", "0"),
-                      infinit::oracles::trophonius::ConnectionError);
+  BOOST_CHECK_NO_THROW(client.connect("", "", ""));
+  b.wait();b.close();b.wait();
+  BOOST_CHECK_EQUAL(reconnectCount, 1);
+  BOOST_CHECK_EQUAL(connectCount, 1);
+  BOOST_CHECK(!client.connected());
+  BOOST_CHECK_EQUAL(success, false);
 }
 
 /*------------------.
@@ -948,9 +1072,9 @@ ELLE_TEST_SCHEDULED(notify_disconnect)
   infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     tropho.port(),
-    [&client] (bool connected)
+    [&client] (infinit::oracles::trophonius::ConnectionState const& s)
     {
-      if (!connected)
+      if (!s.connected)
         client.ping_period(30_sec);
     },
     [] (void) {},
@@ -1014,9 +1138,9 @@ ELLE_TEST_SCHEDULED(login_reconnect)
   infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     tropho.port(),
-    [] (bool connected) {
-      ELLE_LOG("reconnection callback: %sconnected", connected ? "" : "dis");
-      if (connected) reactor::sleep(2_sec);
+    [] (infinit::oracles::trophonius::ConnectionState const& s) {
+      ELLE_LOG("reconnection callback: %sconnected", s.connected ? "" : "dis");
+      if (s.connected) reactor::sleep(2_sec);
     },
     [] (void) {},
     fingerprint);
@@ -1069,7 +1193,9 @@ ELLE_TEST_SCHEDULED(invalid_credentials)
   infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     tropho.port(),
-    [] (bool connected) { if (connected) reactor::sleep(2_sec); },
+    [] (infinit::oracles::trophonius::ConnectionState const& s) {
+      if (s.connected) reactor::sleep(2_sec);
+    },
     [] (void) {},
     fingerprint);
   client.connect("0", "0", "0");
@@ -1108,15 +1234,34 @@ protected:
 ELLE_TEST_SCHEDULED(connect_read_timeout)
 {
   ConnectReadTimeoutTrophonius tropho;
+    reactor::Barrier b;
+  bool success = false;
+  int connectCount = 0;
+  int reconnectCount = 0;
   infinit::oracles::trophonius::Client client(
     "127.0.0.1",
     tropho.port(),
-    [] (bool connected) { if (connected) reactor::sleep(2_sec); },
-    [] (void) {},
-    fingerprint);
+        [&] (infinit::oracles::trophonius::ConnectionState const& s) {
+          connectCount++;
+          success = s.connected;
+          b.open();
+          reactor::yield();
+          reactor::yield();
+        }, // connect callback
+        [&] (void) {
+          reconnectCount++;
+          b.open();
+          reactor::yield();
+          reactor::yield();
+        }, // reconnection failed callback
+        fingerprint);
   client.connect_timeout(500_ms);
-  BOOST_CHECK_THROW(client.connect("0", "0", "0"),
-                    infinit::oracles::trophonius::ConnectionError);
+  BOOST_CHECK_NO_THROW(client.connect("0", "0", "0"));
+  b.wait();b.close();b.wait();
+  BOOST_CHECK_EQUAL(reconnectCount, 1);
+  BOOST_CHECK_EQUAL(connectCount, 1);
+  BOOST_CHECK(!client.connected());
+  BOOST_CHECK_EQUAL(success, false);
 }
 
 /*---------------------.
@@ -1146,16 +1291,35 @@ namespace ssl_shutdown
   ELLE_TEST_SCHEDULED(timeout_connect)
   {
     TimeoutConnectTrophonius tropho;
+    reactor::Barrier b;
+    bool success = false;
+    int connectCount = 0;
+    int reconnectCount = 0;
     infinit::oracles::trophonius::Client client(
       "127.0.0.1",
       tropho.port(),
-      [] (bool connected) {},
-      [] (void) {},
-      fingerprint);
+        [&] (infinit::oracles::trophonius::ConnectionState const& s) {
+          connectCount++;
+          success = s.connected;
+          b.open();
+          reactor::yield();
+          reactor::yield();
+        }, // connect callback
+        [&] (void) {
+          reconnectCount++;
+          b.open();
+          reactor::yield();
+          reactor::yield();
+        }, // reconnection failed callback
+        fingerprint);
     client.poke_timeout(50_ms);
     client.connect_timeout(50_ms);
-    BOOST_CHECK_THROW(client.connect("0", "0", "0"),
-                      infinit::oracles::trophonius::ConnectionError);
+    BOOST_CHECK_NO_THROW(client.connect("0", "0", "0"));
+    b.wait();b.close();b.wait();
+    BOOST_CHECK_EQUAL(reconnectCount, 1);
+    BOOST_CHECK_EQUAL(connectCount, 1);
+    BOOST_CHECK(!client.connected());
+    BOOST_CHECK_EQUAL(success, false);
   }
 
   class TimeoutReconnectTrophonius
@@ -1179,9 +1343,9 @@ namespace ssl_shutdown
     infinit::oracles::trophonius::Client client(
       "127.0.0.1",
       tropho.port(),
-      [&] (bool connected)
+      [&] (infinit::oracles::trophonius::ConnectionState const& connected)
       {
-        if (connected)
+        if (connected.connected)
           tropho.done().open();
       },
       [] (void) {},
@@ -1211,7 +1375,7 @@ namespace ssl_shutdown
     infinit::oracles::trophonius::Client client(
       "127.0.0.1",
       tropho.port(),
-      [] (bool connected) {},
+      [] (infinit::oracles::trophonius::ConnectionState const& connected) {},
       [] (void) {},
       fingerprint);
     client.connect_timeout(valgrind(200_ms));

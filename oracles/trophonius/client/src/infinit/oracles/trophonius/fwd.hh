@@ -32,6 +32,7 @@ namespace infinit
       class Notification;
       class PeerReachabilityNotification;
       class UserStatusNotification;
+      struct ConnectionState;
     }
   }
 }

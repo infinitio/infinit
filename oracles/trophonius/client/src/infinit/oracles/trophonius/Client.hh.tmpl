@@ -190,12 +190,18 @@ namespace infinit
                                  Notification)
         {}
       };
+      struct ConnectionState
+      {
+        bool connected;
+        elle::Exception last_error;
+        bool still_trying;
+      };
 
       class Client:
         public elle::Printable
       {
       public:
-        typedef std::function<void (bool)> ConnectCallback;
+        typedef std::function<void (ConnectionState)> ConnectCallback;
         typedef std::function<void (void)> ReconnectPokeFailedCallback;
       private:
         struct Impl;

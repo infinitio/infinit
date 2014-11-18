@@ -249,6 +249,19 @@ gap_unset_proxy(gap_State* _state, gap_ProxyType type)
     });
 }
 
+void
+gap_clean_state(gap_State* state)
+{
+  run<gap_Status>(
+    state,
+    "flush state",
+    [&] (surface::gap::State& state)
+    {
+      state.clean();
+      return gap_ok;
+    });
+}
+
 gap_Status
 gap_login(gap_State* _state,
           char const* email,
@@ -472,8 +485,7 @@ gap_change_password(gap_State* state,
     "change password",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      auto fullname = state.me().fullname;
-      state.meta().change_password(
+      state.change_password(
         state.hash_password(state.me().email, old_password),
         state.hash_password(state.me().email, new_password));
       return gap_ok;
@@ -955,7 +967,7 @@ gap_connection_callback(gap_State* state,
 {
   auto cpp_cb = [cb] (surface::gap::State::ConnectionStatus const& notif)
     {
-      cb((gap_UserStatus) notif.status);
+      cb(notif.status, notif.still_trying, notif.last_error);
     };
 
   return run<gap_Status>(
@@ -964,25 +976,6 @@ gap_connection_callback(gap_State* state,
     [&] (surface::gap::State& state) -> gap_Status
     {
       state.attach_callback<surface::gap::State::ConnectionStatus>(cpp_cb);
-      return gap_ok;
-    });
-}
-
-gap_Status
-gap_kicked_out_callback(gap_State* state,
-                        gap_kicked_out_callback_t cb)
-{
-  auto cpp_cb = [cb] (surface::gap::State::KickedOut const&)
-    {
-      cb();
-    };
-
-  return run<gap_Status>(
-    state,
-    "kicked out callback",
-    [&] (surface::gap::State& state) -> gap_Status
-    {
-      state.attach_callback<surface::gap::State::KickedOut>(cpp_cb);
       return gap_ok;
     });
 }
