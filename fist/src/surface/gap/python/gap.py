@@ -16,16 +16,11 @@ import _gap
 class _State:
     """State is the interface to gap library functions
     """
-    read_perm = _gap.gap_read
-    write_perm = _gap.gap_write
-    exec_perm = _gap.gap_exec
-
     def __init__(self):
         self.__state = None
         self.email = ''
 
         directly_exported_methods = [
-            'enable_debug',
             'set_device_name',
 
             'logout',
@@ -33,11 +28,6 @@ class _State:
             # Users.
             'search_users',
             'get_swaggers',
-            'user_fullname',
-            'user_handle',
-            'email',
-            'remaining_invitations',
-            'user_directory',
 
             # Transaction
             'send_files',
@@ -46,27 +36,15 @@ class _State:
             'get_output_dir',
             'cancel_transaction',
             'accept_transaction',
-            'transactions',
-            'transaction_progress',
-            'transaction_sender_id',
-            'transaction_sender_fullname',
-            'transaction_sender_device_id',
-            'transaction_recipient_id',
-            'transaction_recipient_fullname',
-            'transaction_recipient_device_id',
-            'transaction_files',
-            'transaction_files_count',
-            'transaction_total_size',
-            'transaction_is_directory',
-            'transaction_status',
-            'join_transaction',
+            'link_transactions',
+            'peer_transactions',
 
             # Notifications
             'poll',
 
             # Callback.
-            'transaction_callback',
-            'message_callback',
+            'link_transaction_callback',
+            'peer_transaction_callback',
             'user_status_callback',
             'new_swagger_callback',
 
@@ -112,8 +90,7 @@ class _State:
 
     def login(self, email, password):
         self.email = email
-        pw_hash = self.__call('hash_password', email, password)
-        self.__call('login', email, pw_hash)
+        self.__call('login', email, password)
 
     @property
     def logged(self):
@@ -121,8 +98,7 @@ class _State:
 
     def register(self, fullname, email, password):
         self.email = email
-        pw_hash = self.__call('hash_password', email, password)
-        self.__call('register', fullname, email, pw_hash)
+        self.__call('register', fullname, email, password)
 
     @property
     def _id(self):
