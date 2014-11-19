@@ -17,8 +17,6 @@
 #include <surface/gap/onboarding/Transaction.hh>
 #include <surface/gap/Exception.hh>
 
-#include <common/common.hh>
-
 ELLE_LOG_COMPONENT("surface.gap.State.Transaction");
 
 extern const std::vector<unsigned char> onboarding_avatar;
@@ -125,8 +123,7 @@ namespace surface
     {
       ELLE_ASSERT(this->_transactions.empty());
       boost::filesystem::path snapshots_path(
-        common::infinit::user_directory(this->me().id));
-      snapshots_path /= "transactions";
+        this->local_configuration().transactions_directory(this->me().id));
       ELLE_TRACE("%s: load transactions from snapshots at %s",
                  *this, snapshots_path)
       {
