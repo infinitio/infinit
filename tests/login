@@ -226,7 +226,6 @@ class TestLogin(unittest.TestCase):
       s2 = o.state()
       s2.login('mefyl2@infinit.io',
               state.hash_password('mefyl2@infinit.io', 'mefyl2'))
-      reactor.sleep(datetime.timedelta(milliseconds = 200))
       f = s2.features()
       keys = list(f.keys())
       keys.sort()
@@ -248,7 +247,6 @@ class TestLogin(unittest.TestCase):
         self.assertEqual(r.status_code, 200)
         s.login('mefyl2@infinit.io',
               state.hash_password('mefyl2@infinit.io', 'mefyl2'))
-        reactor.sleep(datetime.timedelta(milliseconds = 200))
         f = s.features()
         self.assertTrue('testa' in f.keys())
         vals.add(f['testa'])
@@ -269,7 +267,6 @@ class TestLogin(unittest.TestCase):
       s = o.state()
       s.login('mefyl2@infinit.io',
               state.hash_password('mefyl2@infinit.io', 'mefyl2'))
-      reactor.sleep(datetime.timedelta(milliseconds = 200))
       f = s.features()
       self.assertTrue('testc' in f.keys())
       self.assertEqual(f['testa'], 'v3')
@@ -282,7 +279,6 @@ class TestLogin(unittest.TestCase):
       s2 = o.state()
       s2.login('mefyl2@infinit.io',
               state.hash_password('mefyl2@infinit.io', 'mefyl2'))
-      reactor.sleep(datetime.timedelta(milliseconds = 200))
       f2 = s2.features()
       self.assertTrue('testa' not in f2.keys())
 
@@ -300,7 +296,6 @@ class TestLogin(unittest.TestCase):
       s2 = o.state()
       s2.login('mefyl2@infinit.io',
               state.hash_password('mefyl2@infinit.io', 'mefyl2'))
-      reactor.sleep(datetime.timedelta(milliseconds = 200))
       f = s2.features()
       self.assertTrue('testc' in f.keys())
       self.assertTrue('testd' in f.keys())

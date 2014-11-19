@@ -563,6 +563,10 @@ namespace surface
             this->_reconnection_cooldown
             ));
           }
+          // Update features before sending any metric
+          this->_configuration.features = login_response.features;
+          metrics::Reporter::metric_features(this->_configuration.features);
+
           std::string trophonius_host = login_response.trophonius.host;
           int trophonius_port = login_response.trophonius.port_ssl;
           if (!this->_forced_trophonius_host.empty())
