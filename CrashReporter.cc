@@ -17,6 +17,7 @@
 #include <elle/log.hh>
 #include <elle/os/environ.hh>
 #include <elle/os/path.hh>
+#include <elle/system/home_directory.hh>
 #include <elle/system/platform.hh>
 #ifndef INFINIT_WINDOWS
 # include <elle/system/Process.hh>
@@ -25,8 +26,6 @@
 #include <reactor/http/Request.hh>
 #include <reactor/scheduler.hh>
 #include <reactor/exception.hh>
-
-#include <common/common.hh>
 
 #include <CrashReporter.hh>
 #include <version.hh>
@@ -250,6 +249,14 @@ namespace elle
 
   namespace crash
   {
+    static
+    boost::filesystem::path
+    _infinit_home()
+    {
+      boost::filesystem::path res(elle::system::home_directory() / ".infinit");
+      return res;
+    }
+
     void
     static
     _send_report(std::string const& url,
@@ -416,8 +423,7 @@ namespace elle
                            std::string const& transaction_id,
                            std::string const& reason)
     {
-      ELLE_TRACE("transaction failed report, attaching %s",
-                 common::infinit::home());
+      ELLE_TRACE("transaction failed report, attaching %s", _infinit_home());
       std::string url = elle::sprintf("%s://%s:%s/debug/report/transaction",
                                       meta_protocol,
                                       meta_host,
@@ -428,7 +434,7 @@ namespace elle
       if (elle::os::inenv("INFINIT_LOG_FILE"))
       {
         std::string log_path = elle::os::getenv("INFINIT_LOG_FILE", "");
-        boost::filesystem::path home(common::infinit::home());
+        boost::filesystem::path home(_infinit_home());
         boost::filesystem::path copied_log = home / "current_state.log";
         elle::SafeFinally cleanup{
           [&] {
@@ -439,7 +445,7 @@ namespace elle
           }};
         copy_file(log_path, copied_log, cleanup);
         elle::archive::archive(elle::archive::Format::tar_gzip,
-                               {copied_log, common::infinit::home()},
+                               {copied_log, _infinit_home()},
                                destination,
                                elle::archive::Renamer(),
                                temp_file_excluder,
@@ -448,7 +454,7 @@ namespace elle
       else
       {
         elle::archive::archive(elle::archive::Format::tar_gzip,
-                               {common::infinit::home()},
+                               {_infinit_home()},
                                destination,
                                elle::archive::Renamer(),
                                temp_file_excluder,
@@ -476,7 +482,7 @@ namespace elle
       if (user_file.length() == 0)
       {
         elle::archive::archive(elle::archive::Format::tar_gzip,
-                               {common::infinit::home()},
+                               {_infinit_home()},
                                destination,
                                elle::archive::Renamer(),
                                temp_file_excluder,
@@ -485,7 +491,7 @@ namespace elle
       else
       {
         elle::archive::archive(elle::archive::Format::tar_gzip,
-                               {user_file, common::infinit::home()},
+                               {user_file, _infinit_home()},
                                destination,
                                elle::archive::Renamer(),
                                temp_file_excluder,
