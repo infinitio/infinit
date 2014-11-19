@@ -134,6 +134,20 @@ class Drip(Boulder):
           multi = True,
         )
         res[template] = sent
+      # Unlock users that were not picked
+      unpicked = self.__table.update(
+        {self.field_lock: self.lock_id},
+        {
+          '$unset':
+          {
+            self.field_lock: True,
+          },
+        },
+        multi = True,
+      )
+      n = unpicked['n']
+      if n > 0:
+        res['unpicked'] = n
       res['unsubscribed'] = [u['email'] for u, e in unsubscribed]
       return {'%s -> %s' % (start, end): res}
     else:
