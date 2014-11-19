@@ -110,7 +110,10 @@ class Drip(Boulder):
     if len(elts) > 0:
       users = [(self._user(elt), elt) for elt in elts]
       res = {}
-      for template, users in self._pick_template(template, users):
+      unsubscribed = [(u, e) for u, e in users if not self.__email_enabled(u)]
+      users = [(u, e) for u, e in users if self.__email_enabled(u)]
+      templates = self._pick_template(template, users)
+      for template, users in templates:
         sent = self.send_email(
           end,
           template,
@@ -131,6 +134,7 @@ class Drip(Boulder):
           multi = True,
         )
         res[template] = sent
+      res['unsubscribed'] = [u['email'] for u, e in unsubscribed]
       return {'%s -> %s' % (start, end): res}
     else:
       return {}
@@ -169,7 +173,7 @@ class Drip(Boulder):
                 self._vars(elt, user).items(),
               ))
             }
-            for user, elt in users if self.__email_enabled(user)
+            for user, elt in users
           ]
           res = self.sisyphus.emailer.send_template(
             template,
@@ -186,7 +190,7 @@ class Drip(Boulder):
             'timestamp': time.time(),
             'user': str(user['_id']),
           }
-          for user, elt in users if self.__email_enabled(user)
+          for user, elt in users
         ]
         res = requests.post(
           url,
