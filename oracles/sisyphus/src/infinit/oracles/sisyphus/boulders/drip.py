@@ -34,7 +34,7 @@ class Drip(Boulder):
 
   @property
   def user_fields(self):
-    return ['_id',  'email', 'fullname', 'unsubscriptions']
+    return ['_id',  'email', 'fullname', 'unsubscriptions', 'features']
 
   @property
   def fields(self):
@@ -343,6 +343,12 @@ class Onboarding(Drip):
     # )
     # response.update(transited)
     return response
+
+  def _pick_template(self, template, users):
+    return [
+      (template, [u for u in users if u[0]['features']['drip_onboarding_template'] == 'a']),
+      (None, [u for u in users if u[0]['features']['drip_onboarding_template'] == 'control']),
+    ]
 
 
 class GhostReminder(Drip):
