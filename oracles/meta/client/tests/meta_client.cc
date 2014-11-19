@@ -72,6 +72,7 @@ ELLE_TEST_SCHEDULED(login_success)
                        " \"register_status\": \"ok\","
                        " \"device_id\": \"device_id\","
                        " \"trophonius\": {\"host\": \"192.168.1.1\", \"port\": 4923, \"port_ssl\": 4233},"
+                       " \"features\": [],"
                        " \"identity\": \"identity\""
                        " }";
                    });
