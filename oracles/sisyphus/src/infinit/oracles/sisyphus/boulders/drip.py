@@ -58,7 +58,8 @@ class Drip(Boulder):
         res[j] += res[i]
     return [0] + res
 
-  def transition(self, start, end, condition, variations = None):
+  def transition(self, start, end, condition,
+                 template = None, variations = None):
     meta = self.sisyphus.mongo.meta
     field = 'emailing.%s.state' % self.campaign
     if start is None:
@@ -69,11 +70,29 @@ class Drip(Boulder):
       start_condition = {field: {'$in': start}}
     condition.update(start_condition)
     condition[self.field_lock] = {'$exists': False}
+    if template is None:
+      template = 'drip-%s-%s' % (self.campaign, end.replace('_', '-'))
     # Uncomment this to go in full test mode.
     # import sys
-    # print('%s -> %s: %s' % (start, end, self.__table.find(condition).count()), file = sys.stderr)
+    # print('%s -> %s: %s (%s)' % (start, end, self.__table.find(condition).count(), template), file = sys.stderr)
     # print(condition, file = sys.stderr)
     # return {}
+    if template is False:
+      res = self.__table.update(
+        condition,
+        {
+          '$set':
+          {
+            field: end,
+          },
+        },
+        multi = True,
+      )
+      n = res['n']
+      if n > 0:
+        return {'%s -> %s' % (start, end): n}
+      else:
+        return {}
     self.__table.update(
       condition,
       {
@@ -88,7 +107,6 @@ class Drip(Boulder):
       { self.field_lock: self.lock_id },
       fields = self.fields,
     ))
-    template = 'drip-%s-%s' % (self.campaign, end.replace('_', '-'))
     if len(elts) > 0:
       users = [(self._user(elt), elt) for elt in elts]
       res = {}
