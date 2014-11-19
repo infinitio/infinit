@@ -7,6 +7,8 @@
 # include <string>
 # include <unordered_set>
 
+# include <common/common.hh>
+
 # include <elle/format/json/fwd.hh>
 # include <elle/Printable.hh>
 # include <elle/threading/Monitor.hh>
@@ -161,14 +163,15 @@ namespace surface
       };
 
     public:
+      State(common::infinit::Configuration const& local_config);
       State(std::string const& meta_protocol,
             std::string const& meta_host,
             uint16_t meta_port,
-            boost::uuids::uuid device,
-            std::vector<unsigned char> trophonius_fingerprint,
-            std::string const& download_dir,
-            std::unique_ptr<infinit::metrics::Reporter> metrics = nullptr);
+            std::vector<unsigned char> trophonius_fingerprint);
       ~State();
+
+      ELLE_ATTRIBUTE_RP(
+        common::infinit::Configuration, local_configuration, mutable);
 
     private:
       void
@@ -230,9 +233,6 @@ namespace surface
       static
       std::string
       hash_password(std::string const& email, std::string const& password);
-
-      std::string
-      user_directory();
 
       ELLE_ATTRIBUTE_R(std::string, output_dir);
       /// Set the output directory.

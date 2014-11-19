@@ -127,28 +127,25 @@ namespace surface
     /*-------------------------.
     | Construction/Destruction |
     `-------------------------*/
-    State::State(std::string const& meta_protocol,
-                 std::string const& meta_host,
-                 uint16_t meta_port,
-                 boost::uuids::uuid device,
-                 std::vector<unsigned char> trophonius_fingerprint,
-                 std::string const& download_dir,
-                 std::unique_ptr<infinit::metrics::Reporter> metrics)
+    State::State(common::infinit::Configuration const& local_config)
       : _logger_intializer()
-      , _meta(meta_protocol, meta_host, meta_port)
+      , _meta(local_config.meta_protocol(),
+              local_config.meta_host(),
+              local_config.meta_port())
       , _meta_message("")
-      , _trophonius_fingerprint(trophonius_fingerprint)
+      , _trophonius_fingerprint(local_config.trophonius_fingerprint())
       , _trophonius(nullptr)
       , _forced_trophonius_host()
       , _forced_trophonius_port(0)
-      , _metrics_reporter(std::move(metrics))
+      , _metrics_reporter(std::move(local_config.metrics()))
       , _me()
-      , _output_dir(download_dir)
+      , _output_dir(local_config.download_dir())
       , _reconnection_cooldown(10_sec)
-      , _device_uuid(std::move(device))
+      , _device_uuid(std::move(local_config.device_id()))
       , _device()
       , _login_watcher_thread(nullptr)
     {
+      this->_local_configuration = local_config;
       this->_logged_out.open();
       ELLE_TRACE_SCOPE("%s: create state", *this);
       if (!this->_metrics_reporter)
@@ -165,7 +162,7 @@ namespace surface
       config.max_mirror_size = 0;
       config.max_compress_size = 0;
       config.disable_upnp = false;
-      std::ifstream fconfig(common::infinit::configuration_path());
+      std::ifstream fconfig(this->local_configuration().configuration_path());
       if (fconfig.good())
       {
         try
@@ -188,6 +185,14 @@ namespace surface
       this->_check_first_launch();
       this->_check_forced_trophonius();
     }
+
+    State::State(std::string const& meta_protocol,
+                 std::string const& meta_host,
+                 uint16_t meta_port,
+                 std::vector<unsigned char> trophonius_fingerprint)
+      : State(common::infinit::Configuration(
+                meta_protocol, meta_host, meta_port, trophonius_fingerprint))
+    {}
 
     State::~State()
     {
@@ -317,15 +322,17 @@ namespace surface
     void
     State::_check_first_launch()
     {
-      if (boost::filesystem::exists(common::infinit::first_launch_path()))
+      namespace filesystem = boost::filesystem;
+      if (filesystem::exists(this->local_configuration().first_launch_path()))
         return;
 
-      if (!boost::filesystem::exists(common::infinit::home()))
+      filesystem::path first_launch(this->local_configuration().first_launch_path());
+
+      if (!filesystem::exists(first_launch.parent_path()))
       {
-        boost::filesystem::create_directories(
-          boost::filesystem::path(common::infinit::home()));
+        filesystem::create_directories(first_launch.parent_path());
       }
-      elle::AtomicFile f(common::infinit::first_launch_path());
+      elle::AtomicFile f(this->local_configuration().first_launch_path());
       f.write() << [] (elle::AtomicFile::Write& write)
         {
           write.stream() << "0\n";
@@ -595,26 +602,10 @@ namespace surface
               throw Exception(gap_internal_error, "unable to restore the identity");
             if (this->_identity->Decrypt(hashed_password) == elle::Status::Error)
               throw Exception(gap_internal_error, "unable to decrypt the identity");
-            if (this->_identity->Clear() == elle::Status::Error)
-              throw Exception(gap_internal_error, "unable to clear the identity");
-            if (this->_identity->Save(identity_clear) == elle::Status::Error)
-              throw Exception(gap_internal_error, "unable to save the identity");
-          }
-
-          ELLE_TRACE("%s: store identity", *this)
-          {
-            if (this->_identity->Restore(identity_clear) == elle::Status::Error)
-              throw Exception(gap_internal_error,
-                              "Cannot save the identity file.");
-            auto user_id = this->_identity->id();
-            elle::io::Path path(elle::os::path::join(
-                                  common::infinit::user_directory(user_id),
-                                  user_id + ".idy"));
-            this->_identity->store(path);
           }
 
           std::ofstream identity_infos{
-            common::infinit::identity_path(login_response.id)};
+            this->local_configuration().identity_path(login_response.id)};
 
           if (identity_infos.good())
           {
@@ -628,7 +619,7 @@ namespace surface
           auto device = this->meta().device(_device_uuid);
           this->_device.reset(new Device(device));
           std::string passport_path =
-            common::infinit::passport_path(this->me().id);
+            this->local_configuration().passport_path();
           this->_passport.reset(new papier::Passport());
           if (this->_passport->Restore(device.passport) == elle::Status::Error)
             throw Exception(gap_wrong_passport, "Cannot load the passport");
@@ -1006,14 +997,6 @@ namespace surface
       this->meta().icon(avatar);
     }
 
-    std::string
-    State::user_directory()
-    {
-      ELLE_TRACE_METHOD("");
-
-      return common::infinit::user_directory(this->me().id);
-    }
-
     void
     State::set_output_dir(std::string const& dir, bool fallback)
     {
@@ -1283,7 +1266,7 @@ namespace surface
       this->_configuration.serialize(input);
 
       metrics::Reporter::metric_features(this->_configuration.features);
-      std::ofstream fconfig(common::infinit::configuration_path());
+      std::ofstream fconfig(this->local_configuration().configuration_path());
       elle::json::write(fconfig, json);
     }
 
