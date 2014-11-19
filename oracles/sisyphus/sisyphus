@@ -45,6 +45,7 @@ if options.mongo_host:
 
 app = infinit.oracles.sisyphus.Sisyphus(**args)
 infinit.oracles.sisyphus.boulders.drip.Onboarding(app)
+infinit.oracles.sisyphus.boulders.drip.GhostReminder(app)
 
 bottle.run(app = app,
            host = '127.0.0.1',
