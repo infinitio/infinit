@@ -52,7 +52,12 @@ public:
   }
 
 public:
-  gap_State(bool production, std::string const& download_dir);
+  gap_State(bool production);
+  gap_State(bool production,
+            std::string const& download_dir,
+            std::string const& persistent_config_dir,
+            std::string const& non_persistent_config_dir,
+            std::string const& temp_storage_dir);
 
   ~gap_State()
   {
