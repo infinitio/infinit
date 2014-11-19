@@ -20,6 +20,10 @@ class Onboarding(sisyphus.boulders.drip.Onboarding):
   def now(self, value):
     self.__now = value
 
+  def _pick_template(self, template, users):
+    return sisyphus.boulders.drip.Drip._pick_template(
+      self, template, users)
+
 
 with mongobox.MongoBox() as mongo:
   with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
@@ -43,22 +47,27 @@ with mongobox.MongoBox() as mongo:
 
     # Check nothing is sent to a fresh user
     meta.user_register('user1@infinit.io', '*' * 64, 'Foo Bar')
-    sisy.cron()
-    assert not mandrill.emails
+    with MongoExpectation(object_miss = 1):
+      # All undetermined users are scanned to see if they did a
+      # transaction.
+      sisy.cron()
+      assert not mandrill.emails
 
     # Check unactivated 1 is sent to an aging user
-    onboarding.now = datetime.datetime.utcnow() + datetime.timedelta(days = 2)
-    meta.now = datetime.datetime.utcnow() + datetime.timedelta(days = 2)
+    diff = (onboarding.delay_second_reminder + onboarding.delay_first_reminder) / 2
+    onboarding.now += diff
+    meta.now += diff
     # Add unrelevant users to check they are not scanned by our mongo
     # queries.
     meta.user_register('user2@infinit.io', '*' * 64, 'Foo Bar')
     meta.user_register('user3@infinit.io', '*' * 64, 'Foo Bar')
     meta.user_register('user4@infinit.io', '*' * 64, 'Foo Bar')
     # The activated and unactivated bucket will always inspect user1
-    # to check last_transaction_time, hence the one miss.
+    # to check last_transaction.time, hence the one miss.
     with MongoExpectation(object_miss = 1):
       sisy.cron()
       emails = mandrill.emails
+      print(emails)
       assert len(emails) == 1
       assert emails[0][0] == 'user1@infinit.io'
       # Check it's not sent twice
