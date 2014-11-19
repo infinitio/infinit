@@ -120,13 +120,6 @@ class Drip(Boulder):
   def _pick_template(self, template, users):
     return [(template, users)]
 
-  def unsubscribe_link(self, user, bucket, template):
-    user_id = user['_id']
-    k = key('/users/%s/email_subscriptions/drip' % user_id)
-    url = 'http://infinit.io/unsubscribe/drip'
-    return '%s?email=%s&key=%s&utm_source=drip&utm_campaign=%s&bucket=%s&utm_content=%s' % \
-      (url, user_id, k, self.campaign, bucket, template)
-
   def __email_enabled(self, user):
     return 'unsubscriptions' not in user \
       or 'drip' not in user['unsubscriptions']
@@ -155,7 +148,6 @@ class Drip(Boulder):
               'vars': dict(chain(
                 (('USER_%s' % field.upper(), user[field])
                  for field in self.user_fields if field in user),
-                (('UNSUB', self.unsubscribe_link(user, bucket, template)),),
                 self._vars(elt, user).items(),
               ))
             }
