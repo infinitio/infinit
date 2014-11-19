@@ -182,6 +182,9 @@ class Drip(Boulder):
               'email': user['email'],
               'name': user['fullname'],
               'vars': dict(chain(
+                [
+                  ('TEMPLATE', template),
+                ],
                 (('USER_%s' % field.upper(), user[field])
                  for field in self.user_fields if field in user),
                 self._vars(elt, user).items(),
