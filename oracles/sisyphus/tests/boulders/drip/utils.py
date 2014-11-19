@@ -99,6 +99,13 @@ class GestapoCollection(pymongo.collection.Collection):
       print('explanation: %s' % explanation, file = sys.stderr)
       raise
 
+def gestapo(client):
+  version = client.server_info()['versionArray']
+  version = tuple(version[0:3])
+  if version != (2, 6, 0):
+    client.__class__ = GestapoMongoClient
+
+
 class Meta(infinit.oracles.meta.server.Meta):
 
   @property

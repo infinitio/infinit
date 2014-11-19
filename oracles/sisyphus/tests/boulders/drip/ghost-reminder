@@ -26,6 +26,11 @@ class GhostReminder(sisyphus.boulders.drip.GhostReminder):
   def now(self, value):
     self.__now = value
 
+  def _pick_template(self, template, users):
+    return sisyphus.boulders.drip.Drip._pick_template(
+      self, template, users)
+
+
 def check_mail(mails, sender, recipient):
   assert len(mails) == 1
   mail = mails[0]
@@ -54,7 +59,7 @@ with mongobox.MongoBox() as mongo:
     mandrill = Mandrill()
     sisy = sisyphus.Sisyphus(mongo_port = mongo.port,
                                  mandrill = mandrill)
-    sisy._Sisyphus__mongo.__class__ = GestapoMongoClient
+    gestapo(sisy._Sisyphus__mongo)
     reminder = GhostReminder(sisy)
 
     def forward(duration):

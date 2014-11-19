@@ -1064,7 +1064,7 @@ class Mixin:
       })
       if self.logged_in:
         pipeline.append({
-          '$sort': {swagger_field : -1}
+          '$sort': {'swaggers.%s' % str(self.user['_id']) : -1}
         })
       pipeline.append({'$skip': skip})
       pipeline.append({'$limit': limit})

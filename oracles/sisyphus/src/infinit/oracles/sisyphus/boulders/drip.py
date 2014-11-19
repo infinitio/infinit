@@ -90,28 +90,35 @@ class Drip(Boulder):
     ))
     template = 'drip-%s-%s' % (self.campaign, end.replace('_', '-'))
     if len(elts) > 0:
-      sent = self.send_email(
-        end,
-        template,
-        [(self._user(elt), elt) for elt in elts],
-        variations = variations)
-      self.__table.update(
-        {self.field_lock: self.lock_id},
-        {
-          '$set':
+      users = [(self._user(elt), elt) for elt in elts]
+      res = {}
+      for template, users in self._pick_template(template, users):
+        sent = self.send_email(
+          end,
+          template,
+          users,
+          variations = variations)
+        self.__table.update(
+          {self.field_lock: self.lock_id},
           {
-            field: end,
+            '$set':
+            {
+              field: end,
+            },
+            '$unset':
+            {
+              self.field_lock: True,
+            },
           },
-          '$unset':
-          {
-            self.field_lock: True,
-          },
-        },
-        multi = True,
-      )
-      return {'%s -> %s' % (start, end): sent}
+          multi = True,
+        )
+        res[template] = sent
+      return {'%s -> %s' % (start, end): res}
     else:
       return {}
+
+  def _pick_template(self, template, users):
+    return [(template, users)]
 
   def unsubscribe_link(self, user, bucket, template):
     user_id = user['_id']
@@ -140,24 +147,25 @@ class Drip(Boulder):
             res[slug] = self.send_email(bucket, slug, targets)
         return res
       else:
-        recipients = [
-          {
-            'email': user['email'],
-            'name': user['fullname'],
-            'vars': dict(chain(
-              (('USER_%s' % field.upper(), user[field])
-               for field in self.user_fields if field in user),
-              (('UNSUB', self.unsubscribe_link(user, bucket, template)),),
-              self._vars(elt, user).items(),
-            ))
-          }
-          for user, elt in users if self.__email_enabled(user)
-        ]
-        res = self.sisyphus.emailer.send_template(
-          template,
-          recipients,
-        )
-        elle.log.debug('mandrill answer: %s' % res)
+        if template is not None:
+          recipients = [
+            {
+              'email': user['email'],
+              'name': user['fullname'],
+              'vars': dict(chain(
+                (('USER_%s' % field.upper(), user[field])
+                 for field in self.user_fields if field in user),
+                (('UNSUB', self.unsubscribe_link(user, bucket, template)),),
+                self._vars(elt, user).items(),
+              ))
+            }
+            for user, elt in users if self.__email_enabled(user)
+          ]
+          res = self.sisyphus.emailer.send_template(
+            template,
+            recipients,
+          )
+          elle.log.debug('mandrill answer: %s' % res)
         url = 'http://metrics.9.0.api.production.infinit.io/collections/users'
         metrics = [
           {
@@ -186,8 +194,7 @@ class Drip(Boulder):
 
   def user_vars(self, name, user):
     name = name.upper()
-    meta = 'https://meta.%s.%s.api.production.infinit.io' \
-           % (version.minor, version.major)
+    meta = 'https://meta.api.production.infinit.io'
     avatar = '%s/user/%s/avatar' % (meta, user['_id'])
     return {
       '%s_AVATAR' % name: avatar,
@@ -430,3 +437,9 @@ class GhostReminder(Drip):
     res.update(self.user_vars('recipient', recipient))
     res.update(self.transaction_vars('transaction', transaction))
     return res
+
+  def _pick_template(self, template, users):
+    return [
+      (template, [u for u in users if u[0]['features']['drip_ghost-reminder_template'] == 'a']),
+      (None, [u for u in users if u[0]['features']['drip_ghost-reminder_template'] == 'control']),
+    ]
