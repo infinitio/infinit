@@ -109,13 +109,7 @@ int main(int argc, char** argv)
       [&]
       {
         common::infinit::Configuration config(production);
-        surface::gap::State state(config.meta_protocol(),
-                                  config.meta_host(),
-                                  config.meta_port(),
-                                  config.device_id(),
-                                  config.trophonius_fingerprint(),
-                                  config.download_dir(),
-                                  common::metrics(config));
+        surface::gap::State state(config);
         std::vector<std::string> files;
         boost::algorithm::split(files, file, boost::is_any_of(","));
         uint32_t id;

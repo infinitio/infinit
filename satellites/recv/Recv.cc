@@ -127,13 +127,7 @@ int main(int argc, char** argv)
       [&] () -> int
       {
         common::infinit::Configuration config(production, download_dir);
-        surface::gap::State state(config.meta_protocol(),
-                                  config.meta_host(),
-                                  config.meta_port(),
-                                  config.device_id(),
-                                  config.trophonius_fingerprint(),
-                                  config.download_dir(),
-                                  common::metrics(config));
+        surface::gap::State state(config);
 
         state.attach_callback<surface::gap::State::ConnectionStatus>(
           [&] (surface::gap::State::ConnectionStatus const& notif)

@@ -115,13 +115,7 @@ int main(int argc, char** argv)
       [&] () -> int
       {
         common::infinit::Configuration config(production);
-        surface::gap::State state(config.meta_protocol(),
-                                  config.meta_host(),
-                                  config.meta_port(),
-                                  config.device_id(),
-                                  config.trophonius_fingerprint(),
-                                  config.download_dir(),
-                                  common::metrics(config));
+        surface::gap::State state(config);
 
         state.attach_callback<surface::gap::State::ConnectionStatus>(
           [&] (surface::gap::State::ConnectionStatus const& notif)
@@ -138,17 +132,16 @@ int main(int argc, char** argv)
             ELLE_TRACE_SCOPE("user status notification: %s", notif);
           });
 
-        state.attach_callback<surface::gap::Transaction::Notification>(
-          [&] (surface::gap::Transaction::Notification const& notif)
+        state.attach_callback<surface::gap::PeerTransaction>(
+          [&] (surface::gap::PeerTransaction const& transaction)
           {
-            ELLE_TRACE_SCOPE("transaction notification: %s", notif);
+            ELLE_TRACE_SCOPE("transaction notification: %s", transaction);
           });
 
-        auto hashed_password = state.hash_password(user, password);
         if (register_)
-          state.register_(fullname, user, hashed_password);
+          state.register_(fullname, user, password);
         else
-          state.login(user, hashed_password);
+          state.login(user, password);
 
         do
         {
