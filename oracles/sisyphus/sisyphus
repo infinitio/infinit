@@ -40,10 +40,10 @@ parser.add_option('--mongo-replica-set',
 options, _ = parser.parse_args()
 
 args = {}
-if options.mongo_replica_set:
-  args['mongo_replica_set'] = options.mongo_host
+if options.mongo_host:
+  args['mongo_host'] = options.mongo_host
 
-app = infinit.oracles.sisyphus.Sisyphus()
+app = infinit.oracles.sisyphus.Sisyphus(**args)
 infinit.oracles.sisyphus.boulders.drip.Onboarding(app)
 
 bottle.run(app = app,
