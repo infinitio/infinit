@@ -36,11 +36,19 @@ ELLE_LOG_COMPONENT("infinit.surface.gap");
 /// - gap ctor & dtor -----------------------------------------------------
 
 gap_State*
-gap_new(bool production, std::string const& download_dir)
+gap_new(bool production,
+        std::string const& download_dir,
+        std::string const& persistent_config_dir,
+        std::string const& non_persistent_config_dir,
+        std::string const& temp_storage_dir)
 {
   try
   {
-    gap_State* state = new gap_State(production, download_dir);
+    gap_State* state = new gap_State(production,
+                                     download_dir,
+                                     persistent_config_dir,
+                                     non_persistent_config_dir,
+                                     temp_storage_dir);
     return state;
   }
   catch (std::exception const& err)
