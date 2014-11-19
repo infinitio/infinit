@@ -471,7 +471,7 @@ namespace surface
       { // Early failure, no transaction_id -> nothing to clean up
         return;
       }
-      auto base = this->transaction().snapshots_directory();
+      auto base = this->transaction().cache_directory();
       // clear generated files that may have been generated for the transfer
 
       // It is possible for files to be copied without write permissions, as
@@ -526,7 +526,7 @@ namespace surface
       // Check disk space
       boost::system::error_code erc;
       auto space = boost::filesystem::space(
-        this->transaction().snapshots_directory(), erc);
+        this->transaction().cache_directory(), erc);
       if (erc)
       {
         ELLE_TRACE("%s: Not mirroring, failed to get free space: %s",
@@ -545,7 +545,7 @@ namespace surface
       // If you change it, also change in crash reporter filter
       static const char* mirror_dir = "mirror_files"; /* read above!*/
       boost::filesystem::path mirror_path =
-        this->transaction().snapshots_directory() / mirror_dir;
+        this->transaction().cache_directory() / mirror_dir;
       bool validate = false; // set at
       elle::SafeFinally maybe_cleanup([&] {
           if (validate)
