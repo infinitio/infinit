@@ -34,7 +34,7 @@ class Drip(Boulder):
 
   @property
   def user_fields(self):
-    return ['_id',  'email', 'fullname', 'unsubscriptions']
+    return ['_id',  'email', 'fullname', 'unsubscriptions', 'features']
 
   @property
   def fields(self):
@@ -58,7 +58,8 @@ class Drip(Boulder):
         res[j] += res[i]
     return [0] + res
 
-  def transition(self, start, end, condition, variations = None):
+  def transition(self, start, end, condition,
+                 template = None, variations = None):
     meta = self.sisyphus.mongo.meta
     field = 'emailing.%s.state' % self.campaign
     if start is None:
@@ -69,11 +70,29 @@ class Drip(Boulder):
       start_condition = {field: {'$in': start}}
     condition.update(start_condition)
     condition[self.field_lock] = {'$exists': False}
+    if template is None:
+      template = 'drip-%s-%s' % (self.campaign, end.replace('_', '-'))
     # Uncomment this to go in full test mode.
     # import sys
-    # print('%s -> %s: %s' % (start, end, self.__table.find(condition).count()), file = sys.stderr)
+    # print('%s -> %s: %s (%s)' % (start, end, self.__table.find(condition).count(), template), file = sys.stderr)
     # print(condition, file = sys.stderr)
     # return {}
+    if template is False:
+      res = self.__table.update(
+        condition,
+        {
+          '$set':
+          {
+            field: end,
+          },
+        },
+        multi = True,
+      )
+      n = res['n']
+      if n > 0:
+        return {'%s -> %s' % (start, end): n}
+      else:
+        return {}
     self.__table.update(
       condition,
       {
@@ -88,11 +107,13 @@ class Drip(Boulder):
       { self.field_lock: self.lock_id },
       fields = self.fields,
     ))
-    template = 'drip-%s-%s' % (self.campaign, end.replace('_', '-'))
     if len(elts) > 0:
       users = [(self._user(elt), elt) for elt in elts]
       res = {}
-      for template, users in self._pick_template(template, users):
+      unsubscribed = [(u, e) for u, e in users if not self.__email_enabled(u)]
+      users = [(u, e) for u, e in users if self.__email_enabled(u)]
+      templates = self._pick_template(template, users)
+      for template, users in templates:
         sent = self.send_email(
           end,
           template,
@@ -113,19 +134,27 @@ class Drip(Boulder):
           multi = True,
         )
         res[template] = sent
+      # Unlock users that were not picked
+      unpicked = self.__table.update(
+        {self.field_lock: self.lock_id},
+        {
+          '$unset':
+          {
+            self.field_lock: True,
+          },
+        },
+        multi = True,
+      )
+      n = unpicked['n']
+      if n > 0:
+        res['unpicked'] = n
+      res['unsubscribed'] = [u['email'] for u, e in unsubscribed]
       return {'%s -> %s' % (start, end): res}
     else:
       return {}
 
   def _pick_template(self, template, users):
     return [(template, users)]
-
-  def unsubscribe_link(self, user, bucket, template):
-    user_id = user['_id']
-    k = key('/users/%s/email_subscriptions/drip' % user_id)
-    url = 'http://infinit.io/unsubscribe/drip'
-    return '%s?email=%s&key=%s&utm_source=drip&utm_campaign=%s&bucket=%s&utm_content=%s' % \
-      (url, user_id, k, self.campaign, bucket, template)
 
   def __email_enabled(self, user):
     return 'unsubscriptions' not in user \
@@ -153,13 +182,15 @@ class Drip(Boulder):
               'email': user['email'],
               'name': user['fullname'],
               'vars': dict(chain(
+                [
+                  ('TEMPLATE', template),
+                ],
                 (('USER_%s' % field.upper(), user[field])
                  for field in self.user_fields if field in user),
-                (('UNSUB', self.unsubscribe_link(user, bucket, template)),),
                 self._vars(elt, user).items(),
               ))
             }
-            for user, elt in users if self.__email_enabled(user)
+            for user, elt in users
           ]
           res = self.sisyphus.emailer.send_template(
             template,
@@ -176,7 +207,7 @@ class Drip(Boulder):
             'timestamp': time.time(),
             'user': str(user['_id']),
           }
-          for user, elt in users if self.__email_enabled(user)
+          for user, elt in users
         ]
         res = requests.post(
           url,
@@ -215,12 +246,11 @@ class Drip(Boulder):
     }
 
 
-#
-#    -> activated   -> reminded
+#    -> activated
 #          ^
 #          |----------------------------------
 #          |                |                |
-#    -> unactivated_1 -> unactivated_2 -> unactivated_3
+#    -> unactivated-1 -> unactivated-2 -> unactivated-3
 #
 
 class Onboarding(Drip):
@@ -249,108 +279,123 @@ class Onboarding(Drip):
       {
         # Fully registered
         'register_status': 'ok',
-        # Registered more than a day ago.
+        # Registered more than 1 day ago.
         'creation_time':
         {
-          '$lt': self.now - datetime.timedelta(days = 1),
+          '$lt': self.now - self.delay_first_reminder,
         },
         # Did a transaction
         'last_transaction.time': {'$exists': True},
       },
-      variations = ('var1', 'var2'),
+      template = False,
     )
     response.update(transited)
-    # -> unactivated_1
+    # -> unactivated-1
     transited = self.transition(
       None,
-      'unactivated_1',
+      'unactivated-1',
       {
         # Fully registered
         'register_status': 'ok',
-        # Registered more than a day ago.
+        # Registered more than 1 day ago.
         'creation_time':
         {
-          '$lt': self.now - datetime.timedelta(days = 1),
+          '$lt': self.now - self.delay_first_reminder,
         },
         # Never did a transaction
         'last_transaction.time': {'$exists': False},
       },
-      variations = ('var1', 'var2'),
     )
     response.update(transited)
-    # unactivated_{1,2,3} -> activated
+    # unactivated-1 -> activated
     transited = self.transition(
-      ['unactivated_1', 'unactivated_2', 'unactivated_3'],
+      'unactivated-1',
       'activated',
       {
+        # Fully registered
+        'register_status': 'ok',
+        # Registered more than 2 days ago.
+        'creation_time':
+        {
+          '$lt': self.now - self.delay_second_reminder,
+        },
         # Did a transaction
         'last_transaction.time': {'$exists': True},
       },
-      variations = ('var1', 'var2'),
+      template = False,
+     )
+    response.update(transited)
+    # unactivated-1 -> unactivated-2
+    transited = self.transition(
+      'unactivated-1',
+      'unactivated-2',
+      {
+        # Fully registered
+        'register_status': 'ok',
+        # Registered more than 2 days ago.
+        'creation_time':
+        {
+          '$lt': self.now - self.delay_second_reminder,
+        },
+        # Never did a transaction
+        'last_transaction.time': {'$exists': False},
+      },
     )
     response.update(transited)
-    # unactivated_1 -> unactivated_2
+    # unactivated-2 -> activated
     transited = self.transition(
-      'unactivated_1',
-      'unactivated_2',
+      'unactivated-2',
+      'activated',
+      {
+        # Fully registered
+        'register_status': 'ok',
+        # Registered more than 2 days ago.
+        'creation_time':
+        {
+          '$lt': self.now - self.delay_third_reminder,
+        },
+        # Did a transaction
+        'last_transaction.time': {'$exists': True},
+      },
+      template = False,
+     )
+    response.update(transited)
+    # unactivated-2 -> unactivated-3
+    transited = self.transition(
+      'unactivated-2',
+      'unactivated-3',
       {
         # Fully registered
         'register_status': 'ok',
         # Registered more than 3 days ago.
         'creation_time':
         {
-          '$lt': self.now - datetime.timedelta(days = 4),
+          '$lt': self.now - self.delay_third_reminder,
         },
         # Never did a transaction
         'last_transaction.time': {'$exists': False},
       },
-      variations = ('var1', 'var2'),
     )
     response.update(transited)
-    # # unactivated_1 -> unactivated_2
-    # transited = self.transition(
-    #   'unactivated_1',
-    #   'unactivated_2',
-    #   {
-    #     # Registered more than 3 days ago.
-    #     'creation_time':
-    #     {
-    #       '$lt': self.now - datetime.timedelta(days = 3),
-    #     },
-    #     # Never did a transaction
-    #     'last_transaction.time': {'$exists': True},
-    #   },
-    # )
-    # response.update(transited)
-    # # unactivated_2 -> unactivated_3
-    # transited = self.transition(
-    #   'unactivated_2',
-    #   'unactivated_3',
-    #   {
-    #     # Registered more than 7 days ago.
-    #     'creation_time':
-    #     {
-    #       '$lt': self.now - datetime.timedelta(days = 7),
-    #     },
-    #     # Never did a transaction
-    #     'last_transaction.time': {'$exists': True},
-    #   },
-    # )
-    # response.update(transited)
-    # # {,re}activated -> reactivated
-    # transited = self.transition(
-    #   ['activated', 'reactivated'],
-    #   'reactivated',
-    #   {
-    #     # Did a transaction
-    #     'last_transaction.time':
-    #     {
-    #       '$lt': self.now - datetime.timedelta(days = 7),
-    #     },
-    #   },
-    # )
-    # response.update(transited)
     return response
+
+  def _pick_template(self, template, users):
+    return [
+      (template, [u for u in users if u[0]['features']['drip_onboarding_template'] == 'a']),
+      (None, [u for u in users if u[0]['features']['drip_onboarding_template'] == 'control']),
+    ]
+
+  @property
+  def delay_first_reminder(self):
+    return datetime.timedelta(days = 1)
+
+  @property
+  def delay_second_reminder(self):
+    return datetime.timedelta(days = 2)
+
+  @property
+  def delay_third_reminder(self):
+    return datetime.timedelta(days = 3)
 
 
 class GhostReminder(Drip):
