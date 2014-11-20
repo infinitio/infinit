@@ -299,6 +299,7 @@ public:
          "  \"email\" : \"em@il.com\","
          "  \"identity\" : \"%s\","
          "  \"device_id\" : \"%s\","
+         " \"features\": [],"
          "  \"trophonius\" : {"
          "    \"host\": \"127.0.0.1\","
          "    \"port\": 0,"

@@ -185,6 +185,11 @@ class Mixin:
           current_features[k] = new_features[k]
         self.database.users.update({'_id': user['_id']},
                                    {'$set': { 'features': current_features}})
+      # deserializer expects a list of [key, value]
+      vf = []
+      for k in current_features:
+        vf += [[k, current_features[k]]]
+      response['features'] = vf
       return response
 
   @api('/web-login', method = 'POST')
