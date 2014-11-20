@@ -1031,6 +1031,17 @@ class Mixin:
       user_id = user['id']
     if self.admin:
       res = dict(user)
+      for key in ['avatar', 'small_avatar']:
+        if key in res.keys():
+          del res[key]
+        if 'public_key' not in res.keys():
+          res['public_key'] = ''
+        if 'fullname' not in res.keys():
+          res['fullname'] = ''
+        if 'handle' not in res.keys():
+          res['handle'] = ''
+        if 'connected_devices' not in res.keys():
+          res['connected_devices'] = []
     else:
       res = {
         'public_key': user.get('public_key', ''),
