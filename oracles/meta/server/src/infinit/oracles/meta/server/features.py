@@ -29,19 +29,6 @@ class Mixin:
                                    {'$set': { 'features': user['features']}})
     return self.success()
 
-  @api('/features/<name>', method='DELETE')
-  @require_admin
-  def feature_remove(self, name):
-    users = self.database.users.find({}, ['features']) # id is implicit
-    for user in users:
-      if not 'features' in user:
-        continue
-      if name in user['features']:
-        del user['features'][name]
-        self.database.users.update({'_id': user['_id']},
-                                   {'$set': { 'features': user['features']}})
-    self.database.abtest.remove({'key': name})
-
   @api('/features/<name>', method='PUT')
   @require_admin
   def feature_add(self, name, value = None, values = None):
@@ -51,10 +38,31 @@ class Mixin:
     elif values is not None:
       feature['values'] = values
     else:
-      raise error.ERROR(
-        error.OPERATION_NOT_PERMITTED,
-        "Missing value or values field.")
+      self.bad_request('missing value or values parameter')
     self.database.abtest.insert(feature)
+    if value is not None:
+      self.database.users.update(
+        {},
+        {'$set': {'features.%s' % name: value}},
+        multi = True)
+    else:
+      while True:
+        value = self.__roll_feature(values)
+        res = self.database.users.update(
+          {'features.%s' % name: {'$exists': False}},
+          {'$set': {'features.%s' % name: value}},
+          multi = False)
+        if res['n'] == 0:
+          break
+    return feature
+
+  @api('/features/<name>', method='DELETE')
+  @require_admin
+  def feature_remove(self, name):
+    self.database.users.update(
+      {},
+      {'$unset': {'features.%s' % name: True}})
+    self.database.abtest.remove({'key': name})
 
   def _roll_features(self, from_register, features = {}):
     abtests = self.database.abtest.find()
@@ -67,15 +75,28 @@ class Mixin:
       if 'value' in t:
         v = t['value']
       elif 'values' in t:
-        r = random.random()
-        accum = 0
-        for choice in t['values']:
-          accum += t['values'][choice]
-          if accum >= r:
-            v = choice
-            break
+        v = self.__roll_feature(t['values'])
       else:
         elle.log.warn('Invalid abtest entry: %s' % t)
         continue
       features[k] = v
     return features
+
+  def __roll_feature(self, values):
+    r = random.random()
+    accum = 0
+    for choice in values:
+      accum += values[choice]
+      if accum >= r:
+        return choice
+
+  @api('/features/<name>')
+  @require_admin
+  def feature_get(self, name):
+    feature = self.database.abtest.find({'key': name})
+    if feature is None:
+      self.not_found({
+        'reason': 'no such feature: %s' % name,
+        'feature': name,
+      })
+    return feature
