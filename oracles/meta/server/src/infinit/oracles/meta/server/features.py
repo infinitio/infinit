@@ -40,20 +40,19 @@ class Mixin:
     else:
       self.bad_request('missing value or values parameter')
     self.database.abtest.insert(feature)
+    field = 'features.%s' % name
     if value is not None:
       self.database.users.update(
         {},
-        {'$set': {'features.%s' % name: value}},
+        {'$set': {field: value}},
         multi = True)
     else:
-      while True:
+      for user in self.database.users.find(
+          {field: {'$exists': False}}):
         value = self.__roll_feature(values)
         res = self.database.users.update(
-          {'features.%s' % name: {'$exists': False}},
-          {'$set': {'features.%s' % name: value}},
-          multi = False)
-        if res['n'] == 0:
-          break
+          {'_id': user['_id'], field: {'$exists': False}},
+          {'$set': {field: value}})
     return feature
 
   @api('/features/<name>', method='DELETE')
