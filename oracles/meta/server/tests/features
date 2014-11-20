@@ -1,0 +1,17 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+
+with Meta(force_admin = True) as meta:
+  single_value = 'single-value'
+  multi_values = ['multi-value-1', 'multi-value-2']
+  meta.post('features/single',
+            {'value': single_value})
+  meta.post(
+    'features/multi',
+    {'values': dict((v, 1. / len(multi_values))
+                    for v in multi_values)}),
+  after = User(meta)
+  user = meta.get('users/%s' % after.email)
+  assert user['features']['single'] == single_value
+  assert user['features']['multi'] in multi_values
