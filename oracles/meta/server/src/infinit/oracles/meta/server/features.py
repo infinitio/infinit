@@ -56,13 +56,14 @@ class Mixin:
         "Missing value or values field.")
     self.database.abtest.insert(feature)
 
-  def _roll_features(self, from_register):
-    features = {}
-    abtests = self.database.abtest.find({})
+  def _roll_features(self, from_register, features = {}):
+    abtests = self.database.abtest.find()
     for t in abtests:
       if not from_register and t.get('register_only', False):
         continue
       k = t['key']
+      if k in features:
+        continue
       if 'value' in t:
         v = t['value']
       elif 'values' in t:

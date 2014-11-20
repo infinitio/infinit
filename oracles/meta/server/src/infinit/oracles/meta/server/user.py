@@ -176,20 +176,13 @@ class Mixin:
       if pick_trophonius:
         response['trophonius'] = self.trophonius_pick()
       # Update missing features
-      current_features = {}
-      if 'features' in user:
-        current_features = user['features']
-      new_features = self._roll_features(False)
-      if set(new_features.keys()) != set(current_features.keys()):
-        for k in set(new_features.keys()) - set(current_features.keys()):
-          current_features[k] = new_features[k]
-        self.database.users.update({'_id': user['_id']},
-                                   {'$set': { 'features': current_features}})
-      # deserializer expects a list of [key, value]
-      vf = []
-      for k in current_features:
-        vf += [[k, current_features[k]]]
-      response['features'] = vf
+      current_features = user.get('features', {})
+      features = self._roll_features(False, current_features)
+      if features != current_features:
+        self.database.users.update(
+          {'_id': user['_id']},
+          {'$set': { 'features': features}})
+      response['features'] = list(features.items())
       return response
 
   @api('/web-login', method = 'POST')
@@ -308,6 +301,7 @@ class Mixin:
       handle = self.unique_handle(fullname)
       user_content = {
         'connected': False,
+        'features': self._roll_features(True),
         'register_status': 'ok',
         'email': email,
         'fullname': fullname,
@@ -406,26 +400,6 @@ class Mixin:
             'user_id': str(user['_id']),
           }}
       )
-
-      # Inject a set of ABtest features
-      if 'features' in user:
-        features = user['features']
-      else:
-        features = dict()
-      new_features = self._roll_features(True)
-      for k in new_features:
-        if k not in features:
-          features[k] = new_features[k]
-      self.database.users.find_and_modify(
-          {
-            '_id': user_id,
-          },
-          {
-            '$set':
-            {
-              'features': features
-            }
-          })
       return user
 
   def __account_from_hash(self, hash):
