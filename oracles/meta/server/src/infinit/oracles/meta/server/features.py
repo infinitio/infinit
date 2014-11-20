@@ -42,7 +42,7 @@ class Mixin:
                                    {'$set': { 'features': user['features']}})
     self.database.abtest.remove({'key': name})
 
-  @api('/features/<name>', method='POST')
+  @api('/features/<name>', method='PUT')
   @require_admin
   def feature_add(self, name, value = None, values = None):
     feature = {'key': name}
