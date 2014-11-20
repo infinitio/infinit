@@ -122,6 +122,7 @@ class Drip(Boulder):
         self.__table.update(
           {self.field_lock: self.lock_id},
           {
+            # TEST MODE 2: comment the $set out
             '$set':
             {
               field: end,
@@ -148,7 +149,8 @@ class Drip(Boulder):
       n = unpicked['n']
       if n > 0:
         res['unpicked'] = n
-      res['unsubscribed'] = [u['email'] for u, e in unsubscribed]
+      if unsubscribed:
+        res['unsubscribed'] = [u['email'] for u, e in unsubscribed]
       return {'%s -> %s' % (start, end): res}
     else:
       return {}
@@ -179,6 +181,8 @@ class Drip(Boulder):
         if template is not None:
           recipients = [
             {
+              # TEST MODE 2
+              # 'email': 'gaetan@infinit.io',
               'email': user['email'],
               'name': user['fullname'],
               'vars': dict(chain(
@@ -488,3 +492,73 @@ class GhostReminder(Drip):
       (template, [u for u in users if u[0]['features']['drip_ghost-reminder_template'] == 'a']),
       (None, [u for u in users if u[0]['features']['drip_ghost-reminder_template'] == 'control']),
     ]
+
+
+#
+#    -> 1 -> 2 -> 3
+#
+
+class DelightSender(Drip):
+
+  def __init__(self, sisyphus):
+    super().__init__(sisyphus, 'delight-sender', 'users')
+    # Find user in any status without scanning all ghosts, deleted
+    # users etc.
+    self.sisyphus.mongo.meta.users.ensure_index(
+      [
+        ('emailing.delight-sender.state', pymongo.ASCENDING),
+        ('transactions.sent', pymongo.ASCENDING),
+      ])
+
+  @property
+  def now(self):
+    return datetime.datetime.utcnow()
+
+  def run(self):
+    response = {}
+    # -> 1
+    transited = self.transition(
+      None,
+      '1',
+      {
+        'transactions.sent': {'$gte': self.threshold_first},
+      },
+    )
+    response.update(transited)
+    # 1 -> 2
+    transited = self.transition(
+      '1',
+      '2',
+      {
+        'transactions.sent': {'$gte': self.threshold_second},
+      },
+    )
+    response.update(transited)
+    # 2 -> 3
+    transited = self.transition(
+      '2',
+      '3',
+      {
+        'transactions.sent': {'$gte': self.threshold_third},
+      },
+    )
+    response.update(transited)
+    return response
+
+  def _pick_template(self, template, users):
+    return [
+      (template, [u for u in users if u[0]['features']['drip_delight-sender_template'] == 'a']),
+      (None, [u for u in users if u[0]['features']['drip_delight-sender_template'] == 'control']),
+    ]
+
+  @property
+  def threshold_first(self):
+    return 1
+
+  @property
+  def threshold_second(self):
+    return 5
+
+  @property
+  def threshold_third(self):
+    return 10
