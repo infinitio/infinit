@@ -871,29 +871,6 @@ gap_connection_callback(
 }
 
 gap_Status
-gap_trophonius_unavailable_callback(
-  gap_State* state,
-  std::function<void ()> const& callback)
-{
-  ELLE_ASSERT(state != nullptr);
-  auto cb_wrapper =
-    [callback]
-    (surface::gap::State::TrophoniusUnavailable const& notification)
-    {
-      callback();
-    };
-  return run<gap_Status>(
-    state,
-    "trophonius unavailable callback",
-    [&] (surface::gap::State& state) -> gap_Status
-    {
-      state.attach_callback<
-        surface::gap::State::TrophoniusUnavailable>(cb_wrapper);
-      return gap_ok;
-    });
-}
-
-gap_Status
 gap_peer_transaction_callback(
   gap_State* state,
   std::function<void (surface::gap::PeerTransaction const&)> const& callback)

@@ -125,13 +125,6 @@ gap_connection_callback(
                       bool still_retrying,
                       std::string const& last_error)> const& callback);
 
-/// Trophonius unavailable callback.
-/// Triggered when you can connect to Meta but not to Trophonius.
-gap_Status
-gap_trophonius_unavailable_callback(
-  gap_State* state,
-  std::function<void ()> const& callback);
-
 /// Peer transaction callback.
 gap_Status
 gap_peer_transaction_callback(
