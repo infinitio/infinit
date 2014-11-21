@@ -511,6 +511,11 @@ namespace surface
     void
     SendMachine::try_mirroring_files(frete::Frete::FileSize total_size)
     {
+      if (!transaction().state().configuration().enable_file_mirroring)
+      {
+        ELLE_TRACE("%s: Not mirroring, mirroring disabled", *this);
+        return;
+      }
       frete::Frete::FileSize max_mirror_size
         = transaction().state().configuration().max_mirror_size;
       if (!max_mirror_size)
