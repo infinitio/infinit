@@ -504,6 +504,9 @@ namespace surface
       UserIndexes
       swaggers();
 
+      bool
+      is_swagger(uint32_t id) const;
+
       User
       swagger(std::string const& user_id);
 

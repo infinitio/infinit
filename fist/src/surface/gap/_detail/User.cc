@@ -474,6 +474,15 @@ namespace surface
       return this->_swagger_indexes;
     }
 
+    bool
+    State::is_swagger(uint32_t id) const
+    {
+      auto res = std::find(std::begin(this->swagger_indexes()),
+                           std::end(this->swagger_indexes()),
+                           id);
+      return res != std::end(this->swagger_indexes());
+    }
+
     State::User
     State::swagger(std::string const& user_id)
     {
