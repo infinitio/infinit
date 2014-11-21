@@ -121,9 +121,6 @@ namespace surface
     Notification::Type State::ConnectionStatus::type =
       NotificationType_ConnectionStatus;
 
-    Notification::Type State::TrophoniusUnavailable::type =
-      NotificationType_TrophoniusUnavailable;
-
     /*-------------------------.
     | Construction/Destruction |
     `-------------------------*/
@@ -1097,11 +1094,6 @@ namespace surface
       catch (infinit::state::CredentialError const&)
       {
         this->_on_invalid_trophonius_credentials();
-      }
-      if (this->_meta_server_check())
-      {
-        ELLE_ERR("%s: able to connect to Meta but not Trophonius", *this);
-        this->enqueue(TrophoniusUnavailable());
       }
     }
 

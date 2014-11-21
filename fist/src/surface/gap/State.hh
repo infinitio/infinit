@@ -154,14 +154,6 @@ namespace surface
         std::string last_error;
       };
 
-      class TrophoniusUnavailable:
-        public Notification
-      {
-      public:
-        static Notification::Type type;
-        TrophoniusUnavailable() = default;
-      };
-
     public:
       State(common::infinit::Configuration const& local_config);
       State(std::string const& meta_protocol,
