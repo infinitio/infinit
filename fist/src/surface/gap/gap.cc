@@ -909,9 +909,7 @@ gap_link_callback(
 }
 
 gap_Status
-gap_critical_callback(
-  gap_State* state,
-  std::function<void ()> const& callback)
+gap_critical_callback(gap_State* state, std::function<void ()> const& callback)
 {
   ELLE_ASSERT(state != nullptr);
   return state->gap_critical_callback(state, callback);
