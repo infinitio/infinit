@@ -9,6 +9,7 @@ namespace surface
                std::string const& fullname_,
                std::string const& handle_,
                std::string const& meta_id_,
+               bool swagger_,
                bool deleted_,
                bool ghost_)
       : id(id_)
@@ -16,6 +17,7 @@ namespace surface
       , fullname(fullname_)
       , handle(handle_)
       , meta_id(meta_id_)
+      , swagger(swagger_)
       , deleted(deleted_)
       , ghost(ghost_)
     {}
@@ -29,8 +31,11 @@ namespace surface
       stream << "User("
              << this->id << ", "
              << this->fullname << ", "
-             << (this->status ? "on" : "off")
-             << "line)";
+             << (this->deleted ? "(deleted)" :
+                  (this->ghost ? "(ghost)" : "(normal)"))
+             << ", "
+             << (this->status ? "on" : "off") << "line, "
+             << (this->swagger ? "is swagger)" : ")");
     }
 
     Notification::Type User::type = NotificationType_NewSwagger;

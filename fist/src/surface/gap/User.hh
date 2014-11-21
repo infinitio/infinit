@@ -26,6 +26,7 @@ namespace surface
            std::string const& fullname,
            std::string const& handle,
            std::string const& meta_id,
+           bool swagger,
            bool deleted,
            bool ghost);
       ~User() noexcept(true);
@@ -35,6 +36,7 @@ namespace surface
       std::string fullname;
       std::string handle;
       std::string meta_id;
+      bool swagger;
       bool deleted;
       bool ghost;
 
