@@ -100,11 +100,28 @@ namespace common
   {
     Configuration::Configuration(
       bool production,
+      bool enable_mirroring,
       boost::optional<std::string> download_dir,
       boost::optional<std::string> persistent_config_dir,
       boost::optional<std::string> non_persistent_config_dir,
       boost::optional<std::string> temp_storage_dir)
     {
+      // File mirroring.
+      bool mirror_enable =
+        !::elle::os::getenv("INFINIT_ENABLE_MIRRORING", "").empty();
+      bool mirror_disable =
+        !::elle::os::getenv("INFINIT_DISABLE_MIRRORING", "").empty();
+      if (mirror_enable && mirror_disable)
+      {
+        ELLE_ABORT("define only one of INFINIT_ENABLE_MIRRORING and "\
+                   "INFINIT_DISABLE_MIRRORING");
+      }
+      if (mirror_enable)
+        _enable_mirroring = true;
+      else if (mirror_disable)
+        _enable_mirroring = false;
+      else
+        _enable_mirroring = enable_mirroring;
       // Download directory.
       _set_path_with_optional(
         this->_download_dir,
@@ -153,8 +170,10 @@ namespace common
           temp_storage_dir);
       }
 
-      bool env_production = !::elle::os::getenv("INFINIT_PRODUCTION", "").empty();
-      bool env_development = !::elle::os::getenv("INFINIT_DEVELOPMENT", "").empty();
+      bool env_production =
+        !::elle::os::getenv("INFINIT_PRODUCTION", "").empty();
+      bool env_development =
+        !::elle::os::getenv("INFINIT_DEVELOPMENT", "").empty();
       if (env_production && env_development)
       {
         ELLE_ABORT("define one and only one of "
@@ -201,7 +220,8 @@ namespace common
       std::string const& meta_host,
       uint16_t meta_port,
       std::vector<unsigned char> trophonius_fingerprint)
-        : _meta_protocol(meta_protocol)
+        : _enable_mirroring(true)
+        , _meta_protocol(meta_protocol)
         , _meta_host(meta_host)
         , _meta_port(meta_port)
         , _trophonius_fingerprint(trophonius_fingerprint)
