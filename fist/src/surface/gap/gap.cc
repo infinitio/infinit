@@ -503,6 +503,7 @@ gap_user_by_id(gap_State* state, uint32_t id)
         user.fullname,
         user.handle,
         user.id,
+        state.is_swagger(id),
         user.deleted(),
         user.ghost());
       return res;
@@ -564,12 +565,14 @@ gap_user_by_email(gap_State* state, std::string const& email)
     [&] (surface::gap::State& state) -> surface::gap::User
     {
       auto user = state.user(email, true);
+      uint32_t numeric_id = state.user_indexes().at(user.id);
       surface::gap::User res(
-        state.user_indexes().at(user.id),
+        numeric_id,
         user.online(),
         user.fullname,
         user.handle,
         user.id,
+        state.is_swagger(numeric_id),
         user.deleted(),
         user.ghost());
       return res;
@@ -586,12 +589,14 @@ gap_user_by_handle(gap_State* state, std::string const& handle)
     [&] (surface::gap::State& state) -> surface::gap::User
     {
       auto user = state.user_from_handle(handle);
+      uint32_t numeric_id = state.user_indexes().at(user.id);
       surface::gap::User res(
-        state.user_indexes().at(user.id),
+        numeric_id,
         user.online(),
         user.fullname,
         user.handle,
         user.id,
+        state.is_swagger(numeric_id),
         user.deleted(),
         user.ghost());
       return res;
@@ -658,6 +663,7 @@ gap_swaggers(gap_State* state)
           user.fullname,
           user.handle,
           user.id,
+          state.is_swagger(user_id),
           user.deleted(),
           user.ghost());
         res.push_back(ret_user);
