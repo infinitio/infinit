@@ -126,7 +126,11 @@ int main(int argc, char** argv)
       "recv",
       [&] () -> int
       {
-        common::infinit::Configuration config(production, download_dir);
+        // Don't need to mirror when receiving.
+        bool enable_mirroring = false;
+        common::infinit::Configuration config(production,
+                                              enable_mirroring,
+                                              download_dir);
         surface::gap::State state(config);
 
         state.attach_callback<surface::gap::State::ConnectionStatus>(
