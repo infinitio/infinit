@@ -156,6 +156,8 @@ namespace surface
       auto& config = this->_configuration;
       config.s3.multipart_upload.parallelism = 1;
       config.s3.multipart_upload.chunk_size = 0;
+      config.enable_file_mirroring =
+        this->local_configuration().enable_mirroring();
       config.max_mirror_size = 0;
       config.max_compress_size = 0;
       config.disable_upnp = false;
@@ -1227,6 +1229,7 @@ namespace surface
     State::Configuration::serialize(elle::serialization::Serializer& s)
     {
       s.serialize("s3", this->s3);
+      s.serialize("enable_file_mirroring", this->enable_file_mirroring);
       s.serialize("max_mirror_size", this->max_mirror_size);
       s.serialize("max_compress_size", this->max_compress_size);
       s.serialize("disable_upnp", this->disable_upnp);
