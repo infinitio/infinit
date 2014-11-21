@@ -362,12 +362,14 @@ namespace surface
       for (auto const& user: users)
       {
         this->user_sync(user);
+        uint32_t numeric_id = this->_user_indexes.at(user.id);
         surface::gap::User ret_user(
-          this->_user_indexes.at(user.id),
+          numeric_id,
           user.online(),
           user.fullname,
           user.handle,
           user.id,
+          this->is_swagger(numeric_id),
           user.deleted(),
           user.ghost());
         res.push_back(ret_user);
@@ -386,12 +388,14 @@ namespace surface
         auto const& user = result.second;
         std::pair<std::string, surface::gap::User> item;
         item.first = result.first;
+        uint32_t numeric_id = this->_user_indexes.at(user.id);
         surface::gap::User ret_user(
-          this->_user_indexes.at(user.id),
+          numeric_id,
           user.online(),
           user.fullname,
           user.handle,
           user.id,
+          this->is_swagger(numeric_id),
           user.deleted(),
           user.ghost());
         item.second = ret_user;
@@ -531,6 +535,7 @@ namespace surface
         user.fullname,
         user.handle,
         user.id,
+        this->is_swagger(id),
         user.deleted(),
         user.ghost());
       this->enqueue(res);
