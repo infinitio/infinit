@@ -30,7 +30,7 @@ namespace frete
     TransferSnapshot(FileCount count,
                      FileSize total_size);
     /// Construct sender snapshot.
-    TransferSnapshot();
+    TransferSnapshot(bool mirrored);
 
   /*-----.
   | File |
@@ -158,6 +158,8 @@ namespace frete
 
     // If the ghost cloud buffering archive has been fully archived.
     ELLE_ATTRIBUTE_RW(bool, archived);
+    /// If the files were mirrored.
+    ELLE_ATTRIBUTE_R(bool, mirrored);
   /*-----------.
   | Comparison |
   `-----------*/

@@ -10,19 +10,21 @@ namespace frete
 {
   // Recipient.
   TransferSnapshot::TransferSnapshot(Frete::FileCount count,
-                                     Frete::FileSize total_size):
-    _count(count),
-    _total_size(total_size),
-    _progress(0),
-    _archived(false)
+                                     Frete::FileSize total_size)
+    : _count(count)
+    , _total_size(total_size)
+    , _progress(0)
+    , _archived(false)
+    , _mirrored(false)
   {}
 
   // Sender.
-  TransferSnapshot::TransferSnapshot():
-    _count(0),
-    _total_size(0),
-    _progress(0),
-    _archived(false)
+  TransferSnapshot::TransferSnapshot(bool mirrored)
+    : _count(0)
+    , _total_size(0)
+    , _progress(0)
+    , _archived(false)
+    , _mirrored(mirrored)
   {}
 
   void
@@ -239,6 +241,7 @@ namespace frete
   void
   TransferSnapshot::serialize(elle::serialization::Serializer& s)
   {
+    s.serialize("mirrored", this->_mirrored);
     s.serialize("transfers", this->_files);
     s.serialize("count", this->_count);
     s.serialize("total_size", this->_total_size);
