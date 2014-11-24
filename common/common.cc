@@ -103,8 +103,7 @@ namespace common
       bool enable_mirroring,
       boost::optional<std::string> download_dir,
       boost::optional<std::string> persistent_config_dir,
-      boost::optional<std::string> non_persistent_config_dir,
-      boost::optional<std::string> temp_storage_dir)
+      boost::optional<std::string> non_persistent_config_dir)
     {
       // File mirroring.
       bool mirror_enable =
@@ -144,7 +143,6 @@ namespace common
         }
         this->_persistent_config_dir = default_path.string();
         this->_non_persistent_config_dir = default_path.string();
-        this->_temp_storage_dir = default_path.string();
       }
       else
       {
@@ -161,13 +159,6 @@ namespace common
           elle::os::getenv("INFINIT_NON_PERSISTENT_DIR", ""),
           path::join(elle::system::home_directory().string(), ".infinit"),
           non_persistent_config_dir);
-
-        // Temporary storage directory.
-        _set_path_with_optional(
-          this->_temp_storage_dir,
-          elle::os::getenv("INFINIT_TEMP_STORAGE_DIR", ""),
-          path::join(elle::system::home_directory().string(), ".infinit"),
-          temp_storage_dir);
       }
 
       bool env_production =
@@ -230,7 +221,6 @@ namespace common
         , _metrics_infinit_port()
         , _persistent_config_dir()
         , _non_persistent_config_dir()
-        , _temp_storage_dir()
         , _download_dir()
     {
       this->_device_id = this->_get_device_id();
@@ -256,7 +246,6 @@ namespace common
         }
         this->_persistent_config_dir = default_path.string();
         this->_non_persistent_config_dir = default_path.string();
-        this->_temp_storage_dir = default_path.string();
       }
       else
       {
@@ -270,12 +259,6 @@ namespace common
         _set_path_with_optional(
           this->_non_persistent_config_dir,
           elle::os::getenv("INFINIT_NON_PERSISTENT_DIR", ""),
-          path::join(elle::system::home_directory().string(), ".infinit"));
-
-        // Temporary storage directory.
-        _set_path_with_optional(
-          this->_temp_storage_dir,
-          elle::os::getenv("INFINIT_TEMP_STORAGE_DIR", ""),
           path::join(elle::system::home_directory().string(), ".infinit"));
       }
     }

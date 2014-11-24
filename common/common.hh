@@ -34,8 +34,7 @@ namespace common
         bool enable_mirroring = true,
         boost::optional<std::string> download_dir = {},
         boost::optional<std::string> persistent_config_dir = {},
-        boost::optional<std::string> non_persistent_config_dir = {},
-        boost::optional<std::string> temp_storage_dir = {});
+        boost::optional<std::string> non_persistent_config_dir = {});
       Configuration(
         std::string const& meta_protocol,
         std::string const& meta_host,
@@ -69,11 +68,6 @@ namespace common
       /// The non-persistent storage is that which should not be backed up.
       /// An example of this would be where the transaction snapshots are.
       ELLE_ATTRIBUTE_R(std::string, non_persistent_config_dir);
-      /// The temporary storage directory is where tempory files should be
-      /// written. This is like /tmp but managed by the developer and should not
-      /// be backed up.
-      /// An example would be where file mirroring takes place.
-      ELLE_ATTRIBUTE_R(std::string, temp_storage_dir);
       /// The download directory is where files will be downloaded for the user.
       ELLE_ATTRIBUTE_R(std::string, download_dir);
 
