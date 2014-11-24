@@ -812,7 +812,9 @@ namespace surface
         this->_frete = elle::make_unique<frete::Frete>(
           this->transaction_id(),
           this->state().identity().pair(),
-          this->transaction().snapshots_directory() / "frete.snapshot");
+          this->transaction().snapshots_directory() / "frete.snapshot",
+          this->transaction().snapshots_directory() / "mirror_files",
+          this->files_mirrored());
          _fetch_peer_key(false);
         if (this->_frete->count())
         {
