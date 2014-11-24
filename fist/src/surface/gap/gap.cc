@@ -40,7 +40,6 @@ gap_new(bool production,
         std::string const& download_dir,
         std::string const& persistent_config_dir,
         std::string const& non_persistent_config_dir,
-        std::string const& temp_storage_dir,
         bool enable_mirroring)
 {
   try
@@ -49,7 +48,6 @@ gap_new(bool production,
                                      download_dir,
                                      persistent_config_dir,
                                      non_persistent_config_dir,
-                                     temp_storage_dir,
                                      enable_mirroring);
     return state;
   }
