@@ -151,8 +151,6 @@ namespace surface
         boost::filesystem::path(
           state.local_configuration().transactions_directory(state.me().id))
           / boost::filesystem::unique_path())
-      , _cache_directory(state.local_configuration().temp_storage_dir()
-         / boost::filesystem::unique_path())
       , _snapshot_path(this->_snapshots_directory / "transaction.snapshot")
       , _state(state)
       , _files(std::move(files))
@@ -189,8 +187,6 @@ namespace surface
         boost::filesystem::path(
           state.local_configuration().transactions_directory(state.me().id))
           / boost::filesystem::unique_path())
-      , _cache_directory(state.local_configuration().temp_storage_dir()
-         / boost::filesystem::unique_path())
       , _snapshot_path(this->_snapshots_directory / "transaction.snapshot")
       , _state(state)
       , _files(std::move(files))
@@ -232,8 +228,6 @@ namespace surface
         boost::filesystem::path(
           state.local_configuration().transactions_directory(state.me().id))
           / boost::filesystem::unique_path())
-      , _cache_directory(state.local_configuration().temp_storage_dir()
-         / boost::filesystem::unique_path())
       , _snapshot_path(this->_snapshots_directory / "transaction.snapshot")
       , _state(state)
       , _files()
@@ -352,7 +346,6 @@ namespace surface
                              Snapshot snapshot,
                              boost::filesystem::path snapshots_directory)
       : _snapshots_directory(std::move(snapshots_directory))
-      , _cache_directory()
       , _snapshot_path(this->_snapshots_directory / "transaction.snapshot")
       , _state(state)
       , _files(snapshot.files())

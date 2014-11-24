@@ -108,7 +108,6 @@ namespace surface
       void
       _snapshot_save() const;
       ELLE_ATTRIBUTE_R(boost::filesystem::path, snapshots_directory);
-      ELLE_ATTRIBUTE_R(boost::filesystem::path, cache_directory);
       ELLE_ATTRIBUTE(boost::filesystem::path, snapshot_path);
 
     /*-------------.
