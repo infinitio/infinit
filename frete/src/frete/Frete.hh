@@ -51,7 +51,9 @@ namespace frete
   public:
     Frete(std::string const& password, // Retro compatibility.
           infinit::cryptography::KeyPair const& self_K, /*needed to decrypt session key from snapshot*/
-          boost::filesystem::path const& snapshot_destination);
+          boost::filesystem::path const& snapshot_destination,
+          boost::filesystem::path const& mirror_root,
+          bool files_mirrored);
     ~Frete();
     /// Set peer key (used to encrypt session key in key_code())
     void set_peer_key(infinit::cryptography::PublicKey peer_K);
@@ -59,6 +61,7 @@ namespace frete
   private:
     class Impl;
     ELLE_ATTRIBUTE(std::unique_ptr<Impl>, impl);
+    ELLE_ATTRIBUTE(boost::filesystem::path, mirror_root)
 
   /*----.
   | Run |
