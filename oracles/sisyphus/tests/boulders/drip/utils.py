@@ -173,7 +173,6 @@ class Mandrill:
               dict((var['name'], var['content']) for var in v['vars'])
             assert human['USER_EMAIL'] == email
             assert 'USER_FULLNAME' in human
-            assert 'UNSUB' in human
             self.__mandrill._Mandrill__emails.append((email, human))
             found = True
             break

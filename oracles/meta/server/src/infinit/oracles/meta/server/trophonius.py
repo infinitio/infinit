@@ -102,18 +102,6 @@ class Mixin:
                                    status = True)
       except error.Error as e:
         return self.fail(*e.args)
-      # Notify features
-      user = self.database.users.find_one({"_id": id})
-      if 'features' in user:
-        f = user['features']
-        # deserializer expects a list of [key, value]
-        vf = []
-        for k in f:
-          vf += [[k, f[k]]]
-        features = {'features': vf}
-        self.notifier.notify_some(notifier.CONFIGURATION,
-                                  recipient_ids = {id},
-                                  message = features)
       return self.success()
 
   @api('/trophonius/<uid>/users/<id>/<device>', method = 'DELETE')

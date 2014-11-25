@@ -211,7 +211,7 @@ class Mixin:
             networks = [],
             swaggers = {},
             accounts = [{'type':'email', 'id':peer_email}],
-            features = self.__roll_abtest(True)
+            features = self._roll_features(True)
           )
           recipient = self.database.users.find_one(recipient_id)
       else:
@@ -270,7 +270,7 @@ class Mixin:
         }
 
       transaction_id = self.database.transactions.insert(transaction)
-      self.__update_transaction_time(sender)
+      self.__update_transaction_time(sender, ['sent_peer', 'sent'])
 
       if not peer_email:
         peer_email = recipient['email']
@@ -300,14 +300,17 @@ class Mixin:
           'recipient_is_ghost': is_ghost,
           })
 
-  def __update_transaction_time(self, user):
+  def __update_transaction_time(self, user, counts = []):
+    counts.append('total')
     self.database.users.update(
       {'_id': user['_id']},
       {
         '$set':
         {
           'last_transaction.time': datetime.datetime.utcnow(),
-        }
+        },
+        '$inc':
+        dict(('transactions.%s' % field, 1) for field in counts),
       })
 
 
@@ -429,7 +432,8 @@ class Mixin:
       device_id = uuid.UUID(device_id)
       if str(device_id) not in self.user['devices']:
         raise error.Error(error.DEVICE_DOESNT_BELONG_TO_YOU)
-      self.__update_transaction_time(user)
+      self.__update_transaction_time(user,
+                                     ['received_peer', 'received'])
       return {
         'recipient_fullname': self.user['fullname'],
         'recipient_device_name' : device_name,
