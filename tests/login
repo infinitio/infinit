@@ -285,11 +285,11 @@ class TestLogin(unittest.TestCase):
   def test_features_add(self):
     with infinit.oracles.servers.Oracles(
       mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
-      r = requests.post('%s://%s:%s/features/testc' % o.meta,
+      r = requests.put('%s://%s:%s/features/testc' % o.meta,
                        data = json.dumps({'value': 'v3'}),
                        headers = {'content-type': 'application/json'})
       self.assertEqual(r.status_code, 200)
-      r = requests.post('%s://%s:%s/features/testd' % o.meta,
+      r = requests.put('%s://%s:%s/features/testd' % o.meta,
                        data = json.dumps({'values': {'v1' : 0.5, 'v2': 0.5}}),
                        headers = {'content-type': 'application/json'})
       self.assertEqual(r.status_code, 200)
@@ -311,5 +311,11 @@ class TestLogin(unittest.TestCase):
               state.hash_password('mefyl2@infinit.io', 'mefyl2'))
       reactor.sleep(datetime.timedelta(milliseconds = 200))
       f = s2.features()
+      self.assertTrue('testc' in f.keys())
+      s3 = o.state()
+      s3.register('mefyl3', 'mefyl3@infinit.io',
+                  state.hash_password('mefyl3@infinit.io', 'mefyl3'))
+      reactor.sleep(datetime.timedelta(milliseconds = 200))
+      f = s3.features()
       self.assertTrue('testc' not in f.keys())
 utils.run(unittest.main)
