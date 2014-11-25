@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-import bson
 
 from utils import Meta, User
+
+import bson
 
 from infinit.oracles.meta.server.transaction_status import \
   ACCEPTED as accepted, \
