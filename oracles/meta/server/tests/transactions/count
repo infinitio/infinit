@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+
+import bson
+
+from utils import Meta, User
+
+from infinit.oracles.meta.server.transaction_status import \
+  ACCEPTED as accepted, \
+  INITIALIZED as initialized
+
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  bob = User(meta, 'bob@infinit.io')
+  bob.login()
+  i = bson.ObjectId(alice.id)
+  assert 'transactions' not in meta.database.users.find_one({'_id': i})
+  # Send to a peer.
+  alice.sendfile(recipient_id = 'bob@infinit.io')
+  # Send to a ghost
+  alice.sendfile(recipient_id = 'carol@infinit.io')
+  # Accept a transaction
+  transaction, res = bob.sendfile(recipient_id = 'alice@infinit.io',
+                                  initialize = True)
+  alice.post('transaction/update',
+             {
+               'transaction_id': res['created_transaction_id'],
+               'status': accepted,
+               'device_id': str(alice.device_id),
+               'device_name': alice.device_name,
+             })
+  # Leave a pending transaction
+  bob.sendfile(recipient_id = 'alice@infinit.io', initialize = True)
+  # Create a link
+  alice.post('link',
+             {'files': ['lol'], 'name': 'lol.zip', 'message': ''})
+  transactions = meta.database.users.find_one({'_id': i})['transactions']
+  assert transactions['sent'] == 3
+  assert transactions['sent_peer'] == 2
+  assert transactions['sent_link'] == 1
+  assert transactions['received'] == 1
+  assert transactions['received_peer'] == 1
+  assert transactions['total'] == 4
