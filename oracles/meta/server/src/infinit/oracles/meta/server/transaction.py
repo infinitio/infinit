@@ -106,6 +106,9 @@ class Mixin:
     )
     if transaction is None:
       self.not_found()
+    self.__update_transaction_time(
+      transaction['recipient_id'], ['received_ghost', 'received'])
+
     self.notifier.notify_some(
       notifier.PEER_TRANSACTION,
       recipient_ids = {transaction['sender_id'],
@@ -301,9 +304,11 @@ class Mixin:
           })
 
   def __update_transaction_time(self, user, counts = []):
+    if isinstance(user, dict):
+      user = user['_id']
     counts.append('total')
     self.database.users.update(
-      {'_id': user['_id']},
+      {'_id': user},
       {
         '$set':
         {
@@ -430,12 +435,11 @@ class Mixin:
       if device_id is None or device_name is None:
         self.bad_request()
       device_id = uuid.UUID(device_id)
-      if str(device_id) not in self.user['devices']:
+      if str(device_id) not in user['devices']:
         raise error.Error(error.DEVICE_DOESNT_BELONG_TO_YOU)
-      self.__update_transaction_time(user,
-                                     ['received_peer', 'received'])
+      self.__update_transaction_time(user)
       return {
-        'recipient_fullname': self.user['fullname'],
+        'recipient_fullname': user['fullname'],
         'recipient_device_name' : device_name,
         'recipient_device_id': str(device_id)
       }
@@ -594,6 +598,9 @@ class Mixin:
                       transaction_status.REJECTED):
         diff.update(self.cloud_cleanup_transaction(
           transaction = transaction))
+      elif status == transaction_status.FINISHED:
+        self.__update_transaction_time(
+          transaction['recipient_id'], ['received_peer', 'received'])
       diff.update({
         'status': status,
         'mtime': time.time(),
