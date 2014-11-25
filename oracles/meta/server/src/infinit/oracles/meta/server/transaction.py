@@ -211,7 +211,7 @@ class Mixin:
             networks = [],
             swaggers = {},
             accounts = [{'type':'email', 'id':peer_email}],
-            features = self.__roll_abtest(True)
+            features = self._roll_features(True)
           )
           recipient = self.database.users.find_one(recipient_id)
       else:

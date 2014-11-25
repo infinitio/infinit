@@ -176,20 +176,13 @@ class Mixin:
       if pick_trophonius:
         response['trophonius'] = self.trophonius_pick()
       # Update missing features
-      current_features = {}
-      if 'features' in user:
-        current_features = user['features']
-      new_features = self.__roll_abtest(False)
-      if set(new_features.keys()) != set(current_features.keys()):
-        for k in set(new_features.keys()) - set(current_features.keys()):
-          current_features[k] = new_features[k]
-        self.database.users.update({'_id': user['_id']},
-                                   {'$set': { 'features': current_features}})
-      # deserializer expects a list of [key, value]
-      vf = []
-      for k in current_features:
-        vf += [[k, current_features[k]]]
-      response['features'] = vf
+      current_features = user.get('features', {})
+      features = self._roll_features(False, current_features)
+      if features != current_features:
+        self.database.users.update(
+          {'_id': user['_id']},
+          {'$set': { 'features': features}})
+      response['features'] = list(features.items())
       return response
 
   @api('/web-login', method = 'POST')
@@ -308,6 +301,7 @@ class Mixin:
       handle = self.unique_handle(fullname)
       user_content = {
         'connected': False,
+        'features': self._roll_features(True),
         'register_status': 'ok',
         'email': email,
         'fullname': fullname,
@@ -406,101 +400,7 @@ class Mixin:
             'user_id': str(user['_id']),
           }}
       )
-
-      # Inject a set of ABtest features
-      if 'features' in user:
-        features = user['features']
-      else:
-        features = dict()
-      new_features = self.__roll_abtest(True)
-      for k in new_features:
-        if k not in features:
-          features[k] = new_features[k]
-      self.database.users.find_and_modify(
-          {
-            '_id': user_id,
-          },
-          {
-            '$set':
-            {
-              'features': features
-            }
-          })
       return user
-
-  def __roll_abtest(self, from_register, abtests = None):
-    features = {}
-    if abtests is None:
-      abtests = self.database.abtest.find({})
-    for t in abtests:
-      if not from_register and t.get('register_only', False):
-        continue
-      k = t['key']
-      if 'value' in t:
-        v = t['value']
-      elif 'values' in t:
-        r = random.random()
-        accum = 0
-        for choice in t['values']:
-          accum += t['values'][choice]
-          if accum >= r:
-            v = choice
-            break
-      else:
-        elle.log.warn('Invalid abtest entry: %s' % t)
-        continue
-      features[k] = v
-    return features
-
-  @api('/features', method = 'POST')
-  @require_admin
-  def features(self,
-               reroll = None,
-               abtests = None):
-    """ For each feature in abtest, add it to existing users who don't have it.
-    """
-    keys = set(self.__roll_abtest(False, abtests).keys())
-    users = self.database.users.find({}, ['features']) # id is implicit
-    for user in users:
-      if 'features' not in user:
-        user['features'] = {}
-      diff = set(keys) - set(user['features'].keys())
-      if reroll:
-        diff = set(keys)
-      if diff:
-        features = self.__roll_abtest(False, abtests)
-        for k in diff:
-          user['features'][k] = features[k]
-        self.database.users.update({'_id': user['_id']},
-                                   {'$set': { 'features': user['features']}})
-    return self.success()
-
-  @api('/features/<name>', method='DELETE')
-  @require_admin
-  def feature_remove(self, name):
-    users = self.database.users.find({}, ['features']) # id is implicit
-    for user in users:
-      if not 'features' in user:
-        continue
-      if name in user['features']:
-        del user['features'][name]
-        self.database.users.update({'_id': user['_id']},
-                                   {'$set': { 'features': user['features']}})
-    self.database.abtest.remove({'key': name})
-
-  @api('/features/<name>', method='POST')
-  @require_admin
-  def feature_add(self, name, value = None, values = None):
-    feature = {'key': name}
-    if value is not None:
-      feature['value'] = value
-    elif values is not None:
-      feature['values'] = values
-    else:
-      raise error.ERROR(
-        error.OPERATION_NOT_PERMITTED,
-        "Missing value or values field.")
-    self.database.abtest.insert(feature)
 
   def __account_from_hash(self, hash):
     with elle.log.debug('get user account from hash %s' % hash):
@@ -1125,22 +1025,31 @@ class Mixin:
   # Historically we used _id but we're moving to id. This function extracts
   # fields for both cases.
   def extract_user_fields(self, user):
-    res = {
-      'public_key': user.get('public_key', ''),
-      'fullname': user.get('fullname', ''),
-      'handle': user.get('handle', ''),
-      'connected_devices': user.get('connected_devices', []),
-      'register_status': user.get('register_status'),
-    }
     if '_id' in user.keys():
       user_id = user['_id']
     else:
       user_id = user['id']
     if self.admin:
-      res['creation_time'] = user.get('creation_time', '')
-      res['email'] = user.get('email', '')
-      res['email_confirmed'] = user.get('email_confirmed', '')
-      res['os'] = user.get('os', '')
+      res = dict(user)
+      for key in ['avatar', 'small_avatar']:
+        if key in res.keys():
+          del res[key]
+        if 'public_key' not in res.keys():
+          res['public_key'] = ''
+        if 'fullname' not in res.keys():
+          res['fullname'] = ''
+        if 'handle' not in res.keys():
+          res['handle'] = ''
+        if 'connected_devices' not in res.keys():
+          res['connected_devices'] = []
+    else:
+      res = {
+        'public_key': user.get('public_key', ''),
+        'fullname': user.get('fullname', ''),
+        'handle': user.get('handle', ''),
+        'connected_devices': user.get('connected_devices', []),
+        'register_status': user.get('register_status'),
+      }
     res.update({
       '_id': user_id, # Backwards compatibility.
       'id': user_id,

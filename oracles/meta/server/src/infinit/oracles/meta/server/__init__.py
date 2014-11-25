@@ -33,6 +33,7 @@ from .utils import api, hash_pasword, require_admin, require_logged_in, key
 from . import apertus
 from . import cloud_buffer_token
 from . import device
+from . import features
 from . import invitation
 from . import link_generation
 from . import mail
@@ -72,6 +73,7 @@ class Meta(bottle.Bottle,
            user.Mixin,
            transaction.Mixin,
            device.Mixin,
+           features.Mixin,
            trophonius.Mixin,
            apertus.Mixin,
            waterfall.Waterfall,
