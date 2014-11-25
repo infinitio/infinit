@@ -130,6 +130,7 @@ int main(int argc, char** argv)
         bool enable_mirroring = false;
         common::infinit::Configuration config(production,
                                               enable_mirroring,
+                                              0,
                                               download_dir);
         surface::gap::State state(config);
 
