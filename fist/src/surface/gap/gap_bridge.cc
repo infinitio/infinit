@@ -5,16 +5,18 @@
 ELLE_LOG_COMPONENT("surface.gap.gap_State")
 
 gap_State::gap_State(bool production)
-  : gap_State(production, "", "", "", true)
+  : gap_State(production, "", "", "", true, 0)
 {}
 
 gap_State::gap_State(bool production,
                      std::string const& download_dir,
                      std::string const& persistent_config_dir,
                      std::string const& non_persistent_config_dir,
-                     bool enable_mirroring):
+                     bool enable_mirroring,
+                     uint64_t max_mirroring_size):
   _configuration(production,
                  enable_mirroring,
+                 max_mirroring_size,
                  download_dir,
                  persistent_config_dir,
                  non_persistent_config_dir),

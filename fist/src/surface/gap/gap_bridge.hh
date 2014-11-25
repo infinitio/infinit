@@ -57,7 +57,8 @@ public:
             std::string const& download_dir,
             std::string const& persistent_config_dir,
             std::string const& non_persistent_config_dir,
-            bool enable_mirroring);
+            bool enable_mirroring,
+            uint64_t max_mirroring_size);
 
   ~gap_State()
   {
