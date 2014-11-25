@@ -158,7 +158,7 @@ namespace surface
       config.s3.multipart_upload.chunk_size = 0;
       config.enable_file_mirroring =
         this->local_configuration().enable_mirroring();
-      config.max_mirror_size = 0;
+      config.max_mirror_size = this->local_configuration().max_mirror_size();
       config.max_compress_size = 0;
       config.disable_upnp = false;
       std::ifstream fconfig(this->local_configuration().configuration_path());
