@@ -38,7 +38,7 @@ with mongobox.MongoBox() as mongo:
     mandrill = Mandrill()
     sisy = sisyphus.Sisyphus(mongo_port = mongo.port,
                              mandrill = mandrill)
-    # gestapo(sisy._Sisyphus__mongo)
+    gestapo(sisy._Sisyphus__mongo)
     reminder = DelightSender(sisy)
 
     # Check nothing is sent with no users
