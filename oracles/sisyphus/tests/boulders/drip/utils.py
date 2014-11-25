@@ -3,6 +3,7 @@
 # Meta first, for papier and OpenSSL
 import infinit.oracles.meta.server
 from infinit.oracles.meta.server.utils import hash_pasword
+from infinit.oracles.transaction import statuses
 
 import bottle
 import datetime
@@ -190,3 +191,11 @@ class Mandrill:
   @property
   def messages(self):
     return Mandrill.Messages(self)
+
+def transaction_create(meta, sender, recipient, files = ['foobar']):
+  tid = meta.transaction_create(
+    sender, recipient, files, 1, 42, False, 'device')
+  tid = tid['created_transaction_id']
+  meta._transaction_update(tid, statuses['initialized'],
+                             'device', None, sender)
+  return tid
