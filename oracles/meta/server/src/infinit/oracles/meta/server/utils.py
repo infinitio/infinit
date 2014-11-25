@@ -45,11 +45,14 @@ def require_key(method):
   def require_key(self, *args, **kwargs):
     import sys
     if 'key' not in kwargs:
-      # For now, this will be refused by the API as the 'key'
-      # parameter is missing.
-      self.forbidden()
-    self.check_key(kwargs['key'])
-    del kwargs['key']
+      if not self.admin:
+        # For now, this will be refused by the API as the 'key'
+        # parameter is missing.
+        self.forbidden()
+    else:
+      if not self.admin:
+        self.check_key(kwargs['key'])
+      del kwargs['key']
     return method(self, *args, **kwargs)
   spec = inspect.getfullargspec(method)
   del spec.args[0] # remove self
