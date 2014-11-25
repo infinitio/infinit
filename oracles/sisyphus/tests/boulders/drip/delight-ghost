@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+
+# utils first, beware of system OpenSSL.
+from utils import *
+
+import uuid
+
+import elle.log
+
+from infinit.oracles.transaction import statuses
+
+import sisyphus
+import sisyphus.boulders.drip
+
+ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.boulders.drip'
+
+class DelightGhost(sisyphus.boulders.drip.DelightGhost):
+
+  def _pick_template(self, template, users):
+    return sisyphus.boulders.drip.Drip._pick_template(
+      self, template, users)
+
+def check_mail(mails, recipient):
+  assert len(mails) == 1
+  mail = mails[0]
+  assert mail[0] == recipient
+  content = mail[1]
+  assert content['USER_EMAIL'] == recipient
+  assert content['SENDER_EMAIL'] == 'sender@infinit.io'
+
+with mongobox.MongoBox() as mongo:
+  with Meta(mongo_port = mongo.port,
+            enable_emails = False,
+            force_admin = True) as meta:
+    mandrill = Mandrill()
+    sisy = sisyphus.Sisyphus(mongo_port = mongo.port,
+                             mandrill = mandrill)
+    gestapo(sisy._Sisyphus__mongo)
+    reminder = DelightGhost(sisy)
+
+    # Check nothing is sent with no users
+    sisy.cron()
+    assert not mandrill.emails
+
+    # Create users
+    ghost_email = 'ghost@infinit.io'
+    sender = meta.user_register('sender@infinit.io',
+                                '*' * 64, 'Foo Bar')
+
+    # Check nothing is sent with no transaction
+    sisy.cron()
+    assert not mandrill.emails
+
+    # Check the mail is not sent upon creation
+    tid = transaction_create(meta, sender, ghost_email)
+    sisy.cron()
+    assert not mandrill.emails
+
+    # Check the mail is not sent upon upload
+    meta._transaction_update(tid, statuses['ghost_uploaded'],
+                             'device', 'device', sender)
+    sisy.cron()
+    assert not mandrill.emails
+
+    # Check the mail is sent upon completion
+    meta.transaction_download(tid)
+    sisy.cron()
+    check_mail(mandrill.emails, 'ghost@infinit.io')

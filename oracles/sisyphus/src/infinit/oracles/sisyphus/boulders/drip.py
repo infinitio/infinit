@@ -619,3 +619,64 @@ class DelightRecipient(Drip):
       transaction['sender_id'])
     assert sender is not None
     return self.user_vars('sender', sender)
+
+
+#
+# -> 1
+#
+
+class DelightGhost(Drip):
+
+  def __init__(self, sisyphus):
+    super().__init__(sisyphus, 'delight-ghost', 'users')
+    # Find user in any status without scanning all ghosts, deleted
+    # users etc.
+    self.sisyphus.mongo.meta.users.ensure_index(
+      [
+        ('emailing.delight-ghost.state', pymongo.ASCENDING),
+        ('register_status', pymongo.ASCENDING),
+        ('transactions.received_ghost', pymongo.ASCENDING),
+      ])
+
+  @property
+  def now(self):
+    return datetime.datetime.utcnow()
+
+  def run(self):
+    response = {}
+    # -> 1
+    transited = self.transition(
+      None,
+      '1',
+      {
+        'register_status': 'ghost',
+        'transactions.received_ghost': {'$gte': self.threshold_first},
+      },
+    )
+    response.update(transited)
+    return response
+
+  def _pick_template(self, template, users):
+    return [
+      (template, [u for u in users if u[0]['features']['drip_delight-ghost_template'] == 'a']),
+      (None, [u for u in users if u[0]['features']['drip_delight-ghost_template'] == 'control']),
+    ]
+
+  @property
+  def threshold_first(self):
+    return 1
+
+  # FIXME: factor with DelightRecipient
+  def _vars(self, elt, user):
+    transaction = self.sisyphus.mongo.meta.transactions.find_one(
+      {
+        'recipient_id': user['_id'],
+        'status': {'$in': [statuses['accepted'],
+                           statuses['finished']]},
+      }
+    )
+    assert transaction is not None
+    sender = self.sisyphus.mongo.meta.users.find_one(
+      transaction['sender_id'])
+    assert sender is not None
+    return self.user_vars('sender', sender)
