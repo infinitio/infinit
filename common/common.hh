@@ -32,6 +32,7 @@ namespace common
       Configuration(
         bool production,
         bool enable_mirroring = true,
+        uint64_t max_mirror_size = 0,
         boost::optional<std::string> download_dir = {},
         boost::optional<std::string> persistent_config_dir = {},
         boost::optional<std::string> non_persistent_config_dir = {});
@@ -44,6 +45,7 @@ namespace common
 
       ELLE_ATTRIBUTE_R(bool, production);
       ELLE_ATTRIBUTE_R(bool, enable_mirroring);
+      ELLE_ATTRIBUTE_R(uint64_t, max_mirror_size);
 
       /// Meta configuration.
       ELLE_ATTRIBUTE_R(std::string, meta_protocol);

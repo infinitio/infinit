@@ -101,9 +101,11 @@ namespace common
     Configuration::Configuration(
       bool production,
       bool enable_mirroring,
+      uint64_t max_mirror_size,
       boost::optional<std::string> download_dir,
       boost::optional<std::string> persistent_config_dir,
       boost::optional<std::string> non_persistent_config_dir)
+        : _max_mirror_size(max_mirror_size)
     {
       // File mirroring.
       bool mirror_enable =
@@ -212,6 +214,7 @@ namespace common
       uint16_t meta_port,
       std::vector<unsigned char> trophonius_fingerprint)
         : _enable_mirroring(true)
+        , _max_mirror_size(0)
         , _meta_protocol(meta_protocol)
         , _meta_host(meta_host)
         , _meta_port(meta_port)
