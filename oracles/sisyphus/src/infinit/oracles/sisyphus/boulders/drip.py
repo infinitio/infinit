@@ -190,8 +190,7 @@ class Drip(Boulder):
                   ('TEMPLATE', template),
                   ('INFINIT_SCHEME', 'infinit://'),
                 ],
-                (('USER_%s' % field.upper(), user[field])
-                 for field in self.user_fields if field in user),
+                self.user_vars('USER', user).items(),
                 self._vars(elt, user).items(),
               ))
             }
