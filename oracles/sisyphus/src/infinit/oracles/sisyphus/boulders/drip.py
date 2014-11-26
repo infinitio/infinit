@@ -119,22 +119,22 @@ class Drip(Boulder):
           template,
           users,
           variations = variations)
-        self.__table.update(
-          {self.field_lock: self.lock_id},
-          {
-            # TEST MODE 2: comment the $set out
-            '$set':
-            {
-              field: end,
-            },
-            '$unset':
-            {
-              self.field_lock: True,
-            },
-          },
-          multi = True,
-        )
         res[template] = sent
+      self.__table.update(
+        {self.field_lock: self.lock_id},
+        {
+          # TEST MODE 2: comment the $set out
+          '$set':
+          {
+            field: end,
+          },
+          '$unset':
+          {
+            self.field_lock: True,
+          },
+        },
+        multi = True,
+      )
       # Unlock users that were not picked
       unpicked = self.__table.update(
         {self.field_lock: self.lock_id},
