@@ -25,6 +25,15 @@ namespace surface
     {
       this->_machine.transition_add(
         this->_transfer_core_state,
+        this->_pause_state,
+        reactor::Waitables{&this->paused()},
+        true);
+      this->_machine.transition_add(
+        this->_pause_state,
+        this->_transfer_core_state,
+        reactor::Waitables{&this->resumed()});
+      this->_machine.transition_add(
+        this->_transfer_core_state,
         this->_finish_state,
         reactor::Waitables{&this->finished()},
         true);
