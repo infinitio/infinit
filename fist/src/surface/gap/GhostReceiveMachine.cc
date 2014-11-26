@@ -35,6 +35,13 @@ namespace surface
     {
       this->_machine.transition_add(this->_accept_state,
                                     this->_finish_state);
+      this->_machine.transition_add(this->_accept_state,
+                                    this->_pause_state,
+                                    reactor::Waitables{&this->paused()},
+                                    true);
+      this->_machine.transition_add(this->_pause_state,
+                                    this->_accept_state,
+                                    reactor::Waitables{&this->resumed()});
       this->_machine.transition_add(this->_wait_for_cloud_upload_state,
                                     this->_wait_for_decision_state,
                                     reactor::Waitables{&this->_cloud_uploaded});
@@ -98,6 +105,8 @@ namespace surface
         this->_run(this->_finish_state);
       else if (snapshot.current_state() == "reject")
         this->_run(this->_reject_state);
+      else if (snapshot.current_state() == "pause")
+        this->_run(this->_pause_state);
       else
         throw elle::Error("unknown state");
     }
