@@ -301,6 +301,7 @@ namespace surface
             exit_message = e.what();
             exit_reason = infinit::metrics::TransferExitReasonError;
             ELLE_WARN("%s: interupted by %s", *this, e.what());
+            this->transaction().failure_reason(e.what());
             throw;
           }
         }
