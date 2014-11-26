@@ -158,6 +158,8 @@ namespace surface
             this->_run(this->_wait_for_decision_state);
           else if (snapshot.current_state() == "another device")
             this->_run(this->_another_device_state);
+          else if (snapshot.current_state() == "pause")
+            this->_run(this->_pause_state);
           else
           {
             ELLE_WARN("%s: unkown state in snapshot: %s",
