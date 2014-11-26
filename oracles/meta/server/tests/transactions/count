@@ -60,7 +60,6 @@ with Meta() as meta:
   alice.get('link/%s' % res['transaction']['hash'])
   # Check counters
   transactions = meta.database.users.find_one({'_id': i})['transactions']
-  print(transactions)
   assert transactions['reached'] == 3
   assert transactions['reached_link'] == 1
   assert transactions['reached_peer'] == 2
@@ -69,3 +68,7 @@ with Meta() as meta:
   assert transactions['sent'] == 7
   assert transactions['sent_link'] == 2
   assert transactions['sent_peer'] == 5
+  # Check ghost counters
+  transactions = meta.database.users.find_one({'email': 'carol@infinit.io'})['transactions']
+  assert transactions['received'] == 1
+  assert transactions['received_ghost'] == 1
