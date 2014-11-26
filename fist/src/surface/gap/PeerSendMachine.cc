@@ -31,6 +31,8 @@ namespace surface
     | Construction |
     `-------------*/
 
+    /// Constructor when sending from another device or if you have no
+    /// snapshot as sender. In that case, run_to_fail is set to true.
     PeerSendMachine::PeerSendMachine(Transaction& transaction,
                                      uint32_t id,
                                      std::shared_ptr<Data> data,
@@ -212,6 +214,8 @@ namespace surface
           this->_run(this->_wait_for_accept_state);
         else if (snapshot.current_state() == "another device")
           this->_run(this->_another_device_state);
+        else if (snapshot.current_state() == "pause")
+          this->_run(this->_pause_state);
         else
         {
           ELLE_WARN("%s: unkown state in snapshot: %s",
