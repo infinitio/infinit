@@ -55,6 +55,15 @@ namespace surface
                                     this->_upload_state);
       this->_machine.transition_add(
         this->_upload_state,
+        this->_pause_state,
+        reactor::Waitables{&this->paused()},
+        true);
+      this->_machine.transition_add(
+        this->_pause_state,
+        this->_upload_state,
+        reactor::Waitables{&this->resumed()});
+      this->_machine.transition_add(
+        this->_upload_state,
         this->_finish_state,
         reactor::Waitables{&this->finished()},
         true);
@@ -108,6 +117,8 @@ namespace surface
           this->_run(this->_upload_state);
         else if (snapshot.current_state() == "another device")
           this->_run(this->_another_device_state);
+        else if (snapshot.current_state() == "pause")
+          this->_run(this->_pause_state);
         else
         {
           ELLE_WARN("%s: unkown state in snapshot: %s",
