@@ -1188,6 +1188,36 @@ gap_send_files(gap_State* state,
 }
 
 uint32_t
+gap_pause_transaction(gap_State* state, uint32_t id)
+{
+  ELLE_ASSERT(state != nullptr);
+  ELLE_ASSERT(id != surface::gap::null_id);
+  return run<uint32_t>(
+    state,
+    "pause transaction",
+    [&] (surface::gap::State& state) -> uint32_t
+    {
+      state.transactions().at(id)->pause();
+      return id;
+    });
+}
+
+uint32_t
+gap_resume_transaction(gap_State* state, uint32_t id)
+{
+  ELLE_ASSERT(state != nullptr);
+  ELLE_ASSERT(id != surface::gap::null_id);
+  return run<uint32_t>(
+    state,
+    "resume transaction",
+    [&] (surface::gap::State& state) -> uint32_t
+    {
+      state.transactions().at(id)->resume();
+      return id;
+    });
+}
+
+uint32_t
 gap_cancel_transaction(gap_State* state, uint32_t id)
 {
   ELLE_ASSERT(state != nullptr);
@@ -1330,25 +1360,6 @@ gap_onboarding_set_peer_availability(gap_State* state, uint32_t id, bool status)
         tr->notify_peer_reachable({}, {});
       else
         tr->notify_peer_unreachable();
-      return gap_ok;
-    });
-}
-
-/// Force transfer deconnection.
-gap_Status
-gap_onboarding_interrupt_transfer(gap_State* state, uint32_t id)
-{
-  ELLE_ASSERT(state != nullptr);
-  ELLE_ASSERT(id != surface::gap::null_id);
-  return run<gap_Status>(
-    state,
-    "interrupt onboarding transfer",
-    [&] (surface::gap::State& state) -> gap_Status
-    {
-      auto const& tr = state.transactions().at(id);
-      if (!dynamic_cast<surface::gap::onboarding::Transaction*>(tr.get()))
-        return gap_error;
-      tr->interrupt();
       return gap_ok;
     });
 }

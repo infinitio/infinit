@@ -14,8 +14,6 @@
 struct gap_State;
 typedef struct gap_State gap_State;
 
-// - gap ctor & dtor --------------------------------------------------------
-
 /// Create a new state.
 /// Returns NULL on failure.
 gap_State*
@@ -56,7 +54,6 @@ gap_set_proxy(gap_State* state,
 gap_Status
 gap_unset_proxy(gap_State* state, gap_ProxyType type);
 
-//- Authentication & registration -------------------------------------------
 void
 gap_clean_state(gap_State* state);
 
@@ -88,8 +85,6 @@ gap_register(gap_State* state,
              std::string const& fullname,
              std::string const& email,
              std::string const& password);
-
-//- Swaggers ----------------------------------------------------------------
 
 gap_Status
 gap_new_swagger_callback(
@@ -154,8 +149,6 @@ gap_transaction_concern_device(gap_State* state,
 gap_Status
 gap_poll(gap_State* state);
 
-/// - Device ----------------------------------------------------------------
-
 /// Returns the local device status.
 gap_Status
 gap_device_status(gap_State* state);
@@ -164,7 +157,6 @@ gap_device_status(gap_State* state);
 gap_Status
 gap_set_device_name(gap_State* state, std::string const& name);
 
-/// - Self ------------------------------------------------------------------
 /// Get current user fullname.
 std::string
 gap_self_fullname(gap_State* state);
@@ -195,8 +187,6 @@ gap_self_favorites(gap_State* state);
 /// Publish avatar to meta.
 gap_Status
 gap_update_avatar(gap_State* state, void const* data, size_t size);
-
-/// - User ------------------------------------------------------------------
 
 std::string
 gap_self_device_id(gap_State* state);
@@ -231,8 +221,6 @@ gap_users_search(gap_State* state, std::string const& text);
 std::unordered_map<std::string, surface::gap::User>
 gap_users_by_emails(gap_State* state, std::vector<std::string> emails);
 
-/// - Swaggers --------------------------------------------------------------
-
 /// Get the list of user's swaggers.
 std::vector<surface::gap::User>
 gap_swaggers(gap_State* state);
@@ -248,8 +236,6 @@ gap_unfavorite(gap_State* state, uint32_t id);
 /// Check if a user is a favorite.
 bool
 gap_is_favorite(gap_State* state, uint32_t id);
-
-/// - Permissions ---------------------------------------------------------
 
 /// Check if a transaction is a link transaction.
 bool
@@ -288,6 +274,16 @@ gap_send_files_by_email(gap_State* state,
                         std::string const& email,
                         std::vector<std::string> const& files,
                         std::string const& message);
+
+/// Pause transaction.
+/// If the return value is 0, the operation failed.
+uint32_t
+gap_pause_transaction(gap_State* state, uint32_t id);
+
+/// Resume transaction.
+/// If the return value is 0, the operation failed.
+uint32_t
+gap_resume_transaction(gap_State* state, uint32_t id);
 
 /// Cancel transaction.
 /// If the return value is 0, the operation failed.
@@ -331,10 +327,6 @@ gap_Status
 gap_onboarding_set_peer_availability(gap_State* state,
                                      uint32_t id,
                                      bool status);
-
-/// Force transfer deconnection.
-gap_Status
-gap_onboarding_interrupt_transfer(gap_State* state, uint32_t id);
 
 // Set output directory.
 gap_Status
