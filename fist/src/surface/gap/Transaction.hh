@@ -36,7 +36,7 @@ namespace surface
           delete_,
           progress,
           pause,
-          interrupt,
+          resume,
        };
 
         BadOperation(Type type);
@@ -156,6 +156,14 @@ namespace surface
 
       virtual
       void
+      pause();
+
+      virtual
+      void
+      resume();
+
+      virtual
+      void
       cancel(bool user_request = false);
 
       // Only for LinkTransactions.
@@ -170,14 +178,6 @@ namespace surface
       virtual
       float
       progress() const;
-
-      virtual
-      bool
-      pause();
-
-      virtual
-      void
-      interrupt();
 
     public:
       void
