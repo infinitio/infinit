@@ -66,3 +66,8 @@ with mongobox.MongoBox() as mongo:
     meta.transaction_download(tid)
     sisy.cron()
     check_mail(mandrill.emails, 'ghost@infinit.io')
+
+    # But only once
+    meta.transaction_download(tid)
+    sisy.cron()
+    assert not mandrill.emails
