@@ -101,16 +101,13 @@ namespace surface
       cancel(std::string const& reason);
 
       /// Pause the transfer.
-      /// XXX: Not implemented yet.
-      virtual
-      bool
+      void
       pause();
 
-      /// For the transfer to roll back to the connection state.
-      /// XXX: Not implemented yet.
-      virtual
+      /// Resume the transfer.
       void
-      interrupt();
+      resume();
+
 
       /// Join the machine thread.
       /// The machine must be in his way to a final state, otherwise the caller
@@ -176,6 +173,8 @@ namespace surface
     protected:
       void
       _another_device();
+      void
+      _pause();
       virtual
       void
       _finish();
@@ -203,6 +202,7 @@ namespace surface
       // This state has to be protected to allow the children to start the
       // machine in this state.
       reactor::fsm::State& _another_device_state;
+      reactor::fsm::State& _pause_state;
       reactor::fsm::State& _finish_state;
       reactor::fsm::State& _reject_state;
       reactor::fsm::State& _cancel_state;
@@ -210,6 +210,8 @@ namespace surface
       reactor::fsm::State& _end_state;
 
     public:
+      ELLE_ATTRIBUTE_RX(reactor::Barrier, paused);
+      ELLE_ATTRIBUTE_RX(reactor::Barrier, resumed);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, finished);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, rejected);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, canceled);

@@ -100,6 +100,9 @@ namespace surface
         this->_machine.state_make(
           "another device",
           std::bind(&TransactionMachine::_another_device, this)))
+      , _pause_state(
+        this->_machine.state_make(
+          "pause", std::bind(&TransactionMachine::_pause, this)))
       , _finish_state(
         this->_machine.state_make(
           "finish", std::bind(&TransactionMachine::_finish, this)))
@@ -115,6 +118,8 @@ namespace surface
       , _end_state(
         this->_machine.state_make(
           "end", std::bind(&TransactionMachine::_end, this)))
+      , _paused("paused")
+      , _resumed("resumed")
       , _finished("finished")
       , _rejected("rejected")
       , _canceled("canceled")
@@ -135,6 +140,14 @@ namespace surface
         reactor::Waitables{&this->canceled()});
       this->_machine.transition_add(
         this->_another_device_state,
+        this->_end_state,
+        reactor::Waitables{&this->failed()});
+      this->_machine.transition_add(
+        this->_pause_state,
+        this->_cancel_state,
+        reactor::Waitables{&this->canceled()});
+      this->_machine.transition_add(
+        this->_pause_state,
         this->_end_state,
         reactor::Waitables{&this->failed()});
       this->_machine.transition_add(this->_finish_state, this->_end_state);
@@ -247,6 +260,13 @@ namespace surface
     {
       ELLE_TRACE("%s: transaction running on another device", *this);
       this->gap_status(gap_transaction_on_other_device);
+    }
+
+    void
+    TransactionMachine::_pause()
+    {
+      ELLE_TRACE("%s: transaction paused", *this);
+      this->gap_status(gap_transaction_paused);
     }
 
     void
@@ -382,20 +402,20 @@ namespace surface
       this->_canceled.open();
     }
 
-    bool
+    void
     TransactionMachine::pause()
     {
-      ELLE_TRACE_SCOPE("%s: pause transaction %s", *this, this->data()->id);
-      throw elle::Exception(
-        elle::sprintf("%s: pause not implemented yet", *this));
+      ELLE_TRACE_SCOPE("%s: force pause transaction %s", *this, this->data()->id);
+      this->_resumed.close();
+      this->_paused.open();
     }
 
     void
-    TransactionMachine::interrupt()
+    TransactionMachine::resume()
     {
-      ELLE_TRACE_SCOPE("%s: interrupt transaction %s", *this, this->data()->id);
-      throw elle::Exception(
-        elle::sprintf("%s: interruption not implemented yet", *this));
+      ELLE_TRACE_SCOPE("%s: force resume transaction %s", *this, this->data()->id);
+      this->_paused.close();
+      this->_resumed.open();
     }
 
     bool
