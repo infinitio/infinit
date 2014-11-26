@@ -7,6 +7,7 @@ import bson
 
 from infinit.oracles.meta.server.transaction_status import \
   ACCEPTED as accepted, \
+  FINISHED as finished, \
   INITIALIZED as initialized
 
 with Meta() as meta:
@@ -17,28 +18,54 @@ with Meta() as meta:
   i = bson.ObjectId(alice.id)
   assert 'transactions' not in meta.database.users.find_one({'_id': i})
   # Send to a peer.
-  alice.sendfile(recipient_id = 'bob@infinit.io')
+  transaction, res = alice.sendfile(recipient_id = 'bob@infinit.io',
+                                    initialize = True)
+  # Send to a peer and accept.
+  transaction, res = alice.sendfile(recipient_id = 'bob@infinit.io',
+                                    initialize = True)
+  bob.transaction_update(res['created_transaction_id'], accepted)
+  # Send to a peer and download.
+  transaction, res = alice.sendfile(recipient_id = 'bob@infinit.io',
+                                    initialize = True)
+  bob.transaction_update(res['created_transaction_id'], accepted)
+  bob.transaction_update(res['created_transaction_id'], finished)
   # Send to a ghost
   alice.sendfile(recipient_id = 'carol@infinit.io')
-  # Accept a transaction
+  # Send to a ghost and download
+  transaction, res = alice.sendfile(recipient_id = 'carol@infinit.io',
+                                    initialize = True)
+  alice.post('transactions/%s/downloaded?key=admin' \
+             % res['created_transaction_id'])
+  # Download a transaction
   transaction, res = bob.sendfile(recipient_id = 'alice@infinit.io',
                                   initialize = True)
-  alice.post('transaction/update',
-             {
-               'transaction_id': res['created_transaction_id'],
-               'status': accepted,
-               'device_id': str(alice.device_id),
-               'device_name': alice.device_name,
-             })
+  alice.transaction_update(res['created_transaction_id'], accepted)
+  alice.transaction_update(res['created_transaction_id'], finished)
   # Leave a pending transaction
   bob.sendfile(recipient_id = 'alice@infinit.io', initialize = True)
   # Create a link
-  alice.post('link',
-             {'files': ['lol'], 'name': 'lol.zip', 'message': ''})
+  link = alice.post('link',
+                    {
+                      'files': ['lol'],
+                      'name': 'lol.zip',
+                      'message': '',
+                    })
+  # Create a clicked link
+  res = alice.post('link',
+                   {
+                     'files': ['lol'],
+                     'name': 'lol.zip',
+                     'message': '',
+                   })
+  alice.get('link/%s' % res['transaction']['hash'])
+  # Check counters
   transactions = meta.database.users.find_one({'_id': i})['transactions']
-  assert transactions['sent'] == 3
-  assert transactions['sent_peer'] == 2
-  assert transactions['sent_link'] == 1
+  print(transactions)
+  assert transactions['reached'] == 3
+  assert transactions['reached_link'] == 1
+  assert transactions['reached_peer'] == 2
   assert transactions['received'] == 1
   assert transactions['received_peer'] == 1
-  assert transactions['total'] == 4
+  assert transactions['sent'] == 7
+  assert transactions['sent_link'] == 2
+  assert transactions['sent_peer'] == 5

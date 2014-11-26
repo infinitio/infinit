@@ -99,23 +99,32 @@ class Mixin:
   @api('/transactions/<id>/downloaded', method='POST')
   @require_key
   def transaction_download(self, id: bson.ObjectId):
+    diff = {'status': transaction_status.FINISHED}
     transaction = self.database.transactions.find_and_modify(
       {'_id': id},
-      {'$set': {'status': transaction_status.FINISHED}},
-      new = True,
+      {'$set': diff},
+      new = False,
     )
     if transaction is None:
       self.not_found()
-    self.__update_transaction_time(
-      transaction['recipient_id'], ['received_ghost', 'received'])
-
-    self.notifier.notify_some(
-      notifier.PEER_TRANSACTION,
-      recipient_ids = {transaction['sender_id'],
-                       transaction['recipient_id']},
-      message = transaction,
-    )
-    return {}
+    if transaction['status'] != transaction_status.FINISHED:
+      self.__update_transaction_stats(
+        transaction['recipient_id'],
+        counts = ['received_ghost', 'received'],
+        time = False)
+      self.__update_transaction_stats(
+        transaction['sender_id'],
+        counts = ['reached_peer', 'reached'],
+        time = False)
+      self.notifier.notify_some(
+        notifier.PEER_TRANSACTION,
+        recipient_ids = {transaction['sender_id'],
+                         transaction['recipient_id']},
+        message = transaction,
+      )
+      return {'status': transaction_status.FINISHED}
+    else:
+      return {}
 
   @api('/transaction/<id>')
   def transaction_view(self, id: bson.ObjectId, key = None):
@@ -273,7 +282,9 @@ class Mixin:
         }
 
       transaction_id = self.database.transactions.insert(transaction)
-      self.__update_transaction_time(sender, ['sent_peer', 'sent'])
+      self.__update_transaction_stats(sender,
+                                      counts = ['sent_peer', 'sent'],
+                                      time = True)
 
       if not peer_email:
         peer_email = recipient['email']
@@ -303,21 +314,18 @@ class Mixin:
           'recipient_is_ghost': is_ghost,
           })
 
-  def __update_transaction_time(self, user, counts = []):
+  def __update_transaction_stats(self, user, time = True, counts = None):
     if isinstance(user, dict):
       user = user['_id']
-    counts.append('total')
-    self.database.users.update(
-      {'_id': user},
-      {
-        '$set':
-        {
-          'last_transaction.time': datetime.datetime.utcnow(),
-        },
-        '$inc':
-        dict(('transactions.%s' % field, 1) for field in counts),
-      })
-
+    update = {}
+    if time:
+      update.setdefault('$set', {})
+      update['$set']['last_transaction.time'] = self.now
+    if counts is not None:
+      update.setdefault('$inc', {})
+      update['$inc'].update(
+        dict(('transactions.%s' % field, 1) for field in counts))
+    self.database.users.update({'_id': user}, update)
 
   @api('/transactions')
   @require_logged_in
@@ -437,7 +445,7 @@ class Mixin:
       device_id = uuid.UUID(device_id)
       if str(device_id) not in user['devices']:
         raise error.Error(error.DEVICE_DOESNT_BELONG_TO_YOU)
-      self.__update_transaction_time(user)
+      self.__update_transaction_stats(user, time = True)
       return {
         'recipient_fullname': user['fullname'],
         'recipient_device_name' : device_name,
@@ -599,8 +607,14 @@ class Mixin:
         diff.update(self.cloud_cleanup_transaction(
           transaction = transaction))
       elif status == transaction_status.FINISHED:
-        self.__update_transaction_time(
-          transaction['recipient_id'], ['received_peer', 'received'])
+        self.__update_transaction_stats(
+          transaction['recipient_id'],
+          counts = ['received_peer', 'received'],
+          time = True)
+        self.__update_transaction_stats(
+          transaction['sender_id'],
+          counts = ['reached_peer', 'reached'],
+          time = False)
       diff.update({
         'status': status,
         'mtime': time.time(),

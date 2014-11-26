@@ -176,7 +176,9 @@ class Mixin:
       }
 
       link_id = self.database.links.insert(link)
-      self.__update_transaction_time(user, ['sent_link', 'sent'])
+      self.__update_transaction_stats(user,
+                                      counts = ['sent_link', 'sent'],
+                                      time = True)
 
       credentials = self._get_aws_credentials(user, link_id)
       if credentials is None:
@@ -387,6 +389,11 @@ class Mixin:
           new = True,
           multi = False,
         )
+        if link['click_count'] == 1:
+          self.__update_transaction_stats(
+            link['sender_id'],
+            counts = ['reached_link', 'reached'],
+            time = False)
       web_link = self.__client_link(link)
       owner_link = self.__owner_link(link)
       self.notifier.notify_some(
