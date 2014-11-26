@@ -832,6 +832,7 @@ def configure(cxx_toolkit = None,
     for (name,args) in [
         ('basic.py', None),
         ('login', None),
+        ('links', None),
         ('transfer', ['TestBasicTransfer'])
     ]:
       test_node = drake.Node('tests/%s' % name)
