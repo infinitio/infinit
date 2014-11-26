@@ -1365,11 +1365,14 @@ operator <<(std::ostream& out,
     case gap_transaction_canceled:
       out << "canceled";
       break;
-    case gap_transaction_rejected :
+    case gap_transaction_rejected:
       out << "rejected ";
       break;
-    case gap_transaction_deleted :
+    case gap_transaction_deleted:
       out << "deleted ";
+      break;
+    case gap_transaction_paused:
+      out << "paused";
       break;
   }
   return out;
