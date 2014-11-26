@@ -38,10 +38,6 @@ namespace surface
       public:
         void
         accept() override;
-        bool
-        pause() override;
-        void
-        interrupt() override;
         void
         reset() override;
         surface::gap::onboarding::ReceiveMachine&

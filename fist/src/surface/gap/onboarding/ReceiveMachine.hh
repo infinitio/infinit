@@ -64,9 +64,6 @@ namespace surface
         void
         accept() override;
 
-        bool
-        pause() override;
-
         virtual
         void
         reject() override;
@@ -74,9 +71,6 @@ namespace surface
         virtual
         std::unique_ptr<frete::RPCFrete>
         rpcs(infinit::protocol::ChanneledStream& socket) override;
-
-        void
-        interrupt() override;
 
         // Overload because it talks to meta.
         void

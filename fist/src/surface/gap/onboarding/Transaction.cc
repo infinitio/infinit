@@ -116,19 +116,6 @@ namespace surface
         }
       }
 
-      bool
-      Transaction::pause()
-      {
-        return this->_machine->pause();
-      }
-
-      void
-      Transaction::interrupt()
-      {
-        this->notify_peer_unreachable();
-        this->_machine->interrupt();
-      }
-
       void
       Transaction::reset()
       {}
