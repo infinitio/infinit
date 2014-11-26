@@ -315,7 +315,10 @@ namespace surface
                std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
                  this->_data))
       {
-        if (device == sender_device)
+        // Can be a link we forgot everything about. In that case new
+        // notifications can happen only if it's finished.
+        if (device == sender_device
+          && this->_data->status != infinit::oracles::Transaction::Status::finished)
         {
           ELLE_WARN("%s: can't restore link transaction from server (%s)",
                     *this, *link_data);
