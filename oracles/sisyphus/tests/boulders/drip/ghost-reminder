@@ -30,30 +30,6 @@ class GhostReminder(sisyphus.boulders.drip.GhostReminder):
     return sisyphus.boulders.drip.Drip._pick_template(
       self, template, users)
 
-
-def check_mail(mails, sender, recipient):
-  assert len(mails) == 1
-  mail = mails[0]
-  assert mail[0] == recipient
-  content = mail[1]
-  assert content['SENDER_EMAIL'] == sender
-  assert content['RECIPIENT_EMAIL'] == recipient
-  assert 'SENDER_AVATAR' in content
-  assert 'SENDER_FULLNAME' in content
-  assert 'TRANSACTION_FILENAME' in content
-  assert 'TRANSACTION_FILES_COUNT_OTHER' in content
-  assert 'TRANSACTION_ID' in content
-  assert 'TRANSACTION_KEY' in content
-  assert 'TRANSACTION_MESSAGE' in content
-
-def create_transaction(sender, recipient, files = ['foobar']):
-  tid = meta.transaction_create(
-    sender, recipient, files, 1, 42, False, device)
-  tid = tid['created_transaction_id']
-  meta._transaction_update(tid, statuses['initialized'],
-                             'device', None, sender)
-  return tid
-
 with mongobox.MongoBox() as mongo:
   with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
     mandrill = Mandrill()
@@ -77,13 +53,13 @@ with mongobox.MongoBox() as mongo:
     sender = meta.user_register('sender@infinit.io',
                                 '*' * 64, 'Foo Bar')
     ghost_email = 'ghost@infinit.io'
-    tid = create_transaction(sender, ghost_email)
+    tid = transaction_create(meta, sender, ghost_email)
     ghost = meta.user_by_email(ghost_email)
 
     # Create a real transsaction to test mongo queries complexity
     bystander = meta.user_register('bystander@infinit.io',
                                    '*' * 64, 'Foo Bar')
-    create_transaction(sender, 'bystander@infinit.io')
+    transaction_create(meta, sender, 'bystander@infinit.io')
 
     # Check nothing is sent for a fresh transaction
     sisy.cron()
@@ -106,7 +82,7 @@ with mongobox.MongoBox() as mongo:
     # Check reminder 1 is sent 24h after upload
     forward(reminder.delay_first_reminder)
     sisy.cron()
-    check_mail(mandrill.emails,
+    check_mail_transaction(mandrill.emails,
                'sender@infinit.io', ghost_email)
     sisy.cron()
     assert not mandrill.emails
@@ -114,13 +90,13 @@ with mongobox.MongoBox() as mongo:
     # Check reminder 2 is sent 72h after upload
     forward(delay_diff)
     sisy.cron()
-    check_mail(mandrill.emails,
+    check_mail_transaction(mandrill.emails,
                'sender@infinit.io', ghost_email)
     sisy.cron()
     assert not mandrill.emails
 
     # Check reminder 1 is not sent for downloaded transactions
-    tid = create_transaction(sender, ghost_email)
+    tid = transaction_create(meta, sender, ghost_email)
     meta._transaction_update(tid, statuses['ghost_uploaded'],
                              device, None, sender)
     forward(reminder.delay_first_reminder * 2)
@@ -130,12 +106,13 @@ with mongobox.MongoBox() as mongo:
     assert not mandrill.emails
 
     # Check reminder 2 is not sent for downloaded transactions
-    tid = create_transaction(sender, ghost_email)
+    tid = transaction_create(meta, sender, ghost_email)
     meta._transaction_update(tid, statuses['ghost_uploaded'],
                              device, None, sender)
     forward(reminder.delay_first_reminder * 2)
     sisy.cron()
-    check_mail(mandrill.emails, 'sender@infinit.io', ghost_email)
+    check_mail_transaction(mandrill.emails,
+                           'sender@infinit.io', ghost_email)
     forward(
       reminder.delay_second_reminder - reminder.delay_first_reminder)
     assert not mandrill.emails
@@ -147,8 +124,10 @@ with mongobox.MongoBox() as mongo:
     with elle.log.log('test two recipients'):
       ghost_email_1 = 'ghost1@infinit.io'
       ghost_email_2 = 'ghost2@infinit.io'
-      tid_1 = create_transaction(sender, ghost_email_1, files = ['1'])
-      tid_2 = create_transaction(sender, ghost_email_2, files = ['2'])
+      tid_1 = transaction_create(meta, sender, ghost_email_1,
+                                 files = ['1'])
+      tid_2 = transaction_create(meta, sender, ghost_email_2,
+                                 files = ['2'])
       meta._transaction_update(tid_1, statuses['ghost_uploaded'],
                                device, None, sender)
       meta._transaction_update(tid_2, statuses['ghost_uploaded'],
@@ -174,8 +153,10 @@ with mongobox.MongoBox() as mongo:
 
     with elle.log.log('test same recipient twice'):
       ghost_email = 'lucky.ghost@infinit.io'
-      tid_1 = create_transaction(sender, ghost_email, files = ['A'])
-      tid_2 = create_transaction(sender, ghost_email, files = ['B'])
+      tid_1 = transaction_create(meta, sender, ghost_email,
+                                 files = ['A'])
+      tid_2 = transaction_create(meta, sender, ghost_email,
+                                 files = ['B'])
       meta._transaction_update(tid_1, statuses['ghost_uploaded'],
                                device, None, sender)
       meta._transaction_update(tid_2, statuses['ghost_uploaded'],

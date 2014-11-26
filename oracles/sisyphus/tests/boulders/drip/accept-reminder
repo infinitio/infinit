@@ -30,22 +30,6 @@ class AcceptReminder(sisyphus.boulders.drip.AcceptReminder):
     return sisyphus.boulders.drip.Drip._pick_template(
       self, template, users)
 
-
-def check_mail(mails, sender, recipient):
-  assert len(mails) == 1
-  mail = mails[0]
-  assert mail[0] == recipient
-  content = mail[1]
-  assert content['SENDER_EMAIL'] == sender
-  assert content['RECIPIENT_EMAIL'] == recipient
-  assert 'SENDER_AVATAR' in content
-  assert 'SENDER_FULLNAME' in content
-  assert 'TRANSACTION_FILENAME' in content
-  assert 'TRANSACTION_FILES_COUNT_OTHER' in content
-  assert 'TRANSACTION_ID' in content
-  assert 'TRANSACTION_KEY' in content
-  assert 'TRANSACTION_MESSAGE' in content
-
 with mongobox.MongoBox() as mongo:
   with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
     mandrill = Mandrill()
@@ -86,15 +70,17 @@ with mongobox.MongoBox() as mongo:
     # Check first mail is sent
     forward(reminder.delay_first_reminder * 1.5)
     sisy.cron()
-    check_mail(mandrill.emails,
-               'sender@infinit.io', 'recipient@infinit.io')
+    check_mail_transaction(mandrill.emails,
+                           'sender@infinit.io',
+                           'recipient@infinit.io')
     sisy.cron()
     assert not mandrill.emails
 
     # Check second mail is sent
     forward(delay_diff)
     sisy.cron()
-    check_mail(mandrill.emails,
-               'sender@infinit.io', 'recipient@infinit.io')
+    check_mail_transaction(mandrill.emails,
+                           'sender@infinit.io',
+                           'recipient@infinit.io')
     sisy.cron()
     assert not mandrill.emails
