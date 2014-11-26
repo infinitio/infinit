@@ -682,3 +682,78 @@ class DelightGhost(Drip):
       transaction['sender_id'])
     assert sender is not None
     return self.user_vars('sender', sender)
+
+
+#
+#    -> 1 -> 2
+#
+
+class ConfirmSignup(Drip):
+
+  def __init__(self, sisyphus):
+    super().__init__(sisyphus, 'confirm-signup', 'users')
+    # Find user in any status without scanning all ghosts, deleted
+    # users etc.
+    self.sisyphus.mongo.meta.users.ensure_index(
+      [
+        ('emailing.confirm-signup.state', pymongo.ASCENDING),
+        ('register_status', pymongo.ASCENDING),
+        ('email_confirmed', pymongo.ASCENDING),
+        ('creation_time', pymongo.ASCENDING),
+      ])
+
+  @property
+  def now(self):
+    return datetime.datetime.utcnow()
+
+  def run(self):
+    response = {}
+    # -> 1
+    transited = self.transition(
+      None,
+      '1',
+      {
+        # Fully registered
+        'register_status': 'ok',
+        # Unconfirmed email
+        'email_confirmed': False,
+        # Registered more than 3 day ago.
+        'creation_time':
+        {
+          '$lt': self.now - self.delay_first_reminder,
+        },
+      },
+    )
+    response.update(transited)
+    # 1 -> 2
+    transited = self.transition(
+      '1',
+      '2',
+      {
+        # Fully registered
+        'register_status': 'ok',
+        # Unconfirmed email
+        'email_confirmed': False,
+        # Registered more than 7 day ago.
+        'creation_time':
+        {
+          '$lt': self.now - self.delay_second_reminder,
+        },
+      },
+    )
+    response.update(transited)
+    return response
+
+  def _pick_template(self, template, users):
+    return [
+      (template, [u for u in users if u[0]['features']['drip_confirm-signup_template'] == 'a']),
+      (None, [u for u in users if u[0]['features']['drip_confirm-signup_template'] == 'control']),
+    ]
+
+  @property
+  def delay_first_reminder(self):
+    return datetime.timedelta(days = 3)
+
+  @property
+  def delay_second_reminder(self):
+    return datetime.timedelta(days = 7)
