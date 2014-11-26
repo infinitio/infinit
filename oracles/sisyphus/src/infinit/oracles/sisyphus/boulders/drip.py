@@ -614,7 +614,9 @@ class DelightRecipient(Drip):
                            statuses['finished']]},
       }
     )
-    assert transaction is not None
+    if transaction is None:
+      raise Exception(
+        'unable to find received transaction for %s' % user['_id'])
     sender = self.sisyphus.mongo.meta.users.find_one(
       transaction['sender_id'])
     assert sender is not None
