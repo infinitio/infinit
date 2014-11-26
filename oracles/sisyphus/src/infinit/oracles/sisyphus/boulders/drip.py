@@ -757,3 +757,94 @@ class ConfirmSignup(Drip):
   @property
   def delay_second_reminder(self):
     return datetime.timedelta(days = 7)
+
+
+#
+# -> 1 -> 2
+#
+
+# FIXME: factor with GhostReminder
+class AcceptReminder(Drip):
+
+  def __init__(self, sisyphus):
+    super().__init__(sisyphus, 'accept-reminder', 'transactions')
+    self.sisyphus.mongo.meta.transactions.ensure_index(
+      [
+        # Find transactions in any bucket
+        ('emailing.accept-reminder.state', pymongo.ASCENDING),
+        # That is not ghost
+        ('is_ghost', pymongo.ASCENDING),
+        # In status initialized
+        ('status', pymongo.ASCENDING),
+        # Modified a certain time ago
+        ('modification_time', pymongo.ASCENDING),
+      ])
+
+  @property
+  def now(self):
+    return datetime.datetime.utcnow()
+
+  @property
+  def delay_first_reminder(self):
+    return datetime.timedelta(days = 1)
+
+  @property
+  def delay_second_reminder(self):
+    return datetime.timedelta(days = 3)
+
+  def run(self):
+    response = {}
+    # -> 1
+    transited = self.transition(
+      None,
+      '1',
+      {
+        'is_ghost': False,
+        'status': statuses['initialized'],
+        'modification_time':
+        {
+          '$lt': self.now - self.delay_first_reminder,
+        },
+      },
+    )
+    response.update(transited)
+    # 1 -> 2
+    transited = self.transition(
+      '1',
+      '2',
+      {
+        'is_ghost': False,
+        'status': statuses['initialized'],
+        'modification_time':
+        {
+          '$lt': self.now - self.delay_second_reminder,
+        },
+      },
+    )
+    response.update(transited)
+    return response
+
+  @property
+  def fields(self):
+    return ['recipient_id', 'sender_id',
+            'files', 'message', 'files_count', 'transaction_hash']
+
+  def _user(self, transaction):
+    recipient = transaction['recipient_id']
+    return self.sisyphus.mongo.meta.users.find_one(recipient)
+
+  def _vars(self, transaction, recipient):
+    sender_id = transaction['sender_id']
+    sender = self.sisyphus.mongo.meta.users.find_one(
+      sender_id, fields = self.user_fields)
+    res = {}
+    res.update(self.user_vars('sender', sender))
+    res.update(self.user_vars('recipient', recipient))
+    res.update(self.transaction_vars('transaction', transaction))
+    return res
+
+  def _pick_template(self, template, users):
+    return [
+      (template, [u for u in users if u[0]['features']['drip_accept-reminder_template'] == 'a']),
+      (None, [u for u in users if u[0]['features']['drip_accept-reminder_template'] == 'control']),
+    ]

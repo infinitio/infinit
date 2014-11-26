@@ -51,6 +51,7 @@ def configure(
 
     check = drake.Rule('check')
     for name in (
+        'boulders/drip/accept-reminder',
         'boulders/drip/confirm-signup',
         'boulders/drip/delight-ghost',
         'boulders/drip/delight-recipient',

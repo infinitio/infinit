@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+
+# utils first, beware of system OpenSSL.
+from utils import *
+
+import elle.log
+
+from infinit.oracles.transaction import statuses
+
+import sisyphus
+import sisyphus.boulders.drip
+
+ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.boulders.drip'
+
+class AcceptReminder(sisyphus.boulders.drip.AcceptReminder):
+
+  def __init__(self, sisyphus):
+    super().__init__(sisyphus)
+    self.__now = datetime.datetime.utcnow()
+
+  @property
+  def now(self):
+    return self.__now
+
+  @now.setter
+  def now(self, value):
+    self.__now = value
+
+  def _pick_template(self, template, users):
+    return sisyphus.boulders.drip.Drip._pick_template(
+      self, template, users)
+
+
+def check_mail(mails, sender, recipient):
+  assert len(mails) == 1
+  mail = mails[0]
+  assert mail[0] == recipient
+  content = mail[1]
+  assert content['SENDER_EMAIL'] == sender
+  assert content['RECIPIENT_EMAIL'] == recipient
+  assert 'SENDER_AVATAR' in content
+  assert 'SENDER_FULLNAME' in content
+  assert 'TRANSACTION_FILENAME' in content
+  assert 'TRANSACTION_FILES_COUNT_OTHER' in content
+  assert 'TRANSACTION_ID' in content
+  assert 'TRANSACTION_KEY' in content
+  assert 'TRANSACTION_MESSAGE' in content
+
+with mongobox.MongoBox() as mongo:
+  with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
+    mandrill = Mandrill()
+    sisy = sisyphus.Sisyphus(mongo_port = mongo.port,
+                                 mandrill = mandrill)
+    gestapo(sisy._Sisyphus__mongo)
+    reminder = AcceptReminder(sisy)
+
+    def forward(duration):
+      reminder.now += duration
+      meta.now = reminder.now
+    delay_diff = \
+      reminder.delay_second_reminder - reminder.delay_first_reminder
+
+    # Check nothing is sent with no users
+    sisy.cron()
+    assert not mandrill.emails
+
+    device = 'device'
+    sender = meta.user_register('sender@infinit.io',
+                                '*' * 64, 'Foo Bar')
+    recipient = meta.user_register('recipient@infinit.io',
+                                '*' * 64, 'Foo Bar')
+    # Create a ghost transsaction to test mongo queries complexity
+    ghost_email = 'ghost@infinit.io'
+    transaction_create(meta, sender, ghost_email)
+    # Create transaction
+    tid = transaction_create(meta, sender, recipient['email'])
+    # Check nothing is sent for a fresh transaction
+    sisy.cron()
+    assert not mandrill.emails
+    # Check timer begins after initialization
+    forward(reminder.delay_second_reminder * 2)
+    meta._transaction_update(tid, statuses['initialized'],
+                             'device', None, sender)
+    sisy.cron()
+    assert not mandrill.emails
+    # Check first mail is sent
+    forward(reminder.delay_first_reminder * 1.5)
+    sisy.cron()
+    check_mail(mandrill.emails,
+               'sender@infinit.io', 'recipient@infinit.io')
+    sisy.cron()
+    assert not mandrill.emails
+
+    # Check second mail is sent
+    forward(delay_diff)
+    sisy.cron()
+    check_mail(mandrill.emails,
+               'sender@infinit.io', 'recipient@infinit.io')
+    sisy.cron()
+    assert not mandrill.emails
