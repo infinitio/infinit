@@ -475,6 +475,13 @@ public:
     return send_files(peer, files, message);
   }
 
+  uint32_t
+  wrap_create_link(std::vector<std::string> files,
+    const std::string& message)
+  {
+    return create_link(files, message);
+  }
+
   std::string
   wrap_transaction_status(unsigned int id)
   {
@@ -579,6 +586,7 @@ BOOST_PYTHON_MODULE(state)
     .def("device_status", &State::device_status)
     .def("transactions", (const State::Transactions& (State::*)() const)&State::transactions, by_value())
     .def("send_files", &PythonState::wrap_send_files)
+    .def("create_link", &PythonState::wrap_create_link)
     .def("find_transaction", &PythonState::find_transaction)
     .def("transactions", static_cast<
       State::Transactions const& (State::*)() const>(&State::transactions),

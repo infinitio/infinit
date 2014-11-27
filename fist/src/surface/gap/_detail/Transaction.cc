@@ -7,6 +7,7 @@
 #include <elle/Error.hh>
 #include <elle/container/vector.hh>
 #include <elle/memory.hh>
+#include <elle/os/environ.hh>
 #include <elle/os/path.hh>
 #include <elle/serialization/json.hh>
 
@@ -232,6 +233,11 @@ namespace surface
     void
     State::_link_transaction_resync()
     {
+      if (!elle::os::getenv("INFINIT_DISABLE_LINK_SYNC", "").empty())
+      {
+        ELLE_WARN("%s: link transaction sync disabled", *this);
+        return;
+      }
       ELLE_TRACE("%s: synchronize link transactions from meta", *this)
         for (auto& transaction: this->meta().links())
         {

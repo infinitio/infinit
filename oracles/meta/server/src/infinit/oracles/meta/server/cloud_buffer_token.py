@@ -286,7 +286,7 @@ def generate_get_url(region,
                      bucket_name,
                      transaction_id,
                      file_path,
-                     valid_days = 15):
+                     valid_days = 3650):
   """ Generate a GET URL that can access relative 'file_path' in bucket
       using the federated token we produced
   """

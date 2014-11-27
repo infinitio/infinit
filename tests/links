@@ -1,0 +1,64 @@
+#! /usr/bin/env python3
+
+import infinit.oracles.servers
+import os
+import state
+import utils
+import unittest
+
+import reactor
+import datetime
+
+import requests
+import json
+
+import pymongo
+import pymongo.collection
+import pymongo.database
+import pymongo.errors
+
+from utils import expect_raise
+
+import requests
+
+class TestLinks(unittest.TestCase):
+  def test_finish_notif(self):
+    with infinit.oracles.servers.Oracles(
+      mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
+      with utils.TemporaryData('foo', 1000) as tmp:
+        s = o.state()
+        s.login('mefyl@infinit.io',
+                 state.hash_password('mefyl@infinit.io', 'mefyl'))
+        id = s.create_link([tmp.full_path], "foo")
+        for i in range(100):
+          s.poll()
+          reactor.sleep(datetime.timedelta(milliseconds = 100))
+          if  s.transaction_status(id) == "transaction_finished":
+            break
+        self.assertEqual(s.transaction_status(id) ,"transaction_finished")
+        tr = s.transaction(id)
+        tid = tr['id']
+        s.logout()
+        s.login('mefyl@infinit.io',
+                 state.hash_password('mefyl@infinit.io', 'mefyl'))
+        for i in range(100):
+          s.poll()
+          reactor.sleep(datetime.timedelta(milliseconds = 10))
+        self.assertNotEqual(s.find_transaction(tid), -1)
+        s.logout()
+        os.environ['INFINIT_DISABLE_LINK_SYNC'] = '1'
+        s.login('mefyl@infinit.io',
+                 state.hash_password('mefyl@infinit.io', 'mefyl'))
+        self.assertEqual(s.find_transaction(tid), -1)
+        h = tr['share_link'].split('/')[-1]
+        r = requests.get('%s://%s:%s/link/%s' % (o.meta + (h,)))
+        self.assertEqual(r.status_code, 200)
+        for i in range(100):
+          s.poll()
+          reactor.sleep(datetime.timedelta(milliseconds = 10))
+        tindex = s.find_transaction(tid)
+        self.assertNotEqual(tindex, -1)
+        tr = s.transaction(tindex)
+        self.assertEqual(s.transaction_status(tindex) ,"transaction_on_other_device")
+        self.assertEqual(tr['click_count'], 1)
+utils.run(unittest.main)

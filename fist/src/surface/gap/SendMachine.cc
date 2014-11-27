@@ -385,8 +385,12 @@ namespace surface
             auto buffer = file.read((int64_t)local_chunk * (int64_t)chunk_size, chunk_size);
             auto size = buffer.size();
             if (size != chunk_size  && local_chunk != chunk_count -1)
-              ELLE_WARN("%s: chunk %s/%s is too small: %s bytes",
-                        *this, local_chunk, chunk_count, size);
+            {
+              boost::system::error_code erc;
+              ELLE_WARN("%s: chunk %s/%s is too small: %s bytes. File size: %s",
+                        *this, local_chunk, chunk_count, size,
+                        boost::filesystem::file_size(source_file_path, erc));
+            }
             this->_plain_progress_chunks[local_chunk] = 0;
             std::string etag = handler.multipart_upload(
               source_file_name, upload_id,
