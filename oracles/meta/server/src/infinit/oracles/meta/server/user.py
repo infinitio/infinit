@@ -452,7 +452,10 @@ class Mixin:
           '$set': {'email_confirmed': True}
         })
       if res is None:
-        self.forbidden(403, 'invalid confirmation hash or email')
+        self.forbidden({
+          'user': user,
+          'reason': 'invalid confirmation hash or email',
+        })
       return {}
 
   # Deprecated
