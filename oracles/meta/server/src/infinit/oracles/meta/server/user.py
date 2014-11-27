@@ -1418,7 +1418,7 @@ class Mixin:
     small_image = user.get('small_avatar')
     if small_image:
       from bottle import response
-      response.content_type = 'image/png'
+      response.content_type = 'image/jpeg'
       return bytes(small_image)
     else:
       image = user.get('avatar')
@@ -1429,7 +1429,7 @@ class Mixin:
         image_data.seek(0)
         small_image = self._small_avatar(Image.open(image_data))
         small_out = BytesIO()
-        small_image.save(small_out, 'PNG')
+        small_image.save(small_out, 'JPEG')
         small_out.seek(0)
         res = self.database.users.find_and_modify(
           {'_id': user['_id']},
@@ -1439,7 +1439,7 @@ class Mixin:
           new = True,
           fields = {'small_avatar': True, '_id': False})['small_avatar']
         from bottle import response
-        response.content_type = 'image/png'
+        response.content_type = 'image/jpeg'
         return bytes(res)
       else:
         if no_place_holder:
