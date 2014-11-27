@@ -16,7 +16,7 @@ from . import cloud_buffer_token, error, notifier, regexp, conf, invitation, mai
 #
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.LinkGeneration'
 
-short_host = 'http://inft.ly'
+short_host = 'https://inft.ly'
 default_alphabet = '23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ'
 encoded_hash_length = 7
 link_lifetime_days = 1 # Days that each S3 request link is valid.
