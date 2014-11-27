@@ -44,7 +44,6 @@ namespace infinit
       s.serialize("sender_id", this->sender_id);
       s.serialize("share_link", this->share_link);
       s.serialize("status", this->status, elle::serialization::as<int>());
-      s.serialize("sender_device_id", this->sender_device_id);
     }
 
     using elle::serialization::Hierarchy;
