@@ -1503,7 +1503,10 @@ class Mixin:
       action = {update_action: {'connected_devices': str(device_id)}}
       # If we're connecting a device, then we are connected.
       if status:
-        action['$set'] = {'connected': True}
+        action['$set'] = {
+          'connected': True,
+          'connection_time': self.now,
+        }
       self.database.users.update(
         {'_id': user_id},
         action,
@@ -1516,7 +1519,13 @@ class Mixin:
             '_id': user_id,
             'connected_devices': {'$size': 0}
           },
-          {'$set': {'connected': False}}
+          {
+            '$set':
+            {
+              'connected': False,
+              'disconnection_time': self.now,
+            }
+          }
         )
       # XXX:
       # This should not be in user.py, but it's the only place
