@@ -175,7 +175,7 @@ class Mixin:
         'status': transaction_status.CREATED, # Use same enum as transactions.
       }
 
-      link_id = self.database.links.insert(link)
+      link_id = self.database.links.save(link)
       self.__update_transaction_stats(user,
                                       counts = ['sent_link', 'sent'],
                                       time = True)
