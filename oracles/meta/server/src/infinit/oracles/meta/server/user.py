@@ -11,7 +11,7 @@ import elle.log
 import papier
 
 from .plugins.response import response, Response
-from .utils import api, require_logged_in, require_admin, require_logged_in_or_admin, hash_pasword, json_value, require_key
+from .utils import api, require_logged_in, require_admin, require_logged_in_or_admin, hash_pasword, json_value, require_key, key
 from . import error, notifier, regexp, conf, invitation, mail
 
 from pymongo import DESCENDING
@@ -395,9 +395,9 @@ class Mixin:
         template_name = 'confirm-sign-up',
         merge_vars = {
           user['email']: {
-            'hash': str(hash),
-            'fullname': user['fullname'],
-            'user_id': str(user['_id']),
+            'CONFIRM_KEY': key('/users/%s/confirm-email' % user['_id']),
+            'USER_FULLNAME': user['fullname'],
+            'USER_ID': str(user['_id']),
           }}
       )
       return user
