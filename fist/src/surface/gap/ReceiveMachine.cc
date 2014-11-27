@@ -54,9 +54,17 @@ namespace surface
         true);
 
       // Exception.
-      this->_machine.transition_add_catch(_wait_for_decision_state, _fail_state);
-      this->_machine.transition_add_catch(_accept_state, _fail_state);
-      this->_machine.transition_add_catch(_reject_state, _fail_state);
+      auto action = [this] ( std::exception_ptr e)
+        {
+          if (this->transaction().failure_reason().empty())
+            this->transaction().failure_reason(elle::exception_string(e));
+        };
+      this->_machine.transition_add_catch(_wait_for_decision_state, _fail_state)
+        .action_exception(action);
+      this->_machine.transition_add_catch(_accept_state, _fail_state)
+        .action_exception(action);
+      this->_machine.transition_add_catch(_reject_state, _fail_state)
+        .action_exception(action);
     }
 
     bool
