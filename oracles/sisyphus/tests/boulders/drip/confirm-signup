@@ -36,6 +36,7 @@ def check_mail(mails, recipient):
   mail = mails[0]
   assert mail[0] == recipient
   content = mail[1]
+  assert 'CONFIRM_KEY' in content
 
 with mongobox.MongoBox() as mongo:
   with Meta(mongo_port = mongo.port, enable_emails = False) as meta:

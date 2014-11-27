@@ -758,6 +758,11 @@ class ConfirmSignup(Drip):
   def delay_second_reminder(self):
     return datetime.timedelta(days = 7)
 
+  def _vars(self, elt, user):
+    return {
+      'CONFIRM_KEY': key('/users/%s/confirm-email' % user['_id']),
+    }
+
 
 #
 # -> 1 -> 2
