@@ -176,9 +176,11 @@ class Mixin:
       }
 
       link_id = self.database.links.save(link)
-      self.__update_transaction_stats(user,
-                                      counts = ['sent_link', 'sent'],
-                                      time = True)
+      self.__update_transaction_stats(
+        user,
+        counts = ['sent_link', 'sent'],
+        pending = link,
+        time = True)
 
       credentials = self._get_aws_credentials(user, link_id)
       if credentials is None:
@@ -284,6 +286,8 @@ class Mixin:
                          (link['status'], status))
       if link['sender_id'] != user['_id']:
         self.forbidden()
+      if status in transaction_status.final:
+        self.__complete_transaction_stats(user, link)
       link = self.database.links.find_and_modify(
         {'_id': id},
         {

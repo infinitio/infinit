@@ -495,3 +495,11 @@ class User(Client):
                 'device_id': str(self.device_id),
                 'device_name': self.device_name,
               })
+
+  # FIXME: remove when link & peer transactions are merged
+  def link_update(self, link, status):
+    self.post('link/%s' % link['id'],
+              {
+                'progress': 1,
+                'status': status,
+              })

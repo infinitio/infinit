@@ -282,9 +282,11 @@ class Mixin:
         }
 
       transaction_id = self.database.transactions.insert(transaction)
-      self.__update_transaction_stats(sender,
-                                      counts = ['sent_peer', 'sent'],
-                                      time = True)
+      self.__update_transaction_stats(
+        sender,
+        counts = ['sent_peer', 'sent'],
+        pending = transaction,
+        time = True)
 
       if not peer_email:
         peer_email = recipient['email']
@@ -314,7 +316,11 @@ class Mixin:
           'recipient_is_ghost': is_ghost,
           })
 
-  def __update_transaction_stats(self, user, time = True, counts = None):
+  def __update_transaction_stats(self,
+                                 user,
+                                 time = True,
+                                 counts = None,
+                                 pending = None):
     if isinstance(user, dict):
       user = user['_id']
     update = {}
@@ -325,7 +331,25 @@ class Mixin:
       update.setdefault('$inc', {})
       update['$inc'].update(
         dict(('transactions.%s' % field, 1) for field in counts))
+    if pending is not None:
+      update.setdefault('$set', {})
+      update.setdefault('$push', {})
+      update['$push']['transactions.pending'] = pending['_id']
+      update['$set']['transactions.pending_has'] = True
     self.database.users.update({'_id': user}, update)
+
+  def __complete_transaction_stats(self, user, transaction):
+    if isinstance(user, dict):
+      user = user['_id']
+    res = self.database.users.update(
+      {'_id': user},
+      {'$pull': {'transactions.pending': transaction['_id']}},
+    )
+    if res['n']:
+      self.database.users.update(
+        {'_id': user, 'transactions.pending': []},
+        {'$set': {'transactions.pending_has': False}},
+      )
 
   @api('/transactions')
   @require_logged_in
@@ -445,7 +469,11 @@ class Mixin:
       device_id = uuid.UUID(device_id)
       if str(device_id) not in user['devices']:
         raise error.Error(error.DEVICE_DOESNT_BELONG_TO_YOU)
-      self.__update_transaction_stats(user, time = True)
+      self.__update_transaction_stats(
+        user,
+        counts = ['accepted_peer', 'accepted'],
+        pending = transaction,
+        time = True)
       return {
         'recipient_fullname': user['fullname'],
         'recipient_device_name' : device_name,
@@ -623,6 +651,11 @@ class Mixin:
       # Don't update with an empty dictionary: it would empty the
       # object.
       if diff:
+        if status in transaction_status.final or \
+           status is transaction_status.statuses['ghost_uploaded']:
+          for i in ['recipient_id', 'sender_id']:
+            self.__complete_transaction_stats(transaction[i],
+                                              transaction)
         transaction = self.database.transactions.find_and_modify(
           {'_id': transaction['_id']},
           {'$set': diff},
