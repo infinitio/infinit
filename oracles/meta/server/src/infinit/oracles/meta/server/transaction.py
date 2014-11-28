@@ -241,7 +241,7 @@ class Mixin:
 
       if recipient is None:
         return self.fail(error.USER_ID_NOT_VALID)
-      is_ghost = recipient['register_status'] == 'ghost'
+      is_ghost = recipient['register_status'] in ['ghost', 'deleted']
       elle.log.debug("transaction recipient has id %s" % recipient['_id'])
       _id = sender['_id']
 
