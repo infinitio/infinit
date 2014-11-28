@@ -507,7 +507,7 @@ class DelightSender(Drip):
     self.sisyphus.mongo.meta.users.ensure_index(
       [
         ('emailing.delight-sender.state', pymongo.ASCENDING),
-        ('transactions.sent', pymongo.ASCENDING),
+        ('transactions.reached', pymongo.ASCENDING),
       ])
 
   @property
@@ -521,7 +521,7 @@ class DelightSender(Drip):
       None,
       '1',
       {
-        'transactions.sent': {'$gte': self.threshold_first},
+        'transactions.reached': {'$gte': self.threshold_first},
       },
     )
     response.update(transited)
@@ -530,7 +530,7 @@ class DelightSender(Drip):
       '1',
       '2',
       {
-        'transactions.sent': {'$gte': self.threshold_second},
+        'transactions.reached': {'$gte': self.threshold_second},
       },
     )
     response.update(transited)
@@ -539,7 +539,7 @@ class DelightSender(Drip):
       '2',
       '3',
       {
-        'transactions.sent': {'$gte': self.threshold_third},
+        'transactions.reached': {'$gte': self.threshold_third},
       },
     )
     response.update(transited)
