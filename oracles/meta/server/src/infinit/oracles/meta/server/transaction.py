@@ -98,6 +98,9 @@ class Mixin:
 
   @api('/transactions/<id>/downloaded', method='POST')
   @require_key
+  def transaction_download_api(self, id: bson.ObjectId):
+    return self.transaction_download(id)
+
   def transaction_download(self, id: bson.ObjectId):
     diff = {'status': transaction_status.FINISHED}
     transaction = self.database.transactions.find_and_modify(
@@ -106,7 +109,10 @@ class Mixin:
       new = False,
     )
     if transaction is None:
-      self.not_found()
+      self.not_found({
+        'reason': 'transaction %s not found' % id,
+        'transaction_id': id,
+      })
     if transaction['status'] != transaction_status.FINISHED:
       self.__update_transaction_stats(
         transaction['recipient_id'],
@@ -122,7 +128,7 @@ class Mixin:
                          transaction['recipient_id']},
         message = transaction,
       )
-      return {'status': transaction_status.FINISHED}
+      return diff
     else:
       return {}
 
@@ -235,7 +241,7 @@ class Mixin:
 
       if recipient is None:
         return self.fail(error.USER_ID_NOT_VALID)
-      is_ghost = recipient['register_status'] == 'ghost'
+      is_ghost = recipient['register_status'] in ['ghost', 'deleted']
       elle.log.debug("transaction recipient has id %s" % recipient['_id'])
       _id = sender['_id']
 
