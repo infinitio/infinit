@@ -18,7 +18,7 @@ class MailService(NoOpMailer):
     for entry in message['merge_vars'][0]['vars']:
       merges[entry['name']] = entry['content']
     if template_message == 'confirm-sign-up':
-      self.email_confirmation_hash = merges['hash']
+      self.email_confirmation_hash = merges['CONFIRM_KEY']
     elif template_message == 'reconfirm-sign-up':
       self.email_reconfirmation_hash = merges['hash']
     elif template_message == 'lost-password':
@@ -63,9 +63,9 @@ with Meta(enable_emails = True, unconfirmed_email_leeway = 0) as meta:
     raise Exception('invalid login should have yield 403 forbidden')
 
   res = u.post('users/%s/confirm-email' % email,
-               {'hash': meta.mailer.email_confirmation_hash})
+               {'key': meta.mailer.email_confirmation_hash})
   res = u.post('users/%s/confirm-email' % email,
-               {'hash': meta.mailer.email_confirmation_hash})
+               {'key': meta.mailer.email_confirmation_hash})
   u.login()
 
 # Reask hash.

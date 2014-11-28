@@ -44,6 +44,10 @@ if options.mongo_host:
   args['mongo_host'] = options.mongo_host
 
 app = infinit.oracles.sisyphus.Sisyphus(**args)
+infinit.oracles.sisyphus.boulders.drip.AcceptReminder(app)
+infinit.oracles.sisyphus.boulders.drip.ConfirmSignup(app)
+infinit.oracles.sisyphus.boulders.drip.DelightGhost(app)
+infinit.oracles.sisyphus.boulders.drip.DelightRecipient(app)
 infinit.oracles.sisyphus.boulders.drip.DelightSender(app)
 infinit.oracles.sisyphus.boulders.drip.GhostReminder(app)
 infinit.oracles.sisyphus.boulders.drip.Onboarding(app)

@@ -119,22 +119,22 @@ class Drip(Boulder):
           template,
           users,
           variations = variations)
-        self.__table.update(
-          {self.field_lock: self.lock_id},
-          {
-            # TEST MODE 2: comment the $set out
-            '$set':
-            {
-              field: end,
-            },
-            '$unset':
-            {
-              self.field_lock: True,
-            },
-          },
-          multi = True,
-        )
         res[template] = sent
+      self.__table.update(
+        {self.field_lock: self.lock_id},
+        {
+          # TEST MODE 2: comment the $set out
+          '$set':
+          {
+            field: end,
+          },
+          '$unset':
+          {
+            self.field_lock: True,
+          },
+        },
+        multi = True,
+      )
       # Unlock users that were not picked
       unpicked = self.__table.update(
         {self.field_lock: self.lock_id},
@@ -188,9 +188,9 @@ class Drip(Boulder):
               'vars': dict(chain(
                 [
                   ('TEMPLATE', template),
+                  ('INFINIT_SCHEME', 'infinit://'),
                 ],
-                (('USER_%s' % field.upper(), user[field])
-                 for field in self.user_fields if field in user),
+                self.user_vars('USER', user).items(),
                 self._vars(elt, user).items(),
               ))
             }
@@ -562,3 +562,294 @@ class DelightSender(Drip):
   @property
   def threshold_third(self):
     return 10
+
+#
+# -> 1
+#
+
+class DelightRecipient(Drip):
+
+  def __init__(self, sisyphus):
+    super().__init__(sisyphus, 'delight-recipient', 'users')
+    # Find user in any status without scanning all ghosts, deleted
+    # users etc.
+    self.sisyphus.mongo.meta.users.ensure_index(
+      [
+        ('emailing.delight-recipient.state', pymongo.ASCENDING),
+        ('transactions.received_peer', pymongo.ASCENDING),
+      ])
+
+  @property
+  def now(self):
+    return datetime.datetime.utcnow()
+
+  def run(self):
+    response = {}
+    # -> 1
+    transited = self.transition(
+      None,
+      '1',
+      {
+        'transactions.received_peer': {'$gte': self.threshold_first},
+      },
+    )
+    response.update(transited)
+    return response
+
+  def _pick_template(self, template, users):
+    return [
+      (template, [u for u in users if u[0]['features']['drip_delight-recipient_template'] == 'a']),
+      (None, [u for u in users if u[0]['features']['drip_delight-recipient_template'] == 'control']),
+    ]
+
+  @property
+  def threshold_first(self):
+    return 1
+
+  def _vars(self, elt, user):
+    transaction = self.sisyphus.mongo.meta.transactions.find_one(
+      {
+        'recipient_id': user['_id'],
+        'status': {'$in': [statuses['accepted'],
+                           statuses['finished']]},
+      }
+    )
+    if transaction is None:
+      raise Exception(
+        'unable to find received transaction for %s' % user['_id'])
+    sender = self.sisyphus.mongo.meta.users.find_one(
+      transaction['sender_id'])
+    assert sender is not None
+    return self.user_vars('sender', sender)
+
+
+#
+# -> 1
+#
+
+class DelightGhost(Drip):
+
+  def __init__(self, sisyphus):
+    super().__init__(sisyphus, 'delight-ghost', 'users')
+    # Find user in any status without scanning all ghosts, deleted
+    # users etc.
+    self.sisyphus.mongo.meta.users.ensure_index(
+      [
+        ('emailing.delight-ghost.state', pymongo.ASCENDING),
+        ('register_status', pymongo.ASCENDING),
+        ('transactions.received_ghost', pymongo.ASCENDING),
+      ])
+
+  @property
+  def now(self):
+    return datetime.datetime.utcnow()
+
+  def run(self):
+    response = {}
+    # -> 1
+    transited = self.transition(
+      None,
+      '1',
+      {
+        'register_status': 'ghost',
+        'transactions.received_ghost': {'$gte': self.threshold_first},
+      },
+    )
+    response.update(transited)
+    return response
+
+  def _pick_template(self, template, users):
+    return [
+      (template, [u for u in users if u[0]['features']['drip_delight-ghost_template'] == 'a']),
+      (None, [u for u in users if u[0]['features']['drip_delight-ghost_template'] == 'control']),
+    ]
+
+  @property
+  def threshold_first(self):
+    return 1
+
+  # FIXME: factor with DelightRecipient
+  def _vars(self, elt, user):
+    transaction = self.sisyphus.mongo.meta.transactions.find_one(
+      {
+        'recipient_id': user['_id'],
+        'status': {'$in': [statuses['accepted'],
+                           statuses['finished']]},
+      }
+    )
+    assert transaction is not None
+    sender = self.sisyphus.mongo.meta.users.find_one(
+      transaction['sender_id'])
+    assert sender is not None
+    return self.user_vars('sender', sender)
+
+
+#
+#    -> 1 -> 2
+#
+
+class ConfirmSignup(Drip):
+
+  def __init__(self, sisyphus):
+    super().__init__(sisyphus, 'confirm-signup', 'users')
+    # Find user in any status without scanning all ghosts, deleted
+    # users etc.
+    self.sisyphus.mongo.meta.users.ensure_index(
+      [
+        ('emailing.confirm-signup.state', pymongo.ASCENDING),
+        ('register_status', pymongo.ASCENDING),
+        ('email_confirmed', pymongo.ASCENDING),
+        ('creation_time', pymongo.ASCENDING),
+      ])
+
+  @property
+  def now(self):
+    return datetime.datetime.utcnow()
+
+  def run(self):
+    response = {}
+    # -> 1
+    transited = self.transition(
+      None,
+      '1',
+      {
+        # Fully registered
+        'register_status': 'ok',
+        # Unconfirmed email
+        'email_confirmed': False,
+        # Registered more than 3 day ago.
+        'creation_time':
+        {
+          '$lt': self.now - self.delay_first_reminder,
+        },
+      },
+    )
+    response.update(transited)
+    # 1 -> 2
+    transited = self.transition(
+      '1',
+      '2',
+      {
+        # Fully registered
+        'register_status': 'ok',
+        # Unconfirmed email
+        'email_confirmed': False,
+        # Registered more than 7 day ago.
+        'creation_time':
+        {
+          '$lt': self.now - self.delay_second_reminder,
+        },
+      },
+    )
+    response.update(transited)
+    return response
+
+  def _pick_template(self, template, users):
+    return [
+      (template, [u for u in users if u[0]['features']['drip_confirm-signup_template'] == 'a']),
+      (None, [u for u in users if u[0]['features']['drip_confirm-signup_template'] == 'control']),
+    ]
+
+  @property
+  def delay_first_reminder(self):
+    return datetime.timedelta(days = 3)
+
+  @property
+  def delay_second_reminder(self):
+    return datetime.timedelta(days = 7)
+
+  def _vars(self, elt, user):
+    return {
+      'CONFIRM_KEY': key('/users/%s/confirm-email' % user['_id']),
+    }
+
+
+#
+# -> 1 -> 2
+#
+
+# FIXME: factor with GhostReminder
+class AcceptReminder(Drip):
+
+  def __init__(self, sisyphus):
+    super().__init__(sisyphus, 'accept-reminder', 'transactions')
+    self.sisyphus.mongo.meta.transactions.ensure_index(
+      [
+        # Find transactions in any bucket
+        ('emailing.accept-reminder.state', pymongo.ASCENDING),
+        # That is not ghost
+        ('is_ghost', pymongo.ASCENDING),
+        # In status initialized
+        ('status', pymongo.ASCENDING),
+        # Modified a certain time ago
+        ('modification_time', pymongo.ASCENDING),
+      ])
+
+  @property
+  def now(self):
+    return datetime.datetime.utcnow()
+
+  @property
+  def delay_first_reminder(self):
+    return datetime.timedelta(days = 1)
+
+  @property
+  def delay_second_reminder(self):
+    return datetime.timedelta(days = 3)
+
+  def run(self):
+    response = {}
+    # -> 1
+    transited = self.transition(
+      None,
+      '1',
+      {
+        'is_ghost': False,
+        'status': statuses['initialized'],
+        'modification_time':
+        {
+          '$lt': self.now - self.delay_first_reminder,
+        },
+      },
+    )
+    response.update(transited)
+    # 1 -> 2
+    transited = self.transition(
+      '1',
+      '2',
+      {
+        'is_ghost': False,
+        'status': statuses['initialized'],
+        'modification_time':
+        {
+          '$lt': self.now - self.delay_second_reminder,
+        },
+      },
+    )
+    response.update(transited)
+    return response
+
+  @property
+  def fields(self):
+    return ['recipient_id', 'sender_id',
+            'files', 'message', 'files_count', 'transaction_hash']
+
+  def _user(self, transaction):
+    recipient = transaction['recipient_id']
+    return self.sisyphus.mongo.meta.users.find_one(recipient)
+
+  def _vars(self, transaction, recipient):
+    sender_id = transaction['sender_id']
+    sender = self.sisyphus.mongo.meta.users.find_one(
+      sender_id, fields = self.user_fields)
+    res = {}
+    res.update(self.user_vars('sender', sender))
+    res.update(self.user_vars('recipient', recipient))
+    res.update(self.transaction_vars('transaction', transaction))
+    return res
+
+  def _pick_template(self, template, users):
+    return [
+      (template, [u for u in users if u[0]['features']['drip_accept-reminder_template'] == 'a']),
+      (None, [u for u in users if u[0]['features']['drip_accept-reminder_template'] == 'control']),
+    ]

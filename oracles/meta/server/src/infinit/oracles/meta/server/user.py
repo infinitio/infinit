@@ -11,7 +11,7 @@ import elle.log
 import papier
 
 from .plugins.response import response, Response
-from .utils import api, require_logged_in, require_admin, require_logged_in_or_admin, hash_pasword, json_value, require_key
+from .utils import api, require_logged_in, require_admin, require_logged_in_or_admin, hash_pasword, json_value, require_key, key
 from . import error, notifier, regexp, conf, invitation, mail
 
 from pymongo import DESCENDING
@@ -395,9 +395,9 @@ class Mixin:
         template_name = 'confirm-sign-up',
         merge_vars = {
           user['email']: {
-            'hash': str(hash),
-            'fullname': user['fullname'],
-            'user_id': str(user['_id']),
+            'CONFIRM_KEY': key('/users/%s/confirm-email' % user['_id']),
+            'USER_FULLNAME': user['fullname'],
+            'USER_ID': str(user['_id']),
           }}
       )
       return user
@@ -452,7 +452,10 @@ class Mixin:
           '$set': {'email_confirmed': True}
         })
       if res is None:
-        self.forbidden('invalid confirmation hash or email')
+        self.forbidden({
+          'user': user,
+          'reason': 'invalid confirmation hash or email',
+        })
       return {}
 
   # Deprecated
@@ -1503,7 +1506,10 @@ class Mixin:
       action = {update_action: {'connected_devices': str(device_id)}}
       # If we're connecting a device, then we are connected.
       if status:
-        action['$set'] = {'connected': True}
+        action['$set'] = {
+          'connected': True,
+          'connection_time': self.now,
+        }
       self.database.users.update(
         {'_id': user_id},
         action,
@@ -1516,7 +1522,13 @@ class Mixin:
             '_id': user_id,
             'connected_devices': {'$size': 0}
           },
-          {'$set': {'connected': False}}
+          {
+            '$set':
+            {
+              'connected': False,
+              'disconnection_time': self.now,
+            }
+          }
         )
       # XXX:
       # This should not be in user.py, but it's the only place
