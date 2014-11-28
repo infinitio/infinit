@@ -296,6 +296,11 @@ namespace surface
             reactor::sleep(boost::posix_time::milliseconds(
               std::min(int(500 * pow(2,attempt)), 20000)));
           }
+          catch(boost::filesystem::filesystem_error const& e)
+          {
+            this->cancel(elle::sprintf("Filesystem error: %s", e.what()));
+            return;
+          }
           catch(std::exception const& e)
           {
             exit_message = e.what();

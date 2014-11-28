@@ -518,6 +518,18 @@ namespace surface
                             std::string const& name_policy,
                             elle::Version const& peer_version)
     {
+      elle::SafeFinally clean_snpashot([&] {
+          try
+          {
+            boost::filesystem::remove(this->_frete_snapshot_path);
+          }
+          catch (std::exception const&)
+          {
+            ELLE_ERR("couldn't delete snapshot at %s: %s",
+              this->_frete_snapshot_path, elle::exception_string());
+          }
+      });
+
       // Clear hypotetical blocks we fetched but did not process.
       this->_buffers.clear();
       boost::filesystem::path output_path(this->state().output_dir());
@@ -612,6 +624,7 @@ namespace surface
         _store_expected_file = _fetch_current_file_index;
         _store_expected_position = _fetch_current_position;
         // Start processing threads
+        bool exception = false;
         elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
         {
           // Have multiple reader threads, sharing read position
@@ -637,9 +650,20 @@ namespace surface
             std::bind(&PeerReceiveMachine::_disk_thread<Source>,
                       this, std::ref(source),
                       peer_version, chunk_size));
-          reactor::wait(scope);
+          try
+          {
+            reactor::wait(scope);
+          }
+          catch (boost::filesystem::filesystem_error const& e)
+          {
+            ELLE_ERR("%s: Filesystem error: %s", *this, e.what())
+            this->cancel(elle::sprintf("Filesystem error: %s", e.what()));
+            exception = true;
+          }
           ELLE_TRACE("finish_transfer exited cleanly");
         }; // scope
+        if (exception)
+          return;
       }// if current_transfer
       ELLE_LOG("%s: transfer finished", *this);
       if (peer_version >= elle::Version(0, 8, 7))
@@ -648,15 +672,7 @@ namespace surface
       }
       this->finished().open();
 
-      try
-      {
-        boost::filesystem::remove(this->_frete_snapshot_path);
-      }
-      catch (std::exception const&)
-      {
-        ELLE_ERR("couldn't delete snapshot at %s: %s",
-                 this->_frete_snapshot_path, elle::exception_string());
-      }
+
     }
 
     PeerReceiveMachine::FileSize

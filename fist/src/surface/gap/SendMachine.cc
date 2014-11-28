@@ -444,14 +444,12 @@ namespace surface
           ELLE_WARN("%s: source file disappeared, cancel : %s",
                     *this, e.what());
           this->cancel("source file missing");
-          throw;
         }
         else
         {
           ELLE_WARN("%s: source file corrupted (%s), cancel",
                     *this, e.what());
           this->cancel(elle::sprintf("source file error: %s", e.what()));
-          throw;
         }
       }
       catch(reactor::Terminate const&)
