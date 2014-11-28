@@ -627,6 +627,7 @@ def configure(cxx_toolkit = None,
   ## --- ##
 
   cli_build = drake.Rule('cli/build')
+  cli_install = drake.Rule('cli/install')
   cli_cxx_config = drake.cxx.Config(cxx_config)
   cli_cxx_config.lib_path_runtime('../lib')
   cli_cxx_config.add_local_include_path('metrics/src')
@@ -635,6 +636,11 @@ def configure(cxx_toolkit = None,
   cli_cxx_config.add_local_include_path('oracles/trophonius/client/src')
   cli_cxx_config += boost_program_options
   cli_cxx_config += boost_system
+  cli_cxx_config += boost_filesystem
+
+  def cli_add_bin(b):
+    cli_build << b
+    cli_install << drake.install(b, prefix)
 
   cli_send_sources = drake.nodes(
     'satellites/send/Send.cc',
@@ -645,7 +651,7 @@ def configure(cxx_toolkit = None,
     cxx_toolkit,
     cli_cxx_config
   )
-  cli_build << cli_send_bin
+  cli_add_bin(cli_send_bin)
 
   cli_recv_sources = drake.nodes(
     'satellites/recv/Recv.cc',
@@ -656,7 +662,7 @@ def configure(cxx_toolkit = None,
     cxx_toolkit,
     cli_cxx_config
   )
-  cli_build << cli_recv_bin
+  cli_add_bin(cli_recv_bin)
 
   cli_link_sources = drake.nodes(
     'satellites/link/Link.cc',
@@ -673,7 +679,7 @@ def configure(cxx_toolkit = None,
     cxx_toolkit,
     cli_cxx_config
   )
-  cli_build << cli_link_bin
+  cli_add_bin(cli_link_bin)
 
   cli_online_sources = drake.nodes(
     'satellites/online/Online.cc',
@@ -684,7 +690,7 @@ def configure(cxx_toolkit = None,
     cxx_toolkit,
     cli_cxx_config
   )
-  cli_build << cli_online_bin
+  cli_add_bin(cli_online_bin)
 
   if cxx_toolkit.os is not drake.os.ios:
     build << cli_build
