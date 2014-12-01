@@ -20,7 +20,7 @@ class MailService(NoOpMailer):
     if template_message == 'confirm-sign-up':
       self.email_confirmation_hash = merges['CONFIRM_KEY']
     elif template_message == 'reconfirm-sign-up':
-      self.email_reconfirmation_hash = merges['hash']
+      self.email_reconfirmation_hash = merges['CONFIRM_KEY']
     elif template_message == 'lost-password':
       self.reset_password_hash = merges['reset_password_hash']
     NoOpMailer.template_message(self, template_message, message)
@@ -108,7 +108,7 @@ as meta:
   assert hasattr(meta.mailer, 'email_reconfirmation_hash')
 
   res = u.post('users/%s/confirm-email' % email,
-               {'hash': str(meta.mailer.email_reconfirmation_hash)})
+               {'key': str(meta.mailer.email_reconfirmation_hash)})
 
   try:
     u.post('users/%s/resend-confirmation-email' % u.email)
