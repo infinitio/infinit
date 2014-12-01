@@ -929,6 +929,7 @@ class Mixin:
       '_id': False,
     }
     if self.admin:
+      res['features'] = '$features'
       res['creation_time'] = '$creation_time'
       res['email'] = '$email'
       res['email_confirmed'] = '$email_confirmed'
