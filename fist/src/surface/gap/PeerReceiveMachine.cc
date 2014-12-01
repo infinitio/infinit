@@ -936,7 +936,7 @@ namespace surface
             break;
           }
           const elle::Buffer& buffer = data.buffer;
-          ELLE_TRACE("%s: receiver got data for file %s at position %s with size %s, "
+          ELLE_DEBUG("%s: receiver got data for file %s at position %s with size %s, "
                      "will write to %s",
                      *this,
                      data.file_index, data.start_position,
