@@ -512,9 +512,9 @@ class Mixin:
           template_name = 'reconfirm-sign-up',
           merge_vars = {
             user['email']: {
-              'hash': user['email_confirmation_hash'],
-              'fullname': user['fullname'],
-              'user_id': str(user['_id']),
+              'CONFIRM_KEY': key('/users/%s/confirm-email' % user['_id']),
+              'USER_FULLNAME': user['fullname'],
+              'USER_ID': str(user['_id']),
               }}
           )
       return {}
