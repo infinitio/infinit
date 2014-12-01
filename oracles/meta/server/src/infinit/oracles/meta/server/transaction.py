@@ -525,6 +525,11 @@ class Mixin:
     elle.log.log('Transaction finished');
     # Guess if this was a ghost cloud upload or not
     recipient = self.database.users.find_one(transaction['recipient_id'])
+    if recipient['register_status'] == 'deleted':
+      self.gone({
+        'reason': 'user %s is deleted' % recipient['_id'],
+        'recipient_id': recipient['_id'],
+      })
     elle.log.log('Peer status: %s' % recipient['register_status'])
     elle.log.log('transaction: %s' % transaction.keys())
     if transaction.get('is_ghost', False):
