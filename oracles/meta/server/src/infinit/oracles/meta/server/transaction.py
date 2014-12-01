@@ -7,6 +7,8 @@ import re
 import time
 import unicodedata
 import urllib.parse
+import requests
+import json
 
 import elle.log
 from .utils import \
@@ -232,6 +234,21 @@ class Mixin:
             features = self._roll_features(True)
           )
           recipient = self.database.users.find_one(recipient_id)
+          # Post new_ghost event to metrics
+          url = 'http://metrics.9.0.api.production.infinit.io/collections/users'
+          metrics = {
+            'event': 'new_ghost',
+            'user': str(recipient['_id']),
+            'features': recipient['features'],
+            'sender': str(sender['_id']),
+            'timestamp': time.time(),
+          }
+          res = requests.post(
+            url,
+            headers = {'content-type': 'application/json'},
+            data = json.dumps(metrics),
+          )
+          elle.log.debug('metrics answer: %s' % res)
       else:
         try:
           recipient_id = bson.ObjectId(id_or_email)
