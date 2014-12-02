@@ -35,9 +35,9 @@ def transaction_callback(notification, state, rules, default_action,
   """
   if statuses is not None:
     # in case messages are async, ensure we do not overwrite a final state
-    if statuses.get(notification['transaction_id'], '') not in final_statuses:
-      statuses[notification['transaction_id']] = notification['status']
-  #print('TRANSACTION_CB %s transaction_id=%s status=%s' % (len(statuses), notification['transaction_id'], notification['status']))
+    if statuses.get(notification['id'], '') not in final_statuses:
+      statuses[notification['id']] = notification['status']
+  elle.log.debug('TRANSACTION_CB %s transaction_id=%s status=%s' % (len(statuses), notification['id'], notification['status']))
   action = default_action
   for r in rules:
     for cond in r['conditions']:
@@ -47,8 +47,8 @@ def transaction_callback(notification, state, rules, default_action,
         break
       action = r['action']
   if action:
-    #print('TRANSACTION_CB replying %s' % action)
-    getattr(state, 'transaction_' + action)(notification['transaction_id'])
+    elle.log.debug('TRANSACTION_CB replying %s' % action)
+    getattr(state, 'transaction_' + action)(notification['id'])
 
 
 
@@ -88,7 +88,10 @@ reject_rules = [{'conditions':[{'key': 'status',
                                 'value': 'transaction_waiting_accept'}],
                  'action': 'reject'}]
 
-test_credentials = [('mefyl@infinit.io', 'mefyl', 'mefyl'), ('mefyl2@infinit.io', 'mefyl2', 'mefyl2')]
+test_credentials = [
+  ('mefyl@infinit.io', 'mefyl', 'mefyl'),
+  ('mefyl2@infinit.io', 'mefyl2', 'mefyl2')
+]
 
 if os.environ.get('TEST_CREDENTIALS', None) is not None:
   c = os.environ['TEST_CREDENTIALS']
@@ -115,9 +118,9 @@ class TransferPeer:
       return
     self.delete(device)
     self.states[device] = self.oracles.state()
-    self.states[device].attach_transaction_callback(
-      lambda t: transaction_callback(t, self.states[device], self.rules[device], '',
-                                     self.statuses))
+    self.states[device].attach_peer_transaction_callback(
+      lambda t: transaction_callback(t, self.states[device],
+                                     self.rules[device], '', self.statuses))
     def poller():
       while not self.interrupt[device]:
         self.states[device].poll()
@@ -133,7 +136,7 @@ class TransferPeer:
     self.poll_threads[device] = None
     self.states[device] = None
   def set_rules(self, rules, device = 0):
-    """ Set event reply rules as per attach_transaction_callback()"""
+    """ Set event reply rules as per attach_peer_transaction_callback()"""
     self.rules[device] = rules # modify in place
   def register(self, device = 0):
     if device in self.logged_in:
@@ -179,7 +182,7 @@ class TransferPeer:
       if id != -1:
         return id
     return None
-  def wait_transaction_id(self, timeout = 10, device = 0):
+  def wait_transaction_id(self, timeout = 20, device = 0):
     """ Wait for a transaction id to be available or throw"""
     wait_helper(timeout, lambda: self.fetch_transaction_id(device) is not None)
     return self.fetch_transaction_id(device)
@@ -192,9 +195,9 @@ class TransferPeer:
   def wait_transaction_final(self, timeout = None):
     return wait_helper(timeout or self.timeout, lambda: self.status in final_statuses)
   @property
-  def status(self, device = 0):
+  def status(self, device = 0, timeout = 20):
     """ Transaction status string (transaction_{canceled, finished, started...)"""
-    tid = self.wait_transaction_id(device = device)
+    tid = self.wait_transaction_id(device = device, timeout = timeout)
     if device in self.logged_in:
       return self.states[device].transaction_status(tid)
     else:
@@ -317,14 +320,13 @@ class TestBasicTransfer(unittest.TestCase):
     @param files_data: arguments to TemporaryData ctor
     Rest of parameters are stuff that will be validated in transaction metadata
     """
-    with Transfer(test_credentials, files,
-                  files_data) as transfer:
+    with Transfer(test_credentials, files, files_data) as transfer:
       transfer.recipient.login()
       transfer.sender.login()
       wait_helper(3, lambda: False, False)
       transfer.recipient.set_rules(accept_rules)
       transfer.start()
-      transfer.wait_transaction_final(30)
+      transfer.wait_transaction_final(90)
       transfer.assertSuccess(self, expect_total_size, expect_is_directory,
                              expect_files_count, expect_files)
 
