@@ -31,7 +31,7 @@ def configure(cxx_toolkit = None,
   ## Rules ##
   ## ----- ##
 
-
+  osx_build = drake.Rule('osx/build')
   build = drake.Rule('build')
   check = drake.TestSuite('check')
   install = drake.Rule('install')
@@ -871,6 +871,8 @@ def configure(cxx_toolkit = None,
   ## ------- ##
   ## Mac App ##
   ## ------- ##
+  osx_build << gap_build
   mac_app = drake.include('surface/osx')
+  osx_build << mac_app.build
 
   drake.cxx.CompilationDatabase('compile_commands.json')
