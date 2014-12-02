@@ -9,7 +9,7 @@
 ELLE_LOG_COMPONENT("surface.gap.State.test");
 
 // Send a file to a ghost.
-ELLE_TEST_SCHEDULED(login)
+ELLE_TEST_SCHEDULED(send_ghost)
 {
   Server server;
   auto const email = "em@il.com";
@@ -69,5 +69,5 @@ ELLE_TEST_SUITE()
 {
   auto timeout = RUNNING_ON_VALGRIND ? 60 : 15;
   auto& suite = boost::unit_test::framework::master_test_suite();
-  suite.add(BOOST_TEST_CASE(login), 0, timeout);
+  suite.add(BOOST_TEST_CASE(send_ghost), 0, timeout);
 }

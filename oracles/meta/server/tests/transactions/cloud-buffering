@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+from infinit.oracles.transaction import statuses
+
+with Meta() as meta:
+  sender = User(meta, 'sender@infinit.io')
+  recipient = User(meta, 'recipient@infinit.io')
+  sender.login()
+
+  transaction, res = sender.sendfile(recipient_id = recipient.email,
+                                     initialize = True)
+  transaction_id = res['created_transaction_id']
+  sender.transaction_update(
+    transaction_id, statuses['cloud_buffered'])
+
+  recipient.login()
+  recipient.transaction_update(transaction_id, statuses['accepted'])
+  recipient.transaction_update(transaction_id, statuses['finished'])

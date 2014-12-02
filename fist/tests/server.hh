@@ -68,6 +68,9 @@ public:
     Transaction();
     ELLE_ATTRIBUTE_R(boost::uuids::uuid, id);
     ELLE_ATTRIBUTE_R(infinit::oracles::Transaction::Status, status);
+    ELLE_ATTRIBUTE_RX(
+      boost::signals2::signal<void (infinit::oracles::Transaction::Status)>,
+      status_changed);
     friend class Server;
   };
   User&
@@ -107,6 +110,7 @@ protected:
     bmi::indexed_by<bmi::hashed_unique<TransactionId>>
     > Transactions;
   ELLE_ATTRIBUTE(Transactions, transactions);
+  ELLE_ATTRIBUTE_R(bool, cloud_buffered);
 };
 
 class State
