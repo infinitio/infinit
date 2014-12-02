@@ -447,7 +447,11 @@ namespace surface
         else if (!peer.ghost() && !peer_online)
           this->_cloud_operation();
         else
+        {
+          ELLE_TRACE("%s: peer is online, doing nothing until acceptance",
+                     *this);
           this->gap_status(gap_transaction_waiting_accept);
+        }
       }
       catch (infinit::state::TransactionFinalized const&)
       {
@@ -584,6 +588,7 @@ namespace surface
         ELLE_DEBUG("%s: cloud buffering disabled by configuration", *this);
         return;
       }
+      ELLE_TRACE_SCOPE("%s: upload to the cloud", *this);
       this->gap_status(gap_transaction_transferring);
       auto start_time = boost::posix_time::microsec_clock::universal_time();
       infinit::metrics::TransferExitReason exit_reason = infinit::metrics::TransferExitReasonUnknown;
@@ -606,7 +611,6 @@ namespace surface
         });
       try
       {
-        ELLE_TRACE_SCOPE("%s: upload to the cloud", *this);
         auto& frete = this->frete();
         _fetch_peer_key(true);
         auto& snapshot = *frete.transfer_snapshot();

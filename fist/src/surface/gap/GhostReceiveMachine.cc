@@ -44,7 +44,9 @@ namespace surface
       }
       catch (elle::Error const&)
       {
-        ELLE_TRACE("%s: starting with status %s", *this, this->data()->status);
+        ELLE_TRACE_SCOPE(
+          "%s: deduce starting state from the transaction status: %s",
+          *this, this->data()->status);
         switch (this->data()->status)
         {
           case TransactionStatus::created:
