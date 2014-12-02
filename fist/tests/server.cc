@@ -505,9 +505,7 @@ Server::Transaction::Transaction()
 State::State(Server& server,
              boost::uuids::uuid device_id)
   : surface::gap::State(
-    "http", "127.0.0.1", server.port(),
-    std::move(device_id), fingerprint,
-    elle::os::path::join(elle::system::home_directory().string(), "Downloads"))
+    "http", "127.0.0.1", server.port(), fingerprint, device_id)
 {
   this->s3_hostname(aws::URL{"http://",
                              elle::sprintf("localhost:%s", server.port()),
