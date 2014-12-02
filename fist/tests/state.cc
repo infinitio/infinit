@@ -5,7 +5,6 @@
 #include <elle/memory.hh>
 #include <elle/os/path.hh>
 #include <elle/reactor/tests/http_server.hh>
-#include <elle/system/home_directory.hh>
 #include <elle/test.hh>
 #include <elle/utility/Move.hh>
 
@@ -345,59 +344,59 @@ public:
 
 ELLE_TEST_SCHEDULED(login)
 {
+  auto email = "em@il.com";
   auto password = "secret";
+  auto hashed_password = surface::gap::State::hash_password(email, password);
   auto user_id = boost::uuids::random_generator()();
   cryptography::KeyPair keys =
     cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                     papier::Identity::keypair_length);
   auto identity = generate_identity(
-    keys, boost::lexical_cast<std::string>(user_id), "my identity", password);
+    keys, boost::lexical_cast<std::string>(user_id), "my identity",
+    hashed_password);
   auto device_id = boost::uuids::random_generator()();
   Server<> server(identity, device_id);
-  std::string download_dir =
-    elle::os::path::join(elle::system::home_directory().string(), "Downloads");
   surface::gap::State state("http",
                             "127.0.0.1",
                             server.port(),
-                            device_id,
                             fingerprint,
-                            download_dir);
+                            device_id);
   ELLE_LOG("Logging in");
-  state.login("em@il.com", password);
+  state.login(email, password);
   ELLE_LOG("Done");
 }
 
 
 ELLE_TEST_SCHEDULED(login_failure)
 {
+  auto email = "em@il.com";
   auto password = "secret";
+  auto hashed_password = surface::gap::State::hash_password(email, password);
   auto user_id = boost::uuids::random_generator()();
   cryptography::KeyPair keys =
     cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                     papier::Identity::keypair_length);
   auto identity = generate_identity(
-    keys, boost::lexical_cast<std::string>(user_id), "my identity", password);
+    keys, boost::lexical_cast<std::string>(user_id), "my identity",
+    hashed_password);
   auto device_id = boost::uuids::random_generator()();
   Server<> server(identity, device_id);
-  std::string download_dir =
-    elle::os::path::join(elle::system::home_directory().string(), "Downloads");
   surface::gap::State state("http",
                             "127.0.0.1",
                             server.port(),
-                            device_id,
                             fingerprint,
-                            download_dir);
+                            device_id);
   using ErrorCode = ::oracles::meta::client::ErrorCode;
   server.login_result((int)ErrorCode::email_not_confirmed);
-  BOOST_CHECK_THROW(state.login("em@il.com", password), std::exception);
+  BOOST_CHECK_THROW(state.login(email, password), std::exception);
   server.login_result((int)ErrorCode::email_password_dont_match);
-  BOOST_CHECK_THROW(state.login("em@il.com", password), std::exception);
+  BOOST_CHECK_THROW(state.login(email, password), std::exception);
   server.login_result((int)ErrorCode::deprecated);
-  BOOST_CHECK_THROW(state.login("em@il.com", password), std::exception);
+  BOOST_CHECK_THROW(state.login(email, password), std::exception);
   server.login_result((int)ErrorCode::already_logged_in);
-  BOOST_CHECK_THROW(state.login("em@il.com", password), std::exception);
+  BOOST_CHECK_THROW(state.login(email, password), std::exception);
   server.login_result(0);
-  BOOST_CHECK_NO_THROW(state.login("em@il.com", password));
+  BOOST_CHECK_NO_THROW(state.login(email, password));
 }
 
 class ForbiddenTrophonius
@@ -450,23 +449,23 @@ public:
 
 ELLE_TEST_SCHEDULED(trophonius_forbidden)
 {
+  auto email = "em@il.com";
   auto password = "secret";
+  auto hashed_password = surface::gap::State::hash_password(email, password);
   auto user_id = boost::uuids::random_generator()();
   cryptography::KeyPair keys =
     cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                     papier::Identity::keypair_length);
   auto identity = generate_identity(
-    keys, boost::lexical_cast<std::string>(user_id), "my identity", password);
+    keys, boost::lexical_cast<std::string>(user_id), "my identity",
+    hashed_password);
   auto device_id = boost::uuids::random_generator()();
   ForbiddenTrophoniusMeta server(identity, device_id);
-  std::string download_dir =
-    elle::os::path::join(elle::system::home_directory().string(), "Downloads");
   surface::gap::State state("http",
                             "127.0.0.1",
                             server.port(),
-                            device_id,
                             fingerprint,
-                            download_dir);
+                            device_id);
   reactor::Signal reconnected;
   auto tropho = elle::make_unique<infinit::oracles::trophonius::Client>(
     [&] (infinit::oracles::trophonius::ConnectionState connected)
@@ -482,7 +481,7 @@ ELLE_TEST_SCHEDULED(trophonius_forbidden)
   tropho->ping_period(500_ms);
   tropho->reconnection_cooldown(0_sec);
   ELLE_LOG("Logging in...");
-  state.login("em@il.com", password, std::move(tropho));
+  state.login(email, password, std::move(tropho));
   ELLE_LOG("Logged in, waiting for reconnected");
   reactor::wait(reconnected);
 }
@@ -533,23 +532,23 @@ public:
 
 ELLE_TEST_SCHEDULED(trophonius_timeout)
 {
+  auto email = "em@il.com";
   auto password = "secret";
+  auto hashed_password = surface::gap::State::hash_password(email, password);
   auto user_id = boost::uuids::random_generator()();
   cryptography::KeyPair keys =
     cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                     papier::Identity::keypair_length);
   auto identity = generate_identity(
-    keys, boost::lexical_cast<std::string>(user_id), "my identity", password);
+    keys, boost::lexical_cast<std::string>(user_id), "my identity",
+    hashed_password);
   auto device_id = boost::uuids::random_generator()();
   TimeoutTrophoniusMeta server(identity, device_id);
-  std::string download_dir =
-    elle::os::path::join(elle::system::home_directory().string(), "Downloads");
   surface::gap::State state("http",
                             "127.0.0.1",
                             server.port(),
-                            device_id,
                             fingerprint,
-                            download_dir);
+                            device_id);
   auto tropho = elle::make_unique<infinit::oracles::trophonius::Client>(
     [&] (infinit::oracles::trophonius::ConnectionState connected) {},
     std::bind(&surface::gap::State::on_reconnection_failed, &state),
@@ -562,7 +561,7 @@ ELLE_TEST_SCHEDULED(trophonius_timeout)
       reactor::sleep(2_sec);
       trophoPtr->connect_timeout(1_min);
     });
-  BOOST_CHECK_NO_THROW(state.login("em@il.com", password, std::move(tropho)));
+  BOOST_CHECK_NO_THROW(state.login(email, password, std::move(tropho)));
   BOOST_CHECK_EQUAL(state.logged_in(), true);
 }
 
