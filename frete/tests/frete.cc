@@ -174,7 +174,9 @@ ELLE_TEST_SCHEDULED(connection)
         *reactor::Scheduler::scheduler(), serializer);
       frete::Frete frete("suce",
                          sender_key_pair,
-                         snap);
+                         snap,
+                         "",
+                         false);
       frete.set_peer_key(recipient_key_pair.K());
       frete::RPCFrete rpcs(frete, channels);
       frete.add(hierarchy.empty());
@@ -318,7 +320,7 @@ ELLE_TEST_SCHEDULED(invalid_snapshot)
       "}";
 
   }
-  frete::Frete frete("password", keys, f.path());
+  frete::Frete frete("password", keys, f.path(), "", false);
   auto peer_keys = infinit::cryptography::KeyPair::generate(
     infinit::cryptography::Cryptosystem::rsa, 2048);
   frete.set_peer_key(peer_keys.K());
