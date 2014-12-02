@@ -226,8 +226,6 @@ namespace surface
       ELLE_ATTRIBUTE_RW(std::string, failure_reason);
     private:
       friend class TransactionMachine;
-      gap_TransactionStatus
-      _transaction_status(Transaction::Data const& data) const;
 
     /*----------.
     | Printable |

@@ -50,26 +50,6 @@ namespace surface
       infinit::oracles::Transaction::Status::ghost_uploaded
     });
 
-    gap_TransactionStatus
-    Transaction::_transaction_status(Transaction::Data const& data) const
-    {
-      switch (data.status)
-      {
-        case infinit::oracles::Transaction::Status::finished:
-          return gap_transaction_finished;
-        case infinit::oracles::Transaction::Status::rejected:
-          return gap_transaction_rejected;
-        case infinit::oracles::Transaction::Status::failed:
-          return gap_transaction_failed;
-        case infinit::oracles::Transaction::Status::canceled:
-          return gap_transaction_canceled;
-        case infinit::oracles::Transaction::Status::ghost_uploaded:
-          return gap_transaction_cloud_buffered;
-        default:
-          return gap_transaction_new;
-      }
-    }
-
     // - Exception -------------------------------------------------------------
     Transaction::BadOperation::BadOperation(Type type):
       Exception(gap_error, elle::sprintf("%s", type)),
