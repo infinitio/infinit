@@ -184,7 +184,7 @@ class Oracles:
     """
     import state
     meta_proto, meta_host, meta_port = self.meta
-    res = state.State(meta_proto, meta_host, meta_port, self.download_dir)
+    res = state.State(meta_proto, meta_host, meta_port)
     self.__states.append(res)
     return res
   def kill_meta(self):
