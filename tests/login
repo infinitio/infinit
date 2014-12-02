@@ -38,13 +38,14 @@ class TestLogin(unittest.TestCase):
   def test_login_abort(self):
     import state
     import reactor
-    s = state.State('http', '127.0.0.1', 42, '/')
+    del os.environ['INFINIT_DOWNLOAD_DIR']
+    s = state.State('http', '127.0.0.1', 42)
     rresult = []
     def login():
       try:
         # this login call will block forever on its own
         try:
-          result = s.login('foo', state.hash_password('foo', 'bar'))
+          result = s.login('foo', 'bar')
         except:
           result = False
         rresult.append(result)
@@ -68,8 +69,7 @@ class TestLogin(unittest.TestCase):
         print('Status update: %s' % s)
         last_statuses.append(s)
       s1.attach_connection_callback(status)
-      s1.login('mefyl@infinit.io',
-              state.hash_password('mefyl@infinit.io', 'mefyl'))
+      s1.login('mefyl@infinit.io', 'mefyl')
       self.assertTrue(s1.logged_in())
       o.kill_trophonius()
       reactor.sleep(datetime.timedelta(milliseconds = 500))
@@ -96,8 +96,7 @@ class TestLogin(unittest.TestCase):
         print('Status update: %s' % s)
         last_statuses.append(s)
       s1.attach_connection_callback(status)
-      s1.login('mefyl@infinit.io',
-              state.hash_password('mefyl@infinit.io', 'mefyl'))
+      s1.login('mefyl@infinit.io', 'mefyl')
       self.assertTrue(s1.logged_in())
       o.kill_trophonius()
       o.kill_meta()
@@ -137,7 +136,7 @@ class TestLogin(unittest.TestCase):
     with infinit.oracles.servers.Oracles(
       mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
       s = o.state()
-      expect_raise(lambda: s.login("nosuchuser@infinit.io", state.hash_password('foo', 'bar')))
+      expect_raise(lambda: s.login("nosuchuser@infinit.io", 'foobar'))
 
   def test_login_change_password(self):
     with infinit.oracles.servers.Oracles(
@@ -148,8 +147,7 @@ class TestLogin(unittest.TestCase):
         print('Status update: %s' % s)
         last_statuses.append(s)
       s.attach_connection_callback(status)
-      s.login('mefyl@infinit.io',
-              state.hash_password('mefyl@infinit.io', 'mefyl'))
+      s.login('mefyl@infinit.io', 'mefyl')
       for i in range(10):
         s.poll()
       self.assertTrue(last_statuses[-1]['status'])
@@ -160,8 +158,7 @@ class TestLogin(unittest.TestCase):
         reactor.sleep(datetime.timedelta(milliseconds = 100))
       self.assertFalse(last_statuses[-1]['status'])
       self.assertFalse(s.logged_in())
-      s.login('mefyl@infinit.io',
-              state.hash_password('mefyl@infinit.io', 'newpassword'))
+      s.login('mefyl@infinit.io', 'newpassword')
       for i in range(10):
         s.poll()
       self.assertTrue(last_statuses[-1]['status'])
@@ -180,8 +177,7 @@ class TestLogin(unittest.TestCase):
         print('Status update: %s' % s)
         last_statuses.append(s)
       s.attach_connection_callback(status)
-      s.login('mefyl@infinit.io',
-              state.hash_password('mefyl@infinit.io', 'mefyl'))
+      s.login('mefyl@infinit.io', 'mefyl')
       for i in range(10):
         s.poll()
       self.assertTrue(last_statuses[-1]['status'])
@@ -302,8 +298,7 @@ class TestLogin(unittest.TestCase):
       f = s2.features()
       self.assertTrue('testc' in f.keys())
       s3 = o.state()
-      s3.register('mefyl3', 'mefyl3@infinit.io',
-                  state.hash_password('mefyl3@infinit.io', 'mefyl3'))
+      s3.register('mefyl3', 'mefyl3@infinit.io', 'mefyl3')
       reactor.sleep(datetime.timedelta(milliseconds = 200))
       f = s3.features()
       self.assertTrue('testc' not in f.keys())
