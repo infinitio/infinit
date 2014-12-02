@@ -234,6 +234,7 @@ namespace surface
       {
         case TransactionStatus::initialized:
         case TransactionStatus::created:
+        case TransactionStatus::cloud_buffered:
           if (this->concerns_this_device())
           {
             if (this->data()->id.empty())
@@ -284,6 +285,7 @@ namespace surface
       {
         case TransactionStatus::initialized:
         case TransactionStatus::created:
+        case TransactionStatus::cloud_buffered:
           if (this->concerns_this_device())
             ELLE_TRACE("%s: ignoring status update to %s", *this, status);
           else
@@ -744,6 +746,8 @@ namespace surface
         // acknowledge last block and save snapshot
         frete.encrypted_read_acknowledge(0, 0, 0, this->frete().full_size());
         this->_save_frete_snapshot();
+        this->state().meta().update_transaction(
+          this->transaction_id(), TransactionStatus::cloud_buffered);
         this->gap_status(gap_transaction_cloud_buffered);
         exit_reason = infinit::metrics::TransferExitReasonFinished;
       } // try

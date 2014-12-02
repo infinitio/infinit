@@ -182,6 +182,7 @@ namespace surface
       {
         case TransactionStatus::created:
         case TransactionStatus::initialized:
+        case TransactionStatus::cloud_buffered:
           this->_run(this->_wait_for_decision_state);
           break;
         case TransactionStatus::accepted:

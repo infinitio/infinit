@@ -22,20 +22,34 @@ transitions = {
       ],
     },
   INITIALIZED:
-    {
+  {
     True: [
       CANCELED,
       FAILED,
       FINISHED,
       GHOST_UPLOADED,
-      ],
+      CLOUD_BUFFERED,
+    ],
     False: [
       ACCEPTED,
       REJECTED,
       CANCELED,
       FAILED
-      ]
-    },
+    ]
+  },
+  CLOUD_BUFFERED:
+  {
+    True: [
+      CANCELED,
+      FAILED,
+    ],
+    False: [
+      ACCEPTED,
+      REJECTED,
+      CANCELED,
+      FAILED
+    ]
+  },
   ACCEPTED:
     {
     True: [
@@ -54,4 +68,4 @@ transitions = {
   CANCELED: {True: [CANCELED, FAILED], False: [CANCELED, FAILED]},
   FAILED: {True: [CANCELED, FAILED], False: [CANCELED, FAILED]},
   REJECTED: {True: [CANCELED, FAILED], False: [REJECTED, CANCELED, FAILED]}
-  }
+}

@@ -73,6 +73,7 @@ namespace surface
             break;
           case TransactionStatus::rejected:
             break;
+          case TransactionStatus::cloud_buffered:
           case TransactionStatus::started:
           case TransactionStatus::none:
           case TransactionStatus::deleted:
