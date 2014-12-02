@@ -188,9 +188,12 @@ namespace surface
     State::State(std::string const& meta_protocol,
                  std::string const& meta_host,
                  uint16_t meta_port,
-                 std::vector<unsigned char> trophonius_fingerprint)
+                 std::vector<unsigned char> trophonius_fingerprint,
+                 boost::optional<boost::uuids::uuid const&> device_id)
       : State(common::infinit::Configuration(
-                meta_protocol, meta_host, meta_port, trophonius_fingerprint))
+                meta_protocol, meta_host, meta_port,
+                trophonius_fingerprint,
+                device_id))
     {}
 
     State::~State()
@@ -714,7 +717,7 @@ namespace surface
         this->_logged_in.open();
         return;
       }
-      #define RETHROW(ExceptionType)                              \
+      #define RETHROW(ExceptionType)                               \
       catch(ExceptionType const& e)                                \
       { /* Permanent failure, abort*/                              \
         this->enqueue(ConnectionStatus(false, false, e.what()));   \

@@ -159,7 +159,8 @@ namespace surface
       State(std::string const& meta_protocol,
             std::string const& meta_host,
             uint16_t meta_port,
-            std::vector<unsigned char> trophonius_fingerprint);
+            std::vector<unsigned char> trophonius_fingerprint,
+            boost::optional<boost::uuids::uuid const&> device_id = {});
       ~State();
 
       ELLE_ATTRIBUTE_RP(
