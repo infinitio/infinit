@@ -157,6 +157,10 @@ gap_device_status(gap_State* state);
 gap_Status
 gap_set_device_name(gap_State* state, std::string const& name);
 
+/// Get current user email.
+std::string
+gap_self_email(gap_State* state);
+
 /// Get current user fullname.
 std::string
 gap_self_fullname(gap_State* state);
