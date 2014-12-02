@@ -44,10 +44,10 @@ ELLE_TEST_SCHEDULED(send_ghost)
   state.login(email, password);
   std::string const ghost_email = "ghost@infinit.io";
   server.generate_ghost_user(ghost_email);
-  auto local_tid = state.send_files(ghost_email,
-                                    std::vector<std::string>{"/etc/passwd"},
-                                    "message");
-  auto& state_transaction = *state.transactions().at(local_tid);
+  auto& state_transaction = state.transaction_peer_create(
+    ghost_email,
+    std::vector<std::string>{"/etc/passwd"},
+    "message");
   while (state_transaction.data()->status ==
          infinit::oracles::Transaction::Status::created)
   {
@@ -56,7 +56,7 @@ ELLE_TEST_SCHEDULED(send_ghost)
   }
   BOOST_CHECK_EQUAL(state_transaction.data()->status,
                     infinit::oracles::Transaction::Status::initialized);
-  auto tid = state.transactions().at(local_tid)->data()->id;
+  auto tid = state_transaction.data()->id;
   ELLE_LOG_SCOPE("transaction was initialized: %s", tid);
   while (!finished)
   {

@@ -21,10 +21,10 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
   State state(server, user.device_id());
 
   state.login(email, password);
-  auto local_tid = state.send_files(recipient_email,
-                                    std::vector<std::string>{"/etc/passwd"},
-                                    "message");
-  auto& state_transaction = *state.transactions().at(local_tid);
+  auto& state_transaction = state.transaction_peer_create(
+    recipient_email,
+    std::vector<std::string>{"/etc/passwd"},
+    "message");
   while (state_transaction.data()->status ==
          infinit::oracles::Transaction::Status::created)
   {
