@@ -483,6 +483,23 @@ class User(Client):
 
     res = self.post('transaction/create', transaction)
     if initialize:
-      self.post("transaction/update", {"transaction_id": res['created_transaction_id'],
-                                       "status": transaction_status.INITIALIZED})
+      self.transaction_update(res['created_transaction_id'],
+                              transaction_status.INITIALIZED)
     return transaction, res
+
+  def transaction_update(self, transaction, status):
+    self.post('transaction/update',
+              {
+                'transaction_id': transaction,
+                'status': status,
+                'device_id': str(self.device_id),
+                'device_name': self.device_name,
+              })
+
+  # FIXME: remove when link & peer transactions are merged
+  def link_update(self, link, status):
+    self.post('link/%s' % link['id'],
+              {
+                'progress': 1,
+                'status': status,
+              })

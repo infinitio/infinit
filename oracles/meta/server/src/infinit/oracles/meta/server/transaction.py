@@ -7,6 +7,8 @@ import re
 import time
 import unicodedata
 import urllib.parse
+import requests
+import json
 
 import elle.log
 from .utils import \
@@ -98,21 +100,39 @@ class Mixin:
 
   @api('/transactions/<id>/downloaded', method='POST')
   @require_key
+  def transaction_download_api(self, id: bson.ObjectId):
+    return self.transaction_download(id)
+
   def transaction_download(self, id: bson.ObjectId):
+    diff = {'status': transaction_status.FINISHED}
     transaction = self.database.transactions.find_and_modify(
       {'_id': id},
-      {'$set': {'status': transaction_status.FINISHED}},
-      new = True,
+      {'$set': diff},
+      new = False,
     )
     if transaction is None:
-      self.not_found()
-    self.notifier.notify_some(
-      notifier.PEER_TRANSACTION,
-      recipient_ids = {transaction['sender_id'],
-                       transaction['recipient_id']},
-      message = transaction,
-    )
-    return {}
+      self.not_found({
+        'reason': 'transaction %s not found' % id,
+        'transaction_id': id,
+      })
+    if transaction['status'] != transaction_status.FINISHED:
+      self.__update_transaction_stats(
+        transaction['recipient_id'],
+        counts = ['received_ghost', 'received'],
+        time = False)
+      self.__update_transaction_stats(
+        transaction['sender_id'],
+        counts = ['reached_peer', 'reached'],
+        time = False)
+      self.notifier.notify_some(
+        notifier.PEER_TRANSACTION,
+        recipient_ids = {transaction['sender_id'],
+                         transaction['recipient_id']},
+        message = transaction,
+      )
+      return diff
+    else:
+      return {}
 
   @api('/transaction/<id>')
   def transaction_view(self, id: bson.ObjectId, key = None):
@@ -214,6 +234,21 @@ class Mixin:
             features = self._roll_features(True)
           )
           recipient = self.database.users.find_one(recipient_id)
+          # Post new_ghost event to metrics
+          url = 'http://metrics.9.0.api.production.infinit.io/collections/users'
+          metrics = {
+            'event': 'new_ghost',
+            'user': str(recipient['_id']),
+            'features': recipient['features'],
+            'sender': str(sender['_id']),
+            'timestamp': time.time(),
+          }
+          res = requests.post(
+            url,
+            headers = {'content-type': 'application/json'},
+            data = json.dumps(metrics),
+          )
+          elle.log.debug('metrics answer: %s' % res)
       else:
         try:
           recipient_id = bson.ObjectId(id_or_email)
@@ -223,6 +258,11 @@ class Mixin:
 
       if recipient is None:
         return self.fail(error.USER_ID_NOT_VALID)
+      if recipient['register_status'] == 'deleted':
+        self.gone({
+          'reason': 'user %s is deleted' % recipient['_id'],
+          'recipient_id': recipient['_id'],
+        })
       is_ghost = recipient['register_status'] == 'ghost'
       elle.log.debug("transaction recipient has id %s" % recipient['_id'])
       _id = sender['_id']
@@ -270,7 +310,11 @@ class Mixin:
         }
 
       transaction_id = self.database.transactions.insert(transaction)
-      self.__update_transaction_time(sender, ['sent_peer', 'sent'])
+      self.__update_transaction_stats(
+        sender,
+        counts = ['sent_peer', 'sent'],
+        pending = transaction,
+        time = True)
 
       if not peer_email:
         peer_email = recipient['email']
@@ -300,19 +344,40 @@ class Mixin:
           'recipient_is_ghost': is_ghost,
           })
 
-  def __update_transaction_time(self, user, counts = []):
-    counts.append('total')
-    self.database.users.update(
-      {'_id': user['_id']},
-      {
-        '$set':
-        {
-          'last_transaction.time': datetime.datetime.utcnow(),
-        },
-        '$inc':
-        dict(('transactions.%s' % field, 1) for field in counts),
-      })
+  def __update_transaction_stats(self,
+                                 user,
+                                 time = True,
+                                 counts = None,
+                                 pending = None):
+    if isinstance(user, dict):
+      user = user['_id']
+    update = {}
+    if time:
+      update.setdefault('$set', {})
+      update['$set']['last_transaction.time'] = self.now
+    if counts is not None:
+      update.setdefault('$inc', {})
+      update['$inc'].update(
+        dict(('transactions.%s' % field, 1) for field in counts))
+    if pending is not None:
+      update.setdefault('$set', {})
+      update.setdefault('$push', {})
+      update['$push']['transactions.pending'] = pending['_id']
+      update['$set']['transactions.pending_has'] = True
+    self.database.users.update({'_id': user}, update)
 
+  def __complete_transaction_stats(self, user, transaction):
+    if isinstance(user, dict):
+      user = user['_id']
+    res = self.database.users.update(
+      {'_id': user},
+      {'$pull': {'transactions.pending': transaction['_id']}},
+    )
+    if res['n']:
+      self.database.users.update(
+        {'_id': user, 'transactions.pending': []},
+        {'$set': {'transactions.pending_has': False}},
+      )
 
   @api('/transactions')
   @require_logged_in
@@ -430,12 +495,15 @@ class Mixin:
       if device_id is None or device_name is None:
         self.bad_request()
       device_id = uuid.UUID(device_id)
-      if str(device_id) not in self.user['devices']:
+      if str(device_id) not in user['devices']:
         raise error.Error(error.DEVICE_DOESNT_BELONG_TO_YOU)
-      self.__update_transaction_time(user,
-                                     ['received_peer', 'received'])
+      self.__update_transaction_stats(
+        user,
+        counts = ['accepted_peer', 'accepted'],
+        pending = transaction,
+        time = True)
       return {
-        'recipient_fullname': self.user['fullname'],
+        'recipient_fullname': user['fullname'],
         'recipient_device_name' : device_name,
         'recipient_device_id': str(device_id)
       }
@@ -457,6 +525,11 @@ class Mixin:
     elle.log.log('Transaction finished');
     # Guess if this was a ghost cloud upload or not
     recipient = self.database.users.find_one(transaction['recipient_id'])
+    if recipient['register_status'] == 'deleted':
+      self.gone({
+        'reason': 'user %s is deleted' % recipient['_id'],
+        'recipient_id': recipient['_id'],
+      })
     elle.log.log('Peer status: %s' % recipient['register_status'])
     elle.log.log('transaction: %s' % transaction.keys())
     if transaction.get('is_ghost', False):
@@ -594,6 +667,15 @@ class Mixin:
                       transaction_status.REJECTED):
         diff.update(self.cloud_cleanup_transaction(
           transaction = transaction))
+      elif status == transaction_status.FINISHED:
+        self.__update_transaction_stats(
+          transaction['recipient_id'],
+          counts = ['received_peer', 'received'],
+          time = True)
+        self.__update_transaction_stats(
+          transaction['sender_id'],
+          counts = ['reached_peer', 'reached'],
+          time = False)
       diff.update({
         'status': status,
         'mtime': time.time(),
@@ -602,6 +684,11 @@ class Mixin:
       # Don't update with an empty dictionary: it would empty the
       # object.
       if diff:
+        if status in transaction_status.final or \
+           status is transaction_status.statuses['ghost_uploaded']:
+          for i in ['recipient_id', 'sender_id']:
+            self.__complete_transaction_stats(transaction[i],
+                                              transaction)
         transaction = self.database.transactions.find_and_modify(
           {'_id': transaction['_id']},
           {'$set': diff},

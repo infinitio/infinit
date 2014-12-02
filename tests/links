@@ -61,4 +61,35 @@ class TestLinks(unittest.TestCase):
         tr = s.transaction(tindex)
         self.assertEqual(s.transaction_status(tindex) ,"transaction_on_other_device")
         self.assertEqual(tr['click_count'], 1)
+
+  def test_remove_file(self):
+    with infinit.oracles.servers.Oracles(
+      mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
+      with utils.TemporaryData('foo', 10000000) as tmp:
+        s = o.state()
+        s.configuration_set_max_mirror_size(1)
+        s.login('mefyl@infinit.io',
+                state.hash_password('mefyl@infinit.io', 'mefyl'))
+        id = s.create_link([tmp.full_path], "foo")
+        for i in range(100):
+          s.poll()
+          reactor.sleep(datetime.timedelta(milliseconds = 10))
+        os.remove(tmp.full_path)
+        tr = s.transaction(id)
+        tid = tr['id']
+        s.logout()
+        s.login('mefyl@infinit.io',
+                state.hash_password('mefyl@infinit.io', 'mefyl'))
+        for i in range(100):
+          s.poll()
+          reactor.sleep(datetime.timedelta(milliseconds = 10))
+        tindex = s.find_transaction(tid)
+        self.assertNotEqual(tindex, -1)
+        for i in range(200):
+          s.poll()
+          reactor.sleep(datetime.timedelta(milliseconds = 10))
+          if  s.transaction_status(tindex) == "transaction_canceled":
+            break
+          self.assertEqual(s.transaction_status(tindex), "transaction_canceled")
+
 utils.run(unittest.main)

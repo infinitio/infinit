@@ -173,11 +173,13 @@ namespace infinit
         try
           : elle::serialization::json::SerializerIn(input)
         {}
-        catch (elle::json::ParseError const& e)
+        catch (elle::serialization::Error const& e)
         {
           ELLE_ERR("GIVE THE FOLLOWING ERROR TO MEFYL RIGHT AWAY. THX.");
           ELLE_ERR("https://app.asana.com/0/5058254180090/12894049383956");
           ELLE_ERR("JSON parse error requesting %s: %s", url, e);
+          if (e.inner_exception())
+            ELLE_ERR("Inner exception: %s", *e.inner_exception());
           ELLE_ERR("body was: %s", input.response().string());
           throw;
         }

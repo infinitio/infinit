@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+
+# utils first, beware of system OpenSSL.
+from utils import *
+
+import elle.log
+
+from infinit.oracles.transaction import statuses
+
+import sisyphus
+import sisyphus.boulders.drip
+
+ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.boulders.drip'
+
+class ConfirmSignup(sisyphus.boulders.drip.ConfirmSignup):
+
+  def __init__(self, sisyphus):
+    super().__init__(sisyphus)
+    self.__now = datetime.datetime.utcnow()
+
+  @property
+  def now(self):
+    return self.__now
+
+  @now.setter
+  def now(self, value):
+    self.__now = value
+
+  def _pick_template(self, template, users):
+    return sisyphus.boulders.drip.Drip._pick_template(
+      self, template, users)
+
+
+def check_mail(mails, recipient):
+  assert len(mails) == 1
+  mail = mails[0]
+  assert mail[0] == recipient
+  content = mail[1]
+  assert 'CONFIRM_KEY' in content
+
+with mongobox.MongoBox() as mongo:
+  with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
+    mandrill = Mandrill()
+    sisy = sisyphus.Sisyphus(mongo_port = mongo.port,
+                                 mandrill = mandrill)
+    gestapo(sisy._Sisyphus__mongo)
+    confirm = ConfirmSignup(sisy)
+
+    def forward(duration):
+      confirm.now += duration
+      meta.now = confirm.now
+    delay_diff = \
+      confirm.delay_second_reminder - confirm.delay_first_reminder
+
+    # Check nothing is sent with no users
+    sisy.cron()
+    assert not mandrill.emails
+    # Create user
+    sender = meta.user_register('sender@infinit.io',
+                                '*' * 64, 'Foo Bar')
+    # Check nothing is sent to a fresh user
+    forward(confirm.delay_first_reminder / 2)
+    sisy.cron()
+    assert not mandrill.emails
+    # Check first mail is sent
+    forward(confirm.delay_first_reminder)
+    sisy.cron()
+    check_mail(mandrill.emails, 'sender@infinit.io')
+    sisy.cron()
+    assert not mandrill.emails
+    # Check second mail is sent
+    forward(delay_diff)
+    sisy.cron()
+    check_mail(mandrill.emails, 'sender@infinit.io')
+    sisy.cron()
+    assert not mandrill.emails
+    # Check no mail is sent to ghosts
+    transaction_create(meta, sender, 'ghost@infinit.io')
+    forward(confirm.delay_second_reminder * 2)
+    sisy.cron()
+    assert not mandrill.emails
+    # Check leeway starts on ghost registration
+    meta.user_register('ghost@infinit.io', '*' * 64, 'Foo Bar')
+    sisy.cron()
+    assert not mandrill.emails
+    forward(confirm.delay_first_reminder * 1.5)
+    sisy.cron()
+    check_mail(mandrill.emails, 'ghost@infinit.io')
