@@ -59,17 +59,21 @@ namespace
   _set_path_with_optional(std::string& path_to_set,
                           std::string const& env_option,
                           std::string const& fallback,
-                          boost::optional<std::string> optional = {})
+                          boost::optional<std::string const&> optional = {})
   {
     std::string res;
     if (!env_option.empty())
     {
       res = env_option;
-      if (res.empty() ||
-          !boost::filesystem::exists(res) ||
-          !boost::filesystem::is_directory(res))
+      if (!boost::filesystem::exists(res))
       {
-        ELLE_ABORT("unable to set path with env variable: %s", res);
+        ELLE_ABORT("unable to set path with env variable (%s): "
+                   "path does not exist", res);
+      }
+      else if (!boost::filesystem::is_directory(res))
+      {
+        ELLE_ABORT("unable to set path with env variable (%s): "
+                   "path is not directory", res);
       }
     }
     else
@@ -102,9 +106,9 @@ namespace common
       bool production,
       bool enable_mirroring,
       uint64_t max_mirror_size,
-      boost::optional<std::string> download_dir,
-      boost::optional<std::string> persistent_config_dir,
-      boost::optional<std::string> non_persistent_config_dir)
+      boost::optional<std::string const&> download_dir,
+      boost::optional<std::string const&> persistent_config_dir,
+      boost::optional<std::string const&> non_persistent_config_dir)
         : _max_mirror_size(max_mirror_size)
     {
       // File mirroring.
@@ -212,7 +216,8 @@ namespace common
       std::string const& meta_protocol,
       std::string const& meta_host,
       uint16_t meta_port,
-      std::vector<unsigned char> trophonius_fingerprint)
+      std::vector<unsigned char> trophonius_fingerprint,
+      boost::optional<boost::uuids::uuid const&> device_id)
         : _enable_mirroring(true)
         , _max_mirror_size(0)
         , _meta_protocol(meta_protocol)
@@ -226,8 +231,6 @@ namespace common
         , _non_persistent_config_dir()
         , _download_dir()
     {
-      this->_device_id = this->_get_device_id();
-
       // Download directory.
       _set_path_with_optional(
         this->_download_dir,
@@ -264,6 +267,10 @@ namespace common
           elle::os::getenv("INFINIT_NON_PERSISTENT_DIR", ""),
           path::join(elle::system::home_directory().string(), ".infinit"));
       }
+      if (device_id)
+        this->_device_id = device_id.get();
+      else
+        this->_device_id = this->_get_device_id();
     }
 
     boost::uuids::uuid

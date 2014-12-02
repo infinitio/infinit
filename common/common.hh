@@ -33,14 +33,15 @@ namespace common
         bool production,
         bool enable_mirroring = true,
         uint64_t max_mirror_size = 0,
-        boost::optional<std::string> download_dir = {},
-        boost::optional<std::string> persistent_config_dir = {},
-        boost::optional<std::string> non_persistent_config_dir = {});
+        boost::optional<std::string const&> download_dir = {},
+        boost::optional<std::string const&> persistent_config_dir = {},
+        boost::optional<std::string const&> non_persistent_config_dir = {});
       Configuration(
         std::string const& meta_protocol,
         std::string const& meta_host,
         uint16_t meta_port,
-        std::vector<unsigned char> trophonius_fingerprint);
+        std::vector<unsigned char> trophonius_fingerprint,
+        boost::optional<boost::uuids::uuid const&> device_id = {});
       Configuration() = default;
 
       ELLE_ATTRIBUTE_R(bool, production);
