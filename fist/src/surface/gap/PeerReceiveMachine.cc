@@ -338,14 +338,15 @@ namespace surface
             {
               return this->_aws_credentials(first_time);
             };
-         _bufferer.reset(new S3TransferBufferer(
-           *this->data(),
-           get_credentials,
-           std::bind(&PeerReceiveMachine::_report_s3_error,
-                     this,
-                     std::placeholders::_1,
-                     std::placeholders::_2)
-           ));
+          this->_bufferer.reset(
+            new S3TransferBufferer(
+              elle::make_unique<S3>(this->state(), get_credentials),
+              *this->data(),
+              std::bind(&PeerReceiveMachine::_report_s3_error,
+                        this,
+                        std::placeholders::_1,
+                        std::placeholders::_2)
+              ));
         }
         if (auto& mr = state().metrics_reporter())
         {

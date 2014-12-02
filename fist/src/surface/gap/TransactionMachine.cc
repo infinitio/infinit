@@ -507,5 +507,26 @@ namespace surface
           onboarding,
           this->transaction().canceled_by_user());
     }
+
+    /*---.
+    | S3 |
+    `---*/
+
+    S3::S3(State& state,
+           std::function<aws::Credentials(bool)> query_credentials)
+      : aws::S3(query_credentials)
+      , _state(state)
+    {}
+
+    aws::URL
+    S3::hostname(aws::Credentials const& credentials) const
+    {
+      auto replace = this->_state.s3_hostname();
+      if (!replace)
+        return aws::S3::hostname(credentials);
+      else
+        return *replace;
+    }
+
   }
 }

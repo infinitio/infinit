@@ -29,24 +29,23 @@ namespace surface
 
     // Recipient.
     S3TransferBufferer::S3TransferBufferer(
+      std::unique_ptr<aws::S3> s3,
       infinit::oracles::PeerTransaction& transaction,
-      std::function<aws::Credentials(bool)> credentials,
       aws::S3::ErrorCallback on_error
-      ):
-        Super(transaction),
-        _count(),
-        _full_size(),
-        _files(),
-        _key_code(),
-        _raw_file(false),
-        _credentials(credentials),
-        _s3_handler(this->_credentials)
+      )
+      : Super(transaction)
+      , _count()
+      , _full_size()
+      , _files()
+      , _key_code()
+      , _raw_file(false)
+      , _s3_handler(std::move(s3))
     {
-      _s3_handler.on_error(on_error);
+      _s3_handler->on_error(on_error);
       try
       {
         // Fetch transfer meta-data from cloud.
-        elle::Buffer buf = this->_s3_handler.get_object("meta_data");
+        elle::Buffer buf = this->_s3_handler->get_object("meta_data");
         elle::InputStreamBuffer<elle::Buffer> buffer(buf);
         std::istream stream(&buffer);
         auto meta_data =
@@ -68,24 +67,23 @@ namespace surface
     }
 
     S3TransferBufferer::S3TransferBufferer(
+      std::unique_ptr<aws::S3> s3,
       infinit::oracles::PeerTransaction& transaction,
       std::string const& file,
-      std::function<aws::Credentials(bool)> credentials,
       aws::S3::ErrorCallback on_error)
-    : Super(transaction)
-    , _count()
-    , _full_size()
-    , _files()
-    , _key_code()
-    , _raw_file(true)
-    , _credentials(credentials)
-    , _s3_handler(this->_credentials)
+      : Super(transaction)
+      , _count()
+      , _full_size()
+      , _files()
+      , _key_code()
+      , _raw_file(true)
+      , _s3_handler(std::move(s3))
     {
-      _s3_handler.on_error(on_error);
+      _s3_handler->on_error(on_error);
       // That file constraint is mostly for validation, we could
       // just bool no_metadata=true and get done with it
       std::vector<std::pair<std::string, FileSize>> files
-        = _s3_handler.list_remote_folder_full();
+        = _s3_handler->list_remote_folder_full();
       if (files.size() != 1)
         ELLE_WARN("%s: Expected only one file in cloud folder, got %s", *this, files);
       auto match = elle::containers::find_pair_first(files, file);
@@ -102,22 +100,21 @@ namespace surface
 
     // Sender.
     S3TransferBufferer::S3TransferBufferer(
+      std::unique_ptr<aws::S3> s3,
       infinit::oracles::PeerTransaction& transaction,
-      std::function<aws::Credentials(bool)> credentials,
       aws::S3::ErrorCallback on_error,
       FileCount count,
       FileSize total_size,
       Files const& files,
-      infinit::cryptography::Code const& key):
-        Super(transaction),
-        _count(count),
-        _full_size(total_size),
-        _files(files),
-        _key_code(key),
-        _credentials(credentials),
-        _s3_handler(this->_credentials)
+      infinit::cryptography::Code const& key)
+      : Super(transaction)
+      , _count(count)
+      , _full_size(total_size)
+      , _files(files)
+      , _key_code(key)
+      , _s3_handler(std::move(s3))
     {
-      _s3_handler.on_error(on_error);
+      _s3_handler->on_error(on_error);
       // Write transfer meta-data to cloud.
       // We binary serialize stuff, then base64-encode to be valid json
       // string, and then json-serialize
@@ -135,7 +132,7 @@ namespace surface
       elle::OutputStreamBuffer out_buffer(buffer);
       std::ostream stream(&out_buffer);
       elle::json::write(stream, meta_data);
-      this->_s3_handler.put_object(buffer, "meta_data");
+      this->_s3_handler->put_object(buffer, "meta_data");
     }
 
     /*------.
@@ -179,7 +176,7 @@ namespace surface
       std::string s3_name = this->_make_s3_name(file, offset);
       try
       {
-        this->_s3_handler.put_object(b, s3_name);
+        this->_s3_handler->put_object(b, s3_name);
       }
       catch (aws::AWSException const& e)
       {
@@ -199,7 +196,7 @@ namespace surface
       try
       {
         elle::Buffer res;
-        res = this->_s3_handler.get_object_chunk(_files.at(file).first, offset, size);
+        res = this->_s3_handler->get_object_chunk(_files.at(file).first, offset, size);
         ELLE_ASSERT_GTE(size, res.size());
         return res;
       }
@@ -220,7 +217,7 @@ namespace surface
       try
       {
         elle::Buffer res;
-        res = this->_s3_handler.get_object(s3_name);
+        res = this->_s3_handler->get_object(s3_name);
         return res;
         // XXX should clean up folder once transaction has been completed.
       }
@@ -255,7 +252,7 @@ namespace surface
         bool first = true;
         do
         {
-          list = this->_s3_handler.list_remote_folder(marker);
+          list = this->_s3_handler->list_remote_folder(marker);
           marker = list.back().first;
           // If we're running a second+ time, it means that we'll get marker
           // element twice, so remove it.
@@ -337,7 +334,7 @@ namespace surface
       // Consider cleanup errors as nonfatal for the user
       try
       {
-        this->_s3_handler.delete_folder();
+        this->_s3_handler->delete_folder();
       }
       catch (const reactor::Terminate&)
       {
