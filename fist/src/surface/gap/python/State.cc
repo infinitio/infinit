@@ -145,6 +145,43 @@ transaction_status_string(infinit::oracles::Transaction::Status status)
   }
 }
 
+static
+std::string
+gap_transaction_status_string(gap_TransactionStatus status)
+{
+  switch (status)
+  {
+    case gap_transaction_new:
+      return "transaction_new";
+    case gap_transaction_on_other_device:
+      return "transaction_on_other_device";
+    case gap_transaction_waiting_accept:
+      return "transaction_waiting_accept";
+    case gap_transaction_waiting_data:
+      return "transaction_waiting_data";
+    case gap_transaction_connecting:
+      return "transaction_connecting";
+    case gap_transaction_transferring:
+      return "transaction_transferring";
+    case gap_transaction_cloud_buffered:
+      return "transaction_cloud_buffered";
+    case gap_transaction_finished:
+      return "transaction_finished";
+    case gap_transaction_failed:
+      return "transaction_failed";
+    case gap_transaction_canceled:
+      return "transaction_canceled";
+    case gap_transaction_rejected:
+      return "transaction_rejected";
+    case gap_transaction_deleted:
+      return "transaction_deleted";
+    case gap_transaction_paused:
+      return "transaction_paused";
+    default:
+      elle::unreachable();
+  }
+}
+
 struct peer_transaction_notification_to_dict
 {
   static
@@ -153,7 +190,8 @@ struct peer_transaction_notification_to_dict
   {
     auto dict = PyDict_New();
     PyDict_SetItemString(dict, "id", PyLong_FromLong(txn.id));
-    PyDict_SetItemString(dict, "status", PyLong_FromLong(txn.status));
+    PyDict_SetItemString(dict, "status",
+      PyUnicode_FromString(gap_transaction_status_string(txn.status).c_str()));
     PyDict_SetItemString(dict, "sender_id", PyLong_FromLong(txn.sender_id));
     PyDict_SetItemString(dict, "sender_device_id",
                          PyUnicode_FromString(txn.sender_device_id.c_str()));
@@ -196,7 +234,8 @@ struct link_transaction_notification_to_dict
                            PyUnicode_FromString(txn.link.get().c_str()));
     }
     PyDict_SetItemString(dict, "click_count", PyLong_FromLong(txn.click_count));
-    PyDict_SetItemString(dict, "status", PyLong_FromLong(txn.status));
+    PyDict_SetItemString(dict, "status",
+      PyUnicode_FromString(gap_transaction_status_string(txn.status).c_str()));
     PyDict_SetItemString(dict, "sender_device_id",
                          PyUnicode_FromString(txn.sender_device_id.c_str()));
     return dict;
@@ -327,41 +366,6 @@ struct transaction_map_to_python_dict
   }
 };
 
-static
-std::string
-gap_transaction_status_string(gap_TransactionStatus status)
-{
-  switch (status)
-  {
-    case gap_transaction_new:
-      return "transaction_new";
-    case gap_transaction_on_other_device:
-      return "transaction_on_other_device";
-    case gap_transaction_waiting_accept:
-      return "transaction_waiting_accept";
-    case gap_transaction_waiting_data:
-      return "transaction_waiting_data";
-    case gap_transaction_connecting:
-      return "transaction_connecting";
-    case gap_transaction_transferring:
-      return "transaction_transferring";
-    case gap_transaction_cloud_buffered:
-      return "transaction_cloud_buffered";
-    case gap_transaction_finished:
-      return "transaction_finished";
-    case gap_transaction_failed:
-      return "transaction_failed";
-    case gap_transaction_canceled:
-      return "transaction_canceled";
-    case gap_transaction_rejected:
-      return "transaction_rejected";
-    case gap_transaction_deleted:
-      return "transaction_deleted";
-    default:
-      elle::unreachable();
-  }
-}
-
 struct cxx_map_to_python_dict
 {
   static
@@ -422,15 +426,12 @@ public:
   typedef surface::gap::State Super;
   PythonState(std::string const& meta_protocol,
               std::string const& meta_host,
-              uint16_t meta_port,
-              std::string const& download_dir)
+              uint16_t meta_port)
   : common::infinit::Configuration(false)
   , Super(meta_protocol,
           meta_host,
           meta_port,
-          device_id(),
-          trophonius_fingerprint(),
-          download_dir)
+          trophonius_fingerprint())
   {}
 
   template <typename T>
@@ -530,8 +531,8 @@ public:
   TOP(cancel, void)
   TOP(join, void)
   TOP(progress, float)
-  TOP(pause, bool)
-  TOP(interrupt, void)
+  TOP(pause, void)
+  TOP(resume, void)
   TOP(reset, void)
   TOP(final, bool)
   #undef TOP
@@ -562,8 +563,7 @@ BOOST_PYTHON_MODULE(state)
     ("State",
      boost::python::init<std::string const&,
                          std::string const&,
-                         uint16_t,
-                         std::string const&>())
+                         uint16_t>())
     .def("logged_in", &State::logged_in)
     .def("login", (void (State::*)(std::string const&, std::string const&)) &State::login)
     .def("logout", &State::logout)
@@ -576,7 +576,7 @@ BOOST_PYTHON_MODULE(state)
     .def("transaction_cancel", &PythonState::transaction_cancel)
     .def("transaction_progress", &PythonState::transaction_progress)
     .def("transaction_pause", &PythonState::transaction_pause)
-    .def("transaction_interrupt", &PythonState::transaction_interrupt)
+    .def("transaction_resume", &PythonState::transaction_resume)
     .def("transaction_reset", &PythonState::transaction_reset)
     .def("transaction_final", &PythonState::transaction_final)
     .def("transaction_status", &PythonState::wrap_transaction_status)
