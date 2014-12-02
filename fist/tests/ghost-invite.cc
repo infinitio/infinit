@@ -14,16 +14,18 @@ ELLE_TEST_SCHEDULED(login)
   Server server;
   auto const email = "em@il.com";
   auto const password = "secret";
-  auto user = server.register_user(email, password);
+  auto const hashed_password =
+    surface::gap::State::hash_password(email, password);
+  auto user = server.register_user(email, hashed_password);
   State state(server, user.device_id());
   // Callbacks
   reactor::Barrier transferring;
   reactor::Barrier finished;
-  state.attach_callback<surface::gap::Transaction::Notification>(
-    [&] (surface::gap::Transaction::Notification const& notif)
+  state.attach_callback<surface::gap::PeerTransaction>(
+    [&] (surface::gap::PeerTransaction const& transaction)
     {
       // Check the GUI goes created -> transferring -> finished.
-      auto status = notif.status;
+      auto status = transaction.status;
       ELLE_LOG("new transaction status: %s", status);
       switch (status)
       {
