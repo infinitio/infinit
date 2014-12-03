@@ -689,11 +689,14 @@ class Mixin:
       # Don't update with an empty dictionary: it would empty the
       # object.
       if diff:
-        if status in transaction_status.final or \
-           status is transaction_status.statuses['ghost_uploaded']:
+        if status in transaction_status.final:
           for i in ['recipient_id', 'sender_id']:
             self.__complete_transaction_stats(transaction[i],
                                               transaction)
+        elif status in [transaction_status.statuses['ghost_uploaded'],
+                        transaction_status.statuses['cloud_buffered']]:
+          self.__complete_transaction_stats(transaction['sender_id'],
+                                            transaction)
         transaction = self.database.transactions.find_and_modify(
           {'_id': transaction['_id']},
           {'$set': diff},
