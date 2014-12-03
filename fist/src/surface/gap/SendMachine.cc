@@ -553,7 +553,17 @@ namespace surface
           if (validate)
             return;
           ELLE_LOG("%s: File mirroring failure, cleaning up.", *this);
-          boost::filesystem::remove_all(mirror_path, erc);
+          // https://svn.boost.org/trac/boost/ticket/7396
+          // remove_all can throw even with 'erc' argument
+          try
+          {
+            boost::filesystem::remove_all(mirror_path, erc);
+          }
+          catch(boost::filesystem::filesystem_error const& e)
+          {
+            ELLE_ERR("%s: exception from mirror cleanup ignored: %s",
+                     *this, e.what());
+          }
       });
       ELLE_TRACE("%s: trying to mirror files (%s < %s) to %s",
                  *this, total_size, max_mirror_size, mirror_path);
