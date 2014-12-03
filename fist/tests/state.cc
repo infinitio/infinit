@@ -1,6 +1,7 @@
 #include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
+#include <elle/filesystem/TemporaryDirectory.hh>
 #include <elle/log.hh>
 #include <elle/memory.hh>
 #include <elle/os/path.hh>
@@ -356,11 +357,13 @@ ELLE_TEST_SCHEDULED(login)
     hashed_password);
   auto device_id = boost::uuids::random_generator()();
   Server<> server(identity, device_id);
+  auto temp_dir = elle::filesystem::TemporaryDirectory();
   surface::gap::State state("http",
                             "127.0.0.1",
                             server.port(),
                             fingerprint,
-                            device_id);
+                            device_id,
+                            temp_dir.path().string());
   ELLE_LOG("Logging in");
   state.login(email, password);
   ELLE_LOG("Done");
@@ -381,11 +384,13 @@ ELLE_TEST_SCHEDULED(login_failure)
     hashed_password);
   auto device_id = boost::uuids::random_generator()();
   Server<> server(identity, device_id);
+  auto temp_dir = elle::filesystem::TemporaryDirectory();
   surface::gap::State state("http",
                             "127.0.0.1",
                             server.port(),
                             fingerprint,
-                            device_id);
+                            device_id,
+                            temp_dir.path().string());
   using ErrorCode = ::oracles::meta::client::ErrorCode;
   server.login_result((int)ErrorCode::email_not_confirmed);
   BOOST_CHECK_THROW(state.login(email, password), std::exception);
@@ -461,11 +466,13 @@ ELLE_TEST_SCHEDULED(trophonius_forbidden)
     hashed_password);
   auto device_id = boost::uuids::random_generator()();
   ForbiddenTrophoniusMeta server(identity, device_id);
+  auto temp_dir = elle::filesystem::TemporaryDirectory();
   surface::gap::State state("http",
                             "127.0.0.1",
                             server.port(),
                             fingerprint,
-                            device_id);
+                            device_id,
+                            temp_dir.path().string());
   reactor::Signal reconnected;
   auto tropho = elle::make_unique<infinit::oracles::trophonius::Client>(
     [&] (infinit::oracles::trophonius::ConnectionState connected)
@@ -544,11 +551,13 @@ ELLE_TEST_SCHEDULED(trophonius_timeout)
     hashed_password);
   auto device_id = boost::uuids::random_generator()();
   TimeoutTrophoniusMeta server(identity, device_id);
+  auto temp_dir = elle::filesystem::TemporaryDirectory();
   surface::gap::State state("http",
                             "127.0.0.1",
                             server.port(),
                             fingerprint,
-                            device_id);
+                            device_id,
+                            temp_dir.path().string());
   auto tropho = elle::make_unique<infinit::oracles::trophonius::Client>(
     [&] (infinit::oracles::trophonius::ConnectionState connected) {},
     std::bind(&surface::gap::State::on_reconnection_failed, &state),
