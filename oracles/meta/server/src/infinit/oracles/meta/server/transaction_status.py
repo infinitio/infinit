@@ -53,6 +53,7 @@ transitions = {
   ACCEPTED:
     {
     True: [
+      CLOUD_BUFFERED,
       CANCELED,
       FAILED
       ],
