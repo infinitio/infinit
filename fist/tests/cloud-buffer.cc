@@ -25,33 +25,25 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
     recipient_email,
     std::vector<std::string>{"/etc/passwd"},
     "message");
-  while (state_transaction.data()->status ==
-         infinit::oracles::Transaction::Status::created)
-  {
-    reactor::sleep(10_ms);
-    state.poll();
-  }
-  BOOST_CHECK_EQUAL(state_transaction.data()->status,
-                    infinit::oracles::Transaction::Status::initialized);
-  auto& server_transaction = server.transaction(state_transaction.data()->id);
-  BOOST_CHECK_EQUAL(server_transaction.status(),
-                    infinit::oracles::Transaction::Status::initialized);
-
-  // Callbacks
   reactor::Barrier transferring, cloud_buffered;
   state_transaction.status_changed().connect(
     [&] (gap_TransactionStatus status)
     {
       ELLE_LOG("new local transaction status: %s", status);
+      auto& server_transaction =
+        server.transaction(state_transaction.data()->id);
       switch (status)
       {
         case gap_transaction_transferring:
+        {
           BOOST_CHECK_EQUAL(
             server_transaction.status(),
             infinit::oracles::Transaction::Status::initialized);
           transferring.open();
           break;
+        }
         case gap_transaction_cloud_buffered:
+        {
           BOOST_CHECK(transferring);
           BOOST_CHECK_EQUAL(
             server_transaction.status(),
@@ -59,16 +51,14 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
           BOOST_CHECK(server.cloud_buffered());
           cloud_buffered.open();
           break;
+        }
         default:
+        {
           BOOST_FAIL(
             elle::sprintf("unexpected transaction status: %s", status));
           break;
+        }
       }
-    });
-  server_transaction.status_changed().connect(
-    [&] (infinit::oracles::Transaction::Status status)
-    {
-      ELLE_LOG("new server transaction status: %s", status);
     });
   reactor::wait(cloud_buffered);
 }
