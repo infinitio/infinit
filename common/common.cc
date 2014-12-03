@@ -217,7 +217,8 @@ namespace common
       std::string const& meta_host,
       uint16_t meta_port,
       std::vector<unsigned char> trophonius_fingerprint,
-      boost::optional<boost::uuids::uuid const&> device_id)
+      boost::optional<boost::uuids::uuid const&> device_id,
+      boost::optional<std::string const&> download_dir)
         : _enable_mirroring(true)
         , _max_mirror_size(0)
         , _meta_protocol(meta_protocol)
@@ -235,7 +236,8 @@ namespace common
       _set_path_with_optional(
         this->_download_dir,
         elle::os::getenv("INFINIT_DOWNLOAD_DIR", ""),
-        path::join(elle::system::home_directory().string(), "Downloads"));
+        path::join(elle::system::home_directory().string(), "Downloads"),
+        download_dir);
 
       if (!elle::os::getenv("INFINIT_HOME", "").empty())
       {

@@ -41,7 +41,8 @@ namespace common
         std::string const& meta_host,
         uint16_t meta_port,
         std::vector<unsigned char> trophonius_fingerprint,
-        boost::optional<boost::uuids::uuid const&> device_id = {});
+        boost::optional<boost::uuids::uuid const&> device_id = {},
+        boost::optional<std::string const&> download_dir = {});
       Configuration() = default;
 
       ELLE_ATTRIBUTE_R(bool, production);
