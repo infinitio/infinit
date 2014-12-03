@@ -191,9 +191,6 @@ gap_change_password(gap_State* state,
 uint32_t
 gap_self_id(gap_State* state);
 
-std::vector<uint32_t>
-gap_self_favorites(gap_State* state);
-
 /// Publish avatar to meta.
 gap_Status
 gap_update_avatar(gap_State* state, void const* data, size_t size);
@@ -234,6 +231,10 @@ gap_users_by_emails(gap_State* state, std::vector<std::string> emails);
 /// Get the list of user's swaggers.
 std::vector<surface::gap::User>
 gap_swaggers(gap_State* state);
+
+/// Get the list of user's favorites.
+std::vector<uint32_t>
+gap_favorites(gap_State* state);
 
 /// Mark a user as favorite.
 gap_Status

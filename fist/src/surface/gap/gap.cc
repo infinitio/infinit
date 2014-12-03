@@ -448,25 +448,6 @@ gap_self_id(gap_State* state)
     });
 }
 
-std::vector<uint32_t>
-gap_self_favorites(gap_State* state)
-{
-  ELLE_ASSERT(state != nullptr);
-  return run<std::vector<uint32_t>>(
-    state,
-    "favorites",
-    [&] (surface::gap::State& state) -> std::vector<uint32_t>
-    {
-      std::vector<uint32_t> values;
-      for (std::string const& fav: state.me().favorites)
-      {
-        state.user(fav); // update user indexes
-        values.push_back(state.user_indexes().at(fav));
-      }
-      return values;
-    });
-}
-
 /// Publish avatar to meta.
 gap_Status
 gap_update_avatar(gap_State* state, void const* data, size_t size)
@@ -672,6 +653,25 @@ gap_swaggers(gap_State* state)
     });
 }
 
+std::vector<uint32_t>
+gap_favorites(gap_State* state)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<std::vector<uint32_t>>(
+    state,
+    "favorites",
+    [&] (surface::gap::State& state) -> std::vector<uint32_t>
+    {
+      std::vector<uint32_t> values;
+      for (std::string const& fav: state.me().favorites)
+      {
+        state.user(fav); // update user indexes
+        values.push_back(state.user_indexes().at(fav));
+      }
+      return values;
+    });
+}
+
 gap_Status
 gap_favorite(gap_State* state, uint32_t id)
 {
@@ -683,15 +683,17 @@ gap_favorite(gap_State* state, uint32_t id)
     [&] (surface::gap::State& state)
     {
       std::string meta_id = state.users().at(id).id;
-      state.meta().favorite(meta_id);
       std::list<std::string>& favorites =
         const_cast<std::list<std::string>&>(state.me().favorites);
       if (std::find(favorites.begin(),
                     favorites.end(),
                     meta_id) == favorites.end())
+      {
         favorites.push_back(meta_id);
-      if (state.metrics_reporter())
-        state.metrics_reporter()->user_favorite(meta_id);
+        state.meta().favorite(meta_id);
+        if (state.metrics_reporter())
+          state.metrics_reporter()->user_favorite(meta_id);
+      }
       return gap_ok;
     });
 }
@@ -707,7 +709,6 @@ gap_unfavorite(gap_State* state, uint32_t id)
     [&] (surface::gap::State& state)
     {
       std::string meta_id = state.users().at(id).id;
-      state.meta().unfavorite(meta_id);
       // XXX Should be notification driven
       std::list<std::string>& favorites =
         const_cast<std::list<std::string>&>(state.me().favorites);
@@ -715,9 +716,12 @@ gap_unfavorite(gap_State* state, uint32_t id)
                           favorites.end(),
                           meta_id);
       if (it != favorites.end())
+      {
         favorites.erase(it);
-      if (state.metrics_reporter())
-        state.metrics_reporter()->user_unfavorite(meta_id);
+        state.meta().unfavorite(meta_id);
+        if (state.metrics_reporter())
+          state.metrics_reporter()->user_unfavorite(meta_id);
+      }
       return gap_ok;
     });
 }
