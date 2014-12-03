@@ -5,6 +5,7 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include <elle/Buffer.hh>
+#include <elle/filesystem/TemporaryDirectory.hh>
 #include <elle/log.hh>
 #include <elle/os/path.hh>
 #include <elle/serialization/json/SerializerIn.hh>
@@ -505,7 +506,8 @@ Server::Transaction::Transaction()
 State::State(Server& server,
              boost::uuids::uuid device_id)
   : surface::gap::State(
-    "http", "127.0.0.1", server.port(), fingerprint, device_id)
+    "http", "127.0.0.1", server.port(), fingerprint, device_id,
+    elle::filesystem::TemporaryDirectory().path().string())
 {
   this->s3_hostname(aws::URL{"http://",
                              elle::sprintf("localhost:%s", server.port()),
