@@ -250,7 +250,8 @@ namespace surface
     protected:
       friend class Transferer;
       friend class TransferMachine;
-      ELLE_ATTRIBUTE_Rw(gap_TransactionStatus, gap_status);
+      void
+      gap_status(gap_TransactionStatus);
 
     /*--------.
     | Metrics |

@@ -122,7 +122,6 @@ namespace surface
       , _transaction(transaction)
       , _state(transaction.state())
       , _data(std::move(data))
-      , _gap_status(gap_transaction_new)
     {
       ELLE_TRACE_SCOPE("%s: create transaction machine", *this);
       this->_machine.transition_add(
@@ -202,12 +201,7 @@ namespace surface
     void
     TransactionMachine::gap_status(gap_TransactionStatus v)
     {
-      if (v != this->_gap_status)
-      {
-        ELLE_TRACE("%s: change GAP status to %s", *this, v);
-        this->_gap_status = v;
-        this->state().enqueue(Transaction::Notification(this->id(), v));
-      }
+      this->_transaction.status(v);
     }
 
     void
