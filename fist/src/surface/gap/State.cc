@@ -189,11 +189,13 @@ namespace surface
                  std::string const& meta_host,
                  uint16_t meta_port,
                  std::vector<unsigned char> trophonius_fingerprint,
-                 boost::optional<boost::uuids::uuid const&> device_id)
+                 boost::optional<boost::uuids::uuid const&> device_id,
+                 boost::optional<std::string const&> download_dir)
       : State(common::infinit::Configuration(
                 meta_protocol, meta_host, meta_port,
                 trophonius_fingerprint,
-                device_id))
+                device_id,
+                download_dir))
     {}
 
     State::~State()
