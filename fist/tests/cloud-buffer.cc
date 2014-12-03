@@ -39,10 +39,9 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
 
   // Callbacks
   reactor::Barrier transferring, cloud_buffered;
-  state.attach_callback<surface::gap::Transaction::Notification>(
-    [&] (surface::gap::Transaction::Notification const& notif)
+  state_transaction.status_changed().connect(
+    [&] (gap_TransactionStatus status)
     {
-      auto status = notif.status;
       ELLE_LOG("new local transaction status: %s", status);
       switch (status)
       {
@@ -71,11 +70,7 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
     {
       ELLE_LOG("new server transaction status: %s", status);
     });
-  while (!cloud_buffered)
-  {
-    reactor::sleep(100_ms);
-    state.poll();
-  }
+  reactor::wait(cloud_buffered);
 }
 
 ELLE_TEST_SUITE()

@@ -565,6 +565,7 @@ namespace surface
         ELLE_TRACE_SCOPE("%s: change GAP status to %s", *this, status);
         this->_status = status;
         this->state().enqueue(Transaction::Notification(this->id(), status));
+        this->_status_changed(status);
       }
     }
 
