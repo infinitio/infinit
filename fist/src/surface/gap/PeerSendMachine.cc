@@ -234,6 +234,7 @@ namespace surface
       {
         case TransactionStatus::initialized:
         case TransactionStatus::created:
+        case TransactionStatus::cloud_buffered:
           if (this->concerns_this_device())
           {
             if (this->data()->id.empty())
@@ -284,6 +285,7 @@ namespace surface
       {
         case TransactionStatus::initialized:
         case TransactionStatus::created:
+        case TransactionStatus::cloud_buffered:
           if (this->concerns_this_device())
             ELLE_TRACE("%s: ignoring status update to %s", *this, status);
           else
@@ -470,7 +472,11 @@ namespace surface
             ELLE_TRACE("%s: preemptive buffering disabled (no feature)", *this);
         }
         else
+        {
+          ELLE_TRACE("%s: peer is online, doing nothing until acceptance",
+                     *this);
           this->gap_status(gap_transaction_waiting_accept);
+        }
       }
       catch (infinit::state::TransactionFinalized const&)
       {
@@ -607,6 +613,7 @@ namespace surface
         ELLE_DEBUG("%s: cloud buffering disabled by configuration", *this);
         return;
       }
+      ELLE_TRACE_SCOPE("%s: upload to the cloud", *this);
       this->gap_status(gap_transaction_transferring);
       auto start_time = boost::posix_time::microsec_clock::universal_time();
       infinit::metrics::TransferExitReason exit_reason = infinit::metrics::TransferExitReasonUnknown;
@@ -629,7 +636,6 @@ namespace surface
         });
       try
       {
-        ELLE_TRACE_SCOPE("%s: upload to the cloud", *this);
         auto& frete = this->frete();
         _fetch_peer_key(true);
         auto& snapshot = *frete.transfer_snapshot();
@@ -662,17 +668,18 @@ namespace surface
             {
               return this->_aws_credentials(first_time);
             };
-          bufferer.reset(new S3TransferBufferer(
-            *this->data(),
-            get_credentials,
-            std::bind(&PeerSendMachine::_report_s3_error,
-                      this,
-                      std::placeholders::_1,
-                      std::placeholders::_2),
-            snapshot.count(),
-            snapshot.total_size(),
-            files,
-            frete.key_code()));
+          bufferer.reset(
+            new S3TransferBufferer(
+              elle::make_unique<S3>(this->state(), get_credentials),
+              *this->data(),
+              std::bind(&PeerSendMachine::_report_s3_error,
+                        this,
+                        std::placeholders::_1,
+                        std::placeholders::_2),
+              snapshot.count(),
+              snapshot.total_size(),
+              files,
+              frete.key_code()));
         }
         if (auto& mr = state().metrics_reporter())
         {
@@ -762,6 +769,8 @@ namespace surface
         // acknowledge last block and save snapshot
         frete.encrypted_read_acknowledge(0, 0, 0, this->frete().full_size());
         this->_save_frete_snapshot();
+        this->state().meta().update_transaction(
+          this->transaction_id(), TransactionStatus::cloud_buffered);
         this->gap_status(gap_transaction_cloud_buffered);
         exit_reason = infinit::metrics::TransferExitReasonFinished;
       } // try

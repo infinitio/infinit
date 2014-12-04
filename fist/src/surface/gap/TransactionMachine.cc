@@ -122,7 +122,6 @@ namespace surface
       , _transaction(transaction)
       , _state(transaction.state())
       , _data(std::move(data))
-      , _gap_status(gap_transaction_new)
     {
       ELLE_TRACE_SCOPE("%s: create transaction machine", *this);
       this->_machine.transition_add(
@@ -202,12 +201,7 @@ namespace surface
     void
     TransactionMachine::gap_status(gap_TransactionStatus v)
     {
-      if (v != this->_gap_status)
-      {
-        ELLE_TRACE("%s: change GAP status to %s", *this, v);
-        this->_gap_status = v;
-        this->state().enqueue(Transaction::Notification(this->id(), v));
-      }
+      this->_transaction.status(v);
     }
 
     void
@@ -507,5 +501,26 @@ namespace surface
           onboarding,
           this->transaction().canceled_by_user());
     }
+
+    /*---.
+    | S3 |
+    `---*/
+
+    S3::S3(State& state,
+           std::function<aws::Credentials(bool)> query_credentials)
+      : aws::S3(query_credentials)
+      , _state(state)
+    {}
+
+    aws::URL
+    S3::hostname(aws::Credentials const& credentials) const
+    {
+      auto replace = this->_state.s3_hostname();
+      if (!replace)
+        return aws::S3::hostname(credentials);
+      else
+        return *replace;
+    }
+
   }
 }

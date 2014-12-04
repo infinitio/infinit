@@ -7,6 +7,7 @@ import bson
 
 from infinit.oracles.meta.server.transaction_status import \
   ACCEPTED as accepted, \
+  CLOUD_BUFFERED as cloud_buffered, \
   FINISHED as finished, \
   GHOST_UPLOADED as ghost_uploaded, \
   INITIALIZED as initialized
@@ -33,6 +34,12 @@ with Meta() as meta:
   tid3 = res['created_transaction_id']
   bob.transaction_update(tid3, accepted)
   bob.transaction_update(tid3, finished)
+  # Send to a peer and cloud-buffer.
+  transaction3bis, res = alice.sendfile(recipient_id = 'bob@infinit.io',
+                                     initialize = True)
+  tid3bis = res['created_transaction_id']
+  bob.transaction_update(tid3bis, accepted)
+  alice.transaction_update(tid3bis, cloud_buffered)
   # Send to a ghost
   transaction, res = alice.sendfile(recipient_id = 'carol@infinit.io',
                                     initialize = True)
@@ -81,9 +88,9 @@ with Meta() as meta:
   assert transactions['reached_peer'] == 2
   assert transactions['received'] == 1
   assert transactions['received_peer'] == 1
-  assert transactions['sent'] == 7
+  assert transactions['sent'] == 8
   assert transactions['sent_link'] == 2
-  assert transactions['sent_peer'] == 5
+  assert transactions['sent_peer'] == 6
   assert len(transactions['pending']) == 5
   assert transactions['pending_has']
   # Flush transactions
@@ -97,6 +104,10 @@ with Meta() as meta:
   assert len(transactions['pending']) == 3
   assert transactions['pending_has']
   bob.transaction_update(tid2, finished)
+  transactions = stats()
+  assert len(transactions['pending']) == 2
+  assert transactions['pending_has']
+  bob.transaction_update(tid3bis, finished)
   transactions = stats()
   assert len(transactions['pending']) == 2
   assert transactions['pending_has']

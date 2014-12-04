@@ -65,18 +65,27 @@ namespace surface
       return id;
     }
 
+    Transaction&
+    State::transaction_peer_create(std::string const& peer_id,
+                                   std::vector<std::string> files,
+                                   std::string const& message)
+    {
+      ELLE_TRACE_SCOPE("%s: send files to %s", *this, peer_id);
+      auto id = generate_id();
+      auto transaction =
+        elle::make_unique<Transaction>(*this, id, peer_id,
+                                       std::move(files), message);
+      auto& res = *transaction;
+      this->_transactions.emplace(id, std::move(transaction));
+      return res;
+    }
+
     uint32_t
     State::send_files(std::string const& peer_id,
                       std::vector<std::string> files,
                       std::string const& message)
     {
-      ELLE_TRACE_SCOPE("%s: send files to %s", *this, peer_id);
-      auto id = generate_id();
-      this->_transactions.emplace(
-        id,
-        elle::make_unique<Transaction>(*this, id, peer_id,
-                                         std::move(files), message));
-      return id;
+      return this->transaction_peer_create(peer_id, files, message).id();
     }
 
     uint32_t

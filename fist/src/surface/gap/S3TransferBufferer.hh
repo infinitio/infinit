@@ -33,15 +33,15 @@ namespace surface
       /// Recipient constructor.
       /// The recipient fetches the meta-data from the cloud.
       S3TransferBufferer(
+        std::unique_ptr<aws::S3> s3,
         infinit::oracles::PeerTransaction& transaction,
-        std::function<aws::Credentials(bool)> credentials,
         aws::S3::ErrorCallback on_error);
 
       /// Sender constructor.
       /// The sender saves the meta-data for the transfer to the cloud.
       S3TransferBufferer(
+        std::unique_ptr<aws::S3> s3,
         infinit::oracles::PeerTransaction& transaction,
-        std::function<aws::Credentials(bool)> credentials,
         aws::S3::ErrorCallback on_error,
         FileCount count,
         FileSize total_size,
@@ -51,9 +51,9 @@ namespace surface
       /// Recipient constructor from cloud archive.
       /// Expect just this file in folder and fetch it, no cloud metadata.
       S3TransferBufferer(
+        std::unique_ptr<aws::S3> s3,
         infinit::oracles::PeerTransaction& transaction,
         std::string const& file,
-        std::function<aws::Credentials(bool)> credentials,
         aws::S3::ErrorCallback on_error
         );
       ELLE_ATTRIBUTE_R(FileCount, count);
@@ -109,7 +109,7 @@ namespace surface
     `-----------*/
     private:
       ELLE_ATTRIBUTE(std::function<aws::Credentials(bool)>, credentials);
-      ELLE_ATTRIBUTE(aws::S3, s3_handler);
+      ELLE_ATTRIBUTE(std::unique_ptr<aws::S3>, s3_handler);
 
     /*--------.
     | Helpers |

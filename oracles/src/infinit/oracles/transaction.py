@@ -10,4 +10,5 @@ statuses = {
   'started': 999,
   'deleted': 8,
   'ghost_uploaded': 9,
+  'cloud_buffered': 10,
 }

@@ -50,26 +50,6 @@ namespace surface
       infinit::oracles::Transaction::Status::ghost_uploaded
     });
 
-    gap_TransactionStatus
-    Transaction::_transaction_status(Transaction::Data const& data) const
-    {
-      switch (data.status)
-      {
-        case infinit::oracles::Transaction::Status::finished:
-          return gap_transaction_finished;
-        case infinit::oracles::Transaction::Status::rejected:
-          return gap_transaction_rejected;
-        case infinit::oracles::Transaction::Status::failed:
-          return gap_transaction_failed;
-        case infinit::oracles::Transaction::Status::canceled:
-          return gap_transaction_canceled;
-        case infinit::oracles::Transaction::Status::ghost_uploaded:
-          return gap_transaction_cloud_buffered;
-        default:
-          return gap_transaction_new;
-      }
-    }
-
     // - Exception -------------------------------------------------------------
     Transaction::BadOperation::BadOperation(Type type):
       Exception(gap_error, elle::sprintf("%s", type)),
@@ -164,6 +144,7 @@ namespace surface
       , _files(std::move(files))
       , _message(message)
       , _archived(false)
+      , _status(gap_transaction_new)
       , _id(id)
       , _sender(true)
       , _data(nullptr)
@@ -199,6 +180,7 @@ namespace surface
       , _files(std::move(files))
       , _message(message)
       , _archived(false)
+      , _status(gap_transaction_new)
       , _id(id)
       , _sender(true)
       , _data(nullptr)
@@ -225,6 +207,36 @@ namespace surface
       this->_snapshot_save();
     }
 
+    static
+    gap_TransactionStatus
+    status_gap_from_meta(infinit::oracles::Transaction::Status status)
+    {
+      typedef infinit::oracles::Transaction::Status Status;
+      switch (status)
+      {
+        case Status::accepted:
+        case Status::created:
+        case Status::initialized:
+        case Status::none:
+        case Status::started:
+          return gap_transaction_on_other_device;
+        // Final states.
+        case Status::canceled:
+          return gap_transaction_canceled;
+        case Status::failed:
+          return gap_transaction_failed;
+        case Status::finished:
+        case Status::ghost_uploaded:
+          return gap_transaction_finished;
+        case Status::rejected:
+          return gap_transaction_rejected;
+        case Status::deleted:
+          return gap_transaction_deleted;
+        default:
+          elle::unreachable();
+      }
+    }
+
     // FIXME: Split history transactions.
     Transaction::Transaction(State& state,
                              uint32_t id,
@@ -238,7 +250,8 @@ namespace surface
       , _files()
       , _message()
       , _archived(false)
-      , _id(id)
+      , _status(gap_transaction_new)
+      , _id(status_gap_from_meta(data->status))
       , _sender(state.me().id == data->sender_id &&
                 state.device().id == data->sender_device_id)
       , _data(data)
@@ -359,6 +372,7 @@ namespace surface
       , _message(snapshot.message())
       , _plain_upload_uid(snapshot.plain_upload_uid())
       , _archived(snapshot.archived())
+      , _status(status_gap_from_meta(snapshot.data()->status))
       , _id(id)
       , _sender(snapshot.sender())
       , _data(snapshot.data())
@@ -508,7 +522,7 @@ namespace surface
           this->_machine->cancel("user deleted transaction");
           // Set the machine's gap status as we don't have a separate state for
           // deleted.
-          this->_machine->gap_status(gap_transaction_deleted);
+          this->status(gap_transaction_deleted);
         }
         // Update Meta.
         this->_data->status = infinit::oracles::Transaction::Status::deleted;
@@ -543,34 +557,15 @@ namespace surface
       this->_machine->join();
     }
 
-    gap_TransactionStatus
-    Transaction::status() const
+    void
+    Transaction::status(gap_TransactionStatus status)
     {
-      if (this->_machine)
-        return this->_machine->gap_status();
-      typedef infinit::oracles::Transaction::Status Status;
-      switch (this->_data->status)
+      if (status != this->_status)
       {
-        case Status::accepted:
-        case Status::created:
-        case Status::initialized:
-        case Status::none:
-        case Status::started:
-          return gap_transaction_on_other_device;
-        // Final states.
-        case Status::canceled:
-          return gap_transaction_canceled;
-        case Status::failed:
-          return gap_transaction_failed;
-        case Status::finished:
-        case Status::ghost_uploaded:
-          return gap_transaction_finished;
-        case Status::rejected:
-          return gap_transaction_rejected;
-        case Status::deleted:
-          return gap_transaction_deleted;
-        default:
-          elle::unreachable();
+        ELLE_TRACE_SCOPE("%s: change GAP status to %s", *this, status);
+        this->_status = status;
+        this->state().enqueue(Transaction::Notification(this->id(), status));
+        this->_status_changed(status);
       }
     }
 
@@ -631,13 +626,15 @@ namespace surface
           this->_machine->transaction_status_update(this->_data->status);
         this->_snapshot_save();
       }
+      else
+        this->status(status_gap_from_meta(data->status));
       if (auto link_data =
           std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(data))
       {
         // There's still a machine when deleting a link that was created during
         // this session. We need to handle this case explicitly.
         if (this->_machine && link_data->status == Status::deleted)
-          this->_machine->gap_status(gap_transaction_deleted);
+          this->status(gap_transaction_deleted);
         this->state().enqueue(LinkTransaction(this->id(),
                                               link_data->name,
                                               link_data->mtime,

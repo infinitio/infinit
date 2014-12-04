@@ -30,8 +30,8 @@ class HTTPException(Exception):
   def __init__(self, status, method, url, body, content):
     self.status = int(status)
     self.content = content
-    super().__init__('status %s with %s on /%s with body %s' % \
-                     (status, method, url, body))
+    super().__init__('status %s with %s on /%s with body %s: %s' % \
+                     (status, method, url, body, content))
 
 class Client:
 

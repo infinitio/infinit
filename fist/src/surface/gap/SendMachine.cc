@@ -14,7 +14,6 @@
 
 #include <aws/Credentials.hh>
 #include <aws/Exceptions.hh>
-#include <aws/S3.hh>
 
 #include <common/common.hh>
 #include <papier/Identity.hh>
@@ -105,30 +104,6 @@ namespace surface
         progress += chunk.second;
       return progress;
     }
-
-    class S3
-      : public aws::S3
-    {
-    public:
-      S3(State& state,
-         std::function<aws::Credentials(bool)> query_credentials)
-        : aws::S3(query_credentials)
-        , _state(state)
-      {}
-
-      virtual
-      aws::URL
-      hostname(aws::Credentials const& credentials) const override
-      {
-        auto replace = this->_state.s3_hostname();
-        if (!replace)
-          return aws::S3::hostname(credentials);
-        else
-          return *replace;
-      }
-
-      ELLE_ATTRIBUTE(State&, state);
-    };
 
     void
     SendMachine::_plain_upload()

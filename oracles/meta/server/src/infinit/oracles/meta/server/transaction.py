@@ -676,19 +676,27 @@ class Mixin:
           transaction['sender_id'],
           counts = ['reached_peer', 'reached'],
           time = False)
+      # Don't override accepted with cloud_buffered.
+      if status == transaction_status.CLOUD_BUFFERED and \
+         transaction['status'] == transaction_status.ACCEPTED:
+        diff.update({'status': transaction_status.ACCEPTED})
+      else:
+        diff.update({'status': status})
       diff.update({
-        'status': status,
         'mtime': time.time(),
         'modification_time': self.now,
       })
       # Don't update with an empty dictionary: it would empty the
       # object.
       if diff:
-        if status in transaction_status.final or \
-           status is transaction_status.statuses['ghost_uploaded']:
+        if status in transaction_status.final:
           for i in ['recipient_id', 'sender_id']:
             self.__complete_transaction_stats(transaction[i],
                                               transaction)
+        elif status in [transaction_status.statuses['ghost_uploaded'],
+                        transaction_status.statuses['cloud_buffered']]:
+          self.__complete_transaction_stats(transaction['sender_id'],
+                                            transaction)
         transaction = self.database.transactions.find_and_modify(
           {'_id': transaction['_id']},
           {'$set': diff},

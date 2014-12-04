@@ -16,6 +16,7 @@
 
 # include <aws/Credentials.hh>
 # include <aws/Exceptions.hh>
+# include <aws/S3.hh>
 
 # include <frete/Frete.hh>
 # include <infinit/oracles/Transaction.hh>
@@ -222,7 +223,7 @@ namespace surface
     `------------*/
     public:
       ELLE_ATTRIBUTE_R(surface::gap::Transaction&, transaction);
-      ELLE_ATTRIBUTE_R(surface::gap::State const&, state);
+      ELLE_ATTRIBUTE_R(surface::gap::State&, state);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
     public:
       virtual
@@ -249,7 +250,8 @@ namespace surface
     protected:
       friend class Transferer;
       friend class TransferMachine;
-      ELLE_ATTRIBUTE_Rw(gap_TransactionStatus, gap_status);
+      void
+      gap_status(gap_TransactionStatus);
 
     /*--------.
     | Metrics |
@@ -266,6 +268,18 @@ namespace surface
     public:
       void
       print(std::ostream& stream) const override;
+    };
+
+    class S3
+      : public aws::S3
+    {
+    public:
+      S3(State& state,
+         std::function<aws::Credentials(bool)> query_credentials);
+      virtual
+      aws::URL
+      hostname(aws::Credentials const& credentials) const override;
+      ELLE_ATTRIBUTE(State&, state);
     };
   }
 }
