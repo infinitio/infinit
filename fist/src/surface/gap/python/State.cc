@@ -137,9 +137,8 @@ transaction_status_string(infinit::oracles::Transaction::Status status)
       return "none";
     case Transaction::Status::ghost_uploaded:
       return "ghost-uploaded";
-    default:
-      elle::unreachable();
   }
+  elle::unreachable();
 }
 
 struct transaction_to_python_dict
@@ -273,9 +272,8 @@ gap_transaction_status_string(gap_TransactionStatus status)
       return "transaction_rejected";
     case gap_transaction_deleted:
       return "transaction_deleted";
-    default:
-      elle::unreachable();
   }
+  elle::unreachable();
 }
 
 struct transaction_notification_to_python_dict
