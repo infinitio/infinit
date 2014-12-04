@@ -250,8 +250,8 @@ namespace surface
       , _files()
       , _message()
       , _archived(false)
-      , _status(gap_transaction_new)
-      , _id(status_gap_from_meta(data->status))
+      , _status(status_gap_from_meta(data->status))
+      , _id(id)
       , _sender(state.me().id == data->sender_id &&
                 state.device().id == data->sender_device_id)
       , _data(data)
