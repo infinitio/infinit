@@ -219,6 +219,7 @@ namespace surface
         case Status::initialized:
         case Status::none:
         case Status::started:
+        case Status::cloud_buffered:
           return gap_transaction_on_other_device;
         // Final states.
         case Status::canceled:
