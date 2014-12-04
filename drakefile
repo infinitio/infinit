@@ -839,7 +839,8 @@ def configure(cxx_toolkit = None,
         ('basic.py', None),
         ('login', None),
         ('links', None),
-        ('transfer', ['TestBasicTransfer'])
+        ('transfer', ['TestBasicTransfer']),
+        ('preemptive-buffering', None)
     ]:
       test_node = drake.Node('tests/%s' % name)
       test_node.dependencies_add(oracles.oracles)

@@ -446,6 +446,29 @@ namespace surface
           this->_plain_upload();
         else if (!peer.ghost() && !peer_online)
           this->_cloud_operation();
+        else if (!peer.ghost())
+        {
+          // Peer is online. Wait for a grace period, and then
+          // preemptively buffer to the cloud
+          this->gap_status(gap_transaction_waiting_accept);
+          auto const& features = this->state().configuration().features;
+          auto it = features.find("preemptive_buffering_delay");
+          if (it != features.end())
+          {
+            int delay = std::stoi(it->second);
+            if (delay < 0)
+              ELLE_TRACE("%s: preemptive buffering disabled (negative value)", *this);
+            else
+            {
+              ELLE_TRACE("%s: buffering in %s seconds", *this, delay);
+              reactor::sleep(boost::posix_time::seconds(delay));
+              ELLE_TRACE("%s: buffering now", *this);
+              this->_cloud_operation();
+            }
+          }
+          else
+            ELLE_TRACE("%s: preemptive buffering disabled (no feature)", *this);
+        }
         else
           this->gap_status(gap_transaction_waiting_accept);
       }
