@@ -114,19 +114,18 @@ def configure(elle,
   tests_cxx_config.add_local_include_path('../../../elle/reactor/tests')
   if valgrind is not None:
     tests_cxx_config.define('VALGRIND')
-  if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
-    boost_system = drake.cxx.Config(boost.config_system(static = True))
-    boost_test = drake.cxx.Config(boost.config_test(static = True))
-  else:
-    boost_system = drake.cxx.Config(boost.config_system(link = False))
-    boost_system.library_add(drake.copy(boost.system_dynamic, 'lib',
-                                        strip_prefix = True))
-    boost_test = drake.cxx.Config(boost.config_test(link = False))
-    boost_test.library_add(drake.copy(boost.test_dynamic, 'lib',
-                                      strip_prefix = True))
-  tests_cxx_config.lib_path_runtime('../lib')
-  tests_cxx_config += boost_system
-  tests_cxx_config += boost_test
+  def boost_config(name):
+    config = getattr(boost, 'config_%s' % name)
+    if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
+      return drake.cxx.Config(config(static = True))
+    else:
+      res = drake.cxx.Config(config(link = False))
+      lib = getattr(boost, '%s_dynamic' % name)
+      res.library_add(drake.copy(lib, 'lib', strip_prefix = True))
+      return res
+  tests_cxx_config += boost_config('date_time')
+  tests_cxx_config += boost_config('system')
+  tests_cxx_config += boost_config('test')
   if cxx_toolkit.os is drake.os.windows:
     tests_cxx_config.lib('shlwapi')
     tests_cxx_config.lib('ws2_32')
