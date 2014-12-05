@@ -137,6 +137,10 @@ transaction_status_string(infinit::oracles::Transaction::Status status)
       return "none";
     case Transaction::Status::ghost_uploaded:
       return "ghost-uploaded";
+    case Transaction::Status::cloud_buffered:
+      return "cloud-buffered";
+    case Transaction::Status::deleted:
+      return "deleted";
   }
   elle::unreachable();
 }
