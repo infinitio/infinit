@@ -180,11 +180,6 @@ namespace surface
         *this, this->data()->status);
       switch (this->data()->status)
       {
-        case TransactionStatus::created:
-        case TransactionStatus::initialized:
-        case TransactionStatus::cloud_buffered:
-          this->_run(this->_wait_for_decision_state);
-          break;
         case TransactionStatus::accepted:
           if (this->concerns_this_device())
             this->_run(this->_transfer_core_state);
@@ -207,6 +202,11 @@ namespace surface
         case TransactionStatus::deleted:
         case TransactionStatus::ghost_uploaded:
           elle::unreachable();
+        // By default, run the first state. This way, if we add new statuses to
+        // meta (like cloud_buffered) the machine will still be started.
+        default:
+          this->_run(this->_wait_for_decision_state);
+          break;
       }
     }
 
