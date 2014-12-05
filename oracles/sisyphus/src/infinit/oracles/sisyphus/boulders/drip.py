@@ -249,6 +249,25 @@ class Drip(Boulder):
       '%s_MESSAGE' % name: transaction['message'],
     }
 
+  def status(self):
+    res = {}
+    locks = self.__table.aggregate(
+      [
+        {'$match': {self.field_lock: {'$exists': True}}},
+        {
+          '$group':
+          {
+            '_id': '$%s' % self.field_lock,
+            'count': {'$sum': 1},
+          }
+        },
+      ]
+    )['result']
+    if locks:
+      res['locks'] = [{'id': str(l['_id']), 'count': l['count']}
+                      for l in locks]
+    return res
+
 
 #    -> activated
 #          ^

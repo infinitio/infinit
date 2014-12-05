@@ -48,6 +48,27 @@ class Sisyphus(bottle.Bottle):
       'version': version.version,
     }
 
+  @api('/boulders')
+  def boulders_status(self):
+    with elle.log.trace('%s: get boulders status' % (self)):
+      response = {}
+      for boulder in self.__boulders:
+        response[boulder] = self.boulder_status(boulder)
+      return response
+
+  @api('/boulders/<boulder>')
+  def boulder_status(self, boulder):
+    try:
+      boulder = self.__boulders[boulder]
+      with elle.log.trace('%s: run %s' % (self, boulder)):
+        return boulder.status()
+    except KeyError:
+      bottle.response.status = 404
+      return {
+        'reason': 'no such boulder: %s' % boulder,
+        'boulder': boulder,
+      }
+
   @api('/boulders', method = 'POST')
   def boulders_run(self):
     with elle.log.trace('%s: run boulders' % (self)):
