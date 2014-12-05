@@ -29,6 +29,10 @@ class Sisyphus(bottle.Bottle):
       import mandrill
       self.__mandrill = mandrill.Mandrill(apikey = 'ca159fe5-a0f7-47eb-b9e1-2a8f03b9da86')
     self.__emailer = emailer.MandrillEmailer(self.__mandrill)
+    def json_bson_dumps(body):
+      import bson.json_util
+      return bottle.json_dumps(body, default = bson.json_util.default)
+    self.install(bottle.JSONPlugin(json_bson_dumps))
 
   @property
   def mongo(self):
