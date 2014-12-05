@@ -33,7 +33,7 @@ with mongobox.MongoBox() as mongo:
     gestapo(sisy._Sisyphus__mongo)
     onboarding = Onboarding(sisy)
     # Check nothing is sent with no users
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
 
     # Add deleted users to check they don't receive email and they are
@@ -50,7 +50,7 @@ with mongobox.MongoBox() as mongo:
     with MongoExpectation(object_miss = 1):
       # All undetermined users are scanned to see if they did a
       # transaction.
-      sisy.cron()
+      sisy.boulders_run()
       assert not mandrill.emails
 
     # Check unactivated 1 is sent to an aging user
@@ -65,11 +65,11 @@ with mongobox.MongoBox() as mongo:
     # The activated and unactivated bucket will always inspect user1
     # to check last_transaction.time, hence the one miss.
     with MongoExpectation(object_miss = 1):
-      sisy.cron()
+      sisy.boulders_run()
       emails = mandrill.emails
       print(emails)
       assert len(emails) == 1
       assert emails[0][0] == 'user1@infinit.io'
       # Check it's not sent twice
-      sisy.cron()
+      sisy.boulders_run()
       assert not mandrill.emails

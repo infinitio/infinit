@@ -45,7 +45,7 @@ with mongobox.MongoBox() as mongo:
       reminder.delay_second_reminder - reminder.delay_first_reminder
 
     # Check nothing is sent with no users
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
 
     # Create a ghost transaction
@@ -62,12 +62,12 @@ with mongobox.MongoBox() as mongo:
     transaction_create(meta, sender, 'bystander@infinit.io')
 
     # Check nothing is sent for a fresh transaction
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
 
     # Check nothing is sent while the transaction is not uploaded.
     forward(reminder.delay_first_reminder * 2)
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
 
     # Finish upload.
@@ -76,23 +76,23 @@ with mongobox.MongoBox() as mongo:
 
     # Check nothing is sent less than a day after upload
     forward(reminder.delay_first_reminder / 2)
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
 
     # Check reminder 1 is sent 24h after upload
     forward(reminder.delay_first_reminder)
-    sisy.cron()
+    sisy.boulders_run()
     check_mail_transaction(mandrill.emails,
                'sender@infinit.io', ghost_email)
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
 
     # Check reminder 2 is sent 72h after upload
     forward(delay_diff)
-    sisy.cron()
+    sisy.boulders_run()
     check_mail_transaction(mandrill.emails,
                'sender@infinit.io', ghost_email)
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
 
     # Check reminder 1 is not sent for downloaded transactions
@@ -102,7 +102,7 @@ with mongobox.MongoBox() as mongo:
     forward(reminder.delay_first_reminder * 2)
     meta._transaction_update(tid, statuses['finished'],
                              device, None, ghost)
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
 
     # Check reminder 2 is not sent for downloaded transactions
@@ -110,7 +110,7 @@ with mongobox.MongoBox() as mongo:
     meta._transaction_update(tid, statuses['ghost_uploaded'],
                              device, None, sender)
     forward(reminder.delay_first_reminder * 2)
-    sisy.cron()
+    sisy.boulders_run()
     check_mail_transaction(mandrill.emails,
                            'sender@infinit.io', ghost_email)
     forward(
@@ -118,7 +118,7 @@ with mongobox.MongoBox() as mongo:
     assert not mandrill.emails
     meta._transaction_update(tid, statuses['finished'],
                              device, None, ghost)
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
 
     with elle.log.log('test two recipients'):
@@ -134,7 +134,7 @@ with mongobox.MongoBox() as mongo:
                                device, None, sender)
       forward((reminder.delay_first_reminder +
                reminder.delay_second_reminder) * 2)
-      sisy.cron()
+      sisy.boulders_run()
       mails = mandrill.emails
       assert len(mails) == 4
       mail_1 = 0
@@ -162,7 +162,7 @@ with mongobox.MongoBox() as mongo:
       meta._transaction_update(tid_2, statuses['ghost_uploaded'],
                                device, None, sender)
       forward(reminder.delay_first_reminder + delay_diff / 2)
-      sisy.cron()
+      sisy.boulders_run()
       mails = mandrill.emails
       assert len(mails) == 2
       mail_a = False

@@ -39,7 +39,7 @@ with mongobox.MongoBox() as mongo:
     reminder = DelightGhost(sisy)
 
     # Check nothing is sent with no users
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
 
     # Create users
@@ -48,26 +48,26 @@ with mongobox.MongoBox() as mongo:
                                 '*' * 64, 'Foo Bar')
 
     # Check nothing is sent with no transaction
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
 
     # Check the mail is not sent upon creation
     tid = transaction_create(meta, sender, ghost_email)
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
 
     # Check the mail is not sent upon upload
     meta._transaction_update(tid, statuses['ghost_uploaded'],
                              'device', 'device', sender)
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
 
     # Check the mail is sent upon completion
     meta.transaction_download(tid)
-    sisy.cron()
+    sisy.boulders_run()
     check_mail(mandrill.emails, 'ghost@infinit.io')
 
     # But only once
     meta.transaction_download(tid)
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails

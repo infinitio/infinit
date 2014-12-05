@@ -39,7 +39,7 @@ with mongobox.MongoBox() as mongo:
     reminder = DelightRecipient(sisy)
 
     # Check nothing is sent with no users
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
 
     # Create users
@@ -52,7 +52,7 @@ with mongobox.MongoBox() as mongo:
                                 '*' * 64, 'Foo Bar')
 
     # Check nothing is sent with no transaction
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
 
     # Check nothing is sent with ghost transactions
@@ -60,12 +60,12 @@ with mongobox.MongoBox() as mongo:
     meta._transaction_update(tid, statuses['ghost_uploaded'],
                              'device', 'device', sender)
     meta.transaction_download(tid)
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
 
     # Check the mail is not sent upon creation
     tid = transaction_create(meta, sender, recipient['email'])
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
 
     # Check the mail is not sent upon acceptation
@@ -73,7 +73,7 @@ with mongobox.MongoBox() as mongo:
                              recipient_device['id'],
                              recipient_device['name'],
                              recipient)
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
 
     # Check the mail is sent upon completion
@@ -81,11 +81,11 @@ with mongobox.MongoBox() as mongo:
                              recipient_device['id'],
                              recipient_device['name'],
                              recipient)
-    sisy.cron()
+    sisy.boulders_run()
     check_mail(mandrill.emails, recipient['email'])
 
     # But not twice
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
 
     # And not for subsequent transfers
@@ -94,5 +94,5 @@ with mongobox.MongoBox() as mongo:
                              recipient_device['id'],
                              recipient_device['name'],
                              recipient)
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails

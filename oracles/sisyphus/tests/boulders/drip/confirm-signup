@@ -53,36 +53,36 @@ with mongobox.MongoBox() as mongo:
       confirm.delay_second_reminder - confirm.delay_first_reminder
 
     # Check nothing is sent with no users
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
     # Create user
     sender = meta.user_register('sender@infinit.io',
                                 '*' * 64, 'Foo Bar')
     # Check nothing is sent to a fresh user
     forward(confirm.delay_first_reminder / 2)
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
     # Check first mail is sent
     forward(confirm.delay_first_reminder)
-    sisy.cron()
+    sisy.boulders_run()
     check_mail(mandrill.emails, 'sender@infinit.io')
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
     # Check second mail is sent
     forward(delay_diff)
-    sisy.cron()
+    sisy.boulders_run()
     check_mail(mandrill.emails, 'sender@infinit.io')
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
     # Check no mail is sent to ghosts
     transaction_create(meta, sender, 'ghost@infinit.io')
     forward(confirm.delay_second_reminder * 2)
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
     # Check leeway starts on ghost registration
     meta.user_register('ghost@infinit.io', '*' * 64, 'Foo Bar')
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
     forward(confirm.delay_first_reminder * 1.5)
-    sisy.cron()
+    sisy.boulders_run()
     check_mail(mandrill.emails, 'ghost@infinit.io')

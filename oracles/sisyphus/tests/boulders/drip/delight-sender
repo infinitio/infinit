@@ -41,7 +41,7 @@ with mongobox.MongoBox() as mongo:
     reminder = DelightSender(sisy)
 
     # Check nothing is sent with no users
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
 
     # Create senders
@@ -55,28 +55,28 @@ with mongobox.MongoBox() as mongo:
                                  '*' * 64, 'Foo Bar')
 
     for i in range(reminder.threshold_first):
-      sisy.cron()
+      sisy.boulders_run()
       assert not mandrill.emails
       send(sender1, ghost_email)
-    sisy.cron()
+    sisy.boulders_run()
     check_mail(mandrill.emails, 'sender1@infinit.io')
 
     for i in range(reminder.threshold_first,
                    reminder.threshold_second):
-      sisy.cron()
+      sisy.boulders_run()
       assert not mandrill.emails
       send(sender1, ghost_email)
-    sisy.cron()
+    sisy.boulders_run()
     check_mail(mandrill.emails, 'sender1@infinit.io')
 
     for i in range(reminder.threshold_second,
                    reminder.threshold_third):
-      sisy.cron()
+      sisy.boulders_run()
       assert not mandrill.emails
       send(sender1, ghost_email)
-    sisy.cron()
+    sisy.boulders_run()
     check_mail(mandrill.emails, 'sender1@infinit.io')
 
     send(sender1, ghost_email)
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails

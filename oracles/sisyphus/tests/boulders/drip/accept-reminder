@@ -45,7 +45,7 @@ with mongobox.MongoBox() as mongo:
       reminder.delay_second_reminder - reminder.delay_first_reminder
 
     # Check nothing is sent with no users
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
 
     device = 'device'
@@ -59,28 +59,28 @@ with mongobox.MongoBox() as mongo:
     # Create transaction
     tid = transaction_create(meta, sender, recipient['email'])
     # Check nothing is sent for a fresh transaction
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
     # Check timer begins after initialization
     forward(reminder.delay_second_reminder * 2)
     meta._transaction_update(tid, statuses['initialized'],
                              'device', None, sender)
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
     # Check first mail is sent
     forward(reminder.delay_first_reminder * 1.5)
-    sisy.cron()
+    sisy.boulders_run()
     check_mail_transaction(mandrill.emails,
                            'sender@infinit.io',
                            'recipient@infinit.io')
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails
 
     # Check second mail is sent
     forward(delay_diff)
-    sisy.cron()
+    sisy.boulders_run()
     check_mail_transaction(mandrill.emails,
                            'sender@infinit.io',
                            'recipient@infinit.io')
-    sisy.cron()
+    sisy.boulders_run()
     assert not mandrill.emails

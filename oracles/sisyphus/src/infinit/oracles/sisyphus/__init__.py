@@ -21,7 +21,7 @@ class Sisyphus(bottle.Bottle):
       mongo_host = mongo_host,
       mongo_port = mongo_port,
       mongo_replica_set = mongo_replica_set)
-    self.__boulders = set()
+    self.__boulders = {}
     api.register(self)
     if mandrill is not None:
       self.__mandrill = mandrill
@@ -44,17 +44,29 @@ class Sisyphus(bottle.Bottle):
       'version': version.version,
     }
 
-  @api('/cron')
-  def cron(self):
-    with elle.log.trace('%s: run jobs' % self):
+  @api('/boulders', method = 'POST')
+  def boulders_run(self):
+    with elle.log.trace('%s: run boulders' % (self)):
       response = {}
       for boulder in self.__boulders:
-        with elle.log.trace('%s: run %s' % (self, boulder)):
-          response[str(boulder)] = boulder.run()
+        response[boulder] = self.boulder_run(boulder)
       return response
 
+  @api('/boulders/<boulder>', method = 'POST')
+  def boulder_run(self, boulder):
+    try:
+      boulder = self.__boulders[boulder]
+      with elle.log.trace('%s: run %s' % (self, boulder)):
+        return boulder.run()
+    except KeyError:
+      bottle.response.status = 404
+      return {
+        'reason': 'no such boulder: %s' % boulder,
+        'boulder': boulder,
+      }
+
   def __lshift__(self, boulder):
-    self.__boulders.add(boulder)
+    self.__boulders[str(boulder)] = boulder
 
 
 class Boulder:
