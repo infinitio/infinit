@@ -213,6 +213,7 @@ class Drip(Boulder):
           }
           for user, elt in users
         ]
+        # TEST MODE 2: comment out the metrics
         res = requests.post(
           url,
           headers = {'content-type': 'application/json'},
@@ -526,6 +527,7 @@ class DelightSender(Drip):
     self.sisyphus.mongo.meta.users.ensure_index(
       [
         ('emailing.delight-sender.state', pymongo.ASCENDING),
+        ('register_status', pymongo.ASCENDING),
         ('transactions.reached', pymongo.ASCENDING),
       ])
 
@@ -540,6 +542,7 @@ class DelightSender(Drip):
       None,
       '1',
       {
+        'register_status': 'ok',
         'transactions.reached': {'$gte': self.threshold_first},
       },
     )
@@ -549,6 +552,7 @@ class DelightSender(Drip):
       '1',
       '2',
       {
+        'register_status': 'ok',
         'transactions.reached': {'$gte': self.threshold_second},
       },
     )
@@ -558,6 +562,7 @@ class DelightSender(Drip):
       '2',
       '3',
       {
+        'register_status': 'ok',
         'transactions.reached': {'$gte': self.threshold_third},
       },
     )

@@ -39,13 +39,25 @@ with mongobox.MongoBox() as mongo:
                              mandrill = mandrill)
     gestapo(sisy._Sisyphus__mongo)
     reminder = DelightSender(sisy)
+    ghost_email = 'ghost@infinit.io'
 
     # Check nothing is sent with no users
     sisy.boulders_run()
     assert not mandrill.emails
 
+    # Check deleted user don't receive emails
+    del1 = meta.user_register('del1@infinit.io', '*' * 64, 'Foo Bar')
+    meta.user_delete(del1)
+    del2 = meta.user_register('del2@infinit.io', '*' * 64, 'Foo Bar')
+    for i in range(reminder.threshold_first):
+      send(del2, ghost_email)
+    meta.user_delete(del2)
+    del3 = meta.user_register('del3@infinit.io', '*' * 64, 'Foo Bar')
+    for i in range(reminder.threshold_second):
+      send(del3, ghost_email)
+    meta.user_delete(del3)
+
     # Create senders
-    ghost_email = 'ghost@infinit.io'
     device = 'device'
     sender1 = meta.user_register('sender1@infinit.io',
                                  '*' * 64, 'Foo Bar')
