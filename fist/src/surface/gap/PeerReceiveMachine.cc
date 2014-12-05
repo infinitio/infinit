@@ -520,17 +520,17 @@ namespace surface
                             std::string const& name_policy,
                             elle::Version const& peer_version)
     {
-      elle::SafeFinally clean_snpashot([&] {
-          try
-          {
-            boost::filesystem::remove(this->_frete_snapshot_path);
-          }
-          catch (std::exception const&)
-          {
-            ELLE_ERR("couldn't delete snapshot at %s: %s",
-              this->_frete_snapshot_path, elle::exception_string());
-          }
-      });
+      auto clean_snpashot = [&] {
+        try
+        {
+          boost::filesystem::remove(this->_frete_snapshot_path);
+        }
+        catch (std::exception const&)
+        {
+          ELLE_ERR("couldn't delete snapshot at %s: %s",
+            this->_frete_snapshot_path, elle::exception_string());
+        }
+      };
 
       // Clear hypotetical blocks we fetched but did not process.
       this->_buffers.clear();
@@ -662,6 +662,7 @@ namespace surface
             this->cancel(elle::sprintf("Filesystem error: %s", e.what()));
             exception = true;
           }
+          clean_snpashot();
           ELLE_TRACE("finish_transfer exited cleanly");
         }; // scope
         if (exception)
@@ -672,9 +673,8 @@ namespace surface
       {
         source.finish();
       }
+      clean_snpashot();
       this->finished().open();
-
-
     }
 
     PeerReceiveMachine::FileSize
