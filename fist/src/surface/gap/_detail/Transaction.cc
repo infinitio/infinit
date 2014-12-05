@@ -325,12 +325,13 @@ namespace surface
       if (it == std::end(this->_transactions))
       {
         ELLE_TRACE_SCOPE("%s: create transaction %s", *this, notif->id);
-        auto id = generate_id();
         try
         {
-          this->_transactions.emplace(
-            id,
-            elle::make_unique<Transaction>(*this, id, notif));
+          auto id = generate_id();
+          auto transaction = elle::make_unique<Transaction>(*this, id, notif);
+          // Notify GAP a transaction was created.
+          this->enqueue(Transaction::Notification(id, transaction->status()));
+          this->_transactions.emplace(id, std::move(transaction));
         }
         catch (elle::Error const& e)
         {
