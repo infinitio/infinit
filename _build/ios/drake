@@ -38,11 +38,9 @@ with drake.Drake('../..') as d:
     cxx_config.flag('-arch')
     cxx_config.flag('%s' % arch)
   cxx_config.flag('-ftemplate-depth=512')
-  cxx_config.flag('-std=c++11')
   cxx_config.flag('-stdlib=libc++')
   cxx_config.flag('-miphoneos-version-min=7.0')
   cxx_config.flag('--sysroot=%s' % os.environ['SDKROOT'])
-  cxx_config.warnings.overloaded_virtual = False
 
   d.run(cxx_toolkit,
         cxx_config,
