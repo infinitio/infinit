@@ -446,6 +446,8 @@ namespace surface
           peer_online = peer.online_excluding_device(this->state().device().id);
         if (this->data()->is_ghost)
           this->_plain_upload();
+        else if (this->data()->status == TransactionStatus::cloud_buffered)
+          ELLE_TRACE("%s: cloud buffered, nothing to do", *this);
         else if (!peer.ghost() && !peer_online)
           this->_cloud_operation();
         else if (!peer.ghost())
