@@ -413,6 +413,13 @@ class Mixin:
         {'$skip': offset},
         {'$limit': count},
       ])['result']
+      # FIXME: clients <= 0.9.22 don't start a PeerReceiveMachineFSM
+      # on an unknown status. Make them think clould_buffered is the
+      # same as created.
+      for t in res:
+        if t['status'] == transaction_status.CLOUD_BUFFERED:
+          t['status'] = transaction_status.INITIALIZED
+      # /FIXME
       return self.success({'transactions': res})
 
   # Previous (shitty) transactions fetching API that only returns ids.
