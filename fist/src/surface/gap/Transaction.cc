@@ -615,7 +615,18 @@ namespace surface
         if (auto link = std::dynamic_pointer_cast<LinkTransaction>(data))
           *std::dynamic_pointer_cast<LinkTransaction>(this->_data) = *link;
         else if (auto peer = std::dynamic_pointer_cast<PeerTransaction>(data))
+        {
+          // XXX: 0.9.23 fix.
+          // Because users with an old client (< 0.9.23) have no notion of
+          // cloud_buffered, 0.9.23 servers will still return initialized
+          // instead of cloud buffered to smooth the transition.
+          // To avoid weird rollbacks in status, just ignore that case.
+          auto rollback_status = (this->_data->status == Status::cloud_buffered &&
+                                  peer->status == Status::initialized);
           *std::dynamic_pointer_cast<PeerTransaction>(this->_data) = *peer;
+          if (rollback_status)
+            this->_data->status = Status::cloud_buffered;
+        }
         else
           ELLE_ERR("%s: unknown transaction type: %s",
                    *this, elle::demangle(typeid(*data).name()));
