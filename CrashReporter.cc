@@ -464,7 +464,7 @@ namespace elle
                 uint16_t meta_port,
                 std::string const& user_name,
                 std::string const& message,
-                std::string const& user_file)
+                std::string const& user_file_)
     {
       ELLE_TRACE_SCOPE("user report");
       std::string url = elle::sprintf("%s://%s:%s/debug/report/user",
@@ -473,6 +473,29 @@ namespace elle
                                       meta_port);
       elle::filesystem::TemporaryDirectory tmp;
       boost::filesystem::path destination(tmp.path() / "report.tar.bz2");
+#ifdef INFINIT_WINDOWS
+      // On windows, libarchive behaves differently regarding of sharing a fd.
+      // We need to create a copy of the log before archiving it.
+      boost::filesystem::path home(common::infinit::home());
+      boost::filesystem::path copied_log = home / "current_state.log";
+      boost::system::error_code erc;
+      boost::filesystem::copy(user_file_, copied_log , erc);
+      if (erc)
+      {
+        ELLE_WARN("error while copying %s: %s", user_file_, copied_log);
+      }
+      elle::SafeFinally cleanup{
+        [&] {
+          boost::system::error_code erc;
+          boost::filesystem::remove(copied_log, erc);
+          if (erc)
+            ELLE_WARN("removing copied file %s failed: %s", copied_log, erc);
+        }};
+      std::string user_file = copied_log.string();
+#else
+      std::string user_file = user_file_;
+#endif
+
       if (user_file.length() == 0)
       {
         elle::archive::archive(elle::archive::Format::tar_gzip,
