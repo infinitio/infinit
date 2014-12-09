@@ -326,7 +326,7 @@ class Mixin:
       if send:
         self.mailer.send(
           to = email,
-          reply_to = user_email,
+          fr = user_email,
           subject = subject,
           body = template['content'] % template_dict,
           attachment = attachment,
