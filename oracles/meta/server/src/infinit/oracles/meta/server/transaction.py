@@ -413,6 +413,13 @@ class Mixin:
         {'$skip': offset},
         {'$limit': count},
       ])['result']
+      # FIXME: clients <= 0.9.22 don't start a PeerReceiveMachineFSM
+      # on an unknown status. Make them think clould_buffered is the
+      # same as created.
+      for t in res:
+        if t['status'] == transaction_status.CLOUD_BUFFERED:
+          t['status'] = transaction_status.INITIALIZED
+      # /FIXME
       return self.success({'transactions': res})
 
   # Previous (shitty) transactions fetching API that only returns ids.
@@ -640,14 +647,15 @@ class Mixin:
                                      owner_id = user['_id'])
       is_sender = self.is_sender(transaction, user['_id'], device_id)
       args = (transaction['status'], status)
-      if transaction['status'] != status:
-        allowed = transaction_status.transitions[transaction['status']][is_sender]
-        if status not in allowed:
-          fmt = 'changing status %s to %s not permitted'
-          response(403, {'reason': fmt % args})
-        if transaction['status'] in transaction_status.final:
-          fmt = 'changing final status %s to %s not permitted'
-          response(403, {'reason': fmt % args})
+      if transaction['status'] == status:
+        return transaction_id
+      allowed = transaction_status.transitions[transaction['status']][is_sender]
+      if status not in allowed:
+        fmt = 'changing status %s to %s not permitted'
+        response(403, {'reason': fmt % args})
+      if transaction['status'] in transaction_status.final:
+        fmt = 'changing final status %s to %s not permitted'
+        response(403, {'reason': fmt % args})
       diff = {}
       if status == transaction_status.ACCEPTED:
         diff.update(self.on_accept(transaction = transaction,

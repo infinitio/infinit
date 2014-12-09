@@ -192,11 +192,13 @@ class Mandrill:
   def messages(self):
     return Mandrill.Messages(self)
 
-def transaction_create(meta, sender, recipient, files = ['foobar']):
+def transaction_create(meta, sender, recipient, files = ['foobar'],
+                       initialize = True):
   tid = meta.transaction_create(
     sender, recipient, files, 1, 42, False, 'device')
   tid = tid['created_transaction_id']
-  meta._transaction_update(tid, statuses['initialized'],
+  if initialize:
+    meta._transaction_update(tid, statuses['initialized'],
                              'device', None, sender)
   return tid
 

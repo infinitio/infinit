@@ -219,6 +219,7 @@ namespace surface
         case Status::initialized:
         case Status::none:
         case Status::started:
+        case Status::cloud_buffered:
           return gap_transaction_on_other_device;
         // Final states.
         case Status::canceled:
@@ -232,9 +233,8 @@ namespace surface
           return gap_transaction_rejected;
         case Status::deleted:
           return gap_transaction_deleted;
-        default:
-          elle::unreachable();
       }
+      elle::unreachable();
     }
 
     // FIXME: Split history transactions.
@@ -250,8 +250,8 @@ namespace surface
       , _files()
       , _message()
       , _archived(false)
-      , _status(gap_transaction_new)
-      , _id(status_gap_from_meta(data->status))
+      , _status(status_gap_from_meta(data->status))
+      , _id(id)
       , _sender(state.me().id == data->sender_id &&
                 state.device().id == data->sender_device_id)
       , _data(data)
@@ -615,7 +615,18 @@ namespace surface
         if (auto link = std::dynamic_pointer_cast<LinkTransaction>(data))
           *std::dynamic_pointer_cast<LinkTransaction>(this->_data) = *link;
         else if (auto peer = std::dynamic_pointer_cast<PeerTransaction>(data))
+        {
+          // XXX: 0.9.23 fix.
+          // Because users with an old client (< 0.9.23) have no notion of
+          // cloud_buffered, 0.9.23 servers will still return initialized
+          // instead of cloud buffered to smooth the transition.
+          // To avoid weird rollbacks in status, just ignore that case.
+          auto rollback_status = (this->_data->status == Status::cloud_buffered &&
+                                  peer->status == Status::initialized);
           *std::dynamic_pointer_cast<PeerTransaction>(this->_data) = *peer;
+          if (rollback_status)
+            this->_data->status = Status::cloud_buffered;
+        }
         else
           ELLE_ERR("%s: unknown transaction type: %s",
                    *this, elle::demangle(typeid(*data).name()));

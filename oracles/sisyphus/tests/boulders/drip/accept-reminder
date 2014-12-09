@@ -57,8 +57,10 @@ with mongobox.MongoBox() as mongo:
     ghost_email = 'ghost@infinit.io'
     transaction_create(meta, sender, ghost_email)
     # Create transaction
-    tid = transaction_create(meta, sender, recipient['email'])
+    tid = transaction_create(meta, sender, recipient['email'],
+                             initialize = False)
     # Check nothing is sent for a fresh transaction
+    forward(reminder.delay_second_reminder * 2)
     sisy.boulders_run()
     assert not mandrill.emails
     # Check timer begins after initialization
