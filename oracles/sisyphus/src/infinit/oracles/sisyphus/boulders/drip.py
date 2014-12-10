@@ -415,11 +415,11 @@ class Onboarding(Drip):
 
   @property
   def delay_second_reminder(self):
-    return datetime.timedelta(days = 2)
+    return datetime.timedelta(days = 3)
 
   @property
   def delay_third_reminder(self):
-    return datetime.timedelta(days = 3)
+    return datetime.timedelta(days = 5)
 
 
 class GhostReminder(Drip):
