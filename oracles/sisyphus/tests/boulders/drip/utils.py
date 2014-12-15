@@ -193,9 +193,9 @@ class Mandrill:
     return Mandrill.Messages(self)
 
 def transaction_create(meta, sender, recipient, files = ['foobar'],
-                       initialize = True):
+                       initialize = True, size = 42):
   tid = meta.transaction_create(
-    sender, recipient, files, 1, 42, False, 'device')
+    sender, recipient, files, 1, size, False, 'device')
   tid = tid['created_transaction_id']
   if initialize:
     meta._transaction_update(tid, statuses['initialized'],
@@ -216,3 +216,7 @@ def check_mail_transaction(mails, sender, recipient):
   assert 'TRANSACTION_ID' in content
   assert 'TRANSACTION_KEY' in content
   assert 'TRANSACTION_MESSAGE' in content
+
+def assertEq(a, b):
+  if a != b:
+    raise AssertionError('%r != %r' % (a, b))
