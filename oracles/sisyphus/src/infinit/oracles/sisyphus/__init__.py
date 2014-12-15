@@ -81,14 +81,14 @@ class Sisyphus(bottle.Bottle):
   def boulder_run(self, boulder):
     try:
       boulder = self.__boulders[boulder]
-      with elle.log.trace('%s: run %s' % (self, boulder)):
-        return boulder.run()
     except KeyError:
       bottle.response.status = 404
       return {
         'reason': 'no such boulder: %s' % boulder,
         'boulder': boulder,
       }
+    with elle.log.trace('%s: run %s' % (self, boulder)):
+      return boulder.run()
 
   def __lshift__(self, boulder):
     self.__boulders[str(boulder)] = boulder
