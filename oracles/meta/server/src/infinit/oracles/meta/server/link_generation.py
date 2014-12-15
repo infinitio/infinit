@@ -152,7 +152,7 @@ class Mixin:
       if len(name) == 0:
         self.bad_request('no name')
 
-      creation_time = datetime.datetime.utcnow()
+      creation_time = self.now
 
       # Maintain a list of all elements in document here.
       # Do not add a None hash as this causes problems with concurrency.
@@ -293,7 +293,7 @@ class Mixin:
         {
           '$set':
           {
-            'mtime': datetime.datetime.utcnow(),
+            'mtime': self.now,
             'progress': progress,
             'status': status,
           }
@@ -319,7 +319,7 @@ class Mixin:
       time_to_update = (link['get_url_updated'] +
                         datetime.timedelta(days = link_lifetime_days,
                                            hours = -link_update_window_hours))
-      if datetime.datetime.utcnow() >= time_to_update:
+      if self.now >= time_to_update:
         return True
       else:
         return False
@@ -361,9 +361,9 @@ class Mixin:
       elif link['status'] is transaction_status.DELETED:
         self.not_found('deleted')
       elif (link['expiry_time'] is not None and
-            datetime.datetime.utcnow() > link['expiry_time']):
+            self.now > link['expiry_time']):
               self.not_found('link expired')
-      time_now = datetime.datetime.utcnow()
+      time_now = self.now
       set_dict = dict()
       set_dict['last_accessed'] = time_now
       if self.__need_update_get_link(link):
@@ -428,7 +428,7 @@ class Mixin:
       if not include_expired:
         query['$or'] = [
           {'expiry_time': None},
-          {'expiry_time': {'$gt': datetime.datetime.utcnow()}},
+          {'expiry_time': {'$gt': self.now}},
         ]
       res = list()
       for link in self.database.links.aggregate([
@@ -450,7 +450,7 @@ class Mixin:
       {
         '$set': {
           'status': transaction_status.DELETED,
-          'mtime': datetime.datetime.utcnow(),
+          'mtime': self.now,
         }
       },
       multi = True)
