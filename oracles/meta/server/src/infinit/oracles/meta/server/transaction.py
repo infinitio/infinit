@@ -355,6 +355,7 @@ class Mixin:
     if time:
       update.setdefault('$set', {})
       update['$set']['last_transaction.time'] = self.now
+      update['$set']['activated'] = True
     if counts is not None:
       update.setdefault('$inc', {})
       update['$inc'].update(
