@@ -133,7 +133,12 @@ class Mixin:
 
   @api('/link', method = 'POST')
   @require_logged_in
-  def link_generate(self, files, name, message):
+  def link_generate_api(self, files, name, message):
+    return self.link_generate(files, name, message,
+                              user = self.user,
+                              device = self.current_device)
+
+  def link_generate(self, files, name, message, user, device):
     """
     Generate a link from a list of files and a message.
 
@@ -145,8 +150,7 @@ class Mixin:
     message --  A string message.
     Returns the id, link and AWS credentials.
     """
-    with elle.log.trace('generating a link for user (%s)' % self.user['_id']):
-      user = self.user
+    with elle.log.trace('generating a link for user (%s)' % user['_id']):
       if len(files) == 0:
         self.bad_request('no file dictionary')
       if len(name) == 0:
@@ -170,7 +174,7 @@ class Mixin:
         'mtime': creation_time,
         'name': name,
         'progress': 0.0,
-        'sender_device_id': self.current_device['id'],
+        'sender_device_id': device['id'],
         'sender_id': user['_id'],
         'status': transaction_status.CREATED, # Use same enum as transactions.
       }
@@ -262,6 +266,13 @@ class Mixin:
                   id: bson.ObjectId,
                   progress: float,
                   status: int):
+    return self.link_update(id, progress, status, self.user)
+
+  def link_update(self,
+                  id,
+                  progress,
+                  status,
+                  user):
     """
     Update the status of a given link.
     id -- _id of link.
@@ -270,22 +281,21 @@ class Mixin:
     """
     with elle.log.trace('updating link %s with status %s and progress %s' %
                         (id, status, progress)):
-      user = self.user
+      link = self.database.links.find_one({'_id': id})
+      if link is None:
+        self.not_found()
+      if link['sender_id'] != user['_id']:
+        self.forbidden()
       if progress < 0.0 or progress > 1.0:
         self.bad_request('invalid progress')
       if status not in transaction_status.statuses.values():
         self.bad_request('invalid status')
-      link = self.database.links.find_one({'_id': id})
-      if link is None:
-        self.not_found()
       if status is link['status']:
         return self.success()
       elif link['status'] in transaction_status.final and \
         status is not transaction_status.DELETED:
           self.forbidden('cannot change status from %s to %s' %
                          (link['status'], status))
-      if link['sender_id'] != user['_id']:
-        self.forbidden()
       if status in transaction_status.final:
         self.__complete_transaction_stats(user, link)
       link = self.database.links.find_and_modify(
