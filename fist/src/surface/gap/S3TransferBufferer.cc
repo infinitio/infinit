@@ -129,7 +129,7 @@ namespace surface
       elle::serialize::to_string(key_str) << this->_key_code;
       meta_data["key_code"] = elle::format::base64::encode(key_str).string();
       elle::Buffer buffer;
-      elle::OutputStreamBuffer out_buffer(buffer);
+      elle::OutputStreamBuffer<elle::Buffer> out_buffer(buffer);
       std::ostream stream(&out_buffer);
       elle::json::write(stream, meta_data);
       this->_s3_handler->put_object(buffer, "meta_data");
