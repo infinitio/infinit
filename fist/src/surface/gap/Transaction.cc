@@ -386,6 +386,15 @@ namespace surface
           std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
             this->_data))
       {
+        // Check for an updated final status from meta
+        auto data = _state.meta().transaction(snapshot.data()->id);
+        if (sender_final_statuses.find(data.status) != sender_final_statuses.end())
+        {
+          ELLE_TRACE("%s: meta returned a final status %s", *this, data.status);
+          _data = std::make_shared<infinit::oracles::PeerTransaction>(data);
+          return;
+        }
+
         using TransactionStatus =
           infinit::oracles::Transaction::Status;
         if (this->_data->is_ghost &&

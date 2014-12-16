@@ -1,0 +1,69 @@
+#! /usr/bin/env python3
+
+
+
+import infinit.oracles.servers
+import os
+import state
+import utils
+import unittest
+import shutil
+
+import reactor
+import datetime
+
+import requests
+import json
+import tempfile
+
+import pymongo
+import pymongo.collection
+import pymongo.database
+import pymongo.errors
+
+from utils import expect_raise
+
+class TestDevices(unittest.TestCase):
+  def test_two_recipients(self):
+     with infinit.oracles.servers.Oracles(
+        mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
+      with utils.TemporaryData('foo', 1000) as tmp:
+        s1 = o.state()
+        s1.login('mefyl@infinit.io',
+                state.hash_password('mefyl@infinit.io', 'mefyl'))
+        s2 = o.state()
+        s2.login('mefyl2@infinit.io',
+                state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+        tid = s1.send_files('mefyl2@infinit.io', [tmp.full_path], 'foo')
+        reactor.sleep(datetime.timedelta(seconds = 1))
+        #Not accepted, nothing happened
+        self.assertEqual(s1.transaction_status(tid), 'transaction_waiting_accept')
+        s2.logout()
+        #log in second user from an other device, and accept from here
+        prev_home = os.environ['INFINIT_HOME']
+        second_home = tempfile.mkdtemp('infinit-test-dl')
+        os.environ['INFINIT_HOME'] = second_home
+        s2bis = o.state('00000000-824b-474d-bd3a-000000000000')
+        s2bis.login('mefyl2@infinit.io',
+                state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+        tr = s1.transaction(tid)
+        tindex2 = s2bis.find_transaction(tr['id'])
+        s2bis.transaction_accept(tindex2)
+        for i in range(20):
+          if s2bis.transaction_status(tindex2) == 'transaction_finished':
+            break
+          reactor.sleep(datetime.timedelta(seconds = 1))
+        self.assertEqual(s2bis.transaction_status(tindex2), 'transaction_finished')
+        s2bis.logout()
+        #log in second user from first device and check trasnaction status
+        os.environ['INFINIT_HOME'] = prev_home
+        os.environ['INFINIT_DISABLE_META_SYNC'] = '1'
+        s2.login('mefyl2@infinit.io',
+                state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+        reactor.sleep(datetime.timedelta(seconds = 3))
+        tindex2 = s2.find_transaction(tr['id'])
+        self.assertEqual(s2.transaction_status(tindex2), 'transaction_on_other_device')
+        shutil.rmtree(second_home)
+
+
+utils.run(unittest.main)

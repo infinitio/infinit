@@ -195,6 +195,11 @@ namespace surface
     void
     State::_peer_transaction_resync()
     {
+      if (!elle::os::getenv("INFINIT_DISABLE_META_SYNC", "").empty())
+      {
+        ELLE_ERR("Transaction resync disabled");
+        return;
+      }
       ELLE_TRACE("%s: synchronize active transactions from meta", *this)
         for (auto& transaction: this->meta().transactions())
         {
