@@ -179,12 +179,12 @@ class Oracles:
   def mongo(self):
     return self._mongo
 
-  def state(self):
+  def state(self, device_id = ''):
     """ Construct a new client. That will be delogued on teardown.
     """
     import state
     meta_proto, meta_host, meta_port = self.meta
-    res = state.State(meta_proto, meta_host, meta_port, self.download_dir)
+    res = state.State(meta_proto, meta_host, meta_port, self.download_dir, device_id)
     self.__states.append(res)
     return res
   def kill_meta(self):

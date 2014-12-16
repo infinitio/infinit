@@ -1,5 +1,6 @@
 #include <boost/python.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
+#include <boost/uuid/string_generator.hpp>
 
 #include <elle/assert.hh>
 #include <elle/os/path.hh>
@@ -349,12 +350,13 @@ public:
   PythonState(std::string const& meta_protocol,
               std::string const& meta_host,
               uint16_t meta_port,
-              std::string const& download_dir)
+              std::string const& download_dir,
+              std::string const& did)
   : common::infinit::Configuration(false)
   , Super(meta_protocol,
           meta_host,
           meta_port,
-          device_id(),
+          did.empty()?device_id() : boost::uuids::string_generator()(did),
           trophonius_fingerprint(),
           download_dir)
   {}
@@ -489,6 +491,7 @@ BOOST_PYTHON_MODULE(state)
      boost::python::init<std::string const&,
                          std::string const&,
                          uint16_t,
+                         std::string const&,
                          std::string const&>())
     .def("logged_in", &State::logged_in)
     .def("login", (void (State::*)(std::string const&, std::string const&)) &State::login)
