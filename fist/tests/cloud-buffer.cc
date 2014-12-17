@@ -1,3 +1,4 @@
+#include <elle/filesystem/TemporaryFile.hh>
 #include <elle/log.hh>
 #include <elle/test.hh>
 
@@ -19,11 +20,20 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
   std::string const recipient_email = "recipient@infinit.io";
   auto recipient = server.register_user("recipient@infinit.io", password);
   State state(server, user.device_id());
-
+  elle::filesystem::TemporaryFile transfered("cloud-buffered");
+  {
+    boost::filesystem::ofstream f(transfered.path());
+    BOOST_CHECK(f.good());
+    for (int i = 0; i < 2048; ++i)
+    {
+      char c = i % 256;
+      f.write(&c, 1);
+    }
+  }
   state.login(email, password);
   auto& state_transaction = state.transaction_peer_create(
     recipient_email,
-    std::vector<std::string>{"/etc/passwd"},
+    std::vector<std::string>{transfered.path().c_str()},
     "message");
   reactor::Barrier transferring, cloud_buffered;
   state_transaction.status_changed().connect(
