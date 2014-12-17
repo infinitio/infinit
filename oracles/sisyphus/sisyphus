@@ -2,8 +2,14 @@
 
 import os
 import sys
+from itertools import chain
 
 SELF = os.path.realpath(__file__)
+sys.path.insert(
+  0,
+  '%s/../lib/python%s.%s' % tuple([os.path.dirname(SELF),
+                                   sys.version_info[0],
+                                   sys.version_info[1]]))
 sys.path.insert(0, '%s/../lib/python' % os.path.dirname(SELF))
 
 # Do not reorder those lines, or a python native module component will
