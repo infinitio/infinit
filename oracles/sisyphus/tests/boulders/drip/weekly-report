@@ -26,36 +26,42 @@ class WeeklyReport(sisyphus.boulders.drip.WeeklyReport):
   def now(self, value):
     self.__now = value
 
+  def _vars(self, element, user):
+    with MongoExpectation(ignore = True):
+      return super()._vars(element, user)
+
   def _pick_template(self, template, users):
     return sisyphus.boulders.drip.Drip._pick_template(
       self, template, users)
 
-def check_mail(mails, recipient, count):
+def check_mail(mails, recipient, count_peers, count_links):
   assert len(mails) == 1
   mail = mails[0]
   assert mail[0] == recipient
   content = mail[1]
-  print(content)
-  assert 'SUMMARY_PEOPLE' in content
-  assert 'SUMMARY_SIZE' in content
-  assert 'SUMMARY_TIME' in content
-  for i in range(count):
-    assert 'TRANSACTION_%d_START' % i in content
-    assert 'TRANSACTION_%d_FILENAME' % i in content
-    if 'TRANSACTION_%d_IS_PEER' % i in content:
-      assert 'TRANSACTION_%d_PEER' % i in content
-    else:
-      assert 'TRANSACTION_%d_IS_LINK' % i in content
-  assert 'TRANSACTION_%d_START' % (count + 1) not in content
+  assert 'people' in content
+  assert 'size' in content
+  peers = content['peer_transactions']
+  assertEq(len(peers), count_peers)
+  for peer in peers:
+    assert 'files' in peer
+    assert 'peer' in peer
+    assert 'size' in peer
+  links = content['link_transactions']
+  assertEq(len(links), count_links)
+  for link in links:
+    assert 'count' in link
+    assert 'files' in link
+    assert 'size' in link
 
 with mongobox.MongoBox() as mongo:
   with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
-    mandrill = Mandrill()
+    emailer = DummyEmailer()
     sisy = sisyphus.Sisyphus(mongo_port = mongo.port,
-                             mandrill = mandrill)
-    # gestapo(sisy.mongo)
+                             emailer = emailer)
+    gestapo(sisy.mongo)
     report = WeeklyReport(sisy)
-    # This is a Thursday
+    # This is a Friday
     report.now = datetime.datetime(2014, 12, 12, 10, 58, 11)
 
     def forward(duration):
@@ -64,7 +70,7 @@ with mongobox.MongoBox() as mongo:
 
     # Check nothing is sent with no users
     sisy.boulders_run()
-    assert not mandrill.emails
+    assert not emailer.emails
 
     # Create an activated user
     device = 'device'
@@ -75,12 +81,12 @@ with mongobox.MongoBox() as mongo:
 
     # Check nothing is sent to a fresh user
     sisy.boulders_run()
-    assert not mandrill.emails
+    assert not emailer.emails
 
     # Check nothing is sent the first week
     forward(datetime.timedelta(weeks = 1))
     sisy.boulders_run()
-    assert not mandrill.emails
+    assert not emailer.emails
 
     # Create a ghost transaction
     transaction_create(meta, sender, 'ghost@infinit.io')
@@ -101,9 +107,8 @@ with mongobox.MongoBox() as mongo:
       meta,
       sender,
       recipient['email'],
-      files = ['foo', 'bar', 'baz', 'quux',
-               'chiche', 't****', 'b*****'],
-      size = 1024 * 10)
+      files = ['foo', 'bar', 'baz', 'quux'],
+      size = 10000)
     meta._transaction_update(tid2, statuses['accepted'],
                              recipient_device['id'],
                              recipient_device['name'],
@@ -115,7 +120,7 @@ with mongobox.MongoBox() as mongo:
 
     # Create a link transaction
     forward(datetime.timedelta(minutes = 1))
-    res = meta.link_generate([('lol', 1024 * 1024 * 10)], 'lol', '',
+    res = meta.link_generate([('lol', 10000000)], 'lol', '',
                              sender, sender_device)
     meta.link_update(res['transaction']['id'], 1.0,
                      statuses['finished'], sender)
@@ -127,30 +132,34 @@ with mongobox.MongoBox() as mongo:
     # Check report is sent the next week
     forward(datetime.timedelta(days = 2))
     sisy.boulders_run()
-    emails = mandrill.emails
-    check_mail(emails, email, 3)
-    assertEq(emails[0][1]['TRANSACTION_0_IS_LINK'], '1')
-    assertEq(emails[0][1]['TRANSACTION_0_SIZE'], '10.0 MB')
-    assertEq(emails[0][1]['TRANSACTION_0_FILENAME'], 'lol')
-    assertEq(emails[0][1]['TRANSACTION_1_IS_PEER'], '1')
-    assertEq(emails[0][1]['TRANSACTION_1_SIZE'], '10.0 KB')
-    assertEq(emails[0][1]['TRANSACTION_1_FILENAME'],
-             'foo, bar, baz and 4 other files')
-    assertEq(emails[0][1]['TRANSACTION_1_PEER'], 'Foo Bar')
-    assertEq(emails[0][1]['TRANSACTION_2_IS_PEER'], '1')
-    assertEq(emails[0][1]['TRANSACTION_2_SIZE'], '100 B')
-    assertEq(emails[0][1]['TRANSACTION_2_FILENAME'], 'foobar')
-    assertEq(emails[0][1]['TRANSACTION_2_PEER'], 'ghost@infinit.io')
-    assertEq(emails[0][1]['SUMMARY_SIZE'], '20.0 MB')
-    assertEq(emails[0][1]['SUMMARY_PEOPLE'], '4')
+    emails = emailer.emails
+    check_mail(emails, email, 2, 1)
+    assertEq(emails[0][1]['peer_transactions'][0]['size'], 10000)
+    assertEq(emails[0][1]['peer_transactions'][0]['files'],
+             ['foo', 'bar', 'baz', 'quux'])
+    assertEq(emails[0][1]['peer_transactions'][0]['peer']['fullname'],
+             'Foo Bar')
+    assertEq(emails[0][1]['peer_transactions'][1]['size'], 100)
+    assertEq(emails[0][1]['peer_transactions'][1]['files'],
+             ['foobar'])
+    assertEq(emails[0][1]['peer_transactions'][1]['peer']['fullname'],
+             'ghost@infinit.io')
+    assertEq(emails[0][1]['link_transactions'][0]['size'], 10000000)
+    assertEq(emails[0][1]['link_transactions'][0]['files'], ['lol'])
+    assertEq(emails[0][1]['link_transactions'][0]['count'], 2)
+    assertEq(emails[0][1]['size'], 20010100)
+    assertEq(emails[0][1]['people'], 4)
+    assertEq(emails[0][1]['start'],
+             datetime.datetime(2014, 12, 12, 15, 00, 00))
+    assertEq(emails[0][1]['end'],
+             datetime.datetime(2014, 12, 19, 15, 00, 00))
 
     # Check report is empty the next week
     forward(datetime.timedelta(weeks = 1))
     sisy.boulders_run()
-    emails = mandrill.emails
-    assert len(emails) == 2
-    if emails[0][0] == email:
-      emails = emails[0:1]
-    else:
-      emails = emails[1:2]
-    check_mail(emails, email, 0)
+    emails = emailer.emails
+    check_mail(emails, email, 0, 0)
+    assertEq(emails[0][1]['start'],
+             datetime.datetime(2014, 12, 19, 15, 00, 00))
+    assertEq(emails[0][1]['end'],
+             datetime.datetime(2014, 12, 26, 15, 00, 00))

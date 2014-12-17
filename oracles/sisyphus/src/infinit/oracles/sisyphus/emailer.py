@@ -1,3 +1,28 @@
+import elle.log
+
+ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.emailer'
+
+class SendWithUsEmailer:
+
+  def __init__(self, send_with_us):
+    self.__swu = send_with_us
+
+  def send_template(self, template, recipients):
+    for recipient in recipients:
+      email = recipient['email']
+      with elle.log.trace(
+          '%s: send %s to %s' % (self, template, email)):
+        elle.log.dump('variables: %r' % recipient['vars'])
+        r = self.__swu.send(
+          email_id = template,
+          recipient = {
+            'address': email,
+            'name': recipient['name']
+          },
+          email_data = recipient['vars'],
+        )
+        assert r.status_code == 200
+
 class MandrillEmailer:
 
   def __init__(self, mandrill):

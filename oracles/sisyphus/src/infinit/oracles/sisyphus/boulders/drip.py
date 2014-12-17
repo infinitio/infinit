@@ -42,6 +42,15 @@ class Emailing(Boulder):
   def lock_id(self):
     return self.__lock
 
+  @property
+  def now(self):
+    return datetime.datetime.utcnow()
+
+
+def avatar(i):
+  meta = 'https://meta.api.production.infinit.io'
+  return '%s/user/%s/avatar' % (meta, i)
+
 
 class Drip(Emailing):
 
@@ -85,15 +94,15 @@ class Drip(Emailing):
     condition.update(start_condition)
     condition[self.field_lock] = {'$exists': False}
     if template is None:
-      template = 'drip-%s-%s' % (self.campaign, end.replace('_', '-'))
+      template = 'drip_%s_%s' % (self.campaign, end)
     # Uncomment this to go in full test mode.
     # import sys
     # print('%s -> %s: %s (%s)' % (start, end, self.__table.find(condition).count(), template), file = sys.stderr)
     # print(condition, file = sys.stderr)
     # return {}
     final_update = {}
-    if start != end:
-      final_update.update({field: end})
+    # if start != end:
+    final_update.update({field: end})
     if update is not None:
       final_update.update(update)
     if template is False:
@@ -200,20 +209,21 @@ class Drip(Emailing):
               'name': user['fullname'],
               'vars': dict(chain(
                 [
-                  ('TEMPLATE', template),
-                  ('INFINIT_SCHEME', 'infinit://'),
+                  ('template', template),
+                  ('campaign', self.campaign),
+                  ('user', self.user_vars(user)),
                 ],
-                self.user_vars('USER', user).items(),
                 self._vars(elt, user).items(),
               ))
             }
             for user, elt in users
           ]
-          res = self.sisyphus.emailer.send_template(
-            template,
-            recipients,
-          )
-          elle.log.debug('mandrill answer: %s' % res)
+          if self.sisyphus.emailer is not None:
+            res = self.sisyphus.emailer.send_template(
+              template,
+              recipients,
+            )
+            elle.log.debug('emailer answer: %s' % res)
         url = 'http://metrics.9.0.api.production.infinit.io/collections/users'
         metrics = [
           {
@@ -241,26 +251,21 @@ class Drip(Emailing):
   def _vars(self, elt, user):
     return {}
 
-  def user_vars(self, name, user):
-    name = name.upper()
-    meta = 'https://meta.api.production.infinit.io'
-    avatar = '%s/user/%s/avatar' % (meta, user['_id'])
+  def user_vars(self, user):
     return {
-      '%s_AVATAR' % name: avatar,
-      '%s_EMAIL' % name: user['email'],
-      '%s_FULLNAME' % name: user['fullname'],
-      '%s_ID' % name: str(user['_id']),
+      'avatar': avatar(user['_id']),
+      'email': user['email'],
+      'fullname': user['fullname'],
+      'id': str(user['_id']),
     }
 
-  def transaction_vars(self, name, transaction):
+  def transaction_vars(self, transaction):
     name = name.upper()
     return {
-      '%s_ID' % name: str(transaction['_id']),
-      '%s_FILENAME' % name: transaction['files'][0],
-      '%s_FILES_COUNT' % name: transaction['files_count'],
-      '%s_FILES_COUNT_OTHER' % name: transaction['files_count'] - 1,
-      '%s_KEY' % name: key('/transactions/%s' % transaction['_id']),
-      '%s_MESSAGE' % name: transaction['message'],
+      'id': str(transaction['_id']),
+      'filename': transaction['files'],
+      'key': key('/transactions/%s' % transaction['_id']),
+      'message': transaction['message'],
     }
 
   def status(self):
@@ -302,10 +307,6 @@ class Onboarding(Drip):
         ('register_status', pymongo.ASCENDING),
         ('creation_time', pymongo.ASCENDING),
       ])
-
-  @property
-  def now(self):
-    return datetime.datetime.utcnow()
 
   def run(self):
     response = {}
@@ -514,11 +515,11 @@ class GhostReminder(Drip):
     sender_id = transaction['sender_id']
     sender = self.sisyphus.mongo.meta.users.find_one(
       sender_id, fields = self.user_fields)
-    res = {}
-    res.update(self.user_vars('sender', sender))
-    res.update(self.user_vars('recipient', recipient))
-    res.update(self.transaction_vars('transaction', transaction))
-    return res
+    return {
+      'sender': self.user_vars(sender),
+      'recipient': self.user_vars(recipient),
+      'transaction': self.transaction_vars(transaction),
+    }
 
   def _pick_template(self, template, users):
     return [
@@ -657,7 +658,9 @@ class DelightRecipient(Drip):
     sender = self.sisyphus.mongo.meta.users.find_one(
       transaction['sender_id'])
     assert sender is not None
-    return self.user_vars('sender', sender)
+    return {
+      'sender': self.user_vars(sender),
+    }
 
 
 #
@@ -718,7 +721,9 @@ class DelightGhost(Drip):
     sender = self.sisyphus.mongo.meta.users.find_one(
       transaction['sender_id'])
     assert sender is not None
-    return self.user_vars('sender', sender)
+    return {
+      'sender': self.user_vars(sender),
+    }
 
 
 #
@@ -879,11 +884,11 @@ class AcceptReminder(Drip):
     sender_id = transaction['sender_id']
     sender = self.sisyphus.mongo.meta.users.find_one(
       sender_id, fields = self.user_fields)
-    res = {}
-    res.update(self.user_vars('sender', sender))
-    res.update(self.user_vars('recipient', recipient))
-    res.update(self.transaction_vars('transaction', transaction))
-    return res
+    return {
+      'sender': self.user_vars(sender),
+      'recipient': self.user_vars(recipient),
+      'transaction': self.transaction_vars(transaction),
+    }
 
   def _pick_template(self, template, users):
     return [
@@ -912,24 +917,30 @@ class WeeklyReport(Drip):
         # With due report
         ('emailing.weekly-report.next', pymongo.ASCENDING),
       ])
+    for role in ('sender', 'recipient'):
+      self.sisyphus.mongo.meta.transactions.ensure_index(
+        [
+          # Find sent transactions
+          ('%s_id' % role, pymongo.ASCENDING),
+          # Successful
+          ('status', pymongo.ASCENDING),
+          # In a given period of time
+          ('modification_time', pymongo.ASCENDING),
+        ])
 
   def run(self):
     response = {}
     now = self.now
-    # Monday midnight
-    self.monday = now - datetime.timedelta(
-      days = now.weekday(),
-      hours = now.time().hour,
+    offset = datetime.timedelta(
+      days = now.weekday() + 3,
+      hours = now.time().hour - 15,
       minutes = now.time().minute,
       seconds = now.time().second,
       microseconds = now.time().microsecond,
     )
-    self.next_monday = self.monday + datetime.timedelta(weeks = 1)
-    next_send = self.monday + datetime.timedelta(
-      weeks = 1,
-      days = 4,
-      hours = 15,
-    )
+    self.current = now - offset % datetime.timedelta(weeks = 1)
+    self.previous = self.current - datetime.timedelta(weeks = 1)
+    self.next = self.current + datetime.timedelta(weeks = 1)
     # -> initialized
     transited = self.transition(
       None,
@@ -942,7 +953,8 @@ class WeeklyReport(Drip):
       },
       template = False,
       update = {
-        'emailing.weekly-report.next': next_send,
+        'emailing.weekly-report.next':
+          self.next + datetime.timedelta(weeks = 1),
       },
     )
     # initialized -> initialized
@@ -960,95 +972,87 @@ class WeeklyReport(Drip):
           '$lt': self.now,
         },
       },
-      template = 'drip-weekly-report',
+      template = 'tem_tLArgSQE7zkDhRxcrNnJSb',
       update = {
-        'emailing.weekly-report.next': next_send,
+        'emailing.weekly-report.next': self.next,
       },
     )
     response.update(transited)
     return response
 
   def _vars(self, element, user):
-    peer = list(self.sisyphus.mongo.meta.transactions.find(
+    res = {}
+    peers = list(chain(*(self.sisyphus.mongo.meta.transactions.find(
       {
-        '$or': [{'sender_id': user['_id']},
-                {'recipient_id': user['_id']}],
+        '%s_id' % role: user['_id'],
         'status': {'$in': [statuses['finished'],
                            statuses['ghost_uploaded']]},
         'modification_time':
         {
-          '$gt': self.monday,
-          '$lt': self.next_monday,
+          '$gt': self.previous,
+          '$lt': self.current,
         }
-      }
-    ))
+      }) for role in ['sender', 'recipient'])))
+    res['peer_transactions'] = [
+      {
+        # 'start': t['creation_time'],
+        'files': t['files'],
+        'size': t['total_size'],
+        'peer':
+        {
+          'id': str(t['recipient_id']),
+          'fullname': t['recipient_fullname'],
+          'avatar': avatar(t['recipient_id']),
+        }
+        if sender else
+        {
+          'id': str(t['sender_id']),
+          'fullname': t['sender_fullname'],
+          'avatar': avatar(t['sender_id']),
+        },
+        'verb': 'to' if sender else 'from',
+      } for t, sender in map(
+        lambda t: (t, t['sender_id'] == user['_id']),
+        sorted(peers,
+               key = lambda t: t.get('modification_time'),
+               reverse = True))
+    ]
     links = list(self.sisyphus.mongo.meta.links.find(
       {
         'sender_id': user['_id'],
         'status': statuses['finished'],
         'mtime':
         {
-          '$gt': self.monday,
-          '$lt': self.next_monday,
+          '$gt': self.previous,
+          '$lt': self.current,
         }
       }
     ))
-    for link in links:
-      link['size'] = sum(f['size'] for f in link['file_list'])
-    people = len(peer) + sum(link['click_count'] for link in links)
+    res['link_transactions'] = [
+      {
+        # 'start': t['ctime'],
+        'files': [f['name'] for f in t['file_list']],
+        'size': sum(f['size'] for f in t['file_list']),
+        'count': t['click_count'],
+      } for t in sorted(links,
+                        key = lambda t: t.get('click_count'),
+                        reverse = True)
+    ]
     size = sum(chain(
-      (t['total_size'] for t in peer),
-      (link['size'] * link['click_count'] for link in links)))
-    def pretty_size(x):
-      if x == 0:
-        return '0 B'
-      l = math.log(x, 10)
-      if l < 3:
-        return '%d B' % x
-      if l < 6:
-        return '%.1f KB' % (x / 1024)
-      elif l < 9:
-        return '%.1f MB' % (x / 1024 / 1024)
-      else:
-        return '%.1f GB' % (x / 1024 / 1024 / 1024)
-    res = {
-      'SUMMARY_PEOPLE': people,
-      'SUMMARY_SIZE': pretty_size(size),
-      'SUMMARY_TIME': size,
-    }
-    for i, t in \
-      enumerate(sorted(
-        chain(peer, links),
-        key = lambda t: t.get('modification_time',
-                              t.get('mtime', None)),
-        reverse = True)):
-      is_peer = 'recipient_id' in t
-      if is_peer:
-        res['TRANSACTION_%d_IS_PEER' % i] = '1'
-      else:
-        res['TRANSACTION_%d_IS_LINK' % i] = '1'
-      res['TRANSACTION_%d_START' % i] = \
-        t.get('creation_time', t.get('ctime', None))
-      files = t['files'] if is_peer else [t['name']]
-      if len(files) <= 4:
-        files = ', '.join(files)
-      else:
-        files = '%s and %s other files' % (', '.join(files[:3]), len(files) - 3)
-      res['TRANSACTION_%d_FILENAME' % i] = files
-      if is_peer:
-        res['TRANSACTION_%d_SIZE' % i] = pretty_size(t['total_size'])
-        if t['recipient_id'] == user['_id']:
-          peer = t['sender_fullname']
-        else:
-          peer = t['recipient_fullname']
-        res['TRANSACTION_%d_PEER' % i] = peer
-      else:
-        res['TRANSACTION_%d_SIZE' % i] = pretty_size(t['size'])
+      (t['total_size'] for t in peers),
+      (sum(f['size'] for f in l['file_list']) * l['click_count']
+       for l in links)))
+    people = len(peers) + sum(l['click_count'] for l in links)
+    res.update({
+      'people': people,
+      'size': size,
+      'start': self.previous,
+      'end': self.current,
+    })
     return res
-
 
   def _pick_template(self, template, users):
     return [
-      (template, [u for u in users if u[0]['features']['drip_accept-reminder_template'] == 'a']),
-      (None, [u for u in users if u[0]['features']['drip_accept-reminder_template'] == 'control']),
+      (template, [u for u in users if u[0]['features']['drip_weekly-report_template'] == 'a']),
+      (None, [u for u in users if u[0]['features']['drip_weekly-report_template'] == 'control']),
     ]

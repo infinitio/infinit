@@ -19,9 +19,10 @@ class MongoExpectation:
 
   instance = None
 
-  def __init__(self, index_miss = 0, object_miss = 0):
+  def __init__(self, index_miss = 0, object_miss = 0, ignore = False):
     self.index_miss = index_miss
     self.object_miss = object_miss
+    self.ignore = ignore
 
   def __enter__(self):
     self.__previous = MongoExpectation.instance
@@ -62,6 +63,8 @@ class GestapoCollection(pymongo.collection.Collection):
                           multi = multi)
 
   def __check(self, condition, fields = None):
+    if MongoExpectation.instance.ignore:
+      return
     explanation = super().find(condition, fields = fields).explain()
     try:
       # print(explanation['cursor'])
@@ -191,6 +194,21 @@ class Mandrill:
   @property
   def messages(self):
     return Mandrill.Messages(self)
+
+class DummyEmailer:
+
+  def __init__(self):
+    self.__emails = []
+
+  @property
+  def emails(self):
+    res = self.__emails
+    self.__emails = []
+    return res
+
+  def send_template(self, template, recipients):
+    for recipient in recipients:
+      self.__emails.append((recipient['email'], recipient['vars']))
 
 def transaction_create(meta, sender, recipient, files = ['foobar'],
                        initialize = True, size = 42):

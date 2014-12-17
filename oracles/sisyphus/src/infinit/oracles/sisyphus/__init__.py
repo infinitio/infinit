@@ -14,7 +14,7 @@ class Sisyphus(bottle.Bottle):
                mongo_host = None,
                mongo_port = None,
                mongo_replica_set = None,
-               mandrill = None,
+               emailer = None,
   ):
     super().__init__()
     self.__mongo = mongo_connection(
@@ -23,12 +23,7 @@ class Sisyphus(bottle.Bottle):
       mongo_replica_set = mongo_replica_set)
     self.__boulders = {}
     api.register(self)
-    if mandrill is not None:
-      self.__mandrill = mandrill
-    else:
-      import mandrill
-      self.__mandrill = mandrill.Mandrill(apikey = 'ca159fe5-a0f7-47eb-b9e1-2a8f03b9da86')
-    self.__emailer = emailer.MandrillEmailer(self.__mandrill)
+    self.__emailer = emailer
     def json_bson_dumps(body):
       import bson.json_util
       return bottle.json_dumps(body, default = bson.json_util.default)
