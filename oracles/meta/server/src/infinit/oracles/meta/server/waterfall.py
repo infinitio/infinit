@@ -15,23 +15,13 @@ from infinit.oracles.meta.server.utils import api
 from infinit.oracles.meta.server.utils import json_value
 from infinit.oracles.meta.server.utils import utf8_string
 from infinit.oracles.meta.server.utils import require_admin
+import infinit.oracles.transaction
 from itertools import chain
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Metrics'
 
-statuses = {
-  0: ("created"),
-  1: ("initialized"),
-  2: ("accepted"),
-  4: ("finished"),
-  5: ("rejected"),
-  6: ("canceled"),
-  7: ("failed"),
-  8: ('deleted'),
-  9: ('ghost_uploaded'),
-}
-
-statuses_back = dict((value, key) for key, value in statuses.items())
+statuses_back = dict(infinit.oracles.transaction.statuses)
+statuses = dict((value, key) for key, value in statuses_back.items())
 
 def develop(collections):
   for collection in collections:
