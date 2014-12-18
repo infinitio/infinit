@@ -53,9 +53,10 @@ def avatar(i):
 
 class Drip(Emailing):
 
-  def __init__(self, sisyphus, campaign, table):
+  def __init__(self, sisyphus, campaign, table, pretend = False):
     super().__init__(sisyphus, campaign, table)
     self.__table = self._Emailing__table
+    self.__pretend = pretend
 
   @property
   def user_fields(self):
@@ -105,14 +106,17 @@ class Drip(Emailing):
     if update is not None:
       final_update.update(update)
     if template is False:
-      res = self.__table.update(
-        condition,
-        {
-          '$set': final_update,
-        },
-        multi = True,
-      )
-      n = res['n']
+      if self.__pretend:
+        n = self.__table.find(condition).count()
+      else:
+        res = self.__table.update(
+          condition,
+          {
+            '$set': final_update,
+          },
+          multi = True,
+        )
+        n = res['n']
       if n > 0:
         return {'%s -> %s' % (start, end): n}
       else:
@@ -144,16 +148,17 @@ class Drip(Emailing):
           users,
           variations = variations)
         res[template] = sent
+      update = {
+        '$unset':
+        {
+          self.field_lock: True,
+        },
+      }
+      if not self.__pretend:
+        update['$set'] = final_update
       self.__table.update(
         {self.field_lock: self.lock_id},
-        {
-          # TEST MODE 2: comment the $set out
-          '$set': final_update,
-          '$unset':
-          {
-            self.field_lock: True,
-          },
-        },
+        update,
         multi = True,
       )
       # Unlock users that were not picked
@@ -202,8 +207,6 @@ class Drip(Emailing):
         if template is not None:
           recipients = [
             {
-              # TEST MODE 2
-              # 'email': 'gaetan@infinit.io',
               'email': user['email'],
               'name': user['fullname'],
               'vars': dict(chain(
@@ -671,8 +674,8 @@ class DelightRecipient(Drip):
 
 class DelightGhost(Drip):
 
-  def __init__(self, sisyphus):
-    super().__init__(sisyphus, 'delight-ghost', 'users')
+  def __init__(self, sisyphus, pretend = False):
+    super().__init__(sisyphus, 'delight-ghost', 'users', pretend)
     # Find user in any status without scanning all ghosts, deleted
     # users etc.
     self.sisyphus.mongo.meta.users.ensure_index(
@@ -906,8 +909,8 @@ class AcceptReminder(Drip):
 # FIXME: factor with GhostReminder
 class WeeklyReport(Drip):
 
-  def __init__(self, sisyphus):
-    super().__init__(sisyphus, 'weekly-report', 'users')
+  def __init__(self, sisyphus, pretend = False):
+    super().__init__(sisyphus, 'weekly-report', 'users', pretend)
     self.sisyphus.mongo.meta.users.ensure_index(
       [
         # Find initialized users
@@ -1062,8 +1065,8 @@ class WeeklyReport(Drip):
 
 class PendingReminder(Drip):
 
-  def __init__(self, sisyphus):
-    super().__init__(sisyphus, 'pending-reminder', 'users')
+  def __init__(self, sisyphus, pretend = False):
+    super().__init__(sisyphus, 'pending-reminder', 'users', pretend)
     self.sisyphus.mongo.meta.users.ensure_index(
       [
         # Find initialized users
