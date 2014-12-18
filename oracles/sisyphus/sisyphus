@@ -19,6 +19,7 @@ import infinit.oracles.sisyphus
 import infinit.oracles.sisyphus.boulders
 import infinit.oracles.sisyphus.boulders.drip
 import infinit.oracles.sisyphus.emailer
+import infinit.oracles.sisyphus.metrics
 import bottle
 import elle.log
 
@@ -59,6 +60,7 @@ if options.mongo_host:
 args['emailer'] = \
   infinit.oracles.sisyphus.emailer.SendWithUsEmailer(
     api_key = 'test_4ab93862c9fa3ced9dc5331d5e70220cbb2ff43d')
+args['metrics'] = infinit.oracles.sisyphus.metrics.Metrics()
 
 app = infinit.oracles.sisyphus.Sisyphus(**args)
 # infinit.oracles.sisyphus.boulders.drip.AcceptReminder(app)

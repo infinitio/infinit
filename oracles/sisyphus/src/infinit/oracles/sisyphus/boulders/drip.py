@@ -4,7 +4,6 @@ import elle
 import json
 import math
 import pymongo
-import requests
 import time
 
 from itertools import chain
@@ -224,25 +223,18 @@ class Drip(Emailing):
               recipients,
             )
             elle.log.debug('emailer answer: %s' % res)
-        url = 'http://metrics.9.0.api.production.infinit.io/collections/users'
-        metrics = [
-          {
-            'event': 'email',
-            'campaign': self.campaign,
-            'bucket': bucket,
-            'template': template,
-            'timestamp': time.time(),
-            'user': str(user['_id']),
-          }
-          for user, elt in users
-        ]
-        # TEST MODE 2: comment out the metrics
-        res = requests.post(
-          url,
-          headers = {'content-type': 'application/json'},
-          data = json.dumps({'events': metrics}),
-        )
-        elle.log.debug('metrics answer: %s' % res)
+        if self.sisyphus.metrics is not None:
+          self.sisyphus.metrics.send([
+            {
+              'event': 'email',
+              'campaign': self.campaign,
+              'bucket': bucket,
+              'template': template,
+              'timestamp': time.time(),
+              'user': str(user['_id']),
+            }
+            for user, elt in users
+          ])
         return [user['email'] for user, elt in users]
 
   def _user(self, elt):

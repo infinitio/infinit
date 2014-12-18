@@ -15,6 +15,7 @@ class Sisyphus(bottle.Bottle):
                mongo_port = None,
                mongo_replica_set = None,
                emailer = None,
+               metrics = None,
   ):
     super().__init__()
     self.__mongo = mongo_connection(
@@ -24,6 +25,7 @@ class Sisyphus(bottle.Bottle):
     self.__boulders = {}
     api.register(self)
     self.__emailer = emailer
+    self.__metrics = metrics
     def json_bson_dumps(body):
       import bson.json_util
       return bottle.json_dumps(body, default = bson.json_util.default)
@@ -36,6 +38,10 @@ class Sisyphus(bottle.Bottle):
   @property
   def emailer(self):
     return self.__emailer
+
+  @property
+  def metrics(self):
+    return self.__metrics
 
   @api('/')
   def status(self):

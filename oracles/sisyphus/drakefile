@@ -34,6 +34,7 @@ def configure(
       'src/infinit/oracles/sisyphus/boulders/__init__.py',
       'src/infinit/oracles/sisyphus/boulders/drip.py',
       'src/infinit/oracles/sisyphus/emailer.py',
+      'src/infinit/oracles/sisyphus/metrics.py',
     )
 
     build = drake.Rule('build')
