@@ -259,13 +259,23 @@ class Drip(Emailing):
       'id': str(user['_id']),
     }
 
-  def transaction_vars(self, transaction):
-    name = name.upper()
+  def transaction_vars(self, transaction, user):
+    sender = transaction['sender_id'] == user['_id']
+    verb = 'to' if sender else 'from'
+    peer = 'recipient' if sender else 'sender'
     return {
       'id': str(transaction['_id']),
-      'filename': transaction['files'],
+      'files': transaction['files'],
       'key': key('/transactions/%s' % transaction['_id']),
       'message': transaction['message'],
+      'peer':
+      {
+        'fullname': transaction['%s_fullname' % peer],
+        'id': transaction['%s_id' % peer],
+        'avatar': avatar(transaction['%s_id' % peer]),
+      },
+      'size': transaction['total_size'],
+      'verb': verb,
     }
 
   def status(self):
@@ -1055,4 +1065,110 @@ class WeeklyReport(Drip):
     return [
       (template, [u for u in users if u[0]['features']['drip_weekly-report_template'] == 'a']),
       (None, [u for u in users if u[0]['features']['drip_weekly-report_template'] == 'control']),
+    ]
+
+
+class PendingReminder(Drip):
+
+  def __init__(self, sisyphus):
+    super().__init__(sisyphus, 'pending-reminder', 'users')
+    self.sisyphus.mongo.meta.users.ensure_index(
+      [
+        # Find initialized users
+        ('emailing.pending-reminder.state', pymongo.ASCENDING),
+        # Fully registered
+        ('register_status', pymongo.ASCENDING),
+        # Disconnected
+        ('connected', pymongo.ASCENDING),
+        # With pending transfers
+        ('transactions.pending_has', pymongo.ASCENDING),
+        # By disconnection time
+        ('disconnection_time', pymongo.ASCENDING),
+      ])
+
+  def run(self):
+    response = {}
+    # -> online
+    transited = self.transition(
+      None,
+      'online',
+      {
+        # Fully registered
+        'register_status': 'ok',
+        # Connected
+        'connected': True,
+      },
+      template = False,
+    )
+    response.update(transited)
+    # {reminded-1, reminded-2, reminded-3} -> online
+    transited = self.transition(
+      ('reminded-3', 'reminded-2', 'reminded-1'),
+      'online',
+      {
+        # Fully registered
+        'register_status': 'ok',
+        # Disconnected
+        'connected': True,
+      },
+      template = False,
+    )
+    response.update(transited)
+    # online -> reminded-1 -> reminded-2 -> reminded-3
+    for start, end, delay in [
+        ('online', 'reminded-1', self.delay_first_reminder),
+        ('reminded-1', 'reminded-2', self.delay_second_reminder),
+        ('reminded-2', 'reminded-3', self.delay_third_reminder),
+    ]:
+      transited = self.transition(
+        start,
+        end,
+        {
+          # Fully registered
+          'register_status': 'ok',
+          # Has pending transactions
+          'transactions.pending_has': True,
+          # Disconnected
+          'connected': False,
+          # For some time
+          'disconnection_time':
+          {
+            '$lt': self.now - delay,
+          },
+        },
+      )
+      response.update(transited)
+    return response
+
+  def _vars(self, element, user):
+    return {
+      'transactions': [
+        self.transaction_vars(t, user) for t in
+        self.sisyphus.mongo.meta.transactions.find(
+          {'_id': {'$in': user['transactions']['pending']}})
+      ]
+    }
+
+  @property
+  def delay_first_reminder(self):
+    return datetime.timedelta(hours = 3)
+
+  @property
+  def delay_second_reminder(self):
+    return datetime.timedelta(hours = 24)
+
+  @property
+  def delay_third_reminder(self):
+    return datetime.timedelta(hours = 72)
+
+  @property
+  def user_fields(self):
+    res = super().user_fields
+    res.append('transactions.pending')
+    return res
+
+  def _pick_template(self, template, users):
+    return [
+      (template, [u for u in users if u[0]['features']['drip_pending-reminder_template'] == 'a']),
+      (None, [u for u in users if u[0]['features']['drip_pending-reminder_template'] == 'control']),
     ]

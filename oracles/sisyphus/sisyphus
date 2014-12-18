@@ -56,11 +56,9 @@ if options.mongo_host:
 # args['emailer'] = infinit.oracles.sisyphus.emailer.MandrillEmailer(
 #   mandrill)
 
-import sendwithus
-swu = sendwithus.api(
-  api_key = 'test_4ab93862c9fa3ced9dc5331d5e70220cbb2ff43d')
 args['emailer'] = \
-  infinit.oracles.sisyphus.emailer.SendWithUsEmailer(swu)
+  infinit.oracles.sisyphus.emailer.SendWithUsEmailer(
+    api_key = 'test_4ab93862c9fa3ced9dc5331d5e70220cbb2ff43d')
 
 app = infinit.oracles.sisyphus.Sisyphus(**args)
 # infinit.oracles.sisyphus.boulders.drip.AcceptReminder(app)
@@ -71,6 +69,7 @@ app = infinit.oracles.sisyphus.Sisyphus(**args)
 # infinit.oracles.sisyphus.boulders.drip.GhostReminder(app)
 # infinit.oracles.sisyphus.boulders.drip.Onboarding(app)
 infinit.oracles.sisyphus.boulders.drip.WeeklyReport(app)
+infinit.oracles.sisyphus.boulders.drip.PendingReminder(app)
 
 bottle.run(app = app,
            host = '127.0.0.1',

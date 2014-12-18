@@ -208,7 +208,8 @@ class DummyEmailer:
 
   def send_template(self, template, recipients):
     for recipient in recipients:
-      self.__emails.append((recipient['email'], recipient['vars']))
+      self.__emails.append(
+        (recipient['email'], recipient['vars'], template))
 
 def transaction_create(meta, sender, recipient, files = ['foobar'],
                        initialize = True, size = 42):
@@ -219,6 +220,14 @@ def transaction_create(meta, sender, recipient, files = ['foobar'],
     meta._transaction_update(tid, statuses['initialized'],
                              'device', None, sender)
   return tid
+
+def check_mail(mails, user, template):
+  assertEq(len(mails), 1)
+  mail = mails[0]
+  assertEq(mail[0], user)
+  assertEq(mail[2], template)
+  content = mail[1]
+  assertEq(content['user']['email'], user)
 
 def check_mail_transaction(mails, sender, recipient):
   assert len(mails) == 1

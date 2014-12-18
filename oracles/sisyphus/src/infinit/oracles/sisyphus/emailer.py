@@ -1,18 +1,54 @@
 import elle.log
 
+import json
+
 ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.emailer'
+
+import sendwithus.encoder
+class JSONEncoder(sendwithus.encoder.SendwithusJSONEncoder):
+
+  def default(self, obj):
+    import bson
+    import datetime
+    if isinstance(obj, datetime.datetime):
+      return {
+        'year': obj.year,
+        'month': obj.month,
+        'day': obj.day,
+        'hour': obj.hour,
+        'minute': obj.minute,
+        'second': obj.second,
+        'weekday': obj.weekday(),
+      }
+    if isinstance(obj, bson.ObjectId):
+      return str(obj)
+    return super().default(obj)
+
 
 class SendWithUsEmailer:
 
-  def __init__(self, send_with_us):
-    self.__swu = send_with_us
+  def __init__(self, api_key):
+    import sendwithus
+    self.__swu = sendwithus.api(
+      api_key = 'test_4ab93862c9fa3ced9dc5331d5e70220cbb2ff43d',
+      json_encoder = JSONEncoder)
+    self.__load_templates()
+
+  def __load_templates(self):
+    self.__templates = dict(
+      (t['name'], t)
+      for t in json.loads(self.__swu.templates().content.decode()))
 
   def send_template(self, template, recipients):
+    if template not in self.__templates:
+      self.__load_templates()
+    template = self.__templates[template]['id']
     for recipient in recipients:
       email = recipient['email']
       with elle.log.trace(
           '%s: send %s to %s' % (self, template, email)):
-        elle.log.dump('variables: %r' % recipient['vars'])
+        elle.log.dump('variables: %s' % json.dumps(recipient['vars'],
+                                                   cls = JSONEncoder))
         r = self.__swu.send(
           email_id = template,
           recipient = {
