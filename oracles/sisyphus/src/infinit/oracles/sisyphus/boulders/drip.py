@@ -612,8 +612,8 @@ class DelightSender(Drip):
 
 class DelightRecipient(Drip):
 
-  def __init__(self, sisyphus):
-    super().__init__(sisyphus, 'delight-recipient', 'users')
+  def __init__(self, sisyphus, pretend = False):
+    super().__init__(sisyphus, 'delight-recipient', 'users', pretend)
     # Find user in any status without scanning all ghosts, deleted
     # users etc.
     self.sisyphus.mongo.meta.users.ensure_index(
@@ -665,6 +665,7 @@ class DelightRecipient(Drip):
     assert sender is not None
     return {
       'sender': self.user_vars(sender),
+      'transaction': self.transaction_vars(transaction, user),
     }
 
 
@@ -728,6 +729,7 @@ class DelightGhost(Drip):
     assert sender is not None
     return {
       'sender': self.user_vars(sender),
+      'transaction': self.transaction_vars(transaction, user),
     }
 
 
