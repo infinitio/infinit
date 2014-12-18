@@ -244,6 +244,11 @@ def check_mail_transaction(mails, sender, recipient):
   assert 'TRANSACTION_KEY' in content
   assert 'TRANSACTION_MESSAGE' in content
 
+def check_no_mail(mails):
+  if len(mails) > 0:
+    raise Exception(
+      'unexpected email to %s: %s' % (mails[0][0], mails[0][2]))
+
 def assertEq(a, b):
   if a != b:
     raise AssertionError('%r != %r' % (a, b))
