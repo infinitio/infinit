@@ -234,15 +234,14 @@ def check_mail_transaction(mails, sender, recipient):
   mail = mails[0]
   assert mail[0] == recipient
   content = mail[1]
-  assert content['SENDER_EMAIL'] == sender
-  assert content['RECIPIENT_EMAIL'] == recipient
-  assert 'SENDER_AVATAR' in content
-  assert 'SENDER_FULLNAME' in content
-  assert 'TRANSACTION_FILENAME' in content
-  assert 'TRANSACTION_FILES_COUNT_OTHER' in content
-  assert 'TRANSACTION_ID' in content
-  assert 'TRANSACTION_KEY' in content
-  assert 'TRANSACTION_MESSAGE' in content
+  assertEq(content['sender']['email'], sender)
+  assertEq(content['recipient']['email'], recipient)
+  assert 'avatar' in content['sender']
+  assert 'fullname' in content['sender']
+  assert 'files' in content['transaction']
+  assert 'id' in content['transaction']
+  assert 'key' in content['transaction']
+  assert 'message' in content['transaction']
 
 def check_no_mail(mails):
   if len(mails) > 0:

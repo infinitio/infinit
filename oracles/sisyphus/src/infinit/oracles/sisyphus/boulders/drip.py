@@ -820,8 +820,9 @@ class ConfirmSignup(Drip):
 # FIXME: factor with GhostReminder
 class AcceptReminder(Drip):
 
-  def __init__(self, sisyphus):
-    super().__init__(sisyphus, 'accept-reminder', 'transactions')
+  def __init__(self, sisyphus, pretend = False):
+    super().__init__(sisyphus,
+                     'accept-reminder', 'transactions', pretend)
     self.sisyphus.mongo.meta.transactions.ensure_index(
       [
         # Find transactions in any bucket
@@ -880,8 +881,17 @@ class AcceptReminder(Drip):
 
   @property
   def fields(self):
-    return ['recipient_id', 'sender_id',
-            'files', 'message', 'files_count', 'transaction_hash']
+    return [
+      'files',
+      'files_count',
+      'message',
+      'recipient_fullname',
+      'recipient_id',
+      'sender_fullname',
+      'sender_id',
+      'total_size',
+      'transaction_hash',
+    ]
 
   def _user(self, transaction):
     recipient = transaction['recipient_id']
@@ -894,7 +904,7 @@ class AcceptReminder(Drip):
     return {
       'sender': self.user_vars(sender),
       'recipient': self.user_vars(recipient),
-      'transaction': self.transaction_vars(transaction),
+      'transaction': self.transaction_vars(transaction, recipient),
     }
 
   def _pick_template(self, template, users):
