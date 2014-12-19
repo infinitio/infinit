@@ -999,7 +999,7 @@ class WeeklyReport(Drip):
           '$lt': self.now,
         },
       },
-      template = 'tem_tLArgSQE7zkDhRxcrNnJSb',
+      template = 'drip_weekly-report',
       update = {
         'emailing.weekly-report.next': self.next,
       },
