@@ -30,7 +30,7 @@ class SendWithUsEmailer:
   def __init__(self, api_key):
     import sendwithus
     self.__swu = sendwithus.api(
-      api_key = 'test_4ab93862c9fa3ced9dc5331d5e70220cbb2ff43d',
+      api_key = api_key,
       json_encoder = JSONEncoder)
     self.__load_templates()
 
