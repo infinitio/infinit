@@ -984,6 +984,7 @@ class WeeklyReport(Drip):
           self.next + datetime.timedelta(weeks = 1),
       },
     )
+    response.update(transited)
     # initialized -> initialized
     transited = self.transition(
       'initialized',
@@ -1135,7 +1136,7 @@ class PendingReminder(Drip):
     for start, end, delay in [
         ('online', 'reminded-1', self.delay_first_reminder),
         ('reminded-1', 'reminded-2', self.delay_second_reminder),
-        ('reminded-2', 'reminded-3', self.delay_third_reminder),
+        # ('reminded-2', 'reminded-3', self.delay_third_reminder),
     ]:
       transited = self.transition(
         start,
