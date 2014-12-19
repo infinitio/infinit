@@ -43,15 +43,25 @@ class SendWithUsEmailer:
     if template not in self.__templates:
       self.__load_templates()
     template = self.__templates[template]['id']
+
+    swu = self.__swu.start_batch()
     for recipient in recipients:
       email = recipient['email']
+      if recipient['sender'] is not None:
+        sender = {}
+        if 'fullname' in recipient['sender']:
+          sender['name'] = recipient['sender']['fullname']
+        if 'email' in recipient['sender']:
+          sender['address'] = recipient['sender']['email']
+      else:
+        sender = None
       with elle.log.trace(
           '%s: send %s to %s%s' % (
             self, template, email,
             ' %s' % sender if sender is not None else '')):
         elle.log.dump('variables: %s' % json.dumps(recipient['vars'],
                                                    cls = JSONEncoder))
-        r = self.__swu.send(
+        r = swu.send(
           email_id = template,
           recipient = {
             'address': email,
@@ -60,7 +70,8 @@ class SendWithUsEmailer:
           sender = sender,
           email_data = recipient['vars'],
         )
-        assert r.status_code == 200
+    r = swu.execute()
+    assert r.status_code == 200
 
 class MandrillEmailer:
 
