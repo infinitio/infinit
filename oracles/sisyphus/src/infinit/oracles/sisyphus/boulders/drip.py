@@ -443,8 +443,9 @@ class Onboarding(Drip):
 
 class GhostReminder(Drip):
 
-  def __init__(self, sisyphus):
-    super().__init__(sisyphus, 'ghost-reminder', 'transactions')
+  def __init__(self, sisyphus, pretend = False):
+    super().__init__(sisyphus,
+                     'ghost-reminder', 'transactions', pretend)
     self.sisyphus.mongo.meta.transactions.ensure_index(
       [
         # Find transactions in any bucket
@@ -509,8 +510,17 @@ class GhostReminder(Drip):
 
   @property
   def fields(self):
-    return ['recipient_id', 'sender_id',
-            'files', 'message', 'files_count', 'transaction_hash']
+    return [
+      'files',
+      'files_count',
+      'message',
+      'recipient_id',
+      'recipient_fullname',
+      'sender_fullname',
+      'sender_id',
+      'total_size',
+      'transaction_hash',
+    ]
 
   def _user(self, transaction):
     recipient = transaction['recipient_id']
@@ -523,7 +533,7 @@ class GhostReminder(Drip):
     return {
       'sender': self.user_vars(sender),
       'recipient': self.user_vars(recipient),
-      'transaction': self.transaction_vars(transaction),
+      'transaction': self.transaction_vars(transaction, recipient),
     }
 
   def _pick_template(self, template, users):
