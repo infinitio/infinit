@@ -302,8 +302,8 @@ class Drip(Emailing):
 
 class Onboarding(Drip):
 
-  def __init__(self, sisyphus):
-    super().__init__(sisyphus, 'onboarding', 'users')
+  def __init__(self, sisyphus, pretend = False):
+    super().__init__(sisyphus, 'onboarding', 'users', pretend)
     # Find user in any status without scanning all ghosts, deleted
     # users etc.
     self.sisyphus.mongo.meta.users.ensure_index(

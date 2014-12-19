@@ -27,14 +27,14 @@ class Onboarding(sisyphus.boulders.drip.Onboarding):
 
 with mongobox.MongoBox() as mongo:
   with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
-    mandrill = Mandrill()
+    emailer = DummyEmailer()
     sisy = sisyphus.Sisyphus(mongo_port = mongo.port,
-                                 mandrill = mandrill)
+                                 emailer = emailer)
     gestapo(sisy._Sisyphus__mongo)
     onboarding = Onboarding(sisy)
     # Check nothing is sent with no users
     sisy.boulders_run()
-    assert not mandrill.emails
+    assert not emailer.emails
 
     # Add deleted users to check they don't receive email and they are
     # not scanned by our mongo queries.
@@ -51,7 +51,7 @@ with mongobox.MongoBox() as mongo:
       # All undetermined users are scanned to see if they did a
       # transaction.
       sisy.boulders_run()
-      assert not mandrill.emails
+      assert not emailer.emails
 
     # Check unactivated 1 is sent to an aging user
     diff = (onboarding.delay_second_reminder + onboarding.delay_first_reminder) / 2
@@ -66,10 +66,10 @@ with mongobox.MongoBox() as mongo:
     # to check last_transaction.time, hence the one miss.
     with MongoExpectation(object_miss = 1):
       sisy.boulders_run()
-      emails = mandrill.emails
+      emails = emailer.emails
       print(emails)
       assert len(emails) == 1
       assert emails[0][0] == 'user1@infinit.io'
       # Check it's not sent twice
       sisy.boulders_run()
-      assert not mandrill.emails
+      assert not emailer.emails
