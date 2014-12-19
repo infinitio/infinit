@@ -61,8 +61,8 @@ def configure(
         'boulders/drip/delight-sender',
         'boulders/drip/ghost-reminder',
         'boulders/drip/onboarding',
-        'boulders/drip/weekly-report',
         'boulders/drip/pending-reminder',
+        'boulders/drip/weekly-report',
     ):
       test = drake.node('tests/%s' % name)
       for source in sources_built:

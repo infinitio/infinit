@@ -51,27 +51,25 @@ args = {}
 if options.mongo_host:
   args['mongo_host'] = options.mongo_host
 
-# import mandrill
-# mandrill = mandrill.Mandrill(
-#   apikey = 'ca159fe5-a0f7-47eb-b9e1-2a8f03b9da86')
-# args['emailer'] = infinit.oracles.sisyphus.emailer.MandrillEmailer(
-#   mandrill)
+swu_key = 'live_7e775f6f0e1404802a5fbbc0fcfa9c238b065c49'
+# Send to mefyl@infinit.io
+# swu_key = 'test_8a19af75d006192a3e51dcab310fa1ed428e53ba'
 
-args['emailer'] = \
-  infinit.oracles.sisyphus.emailer.SendWithUsEmailer(
-    api_key = 'test_4ab93862c9fa3ced9dc5331d5e70220cbb2ff43d')
+args['emailer'] = infinit.oracles.sisyphus.emailer.SendWithUsEmailer(
+  api_key = swu_key)
 args['metrics'] = infinit.oracles.sisyphus.metrics.Metrics()
 
 app = infinit.oracles.sisyphus.Sisyphus(**args)
-# infinit.oracles.sisyphus.boulders.drip.AcceptReminder(app)
-# infinit.oracles.sisyphus.boulders.drip.ConfirmSignup(app)
-# infinit.oracles.sisyphus.boulders.drip.DelightGhost(app)
-# infinit.oracles.sisyphus.boulders.drip.DelightRecipient(app)
-# infinit.oracles.sisyphus.boulders.drip.DelightSender(app)
-# infinit.oracles.sisyphus.boulders.drip.GhostReminder(app)
-# infinit.oracles.sisyphus.boulders.drip.Onboarding(app)
-infinit.oracles.sisyphus.boulders.drip.WeeklyReport(app)
+
+infinit.oracles.sisyphus.boulders.drip.AcceptReminder(app)
+infinit.oracles.sisyphus.boulders.drip.ConfirmSignup(app)
+infinit.oracles.sisyphus.boulders.drip.DelightGhost(app)
+infinit.oracles.sisyphus.boulders.drip.DelightRecipient(app)
+infinit.oracles.sisyphus.boulders.drip.DelightSender(app)
+infinit.oracles.sisyphus.boulders.drip.GhostReminder(app)
+infinit.oracles.sisyphus.boulders.drip.Onboarding(app)
 infinit.oracles.sisyphus.boulders.drip.PendingReminder(app)
+# infinit.oracles.sisyphus.boulders.drip.WeeklyReport(app)
 
 bottle.run(app = app,
            host = '127.0.0.1',
