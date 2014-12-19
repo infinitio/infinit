@@ -739,8 +739,8 @@ class DelightGhost(Drip):
 
 class ConfirmSignup(Drip):
 
-  def __init__(self, sisyphus):
-    super().__init__(sisyphus, 'confirm-signup', 'users')
+  def __init__(self, sisyphus, pretend = False):
+    super().__init__(sisyphus, 'confirm-signup', 'users', pretend)
     # Find user in any status without scanning all ghosts, deleted
     # users etc.
     self.sisyphus.mongo.meta.users.ensure_index(
@@ -809,7 +809,7 @@ class ConfirmSignup(Drip):
 
   def _vars(self, elt, user):
     return {
-      'CONFIRM_KEY': key('/users/%s/confirm-email' % user['_id']),
+      'confirm_key': key('/users/%s/confirm-email' % user['_id']),
     }
 
 

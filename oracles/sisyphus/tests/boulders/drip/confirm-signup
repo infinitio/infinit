@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
 # utils first, beware of system OpenSSL.
+import utils
 from utils import *
 
 import elle.log
 
 from infinit.oracles.transaction import statuses
+from infinit.oracles.utils import key
 
 import sisyphus
 import sisyphus.boulders.drip
@@ -31,18 +33,16 @@ class ConfirmSignup(sisyphus.boulders.drip.ConfirmSignup):
       self, template, users)
 
 
-def check_mail(mails, recipient):
-  assert len(mails) == 1
-  mail = mails[0]
-  assert mail[0] == recipient
-  content = mail[1]
-  assert 'CONFIRM_KEY' in content
+def check_mail(mails, recipient, template):
+  utils.check_mail(mails, recipient, template)
+  assertEq(mails[0][1]['confirm_key'],
+           key('/users/%s/confirm-email' % mails[0][1]['user']['id']))
 
 with mongobox.MongoBox() as mongo:
   with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
-    mandrill = Mandrill()
+    emailer = DummyEmailer()
     sisy = sisyphus.Sisyphus(mongo_port = mongo.port,
-                                 mandrill = mandrill)
+                                 emailer = emailer)
     gestapo(sisy._Sisyphus__mongo)
     confirm = ConfirmSignup(sisy)
 
@@ -54,35 +54,38 @@ with mongobox.MongoBox() as mongo:
 
     # Check nothing is sent with no users
     sisy.boulders_run()
-    assert not mandrill.emails
+    check_no_mail(emailer.emails)
     # Create user
     sender = meta.user_register('sender@infinit.io',
                                 '*' * 64, 'Foo Bar')
     # Check nothing is sent to a fresh user
     forward(confirm.delay_first_reminder / 2)
     sisy.boulders_run()
-    assert not mandrill.emails
+    check_no_mail(emailer.emails)
     # Check first mail is sent
     forward(confirm.delay_first_reminder)
     sisy.boulders_run()
-    check_mail(mandrill.emails, 'sender@infinit.io')
+    check_mail(emailer.emails,
+               'sender@infinit.io', 'drip_confirm-signup_1')
     sisy.boulders_run()
-    assert not mandrill.emails
+    check_no_mail(emailer.emails)
     # Check second mail is sent
     forward(delay_diff)
     sisy.boulders_run()
-    check_mail(mandrill.emails, 'sender@infinit.io')
+    check_mail(emailer.emails,
+               'sender@infinit.io', 'drip_confirm-signup_2')
     sisy.boulders_run()
-    assert not mandrill.emails
+    check_no_mail(emailer.emails)
     # Check no mail is sent to ghosts
     transaction_create(meta, sender, 'ghost@infinit.io')
     forward(confirm.delay_second_reminder * 2)
     sisy.boulders_run()
-    assert not mandrill.emails
+    check_no_mail(emailer.emails)
     # Check leeway starts on ghost registration
     meta.user_register('ghost@infinit.io', '*' * 64, 'Foo Bar')
     sisy.boulders_run()
-    assert not mandrill.emails
+    check_no_mail(emailer.emails)
     forward(confirm.delay_first_reminder * 1.5)
     sisy.boulders_run()
-    check_mail(mandrill.emails, 'ghost@infinit.io')
+    check_mail(emailer.emails,
+               'ghost@infinit.io', 'drip_confirm-signup_1')
