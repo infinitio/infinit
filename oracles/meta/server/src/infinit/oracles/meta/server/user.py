@@ -936,6 +936,15 @@ class Mixin:
       res['os'] = '$os'
     return res
 
+  def __object_id(self, id):
+    try:
+      return bson.ObjectId(x.strip())
+    except bson.errors.InvalidId:
+      self.bad_request({
+        'reason': 'invalid id',
+        'id': id,
+      })
+
   @api('/users')
   @require_logged_in_or_admin
   def users(self, search = None, limit : int = 5, skip : int = 0, ids = None):
@@ -956,8 +965,7 @@ class Mixin:
       if ids is not None:
         for c in "'\"[]":
           ids = ids.replace(c, '')
-        ids = ids.split(",")
-        ids = map(lambda x: bson.ObjectId(x.strip()), ids)
+        ids = [self.__object_id(id) for id in ids.split(',')]
         match['_id'] = {'$in' : list(ids)}
       if search is not None:
         match['$or'] = [
