@@ -46,7 +46,9 @@ class SendWithUsEmailer:
     for recipient in recipients:
       email = recipient['email']
       with elle.log.trace(
-          '%s: send %s to %s' % (self, template, email)):
+          '%s: send %s to %s%s' % (
+            self, template, email,
+            ' %s' % sender if sender is not None else '')):
         elle.log.dump('variables: %s' % json.dumps(recipient['vars'],
                                                    cls = JSONEncoder))
         r = self.__swu.send(
@@ -55,6 +57,7 @@ class SendWithUsEmailer:
             'address': email,
             'name': recipient['name']
           },
+          sender = sender,
           email_data = recipient['vars'],
         )
         assert r.status_code == 200

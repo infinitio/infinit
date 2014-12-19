@@ -188,6 +188,9 @@ class Drip(Emailing):
     return 'unsubscriptions' not in user \
       or 'drip' not in user['unsubscriptions']
 
+  def sender(self, v):
+    return None
+
   def send_email(self, bucket, template, users,
                  variations = None):
     with elle.log.trace('%s: send %s to %s users' %
@@ -215,10 +218,12 @@ class Drip(Emailing):
                   ('campaign', self.campaign),
                   ('user', self.user_vars(user)),
                 ],
-                self._vars(elt, user).items(),
-              ))
+                vars.items(),
+              )),
+              'sender': self.sender(vars),
             }
-            for user, elt in users
+            for user, elt, vars in
+            map(lambda e: (e[0], e[1], self._vars(e[1], e[0])), users)
           ]
           if self.sisyphus.emailer is not None:
             res = self.sisyphus.emailer.send_template(
@@ -535,6 +540,9 @@ class GhostReminder(Drip):
       'recipient': self.user_vars(recipient),
       'transaction': self.transaction_vars(transaction, recipient),
     }
+
+  def sender(self, v):
+    return ({'fullname': '%s via Infinit' % v['sender']['fullname']})
 
   def _pick_template(self, template, users):
     return [
@@ -916,6 +924,9 @@ class AcceptReminder(Drip):
       'recipient': self.user_vars(recipient),
       'transaction': self.transaction_vars(transaction, recipient),
     }
+
+  def sender(self, v):
+    return ({'fullname': '%s via Infinit' % v['sender']['fullname']})
 
   def _pick_template(self, template, users):
     return [
