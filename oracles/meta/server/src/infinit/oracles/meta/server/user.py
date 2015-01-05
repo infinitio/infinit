@@ -938,7 +938,7 @@ class Mixin:
 
   def __object_id(self, id):
     try:
-      return bson.ObjectId(x.strip())
+      return bson.ObjectId(id.strip())
     except bson.errors.InvalidId:
       self.bad_request({
         'reason': 'invalid id',
