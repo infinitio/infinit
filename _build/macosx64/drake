@@ -31,4 +31,5 @@ with drake.Drake('../..') as d:
   d.run(cxx_toolkit,
         cxx_config,
         python3 = python3,
-        enable_horizon = False)
+        fuse = '/usr/local',
+  )
