@@ -14,9 +14,7 @@ ELLE_TEST_SCHEDULED(send_ghost)
   Server server;
   auto const email = "em@il.com";
   auto const password = "secret";
-  auto const hashed_password =
-    surface::gap::State::hash_password(email, password);
-  auto user = server.register_user(email, hashed_password);
+  auto user = server.register_user(email, password);
   State state(server, user.device_id());
   // Callbacks
   reactor::Barrier transferring;
