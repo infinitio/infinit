@@ -111,6 +111,7 @@ def configure(elle,
   )
 
   tests_cxx_config = drake.cxx.Config(local_cxx_config)
+  tests_cxx_config.lib_path_runtime('../lib')
   tests_cxx_config.add_local_include_path('../../../elle/reactor/tests')
   if valgrind is not None:
     tests_cxx_config.define('VALGRIND')

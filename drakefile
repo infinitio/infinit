@@ -16,7 +16,7 @@ with open(str(drake.path_source('elle/drake-utils.py')), 'r') as f:
 def configure(cxx_toolkit = None,
               cxx_config = None,
               archs = [],
-              enable_horizon = False,
+              fuse = None,
               optimization = True,
               prefix = '/usr',
               boost = None,
@@ -156,6 +156,7 @@ def configure(cxx_toolkit = None,
                        python_version = python_version,
                        prefix = prefix,
                        boost = boost,
+                       fuse = fuse,
                        valgrind = valgrind,
                        valgrind_tests = valgrind_tests)
   boost = elle.boost
