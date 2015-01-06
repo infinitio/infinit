@@ -332,7 +332,37 @@ namespace surface
           auto id = generate_id();
           auto transaction = elle::make_unique<Transaction>(*this, id, notif);
           // Notify GAP a transaction was created.
-          this->enqueue(Transaction::Notification(id, transaction->status()));
+          if (auto peer_data =
+            std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(notif))
+          {
+            surface::gap::PeerTransaction notification(
+              id,
+              transaction->status(),
+              this->user_indexes().at(peer_data->sender_id),
+              peer_data->sender_device_id,
+              this->user_indexes().at(peer_data->recipient_id),
+              peer_data->recipient_device_id,
+              peer_data->mtime,
+              peer_data->files,
+              peer_data->total_size,
+              peer_data->is_directory,
+              peer_data->message,
+              peer_data->canceler);
+            this->enqueue(notification);
+          }
+          else if (auto link_data =
+            std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(notif))
+          {
+            surface::gap::LinkTransaction notification(
+              id,
+              link_data->name,
+              link_data->mtime,
+              link_data->share_link,
+              link_data->click_count,
+              transaction->status(),
+              link_data->sender_device_id);
+            this->enqueue(notification);
+          }
           this->_transactions.emplace(id, std::move(transaction));
         }
         catch (elle::Error const& e)
