@@ -402,9 +402,10 @@ Server::register_user(std::string const& email,
   auto keys =
     cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                     papier::Identity::keypair_length);
+  auto hashed_password = State::hash_password(email, password);
   auto identity =
     generate_identity(keys, boost::lexical_cast<std::string>(id),
-                      "my identity", password);
+                      "my identity", hashed_password);
   std::string identity_serialized;
   identity.Save(identity_serialized);
   auto response =
