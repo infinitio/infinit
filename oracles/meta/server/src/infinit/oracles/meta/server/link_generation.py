@@ -434,6 +434,10 @@ class Mixin:
                         (user['_id'], offset, count, include_expired)):
       query = {
         'sender_id': user['_id'],
+        # Links with no hash have been interupted while
+        # created. FIXME: garbage collect them.
+        'hash': {'$exists': True},
+        'aws_credentials': {'$exists': True},
       }
       if not include_expired:
         query['$or'] = [
