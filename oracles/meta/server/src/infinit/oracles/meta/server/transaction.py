@@ -355,6 +355,7 @@ class Mixin:
     if time:
       update.setdefault('$set', {})
       update['$set']['last_transaction.time'] = self.now
+      update['$set']['activated'] = True
     if counts is not None:
       update.setdefault('$inc', {})
       update['$inc'].update(
@@ -413,6 +414,13 @@ class Mixin:
         {'$skip': offset},
         {'$limit': count},
       ])['result']
+      # FIXME: clients <= 0.9.22 don't start a PeerReceiveMachineFSM
+      # on an unknown status. Make them think clould_buffered is the
+      # same as created.
+      for t in res:
+        if t['status'] == transaction_status.CLOUD_BUFFERED:
+          t['status'] = transaction_status.INITIALIZED
+      # /FIXME
       return self.success({'transactions': res})
 
   # Previous (shitty) transactions fetching API that only returns ids.
@@ -640,14 +648,15 @@ class Mixin:
                                      owner_id = user['_id'])
       is_sender = self.is_sender(transaction, user['_id'], device_id)
       args = (transaction['status'], status)
-      if transaction['status'] != status:
-        allowed = transaction_status.transitions[transaction['status']][is_sender]
-        if status not in allowed:
-          fmt = 'changing status %s to %s not permitted'
-          response(403, {'reason': fmt % args})
-        if transaction['status'] in transaction_status.final:
-          fmt = 'changing final status %s to %s not permitted'
-          response(403, {'reason': fmt % args})
+      if transaction['status'] == status:
+        return transaction_id
+      allowed = transaction_status.transitions[transaction['status']][is_sender]
+      if status not in allowed:
+        fmt = 'changing status %s to %s not permitted'
+        response(403, {'reason': fmt % args})
+      if transaction['status'] in transaction_status.final:
+        fmt = 'changing final status %s to %s not permitted'
+        response(403, {'reason': fmt % args})
       diff = {}
       if status == transaction_status.ACCEPTED:
         diff.update(self.on_accept(transaction = transaction,
@@ -676,19 +685,27 @@ class Mixin:
           transaction['sender_id'],
           counts = ['reached_peer', 'reached'],
           time = False)
+      # Don't override accepted with cloud_buffered.
+      if status == transaction_status.CLOUD_BUFFERED and \
+         transaction['status'] == transaction_status.ACCEPTED:
+        diff.update({'status': transaction_status.ACCEPTED})
+      else:
+        diff.update({'status': status})
       diff.update({
-        'status': status,
         'mtime': time.time(),
         'modification_time': self.now,
       })
       # Don't update with an empty dictionary: it would empty the
       # object.
       if diff:
-        if status in transaction_status.final or \
-           status is transaction_status.statuses['ghost_uploaded']:
+        if status in transaction_status.final:
           for i in ['recipient_id', 'sender_id']:
             self.__complete_transaction_stats(transaction[i],
                                               transaction)
+        elif status in [transaction_status.statuses['ghost_uploaded'],
+                        transaction_status.statuses['cloud_buffered']]:
+          self.__complete_transaction_stats(transaction['sender_id'],
+                                            transaction)
         transaction = self.database.transactions.find_and_modify(
           {'_id': transaction['_id']},
           {'$set': diff},

@@ -125,6 +125,7 @@ namespace surface
             this->gap_status(gap_transaction_rejected);
           break;
         case TransactionStatus::initialized:
+        case TransactionStatus::cloud_buffered:
           ELLE_DEBUG("%s: ignore status %s", *this, status);
           break;
         case TransactionStatus::ghost_uploaded: // intercepted by inherited machine

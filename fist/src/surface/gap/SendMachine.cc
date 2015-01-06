@@ -14,7 +14,6 @@
 
 #include <aws/Credentials.hh>
 #include <aws/Exceptions.hh>
-#include <aws/S3.hh>
 
 #include <common/common.hh>
 #include <papier/Identity.hh>
@@ -106,30 +105,6 @@ namespace surface
         progress += chunk.second;
       return progress;
     }
-
-    class S3
-      : public aws::S3
-    {
-    public:
-      S3(State& state,
-         std::function<aws::Credentials(bool)> query_credentials)
-        : aws::S3(query_credentials)
-        , _state(state)
-      {}
-
-      virtual
-      aws::URL
-      hostname(aws::Credentials const& credentials) const override
-      {
-        auto replace = this->_state.s3_hostname();
-        if (!replace)
-          return aws::S3::hostname(credentials);
-        else
-          return *replace;
-      }
-
-      ELLE_ATTRIBUTE(State&, state);
-    };
 
     void
     SendMachine::_plain_upload()
@@ -559,7 +534,17 @@ namespace surface
           if (validate)
             return;
           ELLE_LOG("%s: File mirroring failure, cleaning up.", *this);
-          boost::filesystem::remove_all(mirror_path, erc);
+          // https://svn.boost.org/trac/boost/ticket/7396
+          // remove_all can throw even with 'erc' argument
+          try
+          {
+            boost::filesystem::remove_all(mirror_path, erc);
+          }
+          catch(boost::filesystem::filesystem_error const& e)
+          {
+            ELLE_ERR("%s: exception from mirror cleanup ignored: %s",
+                     *this, e.what());
+          }
       });
       ELLE_TRACE("%s: trying to mirror files (%s < %s) to %s",
                  *this, total_size, max_mirror_size, mirror_path);

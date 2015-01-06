@@ -211,6 +211,8 @@ namespace surface
         this->_trophonius.reset();
         this->logout();
         this->_metrics_reporter->stop();
+        if (this->_login_thread)
+          this->_login_thread->terminate_now();
       }
       catch (std::runtime_error const&)
       {

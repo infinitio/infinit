@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 # utils first, beware of system OpenSSL.
+import utils
 from utils import *
 
 import uuid
@@ -20,27 +21,23 @@ class DelightGhost(sisyphus.boulders.drip.DelightGhost):
     return sisyphus.boulders.drip.Drip._pick_template(
       self, template, users)
 
-def check_mail(mails, recipient):
-  assert len(mails) == 1
-  mail = mails[0]
-  assert mail[0] == recipient
-  content = mail[1]
-  assert content['USER_EMAIL'] == recipient
-  assert content['SENDER_EMAIL'] == 'sender@infinit.io'
+def check_mail(mails, recipient, template):
+  utils.check_mail(mails, recipient, template)
+  assertEq(mails[0][1]['sender']['email'], 'sender@infinit.io')
 
 with mongobox.MongoBox() as mongo:
   with Meta(mongo_port = mongo.port,
             enable_emails = False,
             force_admin = True) as meta:
-    mandrill = Mandrill()
+    emailer = DummyEmailer()
     sisy = sisyphus.Sisyphus(mongo_port = mongo.port,
-                             mandrill = mandrill)
+                             emailer = emailer)
     gestapo(sisy._Sisyphus__mongo)
     reminder = DelightGhost(sisy)
 
     # Check nothing is sent with no users
-    sisy.cron()
-    assert not mandrill.emails
+    sisy.boulders_run()
+    check_no_mail(emailer.emails)
 
     # Create users
     ghost_email = 'ghost@infinit.io'
@@ -48,26 +45,27 @@ with mongobox.MongoBox() as mongo:
                                 '*' * 64, 'Foo Bar')
 
     # Check nothing is sent with no transaction
-    sisy.cron()
-    assert not mandrill.emails
+    sisy.boulders_run()
+    check_no_mail(emailer.emails)
 
     # Check the mail is not sent upon creation
     tid = transaction_create(meta, sender, ghost_email)
-    sisy.cron()
-    assert not mandrill.emails
+    sisy.boulders_run()
+    check_no_mail(emailer.emails)
 
     # Check the mail is not sent upon upload
     meta._transaction_update(tid, statuses['ghost_uploaded'],
                              'device', 'device', sender)
-    sisy.cron()
-    assert not mandrill.emails
+    sisy.boulders_run()
+    check_no_mail(emailer.emails)
 
     # Check the mail is sent upon completion
     meta.transaction_download(tid)
-    sisy.cron()
-    check_mail(mandrill.emails, 'ghost@infinit.io')
+    sisy.boulders_run()
+    check_mail(emailer.emails,
+               'ghost@infinit.io', 'drip_delight-ghost_1')
 
     # But only once
     meta.transaction_download(tid)
-    sisy.cron()
-    assert not mandrill.emails
+    sisy.boulders_run()
+    check_no_mail(emailer.emails)

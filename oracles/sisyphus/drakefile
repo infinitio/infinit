@@ -1,4 +1,5 @@
 import drake
+import sys
 
 from itertools import chain
 
@@ -10,6 +11,7 @@ check = None
 install = None
 
 def configure(
+    prefix,
     python,
     bottle,
     mongobox,
@@ -32,6 +34,7 @@ def configure(
       'src/infinit/oracles/sisyphus/boulders/__init__.py',
       'src/infinit/oracles/sisyphus/boulders/drip.py',
       'src/infinit/oracles/sisyphus/emailer.py',
+      'src/infinit/oracles/sisyphus/metrics.py',
     )
 
     build = drake.Rule('build')
@@ -58,6 +61,8 @@ def configure(
         'boulders/drip/delight-sender',
         'boulders/drip/ghost-reminder',
         'boulders/drip/onboarding',
+        'boulders/drip/pending-reminder',
+        'boulders/drip/weekly-report',
     ):
       test = drake.node('tests/%s' % name)
       for source in sources_built:
@@ -74,3 +79,9 @@ def configure(
       check << runner.status
 
     install = drake.Rule('install')
+    python_version = drake.Version(*sys.version_info[0:2])
+    install << drake.install(
+      sisyphus.nodes,
+      prefix / ('lib/python%s' % python_version),
+      sisyphus.root)
+    install << drake.copy(build_binary, prefix / 'bin', True)

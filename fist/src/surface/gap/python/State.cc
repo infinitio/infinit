@@ -1,5 +1,6 @@
 #include <boost/python.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
+#include <boost/uuid/string_generator.hpp>
 
 #include <elle/assert.hh>
 #include <elle/os/path.hh>
@@ -140,9 +141,12 @@ transaction_status_string(infinit::oracles::Transaction::Status status)
       return "none";
     case Transaction::Status::ghost_uploaded:
       return "ghost-uploaded";
-    default:
-      elle::unreachable();
+    case Transaction::Status::cloud_buffered:
+      return "cloud-buffered";
+    case Transaction::Status::deleted:
+      return "deleted";
   }
+  elle::unreachable();
 }
 
 static

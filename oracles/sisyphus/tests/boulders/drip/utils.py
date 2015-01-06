@@ -19,9 +19,10 @@ class MongoExpectation:
 
   instance = None
 
-  def __init__(self, index_miss = 0, object_miss = 0):
+  def __init__(self, index_miss = 0, object_miss = 0, ignore = False):
     self.index_miss = index_miss
     self.object_miss = object_miss
+    self.ignore = ignore
 
   def __enter__(self):
     self.__previous = MongoExpectation.instance
@@ -62,6 +63,8 @@ class GestapoCollection(pymongo.collection.Collection):
                           multi = multi)
 
   def __check(self, condition, fields = None):
+    if MongoExpectation.instance.ignore:
+      return
     explanation = super().find(condition, fields = fields).explain()
     try:
       # print(explanation['cursor'])
@@ -192,25 +195,59 @@ class Mandrill:
   def messages(self):
     return Mandrill.Messages(self)
 
-def transaction_create(meta, sender, recipient, files = ['foobar']):
+class DummyEmailer:
+
+  def __init__(self):
+    self.__emails = []
+
+  @property
+  def emails(self):
+    res = self.__emails
+    self.__emails = []
+    return res
+
+  def send_template(self, template, recipients):
+    for recipient in recipients:
+      self.__emails.append(
+        (recipient['email'], recipient['vars'], template))
+
+def transaction_create(meta, sender, recipient, files = ['foobar'],
+                       initialize = True, size = 42):
   tid = meta.transaction_create(
-    sender, recipient, files, 1, 42, False, 'device')
+    sender, recipient, files, 1, size, False, 'device')
   tid = tid['created_transaction_id']
-  meta._transaction_update(tid, statuses['initialized'],
+  if initialize:
+    meta._transaction_update(tid, statuses['initialized'],
                              'device', None, sender)
   return tid
+
+def check_mail(mails, user, template):
+  assertEq(len(mails), 1)
+  mail = mails[0]
+  assertEq(mail[0], user)
+  assertEq(mail[2], template)
+  content = mail[1]
+  assertEq(content['user']['email'], user)
 
 def check_mail_transaction(mails, sender, recipient):
   assert len(mails) == 1
   mail = mails[0]
   assert mail[0] == recipient
   content = mail[1]
-  assert content['SENDER_EMAIL'] == sender
-  assert content['RECIPIENT_EMAIL'] == recipient
-  assert 'SENDER_AVATAR' in content
-  assert 'SENDER_FULLNAME' in content
-  assert 'TRANSACTION_FILENAME' in content
-  assert 'TRANSACTION_FILES_COUNT_OTHER' in content
-  assert 'TRANSACTION_ID' in content
-  assert 'TRANSACTION_KEY' in content
-  assert 'TRANSACTION_MESSAGE' in content
+  assertEq(content['sender']['email'], sender)
+  assertEq(content['recipient']['email'], recipient)
+  assert 'avatar' in content['sender']
+  assert 'fullname' in content['sender']
+  assert 'files' in content['transaction']
+  assert 'id' in content['transaction']
+  assert 'key' in content['transaction']
+  assert 'message' in content['transaction']
+
+def check_no_mail(mails):
+  if len(mails) > 0:
+    raise Exception(
+      'unexpected email to %s: %s' % (mails[0][0], mails[0][2]))
+
+def assertEq(a, b):
+  if a != b:
+    raise AssertionError('%r != %r' % (a, b))

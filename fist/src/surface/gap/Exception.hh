@@ -4,7 +4,6 @@
 # include <surface/gap/enums.hh>
 
 # include <elle/Exception.hh>
-# include <elle/log.hh>
 
 # include <string>
 # include <stdexcept>
@@ -24,8 +23,6 @@ namespace surface
         elle::Exception{msg},
         code{code}
       {
-        ELLE_LOG_COMPONENT("infinit.surface.gap.Exception");
-        ELLE_ERR("%s: %s: %s", code, msg, this->backtrace());
       }
     };
   }

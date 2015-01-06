@@ -1,0 +1,100 @@
+#! /usr/bin/env python3
+
+
+
+import infinit.oracles.servers
+import os
+import state
+import utils
+import unittest
+
+import reactor
+import datetime
+
+import requests
+import json
+
+import pymongo
+import pymongo.collection
+import pymongo.database
+import pymongo.errors
+
+from utils import expect_raise
+
+class TestPreemptiveBuffering(unittest.TestCase):
+
+  def test_disabled(self):
+    with infinit.oracles.servers.Oracles(
+        mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
+      with utils.TemporaryData('foo', 1000) as tmp:
+        s1 = o.state()
+        s1.login('mefyl@infinit.io',
+                state.hash_password('mefyl@infinit.io', 'mefyl'))
+        s2 = o.state()
+        s2.login('mefyl2@infinit.io',
+                state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+        tid = s1.send_files('mefyl2@infinit.io', [tmp.full_path], 'foo')
+        reactor.sleep(datetime.timedelta(seconds = 2))
+        #Not accepted, nothing happened
+        self.assertEqual(s1.transaction_status(tid), 'transaction_waiting_accept')
+        tr = s1.transaction(tid)
+        tindex2 = s2.find_transaction(tr['id'])
+        self.assertEqual(s2.transaction_status(tindex2), 'transaction_waiting_accept')
+
+  def test_enabled(self):
+    with infinit.oracles.servers.Oracles(
+        mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
+      with utils.TemporaryData('foo', 1000) as tmp:
+        r = requests.put(('%s://%s:%s/features/' % o.meta) + 'preemptive_buffering_delay',
+                          headers = {'content-type': 'application/json'},
+                          data = json.dumps({'value': '0'}))
+        self.assertEqual(r.status_code, 200)
+        s1 = o.state()
+        s1.login('mefyl@infinit.io',
+                state.hash_password('mefyl@infinit.io', 'mefyl'))
+        s2 = o.state()
+        s2.login('mefyl2@infinit.io',
+                state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+        tid = s1.send_files('mefyl2@infinit.io', [tmp.full_path], 'foo')
+        for i in range(20):
+          if s1.transaction_status(tid) == 'transaction_cloud_buffered':
+            break
+          reactor.sleep(datetime.timedelta(seconds = 1))
+        tr = s1.transaction(tid)
+        tindex2 = s2.find_transaction(tr['id'])
+        self.assertEqual(s1.transaction_status(tid), 'transaction_cloud_buffered')
+        s1.logout()
+        s2.transaction_accept(tindex2)
+        for i in range(20):
+          if s2.transaction_status(tindex2) == 'transaction_finished':
+            break
+          reactor.sleep(datetime.timedelta(seconds = 1))
+        self.assertEqual(s2.transaction_status(tindex2), 'transaction_finished')
+
+  def test_unused(self):
+    with infinit.oracles.servers.Oracles(
+        mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
+      with utils.TemporaryData('foo', 1000) as tmp:
+        r = requests.put(('%s://%s:%s/features/' % o.meta) + 'preemptive_buffering_delay',
+                          headers = {'content-type': 'application/json'},
+                          data = json.dumps({'value': '100'}))
+        self.assertEqual(r.status_code, 200)
+        s1 = o.state()
+        s1.login('mefyl@infinit.io',
+                state.hash_password('mefyl@infinit.io', 'mefyl'))
+        s2 = o.state()
+        s2.login('mefyl2@infinit.io',
+                state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+        tid = s1.send_files('mefyl2@infinit.io', [tmp.full_path], 'foo')
+        reactor.sleep(datetime.timedelta(seconds = 2))
+        tr = s1.transaction(tid)
+        tindex2 = s2.find_transaction(tr['id'])
+        self.assertEqual(s1.transaction_status(tid), 'transaction_waiting_accept')
+        s2.transaction_accept(tindex2)
+        for i in range(20):
+          if s2.transaction_status(tindex2) == 'transaction_finished':
+            break
+          reactor.sleep(datetime.timedelta(seconds = 1))
+        self.assertEqual(s2.transaction_status(tindex2), 'transaction_finished')
+
+utils.run(unittest.main)

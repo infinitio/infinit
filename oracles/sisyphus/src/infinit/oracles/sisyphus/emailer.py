@@ -1,3 +1,78 @@
+import elle.log
+
+import json
+
+ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.emailer'
+
+import sendwithus.encoder
+class JSONEncoder(sendwithus.encoder.SendwithusJSONEncoder):
+
+  def default(self, obj):
+    import bson
+    import datetime
+    if isinstance(obj, datetime.datetime):
+      return {
+        'year': obj.year,
+        'month': obj.month,
+        'day': obj.day,
+        'hour': obj.hour,
+        'minute': obj.minute,
+        'second': obj.second,
+        'weekday': obj.weekday(),
+      }
+    if isinstance(obj, bson.ObjectId):
+      return str(obj)
+    return super().default(obj)
+
+
+class SendWithUsEmailer:
+
+  def __init__(self, api_key):
+    import sendwithus
+    self.__swu = sendwithus.api(
+      api_key = api_key,
+      json_encoder = JSONEncoder)
+    self.__load_templates()
+
+  def __load_templates(self):
+    self.__templates = dict(
+      (t['name'], t)
+      for t in json.loads(self.__swu.templates().content.decode()))
+
+  def send_template(self, template, recipients):
+    if template not in self.__templates:
+      self.__load_templates()
+    template = self.__templates[template]['id']
+
+    swu = self.__swu.start_batch()
+    for recipient in recipients:
+      email = recipient['email']
+      if recipient['sender'] is not None:
+        sender = {}
+        if 'fullname' in recipient['sender']:
+          sender['name'] = recipient['sender']['fullname']
+        if 'email' in recipient['sender']:
+          sender['address'] = recipient['sender']['email']
+      else:
+        sender = None
+      with elle.log.trace(
+          '%s: send %s to %s%s' % (
+            self, template, email,
+            ' %s' % sender if sender is not None else '')):
+        elle.log.dump('variables: %s' % json.dumps(recipient['vars'],
+                                                   cls = JSONEncoder))
+        r = swu.send(
+          email_id = template,
+          recipient = {
+            'address': email,
+            'name': recipient['name']
+          },
+          sender = sender,
+          email_data = recipient['vars'],
+        )
+    r = swu.execute()
+    assert r.status_code == 200
+
 class MandrillEmailer:
 
   def __init__(self, mandrill):

@@ -126,6 +126,7 @@ Trophonius::_serve(std::unique_ptr<reactor::network::SSLSocket> socket)
 Server::Server()
   : _session_id(boost::uuids::random_generator()())
   , _trophonius()
+  , _cloud_buffered(false)
 {
   this->headers()["X-Fist-Meta-Version"] = INFINIT_VERSION;
   this->headers()["Set-Cookie"] =
@@ -264,15 +265,29 @@ Server::Server()
     [&] (Server::Headers const&,
          Server::Cookies const&,
          Server::Parameters const&,
-         elle::Buffer const&)
+         elle::Buffer const& content)
     {
       auto t = elle::make_unique<Transaction>();
+      ELLE_TRACE_SCOPE("%s: create transaction %s", *this, t->id());
+      elle::IOStream stream(new elle::InputStreamBuffer<elle::Buffer>(content));
+      elle::serialization::json::SerializerIn input(stream);
+      std::string recipient_email;
+      input.serialize("id_or_email", recipient_email);
+      ELLE_DEBUG("%s: recipient: %s", *this, recipient_email);
+
+      bool ghost;
+      {
+        auto& users_by_email = this->_users.get<1>();
+        auto recipient = users_by_email.find(recipient_email);
+        ghost = recipient == users_by_email.end();
+      }
       auto res = elle::sprintf(
         "{"
         "  \"created_transaction_id\": \"%s\","
-        "  \"recipient_is_ghost\": true"
+        "  \"recipient_is_ghost\": %s"
         "}",
-        t->id());
+        t->id(),
+        ghost ? "true" : "false");
       this->register_route(
         elle::sprintf("/transaction/%s/cloud_buffer", t->id()),
         reactor::http::Method::GET,
@@ -319,9 +334,10 @@ Server::Server()
         throw reactor::http::tests::Server::Exception(
           "/transaction/update",
           reactor::http::StatusCode::Not_Found,
-          "trasaction not found");
+          "transaction not found");
       auto& t = **it;
       t._status = infinit::oracles::Transaction::Status(status);
+      t.status_changed()(t._status);
       return "{}";
     });
   this->register_route(
@@ -352,6 +368,27 @@ Server::Server()
     {
       return "";
     });
+  this->register_route(
+    "/s3/folder/meta_data",
+    reactor::http::Method::PUT,
+    [] (Server::Headers const&,
+        Server::Cookies const&,
+        Server::Parameters const&,
+        elle::Buffer const&)
+    {
+      return "";
+    });
+  this->register_route(
+    "/s3/folder/000000000000_0000",
+    reactor::http::Method::PUT,
+    [this] (Server::Headers const&,
+            Server::Cookies const&,
+            Server::Parameters const&,
+            elle::Buffer const&)
+    {
+      this->_cloud_buffered = true;
+      return "";
+    });
 }
 
 Server::User&
@@ -371,17 +408,21 @@ Server::register_user(std::string const& email,
   std::string identity_serialized;
   identity.Save(identity_serialized);
   auto response =
-    [id, email, identity_serialized] (Server::Headers const&,
-                                      Server::Cookies const&,
-                                      Server::Parameters const&,
-                                      elle::Buffer const&)
+    [this, id, email, identity_serialized, keys]
+    (Server::Headers const&,
+     Server::Cookies const&,
+     Server::Parameters const&,
+     elle::Buffer const&)
     {
+      ELLE_TRACE_SCOPE("%s: fetch user %s (%s)", *this, id, email);
+      std::string public_key;
+      keys.K().Save(public_key);
       return elle::sprintf(
         "{"
         "  \"id\": \"%s\","
         "  \"email\": \"%s\","
         "  \"identity\": \"%s\","
-        "  \"public_key\": \"\","
+        "  \"public_key\": \"%s\","
         "  \"fullname\": \"John User\","
         "  \"handle\": \"john\","
         "  \"connected_devices\": [],"
@@ -390,7 +431,7 @@ Server::register_user(std::string const& email,
         "  \"favorites\": [],"
         "  \"register_status\": \"ok\""
         "}",
-        id, email, identity_serialized);
+        id, email, identity_serialized, public_key);
     };
   this->register_route(elle::sprintf("/users/%s", email),
                        reactor::http::Method::GET, response);
@@ -432,13 +473,16 @@ Server::register_user(std::string const& email,
 boost::uuids::uuid
 Server::generate_ghost_user(std::string const& email)
 {
+  ELLE_ASSERT(this->_users.get<1>().find(email) == this->_users.get<1>().end());
   auto id = boost::uuids::random_generator()();
   auto response =
-    [id] (Server::Headers const&,
-          Server::Cookies const&,
-          Server::Parameters const&,
-          elle::Buffer const&)
+    [this, id, email]
+    (Server::Headers const&,
+     Server::Cookies const&,
+     Server::Parameters const&,
+     elle::Buffer const&)
     {
+      ELLE_TRACE_SCOPE("%s: fetch ghost user %s (%s)", *this, id, email);
       return elle::sprintf(
         "{"
         "  \"id\": \"%s\","

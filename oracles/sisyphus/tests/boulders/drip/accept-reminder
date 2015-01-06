@@ -32,9 +32,9 @@ class AcceptReminder(sisyphus.boulders.drip.AcceptReminder):
 
 with mongobox.MongoBox() as mongo:
   with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
-    mandrill = Mandrill()
+    emailer = DummyEmailer()
     sisy = sisyphus.Sisyphus(mongo_port = mongo.port,
-                                 mandrill = mandrill)
+                                 emailer = emailer)
     gestapo(sisy._Sisyphus__mongo)
     reminder = AcceptReminder(sisy)
 
@@ -45,8 +45,8 @@ with mongobox.MongoBox() as mongo:
       reminder.delay_second_reminder - reminder.delay_first_reminder
 
     # Check nothing is sent with no users
-    sisy.cron()
-    assert not mandrill.emails
+    sisy.boulders_run()
+    assert not emailer.emails
 
     device = 'device'
     sender = meta.user_register('sender@infinit.io',
@@ -57,30 +57,32 @@ with mongobox.MongoBox() as mongo:
     ghost_email = 'ghost@infinit.io'
     transaction_create(meta, sender, ghost_email)
     # Create transaction
-    tid = transaction_create(meta, sender, recipient['email'])
+    tid = transaction_create(meta, sender, recipient['email'],
+                             initialize = False)
     # Check nothing is sent for a fresh transaction
-    sisy.cron()
-    assert not mandrill.emails
+    forward(reminder.delay_second_reminder * 2)
+    sisy.boulders_run()
+    assert not emailer.emails
     # Check timer begins after initialization
     forward(reminder.delay_second_reminder * 2)
     meta._transaction_update(tid, statuses['initialized'],
                              'device', None, sender)
-    sisy.cron()
-    assert not mandrill.emails
+    sisy.boulders_run()
+    assert not emailer.emails
     # Check first mail is sent
     forward(reminder.delay_first_reminder * 1.5)
-    sisy.cron()
-    check_mail_transaction(mandrill.emails,
+    sisy.boulders_run()
+    check_mail_transaction(emailer.emails,
                            'sender@infinit.io',
                            'recipient@infinit.io')
-    sisy.cron()
-    assert not mandrill.emails
+    sisy.boulders_run()
+    assert not emailer.emails
 
     # Check second mail is sent
     forward(delay_diff)
-    sisy.cron()
-    check_mail_transaction(mandrill.emails,
+    sisy.boulders_run()
+    check_mail_transaction(emailer.emails,
                            'sender@infinit.io',
                            'recipient@infinit.io')
-    sisy.cron()
-    assert not mandrill.emails
+    sisy.boulders_run()
+    assert not emailer.emails

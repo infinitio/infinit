@@ -63,18 +63,27 @@ namespace surface
       return id;
     }
 
+    Transaction&
+    State::transaction_peer_create(std::string const& peer_id,
+                                   std::vector<std::string> files,
+                                   std::string const& message)
+    {
+      ELLE_TRACE_SCOPE("%s: send files to %s", *this, peer_id);
+      auto id = generate_id();
+      auto transaction =
+        elle::make_unique<Transaction>(*this, id, peer_id,
+                                       std::move(files), message);
+      auto& res = *transaction;
+      this->_transactions.emplace(id, std::move(transaction));
+      return res;
+    }
+
     uint32_t
     State::send_files(std::string const& peer_id,
                       std::vector<std::string> files,
                       std::string const& message)
     {
-      ELLE_TRACE_SCOPE("%s: send files to %s", *this, peer_id);
-      auto id = generate_id();
-      this->_transactions.emplace(
-        id,
-        elle::make_unique<Transaction>(*this, id, peer_id,
-                                         std::move(files), message));
-      return id;
+      return this->transaction_peer_create(peer_id, files, message).id();
     }
 
     uint32_t
@@ -183,6 +192,11 @@ namespace surface
     void
     State::_peer_transaction_resync()
     {
+      if (!elle::os::getenv("INFINIT_DISABLE_META_SYNC", "").empty())
+      {
+        ELLE_ERR("Transaction resync disabled");
+        return;
+      }
       ELLE_TRACE("%s: synchronize active transactions from meta", *this)
         for (auto& transaction: this->meta().transactions())
         {
@@ -313,12 +327,13 @@ namespace surface
       if (it == std::end(this->_transactions))
       {
         ELLE_TRACE_SCOPE("%s: create transaction %s", *this, notif->id);
-        auto id = generate_id();
         try
         {
-          this->_transactions.emplace(
-            id,
-            elle::make_unique<Transaction>(*this, id, notif));
+          auto id = generate_id();
+          auto transaction = elle::make_unique<Transaction>(*this, id, notif);
+          // Notify GAP a transaction was created.
+          this->enqueue(Transaction::Notification(id, transaction->status()));
+          this->_transactions.emplace(id, std::move(transaction));
         }
         catch (elle::Error const& e)
         {

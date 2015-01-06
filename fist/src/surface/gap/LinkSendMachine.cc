@@ -162,6 +162,7 @@ namespace surface
         case TransactionStatus::failed:
           this->_run(this->_fail_state);
           break;
+        case TransactionStatus::cloud_buffered:
         case TransactionStatus::ghost_uploaded:
         case TransactionStatus::none:
         case TransactionStatus::started:
@@ -220,6 +221,7 @@ namespace surface
           if (!this->concerns_this_device())
             this->gap_status(gap_transaction_deleted);
           break;
+        case TransactionStatus::cloud_buffered:
         case TransactionStatus::ghost_uploaded:
         case TransactionStatus::none:
         case TransactionStatus::started:

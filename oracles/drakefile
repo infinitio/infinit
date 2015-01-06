@@ -137,6 +137,7 @@ def configure(production_build,
   )
 
   sisyphus = drake.include('sisyphus',
+                           prefix = prefix,
                            python = python3,
                            bottle = bottle,
                            mongobox = mongobox,

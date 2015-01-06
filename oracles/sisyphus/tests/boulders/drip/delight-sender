@@ -18,13 +18,6 @@ class DelightSender(sisyphus.boulders.drip.DelightSender):
     return sisyphus.boulders.drip.Drip._pick_template(
       self, template, users)
 
-def check_mail(mails, recipient):
-  assert len(mails) == 1
-  mail = mails[0]
-  assert mail[0] == recipient
-  content = mail[1]
-  assert content['USER_EMAIL'] == recipient
-
 def send(sender, recipient, files = ['foobar']):
   tid = transaction_create(meta, sender, recipient)
   meta._transaction_update(tid, statuses['ghost_uploaded'],
@@ -34,18 +27,30 @@ def send(sender, recipient, files = ['foobar']):
 
 with mongobox.MongoBox() as mongo:
   with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
-    mandrill = Mandrill()
+    emailer = DummyEmailer()
     sisy = sisyphus.Sisyphus(mongo_port = mongo.port,
-                             mandrill = mandrill)
+                             emailer = emailer)
     gestapo(sisy._Sisyphus__mongo)
     reminder = DelightSender(sisy)
+    ghost_email = 'ghost@infinit.io'
 
     # Check nothing is sent with no users
-    sisy.cron()
-    assert not mandrill.emails
+    sisy.boulders_run()
+    assert not emailer.emails
+
+    # Check deleted user don't receive emails
+    del1 = meta.user_register('del1@infinit.io', '*' * 64, 'Foo Bar')
+    meta.user_delete(del1)
+    del2 = meta.user_register('del2@infinit.io', '*' * 64, 'Foo Bar')
+    for i in range(reminder.threshold_first):
+      send(del2, ghost_email)
+    meta.user_delete(del2)
+    del3 = meta.user_register('del3@infinit.io', '*' * 64, 'Foo Bar')
+    for i in range(reminder.threshold_second):
+      send(del3, ghost_email)
+    meta.user_delete(del3)
 
     # Create senders
-    ghost_email = 'ghost@infinit.io'
     device = 'device'
     sender1 = meta.user_register('sender1@infinit.io',
                                  '*' * 64, 'Foo Bar')
@@ -55,28 +60,31 @@ with mongobox.MongoBox() as mongo:
                                  '*' * 64, 'Foo Bar')
 
     for i in range(reminder.threshold_first):
-      sisy.cron()
-      assert not mandrill.emails
+      sisy.boulders_run()
+      assert not emailer.emails
       send(sender1, ghost_email)
-    sisy.cron()
-    check_mail(mandrill.emails, 'sender1@infinit.io')
+    sisy.boulders_run()
+    check_mail(emailer.emails,
+               'sender1@infinit.io', 'drip_delight-sender_1')
 
     for i in range(reminder.threshold_first,
                    reminder.threshold_second):
-      sisy.cron()
-      assert not mandrill.emails
+      sisy.boulders_run()
+      assert not emailer.emails
       send(sender1, ghost_email)
-    sisy.cron()
-    check_mail(mandrill.emails, 'sender1@infinit.io')
+    sisy.boulders_run()
+    check_mail(emailer.emails,
+               'sender1@infinit.io', 'drip_delight-sender_2')
 
     for i in range(reminder.threshold_second,
                    reminder.threshold_third):
-      sisy.cron()
-      assert not mandrill.emails
+      sisy.boulders_run()
+      assert not emailer.emails
       send(sender1, ghost_email)
-    sisy.cron()
-    check_mail(mandrill.emails, 'sender1@infinit.io')
+    sisy.boulders_run()
+    check_mail(emailer.emails,
+               'sender1@infinit.io', 'drip_delight-sender_3')
 
     send(sender1, ghost_email)
-    sisy.cron()
-    assert not mandrill.emails
+    sisy.boulders_run()
+    assert not emailer.emails

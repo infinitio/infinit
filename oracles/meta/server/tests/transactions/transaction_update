@@ -23,11 +23,7 @@ def S(source, transaction, state):
                                            "device_id": str(source.device_id),
                                            "device_name": source.device_name})
   assert res['success']
-  # FIXME: We should not send notification if updating to the same
-  # status.
-  # assert notifier.notification is None
-  notification_type, recipient_ids, device_ids, status = notifier.notification
-  assert status == state
+  assert notifier.notification is None
 
 # Not allowed
 def E(source, transaction, state):
@@ -71,13 +67,13 @@ for i in STATUS:
 
 s = sender_transitions
 
-s[C][C]  = O; s[C][I]  = O; s[C][A]  = E; s[C][F]  = E; s[C][R]  = E; s[C][CA]  = O; s[C][FA]  = O;
-s[I][C]  = E; s[I][I]  = O; s[I][A]  = E; s[I][F]  = O; s[I][R]  = E; s[I][CA]  = O; s[I][FA]  = O;
-s[A][C]  = E; s[A][I]  = E; s[A][A]  = O; s[A][F]  = E; s[A][R]  = E; s[A][CA]  = O; s[A][FA]  = O;
-s[F][C]  = E; s[F][I]  = E; s[F][A]  = E; s[F][F]  = O; s[F][R]  = E; s[F][CA]  = E; s[F][FA]  = E;
-s[R][C]  = E; s[R][I]  = E; s[R][A]  = E; s[R][F]  = E; s[R][R]  = O; s[R][CA]  = E; s[R][FA]  = E;
-s[CA][C] = E; s[CA][I] = E; s[CA][A] = E; s[CA][F] = E; s[CA][R] = E; s[CA][CA] = O; s[CA][FA] = E;
-s[FA][C] = E; s[FA][I] = E; s[FA][A] = E; s[FA][F] = E; s[FA][R] = E; s[FA][CA] = E; s[FA][FA] = O;
+s[C][C]  = S; s[C][I]  = O; s[C][A]  = E; s[C][F]  = E; s[C][R]  = E; s[C][CA]  = O; s[C][FA]  = O;
+s[I][C]  = E; s[I][I]  = S; s[I][A]  = E; s[I][F]  = O; s[I][R]  = E; s[I][CA]  = O; s[I][FA]  = O;
+s[A][C]  = E; s[A][I]  = E; s[A][A]  = S; s[A][F]  = E; s[A][R]  = E; s[A][CA]  = O; s[A][FA]  = O;
+s[F][C]  = E; s[F][I]  = E; s[F][A]  = E; s[F][F]  = S; s[F][R]  = E; s[F][CA]  = E; s[F][FA]  = E;
+s[R][C]  = E; s[R][I]  = E; s[R][A]  = E; s[R][F]  = E; s[R][R]  = S; s[R][CA]  = E; s[R][FA]  = E;
+s[CA][C] = E; s[CA][I] = E; s[CA][A] = E; s[CA][F] = E; s[CA][R] = E; s[CA][CA] = S; s[CA][FA] = E;
+s[FA][C] = E; s[FA][I] = E; s[FA][A] = E; s[FA][F] = E; s[FA][R] = E; s[FA][CA] = E; s[FA][FA] = S;
 
 # Recipient
 #  C  I  A  F  R  CA FA
@@ -90,13 +86,13 @@ s[FA][C] = E; s[FA][I] = E; s[FA][A] = E; s[FA][F] = E; s[FA][R] = E; s[FA][CA] 
 # [E, E, E, S, S, S, S]) # FA
 
 r = recipient_transitions
-r[C][C]  = O; r[C][I]  = E; r[C][A]  = E; r[C][F]  = E; r[C][R]  = E; r[C][CA]  = O; r[C][FA]  = E;
-r[I][C]  = E; r[I][I]  = O; r[I][A]  = O; r[I][F]  = E; r[I][R]  = O; r[I][CA]  = O; r[I][FA]  = O;
-r[A][C]  = E; r[A][I]  = E; r[A][A]  = O; r[A][F]  = O; r[A][R]  = E; r[A][CA]  = O; r[A][FA]  = O;
-r[F][C]  = E; r[F][I]  = E; r[F][A]  = E; r[F][F]  = O; r[F][R]  = E; r[F][CA]  = E; r[F][FA]  = E;
-r[R][C]  = E; r[R][I]  = E; r[R][A]  = E; r[R][F]  = E; r[R][R]  = O; r[R][CA]  = E; r[R][FA]  = E;
-r[CA][C] = E; r[CA][I] = E; r[CA][A] = E; r[CA][F] = E; r[CA][R] = E; r[CA][CA] = O; r[CA][FA] = E;
-r[FA][C] = E; r[FA][I] = E; r[FA][A] = E; r[FA][F] = E; r[FA][R] = E; r[FA][CA] = E; r[FA][FA] = O;
+r[C][C]  = S; r[C][I]  = E; r[C][A]  = E; r[C][F]  = E; r[C][R]  = E; r[C][CA]  = O; r[C][FA]  = E;
+r[I][C]  = E; r[I][I]  = S; r[I][A]  = O; r[I][F]  = E; r[I][R]  = O; r[I][CA]  = O; r[I][FA]  = O;
+r[A][C]  = E; r[A][I]  = E; r[A][A]  = S; r[A][F]  = O; r[A][R]  = E; r[A][CA]  = O; r[A][FA]  = O;
+r[F][C]  = E; r[F][I]  = E; r[F][A]  = E; r[F][F]  = S; r[F][R]  = E; r[F][CA]  = E; r[F][FA]  = E;
+r[R][C]  = E; r[R][I]  = E; r[R][A]  = E; r[R][F]  = E; r[R][R]  = S; r[R][CA]  = E; r[R][FA]  = E;
+r[CA][C] = E; r[CA][I] = E; r[CA][A] = E; r[CA][F] = E; r[CA][R] = E; r[CA][CA] = S; r[CA][FA] = E;
+r[FA][C] = E; r[FA][I] = E; r[FA][A] = E; r[FA][F] = E; r[FA][R] = E; r[FA][CA] = E; r[FA][FA] = S;
 
 def find_path(state):
   assert state < len(statuses)

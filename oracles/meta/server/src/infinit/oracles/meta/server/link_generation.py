@@ -133,7 +133,12 @@ class Mixin:
 
   @api('/link', method = 'POST')
   @require_logged_in
-  def link_generate(self, files, name, message):
+  def link_generate_api(self, files, name, message):
+    return self.link_generate(files, name, message,
+                              user = self.user,
+                              device = self.current_device)
+
+  def link_generate(self, files, name, message, user, device):
     """
     Generate a link from a list of files and a message.
 
@@ -145,14 +150,13 @@ class Mixin:
     message --  A string message.
     Returns the id, link and AWS credentials.
     """
-    with elle.log.trace('generating a link for user (%s)' % self.user['_id']):
-      user = self.user
+    with elle.log.trace('generating a link for user (%s)' % user['_id']):
       if len(files) == 0:
         self.bad_request('no file dictionary')
       if len(name) == 0:
         self.bad_request('no name')
 
-      creation_time = datetime.datetime.utcnow()
+      creation_time = self.now
 
       # Maintain a list of all elements in document here.
       # Do not add a None hash as this causes problems with concurrency.
@@ -170,7 +174,7 @@ class Mixin:
         'mtime': creation_time,
         'name': name,
         'progress': 0.0,
-        'sender_device_id': self.current_device['id'],
+        'sender_device_id': device['id'],
         'sender_id': user['_id'],
         'status': transaction_status.CREATED, # Use same enum as transactions.
       }
@@ -262,6 +266,13 @@ class Mixin:
                   id: bson.ObjectId,
                   progress: float,
                   status: int):
+    return self.link_update(id, progress, status, self.user)
+
+  def link_update(self,
+                  id,
+                  progress,
+                  status,
+                  user):
     """
     Update the status of a given link.
     id -- _id of link.
@@ -270,22 +281,21 @@ class Mixin:
     """
     with elle.log.trace('updating link %s with status %s and progress %s' %
                         (id, status, progress)):
-      user = self.user
+      link = self.database.links.find_one({'_id': id})
+      if link is None:
+        self.not_found()
+      if link['sender_id'] != user['_id']:
+        self.forbidden()
       if progress < 0.0 or progress > 1.0:
         self.bad_request('invalid progress')
       if status not in transaction_status.statuses.values():
         self.bad_request('invalid status')
-      link = self.database.links.find_one({'_id': id})
-      if link is None:
-        self.not_found()
       if status is link['status']:
         return self.success()
       elif link['status'] in transaction_status.final and \
         status is not transaction_status.DELETED:
           self.forbidden('cannot change status from %s to %s' %
                          (link['status'], status))
-      if link['sender_id'] != user['_id']:
-        self.forbidden()
       if status in transaction_status.final:
         self.__complete_transaction_stats(user, link)
       link = self.database.links.find_and_modify(
@@ -293,7 +303,7 @@ class Mixin:
         {
           '$set':
           {
-            'mtime': datetime.datetime.utcnow(),
+            'mtime': self.now,
             'progress': progress,
             'status': status,
           }
@@ -319,7 +329,7 @@ class Mixin:
       time_to_update = (link['get_url_updated'] +
                         datetime.timedelta(days = link_lifetime_days,
                                            hours = -link_update_window_hours))
-      if datetime.datetime.utcnow() >= time_to_update:
+      if self.now >= time_to_update:
         return True
       else:
         return False
@@ -362,9 +372,9 @@ class Mixin:
       elif link['status'] is transaction_status.DELETED:
         self.not_found('deleted')
       elif (link['expiry_time'] is not None and
-            datetime.datetime.utcnow() > link['expiry_time']):
+            self.now > link['expiry_time']):
               self.not_found('link expired')
-      time_now = datetime.datetime.utcnow()
+      time_now = self.now
       set_dict = dict()
       set_dict['last_accessed'] = time_now
       if self.__need_update_get_link(link):
@@ -429,7 +439,7 @@ class Mixin:
       if not include_expired:
         query['$or'] = [
           {'expiry_time': None},
-          {'expiry_time': {'$gt': datetime.datetime.utcnow()}},
+          {'expiry_time': {'$gt': self.now}},
         ]
       res = list()
       for link in self.database.links.aggregate([
@@ -451,7 +461,7 @@ class Mixin:
       {
         '$set': {
           'status': transaction_status.DELETED,
-          'mtime': datetime.datetime.utcnow(),
+          'mtime': self.now,
         }
       },
       multi = True)

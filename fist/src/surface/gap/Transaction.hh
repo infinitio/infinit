@@ -8,6 +8,7 @@
 # include <unordered_set>
 
 # include <boost/filesystem.hpp>
+# include <boost/signals2.hpp>
 
 # include <infinit/oracles/Transaction.hh>
 # include <surface/gap/Exception.hh>
@@ -203,8 +204,9 @@ namespace surface
     | Attributes |
     `------------*/
     public:
-      gap_TransactionStatus
-      status() const;
+      ELLE_ATTRIBUTE_Rw(gap_TransactionStatus, status);
+      ELLE_ATTRIBUTE_RX(boost::signals2::signal<void (gap_TransactionStatus)>,
+                        status_changed);
       ELLE_ATTRIBUTE_R(uint32_t, id);
       ELLE_ATTRIBUTE_R(uint32_t, sender);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
@@ -226,8 +228,6 @@ namespace surface
       ELLE_ATTRIBUTE_RW(std::string, failure_reason);
     private:
       friend class TransactionMachine;
-      gap_TransactionStatus
-      _transaction_status(Transaction::Data const& data) const;
 
     /*----------.
     | Printable |

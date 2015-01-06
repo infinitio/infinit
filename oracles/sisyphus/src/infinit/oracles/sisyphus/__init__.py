@@ -14,21 +14,22 @@ class Sisyphus(bottle.Bottle):
                mongo_host = None,
                mongo_port = None,
                mongo_replica_set = None,
-               mandrill = None,
+               emailer = None,
+               metrics = None,
   ):
     super().__init__()
     self.__mongo = mongo_connection(
       mongo_host = mongo_host,
       mongo_port = mongo_port,
       mongo_replica_set = mongo_replica_set)
-    self.__boulders = set()
+    self.__boulders = {}
     api.register(self)
-    if mandrill is not None:
-      self.__mandrill = mandrill
-    else:
-      import mandrill
-      self.__mandrill = mandrill.Mandrill(apikey = 'ca159fe5-a0f7-47eb-b9e1-2a8f03b9da86')
-    self.__emailer = emailer.MandrillEmailer(self.__mandrill)
+    self.__emailer = emailer
+    self.__metrics = metrics
+    def json_bson_dumps(body):
+      import bson.json_util
+      return bottle.json_dumps(body, default = bson.json_util.default)
+    self.install(bottle.JSONPlugin(json_bson_dumps))
 
   @property
   def mongo(self):
@@ -38,23 +39,60 @@ class Sisyphus(bottle.Bottle):
   def emailer(self):
     return self.__emailer
 
+  @property
+  def metrics(self):
+    return self.__metrics
+
   @api('/')
   def status(self):
     return {
       'version': version.version,
     }
 
-  @api('/cron')
-  def cron(self):
-    with elle.log.trace('%s: run jobs' % self):
+  @api('/boulders')
+  def boulders_status(self):
+    with elle.log.trace('%s: get boulders status' % (self)):
       response = {}
       for boulder in self.__boulders:
-        with elle.log.trace('%s: run %s' % (self, boulder)):
-          response[str(boulder)] = boulder.run()
+        response[boulder] = self.boulder_status(boulder)
       return response
 
+  @api('/boulders/<boulder>')
+  def boulder_status(self, boulder):
+    try:
+      boulder = self.__boulders[boulder]
+      with elle.log.trace('%s: run %s' % (self, boulder)):
+        return boulder.status()
+    except KeyError:
+      bottle.response.status = 404
+      return {
+        'reason': 'no such boulder: %s' % boulder,
+        'boulder': boulder,
+      }
+
+  @api('/boulders', method = 'POST')
+  def boulders_run(self):
+    with elle.log.trace('%s: run boulders' % (self)):
+      response = {}
+      for boulder in self.__boulders:
+        response[boulder] = self.boulder_run(boulder)
+      return response
+
+  @api('/boulders/<boulder>', method = 'POST')
+  def boulder_run(self, boulder):
+    try:
+      boulder = self.__boulders[boulder]
+    except KeyError:
+      bottle.response.status = 404
+      return {
+        'reason': 'no such boulder: %s' % boulder,
+        'boulder': boulder,
+      }
+    with elle.log.trace('%s: run %s' % (self, boulder)):
+      return boulder.run()
+
   def __lshift__(self, boulder):
-    self.__boulders.add(boulder)
+    self.__boulders[str(boulder)] = boulder
 
 
 class Boulder:

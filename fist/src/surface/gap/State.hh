@@ -628,6 +628,12 @@ namespace surface
       | Peer Transactions |
       `------------------*/
 
+
+      Transaction&
+      transaction_peer_create(std::string const& peer_id,
+                              std::vector<std::string> files,
+                              std::string const& message);
+      /// Deprecated, see transaction_peer_create.
       uint32_t
       send_files(std::string const& peer_id,
                  std::vector<std::string> files,

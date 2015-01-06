@@ -179,7 +179,7 @@ class Oracles:
   def mongo(self):
     return self._mongo
 
-  def state(self):
+  def state(self, device_id = ''):
     """ Construct a new client. That will be delogued on teardown.
     """
     import state

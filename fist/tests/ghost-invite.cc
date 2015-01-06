@@ -9,7 +9,7 @@
 ELLE_LOG_COMPONENT("surface.gap.State.test");
 
 // Send a file to a ghost.
-ELLE_TEST_SCHEDULED(login)
+ELLE_TEST_SCHEDULED(send_ghost)
 {
   Server server;
   auto const email = "em@il.com";
@@ -46,10 +46,10 @@ ELLE_TEST_SCHEDULED(login)
   state.login(email, password);
   std::string const ghost_email = "ghost@infinit.io";
   server.generate_ghost_user(ghost_email);
-  auto local_tid = state.send_files(ghost_email,
-                                    std::vector<std::string>{"/etc/passwd"},
-                                    "message");
-  auto& state_transaction = *state.transactions().at(local_tid);
+  auto& state_transaction = state.transaction_peer_create(
+    ghost_email,
+    std::vector<std::string>{"/etc/passwd"},
+    "message");
   while (state_transaction.data()->status ==
          infinit::oracles::Transaction::Status::created)
   {
@@ -58,7 +58,7 @@ ELLE_TEST_SCHEDULED(login)
   }
   BOOST_CHECK_EQUAL(state_transaction.data()->status,
                     infinit::oracles::Transaction::Status::initialized);
-  auto tid = state.transactions().at(local_tid)->data()->id;
+  auto tid = state_transaction.data()->id;
   ELLE_LOG_SCOPE("transaction was initialized: %s", tid);
   while (!finished)
   {
@@ -71,5 +71,5 @@ ELLE_TEST_SUITE()
 {
   auto timeout = RUNNING_ON_VALGRIND ? 60 : 15;
   auto& suite = boost::unit_test::framework::master_test_suite();
-  suite.add(BOOST_TEST_CASE(login), 0, timeout);
+  suite.add(BOOST_TEST_CASE(send_ghost), 0, timeout);
 }

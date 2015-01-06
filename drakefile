@@ -32,7 +32,7 @@ def configure(cxx_toolkit = None,
   ## Rules ##
   ## ----- ##
 
-
+  osx_build = drake.Rule('osx/build')
   build = drake.Rule('build')
   check = drake.TestSuite('check')
   install = drake.Rule('install')
@@ -604,7 +604,7 @@ def configure(cxx_toolkit = None,
   gap_tests_cxx_config += boost_system
   gap_tests_cxx_config += boost_date_time
   gap_tests_cxx_config.lib_path_runtime('../../lib')
-  for name in ('state', 'ghost-invite',):
+  for name in ('state', 'cloud-buffer', 'ghost-invite',):
     sources = drake.nodes('fist/tests/%s.cc' % name)
     if name != 'state':
       sources.append(drake.node('fist/tests/server.cc'))
@@ -845,7 +845,9 @@ def configure(cxx_toolkit = None,
         ('basic.py', None),
         ('login', None),
         ('links', None),
-        ('transfer', ['TestBasicTransfer'])
+        ('transfer', ['TestBasicTransfer']),
+        ('preemptive-buffering', None),
+        ('devices', None)
     ]:
       test_node = drake.Node('tests/%s' % name)
       test_node.dependencies_add(oracles.oracles)
@@ -877,6 +879,8 @@ def configure(cxx_toolkit = None,
   ## ------- ##
   ## Mac App ##
   ## ------- ##
+  osx_build << gap_build
   mac_app = drake.include('surface/osx')
+  osx_build << mac_app.build
 
   drake.cxx.CompilationDatabase('compile_commands.json')

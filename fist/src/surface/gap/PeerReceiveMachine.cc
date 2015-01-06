@@ -182,10 +182,6 @@ namespace surface
         *this, this->data()->status);
       switch (this->data()->status)
       {
-        case TransactionStatus::created:
-        case TransactionStatus::initialized:
-          this->_run(this->_wait_for_decision_state);
-          break;
         case TransactionStatus::accepted:
           if (this->concerns_this_device())
             this->_run(this->_transfer_core_state);
@@ -208,6 +204,11 @@ namespace surface
         case TransactionStatus::deleted:
         case TransactionStatus::ghost_uploaded:
           elle::unreachable();
+        // By default, run the first state. This way, if we add new statuses to
+        // meta (like cloud_buffered) the machine will still be started.
+        default:
+          this->_run(this->_wait_for_decision_state);
+          break;
       }
     }
 
@@ -340,14 +341,15 @@ namespace surface
             {
               return this->_aws_credentials(first_time);
             };
-         _bufferer.reset(new S3TransferBufferer(
-           *this->data(),
-           get_credentials,
-           std::bind(&PeerReceiveMachine::_report_s3_error,
-                     this,
-                     std::placeholders::_1,
-                     std::placeholders::_2)
-           ));
+          this->_bufferer.reset(
+            new S3TransferBufferer(
+              elle::make_unique<S3>(this->state(), get_credentials),
+              *this->data(),
+              std::bind(&PeerReceiveMachine::_report_s3_error,
+                        this,
+                        std::placeholders::_1,
+                        std::placeholders::_2)
+              ));
         }
         if (auto& mr = state().metrics_reporter())
         {
@@ -520,17 +522,17 @@ namespace surface
                             std::string const& name_policy,
                             elle::Version const& peer_version)
     {
-      elle::SafeFinally clean_snpashot([&] {
-          try
-          {
-            boost::filesystem::remove(this->_frete_snapshot_path);
-          }
-          catch (std::exception const&)
-          {
-            ELLE_ERR("couldn't delete snapshot at %s: %s",
-              this->_frete_snapshot_path, elle::exception_string());
-          }
-      });
+      auto clean_snpashot = [&] {
+        try
+        {
+          boost::filesystem::remove(this->_frete_snapshot_path);
+        }
+        catch (std::exception const&)
+        {
+          ELLE_ERR("couldn't delete snapshot at %s: %s",
+            this->_frete_snapshot_path, elle::exception_string());
+        }
+      };
 
       // Clear hypotetical blocks we fetched but did not process.
       this->_buffers.clear();
@@ -662,6 +664,7 @@ namespace surface
             this->cancel(elle::sprintf("Filesystem error: %s", e.what()));
             exception = true;
           }
+          clean_snpashot();
           ELLE_TRACE("finish_transfer exited cleanly");
         }; // scope
         if (exception)
@@ -672,9 +675,8 @@ namespace surface
       {
         source.finish();
       }
+      clean_snpashot();
       this->finished().open();
-
-
     }
 
     PeerReceiveMachine::FileSize
