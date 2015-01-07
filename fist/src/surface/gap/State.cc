@@ -1058,10 +1058,11 @@ namespace surface
                   else
                     ELLE_DEBUG("ignore finalized transaction %s", t.second);
                 }
+              this->_user_resync();
             }
-            this->_user_resync();
             this->_peer_transaction_resync();
             this->_link_transaction_resync();
+
             resynched = true;
             ELLE_TRACE("Opening logged_in barrier");
             _logged_in.open();
