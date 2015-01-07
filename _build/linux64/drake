@@ -26,6 +26,5 @@ with drake.Drake('../..') as d:
   d.run(
     cxx_config = cxx_config,
     python3 = None,
-    enable_horizon = False,
     qt = qt,
   )
