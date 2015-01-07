@@ -69,7 +69,8 @@ class Mixin:
   def _create_device(self,
                      owner,
                      name = None,
-                     id = None):
+                     id = None,
+                     device_push_token = None):
     """Create a device.
     """
     with elle.log.trace('create device %s with owner %s' %
@@ -97,6 +98,8 @@ class Mixin:
           conf.INFINIT_AUTHORITY_PASSWORD
         ),
       }
+      if device_push_token is not None:
+        device['push_token'] = device_push_token
       try:
         self.database.devices.insert(device)
       except pymongo.errors.DuplicateKeyError:
