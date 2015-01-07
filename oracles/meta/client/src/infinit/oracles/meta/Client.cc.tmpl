@@ -336,7 +336,8 @@ namespace infinit
       LoginResponse
       Client::login(std::string const& email,
                     std::string const& password,
-                    boost::uuids::uuid const& device_uuid)
+                    boost::uuids::uuid const& device_uuid,
+                    boost::optional<std::string const&> device_push_token)
       {
         std::string struuid = boost::lexical_cast<std::string>(device_uuid);
 
@@ -349,6 +350,12 @@ namespace infinit
             elle::serialization::json::SerializerOut output(r);
             output.serialize("email", const_cast<std::string&>(email));
             output.serialize("password", const_cast<std::string&>(password));
+            if (device_push_token && !device_push_token.get().empty())
+            {
+              output.serialize(
+                "device_push_token",
+                const_cast<std::string&>(device_push_token.get()));
+            }
             std::string struuid = boost::lexical_cast<std::string>(device_uuid);
             output.serialize("device_id", struuid);
             auto os = elle::system::platform::os_name();

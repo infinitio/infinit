@@ -327,7 +327,8 @@ namespace infinit
         LoginResponse
         login(std::string const& email,
               std::string const& password,
-              boost::uuids::uuid const& device_uuid);
+              boost::uuids::uuid const& device_uuid,
+              boost::optional<std::string const&> device_push_token = {});
 
         void
         logout();
