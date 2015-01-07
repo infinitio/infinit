@@ -273,14 +273,12 @@ namespace surface
     void
     State::_users_init()
     {
-      ELLE_TRACE("%s: load users from swagger list", *this);
+      ELLE_TRACE_SCOPE("%s: load users from swagger list", *this);
+      auto swaggers = this->meta().get_swaggers();
+      for (auto const& swagger: swaggers)
       {
-        auto swaggers = this->meta().get_swaggers();
-        for (auto const& swagger: swaggers)
-        {
-          this->user_sync(swagger);
-          this->_queue_user_icon(swagger.id);
-        }
+        this->user_sync(swagger);
+        this->_queue_user_icon(swagger.id);
       }
     }
 
