@@ -423,20 +423,23 @@ namespace surface
     void
     State::login(
       std::string const& email,
-      std::string const& password)
+      std::string const& password,
+      boost::optional<std::string const&> device_push_token)
     {
-      this->login(email, password, reactor::DurationOpt());
+      this->login(email, password, reactor::DurationOpt(), device_push_token);
     }
 
     void
     State::login(
       std::string const& email,
       std::string const& password,
-      reactor::DurationOpt timeout)
+      reactor::DurationOpt timeout,
+      boost::optional<std::string const&> device_push_token)
     {
       this->login(
         email, password,
-        std::unique_ptr<infinit::oracles::trophonius::Client>(), timeout);
+        std::unique_ptr<infinit::oracles::trophonius::Client>(),
+        device_push_token,timeout);
     }
 
     void
@@ -455,6 +458,7 @@ namespace surface
       std::string const& email,
       std::string const& password,
       std::unique_ptr<infinit::oracles::trophonius::Client> trophonius,
+      boost::optional<std::string const&> device_push_token,
       reactor::DurationOpt timeout)
     {
       if (this->_logged_in)
@@ -465,7 +469,7 @@ namespace surface
         "login",
         [=]
         {
-          this->_login(email, password, tropho);
+          this->_login(email, password, tropho, device_push_token);
         }));
       this->_login_watcher_thread = reactor::scheduler().current();
       elle::SafeFinally reset_login_thread(
@@ -501,7 +505,8 @@ namespace surface
     State::_login(
       std::string const& email,
       std::string const& password,
-      elle::utility::Move<std::unique_ptr<TrophoniusClient>> trophonius)
+      elle::utility::Move<std::unique_ptr<TrophoniusClient>> trophonius,
+      boost::optional<std::string const&> device_push_token)
     {
       this->_email = email;
       this->_password = password;
@@ -559,7 +564,8 @@ namespace surface
           << [&] (elle::Finally& finally_logout)
         {
           auto login_response =
-            this->_meta.login(lower_email, hashed_password, _device_uuid);
+            this->_meta.login(lower_email, hashed_password,
+                              _device_uuid, device_push_token);
           ELLE_LOG("%s: logged in as %s", *this, email);
           if (*trophonius)
           {
@@ -917,7 +923,8 @@ namespace surface
     void
     State::register_(std::string const& fullname,
                      std::string const& email,
-                     std::string const& password)
+                     std::string const& password,
+                     boost::optional<std::string const&> device_push_token)
     {
       // !WARNING! Do not log the password.
       ELLE_TRACE_SCOPE("%s: register as %s: email %s",
@@ -959,7 +966,7 @@ namespace surface
         throw;
       }
       this->_metrics_reporter->user_register(true, "");
-      this->login(lower_email, password);
+      this->login(lower_email, password, device_push_token);
     }
 
     Self const&

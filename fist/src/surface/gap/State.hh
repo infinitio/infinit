@@ -200,17 +200,22 @@ namespace surface
     public:
       /// Login to meta. Keeps trying, returns on success or throw on definitive failure
       void
-      login(std::string const& email, std::string const& password);
+      login(std::string const& email,
+            std::string const& password,
+            boost::optional<std::string const&> device_push_token = {});
       /// Login to meta.
       void
-      login(std::string const& email, std::string const& password,
-            reactor::DurationOpt timeout);
+      login(std::string const& email,
+            std::string const& password,
+            reactor::DurationOpt timeout,
+            boost::optional<std::string const&> device_push_token = {});
       /// Login to meta.
       void
       login(
         std::string const& email,
         std::string const& password,
         std::unique_ptr<infinit::oracles::trophonius::Client> trophonius,
+        boost::optional<std::string const&> device_push_token = {},
         reactor::DurationOpt timeout = reactor::DurationOpt()
         );
 
@@ -221,7 +226,8 @@ namespace surface
       void
       register_(std::string const& fullname,
                 std::string const& email,
-                std::string const& password);
+                std::string const& password,
+                boost::optional<std::string const&> device_push_token = {});
 
       ///
       static
@@ -247,7 +253,8 @@ namespace surface
       void
       _login(std::string const& email,
              std::string const& password,
-             elle::utility::Move<std::unique_ptr<infinit::oracles::trophonius::Client>> trophonius);
+             elle::utility::Move<std::unique_ptr<infinit::oracles::trophonius::Client>> trophonius,
+             boost::optional<std::string const&> device_push_token = {});
       void
       _on_invalid_trophonius_credentials();
       void
