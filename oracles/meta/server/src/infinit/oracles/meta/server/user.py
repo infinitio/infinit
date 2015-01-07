@@ -125,7 +125,8 @@ class Mixin:
             password,
             device_id: uuid.UUID,
             OS: str = None,
-            pick_trophonius: bool = True):
+            pick_trophonius: bool = True,
+            device_push_token: str = None):
     email = email.replace(' ', '')
     if OS is not None:
       OS = OS.strip().lower()
@@ -142,7 +143,8 @@ class Mixin:
       if device is None:
         elle.log.trace("user logged with an unknown device")
         device = self._create_device(id = device_id,
-                                     owner = user)
+                                     owner = user,
+                                     device_push_token = device_push_token)
       else:
         assert str(device_id) in user['devices']
 
