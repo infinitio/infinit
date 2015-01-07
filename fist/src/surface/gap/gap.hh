@@ -61,7 +61,8 @@ gap_clean_state(gap_State* state);
 gap_Status
 gap_login(gap_State* state,
           std::string const& email,
-          std::string const& hash_password);
+          std::string const& hash_password,
+          boost::optional<std::string const&> device_push_token = {});
 
 /// Fetch features.
 std::unordered_map<std::string, std::string>
@@ -78,13 +79,13 @@ gap_logout(gap_State* state);
 /// @brief Register to meta.
 ///
 /// If the device name is not NULL, it will also create
-/// the local device with specified name. The password hash is obtained via
-/// gap_hash_password() function.
+/// the local device with specified name.
 gap_Status
 gap_register(gap_State* state,
              std::string const& fullname,
              std::string const& email,
-             std::string const& password);
+             std::string const& password,
+             boost::optional<std::string const&> device_push_token = {});
 
 gap_Status
 gap_new_swagger_callback(

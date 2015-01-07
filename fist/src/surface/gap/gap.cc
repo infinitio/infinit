@@ -186,7 +186,8 @@ gap_clean_state(gap_State* state)
 gap_Status
 gap_login(gap_State* state,
           std::string const& email,
-          std::string const& password)
+          std::string const& password,
+          boost::optional<std::string const&> device_push_token)
 {
   ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
@@ -194,7 +195,7 @@ gap_login(gap_State* state,
     "login",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      state.login(email, password);
+      state.login(email, password, device_push_token);
       return gap_ok;
     });
 }
@@ -244,7 +245,8 @@ gap_Status
 gap_register(gap_State* state,
              std::string const& fullname,
              std::string const& email,
-             std::string const& password)
+             std::string const& password,
+             boost::optional<std::string const&> device_push_token)
 {
   ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
@@ -252,7 +254,7 @@ gap_register(gap_State* state,
     "register",
     [&] (surface::gap::State& state) -> gap_Status
     {
-     state.register_(fullname, email, password);
+     state.register_(fullname, email, password, device_push_token);
      return gap_ok;
     });
 }
