@@ -92,7 +92,19 @@ def configure(production_build,
   mongobox = drake.python.Package(
     'mongobox',
     'lib/python',
-    drake.copy(mongobox, 'lib/python', strip_prefix='mongobox'))
+    drake.copy(mongobox, 'lib/python', strip_prefix = 'mongobox'))
+
+  sendwithus = drake.nodes(
+    'sendwithus_python/sendwithus/__init__.py',
+    'sendwithus_python/sendwithus/encoder.py',
+    'sendwithus_python/sendwithus/version.py',
+  )
+  sendwithus = drake.python.Package(
+    'sendwithus_python',
+    'lib/python',
+    drake.copy(sendwithus, 'lib/python',
+               strip_prefix = 'sendwithus_python'))
+
   meta = drake.include('meta',
                        production_build = production_build,
                        elle = elle,
@@ -141,6 +153,7 @@ def configure(production_build,
                            python = python3,
                            bottle = bottle,
                            mongobox = mongobox,
+                           sendwithus = sendwithus,
                            elle = elle,
                            meta = meta.server.meta,
                            python_common = python_built,
@@ -166,4 +179,5 @@ def configure(production_build,
     oracles.append(drake.copy(elle.reactor.python_lib, 'lib/python',
                               strip_prefix = True))
     oracles.append(mongobox)
+    oracles.append(sendwithus)
     build << oracles

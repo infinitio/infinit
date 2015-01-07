@@ -18,3 +18,6 @@
 	path = fist-gui-qt
 	url = git@git.infinit.io:fist-gui-qt.git
 	branch = develop
+[submodule "oracles/sendwithus_python"]
+	path = oracles/sendwithus_python
+	url = git@github.com:mefyl/sendwithus_python.git

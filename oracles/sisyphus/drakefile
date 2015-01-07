@@ -15,6 +15,7 @@ def configure(
     python,
     bottle,
     mongobox,
+    sendwithus,
     elle,
     meta,
     python_common,
@@ -51,8 +52,12 @@ def configure(
     build_binary = drake.copy(drake.node('sisyphus'), 'bin')
     build << sisyphus
     build << build_binary
+    build << drake.copy(sendwithus.nodes, build_python_path,
+                        drake.Path('..') / sendwithus.root)
 
     check = drake.Rule('check')
+    pythonpath = \
+      drake.path_build(build_python_path / 'infinit/oracles')
     for name in (
         'boulders/drip/accept-reminder',
         'boulders/drip/confirm-signup',
@@ -70,10 +75,15 @@ def configure(
       test.dependency_add(drake.node('tests/boulders/drip/utils.py'))
       test.dependency_add(meta)
       test.dependency_add(mongobox)
+      test.dependency_add(sendwithus)
       runner = drake.Runner(
         test,
         env = {
-          'PYTHONPATH': ':'.join(map(str, chain((drake.path_build(build_python_path / 'infinit/oracles'),), meta.pythonpath, mongobox.pythonpath)))
+          'PYTHONPATH': ':'.join(
+            map(str, chain(pythonpath,
+                           meta.pythonpath,
+                           mongobox.pythonpath,
+                           sendwithus.pythonpath)))
         })
       runner.reporting = drake.Runner.Reporting.on_failure
       check << runner.status
