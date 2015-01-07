@@ -134,7 +134,8 @@ class Mixin:
             device_id: uuid.UUID,
             password_hash = None,
             OS: str = None,
-            pick_trophonius: bool = True):
+            pick_trophonius: bool = True,
+            device_push_token: str = None):
     email = email.replace(' ', '')
     if OS is not None:
       OS = OS.strip().lower()
