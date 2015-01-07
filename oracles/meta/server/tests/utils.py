@@ -381,7 +381,7 @@ class User(Client):
     params.update({'pick_trophonius': False})
     res = self.post('login', params)
     assert res['success']
-    assert res['device_id'] == str(self.device_id)
+    assert res['device']['id'] == str(self.device_id)
     return res
 
   def logout(self):

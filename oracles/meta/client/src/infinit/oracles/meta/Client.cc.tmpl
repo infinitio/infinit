@@ -315,12 +315,8 @@ namespace infinit
       void
       LoginResponse::serialize(elle::serialization::Serializer& s)
       {
-        s.serialize("_id", this->id);
-        s.serialize("fullname", this->fullname);
-        s.serialize("handle", this->handle);
-        s.serialize("email", this->email);
-        s.serialize("identity", this->identity);
-        s.serialize("device_id", this->device_id);
+        s.serialize("self", this->self);
+        s.serialize("device", this->device);
         s.serialize("trophonius", this->trophonius);
         s.serialize("features", this->features);
       }

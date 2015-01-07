@@ -99,25 +99,29 @@ class Mixin:
                       user,
                       device = None,
                       web = False):
-    res = {
-      '_id' : user['_id'],
-      'fullname': user['fullname'],
-      'email': user['email'],
-      'handle': user['handle'],
-      'register_status': user['register_status'],
-    }
-    if not web:
+    if self.user_version >= (0, 9, 25) and not web:
       assert device is not None
-      res.update({
-        'identity': user['identity'],
-        'device_id': device['id'],
-      })
-    if not user.get('email_confirmed', True):
-      from time import time
-      res.update({
-        'unconfirmed_email_leeway': user['unconfirmed_email_deadline'] - time()
-      })
-    return res
+      return {'self': self._user_self()}
+    else:
+      res = {
+        '_id' : user['_id'],
+        'fullname': user['fullname'],
+        'email': user['email'],
+        'handle': user['handle'],
+        'register_status': user['register_status'],
+      }
+      if not web:
+        assert device is not None
+        res.update({
+          'identity': user['identity'],
+          'device_id': device['id'],
+        })
+      if not user.get('email_confirmed', True):
+        from time import time
+        res.update({
+          'unconfirmed_email_leeway': user['unconfirmed_email_deadline'] - time()
+        })
+      return res
 
   @api('/login', method = 'POST')
   def login(self,
@@ -185,6 +189,7 @@ class Mixin:
           {'_id': user['_id']},
           {'$set': { 'features': features}})
       response['features'] = list(features.items())
+      response['device'] = device
       return response
 
   @api('/web-login', method = 'POST')
@@ -1365,12 +1370,9 @@ class Mixin:
         fields = {'email': True, '_id': False}
     )))})
 
-  @api('/user/self')
-  @require_logged_in
-  def user_self(self):
-    """Return self data."""
+  def _user_self(self):
     user = self.user
-    return self.success({
+    res = {
       '_id': user['_id'], # Used until 0.9.9
       'id': user['_id'],
       'fullname': user['fullname'],
@@ -1389,7 +1391,19 @@ class Mixin:
       'status': self._is_connected(user['_id']),
       'creation_time': user.get('creation_time', None),
       'last_connection': user.get('last_connection', 0),
-    })
+    }
+    if not user.get('email_confirmed', True):
+      from time import time
+      res.update({
+        'unconfirmed_email_leeway': user['unconfirmed_email_deadline'] - time()
+      })
+    return res
+
+  @api('/user/self')
+  @require_logged_in
+  def user_self(self):
+    """Return self data."""
+    return self.success(self._user_self())
 
   @api('/user/minimum_self')
   @require_logged_in

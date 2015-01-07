@@ -156,6 +156,37 @@ struct std_list_to_pylist
   }
 };
 
+namespace login
+{
+  static
+  std::string
+  fullname(LoginResponse const& res)
+  {
+    return res.self.fullname;
+  }
+
+  static
+  std::string
+  identity(LoginResponse const& res)
+  {
+    return res.self.identity;
+  }
+
+  static
+  std::string
+  handle(LoginResponse const& res)
+  {
+    return res.self.handle;
+  }
+
+  static
+  std::string
+  email(LoginResponse const& res)
+  {
+    return res.self.email;
+  }
+}
+
 void export_meta_client();
 void export_meta_client()
 {
@@ -193,14 +224,13 @@ void export_meta_client()
     .def_readonly("name", &Device::name)
     .def_readonly("passport", &Device::passport)
   ;
-  py::class_<LoginResponse>("LoginResponse")
-    .def_readonly("fullname", &LoginResponse::fullname)
-    .def_readonly("handle", &LoginResponse::handle)
-    .def_readonly("email", &LoginResponse::email)
-    .def_readonly("identity", &LoginResponse::identity)
-    .def_readonly("id", &LoginResponse::id)
-  ;
 
+  py::class_<LoginResponse>("LoginResponse")
+    .def("fullname", &login::fullname)
+    .def("identity", &login::identity)
+    .def("handle", &login::handle)
+    .def("email", &login::email)
+  ;
 
   void (MetaClient::*set_email)(std::string const &) = &MetaClient::email;
   std::string const& (MetaClient::*get_email)() const = &MetaClient::email;

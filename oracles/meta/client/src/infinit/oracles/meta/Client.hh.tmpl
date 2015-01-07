@@ -59,33 +59,6 @@ namespace infinit
         bool operator !=(Error const& error) const;
       };
 
-      struct LoginResponse
-      {
-        std::string fullname;
-        std::string handle;
-        std::string email;
-        std::string identity;
-        std::string id;
-        // boost::uuids::uuid device_id;
-        std::string device_id;
-        struct Trophonius
-        {
-          std::string host;
-          int port;
-          int port_ssl;
-          Trophonius() = default;
-          Trophonius(elle::serialization::SerializerIn& s);
-          void
-          serialize(elle::serialization::Serializer& s);
-        };
-        Trophonius trophonius;
-        std::unordered_map<std::string, std::string> features;
-        LoginResponse() = default;
-        LoginResponse(elle::serialization::SerializerIn& s);
-        void
-        serialize(elle::serialization::Serializer& s);
-      };
-
       struct User:
          public elle::Printable
       {
@@ -197,12 +170,33 @@ namespace infinit
         std::string id; // boost::uuids::uuid
         std::string name;
         std::string passport;
-      protected:
         void
         serialize(elle::serialization::Serializer& s);
         virtual
         void
         print(std::ostream& stream) const override;
+      };
+
+      struct LoginResponse
+      {
+        Device device;
+        struct Trophonius
+        {
+          std::string host;
+          int port;
+          int port_ssl;
+          Trophonius() = default;
+          Trophonius(elle::serialization::SerializerIn& s);
+          void
+          serialize(elle::serialization::Serializer& s);
+        };
+        Trophonius trophonius;
+        Self self;
+        std::unordered_map<std::string, std::string> features;
+        LoginResponse() = default;
+        LoginResponse(elle::serialization::SerializerIn& s);
+        void
+        serialize(elle::serialization::Serializer& s);
       };
 
       struct ServerStatus

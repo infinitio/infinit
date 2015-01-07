@@ -565,6 +565,8 @@ namespace surface
             this->_reconnection_cooldown
             ));
           }
+          this->_me.reset(new Self(login_response.self));
+          this->user_sync(this->me());
           // Update features before sending any metric
           this->_configuration.features = login_response.features;
           metrics::Reporter::metric_features(this->_configuration.features);
@@ -576,7 +578,7 @@ namespace surface
           if (this->_forced_trophonius_port != 0)
             trophonius_port = this->_forced_trophonius_port;
           this->_trophonius->server(trophonius_host, trophonius_port);
-          infinit::metrics::Reporter::metric_sender_id(login_response.id);
+          infinit::metrics::Reporter::metric_sender_id(this->me().id);
           this->_metrics_reporter->user_login(true, "");
           this->_metrics_heartbeat_thread.reset(
             new reactor::Thread{
@@ -590,13 +592,11 @@ namespace surface
                     this->_metrics_reporter->user_heartbeat();
                   }
                 }});
-
           std::string identity_clear;
-
           ELLE_TRACE("%s: decrypt identity", *this)
           {
             this->_identity.reset(new papier::Identity());
-            if (this->_identity->Restore(login_response.identity) == elle::Status::Error)
+            if (this->_identity->Restore(this->me().identity) == elle::Status::Error)
               throw Exception(gap_internal_error, "unable to restore the identity");
             if (this->_identity->Decrypt(password) == elle::Status::Error)
               throw Exception(gap_internal_error, "unable to decrypt the identity");
@@ -619,23 +619,22 @@ namespace surface
           }
 
           std::ofstream identity_infos{
-            common::infinit::identity_path(login_response.id)};
+            common::infinit::identity_path(this->me().id)};
 
           if (identity_infos.good())
           {
-            identity_infos << login_response.identity << "\n"
-                           << login_response.email << "\n"
-                           << login_response.id << "\n"
+            identity_infos << this->me().identity << "\n"
+                           << this->me().email << "\n"
+                           << this->me().id << "\n"
             ;
             identity_infos.close();
           }
 
-          auto device = this->meta().device(_device_uuid);
-          this->_device.reset(new Device(device));
+          this->_device.reset(new Device(login_response.device));
           std::string passport_path =
             common::infinit::passport_path(this->me().id);
           this->_passport.reset(new papier::Passport());
-          if (this->_passport->Restore(device.passport) == elle::Status::Error)
+          if (this->_passport->Restore(this->_device->passport) == elle::Status::Error)
             throw Exception(gap_wrong_passport, "Cannot load the passport");
           this->_passport->store(elle::io::Path(passport_path));
 
@@ -686,8 +685,6 @@ namespace surface
                     this->_avatar_fetching_barrier.close();
                 }
               }});
-          ELLE_TRACE("%s: fetch self", *this)
-            this->user(this->me().id);
           ELLE_TRACE("%s: fetch users", *this)
             this->_users_init();
           ELLE_TRACE("%s: fetch transactions", *this)
@@ -969,14 +966,6 @@ namespace surface
     Self const&
     State::me() const
     {
-      static reactor::Mutex me_mutex;
-
-      reactor::Lock m(me_mutex);
-      if (this->_me == nullptr)
-      {
-        ELLE_TRACE("loading self info")
-          this->_me.reset(new Self{this->meta().self()});
-      }
       ELLE_ASSERT_NEQ(this->_me, nullptr);
       return *this->_me;
     }
@@ -984,7 +973,7 @@ namespace surface
     void
     State::update_me()
     {
-      this->_me.reset(nullptr);
+      this->_me.reset(new Self(this->meta().self()));
       this->me();
     }
 
