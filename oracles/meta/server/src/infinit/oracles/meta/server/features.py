@@ -102,3 +102,10 @@ class Mixin:
         'feature': name,
       })
     return feature
+
+  @api('/features')
+  @require_admin
+  def features_get(self, name):
+    return {
+      'features': list(self.database.abtest.find()),
+    }
