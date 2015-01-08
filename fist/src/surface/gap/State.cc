@@ -662,6 +662,7 @@ namespace surface
               "avatar fetched",
               [&]
               {
+                this->_logged_in.wait();
                 while (true)
                 {
                   this->_avatar_fetching_barrier.wait();
