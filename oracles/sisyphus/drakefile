@@ -80,7 +80,7 @@ def configure(
         test,
         env = {
           'PYTHONPATH': ':'.join(
-            map(str, chain(pythonpath,
+            map(str, chain([pythonpath],
                            meta.pythonpath,
                            mongobox.pythonpath,
                            sendwithus.pythonpath)))
