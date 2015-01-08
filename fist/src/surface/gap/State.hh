@@ -484,9 +484,6 @@ namespace surface
       user_from_public_key(std::string const& public_key) const;
 
       void
-      _users_init();
-
-      void
       _user_resync();
 
       void

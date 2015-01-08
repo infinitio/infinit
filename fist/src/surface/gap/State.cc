@@ -651,6 +651,11 @@ namespace surface
           ELLE_TRACE("%s: connected to trophonius",
                      *this);
 
+          for (auto const& swagger: login_response.swaggers)
+          {
+            this->user_sync(swagger);
+            this->_queue_user_icon(swagger.id);
+          }
           this->_avatar_fetcher_thread.reset(
             new reactor::Thread{
               scheduler,
@@ -685,8 +690,6 @@ namespace surface
                     this->_avatar_fetching_barrier.close();
                 }
               }});
-          ELLE_TRACE("%s: fetch users", *this)
-            this->_users_init();
           ELLE_TRACE("%s: fetch transactions", *this)
             this->_transactions_init();
           this->on_connection_changed(

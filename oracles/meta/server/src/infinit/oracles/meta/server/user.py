@@ -190,6 +190,7 @@ class Mixin:
           {'$set': { 'features': features}})
       response['features'] = list(features.items())
       response['device'] = device
+      response['swaggers'] = self._full_swaggers()
       return response
 
   @api('/web-login', method = 'POST')
@@ -1174,10 +1175,7 @@ class Mixin:
     with elle.log.trace("%s: get his swaggers" % user['email']):
       return self.success({"swaggers" : list(user["swaggers"].keys())})
 
-  # Replaces /user/swaggers as of 0.9.2.
-  @api('/user/full_swaggers')
-  @require_logged_in
-  def full_swaggers(self):
+  def _full_swaggers(self):
     user = self.user
     swaggers = user['swaggers']
     query = {
@@ -1191,9 +1189,13 @@ class Mixin:
           {'$match': query},
           {'$project': self.user_public_fields},
       ])['result'])
-    return self.success({
-      'swaggers': sorted(res, key = lambda u: swaggers[str(u['id'])]),
-    })
+    return sorted(res, key = lambda u: swaggers[str(u['id'])])
+
+  # Replaces /user/swaggers as of 0.9.2.
+  @api('/user/full_swaggers')
+  @require_logged_in
+  def full_swaggers(self):
+    return self.success({'swaggers': self._full_swaggers()})
 
   @api('/user/add_swagger', method = 'POST')
   @require_admin

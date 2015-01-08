@@ -316,6 +316,7 @@ namespace infinit
       LoginResponse::serialize(elle::serialization::Serializer& s)
       {
         s.serialize("self", this->self);
+        s.serialize("swaggers", this->swaggers);
         s.serialize("device", this->device);
         s.serialize("trophonius", this->trophonius);
         s.serialize("features", this->features);
