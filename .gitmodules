@@ -20,4 +20,4 @@
 	branch = develop
 [submodule "oracles/sendwithus_python"]
 	path = oracles/sendwithus_python
-	url = git@github.com:mefyl/sendwithus_python.git
+	url = https://github.com/mefyl/sendwithus_python.git
