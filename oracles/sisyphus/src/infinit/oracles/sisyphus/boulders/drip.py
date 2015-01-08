@@ -427,12 +427,6 @@ class Onboarding(Drip):
     response.update(transited)
     return response
 
-  def _pick_template(self, template, users):
-    return [
-      (template, [u for u in users if u[0]['features']['drip_onboarding_template'] == 'a']),
-      (None, [u for u in users if u[0]['features']['drip_onboarding_template'] == 'control']),
-    ]
-
   @property
   def delay_first_reminder(self):
     return datetime.timedelta(days = 1)
@@ -810,12 +804,6 @@ class ConfirmSignup(Drip):
     )
     response.update(transited)
     return response
-
-  def _pick_template(self, template, users):
-    return [
-      (template, [u for u in users if u[0]['features']['drip_confirm-signup_template'] == 'a']),
-      (None, [u for u in users if u[0]['features']['drip_confirm-signup_template'] == 'control']),
-    ]
 
   @property
   def delay_first_reminder(self):
