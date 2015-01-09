@@ -47,15 +47,16 @@ def configure(elle,
     'src/infinit/metrics/reporters/JSONReporter.hh',
   )
 
-  if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
+  if cxx_toolkit.os in [drake.os.windows, drake.os.ios, drake.os.android]:
     Library = drake.cxx.StaticLib
+    elle_lib = elle.lib_static
+    reactor_lib = reactor.lib_static
   else:
     Library = drake.cxx.DynLib
-
-  elle_lib = drake.copy(elle.lib_dynamic, 'lib',
-                        strip_prefix = True)
-  reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
-                           strip_prefix = True)
+    elle_lib = drake.copy(elle.lib_dynamic, 'lib',
+                          strip_prefix = True)
+    reactor_lib = drake.copy(reactor.lib_dynamic, 'lib',
+                             strip_prefix = True)
 
   lib_cxx_config = drake.cxx.Config(local_cxx_config)
   lib_cxx_config.lib_path_runtime('.')

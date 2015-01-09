@@ -66,7 +66,7 @@ def configure(elle,
       'src/infinit/oracles/meta/Admin.hh',
     )
 
-  if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
+  if cxx_toolkit.os in [drake.os.windows, drake.os.ios, drake.os.android]:
     Library = drake.cxx.StaticLib
     elle_lib = elle.elle.lib_static
     reactor_lib = elle.reactor.lib_static
@@ -107,7 +107,7 @@ def configure(elle,
   ## Python ##
   ## ------ ##
 
-  if python3 is not None and cxx_toolkit.os not in [drake.os.windows, drake.os.ios]:
+  if python3 is not None and cxx_toolkit.os not in [drake.os.windows, drake.os.ios, drake.os.android]:
     with template_context:
       python_sources = drake.nodes(
         'src/infinit/oracles/meta/python.cc.tmpl',
