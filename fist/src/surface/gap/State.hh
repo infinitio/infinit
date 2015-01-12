@@ -113,12 +113,6 @@ namespace surface
 
     private:
       bool
-      _meta_server_check(reactor::Duration);
-
-      bool
-      _meta_server_check();
-
-      bool
       _trophonius_server_check();
 
     /*--------.

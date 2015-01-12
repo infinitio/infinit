@@ -335,77 +335,6 @@ namespace surface
       this->_metrics_reporter->user_first_launch();
     }
 
-    /*---------------------------.
-    | Server Connection Checking |
-    `---------------------------*/
-    bool
-    State::_meta_server_check(reactor::Duration timeout)
-    {
-      ELLE_TRACE_SCOPE("%s: fetching Meta status", *this);
-      bool result = false;
-      return elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
-      {
-        scope.run_background("meta status check", [&]
-        {
-          try
-          {
-            auto meta_response = this->_meta.server_status();
-            if (meta_response.status)
-            {
-              ELLE_TRACE("%s: Meta is reachable", *this);
-              result = true;
-            }
-            else
-            {
-              this->_meta_message = meta_response.message;
-              ELLE_WARN("%s: Meta down with message: %s",
-                        *this,
-                        this->_meta_message);
-              result = false;
-            }
-          }
-          catch (reactor::http::RequestError const& e)
-          {
-            ELLE_WARN("%s: unable to contact Meta: %s",
-                     *this,
-                     e.what());
-            result = false;
-          }
-          catch (elle::http::Exception const& e)
-          {
-            ELLE_WARN("%s: unable to contact Meta: %s",
-                     *this,
-                     e.what());
-            result = false;
-          }
-          catch (reactor::network::Exception const& e)
-          {
-            ELLE_WARN("%s: unable to contact Meta: %s",
-                     *this,
-                     e.what());
-            result = false;
-          }
-          catch (elle::Exception const& e)
-          {
-            ELLE_WARN("%s: error while checking meta connectivity: %s",
-                     *this,
-                     e.what());
-            result = false;
-            // XXX: We shouldn't be catching all exceptions but the old JSON
-            // parser throws elle::Exceptions.
-          }
-        });
-        scope.wait(timeout);
-        return result;
-      };
-    }
-
-    bool
-    State::_meta_server_check()
-    {
-      return this->_meta_server_check(10_sec);
-    }
-
     /*----------------------.
     | Login/Logout/Register |
     `----------------------*/
@@ -497,37 +426,17 @@ namespace surface
       while(true) try
       {
         ELLE_TRACE_SCOPE("%s: login to meta as %s", *this, email);
-
         ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
         reactor::Scheduler& scheduler = *reactor::Scheduler::scheduler();
-
         reactor::Lock l(this->_login_mutex);
-
         // Ensure we don't have an old Meta message
         this->_meta_message.clear();
-
         if (this->logged_in())
           throw Exception(gap_already_logged_in, "already logged in");
 
         this->_cleanup();
 
-        if (!this->_meta_server_check())
-        {
-          if (this->_meta_message.empty())
-          {
-            throw Exception(gap_meta_unreachable, "Unable to contact Meta");
-          }
-          else
-          {
-            throw Exception(gap_meta_down_with_message,
-                            elle::sprintf("Meta down with message: %s",
-                                          this->_meta_message));
-          }
-        }
-
         std::string lower_email = email;
-
         std::transform(lower_email.begin(),
                        lower_email.end(),
                        lower_email.begin(),
@@ -1114,11 +1023,7 @@ namespace surface
       {
         this->_on_invalid_trophonius_credentials();
       }
-      if (this->_meta_server_check())
-      {
-        ELLE_ERR("%s: able to connect to Meta but not Trophonius", *this);
-        this->enqueue(TrophoniusUnavailable());
-      }
+      this->enqueue(TrophoniusUnavailable());
     }
 
     void
