@@ -289,6 +289,9 @@ def configure(cxx_toolkit = None,
   papier_tests = drake.Rule('papier/tests')
   papier_check = drake.TestSuite('papier/check')
   papier_cxx_config_tests = drake.cxx.Config(papier_cxx_config)
+  if cxx_toolkit.os == drake.os.android:
+    papier_cxx_config_tests.lib('stdc++')
+    papier_cxx_config_tests.lib('atomic')
   papier_cxx_config_tests += boost_system
   papier_cxx_config_tests += boost_test
   papier_cxx_config_tests.lib_path_runtime('../../lib')
@@ -346,6 +349,9 @@ def configure(cxx_toolkit = None,
   station_check = drake.Rule('station/check')
   station_install = drake.Rule('station/install')
   station_cxx_config_tests = drake.cxx.Config(station_cxx_config)
+  if cxx_toolkit.os == drake.os.android:
+    station_cxx_config_tests.lib('stdc++')
+    station_cxx_config_tests.lib('atomic')
   station_cxx_config_tests += boost_test
   station_cxx_config_tests += boost_system
   station_cxx_config_tests.lib_path_runtime('../../lib')
@@ -395,6 +401,9 @@ def configure(cxx_toolkit = None,
   frete_check = drake.Rule('frete/check')
   frete_install = drake.Rule('frete/install')
   frete_cxx_config_tests = drake.cxx.Config(frete_cxx_config)
+  if cxx_toolkit.os == drake.os.android:
+    frete_cxx_config_tests.lib('stdc++')
+    frete_cxx_config_tests.lib('atomic')
   frete_cxx_config_tests += boost_filesystem
   frete_cxx_config_tests += boost_system
   frete_cxx_config_tests += boost_test
@@ -605,6 +614,9 @@ def configure(cxx_toolkit = None,
   gap_build << gap_lib
 
   gap_tests_cxx_config = drake.cxx.Config(gap_cxx_config)
+  if cxx_toolkit.os == drake.os.android:
+    gap_tests_cxx_config.lib('stdc++')
+    gap_tests_cxx_config.lib('atomic')
   gap_tests_cxx_config += boost_test
   gap_tests_cxx_config += boost_system
   gap_tests_cxx_config += boost_date_time

@@ -143,6 +143,10 @@ def configure(elle,
   tests_cxx_config += boost_config('date_time')
   tests_cxx_config += boost_config('system')
   tests_cxx_config += boost_config('test')
+  if cxx_toolkit.os is drake.os.android:
+    tests_cxx_config.lib('stdc++')
+    tests_cxx_config.lib('atomic')
+
   if cxx_toolkit.os is drake.os.windows:
     tests_cxx_config.lib('shlwapi')
     tests_cxx_config.lib('ws2_32')
