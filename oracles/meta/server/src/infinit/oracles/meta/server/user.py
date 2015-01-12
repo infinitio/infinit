@@ -136,6 +136,9 @@ class Mixin:
       assert isinstance(device_id, uuid.UUID)
       email = email.lower()
       user = self._login(email, password)
+      # If creation process was interrupted, generate identity now.
+      if 'public_key' not in user:
+        self.__generate_identity(user['_id'], email, password)
       query = {'id': str(device_id), 'owner': user['_id']}
       elle.log.debug("%s: look for session" % email)
       device = self.device(ensure_existence = False, **query)
@@ -145,7 +148,6 @@ class Mixin:
                                      owner = user)
       else:
         assert str(device_id) in user['devices']
-
       # Remove potential leaked previous session.
       self.sessions.remove({'email': email, 'device': device['_id']})
       elle.log.debug("%s: store session" % email)
@@ -360,26 +362,7 @@ class Mixin:
           # The user existed.
           raise Exception(error.EMAIL_ALREADY_REGISTERED)
       user_id = user['_id']
-      with elle.log.trace('generate identity'):
-        identity, public_key = papier.generate_identity(
-          str(user_id),  # Unique ID.
-          email,    # Description.
-          password, # Password.
-          conf.INFINIT_AUTHORITY_PATH,
-          conf.INFINIT_AUTHORITY_PASSWORD
-          )
-        self.database.users.find_and_modify(
-          {
-            '_id': user_id,
-          },
-          {
-            '$set':
-            {
-              'identity': identity,
-              'public_key': public_key,
-            },
-          },
-        )
+      self.__generate_identity(user_id, email, password)
       with elle.log.trace("add user to the mailing list"):
         self.invitation.subscribe(email)
       self._notify_swaggers(
@@ -401,6 +384,28 @@ class Mixin:
           }}
       )
       return user
+
+  def __generate_identity(self, user_id, email, password):
+    with elle.log.trace('generate identity'):
+      identity, public_key = papier.generate_identity(
+        str(user_id),
+        email,
+        password,
+        conf.INFINIT_AUTHORITY_PATH,
+        conf.INFINIT_AUTHORITY_PASSWORD
+        )
+      self.database.users.find_and_modify(
+        {
+          '_id': user_id,
+        },
+        {
+          '$set':
+          {
+            'identity': identity,
+            'public_key': public_key,
+          },
+        },
+      )
 
   def __account_from_hash(self, hash):
     with elle.log.debug('get user account from hash %s' % hash):
