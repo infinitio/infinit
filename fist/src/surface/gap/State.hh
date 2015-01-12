@@ -510,9 +510,6 @@ namespace surface
       swagger(uint32_t id);
 
       void
-      swaggers_dirty();
-
-      void
       _on_new_swagger(
         infinit::oracles::trophonius::NewSwaggerNotification const& notif);
 

@@ -582,8 +582,7 @@ namespace surface
                   try
                   {
                     this->_avatars.insert(
-                      std::make_pair(id,
-                                     this->_meta.icon(user_id)));
+                      std::make_pair(id, this->_meta.icon(user_id)));
                     this->_avatar_to_fetch.erase(user_id);
                     this->enqueue(AvatarAvailableNotification(id));
                   }
