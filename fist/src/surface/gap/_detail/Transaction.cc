@@ -193,19 +193,13 @@ namespace surface
     }
 
     void
-    State::_peer_transaction_resync()
+    State::_peer_transaction_resync(std::unordered_map<std::string, infinit::oracles::PeerTransaction> const& transactions)
     {
       if (!elle::os::getenv("INFINIT_DISABLE_META_SYNC", "").empty())
       {
         ELLE_ERR("Transaction resync disabled");
         return;
       }
-      ELLE_TRACE("%s: synchronize active transactions from meta", *this)
-        for (auto& transaction: this->meta().transactions())
-        {
-          this->_on_transaction_update(
-            std::make_shared<infinit::oracles::PeerTransaction>(transaction));
-        }
       ELLE_TRACE("%s: resynchronize transaction history from meta", *this)
       {
         static std::vector<infinit::oracles::Transaction::Status> final{
@@ -213,8 +207,9 @@ namespace surface
             infinit::oracles::Transaction::Status::finished,
             infinit::oracles::Transaction::Status::canceled,
             infinit::oracles::Transaction::Status::failed};
-        for (auto& transaction: this->meta().transactions(final, false, 100))
+        for (auto const& transaction_pair: transactions)
         {
+          auto const& transaction = transaction_pair.second;
           auto it = std::find_if(
             std::begin(this->_transactions),
             std::end(this->_transactions),
@@ -248,7 +243,7 @@ namespace surface
     }
 
     void
-    State::_link_transaction_resync()
+    State::_link_transaction_resync(std::vector<infinit::oracles::LinkTransaction> const& links)
     {
       if (!elle::os::getenv("INFINIT_DISABLE_LINK_SYNC", "").empty())
       {
@@ -256,7 +251,7 @@ namespace surface
         return;
       }
       ELLE_TRACE("%s: synchronize link transactions from meta", *this)
-        for (auto& transaction: this->meta().links())
+        for (auto& transaction: links)
         {
           auto it = std::find_if(
             std::begin(this->_transactions),

@@ -458,6 +458,11 @@ namespace surface
           auto login_response =
             this->_meta.login(lower_email, password, _device_uuid);
           ELLE_LOG("%s: logged in as %s", *this, email);
+          this->_me.reset(new Self(login_response.self));
+          this->user_sync(this->me());
+          this->_configuration.features = login_response.features;
+          metrics::Reporter::metric_features(this->_configuration.features);
+          // Trophonius.
           if (*trophonius)
           {
             this->_trophonius.swap(*trophonius);
@@ -474,12 +479,6 @@ namespace surface
             this->_reconnection_cooldown
             ));
           }
-          this->_me.reset(new Self(login_response.self));
-          this->user_sync(this->me());
-          // Update features before sending any metric
-          this->_configuration.features = login_response.features;
-          metrics::Reporter::metric_features(this->_configuration.features);
-
           std::string trophonius_host = login_response.trophonius.host;
           int trophonius_port = login_response.trophonius.port_ssl;
           if (!this->_forced_trophonius_host.empty())
@@ -487,8 +486,8 @@ namespace surface
           if (this->_forced_trophonius_port != 0)
             trophonius_port = this->_forced_trophonius_port;
           this->_trophonius->server(trophonius_host, trophonius_port);
-          infinit::metrics::Reporter::metric_sender_id(this->me().id);
-          this->_metrics_reporter->user_login(true, "");
+
+          // Update features before sending any metric
           this->_metrics_heartbeat_thread.reset(
             new reactor::Thread{
               *reactor::Scheduler::scheduler(),
@@ -501,6 +500,10 @@ namespace surface
                     this->_metrics_reporter->user_heartbeat();
                   }
                 }});
+          infinit::metrics::Reporter::metric_sender_id(this->me().id);
+          this->_metrics_reporter->user_login(true, "");
+
+          // Identity.
           std::string identity_clear;
           ELLE_TRACE("%s: decrypt identity", *this)
           {
@@ -539,6 +542,7 @@ namespace surface
             identity_infos.close();
           }
 
+          // Device.
           this->_device.reset(new Device(login_response.device));
           std::string passport_path =
             common::infinit::passport_path(this->me().id);
@@ -555,16 +559,14 @@ namespace surface
             this->_trophonius->connect(
               this->me().id, this->device().id, this->_meta.session_id());
             reactor::wait(_trophonius->connected());
+            ELLE_TRACE("%s: connected to trophonius", *this);
           }
 
-          ELLE_TRACE("%s: connected to trophonius",
-                     *this);
-
-          for (auto const& swagger: login_response.swaggers)
-          {
-            this->user_sync(swagger);
-            this->_queue_user_icon(swagger.id);
-          }
+          // Synchronization.
+          this->_synchronize_response.reset(
+            new infinit::oracles::meta::SynchronizeResponse{
+              this->meta().synchronize(true)});
+          ELLE_TRACE("got synchronisation response");
           this->_avatar_fetcher_thread.reset(
             new reactor::Thread{
               scheduler,
@@ -599,17 +601,21 @@ namespace surface
                     this->_avatar_fetching_barrier.close();
                 }
               }});
-          ELLE_TRACE("%s: fetch transactions", *this)
+
+          this->_user_resync(this->_synchronize_response->swaggers);
+          ELLE_TRACE("initialize transaction")
             this->_transactions_init();
-          this->on_connection_changed(
-            ConnectionState{true, elle::Error(""), false},
-            true);
+          ELLE_TRACE("connection")
+            this->on_connection_changed(
+              ConnectionState{true, elle::Error(""), false},
+              true);
           this->_polling_thread.reset(
             new reactor::Thread{
               scheduler,
                 "poll",
                 [&]
                 {
+                  this->_logged_in.wait();
                   while (true)
                   {
                     try
@@ -970,10 +976,13 @@ namespace surface
                   else
                     ELLE_DEBUG("ignore finalized transaction %s", t.second);
                 }
-              this->_user_resync();
+             this->_synchronize_response.reset(
+               new infinit::oracles::meta::SynchronizeResponse{this->meta().synchronize(false)});
             }
-            this->_peer_transaction_resync();
-            this->_link_transaction_resync();
+
+            this->_user_resync(this->_synchronize_response->swaggers);
+            this->_peer_transaction_resync(this->_synchronize_response->transactions);
+            this->_link_transaction_resync(this->_synchronize_response->links);
 
             resynched = true;
             ELLE_TRACE("Opening logged_in barrier");

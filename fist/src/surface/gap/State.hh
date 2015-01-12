@@ -115,6 +115,9 @@ namespace surface
       bool
       _trophonius_server_check();
 
+      ELLE_ATTRIBUTE_R(
+        std::unique_ptr<infinit::oracles::meta::SynchronizeResponse>,
+        synchronize_response);
     /*--------.
     | Metrics |
     `--------*/
@@ -125,7 +128,6 @@ namespace surface
 
       ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>,
                      metrics_heartbeat_thread);
-
 
       /*-------------.
       | Construction |
@@ -478,7 +480,7 @@ namespace surface
       user_from_public_key(std::string const& public_key) const;
 
       void
-      _user_resync();
+      _user_resync(std::vector<User> const& users);
 
       void
       _queue_user_icon(std::string const& user_id) const;
@@ -639,10 +641,10 @@ namespace surface
       _transactions_init();
 
       void
-      _peer_transaction_resync();
+      _peer_transaction_resync(std::unordered_map<std::string, infinit::oracles::PeerTransaction> const& transactions);
 
       void
-      _link_transaction_resync();
+      _link_transaction_resync(std::vector<infinit::oracles::LinkTransaction> const& links);
 
       void
       _transactions_clear();

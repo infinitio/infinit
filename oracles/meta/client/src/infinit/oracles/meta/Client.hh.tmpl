@@ -180,6 +180,7 @@ namespace infinit
       struct LoginResponse
       {
         Device device;
+        Self self;
         struct Trophonius
         {
           std::string host;
@@ -191,11 +192,22 @@ namespace infinit
           serialize(elle::serialization::Serializer& s);
         };
         Trophonius trophonius;
-        Self self;
-        std::vector<User> swaggers;
         std::unordered_map<std::string, std::string> features;
         LoginResponse() = default;
         LoginResponse(elle::serialization::SerializerIn& s);
+        void
+        serialize(elle::serialization::Serializer& s);
+      };
+
+      struct SynchronizeResponse
+      {
+        // Self self;
+        std::vector<User> swaggers;
+        std::unordered_map<std::string, PeerTransaction> transactions;
+        std::vector<LinkTransaction> links;
+
+        SynchronizeResponse() = default;
+        SynchronizeResponse(elle::serialization::SerializerIn& s);
         void
         serialize(elle::serialization::Serializer& s);
       };
@@ -329,6 +341,9 @@ namespace infinit
 
         LoginResponse::Trophonius
         trophonius();
+
+        SynchronizeResponse
+        synchronize(bool init = false) const;
 
         ELLE_ATTRIBUTE_RW(bool, logged_in);
 

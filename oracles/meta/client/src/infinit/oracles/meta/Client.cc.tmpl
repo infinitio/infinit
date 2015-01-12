@@ -316,7 +316,6 @@ namespace infinit
       LoginResponse::serialize(elle::serialization::Serializer& s)
       {
         s.serialize("self", this->self);
-        s.serialize("swaggers", this->swaggers);
         s.serialize("device", this->device);
         s.serialize("trophonius", this->trophonius);
         s.serialize("features", this->features);
@@ -328,6 +327,31 @@ namespace infinit
         s.serialize("host", this->host);
         s.serialize("port", this->port);
         s.serialize("port_ssl", this->port_ssl);
+      }
+
+      SynchronizeResponse::SynchronizeResponse(
+        elle::serialization::SerializerIn& s)
+      {
+        this->serialize(s);
+      }
+
+      void
+      SynchronizeResponse::serialize(elle::serialization::Serializer& s)
+      {
+        this->transactions.clear();
+        std::vector<PeerTransaction> transaction_list;
+        // Get the running transactions.
+        s.serialize("running_transactions", transaction_list);
+        for (auto const& tr: transaction_list)
+          this->transactions.emplace(tr.id, tr);
+        transaction_list.clear();
+        // Get the finals transactions (override potential duplicates because
+        // meta's reponse potentially suffers of a race condition).
+        s.serialize("final_transactions", transaction_list);
+        for (auto const& tr: transaction_list)
+          this->transactions[tr.id] = tr;
+        s.serialize("links", this->links);
+        s.serialize("swaggers", this->swaggers);
       }
 
       LoginResponse
@@ -462,6 +486,16 @@ namespace infinit
           }
         }
         return user_id;
+      }
+
+      SynchronizeResponse
+      Client::synchronize(bool init) const
+      {
+        std::string url = elle::sprintf("/user/synchronize?init=%s",
+                                        init);
+        auto request = this->_request(url, Method::GET);
+        SerializerIn input(url, request);
+        return SynchronizeResponse{input};
       }
 
       static

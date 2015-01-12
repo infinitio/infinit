@@ -1035,3 +1035,45 @@ class Mixin:
       {'_id': transaction_id},
       {'$set': {'aws_credentials': credentials}})
     return self.success(credentials)
+
+  def _user_transactions(self,
+                         mtime = None,
+                         limit = 100):
+    user_id = self.user['_id']
+    query = {
+      '$or':
+      [
+        { 'sender_id': user_id },
+        { 'recipient_id': user_id },
+      ],
+    }
+    # XXX: Fix race condition!
+    # If the transaction is updated between the 2 calls, it will be in both
+    # lists.
+    # The problem is that we want ALL the non finished transactions and the n
+    # most recent transactions.
+
+    # First, get the running transactions (no limit).
+    query.update({
+      'status': {'$nin': transaction_status.final}
+      })
+    runnings = self.database.transactions.aggregate([
+        {'$match': query},
+        {'$sort': {'mtime': DESCENDING}},
+      ])['result']
+
+    # Then get the 100 most recent transactions.
+    query.update({
+      'status': {'$in': transaction_status.final}
+      })
+    if mtime:
+      query.update({'mtime': {'$gt': mtime}})
+    finals = self.database.transactions.aggregate([
+        {'$match': query},
+        {'$sort': {'mtime': DESCENDING}},
+        {'$limit': limit},
+      ])['result']
+    return {
+      "running_transactions": list(runnings),
+      "final_transactions": list(finals),
+    }

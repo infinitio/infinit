@@ -190,7 +190,6 @@ class Mixin:
           {'$set': { 'features': features}})
       response['features'] = list(features.items())
       response['device'] = device
-      response['swaggers'] = self._full_swaggers()
       return response
 
   @api('/web-login', method = 'POST')
@@ -1372,28 +1371,31 @@ class Mixin:
         fields = {'email': True, '_id': False}
     )))})
 
-  def _user_self(self):
+  def _user_self(self, short = False):
     user = self.user
     res = {
       '_id': user['_id'], # Used until 0.9.9
       'id': user['_id'],
-      'fullname': user['fullname'],
-      'handle': user['handle'],
       'register_status': user['register_status'],
-      'email': user['email'],
-      'devices': user.get('devices', []),
-      'networks': user.get('networks', []),
-      'identity': user['identity'],
-      'public_key': user['public_key'],
-      'accounts': user['accounts'],
-      'remaining_invitations': user.get('remaining_invitations', 0),
       'token_generation_key': user.get('token_generation_key', ''),
-      'favorites': user.get('favorites', []),
-      'connected_devices': user.get('connected_devices', []),
-      'status': self._is_connected(user['_id']),
-      'creation_time': user.get('creation_time', None),
-      'last_connection': user.get('last_connection', 0),
     }
+    if not short:
+      res.update({
+        'fullname': user['fullname'],
+        'handle': user['handle'],
+        'email': user['email'],
+        'devices': user.get('devices', []),
+        'networks': user.get('networks', []),
+        'identity': user['identity'],
+        'public_key': user['public_key'],
+        'accounts': user['accounts'],
+        'remaining_invitations': user.get('remaining_invitations', 0),
+        'favorites': user.get('favorites', []),
+        'connected_devices': user.get('connected_devices', []),
+        'status': self._is_connected(user['_id']),
+        'creation_time': user.get('creation_time', None),
+        'last_connection': user.get('last_connection', 0),
+      })
     if not user.get('email_confirmed', True):
       from time import time
       res.update({
@@ -1823,3 +1825,24 @@ class Mixin:
       }
     )
     return self.success()
+
+  @api('/user/synchronize')
+  @require_logged_in
+  def synchronize(self,
+                  init : int = 1):
+    init = bool(init)
+    device = self.current_device
+    last_sync = self.database.devices.find_and_modify(
+      query = {'id': device['id']},
+      update = { '$set': { 'last_sync': time.time() }}).get('last_sync', 1)
+    # If it's the initialization, pull history, if not, only the one modified
+    # since last synchronization!
+    res = {
+      'swaggers': self._full_swaggers(),
+    }
+    mtime = None
+    if not init:
+      mtime = last_sync
+    res.update(self._user_transactions(mtime = mtime))
+    res.update(self.links_list(mtime = mtime))
+    return self.success(res)
