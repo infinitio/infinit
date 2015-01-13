@@ -605,11 +605,18 @@ ELLE_TEST_SCHEDULED(trophonius_timeout)
 
 ELLE_TEST_SUITE()
 {
+  auto timeout = RUNNING_ON_VALGRIND ? 60 :
+#ifdef INFINIT_ANDROID
+    200
+#else
+    15
+#endif
+  ;
   auto& suite = boost::unit_test::framework::master_test_suite();
-  suite.add(BOOST_TEST_CASE(login), 0, 200);
-  suite.add(BOOST_TEST_CASE(login_failure), 0, 200);
-  suite.add(BOOST_TEST_CASE(trophonius_forbidden), 0, 200);
-  suite.add(BOOST_TEST_CASE(trophonius_timeout), 0, 100);
+  suite.add(BOOST_TEST_CASE(login), 0, timeout);
+  suite.add(BOOST_TEST_CASE(login_failure), 0, timeout);
+  suite.add(BOOST_TEST_CASE(trophonius_forbidden), 0, timeout);
+  suite.add(BOOST_TEST_CASE(trophonius_timeout), 0, timeout);
 }
 
 const std::vector<unsigned char> fingerprint =
