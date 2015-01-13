@@ -718,6 +718,7 @@ namespace infinit
         elle::serialization::Serializer& s)
       {
         s.serialize("created_transaction_id", this->_created_transaction_id);
+        s.serialize("recipient", this->_recipient);
         s.serialize("recipient_is_ghost", this->_recipient_is_ghost);
       }
 

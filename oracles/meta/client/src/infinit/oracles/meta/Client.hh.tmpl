@@ -242,6 +242,7 @@ namespace infinit
       {
       public:
         CreatePeerTransactionResponse() = default;
+        ELLE_ATTRIBUTE_R(User, recipient);
         ELLE_ATTRIBUTE_R(std::string, created_transaction_id);
         ELLE_ATTRIBUTE_R(bool, recipient_is_ghost);
 
