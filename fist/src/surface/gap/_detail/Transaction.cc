@@ -263,11 +263,8 @@ namespace surface
             });
           if (it != std::end(this->_transactions))
           {
-            if (!it->second->final())
-            {
-              it->second->on_transaction_update(
-                std::make_shared<infinit::oracles::LinkTransaction>(transaction));
-            }
+            it->second->on_transaction_update(
+              std::make_shared<infinit::oracles::LinkTransaction>(transaction));
             continue;
           }
           auto _id = generate_id();
