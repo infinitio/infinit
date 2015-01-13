@@ -293,13 +293,26 @@ public:
        this->_identity.Save(identity_serialized);
        return elle::sprintf(
          "{"
-         "  \"_id\" : \"0000\","
-         "  \"fullname\" : \"Jean-Kader\","
-         "  \"handle\" : \"BOBBY\","
-         "  \"email\" : \"em@il.com\","
-         "  \"identity\" : \"%s\","
-         "  \"device_id\" : \"%s\","
-         " \"features\": [],"
+         "  \"self\": {"
+         "    \"id\": \"000\","
+         "    \"public_key\": \"\","
+         "    \"fullname\": \"\","
+         "    \"handle\": \"\","
+         "    \"connected_devices\": [],"
+         "    \"register_status\": \"\","
+         "    \"email\": \"\","
+         "    \"identity\": \"%s\","
+         "    \"devices\": [],"
+         "    \"favorites\": [],"
+         "    \"success\": true"
+         "  },"
+         "  \"device\": {"
+         "    \"id\" : \"%s\","
+         "    \"name\": \"device\","
+         "    \"passport\": \"%s\","
+         "    \"success\": true"
+         "  },"
+         "  \"features\": [],"
          "  \"trophonius\" : {"
          "    \"host\": \"127.0.0.1\","
          "    \"port\": 0,"
@@ -308,6 +321,8 @@ public:
          "}",
          identity_serialized,
          this->_device_id,
+         generate_passport(this->_device_id, "DEVICE",
+                           this->_identity.pair().K()),
          this->_trophonius.port());
      }
      throw Exception("/login", reactor::http::StatusCode::Forbidden,

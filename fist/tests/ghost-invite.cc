@@ -15,7 +15,7 @@ ELLE_TEST_SCHEDULED(send_ghost)
   auto const email = "em@il.com";
   auto const password = "secret";
   auto user = server.register_user(email, password);
-  State state(server, user.device_id());
+  State state(server, user.device_id().get());
   // Callbacks
   reactor::Barrier transferring;
   reactor::Barrier finished;
