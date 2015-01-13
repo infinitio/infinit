@@ -454,9 +454,6 @@ namespace surface
       ELLE_ATTRIBUTE_P(reactor::Barrier, avatar_fetching_barrier, mutable);
 
     public:
-      void
-      clear_users();
-
       User const&
       user_sync(User const& user) const;
 

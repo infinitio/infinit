@@ -77,14 +77,6 @@ namespace surface
       return ++id;
     }
 
-    void
-    State::clear_users()
-    {
-      this->_users.clear();
-      this->_user_indexes.clear();
-      this->_swagger_indexes.clear();
-    }
-
     State::User const&
     State::user_sync(State::User const& user) const
     {
@@ -526,7 +518,6 @@ namespace surface
         swagger = this->user_sync(notif.user_id);
         ELLE_ASSERT(!swagger.ghost());
       }
-      this->swaggers(); // force up-to-date swaggers
       {
         reactor::Lock lock(this->_swagger_mutex);
         this->_swagger_indexes.insert(this->_user_indexes.at(swagger.id));

@@ -353,11 +353,7 @@ namespace surface
       try
       {
         for (auto const& file: this->files())
-        {
-          // Might be a directory, use a function that recurses into them.
-          auto _size = elle::os::file::size(file);
-          size += _size;
-        }
+          size += elle::os::file::size(file);
       }
       catch (boost::filesystem::filesystem_error const& e)
       {
