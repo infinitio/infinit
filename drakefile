@@ -918,7 +918,8 @@ def configure(cxx_toolkit = None,
     jni_cxx_config.add_local_include_path('oracles/src')
     jni_cxx_config.add_local_include_path('oracles/meta/client/src')
     jni_cxx_config.add_local_include_path('oracles/trophonius/client/src')
-    jni_cxx_config.warnings.missing_declarations = True
+    jni_cxx_config.add_local_include_path(os.environ['JAVA_HOME'] + '/include')
+    jni_cxx_config.warnings.missing_declarations = False
     jni_infinit = drake.cxx.DynLib(
       'lib/jniinfinit',
       drake.nodes('jni/jni.cc') + [gap_lib, elle_lib, cryptography_lib, crash_lib],

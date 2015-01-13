@@ -102,7 +102,7 @@ static jobject to_linktransaction(JNIEnv* env, surface::gap::LinkTransaction con
   static jmethodID string_init;
   if (!lt_class)
   {
-    lt_class = env->FindClass("io/infinit/PeerTransaction");
+    lt_class = env->FindClass("io/infinit/LinkTransaction");
     lt_class = (jclass)env->NewGlobalRef(lt_class);
     lt_init = env->GetMethodID(lt_class, "<init>", "()V");
     string_class = env->FindClass("java/lang/String");
@@ -549,14 +549,14 @@ extern "C" jobject Java_io_infinit_State_gapUsersSearch(
   JNIEnv* env, jobject thiz, jlong handle, jstring query)
 {
   auto result = gap_users_search((gap_State*)handle, to_string(env, query));
-  return to_array<decltype(result)>(env, result, "/io/infinit/User", &to_user);
+  return to_array<decltype(result)>(env, result, "io/infinit/User", &to_user);
 }
 
 extern "C" jobject Java_io_infinit_State_gapSwaggers(
   JNIEnv* env, jobject thiz, jlong handle)
 {
   auto result = gap_swaggers((gap_State*)handle);
-  return to_array<decltype(result)>(env, result, "/io/infinit/User", &to_user);
+  return to_array<decltype(result)>(env, result, "io/infinit/User", &to_user);
 }
 
 extern "C" jobject Java_io_infinit_State_gapFavorites(
@@ -613,14 +613,14 @@ extern "C" jobject Java_io_infinit_State_gapLinkTransactions(
   JNIEnv* env, jobject thiz, jlong handle)
 {
   auto r = gap_link_transactions((gap_State*)handle);
-  return to_array<decltype(r)>(env, r, "/io/infinit/LinkTransaction", &to_linktransaction);
+  return to_array<decltype(r)>(env, r, "io/infinit/LinkTransaction", &to_linktransaction);
 }
 
 extern "C" jobject Java_io_infinit_State_gapPeerTransactions(
   JNIEnv* env, jobject thiz, jlong handle)
 {
   auto r = gap_peer_transactions((gap_State*)handle);
-  return to_array<decltype(r)>(env, r, "/io/infinit/PeerTransaction", &to_peertransaction);
+  return to_array<decltype(r)>(env, r, "io/infinit/PeerTransaction", &to_peertransaction);
 }
 
 extern "C" jint Java_io_infinit_State_gapSendFiles(
