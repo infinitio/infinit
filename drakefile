@@ -909,3 +909,20 @@ def configure(cxx_toolkit = None,
   osx_build << mac_app.build
 
   drake.cxx.CompilationDatabase('compile_commands.json')
+
+
+  if cxx_toolkit.os == drake.os.android:
+    jni = drake.Rule('jni')
+    jni_cxx_config = drake.cxx.Config(cxx_config)
+    jni_cxx_config.add_local_include_path('metrics/src')
+    jni_cxx_config.add_local_include_path('oracles/src')
+    jni_cxx_config.add_local_include_path('oracles/meta/client/src')
+    jni_cxx_config.add_local_include_path('oracles/trophonius/client/src')
+    jni_cxx_config.warnings.missing_declarations = True
+    jni_infinit = drake.cxx.DynLib(
+      'lib/jniinfinit',
+      drake.nodes('jni/jni.cc') + [gap_lib, elle_lib, cryptography_lib, crash_lib],
+      cxx_toolkit,
+      jni_cxx_config
+    )
+    jni << jni_infinit
