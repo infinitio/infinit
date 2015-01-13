@@ -699,6 +699,11 @@ namespace surface
       virtual
       void
       print(std::ostream& stream) const;
+
+      /*----------.
+      | Debugging |
+      `----------*/
+      ELLE_ATTRIBUTE_RX(reactor::Signal, synchronized);
     };
 
     std::ostream&

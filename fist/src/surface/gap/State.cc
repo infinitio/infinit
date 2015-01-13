@@ -987,6 +987,7 @@ namespace surface
             resynched = true;
             ELLE_TRACE("Opening logged_in barrier");
             _logged_in.open();
+            this->_synchronized.signal();
           }
           catch (reactor::Terminate const&)
           {
