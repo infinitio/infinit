@@ -1,7 +1,14 @@
 
+package io.infinit;
+
+import java.util.Map;
+import java.util.HashMap;
+import java.lang.RuntimeException;
+import java.lang.Integer;
 
 
-class State
+
+public class State
 {
   public void initialize(boolean production,
     String download_dir, String persistent_config_dir,
@@ -46,7 +53,7 @@ class State
   }
   public void logout()
   {
-    int res = gapLogout(handle);
+    long res = gapLogout(handle);
     _check("logout", res);
   }
   public PeerTransaction peerTransactionById(int id)
@@ -87,14 +94,14 @@ class State
   {
     return gapSelfEmail(handle);
   }
-  public void setEmail(String email)
+  public void setEmail(String email, String password)
   {
-    long ret = gapSetEmail(handle, email);
+    long ret = gapSetSelfEmail(handle, email, password);
     _check("set email", ret);
   }
   public String selfFullname()
   {
-    return gapSelfFullname();
+    return gapSelfFullname(handle);
   }
   public void setSelfFullname(String name)
   {
@@ -134,7 +141,7 @@ class State
   }
   public void refreshAvatar(int id)
   {
-    gapRefreshAvatar(handle);
+    gapRefreshAvatar(handle, id);
   }
   public User userById(int id)
   {
@@ -148,7 +155,7 @@ class State
   {
     return gapUserByHandle(handle, h);
   }
-  public int userStatus(int id)
+  public long userStatus(int id)
   {
     return gapUserStatus(handle, id);
   }
@@ -168,7 +175,7 @@ class State
   {
     return gapFavorite(handle, id);
   }
-  public long unFavorite(int id);
+  public long unFavorite(int id)
   {
     return gapUnfavorite(handle, id);
   }
@@ -180,10 +187,11 @@ class State
   {
     return gapIsLinkTransaction(handle, id);
   }
-  public long createLinkTransaction(String[] files, String message)
+  public int createLinkTransaction(String[] files, String message)
   {
-    long res = gapCreateLinkTransaction(handle, files, message);
+    int res = gapCreateLinkTransaction(handle, files, message);
     _checkNZ("create link transaction", res);
+    return res;
   }
   public LinkTransaction[] linkTransactions()
   {
@@ -197,18 +205,20 @@ class State
   {
     int res = gapSendFiles(handle, id, files, message);
     _checkNZ("send files", res);
+    return res;
   }
   public int sendFilesByEmail(String id, String[] files, String message)
   {
     int res = gapSendFilesByEmail(handle, id, files, message);
     _checkNZ("send files to mail", res);
+    return res;
   }
-  public int pauseTransaction(int id)  { int res = gapPauseTransaction(handle, id); _checkNZ("state change", res);}
-  public int resumeTransaction(int id) { int res = gapResumeTransaction(handle, id);_checkNZ("state change", res);}
-  public int cancelTransaction(int id) { int res = gapCancelTransaction(handle, id);_checkNZ("state change", res);}
-  public int deleteTransaction(int id) { int res = gapDeleteTransaction(handle, id);_checkNZ("state change", res);}
-  public int rejectTransaction(int id) { int res = gapRejectTransaction(handle, id);_checkNZ("state change", res);}
-  public int acceptTransaction(int id) { int res = gapAcceptTransaction(handle, id);_checkNZ("state change", res);}
+  public int pauseTransaction(int id)  { int res = gapPauseTransaction(handle, id); _checkNZ("state change", res); return res;}
+  public int resumeTransaction(int id) { int res = gapResumeTransaction(handle, id);_checkNZ("state change", res); return res;}
+  public int cancelTransaction(int id) { int res = gapCancelTransaction(handle, id);_checkNZ("state change", res); return res;}
+  public int deleteTransaction(int id) { int res = gapDeleteTransaction(handle, id);_checkNZ("state change", res); return res;}
+  public int rejectTransaction(int id) { int res = gapRejectTransaction(handle, id);_checkNZ("state change", res); return res;}
+  public int acceptTransaction(int id) { int res = gapAcceptTransaction(handle, id);_checkNZ("state change", res); return res;}
 
   public class Onboarding
   {
@@ -274,17 +284,44 @@ class State
   public void sendLastCrashLogs(String userName, String crashReport,
                                 String stateLog, String extra)
   {
-    long res = gapSendLastCrashLogs(handle, hserName, crashReport, stateLog, extra);
+    long res = gapSendLastCrashLogs(handle, userName, crashReport, stateLog, extra);
     _check("send crash logs", res);
   }
+  public void internetConnection(boolean connected)
+  {
+    long res = gapInternetConnection(handle, connected);
+    _check("internet connection", res);
+  }
+
+  /// Callbacks
+  public void onCritical() {}
+  public void onNewSwagger(User user) {}
+  public void onDeletedSwagger(int id) {}
+  public void onDeletedFavorite(int id) {}
+  public void onUserStatus(int id, boolean status) {}
+  public void onAvatarAvailable(int id)  {}
+  public void onConnection(boolean isConnected, boolean stillTrying, String lastError) {}
+  public void onPeerTransaction(PeerTransaction transaction) {}
+  public void onLink(LinkTransaction link) {}
+
   protected
   void finalize()
   {
-    if (handle)
+    if (handle != 0)
       gapFinalize(handle);
     handle = 0;
   }
-  private long handle;
+  private long handle = 0;
+  private void _check(String op, long res)
+  {
+    if (res != 1)
+      throw new RuntimeException(op + " failed with " + new Long(res).toString());
+  }
+  private void _checkNZ(String op, int res)
+  {
+    if (res == 0)
+      throw new RuntimeException(op + " failed");
+  }
   private native long gapInitialize(
     boolean production,
     String download_dir, String persistent_config_dir,
@@ -330,7 +367,7 @@ class State
   private native long gapUnfavorite(long handle, int id);
   private native boolean gapIsFavorite(long handle, int id);
   private native boolean gapIsLinkTransaction(long handle, int id);
-  private native long gapCreateLinkTransaction(long handle, String[] files,
+  private native int gapCreateLinkTransaction(long handle, String[] files,
                                                String message);
   private native LinkTransaction gapLinkTransactionById(long handle, int id);
   private native LinkTransaction[] gapLinkTransactions(long handle);
@@ -353,13 +390,14 @@ class State
 
   private native long gapSendMetric(long handle, long metric, String[] extra);
   private native long gapSendUserReport(long handle, String userName, String message, String file);
-  private native long gapSendLastCrashLogs(long handle, String userName, Sstring crashReport, String stateLog, String extraInfo);
+  private native long gapSendLastCrashLogs(long handle, String userName, String crashReport, String stateLog, String extraInfo);
+  private native long gapInternetConnection(long handle, boolean connected);
   /* this is used to load the 'hello-jni' library on application
   * startup. The library has already been unpacked into
   * /data/data/com.example.hellojni/lib/libhello-jni.so at
   * installation time by the package manager.
   */
   static {
-    System.loadLibrary("bindings");
+    System.loadLibrary("jniinfinit");
   }
 }

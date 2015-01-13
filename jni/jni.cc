@@ -18,19 +18,6 @@
 #include <jni.h>
 #include <surface/gap/gap.hh>
 
-/* This is a trivial JNI example where we use a native method
- * to return a new VM String. See the corresponding Java source
- * file located at:
- *
- *   apps/samples/hello-jni/project/src/com/example/hellojni/HelloJni.java
- */
-jstring
-Java_com_example_hellojni_HelloJni_stringFromJNI( JNIEnv* env,
-                                                  jobject thiz )
-{
-    return (*env).NewStringUTF("Hello from JNI !  Compiled with ABI " ".");
-}
-
 static std::string to_string(JNIEnv* env, jobject jso)
 {
   jstring js = (jstring)jso;
@@ -185,7 +172,7 @@ static jobject to_peertransaction(JNIEnv* env, surface::gap::PeerTransaction con
 
   f = env->GetFieldID(pt_class, "totalSize", "J");
   env->SetLongField(res, f, t.total_size);
-  f = env->GetFieldID(pt_class, "is_directory", "Z");
+  f = env->GetFieldID(pt_class, "isDirectory", "Z");
   env->SetBooleanField(res, f, t.is_directory);
   f = env->GetFieldID(pt_class, "message", "Ljava/lang/String;");
   env->SetObjectField(res, f, env->NewStringUTF(t.message.c_str()));
@@ -217,6 +204,97 @@ static jobject to_hash(JNIEnv* env, std::unordered_map<std::string, std::string>
   }
   return hashMap;
 }
+static JavaVM* java_vm;
+extern "C" JNIEXPORT jint JNICALL
+JNI_OnLoad(JavaVM* vm, void* reserved)
+{
+  java_vm = vm;
+  return JNI_VERSION_1_2;
+}
+
+static JNIEnv* get_env()
+{
+  JNIEnv* env;
+  java_vm->AttachCurrentThread((void**)&env, 0);
+  return env;
+}
+static void on_critical(jobject thiz)
+{
+  JNIEnv* env = get_env();
+  jclass clazz = env->GetObjectClass(thiz);
+  jmethodID m = env->GetMethodID(clazz, "onCritical", "()V");
+  env->CallVoidMethod(thiz, m);
+}
+static void on_new_swagger(jobject thiz, surface::gap::User const& u)
+{
+  JNIEnv* env = get_env();
+  jclass clazz = env->GetObjectClass(thiz);
+  jmethodID m = env->GetMethodID(clazz, "onNewSwagger", "(Lio/infinit/User;)V");
+  jobject ju = to_user(env, u);
+  env->CallVoidMethod(thiz, m, ju);
+}
+
+static void on_deleted_swagger(jobject thiz, int id)
+{
+  JNIEnv* env = get_env();
+  jclass clazz = env->GetObjectClass(thiz);
+  jmethodID m = env->GetMethodID(clazz, "onDeleteSwagger", "(I)V");
+  env->CallVoidMethod(thiz, m, (jint)id);
+}
+
+static void on_deleted_favorite(jobject thiz, int id)
+{
+  JNIEnv* env = get_env();
+  jclass clazz = env->GetObjectClass(thiz);
+  jmethodID m = env->GetMethodID(clazz, "onDeletedFavorite", "(I)V");
+  env->CallVoidMethod(thiz, m, (jint)id);
+}
+
+static void on_user_status(jobject thiz, int id, bool s)
+{
+  JNIEnv* env = get_env();
+  jclass clazz = env->GetObjectClass(thiz);
+  jmethodID m = env->GetMethodID(clazz, "onUserStatus", "(IZ)V");
+  env->CallVoidMethod(thiz, m, (jint)id, (jboolean)s);
+}
+
+static void on_avatar_available(jobject thiz, int id)
+{
+  JNIEnv* env = get_env();
+  jclass clazz = env->GetObjectClass(thiz);
+  jmethodID m = env->GetMethodID(clazz, "onAvatarAvailable", "(I)V");
+  env->CallVoidMethod(thiz, m, (jint)id);
+}
+
+static void on_connection(jobject thiz, bool status, bool still_trying,
+                          std::string const& last_error)
+{
+  JNIEnv* env = get_env();
+  jclass clazz = env->GetObjectClass(thiz);
+  jmethodID m = env->GetMethodID(clazz, "onConnection", "(ZZLjava/lang/String;)V");
+  env->CallVoidMethod(thiz, m, (jboolean)status, (jboolean)still_trying,
+                      env->NewStringUTF(last_error.c_str()));
+}
+
+static void on_peer_transaction(jobject thiz,
+                                surface::gap::PeerTransaction const& t)
+{
+  JNIEnv* env = get_env();
+  jclass clazz = env->GetObjectClass(thiz);
+  jmethodID m = env->GetMethodID(clazz, "onPeerTransaction",
+                                 "(Lio/infinit/PeerTransaction;)V");
+  env->CallVoidMethod(thiz, m, to_peertransaction(env, t));
+}
+
+static void on_link(jobject thiz,
+                                surface::gap::LinkTransaction const& t)
+{
+  JNIEnv* env = get_env();
+  jclass clazz = env->GetObjectClass(thiz);
+  jmethodID m = env->GetMethodID(clazz, "onLink",
+                                 "(Lio/infinit/LinkTransaction;)V");
+  env->CallVoidMethod(thiz, m, to_linktransaction(env, t));
+}
 
 
 extern "C" jlong Java_io_infinit_State_gapInitialize(JNIEnv* env,
@@ -225,11 +303,22 @@ extern "C" jlong Java_io_infinit_State_gapInitialize(JNIEnv* env,
   jboolean enable_mirroring,
   jlong max_mirroring_size)
 {
+  thiz = env->NewGlobalRef(thiz);
   gap_State* state = gap_new(production,
     to_string(env, download_dir), to_string(env, persistent_config_dir),
     to_string(env, non_persistent_config_dir),
     enable_mirroring,
     max_mirroring_size);
+  using namespace std::placeholders;
+  gap_critical_callback(state, std::bind(on_critical, thiz));
+  gap_new_swagger_callback(state, std::bind(on_new_swagger, thiz, _1));
+  gap_deleted_swagger_callback(state, std::bind(on_deleted_swagger, thiz, _1));
+  gap_deleted_favorite_callback(state, std::bind(on_deleted_favorite, thiz, _1));
+  gap_user_status_callback(state, std::bind(on_user_status, thiz, _1, _2));
+  gap_avatar_available_callback(state, std::bind(on_avatar_available, thiz, _1));
+  gap_connection_callback(state, std::bind(on_connection, thiz, _1, _2, _3));
+  gap_peer_transaction_callback(state, std::bind(on_peer_transaction, thiz, _1));
+  gap_link_callback(state, std::bind(on_link, thiz, _1));
   return (jlong)state;
 }
 
@@ -294,6 +383,12 @@ extern "C" jlong Java_io_infinit_State_gapLogout(
    JNIEnv* env, jobject thiz, jlong handle)
 {
   return gap_logout((gap_State*)handle);
+}
+
+extern "C" jlong Java_io_infinit_State_gapInternetConnection(
+  JNIEnv* env, jobject thiz, jlong handle, jboolean connected)
+{
+  return gap_internet_connection((gap_State*)handle, connected);
 }
 
 extern "C" jobject Java_io_infinit_State_gapPeerTransactionById(
@@ -498,7 +593,7 @@ extern "C" jboolean Java_io_infinit_State_gapIsLinkTransaction(
   return gap_is_link_transaction((gap_State*)handle, id);
 }
 
-extern "C" jlong Java_io_infinit_State_gapCreateLinkTransaction(
+extern "C" int Java_io_infinit_State_gapCreateLinkTransaction(
   JNIEnv* env, jobject thiz, jlong handle,
   jobjectArray jfiles, jstring message)
 {
