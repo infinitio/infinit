@@ -606,10 +606,10 @@ ELLE_TEST_SCHEDULED(trophonius_timeout)
 ELLE_TEST_SUITE()
 {
   auto& suite = boost::unit_test::framework::master_test_suite();
-  suite.add(BOOST_TEST_CASE(login), 0, 20);
-  suite.add(BOOST_TEST_CASE(login_failure), 0, 20);
-  suite.add(BOOST_TEST_CASE(trophonius_forbidden), 0, 20);
-  suite.add(BOOST_TEST_CASE(trophonius_timeout), 0, 10);
+  suite.add(BOOST_TEST_CASE(login), 0, 200);
+  suite.add(BOOST_TEST_CASE(login_failure), 0, 200);
+  suite.add(BOOST_TEST_CASE(trophonius_forbidden), 0, 200);
+  suite.add(BOOST_TEST_CASE(trophonius_timeout), 0, 100);
 }
 
 const std::vector<unsigned char> fingerprint =
