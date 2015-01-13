@@ -642,7 +642,11 @@ def configure(cxx_toolkit = None,
       ],
       cxx_toolkit, gap_tests_cxx_config)
     gap_tests << test
-    runner = drake.Runner(exe = test)
+    env = dict()
+    if cxx_toolkit.os == drake.os.android:
+      env['INFINIT_NON_PERSISTENT_DIR'] = '/tmp'
+      env['INFINIT_PERSISTENT_DIR'] = '/tmp'
+    runner = drake.Runner(exe = test, env=env)
     runner.reporting = drake.Runner.Reporting.on_failure
     gap_check << runner.status
 

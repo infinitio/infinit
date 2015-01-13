@@ -70,7 +70,7 @@ def configure(production_build,
 
   lib_cxx_config = drake.cxx.Config(local_cxx_config)
   lib_cxx_config.lib_path_runtime('.')
-  if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
+  if cxx_toolkit.os in [drake.os.windows, drake.os.ios, drake.os.android]:
     Library = drake.cxx.StaticLib
   else:
     Library = drake.cxx.DynLib
