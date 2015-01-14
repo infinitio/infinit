@@ -202,11 +202,6 @@ namespace surface
       }
       ELLE_TRACE("%s: resynchronize transaction history from meta", *this)
       {
-        static std::vector<infinit::oracles::Transaction::Status> final{
-          infinit::oracles::Transaction::Status::rejected,
-            infinit::oracles::Transaction::Status::finished,
-            infinit::oracles::Transaction::Status::canceled,
-            infinit::oracles::Transaction::Status::failed};
         for (auto const& transaction_pair: transactions)
         {
           auto const& transaction = transaction_pair.second;
@@ -229,6 +224,14 @@ namespace surface
             this->user(transaction.sender_id);
             this->user(transaction.recipient_id);
           }
+          bool sender = (this->me().id == transaction.sender_id);
+          auto const& final_statuses = sender
+            ? Transaction::sender_final_statuses
+            : Transaction::recipient_final_statuses;
+          bool history =
+            std::find(final_statuses.begin(),
+                      final_statuses.end(),
+                      transaction.status) != final_statuses.end();
           auto _id = generate_id();
           ELLE_TRACE("%s: create historical peer transactions from data: %s",
                      *this, transaction)
@@ -237,7 +240,7 @@ namespace surface
               elle::make_unique<Transaction>(
                 *this, _id,
                 std::make_shared<infinit::oracles::PeerTransaction>(transaction),
-                true /* history */));
+                history));
         }
       }
     }
@@ -272,9 +275,9 @@ namespace surface
                      *this, transaction)
           {
             bool history =
-            std::find(Transaction::sender_final_statuses.begin(),
-                      Transaction::sender_final_statuses.end(),
-                      transaction.status) != Transaction::sender_final_statuses.end();
+              std::find(Transaction::sender_final_statuses.begin(),
+                        Transaction::sender_final_statuses.end(),
+                        transaction.status) != Transaction::sender_final_statuses.end();
             this->_transactions.emplace(
               _id,
               elle::make_unique<Transaction>(
