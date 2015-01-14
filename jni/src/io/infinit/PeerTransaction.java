@@ -4,7 +4,7 @@ package io.infinit;
 public class PeerTransaction
 {
   public int id;
-  public int status;
+  public TransactionStatus status;
   public int senderId;
   public String senderDeviceId;
   public int recipientId;

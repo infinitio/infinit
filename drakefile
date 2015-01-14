@@ -918,7 +918,12 @@ def configure(cxx_toolkit = None,
     jni_cxx_config.add_local_include_path('oracles/src')
     jni_cxx_config.add_local_include_path('oracles/meta/client/src')
     jni_cxx_config.add_local_include_path('oracles/trophonius/client/src')
-    jni_cxx_config.add_local_include_path(os.environ['JAVA_HOME'] + '/include')
+    if cxx_toolkit.os != drake.os.android:
+      # JNI headers are in the android toolchain
+      jni_cxx_config.add_local_include_path(os.environ['JAVA_HOME'] + '/include')
+    else:
+      jni_cxx_config.lib('stdc++')
+      jni_cxx_config.lib('atomic')
     jni_cxx_config.warnings.missing_declarations = False
     jni_infinit = drake.cxx.DynLib(
       'lib/jniinfinit',

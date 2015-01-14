@@ -98,6 +98,8 @@ static jobject to_linktransaction(JNIEnv* env, surface::gap::LinkTransaction con
 {
   static jclass lt_class = 0;
   static jclass string_class;
+  static jclass ts_class;
+  static jmethodID ts_get_value;
   static jmethodID lt_init;
   static jmethodID string_init;
   if (!lt_class)
@@ -108,6 +110,9 @@ static jobject to_linktransaction(JNIEnv* env, surface::gap::LinkTransaction con
     string_class = env->FindClass("java/lang/String");
     string_class = (jclass)env->NewGlobalRef(string_class);
     string_init = env->GetMethodID(string_class, "<init>", "()V");
+    ts_class = env->FindClass("io/infinit/TransactionStatus");
+    ts_class = (jclass)env->NewGlobalRef(ts_class);
+    ts_get_value = env->GetStaticMethodID(ts_class, "GetValue", "(I)Lio/infinit/TransactionStatus;");
   }
   jobject res = env->NewObject(lt_class, lt_init);
   jfieldID f;
@@ -121,8 +126,9 @@ static jobject to_linktransaction(JNIEnv* env, surface::gap::LinkTransaction con
   env->SetObjectField(res, f, env->NewStringUTF(t.link? t.link->c_str():""));
   f = env->GetFieldID(lt_class, "clickCount", "I");
   env->SetIntField(res, f, t.click_count);
-  f = env->GetFieldID(lt_class, "status", "I");
-  env->SetIntField(res, f, (int)t.status);
+  f = env->GetFieldID(lt_class, "status", "Lio/infinit/TransactionStatus;");
+  jobject status = env->CallStaticObjectMethod(ts_class, ts_get_value, (int)t.status);
+  env->SetObjectField(res, f, status);
   f = env->GetFieldID(lt_class, "senderDeviceId", "Ljava/lang/String;");
   env->SetObjectField(res, f, env->NewStringUTF(t.sender_device_id.c_str()));
   return res;
@@ -131,8 +137,10 @@ static jobject to_peertransaction(JNIEnv* env, surface::gap::PeerTransaction con
 {
   static jclass pt_class = 0;
   static jclass string_class;
+  static jclass ts_class;
   static jmethodID pt_init;
   static jmethodID string_init;
+  static jmethodID ts_get_value;
   if (!pt_class)
   {
     pt_class = env->FindClass("io/infinit/PeerTransaction");
@@ -141,13 +149,18 @@ static jobject to_peertransaction(JNIEnv* env, surface::gap::PeerTransaction con
     string_class = env->FindClass("java/lang/String");
     string_class = (jclass)env->NewGlobalRef(string_class);
     string_init = env->GetMethodID(string_class, "<init>", "()V");
+    ts_class = env->FindClass("io/infinit/TransactionStatus");
+    ts_class = (jclass)env->NewGlobalRef(ts_class);
+    ts_get_value = env->GetStaticMethodID(ts_class, "GetValue", "(I)Lio/infinit/TransactionStatus;");
   }
   jobject res = env->NewObject(pt_class, pt_init);
   jfieldID f;
   f = env->GetFieldID(pt_class, "id", "I");
   env->SetIntField(res, f, t.id);
-  f = env->GetFieldID(pt_class, "status", "I");
-  env->SetIntField(res, f, t.status);
+  f = env->GetFieldID(pt_class, "status", "Lio/infinit/TransactionStatus;");
+  jobject status = env->CallStaticObjectMethod(ts_class, ts_get_value, (int)t.status);
+  env->SetObjectField(res, f, status);
+
   f = env->GetFieldID(pt_class, "senderId", "I");
   env->SetIntField(res, f, t.sender_id);
   f = env->GetFieldID(pt_class, "senderDeviceId", "Ljava/lang/String;");

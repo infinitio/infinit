@@ -8,6 +8,6 @@ public class LinkTransaction
   public double mtime;
   public String link;
   public int clickCount;
-  public int status;
+  public TransactionStatus status;
   public String senderDeviceId;
 }

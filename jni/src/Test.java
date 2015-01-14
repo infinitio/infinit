@@ -2,9 +2,10 @@ import io.infinit.State;
 import io.infinit.User;
 import io.infinit.PeerTransaction;
 import io.infinit.LinkTransaction;
+import io.infinit.TransactionStatus;
 import java.io.FileOutputStream;
 
-class Test extends State
+public class Test extends State
 {
   public void onCritical() {
     System.out.print("CRITICAL");
@@ -47,14 +48,14 @@ class Test extends State
   public void onPeerTransaction(PeerTransaction transaction) {
     User u = userById(transaction.senderId);
     System.err.printf("Peer transaction from %s, status=%s\n", u.fullname, transaction.status);
-    if (transaction.status == 2 && transaction.senderId != selfId())
+    if (transaction.status == TransactionStatus.WAITING_ACCEPT && transaction.senderId != selfId())
     {
       System.err.printf("accepting...\n");
       acceptTransaction(transaction.id);
     }
   }
   public void onLink(LinkTransaction link) {
-    System.err.printf("Link transaction status = %s\n", link.status);
+    System.err.printf("Link(%s) transaction status = %s\n", link.id, link.status);
     if (!link.link.equals(""))
     {
       System.out.printf("Your link is: %s\n", link.link);
@@ -95,14 +96,17 @@ class Test extends State
     {
       int i = createLinkTransaction(args[3].split(";"), args[4]);
     }
+    args = new String[]{};
   }
   public static void main(String[] args)
   {
     Test t = new Test();
     t.args = args;
+    // FIXME: replace with writable directories (see initialize() signature)
     t.initialize(true, "/tmp", "/tmp", "/tmp", true, 0);
     t.login(args[0], args[1]);
     System.out.println("Logging in...");
+    // delay doing anything until we are connected
     while (true)
     {
       t.poll();

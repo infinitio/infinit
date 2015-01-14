@@ -10,10 +10,22 @@ import java.lang.Integer;
 
 public class State
 {
+  public class StateException extends java.lang.RuntimeException
+  {
+    String operation;
+    GapStatus errorCode;
+    StateException(String op, GapStatus code)
+    {
+      super("operation '" + op + "' failed with " + code.toString());
+      operation = op;
+      errorCode = code;
+    }
+  }
+  /// Initialize the state, must be called first, once.
   public void initialize(boolean production,
     String download_dir, String persistent_config_dir,
     String non_persistent_config_dir,
-    boolean enable_mirroring,
+    boolean enable_mirroring, //< Copy files to a safe location before sending
     long max_mirroring_size)
   {
     handle = gapInitialize(production, download_dir, persistent_config_dir,
@@ -24,6 +36,7 @@ public class State
     long res = gapLogin(handle, email, hashed_password);
     _check("login", res);
   }
+  /// Register a new user.
   public void register(String fullname, String email, String hashed_password)
   {
     long res = gapRegister(handle, fullname, email, hashed_password);
@@ -39,6 +52,7 @@ public class State
     long res = gapUnsetProxy(handle, type);
     _check("unsetProxy", res);
   }
+  /// Logout and remove all pending events
   public void cleanState()
   {
     gapCleanState(handle);
@@ -64,18 +78,22 @@ public class State
   {
     return gapLinkTransactionById(handle, id);
   }
+  /// Transaction progress in [0,1]
   public float transactionProgress(int id)
   {
     return gapTransactionProgress(handle, id);
   }
+  /// True if transaction reached a final state (finished, cancelled, rejected)
   public boolean transactionIsFinal(int id)
   {
     return gapTransactionIsFinal(handle, id);
   }
+  /// True if transaction concerns us.
   public boolean transactionConcernDevice(int id)
   {
     return gapTransactionConcernDevice(handle, id);
   }
+  /// Poll for new notifications. Must be called regularly.
   public void poll()
   {
     long res = gapPoll(handle);
@@ -135,13 +153,13 @@ public class State
   {
     return gapSelfDeviceId(handle);
   }
-  public byte[] avatar(int id)
+  public byte[] avatar(int userId)
   {
-    return gapAvatar(handle, id);
+    return gapAvatar(handle, userId);
   }
-  public void refreshAvatar(int id)
+  public void refreshAvatar(int userId)
   {
-    gapRefreshAvatar(handle, id);
+    gapRefreshAvatar(handle, userId);
   }
   public User userById(int id)
   {
@@ -155,10 +173,12 @@ public class State
   {
     return gapUserByHandle(handle, h);
   }
-  public long userStatus(int id)
+  /// Returns true if user is online.
+  public boolean userStatus(int userId)
   {
-    return gapUserStatus(handle, id);
+    return gapUserStatus(handle, userId) != 0;
   }
+  /// Search user database (name and handle fields) for given string.
   public User[] usersSearch(String query)
   {
     return gapUsersSearch(handle, query);
@@ -171,9 +191,10 @@ public class State
   {
     return gapFavorites(handle);
   }
-  public long favorite(int id)
+  /// Add userId to favorite list
+  public long favorite(int userId)
   {
-    return gapFavorite(handle, id);
+    return gapFavorite(handle, userId);
   }
   public long unFavorite(int id)
   {
@@ -187,6 +208,7 @@ public class State
   {
     return gapIsLinkTransaction(handle, id);
   }
+  /// Returns the newly created transaction id
   public int createLinkTransaction(String[] files, String message)
   {
     int res = gapCreateLinkTransaction(handle, files, message);
@@ -201,15 +223,17 @@ public class State
   {
     return gapPeerTransactions(handle);
   }
-  public int sendFiles(int id, String[] files, String message)
+  /// Send files to registere user
+  public int sendFiles(int userId, String[] files, String message)
   {
-    int res = gapSendFiles(handle, id, files, message);
+    int res = gapSendFiles(handle, userId, files, message);
     _checkNZ("send files", res);
     return res;
   }
-  public int sendFilesByEmail(String id, String[] files, String message)
+  /// Send files to an email address
+  public int sendFilesByEmail(String email, String[] files, String message)
   {
-    int res = gapSendFilesByEmail(handle, id, files, message);
+    int res = gapSendFilesByEmail(handle, email, files, message);
     _checkNZ("send files to mail", res);
     return res;
   }
@@ -227,10 +251,12 @@ public class State
       context = ctx;
       idx = id;
     }
+    /// Set fake peer online status
     public void setPeerStatus(boolean s)
     {
       context.onboardingSetPeerStatus(id, s);
     }
+    /// Set fake peer p2p availability
     public void setPeerAvailability(boolean s)
     {
       context.onboardingSetPeerAvailability(id, s);
@@ -238,6 +264,7 @@ public class State
     private State context;
     private int id;
   }
+  /// Create a new onboarding(fake) transaction
   public Onboarding newOnboarding(String path, int duration_sec)
   {
     return new Onboarding(this, gapOnboardingReceiveTransaction(handle, path, duration_sec));
@@ -252,16 +279,17 @@ public class State
     long res = gapOnboardingSetPeerAvailability(handle, id, s);
     _check("onboarding peer status", res);
   }
-
-  public void setOutputDir(String path, boolean fallback)
+  /// Set download directory. Set app_action to false if this is a user request
+  public void setOutputDir(String path, boolean app_action)
   {
-    long res = gapSetOutputDir(handle, path, fallback);
+    long res = gapSetOutputDir(handle, path, app_action);
     _check("set output dir", res);
   }
   public String outputDir()
   {
     return gapGetOutputDir(handle);
   }
+  /// Send a metric events to the server
   public void sendMetric(long metricId, HashMap<String, String> extra)
   {
     String[] extras = new String[extra.size()*2];
@@ -276,17 +304,22 @@ public class State
     long res = gapSendMetric(handle, metricId, extras);
     _check("send metric", res);
   }
+  /// Send an issue report to the server
   public void sendUserReport(String userName, String message, String file)
   {
     long res = gapSendUserReport(handle, userName, message, file);
     _check("send user report", res);
   }
-  public void sendLastCrashLogs(String userName, String crashReport,
-                                String stateLog, String extra)
+  /// Send a crash report to the server
+  public void sendLastCrashLogs(String userName,
+                                String crashReport, //< crash report file
+                                String stateLog,    //< log file
+                                String extra)
   {
     long res = gapSendLastCrashLogs(handle, userName, crashReport, stateLog, extra);
     _check("send crash logs", res);
   }
+  /// Notify backend of network connectivity state
   public void internetConnection(boolean connected)
   {
     long res = gapInternetConnection(handle, connected);
@@ -294,14 +327,27 @@ public class State
   }
 
   /// Callbacks
+
+  /// A critical error occurred
   public void onCritical() {}
+  /// User added to swagger list
   public void onNewSwagger(User user) {}
+  /// User removed from swagger list
   public void onDeletedSwagger(int id) {}
+  /// User removed from favorites
   public void onDeletedFavorite(int id) {}
-  public void onUserStatus(int id, boolean status) {}
-  public void onAvatarAvailable(int id)  {}
+  /// User availability changed
+  public void onUserStatus(int userId, boolean online) {}
+  /// Avatar for user was downloaded
+  public void onAvatarAvailable(int userId)  {}
+  /** Connection with infinit server status changed.
+  * If stillTrying is true, the error is transient and the backend is
+  * still trying to connect. If stillTrying is false login() can be called again.
+  */
   public void onConnection(boolean isConnected, boolean stillTrying, String lastError) {}
+  /// Peer transaction status changed
   public void onPeerTransaction(PeerTransaction transaction) {}
+  /// Link transaction status changed
   public void onLink(LinkTransaction link) {}
 
   protected
@@ -315,12 +361,12 @@ public class State
   private void _check(String op, long res)
   {
     if (res != 1)
-      throw new RuntimeException(op + " failed with " + new Long(res).toString());
+      throw new StateException(op, GapStatus.GetValue(res));
   }
   private void _checkNZ(String op, int res)
   {
     if (res == 0)
-      throw new RuntimeException(op + " failed");
+      throw new StateException(op, GapStatus.GAP_ERROR);
   }
   private native long gapInitialize(
     boolean production,
@@ -361,7 +407,9 @@ public class State
   private native User gapUserByHandle(long handle, String email);
   private native long gapUserStatus(long handle, int id);
   private native User[] gapUsersSearch(long handle, String query);
+  /// Users we exchanged files with
   private native User[] gapSwaggers(long handle);
+  /// Users manually added as favorites
   private native int[] gapFavorites(long handle);
   private native long gapFavorite(long handle, int id);
   private native long gapUnfavorite(long handle, int id);
@@ -372,8 +420,8 @@ public class State
   private native LinkTransaction gapLinkTransactionById(long handle, int id);
   private native LinkTransaction[] gapLinkTransactions(long handle);
   private native PeerTransaction[] gapPeerTransactions(long handle);
-  private native int gapSendFiles(long handle, int id, String[] files, String message);
-  private native int gapSendFilesByEmail(long handle, String image, String[] files, String message);
+  private native int gapSendFiles(long handle, int recipientId, String[] files, String message);
+  private native int gapSendFilesByEmail(long handle, String email, String[] files, String message);
   private native int gapPauseTransaction(long handle, int id);
   private native int gapResumeTransaction(long handle, int id);
   private native int gapCancelTransaction(long handle, int id);
