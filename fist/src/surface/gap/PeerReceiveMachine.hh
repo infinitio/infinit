@@ -127,6 +127,7 @@ namespace surface
       // If the accept response returns no credentials, we can deduce that the
       // sender didn't push anything in the cloud.
       ELLE_ATTRIBUTE_R(bool, nothing_in_the_cloud);
+      ELLE_ATTRIBUTE_R(boost::optional<frete::Frete::FileSize>, full_size);
       std::map<boost::filesystem::path, boost::filesystem::path> _root_component_mapping;
       /* Transfer pipelining data
       */

@@ -437,7 +437,7 @@ namespace surface
       auto start_time = boost::posix_time::microsec_clock::universal_time();
       metrics::TransferExitReason exit_reason = metrics::TransferExitReasonUnknown;
       std::string exit_message;
-      uint64_t total_bytes_transfered = 0;
+      FileSize total_bytes_transfered = 0;
       FileSize initial_progress = 0;
       if (this->_snapshot != nullptr)
         initial_progress = this->_snapshot->progress();
@@ -478,7 +478,10 @@ namespace surface
         if (this->_snapshot)
           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
         else // normal termination: snapshot was removed
-          total_bytes_transfered = frete.full_size();
+        {
+          this->_full_size = frete.full_size();
+          total_bytes_transfered = this->_full_size.get();
+        }
         exit_reason = metrics::TransferExitReasonFinished;
         return this->get<frete::RPCFrete>(
           frete,
@@ -549,8 +552,9 @@ namespace surface
       auto count = source.count();
 
       // total_size can be 0 if all files are empty.
-      auto total_size = source.full_size();
-
+      if (!this->_full_size)
+        this->_full_size = source.full_size();
+      auto total_size = this->_full_size.get();
       if (this->_snapshot != nullptr)
       {
         if ((this->_snapshot->total_size() != total_size) ||
