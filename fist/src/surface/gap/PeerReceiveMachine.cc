@@ -481,8 +481,10 @@ namespace surface
           total_bytes_transfered = frete.full_size();
         exit_reason = metrics::TransferExitReasonFinished;
         return this->get<frete::RPCFrete>(
-          frete, strong_encryption?EncryptionLevel_Strong:EncryptionLevel_Weak,
-          name_policy, peer_version);
+          frete,
+          strong_encryption ? EncryptionLevel_Strong : EncryptionLevel_Weak,
+          name_policy,
+          peer_version);
       }
       catch (boost::filesystem::filesystem_error const& e)
       {
@@ -575,27 +577,27 @@ namespace surface
       if (last_index > 0)
         --last_index;
 
-      FilesInfo infos;
+      FilesInfo files_info;
       if (peer_version >= elle::Version(0, 8, 9))
-        infos = source.files_info();
+        files_info = source.files_info();
       else
       {
         for (unsigned i = 0; i < count; ++i)
         {
           auto path = source.path(i);
           auto size = source.file_size(i);
-          infos.push_back(std::make_pair(path, size));
+          files_info.push_back(std::make_pair(path, size));
         }
       }
 
-      ELLE_ASSERT(infos.size() >= this->_snapshot->count());
+      ELLE_ASSERT(files_info.size() >= this->_snapshot->count());
       // reconstruct directory name mapping data so that files in transfer
       // but not yet in snapshot will reuse it
       for (unsigned i = 0; i < this->_snapshot->file_count(); ++i)
       {
         // get asked/got relative path from output_path
         boost::filesystem::path got = this->_snapshot->file(i).path();
-        boost::filesystem::path asked = infos.at(i).first;
+        boost::filesystem::path asked = files_info.at(i).first;
         boost::filesystem::path got0 = *got.begin();
         boost::filesystem::path asked0 = *asked.begin();
         // add to the mapping even if its the same
@@ -625,8 +627,7 @@ namespace surface
       _fetch_current_file_index = last_index;
       // Snapshot only has info on files for which transfer started,
       // and we transfer in order, so we know all files in snapshot except
-      bool things_to_do = _fetch_next_file(name_policy,
-                                           source.files_info());
+      bool things_to_do = _fetch_next_file(name_policy, files_info);
       if (!things_to_do)
         ELLE_TRACE("Nothing to do");
       if (things_to_do)
@@ -646,7 +647,6 @@ namespace surface
           // 'buffers' for 1/20th of a second
           static int num_reader = rpc_pipeline_size();
           bool explicit_ack = peer_version >= elle::Version(0, 8, 9);
-          auto files_info = source.files_info();
           // Prevent unlimited ram buffering if a block fetcher gets stuck
           this->_buffers.max_size(num_reader * 3);
           for (int i = 0; i < num_reader; ++i)
