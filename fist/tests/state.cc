@@ -171,6 +171,7 @@ public:
       {
         return "{\"status\" : true, \"success\": true}";
       });
+
     this->register_route(
       "/login",
       reactor::http::Method::POST,
@@ -180,6 +181,22 @@ public:
                 std::placeholders::_2,
                 std::placeholders::_3,
                 std::placeholders::_4));
+
+    this->register_route(
+      "/user/synchronize",
+      reactor::http::Method::GET,
+      [] (Server::Headers const&,
+          Server::Cookies const&,
+          Server::Parameters const&,
+          elle::Buffer const&)
+      {
+        return "{"
+          "  \"swaggers\": [],"
+          "  \"running_transactions\": [],"
+          "  \"final_transactions\": [],"
+          "  \"links\": []"
+          "}";
+      });
 
     this->register_route(
       "/trophonius",
@@ -283,9 +300,9 @@ public:
 
   std::string
   _post_login(Headers const&,
-        Cookies const&,
-        Parameters const&,
-        elle::Buffer const&)
+              Cookies const&,
+              Parameters const&,
+              elle::Buffer const&)
   {
     if (_login_result == 0)
     {
