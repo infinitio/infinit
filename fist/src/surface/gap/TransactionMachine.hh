@@ -4,6 +4,7 @@
 # include <unordered_set>
 
 # include <boost/filesystem.hpp>
+# include <boost/signals2/signal.hpp>
 
 # include <elle/Printable.hh>
 # include <elle/serialize/construct.hh>
@@ -237,6 +238,8 @@ namespace surface
     protected:
       void
       transaction_id(std::string const& id);
+      ELLE_ATTRIBUTE_RX(
+        boost::signals2::signal<void (std::string const&)>, transaction_id_set);
 
       virtual
       bool

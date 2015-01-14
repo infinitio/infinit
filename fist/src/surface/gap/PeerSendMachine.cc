@@ -397,11 +397,12 @@ namespace surface
             this->state().device().id,
             this->_message
             );
-        this->transaction_id(transaction_response.created_transaction_id());
         auto const& peer = this->state().user_sync(
           transaction_response.recipient());
         this->data()->is_ghost = peer.ghost();
         this->data()->recipient_id = peer.id;
+        // This will automatically save the snapshot.
+        this->transaction_id(transaction_response.created_transaction_id());
       }
       ELLE_TRACE("%s: created transaction %s", *this, this->transaction_id());
       // Populate the frete.

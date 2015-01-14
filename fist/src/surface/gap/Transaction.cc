@@ -163,7 +163,14 @@ namespace surface
                             this->_files.get(), message, data));
       ELLE_TRACE_SCOPE("%s: construct to send %s files",
                        *this, this->_files.get().size());
-      this->_snapshot_save();
+
+      // Save the snapshot when the transaction id is set, otherwise, we will
+      // not be able to restore it.
+      this->_machine->transaction_id_set().connect(
+        [&] (std::string const&)
+        {
+          this->_snapshot_save();
+        });
     }
 
     // Construct to create link.
