@@ -511,11 +511,19 @@ class Mixin:
         counts = ['accepted_peer', 'accepted'],
         pending = transaction,
         time = True)
-      return {
+      res = {
         'recipient_fullname': user['fullname'],
         'recipient_device_name' : device_name,
         'recipient_device_id': str(device_id)
       }
+      # As a recipient, if the aws credential are empty, don't fetch them.
+      # It will be done in time and space if needed.
+      credentials = transaction.get('aws_credentials', None)
+      if credentials:
+        res.update({
+          'credentials': credentials
+        })
+      return res
 
   def _hash_transaction(self, transaction):
     """
@@ -617,17 +625,18 @@ class Mixin:
                          device_name = None):
 
     try:
-      transaction_id = self._transaction_update(transaction_id,
-                                                status,
-                                                device_id,
-                                                device_name,
-                                                self.user)
+      res = self._transaction_update(transaction_id,
+                                     status,
+                                     device_id,
+                                     device_name,
+                                     self.user)
     except error.Error as e:
       return self.fail(*e.args)
 
-    return self.success({
+    res.update({
       'updated_transaction_id': transaction_id,
     })
+    return self.success(res)
 
   def _transaction_update(self,
                           transaction_id,
@@ -650,7 +659,7 @@ class Mixin:
       is_sender = self.is_sender(transaction, user['_id'], device_id)
       args = (transaction['status'], status)
       if transaction['status'] == status:
-        return transaction_id
+        return {}
       allowed = transaction_status.transitions[transaction['status']][is_sender]
       if status not in allowed:
         fmt = 'changing status %s to %s not permitted'
@@ -718,7 +727,7 @@ class Mixin:
           recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
           message = transaction,
         )
-      return transaction_id
+      return diff
 
   @api('/transaction/search')
   @require_logged_in

@@ -88,6 +88,7 @@ namespace surface
       , _frete_snapshot_path(this->transaction().snapshots_directory()
                              / "frete.snapshot")
       , _snapshot(nullptr)
+      , _nothing_in_the_cloud(false)
     {
       // Normal way.
       this->_machine.transition_add(this->_accept_state,
@@ -235,10 +236,13 @@ namespace surface
       ReceiveMachine::_accept();
       try
       {
-        this->state().meta().update_transaction(this->transaction_id(),
-                                                TransactionStatus::accepted,
-                                                this->state().device().id,
-                                                this->state().device().name);
+        auto res = this->state().meta().update_transaction(
+          this->transaction_id(),
+          TransactionStatus::accepted,
+          this->state().device().id,
+          this->state().device().name);
+        if (!res.aws_credentials())
+          this->_nothing_in_the_cloud = true;
       }
       catch (infinit::oracles::meta::Exception const& e)
       {
@@ -296,6 +300,11 @@ namespace surface
       {
         ELLE_DEBUG("%s: cloud buffering disabled by configuration", *this);
         this->gap_status(gap_transaction_waiting_data);
+        return;
+      }
+      if (this->_nothing_in_the_cloud)
+      {
+        this->_nothing_in_the_cloud = false;
         return;
       }
       this->gap_status(gap_transaction_transferring);

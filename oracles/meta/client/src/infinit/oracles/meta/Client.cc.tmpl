@@ -722,6 +722,19 @@ namespace infinit
         s.serialize("recipient_is_ghost", this->_recipient_is_ghost);
       }
 
+      UpdatePeerTransactionResponse::UpdatePeerTransactionResponse(
+        elle::serialization::SerializerIn& s)
+      {
+        this->serialize(s);
+      }
+
+      void
+      UpdatePeerTransactionResponse::serialize(
+        elle::serialization::Serializer& s)
+      {
+        s.serialize("aws_credentials", this->_aws_credentials);
+      }
+
       CreatePeerTransactionResponse
       Client::create_transaction(std::string const& recipient_id_or_email,
                                  std::list<std::string> const& files,
@@ -757,7 +770,7 @@ namespace infinit
         return CreatePeerTransactionResponse(input);
       }
 
-      void
+      UpdatePeerTransactionResponse
       Client::update_transaction(std::string const& transaction_id,
                                  Transaction::Status status,
                                  std::string const& device_id,
@@ -767,8 +780,9 @@ namespace infinit
                    *this,
                    transaction_id,
                    status);
+        auto url = "/transaction/update";
         auto request = this->_request(
-          "/transaction/update",
+          url,
           Method::POST,
           [&] (reactor::http::Request& r)
           {
@@ -789,6 +803,8 @@ namespace infinit
                               const_cast<std::string&>(device_name));
             }
           });
+        SerializerIn input(url, request);
+        return UpdatePeerTransactionResponse(input);
       }
 
       PeerTransaction

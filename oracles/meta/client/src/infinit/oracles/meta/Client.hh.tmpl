@@ -251,6 +251,17 @@ namespace infinit
         serialize(elle::serialization::Serializer& s);
       };
 
+      class UpdatePeerTransactionResponse
+      {
+      public:
+        UpdatePeerTransactionResponse() = default;
+        ELLE_ATTRIBUTE_R(boost::optional<aws::Credentials>, aws_credentials);
+
+        UpdatePeerTransactionResponse(elle::serialization::SerializerIn& s);
+        void
+        serialize(elle::serialization::Serializer& s);
+      };
+
       class CreateLinkTransactionResponse
       {
       public:
@@ -423,7 +434,7 @@ namespace infinit
                            std::string const& device_uuid,
                            std::string const& message = "") const;
 
-        void
+        UpdatePeerTransactionResponse
         update_transaction(std::string const& transaction_id,
                            Transaction::Status status,
                            std::string const& device_id = "",

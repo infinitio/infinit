@@ -124,6 +124,9 @@ namespace surface
       cleanup() override;
 
     private:
+      // If the accept response returns no credentials, we can deduce that the
+      // sender didn't push anything in the cloud.
+      ELLE_ATTRIBUTE_R(bool, nothing_in_the_cloud);
       std::map<boost::filesystem::path, boost::filesystem::path> _root_component_mapping;
       /* Transfer pipelining data
       */
