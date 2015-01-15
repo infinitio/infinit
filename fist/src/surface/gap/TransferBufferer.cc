@@ -1,5 +1,7 @@
 #include <surface/gap/TransferBufferer.hh>
 
+#include <version.hh>
+
 namespace surface
 {
   namespace gap
@@ -41,6 +43,22 @@ namespace surface
     {
       return files_info()[f].second;
     }
+
+    elle::Version
+    TransferBufferer::version() const
+    {
+      return elle::Version(INFINIT_VERSION_MAJOR,
+                           INFINIT_VERSION_MINOR,
+                           INFINIT_VERSION_SUBMINOR);
+    }
+
+    TransferBufferer::TransferInfo
+    TransferBufferer::transfer_info()
+    {
+      return TransferInfo{
+        this->count(), this->full_size(), this->files_info()};
+    }
+
 
     std::string
     TransferBufferer::path(FileID f)

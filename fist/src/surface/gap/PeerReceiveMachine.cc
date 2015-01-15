@@ -430,6 +430,47 @@ namespace surface
       return 0.0f;
     }
 
+    template<typename Source>
+    elle::Version const&
+    PeerReceiveMachine::peer_version(Source& source)
+    {
+      if (!this->_peer_version)
+        this->_peer_version = source.version();
+      return this->_peer_version.get();
+    }
+
+    template<typename Source>
+    frete::Frete::TransferInfo const&
+    PeerReceiveMachine::transfer_info(Source& source)
+    {
+      if (!this->_transfer_info)
+      {
+        if (this->peer_version(source) < elle::Version(0, 9, 25))
+        {
+          auto count = source.count();
+          FilesInfo files_info;
+          if (this->peer_version(source) >= elle::Version(0, 8, 9))
+            files_info = source.files_info();
+          else
+          {
+            for (unsigned i = 0; i < count; ++i)
+            {
+              auto path = source.path(i);
+              auto size = source.file_size(i);
+              files_info.push_back(std::make_pair(path, size));
+            }
+          }
+          this->_transfer_info = frete::Frete::TransferInfo{
+            count, source.full_size(), files_info};
+        }
+        else
+        {
+          this->_transfer_info = source.transfer_info();
+        }
+      }
+      return this->_transfer_info.get();
+    }
+
     void
     PeerReceiveMachine::get(frete::RPCFrete& frete,
                             std::string const& name_policy)
@@ -478,10 +519,8 @@ namespace surface
         if (this->_snapshot)
           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
         else // normal termination: snapshot was removed
-        {
-          this->_full_size = frete.full_size();
-          total_bytes_transfered = this->_full_size.get();
-        }
+          total_bytes_transfered = this->transfer_info(frete).full_size();
+
         exit_reason = metrics::TransferExitReasonFinished;
         return this->get<frete::RPCFrete>(
           frete,
@@ -549,12 +588,10 @@ namespace surface
       // Clear hypotetical blocks we fetched but did not process.
       this->_buffers.clear();
       boost::filesystem::path output_path(this->state().output_dir());
-      auto count = source.count();
+      auto count = this->transfer_info(source).count();
 
       // total_size can be 0 if all files are empty.
-      if (!this->_full_size)
-        this->_full_size = source.full_size();
-      auto total_size = this->_full_size.get();
+      auto total_size = this->transfer_info(source).full_size();
       if (this->_snapshot != nullptr)
       {
         if ((this->_snapshot->total_size() != total_size) ||
@@ -581,20 +618,8 @@ namespace surface
       if (last_index > 0)
         --last_index;
 
-      FilesInfo files_info;
-      if (peer_version >= elle::Version(0, 8, 9))
-        files_info = source.files_info();
-      else
-      {
-        for (unsigned i = 0; i < count; ++i)
-        {
-          auto path = source.path(i);
-          auto size = source.file_size(i);
-          files_info.push_back(std::make_pair(path, size));
-        }
-      }
-
-      ELLE_ASSERT(files_info.size() >= this->_snapshot->count());
+      FilesInfo files_info = source.files_info();
+      ELLE_ASSERT_GTE(files_info.size(), this->_snapshot->count());
       // reconstruct directory name mapping data so that files in transfer
       // but not yet in snapshot will reuse it
       for (unsigned i = 0; i < this->_snapshot->file_count(); ++i)

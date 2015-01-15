@@ -8,9 +8,13 @@
 
 # include <boost/filesystem.hpp>
 
+# include <elle/serialization/fwd.hh>
+# include <elle/serialize/construct.hh>
+
 # include <elle/Buffer.hh>
 # include <elle/Version.hh>
 # include <elle/container/map.hh>
+# include <elle/container/vector.hh>
 # include <elle/serialize/BinaryArchive.hh>
 # include <elle/system/system.hh>
 
@@ -79,6 +83,24 @@ namespace frete
     _add(boost::filesystem::path const& root,
          boost::filesystem::path const& path);
 
+  public:
+    struct TransferInfo
+      : elle::Printable
+    {
+      TransferInfo() = default;
+      TransferInfo(FileCount count, FileSize full_size, FilesInfo files_info);
+      TransferInfo(TransferInfo const&) = default;
+
+      ELLE_ATTRIBUTE_R(FileCount, count);
+      ELLE_ATTRIBUTE_R(FileSize, full_size);
+      ELLE_ATTRIBUTE_R(FilesInfo, files_info);
+
+      ELLE_SERIALIZE_CONSTRUCT_DECLARE(TransferInfo);
+      ELLE_SERIALIZE_FRIEND_FOR(TransferInfo);
+
+      void
+      print(std::ostream& stream) const override;
+    };
   /*----.
   | Api |
   `----*/
@@ -95,6 +117,9 @@ namespace frete
     /// The path and size of all files.
     FilesInfo
     files_info();
+    /// Get all the info of the transfer.
+    TransferInfo
+    transfer_info();
     /// The path of a file.
     std::string
     path(FileID f);
@@ -151,9 +176,8 @@ namespace frete
   | Printable |
   `----------*/
   public:
-    virtual
     void
-    print(std::ostream& stream) const;
+    print(std::ostream& stream) const override;
 
   private:
     // Keep a cache of opened file for each id. Entries get removed after
@@ -166,5 +190,7 @@ namespace frete
     Cache _cache;
   };
 }
+
+# include <frete/Frete.hxx>
 
 #endif
