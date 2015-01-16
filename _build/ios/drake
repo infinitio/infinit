@@ -17,7 +17,7 @@ import drake.cxx.boost
 # /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS8.1.sdk
 os.environ['DEVELOPER_DIR'] = '/Applications/Xcode.app/Contents/Developer'
 os.environ['CROSS_TOP'] = '%s/Platforms/iPhoneOS.platform/Developer' % os.environ['DEVELOPER_DIR']
-os.environ['CROSS_SDK'] = 'iPhoneOS8.1.sdk'
+os.environ['CROSS_SDK'] = 'iPhoneOS.sdk'
 os.environ['SDKROOT'] = '%s/SDKs/%s' % (os.environ['CROSS_TOP'], os.environ['CROSS_SDK'])
 os.environ['TOOLCHAINS'] = ''
 os.environ['IOS_DEPLOYMENT_TARGET'] = '7.0'
