@@ -11,8 +11,11 @@ with Meta(force_admin = True) as meta:
                    'user2': u2.id})
   assert res['success']
 
-  u1.login()
-  u2.login()
+  res1 = u1.login()
+  res2 = u2.login()
+
+  assert len(res1['swaggers']) == 1
+  assert len(res2['swaggers']) == 1
 
   assert len(u1.swaggers) == 1
   assert len(u2.swaggers) == 1

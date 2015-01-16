@@ -108,13 +108,13 @@ with mongobox.MongoBox() as mongo:
                'drip_pending-reminder_reminded-2')
     forward(reminder.delay_third_reminder -
             reminder.delay_second_reminder)
-    with MongoExpectation(index_miss = 1):
-      # reminded-{1,2,3} -> online will scan the reminded-1 bucket,
-      # which is empty; no big deal.
-      sisy.boulders_run()
-    check_mail(emailer.emails, email,
-               'drip_pending-reminder_reminded-3')
-    forward(reminder.delay_third_reminder)
+    # with MongoExpectation(index_miss = 1):
+    #   # reminded-{1,2,3} -> online will scan the reminded-1 bucket,
+    #   # which is empty; no big deal.
+    #   sisy.boulders_run()
+    # check_mail(emailer.emails, email,
+    #            'drip_pending-reminder_reminded-3')
+    # forward(reminder.delay_third_reminder)
     with MongoExpectation(index_miss = 1):
       # Ditto.
       sisy.boulders_run()

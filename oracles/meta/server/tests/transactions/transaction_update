@@ -77,7 +77,6 @@ s[FA][C] = E; s[FA][I] = E; s[FA][A] = E; s[FA][F] = E; s[FA][R] = E; s[FA][CA] 
 
 # Recipient
 #  C  I  A  F  R  CA FA
-# ) # C
 # [E, E, O, E, O, O, O]) # I
 # [E, E, S, O, E, O, O]) # A
 # [E, E, E, S, E, S, S]) # F

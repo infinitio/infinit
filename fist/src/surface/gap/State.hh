@@ -116,14 +116,11 @@ namespace surface
 
     private:
       bool
-      _meta_server_check(reactor::Duration);
-
-      bool
-      _meta_server_check();
-
-      bool
       _trophonius_server_check();
 
+      ELLE_ATTRIBUTE_R(
+        std::unique_ptr<infinit::oracles::meta::SynchronizeResponse>,
+        synchronize_response);
     /*--------.
     | Metrics |
     `--------*/
@@ -134,7 +131,6 @@ namespace surface
 
       ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>,
                      metrics_heartbeat_thread);
-
 
       /*-------------.
       | Construction |
@@ -459,9 +455,6 @@ namespace surface
       ELLE_ATTRIBUTE_P(reactor::Barrier, avatar_fetching_barrier, mutable);
 
     public:
-      void
-      clear_users();
-
       User const&
       user_sync(User const& user) const;
 
@@ -485,10 +478,7 @@ namespace surface
       user_from_public_key(std::string const& public_key) const;
 
       void
-      _users_init();
-
-      void
-      _user_resync();
+      _user_resync(std::vector<User> const& users);
 
       void
       _queue_user_icon(std::string const& user_id) const;
@@ -521,9 +511,6 @@ namespace surface
 
       User
       swagger(uint32_t id);
-
-      void
-      swaggers_dirty();
 
       void
       _on_new_swagger(
@@ -655,10 +642,10 @@ namespace surface
       _transactions_init();
 
       void
-      _peer_transaction_resync();
+      _peer_transaction_resync(std::unordered_map<std::string, infinit::oracles::PeerTransaction> const& transactions);
 
       void
-      _link_transaction_resync();
+      _link_transaction_resync(std::vector<infinit::oracles::LinkTransaction> const& links);
 
       void
       _transactions_clear();
@@ -714,6 +701,11 @@ namespace surface
       virtual
       void
       print(std::ostream& stream) const;
+
+      /*----------.
+      | Debugging |
+      `----------*/
+      ELLE_ATTRIBUTE_RX(reactor::Signal, synchronized);
     };
 
     std::ostream&

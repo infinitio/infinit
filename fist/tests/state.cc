@@ -171,6 +171,7 @@ public:
       {
         return "{\"status\" : true, \"success\": true}";
       });
+
     this->register_route(
       "/login",
       reactor::http::Method::POST,
@@ -180,6 +181,22 @@ public:
                 std::placeholders::_2,
                 std::placeholders::_3,
                 std::placeholders::_4));
+
+    this->register_route(
+      "/user/synchronize",
+      reactor::http::Method::GET,
+      [] (Server::Headers const&,
+          Server::Cookies const&,
+          Server::Parameters const&,
+          elle::Buffer const&)
+      {
+        return "{"
+          "  \"swaggers\": [],"
+          "  \"running_transactions\": [],"
+          "  \"final_transactions\": [],"
+          "  \"links\": []"
+          "}";
+      });
 
     this->register_route(
       "/trophonius",
@@ -283,9 +300,9 @@ public:
 
   std::string
   _post_login(Headers const&,
-        Cookies const&,
-        Parameters const&,
-        elle::Buffer const&)
+              Cookies const&,
+              Parameters const&,
+              elle::Buffer const&)
   {
     if (_login_result == 0)
     {
@@ -293,13 +310,26 @@ public:
        this->_identity.Save(identity_serialized);
        return elle::sprintf(
          "{"
-         "  \"_id\" : \"0000\","
-         "  \"fullname\" : \"Jean-Kader\","
-         "  \"handle\" : \"BOBBY\","
-         "  \"email\" : \"em@il.com\","
-         "  \"identity\" : \"%s\","
-         "  \"device_id\" : \"%s\","
-         " \"features\": [],"
+         "  \"self\": {"
+         "    \"id\": \"000\","
+         "    \"public_key\": \"\","
+         "    \"fullname\": \"\","
+         "    \"handle\": \"\","
+         "    \"connected_devices\": [],"
+         "    \"register_status\": \"\","
+         "    \"email\": \"\","
+         "    \"identity\": \"%s\","
+         "    \"devices\": [],"
+         "    \"favorites\": [],"
+         "    \"success\": true"
+         "  },"
+         "  \"device\": {"
+         "    \"id\" : \"%s\","
+         "    \"name\": \"device\","
+         "    \"passport\": \"%s\","
+         "    \"success\": true"
+         "  },"
+         "  \"features\": [],"
          "  \"trophonius\" : {"
          "    \"host\": \"127.0.0.1\","
          "    \"port\": 0,"
@@ -308,6 +338,8 @@ public:
          "}",
          identity_serialized,
          this->_device_id,
+         generate_passport(this->_device_id, "DEVICE",
+                           this->_identity.pair().K()),
          this->_trophonius.port());
      }
      throw Exception("/login", reactor::http::StatusCode::Forbidden,

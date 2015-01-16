@@ -322,6 +322,37 @@ namespace frete
     return res;
   }
 
+  Frete::TransferInfo::TransferInfo(FileCount count,
+                                    FileSize full_size,
+                                    FilesInfo files_info)
+    : _count(count)
+    , _full_size(full_size)
+    , _files_info(files_info)
+  {}
+
+  void
+  Frete::TransferInfo::print(std::ostream& stream) const
+  {
+    stream << "TransferInfo("
+           << "count: " << this->_count << ", "
+           << "full size: " << this->_full_size << ", "
+           << "files infos: ";
+    if (this->_files_info.size() < 3)
+      stream << this->_files_info;
+    else
+      stream << this->_files_info.size() << " files";
+    stream << ")";
+  }
+
+  Frete::TransferInfo
+  Frete::transfer_info()
+  {
+    return Frete::TransferInfo{
+      this->count(),
+      this->full_size(),
+      this->files_info()};
+  }
+
   infinit::cryptography::Code
   Frete::read(FileID f, FileOffset start, FileSize size)
   {

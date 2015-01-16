@@ -26,4 +26,6 @@
 	path = surface/objcpp-gap
 	url = git@git.infinit.io:objc++-gap
 	branch = develop
-
+[submodule "oracles/sendwithus_python"]
+	path = oracles/sendwithus_python
+	url = https://github.com/mefyl/sendwithus_python.git

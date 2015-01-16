@@ -381,7 +381,16 @@ class User(Client):
     params.update({'pick_trophonius': False})
     res = self.post('login', params)
     assert res['success']
-    assert res['device_id'] == str(self.device_id)
+    assert 'self' in res
+    assert 'device' in res
+    self.compare_self_response(res['self'])
+    assert res['device']['id'] == str(self.device_id)
+    self.compare_device_response(res['device'])
+    sync = self.get('user/synchronize?init=1')
+    assert sync['success']
+    res.update(sync)
+    assert 'swaggers' in res
+    assert res['swaggers'] == self.full_swaggers
     return res
 
   def logout(self):
@@ -398,8 +407,36 @@ class User(Client):
     return self.device['name']
 
   @property
+  def me(self):
+    return self.get('user/self')
+
+  def compare_self_response(self, res):
+    me = self.me
+    assert res['public_key'] == me['public_key']
+    assert res['identity'] == me['identity']
+    assert res['handle'] == me['handle']
+    assert res['email'] == me['email']
+    assert res['_id'] == me['_id']
+    assert res['id'] == me['id']
+    assert res['fullname'] == me['fullname']
+    assert res['favorites'] == me['favorites']
+    assert res['token_generation_key'] == me['token_generation_key']
+
+  def compare_device_response(self, res):
+    device = self.device
+    assert res['name'] == device['name']
+    assert res['id'] == device['id']
+    assert res['_id'] == device['_id']
+    assert res['owner'] == device['owner']
+    assert res['passport'] == device['passport']
+
+  @property
   def swaggers(self):
     return self.get('user/swaggers')['swaggers']
+
+  @property
+  def full_swaggers(self):
+    return self.get('user/full_swaggers')['swaggers']
 
   @property
   def favorites(self):
@@ -485,6 +522,7 @@ class User(Client):
     if initialize:
       self.transaction_update(res['created_transaction_id'],
                               transaction_status.INITIALIZED)
+    transaction.update({'_id': res['created_transaction_id']})
     return transaction, res
 
   def transaction_update(self, transaction, status):

@@ -440,6 +440,10 @@ namespace surface
         ELLE_ASSERT_EQ(this->_data->id, id);
         return;
       }
+      elle::SafeFinally signal{[&]
+        {
+          this->_transaction_id_set(this->_data->id);
+        }};
       this->_data->id = id;
     }
 

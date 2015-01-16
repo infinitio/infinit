@@ -24,7 +24,8 @@ namespace frete
     _rpc_encrypted_read("encrypted_read", this->_rpc),
     _rpc_finish("finish", this->_rpc),
     _rpc_files_info("files_info", this->_rpc),
-    _rpc_encrypted_read_acknowledge("encrypted_read_acknowledge", this->_rpc)
+    _rpc_encrypted_read_acknowledge("encrypted_read_acknowledge", this->_rpc),
+    _rpc_transfer_info("transfer_info", this->_rpc)
   {
     this->_rpc_count = std::bind(&Frete::count,
                                  &frete);
@@ -74,7 +75,7 @@ namespace frete
                                                      std::placeholders::_3,
                                                      std::placeholders::_4
                                                      );
-
+    this->_rpc_transfer_info = std::bind(&Frete::transfer_info, &frete);
   }
 
   RPCFrete::RPCFrete(infinit::protocol::ChanneledStream& channels):
@@ -90,7 +91,8 @@ namespace frete
     _rpc_encrypted_read("encrypted_read", this->_rpc),
     _rpc_finish("finish", this->_rpc),
     _rpc_files_info("files_info", this->_rpc),
-     _rpc_encrypted_read_acknowledge("encrypted_read_acknowledge", this->_rpc)
+    _rpc_encrypted_read_acknowledge("encrypted_read_acknowledge", this->_rpc),
+    _rpc_transfer_info("transfer_info", this->_rpc)
   {
     this->_rpc_version = []
       {

@@ -38,8 +38,8 @@ with Meta(enable_emails = True,
   from time import sleep
   sleep(1)
   res = u.login()
-  assert res['unconfirmed_email_leeway'] < unconfirmed_email_leeway
-  assert res['unconfirmed_email_leeway'] > 0
+  assert res['self']['unconfirmed_email_leeway'] < unconfirmed_email_leeway
+  assert res['self']['unconfirmed_email_leeway'] > 0
 
 # Normal process.
 with Meta(enable_emails = True, unconfirmed_email_leeway = 0) as meta:

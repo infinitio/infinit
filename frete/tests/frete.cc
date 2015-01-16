@@ -208,6 +208,10 @@ ELLE_TEST_SCHEDULED(connection)
       auto key = infinit::cryptography::SecretKey(
         recipient_key_pair.k().decrypt<infinit::cryptography::SecretKey>(rpcs.key_code()));
       ELLE_DEBUG("Read the number of transaction");
+      auto infos = rpcs.transfer_info();
+      BOOST_CHECK_EQUAL(rpcs.count(), infos.count());
+      BOOST_CHECK_EQUAL(rpcs.files_info(), infos.files_info());
+      BOOST_CHECK_EQUAL(rpcs.full_size(), infos.full_size());
       BOOST_CHECK_EQUAL(rpcs.count(), 6);
       {
         ELLE_DEBUG("Check the name of the first file");

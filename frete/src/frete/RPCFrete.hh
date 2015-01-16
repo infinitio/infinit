@@ -60,6 +60,7 @@ namespace frete
                                  Frete::FileOffset,
                                  Frete::FileSize,
                                  Frete::FileSize> EncryptedReadAcknowledgeRPC;
+    typedef RPC::RemoteProcedure<Frete::TransferInfo> TransferInfoRPC;
   /*-------------.
   | Construction |
   `-------------*/
@@ -95,6 +96,7 @@ namespace frete
     RPC_WRAPPER(FinishRPC, finish);
     RPC_WRAPPER(FilesInfoRPC, files_info);
     RPC_WRAPPER(EncryptedReadAcknowledgeRPC, encrypted_read_acknowledge);
+    RPC_WRAPPER(TransferInfoRPC, transfer_info);
   };
 }
 

@@ -60,7 +60,9 @@ class Mixin:
   def feature_remove(self, name):
     self.database.users.update(
       {},
-      {'$unset': {'features.%s' % name: True}})
+      {'$unset': {'features.%s' % name: True}},
+      multi = True,
+    )
     self.database.abtest.remove({'key': name})
 
   def _roll_features(self, from_register, features = {}, abtests = None):
@@ -100,3 +102,10 @@ class Mixin:
         'feature': name,
       })
     return feature
+
+  @api('/features')
+  @require_admin
+  def features_get(self, name):
+    return {
+      'features': list(self.database.abtest.find()),
+    }

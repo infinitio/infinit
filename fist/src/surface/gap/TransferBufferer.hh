@@ -32,6 +32,7 @@ namespace surface
 
       typedef TransferBufferer Self;
       typedef frete::Frete::FileID FileID;
+      typedef frete::Frete::TransferInfo TransferInfo;
       typedef frete::Frete::FileCount FileCount;
       typedef frete::Frete::FileOffset FileOffset;
       typedef frete::Frete::FileSize FileSize;
@@ -82,12 +83,18 @@ namespace surface
       virtual
       infinit::cryptography::Code const&
       key_code() const = 0;
+      /// Get all the info about the transfer.
+      TransferInfo
+      transfer_info();
       /// Update the progress. no-op.
       void
       set_progress(FileSize progress);
       /// Signal we're done
       void
       finish();
+      /// Version.
+      elle::Version
+      version() const;
 
     /*----------.
     | Buffering |

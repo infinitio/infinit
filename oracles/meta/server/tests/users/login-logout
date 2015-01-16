@@ -13,7 +13,7 @@ with Meta() as meta:
                     'pick_trophonius': False,
                   })
   assert res['success']
-  assert res['email'] == 'foo@bar.baz'
+  assert res['self']['email'] == 'foo@bar.baz'
   res = meta.get('user/self')
   assert res['success']
   assert res['email'] == 'foo@bar.baz'

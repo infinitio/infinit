@@ -88,6 +88,7 @@ namespace surface
       , _frete_snapshot_path(this->transaction().snapshots_directory()
                              / "frete.snapshot")
       , _snapshot(nullptr)
+      , _nothing_in_the_cloud(false)
     {
       // Normal way.
       this->_machine.transition_add(this->_accept_state,
@@ -237,10 +238,13 @@ namespace surface
       ReceiveMachine::_accept();
       try
       {
-        this->state().meta().update_transaction(this->transaction_id(),
-                                                TransactionStatus::accepted,
-                                                this->state().device().id,
-                                                this->state().device().name);
+        auto res = this->state().meta().update_transaction(
+          this->transaction_id(),
+          TransactionStatus::accepted,
+          this->state().device().id,
+          this->state().device().name);
+        if (!res.aws_credentials())
+          this->_nothing_in_the_cloud = true;
       }
       catch (infinit::oracles::meta::Exception const& e)
       {
@@ -298,6 +302,11 @@ namespace surface
       {
         ELLE_DEBUG("%s: cloud buffering disabled by configuration", *this);
         this->gap_status(gap_transaction_waiting_data);
+        return;
+      }
+      if (this->_nothing_in_the_cloud)
+      {
+        this->_nothing_in_the_cloud = false;
         return;
       }
       this->gap_status(gap_transaction_transferring);
@@ -423,6 +432,47 @@ namespace surface
       return 0.0f;
     }
 
+    template<typename Source>
+    elle::Version const&
+    PeerReceiveMachine::peer_version(Source& source)
+    {
+      if (!this->_peer_version)
+        this->_peer_version = source.version();
+      return this->_peer_version.get();
+    }
+
+    template<typename Source>
+    frete::Frete::TransferInfo const&
+    PeerReceiveMachine::transfer_info(Source& source)
+    {
+      if (!this->_transfer_info)
+      {
+        if (this->peer_version(source) < elle::Version(0, 9, 25))
+        {
+          auto count = source.count();
+          FilesInfo files_info;
+          if (this->peer_version(source) >= elle::Version(0, 8, 9))
+            files_info = source.files_info();
+          else
+          {
+            for (unsigned i = 0; i < count; ++i)
+            {
+              auto path = source.path(i);
+              auto size = source.file_size(i);
+              files_info.push_back(std::make_pair(path, size));
+            }
+          }
+          this->_transfer_info = frete::Frete::TransferInfo{
+            count, source.full_size(), files_info};
+        }
+        else
+        {
+          this->_transfer_info = source.transfer_info();
+        }
+      }
+      return this->_transfer_info.get();
+    }
+
     void
     PeerReceiveMachine::get(frete::RPCFrete& frete,
                             std::string const& name_policy)
@@ -430,7 +480,7 @@ namespace surface
       auto start_time = boost::posix_time::microsec_clock::universal_time();
       metrics::TransferExitReason exit_reason = metrics::TransferExitReasonUnknown;
       std::string exit_message;
-      uint64_t total_bytes_transfered = 0;
+      FileSize total_bytes_transfered = 0;
       FileSize initial_progress = 0;
       if (this->_snapshot != nullptr)
         initial_progress = this->_snapshot->progress();
@@ -471,11 +521,14 @@ namespace surface
         if (this->_snapshot)
           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
         else // normal termination: snapshot was removed
-          total_bytes_transfered = frete.full_size();
+          total_bytes_transfered = this->transfer_info(frete).full_size();
+
         exit_reason = metrics::TransferExitReasonFinished;
         return this->get<frete::RPCFrete>(
-          frete, strong_encryption?EncryptionLevel_Strong:EncryptionLevel_Weak,
-          name_policy, peer_version);
+          frete,
+          strong_encryption ? EncryptionLevel_Strong : EncryptionLevel_Weak,
+          name_policy,
+          peer_version);
       }
       catch (boost::filesystem::filesystem_error const& e)
       {
@@ -537,11 +590,10 @@ namespace surface
       // Clear hypotetical blocks we fetched but did not process.
       this->_buffers.clear();
       boost::filesystem::path output_path(this->state().output_dir());
-      auto count = source.count();
+      auto count = this->transfer_info(source).count();
 
       // total_size can be 0 if all files are empty.
-      auto total_size = source.full_size();
-
+      auto total_size = this->transfer_info(source).full_size();
       if (this->_snapshot != nullptr)
       {
         if ((this->_snapshot->total_size() != total_size) ||
@@ -568,27 +620,15 @@ namespace surface
       if (last_index > 0)
         --last_index;
 
-      FilesInfo infos;
-      if (peer_version >= elle::Version(0, 8, 9))
-        infos = source.files_info();
-      else
-      {
-        for (unsigned i = 0; i < count; ++i)
-        {
-          auto path = source.path(i);
-          auto size = source.file_size(i);
-          infos.push_back(std::make_pair(path, size));
-        }
-      }
-
-      ELLE_ASSERT(infos.size() >= this->_snapshot->count());
+      FilesInfo files_info = source.files_info();
+      ELLE_ASSERT_GTE(files_info.size(), this->_snapshot->count());
       // reconstruct directory name mapping data so that files in transfer
       // but not yet in snapshot will reuse it
       for (unsigned i = 0; i < this->_snapshot->file_count(); ++i)
       {
         // get asked/got relative path from output_path
         boost::filesystem::path got = this->_snapshot->file(i).path();
-        boost::filesystem::path asked = infos.at(i).first;
+        boost::filesystem::path asked = files_info.at(i).first;
         boost::filesystem::path got0 = *got.begin();
         boost::filesystem::path asked0 = *asked.begin();
         // add to the mapping even if its the same
@@ -618,8 +658,7 @@ namespace surface
       _fetch_current_file_index = last_index;
       // Snapshot only has info on files for which transfer started,
       // and we transfer in order, so we know all files in snapshot except
-      bool things_to_do = _fetch_next_file(name_policy,
-                                           source.files_info());
+      bool things_to_do = _fetch_next_file(name_policy, files_info);
       if (!things_to_do)
         ELLE_TRACE("Nothing to do");
       if (things_to_do)
@@ -639,7 +678,6 @@ namespace surface
           // 'buffers' for 1/20th of a second
           static int num_reader = rpc_pipeline_size();
           bool explicit_ack = peer_version >= elle::Version(0, 8, 9);
-          auto files_info = source.files_info();
           // Prevent unlimited ram buffering if a block fetcher gets stuck
           this->_buffers.max_size(num_reader * 3);
           for (int i = 0; i < num_reader; ++i)
