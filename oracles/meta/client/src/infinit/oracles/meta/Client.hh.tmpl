@@ -59,33 +59,6 @@ namespace infinit
         bool operator !=(Error const& error) const;
       };
 
-      struct LoginResponse
-      {
-        std::string fullname;
-        std::string handle;
-        std::string email;
-        std::string identity;
-        std::string id;
-        // boost::uuids::uuid device_id;
-        std::string device_id;
-        struct Trophonius
-        {
-          std::string host;
-          int port;
-          int port_ssl;
-          Trophonius() = default;
-          Trophonius(elle::serialization::SerializerIn& s);
-          void
-          serialize(elle::serialization::Serializer& s);
-        };
-        Trophonius trophonius;
-        std::unordered_map<std::string, std::string> features;
-        LoginResponse() = default;
-        LoginResponse(elle::serialization::SerializerIn& s);
-        void
-        serialize(elle::serialization::Serializer& s);
-      };
-
       struct User:
          public elle::Printable
       {
@@ -197,12 +170,46 @@ namespace infinit
         std::string id; // boost::uuids::uuid
         std::string name;
         std::string passport;
-      protected:
         void
         serialize(elle::serialization::Serializer& s);
         virtual
         void
         print(std::ostream& stream) const override;
+      };
+
+      struct LoginResponse
+      {
+        Device device;
+        Self self;
+        struct Trophonius
+        {
+          std::string host;
+          int port;
+          int port_ssl;
+          Trophonius() = default;
+          Trophonius(elle::serialization::SerializerIn& s);
+          void
+          serialize(elle::serialization::Serializer& s);
+        };
+        Trophonius trophonius;
+        std::unordered_map<std::string, std::string> features;
+        LoginResponse() = default;
+        LoginResponse(elle::serialization::SerializerIn& s);
+        void
+        serialize(elle::serialization::Serializer& s);
+      };
+
+      struct SynchronizeResponse
+      {
+        // Self self;
+        std::vector<User> swaggers;
+        std::unordered_map<std::string, PeerTransaction> transactions;
+        std::vector<LinkTransaction> links;
+
+        SynchronizeResponse() = default;
+        SynchronizeResponse(elle::serialization::SerializerIn& s);
+        void
+        serialize(elle::serialization::Serializer& s);
       };
 
       struct ServerStatus
@@ -235,10 +242,22 @@ namespace infinit
       {
       public:
         CreatePeerTransactionResponse() = default;
+        ELLE_ATTRIBUTE_R(User, recipient);
         ELLE_ATTRIBUTE_R(std::string, created_transaction_id);
         ELLE_ATTRIBUTE_R(bool, recipient_is_ghost);
 
         CreatePeerTransactionResponse(elle::serialization::SerializerIn& s);
+        void
+        serialize(elle::serialization::Serializer& s);
+      };
+
+      class UpdatePeerTransactionResponse
+      {
+      public:
+        UpdatePeerTransactionResponse() = default;
+        ELLE_ATTRIBUTE_R(boost::optional<aws::Credentials>, aws_credentials);
+
+        UpdatePeerTransactionResponse(elle::serialization::SerializerIn& s);
         void
         serialize(elle::serialization::Serializer& s);
       };
@@ -335,6 +354,9 @@ namespace infinit
         LoginResponse::Trophonius
         trophonius();
 
+        SynchronizeResponse
+        synchronize(bool init = false) const;
+
         ELLE_ATTRIBUTE_RW(bool, logged_in);
 
         std::string
@@ -412,7 +434,7 @@ namespace infinit
                            std::string const& device_uuid,
                            std::string const& message = "") const;
 
-        void
+        UpdatePeerTransactionResponse
         update_transaction(std::string const& transaction_id,
                            Transaction::Status status,
                            std::string const& device_id = "",

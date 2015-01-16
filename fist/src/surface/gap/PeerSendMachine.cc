@@ -353,11 +353,7 @@ namespace surface
       try
       {
         for (auto const& file: this->files())
-        {
-          // Might be a directory, use a function that recurses into them.
-          auto _size = elle::os::file::size(file);
-          size += _size;
-        }
+          size += elle::os::file::size(file);
       }
       catch (boost::filesystem::filesystem_error const& e)
       {
@@ -401,16 +397,14 @@ namespace surface
             this->state().device().id,
             this->_message
             );
+        auto const& peer = this->state().user_sync(
+          transaction_response.recipient());
+        this->data()->is_ghost = peer.ghost();
+        this->data()->recipient_id = peer.id;
+        // This will automatically save the snapshot.
         this->transaction_id(transaction_response.created_transaction_id());
-        this->data()->is_ghost = transaction_response.recipient_is_ghost();
       }
       ELLE_TRACE("%s: created transaction %s", *this, this->transaction_id());
-      // XXX: Ensure recipient is an id.
-      this->data()->recipient_id =
-        this->state().user(this->data()->recipient_id, true).id;
-      // We need to sync the user here as we could have an old public key.
-      // This was the cause of the "unable to apply crypto function" bug.
-      auto const& peer = this->state().user_sync(this->data()->recipient_id);
       // Populate the frete.
       if (!this->data()->is_ghost)
         this->frete().save_snapshot();
@@ -424,7 +418,7 @@ namespace surface
           this->data()->files.size(),
           size,
           this->_message.length(),
-          peer.ghost(),
+          this->data()->is_ghost,
           onboarding);
       }
       this->state().meta().update_transaction(this->transaction_id(),

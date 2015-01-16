@@ -2,6 +2,8 @@
 #include <stdexcept>
 
 #include <elle/container/vector.hh>
+#include <elle/container/map.hh>
+#include <elle/container/set.hh>
 
 #include <reactor/scheduler.hh>
 
@@ -73,14 +75,6 @@ namespace surface
     {
       static uint32_t id = null_id;
       return ++id;
-    }
-
-    void
-    State::clear_users()
-    {
-      this->_users.clear();
-      this->_user_indexes.clear();
-      this->_swagger_indexes.clear();
     }
 
     State::User const&
@@ -271,33 +265,27 @@ namespace surface
     }
 
     void
-    State::_users_init()
+    State::_user_resync(std::vector<User> const& users)
     {
-      ELLE_TRACE("%s: load users from swagger list", *this);
-      {
-        auto swaggers = this->meta().get_swaggers();
-        for (auto const& swagger: swaggers)
-        {
-          this->user_sync(swagger);
-          this->_queue_user_icon(swagger.id);
-        }
-      }
-    }
-
-    void
-    State::_user_resync()
-    {
+      using namespace infinit::oracles;
       ELLE_TRACE_SCOPE("%s: resync user", *this);
-
       this->_swagger_indexes.clear();
-      auto swaggers = this->meta().get_swaggers();
-
-      for (auto const& swagger: swaggers)
+      for (auto const& swagger: users)
       {
+        bool init = false;
+        if (this->_user_indexes.find(swagger.id) == this->_user_indexes.end())
+        {
+          auto user = this->user_sync(swagger);
+          init = true;
+        }
+
         // Compare the cached user with the remote one, and calculate the
         // diff.
         auto old_user = this->user(swagger.id);
         auto user = this->user_sync(swagger);
+        ELLE_DEBUG("old: %s (on devices %s)",
+                   old_user, old_user.connected_devices);
+        ELLE_DEBUG("new: %s (on devices %s)", user, user.connected_devices);
         // Remove duplicates.
         old_user.connected_devices.erase(
           std::unique(old_user.connected_devices.begin(),
@@ -307,44 +295,41 @@ namespace surface
           std::unique(user.connected_devices.begin(),
                       user.connected_devices.end()),
           user.connected_devices.end());
-        auto res = compare<std::string>(old_user.connected_devices,
-                                        user.connected_devices);
+        auto res = compare<std::string>(
+          old_user.connected_devices, user.connected_devices);
 
-        ELLE_DEBUG("%s: %s newly connected device(s): %s", this, res.first.size(), res.first)
-          for (auto const& device: res.first)
+        ELLE_DEBUG("%s: %s newly connected device(s): %s",
+                   this, res.first.size(), res.first)
+          for (auto const& device: init ? swagger.connected_devices : res.first)
           {
             ELLE_DEBUG("%s: updating device %s", *this, device);
-            auto* notif_ptr =
-              new infinit::oracles::trophonius::UserStatusNotification{};
+            auto* notif_ptr = new trophonius::UserStatusNotification{};
             notif_ptr->user_id = user.id;
             notif_ptr->user_status = user.online();
             notif_ptr->device_id = device;
             notif_ptr->device_status = true;
-
-            std::unique_ptr<infinit::oracles::trophonius::UserStatusNotification>
-              notif(notif_ptr);
-
+            std::unique_ptr<trophonius::UserStatusNotification> notif(
+              notif_ptr);
             this->handle_notification(std::move(notif));
           }
 
-        ELLE_DEBUG("%s: %s disconnected device(s): %s", this, res.second.size(), res.second)
+        ELLE_DEBUG("%s: %s disconnected device(s): %s",
+                   this, res.second.size(), res.second)
           for (auto const& device: res.second)
           {
             ELLE_DEBUG("%s: updating device %s", *this, device);
-            auto* notif_ptr = new infinit::oracles::trophonius::UserStatusNotification{};
+            auto* notif_ptr = new trophonius::UserStatusNotification{};
             notif_ptr->user_id = user.id;
             notif_ptr->user_status = user.online();
             notif_ptr->device_id = device;
             notif_ptr->device_status = false;
 
-            std::unique_ptr<infinit::oracles::trophonius::UserStatusNotification>
-              notif(notif_ptr);
+            std::unique_ptr<trophonius::UserStatusNotification> notif(
+              notif_ptr);
 
             this->handle_notification(std::move(notif));
           }
-
-        this->_swagger_indexes.insert(
-          this->_user_indexes.at(user.id));
+        this->_swagger_indexes.insert(this->_user_indexes.at(user.id));
       }
 
       for (std::string const& user_id: this->me().favorites)
@@ -533,7 +518,6 @@ namespace surface
         swagger = this->user_sync(notif.user_id);
         ELLE_ASSERT(!swagger.ghost());
       }
-      this->swaggers(); // force up-to-date swaggers
       {
         reactor::Lock lock(this->_swagger_mutex);
         this->_swagger_indexes.insert(this->_user_indexes.at(swagger.id));

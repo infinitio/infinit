@@ -193,28 +193,18 @@ namespace surface
     }
 
     void
-    State::_peer_transaction_resync()
+    State::_peer_transaction_resync(std::unordered_map<std::string, infinit::oracles::PeerTransaction> const& transactions)
     {
       if (!elle::os::getenv("INFINIT_DISABLE_META_SYNC", "").empty())
       {
         ELLE_ERR("Transaction resync disabled");
         return;
       }
-      ELLE_TRACE("%s: synchronize active transactions from meta", *this)
-        for (auto& transaction: this->meta().transactions())
-        {
-          this->_on_transaction_update(
-            std::make_shared<infinit::oracles::PeerTransaction>(transaction));
-        }
       ELLE_TRACE("%s: resynchronize transaction history from meta", *this)
       {
-        static std::vector<infinit::oracles::Transaction::Status> final{
-          infinit::oracles::Transaction::Status::rejected,
-            infinit::oracles::Transaction::Status::finished,
-            infinit::oracles::Transaction::Status::canceled,
-            infinit::oracles::Transaction::Status::failed};
-        for (auto& transaction: this->meta().transactions(final, false, 100))
+        for (auto const& transaction_pair: transactions)
         {
+          auto const& transaction = transaction_pair.second;
           auto it = std::find_if(
             std::begin(this->_transactions),
             std::end(this->_transactions),
@@ -234,6 +224,14 @@ namespace surface
             this->user(transaction.sender_id);
             this->user(transaction.recipient_id);
           }
+          bool sender = (this->me().id == transaction.sender_id);
+          auto const& final_statuses = sender
+            ? Transaction::sender_final_statuses
+            : Transaction::recipient_final_statuses;
+          bool history =
+            std::find(final_statuses.begin(),
+                      final_statuses.end(),
+                      transaction.status) != final_statuses.end();
           auto _id = generate_id();
           ELLE_TRACE("%s: create historical peer transactions from data: %s",
                      *this, transaction)
@@ -242,13 +240,13 @@ namespace surface
               elle::make_unique<Transaction>(
                 *this, _id,
                 std::make_shared<infinit::oracles::PeerTransaction>(transaction),
-                true /* history */));
+                history));
         }
       }
     }
 
     void
-    State::_link_transaction_resync()
+    State::_link_transaction_resync(std::vector<infinit::oracles::LinkTransaction> const& links)
     {
       if (!elle::os::getenv("INFINIT_DISABLE_LINK_SYNC", "").empty())
       {
@@ -256,7 +254,7 @@ namespace surface
         return;
       }
       ELLE_TRACE("%s: synchronize link transactions from meta", *this)
-        for (auto& transaction: this->meta().links())
+        for (auto& transaction: links)
         {
           auto it = std::find_if(
             std::begin(this->_transactions),
@@ -268,11 +266,8 @@ namespace surface
             });
           if (it != std::end(this->_transactions))
           {
-            if (!it->second->final())
-            {
-              it->second->on_transaction_update(
-                std::make_shared<infinit::oracles::LinkTransaction>(transaction));
-            }
+            it->second->on_transaction_update(
+              std::make_shared<infinit::oracles::LinkTransaction>(transaction));
             continue;
           }
           auto _id = generate_id();
@@ -280,9 +275,9 @@ namespace surface
                      *this, transaction)
           {
             bool history =
-            std::find(Transaction::sender_final_statuses.begin(),
-                      Transaction::sender_final_statuses.end(),
-                      transaction.status) != Transaction::sender_final_statuses.end();
+              std::find(Transaction::sender_final_statuses.begin(),
+                        Transaction::sender_final_statuses.end(),
+                        transaction.status) != Transaction::sender_final_statuses.end();
             this->_transactions.emplace(
               _id,
               elle::make_unique<Transaction>(

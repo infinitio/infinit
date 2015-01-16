@@ -7,13 +7,15 @@
 #include <elle/Buffer.hh>
 #include <elle/log.hh>
 #include <elle/os/path.hh>
+#include <elle/finally.hh>
+#include <elle/container/map.hh>
+#include <elle/container/vector.hh>
 #include <elle/serialization/json/SerializerIn.hh>
 #include <elle/system/home_directory.hh>
 
 #include <reactor/network/exception.hh>
 
 #include <papier/Authority.hh>
-#include <papier/Passport.hh>
 
 #include <version.hh>
 
@@ -54,34 +56,32 @@ generate_identity(cryptography::KeyPair const& keypair,
   return identity;
 }
 
-static
-std::string
-generate_passport(boost::uuids::uuid const& id,
-                  std::string const& name,
-                  cryptography::PublicKey const& key)
-{
-  papier::Passport passport(boost::lexical_cast<std::string>(id),
-                            name, key, authority);
-  std::string passport_string;
-  if (passport.Save(passport_string) == elle::Status::Error)
-    throw std::runtime_error("unabled to save the passport");
-  return passport_string;
-}
-
 Trophonius::Trophonius()
   : _server(elle::make_unique<reactor::network::SSLCertificate>(
               server_certificate,
               server_key,
               server_dh1024))
-  , _accepter(elle::sprintf("%s accepter", *this),
-              boost::bind(&Trophonius::_serve, this))
+  , _accepter(new reactor::Thread{elle::sprintf("%s accepter", *this),
+                                    boost::bind(&Trophonius::_serve, this)})
 {
   this->_server.listen();
 }
 
 Trophonius::~Trophonius()
 {
-  this->_accepter.terminate_now();
+  this->_accepter->terminate_now();
+}
+
+std::string
+Trophonius::json() const
+{
+  return elle::sprintf(
+    "{"
+    "  \"host\": \"127.0.0.1\","
+    "  \"port\": 0,"
+    "  \"port_ssl\": %s"
+    "}",
+    this->port());
 }
 
 int
@@ -109,6 +109,14 @@ Trophonius::_serve()
 }
 
 void
+Trophonius::disconnect_all_users()
+{
+  this->_accepter->terminate_now();
+  this->_accepter.reset(new reactor::Thread{
+      elle::sprintf("%s accepter", *this), boost::bind(&Trophonius::_serve, this)});
+}
+
+void
 Trophonius::_serve(std::unique_ptr<reactor::network::SSLSocket> socket)
 {
   socket->write("{\"poke\": \"ouch\"}\n");
@@ -122,14 +130,200 @@ Trophonius::_serve(std::unique_ptr<reactor::network::SSLSocket> socket)
   {}
 }
 
+Server::Device::Device(cryptography::PublicKey const& key)
+  : _id(boost::uuids::random_generator()())
+  , _passport(boost::lexical_cast<std::string>(this->_id), "osef", key, authority)
+{
+}
+
+std::string
+Server::Device::json() const
+{
+  std::string passport_string;
+  if (this->_passport.Save(passport_string) == elle::Status::Error)
+    throw std::runtime_error("unabled to save the passport");
+  return elle::sprintf(
+    "{"
+    "  \"id\" : \"%s\","
+    "  \"name\": \"device\","
+    "  \"passport\": \"%s\""
+    "}",
+    this->id(),
+    passport_string);
+}
+
+static
+std::string
+link_representation(infinit::oracles::LinkTransaction const& link)
+{
+  return elle::sprintf(
+    "{"
+    "  \"id\": \"%s\","
+    "  \"click_count\": 3,"
+    "  \"ctime\": 319234,"
+    "  \"message\": \"\","
+    "  \"mtime\": 319293,"
+    "  \"name\": \"foo\","
+    "  \"sender_device_id\": \"%s\","
+    "  \"sender_id\": \"%s\","
+    "  \"share_link\": \"http://stuff.com\","
+    "  \"status\": %s"
+    "}",
+    link.id,
+    link.sender_device_id,
+    link.sender_id,
+    (int) link.status);
+}
+
+Server::User::User(boost::uuids::uuid id,
+                   boost::optional<boost::uuids::uuid> device_id,
+                   std::string email,
+                   boost::optional<cryptography::KeyPair> keys,
+                   boost::optional<papier::Identity> identity)
+  : _id(std::move(id))
+  , _device_id(device_id)
+  , _email(std::move(email))
+  , _keys(keys)
+  , _identity(identity)
+{}
+
+std::string
+Server::User::links_json() const
+{
+  // I wish I could use elle::serialization::SerializerOut.
+  std::string str = "[";
+  for (auto const& link: this->links)
+    str += link_representation(link) + ", ";
+
+  if (!this->links.empty())
+    str = str.substr(0, str.length() - 2  );
+  str += "]";
+  return str;
+}
+
+std::string
+Server::User::swaggers_json() const
+{
+  std::string str = "[";
+  for (auto const& user: this->swaggers)
+    str += user->json() + ", ";
+
+  if (!this->swaggers.empty())
+    str = str.substr(0, str.length() - 2);
+  str += "]";
+  return str;
+}
+
+void
+Server::User::print(std::ostream& stream) const
+{
+  stream << "User(" << this->email() << ", " << this->id() << ")";
+}
+
+std::string
+Server::User::devices_json() const
+{
+  std::string str = "[";
+  for (auto const& device: this->connected_devices)
+    str += elle::sprintf("\"%s\", ", device);
+  if (!this->connected_devices.empty())
+    str = str.substr(0, str.length() - 2);
+  str += "]";
+  return str;
+}
+
+std::string
+Server::User::json() const
+{
+  std::string public_key_serialized;
+  if (this->_keys)
+    this->_keys.get().K().Save(public_key_serialized);
+
+  auto res = elle::sprintf(
+    "{"
+    "  \"id\": \"%s\","
+    "  \"public_key\": \"%s\","
+    "  \"fullname\": \"%s\","
+    "  \"handle\": \"%s\","
+    "  \"connected_devices\": %s,"
+    "  \"status\": true,"
+    "  \"register_status\": \"%s\","
+    "  \"_id\": \"%s\""
+    "}",
+    this->id(),
+    public_key_serialized,
+    this->email(),
+    this->email(),
+    this->devices_json(),
+    public_key_serialized.empty() ? "ghost" : "ok",
+    this->id());
+  return res;
+}
+
+std::string
+Server::User::self_json() const
+{
+  std::string identity_serialized;
+  this->_identity.get().Save(identity_serialized);
+
+  std::string public_key_serialized;
+  this->_keys.get().K().Save(public_key_serialized);
+  return elle::sprintf(
+    "{"
+    "  \"id\": \"%s\","
+    "  \"public_key\": \"%s\","
+    "  \"fullname\": \"\","
+    "  \"handle\": \"\","
+    "  \"connected_devices\": %s,"
+    "  \"register_status\": \"\","
+    "  \"email\": \"%s\","
+    "  \"identity\": \"%s\","
+    "  \"devices\": [],"
+    "  \"favorites\": [],"
+    "  \"success\": true"
+    "}",
+    this->id(),
+    public_key_serialized,
+    this->devices_json(),
+    this->email(),
+    identity_serialized);
+}
+
+Server::Client::Client(Server& server,
+                       User& user)
+  : _server(server)
+  , user(user)
+  , state(server, user.device_id().get())
+{
+}
+
+Server::Client::Client(Server& server,
+                       std::string const& email)
+  : Client(server, server.register_user(email, "password"))
+{
+}
+
+void
+Server::Client::login(std::string const& password)
+{
+  this->state.login(this->user.email(), password);
+  this->user.connected_devices.insert(this->user.device_id().get());
+}
+
+void
+Server::Client::logout()
+{
+  this->state.logout();
+  this->user.connected_devices.erase(this->user.device_id().get());
+}
+
 Server::Server()
   : _session_id(boost::uuids::random_generator()())
-  , _trophonius()
+  , trophonius()
   , _cloud_buffered(false)
 {
   this->headers()["X-Fist-Meta-Version"] = INFINIT_VERSION;
-  this->headers()["Set-Cookie"] =
-    elle::sprintf("session-id=%s", this->_session_id);
+
   this->register_route(
     "/status",
     reactor::http::Method::GET,
@@ -140,6 +334,7 @@ Server::Server()
     {
       return "{\"status\" : true}";
     });
+
   this->register_route(
     "/login",
     reactor::http::Method::POST,
@@ -160,28 +355,19 @@ Server::Server()
           reactor::http::StatusCode::Not_Found,
           "user not found");
       auto& user = **it;
-      std::string identity_serialized;
-      user.identity().Save(identity_serialized);
+      this->headers()["Set-Cookie"] = elle::sprintf("session-id=%s", user.id());
+      auto& device = this->_devices.at(user.device_id().get());
+
       return elle::sprintf(
-        "{"
-        "  \"_id\" : \"%s\","
-        "  \"fullname\" : \"Jean-Kader\","
-        "  \"handle\" : \"BOBBY\","
-        "  \"email\" : \"%s\","
-        "  \"identity\" : \"%s\","
-        "  \"device_id\" : \"%s\","
-        " \"features\": [],"
-        "  \"trophonius\" : {"
-        "    \"host\": \"127.0.0.1\","
-        "    \"port\": 0,"
-        "    \"port_ssl\": %s"
-        "  }"
-        "}",
-        user.id(),
-        user.email(),
-        identity_serialized,
-        user.device_id(),
-        this->_trophonius.port());
+         "{"
+         " \"self\": %s,"
+         " \"device\": %s,"
+         " \"features\": [],"
+         " \"trophonius\" : %s"
+         "}",
+         user.self_json(),
+         device.json(),
+         this->trophonius.json());
     });
   this->register_route(
     "/trophonius",
@@ -192,6 +378,27 @@ Server::Server()
               std::placeholders::_2,
               std::placeholders::_3,
               std::placeholders::_4));
+
+  this->register_route(
+    "/user/synchronize",
+    reactor::http::Method::GET,
+    [&] (Server::Headers const&,
+        Server::Cookies const& cookies,
+         Server::Parameters const& parameters,
+         elle::Buffer const&)
+    {
+      auto const& user = this->user(cookies);
+      return elle::sprintf(
+        "{"
+        "  \"swaggers\": %s,"
+        "  \"running_transactions\": [],"
+        "  \"final_transactions\": [],"
+        "  \"links\": %s"
+        "}",
+        user.swaggers_json(),
+        user.links_json());
+    });
+
   this->register_route(
     "/logout",
     reactor::http::Method::POST,
@@ -258,14 +465,144 @@ Server::Server()
     {
       return "{\"success\": true, \"links\": []}";
     });
+
+  this->register_route(
+    "/link",
+    reactor::http::Method::POST,
+    [&] (Server::Headers const&,
+         Server::Cookies const& cookies,
+         Server::Parameters const&,
+         elle::Buffer const&)
+    {
+      auto& user = this->user(cookies);
+      infinit::oracles::LinkTransaction t;
+      t.click_count = 3;
+      t.id = boost::lexical_cast<std::string>(boost::uuids::random_generator()());
+      t.ctime = 2173213;
+      t.sender_id = boost::lexical_cast<std::string>(user.id());
+      t.sender_device_id = boost::lexical_cast<std::string>(user.device_id());
+      t.status = infinit::oracles::Transaction::Status::initialized;
+      user.links.push_back(t);
+
+      this->register_route(
+        elle::sprintf("/link/%s", t.id),
+        reactor::http::Method::POST,
+        [&, t] (Server::Headers const&,
+                Server::Cookies const& cookies,
+                Server::Parameters const& parameters,
+                elle::Buffer const& body)
+        {
+          elle::IOStream stream(
+            new elle::InputStreamBuffer<elle::Buffer>(body));
+          elle::serialization::json::SerializerIn input(stream);
+          int status;
+          input.serialize("status", status);
+          auto& user = this->user(cookies);
+          for (auto& link: user.links)
+            if (link.id == t.id)
+              link.status =
+                static_cast<infinit::oracles::Transaction::Status>(status);
+          return "{\"success\": true}";
+        });
+
+      this->register_route(
+        elle::sprintf("/s3/%s/filename", t.id),
+        reactor::http::Method::POST,
+        [&, t] (Server::Headers const&,
+                Server::Cookies const&,
+                Server::Parameters const& parameters,
+                elle::Buffer const&)
+        {
+          static bool b = true;
+          elle::SafeFinally f([&] { b = false; });
+          if (b)
+            return std::string{
+              "<InitiateMultipartUploadResult>"
+              "  <Bucket>bucket</Bucket>"
+              "  <Key>filename</Key>"
+              "  <UploadId>VXBsb2FkIElEIGZvciA2aWWpbmcncyBteS1tb3ZpZS5tMnRzIHVwbG9hZA</UploadId>"
+              "</InitiateMultipartUploadResult>"};
+          else
+            return elle::sprintf(
+              "<CompleteMultipartUploadResult>"
+              "<Location></Location>"
+              "<Bucket>bucket</Bucket>"
+              "<Key>filename</Key>"
+              "<ETag>%s</ETag>"
+              "</CompleteMultipartUploadResult>",
+              this->headers()["ETag"]);
+        });
+
+      this->register_route(
+        elle::sprintf("/s3/%s/filename", t.id),
+        reactor::http::Method::PUT,
+        [&, t] (Server::Headers const&,
+                Server::Cookies const&,
+                Server::Parameters const& parameters,
+                elle::Buffer const&)
+        {
+          this->headers()["ETag"] = boost::lexical_cast<std::string>(boost::uuids::random_generator()());
+          return elle::sprintf(
+            "<CompleteMultipartUploadResult>"
+            "<Location></Location>"
+            "<Bucket>bucket</Bucket>"
+            "<Key>filename</Key>"
+            "<ETag>%s</ETag>"
+            "</CompleteMultipartUploadResult>",
+            this->headers()["ETag"]);
+        });
+
+      this->register_route(
+        elle::sprintf("/s3/%s_data", t.id),
+        reactor::http::Method::PUT,
+        [] (Server::Headers const&,
+            Server::Cookies const&,
+            Server::Parameters const&,
+            elle::Buffer const&)
+        {
+          return "";
+        });
+
+      this->register_route(
+        elle::sprintf("/s3/%s/000000000000_0000", t.id),
+        reactor::http::Method::PUT,
+        [this] (Server::Headers const&,
+                Server::Cookies const&,
+                Server::Parameters const&,
+                elle::Buffer const&)
+        {
+          return "";
+        });
+
+      return elle::sprintf(
+        "{"
+        "  \"transaction\": %s,"
+        "  \"aws_credentials\": "
+        "  {"
+        "    \"access_key_id\": \"\","
+        "    \"bucket\": \"\","
+        "    \"expiration\": \"2016-01-12T09-37-42Z\","
+        "    \"folder\": \"%s\","
+        "    \"protocol\": \"aws\","
+        "    \"region\": \"us-east-1\","
+        "    \"secret_access_key\": \"\","
+        "    \"session_token\": \"\","
+        "    \"current_time\": \"2015-01-12T09-37-42Z\""
+        "  }"
+        "}",
+        link_representation(t),
+        t.id);
+    });
+
   this->register_route(
     "/transaction/create",
     reactor::http::Method::POST,
     [&] (Server::Headers const&,
-         Server::Cookies const&,
+         Server::Cookies const& cookies,
          Server::Parameters const&,
          elle::Buffer const& content)
     {
+      auto& user = this->user(cookies);
       auto t = elle::make_unique<Transaction>();
       ELLE_TRACE_SCOPE("%s: create transaction %s", *this, t->id());
       elle::IOStream stream(new elle::InputStreamBuffer<elle::Buffer>(content));
@@ -273,20 +610,28 @@ Server::Server()
       std::string recipient_email;
       input.serialize("id_or_email", recipient_email);
       ELLE_DEBUG("%s: recipient: %s", *this, recipient_email);
+      t->status(infinit::oracles::Transaction::Status::created);
 
       bool ghost;
-      {
-        auto& users_by_email = this->_users.get<1>();
-        auto recipient = users_by_email.find(recipient_email);
-        ghost = recipient == users_by_email.end();
-      }
+      auto& users_by_email = this->_users.get<1>();
+      auto recipient = users_by_email.find(recipient_email);
+      ghost = recipient == users_by_email.end();
+      auto& rec = ghost
+        ? generate_ghost_user(recipient_email)
+        : **recipient;
+
+      rec.swaggers.insert(&user);
+      user.swaggers.insert(&rec);
+
       auto res = elle::sprintf(
         "{"
         "  \"created_transaction_id\": \"%s\","
-        "  \"recipient_is_ghost\": %s"
+        "  \"recipient_is_ghost\": %s,"
+        "  \"recipient\": %s"
         "}",
         t->id(),
-        ghost ? "true" : "false");
+        ghost ? "true" : "false",
+        rec.json());
       this->register_route(
         elle::sprintf("/transaction/%s/cloud_buffer", t->id()),
         reactor::http::Method::GET,
@@ -314,6 +659,7 @@ Server::Server()
       this->_transactions.insert(std::move(t));
       return res;
     });
+
   this->register_route(
     "/transaction/update",
     reactor::http::Method::POST,
@@ -339,6 +685,7 @@ Server::Server()
       t.status_changed()(t._status);
       return "{}";
     });
+
   this->register_route(
     "/s3/folder/passwd",
     reactor::http::Method::POST,
@@ -391,19 +738,42 @@ Server::Server()
 }
 
 Server::User&
+Server::user(Server::Cookies const& cookies) const
+{
+  try
+  {
+    if (contains(cookies, "session-id"))
+    {
+      auto& users = this->_users.get<0>();
+      auto const& user = users.find(boost::uuids::string_generator()(cookies.at("session-id")));
+      if (user != users.end())
+      {
+        if (*user != nullptr)
+          return **user;
+      }
+    }
+  }
+  catch (...)
+  {}
+  ELLE_LOG("cookies: %s", cookies);
+  for (auto const& user: this->_users.get<0>())
+    ELLE_LOG("user: %s", *user);
+  throw Server::Exception(" ", reactor::http::StatusCode::Forbidden, " ");
+}
+
+Server::User&
 Server::register_user(std::string const& email,
                       std::string const& password)
 {
   auto generator = boost::uuids::random_generator();
   auto id = generator();
-  auto device_id = generator();
-  ELLE_LOG_SCOPE("%s: generate user %s with device %s", *this, id, device_id);
   auto keys =
     cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                     papier::Identity::keypair_length);
-  auto identity =
-    generate_identity(keys, boost::lexical_cast<std::string>(id),
-                      "my identity", password);
+  Device device{ keys.K() };
+  ELLE_TRACE_SCOPE("%s: generate user %s on device %s", *this, id, device);
+  auto identity = generate_identity(
+    keys, boost::lexical_cast<std::string>(id), "my identity", password);
   std::string identity_serialized;
   identity.Save(identity_serialized);
   auto response =
@@ -438,29 +808,22 @@ Server::register_user(std::string const& email,
                        reactor::http::Method::GET, response);
   this->register_route("/user/self",
                        reactor::http::Method::GET, response);
-  auto passport = generate_passport(device_id, "DEVICE",
-                                    keys.K());
+
+  this->_devices.emplace(device.id(), device);
   this->register_route(
-    elle::sprintf("/device/%s/view", device_id),
+    elle::sprintf("/device/%s/view", device.id()),
     reactor::http::Method::GET,
-    [device_id, passport] (Server::Headers const&,
+    [device] (Server::Headers const&,
                            Server::Cookies const&,
                            Server::Parameters const&,
-                           elle::Buffer const&)
+              elle::Buffer const&)
     {
-      return elle::sprintf(
-        "{"
-        "  \"id\" : \"%s\","
-        "  \"name\": \"device\","
-        "  \"passport\": \"%s\","
-        "  \"success\": true"
-        "}",
-        device_id,
-        passport);
+      return device.json();
     });
+
   auto user = elle::make_unique<User>(
     id,
-    std::move(device_id),
+    device.id(),
     std::move(email),
     std::move(keys),
     std::move(identity));
@@ -469,11 +832,19 @@ Server::register_user(std::string const& email,
   return *raw;
 }
 
-boost::uuids::uuid
+Server::User&
 Server::generate_ghost_user(std::string const& email)
 {
   ELLE_ASSERT(this->_users.get<1>().find(email) == this->_users.get<1>().end());
   auto id = boost::uuids::random_generator()();
+
+  auto user = elle::make_unique<User>(
+    id,
+    boost::optional<boost::uuids::uuid>{},
+    std::move(email),
+    boost::optional<cryptography::KeyPair>{},
+    boost::optional<papier::Identity>{});
+
   auto response =
     [this, id, email]
     (Server::Headers const&,
@@ -498,7 +869,10 @@ Server::generate_ghost_user(std::string const& email)
                        reactor::http::Method::GET, response);
   this->register_route(elle::sprintf("/users/%s", id),
                        reactor::http::Method::GET, response);
-  return id;
+
+  auto raw = user.get();
+  this->_users.insert(std::move(user));
+  return *raw;
 }
 
 std::string
@@ -513,7 +887,7 @@ Server::_get_trophonius(Headers const&,
     "  \"port\": 0,"
     "  \"port_ssl\": %s"
     "}",
-    this->_trophonius.port());
+    this->trophonius.port());
 }
 
 Server::Transaction&
@@ -530,21 +904,18 @@ Server::session_id(boost::uuids::uuid id)
   this->_session_id = std::move(id);
 }
 
-Server::User::User(boost::uuids::uuid id,
-                   boost::uuids::uuid device_id,
-                   std::string email,
-                   cryptography::KeyPair keys,
-                   papier::Identity identity)
-  : _id(std::move(id))
-  , _device_id(std::move(device_id))
-  , _email(std::move(email))
-  , _keys(std::move(keys))
-  , _identity(std::move(identity))
-{}
-
 Server::Transaction::Transaction()
   : _id(boost::uuids::random_generator()())
 {}
+
+void
+Server::Transaction::print(std::ostream& out) const
+{
+  out << "Transaction("
+      << this->id() << ", "
+      << this->status()
+      << ")";
+}
 
 State::State(Server& server,
              boost::uuids::uuid device_id)
@@ -953,3 +1324,14 @@ const std::vector<char> server_dh1024 =
   0x20, 0x50, 0x41, 0x52, 0x41, 0x4d, 0x45, 0x54, 0x45, 0x52, 0x53, 0x2d,
   0x2d, 0x2d, 0x2d, 0x2d, 0x0a,
 };
+
+
+namespace std
+{
+  std::size_t
+  hash<boost::uuids::uuid>::operator()(boost::uuids::uuid const& s) const
+  {
+    auto hasher = hash<string>{};
+    return hasher(boost::lexical_cast<string>(s));
+  }
+}

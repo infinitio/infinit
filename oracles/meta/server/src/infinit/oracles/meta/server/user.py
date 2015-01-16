@@ -99,25 +99,29 @@ class Mixin:
                       user,
                       device = None,
                       web = False):
-    res = {
-      '_id' : user['_id'],
-      'fullname': user['fullname'],
-      'email': user['email'],
-      'handle': user['handle'],
-      'register_status': user['register_status'],
-    }
-    if not web:
+    if self.user_version >= (0, 9, 25) and not web:
       assert device is not None
-      res.update({
-        'identity': user['identity'],
-        'device_id': device['id'],
-      })
-    if not user.get('email_confirmed', True):
-      from time import time
-      res.update({
-        'unconfirmed_email_leeway': user['unconfirmed_email_deadline'] - time()
-      })
-    return res
+      return {'self': self._user_self()}
+    else:
+      res = {
+        '_id' : user['_id'],
+        'fullname': user['fullname'],
+        'email': user['email'],
+        'handle': user['handle'],
+        'register_status': user['register_status'],
+      }
+      if not web:
+        assert device is not None
+        res.update({
+          'identity': user['identity'],
+          'device_id': device['id'],
+        })
+      if not user.get('email_confirmed', True):
+        from time import time
+        res.update({
+          'unconfirmed_email_leeway': user['unconfirmed_email_deadline'] - time()
+        })
+      return res
 
   @api('/login', method = 'POST')
   def login(self,
@@ -185,6 +189,7 @@ class Mixin:
           {'_id': user['_id']},
           {'$set': { 'features': features}})
       response['features'] = list(features.items())
+      response['device'] = device
       return response
 
   @api('/web-login', method = 'POST')
@@ -1169,10 +1174,7 @@ class Mixin:
     with elle.log.trace("%s: get his swaggers" % user['email']):
       return self.success({"swaggers" : list(user["swaggers"].keys())})
 
-  # Replaces /user/swaggers as of 0.9.2.
-  @api('/user/full_swaggers')
-  @require_logged_in
-  def full_swaggers(self):
+  def _full_swaggers(self):
     user = self.user
     swaggers = user['swaggers']
     query = {
@@ -1186,9 +1188,13 @@ class Mixin:
           {'$match': query},
           {'$project': self.user_public_fields},
       ])['result'])
-    return self.success({
-      'swaggers': sorted(res, key = lambda u: swaggers[str(u['id'])]),
-    })
+    return sorted(res, key = lambda u: swaggers[str(u['id'])])
+
+  # Replaces /user/swaggers as of 0.9.2.
+  @api('/user/full_swaggers')
+  @require_logged_in
+  def full_swaggers(self):
+    return self.success({'swaggers': self._full_swaggers()})
 
   @api('/user/add_swagger', method = 'POST')
   @require_admin
@@ -1365,31 +1371,43 @@ class Mixin:
         fields = {'email': True, '_id': False}
     )))})
 
+  def _user_self(self, short = False):
+    user = self.user
+    res = {
+      '_id': user['_id'], # Used until 0.9.9
+      'id': user['_id'],
+      'register_status': user['register_status'],
+      'token_generation_key': user.get('token_generation_key', ''),
+    }
+    if not short:
+      res.update({
+        'fullname': user['fullname'],
+        'handle': user['handle'],
+        'email': user['email'],
+        'devices': user.get('devices', []),
+        'networks': user.get('networks', []),
+        'identity': user['identity'],
+        'public_key': user['public_key'],
+        'accounts': user['accounts'],
+        'remaining_invitations': user.get('remaining_invitations', 0),
+        'favorites': user.get('favorites', []),
+        'connected_devices': user.get('connected_devices', []),
+        'status': self._is_connected(user['_id']),
+        'creation_time': user.get('creation_time', None),
+        'last_connection': user.get('last_connection', 0),
+      })
+    if not user.get('email_confirmed', True):
+      from time import time
+      res.update({
+        'unconfirmed_email_leeway': user['unconfirmed_email_deadline'] - time()
+      })
+    return res
+
   @api('/user/self')
   @require_logged_in
   def user_self(self):
     """Return self data."""
-    user = self.user
-    return self.success({
-      '_id': user['_id'], # Used until 0.9.9
-      'id': user['_id'],
-      'fullname': user['fullname'],
-      'handle': user['handle'],
-      'register_status': user['register_status'],
-      'email': user['email'],
-      'devices': user.get('devices', []),
-      'networks': user.get('networks', []),
-      'identity': user['identity'],
-      'public_key': user['public_key'],
-      'accounts': user['accounts'],
-      'remaining_invitations': user.get('remaining_invitations', 0),
-      'token_generation_key': user.get('token_generation_key', ''),
-      'favorites': user.get('favorites', []),
-      'connected_devices': user.get('connected_devices', []),
-      'status': self._is_connected(user['_id']),
-      'creation_time': user.get('creation_time', None),
-      'last_connection': user.get('last_connection', 0),
-    })
+    return self.success(self._user_self())
 
   @api('/user/minimum_self')
   @require_logged_in
@@ -1807,3 +1825,24 @@ class Mixin:
       }
     )
     return self.success()
+
+  @api('/user/synchronize')
+  @require_logged_in
+  def synchronize(self,
+                  init : int = 1):
+    init = bool(init)
+    device = self.current_device
+    last_sync = self.database.devices.find_and_modify(
+      query = {'id': device['id']},
+      update = { '$set': { 'last_sync': time.time() }}).get('last_sync', 1)
+    # If it's the initialization, pull history, if not, only the one modified
+    # since last synchronization!
+    res = {
+      'swaggers': self._full_swaggers(),
+    }
+    mtime = None
+    if not init:
+      mtime = last_sync
+    res.update(self._user_transactions(mtime = mtime))
+    res.update(self.links_list(mtime = mtime))
+    return self.success(res)

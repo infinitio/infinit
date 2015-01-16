@@ -335,77 +335,6 @@ namespace surface
       this->_metrics_reporter->user_first_launch();
     }
 
-    /*---------------------------.
-    | Server Connection Checking |
-    `---------------------------*/
-    bool
-    State::_meta_server_check(reactor::Duration timeout)
-    {
-      ELLE_TRACE_SCOPE("%s: fetching Meta status", *this);
-      bool result = false;
-      return elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
-      {
-        scope.run_background("meta status check", [&]
-        {
-          try
-          {
-            auto meta_response = this->_meta.server_status();
-            if (meta_response.status)
-            {
-              ELLE_TRACE("%s: Meta is reachable", *this);
-              result = true;
-            }
-            else
-            {
-              this->_meta_message = meta_response.message;
-              ELLE_WARN("%s: Meta down with message: %s",
-                        *this,
-                        this->_meta_message);
-              result = false;
-            }
-          }
-          catch (reactor::http::RequestError const& e)
-          {
-            ELLE_WARN("%s: unable to contact Meta: %s",
-                     *this,
-                     e.what());
-            result = false;
-          }
-          catch (elle::http::Exception const& e)
-          {
-            ELLE_WARN("%s: unable to contact Meta: %s",
-                     *this,
-                     e.what());
-            result = false;
-          }
-          catch (reactor::network::Exception const& e)
-          {
-            ELLE_WARN("%s: unable to contact Meta: %s",
-                     *this,
-                     e.what());
-            result = false;
-          }
-          catch (elle::Exception const& e)
-          {
-            ELLE_WARN("%s: error while checking meta connectivity: %s",
-                     *this,
-                     e.what());
-            result = false;
-            // XXX: We shouldn't be catching all exceptions but the old JSON
-            // parser throws elle::Exceptions.
-          }
-        });
-        scope.wait(timeout);
-        return result;
-      };
-    }
-
-    bool
-    State::_meta_server_check()
-    {
-      return this->_meta_server_check(10_sec);
-    }
-
     /*----------------------.
     | Login/Logout/Register |
     `----------------------*/
@@ -497,37 +426,17 @@ namespace surface
       while(true) try
       {
         ELLE_TRACE_SCOPE("%s: login to meta as %s", *this, email);
-
         ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
-
         reactor::Scheduler& scheduler = *reactor::Scheduler::scheduler();
-
         reactor::Lock l(this->_login_mutex);
-
         // Ensure we don't have an old Meta message
         this->_meta_message.clear();
-
         if (this->logged_in())
           throw Exception(gap_already_logged_in, "already logged in");
 
         this->_cleanup();
 
-        if (!this->_meta_server_check())
-        {
-          if (this->_meta_message.empty())
-          {
-            throw Exception(gap_meta_unreachable, "Unable to contact Meta");
-          }
-          else
-          {
-            throw Exception(gap_meta_down_with_message,
-                            elle::sprintf("Meta down with message: %s",
-                                          this->_meta_message));
-          }
-        }
-
         std::string lower_email = email;
-
         std::transform(lower_email.begin(),
                        lower_email.end(),
                        lower_email.begin(),
@@ -549,6 +458,11 @@ namespace surface
           auto login_response =
             this->_meta.login(lower_email, password, _device_uuid);
           ELLE_LOG("%s: logged in as %s", *this, email);
+          this->_me.reset(new Self(login_response.self));
+          this->user_sync(this->me());
+          this->_configuration.features = login_response.features;
+          metrics::Reporter::metric_features(this->_configuration.features);
+          // Trophonius.
           if (*trophonius)
           {
             this->_trophonius.swap(*trophonius);
@@ -565,10 +479,6 @@ namespace surface
             this->_reconnection_cooldown
             ));
           }
-          // Update features before sending any metric
-          this->_configuration.features = login_response.features;
-          metrics::Reporter::metric_features(this->_configuration.features);
-
           std::string trophonius_host = login_response.trophonius.host;
           int trophonius_port = login_response.trophonius.port_ssl;
           if (!this->_forced_trophonius_host.empty())
@@ -576,8 +486,8 @@ namespace surface
           if (this->_forced_trophonius_port != 0)
             trophonius_port = this->_forced_trophonius_port;
           this->_trophonius->server(trophonius_host, trophonius_port);
-          infinit::metrics::Reporter::metric_sender_id(login_response.id);
-          this->_metrics_reporter->user_login(true, "");
+
+          // Update features before sending any metric
           this->_metrics_heartbeat_thread.reset(
             new reactor::Thread{
               *reactor::Scheduler::scheduler(),
@@ -590,13 +500,15 @@ namespace surface
                     this->_metrics_reporter->user_heartbeat();
                   }
                 }});
+          infinit::metrics::Reporter::metric_sender_id(this->me().id);
+          this->_metrics_reporter->user_login(true, "");
 
+          // Identity.
           std::string identity_clear;
-
           ELLE_TRACE("%s: decrypt identity", *this)
           {
             this->_identity.reset(new papier::Identity());
-            if (this->_identity->Restore(login_response.identity) == elle::Status::Error)
+            if (this->_identity->Restore(this->me().identity) == elle::Status::Error)
               throw Exception(gap_internal_error, "unable to restore the identity");
             if (this->_identity->Decrypt(password) == elle::Status::Error)
               throw Exception(gap_internal_error, "unable to decrypt the identity");
@@ -619,23 +531,23 @@ namespace surface
           }
 
           std::ofstream identity_infos{
-            common::infinit::identity_path(login_response.id)};
+            common::infinit::identity_path(this->me().id)};
 
           if (identity_infos.good())
           {
-            identity_infos << login_response.identity << "\n"
-                           << login_response.email << "\n"
-                           << login_response.id << "\n"
+            identity_infos << this->me().identity << "\n"
+                           << this->me().email << "\n"
+                           << this->me().id << "\n"
             ;
             identity_infos.close();
           }
 
-          auto device = this->meta().device(_device_uuid);
-          this->_device.reset(new Device(device));
+          // Device.
+          this->_device.reset(new Device(login_response.device));
           std::string passport_path =
             common::infinit::passport_path(this->me().id);
           this->_passport.reset(new papier::Passport());
-          if (this->_passport->Restore(device.passport) == elle::Status::Error)
+          if (this->_passport->Restore(this->_device->passport) == elle::Status::Error)
             throw Exception(gap_wrong_passport, "Cannot load the passport");
           this->_passport->store(elle::io::Path(passport_path));
 
@@ -647,17 +559,21 @@ namespace surface
             this->_trophonius->connect(
               this->me().id, this->device().id, this->_meta.session_id());
             reactor::wait(_trophonius->connected());
+            ELLE_TRACE("%s: connected to trophonius", *this);
           }
 
-          ELLE_TRACE("%s: connected to trophonius",
-                     *this);
-
+          // Synchronization.
+          this->_synchronize_response.reset(
+            new infinit::oracles::meta::SynchronizeResponse{
+              this->meta().synchronize(true)});
+          ELLE_TRACE("got synchronisation response");
           this->_avatar_fetcher_thread.reset(
             new reactor::Thread{
               scheduler,
               "avatar fetched",
               [&]
               {
+                this->_logged_in.wait();
                 while (true)
                 {
                   this->_avatar_fetching_barrier.wait();
@@ -668,8 +584,7 @@ namespace surface
                   try
                   {
                     this->_avatars.insert(
-                      std::make_pair(id,
-                                     this->_meta.icon(user_id)));
+                      std::make_pair(id, this->_meta.icon(user_id)));
                     this->_avatar_to_fetch.erase(user_id);
                     this->enqueue(AvatarAvailableNotification(id));
                   }
@@ -686,21 +601,21 @@ namespace surface
                     this->_avatar_fetching_barrier.close();
                 }
               }});
-          ELLE_TRACE("%s: fetch self", *this)
-            this->user(this->me().id);
-          ELLE_TRACE("%s: fetch users", *this)
-            this->_users_init();
-          ELLE_TRACE("%s: fetch transactions", *this)
+
+          this->_user_resync(this->_synchronize_response->swaggers);
+          ELLE_TRACE("initialize transaction")
             this->_transactions_init();
-          this->on_connection_changed(
-            ConnectionState{true, elle::Error(""), false},
-            true);
+          ELLE_TRACE("connection")
+            this->on_connection_changed(
+              ConnectionState{true, elle::Error(""), false},
+              true);
           this->_polling_thread.reset(
             new reactor::Thread{
               scheduler,
                 "poll",
                 [&]
                 {
+                  this->_logged_in.wait();
                   while (true)
                   {
                     try
@@ -969,14 +884,6 @@ namespace surface
     Self const&
     State::me() const
     {
-      static reactor::Mutex me_mutex;
-
-      reactor::Lock m(me_mutex);
-      if (this->_me == nullptr)
-      {
-        ELLE_TRACE("loading self info")
-          this->_me.reset(new Self{this->meta().self()});
-      }
       ELLE_ASSERT_NEQ(this->_me, nullptr);
       return *this->_me;
     }
@@ -984,7 +891,7 @@ namespace surface
     void
     State::update_me()
     {
-      this->_me.reset(nullptr);
+      this->_me.reset(new Self(this->meta().self()));
       this->me();
     }
 
@@ -1069,13 +976,18 @@ namespace surface
                   else
                     ELLE_DEBUG("ignore finalized transaction %s", t.second);
                 }
+             this->_synchronize_response.reset(
+               new infinit::oracles::meta::SynchronizeResponse{this->meta().synchronize(false)});
             }
-            this->_user_resync();
-            this->_peer_transaction_resync();
-            this->_link_transaction_resync();
+
+            this->_user_resync(this->_synchronize_response->swaggers);
+            this->_peer_transaction_resync(this->_synchronize_response->transactions);
+            this->_link_transaction_resync(this->_synchronize_response->links);
+
             resynched = true;
             ELLE_TRACE("Opening logged_in barrier");
             _logged_in.open();
+            this->_synchronized.signal();
           }
           catch (reactor::Terminate const&)
           {
@@ -1120,11 +1032,7 @@ namespace surface
       {
         this->_on_invalid_trophonius_credentials();
       }
-      if (this->_meta_server_check())
-      {
-        ELLE_ERR("%s: able to connect to Meta but not Trophonius", *this);
-        this->enqueue(TrophoniusUnavailable());
-      }
+      this->enqueue(TrophoniusUnavailable());
     }
 
     void

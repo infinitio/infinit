@@ -19,7 +19,7 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
 
   std::string const recipient_email = "recipient@infinit.io";
   auto recipient = server.register_user("recipient@infinit.io", password);
-  State state(server, user.device_id());
+  State state(server, user.device_id().get());
   elle::filesystem::TemporaryFile transfered("cloud-buffered");
   {
     boost::filesystem::ofstream f(transfered.path());

@@ -315,12 +315,8 @@ namespace infinit
       void
       LoginResponse::serialize(elle::serialization::Serializer& s)
       {
-        s.serialize("_id", this->id);
-        s.serialize("fullname", this->fullname);
-        s.serialize("handle", this->handle);
-        s.serialize("email", this->email);
-        s.serialize("identity", this->identity);
-        s.serialize("device_id", this->device_id);
+        s.serialize("self", this->self);
+        s.serialize("device", this->device);
         s.serialize("trophonius", this->trophonius);
         s.serialize("features", this->features);
       }
@@ -331,6 +327,31 @@ namespace infinit
         s.serialize("host", this->host);
         s.serialize("port", this->port);
         s.serialize("port_ssl", this->port_ssl);
+      }
+
+      SynchronizeResponse::SynchronizeResponse(
+        elle::serialization::SerializerIn& s)
+      {
+        this->serialize(s);
+      }
+
+      void
+      SynchronizeResponse::serialize(elle::serialization::Serializer& s)
+      {
+        this->transactions.clear();
+        std::vector<PeerTransaction> transaction_list;
+        // Get the running transactions.
+        s.serialize("running_transactions", transaction_list);
+        for (auto const& tr: transaction_list)
+          this->transactions.emplace(tr.id, tr);
+        transaction_list.clear();
+        // Get the finals transactions (override potential duplicates because
+        // meta's reponse potentially suffers of a race condition).
+        s.serialize("final_transactions", transaction_list);
+        for (auto const& tr: transaction_list)
+          this->transactions[tr.id] = tr;
+        s.serialize("links", this->links);
+        s.serialize("swaggers", this->swaggers);
       }
 
       LoginResponse
@@ -465,6 +486,16 @@ namespace infinit
           }
         }
         return user_id;
+      }
+
+      SynchronizeResponse
+      Client::synchronize(bool init) const
+      {
+        std::string url = elle::sprintf("/user/synchronize?init=%s",
+                                        init);
+        auto request = this->_request(url, Method::GET);
+        SerializerIn input(url, request);
+        return SynchronizeResponse{input};
       }
 
       static
@@ -687,7 +718,21 @@ namespace infinit
         elle::serialization::Serializer& s)
       {
         s.serialize("created_transaction_id", this->_created_transaction_id);
+        s.serialize("recipient", this->_recipient);
         s.serialize("recipient_is_ghost", this->_recipient_is_ghost);
+      }
+
+      UpdatePeerTransactionResponse::UpdatePeerTransactionResponse(
+        elle::serialization::SerializerIn& s)
+      {
+        this->serialize(s);
+      }
+
+      void
+      UpdatePeerTransactionResponse::serialize(
+        elle::serialization::Serializer& s)
+      {
+        s.serialize("aws_credentials", this->_aws_credentials);
       }
 
       CreatePeerTransactionResponse
@@ -725,7 +770,7 @@ namespace infinit
         return CreatePeerTransactionResponse(input);
       }
 
-      void
+      UpdatePeerTransactionResponse
       Client::update_transaction(std::string const& transaction_id,
                                  Transaction::Status status,
                                  std::string const& device_id,
@@ -735,8 +780,9 @@ namespace infinit
                    *this,
                    transaction_id,
                    status);
+        auto url = "/transaction/update";
         auto request = this->_request(
-          "/transaction/update",
+          url,
           Method::POST,
           [&] (reactor::http::Request& r)
           {
@@ -757,6 +803,8 @@ namespace infinit
                               const_cast<std::string&>(device_name));
             }
           });
+        SerializerIn input(url, request);
+        return UpdatePeerTransactionResponse(input);
       }
 
       PeerTransaction

@@ -420,6 +420,7 @@ class Mixin:
   @api('/links')
   @require_logged_in
   def links_list(self,
+                 mtime = None,
                  offset: int = 0,
                  count: int = 500,
                  include_expired: bool = False):
@@ -439,6 +440,8 @@ class Mixin:
         'hash': {'$exists': True},
         'aws_credentials': {'$exists': True},
       }
+      if mtime:
+         query.update({'mtime': {'$gt': mtime}})
       if not include_expired:
         query['$or'] = [
           {'expiry_time': None},

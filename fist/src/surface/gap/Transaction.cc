@@ -163,7 +163,14 @@ namespace surface
                             this->_files.get(), message, data));
       ELLE_TRACE_SCOPE("%s: construct to send %s files",
                        *this, this->_files.get().size());
-      this->_snapshot_save();
+
+      // Save the snapshot when the transaction id is set, otherwise, we will
+      // not be able to restore it.
+      this->_machine->transaction_id_set().connect(
+        [&] (std::string const&)
+        {
+          this->_snapshot_save();
+        });
     }
 
     // Construct to create link.
@@ -387,16 +394,18 @@ namespace surface
             this->_data))
       {
         // Check for an updated final status from meta
-        auto data = _state.meta().transaction(snapshot.data()->id);
+        ELLE_ASSERT(state.synchronize_response() != nullptr);
+        auto it = state.synchronize_response()->transactions.find(snapshot.data()->id);
+        auto data = (it != state.synchronize_response()->transactions.end())
+          ? it->second
+          :  _state.meta().transaction(snapshot.data()->id);
         if (sender_final_statuses.find(data.status) != sender_final_statuses.end())
         {
           ELLE_TRACE("%s: meta returned a final status %s", *this, data.status);
           _data = std::make_shared<infinit::oracles::PeerTransaction>(data);
           return;
         }
-
-        using TransactionStatus =
-          infinit::oracles::Transaction::Status;
+        using TransactionStatus = infinit::oracles::Transaction::Status;
         if (this->_data->is_ghost &&
             this->_data->status == TransactionStatus::ghost_uploaded &&
           (this->_sender || peer_data->sender_id == this->state().me().id))
