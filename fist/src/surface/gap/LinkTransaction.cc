@@ -10,7 +10,8 @@ namespace surface
                                      boost::optional<std::string> link_,
                                      uint32_t click_count_,
                                      gap_TransactionStatus status_,
-                                     std::string const& sender_device_id_)
+                                     std::string const& sender_device_id_,
+                                     std::string const& message_)
       : id(id_)
       , name(std::move(name_))
       , mtime(mtime_)
@@ -18,6 +19,7 @@ namespace surface
       , click_count(click_count_)
       , status(status_)
       , sender_device_id(sender_device_id_)
+      , message(message_)
     {
       // FIXME: for now the server always return the share link, as an empty
       // string if not ready. Remove when we remove the old serialization,

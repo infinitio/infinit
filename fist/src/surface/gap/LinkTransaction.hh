@@ -29,7 +29,8 @@ namespace surface
                       boost::optional<std::string> link,
                       uint32_t click_count,
                       gap_TransactionStatus status,
-                      std::string const& sender_device_id);
+                      std::string const& sender_device_id,
+                      std::string const& message);
       ~LinkTransaction() noexcept(true);
 
       uint32_t id;
@@ -39,6 +40,7 @@ namespace surface
       uint32_t click_count;
       gap_TransactionStatus status;
       std::string sender_device_id;
+      std::string message;
 
       static Notification::Type type;
 
