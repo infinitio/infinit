@@ -355,7 +355,8 @@ namespace surface
               link_data->share_link,
               link_data->click_count,
               transaction->status(),
-              link_data->sender_device_id);
+              link_data->sender_device_id,
+              link_data->message);
             this->enqueue(notification);
           }
           this->_transactions.emplace(id, std::move(transaction));
