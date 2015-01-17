@@ -1079,7 +1079,8 @@ gap_link_transaction_by_id(gap_State* state, uint32_t id)
                                                data->share_link,
                                                data->click_count,
                                                status,
-                                               data->sender_device_id);
+                                               data->sender_device_id,
+                                               data->message);
       return txn;
     });
 }
@@ -1110,7 +1111,8 @@ gap_link_transactions(gap_State* state)
                                                    link_data->share_link,
                                                    link_data->click_count,
                                                    status,
-                                                   link_data->sender_device_id);
+                                                   link_data->sender_device_id,
+                                                   link_data->message);
           values.push_back(txn);
         }
       }
