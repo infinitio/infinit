@@ -204,7 +204,8 @@ namespace surface
                                             data->share_link,
                                             data->click_count,
                                             this->status(),
-                                            data->sender_device_id));
+                                            data->sender_device_id,
+                                            data->message));
       this->_snapshot_save();
     }
 
@@ -353,7 +354,8 @@ namespace surface
                                                 link_data->share_link,
                                                 link_data->click_count,
                                                 this->status(),
-                                                data->sender_device_id));
+                                                link_data->sender_device_id,
+                                                link_data->message));
           this->_snapshot_save();
         }
       }
@@ -571,7 +573,8 @@ namespace surface
                           data->share_link,
                           data->click_count,
                           gap_transaction_deleted,
-                          data->sender_device_id));
+                          data->sender_device_id,
+                          data->message));
         this->state().metrics_reporter()->transaction_deleted(data->id);
       }
       else
@@ -631,7 +634,8 @@ namespace surface
             link_data->share_link,
             link_data->click_count,
             status,
-            link_data->sender_device_id);
+            link_data->sender_device_id,
+            link_data->message);
           this->state().enqueue(notification);
         }
         this->_status_changed(status);
@@ -707,7 +711,8 @@ namespace surface
                                               link_data->share_link,
                                               link_data->click_count,
                                               this->status(),
-                                              link_data->sender_device_id));
+                                              link_data->sender_device_id,
+                                              link_data->message));
       }
     }
 
