@@ -105,7 +105,7 @@ namespace surface
           elle::AtomicFile file(this->_frete_snapshot_path);
           file.read() << [&] (elle::AtomicFile::Read& read)
           {
-            elle::serialization::json::SerializerIn input(read.stream());
+            elle::serialization::json::SerializerIn input(read.stream(), false);
             this->_snapshot.reset(new frete::TransferSnapshot(input));
           };
           if (this->_snapshot->file_count())
@@ -136,7 +136,7 @@ namespace surface
         elle::AtomicFile source(path);
         source.read() << [&] (elle::AtomicFile::Read& read)
         {
-          elle::serialization::json::SerializerIn input(read.stream());
+          elle::serialization::json::SerializerIn input(read.stream(), false);
           Snapshot snapshot(input);
           started = true;
           ELLE_TRACE("%s: restore to state %s",
@@ -1066,7 +1066,7 @@ namespace surface
       elle::AtomicFile file(this->_frete_snapshot_path.string());
       file.write() << [&] (elle::AtomicFile::Write& write)
       {
-        elle::serialization::json::SerializerOut output(write.stream());
+        elle::serialization::json::SerializerOut output(write.stream(), false);
         this->_snapshot->serialize(output);
       };
     }

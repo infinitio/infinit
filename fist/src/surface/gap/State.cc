@@ -179,7 +179,7 @@ namespace surface
           ELLE_ERR("%s: while reading configuration: %s", *this, e.what());
           std::stringstream str;
           {
-            elle::serialization::json::SerializerOut output(str);
+            elle::serialization::json::SerializerOut output(str, false);
             this->_configuration.serialize(output);
           }
           ELLE_TRACE("%s: current config: %s", *this, str.str());
