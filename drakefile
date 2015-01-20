@@ -148,8 +148,8 @@ def configure(cxx_toolkit = None,
       return drake.copy(lib, where, True)
 
   elle = drake.include('elle',
-                       cxx_toolkit,
-                       drake.cxx.Config(cxx_config),
+                       cxx_toolkit = cxx_toolkit,
+                       cxx_config = drake.cxx.Config(cxx_config),
                        python3 = python3,
                        python_version = python_version,
                        prefix = prefix,
