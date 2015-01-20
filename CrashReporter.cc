@@ -485,7 +485,7 @@ namespace elle
       boost::filesystem::path home(common::infinit::home());
       boost::filesystem::path copied_log = home / "current_state.log";
       boost::system::error_code erc;
-      boost::filesystem::copy(user_file_, copied_log , erc);
+      boost::filesystem::copy(elle::os::getenv("INFINIT_LOG_FILE"), copied_log , erc);
       if (erc)
       {
         ELLE_WARN("error while copying %s: %s", user_file_, copied_log);
