@@ -39,6 +39,17 @@ class SendWithUsEmailer:
       (t['name'], t)
       for t in json.loads(self.__swu.templates().content.decode()))
 
+  def __execute(self, batch):
+    elle.log.trace('%s: execute batch' % self)
+    r = batch.execute()
+    if r.status_code != 200:
+      with elle.log.err('%s: send with us status code: %s' % (self, r.status_code)):
+        try:
+          elle.log.err('%s: send with us status code: %s' % (self, r.json()))
+        except Exception as e:
+          elle.log.err('%s: non-JSON response (%s): %s' % (self, e, r.text))
+      raise Exception('%s: request failed' % self)
+
   def send_template(self, template, recipients):
     if template not in self.__templates:
       self.__load_templates()
@@ -70,8 +81,11 @@ class SendWithUsEmailer:
           sender = sender,
           email_data = recipient['vars'],
         )
-    r = swu.execute()
-    assert r.status_code == 200
+      if swu.command_length() >= 100:
+        self.__execute(swu)
+    if swu.command_length() > 0:
+      self.__execute(swu)
+
 
 class MandrillEmailer:
 
