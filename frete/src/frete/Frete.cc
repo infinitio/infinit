@@ -74,7 +74,7 @@ namespace frete
           elle::AtomicFile file(this->_snapshot_destination);
           file.read() << [&] (elle::AtomicFile::Read& read)
           {
-            elle::serialization::json::SerializerIn input(read.stream());
+            elle::serialization::json::SerializerIn input(read.stream(), false);
             snapshot.reset(new TransferSnapshot(input));
           };
         }
@@ -236,7 +236,7 @@ namespace frete
     elle::AtomicFile file(this->_snapshot_destination);
     file.write() << [&] (elle::AtomicFile::Write& write)
     {
-      elle::serialization::json::SerializerOut output(write.stream());
+      elle::serialization::json::SerializerOut output(write.stream(), false);
       this->_transfer_snapshot->serialize(output);
     };
   }

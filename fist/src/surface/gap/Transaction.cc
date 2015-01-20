@@ -66,7 +66,7 @@ namespace surface
       elle::AtomicFile destination(this->_snapshot_path);
       destination.write() << [&] (elle::AtomicFile::Write& write)
       {
-        elle::serialization::json::SerializerOut output(write.stream());
+        elle::serialization::json::SerializerOut output(write.stream(), false);
         snapshot.serialize(output);
       };
     }

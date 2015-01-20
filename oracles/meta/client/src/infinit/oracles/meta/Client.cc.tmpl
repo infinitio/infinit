@@ -171,7 +171,7 @@ namespace infinit
       public:
         SerializerIn(std::string const& url, reactor::http::Request& input)
         try
-          : elle::serialization::json::SerializerIn(input)
+          : elle::serialization::json::SerializerIn(input, false)
         {}
         catch (elle::serialization::Error const& e)
         {
@@ -368,7 +368,7 @@ namespace infinit
           Method::POST,
           [&] (reactor::http::Request& r)
           {
-            elle::serialization::json::SerializerOut output(r);
+            elle::serialization::json::SerializerOut output(r, false);
             output.serialize("email", const_cast<std::string&>(email));
             output.serialize("password", const_cast<std::string&>(password));
             if (device_push_token && !device_push_token.get().empty())
@@ -455,7 +455,7 @@ namespace infinit
           Method::POST,
           [&] (reactor::http::Request& request)
           {
-            elle::serialization::json::SerializerOut output(request);
+            elle::serialization::json::SerializerOut output(request, false);
             output.serialize("email", const_cast<std::string&>(email));
             output.serialize("fullname", const_cast<std::string&>(fullname));
             output.serialize("password", const_cast<std::string&>(password));
@@ -528,7 +528,7 @@ namespace infinit
           Method::POST,
           [&] (reactor::http::Request& r)
           {
-            elle::serialization::json::SerializerOut query(r);
+            elle::serialization::json::SerializerOut query(r, false);
             query.serialize("emails",
                             const_cast<std::vector<std::string>&>(emails));
           });
@@ -617,7 +617,7 @@ namespace infinit
           url, Method::POST,
           [&] (reactor::http::Request& r)
           {
-            elle::serialization::json::SerializerOut query(r);
+            elle::serialization::json::SerializerOut query(r, false);
             query.serialize("public_key",
                             const_cast<std::string&>(public_key));
           });
@@ -644,7 +644,7 @@ namespace infinit
           Method::POST,
           [&] (reactor::http::Request& request)
           {
-            elle::serialization::json::SerializerOut query(request);
+            elle::serialization::json::SerializerOut query(request, false);
             query.serialize("_id", const_cast<std::string&>(id));
           });
       }
@@ -657,7 +657,7 @@ namespace infinit
           Method::POST,
           [&] (reactor::http::Request& request)
           {
-            elle::serialization::json::SerializerOut query(request);
+            elle::serialization::json::SerializerOut query(request, false);
             query.serialize("user_id",
                             const_cast<std::string&>(user));
           });
@@ -671,7 +671,7 @@ namespace infinit
           Method::POST,
           [&] (reactor::http::Request& request)
           {
-            elle::serialization::json::SerializerOut query(request);
+            elle::serialization::json::SerializerOut query(request, false);
             query.serialize("user_id",
                             const_cast<std::string&>(user));
           });
@@ -692,7 +692,7 @@ namespace infinit
           Method::POST,
           [&] (reactor::http::Request& request)
           {
-            elle::serialization::json::SerializerOut query(request);
+            elle::serialization::json::SerializerOut query(request, false);
             query.serialize("id", struuid);
             query.serialize("name", const_cast<std::string&>(name));
           });
@@ -760,7 +760,7 @@ namespace infinit
           Method::POST,
           [&] (reactor::http::Request& r)
           {
-            elle::serialization::json::SerializerOut query(r);
+            elle::serialization::json::SerializerOut query(r, false);
             query.serialize("id_or_email",
                             const_cast<std::string&>(recipient_id_or_email));
             query.serialize("files",
@@ -793,7 +793,7 @@ namespace infinit
           Method::POST,
           [&] (reactor::http::Request& r)
           {
-            elle::serialization::json::SerializerOut query(r);
+            elle::serialization::json::SerializerOut query(r, false);
             // FIXME: get rid of const casts when output serialization has his
             // const API
             query.serialize("transaction_id",
@@ -936,7 +936,7 @@ namespace infinit
           url, Method::POST,
           [&] (reactor::http::Request& request)
           {
-            elle::serialization::json::SerializerOut query(request);
+            elle::serialization::json::SerializerOut query(request, false);
             // FIXME: get rid of const casts when output serialization has his
             // const API
             query.serialize("name", const_cast<std::string&>(name));
@@ -1073,7 +1073,7 @@ namespace infinit
           Method::POST,
           [&] (reactor::http::Request& request)
           {
-            elle::serialization::json::SerializerOut output(request);
+            elle::serialization::json::SerializerOut output(request, false);
             output.serialize("new_email", const_cast<std::string&>(email));
             output.serialize("password", const_cast<std::string&>(password));
           },
@@ -1112,7 +1112,7 @@ namespace infinit
           Method::POST,
           [&] (reactor::http::Request& request)
           {
-            elle::serialization::json::SerializerOut output(request);
+            elle::serialization::json::SerializerOut output(request, false);
             output.serialize("old_password",
                              const_cast<std::string&>(old_password));
             output.serialize("new_password",
@@ -1147,7 +1147,7 @@ namespace infinit
           Method::POST,
           [&] (reactor::http::Request& request)
           {
-            elle::serialization::json::SerializerOut output(request);
+            elle::serialization::json::SerializerOut output(request, false);
             output.serialize("fullname", const_cast<std::string&>(fullname));
             output.serialize("handle", const_cast<std::string&>(handle));
           });

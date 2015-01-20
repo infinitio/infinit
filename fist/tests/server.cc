@@ -345,7 +345,7 @@ Server::Server()
          elle::Buffer const& content)
     {
       elle::IOStream stream(new elle::InputStreamBuffer<elle::Buffer>(content));
-      elle::serialization::json::SerializerIn input(stream);
+      elle::serialization::json::SerializerIn input(stream, false);
       std::string email;
       input.serialize("email", email);
       auto& users = this->_users.get<1>();
@@ -495,7 +495,7 @@ Server::Server()
         {
           elle::IOStream stream(
             new elle::InputStreamBuffer<elle::Buffer>(body));
-          elle::serialization::json::SerializerIn input(stream);
+          elle::serialization::json::SerializerIn input(stream, false);
           int status;
           input.serialize("status", status);
           auto& user = this->user(cookies);
@@ -607,7 +607,7 @@ Server::Server()
       auto t = elle::make_unique<Transaction>();
       ELLE_TRACE_SCOPE("%s: create transaction %s", *this, t->id());
       elle::IOStream stream(new elle::InputStreamBuffer<elle::Buffer>(content));
-      elle::serialization::json::SerializerIn input(stream);
+      elle::serialization::json::SerializerIn input(stream, false);
       std::string recipient_email;
       input.serialize("id_or_email", recipient_email);
       ELLE_DEBUG("%s: recipient: %s", *this, recipient_email);
@@ -670,7 +670,7 @@ Server::Server()
          elle::Buffer const& content)
     {
       elle::IOStream stream(new elle::InputStreamBuffer<elle::Buffer>(content));
-      elle::serialization::json::SerializerIn input(stream);
+      elle::serialization::json::SerializerIn input(stream, false);
       std::string id;
       int status;
       input.serialize("transaction_id", id);

@@ -179,7 +179,7 @@ namespace surface
         elle::AtomicFile file(snapshot_path());
         file.read() << [&] (elle::AtomicFile::Read& read)
         {
-          elle::serialization::json::SerializerIn input(read.stream());
+          elle::serialization::json::SerializerIn input(read.stream(), false);
           std::string target_file;
           input.serialize("target_file", target_file);
           _path = target_file;
@@ -206,7 +206,8 @@ namespace surface
         elle::AtomicFile file(snapshot_path());
         file.write() << [&] (elle::AtomicFile::Write& write)
         {
-          elle::serialization::json::SerializerOut output(write.stream());
+          elle::serialization::json::SerializerOut output
+            (write.stream(), false);
           std::string target_file = _path.string();
           output.serialize("target_file", target_file);
         };

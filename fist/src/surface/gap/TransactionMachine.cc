@@ -80,7 +80,7 @@ namespace surface
       elle::AtomicFile source(path);
       return source.read() << [&] (elle::AtomicFile::Read& read)
       {
-        elle::serialization::json::SerializerIn input(read.stream());
+        elle::serialization::json::SerializerIn input(read.stream(), false);
         return Snapshot(input);
       };
     }
@@ -206,7 +206,7 @@ namespace surface
       elle::AtomicFile destination(path);
       destination.write() << [&] (elle::AtomicFile::Write& write)
       {
-        elle::serialization::json::SerializerOut output(write.stream());
+        elle::serialization::json::SerializerOut output(write.stream(), false);
         Snapshot(*this).serialize(output);
       };
     }
