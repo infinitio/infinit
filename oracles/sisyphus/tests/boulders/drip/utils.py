@@ -2,6 +2,7 @@
 
 # Meta first, for papier and OpenSSL
 import infinit.oracles.meta.server
+import elle.log
 from infinit.oracles.meta.server.utils import hash_pasword
 from infinit.oracles.transaction import statuses
 
@@ -14,6 +15,8 @@ import uuid
 import pymongo
 import pymongo.collection
 import pymongo.database
+
+ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus'
 
 class MongoExpectation:
 
@@ -63,14 +66,10 @@ class GestapoCollection(pymongo.collection.Collection):
                           multi = multi)
 
   def __check(self, condition, fields = None):
-    if MongoExpectation.instance.ignore:
+    if MongoExpectation.instance.ignore or condition is None:
       return
     explanation = super().find(condition, fields = fields).explain()
     try:
-      # print(explanation['cursor'])
-      # print('  ', condition)
-      # print('  ', fields)
-      # print('  ', explanation)
       if explanation['cursor'] == 'BasicCursor':
         raise Exception('table scan on condition: %s' % condition)
       if explanation.get('scanAndOrder', False):
@@ -87,21 +86,26 @@ class GestapoCollection(pymongo.collection.Collection):
       ns = explanation['nscanned']
       nso = explanation['nscannedObjects']
       n = explanation['n']
-      # print(ns, nso, n)
-      if ns - nso > MongoExpectation.instance.index_miss:
-        raise Exception('too many index scans (%s) for %s' \
-                        ' object scans on condition: %s' % \
-                        (ns, nso, condition))
-      if nso - n > MongoExpectation.instance.object_miss:
-        raise Exception('too many object scans (%s) for %s' \
-                        ' results on condition: %s' % \
-                        (nso, n, condition))
     except Exception as e:
       import sys
       print('fatal error interpreting explanation: %s' % e,
             file = sys.stderr)
       print('explanation: %s' % explanation, file = sys.stderr)
       raise
+    index_scans = ns - nso > MongoExpectation.instance.index_miss
+    object_scans = nso - n > MongoExpectation.instance.object_miss
+    if index_scans or object_scans:
+      elle.log.err('scanned objects: %s' % list(super().find()))
+      elle.log.err('condition: %s' % condition)
+      elle.log.err('explanation: %s' % explanation)
+      if index_scans:
+        raise Exception('too many index scans (%s) for %s' \
+                        ' object scans on condition: %s' % \
+                        (ns, nso, condition))
+      if object_scans:
+        raise Exception('too many object scans (%s) for %s' \
+                        ' results on condition: %s' % \
+                        (nso, n, condition))
 
 def gestapo(client):
   version = client.server_info()['versionArray']

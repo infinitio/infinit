@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+
+# utils first, beware of system OpenSSL.
+from utils import *
+
+import elle.log
+
+from infinit.oracles.transaction import statuses
+
+import sisyphus
+import sisyphus.boulders.drip
+
+ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.boulders.drip'
+
+class Retention(sisyphus.boulders.drip.Retention):
+
+  def __init__(self, sisyphus):
+    super().__init__(sisyphus)
+    self.__now = datetime.datetime.utcnow()
+
+  @property
+  def now(self):
+    return self.__now
+
+  @now.setter
+  def now(self, value):
+    self.__now = value
+
+  def _pick_template(self, template, users):
+    return sisyphus.boulders.drip.Drip._pick_template(
+      self, template, users)
+
+with mongobox.MongoBox() as mongo:
+  with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
+    emailer = DummyEmailer()
+    sisy = sisyphus.Sisyphus(mongo_port = mongo.port,
+                             emailer = emailer)
+    gestapo(sisy.mongo)
+    retention = Retention(sisy)
+
+    def forward(duration):
+      retention.now += duration
+      meta.now = retention.now
+
+    # Check nothing is sent with no users
+    sisy.boulders_run()
+    check_no_mail(emailer.emails)
+
+    # Create an unactivated user for queries complexity check
+    sender = meta.user_register('slacker@infinit.io',
+                                '*' * 64, 'Foo Bar')
+
+    # Create an activated user
+    device = 'device'
+    email = 'user@infinit.io'
+    sender = meta.user_register(email, '*' * 64, 'Foo Bar')
+    sender_device = meta._create_device(sender)
+    transaction_create(meta, sender, 'ghost@infinit.io')
+
+    # Check nothing is sent to a fresh user
+    sisy.boulders_run()
+    check_no_mail(emailer.emails)
+
+    # Check nothing is sent too soon
+    forward(datetime.timedelta(days = 1))
+    sisy.boulders_run()
+    check_no_mail(emailer.emails)
+
+    forward(retention.delay_nth_reminder(0))
+    sisy.boulders_run()
+    check_mail(emailer.emails, email, 'drip_retention_1')
+
+    for i in range(2, 7):
+      forward(retention.delay_nth_reminder(i - 1) -
+              retention.delay_nth_reminder(i - 2))
+      sisy.boulders_run()
+      check_mail(emailer.emails, email, 'drip_retention_%s' % i)
