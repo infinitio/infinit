@@ -46,6 +46,8 @@ namespace surface
       // cleartext upload one file to cloud
       void
       _plain_upload();
+      void
+      _gcs_plain_upload(boost::filesystem::path const& file_path, std::string const&url);
       ELLE_ATTRIBUTE(float, plain_progress);
       typedef std::unordered_map<int, float> PlainProgressChunks;
       ELLE_ATTRIBUTE(PlainProgressChunks, plain_progress_chunks);

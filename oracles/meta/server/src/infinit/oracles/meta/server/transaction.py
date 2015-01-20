@@ -13,7 +13,7 @@ import json
 import elle.log
 from .utils import \
   api, require_logged_in, require_logged_in_or_admin, require_key
-from . import regexp, error, transaction_status, notifier, invitation, cloud_buffer_token, mail
+from . import regexp, error, transaction_status, notifier, invitation, cloud_buffer_token, cloud_buffer_token_gcs, mail
 import uuid
 import re
 from pymongo import ASCENDING, DESCENDING
@@ -1019,25 +1019,58 @@ class Mixin:
     # As long as those creds are transaction specific there is no risk
     # in letting the recipient have WRITE access. This will no longuer hold
     # if cloud data ever gets shared among transactions.
-    token_maker = cloud_buffer_token.CloudBufferToken(
-      user['_id'], transaction_id, 'ALL',
-      aws_region = self.aws_region, bucket_name = self.aws_buffer_bucket)
-    raw_creds = token_maker.generate_s3_token()
+    elle.log.log("selecting backend %s" % (transaction['is_ghost']))
+    if transaction['is_ghost']:
+      ghost_upload_file = ''
+      files = transaction['files']
+      # FIXME: this name computation is duplicated from client !
+      if len(files) == 1:
+        if transaction['is_directory']:
+          #C++ side is doing a replace_extension
+          parts = files[0].split('.')
+          if len(parts) == 1:
+            ghost_upload_file = files[0] + '.zip'
+          else:
+            ghost_upload_file = '.'.join(parts[0:-1]) + '.zip'
+        else:
+          ghost_upload_file = files[0]
+      else:
+        ghost_upload_file = '%s files.zip' % len(files)
+      token_maker = cloud_buffer_token_gcs.CloudBufferTokenGCS(
+        transaction_id, ghost_upload_file)
+      ul = token_maker.get_upload_token()
+      credentials = dict()
+      credentials['protocol'] = 'gcs'
+      credentials['url'] = ul
+      credentials['access_key_id']     = ul
+      credentials['secret_access_key'] = ''
+      credentials['session_token']     = ''
+      credentials['expiration']        = (datetime.date.today()+datetime.timedelta(days=7)).isoformat()
+      credentials['protocol']          = ''
+      credentials['region']            = ''
+      credentials['bucket']            = ''
+      credentials['folder']            = ''
+      credentials['current_time']      = current_time
+    else:
+      token_maker = cloud_buffer_token.CloudBufferToken(
+        user['_id'], transaction_id, 'ALL',
+        aws_region = self.aws_region, bucket_name = self.aws_buffer_bucket)
+      raw_creds = token_maker.generate_s3_token()
 
-    if raw_creds == None:
-      return self.fail(error.UNABLE_TO_GET_AWS_CREDENTIALS)
+      if raw_creds == None:
+        return self.fail(error.UNABLE_TO_GET_AWS_CREDENTIALS)
 
-    # Only send back required credentials.
-    credentials = dict()
-    credentials['access_key_id']     = raw_creds['AccessKeyId']
-    credentials['secret_access_key'] = raw_creds['SecretAccessKey']
-    credentials['session_token']     = raw_creds['SessionToken']
-    credentials['expiration']        = raw_creds['Expiration']
-    credentials['protocol']          = 'aws'
-    credentials['region']            = self.aws_region
-    credentials['bucket']            = self.aws_buffer_bucket
-    credentials['folder']            = transaction_id
-    credentials['current_time']      = current_time
+      # Only send back required credentials.
+      credentials = dict()
+      credentials['access_key_id']     = raw_creds['AccessKeyId']
+      credentials['secret_access_key'] = raw_creds['SecretAccessKey']
+      credentials['session_token']     = raw_creds['SessionToken']
+      credentials['expiration']        = raw_creds['Expiration']
+      credentials['protocol']          = 'aws'
+      credentials['region']            = self.aws_region
+      credentials['bucket']            = self.aws_buffer_bucket
+      credentials['folder']            = transaction_id
+      credentials['current_time']      = current_time
 
     elle.log.debug("Storing aws_credentials in DB")
     transaction.update({'aws_credentials': credentials})
