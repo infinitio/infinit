@@ -1834,15 +1834,21 @@ class Mixin:
     device = self.current_device
     last_sync = self.database.devices.find_and_modify(
       query = {'id': device['id']},
-      update = { '$set': { 'last_sync': time.time() }}).get('last_sync', 1)
+      update = {
+        '$set': {
+          'last_sync': {
+            'timestamp': time.time(),
+            'date': self.now,
+          }
+        }}).get('last_sync', {'timestamp': 1, 'date': datetime.date.fromtimestamp(1)})
     # If it's the initialization, pull history, if not, only the one modified
     # since last synchronization!
     res = {
       'swaggers': self._full_swaggers(),
     }
-    mtime = None
+    mtime = {'timestamp': None, 'date': None}
     if not init:
       mtime = last_sync
-    res.update(self._user_transactions(mtime = mtime))
-    res.update(self.links_list(mtime = mtime))
+    res.update(self._user_transactions(mtime = mtime['timestamp']))
+    res.update(self.links_list(mtime = mtime['date']))
     return self.success(res)
