@@ -40,11 +40,11 @@ namespace infinit
           url, Method::PUT,
           [&version, &os] (reactor::http::Request& request)
           {
-            elle::serialization::json::SerializerOut output(request);
+            elle::serialization::json::SerializerOut output(request, false);
             output.serialize("version", const_cast<elle::Version&>(version));
             output.serialize("os", const_cast<std::string&>(os));
           });
-        elle::serialization::json::SerializerIn input(request);
+        elle::serialization::json::SerializerIn input(request, false);
       }
 
       void
@@ -73,7 +73,7 @@ namespace infinit
           url, Method::PUT,
           [&] (reactor::http::Request& request)
           {
-            elle::serialization::json::SerializerOut output(request);
+            elle::serialization::json::SerializerOut output(request, false);
             output.serialize("port", port);
             output.serialize("port_client", port_client);
             output.serialize("port_client_ssl", port_client_ssl);
@@ -84,7 +84,7 @@ namespace infinit
             if (zone)
               output.serialize("zone", zone.get());
           });
-        elle::serialization::json::SerializerIn input(request);
+        elle::serialization::json::SerializerIn input(request, false);
       }
 
       void
@@ -105,7 +105,7 @@ namespace infinit
           Method::PUT,
           [&] (reactor::http::Request& request)
           {
-            elle::serialization::json::SerializerOut output(request);
+            elle::serialization::json::SerializerOut output(request, false);
             output.serialize("host", const_cast<std::string&>(host));
             int port_ssl_ = port_ssl;
             output.serialize("port_ssl", port_ssl_);
@@ -134,7 +134,7 @@ namespace infinit
           Method::POST,
           [&] (reactor::http::Request& request)
           {
-            elle::serialization::json::SerializerOut output(request);
+            elle::serialization::json::SerializerOut output(request, false);
             int bandwidth_ = bandwidth;
             output.serialize("bandwidth", bandwidth_);
             int number = number_of_transfers;
@@ -156,7 +156,7 @@ namespace infinit
           Method::POST,
           [&] (reactor::http::Request& request)
           {
-            elle::serialization::json::SerializerOut output(request);
+            elle::serialization::json::SerializerOut output(request, false);
             output.serialize("email", const_cast<std::string&>(email));
           });
       }
@@ -170,7 +170,7 @@ namespace infinit
           Method::PUT,
           [&] (reactor::http::Request& request)
           {
-            elle::serialization::json::SerializerOut output(request);
+            elle::serialization::json::SerializerOut output(request, false);
             output.serialize("user1", const_cast<std::string&>(user1));
             output.serialize("user2", const_cast<std::string&>(user2));
           });

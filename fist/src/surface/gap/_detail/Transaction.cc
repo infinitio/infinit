@@ -156,7 +156,8 @@ namespace surface
               throw elle::Error("transaction snapshot is missing.");
             source.read() << [&] (elle::AtomicFile::Read& read)
             {
-              elle::serialization::json::SerializerIn input(read.stream());
+              elle::serialization::json::SerializerIn input
+                (read.stream(), false);
               Transaction::Snapshot snapshot(input);
               auto const& data = *snapshot.data();
               if (!data.id.empty())
