@@ -1134,25 +1134,17 @@ namespace surface
     void
     State::poll() const
     {
-      ELLE_DUMP("poll");
-
-      if (this->_runners.empty())
-        return;
-
-      ELLE_DEBUG("poll %s notification(s)", this->_runners.size());
-
-      // I'm the only consumer.
-      while (!this->_runners.empty())
+      ELLE_DEBUG_SCOPE("poll %s notification(s)", this->_runners.size());
+      std::unique_ptr<_Runner> runner = nullptr;
+      while (true)
       {
-        ELLE_ASSERT(!this->_runners.empty());
-        std::unique_ptr<_Runner> runner = nullptr;
-
         {
           std::lock_guard<std::mutex> lock{this->_poll_lock};
+          if (this->_runners.empty())
+            return;
           std::swap(runner, this->_runners.front());
           this->_runners.pop();
         }
-
         (*runner)();
       }
     }
