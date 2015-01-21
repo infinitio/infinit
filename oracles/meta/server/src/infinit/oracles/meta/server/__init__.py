@@ -28,7 +28,7 @@ from .plugins.session import Plugin as SessionPlugin
 from .plugins.watermark import Plugin as WatermarkPlugin
 from infinit.oracles.meta import error
 
-from .utils import api, hash_pasword, require_admin, require_logged_in, key
+from .utils import api, require_admin, require_logged_in, key
 
 from . import apertus
 from . import cloud_buffer_token

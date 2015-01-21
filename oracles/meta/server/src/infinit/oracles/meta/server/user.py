@@ -11,7 +11,7 @@ import elle.log
 import papier
 
 from .plugins.response import response, Response
-from .utils import api, require_logged_in, require_admin, require_logged_in_or_admin, hash_pasword, json_value, require_key, key
+from .utils import api, require_logged_in, require_admin, require_logged_in_or_admin, hash_password, json_value, require_key, key
 from . import error, notifier, regexp, conf, invitation, mail
 
 from pymongo import DESCENDING
@@ -319,7 +319,7 @@ class Mixin:
         'register_status': 'ok',
         'email': email,
         'fullname': fullname,
-        'password': hash_pasword(password),
+        'password': hash_password(password),
         'handle': handle,
         'lw_handle': handle.lower(),
         'swaggers': {},
@@ -340,7 +340,7 @@ class Mixin:
       if password_hash is not None:
         user_content.update(
           {
-            "password_hash": hash_pasword(password_hash)
+            "password_hash": hash_password(password_hash)
           })
       if source is not None:
         user_content['source'] = source
@@ -577,7 +577,7 @@ class Mixin:
       # Check if the new address is already in use.
       if self.user_by_email(new_email, ensure_existence = False) is not None:
         return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
-      if hash_pasword(password) != user['password']:
+      if hash_password(password) != user['password']:
         return self._forbidden_with_error(error.PASSWORD_NOT_VALID)
       from time import time
       import hashlib
@@ -675,7 +675,7 @@ class Mixin:
           {
             'email': new_email,
             'email_confirmed': True,
-            'password': hash_pasword(password),
+            'password': hash_password(password),
             'identity': identity,
             'public_key': public_key,
           },
@@ -718,7 +718,7 @@ class Mixin:
         return self.fail(res)
 
     user = self.user
-    if user['password'] != hash_pasword(old_password):
+    if user['password'] != hash_password(old_password):
       return self.fail(error.PASSWORD_NOT_VALID)
     # Invalidate credentials.
     self.sessions.remove({'email': self.user['email'], 'device': ''})
@@ -740,13 +740,13 @@ class Mixin:
         conf.INFINIT_AUTHORITY_PASSWORD
       )
     update = {
-      'password': hash_pasword(new_password),
+      'password': hash_password(new_password),
       'identity': identity,
       'public_key': public_key
     }
     if new_password_hash is not None:
       update.update({
-        'password_hash': hash_pasword(new_password_hash)
+        'password_hash': hash_password(new_password_hash)
       })
     self.database.users.find_and_modify(
       {'_id': user['_id']},
@@ -936,17 +936,17 @@ class Mixin:
     if password_hash is not None:
       user = self.database.users.find_one({
         'email': email,
-        'password_hash': hash_pasword(password_hash)})
+        'password_hash': hash_password(password_hash)})
       if user is not None:
         return user
       user = self.database.users.find_and_modify(
         {
           'email': email,
-          'password': hash_pasword(password),
+          'password': hash_password(password),
         },
         {
           '$set': {
-            'password_hash': hash_pasword(password_hash),
+            'password_hash': hash_password(password_hash),
           },
         },
         new = True)
@@ -956,7 +956,7 @@ class Mixin:
     else:
       user = self.database.users.find_one({
         'email': email,
-        'password': hash_pasword(password),
+        'password': hash_password(password),
       })
       if user is None and ensure_existence:
         raise error.Error(error.EMAIL_PASSWORD_DONT_MATCH)
