@@ -28,7 +28,7 @@ from .plugins.session import Plugin as SessionPlugin
 from .plugins.watermark import Plugin as WatermarkPlugin
 from infinit.oracles.meta import error
 
-from .utils import api, hash_pasword, require_admin, require_logged_in, key
+from .utils import api, require_admin, require_logged_in, key
 
 from . import apertus
 from . import cloud_buffer_token
@@ -323,7 +323,7 @@ class Meta(bottle.Bottle,
   def admin(self):
     source = bottle.request.environ.get('REMOTE_ADDR')
     force = self.__force_admin or source == '127.0.0.1'
-    return force or bottle.request.certificate in [
+    return force or ('certificate' in bottle.request and bottle.request.certificate in [
       'antony.mechin@infinit.io',
       'baptiste.fradin@infinit.io',
       'christopher.crone@infinit.io',
@@ -332,7 +332,7 @@ class Meta(bottle.Bottle,
       'matthieu.nottale@infinit.io',
       'patrick.perlmutter@infinit.io',
       'quentin.hocquet@infinit.io',
-    ]
+    ])
 
   @property
   def logged_in(self):

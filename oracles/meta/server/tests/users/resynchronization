@@ -41,3 +41,39 @@ with Meta() as meta:
   res = bob.get('user/synchronize?init=0')
   assert len(res['running_transactions']) == 0
   assert len(res['final_transactions']) == 20
+
+  res = bob.get('user/synchronize?init=0')
+  assert len(res['running_transactions']) == 0
+  assert len(res['final_transactions']) == 0
+
+  # Create a link.
+  file_list = [
+    ['file1', 42],
+    ['file2', 43],
+    ['file3', 44],
+  ]
+  message = 'salut!'
+  res = bob.post('link',
+    {'files': file_list, 'name': 'some files.zip', 'message': message})
+  assert res['aws_credentials']
+  assert res['transaction']
+  link = res['transaction']
+  link = meta.database.links.find_one({'_id': ObjectId(link['id'])})
+
+  res = bob.get('user/synchronize?init=1')
+  assert len(res['links']) == 1
+  res = bob.get('user/synchronize?init=0')
+  assert len(res['links']) == 0
+
+  res = bob.post('link/%s' % str(link['_id']),
+                  {'progress': 1.0,
+                   'status': transaction_status.FINISHED})
+
+  res = bob.get('user/synchronize?init=0')
+  assert len(res['links']) == 1
+
+  res = bob.get('user/synchronize?init=0')
+  assert len(res['links']) == 0
+
+  res = bob.get('user/synchronize?init=1')
+  assert len(res['links']) == 1

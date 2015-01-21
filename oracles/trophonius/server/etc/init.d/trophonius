@@ -9,6 +9,12 @@
 ### END INIT INFO
 
 . /etc/trophonius.conf
+if test -d /etc/trophonius.conf.d; then
+    for cfg in /etc/trophonius.conf.d/*; do
+        . "$cfg"
+    done
+fi
+
 DAEMON="$TROPHONIUS"
 PIDFILE=/var/run/trophonius.pid
 ARGUMENTS="--meta ${META} --port-ssl ${PORT_SSL} --port-tcp ${PORT_TCP} --notifications-port ${PORT_NOTIFICATIONS} --syslog"

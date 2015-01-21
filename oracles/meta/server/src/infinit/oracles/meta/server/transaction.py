@@ -1093,7 +1093,7 @@ class Mixin:
 
     # First, get the running transactions (no limit).
     query.update({
-      'status': {'$nin': transaction_status.final}
+      'status': {'$nin': transaction_status.final + [transaction_status.CREATED] }
       })
     runnings = self.database.transactions.aggregate([
         {'$match': query},
