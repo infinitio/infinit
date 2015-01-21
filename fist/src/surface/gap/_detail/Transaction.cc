@@ -191,7 +191,9 @@ namespace surface
     }
 
     void
-    State::_peer_transaction_resync(std::unordered_map<std::string, infinit::oracles::PeerTransaction> const& transactions)
+    State::_peer_transaction_resync(
+      std::unordered_map<std::string, infinit::oracles::PeerTransaction> const& transactions,
+      bool login)
     {
       if (!elle::os::getenv("INFINIT_DISABLE_META_SYNC", "").empty())
       {
@@ -238,13 +240,16 @@ namespace surface
               elle::make_unique<Transaction>(
                 *this, _id,
                 std::make_shared<infinit::oracles::PeerTransaction>(transaction),
-                history));
+                history,
+                login));
         }
       }
     }
 
     void
-    State::_link_transaction_resync(std::vector<infinit::oracles::LinkTransaction> const& links)
+    State::_link_transaction_resync(
+      std::vector<infinit::oracles::LinkTransaction> const& links,
+      bool login)
     {
       if (!elle::os::getenv("INFINIT_DISABLE_LINK_SYNC", "").empty())
       {
@@ -281,7 +286,8 @@ namespace surface
               elle::make_unique<Transaction>(
                 *this, _id,
                 std::make_shared<infinit::oracles::LinkTransaction>(transaction),
-                history /* history */));
+                history /* history */,
+                login));
           }
         }
     }
