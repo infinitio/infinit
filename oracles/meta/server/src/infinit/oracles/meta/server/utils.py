@@ -63,7 +63,7 @@ def require_key(method):
   require_key.__fullargspec__ = spec
   return require_key
 
-def hash_pasword(password):
+def hash_password(password):
   import hashlib
   seasoned = password + conf.SALT
   seasoned = seasoned.encode('utf-8')

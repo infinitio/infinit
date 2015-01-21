@@ -75,7 +75,7 @@ namespace surface
       elle::AtomicFile destination(this->_snapshot_path);
       destination.write() << [&] (elle::AtomicFile::Write& write)
       {
-        elle::serialization::json::SerializerOut output(write.stream());
+        elle::serialization::json::SerializerOut output(write.stream(), false);
         snapshot.serialize(output);
       };
     }
@@ -248,7 +248,8 @@ namespace surface
     Transaction::Transaction(State& state,
                              uint32_t id,
                              std::shared_ptr<Data> data,
-                             bool history)
+                             bool history,
+                             bool login)
       : _snapshots_directory(
         boost::filesystem::path(common::infinit::user_directory(state.me().id))
         / "transactions" / boost::filesystem::unique_path())
@@ -270,6 +271,29 @@ namespace surface
       if (history)
       {
         ELLE_DEBUG("%s: part of history", *this);
+        // During login phase, it's not usefull to send notifications to the
+        // frontend.
+        if (!login)
+        {
+          if (auto peer_data =
+              std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
+                this->_data))
+          {
+            this->state().enqueue(Transaction::Notification(this->id(),
+                                                            this->status()));
+          }
+          else if (auto link_data =
+                   std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
+                     this->_data))
+          {
+            this->state().enqueue(LinkTransaction(this->id(),
+                                                  link_data->name,
+                                                  link_data->mtime,
+                                                  link_data->share_link,
+                                                  link_data->click_count,
+                                                  this->status()));
+          }
+        }
         return;
       }
       auto me = state.me().id;

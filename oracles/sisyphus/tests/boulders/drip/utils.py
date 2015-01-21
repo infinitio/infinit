@@ -3,7 +3,6 @@
 # Meta first, for papier and OpenSSL
 import infinit.oracles.meta.server
 import elle.log
-from infinit.oracles.meta.server.utils import hash_pasword
 from infinit.oracles.transaction import statuses
 
 import bottle

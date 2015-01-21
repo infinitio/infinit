@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 
 import elle.log
 from . import conf, mail, error, notifier, transaction_status
-from .utils import api, require_admin, hash_pasword
+from .utils import api, require_admin, hash_password
 import infinit.oracles.meta.version
 
 LOST_PASSWORD_TEMPLATE_ID = 'lost-password'
@@ -223,7 +223,7 @@ class Mixin:
       {'$set':
         {
           'register_status': 'ok',
-          'password': hash_pasword(password),
+          'password': hash_password(password),
           'identity': identity,
           'public_key': public_key,
           'networks': [],
