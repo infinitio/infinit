@@ -228,7 +228,7 @@ namespace infinit
         _host(server),
         _port(port),
         _root_url{elle::sprintf("%s://%s:%d", protocol, server, port)},
-        _client{"MetaClient/" INFINIT_VERSION},
+        _client{elle::os::getenv("INFINIT_USER_AGENT", "MetaClient/" INFINIT_VERSION)},
         _default_configuration(_requests_timeout(),
                                {},
                                reactor::http::Version::v10),
