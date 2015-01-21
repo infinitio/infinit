@@ -399,6 +399,9 @@ class User(Client):
     res = self.post('logout', {})
     assert res['success']
 
+  def synchronize(self, init = False):
+    return self.get('user/synchronize?init=%s' % (init and '1' or '0'))
+
   @property
   def device(self):
     assert self.device_id is not None
@@ -535,6 +538,18 @@ class User(Client):
                 'device_id': str(self.device_id),
                 'device_name': self.device_name,
               })
+
+  # FIXME: remove when link & peer transactions are merged
+  def getalink(self,
+               files = [['file1', 42], ['file2', 43], ['file3', 44]],
+               name = 'name',
+               message = ''):
+    return self.post('link',
+                     {
+                       'files': files,
+                       'name': name,
+                       'message': message
+                     })['transaction']
 
   # FIXME: remove when link & peer transactions are merged
   def link_update(self, link, status):

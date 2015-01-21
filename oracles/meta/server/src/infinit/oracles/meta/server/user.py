@@ -1913,5 +1913,6 @@ class Mixin:
     if not init:
       mtime = last_sync
     res.update(self._user_transactions(mtime = mtime['timestamp']))
-    res.update(self.links_list(mtime = mtime['date']))
+    # Include deleted links only during updates. At start up, ignore them.
+    res.update(self.links_list(mtime = mtime['date'], include_deleted = (not init)))
     return self.success(res)
