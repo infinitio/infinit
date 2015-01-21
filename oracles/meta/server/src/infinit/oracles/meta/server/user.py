@@ -1803,6 +1803,11 @@ class Mixin:
     name -- Name of the email set.
     """
     user = self.user_by_id_or_email(user)
+    if user is None:
+      self.not_found({
+        'reason': 'user %s not found' % user,
+        'user': user,
+      })
     return self.__modify_subscription(user, name, False)
 
   # Restore.
