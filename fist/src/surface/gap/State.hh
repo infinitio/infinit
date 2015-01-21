@@ -638,10 +638,14 @@ namespace surface
       _transactions_init();
 
       void
-      _peer_transaction_resync(std::unordered_map<std::string, infinit::oracles::PeerTransaction> const& transactions);
+      _peer_transaction_resync(
+        std::unordered_map<std::string, infinit::oracles::PeerTransaction> const& transactions,
+        bool login = false);
 
       void
-      _link_transaction_resync(std::vector<infinit::oracles::LinkTransaction> const& links);
+      _link_transaction_resync(
+        std::vector<infinit::oracles::LinkTransaction> const& links,
+        bool login = false);
 
       void
       _transactions_clear();

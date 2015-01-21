@@ -119,7 +119,8 @@ namespace surface
       Transaction(State& state,
                   uint32_t id,
                   std::shared_ptr<Data> data,
-                  bool history = false);
+                  bool history = false,
+                  bool login = false);
       /// Construct from snapshot.
       Transaction(State& state,
                   uint32_t id,
