@@ -554,29 +554,25 @@ class Mixin:
       transaction_id = transaction['_id']
       elle.log.trace("send invitation to new user %s for transaction %s" % (
         peer_email, transaction_id))
-      # Figure out what the sender will ghost-upload
-      # This heuristic must be in sync with the sender!
-      ghost_upload_file = ''
-      files = transaction['files']
-      # FIXME: this name computation is duplicated from client !
-      if len(files) == 1:
-        if transaction['is_directory']:
-          #C++ side is doing a replace_extension
-          parts = files[0].split('.')
-          if len(parts) == 1:
-            ghost_upload_file = files[0] + '.zip'
-          else:
-            ghost_upload_file = '.'.join(parts[0:-1]) + '.zip'
-        else:
-          ghost_upload_file = files[0]
-      else:
-        ghost_upload_file = '%s files.zip' % len(files)
+      ghost_upload_file = self._upload_file_name(transaction)
       # Generate GET URL for ghost cloud uploaded file
       # FIXME: AFAICT nothing prevent us from generating this directly
       # on transaction creation and greatly simplify the client and
       # server code.
-      ghost_get_url = cloud_buffer_token.generate_get_url(
-        self.aws_region, self.aws_buffer_bucket,
+      # Figure out which backend was used
+      backend_name = transaction['aws_credentials']['protocol']
+      if backend_name == 'aws':
+        backend = cloud_buffer_token
+        bucket = self.aws_buffer_bucket
+        region = self.aws_region
+      elif backend_name == 'gcs':
+        backend = cloud_buffer_token_gcs
+        bucket = self.gcs_buffer_bucket
+        region = self.gcs_region
+      else:
+        elle.log.err('unknown backend %s' % (backend_name))
+      ghost_get_url = backend.generate_get_url(
+        region, bucket,
         transaction_id,
         ghost_upload_file)
       elle.log.log('Generating cloud GET URL for %s: %s'
@@ -595,7 +591,7 @@ class Mixin:
         database = self.database,
         merge_vars = {
           peer_email: {
-            'filename': files[0],
+            'filename': transaction['files'][0],
             'recipient_email': recipient['email'],
             'recipient_name': recipient['fullname'],
             'sendername': user['fullname'],
@@ -605,7 +601,7 @@ class Mixin:
             'note': transaction['message'],
             'transaction_hash': transaction_hash,
             'transaction_id': str(transaction['_id']),
-            'number_of_other_files': len(files) - 1,
+            'number_of_other_files': len(transaction['files']) - 1,
           }}
       )
       return {
@@ -988,6 +984,27 @@ class Mixin:
 
     return self.success(res)
 
+  def _upload_file_name(self, transaction):
+    """
+    Return the name of the uploaded file from transaction data
+    """
+    ghost_upload_file = ''
+    files = transaction['files']
+    # FIXME: this name computation is duplicated from client !
+    if len(files) == 1:
+      if transaction['is_directory']:
+        #C++ side is doing a replace_extension
+        parts = files[0].split('.')
+        if len(parts) == 1:
+          ghost_upload_file = files[0] + '.zip'
+        else:
+          ghost_upload_file = '.'.join(parts[0:-1]) + '.zip'
+      else:
+        ghost_upload_file = files[0]
+    else:
+      ghost_upload_file = '%s files.zip' % len(files)
+    return ghost_upload_file
+
   @api('/transaction/<transaction_id>/cloud_buffer')
   @require_logged_in
   def cloud_buffer(self, transaction_id : bson.ObjectId,
@@ -1019,37 +1036,15 @@ class Mixin:
     # As long as those creds are transaction specific there is no risk
     # in letting the recipient have WRITE access. This will no longuer hold
     # if cloud data ever gets shared among transactions.
-    elle.log.log("selecting backend %s" % (transaction['is_ghost']))
-    if transaction['is_ghost']:
-      ghost_upload_file = ''
-      files = transaction['files']
-      # FIXME: this name computation is duplicated from client !
-      if len(files) == 1:
-        if transaction['is_directory']:
-          #C++ side is doing a replace_extension
-          parts = files[0].split('.')
-          if len(parts) == 1:
-            ghost_upload_file = files[0] + '.zip'
-          else:
-            ghost_upload_file = '.'.join(parts[0:-1]) + '.zip'
-        else:
-          ghost_upload_file = files[0]
-      else:
-        ghost_upload_file = '%s files.zip' % len(files)
+    if transaction['is_ghost'] and self.user_version >= (0, 9, 26):
+      ghost_upload_file = self._upload_file_name(transaction)
       token_maker = cloud_buffer_token_gcs.CloudBufferTokenGCS(
-        transaction_id, ghost_upload_file)
+        transaction_id, ghost_upload_file, self.gcs_buffer_bucket)
       ul = token_maker.get_upload_token()
       credentials = dict()
       credentials['protocol'] = 'gcs'
       credentials['url'] = ul
-      credentials['access_key_id']     = ul
-      credentials['secret_access_key'] = ''
-      credentials['session_token']     = ''
       credentials['expiration']        = (datetime.date.today()+datetime.timedelta(days=7)).isoformat()
-      credentials['protocol']          = ''
-      credentials['region']            = ''
-      credentials['bucket']            = ''
-      credentials['folder']            = ''
       credentials['current_time']      = current_time
     else:
       token_maker = cloud_buffer_token.CloudBufferToken(

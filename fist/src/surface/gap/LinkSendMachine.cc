@@ -220,8 +220,8 @@ namespace surface
       }
     }
 
-    aws::Credentials
-    LinkSendMachine::_aws_credentials(bool first_time)
+    std::unique_ptr<infinit::oracles::meta::CloudCredentials>
+    LinkSendMachine::_cloud_credentials(bool first_time)
     {
       if (this->data()->id.empty())
         ELLE_ABORT("%s: fetching AWS credentials of uncreated transaction",
@@ -233,7 +233,8 @@ namespace surface
       else if (!this->_credentials)
         this->_credentials =
           this->state().meta().link_credentials(this->data()->id);
-      return this->_credentials.get();
+      return std::unique_ptr<infinit::oracles::meta::CloudCredentials>(
+        this->_credentials->clone());
     }
 
     void
@@ -267,7 +268,7 @@ namespace surface
             files, this->archive_info().first, this->message());
         *this->_data = std::move(response.transaction());
         this->transaction()._snapshot_save();
-        this->_credentials = std::move(response.aws_credentials());
+        this->_credentials = std::move(response.cloud_credentials());
       }
       this->total_size(total_size);
       this->_save_snapshot();

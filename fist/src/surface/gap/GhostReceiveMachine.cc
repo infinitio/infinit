@@ -345,8 +345,8 @@ namespace surface
           this->transaction().canceled_by_user());
     }
 
-    aws::Credentials
-    GhostReceiveMachine::_aws_credentials(bool regenerate)
+    std::unique_ptr<infinit::oracles::meta::CloudCredentials>
+    GhostReceiveMachine::_cloud_credentials(bool regenerate)
     {
       throw elle::Error("Not implemented");
     }
