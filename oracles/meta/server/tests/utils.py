@@ -66,7 +66,7 @@ class Client:
     else:
       return content
 
-  def request(self, url, method, body):
+  def request(self, url, method, body, assert_success = True):
     h = httplib2.Http()
     uri = "http://localhost:%s/%s" % (self.__meta_port, url)
     headers = {}
@@ -80,19 +80,22 @@ class Client:
                               body = body,
                               headers = headers)
     self.__get_cookies(resp)
-    return self.__convert_result(url, method, body, resp, content)
+    res = self.__convert_result(url, method, body, resp, content)
+    if assert_success and 'success' in res:
+      assert res['success']
+    return res
 
-  def post(self, url, body = None):
-    return self.request(url, 'POST', body)
+  def post(self, url, body = None, assert_success = False):
+    return self.request(url, 'POST', body, assert_success)
 
-  def get(self, url, body = None):
-    return self.request(url, 'GET', body)
+  def get(self, url, body = None, assert_success = False):
+    return self.request(url, 'GET', body, assert_success)
 
-  def put(self, url, body = None):
-    return self.request(url, 'PUT', body)
+  def put(self, url, body = None, assert_success = False):
+    return self.request(url, 'PUT', body, assert_success)
 
-  def delete(self, url, body = None):
-    return self.request(url, 'DELETE', body)
+  def delete(self, url, body = None, assert_success = False):
+    return self.request(url, 'DELETE', body, assert_success)
 
 class Trophonius(Client):
 

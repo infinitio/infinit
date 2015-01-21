@@ -193,6 +193,9 @@ class Meta(bottle.Bottle,
     # - Mailchimp userbase.
     self.__database.users.ensure_index([("_id", 1), ("os", 1)])
 
+    # - Auxiliary emails.
+    # Sparse because users may have no pending_auxiliary_emails field.
+    self.__database.users.ensure_index([("pending_auxiliary_emails.hash", 1)], unique = True, sparse = True)
     #---------------------------------------------------------------------------
     # Devices
     #---------------------------------------------------------------------------
@@ -358,7 +361,6 @@ class Meta(bottle.Bottle,
         return self._user_by_id(id, ensure_existence = False)
       except bson.errors.InvalidId:
         self.bad_request('invalid user id: %r' % id_or_email)
-
 
   def report_fatal_error(self, route, exception):
     import traceback
