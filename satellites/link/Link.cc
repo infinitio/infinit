@@ -100,8 +100,8 @@ int main(int argc, char** argv)
         surface::gap::State state(config);
         uint32_t id = surface::gap::null_id;
 
-        state.attach_callback<surface::gap::Transaction::Notification>(
-          [&] (surface::gap::Transaction::Notification const& notif)
+        state.attach_callback<surface::gap::LinkTransaction>(
+          [&] (surface::gap::LinkTransaction const& notif)
           {
             if (id == surface::gap::null_id)
               return;
