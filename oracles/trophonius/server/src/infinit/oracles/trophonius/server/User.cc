@@ -294,7 +294,19 @@ namespace infinit
             response["notification_type"] = int(12);
             response["response_code"] = int(403);
             response["response_details"] = std::string(e.what());
-            elle::json::write(*this->_socket, response);
+            try
+            {
+              elle::json::write(*this->_socket, response);
+            }
+            catch (reactor::network::ConnectionClosed const&)
+            {
+              // nothing
+            }
+            catch  (reactor::network::ConnectionClosed const& e)
+            {
+              ELLE_ERR("trophonius shutting down because of: %s", e);
+              throw;
+            }
           }
           catch (reactor::network::Exception const& e)
           {
