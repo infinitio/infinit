@@ -52,16 +52,6 @@ gap_Status gap_meta_status(gap_State* state);
 
 //- Authentication & registration -------------------------------------------
 
-/// Generate a hash for the password.
-/// NOTE: You are responsible to free the returned pointer with
-/// gap_hash_free.
-char* gap_hash_password(gap_State* state,
-                        char const* email,
-                        char const* password);
-
-/// Free a previously allocated hash.
-void gap_hash_free(char* h);
-
 /// Fetch Meta message.
 /// In some cases when Meta is down, it will have an associated message.
 char const*

@@ -112,8 +112,7 @@ class _State:
 
     def login(self, email, password):
         self.email = email
-        pw_hash = self.__call('hash_password', email, password)
-        self.__call('login', email, pw_hash)
+        self.__call('login', email, password)
 
     @property
     def logged(self):
@@ -121,8 +120,7 @@ class _State:
 
     def register(self, fullname, email, password):
         self.email = email
-        pw_hash = self.__call('hash_password', email, password)
-        self.__call('register', fullname, email, pw_hash)
+        self.__call('register', fullname, email, password)
 
     @property
     def _id(self):
@@ -139,7 +137,7 @@ class State(_State):
 
     def __enter__(self):
         if len(self.__args) == 0 and len(self.__kwargs) == 0:
-            print("WARNING, defaulting to devlopment server")
+            print("WARNING, defaulting to development server")
             self.__state = _gap.new(False)
         else:
             self.__state = _gap.new(*self.__args, **self.__kwargs)

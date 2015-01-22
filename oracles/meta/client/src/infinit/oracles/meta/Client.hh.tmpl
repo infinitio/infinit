@@ -36,6 +36,10 @@ namespace infinit
   {
     namespace meta
     {
+      std::string
+      old_password_hash(std::string const& email,
+                        std::string const& password);
+
       namespace json = elle::format::json;
 
       enum class Error: int
