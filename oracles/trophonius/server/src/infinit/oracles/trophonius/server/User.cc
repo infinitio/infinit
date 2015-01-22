@@ -169,7 +169,8 @@ namespace infinit
               {
                 try
                 {
-                  this->_user_id = boost::any_cast<std::string>(json["user_id"]);
+                  this->_user_id =
+                    boost::any_cast<std::string>(json["user_id"]);
                   this->_device_id =
                     boost::uuids::string_generator()(
                       boost::any_cast<std::string>(json["device_id"]));
@@ -181,9 +182,12 @@ namespace infinit
                       boost::any_cast<elle::json::Object>(json.at("version"));
                     try
                     {
-                      auto major = boost::any_cast<int64_t>(version.at("major"));
-                      auto minor = boost::any_cast<int64_t>(version.at("minor"));
-                      auto subminor = boost::any_cast<int64_t>(version.at("subminor"));
+                      auto major =
+                        boost::any_cast<int64_t>(version.at("major"));
+                      auto minor =
+                        boost::any_cast<int64_t>(version.at("minor"));
+                      auto subminor =
+                        boost::any_cast<int64_t>(version.at("subminor"));
                       this->_version = elle::Version(major, minor, subminor);
                       ELLE_LOG("%s: client version: %s", *this, this->_version);
                     }
@@ -242,9 +246,10 @@ namespace infinit
                 // FIXME: the meta client exception is bullshit.
                 catch (elle::http::Exception const& e)
                 {
-                  if (e.code == elle::http::ResponseCode::forbidden ||
-                      e.code == elle::http::ResponseCode::internal_server_error ||
-                      e.code == elle::http::ResponseCode::unknown_error)
+                  using elle::http::ResponseCode;
+                  if (e.code == ResponseCode::forbidden ||
+                      e.code == ResponseCode::internal_server_error ||
+                      e.code == ResponseCode::unknown_error)
                   {
                     throw AuthenticationError(e.what());
                   }
@@ -340,7 +345,8 @@ namespace infinit
         {
           elle::With<RemoveWard>(*this) << [&](RemoveWard&)
           {
-            elle::SafeFinally desauthenticate{[&] { this->_authentified.close(); }};
+            elle::SafeFinally desauthenticate
+              ([&] { this->_authentified.close(); });
             auto period = this->trophonius().ping_period() * 2;
             while (true)
             {
