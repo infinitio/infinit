@@ -275,8 +275,20 @@ namespace surface
               std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
                 this->_data))
           {
-            this->state().enqueue(Transaction::Notification(this->id(),
-                                                            this->status()));
+            surface::gap::PeerTransaction notification(
+              this->id(),
+              this->status(),
+              this->state().user_indexes().at(peer_data->sender_id),
+              peer_data->sender_device_id,
+              this->state().user_indexes().at(peer_data->recipient_id),
+              peer_data->recipient_device_id,
+              peer_data->mtime,
+              peer_data->files,
+              peer_data->total_size,
+              peer_data->is_directory,
+              peer_data->message,
+              peer_data->canceler);
+            this->state().enqueue(notification);
           }
           else if (auto link_data =
                    std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
@@ -287,7 +299,9 @@ namespace surface
                                                   link_data->mtime,
                                                   link_data->share_link,
                                                   link_data->click_count,
-                                                  this->status()));
+                                                  this->status(),
+                                                  link_data->sender_device_id,
+                                                  link_data->message));
           }
         }
         return;
