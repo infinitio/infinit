@@ -119,8 +119,7 @@ int main(int argc, char** argv)
               stop = true;
             }
           });
-        auto hashed_password = state.hash_password(user, password);
-        state.login(user, hashed_password);
+        state.login(user, password);
         std::string file_names = options["file"].as<std::string>();
         std::vector<std::string> files;
         boost::algorithm::split(files, file_names, boost::is_any_of(","));

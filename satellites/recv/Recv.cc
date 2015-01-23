@@ -178,8 +178,7 @@ int main(int argc, char** argv)
 
           });
 
-        auto hashed_password = state.hash_password(user, password);
-        state.login(user, hashed_password);
+        state.login(user, password);
 
         do
         {
