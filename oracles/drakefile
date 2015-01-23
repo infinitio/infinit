@@ -106,6 +106,14 @@ def configure(production_build,
     drake.copy(sendwithus, 'lib/python',
                strip_prefix = 'sendwithus_python'))
 
+  apns = drake.nodes(
+    'PyAPNs/apns.py',
+  )
+  apns = drake.python.Package(
+    'PyAPNs',
+    'lib/python',
+    drake.copy(apns, 'lib/python', strip_prefix = 'PyAPNs'))
+
   meta = drake.include('meta',
                        production_build = production_build,
                        elle = elle,
@@ -114,6 +122,7 @@ def configure(production_build,
                        transaction_lib = transaction_lib,
                        transaction_config = config,
                        python3 = python3,
+                       apns = apns,
                        boost = boost,
                        prefix = prefix,
                        cxx_toolkit = cxx_toolkit,
