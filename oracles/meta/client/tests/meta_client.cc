@@ -101,7 +101,7 @@ ELLE_TEST_SCHEDULED(login_success)
                      return "{}";
                    });
   infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
-  c.login("jean@infinit.io", "password", "new_password", boost::uuids::nil_uuid());
+  c.login("jean@infinit.io", "password", boost::uuids::nil_uuid());
   c.logout();
 }
 
@@ -120,7 +120,7 @@ ELLE_TEST_SCHEDULED(forbidden)
   infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
   // Find good error.
   BOOST_CHECK_THROW(c.login("jean@infinit.io",
-                            "password", "new_password",
+                            "password",
                             boost::uuids::nil_uuid()),
                     elle::Exception);
 }
@@ -138,7 +138,7 @@ ELLE_TEST_SCHEDULED(ill_formed_json)
                    });
   infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
   BOOST_CHECK_THROW(c.login("jean@infinit.io",
-                            "password", "new_password",
+                            "password",
                             boost::uuids::nil_uuid()),
                     std::runtime_error);
 }
@@ -156,7 +156,7 @@ ELLE_TEST_SCHEDULED(missing_key)
                    });
   infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
   BOOST_CHECK_THROW(c.login("jean@infinit.io",
-                            "password", "new_password",
+                            "password",
                             boost::uuids::nil_uuid()),
                     elle::serialization::MissingKey);
 }
@@ -180,7 +180,7 @@ ELLE_TEST_SCHEDULED(login_password_dont_match)
                    });
   infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
   BOOST_CHECK_THROW(c.login("jean@infinit.io",
-                            "password", "new_password",
+                            "password",
                             boost::uuids::nil_uuid()),
                       infinit::state::CredentialError);
 }
@@ -204,7 +204,7 @@ ELLE_TEST_SCHEDULED(unconfirmed_email)
                    });
   infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
   BOOST_CHECK_THROW(c.login("jean@infinit.io",
-                            "password", "new_password",
+                            "password",
                             boost::uuids::nil_uuid()),
                       infinit::state::UnconfirmedEmailError);
 }
@@ -228,7 +228,7 @@ ELLE_TEST_SCHEDULED(already_logged_in)
                    });
   infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
   BOOST_CHECK_THROW(c.login("jean@infinit.io",
-                            "password", "new_password",
+                            "password",
                             boost::uuids::nil_uuid()),
                       infinit::state::AlreadyLoggedIn);
 }
