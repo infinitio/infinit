@@ -421,8 +421,8 @@ extern "C" jlong Java_io_infinit_State_gapLogin(
   JNIEnv* env, jobject thiz, jlong handle,
   jstring mail, jstring hash_password)
 {
-  gap_Status s = gap_login((gap_State*)handle, to_string(env, mail), to_string(env, hash_password));
-  return s;
+  gap_Status s = gap_login((gap_State*)handle, to_string(env, mail), to_string(env, hash_password), {}, 0_sec);
+  return gap_ok; // errors will be reported asynchronously
 }
 
 extern "C" jlong Java_io_infinit_State_gapRegister(
