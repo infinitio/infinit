@@ -5,6 +5,7 @@ import bson
 import copy
 import uuid
 import elle.log
+import pymongo
 
 from . import conf, error, regexp
 from .utils import api, require_logged_in
