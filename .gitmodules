@@ -29,3 +29,6 @@
 [submodule "oracles/sendwithus_python"]
 	path = oracles/sendwithus_python
 	url = https://github.com/mefyl/sendwithus_python.git
+[submodule "oracles/PyAPNs"]
+	path = oracles/PyAPNs
+	url = https://github.com/mefyl/PyAPNs.git

@@ -3,6 +3,8 @@ import drake.debian
 import drake.templating
 import sys
 
+from itertools import chain
+
 build = None
 check = None
 install = None
@@ -15,6 +17,7 @@ with open(str(drake.path_source('../../../elle/drake-utils.py')), 'r') as f:
 def configure(production_build,
               elle,
               python3,
+              apns,
               python_common,
               papier_python,
               prefix = drake.Path('/usr/local')):
@@ -269,6 +272,7 @@ def configure(production_build,
     ):
     test = drake.node('tests/%s' % name)
     test.dependency_add(drake.node('tests/utils.py'))
+    test.dependency_add(apns)
     for source in python:
       test.dependency_add(source)
 
@@ -278,7 +282,8 @@ def configure(production_build,
       drake.path_build('lib/python'),
     ]
     env = {
-      'PYTHONPATH': ':'.join(map(str, pythonpath)),
+      'PYTHONPATH':
+        ':'.join(map(str, chain(pythonpath, apns.pythonpath))),
     }
 
     runner = drake.Runner(test, env = env)

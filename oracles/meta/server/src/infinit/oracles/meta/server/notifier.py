@@ -8,9 +8,11 @@ import re
 import os
 import sys
 import time
+import apns
 
 import elle.log
 from infinit.oracles.notification import notifications
+from . import conf
 
 from .plugins.jsongo import jsonify
 
@@ -20,9 +22,12 @@ for name, value in notifications.items():
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Notifier'
 
 class Notifier:
+
   def __init__(self, database):
     self.__database = database
-    pass
+    self.__apns = apns.APNs(
+      use_sandbox = True,
+      cert_file = conf.INFINIT_APS_CERT_PATH)
 
   @property
   def database(self):
@@ -61,10 +66,14 @@ class Notifier:
       devices_trophonius = []
       for device in self.database.devices.find(
           critera,
-          fields = ['id', 'owner', 'trophonius'],
+          fields = ['id', 'owner', 'trophonius', 'push_token'],
       ):
-        devices_trophonius.append(
-          ((device['id'], device['owner'], device['trophonius'])))
+        devices_trophonius.append((
+          device['id'],
+          device['owner'],
+          device['trophonius'],
+          device.get('push_token'),
+        ))
       elle.log.debug('targets: %s' % devices_trophonius)
       # Fetch trophoniuses
       trophonius = dict(
@@ -81,7 +90,7 @@ class Notifier:
       elle.log.debug('trophonius to contact: %s' % trophonius)
       notification = {'notification': jsonify(message)}
       # Freezing slow.
-      for device, owner, tropho in devices_trophonius:
+      for device, owner, tropho, push in devices_trophonius:
         s = socket.socket(socket.AF_INET,
                           socket.SOCK_STREAM)
         tropho = trophonius.get(tropho)
@@ -99,6 +108,11 @@ class Notifier:
           json_str = \
             json.dumps(notification, ensure_ascii = False) + '\n'
           s.send(json_str.encode('utf-8'))
+          if push is not None:
+            pl = apns.Payload(alert = json_str,
+                              sound = 'default',
+                              badge = 1)
+            self.__apns.gateway_server.send_notification(push, pl)
         except Exception as e:
           elle.log.err('unable to contact %s: %s' %
                        (tropho['_id'], e))
