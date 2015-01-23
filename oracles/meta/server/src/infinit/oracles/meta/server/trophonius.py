@@ -221,6 +221,7 @@ class Mixin:
     query = self.__trophonius_query
     query.update({
       'shutting_down': {'$ne': True}, # False or absent
+      'time': {'$gt': time.time() - self.trophonius_expiration_time},
     })
     trophoniuses = self.database.trophonius.find(
       query,
