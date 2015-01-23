@@ -922,6 +922,7 @@ def configure(cxx_toolkit = None,
       # JNI headers are in the android toolchain
       jni_cxx_config.add_local_include_path(os.environ['JAVA_HOME'] + '/include')
     else:
+      jni_cxx_config.lib('log')
       jni_cxx_config.lib('stdc++')
       jni_cxx_config.lib('atomic')
     jni_cxx_config.warnings.missing_declarations = False
