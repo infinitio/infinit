@@ -341,7 +341,7 @@ class Mixin:
       if password_hash is not None:
         user_content.update(
           {
-            "password_hash": utils.password_hash(password_hash)
+            'password_hash': utils.password_hash(password_hash)
           })
       if source is not None:
         user_content['source'] = source
@@ -745,14 +745,20 @@ class Mixin:
       'identity': identity,
       'public_key': public_key
     }
+    to_unset = {}
     if new_password_hash is not None:
       update.update({
         'password_hash': utils.password_hash(new_password_hash)
       })
+    else:
+      to_unset = {
+        'password_hash': True
+      }
     self.database.users.find_and_modify(
       {'_id': user['_id']},
       {
         '$set': update,
+        '$unset': to_unset,
       })
     return self.success()
 

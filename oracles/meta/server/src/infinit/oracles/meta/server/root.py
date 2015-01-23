@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 import elle.log
 from . import conf, mail, error, notifier, transaction_status
 from .utils import api, require_admin, hash_password
+from . import utils
 import infinit.oracles.meta.version
 
 LOST_PASSWORD_TEMPLATE_ID = 'lost-password'
@@ -199,7 +200,7 @@ class Mixin:
       )
 
   @api('/reset-accounts/<hash>', method = 'POST')
-  def reset_account(self, hash, password):
+  def reset_account(self, hash, password, password_hash = None):
     try:
       user = self.__user_from_hash(hash)
     except error.Error as e:
@@ -218,30 +219,36 @@ class Mixin:
       conf.INFINIT_AUTHORITY_PATH,
       conf.INFINIT_AUTHORITY_PASSWORD
     )
+    to_set = {
+      'register_status': 'ok',
+      'password': hash_password(password),
+      'identity': identity,
+      'public_key': public_key,
+      'networks': [],
+      'devices': [],
+      'connected_devices': [],
+      'connected': False,
+      'notifications': [],
+      'old_notifications': [],
+      'email_confirmed': True, # User got a reset account mail, email confirmed.
+    }
+    to_unset = {
+      'reset_password_hash': True,
+      'reset_password_hash_validity': True,
+    }
+    if password_hash:
+      to_set.update({
+        'password_hash': utils.password_hash(password_hash)
+      })
+    else:
+      to_unset.update({
+        'password_hash': True,
+      })
     self.database.users.find_and_modify(
       {'_id': user['_id']},
-      {'$set':
-        {
-          'register_status': 'ok',
-          'password': hash_password(password),
-          'identity': identity,
-          'public_key': public_key,
-          'networks': [],
-          'devices': [],
-          'connected_devices': [],
-          'connected': False,
-          'notifications': [],
-          'old_notifications': [],
-          'accounts': [
-            {'type': 'email', 'id': user['email']}
-          ],
-          'email_confirmed': True, # User got a reset account mail, email confirmed.
-        },
-        '$unset':
-        {
-          'reset_password_hash': True,
-          'reset_password_hash_validity': True,
-        }
+      {
+        '$set': to_set,
+        '$unset': to_unset,
       }
     )
     return self.success({'user_id': str(user['_id'])})
