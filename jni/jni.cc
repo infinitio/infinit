@@ -18,6 +18,10 @@
 #include <jni.h>
 #include <surface/gap/gap.hh>
 
+#ifdef INFINIT_ANDROID
+#include <android/log.h>
+#endif
+
 static std::string to_string(JNIEnv* env, jobject jso)
 {
   jstring js = (jstring)jso;
@@ -228,7 +232,7 @@ JNI_OnLoad(JavaVM* vm, void* reserved)
 static JNIEnv* get_env()
 {
   JNIEnv* env;
-  java_vm->AttachCurrentThread((void**)&env, 0);
+  java_vm->AttachCurrentThread(&env, 0);
   return env;
 }
 static void on_critical(jobject thiz)
@@ -309,6 +313,59 @@ static void on_link(jobject thiz,
   env->CallVoidMethod(thiz, m, to_linktransaction(env, t));
 }
 
+#ifdef INFINIT_ANDROID
+class AndroidLogger: public elle::log::Logger
+{
+public:
+  AndroidLogger(std::string const& log_level);
+protected:
+  void _message(Level level,
+               elle::log::Logger::Type type,
+               std::string const& component,
+               boost::posix_time::ptime const& time,
+               std::string const& message,
+               std::vector<std::pair<std::string, std::string>> const& tags,
+               int indentation,
+               std::string const& file,
+               unsigned int line,
+               std::string const& function) override;
+};
+
+AndroidLogger::AndroidLogger(std::string const& log_level)
+:elle::log::Logger(log_level)
+{
+}
+void
+AndroidLogger::_message(Level level,
+               elle::log::Logger::Type type,
+               std::string const& component,
+               boost::posix_time::ptime const& time,
+               std::string const& message,
+               std::vector<std::pair<std::string, std::string>> const& tags,
+               int indentation,
+               std::string const& file,
+               unsigned int line,
+               std::string const& function)
+{
+  android_LogPriority prio;
+  using elle::log::Logger;
+  switch(level)
+  {
+  case Logger::Level::none:    prio = ANDROID_LOG_SILENT; break;
+  case Logger::Level::log:     prio = ANDROID_LOG_INFO; break;
+  case Logger::Level::trace:   prio = ANDROID_LOG_INFO; break;
+  case Logger::Level::debug:   prio = ANDROID_LOG_DEBUG; break;
+  case Logger::Level::dump:    prio = ANDROID_LOG_VERBOSE; break;
+  }
+  switch(type)
+  {
+  case Logger::Type::info: break;
+  case Logger::Type::warning: prio = ANDROID_LOG_WARN; break;
+  case Logger::Type::error: prio = ANDROID_LOG_ERROR; break;
+  }
+  __android_log_write(prio, component.c_str(), message.c_str());
+}
+#endif
 
 extern "C" jlong Java_io_infinit_State_gapInitialize(JNIEnv* env,
   jobject thiz, jboolean production, jstring download_dir,
@@ -332,6 +389,25 @@ extern "C" jlong Java_io_infinit_State_gapInitialize(JNIEnv* env,
   gap_connection_callback(state, std::bind(on_connection, thiz, _1, _2, _3));
   gap_peer_transaction_callback(state, std::bind(on_peer_transaction, thiz, _1));
   gap_link_callback(state, std::bind(on_link, thiz, _1));
+#ifdef INFINIT_ANDROID
+  std::string log_level =
+          "elle.CrashReporter:DEBUG,"
+          "*FIST*:TRACE,"
+          "*FIST.State*:DEBUG,"
+          "frete.Frete:TRACE,"
+          "infinit.surface.gap.Rounds:DEBUG,"
+          "*meta*:TRACE,"
+          "OSX*:DUMP,"
+          "reactor.fsm.*:TRACE,"
+          "reactor.network.upnp:DEBUG,"
+          "station.Station:DEBUG,"
+          "surface.gap.*:TRACE,"
+          "surface.gap.TransferMachine:DEBUG,"
+          "*trophonius*:DEBUG";
+  std::unique_ptr<elle::log::Logger> logger
+    = elle::make_unique<AndroidLogger>(log_level);
+  elle::log::logger(std::move(logger));
+#endif
   return (jlong)state;
 }
 
