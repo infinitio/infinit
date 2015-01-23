@@ -68,3 +68,9 @@ def hash_password(password):
   seasoned = password + conf.SALT
   seasoned = seasoned.encode('utf-8')
   return hashlib.md5(seasoned).hexdigest()
+
+def password_hash(password):
+  import hashlib
+  seasoned = password + conf.SALT
+  seasoned = seasoned.encode('utf-8')
+  return hashlib.sha256(seasoned).hexdigest()

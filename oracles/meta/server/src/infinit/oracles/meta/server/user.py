@@ -12,6 +12,7 @@ import papier
 
 from .plugins.response import response, Response
 from .utils import api, require_logged_in, require_admin, require_logged_in_or_admin, hash_password, json_value, require_key, key
+from . import utils
 from . import error, notifier, regexp, conf, invitation, mail
 
 from pymongo import DESCENDING
@@ -340,7 +341,7 @@ class Mixin:
       if password_hash is not None:
         user_content.update(
           {
-            "password_hash": hash_password(password_hash)
+            "password_hash": utils.password_hash(password_hash)
           })
       if source is not None:
         user_content['source'] = source
@@ -746,7 +747,7 @@ class Mixin:
     }
     if new_password_hash is not None:
       update.update({
-        'password_hash': hash_password(new_password_hash)
+        'password_hash': utils.password_hash(new_password_hash)
       })
     self.database.users.find_and_modify(
       {'_id': user['_id']},
@@ -936,7 +937,7 @@ class Mixin:
     if password_hash is not None:
       user = self.database.users.find_one({
         'email': email,
-        'password_hash': hash_password(password_hash)})
+        'password_hash': utils.password_hash(password_hash)})
       if user is not None:
         return user
       user = self.database.users.find_and_modify(
@@ -946,7 +947,7 @@ class Mixin:
         },
         {
           '$set': {
-            'password_hash': hash_password(password_hash),
+            'password_hash': utils.password_hash(password_hash),
           },
         },
         new = True)
