@@ -153,9 +153,10 @@ class Mixin:
       device = self.device(ensure_existence = False, **query)
       if device is None:
         elle.log.trace("user logged with an unknown device")
-        device = self._create_device(id = device_id,
-                                     owner = user,
-                                     device_push_token = device_push_token)
+        device = self._create_device(
+          id = device_id,
+          owner = user,
+          device_push_token = device_push_token)
       else:
         assert str(device_id) in user['devices']
       # Remove potential leaked previous session.
