@@ -193,15 +193,12 @@ class Meta(bottle.Bottle,
     # - Mailchimp userbase.
     self.__database.users.ensure_index([("_id", 1), ("os", 1)])
 
-    #---------------------------------------------------------------------------
     # Devices
-    #---------------------------------------------------------------------------
-    # - Default search.
     self.__database.devices.ensure_index([("id", 1), ("owner", 1)],
                                          unique = True)
-    # - Trophonius disconnection.
-    self.__database.devices.ensure_index([("trophonius", 1)],
-                                         unique = False)
+    self.__database.devices.ensure_index([('id', 1)])
+    self.__database.devices.ensure_index([('owner', 1)])
+    self.__database.devices.ensure_index([("trophonius", 1)])
 
     #---------------------------------------------------------------------------
     # Transactions
