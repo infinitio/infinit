@@ -140,9 +140,10 @@ def configure(production_build,
   python += sources_built
 
   bottle = drake.nodes('../../bottle/bottle.py')
-  python += drake.copy(bottle, build_python_path,
-                            '../../bottle')
+  python += drake.copy(bottle, build_python_path, '../../bottle')
   python += drake.copy(python_common, '.', '../..')
+  python += drake.copy(apns.nodes, build_python_path,
+                       drake.Path('../..') / apns.root)
   meta = drake.python.Package('python', build_python_path, python)
   build << python
   build_binary = drake.copy(drake.node('meta'), 'bin')
@@ -273,7 +274,6 @@ def configure(production_build,
     ):
     test = drake.node('tests/%s' % name)
     test.dependency_add(drake.node('tests/utils.py'))
-    test.dependency_add(apns)
     for source in python:
       test.dependency_add(source)
 
@@ -284,7 +284,7 @@ def configure(production_build,
     ]
     env = {
       'PYTHONPATH':
-        ':'.join(map(str, chain(pythonpath, apns.pythonpath))),
+        ':'.join(map(str, pythonpath)),
     }
 
     runner = drake.Runner(test, env = env)
