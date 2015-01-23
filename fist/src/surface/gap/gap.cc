@@ -188,7 +188,8 @@ gap_Status
 gap_login(gap_State* state,
           std::string const& email,
           std::string const& password,
-          boost::optional<std::string const&> device_push_token)
+          boost::optional<std::string const&> device_push_token,
+          reactor::DurationOpt timeout)
 {
   ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
@@ -196,7 +197,7 @@ gap_login(gap_State* state,
     "login",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      state.login(email, password, device_push_token);
+      state.login(email, password, timeout, device_push_token);
       return gap_ok;
     });
 }

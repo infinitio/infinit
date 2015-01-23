@@ -8,6 +8,8 @@
 /// Used by the iOS application.
 # include <infinit/oracles/TransactionStatuses.hh>
 
+# include <reactor/duration.hh>
+
 # include <surface/gap/enums.hh>
 # include <surface/gap/LinkTransaction.hh>
 # include <surface/gap/PeerTransaction.hh>
@@ -65,7 +67,8 @@ gap_Status
 gap_login(gap_State* state,
           std::string const& email,
           std::string const& password,
-          boost::optional<std::string const&> device_push_token = {});
+          boost::optional<std::string const&> device_push_token = {},
+          reactor::DurationOpt timeout = reactor::DurationOpt());
 
 /// Fetch features.
 std::unordered_map<std::string, std::string>
