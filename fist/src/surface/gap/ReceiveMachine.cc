@@ -138,8 +138,12 @@ namespace surface
     }
 
     void
-    ReceiveMachine::accept()
+    ReceiveMachine::accept(boost::optional<std::string const&> output_dir)
     {
+      if (output_dir && !output_dir.get().empty())
+        this->_output_dir = output_dir.get();
+      else
+        this->_output_dir = "";
       ELLE_TRACE_SCOPE("%s: open accept barrier %s",
                        *this, this->transaction_id());
       this->_accepted.open();

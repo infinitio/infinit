@@ -30,7 +30,7 @@ namespace surface
       progress() const override;
 
       void
-      accept() override;
+      accept(boost::optional<std::string const&> output_dir = {}) override;
 
       void
       _accept() override;

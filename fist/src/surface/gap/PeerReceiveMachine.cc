@@ -219,7 +219,7 @@ namespace surface
     }
 
     void
-    PeerReceiveMachine::accept()
+    PeerReceiveMachine::accept(boost::optional<std::string const&> output_dir)
     {
       if (!this->_accepted.opened())
       {
@@ -229,7 +229,7 @@ namespace surface
             this->transaction_id(),
             onboarding);
       }
-      ReceiveMachine::accept();
+      ReceiveMachine::accept(output_dir);
     }
 
     void
@@ -589,7 +589,11 @@ namespace surface
 
       // Clear hypotetical blocks we fetched but did not process.
       this->_buffers.clear();
-      boost::filesystem::path output_path(this->state().output_dir());
+      boost::filesystem::path output_path;
+      if (!this->_output_dir.empty())
+        output_path = boost::filesystem::path(this->_output_dir);
+      else
+        output_path = boost::filesystem::path(this->state().output_dir());
       auto count = this->transfer_info(source).count();
 
       // total_size can be 0 if all files are empty.
@@ -723,7 +727,11 @@ namespace surface
                                         FileSize file_size,
                                         const std::string& name_policy)
     {
-      boost::filesystem::path output_path(this->state().output_dir());
+      boost::filesystem::path output_path;
+      if (!this->_output_dir.empty())
+        output_path = boost::filesystem::path(this->_output_dir);
+      else
+        output_path = boost::filesystem::path(this->state().output_dir());
       boost::filesystem::path fullpath;
 
       if (this->_snapshot->has(index))

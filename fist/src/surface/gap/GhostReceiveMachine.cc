@@ -140,7 +140,7 @@ namespace surface
     }
 
     void
-    GhostReceiveMachine::accept()
+    GhostReceiveMachine::accept(boost::optional<std::string const&> output_dir)
     {
       if (!this->_accepted.opened())
       {
@@ -150,7 +150,7 @@ namespace surface
             this->transaction_id(),
             onboarding);
       }
-      ReceiveMachine::accept();
+      ReceiveMachine::accept(output_dir);
     }
 
     void
@@ -193,10 +193,14 @@ namespace surface
         size_t begin = url.substr(0, end).find_last_of('/');
         std::string filename = url.substr(begin+1, end - begin - 1);
         ELLE_TRACE("%s: extracted file name of '%s' from '%s'", *this, filename, url);
-        _path = boost::filesystem::path(transaction().state().output_dir())
-          / filename;
+        std::string output_dir;
+        if (!this->_output_dir.empty())
+          output_dir = this->_output_dir;
+        else
+          output_dir = transaction().state().output_dir();
+        _path = boost::filesystem::path(output_dir) / filename;
         std::map<boost::filesystem::path, boost::filesystem::path> unused;
-        _path = eligible_name(transaction().state().output_dir(),
+        _path = eligible_name(output_dir,
                               filename,
                               " (%s)",
                               unused);
