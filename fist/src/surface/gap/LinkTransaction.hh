@@ -30,7 +30,8 @@ namespace surface
                       uint32_t click_count,
                       gap_TransactionStatus status,
                       std::string const& sender_device_id,
-                      std::string const& message);
+                      std::string const& message,
+                      std::string const& meta_id);
       ~LinkTransaction() noexcept(true);
 
       uint32_t id;
@@ -41,6 +42,7 @@ namespace surface
       gap_TransactionStatus status;
       std::string sender_device_id;
       std::string message;
+      std::string meta_id;
 
       static Notification::Type type;
 
