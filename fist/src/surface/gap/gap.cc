@@ -469,18 +469,18 @@ gap_update_avatar(gap_State* state, void const* data, size_t size)
 
 /// - User ----------------------------------------------------------------
 
-surface::gap::User
-gap_user_by_id(gap_State* state, uint32_t id)
+gap_Status
+gap_user_by_id(gap_State* state, uint32_t id, surface::gap::User& res)
 {
   ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
-  return run<surface::gap::User>(
+  return run<gap_Status>(
     state,
     "user by id",
-    [&] (surface::gap::State& state) -> surface::gap::User
+    [&] (surface::gap::State& state) -> gap_Status
     {
       auto const& user = state.user(id);
-      surface::gap::User res(
+      res = surface::gap::User(
         state.user_indexes().at(user.id),
         user.online(),
         user.fullname,
@@ -489,7 +489,34 @@ gap_user_by_id(gap_State* state, uint32_t id)
         state.is_swagger(id),
         user.deleted(),
         user.ghost());
-      return res;
+      return gap_ok;
+    });
+}
+
+gap_Status
+gap_user_by_meta_id(gap_State* state,
+                    std::string const& meta_id,
+                    surface::gap::User& res)
+{
+  ELLE_ASSERT(state != nullptr);
+  ELLE_ASSERT(!meta_id.empty());
+  return run<gap_Status>(
+    state,
+    "user by meta id",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      auto const& user = state.user(meta_id);
+      uint32_t state_id = state.user_indexes().at(user.id);
+      res = surface::gap::User(
+        state_id,
+        user.online(),
+        user.fullname,
+        user.handle,
+        user.id,
+        state.is_swagger(state_id),
+        user.deleted(),
+        user.ghost());
+      return gap_ok;
     });
 }
 
@@ -523,12 +550,12 @@ gap_avatar(gap_State* state, uint32_t id, void** data, size_t* size)
     });
 }
 
-void
+gap_Status
 gap_refresh_avatar(gap_State* state, uint32_t id)
 {
   ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
-  run<gap_Status>(
+  return run<gap_Status>(
     state,
     "refresh user avatar",
     [&] (surface::gap::State& state) -> gap_Status
@@ -538,18 +565,20 @@ gap_refresh_avatar(gap_State* state, uint32_t id)
     });
 }
 
-surface::gap::User
-gap_user_by_email(gap_State* state, std::string const& email)
+gap_Status
+gap_user_by_email(gap_State* state,
+                  std::string const& email,
+                  surface::gap::User& res)
 {
   ELLE_ASSERT(state != nullptr);
-  return run<surface::gap::User>(
+  return run<gap_Status>(
     state,
     "user by email",
-    [&] (surface::gap::State& state) -> surface::gap::User
+    [&] (surface::gap::State& state) -> gap_Status
     {
       auto user = state.user(email, true);
       uint32_t numeric_id = state.user_indexes().at(user.id);
-      surface::gap::User res(
+      res = surface::gap::User(
         numeric_id,
         user.online(),
         user.fullname,
@@ -558,22 +587,24 @@ gap_user_by_email(gap_State* state, std::string const& email)
         state.is_swagger(numeric_id),
         user.deleted(),
         user.ghost());
-      return res;
+      return gap_ok;
     });
 }
 
-surface::gap::User
-gap_user_by_handle(gap_State* state, std::string const& handle)
+gap_Status
+gap_user_by_handle(gap_State* state,
+                   std::string const& handle,
+                   surface::gap::User& res)
 {
   ELLE_ASSERT(state != nullptr);
-  return run<surface::gap::User>(
+  return run<gap_Status>(
     state,
     "user by handle",
-    [&] (surface::gap::State& state) -> surface::gap::User
+    [&] (surface::gap::State& state) -> gap_Status
     {
       auto user = state.user_from_handle(handle);
       uint32_t numeric_id = state.user_indexes().at(user.id);
-      surface::gap::User res(
+      res = surface::gap::User(
         numeric_id,
         user.online(),
         user.fullname,
@@ -582,34 +613,40 @@ gap_user_by_handle(gap_State* state, std::string const& handle)
         state.is_swagger(numeric_id),
         user.deleted(),
         user.ghost());
-      return res;
+      return gap_ok;
     });
 }
 
-std::vector<surface::gap::User>
-gap_users_search(gap_State* state, std::string const& text)
+gap_Status
+gap_users_search(gap_State* state,
+                 std::string const& text,
+                 std::vector<surface::gap::User>& res)
 {
   ELLE_ASSERT(state != nullptr);
-  return run<std::vector<surface::gap::User>>(
+  return run<gap_Status>(
     state,
     "users search",
-    [&] (surface::gap::State& state) -> std::vector<surface::gap::User>
+    [&] (surface::gap::State& state) -> gap_Status
     {
-      return state.users_search(text);
+      res = state.users_search(text);
+      return gap_ok;
     });
 }
 
-std::unordered_map<std::string, surface::gap::User>
-gap_users_by_emails(gap_State* state, std::vector<std::string> emails)
+gap_Status
+gap_users_by_emails(gap_State* state,
+                    std::vector<std::string> const& emails,
+                    std::unordered_map<std::string, surface::gap::User>& res)
 {
   ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(emails.size() != 0);
-  return run<std::unordered_map<std::string, surface::gap::User>>(
+  return run<gap_Status>(
     state,
     "emails and users",
-    [&] (surface::gap::State& state) -> std::unordered_map<std::string, surface::gap::User>
+    [&] (surface::gap::State& state) -> gap_Status
     {
-      return state.users_by_emails(emails);
+      res = state.users_by_emails(emails);
+      return gap_ok;
     });
 }
 
@@ -627,16 +664,15 @@ gap_user_status(gap_State* state, uint32_t id)
     });
 }
 
-std::vector<surface::gap::User>
-gap_swaggers(gap_State* state)
+gap_Status
+gap_swaggers(gap_State* state, std::vector<surface::gap::User>& res)
 {
   ELLE_ASSERT(state != nullptr);
-  return run<std::vector<surface::gap::User>>(
+  return run<gap_Status>(
     state,
     "swaggers",
-    [&] (surface::gap::State& state) -> std::vector<surface::gap::User>
+    [&] (surface::gap::State& state) -> gap_Status
     {
-      std::vector<surface::gap::User> res;
       for (uint32_t user_id: state.swaggers())
       {
         auto user = state.user(user_id);
@@ -651,26 +687,25 @@ gap_swaggers(gap_State* state)
           user.ghost());
         res.push_back(ret_user);
       }
-      return res;
+      return gap_ok;
     });
 }
 
-std::vector<uint32_t>
-gap_favorites(gap_State* state)
+gap_Status
+gap_favorites(gap_State* state, std::vector<uint32_t>& res)
 {
   ELLE_ASSERT(state != nullptr);
-  return run<std::vector<uint32_t>>(
+  return run<gap_Status>(
     state,
     "favorites",
-    [&] (surface::gap::State& state) -> std::vector<uint32_t>
+    [&] (surface::gap::State& state) -> gap_Status
     {
-      std::vector<uint32_t> values;
       for (std::string const& fav: state.me().favorites)
       {
         state.user(fav); // update user indexes
-        values.push_back(state.user_indexes().at(fav));
+        res.push_back(state.user_indexes().at(fav));
       }
-      return values;
+      return gap_ok;
     });
 }
 
@@ -921,22 +956,24 @@ gap_critical_callback(gap_State* state, std::function<void ()> const& callback)
   return state->gap_critical_callback(state, callback);
 }
 
-surface::gap::PeerTransaction
-gap_peer_transaction_by_id(gap_State* state, uint32_t id)
+gap_Status
+gap_peer_transaction_by_id(gap_State* state,
+                           uint32_t id,
+                           surface::gap::PeerTransaction& res)
 {
   ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
-  return run<surface::gap::PeerTransaction>(
+  return run<gap_Status>(
     state,
-    "peer transaction",
-    [&] (surface::gap::State& state) -> surface::gap::PeerTransaction
+    "peer transaction (id)",
+    [&] (surface::gap::State& state) -> gap_Status
     {
       auto peer_data =
         std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
           state.transactions().at(id)->data());
       ELLE_ASSERT(peer_data != nullptr);
       auto status = state.transactions().at(id)->status();
-      surface::gap::PeerTransaction res(
+      res = surface::gap::PeerTransaction(
         id,
         status,
         state.user_indexes().at(peer_data->sender_id),
@@ -948,8 +985,9 @@ gap_peer_transaction_by_id(gap_State* state, uint32_t id)
         peer_data->total_size,
         peer_data->is_directory,
         peer_data->message,
-        peer_data->canceler);
-      return res;
+        peer_data->canceler,
+        peer_data->id);
+      return gap_ok;
     });
 }
 
@@ -1059,43 +1097,46 @@ gap_create_link_transaction(gap_State* state,
     });
 }
 
-surface::gap::LinkTransaction
-gap_link_transaction_by_id(gap_State* state, uint32_t id)
+gap_Status
+gap_link_transaction_by_id(gap_State* state,
+                           uint32_t id,
+                           surface::gap::LinkTransaction& res)
 {
   ELLE_ASSERT(id != surface::gap::null_id);
-  return run<surface::gap::LinkTransaction>(
+  return run<gap_Status>(
     state,
     "link transaction by id",
-    [&] (surface::gap::State& state) -> surface::gap::LinkTransaction
+    [&] (surface::gap::State& state) -> gap_Status
     {
       auto data =
         std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
           state.transactions().at(id)->data());
       ELLE_ASSERT(data != nullptr);
       auto status = state.transactions().at(id)->status();
-      auto txn = surface::gap::LinkTransaction(id,
-                                               data->name,
-                                               data->mtime,
-                                               data->share_link,
-                                               data->click_count,
-                                               status,
-                                               data->sender_device_id,
-                                               data->message);
-      return txn;
+      res = surface::gap::LinkTransaction(id,
+                                          data->name,
+                                          data->mtime,
+                                          data->share_link,
+                                          data->click_count,
+                                          status,
+                                          data->sender_device_id,
+                                          data->message,
+                                          data->id);
+      return gap_ok;
     });
 }
 
-std::vector<surface::gap::LinkTransaction>
-gap_link_transactions(gap_State* state)
+gap_Status
+gap_link_transactions(gap_State* state,
+                      std::vector<surface::gap::LinkTransaction>& res)
 {
   ELLE_ASSERT(state != nullptr);
-  auto ret = run<std::vector<surface::gap::LinkTransaction>>(
+  auto ret = run<gap_Status>(
     state,
     "link transactions",
     [&]
-    (surface::gap::State& state) -> std::vector<surface::gap::LinkTransaction>
+    (surface::gap::State& state) -> gap_Status
     {
-      std::vector<surface::gap::LinkTransaction> values;
       auto const& trs = state.transactions();
       for(auto it = std::begin(trs); it != std::end(trs); ++it)
       {
@@ -1112,25 +1153,26 @@ gap_link_transactions(gap_State* state)
                                                    link_data->click_count,
                                                    status,
                                                    link_data->sender_device_id,
-                                                   link_data->message);
-          values.push_back(txn);
+                                                   link_data->message,
+                                                   link_data->id);
+          res.push_back(txn);
         }
       }
-      return values;
+      return gap_ok;
     });
   return ret;
 }
 
-std::vector<surface::gap::PeerTransaction>
-gap_peer_transactions(gap_State* state)
+gap_Status
+gap_peer_transactions(gap_State* state,
+                      std::vector<surface::gap::PeerTransaction>& res)
 {
   ELLE_ASSERT(state != nullptr);
-  return run<std::vector<surface::gap::PeerTransaction>>(
+  return run<gap_Status>(
     state,
     "transactions",
-    [&] (surface::gap::State& state) -> std::vector<surface::gap::PeerTransaction>
+    [&] (surface::gap::State& state) -> gap_Status
     {
-      std::vector<surface::gap::PeerTransaction> values;
       auto const& trs = state.transactions();
       for(auto it = std::begin(trs); it != std::end(trs); ++it)
       {
@@ -1140,7 +1182,7 @@ gap_peer_transactions(gap_State* state)
         if (peer_data != nullptr)
         {
           auto status = state.transactions().at(it->first)->status();
-          surface::gap::PeerTransaction res(
+          surface::gap::PeerTransaction txn(
             it->first,
             status,
             state.user_indexes().at(peer_data->sender_id),
@@ -1152,11 +1194,12 @@ gap_peer_transactions(gap_State* state)
             peer_data->total_size,
             peer_data->is_directory,
             peer_data->message,
-            peer_data->canceler);
-          values.push_back(res);
+            peer_data->canceler,
+            peer_data->id);
+          res.push_back(txn);
         }
       }
-      return values;
+      return gap_ok;
     });
 }
 
@@ -1195,93 +1238,95 @@ gap_send_files(gap_State* state,
     });
 }
 
-uint32_t
+gap_Status
 gap_pause_transaction(gap_State* state, uint32_t id)
 {
   ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
-  return run<uint32_t>(
+  return run<gap_Status>(
     state,
     "pause transaction",
-    [&] (surface::gap::State& state) -> uint32_t
+    [&] (surface::gap::State& state) -> gap_Status
     {
       state.transactions().at(id)->pause();
-      return id;
+      return gap_ok;
     });
 }
 
-uint32_t
+gap_Status
 gap_resume_transaction(gap_State* state, uint32_t id)
 {
   ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
-  return run<uint32_t>(
+  return run<gap_Status>(
     state,
     "resume transaction",
-    [&] (surface::gap::State& state) -> uint32_t
+    [&] (surface::gap::State& state) -> gap_Status
     {
       state.transactions().at(id)->resume();
-      return id;
+      return gap_ok;
     });
 }
 
-uint32_t
+gap_Status
 gap_cancel_transaction(gap_State* state, uint32_t id)
 {
   ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
-  return run<uint32_t>(
+  return run<gap_Status>(
     state,
     "cancel transaction",
-    [&] (surface::gap::State& state) -> uint32_t
+    [&] (surface::gap::State& state) -> gap_Status
     {
       state.transactions().at(id)->cancel(true);
-      return id;
+      return gap_ok;
     });
 }
 
-uint32_t
+gap_Status
 gap_delete_transaction(gap_State* state, uint32_t id)
 {
   ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
-  return run<uint32_t>(
+  return run<gap_Status>(
     state,
     "delete link",
-    [&] (surface::gap::State& state) -> uint32_t
+    [&] (surface::gap::State& state) -> gap_Status
     {
       state.transactions().at(id)->delete_();
-      return id;
+      return gap_ok;
     });
 }
 
-uint32_t
+gap_Status
 gap_reject_transaction(gap_State* state, uint32_t id)
 {
   ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
-  return run<uint32_t>(
+  return run<gap_Status>(
     state,
     "reject transaction",
-    [&] (surface::gap::State& state) -> uint32_t
+    [&] (surface::gap::State& state) -> gap_Status
     {
       state.transactions().at(id)->reject();
-      return id;
+      return gap_ok;
     });
 }
 
-uint32_t
-gap_accept_transaction(gap_State* state, uint32_t id)
+gap_Status
+gap_accept_transaction(gap_State* state,
+                       uint32_t id,
+                       boost::optional<std::string const&> output_dir)
 {
   ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
-  return run<uint32_t>(
+  return run<gap_Status>(
     state,
     "accept transaction",
-    [&] (surface::gap::State& state) -> uint32_t
+    [&] (surface::gap::State& state) -> gap_Status
     {
-      state.transactions().at(id)->accept();
-      return id;
+      state.transactions().at(id)->accept(output_dir);
+      return gap_ok;
     });
 }
 

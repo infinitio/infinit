@@ -132,8 +132,10 @@ gap_link_callback(
   std::function<void (surface::gap::LinkTransaction const&)> const& callback);
 
 /// Transaction getters.
-surface::gap::PeerTransaction
-gap_peer_transaction_by_id(gap_State* state, uint32_t id);
+gap_Status
+gap_peer_transaction_by_id(gap_State* state,
+                           uint32_t id,
+                           surface::gap::PeerTransaction& res);
 
 float
 gap_transaction_progress(gap_State* state, uint32_t id);
@@ -204,38 +206,51 @@ gap_Status
 gap_avatar(gap_State* state, uint32_t id, void** data, size_t* size);
 
 /// Refresh user's icon.
-void
+gap_Status
 gap_refresh_avatar(gap_State* state, uint32_t id);
 
-surface::gap::User
-gap_user_by_id(gap_State* state, uint32_t id);
+gap_Status
+gap_user_by_id(gap_State* state, uint32_t id, surface::gap::User& res);
+
+gap_Status
+gap_user_by_meta_id(gap_State* state,
+                    std::string const& meta_id,
+                    surface::gap::User& res);
 
 /// Retrieve user with its email.
-surface::gap::User
-gap_user_by_email(gap_State* state, std::string const& email);
+gap_Status
+gap_user_by_email(gap_State* state,
+                  std::string const& email,
+                  surface::gap::User& res);
 
 /// Retrieve user with their handle.
-surface::gap::User
-gap_user_by_handle(gap_State* state, std::string const& handle);
+gap_Status
+gap_user_by_handle(gap_State* state,
+                   std::string const& handle,
+                   surface::gap::User& res);
 
 /// Retrieve user status.
 gap_UserStatus
 gap_user_status(gap_State* state, uint32_t id);
 
 /// Search users.
-std::vector<surface::gap::User>
-gap_users_search(gap_State* state, std::string const& text);
+gap_Status
+gap_users_search(gap_State* state,
+                 std::string const& text,
+                 std::vector<surface::gap::User>& res);
 
-std::unordered_map<std::string, surface::gap::User>
-gap_users_by_emails(gap_State* state, std::vector<std::string> emails);
+gap_Status
+gap_users_by_emails(gap_State* state,
+                    std::vector<std::string> const& emails,
+                    std::unordered_map<std::string, surface::gap::User>& res);
 
 /// Get the list of user's swaggers.
-std::vector<surface::gap::User>
-gap_swaggers(gap_State* state);
+gap_Status
+gap_swaggers(gap_State* state, std::vector<surface::gap::User>& res);
 
 /// Get the list of user's favorites.
-std::vector<uint32_t>
-gap_favorites(gap_State* state);
+gap_Status
+gap_favorites(gap_State* state, std::vector<uint32_t>& res);
 
 /// Mark a user as favorite.
 gap_Status
@@ -260,16 +275,20 @@ gap_create_link_transaction(gap_State* state,
                             std::string const& message);
 
 /// Fetch a transaction by id.
-surface::gap::LinkTransaction
-gap_link_transaction_by_id(gap_State* state, uint32_t id);
+gap_Status
+gap_link_transaction_by_id(gap_State* state,
+                           uint32_t id,
+                           surface::gap::LinkTransaction& res);
 
 /// Fetch list of link transactions.
-std::vector<surface::gap::LinkTransaction>
-gap_link_transactions(gap_State* state);
+gap_Status
+gap_link_transactions(gap_State* state,
+                      std::vector<surface::gap::LinkTransaction>& res);
 
 /// Get the list of transaction ids involving the user.
-std::vector<surface::gap::PeerTransaction>
-gap_peer_transactions(gap_State* state);
+gap_Status
+gap_peer_transactions(gap_State* state,
+                      std::vector<surface::gap::PeerTransaction>& res);
 
 /// C++ version of gap_send_files.
 /// If the return value is 0, the operation failed.
@@ -289,38 +308,40 @@ gap_send_files_by_email(gap_State* state,
 
 /// Pause transaction.
 /// If the return value is 0, the operation failed.
-uint32_t
+gap_Status
 gap_pause_transaction(gap_State* state, uint32_t id);
 
 /// Resume transaction.
 /// If the return value is 0, the operation failed.
-uint32_t
+gap_Status
 gap_resume_transaction(gap_State* state, uint32_t id);
 
 /// Cancel transaction.
 /// If the return value is 0, the operation failed.
-uint32_t
+gap_Status
 gap_cancel_transaction(gap_State* state, uint32_t id);
 
 /// Delete transaction.
 /// This operation can only be performed on LinkTransactions.
 /// If the return value is 0, the operation failed.
-uint32_t
+gap_Status
 gap_delete_transaction(gap_State* state, uint32_t id);
 
 /// Reject transaction.
 /// This function can only be used by the recipient of the transaction, if
 /// not already rejected or accepted.
 /// If the return value is 0, the operation failed.
-uint32_t
+gap_Status
 gap_reject_transaction(gap_State* state, uint32_t id);
 
 /// Accept a transaction.
 /// This function can only be used by the recipient of the transaction, if
 /// not already accepted or rejected.
 /// If the return value is 0, the operation failed.
-uint32_t
-gap_accept_transaction(gap_State* state, uint32_t id);
+gap_Status
+gap_accept_transaction(gap_State* state,
+                       uint32_t id,
+                       boost::optional<std::string const&> output_dir = {});
 
 /// Return the id of an onboarding received transaction.
 uint32_t
