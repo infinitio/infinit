@@ -62,7 +62,7 @@ namespace surface
 
         virtual
         void
-        accept() override;
+        accept(boost::optional<std::string const&> output_dir = {}) override;
 
         virtual
         void
