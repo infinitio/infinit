@@ -16,7 +16,8 @@ namespace surface
       int64_t total_size_,
       bool is_directory_,
       std::string const& message_,
-      TransactionCanceler const& canceler_)
+      TransactionCanceler const& canceler_,
+      std::string const & meta_id_)
         : id(id_)
         , status(status_)
         , sender_id(sender_id_)
@@ -29,6 +30,7 @@ namespace surface
         , is_directory(is_directory_)
         , message(message_)
         , canceler(canceler_)
+        , meta_id(meta_id_)
     {}
 
     PeerTransaction::~PeerTransaction() noexcept(true)

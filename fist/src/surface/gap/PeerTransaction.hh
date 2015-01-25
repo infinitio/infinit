@@ -36,7 +36,8 @@ namespace surface
                       int64_t total_size,
                       bool is_directory,
                       std::string const& message,
-                      TransactionCanceler const& canceler);
+                      TransactionCanceler const& canceler,
+                      std::string const& meta_id);
       ~PeerTransaction() noexcept(true);
 
       uint32_t id;
@@ -51,6 +52,7 @@ namespace surface
       bool is_directory;
       std::string message;
       TransactionCanceler canceler;
+      std::string meta_id;
 
       static Notification::Type type;
 
