@@ -349,7 +349,8 @@ namespace surface
               peer_data->total_size,
               peer_data->is_directory,
               peer_data->message,
-              peer_data->canceler);
+              peer_data->canceler,
+              peer_data->id);
             this->enqueue(notification);
           }
           else if (auto link_data =
@@ -363,7 +364,8 @@ namespace surface
               link_data->click_count,
               transaction->status(),
               link_data->sender_device_id,
-              link_data->message);
+              link_data->message,
+              link_data->id);
             this->enqueue(notification);
           }
           this->_transactions.emplace(id, std::move(transaction));
