@@ -205,7 +205,8 @@ namespace surface
                                             data->click_count,
                                             this->status(),
                                             data->sender_device_id,
-                                            data->message));
+                                            data->message,
+                                            data->id));
       this->_snapshot_save();
     }
 
@@ -287,7 +288,8 @@ namespace surface
               peer_data->total_size,
               peer_data->is_directory,
               peer_data->message,
-              peer_data->canceler);
+              peer_data->canceler,
+              peer_data->id);
             this->state().enqueue(notification);
           }
           else if (auto link_data =
@@ -301,7 +303,8 @@ namespace surface
                                                   link_data->click_count,
                                                   this->status(),
                                                   link_data->sender_device_id,
-                                                  link_data->message));
+                                                  link_data->message,
+                                                  link_data->id));
           }
         }
         return;
@@ -393,7 +396,8 @@ namespace surface
                                                 link_data->click_count,
                                                 this->status(),
                                                 link_data->sender_device_id,
-                                                link_data->message));
+                                                link_data->message,
+                                                link_data->id));
           this->_snapshot_save();
         }
       }
@@ -612,7 +616,8 @@ namespace surface
                           data->click_count,
                           gap_transaction_deleted,
                           data->sender_device_id,
-                          data->message));
+                          data->message,
+                          data->id));
         this->state().metrics_reporter()->transaction_deleted(data->id);
       }
       else
@@ -658,7 +663,8 @@ namespace surface
             peer_data->total_size,
             peer_data->is_directory,
             peer_data->message,
-            peer_data->canceler);
+            peer_data->canceler,
+            peer_data->id);
           this->state().enqueue(notification);
         }
         else if (auto link_data =
@@ -673,7 +679,8 @@ namespace surface
             link_data->click_count,
             status,
             link_data->sender_device_id,
-            link_data->message);
+            link_data->message,
+            link_data->id);
           this->state().enqueue(notification);
         }
         this->_status_changed(status);
@@ -750,7 +757,8 @@ namespace surface
                                               link_data->click_count,
                                               this->status(),
                                               link_data->sender_device_id,
-                                              link_data->message));
+                                              link_data->message,
+                                              link_data->id));
       }
     }
 
