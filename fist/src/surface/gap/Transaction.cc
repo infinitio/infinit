@@ -518,7 +518,7 @@ namespace surface
     }
 
     void
-    Transaction::accept()
+    Transaction::accept(boost::optional<std::string const&> output_dir)
     {
       ELLE_TRACE_SCOPE("%s: accepting transaction", *this);
       if (this->_machine == nullptr)
@@ -529,7 +529,7 @@ namespace surface
       }
       // FIXME
       if (auto machine = dynamic_cast<ReceiveMachine*>(this->_machine.get()))
-        machine->accept();
+        machine->accept(output_dir);
       else
       {
         ELLE_ERR("%s: accepting on a send machine", *this);
