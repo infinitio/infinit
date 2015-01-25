@@ -108,9 +108,10 @@ _get_peer_transactions(gap_State* state)
 {
   assert(state != nullptr);
   boost::python::list transactions_;
-  std::vector<surface::gap::PeerTransaction> transactions =
-    gap_peer_transactions(state);
-  for (auto const& transaction: transactions)
+  std::vector<surface::gap::PeerTransaction> res;
+  gap_Status status = gap_peer_transactions(state, res);
+  (void)status;
+  for (auto const& transaction: res)
   {
     transactions_.append(transaction);
   }
@@ -122,9 +123,10 @@ _get_link_transactions(gap_State* state)
 {
   assert(state != nullptr);
   boost::python::list transactions_;
-  std::vector<surface::gap::LinkTransaction> transactions =
-    gap_link_transactions(state);
-  for (auto const& transaction: transactions)
+  std::vector<surface::gap::LinkTransaction> res;
+  gap_Status status = gap_link_transactions(state, res);
+  (void)status;
+  for (auto const& transaction: res)
   {
     transactions_.append(transaction);
   }
@@ -136,8 +138,10 @@ _get_swaggers(gap_State* state)
 {
   assert(state != nullptr);
   boost::python::list swaggers_;
-  std::vector<surface::gap::User> swaggers = gap_swaggers(state);
-  for (auto const& user: swaggers)
+  std::vector<surface::gap::User> res;
+  gap_Status status = gap_swaggers(state, res);
+  (void)status;
+  for (auto const& user: res)
   {
     swaggers_.append(boost::python::object(user));
   }
@@ -150,8 +154,10 @@ _search_users(gap_State* state, std::string text)
   assert(state != nullptr);
   assert(text.length() > 0);
   boost::python::list users_;
-  std::vector<surface::gap::User> users = gap_users_search(state, text);
-  for (auto const& user: users)
+  std::vector<surface::gap::User> res;
+  gap_Status status = gap_users_search(state, text, res);
+  (void)status;
+  for (auto const& user: res)
   {
     users_.append(user);
   }
