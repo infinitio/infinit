@@ -40,6 +40,7 @@ namespace infinit
           int port_client_ssl,
           std::string const& hostname,
           int users,
+          bool shutting_down = false,
           boost::optional<std::string> zone = boost::optional<std::string>());
 
         void

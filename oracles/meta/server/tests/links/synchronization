@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+
+import datetime
+from time import sleep
+
+from utils import Meta, User, HTTPException
+from bson.objectid import ObjectId
+import infinit.oracles.meta.server.transaction_status as transaction_status
+
+with Meta() as meta:
+  jean = User(meta, 'jeantest@infinit.io')
+  jean.login()
+
+  links = []
+  for _ in range(0, 5):
+    link = jean.getalink()
+    assert link['status'] == transaction_status.CREATED
+    links.append(link)
+
+  sync = jean.synchronize(init = True)
+  assert len(sync['links']) == len(links)
+  sync = jean.synchronize(init = False)
+  assert len(sync['links']) == 0
+
+  for i in range(0, 2):
+    jean.link_update(links[i], status = transaction_status.FINISHED)
+
+  sync = jean.synchronize(init = False)
+  assert len(sync['links']) == 2
+
+  for i in range(0, 5):
+    jean.link_update(links[i], status = transaction_status.FINISHED)
+
+  sync = jean.synchronize(init = False)
+  assert len(sync['links']) == 3
+  sync = jean.synchronize(init = False)
+  assert len(sync['links']) == 0
+  sync = jean.synchronize(init = True)
+  assert len(sync['links']) == 5
+
+  for i in range(0, 2):
+    jean.link_update(links[i], status = transaction_status.DELETED)
+
+  sync = jean.synchronize(init = False)
+  assert len(sync['links']) == 2
+  sync = jean.synchronize(init = False)
+  assert len(sync['links']) == 0
+  sync = jean.synchronize(init = True)
+  assert len(sync['links']) == 3
+
+  for i in range(0, 5):
+    jean.link_update(links[i], status = transaction_status.DELETED)
+
+  sync = jean.synchronize(init = False)
+  assert len(sync['links']) == 3
+  sync = jean.synchronize(init = False)
+  assert len(sync['links']) == 0
+  sync = jean.synchronize(init = True)
+  assert len(sync['links']) == 0

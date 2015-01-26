@@ -1,6 +1,10 @@
 #include <cmath>
 #include <sstream>
+#include <fstream>
 
+#include <openssl/sha.h>
+
+#include <boost/algorithm/string/predicate.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/uuid/string_generator.hpp>
 #include <boost/lexical_cast.hpp>
@@ -9,12 +13,14 @@
 #include <elle/container/list.hh>
 #include <elle/format/json/Dictionary.hh>
 #include <elle/json/exceptions.hh>
+#include <elle/Exception.hh>
 #include <elle/json/json.hh>
 #include <elle/log.hh>
 #include <elle/os/environ.hh>
 #include <elle/print.hh>
 #include <elle/serialization/json.hh>
 #include <elle/system/platform.hh>
+#include <elle/serialize/HexadecimalArchive.hh>
 
 #include <reactor/scheduler.hh>
 #include <reactor/http/exceptions.hh>
@@ -39,6 +45,53 @@ namespace infinit
   {
     namespace meta
     {
+
+      static
+      std::string
+      hash(std::string const& to_hash)
+      {
+        unsigned char hash[SHA256_DIGEST_LENGTH];
+        SHA256_CTX context;
+        if (SHA256_Init(&context) == 0 ||
+            SHA256_Update(&context, to_hash.c_str(), to_hash.size()) == 0 ||
+            SHA256_Final(hash, &context) == 0)
+          throw elle::Exception("Unable to hash password");
+        std::ostringstream out;
+        elle::serialize::OutputHexadecimalArchive ar(out);
+        ar.SaveBinary(hash, SHA256_DIGEST_LENGTH);
+        return out.str();
+      }
+
+      static
+      std::string
+      old_salt(std::string const& email,
+               std::string const& password)
+      {
+        return email + "MEGABIET" + password + email + "MEGABIET";
+      }
+
+      static
+      std::string
+      salt(std::string const& password)
+      {
+        auto p = "Pe9chee|" + password;
+        return p;
+      }
+
+      std::string
+      old_password_hash(std::string const& email,
+                        std::string const& password)
+      {
+        return hash(old_salt(email, password));
+      }
+
+      static
+      std::string
+      password_hash(std::string const& password)
+      {
+        return hash(salt(password));
+      }
+
       /*--------.
       | Helpers |
       `--------*/
@@ -367,9 +420,12 @@ namespace infinit
           Method::POST,
           [&] (reactor::http::Request& r)
           {
+            auto old_password = old_password_hash(email, password);
+            auto new_password = password_hash(password);
             elle::serialization::json::SerializerOut output(r, false);
             output.serialize("email", const_cast<std::string&>(email));
-            output.serialize("password", const_cast<std::string&>(password));
+            output.serialize("password", const_cast<std::string&>(old_password));
+            output.serialize("password_hash", const_cast<std::string&>(new_password));
             std::string struuid = boost::lexical_cast<std::string>(device_uuid);
             output.serialize("device_id", struuid);
             auto os = elle::system::platform::os_name();
@@ -448,10 +504,13 @@ namespace infinit
           Method::POST,
           [&] (reactor::http::Request& request)
           {
+            auto old_password = old_password_hash(email, password);
+            auto new_password = password_hash(email);
             elle::serialization::json::SerializerOut output(request, false);
             output.serialize("email", const_cast<std::string&>(email));
             output.serialize("fullname", const_cast<std::string&>(fullname));
-            output.serialize("password", const_cast<std::string&>(password));
+            output.serialize("password", const_cast<std::string&>(old_password));
+            output.serialize("password_hash", const_cast<std::string&>(new_password));
             output.serialize("source", const_cast<std::string&>(source));
           });
         std::string user_id = "";
@@ -1097,7 +1156,7 @@ namespace infinit
 
       void
       Client::change_password(std::string const& old_password,
-                              std::string const& new_password) const
+                              std::string const& password) const
       {
         auto url = "/user/change_password";
         auto request = this->_request(
@@ -1105,11 +1164,16 @@ namespace infinit
           Method::POST,
           [&] (reactor::http::Request& request)
           {
+            auto current_password = old_password_hash(this->email(), old_password);
+            auto new_password = old_password_hash(this->email(), password);
+            auto new_password_hash = password_hash(password);
             elle::serialization::json::SerializerOut output(request, false);
             output.serialize("old_password",
-                             const_cast<std::string&>(old_password));
+                             const_cast<std::string&>(current_password));
             output.serialize("new_password",
                              const_cast<std::string&>(new_password));
+            output.serialize("new_password_hash",
+                             const_cast<std::string&>(new_password_hash));
           });
         SerializerIn input(url, request);
         bool success;

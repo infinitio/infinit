@@ -65,6 +65,7 @@ namespace infinit
         int port_client_ssl,
         std::string const& hostname,
         int users,
+        bool shutting_down,
         boost::optional<std::string> zone)
       {
         auto url = elle::sprintf("/trophonius/%s",
@@ -79,6 +80,7 @@ namespace infinit
             output.serialize("port_client_ssl", port_client_ssl);
             output.serialize("hostname", const_cast<std::string&>(hostname));
             output.serialize("users", users);
+            output.serialize("shutting_down", shutting_down);
             std::string version = INFINIT_VERSION;
             output.serialize("version", version);
             if (zone)

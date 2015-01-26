@@ -101,21 +101,6 @@ _search_users(gap_State* state, std::string text)
   return users_;
 }
 
-static std::string
-_hash_password(gap_State* state, std::string email, std::string password)
-{
-  assert(state != nullptr);
-
-  char* hash = gap_hash_password(state, email.c_str(), password.c_str());
-
-  if (hash == nullptr)
-    throw std::runtime_error("Couldn't hash the password");
-
-  std::string res(hash);
-  gap_hash_free(hash);
-  return res;
-}
-
 static
 uint32_t
 _send_files_by_email(gap_State* state,
@@ -407,7 +392,6 @@ BOOST_PYTHON_MODULE(_gap)
 
   //- Authentication and registration -----------------------------------------
 
-  py::def("hash_password", &_hash_password, by_value());
   py::def("login", &gap_login);
   py::def("is_logged", &gap_logged_in);
   py::def("logout", &gap_logout);

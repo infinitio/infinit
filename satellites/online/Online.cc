@@ -144,11 +144,10 @@ int main(int argc, char** argv)
             ELLE_TRACE_SCOPE("transaction notification: %s", notif);
           });
 
-        auto hashed_password = state.hash_password(user, password);
         if (register_)
-          state.register_(fullname, user, hashed_password);
+          state.register_(fullname, user, password);
         else
-          state.login(user, hashed_password);
+          state.login(user, password);
 
         do
         {

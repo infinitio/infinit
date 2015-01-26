@@ -25,7 +25,9 @@ class Mixin:
                      hostname: str = None,
                      users: int = 0,
                      version = None,
-                     zone = None):
+                     zone = None,
+                     shutting_down = False,
+  ):
     """Register a trophonius.
     """
     # Upsert is important here  be cause if a trophonius crashed and didn't
@@ -45,6 +47,7 @@ class Mixin:
         'users': users,
         'version': version,
         'zone': zone,
+        'shutting_down': shutting_down,
       },
       upsert = True,
     )
@@ -166,6 +169,7 @@ class Mixin:
         'port',
         'port_client',
         'port_client_ssl',
+        'shutting_down',
         'users',
         'version',
       ])
@@ -214,8 +218,13 @@ class Mixin:
   @api('/trophonius')
   @require_logged_in
   def trophonius_pick(self):
+    query = self.__trophonius_query
+    query.update({
+      'shutting_down': {'$ne': True}, # False or absent
+      'time': {'$gt': time.time() - self.trophonius_expiration_time},
+    })
     trophoniuses = self.database.trophonius.find(
-      self.__trophonius_query,
+      query,
       fields = ['hostname', 'port_client', 'port_client_ssl'],
       sort = [('users', 1)],
     )
@@ -228,3 +237,11 @@ class Mixin:
       }
     except StopIteration:
       response(503, 'no notification server available')
+
+  def trophonius_clean(self):
+    # Trophonius.
+    tropho = self.database.trophonius.remove(
+      {"$or": [{"time": {"$lt": time.time() - self.trophonius_expiration_time}},
+               {"time": {"$exists": False}}]},
+      multi = True)
+    return tropho['n']

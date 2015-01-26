@@ -234,7 +234,7 @@ class Mixin:
 
   def __owner_link(self, link):
     """
-    This function is used to extract the fields needed by the link owner.
+    Extract the fields needed by the link owner.
     """
     mapping = {
       'id': '_id',
@@ -423,6 +423,7 @@ class Mixin:
                  mtime = None,
                  offset: int = 0,
                  count: int = 500,
+                 include_deleted: bool = False,
                  include_expired: bool = False):
     """
     Returns a list of the user's links.
@@ -447,6 +448,8 @@ class Mixin:
           {'expiry_time': None},
           {'expiry_time': {'$gt': self.now}},
         ]
+      if not include_deleted:
+        query['status'] = {'$ne': transaction_status.DELETED}
       res = list()
       for link in self.database.links.aggregate([
         {'$match': query},

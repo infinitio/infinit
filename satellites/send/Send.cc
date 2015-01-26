@@ -115,8 +115,7 @@ int main(int argc, char** argv)
                                   config.trophonius_fingerprint(),
                                   config.download_dir(),
                                   common::metrics(config));
-        auto hashed_password = state.hash_password(user, password);
-        state.login(user, hashed_password);
+        state.login(user, password);
         std::vector<std::string> files;
         boost::algorithm::split(files, file, boost::is_any_of(","));
         auto id = state.send_files(to, std::move(files), "");

@@ -765,6 +765,7 @@ Server::User&
 Server::register_user(std::string const& email,
                       std::string const& password)
 {
+  auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
   auto generator = boost::uuids::random_generator();
   auto id = generator();
   auto keys =
@@ -773,7 +774,7 @@ Server::register_user(std::string const& email,
   Device device{ keys.K() };
   ELLE_TRACE_SCOPE("%s: generate user %s on device %s", *this, id, device);
   auto identity = generate_identity(
-    keys, boost::lexical_cast<std::string>(id), "my identity", password);
+    keys, boost::lexical_cast<std::string>(id), "my identity", password_hash);
   std::string identity_serialized;
   identity.Save(identity_serialized);
   auto response =

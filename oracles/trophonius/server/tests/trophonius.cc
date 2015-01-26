@@ -67,21 +67,26 @@ public:
 
   typedef std::pair<std::string, std::string> Client;
   typedef std::unordered_set<Client, boost::hash<Client>> Clients;
-  typedef std::pair<int, Clients> Trophonius;
+  struct Trophonius
+  {
+    int port;
+    Clients clients;
+    bool shutting_down;
+  };
   typedef std::unordered_map<std::string, Trophonius> Trophoniuses;
   ELLE_ATTRIBUTE(reactor::network::TCPServer, server);
   ELLE_ATTRIBUTE_R(int, port);
   ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, accepter);
   ELLE_ATTRIBUTE_R(Trophoniuses, trophoniuses);
 
-  Clients&
+  Trophonius&
   trophonius(std::string const& id)
   {
     BOOST_CHECK(this->_trophoniuses.find(id) != this->_trophoniuses.end());
-    return this->_trophoniuses.find(id)->second.second;
+    return this->_trophoniuses.find(id)->second;
   }
 
-  Clients&
+  Trophonius const&
   trophonius(infinit::oracles::trophonius::server::Trophonius const& t)
   {
     return this->trophonius(boost::lexical_cast<std::string>(t.uuid()));
@@ -156,6 +161,7 @@ public:
             ELLE_DEBUG_SCOPE("%s: handle register request for trophonius %s",
                              *this, id);
             int port = 0;
+            bool shutting_down = false;
             ELLE_DEBUG("%s: read JSON", *this)
             {
               auto json_read = elle::json::read(*socket);
@@ -173,8 +179,10 @@ public:
               BOOST_CHECK(json.find("port") != json.end());
               ELLE_DUMP("%s: port: %s", *this, port);
               port = boost::any_cast<int64_t>(json.find("port")->second);
+              shutting_down = boost::any_cast<bool>(
+                json.find("shutting_down")->second);
             }
-            this->_register(*socket, id, port);
+            this->_register(*socket, id, port, shutting_down);
           }
           else if (method == "DELETE")
             this->_unregister(*socket, id);
@@ -199,11 +207,20 @@ public:
   void
   _register(reactor::network::Socket& socket,
             std::string const& id,
-            int port)
+            int port,
+            bool shutting_down)
   {
-    ELLE_LOG_SCOPE("%s: register trophonius %s on port %s", *this, id, port);
-    BOOST_CHECK(this->_trophoniuses.find(id) == this->_trophoniuses.end());
-    this->_trophoniuses.insert(std::make_pair(id, Trophonius(port, Clients())));
+    if (this->_trophoniuses.find(id) == this->_trophoniuses.end())
+    {
+      ELLE_LOG_SCOPE("%s: register trophonius %s on port %s", *this, id, port);
+      this->_trophoniuses.insert(std::make_pair(id, Trophonius{port, Clients(), false}));
+    }
+    else
+    {
+      auto& t = this->_trophoniuses.at(id);
+      BOOST_CHECK_EQUAL(port, t.port);
+      t.shutting_down = shutting_down;
+    }
   }
 
   virtual
@@ -226,7 +243,7 @@ public:
     ELLE_LOG_SCOPE("%s: register user %s:%s on %s", *this, user, device, id);
     Client c(user, device);
     auto& trophonius = this->trophonius(id);
-    trophonius.insert(c);
+    trophonius.clients.insert(c);
     this->_response_success(socket);
   }
 
@@ -240,8 +257,8 @@ public:
     ELLE_LOG_SCOPE("%s: unregister user %s:%s on %s", *this, user, device, id);
     Client c(user, device);
     auto& trophonius = this->trophonius(id);
-    BOOST_CHECK(trophonius.find(c) != trophonius.end());
-    trophonius.erase(c);
+    BOOST_CHECK(trophonius.clients.find(c) != trophonius.clients.end());
+    trophonius.clients.erase(c);
     this->_response_success(socket);
   }
 
@@ -276,7 +293,7 @@ public:
       notification["notification_type"] = type;
       response["notification"] = notification;
       // XXX: hardcoded trophonius
-      auto port = this->_trophoniuses.begin()->second.first;
+      auto port = this->_trophoniuses.begin()->second.port;
       ELLE_LOG("%s: send notification: %s",
                *this,
                elle::json::pretty_print(response));
@@ -500,7 +517,7 @@ ELLE_TEST_SCHEDULED(no_authentication, (bool, ssl))
   {
     std::unique_ptr<reactor::network::Socket> socket(
         connect_socket(ssl, trophonius));
-    BOOST_CHECK_EQUAL(meta.trophonius(trophonius).size(), 0);
+    BOOST_CHECK_EQUAL(meta.trophonius(trophonius).clients.size(), 0);
   }
   // Give Trophonius the opportunity to remove the unregister client (and it
   // should not).
@@ -589,8 +606,8 @@ class MetaGonzales:
     ELLE_LOG_SCOPE("%s: register user %s:%s on %s", *this, user, device, id);
     Client c(user, device);
     auto& trophonius = this->trophonius(id);
-    BOOST_CHECK(trophonius.find(c) == trophonius.end());
-    trophonius.insert(c);
+    BOOST_CHECK(trophonius.clients.find(c) == trophonius.clients.end());
+    trophonius.clients.insert(c);
     ELLE_LOG("%s: send notification before login confirmation", *this)
       this->send_notification(42, user, device);
     ELLE_LOG("%s: send login confirmation", *this)
@@ -690,12 +707,12 @@ ELLE_TEST_SCHEDULED(ping_timeout, (bool, ssl))
   static auto const uuid  = "00000000-0000-0000-0000-000000000001";
   static auto const id = std::make_pair(uuid, uuid);
   auto& t = meta.trophonius(trophonius);
-  BOOST_CHECK(t.find(id) == t.end());
+  BOOST_CHECK(t.clients.find(id) == t.clients.end());
   std::unique_ptr<reactor::network::Socket> socket(
         connect_socket(ssl, trophonius));
   authentify(*socket, 1, 1);
   check_authentication_success(*socket);
-  BOOST_CHECK(t.find(id) != t.end());
+  BOOST_CHECK(t.clients.find(id) != t.clients.end());
   reactor::sleep(ping * 3);
   // Read some pings until the conncetion is closed. The number of pings will
   // be determined by timing but will be three or four.
@@ -714,7 +731,7 @@ ELLE_TEST_SCHEDULED(ping_timeout, (bool, ssl))
   }
   // Check we were disconnected.
   BOOST_CHECK(connection_closed);
-  BOOST_CHECK(t.find(id) == t.end());
+  BOOST_CHECK(t.clients.find(id) == t.clients.end());
 }
 
 /*--------.
@@ -737,37 +754,45 @@ ELLE_TEST_SCHEDULED(replace, (bool, ssl))
   static auto const uuid  = "00000000-0000-0000-0000-000000000001";
   static auto const id = std::make_pair(uuid, uuid);
   auto& t = meta.trophonius(trophonius);
-  BOOST_CHECK(t.find(id) == t.end());
+  BOOST_CHECK(t.clients.find(id) == t.clients.end());
   {
-    ELLE_LOG("connect the first client");
-    std::unique_ptr<reactor::network::Socket> socket1(
-        connect_socket(ssl, trophonius));
-    authentify(*socket1, 1, 1);
-    check_authentication_success(*socket1);
-    BOOST_CHECK(t.find(id) != t.end());
-    meta.send_notification(1,
-                           "00000000-0000-0000-0000-000000000001",
-                           "00000000-0000-0000-0000-000000000001");
-    ELLE_LOG("read notification from the first client")
-      BOOST_CHECK_EQUAL(read_notification(*socket1), 1);
-    ELLE_LOG("connect a replacement client");
-    std::unique_ptr<reactor::network::Socket> socket2(
-        connect_socket(ssl, trophonius));
-    authentify(*socket2, 1, 1);
-    check_authentication_success(*socket2);
-    BOOST_CHECK(t.find(id) != t.end());
-    meta.send_notification(2,
-                           "00000000-0000-0000-0000-000000000001",
-                           "00000000-0000-0000-0000-000000000001");
+    std::unique_ptr<reactor::network::Socket> client1;
+    std::unique_ptr<reactor::network::Socket> client2;
+    ELLE_LOG("connect first client")
+    {
+      client1 = connect_socket(ssl, trophonius);
+      authentify(*client1, 1, 1);
+      check_authentication_success(*client1);
+      BOOST_CHECK(t.clients.find(id) != t.clients.end());
+    }
+    ELLE_LOG("read notification from first client")
+    {
+      meta.send_notification(1,
+                             "00000000-0000-0000-0000-000000000001",
+                             "00000000-0000-0000-0000-000000000001");
+      BOOST_CHECK_EQUAL(read_notification(*client1), 1);
+    }
+    ELLE_LOG("connect replacement client")
+    {
+      client2 = connect_socket(ssl, trophonius);
+      authentify(*client2, 1, 1);
+      check_authentication_success(*client2);
+      BOOST_CHECK(t.clients.find(id) != t.clients.end());
+    }
     // Check the first socket was disconnected.
-    ELLE_LOG("check the old client is disconnected")
-      BOOST_CHECK_THROW(elle::json::read(*socket1),
-                        reactor::network::ConnectionClosed);
-    ELLE_LOG("read notification from the new client")
-      BOOST_CHECK_EQUAL(read_notification(*socket2), 2);
+    BOOST_CHECK_THROW(client1->read(1, 100_ms),
+                      reactor::network::ConnectionClosed);
+    ELLE_LOG("read notification from replacement client")
+    {
+      meta.send_notification(2,
+                             "00000000-0000-0000-0000-000000000001",
+                             "00000000-0000-0000-0000-000000000001");
+      BOOST_CHECK_EQUAL(read_notification(*client2), 2);
+    }
   }
-  reactor::sleep(100_ms); // XXX: wait for tropho to disconnect it.
-  BOOST_CHECK(t.find(id) == t.end());
+  // Let trophonius see we disconnected.
+  reactor::sleep(100_ms);
+  BOOST_CHECK(t.clients.find(id) == t.clients.end());
 }
 
 /*------------------.
@@ -793,6 +818,97 @@ ELLE_TEST_SCHEDULED(bad_ssl_handshake)
   socket.write(elle::ConstWeakBuffer("pwal\n"));
   BOOST_CHECK_THROW(socket.get(), reactor::network::ConnectionClosed);
 }
+
+/*---------.
+| Shutdown |
+`---------*/
+
+// Check trophonius sends the shutting_down boolean to meta and disconnects
+// peers properly.
+
+ELLE_TEST_SCHEDULED(terminate)
+{
+  Meta meta;
+  infinit::oracles::trophonius::server::Trophonius trophonius(
+    0,
+    0,
+    "http",
+    "localhost",
+    meta.port(),
+    0,
+    60_sec,
+    300_sec);
+  // Connect all three type of clients to trophonius to test shut down behavior:
+  // user, pending user, meta notifier.
+  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
+  {
+    reactor::Barrier client_barrier;
+    reactor::Barrier client_pending_barrier;
+    reactor::Barrier meta_notifier_barrier;
+    scope.run_background(
+      "client",
+      [&]
+      {
+        auto socket = connect_socket(true, trophonius);
+        authentify(*socket, 4, 2);
+        check_authentication_success(*socket);
+        client_barrier.open();
+        try
+        {
+          socket->read_until("\n");
+          BOOST_CHECK(false);
+        }
+        catch (reactor::network::ConnectionClosed const&)
+        {
+          BOOST_CHECK(meta.trophonius(trophonius).shutting_down);
+        }
+      });
+    scope.run_background(
+      "pending client",
+      [&]
+      {
+        auto socket = connect_socket(true, trophonius);
+        client_pending_barrier.open();
+        try
+        {
+          socket->read_until("\n");
+          BOOST_CHECK(false);
+        }
+        catch (reactor::network::ConnectionClosed const&)
+        {
+          BOOST_CHECK(meta.trophonius(trophonius).shutting_down);
+        }
+      });
+    scope.run_background(
+      "meta notifer",
+      [&]
+      {
+        reactor::network::TCPSocket socket("127.0.0.1",
+                                           trophonius.port_notifications());
+        meta_notifier_barrier.open();
+        try
+        {
+          socket.read_until("\n");
+          BOOST_CHECK(false);
+        }
+        catch (reactor::network::ConnectionClosed const&)
+        {
+          BOOST_CHECK(meta.trophonius(trophonius).shutting_down);
+        }
+      });
+    reactor::wait(client_barrier);
+    reactor::wait(client_pending_barrier);
+    reactor::wait(meta_notifier_barrier);
+    BOOST_CHECK(!meta.trophonius(trophonius).shutting_down);
+    trophonius.terminate();
+    ELLE_LOG("wait scope")
+      reactor::wait(scope);
+  };
+}
+
+/*------.
+| Suite |
+`------*/
 
 ELLE_TEST_SUITE()
 {
@@ -843,4 +959,5 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(replace_ssl), 0, timeout);
 
   suite.add(BOOST_TEST_CASE(bad_ssl_handshake), 0, timeout);
+  suite.add(BOOST_TEST_CASE(terminate), 0, timeout);
 }

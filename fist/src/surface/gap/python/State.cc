@@ -532,6 +532,4 @@ BOOST_PYTHON_MODULE(state)
       (&State::reconnection_cooldown))
     .def("change_password", &State::change_password)
     ;
-    // Static functions.
-    boost::python::def("hash_password", &State::hash_password);
 }

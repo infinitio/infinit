@@ -135,29 +135,6 @@ gap_debug(gap_State* state)
 }
 
 //- Authentication ----------------------------------------------------------
-
-char*
-gap_hash_password(gap_State* state,
-                  char const* email,
-                  char const* password)
-{
-  assert(email != nullptr);
-  assert(password != nullptr);
-
-  return run<char*>(state,
-                    "hash_password",
-                    [&] (surface::gap::State& state) -> char*
-                    {
-                      std::string h = state.hash_password(email, password);
-                      return ::strdup(h.c_str());
-                    });
-}
-
-void gap_hash_free(char* h)
-{
-  ::free(h);
-}
-
 char const*
 gap_meta_down_message(gap_State* _state)
 {
@@ -265,16 +242,16 @@ gap_clean_state(gap_State* state)
 gap_Status
 gap_login(gap_State* _state,
           char const* email,
-          char const* hash_password)
+          char const* password)
 {
   assert(email != nullptr);
-  assert(hash_password != nullptr);
+  assert(password != nullptr);
 
   return run<gap_Status>(_state,
                          "login",
                          [&] (surface::gap::State& state) -> gap_Status
                          {
-                           state.login(email, hash_password);
+                           state.login(email, password);
                            return gap_ok;
                          });
 }
@@ -418,9 +395,7 @@ gap_set_self_email(gap_State* state,
                          "set self email",
                          [&] (surface::gap::State& state) -> gap_Status
                         {
-                          auto hashed_password =
-                            state.hash_password(state.me().email, password);
-                          state.meta().change_email(email, hashed_password);
+                          state.meta().change_email(email, password);
                           return gap_ok;
                         });
 }
@@ -485,9 +460,7 @@ gap_change_password(gap_State* state,
     "change password",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      state.change_password(
-        state.hash_password(state.me().email, old_password),
-        state.hash_password(state.me().email, new_password));
+      state.change_password(old_password,  new_password);
       return gap_ok;
     });
 }

@@ -1,10 +1,7 @@
 #include <fstream>
 
-#include <boost/algorithm/string/predicate.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/uuid/uuid_io.hpp>
-
-#include <openssl/sha.h>
 
 #include <elle/AtomicFile.hh>
 #include <elle/format/gzip.hh>
@@ -441,7 +438,6 @@ namespace surface
                        lower_email.end(),
                        lower_email.begin(),
                        ::tolower);
-
         std::string failure_reason;
         elle::With<elle::Finally>([&]
           {
@@ -456,7 +452,9 @@ namespace surface
           << [&] (elle::Finally& finally_logout)
         {
           auto login_response =
-            this->_meta.login(lower_email, password, _device_uuid);
+            this->_meta.login(lower_email,
+                              password,
+                              _device_uuid);
           ELLE_LOG("%s: logged in as %s", *this, email);
           this->_me.reset(new Self(login_response.self));
           this->user_sync(this->me());
@@ -507,10 +505,12 @@ namespace surface
           std::string identity_clear;
           ELLE_TRACE("%s: decrypt identity", *this)
           {
+            auto hashed_password = infinit::oracles::meta::old_password_hash(
+              lower_email, password);
             this->_identity.reset(new papier::Identity());
             if (this->_identity->Restore(this->me().identity) == elle::Status::Error)
               throw Exception(gap_internal_error, "unable to restore the identity");
-            if (this->_identity->Decrypt(password) == elle::Status::Error)
+            if (this->_identity->Decrypt(hashed_password) == elle::Status::Error)
               throw Exception(gap_internal_error, "unable to decrypt the identity");
             if (this->_identity->Clear() == elle::Status::Error)
               throw Exception(gap_internal_error, "unable to clear the identity");
@@ -803,37 +803,6 @@ namespace surface
       }
     }
 
-    std::string
-    State::hash_password(std::string const& email,
-                         std::string const& password)
-    {
-      // !WARNING! Do not log the password.
-      ELLE_TRACE_FUNCTION(email);
-
-      std::string lower_email = email;
-
-      std::transform(lower_email.begin(),
-                     lower_email.end(),
-                     lower_email.begin(),
-                     ::tolower);
-
-      unsigned char hash[SHA256_DIGEST_LENGTH];
-      SHA256_CTX context;
-      std::string to_hash = lower_email + "MEGABIET" + password + lower_email + "MEGABIET";
-
-      if (SHA256_Init(&context) == 0 ||
-          SHA256_Update(&context, to_hash.c_str(), to_hash.size()) == 0 ||
-          SHA256_Final(hash, &context) == 0)
-        throw Exception(gap_internal_error, "Cannot hash login/password");
-
-      std::ostringstream out;
-      elle::serialize::OutputHexadecimalArchive ar(out);
-
-      ar.SaveBinary(hash, SHA256_DIGEST_LENGTH);
-
-      return out.str();
-    }
-
     void
     State::register_(std::string const& fullname,
                      std::string const& email,
@@ -844,7 +813,6 @@ namespace surface
                        *this, fullname, email);
 
       std::string lower_email = email;
-
       std::transform(lower_email.begin(),
                      lower_email.end(),
                      lower_email.begin(),
@@ -864,7 +832,10 @@ namespace surface
       {
         ELLE_DEBUG("register");
         std::string user_id =
-          this->meta(false).register_(lower_email, fullname, password);
+          this->meta(false).register_(
+            lower_email,
+            fullname,
+            password);
 
         infinit::metrics::Reporter::metric_sender_id(user_id);
 
@@ -1196,10 +1167,10 @@ namespace surface
 
 
     void
-    State::change_password(std::string const& old_password,
+    State::change_password(std::string const& password,
                            std::string const& new_password)
     {
-      meta().change_password(old_password, new_password);
+      meta().change_password(password, new_password);
     }
 
     /*----------.

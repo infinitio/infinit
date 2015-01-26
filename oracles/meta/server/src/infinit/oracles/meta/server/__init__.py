@@ -193,6 +193,9 @@ class Meta(bottle.Bottle,
     # - Mailchimp userbase.
     self.__database.users.ensure_index([("_id", 1), ("os", 1)])
 
+    # - Auxiliary emails.
+    # Sparse because users may have no pending_auxiliary_emails field.
+    self.__database.users.ensure_index([("pending_auxiliary_emails.hash", 1)], unique = True, sparse = True)
     #---------------------------------------------------------------------------
     # Devices
     #---------------------------------------------------------------------------
@@ -311,7 +314,7 @@ class Meta(bottle.Bottle,
   def admin(self):
     source = bottle.request.environ.get('REMOTE_ADDR')
     force = self.__force_admin or source == '127.0.0.1'
-    return force or ('certificate' in bottle.request and bottle.request.certificate in [
+    return force or ('certificate' in bottle.request.environ and bottle.request.certificate in [
       'antony.mechin@infinit.io',
       'baptiste.fradin@infinit.io',
       'christopher.crone@infinit.io',
@@ -358,7 +361,6 @@ class Meta(bottle.Bottle,
         return self._user_by_id(id, ensure_existence = False)
       except bson.errors.InvalidId:
         self.bad_request('invalid user id: %r' % id_or_email)
-
 
   def report_fatal_error(self, route, exception):
     import traceback

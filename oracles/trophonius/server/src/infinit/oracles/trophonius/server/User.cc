@@ -302,7 +302,7 @@ namespace infinit
             {
               // nothing
             }
-            catch  (reactor::network::ConnectionClosed const& e)
+            catch  (reactor::network::Exception const& e)
             {
               ELLE_ERR("trophonius shutting down because of: %s", e);
               throw;

@@ -221,12 +221,6 @@ namespace surface
                 std::string const& email,
                 std::string const& password);
 
-      ///
-      static
-      std::string
-      hash_password(std::string const& email,
-                    std::string const& password);
-
       std::string
       user_directory();
 

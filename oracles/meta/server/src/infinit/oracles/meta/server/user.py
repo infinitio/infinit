@@ -12,6 +12,7 @@ import papier
 
 from .plugins.response import response, Response
 from .utils import api, require_logged_in, require_admin, require_logged_in_or_admin, hash_password, json_value, require_key, key
+from . import utils
 from . import error, notifier, regexp, conf, invitation, mail
 
 from pymongo import DESCENDING
@@ -340,7 +341,7 @@ class Mixin:
       if password_hash is not None:
         user_content.update(
           {
-            "password_hash": hash_password(password_hash)
+            'password_hash': utils.password_hash(password_hash)
           })
       if source is not None:
         user_content['source'] = source
@@ -548,6 +549,116 @@ class Mixin:
     except error.Error as e:
       self.fail(*e.args)
 
+  @api('/user/auxiliary_account/email', method = 'POST')
+  @require_logged_in
+  def add_auxiliary_email_address(self,
+                                  email):
+      _validators = [
+        (email, regexp.EmailValidator),
+      ]
+      for arg, validator in _validators:
+        res = validator(arg)
+        if res != 0:
+          return self._forbidden_with_error(error.EMAIL_NOT_VALID)
+      other = self.user_by_email(email, ensure_existence = False)
+      if other is not None: # and other['register_status'] != 'ghost':
+        return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
+      user = self.user
+      from time import time
+      import hashlib
+      seed = str(time()) + email + user['email']
+      hash = hashlib.md5(seed.encode('utf-8')).hexdigest()
+      self.mailer.send_template(
+        email,
+        'add-auxiliary-email-address',
+        merge_vars = {
+          email : {
+            'hash': hash,
+            'auxiliary_email_address': email,
+            'primary_email_address': user['email'],
+            'user_fullname': user['fullname']
+          }
+        })
+      self.database.users.find_and_modify(
+        { "_id": user['_id'] },
+        {
+          "$addToSet": {
+            "pending_auxiliary_emails": {
+              'email': email,
+              'hash': hash,
+            }
+          }
+        })
+      return {}
+
+  @api('/user/auxiliary_account/email/<hash>', method = 'POST')
+  def validate_auxiliary_email(self,
+                               hash):
+    res = self.database.users.find_one(
+      {
+        'pending_auxiliary_emails.hash': hash
+      },
+      fields = ['pending_auxiliary_emails.$'],
+    )
+    if res is None or not 'pending_auxiliary_emails' in res or len(res['pending_auxiliary_emails']) == 0:
+      return self._forbidden_with_error(error.UNKNOWN_EMAIL_CONFIRMATION_HASH)
+    account = res['pending_auxiliary_emails'][0] # account is {'hash': hash, 'email': email}
+    email = account['email']
+    user = self.user_by_email(email, ensure_existence = False)
+    if user is not None: # and user['register_status'] != 'ghost':
+      return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
+    if account['email'] != email:
+      return self._forbidden_with_error(error.UNKNOWN_EMAIL_ADDRESS)
+    update = {
+      '$pull': {'pending_auxiliary_emails': account},
+      '$addToSet': {'accounts': {'id': account['email'], 'type': 'email'}},
+    }
+    self.database.users.find_and_modify(
+      {
+        'pending_auxiliary_emails.hash': hash
+      },
+      update
+    )
+    return {}
+
+  @api('/user/auxiliary_account/email', method = 'DELETE')
+  @require_logged_in
+  def remove_auxiliary_email_address(self,
+                                     email):
+    user = self.user
+    res = self.database.users.find_and_modify(
+      {
+        'accounts.id': email,
+        'accounts.type': 'email',
+        '_id': user['_id'],
+        'email': {'$ne': email} # Not the primary email.
+      },
+      {
+        '$pull': {'accounts': {'type': 'email', 'id': email}}
+      })
+    if res is None:
+      return self._forbidden_with_error(error.UNKNOWN_EMAIL_ADDRESS)
+    return {}
+
+  @api('/user/swap_primary_account', method = 'POST')
+  @require_logged_in
+  def swap_primary_account(self,
+                           new_email,
+                           password):
+    user = self.user
+    user_from_new_address = self.user_by_email(new_email, ensure_existence = False)
+    # It like change email...
+    if user_from_new_address is None:
+      return self.change_email_request(new_email, password)
+    if user['email'] == new_email:
+      return self._forbidden_with_error(error.EMAIL_IS_THE_SAME)
+    if user['_id'] != user_from_new_address['_id']:
+      return self._forbidden_with_error(error.UNKNOWN_EMAIL_ADDRESS)
+    self._change_email(user = user,
+                       new_email = new_email,
+                       password = password)
+    return {}
+
   @api('/user/change_email_request', method = 'POST')
   @require_logged_in
   def change_email_request(self,
@@ -646,50 +757,53 @@ class Mixin:
       new_email = user['new_main_email']
       if self.user_by_email(new_email, ensure_existence = False) is not None:
         return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
-      # Invalidate credentials.
-      self.sessions.remove({'email': user['email'], 'device': ''})
-      # Kick them out of the app.
-      self.notifier.notify_some(
-        notifier.INVALID_CREDENTIALS,
-        recipient_ids = {user['_id']},
-        message = {'response_details': 'user email changed'})
-      # Cancel transactions as identity will change.
-      self.cancel_transactions(user)
-      # Handle mailing list subscriptions.
-      self.invitation.unsubscribe(user['email'])
-      self.invitation.subscribe(new_email)
-      with elle.log.trace('generate identity'):
-        identity, public_key = papier.generate_identity(
-          str(user['_id']),  # Unique ID.
-          new_email,         # Description.
-          password,          # Password.
-          conf.INFINIT_AUTHORITY_PATH,
-          conf.INFINIT_AUTHORITY_PASSWORD
-        )
-      # Update user in DB.
-      # We keep the user's old email address in the accounts section.
-      self.database.users.update(
-        {'_id': user['_id']},
+      self._change_email(user, new_email, password)
+
+  def _change_email(self, user, new_email, password):
+    # Invalidate credentials.
+    self.sessions.remove({'email': user['email'], 'device': ''})
+    # Kick them out of the app.
+    self.notifier.notify_some(
+      notifier.INVALID_CREDENTIALS,
+      recipient_ids = {user['_id']},
+      message = {'response_details': 'user email changed'})
+    # Cancel transactions as identity will change.
+    self.cancel_transactions(user)
+    # Handle mailing list subscriptions.
+    self.invitation.unsubscribe(user['email'])
+    self.invitation.subscribe(new_email)
+    with elle.log.trace('generate identity'):
+      identity, public_key = papier.generate_identity(
+        str(user['_id']),  # Unique ID.
+        new_email,         # Description.
+        password,          # Password.
+        conf.INFINIT_AUTHORITY_PATH,
+        conf.INFINIT_AUTHORITY_PASSWORD
+      )
+    # Update user in DB.
+    # We keep the user's old email address in the accounts section.
+    self.database.users.update(
+      {'_id': user['_id']},
+      {
+        '$set':
         {
-          '$set':
-          {
-            'email': new_email,
-            'email_confirmed': True,
-            'password': hash_password(password),
-            'identity': identity,
-            'public_key': public_key,
-          },
-          '$unset':
-          {
-            'new_main_email': '',
-            'new_main_email_hash': '',
-          },
-          '$addToSet':
-          {
-            'accounts': {'type': 'email', 'id': new_email}
-          },
-        })
-      return {}
+          'email': new_email,
+          'email_confirmed': True,
+          'password': hash_password(password),
+          'identity': identity,
+          'public_key': public_key,
+        },
+        '$unset':
+        {
+          'new_main_email': '',
+          'new_main_email_hash': '',
+        },
+        '$addToSet':
+        {
+          'accounts': {'type': 'email', 'id': new_email}
+        },
+      })
+    return {}
 
   @api('/user/change_password', method = 'POST')
   @require_logged_in
@@ -744,14 +858,20 @@ class Mixin:
       'identity': identity,
       'public_key': public_key
     }
+    to_unset = {}
     if new_password_hash is not None:
       update.update({
-        'password_hash': hash_password(new_password_hash)
+        'password_hash': utils.password_hash(new_password_hash)
       })
+    else:
+      to_unset = {
+        'password_hash': True
+      }
     self.database.users.find_and_modify(
       {'_id': user['_id']},
       {
         '$set': update,
+        '$unset': to_unset,
       })
     return self.success()
 
@@ -917,7 +1037,7 @@ class Mixin:
     ensure_existence -- if set, raise if user is invald.
     """
     email = email.lower().strip()
-    user = self.database.users.find_one({'email': email})
+    user = self.database.users.find_one({'accounts.id': email})
     if ensure_existence:
       self.__ensure_user_existence(user)
     return user
@@ -936,7 +1056,7 @@ class Mixin:
     if password_hash is not None:
       user = self.database.users.find_one({
         'email': email,
-        'password_hash': hash_password(password_hash)})
+        'password_hash': utils.password_hash(password_hash)})
       if user is not None:
         return user
       user = self.database.users.find_and_modify(
@@ -946,7 +1066,7 @@ class Mixin:
         },
         {
           '$set': {
-            'password_hash': hash_password(password_hash),
+            'password_hash': utils.password_hash(password_hash),
           },
         },
         new = True)
@@ -1067,7 +1187,7 @@ class Mixin:
         {
           '$match':
           {
-            'email': {'$in': emails},
+            'accounts.id': {'$in': emails},
             'register_status': 'ok',
           }
         },
@@ -1906,5 +2026,6 @@ class Mixin:
     if not init:
       mtime = last_sync
     res.update(self._user_transactions(mtime = mtime['timestamp']))
-    res.update(self.links_list(mtime = mtime['date']))
+    # Include deleted links only during updates. At start up, ignore them.
+    res.update(self.links_list(mtime = mtime['date'], include_deleted = (not init)))
     return self.success(res)
