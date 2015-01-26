@@ -314,7 +314,7 @@ class Meta(bottle.Bottle,
   def admin(self):
     source = bottle.request.environ.get('REMOTE_ADDR')
     force = self.__force_admin or source == '127.0.0.1'
-    return force or ('certificate' in bottle.request.environ and bottle.request.certificate in [
+    return force or ('certificate' in bottle.request and bottle.request.certificate in [
       'antony.mechin@infinit.io',
       'baptiste.fradin@infinit.io',
       'christopher.crone@infinit.io',
