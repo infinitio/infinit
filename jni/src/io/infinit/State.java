@@ -10,17 +10,8 @@ import java.lang.Integer;
 
 public class State
 {
-  public class StateException extends java.lang.RuntimeException
-  {
-    String operation;
-    GapStatus errorCode;
-    StateException(String op, GapStatus code)
-    {
-      super("operation '" + op + "' failed with " + code.toString());
-      operation = op;
-      errorCode = code;
-    }
-  }
+
+
   /// Initialize the state, must be called first, once.
   public void initialize(boolean production,
     String download_dir, String persistent_config_dir,

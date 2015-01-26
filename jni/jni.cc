@@ -22,6 +22,20 @@
 #include <android/log.h>
 #endif
 
+static jobject to_integer(JNIEnv* env, int value)
+{
+  static jclass i_class = 0;
+  static jmethodID i_init;
+  if (!i_class)
+  {
+    i_class = env->FindClass("java/lang/Integer");
+    i_class = (jclass)env->NewGlobalRef(i_class);
+    i_init = env->GetMethodID(i_class, "<init>", "(I)V");
+  }
+  jobject obj = env->NewObject(i_class, i_init, value);
+  return obj;
+}
+
 static std::string to_string(JNIEnv* env, jobject jso)
 {
   jstring js = (jstring)jso;
@@ -32,6 +46,21 @@ static std::string to_string(JNIEnv* env, jobject jso)
   env->ReleaseStringChars(js, jc);
   return str;
 }
+
+static jobject throw_exception(JNIEnv* env, gap_Status st)
+{
+  static jclass e_class = 0;
+  static jmethodID e_init;
+  if (!e_class)
+  {
+    e_class = env->FindClass("io/infinit/StateException");
+    e_init = env->GetMethodID(e_class, "<init>", "(I)V");
+  }
+  jobject obj = env->NewObject(e_class, e_init, (int)st);
+  env->Throw((jthrowable)obj);
+  return {};
+}
+
 
 template<typename T>
 std::vector<T>
@@ -101,19 +130,14 @@ static jobject to_user(JNIEnv* env, surface::gap::User const& u)
 static jobject to_linktransaction(JNIEnv* env, surface::gap::LinkTransaction const& t)
 {
   static jclass lt_class = 0;
-  static jclass string_class;
   static jclass ts_class;
   static jmethodID ts_get_value;
   static jmethodID lt_init;
-  static jmethodID string_init;
   if (!lt_class)
   {
     lt_class = env->FindClass("io/infinit/LinkTransaction");
     lt_class = (jclass)env->NewGlobalRef(lt_class);
     lt_init = env->GetMethodID(lt_class, "<init>", "()V");
-    string_class = env->FindClass("java/lang/String");
-    string_class = (jclass)env->NewGlobalRef(string_class);
-    string_init = env->GetMethodID(string_class, "<init>", "()V");
     ts_class = env->FindClass("io/infinit/TransactionStatus");
     ts_class = (jclass)env->NewGlobalRef(ts_class);
     ts_get_value = env->GetStaticMethodID(ts_class, "GetValue", "(I)Lio/infinit/TransactionStatus;");
@@ -421,7 +445,7 @@ extern "C" jlong Java_io_infinit_State_gapLogin(
   JNIEnv* env, jobject thiz, jlong handle,
   jstring mail, jstring hash_password)
 {
-  gap_Status s = gap_login((gap_State*)handle, to_string(env, mail), to_string(env, hash_password), {}, 0_sec);
+  gap_login((gap_State*)handle, to_string(env, mail), to_string(env, hash_password), {}, 0_sec);
   return gap_ok; // errors will be reported asynchronously
 }
 
@@ -483,8 +507,12 @@ extern "C" jlong Java_io_infinit_State_gapInternetConnection(
 extern "C" jobject Java_io_infinit_State_gapPeerTransactionById(
   JNIEnv* env, jobject thiz, jlong handle, jint id)
 {
-  surface::gap::PeerTransaction t = gap_peer_transaction_by_id((gap_State*)handle, id);
-  return to_peertransaction(env, t);
+  surface::gap::PeerTransaction t;
+  gap_Status s = gap_peer_transaction_by_id((gap_State*)handle, id, t);
+  if (s == gap_ok)
+    return to_peertransaction(env, t);
+  else
+    return throw_exception(env, s);
 }
 
 extern "C" jfloat Java_io_infinit_State_gapTransactionProgress(
@@ -596,7 +624,7 @@ extern "C" jbyteArray Java_io_infinit_State_gapAvatar(
 { // FIXME: find way to report error
   void* data = 0;
   size_t len = 0;
-  gap_Status stat = gap_avatar((gap_State*)handle, id, &data, &len);
+  gap_avatar((gap_State*)handle, id, &data, &len);
   jbyteArray res = env->NewByteArray(len);
   env->SetByteArrayRegion(res, 0, len, (jbyte*)data);
   return res;
@@ -611,21 +639,34 @@ extern "C" void Java_io_infinit_State_gapRefreshAvatar(
 extern "C" jobject Java_io_infinit_State_gapUserById(
   JNIEnv* env, jobject thiz, jlong handle, jint id)
 {
-  return to_user(env, gap_user_by_id((gap_State*)handle, id));
+  surface::gap::User res;
+  gap_Status s = gap_user_by_id((gap_State*)handle, id, res);
+  if (s == gap_ok)
+    return to_user(env, res);
+  else
+    return throw_exception(env, s);
 }
 
 extern "C" jobject Java_io_infinit_State_gapUserByEmail(
   JNIEnv* env, jobject thiz, jlong handle, jstring email)
 {
-  return to_user(env, gap_user_by_email((gap_State*)handle,
-                                        to_string(env, email)));
+  surface::gap::User res;
+  gap_Status s = gap_user_by_email((gap_State*)handle, to_string(env, email), res);
+  if (s == gap_ok)
+    return to_user(env, res);
+  else
+    return throw_exception(env, s);
 }
 
 extern "C" jobject Java_io_infinit_State_gapUserByHandle(
   JNIEnv* env, jobject thiz, jlong handle, jstring email)
 {
-  return to_user(env, gap_user_by_handle((gap_State*)handle,
-                                         to_string(env, email)));
+  surface::gap::User res;
+  gap_Status s = gap_user_by_handle((gap_State*)handle, to_string(env, email), res);
+  if (s == gap_ok)
+    return to_user(env, res);
+  else
+    return throw_exception(env, s);
 }
 
 extern "C" jlong Java_io_infinit_State_gapUserStatus(
@@ -637,25 +678,38 @@ extern "C" jlong Java_io_infinit_State_gapUserStatus(
 extern "C" jobject Java_io_infinit_State_gapUsersSearch(
   JNIEnv* env, jobject thiz, jlong handle, jstring query)
 {
-  auto result = gap_users_search((gap_State*)handle, to_string(env, query));
-  return to_array<decltype(result)>(env, result, "io/infinit/User", &to_user);
+  std::vector<surface::gap::User> res;
+  gap_Status s = gap_users_search((gap_State*)handle, to_string(env, query), res);
+  if (s == gap_ok)
+    return to_array<decltype(res)>(env, res, "io/infinit/User", &to_user);
+  else
+    return throw_exception(env, s);
 }
 
 extern "C" jobject Java_io_infinit_State_gapSwaggers(
   JNIEnv* env, jobject thiz, jlong handle)
 {
-  auto result = gap_swaggers((gap_State*)handle);
-  return to_array<decltype(result)>(env, result, "io/infinit/User", &to_user);
+  std::vector<surface::gap::User> res;
+  gap_Status s = gap_swaggers((gap_State*)handle, res);
+  if (s == gap_ok)
+    return to_array<decltype(res)>(env, res, "io/infinit/User", &to_user);
+  else
+    return throw_exception(env, s);
 }
 
 extern "C" jobject Java_io_infinit_State_gapFavorites(
   JNIEnv* env, jobject thiz, jlong handle)
 {
-  auto result = gap_favorites((gap_State*)handle);
-  jintArray r = env->NewIntArray(result.size());
-  for (int i=0; i<result.size(); ++i)
-    env->SetIntArrayRegion(r, 0, result.size(), (const int *)&result[0]);
-  return r;
+  std::vector<uint32_t> res;
+  gap_Status s = gap_favorites((gap_State*)handle, res);
+  if (s == gap_ok)
+  {
+    jintArray r = env->NewIntArray(res.size());
+    env->SetIntArrayRegion(r, 0, res.size(), (const int *)&res[0]);
+    return r;
+  }
+  else
+    return throw_exception(env, s);
 }
 
 extern "C" jlong Java_io_infinit_State_gapFavorite(
@@ -694,22 +748,34 @@ extern "C" int Java_io_infinit_State_gapCreateLinkTransaction(
 extern "C" jobject Java_io_infinit_State_gapLinkTransactionById(
   JNIEnv* env, jobject thiz, jlong handle, jint id)
 {
-  surface::gap::LinkTransaction res = gap_link_transaction_by_id((gap_State*)handle, id);
-  return to_linktransaction(env, res);
+  surface::gap::LinkTransaction res;
+  gap_Status s = gap_link_transaction_by_id((gap_State*)handle, id, res);
+  if (s == gap_ok)
+    return to_linktransaction(env, res);
+  else
+    return throw_exception(env, s);
 }
 
 extern "C" jobject Java_io_infinit_State_gapLinkTransactions(
   JNIEnv* env, jobject thiz, jlong handle)
 {
-  auto r = gap_link_transactions((gap_State*)handle);
-  return to_array<decltype(r)>(env, r, "io/infinit/LinkTransaction", &to_linktransaction);
+  std::vector<surface::gap::LinkTransaction> res;
+  gap_Status s = gap_link_transactions((gap_State*)handle, res);
+  if (s == gap_ok)
+    return to_array<decltype(res)>(env, res, "io/infinit/LinkTransaction", &to_linktransaction);
+  else
+    return throw_exception(env, s);
 }
 
 extern "C" jobject Java_io_infinit_State_gapPeerTransactions(
   JNIEnv* env, jobject thiz, jlong handle)
 {
-  auto r = gap_peer_transactions((gap_State*)handle);
-  return to_array<decltype(r)>(env, r, "io/infinit/PeerTransaction", &to_peertransaction);
+  std::vector<surface::gap::PeerTransaction> res;
+  gap_Status s = gap_peer_transactions((gap_State*)handle, res);
+  if (s == gap_ok)
+    return to_array<decltype(res)>(env, res, "io/infinit/PeerTransaction", &to_peertransaction);
+  else
+    return throw_exception(env, s);
 }
 
 extern "C" jint Java_io_infinit_State_gapSendFiles(
@@ -799,7 +865,7 @@ extern "C" jlong Java_io_infinit_State_gapSendMetric(
   // restore extra map
   std::unordered_map<std::string, std::string> add;
   std::vector<std::string> extra = from_array<std::string>(env, jextra, to_string);
-  for (int i=0; i<extra.size(); i+=2)
+  for (unsigned int i=0; i<extra.size(); i+=2)
     add[extra[i]] = extra[i+1];
   return gap_send_metric((gap_State*)handle, (UIMetricsType)metric, add);
 }
