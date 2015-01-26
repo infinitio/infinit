@@ -111,6 +111,12 @@ def gestapo(client):
 
 class Meta(infinit.oracles.meta.server.Meta):
 
+  def __init__(self, *args, **kwargs):
+    # Force admin to avoid checking certificate.
+    if not 'force_admin' in kwargs:
+      kwargs['force_admin'] = True
+    super().__init__(*args, **kwargs)
+
   @property
   def now(self):
     if hasattr(self, '_Meta__now'):
