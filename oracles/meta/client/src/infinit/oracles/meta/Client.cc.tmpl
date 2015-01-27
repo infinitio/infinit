@@ -5,10 +5,11 @@
 #include <openssl/sha.h>
 
 #include <boost/algorithm/string/predicate.hpp>
-#include <boost/uuid/uuid_io.hpp>
-#include <boost/uuid/string_generator.hpp>
-#include <boost/lexical_cast.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/regex.hpp>
+#include <boost/uuid/string_generator.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 #include <elle/container/list.hh>
 #include <elle/format/json/Dictionary.hh>
@@ -274,20 +275,62 @@ namespace infinit
       | Construction |
       `-------------*/
 
+      static
+      std::tuple<std::string, std::string, int>
+      _parse_meta_url(std::string const& meta)
+      {
+        boost::regex const re("(?:([a-z]*)://)?([^:]+)(?::([0-9]+))?");
+        boost::smatch res;
+        if (!boost::regex_match(meta, res, re))
+          throw elle::Error(
+            elle::sprintf("unable to parse meta url: %s", meta));
+        std::string scheme = "https";
+        std::string host = res.str(2);
+        int port = 443;
+        if (res[1].matched)
+          scheme = res.str(1);
+        if (res[3].matched)
+          try
+          {
+            port = boost::lexical_cast<int>(res.str(3));
+          }
+          catch (boost::bad_lexical_cast const&)
+          {
+            throw elle::Error(elle::sprintf("invalid port: %s", res.str(3)));
+          }
+        return std::make_tuple(
+          std::move(scheme), std::move(host), std::move(port));
+      }
+
+      Client::Client(std::string const& meta)
+        : Client(_parse_meta_url(meta))
+      {}
+
       Client::Client(std::string const& protocol,
                      std::string const& server,
-                     uint16_t port):
-        _protocol(protocol),
-        _host(server),
-        _port(port),
-        _root_url{elle::sprintf("%s://%s:%d", protocol, server, port)},
-        _client{"MetaClient/" INFINIT_VERSION},
-        _default_configuration(_requests_timeout(),
-                               {},
-                               reactor::http::Version::v10),
-        _email{},
-        _logged_in{false}
+                     uint16_t port)
+        : Client(std::make_tuple(protocol, server, port))
       {
+        // Don't check the host name since we have only one certificate but we
+        // change hostname between minor versions.
+        this->_default_configuration.ssl_verify_host(false);
+        this->_rng.seed(static_cast<unsigned int>(std::time(0)));
+      }
+
+      Client::Client(std::tuple<std::string, std::string, int> meta)
+        : _protocol(std::move(std::get<0>(meta)))
+        , _host(std::move(std::get<1>(meta)))
+        , _port(std::move(std::get<2>(meta)))
+        , _root_url(elle::sprintf("%s://%s:%d",
+                                  this->_protocol, this->_host, this->_port))
+        , _client("MetaClient/" INFINIT_VERSION)
+        , _default_configuration(_requests_timeout(),
+                                 {},
+                                 reactor::http::Version::v10)
+        , _email()
+        , _logged_in(false)
+      {
+        ELLE_TRACE_SCOPE("%s: bound to %s", *this, this->_root_url);
         // Don't check the host name since we have only one certificate but we
         // change hostname between minor versions.
         this->_default_configuration.ssl_verify_host(false);

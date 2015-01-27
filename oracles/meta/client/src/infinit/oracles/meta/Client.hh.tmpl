@@ -300,16 +300,20 @@ namespace infinit
         void
         session_id(std::string const&);
 
+      /*-------------.
+      | Construction |
+      `-------------*/
       public:
+        Client(std::string const& meta);
         Client(std::string const& protocol,
                std::string const& server,
                uint16_t port);
-
         virtual
         ~Client();
-
         Client(const Client&) = delete;
         void operator = (const Client&) = delete;
+      private:
+        Client(std::tuple<std::string, std::string, int> meta);
 
       /*--------.
       | Helpers |
