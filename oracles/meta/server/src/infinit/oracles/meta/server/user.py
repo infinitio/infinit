@@ -626,6 +626,8 @@ class Mixin:
   def remove_auxiliary_email_address(self,
                                      email):
     user = self.user
+    if user['email'] == email:
+      return self._forbidden_with_error(error.CANNOT_DELETE_YOUR_PRIMARY_ACCOUNT)
     res = self.database.users.find_and_modify(
       {
         'accounts.id': email,
