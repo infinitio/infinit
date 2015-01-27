@@ -29,7 +29,6 @@ def configure(elle,
   local_cxx_config = drake.cxx.Config(cxx_config)
   local_cxx_config += elle.elle.config
   local_cxx_config += elle.reactor.config
-  local_cxx_config.add_local_include_path('src')
 
   build = drake.Rule('build')
   install = drake.Rule('install')
@@ -73,8 +72,6 @@ def configure(elle,
     sources + [aws_lib, reactor_lib, elle_lib, transaction_lib],
     cxx_toolkit,
     lib_cxx_config)
-
-  config = lib_cxx_config
 
   build << lib
 
