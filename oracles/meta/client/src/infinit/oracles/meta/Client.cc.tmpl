@@ -34,7 +34,7 @@
 
 #include <version.hh>
 
-ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
+ELLE_LOG_COMPONENT("infinit.oracles.meta.Client");
 
 /*-------------.
 | Transactions |
@@ -455,6 +455,8 @@ namespace infinit
                     std::string const& password,
                     boost::uuids::uuid const& device_uuid)
       {
+        ELLE_TRACE_SCOPE("%s: login as %s on device %s",
+                         *this, password, device_uuid);
         std::string struuid = boost::lexical_cast<std::string>(device_uuid);
 
         auto url = "/login";
@@ -464,7 +466,9 @@ namespace infinit
           [&] (reactor::http::Request& r)
           {
             auto old_password = old_password_hash(email, password);
+            ELLE_DUMP("old password hash: %s", old_password);
             auto new_password = password_hash(password);
+            ELLE_DUMP("new password hash: %s", new_password);
             elle::serialization::json::SerializerOut output(r, false);
             output.serialize("email", const_cast<std::string&>(email));
             output.serialize("password", const_cast<std::string&>(old_password));
