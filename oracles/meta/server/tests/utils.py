@@ -418,6 +418,10 @@ class User(Client):
   def me(self):
     return self.get('user/self')
 
+  @property
+  def accounts(self):
+    return self.get('user/accounts')
+
   def compare_self_response(self, res):
     me = self.me
     assert res['public_key'] == me['public_key']

@@ -549,49 +549,73 @@ class Mixin:
     except error.Error as e:
       self.fail(*e.args)
 
-  @api('/user/auxiliary_account/email', method = 'POST')
+  @api('/user/accounts')
+  @require_logged_in
+  def accounts(self):
+    user = self.user
+    res = {
+      'primary': user['email']
+    }
+    if len(user['accounts']) > 1:
+      res.update({
+        'auxiliary': {
+          'emails': [account['id'] for account in user.get('accounts', {}) if account['type'] == 'email' and account['id'] != user['email']],
+        }})
+    if len(user.get('pending_auxiliary_emails', [])) > 0:
+      res.update({
+        'pending': {
+          'emails': [account['email'] for account in user.get('pending_auxiliary_emails', [])],
+        }})
+    return self.success(res)
+
+  @api('/user/accounts/email/add', method = 'POST')
   @require_logged_in
   def add_auxiliary_email_address(self,
                                   email):
-      _validators = [
-        (email, regexp.EmailValidator),
-      ]
-      for arg, validator in _validators:
-        res = validator(arg)
-        if res != 0:
-          return self._forbidden_with_error(error.EMAIL_NOT_VALID)
-      other = self.user_by_email(email, ensure_existence = False)
-      if other is not None: # and other['register_status'] != 'ghost':
-        return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
-      user = self.user
-      from time import time
-      import hashlib
-      seed = str(time()) + email + user['email']
-      hash = hashlib.md5(seed.encode('utf-8')).hexdigest()
-      self.mailer.send_template(
-        email,
-        'add-auxiliary-email-address',
-        merge_vars = {
-          email : {
+    _validators = [
+      (email, regexp.EmailValidator),
+    ]
+    for arg, validator in _validators:
+      res = validator(arg)
+      if res != 0:
+        return self._forbidden_with_error(error.EMAIL_NOT_VALID)
+    other = self.user_by_email(email, ensure_existence = False)
+    if other is not None: # and other['register_status'] != 'ghost':
+      return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
+    user = self.user
+    from time import time
+    import hashlib
+    seed = str(time()) + email + user['email']
+    hash = hashlib.md5(seed.encode('utf-8')).hexdigest()
+    self.mailer.send_template(
+      email,
+      'add-auxiliary-email-address',
+      merge_vars = {
+        email : {
+          'hash': hash,
+          'auxiliary_email_address': email,
+          'primary_email_address': user['email'],
+          'user_fullname': user['fullname']
+        }
+      })
+    res = self.database.users.find_and_modify(
+      {
+        "_id": user['_id'],
+        "pending_auxiliary_emails.email": {"$ne": email},
+      },
+      {
+        "$addToSet": {
+          "pending_auxiliary_emails": {
+            'email': email,
             'hash': hash,
-            'auxiliary_email_address': email,
-            'primary_email_address': user['email'],
-            'user_fullname': user['fullname']
           }
-        })
-      self.database.users.find_and_modify(
-        { "_id": user['_id'] },
-        {
-          "$addToSet": {
-            "pending_auxiliary_emails": {
-              'email': email,
-              'hash': hash,
-            }
-          }
-        })
-      return {}
+        }
+      }, new = True)
+    if res == None:
+      return self._forbidden_with_error(error.EMAIL_ALREADY_ADDED)
+    return {}
 
-  @api('/user/auxiliary_account/email/<hash>', method = 'POST')
+  @api('/user/accounts/email/validate/<hash>', method = 'POST')
   def validate_auxiliary_email(self,
                                hash):
     res = self.database.users.find_one(
@@ -621,7 +645,23 @@ class Mixin:
     )
     return {}
 
-  @api('/user/auxiliary_account/email', method = 'DELETE')
+  @api('/user/accounts/email/pending/delete', method = 'DELETE')
+  @require_logged_in
+  def delete_pending_auxiliary_email_address(self, email):
+    user = self.user
+    res = self.database.users.find_and_modify(
+      {
+        'pending_auxiliary_emails.email': email,
+        '_id': user['_id'],
+      },
+      {
+        '$pull': {'pending_auxiliary_emails': {'email': email}}
+      })
+    if res is None:
+      return self._forbidden_with_error(error.UNKNOWN_EMAIL_ADDRESS)
+    return {}
+
+  @api('/user/accounts/email/delete', method = 'DELETE')
   @require_logged_in
   def remove_auxiliary_email_address(self,
                                      email):
@@ -642,7 +682,7 @@ class Mixin:
       return self._forbidden_with_error(error.UNKNOWN_EMAIL_ADDRESS)
     return {}
 
-  @api('/user/swap_primary_account', method = 'POST')
+  @api('/user/accounts/make_primary', method = 'POST')
   @require_logged_in
   def swap_primary_account(self,
                            new_email,

@@ -40,20 +40,96 @@ with Meta(enable_emails = True) as meta:
   user.login()
 
   meta.mailer = MailService()
+  i = 0
   emails = ['babar@infinit.io', 'foufou@infinit.io', 'beetroot@infinit.io', 'fesse@infinit.io']
   for email in emails:
-    user.post('user/auxiliary_account/email',
+    user.post('user/accounts/email/add',
               {
                 'email': email
               })
+    i += 1
+    assert len(user.accounts['pending']['emails']) == i
+    assert email in user.accounts['pending']['emails']
+
   assert len(meta.mailer.hashes) == len(emails)
   import random
   random.shuffle(emails)
+  i = 0
   for email in emails:
-    user.post('user/auxiliary_account/email/%s' % meta.mailer.hashes[email])
+    user.post('user/accounts/email/validate/%s' % meta.mailer.hashes[email])
+    i += 1
     res = user.post('user/search_emails', {'emails': [email]})
     assert len(res['users']) == 1
+    assert len(user.accounts['auxiliary']['emails']) == i
+    assert email in user.accounts['auxiliary']['emails']
     assert res['users'][0]['id'] == user.id
+
+# Ask for the same email.
+with Meta(enable_emails = True) as meta:
+  import sys
+  user = User(meta, 'foobar@infinit.io')
+  user.login()
+
+  email = "endive@infinit.io"
+  user.post('user/accounts/email/add',
+            {
+              'email': email
+            })
+  try:
+    user.post('user/accounts/email/add',
+              {
+                'email': email
+              })
+    assert False
+  except HTTPException:
+    pass
+
+# Ask for the primary email.
+with Meta(enable_emails = True) as meta:
+  import sys
+  user = User(meta, 'foobar@infinit.io')
+  user.login()
+
+  meta.mailer = MailService()
+  try:
+    user.post('user/accounts/email/add',
+              {
+                'email': user.email
+              })
+    assert False
+  except HTTPException:
+    pass
+
+# Delete pending.
+with Meta(enable_emails = True) as meta:
+  import sys
+  user = User(meta, 'foobar@infinit.io')
+  user.login()
+
+  # Delete an unkown email.
+  try:
+    user.delete('user/accounts/email/pending/delete',
+                {
+                  'email': 'invalid@infinit.io',
+                })
+    assert False # It should throw.
+  except HTTPException as e:
+    pass
+
+  # Add an auxiliary email and delete it before validation.
+  meta.mailer = MailService()
+  email = 'endive@infinit.io'
+  user.post('user/accounts/email/add',
+            {
+              'email': email
+            })
+  print(user.accounts)
+  assert email in user.accounts['pending']['emails']
+  user.delete('user/accounts/email/pending/delete',
+              {
+                'email': email
+              })
+  assert 'pending' not in user.accounts
 
 # Delete.
 with Meta(enable_emails = True) as meta:
@@ -63,7 +139,7 @@ with Meta(enable_emails = True) as meta:
 
   # Delete an unkown email.
   try:
-    user.delete('user/auxiliary_account/email',
+    user.delete('user/accounts/email/delete',
                 {
                   'email': 'invalid@infinit.io',
                 })
@@ -74,15 +150,15 @@ with Meta(enable_emails = True) as meta:
   # Add an auxiliary email and delete it.
   meta.mailer = MailService()
   email = 'endive@infinit.io'
-  user.post('user/auxiliary_account/email',
+  user.post('user/accounts/email/add',
             {
               'email': email
             })
-  user.post('user/auxiliary_account/email/%s' % meta.mailer.hashes[email])
+  user.post('user/accounts/email/validate/%s' % meta.mailer.hashes[email])
   meta.mailer.hashes.clear()
   res = user.post('user/search_emails', {'emails': [email]})
   assert len(res['users']) == 1
-  user.delete('user/auxiliary_account/email',
+  user.delete('user/accounts/email/delete',
               {
                 'email': email
               })
@@ -91,7 +167,7 @@ with Meta(enable_emails = True) as meta:
 
   # You can't delete your primary address.
   try:
-    user.delete('user/auxiliary_account/email',
+    user.delete('user/accounts/email/delete',
                 {
                   'email': user.email,
                 })
@@ -108,7 +184,7 @@ with Meta(enable_emails = True) as meta:
   bob.login()
 
   try:
-    bob.post('user/auxiliary_account/email',
+    bob.post('user/accounts/email/add',
              {
                'email': alice.email
              })
@@ -119,7 +195,7 @@ with Meta(enable_emails = True) as meta:
   # Same if the account is created during the process.
   eve_email = 'eve@infinit.io'
   meta.mailer = MailService()
-  bob.post('user/auxiliary_account/email',
+  bob.post('user/accounts/email/add',
            {
              'email': eve_email
            })
@@ -129,7 +205,7 @@ with Meta(enable_emails = True) as meta:
   eve.login()
 
   try:
-    bob.post('user/auxiliary_account/email/%s' % meta.mailer.hashes[eve_email])
+    bob.post('user/accounts/email/validate/%s' % meta.mailer.hashes[eve_email])
     assert False
   except HTTPException:
     pass
@@ -145,22 +221,22 @@ with Meta(enable_emails = True) as meta:
 
   email = 'endive@infinit.io'
   meta.mailer = MailService()
-  bob.post('user/auxiliary_account/email',
+  bob.post('user/accounts/email/add',
             {
               'email': email
             })
   bob.hash = meta.mailer.hashes[email]
 
   meta.mailer = MailService()
-  alice.post('user/auxiliary_account/email',
+  alice.post('user/accounts/email/add',
             {
               'email': email
             })
   alice.hash = meta.mailer.hashes[email]
 
-  bob.post('user/auxiliary_account/email/%s' % bob.hash)
+  bob.post('user/accounts/email/validate/%s' % bob.hash)
   try:
-    alice.post('user/auxiliary_account/email/%s' % alice.hash)
+    alice.post('user/accounts/email/validate/%s' % alice.hash)
     assert False
   except HTTPException:
     pass
@@ -171,11 +247,11 @@ with Meta(enable_emails = True) as meta:
   user.login()
   new_email = 'endive@infinit.io'
   meta.mailer = MailService()
-  user.post('user/auxiliary_account/email',
+  user.post('user/accounts/email/add',
             {
               'email': new_email,
             })
-  user.post('user/auxiliary_account/email/%s' % meta.mailer.hashes[email])
+  user.post('user/accounts/email/validate/%s' % meta.mailer.hashes[email])
   user.logout()
   try:
     user.login(email = new_email)
@@ -184,7 +260,7 @@ with Meta(enable_emails = True) as meta:
     pass
   user.login()
   old_self = user.me
-  res = user.post('user/swap_primary_account',
+  res = user.post('user/accounts/make_primary',
                   {
                     'new_email': new_email,
                     'password': user.password
@@ -205,7 +281,7 @@ with Meta(enable_emails = True) as meta:
 
   # Fail if its the same.
   try:
-    res = user.post('user/swap_primary_account',
+    res = user.post('user/accounts/make_primary',
                     {
                       'new_email': new_email,
                       'password': user.password
@@ -219,7 +295,7 @@ with Meta(enable_emails = True) as meta:
 
   # You can't still the account of an other user.
   try:
-    res = user.post('user/swap_primary_account',
+    res = user.post('user/accounts/make_primary',
                     {
                       'new_email': eve.email,
                       'password': user.password
@@ -230,7 +306,7 @@ with Meta(enable_emails = True) as meta:
 
   meta.mailer = MailService()
   # This should trigger a change email address.
-  res = user.post('user/swap_primary_account',
+  res = user.post('user/accounts/make_primary',
                   {
                     'new_email': 'random@email.com',
                     'password': user.password
