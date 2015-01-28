@@ -3,7 +3,6 @@
 
 #include <cryptography/PublicKey.hh>
 
-#include <elle/container/vector.hh>
 #include <elle/Error.hh>
 #include <elle/log.hh>
 #include <elle/os/environ.hh>

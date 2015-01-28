@@ -3,7 +3,6 @@
 #include <boost/filesystem.hpp>
 
 #include <elle/archive/archive.hh>
-#include <elle/container/vector.hh>
 #include <elle/container/map.hh>
 #include <elle/os/environ.hh>
 #include <elle/os/path.hh>
