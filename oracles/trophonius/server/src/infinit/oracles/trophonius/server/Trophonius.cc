@@ -49,31 +49,29 @@ namespace infinit
         Trophonius::Trophonius(
           int port_ssl,
           int port_tcp,
-          std::string const& meta_protocol,
-          std::string const& meta_host,
-          int meta_port,
+          std::string const& meta,
           int port_notifications,
           boost::posix_time::time_duration const& user_ping_period,
           boost::posix_time::time_duration const& meta_ping_period,
           boost::posix_time::time_duration const& user_auth_max_time,
           bool meta_fatal,
-          boost::optional<std::string> zone):
-          Waitable("trophonius"),
-          _certificate(nullptr),
-          _server_ssl(nullptr),
-          _server_tcp(nullptr),
-          _port_ssl(port_ssl),
-          _port_tcp(port_tcp),
-          _notifications(),
-          _accepter_ssl(nullptr),
-          _accepter_tcp(nullptr),
-          _meta_fatal(meta_fatal),
-          _meta_accepter(
+          boost::optional<std::string> zone)
+          : Waitable("trophonius")
+          , _certificate(nullptr)
+          , _server_ssl(nullptr)
+          , _server_tcp(nullptr)
+          , _port_ssl(port_ssl)
+          , _port_tcp(port_tcp)
+          , _notifications()
+          , _accepter_ssl(nullptr)
+          , _accepter_tcp(nullptr)
+          , _meta_fatal(meta_fatal)
+          , _meta_accepter(
             elle::sprintf("%s meta accepter", *this),
-            std::bind(&Trophonius::_serve_notifier, std::ref(*this))),
-          _uuid(generate_uuid()),
-          _meta(meta_protocol, meta_host, meta_port),
-          _meta_pinger(
+            std::bind(&Trophonius::_serve_notifier, std::ref(*this)))
+          , _uuid(generate_uuid())
+          , _meta(meta)
+          , _meta_pinger(
             reactor::Scheduler::scheduler()->every(
               [&]
               {
@@ -90,12 +88,12 @@ namespace infinit
               "pinger",
               meta_ping_period
               )
-            ),
-          _terminating(false),
-          _ping_period(user_ping_period),
-          _user_auth_max_time(user_auth_max_time),
-          _remove_lock(),
-          _zone(zone)
+            )
+          , _terminating(false)
+          , _ping_period(user_ping_period)
+          , _user_auth_max_time(user_auth_max_time)
+          , _remove_lock()
+          , _zone(zone)
         {
  #ifndef INFINIT_WINDOWS
           if (!elle::os::getenv("TROPHONIUS_LISTEN_SIGNALS","").empty())

@@ -49,9 +49,7 @@ namespace infinit
           Trophonius(
             int port_ssl,
             int port_tcp,
-            std::string const& meta_protocol,
-            std::string const& meta_host,
-            int meta_port,
+            std::string const& meta,
             int port_notifications = 0,
             boost::posix_time::time_duration const& user_ping_period = 30_sec,
             boost::posix_time::time_duration const& meta_ping_period = 60_sec,

@@ -418,9 +418,7 @@ ELLE_TEST_SCHEDULED(register_unregister)
     infinit::oracles::trophonius::server::Trophonius trophonius(
       0,
       0,
-      "http",
-      "localhost",
-      meta.port(),
+      elle::sprintf("http://localhost:%s", meta.port()),
       0,
       60_sec,
       300_sec);
@@ -442,9 +440,7 @@ ELLE_TEST_SCHEDULED(notifications, (bool, ssl))
   infinit::oracles::trophonius::server::Trophonius trophonius(
     0,
     0,
-    "http",
-    "localhost",
-    meta.port(),
+    elle::sprintf("http://localhost:%s", meta.port()),
     0,
     60_sec,
     300_sec);
@@ -508,9 +504,7 @@ ELLE_TEST_SCHEDULED(no_authentication, (bool, ssl))
   infinit::oracles::trophonius::server::Trophonius trophonius(
     0,
     0,
-    "http",
-    "localhost",
-    meta.port(),
+    elle::sprintf("http://localhost:%s", meta.port()),
     0,
     60_sec,
     10_sec);
@@ -531,9 +525,7 @@ ELLE_TEST_SCHEDULED(no_authentication_timeout, (bool, ssl))
   infinit::oracles::trophonius::server::Trophonius trophonius(
     0,
     0,
-    "http",
-    "localhost",
-    meta.port(),
+    elle::sprintf("http://localhost:%s", meta.port()),
     0,
     60_sec,
     10_sec,
@@ -570,9 +562,7 @@ ELLE_TEST_SCHEDULED(authentication_failure, (bool, ssl))
   infinit::oracles::trophonius::server::Trophonius trophonius(
     0,
     0,
-    "http",
-    "localhost",
-    meta.port(),
+    elle::sprintf("http://localhost:%s", meta.port()),
     0,
     60_sec,
     300_sec);
@@ -621,9 +611,7 @@ ELLE_TEST_SCHEDULED(wait_authentified, (bool, ssl))
   infinit::oracles::trophonius::server::Trophonius trophonius(
     0,
     0,
-    "http",
-    "localhost",
-    meta.port(),
+    elle::sprintf("http://localhost:%s", meta.port()),
     0,
     60_sec,
     300_sec);
@@ -673,9 +661,7 @@ ELLE_TEST_SCHEDULED(notification_authentication_failed, (bool, ssl))
   infinit::oracles::trophonius::server::Trophonius trophonius(
     0,
     0,
-    "http",
-    "localhost",
-    meta.port(),
+    elle::sprintf("http://localhost:%s", meta.port()),
     0,
     60_sec,
     300_sec);
@@ -698,9 +684,7 @@ ELLE_TEST_SCHEDULED(ping_timeout, (bool, ssl))
   infinit::oracles::trophonius::server::Trophonius trophonius(
     0,
     0,
-    "http",
-    "localhost",
-    meta.port(),
+    elle::sprintf("http://localhost:%s", meta.port()),
     0,
     ping,
     300_sec);
@@ -745,9 +729,7 @@ ELLE_TEST_SCHEDULED(replace, (bool, ssl))
   infinit::oracles::trophonius::server::Trophonius trophonius(
     0,
     0,
-    "http",
-    "localhost",
-    meta.port(),
+    elle::sprintf("http://localhost:%s", meta.port()),
     0,
     30_sec,
     300_sec);
@@ -805,9 +787,7 @@ ELLE_TEST_SCHEDULED(bad_ssl_handshake)
   infinit::oracles::trophonius::server::Trophonius trophonius(
     0,
     0,
-    "http",
-    "localhost",
-    meta.port(),
+    elle::sprintf("http://localhost:%s", meta.port()),
     0,
     30_sec,
     30_sec);
@@ -832,9 +812,7 @@ ELLE_TEST_SCHEDULED(terminate)
   infinit::oracles::trophonius::server::Trophonius trophonius(
     0,
     0,
-    "http",
-    "localhost",
-    meta.port(),
+    elle::sprintf("http://localhost:%s", meta.port()),
     0,
     60_sec,
     300_sec);
