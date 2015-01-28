@@ -1,18 +1,18 @@
-#ifndef ORACLES_META_CLIENT_ERROR_CODE_HH
-# define ORACLES_META_CLIENT_ERROR_CODE_HH
+#ifndef INFINIT_ORACLES_META_CLIENT_ERROR_HH
+# define INFINIT_ORACLES_META_CLIENT_ERROR_HH
 
-namespace oracles
+namespace infinit
 {
-  namespace meta
+  namespace oracles
   {
-    namespace client
+    namespace meta
     {
-      enum class ErrorCode
+      enum class Error
       {
         <%! from infinit.oracles.meta.error import errors %>
         %for name, (code, comment) in sorted(errors.items()):
           ${name} = ${code},
-        %endfor
+          %endfor
       };
     }
   }

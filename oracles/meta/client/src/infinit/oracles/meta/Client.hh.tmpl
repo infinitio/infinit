@@ -29,6 +29,7 @@
 
 # include <infinit/oracles/LinkTransaction.hh>
 # include <infinit/oracles/PeerTransaction.hh>
+# include <infinit/oracles/meta/Error.hh>
 
 namespace infinit
 {
@@ -41,14 +42,6 @@ namespace infinit
                         std::string const& password);
 
       namespace json = elle::format::json;
-
-      enum class Error: int
-      {
-        <%! from infinit.oracles.meta.error import errors %>
-        %for name, (code, comment) in sorted(errors.items()):
-          ${name} = ${code},
-        %endfor
-      };
 
       class Exception
         : public elle::Exception

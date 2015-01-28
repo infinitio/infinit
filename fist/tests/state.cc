@@ -25,7 +25,7 @@
 #include <surface/gap/State.hh>
 #include <surface/gap/Error.hh>
 
-#include <infinit/oracles/meta/ErrorCode.hh>
+#include <infinit/oracles/meta/Error.hh>
 #include <infinit/oracles/meta/Client.hh>
 
 #include <version.hh>
@@ -424,14 +424,14 @@ ELLE_TEST_SCHEDULED(login_failure)
                             device_id,
                             fingerprint,
                             download_dir);
-  using ErrorCode = ::oracles::meta::client::ErrorCode;
-  server.login_result((int)ErrorCode::email_not_confirmed);
+  using Error = ::oracles::meta::client::Error;
+  server.login_result((int)Error::email_not_confirmed);
   BOOST_CHECK_THROW(state.login(email, password), std::exception);
-  server.login_result((int)ErrorCode::email_password_dont_match);
+  server.login_result((int)Error::email_password_dont_match);
   BOOST_CHECK_THROW(state.login(email, password), std::exception);
-  server.login_result((int)ErrorCode::deprecated);
+  server.login_result((int)Error::deprecated);
   BOOST_CHECK_THROW(state.login(email, password), std::exception);
-  server.login_result((int)ErrorCode::already_logged_in);
+  server.login_result((int)Error::already_logged_in);
   BOOST_CHECK_THROW(state.login(email, password), std::exception);
   server.login_result(0);
   BOOST_CHECK_NO_THROW(state.login(email, password));

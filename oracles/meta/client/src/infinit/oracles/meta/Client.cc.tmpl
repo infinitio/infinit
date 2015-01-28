@@ -27,7 +27,7 @@
 #include <reactor/http/exceptions.hh>
 
 #include <infinit/oracles/meta/Client.hh>
-#include <infinit/oracles/meta/ErrorCode.hh>
+#include <infinit/oracles/meta/Error.hh>
 #include <infinit/oracles/meta/macro.hh>
 
 #include <surface/gap/Error.hh>
@@ -484,16 +484,16 @@ namespace infinit
           SerializerIn input(url, request);
           int error_code;
           input.serialize("code", error_code);
-          using ErrorCode = ::oracles::meta::client::ErrorCode;
-          switch (ErrorCode(error_code))
+          using Error = infinit::oracles::meta::Error;
+          switch (Error(error_code))
           {
-            case ErrorCode::email_not_confirmed:
+            case Error::email_not_confirmed:
               throw infinit::state::UnconfirmedEmailError();
-            case ErrorCode::email_password_dont_match:
+            case Error::email_password_dont_match:
               throw infinit::state::CredentialError();
-            case ErrorCode::already_logged_in:
+            case Error::already_logged_in:
               throw infinit::state::AlreadyLoggedIn();
-            case ErrorCode::deprecated:
+            case Error::deprecated:
               throw infinit::state::VersionRejected();
             default:
               throw infinit::state::LoginError(
@@ -572,18 +572,18 @@ namespace infinit
         {
           int error_code;
           input.serialize("error_code", error_code);
-          using ErrorCode = ::oracles::meta::client::ErrorCode;
-          switch(ErrorCode(error_code))
+          using Error = infinit::oracles::meta::Error;
+          switch(Error(error_code))
           {
-            case ErrorCode::already_logged_in:
+            case Error::already_logged_in:
               throw infinit::state::AlreadyLoggedIn();
-            case ErrorCode::email_already_registered:
+            case Error::email_already_registered:
               throw infinit::state::EmailAlreadyRegistered();
-            case ErrorCode::email_not_valid:
+            case Error::email_not_valid:
               throw infinit::state::EmailNotValid();
-            case ErrorCode::password_not_valid:
+            case Error::password_not_valid:
               throw infinit::state::PasswordNotValid();
-            case ErrorCode::fullname_not_valid:
+            case Error::fullname_not_valid:
               throw infinit::state::FullnameNotValid();
 
             default:
@@ -1184,12 +1184,12 @@ namespace infinit
             SerializerIn input(url, request);
             int error_code;
             input.serialize("code", error_code);
-            using ErrorCode = ::oracles::meta::client::ErrorCode;
-            switch (ErrorCode(error_code))
+            using Error = infinit::oracles::meta::Error;
+            switch (Error(error_code))
             {
-              case ErrorCode::email_already_registered:
+              case Error::email_already_registered:
                 throw infinit::state::EmailAlreadyRegistered();
-              case ErrorCode::password_not_valid:
+              case Error::password_not_valid:
                 throw infinit::state::CredentialError();
               default:
                 throw infinit::state::SelfUserError(
@@ -1229,10 +1229,10 @@ namespace infinit
         {
           int error_code;
           input.serialize("error_code", error_code);
-          using ErrorCode = ::oracles::meta::client::ErrorCode;
-          switch (ErrorCode(error_code))
+          using Error = infinit::oracles::meta::Error;
+          switch (Error(error_code))
           {
-            case ErrorCode::password_not_valid:
+            case Error::password_not_valid:
               throw infinit::state::CredentialError();
             default:
               throw infinit::state::SelfUserError(elle::sprintf(
@@ -1262,10 +1262,10 @@ namespace infinit
         {
           int error_code;
           input.serialize("error_code", error_code);
-          using ErrorCode = ::oracles::meta::client::ErrorCode;
-          switch (ErrorCode(error_code))
+          using Error = infinit::oracles::meta::Error;
+          switch (Error(error_code))
           {
-            case ErrorCode::handle_already_registered:
+            case Error::handle_already_registered:
               throw infinit::state::HandleAlreadyRegistered();
             default:
               throw infinit::state::SelfUserError(
