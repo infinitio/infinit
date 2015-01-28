@@ -52,6 +52,32 @@ class Mixin:
         self.forbidden('transaction %s doesn\'t belong to you' % id)
     return transaction
 
+  def change_transactions_recipient(self, current_owner, new_owner):
+    # We can't do that as a batch because update won't give us the list
+    # of updated transactions.
+    while True:
+      transaction = self.database.transactions.find_and_modify(
+        {
+          'recipient_id': current_owner['_id']
+        },
+        {
+          '$set': {
+            'recipient_id': new_owner['_id'],
+            'modification_time': self.now,
+            'mtime': time.time(),
+          }
+        },
+        new = True)
+      if transaction is None:
+        return
+      if transaction['status'] != transaction_status.CREATED:
+        self.notifier.notify_some(
+          notifier.PEER_TRANSACTION,
+          recipient_ids = {transaction['sender_id'],
+                           transaction['recipient_id']},
+          message = transaction,
+        )
+
   def cancel_transactions(self, user):
     for transaction in self.database.transactions.find(
       {
