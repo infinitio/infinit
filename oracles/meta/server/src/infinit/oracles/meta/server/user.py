@@ -580,7 +580,7 @@ class Mixin:
       if res != 0:
         return self._forbidden_with_error(error.EMAIL_NOT_VALID)
     other = self.user_by_email(email, ensure_existence = False)
-    if other is not None: # and other['register_status'] != 'ghost':
+    if other is not None and other['register_status'] != 'ghost':
       return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
     user = self.user
     from time import time
@@ -595,7 +595,7 @@ class Mixin:
           'hash': hash,
           'auxiliary_email_address': email,
           'primary_email_address': user['email'],
-          'user_fullname': user['fullname']
+        'user_fullname': user['fullname']
         }
       })
     res = self.database.users.find_and_modify(
@@ -613,37 +613,57 @@ class Mixin:
       }, new = True)
     if res == None:
       return self._forbidden_with_error(error.EMAIL_ALREADY_ADDED)
-    return {}
+    return self.success({})
 
   @api('/user/accounts/email/validate/<hash>', method = 'POST')
   def validate_auxiliary_email(self,
                                hash):
-    res = self.database.users.find_one(
-      {
-        'pending_auxiliary_emails.hash': hash
-      },
-      fields = ['pending_auxiliary_emails.$'],
-    )
-    if res is None or not 'pending_auxiliary_emails' in res or len(res['pending_auxiliary_emails']) == 0:
-      return self._forbidden_with_error(error.UNKNOWN_EMAIL_CONFIRMATION_HASH)
-    account = res['pending_auxiliary_emails'][0] # account is {'hash': hash, 'email': email}
-    email = account['email']
-    user = self.user_by_email(email, ensure_existence = False)
-    if user is not None: # and user['register_status'] != 'ghost':
-      return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
-    if account['email'] != email:
-      return self._forbidden_with_error(error.UNKNOWN_EMAIL_ADDRESS)
-    update = {
-      '$pull': {'pending_auxiliary_emails': account},
-      '$addToSet': {'accounts': {'id': account['email'], 'type': 'email'}},
-    }
-    self.database.users.find_and_modify(
-      {
-        'pending_auxiliary_emails.hash': hash
-      },
-      update
-    )
-    return {}
+    with elle.log.trace('validate auxiliary email'):
+      res = self.database.users.find_one(
+        {
+          'pending_auxiliary_emails.hash': hash
+        },
+        fields = ['email', 'pending_auxiliary_emails.$'],
+      )
+      if res is None or not 'pending_auxiliary_emails' in res or len(res['pending_auxiliary_emails']) == 0:
+        return self._forbidden_with_error(error.UNKNOWN_EMAIL_CONFIRMATION_HASH)
+      account = res['pending_auxiliary_emails'][0] # account is {'hash': hash, 'email': email}
+      email = account['email']
+      elle.log.debug('add %s to user %s' % (email, res['email']))
+      user = self.user_by_email(email, ensure_existence = False)
+      if user is not None and user['register_status'] != 'ghost':
+        return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
+      update = {
+        '$pull': {'pending_auxiliary_emails': account},
+        '$addToSet': {'accounts': {'id': account['email'], 'type': 'email'}},
+      }
+      # If a ghost exists for the given email.
+      if user:
+        elle.log.trace('a ghost was found %s' % user)
+        swaggers = user.get('swaggers', {})
+        swaggers_prefixed = {'swaggers.%s' % id: swaggers[id] for id in swaggers}
+        update.update({'$inc': swaggers_prefixed})
+        self.database.users.update(
+          {
+            "_id": {"$in": list(swaggers.keys())}
+          },
+          {
+            '$inc': {'swaggers.%s' % res['_id']: 1},
+          })
+        for swagger in swaggers:
+          self.notifier.notify_some(
+            notifier.NEW_SWAGGER,
+            message = {'user_id': swagger},
+            recipient_ids = {res['_id']},
+          )
+        self.user_delete(user, merge_with = res)
+      self.database.users.find_and_modify(
+        {
+          'pending_auxiliary_emails.hash': hash
+        },
+        update
+      )
+      return self.success({})
 
   @api('/user/accounts/email/pending/delete', method = 'DELETE')
   @require_logged_in
@@ -659,7 +679,7 @@ class Mixin:
       })
     if res is None:
       return self._forbidden_with_error(error.UNKNOWN_EMAIL_ADDRESS)
-    return {}
+    return self.success({})
 
   @api('/user/accounts/email/delete', method = 'DELETE')
   @require_logged_in
@@ -680,7 +700,7 @@ class Mixin:
       })
     if res is None:
       return self._forbidden_with_error(error.UNKNOWN_EMAIL_ADDRESS)
-    return {}
+    return self.success({})
 
   @api('/user/accounts/make_primary', method = 'POST')
   @require_logged_in

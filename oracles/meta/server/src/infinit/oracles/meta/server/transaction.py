@@ -242,7 +242,7 @@ class Mixin:
         elle.log.debug("%s is an email" % id_or_email)
         peer_email = id_or_email.lower().strip()
         # XXX: search email in each accounts.
-        recipient = self.database.users.find_one({'email': peer_email})
+        recipient = self.database.users.find_one({'accounts.id': peer_email})
         # if the user doesn't exist, create a ghost and invite.
 
         if not recipient:

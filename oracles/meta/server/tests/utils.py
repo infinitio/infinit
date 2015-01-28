@@ -24,8 +24,6 @@ import mongobox
 
 import bottle
 
-from pprint import pprint
-
 from uuid import uuid4, UUID
 
 class HTTPException(Exception):
@@ -557,7 +555,6 @@ class User(Client):
         return self.notification_type
 
       def __getattr__(self, key):
-        pprint(self)
         return self[key]
 
       def __setattr__(self, key, value):
