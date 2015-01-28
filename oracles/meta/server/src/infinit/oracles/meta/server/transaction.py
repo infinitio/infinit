@@ -771,6 +771,10 @@ class Mixin:
       assert isinstance(device_id, uuid.UUID)
       return self.database.transactions.find(
         {
+          '$or': [ # this optimizes the request by preventing a full table scan
+            {'sender_device_id': device_id, 'sender_id': user_id},
+            {'recipient_device_id': device_id, 'recipient_id': user_id},
+          ],
           "nodes.%s" % self.__user_key(user_id, device_id): {"$exists": True}
         })
 
