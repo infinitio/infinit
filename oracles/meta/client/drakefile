@@ -11,6 +11,7 @@ lib = None
 
 def configure(elle,
               transaction_lib,
+              transaction_config,
               server_python,
               boost = None,
               python3 = None,
@@ -29,6 +30,7 @@ def configure(elle,
   config = drake.cxx.Config()
   config += elle.elle.config
   config += elle.reactor.config
+  config += transaction_config
   config.add_local_include_path('src')
   local_cxx_config = cxx_config + config
 
