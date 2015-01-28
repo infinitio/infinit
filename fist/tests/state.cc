@@ -424,7 +424,7 @@ ELLE_TEST_SCHEDULED(login_failure)
                             device_id,
                             fingerprint,
                             download_dir);
-  using Error = ::oracles::meta::client::Error;
+  using Error = infinit::oracles::meta::Error;
   server.login_result((int)Error::email_not_confirmed);
   BOOST_CHECK_THROW(state.login(email, password), std::exception);
   server.login_result((int)Error::email_password_dont_match);
