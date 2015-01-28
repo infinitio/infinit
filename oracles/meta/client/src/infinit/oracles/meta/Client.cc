@@ -46,7 +46,6 @@ namespace infinit
   {
     namespace meta
     {
-
       static
       std::string
       hash(std::string const& to_hash)
@@ -456,7 +455,7 @@ namespace infinit
                     boost::uuids::uuid const& device_uuid)
       {
         ELLE_TRACE_SCOPE("%s: login as %s on device %s",
-                         *this, password, device_uuid);
+                         *this, email, device_uuid);
         std::string struuid = boost::lexical_cast<std::string>(device_uuid);
 
         auto url = "/login";
@@ -544,6 +543,7 @@ namespace infinit
                         std::string const& fullname,
                         std::string const& password) const
       {
+        ELLE_TRACE_SCOPE("%s: register %s <%s>", *this, fullname, email);
         std::string source = "app";
         auto url = "/user/register";
         auto request = this->_request(
@@ -552,7 +552,9 @@ namespace infinit
           [&] (reactor::http::Request& request)
           {
             auto old_password = old_password_hash(email, password);
-            auto new_password = password_hash(email);
+            ELLE_DUMP("old password hash: %s", old_password);
+            auto new_password = password_hash(password);
+            ELLE_DUMP("new password hash: %s", new_password);
             elle::serialization::json::SerializerOut output(request, false);
             output.serialize("email", const_cast<std::string&>(email));
             output.serialize("fullname", const_cast<std::string&>(fullname));
