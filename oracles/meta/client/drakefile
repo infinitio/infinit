@@ -56,8 +56,9 @@ def configure(elle,
   with template_context:
     sources = drake.nodes(
       'src/infinit/oracles/meta/Error.hh.tmpl',
-      'src/infinit/oracles/meta/Client.cc.tmpl',
-      'src/infinit/oracles/meta/Client.hh.tmpl',
+      'src/infinit/oracles/meta/Error.cc.tmpl',
+      'src/infinit/oracles/meta/Client.cc',
+      'src/infinit/oracles/meta/Client.hh',
       'src/infinit/oracles/meta/Client.hxx',
       'src/infinit/oracles/meta/Admin.cc',
       'src/infinit/oracles/meta/Admin.hh',

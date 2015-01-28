@@ -1483,24 +1483,6 @@ namespace infinit
         }
       }
 
-      //- Properties ------------------------------------------------------------
-
-      std::ostream&
-      operator <<(std::ostream& out,
-                  Error e)
-      {
-        switch (e)
-        {
-          <%! from infinit.oracles.meta.error import errors %>
-          %for name, (code, comment) in sorted(errors.items()):
-            case Error::${name}:
-              out << "${name} (${comment})";
-              break;
-          %endfor
-        }
-        return out;
-      }
-
       void
       User::print(std::ostream& stream) const
       {
