@@ -930,10 +930,10 @@ class Mixin:
 
   @api('/users/<user>', method = 'DELETE')
   @require_admin
-  def user_delete_specifyc(self, user: str):
+  def user_delete_specific(self, user: str):
     self.user_delete(self.user_by_id_or_email(user))
 
-  def user_delete(self, user):
+  def user_delete(self, user, merge_with = None):
     """The idea is to just keep the user's id and fullname so that transactions
        can still be shown properly to other users. We will leave them in other
        users's swagger lists as we may want to generate the transaction history
@@ -958,46 +958,59 @@ class Mixin:
     # If this is somehow a duplicate, do not unregister the user from lists
     if self.database.users.find({'email': user['email']}).count() == 1:
       self.invitation.unsubscribe(user['email'])
-    self.cancel_transactions(user)
-    self.delete_all_links(user)
-    self.remove_devices(user)
+    if merge_with is not None:
+      self.change_transactions_recipient(user, merge_with)
+      # self.change_links_ownership(user, merge_with)
+    else:
+      self.cancel_transactions(user)
+      self.delete_all_links(user)
+      self.remove_devices(user)
     try:
       user.pop('avatar')
       user.pop('small_avatar')
     except:
       elle.log.debug('user has no avatar')
     swaggers = set(map(bson.ObjectId, user['swaggers'].keys()))
-    self.database.users.update(
+    cleared_user = {
+      'accounts': [],
+      'connected': False,
+      'connected_devices': [],
+      'devices': [],
+      'email': '',
+      'favorites': [],
+      'handle': '',
+      'identity': '',
+      'lw_handle': '',
+      'networks': [],
+      'notifications': [],
+      'old_notifications': [],
+      'password': '',
+      'public_key': '',
+      'swaggers': {},
+    }
+    if merge_with is not None:
+      cleared_user['register_status'] = 'merged'
+      cleared_user['merged_with'] = merge_with['_id']
+    else:
+      cleared_user['register_status'] = 'deleted'
+    deleted_user = self.database.users.find_and_modify(
       {'_id': user['_id']},
       {
-        '$set':
-        {
-          'accounts': [],
-          'connected': False,
-          'connected_devices': [],
-          'devices': [],
-          'email': '',
-          'favorites': [],
-          'handle': '',
-          'identity': '',
-          'lw_handle': '',
-          'networks': [],
-          'notifications': [],
-          'old_notifications': [],
-          'password': '',
-          'public_key': '',
-          'register_status': 'deleted',
-          'swaggers': {},
-        },
+        '$set': cleared_user,
         '$unset':
         {
           'avatar': '',
           'small_avatar': ''
         }
-      })
+      },
+      new = True)
     self.notifier.notify_some(notifier.DELETED_SWAGGER,
-      recipient_ids = swaggers,
-      message = {'user_id': user['_id']})
+                              recipient_ids = swaggers,
+                              message = {'user_id': user['_id']})
+    if merge_with:
+      self.notifier.notify_some(notifier.NEW_SWAGGER,
+                                recipient_ids = swaggers,
+                                message = {'user_id': deleted_user['merged_with']})
     self.remove_user_as_favorite_and_notify(user)
     return self.success()
 

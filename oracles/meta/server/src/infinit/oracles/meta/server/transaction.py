@@ -283,6 +283,13 @@ class Mixin:
 
       if recipient is None:
         return self.fail(error.USER_ID_NOT_VALID)
+      if recipient['register_status'] == 'merged':
+        assert isinstance(recipient['merged_with'], bson.ObjectId)
+        recipient = self.database.users.find_one({
+          '_id': recipient['merged_with']
+        })
+        if recipient is None:
+          return self.fail(error.USER_ID_NOT_VALID)
       if recipient['register_status'] == 'deleted':
         self.gone({
           'reason': 'user %s is deleted' % recipient['_id'],
