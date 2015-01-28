@@ -913,7 +913,9 @@ class Mixin:
       notifier.INVALID_CREDENTIALS,
       recipient_ids = {user['_id']},
       message = {'response_details': 'user deleted'})
-    self.invitation.unsubscribe(user['email'])
+    # If this is somehow a duplicate, do not unregister the user from lists
+    if self.database.users.find({'email': user['email']}).count() == 1:
+      self.invitation.unsubscribe(user['email'])
     self.cancel_transactions(user)
     self.delete_all_links(user)
     self.remove_devices(user)
