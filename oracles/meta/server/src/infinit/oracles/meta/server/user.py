@@ -921,6 +921,7 @@ class Mixin:
     self.remove_devices(user)
     try:
       user.pop('avatar')
+      user.pop('small_avatar')
     except:
       elle.log.debug('user has no avatar')
     swaggers = set(map(bson.ObjectId, user['swaggers'].keys()))
@@ -948,7 +949,8 @@ class Mixin:
         },
         '$unset':
         {
-          'avatar': ''
+          'avatar': '',
+          'small_avatar': ''
         }
       })
     self.notifier.notify_some(notifier.DELETED_SWAGGER,
