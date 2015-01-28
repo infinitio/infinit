@@ -19,6 +19,7 @@ namespace infinit
         Admin(std::string const& protocol,
               std::string const& host,
               uint16_t port);
+        Admin(std::string const& meta);
 
         void
         connect(boost::uuids::uuid const& uuid,

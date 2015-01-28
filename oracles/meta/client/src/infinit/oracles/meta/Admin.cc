@@ -21,8 +21,12 @@ namespace infinit
 
       Admin::Admin(std::string const& protocol,
                    std::string const& host,
-                   uint16_t port):
-        Client(protocol, host, port)
+                   uint16_t port)
+        : Client(protocol, host, port)
+      {}
+
+      Admin::Admin(std::string const& meta)
+        : Client(meta)
       {}
 
       void
