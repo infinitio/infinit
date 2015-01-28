@@ -52,18 +52,6 @@ class Notifier:
 
       devices_trophonius = dict()
 
-      class Target:
-        def __init__(self, owner, trophonius):
-          assert isinstance(owner, bson.ObjectId)
-          self.owner = owner
-          self.trophonius = trophonius
-
-        def __str__(self):
-          return "Target: %s on trophonius %s" % (self.owner, self.trophonius)
-
-        def __repr__(self):
-          return "Target: %s on trophonius %s" % (self.owner, self.trophonius)
-
       if recipient_ids is not None:
         assert isinstance(recipient_ids, set)
         critera = {'owner': {'$in': list(recipient_ids)}}
