@@ -309,6 +309,7 @@ class Mixin:
         'recipient_id': recipient['_id'],
         'recipient_fullname': recipient['fullname'],
 
+        'involved': [_id, recipient['_id']],
         # Empty until accepted.
         'recipient_device_id': '',
         'recipient_device_name': '',
@@ -427,18 +428,14 @@ class Mixin:
       user_id = self.user['_id']
       if peer_id is not None:
         query = {
-          '$or':
+          '$and':
           [
-            { 'recipient_id': user_id, 'sender_id': peer_id, },
-            { 'sender_id': user_id, 'recipient_id': peer_id, },
+            { 'involved': user_id},
+            { 'involved': peer_id},
           ]}
       else:
         query = {
-          '$or':
-          [
-            { 'sender_id': user_id },
-            { 'recipient_id': user_id },
-          ]
+          'involved': user_id
         }
       query['status'] = {'$%s' % (negate and 'nin' or 'in'): filter}
       res = self.database.transactions.aggregate([
