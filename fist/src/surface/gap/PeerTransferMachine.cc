@@ -67,7 +67,7 @@ namespace surface
         }
         catch (std::exception const& e)
         {
-          ELLE_LOG("%s: UPNP initialization failed: %s", *this, e.what());
+          ELLE_TRACE("%s: UPNP initialization failed: %s", *this, e.what());
           return;
         }
       ELLE_TRACE("%s: acquire UPNP mapping", *this)
@@ -86,7 +86,7 @@ namespace surface
         }
         catch (std::exception const& e)
         {
-          ELLE_LOG("%s: UPNP mapping failed: %s", *this, e.what());
+          ELLE_TRACE("%s: UPNP mapping failed: %s", *this, e.what());
           return;
         }
     }
