@@ -150,7 +150,10 @@ class Mixin:
         self.__generate_identity(user['_id'], email, password)
       query = {'id': str(device_id), 'owner': user['_id']}
       elle.log.debug("%s: look for session" % email)
-      device = self.device(ensure_existence = False, **query)
+      device = self.database.devices.find_and_modify(
+        query,
+        {'$set': {'push_token': device_push_token}},
+      )
       if device is None:
         elle.log.trace("user logged with an unknown device")
         device = self._create_device(
