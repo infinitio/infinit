@@ -9,7 +9,6 @@
 #include <elle/os/path.hh>
 #include <elle/finally.hh>
 #include <elle/container/map.hh>
-#include <elle/container/vector.hh>
 #include <elle/serialization/json/SerializerIn.hh>
 #include <elle/system/home_directory.hh>
 

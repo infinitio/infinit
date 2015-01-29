@@ -1,7 +1,6 @@
 #include <surface/gap/LinkSendMachine.hh>
 
 #include <elle/Error.hh>
-#include <elle/container/vector.hh>
 #include <elle/os/file.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.LinkSendMachine");

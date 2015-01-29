@@ -5,7 +5,6 @@
 #include <elle/AtomicFile.hh>
 #include <elle/Error.hh>
 #include <elle/serialization/json.hh>
-#include <elle/container/vector.hh>
 
 #include <common/common.hh>
 #include <surface/gap/enums.hh>
