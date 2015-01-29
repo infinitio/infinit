@@ -1114,11 +1114,7 @@ class Mixin:
                          limit = 100):
     user_id = self.user['_id']
     query = {
-      '$or':
-      [
-        { 'sender_id': user_id },
-        { 'recipient_id': user_id },
-      ],
+       'involved': user_id
     }
     # XXX: Fix race condition!
     # If the transaction is updated between the 2 calls, it will be in both
