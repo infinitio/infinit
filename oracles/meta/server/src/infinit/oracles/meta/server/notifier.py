@@ -12,7 +12,7 @@ import apns
 
 import elle.log
 from infinit.oracles.notification import notifications
-from . import conf
+from . import conf, transaction_status
 
 from .plugins.jsongo import jsonify
 
@@ -62,7 +62,6 @@ class Notifier:
         critera = {
           'id': {'$in': [str(device_id) for device_id in device_ids]}
         }
-      critera['trophonius'] = {'$ne': None}
       devices_trophonius = []
       for device in self.database.devices.find(
           critera,
@@ -89,13 +88,15 @@ class Notifier:
         ))
       elle.log.debug('trophonius to contact: %s' % trophonius)
       notification = {'notification': jsonify(message)}
+      # Ensure unique push tokens are used.
+      push_tokens = set()
       # Freezing slow.
       for device, owner, tropho, push in devices_trophonius:
-        s = socket.socket(socket.AF_INET,
-                          socket.SOCK_STREAM)
+        if push is not None:
+          push_tokens.add(push)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         tropho = trophonius.get(tropho)
         if tropho is None:
-          elle.log.err('unknown trophonius %s' % tropho)
           continue
         notification['device_id'] = str(device)
         notification['user_id'] = str(owner)
@@ -108,13 +109,49 @@ class Notifier:
           json_str = \
             json.dumps(notification, ensure_ascii = False) + '\n'
           s.send(json_str.encode('utf-8'))
-          if push is not None:
-            pl = apns.Payload(alert = json_str,
-                              sound = 'default',
-                              badge = 1)
-            self.__apns.gateway_server.send_notification(push, pl)
         except Exception as e:
           elle.log.err('unable to contact %s: %s' %
                        (tropho['_id'], e))
         finally:
           s.close()
+      for push in push_tokens:
+        try:
+          pl = self.ios_notification(notification_type,
+                                     device,
+                                     owner,
+                                     message)
+          if pl is not None:
+            self.__apns.gateway_server.send_notification(push, pl)
+        except Exception as e:
+          elle.log.err('unable to push notification to %s: %s' % (device, e))
+
+  def ios_notification(self, notification_type, device, owner, message):
+    if notification_type is not PEER_TRANSACTION:
+      return None
+    sender_id = str(message['sender_id'])
+    recipient_id = str(message['recipient_id'])
+    status = int(message['status'])
+    if (str(owner) == sender_id) and (device == message['sender_device_id']):
+      if status not in [transaction_status.REJECTED, transaction_status.FINISHED]:
+        return None
+    elif (str(owner) == recipient_id):
+      if status not in [transaction_status.INITIALIZED]:
+        return None
+    else:
+      return None
+    custom = { 'i': {
+      'type': PEER_TRANSACTION,
+      'status': status,
+      'sender': sender_id,
+      'sender_device': message['sender_device_id'],
+      'sender_name': message['sender_fullname'],
+      'recipient': recipient_id,
+      'recipient_device': message['recipient_device_id'],
+      'recipient_name': message['recipient_fullname'],
+      'file_count': message['files_count'],
+    }}
+    return apns.Payload(alert = '',
+                        sound = '',
+                        badge = 0,
+                        content_available = True,
+                        custom = custom)
