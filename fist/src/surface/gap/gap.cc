@@ -1006,7 +1006,26 @@ gap_link_callback(
     });
 }
 
+/// Recipient changeh callback.
+gap_Status
+gap_transaction_recipient_changed_callback(
+  gap_State* state,
+  gap_recipient_changed_callback_t cb)
+{
+  auto cpp_cb = [cb] (surface::gap::Transaction::RecipientChangedNotification const& notif)
+  {
+    cb(notif.id, notif.recipient_id);
+  };
 
+  return run<gap_Status>(
+    state,
+    "recipient changed callback",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.attach_callback<surface::gap::Transaction::RecipientChangedNotification>(cpp_cb);
+      return gap_ok;
+    });
+}
 
 gap_Status
 gap_message_callback(gap_State* state,
@@ -1245,6 +1264,24 @@ gap_transaction_progress(gap_State* state,
         return 0;
       }
       return it->second->progress();
+    });
+}
+
+bool
+gap_is_p2p_transaction(gap_State* state, uint32_t id)
+{
+  return run<bool>(
+    state,
+    "is p2p transaction",
+    [&] (surface::gap::State& state) -> bool
+    {
+      auto data =
+        std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
+          state.transactions().at(id)->data());
+      if (data == nullptr)
+        return false;
+      else
+        return true;
     });
 }
 

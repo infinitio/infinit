@@ -30,6 +30,15 @@ namespace surface
       status(status)
     {}
 
+    Notification::Type Transaction::RecipientChangedNotification::type =
+      NotificationType_TransactionRecipientChanged;
+    Transaction::RecipientChangedNotification::RecipientChangedNotification(
+      uint32_t id,
+      uint32_t recipient_id):
+      id(id),
+      recipient_id(recipient_id)
+    {}
+
     std::set<infinit::oracles::Transaction::Status>
     Transaction::recipient_final_statuses({
       infinit::oracles::Transaction::Status::rejected,
@@ -664,9 +673,26 @@ namespace surface
           // To avoid weird rollbacks in status, just ignore that case.
           auto rollback_status = (this->_data->status == Status::cloud_buffered &&
                                   peer->status == Status::initialized);
+          auto data = std::dynamic_pointer_cast<PeerTransaction>(this->_data);
+          std::string previous_recipient_id{data->recipient_id};
           *std::dynamic_pointer_cast<PeerTransaction>(this->_data) = *peer;
           if (rollback_status)
             this->_data->status = Status::cloud_buffered;
+          if (peer->recipient_id != previous_recipient_id)
+          {
+            ELLE_TRACE_SCOPE("recipient id changed: %s -> %s",
+                             peer->recipient_id != previous_recipient_id);
+            // Merge recipient if the new one is not in your list.
+            // XXX: Because we should always receive a new_swagger notification
+            // this code is just a security.
+            auto& recipient = this->state().user(peer->recipient_id);
+            // XXX: Waiting for Chris' TransactionNotification.
+            // For the moment, inform the frontend that something changed on the
+            // notification and let it check if hte recipient is different.
+            this->state().enqueue(
+              RecipientChangedNotification(
+                this->id(), this->state().user_indexes().at(recipient.id)));
+          }
         }
         else
           ELLE_ERR("%s: unknown transaction type: %s",

@@ -1213,6 +1213,8 @@ namespace surface
           return out << "Trophonius Unavailable";
         case NotificationType_LinkUpdate:
           return out << "Link Update";
+        case NotificationType_TransactionRecipientChanged:
+          return out << "Transaction Recipient Changed";
       }
 
       return out;
