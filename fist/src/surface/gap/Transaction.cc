@@ -746,8 +746,7 @@ namespace surface
           *this, this->data()->id);
         return;
       }
-      this->_machine->peer_available(local_endpoints,
-                                     public_endpoints);
+      this->_machine->peer_available(local_endpoints, public_endpoints);
     }
 
     void
@@ -775,14 +774,16 @@ namespace surface
     Transaction::final() const
     {
       ELLE_ASSERT(this->_data.get());
-      if (_sender)
-        return std::find(Transaction::sender_final_statuses.begin(),
-                         Transaction::sender_final_statuses.end(),
-                         this->_data->status) != Transaction::sender_final_statuses.end();
-     else
-       return std::find(Transaction::recipient_final_statuses.begin(),
-                        Transaction::recipient_final_statuses.end(),
-                         this->_data->status) != Transaction::recipient_final_statuses.end();
+      if (this->_sender)
+        return std::find(
+          Transaction::sender_final_statuses.begin(),
+          Transaction::sender_final_statuses.end(),
+          this->_data->status) != Transaction::sender_final_statuses.end();
+      else
+       return std::find(
+         Transaction::recipient_final_statuses.begin(),
+         Transaction::recipient_final_statuses.end(),
+         this->_data->status) != Transaction::recipient_final_statuses.end();
     }
 
     void
