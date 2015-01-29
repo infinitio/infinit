@@ -1558,7 +1558,8 @@ gap_Status
 gap_send_user_report(gap_State* state,
                      std::string const& user_name,
                      std::string const& message,
-                     std::string const& file)
+                     std::string const& file,
+                     boost::optional<std::vector<std::string>> infinit_files)
 {
   ELLE_ASSERT(state != nullptr);
   // In order to avoid blocking the GUI, let's create a disposable thread and
@@ -1579,7 +1580,8 @@ gap_send_user_report(gap_State* state,
                                    _state.meta(false).port(),
                                    user_name,
                                    message,
-                                   file);
+                                   file,
+                                   infinit_files);
           return gap_ok;
         }, "send user report");
     }, disposable);
