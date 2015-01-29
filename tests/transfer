@@ -142,9 +142,7 @@ class TransferPeer:
     self.statuses = dict() #old transaction_id no longuer has sense
     elle.log.log('Logging in with %s' % self.credentials[0])
     self.states[device].register(self.credentials[2],
-      self.credentials[0],
-      state.hash_password(self.credentials[0], self.credentials[1])
-      )
+      self.credentials[0], self.credentials[1])
     self.logged_in.append(device)
   def login(self, device = 0):
     if device in self.logged_in:
@@ -152,8 +150,7 @@ class TransferPeer:
     self.create(force = False, device = device)
     self.statuses = dict() #old transaction_id no longuer has sense
     elle.log.log('Logging in with %s' % self.credentials[0])
-    self.states[device].login(self.credentials[0],
-      state.hash_password(self.credentials[0], self.credentials[1]))
+    self.states[device].login(self.credentials[0], self.credentials[1])
     self.logged_in.append(device)
   def logout(self, device = 0):
     if device not in self.logged_in:
@@ -682,4 +679,3 @@ class TestMultiDeviceTransfer(unittest.TestCase):
                              credentials = credentials)
 
 utils.run(unittest.main)
-
