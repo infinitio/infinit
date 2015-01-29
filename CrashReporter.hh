@@ -84,7 +84,8 @@ namespace elle
                 uint16_t meta_port,
                 std::string const& user_name = "",
                 std::string const& message = "",
-                std::string const& user_file = "");
+                std::string const& user_file = "",
+                boost::optional<std::vector<std::string>> infinit_files = {});
 
   }
 }

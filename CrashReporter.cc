@@ -470,7 +470,8 @@ namespace elle
                 uint16_t meta_port,
                 std::string const& user_name,
                 std::string const& message,
-                std::string const& user_file_)
+                std::string const& user_file_,
+                boost::optional<std::vector<std::string>> infinit_files)
     {
       ELLE_TRACE_SCOPE("user report");
       std::string url = elle::sprintf("%s://%s:%s/debug/report/user",
@@ -502,10 +503,15 @@ namespace elle
       std::string user_file = user_file_;
 #endif
 
-      if (user_file.length() == 0)
+      if (infinit_files)
       {
+        std::vector<boost::filesystem::path> paths;
+        for (std::string const& file: infinit_files.get())
+          paths.push_back(boost::filesystem::path(file));
+        if (user_file.length() != 0)
+          paths.push_back(boost::filesystem::path(user_file));
         elle::archive::archive(elle::archive::Format::tar_gzip,
-                               {_infinit_home()},
+                               paths,
                                destination,
                                elle::archive::Renamer(),
                                temp_file_excluder,
@@ -513,12 +519,24 @@ namespace elle
       }
       else
       {
-        elle::archive::archive(elle::archive::Format::tar_gzip,
-                               {user_file, _infinit_home()},
-                               destination,
-                               elle::archive::Renamer(),
-                               temp_file_excluder,
-                               true);
+        if (user_file.length() == 0)
+        {
+          elle::archive::archive(elle::archive::Format::tar_gzip,
+                                 {_infinit_home()},
+                                 destination,
+                                 elle::archive::Renamer(),
+                                 temp_file_excluder,
+                                 true);
+        }
+        else
+        {
+          elle::archive::archive(elle::archive::Format::tar_gzip,
+                                 {user_file, _infinit_home()},
+                                 destination,
+                                 elle::archive::Renamer(),
+                                 temp_file_excluder,
+                                 true);
+        }
       }
       _send_report(url, user_name, message, _to_base64(destination));
     }
