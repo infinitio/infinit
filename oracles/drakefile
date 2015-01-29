@@ -56,6 +56,7 @@ def configure(production_build,
     sources = drake.nodes(
       'src/infinit/oracles/Transaction.cc.tmpl',
       'src/infinit/oracles/Transaction.hh.tmpl',
+      'src/infinit/oracles/TransactionStatuses.hh.tmpl',
       'src/infinit/oracles/PeerTransaction.hxx',
       'src/infinit/oracles/PeerTransaction.cc',
       'src/infinit/oracles/PeerTransaction.hh',
