@@ -159,6 +159,8 @@ namespace surface
                 (read.stream(), false);
               Transaction::Snapshot snapshot(input);
               auto const& data = *snapshot.data();
+              if (data.id.empty())
+                throw elle::Error("transaction id was empty");
               if (!data.id.empty())
               {
                 auto it = std::find_if(
