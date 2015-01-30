@@ -1040,7 +1040,7 @@ class Mixin:
     # As long as those creds are transaction specific there is no risk
     # in letting the recipient have WRITE access. This will no longuer hold
     # if cloud data ever gets shared among transactions.
-    if transaction['is_ghost'] and self.user_version >= (0, 9, 26):
+    if transaction['is_ghost'] and self.user_gcs_enabled:
       ghost_upload_file = self._upload_file_name(transaction)
       token_maker = cloud_buffer_token_gcs.CloudBufferTokenGCS(
         transaction_id, ghost_upload_file, self.gcs_buffer_bucket)

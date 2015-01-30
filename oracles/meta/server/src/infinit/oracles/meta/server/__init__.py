@@ -366,6 +366,28 @@ class Meta(bottle.Bottle,
       else:
         return tuple(map(int, match.groups()))
 
+
+  @property
+  def user_gcs_enabled(self):
+    if self.user_version < (0, 9, 26):
+      return False
+    return self.user['features'].get('gcs_enabled', False)
+
+    with elle.log.debug('%s: get user version' % self):
+      import re
+      # Before 0.8.11, user agent was empty.
+      if self.user_agent is None or len(self.user_agent) == 0:
+        return (0, 8, 10)
+      pattern = re.compile('^MetaClient/(\\d+)\\.(\\d+)\\.(\\d+)')
+      match = pattern.search(self.user_agent)
+      if match is None:
+        elle.log.debug('can\'t extract version from user agent %s' %
+                       self.user_agent)
+        # Website.
+        return (0, 0, 0)
+      else:
+        return tuple(map(int, match.groups()))
+
   def user_by_id_or_email(self, id_or_email):
     id_or_email = id_or_email.lower()
     if '@' in id_or_email:
