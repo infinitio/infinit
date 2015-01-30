@@ -82,7 +82,7 @@ public:
   Trophonius&
   trophonius(std::string const& id)
   {
-    BOOST_CHECK(this->_trophoniuses.find(id) != this->_trophoniuses.end());
+    BOOST_REQUIRE(this->_trophoniuses.find(id) != this->_trophoniuses.end());
     return this->_trophoniuses.find(id)->second;
   }
 
