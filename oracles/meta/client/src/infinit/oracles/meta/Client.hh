@@ -293,6 +293,8 @@ namespace infinit
       {
       public:
         CreateLinkTransactionResponse() = default;
+        CreateLinkTransactionResponse(CreateLinkTransactionResponse&&)
+          = default;
         ELLE_ATTRIBUTE_R(LinkTransaction, transaction);
         ELLE_ATTRIBUTE_X(std::unique_ptr<CloudCredentials>, cloud_credentials);
 
