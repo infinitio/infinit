@@ -466,6 +466,23 @@ public:
         cb(odict);
       });
   }
+
+  void
+  wrap_login(std::string const& email, std::string const& password)
+  {
+    boost::optional<std::string const&> push_token = {};
+    return login(email, password, push_token);
+  }
+
+  void
+  wrap_register_(std::string const& fullname,
+                 std::string const& email,
+                 std::string const& password)
+  {
+    boost::optional<std::string const&> push_token = {};
+    return register_(fullname, email, password, push_token);
+  }
+
   std::vector<unsigned int>
   wrap_swaggers()
   {
@@ -569,7 +586,7 @@ BOOST_PYTHON_MODULE(state)
                          std::string const&,
                          uint16_t>())
     .def("logged_in", &State::logged_in)
-    .def("login", (void (State::*)(std::string const&, std::string const&)) &State::login)
+    .def("login", &PythonState::wrap_login)
     .def("logout", &State::logout)
     .def("poll", &State::poll)
     .def("users", &State::users, by_const_ref())
@@ -601,7 +618,7 @@ BOOST_PYTHON_MODULE(state)
     .def("configuration_set_max_mirror_size",
          &PythonState::configuration_set_max_mirror_size)
     .def("features", &PythonState::features)
-    .def("register", &State::register_)
+    .def("register", &PythonState::wrap_register_)
     .def("reconnection_cooldown",
       static_cast<void(State::*)(boost::posix_time::time_duration const&)>
       (&State::reconnection_cooldown))
