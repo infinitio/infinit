@@ -28,11 +28,9 @@ class TestPreemptiveBuffering(unittest.TestCase):
         mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
       with utils.TemporaryData('foo', 1000) as tmp:
         s1 = o.state()
-        s1.login('mefyl@infinit.io',
-                state.hash_password('mefyl@infinit.io', 'mefyl'))
+        s1.login('mefyl@infinit.io', 'mefyl')
         s2 = o.state()
-        s2.login('mefyl2@infinit.io',
-                state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+        s2.login('mefyl2@infinit.io', 'mefyl2')
         tid = s1.send_files('mefyl2@infinit.io', [tmp.full_path], 'foo')
         reactor.sleep(datetime.timedelta(seconds = 2))
         #Not accepted, nothing happened
@@ -50,11 +48,9 @@ class TestPreemptiveBuffering(unittest.TestCase):
                           data = json.dumps({'value': '0'}))
         self.assertEqual(r.status_code, 200)
         s1 = o.state()
-        s1.login('mefyl@infinit.io',
-                state.hash_password('mefyl@infinit.io', 'mefyl'))
+        s1.login('mefyl@infinit.io', 'mefyl')
         s2 = o.state()
-        s2.login('mefyl2@infinit.io',
-                state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+        s2.login('mefyl2@infinit.io', 'mefyl2')
         tid = s1.send_files('mefyl2@infinit.io', [tmp.full_path], 'foo')
         for i in range(20):
           if s1.transaction_status(tid) == 'transaction_cloud_buffered':
@@ -80,11 +76,9 @@ class TestPreemptiveBuffering(unittest.TestCase):
                           data = json.dumps({'value': '100'}))
         self.assertEqual(r.status_code, 200)
         s1 = o.state()
-        s1.login('mefyl@infinit.io',
-                state.hash_password('mefyl@infinit.io', 'mefyl'))
+        s1.login('mefyl@infinit.io', 'mefyl')
         s2 = o.state()
-        s2.login('mefyl2@infinit.io',
-                state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+        s2.login('mefyl2@infinit.io', 'mefyl2')
         tid = s1.send_files('mefyl2@infinit.io', [tmp.full_path], 'foo')
         reactor.sleep(datetime.timedelta(seconds = 2))
         tr = s1.transaction(tid)
