@@ -1,4 +1,3 @@
-from oauth2client.client import SignedJwtAssertionCredentials
 from httplib2 import Http
 import requests
 import datetime
@@ -14,6 +13,13 @@ import urllib
 import elle.log
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.CloudBufferTokenGCS'
+
+module_enabled = True
+try:
+  from oauth2client.client import SignedJwtAssertionCredentials
+except Exception:
+  elle.log.warn("oauth2 not present, disabling google cloud storage")
+  module_enabled = False
 
 gcs_default_region = ''
 gcs_default_buffer_bucket = 'io_infinit_buffer'
@@ -55,6 +61,8 @@ class CloudBufferTokenGCS:
       self.bucket = CloudBufferTokenGCS.default_bucket
 
   def _get_creds(self):
+    if not module_enabled:
+      raise Exception('GCS module is disabled')
     credentials = SignedJwtAssertionCredentials(
       CloudBufferTokenGCS.client_email,
       CloudBufferTokenGCS.private_key,
