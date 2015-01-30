@@ -30,10 +30,11 @@ with drake.Drake('../..') as d:
                                      archiver = 'libtool',
                                      archiver_flags = ['-static', '-o'],
                                      ranlib = False)
-  archs = ['armv7']
+  archs = ['armv7', 'arm64']
   cxx_config = drake.cxx.Config()
   cxx_config.enable_debug_symbols()
-  cxx_config.enable_optimization(False)
+  cxx_config.enable_optimization(True)
+  cxx_config.warnings.overloaded_virtual = False
   for arch in archs:
     cxx_config.flag('-arch')
     cxx_config.flag('%s' % arch)
@@ -46,4 +47,6 @@ with drake.Drake('../..') as d:
         cxx_config,
         archs = archs,
         python3 = False,
+        boost = '_build/ios/elle/boost',
+        production_build = True,
   )
