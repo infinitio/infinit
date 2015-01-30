@@ -1013,11 +1013,13 @@ class Mixin:
   @require_logged_in
   def cloud_buffer(self, transaction_id : bson.ObjectId,
                    force_regenerate : json_value = True):
+    self._cloud_buffer(transaction_id, self.user, force_regenerate)
+
+  def _cloud_buffer(self, transaction_id, user, force_regenerate = True):
     """
     Return AWS credentials giving the user permissions to PUT (sender) or GET
     (recipient) from the cloud buffer.
     """
-    user = self.user
     transaction = self.transaction(transaction_id, owner_id = user['_id'])
 
     # Ensure transaction is not in a final state.

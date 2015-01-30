@@ -71,6 +71,7 @@ with mongobox.MongoBox() as mongo:
     check_no_mail(emailer.emails)
 
     # Finish upload.
+    meta._cloud_buffer(tid, sender)
     meta._transaction_update(tid, statuses['ghost_uploaded'],
                              device, None, sender)
 
@@ -97,6 +98,7 @@ with mongobox.MongoBox() as mongo:
 
     # Check reminder 1 is not sent for downloaded transactions
     tid = transaction_create(meta, sender, ghost_email)
+    meta._cloud_buffer(tid, sender)
     meta._transaction_update(tid, statuses['ghost_uploaded'],
                              device, None, sender)
     forward(reminder.delay_first_reminder * 2)
@@ -107,6 +109,7 @@ with mongobox.MongoBox() as mongo:
 
     # Check reminder 2 is not sent for downloaded transactions
     tid = transaction_create(meta, sender, ghost_email)
+    meta._cloud_buffer(tid, sender)
     meta._transaction_update(tid, statuses['ghost_uploaded'],
                              device, None, sender)
     forward(reminder.delay_first_reminder * 2)
@@ -128,6 +131,8 @@ with mongobox.MongoBox() as mongo:
                                  files = ['1'])
       tid_2 = transaction_create(meta, sender, ghost_email_2,
                                  files = ['2'])
+      meta._cloud_buffer(tid_1, sender)
+      meta._cloud_buffer(tid_2, sender)
       meta._transaction_update(tid_1, statuses['ghost_uploaded'],
                                device, None, sender)
       meta._transaction_update(tid_2, statuses['ghost_uploaded'],
@@ -157,6 +162,9 @@ with mongobox.MongoBox() as mongo:
                                  files = ['A'])
       tid_2 = transaction_create(meta, sender, ghost_email,
                                  files = ['B'])
+      meta._cloud_buffer(tid_1, sender)
+      meta._cloud_buffer(tid_2, sender)
+
       meta._transaction_update(tid_1, statuses['ghost_uploaded'],
                                device, None, sender)
       meta._transaction_update(tid_2, statuses['ghost_uploaded'],

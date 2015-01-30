@@ -54,6 +54,7 @@ with mongobox.MongoBox() as mongo:
 
     # Check nothing is sent with ghost transactions
     tid = transaction_create(meta, sender, ghost_email)
+    meta._cloud_buffer(tid, sender)
     meta._transaction_update(tid, statuses['ghost_uploaded'],
                              'device', 'device', sender)
     meta.transaction_download(tid)
