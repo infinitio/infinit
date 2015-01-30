@@ -27,8 +27,7 @@ class TestLogin(unittest.TestCase):
       s = o.state()
       expect_raise(lambda: s.login('mefyl@infinit.io', 'lol'))
       expect_raise(lambda: s.login('mefyl@infinit.com', 'mefyl'))
-      s.login('mefyl@infinit.io',
-              state.hash_password('mefyl@infinit.io', 'mefyl'))
+      s.login('mefyl@infinit.io', 'mefyl')
       self.assertTrue(s.logged_in())
       users = s.users();
       self.assertEqual(len(users), 1)
@@ -45,7 +44,7 @@ class TestLogin(unittest.TestCase):
       try:
         # this login call will block forever on its own
         try:
-          result = s.login('foo', state.hash_password('foo', 'bar'))
+          result = s.login('foo', 'bar')
         except:
           result = False
         rresult.append(result)
@@ -69,8 +68,7 @@ class TestLogin(unittest.TestCase):
         print('Status update: %s' % s)
         last_statuses.append(s)
       s1.attach_connection_callback(status)
-      s1.login('mefyl@infinit.io',
-              state.hash_password('mefyl@infinit.io', 'mefyl'))
+      s1.login('mefyl@infinit.io', 'mefyl')
       self.assertTrue(s1.logged_in())
       o.kill_trophonius()
       reactor.sleep(datetime.timedelta(milliseconds = 500))
@@ -97,8 +95,7 @@ class TestLogin(unittest.TestCase):
         print('Status update: %s' % s)
         last_statuses.append(s)
       s1.attach_connection_callback(status)
-      s1.login('mefyl@infinit.io',
-              state.hash_password('mefyl@infinit.io', 'mefyl'))
+      s1.login('mefyl@infinit.io', 'mefyl')
       self.assertTrue(s1.logged_in())
       o.kill_trophonius()
       o.kill_meta()
@@ -122,11 +119,9 @@ class TestLogin(unittest.TestCase):
       mongo = pymongo.MongoClient(host='127.0.0.1', port=o._mongo.port)
       mongo.meta.abtest.remove({})
       s2 = o.state()
-      s2.login('mefyl2@infinit.io',
-              state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+      s2.login('mefyl2@infinit.io', 'mefyl2')
       s1 = o.state()
-      s1.login('mefyl@infinit.io',
-              state.hash_password('mefyl@infinit.io', 'mefyl'))
+      s1.login('mefyl@infinit.io', 'mefyl')
       reactor.sleep(datetime.timedelta(milliseconds = 500))
       self.assertEqual(s2.features(), {})
       self.assertEqual(s1.features(), {'test_feature': '1'})
@@ -140,7 +135,7 @@ class TestLogin(unittest.TestCase):
     with infinit.oracles.servers.Oracles(
       mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
       s = o.state()
-      expect_raise(lambda: s.login("nosuchuser@infinit.io", state.hash_password('foo', 'bar')))
+      expect_raise(lambda: s.login("nosuchuser@infinit.io", 'bar'))
 
   def test_login_change_password(self):
     with infinit.oracles.servers.Oracles(
@@ -151,20 +146,17 @@ class TestLogin(unittest.TestCase):
         print('Status update: %s' % s)
         last_statuses.append(s)
       s.attach_connection_callback(status)
-      s.login('mefyl@infinit.io',
-              state.hash_password('mefyl@infinit.io', 'mefyl'))
+      s.login('mefyl@infinit.io', 'mefyl')
       for i in range(10):
         s.poll()
       self.assertTrue(last_statuses[-1]['status'])
-      s.change_password(state.hash_password('mefyl@infinit.io', 'mefyl'),
-                        state.hash_password('mefyl@infinit.io', 'newpassword'))
+      s.change_password('mefyl', 'newpassword')
       for i in range(10):
         s.poll()
         reactor.sleep(datetime.timedelta(milliseconds = 100))
       self.assertFalse(last_statuses[-1]['status'])
       self.assertFalse(s.logged_in())
-      s.login('mefyl@infinit.io',
-              state.hash_password('mefyl@infinit.io', 'newpassword'))
+      s.login('mefyl@infinit.io', 'newpassword')
       for i in range(10):
         s.poll()
       self.assertTrue(last_statuses[-1]['status'])
@@ -183,8 +175,7 @@ class TestLogin(unittest.TestCase):
         print('Status update: %s' % s)
         last_statuses.append(s)
       s.attach_connection_callback(status)
-      s.login('mefyl@infinit.io',
-              state.hash_password('mefyl@infinit.io', 'mefyl'))
+      s.login('mefyl@infinit.io', 'mefyl')
       for i in range(10):
         s.poll()
       self.assertTrue(last_statuses[-1]['status'])
@@ -205,12 +196,10 @@ class TestLogin(unittest.TestCase):
     with infinit.oracles.servers.Oracles(
       mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
       s1 = o.state()
-      s1.register('mefyl3', 'mefyl3@infinit.io',
-                  state.hash_password('mefyl3@infinit.io', 'mefyl3'))
+      s1.register('mefyl3', 'mefyl3@infinit.io', 'mefyl3')
       s1.logout()
       s2 = o.state()
-      s2.login('mefyl3@infinit.io',
-              state.hash_password('mefyl3@infinit.io', 'mefyl3'))
+      s2.login('mefyl3@infinit.io', 'mefyl3')
       f = s2.features()
       keys = list(f.keys())
       keys.sort()
@@ -224,8 +213,7 @@ class TestLogin(unittest.TestCase):
       mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
       # test that features are injected at login
       s2 = o.state()
-      s2.login('mefyl2@infinit.io',
-              state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+      s2.login('mefyl2@infinit.io', 'mefyl2')
       f = s2.features()
       keys = list(f.keys())
       keys.sort()
@@ -245,8 +233,7 @@ class TestLogin(unittest.TestCase):
                         data=json.dumps({'reroll': '1'}),
                         headers = {'content-type': 'application/json'})
         self.assertEqual(r.status_code, 200)
-        s.login('mefyl2@infinit.io',
-              state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+        s.login('mefyl2@infinit.io', 'mefyl2')
         f = s.features()
         self.assertTrue('testa' in f.keys())
         vals.add(f['testa'])
@@ -265,8 +252,7 @@ class TestLogin(unittest.TestCase):
                         headers = {'content-type': 'application/json'})
       self.assertEqual(r.status_code, 200)
       s = o.state()
-      s.login('mefyl2@infinit.io',
-              state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+      s.login('mefyl2@infinit.io', 'mefyl2')
       f = s.features()
       self.assertTrue('testc' in f.keys())
       self.assertEqual(f['testa'], 'v3')
@@ -277,8 +263,7 @@ class TestLogin(unittest.TestCase):
       r = requests.delete('%s://%s:%s/features/testa' % o.meta)
       self.assertEqual(r.status_code, 200)
       s2 = o.state()
-      s2.login('mefyl2@infinit.io',
-              state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+      s2.login('mefyl2@infinit.io', 'mefyl2')
       f2 = s2.features()
       self.assertTrue('testa' not in f2.keys())
 
@@ -294,8 +279,7 @@ class TestLogin(unittest.TestCase):
                        headers = {'content-type': 'application/json'})
       self.assertEqual(r.status_code, 200)
       s2 = o.state()
-      s2.login('mefyl2@infinit.io',
-              state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+      s2.login('mefyl2@infinit.io', 'mefyl2')
       f = s2.features()
       self.assertTrue('testc' in f.keys())
       self.assertTrue('testd' in f.keys())
@@ -307,14 +291,12 @@ class TestLogin(unittest.TestCase):
       self.assertEqual(r.status_code, 200)
       s2.logout()
       reactor.sleep(datetime.timedelta(milliseconds = 200))
-      s2.login('mefyl2@infinit.io',
-              state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+      s2.login('mefyl2@infinit.io', 'mefyl2')
       reactor.sleep(datetime.timedelta(milliseconds = 200))
       f = s2.features()
-      self.assertTrue('testc' in f.keys())
+      self.assertTrue('testc' not in f.keys())
       s3 = o.state()
-      s3.register('mefyl3', 'mefyl3@infinit.io',
-                  state.hash_password('mefyl3@infinit.io', 'mefyl3'))
+      s3.register('mefyl3', 'mefyl3@infinit.io', 'mefyl3')
       reactor.sleep(datetime.timedelta(milliseconds = 200))
       f = s3.features()
       self.assertTrue('testc' not in f.keys())

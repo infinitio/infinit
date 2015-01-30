@@ -27,8 +27,7 @@ class TestLinks(unittest.TestCase):
       mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
       with utils.TemporaryData('foo', 1000) as tmp:
         s = o.state()
-        s.login('mefyl@infinit.io',
-                 state.hash_password('mefyl@infinit.io', 'mefyl'))
+        s.login('mefyl@infinit.io', 'mefyl')
         id = s.create_link([tmp.full_path], "foo")
         for i in range(100):
           s.poll()
@@ -39,16 +38,14 @@ class TestLinks(unittest.TestCase):
         tr = s.transaction(id)
         tid = tr['id']
         s.logout()
-        s.login('mefyl@infinit.io',
-                 state.hash_password('mefyl@infinit.io', 'mefyl'))
+        s.login('mefyl@infinit.io', 'mefyl')
         for i in range(100):
           s.poll()
           reactor.sleep(datetime.timedelta(milliseconds = 10))
         self.assertNotEqual(s.find_transaction(tid), -1)
         s.logout()
         os.environ['INFINIT_DISABLE_LINK_SYNC'] = '1'
-        s.login('mefyl@infinit.io',
-                 state.hash_password('mefyl@infinit.io', 'mefyl'))
+        s.login('mefyl@infinit.io', 'mefyl')
         self.assertEqual(s.find_transaction(tid), -1)
         h = tr['share_link'].split('/')[-1]
         r = requests.get('%s://%s:%s/link/%s' % (o.meta + (h,)))
@@ -68,8 +65,7 @@ class TestLinks(unittest.TestCase):
       with utils.TemporaryData('foo', 10000000) as tmp:
         s = o.state()
         s.configuration_set_max_mirror_size(1)
-        s.login('mefyl@infinit.io',
-                state.hash_password('mefyl@infinit.io', 'mefyl'))
+        s.login('mefyl@infinit.io', 'mefyl')
         id = s.create_link([tmp.full_path], "foo")
         for i in range(100):
           s.poll()
@@ -78,9 +74,8 @@ class TestLinks(unittest.TestCase):
         tr = s.transaction(id)
         tid = tr['id']
         s.logout()
-        s.login('mefyl@infinit.io',
-                state.hash_password('mefyl@infinit.io', 'mefyl'))
-        for i in range(100):
+        s.login('mefyl@infinit.io', 'mefyl')
+        for i in range(200):
           s.poll()
           reactor.sleep(datetime.timedelta(milliseconds = 10))
         tindex = s.find_transaction(tid)
