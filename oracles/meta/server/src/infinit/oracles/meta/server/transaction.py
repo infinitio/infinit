@@ -13,7 +13,7 @@ import json
 import elle.log
 from .utils import \
   api, require_logged_in, require_logged_in_or_admin, require_key
-from . import regexp, error, transaction_status, notifier, invitation, cloud_buffer_token, mail
+from . import regexp, error, transaction_status, notifier, invitation, cloud_buffer_token, cloud_buffer_token_gcs, mail
 import uuid
 import re
 from pymongo import ASCENDING, DESCENDING
@@ -554,29 +554,25 @@ class Mixin:
       transaction_id = transaction['_id']
       elle.log.trace("send invitation to new user %s for transaction %s" % (
         peer_email, transaction_id))
-      # Figure out what the sender will ghost-upload
-      # This heuristic must be in sync with the sender!
-      ghost_upload_file = ''
-      files = transaction['files']
-      # FIXME: this name computation is duplicated from client !
-      if len(files) == 1:
-        if transaction['is_directory']:
-          #C++ side is doing a replace_extension
-          parts = files[0].split('.')
-          if len(parts) == 1:
-            ghost_upload_file = files[0] + '.zip'
-          else:
-            ghost_upload_file = '.'.join(parts[0:-1]) + '.zip'
-        else:
-          ghost_upload_file = files[0]
-      else:
-        ghost_upload_file = '%s files.zip' % len(files)
+      ghost_upload_file = self._upload_file_name(transaction)
       # Generate GET URL for ghost cloud uploaded file
       # FIXME: AFAICT nothing prevent us from generating this directly
       # on transaction creation and greatly simplify the client and
       # server code.
-      ghost_get_url = cloud_buffer_token.generate_get_url(
-        self.aws_region, self.aws_buffer_bucket,
+      # Figure out which backend was used
+      backend_name = transaction['aws_credentials']['protocol']
+      if backend_name == 'aws':
+        backend = cloud_buffer_token
+        bucket = self.aws_buffer_bucket
+        region = self.aws_region
+      elif backend_name == 'gcs':
+        backend = cloud_buffer_token_gcs
+        bucket = self.gcs_buffer_bucket
+        region = self.gcs_region
+      else:
+        elle.log.err('unknown backend %s' % (backend_name))
+      ghost_get_url = backend.generate_get_url(
+        region, bucket,
         transaction_id,
         ghost_upload_file)
       elle.log.log('Generating cloud GET URL for %s: %s'
@@ -595,7 +591,7 @@ class Mixin:
         database = self.database,
         merge_vars = {
           peer_email: {
-            'filename': files[0],
+            'filename': transaction['files'][0],
             'recipient_email': recipient['email'],
             'recipient_name': recipient['fullname'],
             'sendername': user['fullname'],
@@ -605,7 +601,7 @@ class Mixin:
             'note': transaction['message'],
             'transaction_hash': transaction_hash,
             'transaction_id': str(transaction['_id']),
-            'number_of_other_files': len(files) - 1,
+            'number_of_other_files': len(transaction['files']) - 1,
           }}
       )
       return {
@@ -992,6 +988,27 @@ class Mixin:
 
     return self.success(res)
 
+  def _upload_file_name(self, transaction):
+    """
+    Return the name of the uploaded file from transaction data
+    """
+    ghost_upload_file = ''
+    files = transaction['files']
+    # FIXME: this name computation is duplicated from client !
+    if len(files) == 1:
+      if transaction['is_directory']:
+        #C++ side is doing a replace_extension
+        parts = files[0].split('.')
+        if len(parts) == 1:
+          ghost_upload_file = files[0] + '.zip'
+        else:
+          ghost_upload_file = '.'.join(parts[0:-1]) + '.zip'
+      else:
+        ghost_upload_file = files[0]
+    else:
+      ghost_upload_file = '%s files.zip' % len(files)
+    return ghost_upload_file
+
   @api('/transaction/<transaction_id>/cloud_buffer')
   @require_logged_in
   def cloud_buffer(self, transaction_id : bson.ObjectId,
@@ -1023,25 +1040,36 @@ class Mixin:
     # As long as those creds are transaction specific there is no risk
     # in letting the recipient have WRITE access. This will no longuer hold
     # if cloud data ever gets shared among transactions.
-    token_maker = cloud_buffer_token.CloudBufferToken(
-      user['_id'], transaction_id, 'ALL',
-      aws_region = self.aws_region, bucket_name = self.aws_buffer_bucket)
-    raw_creds = token_maker.generate_s3_token()
+    if transaction['is_ghost'] and self.user_version >= (0, 9, 26):
+      ghost_upload_file = self._upload_file_name(transaction)
+      token_maker = cloud_buffer_token_gcs.CloudBufferTokenGCS(
+        transaction_id, ghost_upload_file, self.gcs_buffer_bucket)
+      ul = token_maker.get_upload_token()
+      credentials = dict()
+      credentials['protocol'] = 'gcs'
+      credentials['url'] = ul
+      credentials['expiration']        = (datetime.date.today()+datetime.timedelta(days=7)).isoformat()
+      credentials['current_time']      = current_time
+    else:
+      token_maker = cloud_buffer_token.CloudBufferToken(
+        user['_id'], transaction_id, 'ALL',
+        aws_region = self.aws_region, bucket_name = self.aws_buffer_bucket)
+      raw_creds = token_maker.generate_s3_token()
 
-    if raw_creds == None:
-      return self.fail(error.UNABLE_TO_GET_AWS_CREDENTIALS)
+      if raw_creds == None:
+        return self.fail(error.UNABLE_TO_GET_AWS_CREDENTIALS)
 
-    # Only send back required credentials.
-    credentials = dict()
-    credentials['access_key_id']     = raw_creds['AccessKeyId']
-    credentials['secret_access_key'] = raw_creds['SecretAccessKey']
-    credentials['session_token']     = raw_creds['SessionToken']
-    credentials['expiration']        = raw_creds['Expiration']
-    credentials['protocol']          = 'aws'
-    credentials['region']            = self.aws_region
-    credentials['bucket']            = self.aws_buffer_bucket
-    credentials['folder']            = transaction_id
-    credentials['current_time']      = current_time
+      # Only send back required credentials.
+      credentials = dict()
+      credentials['access_key_id']     = raw_creds['AccessKeyId']
+      credentials['secret_access_key'] = raw_creds['SecretAccessKey']
+      credentials['session_token']     = raw_creds['SessionToken']
+      credentials['expiration']        = raw_creds['Expiration']
+      credentials['protocol']          = 'aws'
+      credentials['region']            = self.aws_region
+      credentials['bucket']            = self.aws_buffer_bucket
+      credentials['folder']            = transaction_id
+      credentials['current_time']      = current_time
 
     elle.log.debug("Storing aws_credentials in DB")
     transaction.update({'aws_credentials': credentials})

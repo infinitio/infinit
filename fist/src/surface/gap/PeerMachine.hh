@@ -66,8 +66,8 @@ namespace surface
       void
       _peer_connection_changed(bool user_status);
       virtual
-      aws::Credentials
-      _aws_credentials(bool regenerate) override;
+      std::unique_ptr<infinit::oracles::meta::CloudCredentials>
+      _cloud_credentials(bool regenerate) override;
       virtual
       void
       _finalize(infinit::oracles::Transaction::Status) override;

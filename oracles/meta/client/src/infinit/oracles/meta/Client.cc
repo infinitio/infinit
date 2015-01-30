@@ -322,7 +322,8 @@ namespace infinit
         , _port(std::move(std::get<2>(meta)))
         , _root_url(elle::sprintf("%s://%s:%d",
                                   this->_protocol, this->_host, this->_port))
-        , _client("MetaClient/" INFINIT_VERSION)
+        , _client(elle::os::getenv("INFINIT_USER_AGENT",
+                                   "MetaClient/" INFINIT_VERSION))
         , _default_configuration(_requests_timeout(),
                                  {},
                                  reactor::http::Version::v10)
@@ -990,7 +991,7 @@ namespace infinit
         return Fallback(input);
       }
 
-      aws::Credentials
+      std::unique_ptr<CloudCredentials>
       Client::get_cloud_buffer_token(std::string const& transaction_id,
                                      bool force_regenerate) const
       {
@@ -1006,7 +1007,9 @@ namespace infinit
             this->_handle_errors(request);
         }
         SerializerIn input(url, request);
-        return aws::Credentials(input);
+        std::unique_ptr<CloudCredentials> res;
+        input.serialize_forward(res);
+        return res;
       }
 
       /*------.
@@ -1023,7 +1026,7 @@ namespace infinit
       CreateLinkTransactionResponse::serialize(
         elle::serialization::Serializer& s)
       {
-        s.serialize("aws_credentials", this->_aws_credentials);
+        s.serialize("aws_credentials", this->_cloud_credentials);
         s.serialize("transaction", this->_transaction);
       }
 
@@ -1082,7 +1085,7 @@ namespace infinit
         return res;
       }
 
-      aws::Credentials
+      std::unique_ptr<CloudCredentials>
       Client::link_credentials(std::string const& id,
                                bool regenerate) const
       {
@@ -1100,7 +1103,9 @@ namespace infinit
             true)
           : this->_request(url, Method::GET);
         SerializerIn input(url, request);
-        return aws::Credentials(input);
+        std::unique_ptr<CloudCredentials> res;
+        input.serialize_forward(res);
+        return res;
       }
 
       /*--------------.
@@ -1499,6 +1504,45 @@ namespace infinit
       {
         stream << "meta::Client(" << this->_host << ":" << this->_port << " @" << this->_email << ")";
       }
+
+      CloudCredentialsAws::CloudCredentialsAws(elle::serialization::SerializerIn& s)
+      : aws::Credentials(s)
+      {}
+
+      void
+      CloudCredentialsAws::serialize(elle::serialization::Serializer& s)
+      {
+        aws::Credentials::serialize(s);
+      }
+      CloudCredentials*
+      CloudCredentialsAws::clone() const
+      {
+        return new CloudCredentialsAws(*this);
+      }
+      CloudCredentials*
+      CloudCredentialsGCS::clone() const
+      {
+        return new CloudCredentialsGCS(*this);
+      }
+      CloudCredentialsGCS::CloudCredentialsGCS(elle::serialization::SerializerIn& s)
+      {
+        serialize(s);
+      }
+      void
+      CloudCredentialsGCS::serialize(elle::serialization::Serializer& s)
+      {
+        s.serialize("url", this->_url);
+        s.serialize("expiration", this->_expiry);
+        s.serialize("current_time", this->_server_time);
+      }
+
+      static const elle::serialization::Hierarchy<CloudCredentials>::
+      Register<CloudCredentialsAws>
+      _register_AwsCredentials("aws");
+      static const elle::serialization::Hierarchy<CloudCredentials>::
+      Register<CloudCredentialsGCS>
+      _register_GcsCredentials("gcs");
     }
+
   }
 }

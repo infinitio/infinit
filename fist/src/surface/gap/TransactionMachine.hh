@@ -21,6 +21,7 @@
 
 # include <frete/Frete.hh>
 # include <infinit/oracles/Transaction.hh>
+# include <infinit/oracles/meta/Client.hh>
 # include <oracles/src/infinit/oracles/PeerTransaction.hh>
 # include <papier/fwd.hh>
 # include <surface/gap/enums.hh>
@@ -172,8 +173,8 @@ namespace surface
 
       // XXX: not all transactions will need AWS credentials.
       virtual
-      aws::Credentials
-      _aws_credentials(bool regenerate) = 0;
+      std::unique_ptr<infinit::oracles::meta::CloudCredentials>
+      _cloud_credentials(bool regenerate) = 0;
 
     protected:
       void

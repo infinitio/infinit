@@ -10,6 +10,7 @@
 
 #include <reactor/thread.hh>
 #include <reactor/exception.hh>
+#include <reactor/http/exceptions.hh>
 
 #include <aws/Credentials.hh>
 #include <aws/Exceptions.hh>
@@ -102,6 +103,144 @@ namespace surface
       for (auto const& chunk: this->_plain_progress_chunks)
         progress += chunk.second;
       return progress;
+    }
+
+    void
+    SendMachine::_gcs_plain_upload(boost::filesystem::path const& file_path,
+                                   std::string const& initurl)
+    {// https://cloud.google.com/storage/docs/concepts-techniques#resumable
+      std::string url = initurl;
+      ELLE_TRACE("%s: gcs upload on %s", *this, url);
+      uint64_t file_size = boost::filesystem::file_size(file_path);
+
+      using reactor::http::StatusCode;
+      using reactor::http::Request;
+      std::vector<StatusCode> transient = {
+        StatusCode::Request_Timeout,
+        StatusCode::Internal_Server_Error,
+        StatusCode::Bad_Gateway,
+        StatusCode::Service_Unavailable,
+        StatusCode::Gateway_Timeout
+      };
+
+      int attempt = 0;
+
+      auto status_check = [&](reactor::http::StatusCode s, Request& r) -> bool
+      {
+        if ((int)s != 308 && ((int)s/100) != 2)
+        {
+          ELLE_WARN("GCS error status %s: %s", s, r.response());
+          if (std::find(transient.begin(), transient.end(), r.status())
+            == transient.end())
+          {
+            // the error is fatal
+            ELLE_WARN("%s: restarting upload from the beginning", *this);
+            auto credentials = this->_cloud_credentials(false);
+            url = dynamic_cast<infinit::oracles::meta::CloudCredentialsGCS*>
+              (credentials.get())->url();
+          }
+          reactor::sleep(boost::posix_time::milliseconds(
+            std::min(int(500 * pow(2,attempt)), 20000)));
+          return false;
+        }
+        return true;
+      };
+      // In case of error in the upload request, re-perform a check of current
+      // upload position
+      while (true)
+      {
+        ++attempt;
+        try
+        {
+          // Check current upload status
+          Request::Configuration conf;
+          conf.header_add("Content-Length", "0");
+          conf.header_add("Content-Range",
+                          "bytes */*"/* + boost::lexical_cast<std::string>(file_size)*/);
+          Request r(url, reactor::http::Method::PUT, conf);
+          reactor::wait(r);
+          auto h = r.headers();
+          ELLE_TRACE("%s: upload status: %s, %s, %s", *this, r.status(), h, r.response());
+          if (r.status() == StatusCode::OK)
+          {
+            ELLE_TRACE("%s: Upload reported finished", *this);
+            this->finished().open();
+            return;
+          }
+          else if (!status_check(r.status(), r))
+            continue;
+          uint64_t position = 0;
+          auto it = h.find("Range");
+          if (it != h.end())
+          {
+            std::string range = it->second;
+            ELLE_TRACE("%s: Got current range %s", *this, range);
+            // expect bytes=a-b
+            size_t beg = range.find_first_of('-');
+            position = std::stol(range.substr(beg+1))+1;
+          }
+          else
+            ELLE_TRACE("%s: got no range, starting from the beginning", *this);
+          elle::system::FileHandle file(file_path,
+                                        elle::system::FileHandle::READ);
+          // Uploads must be a multiple of 256K
+          // We can use huge chunks, an abort mid-chunk will still save the
+          // part that was uploaded.
+          static const int chunk_factor = 262144 * 50;
+          while (position < file_size)
+          {
+            bool last = false;
+            uint64_t end = position + chunk_factor;
+            if (end >= file_size)
+            {
+              end = file_size;
+              last = true;
+            }
+            ELLE_DEBUG("%s: pushing %s block %s-%s", *this, last?"last":"", position, end);
+            Request::Configuration conf;
+            conf.stall_timeout(30_sec);
+            conf.timeout(reactor::DurationOpt());
+            conf.header_add("Content-Length",
+                            boost::lexical_cast<std::string>(end - position));
+            std::string endSize = "*";
+            if (last)
+              endSize = boost::lexical_cast<std::string>(file_size);
+            conf.header_add("Content-Range",
+                            elle::sprintf("bytes %s-%s/%s", position, end-1, endSize));
+            auto buffer = file.read(position, end - position);
+
+            Request r(url, reactor::http::Method::PUT, "application/octet-stream",
+                      conf);
+            r.progress_changed().connect([&](Request::Progress const& p)
+              {
+                this->_plain_progress = float(p.upload_current + position)
+                  / (float)file_size;
+              });
+            r << buffer;
+            r.finalize();
+            reactor::wait(r);
+            if (!status_check(r.status(), r))
+              break;
+            else
+              position = end;
+          }
+          // end reached
+          break;
+        }
+        catch(reactor::network::Exception const& e)
+        {
+          ELLE_WARN("GCS request error: %s (attempt %s)", e.what(), attempt);
+          reactor::sleep(boost::posix_time::milliseconds(
+            std::min(int(500 * pow(2,attempt)), 20000)));
+        }
+        catch (reactor::http::RequestError const& e)
+        {
+          ELLE_WARN("GCS request error: %s (attempt %s)", e.error(), attempt);
+          reactor::sleep(boost::posix_time::milliseconds(
+            std::min(int(500 * pow(2,attempt)), 20000)));
+        }
+      } // while true
+      this->finished().open();
     }
 
     void
@@ -222,13 +361,28 @@ namespace surface
         }
         else
           source_file_path = *this->_files.begin();
-        file_size = boost::filesystem::file_size(source_file_path);
-        std::string source_file_name = source_file_path.filename().string();
+
+
         ELLE_TRACE("%s: will ghost-cloud-upload %s of size %s",
                    *this, source_file_path, file_size);
+        auto credentials = this->_cloud_credentials(true);
+        auto gcs_creds
+          = dynamic_cast<infinit::oracles::meta::CloudCredentialsGCS*>(credentials.get());
+        if (gcs_creds)
+        {
+          // Google upload
+          _gcs_plain_upload(source_file_path, gcs_creds->url());
+          exit_reason = metrics::TransferExitReasonFinished;
+          return;
+        }
+        std::string source_file_name = source_file_path.filename().string();
+        file_size = boost::filesystem::file_size(source_file_path);
         auto get_credentials = [this] (bool first_time)
           {
-            return this->_aws_credentials(first_time);
+            auto creds = this->_cloud_credentials(first_time);
+            auto awscreds = dynamic_cast<infinit::oracles::meta::CloudCredentialsAws*>(creds.get());
+            ELLE_ASSERT(awscreds);
+            return *static_cast<aws::Credentials*>(awscreds);
           };
         S3 handler(this->transaction().state(), get_credentials);
         handler.on_error([&](aws::AWSException const& exception, bool will_retry)

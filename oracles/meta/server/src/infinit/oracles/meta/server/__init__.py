@@ -95,6 +95,9 @@ class Meta(bottle.Bottle,
       aws_region = None,
       aws_buffer_bucket = None,
       aws_link_bucket = None,
+      gcs_region = None,
+      gcs_buffer_bucket = None,
+      gcs_link_bucket = None,
       force_admin = False,
       debug = False,
       zone = None,
@@ -173,6 +176,15 @@ class Meta(bottle.Bottle,
     if aws_link_bucket is None:
       aws_link_bucket = cloud_buffer_token.aws_default_link_bucket
     self.aws_link_bucket = aws_link_bucket
+    if gcs_region is None:
+      gcs_region = cloud_buffer_token_gcs.gcs_default_region
+    self.gcs_region = gcs_region
+    if gcs_buffer_bucket is None:
+      gcs_buffer_bucket = cloud_buffer_token_gcs.gcs_default_buffer_bucket
+    self.gcs_buffer_bucket = gcs_buffer_bucket
+    if gcs_link_bucket is None:
+      gcs_link_bucket = cloud_buffer_token_gcs.gcs_default_link_bucket
+    self.gcs_link_bucket = gcs_link_bucket
     waterfall.Waterfall.__init__(self)
     self.__zone = zone
 

@@ -44,8 +44,8 @@ namespace surface
         infinit::oracles::Transaction::Status status) override;
 
     protected:
-      aws::Credentials
-      _aws_credentials(bool regenerate) override;
+      std::unique_ptr<infinit::oracles::meta::CloudCredentials>
+      _cloud_credentials(bool regenerate) override;
 
       void
       _finalize(infinit::oracles::Transaction::Status) override;
