@@ -399,16 +399,20 @@ ELLE_TEST_SCHEDULED(link_credentials)
   ptime now = second_clock::universal_time();
   ptime expiration = now + plus_one_hour;
   static const std::string response =
-    elle::sprintf("{"
-    "  \"access_key_id\": \"access key id\","
-    "  \"secret_access_key\": \"secret access key\","
-    "  \"session_token\": \"session token\","
-    "  \"region\": \"region\","
-    "  \"bucket\": \"bucket\","
-    "  \"folder\": \"folder\","
-    "  \"expiration\": \"%s\","
-    "  \"current_time\": \"%s\""
-    "}", to_iso_extended_string(expiration), to_iso_extended_string(now));
+    elle::sprintf(
+      "{"
+      "  \"protocol\": \"aws\","
+      "  \"access_key_id\": \"access key id\","
+      "  \"secret_access_key\": \"secret access key\","
+      "  \"session_token\": \"session token\","
+      "  \"region\": \"region\","
+      "  \"bucket\": \"bucket\","
+      "  \"folder\": \"folder\","
+      "  \"expiration\": \"%s\","
+      "  \"current_time\": \"%s\""
+      "}",
+      to_iso_extended_string(expiration),
+      to_iso_extended_string(now));
   static const std::string id{"id"};
 
   HTTPServer s;
