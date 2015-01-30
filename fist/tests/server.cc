@@ -578,6 +578,7 @@ Server::Server()
         "  \"transaction\": %s,"
         "  \"aws_credentials\": "
         "  {"
+        "    \"protocol\": \"aws\","
         "    \"access_key_id\": \"\","
         "    \"bucket\": \"\","
         "    \"expiration\": \"2016-01-12T09-37-42Z\","
@@ -643,6 +644,7 @@ Server::Server()
           auto tomorrow = now + boost::posix_time::hours(24);
           return elle::sprintf(
             "{"
+            "  \"protocol\": \"aws\","
             "  \"access_key_id\": \"\","
             "  \"secret_access_key\": \"\","
             "  \"session_token\": \"\","
