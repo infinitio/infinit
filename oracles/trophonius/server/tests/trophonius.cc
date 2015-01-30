@@ -806,9 +806,30 @@ ELLE_TEST_SCHEDULED(bad_ssl_handshake)
 // Check trophonius sends the shutting_down boolean to meta and disconnects
 // peers properly.
 
+class TerminateMeta
+  : public Meta
+{
+public:
+  TerminateMeta(reactor::Barrier& unregister_barrier)
+    : _unregister_barrier(unregister_barrier)
+  {}
+
+protected:
+  virtual
+  void
+  _unregister(reactor::network::Socket& socket, std::string const& id) override
+  {
+    reactor::wait(this->_unregister_barrier);
+    Meta::_unregister(socket, id);
+  }
+
+  ELLE_ATTRIBUTE_RX(reactor::Barrier&, unregister_barrier);
+};
+
 ELLE_TEST_SCHEDULED(terminate)
 {
-  Meta meta;
+  reactor::Barrier unregister_barrier;
+  TerminateMeta meta(unregister_barrier);
   infinit::oracles::trophonius::server::Trophonius trophonius(
     0,
     0,
@@ -823,6 +844,7 @@ ELLE_TEST_SCHEDULED(terminate)
     reactor::Barrier client_barrier;
     reactor::Barrier client_pending_barrier;
     reactor::Barrier meta_notifier_barrier;
+    int done = 0;
     scope.run_background(
       "client",
       [&]
@@ -838,7 +860,10 @@ ELLE_TEST_SCHEDULED(terminate)
         }
         catch (reactor::network::ConnectionClosed const&)
         {
+          ELLE_LOG("client disconnected");
           BOOST_CHECK(meta.trophonius(trophonius).shutting_down);
+          if (++done == 3)
+            unregister_barrier.open();
         }
       });
     scope.run_background(
@@ -854,7 +879,10 @@ ELLE_TEST_SCHEDULED(terminate)
         }
         catch (reactor::network::ConnectionClosed const&)
         {
+          ELLE_LOG("pending client disconnected");
           BOOST_CHECK(meta.trophonius(trophonius).shutting_down);
+          if (++done == 3)
+            unregister_barrier.open();
         }
       });
     scope.run_background(
@@ -871,7 +899,10 @@ ELLE_TEST_SCHEDULED(terminate)
         }
         catch (reactor::network::ConnectionClosed const&)
         {
+          ELLE_LOG("meta notifer disconnected");
           BOOST_CHECK(meta.trophonius(trophonius).shutting_down);
+          if (++done == 3)
+            unregister_barrier.open();
         }
       });
     reactor::wait(client_barrier);
@@ -879,8 +910,7 @@ ELLE_TEST_SCHEDULED(terminate)
     reactor::wait(meta_notifier_barrier);
     BOOST_CHECK(!meta.trophonius(trophonius).shutting_down);
     trophonius.terminate();
-    ELLE_LOG("wait scope")
-      reactor::wait(scope);
+    reactor::wait(scope);
   };
 }
 
