@@ -1316,7 +1316,7 @@ gap_reject_transaction(gap_State* state, uint32_t id)
 gap_Status
 gap_accept_transaction(gap_State* state,
                        uint32_t id,
-                       boost::optional<std::string const&> output_dir)
+                       boost::optional<std::string const&> relative_output_dir)
 {
   ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
@@ -1325,7 +1325,7 @@ gap_accept_transaction(gap_State* state,
     "accept transaction",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      state.transactions().at(id)->accept(output_dir);
+      state.transactions().at(id)->accept(relative_output_dir);
       return gap_ok;
     });
 }
