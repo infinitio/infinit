@@ -28,7 +28,8 @@ namespace frete
   public:
     // Construct recipient snapshot.
     TransferSnapshot(FileCount count,
-                     FileSize total_size);
+                     FileSize total_size,
+                     std::string const& relative_folder = "");
     /// Construct sender snapshot.
     TransferSnapshot(bool mirrored);
 
@@ -160,6 +161,9 @@ namespace frete
     ELLE_ATTRIBUTE_RW(bool, archived);
     /// If the files were mirrored.
     ELLE_ATTRIBUTE_R(bool, mirrored);
+    /// Folder relative to the root where files should be downloaded.
+    /// Used in iOS as each transaction is saved in a folder.
+    ELLE_ATTRIBUTE_R(std::string, relative_folder);
   /*-----------.
   | Comparison |
   `-----------*/
