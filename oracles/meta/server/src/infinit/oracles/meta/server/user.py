@@ -2097,6 +2097,10 @@ class Mixin:
                   init : int = 1):
     init = bool(init)
     device = self.current_device
+    if device is None:
+      # Introspect to give us more info
+      did = bottle.request.session.get('device')
+      raise Exception('device not found from _id %s' %(did))
     last_sync = self.database.devices.find_and_modify(
       query = {'id': device['id']},
       update = {
