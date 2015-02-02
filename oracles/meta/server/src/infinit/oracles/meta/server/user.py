@@ -925,26 +925,25 @@ class Mixin:
         conf.INFINIT_AUTHORITY_PATH,
         conf.INFINIT_AUTHORITY_PASSWORD
       )
-    update = {
-      'password': hash_password(new_password),
-      'identity': identity,
-      'public_key': public_key
+    operation = {
+      '$set': {
+        'password': hash_password(new_password),
+        'identity': identity,
+        'public_key': public_key
+      }
     }
-    to_unset = {}
     if new_password_hash is not None:
-      update.update({
+      operation['$set'].update({
         'password_hash': utils.password_hash(new_password_hash)
       })
     else:
-      to_unset = {
+      operation['$unset'] = {
         'password_hash': True
       }
     self.database.users.find_and_modify(
       {'_id': user['_id']},
-      {
-        '$set': update,
-        '$unset': to_unset,
-      })
+      operation
+    )
     return self.success()
 
   ## ------ ##
