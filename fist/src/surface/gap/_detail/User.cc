@@ -1,7 +1,6 @@
 #include <sstream>
 #include <stdexcept>
 
-#include <elle/container/vector.hh>
 #include <elle/container/map.hh>
 #include <elle/container/set.hh>
 

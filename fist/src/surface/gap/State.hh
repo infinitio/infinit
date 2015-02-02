@@ -225,10 +225,8 @@ namespace surface
                 std::string const& password,
                 boost::optional<std::string const&> device_push_token = {});
 
-      ///
-      static
       std::string
-      hash_password(std::string const& email, std::string const& password);
+      user_directory();
 
       ELLE_ATTRIBUTE_R(std::string, output_dir);
       /// Set the output directory.

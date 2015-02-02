@@ -129,8 +129,9 @@ public:
         std::string const& device_uuid)
   {
     static auto string_generator = boost::uuids::string_generator();
-
-    return Client::login(email, password, string_generator(device_uuid));
+    return Client::login(email,
+                         password,
+                         string_generator(device_uuid));
   }
 };
 

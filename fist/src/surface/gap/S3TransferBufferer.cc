@@ -5,8 +5,6 @@
 #include <elle/format/base64.hh>
 #include <elle/containers.hh>
 
-#include <elle/container/vector.hh>
-
 #include <elle/serialize/construct.hh>
 #include <elle/serialize/extract.hh>
 #include <elle/serialize/insert.hh>

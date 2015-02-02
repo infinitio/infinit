@@ -6,6 +6,7 @@ from infinit.oracles.meta.server.invitation import Invitation
 from infinit.oracles.meta.server import transaction_status
 from infinit.oracles.meta import version
 
+import socket
 import http.cookies
 import os
 import bson
@@ -66,7 +67,7 @@ class Client:
     else:
       return content
 
-  def request(self, url, method, body):
+  def request(self, url, method, body, assert_success = True):
     h = httplib2.Http()
     uri = "http://localhost:%s/%s" % (self.__meta_port, url)
     headers = {}
@@ -80,31 +81,69 @@ class Client:
                               body = body,
                               headers = headers)
     self.__get_cookies(resp)
-    return self.__convert_result(url, method, body, resp, content)
+    res = self.__convert_result(url, method, body, resp, content)
+    if assert_success and 'success' in res:
+      assert res['success']
+    return res
 
-  def post(self, url, body = None):
-    return self.request(url, 'POST', body)
+  def post(self, url, body = None, assert_success = False):
+    return self.request(url, 'POST', body, assert_success)
 
-  def get(self, url, body = None):
-    return self.request(url, 'GET', body)
+  def get(self, url, body = None, assert_success = False):
+    return self.request(url, 'GET', body, assert_success)
 
-  def put(self, url, body = None):
-    return self.request(url, 'PUT', body)
+  def put(self, url, body = None, assert_success = False):
+    return self.request(url, 'PUT', body, assert_success)
 
-  def delete(self, url, body = None):
-    return self.request(url, 'DELETE', body)
+  def delete(self, url, body = None, assert_success = False):
+    return self.request(url, 'DELETE', body, assert_success)
 
 class Trophonius(Client):
+  class Accepter:
+
+    def __init__(self, trophonius):
+      self.index = 0
+      self.trophonius = trophonius
+      self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      self.socket.settimeout(0.2) # seconds.
+      self.socket.bind(("localhost", 0))
+      self.port = self.socket.getsockname()[1]
+      self.socket.listen(2)
+
+    def poll(self):
+      while True:
+        try:
+          client = self.socket.accept()
+          client = client[0]
+          representation = str(client.recv(65535), 'utf-8')
+          representation = representation[:-1] # remove \n
+          d = json.loads(representation)
+          if d['notification']['notification_type'] == 14:
+            self.socket.listen(1)
+            self.poll()
+            return
+          d['notification'].pop('timestamp')
+          for user in self.trophonius.users_on_device[UUID(d['device_id'])]:
+            user.notifications.append(d['notification'])
+          self.socket.listen(1)
+        except:
+          return
 
   def __init__(self, meta):
     super().__init__(meta)
     self.__uuid = str(uuid4())
     self.__users = {}
+    self.users_on_device = {}
+    self.meta_accepter = Trophonius.Accepter(self)
+    self.client_accepter = Trophonius.Accepter(self)
     self.__args = {
-      'port': 23456,
+      'port': self.meta_accepter.port,
       'port_client': 23457,
       'port_client_ssl': 23458,
     }
+
+  def poll(self):
+    return self.meta_accepter.poll()
 
   def __enter__(self):
     res = self.put('trophonius/%s' % self.__uuid, self.__args)
@@ -116,12 +155,14 @@ class Trophonius(Client):
     assert res['success']
 
   def connect_user(self, user):
+    self.users_on_device.setdefault(user.device_id, set())
     user_id = str(user.id)
     res = user.put('trophonius/%s/users/%s/%s' % \
                    (self.__uuid, user_id, str(user.device_id)))
     assert res['success']
     self.__users.setdefault(user_id, [])
     self.__users[user_id] += str(user.device_id)
+    self.users_on_device[user.device_id].add(user)
 
   def disconnect_user(self, user):
     assert user.device_id in self.__users[user.id]
@@ -360,6 +401,7 @@ class User(Client):
                                      **kwargs)
     self.id = meta.get('user/%s/view' % self.email)['_id']
     self.device_id = uuid4()
+    self.notifications = []
 
   @property
   def login_parameters(self):
@@ -375,9 +417,10 @@ class User(Client):
     assert res['success']
     return res
 
-  def login(self, device_id = None, **kw):
+  def login(self, device_id = None, trophonius = None, **kw):
     if device_id is not None:
       self.device_id = device_id
+    self.trophonius = trophonius
     params = self.login_parameters
     params.update(kw)
     params.update({'pick_trophonius': False})
@@ -395,9 +438,15 @@ class User(Client):
     assert res['swaggers'] == self.full_swaggers
     return res
 
+  def __hash__(self):
+    return str(self.id).__hash__()
+
   def logout(self):
     res = self.post('logout', {})
     assert res['success']
+
+  def synchronize(self, init = False):
+    return self.get('user/synchronize?init=%s' % (init and '1' or '0'))
 
   @property
   def device(self):
@@ -411,6 +460,10 @@ class User(Client):
   @property
   def me(self):
     return self.get('user/self')
+
+  @property
+  def accounts(self):
+    return self.get('user/accounts')
 
   def compare_self_response(self, res):
     me = self.me
@@ -491,10 +544,33 @@ class User(Client):
       device_id = self.device_id
     return self.get('device/%s/%s/connected' % (self.id, str(device_id)))['connected']
 
+  @property
+  def next_notification(self):
+    class Notification(dict):
+      def __init__(self, body):
+        super().__init__(body)
+
+      @property
+      def type(self):
+        return self.notification_type
+
+      def __getattr__(self, key):
+        return self[key]
+
+      def __setattr__(self, key, value):
+        self[key] = value
+
+    assert self.trophonius is not None
+    from time import sleep
+    sleep(0.1)
+    self.trophonius.poll()
+    return Notification(self.notifications.pop(0))
+
   def __eq__(self, other):
     if isinstance(other, User):
       return self.email == other.email
     return NotImplemented
+
 
   def sendfile(self,
                recipient_id,
@@ -521,6 +597,9 @@ class User(Client):
     }
 
     res = self.post('transaction/create', transaction)
+    ghost = res['recipient_is_ghost']
+    if ghost:
+      self.get('transaction/%s/cloud_buffer' % res['created_transaction_id'])
     if initialize:
       self.transaction_update(res['created_transaction_id'],
                               transaction_status.INITIALIZED)
@@ -535,6 +614,18 @@ class User(Client):
                 'device_id': str(self.device_id),
                 'device_name': self.device_name,
               })
+
+  # FIXME: remove when link & peer transactions are merged
+  def getalink(self,
+               files = [['file1', 42], ['file2', 43], ['file3', 44]],
+               name = 'name',
+               message = ''):
+    return self.post('link',
+                     {
+                       'files': files,
+                       'name': name,
+                       'message': message
+                     })['transaction']
 
   # FIXME: remove when link & peer transactions are merged
   def link_update(self, link, status):

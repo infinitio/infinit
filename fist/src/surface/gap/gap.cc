@@ -65,7 +65,8 @@ gap_new(bool production,
   }
 }
 
-void gap_free(gap_State* state)
+void
+gap_free(gap_State* state)
 {
   ELLE_ASSERT(state != nullptr);
   if (state == nullptr)
@@ -346,17 +347,14 @@ gap_set_self_email(gap_State* state,
                    std::string const& email,
                    std::string const& password)
 {
-  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
-  state,
-  "set self email",
-  [&] (surface::gap::State& state) -> gap_Status
-  {
-    auto hashed_password =
-      state.hash_password(state.me().email, password);
-    state.meta().change_email(email, hashed_password);
-    return gap_ok;
-  });
+    state,
+    "set self email",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.meta().change_email(email, password);
+      return gap_ok;
+    });
 }
 
 std::string
@@ -429,9 +427,7 @@ gap_change_password(gap_State* state,
     "change password",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      state.change_password(
-        state.hash_password(state.me().email, old_password),
-        state.hash_password(state.me().email, new_password));
+      state.change_password(old_password,  new_password);
       return gap_ok;
     });
 }
@@ -1059,6 +1055,24 @@ gap_transaction_progress(gap_State* state, uint32_t id)
         return 0;
       }
       return it->second->progress();
+    });
+}
+
+bool
+gap_is_p2p_transaction(gap_State* state, uint32_t id)
+{
+  return run<bool>(
+    state,
+    "is p2p transaction",
+    [&] (surface::gap::State& state) -> bool
+    {
+      auto data =
+        std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
+          state.transactions().at(id)->data());
+      if (data == nullptr)
+        return false;
+      else
+        return true;
     });
 }
 

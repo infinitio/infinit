@@ -95,6 +95,9 @@ class Meta(bottle.Bottle,
       aws_region = None,
       aws_buffer_bucket = None,
       aws_link_bucket = None,
+      gcs_region = None,
+      gcs_buffer_bucket = None,
+      gcs_link_bucket = None,
       force_admin = False,
       debug = False,
       zone = None,
@@ -173,6 +176,15 @@ class Meta(bottle.Bottle,
     if aws_link_bucket is None:
       aws_link_bucket = cloud_buffer_token.aws_default_link_bucket
     self.aws_link_bucket = aws_link_bucket
+    if gcs_region is None:
+      gcs_region = cloud_buffer_token_gcs.gcs_default_region
+    self.gcs_region = gcs_region
+    if gcs_buffer_bucket is None:
+      gcs_buffer_bucket = cloud_buffer_token_gcs.gcs_default_buffer_bucket
+    self.gcs_buffer_bucket = gcs_buffer_bucket
+    if gcs_link_bucket is None:
+      gcs_link_bucket = cloud_buffer_token_gcs.gcs_default_link_bucket
+    self.gcs_link_bucket = gcs_link_bucket
     waterfall.Waterfall.__init__(self)
     self.__zone = zone
 
@@ -192,7 +204,13 @@ class Meta(bottle.Bottle,
     self.__database.users.ensure_index([("_id", 1), ("last_connection", 1)])
     # - Mailchimp userbase.
     self.__database.users.ensure_index([("_id", 1), ("os", 1)])
-
+    # - register and user search
+    self.__database.users.ensure_index([("accounts.id", 1)],
+                                       unique = True, sparse = True)
+    # - Auxiliary emails.
+    # Sparse because users may have no pending_auxiliary_emails field.
+    self.__database.users.ensure_index([("pending_auxiliary_emails.hash", 1)], unique = True, sparse = True)
+    #---------------------------------------------------------------------------
     # Devices
     self.__database.devices.ensure_index([("id", 1), ("owner", 1)],
                                          unique = True)
@@ -308,7 +326,7 @@ class Meta(bottle.Bottle,
   def admin(self):
     source = bottle.request.environ.get('REMOTE_ADDR')
     force = self.__force_admin or source == '127.0.0.1'
-    return force or ('certificate' in bottle.request and bottle.request.certificate in [
+    return force or bottle.request.certificate in [
       'antony.mechin@infinit.io',
       'baptiste.fradin@infinit.io',
       'christopher.crone@infinit.io',
@@ -317,7 +335,7 @@ class Meta(bottle.Bottle,
       'matthieu.nottale@infinit.io',
       'patrick.perlmutter@infinit.io',
       'quentin.hocquet@infinit.io',
-    ])
+    ]
 
   @property
   def logged_in(self):
@@ -345,6 +363,12 @@ class Meta(bottle.Bottle,
       else:
         return tuple(map(int, match.groups()))
 
+  @property
+  def user_gcs_enabled(self):
+    if self.user_version < (0, 9, 26):
+      return False
+    return self.user['features'].get('gcs_enabled', False)
+
   def user_by_id_or_email(self, id_or_email):
     id_or_email = id_or_email.lower()
     if '@' in id_or_email:
@@ -355,7 +379,6 @@ class Meta(bottle.Bottle,
         return self._user_by_id(id, ensure_existence = False)
       except bson.errors.InvalidId:
         self.bad_request('invalid user id: %r' % id_or_email)
-
 
   def report_fatal_error(self, route, exception):
     import traceback

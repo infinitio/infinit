@@ -360,6 +360,7 @@ namespace surface
     GhostReceiveMachine::_wait_for_cloud_upload()
     {
       ELLE_TRACE("%s: _wait_for_cloud_upload()", *this);
+      this->gap_status(gap_transaction_waiting_data);
     }
 
     void
@@ -381,8 +382,8 @@ namespace surface
           this->transaction().canceled_by_user());
     }
 
-    aws::Credentials
-    GhostReceiveMachine::_aws_credentials(bool regenerate)
+    std::unique_ptr<infinit::oracles::meta::CloudCredentials>
+    GhostReceiveMachine::_cloud_credentials(bool regenerate)
     {
       throw elle::Error("Not implemented");
     }

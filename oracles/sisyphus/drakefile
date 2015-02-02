@@ -67,6 +67,7 @@ def configure(
         'boulders/drip/ghost-reminder',
         'boulders/drip/onboarding',
         'boulders/drip/pending-reminder',
+        'boulders/drip/retention',
         'boulders/drip/weekly-report',
     ):
       test = drake.node('tests/%s' % name)

@@ -58,6 +58,18 @@ namespace surface
         gap_TransactionStatus status;
       };
 
+      class RecipientChangedNotification:
+        public surface::gap::Notification
+      {
+      public:
+        static surface::gap::Notification::Type type;
+
+        RecipientChangedNotification(uint32_t id, uint32_t recipient_id);
+
+        uint32_t id;
+        uint32_t recipient_id;
+      };
+
     public:
       typedef infinit::oracles::Transaction Data;
       static std::set<infinit::oracles::Transaction::Status> sender_final_statuses;

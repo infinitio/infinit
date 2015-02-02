@@ -3,7 +3,6 @@
 
 #include <cryptography/PublicKey.hh>
 
-#include <elle/container/vector.hh>
 #include <elle/Error.hh>
 #include <elle/log.hh>
 #include <elle/os/environ.hh>
@@ -669,7 +668,10 @@ namespace surface
         {
           auto get_credentials = [this] (bool first_time)
             {
-              return this->_aws_credentials(first_time);
+              auto creds = this->_cloud_credentials(first_time);
+              auto awscreds = dynamic_cast<infinit::oracles::meta::CloudCredentialsAws*>(creds.get());
+              ELLE_ASSERT(awscreds);
+              return *static_cast<aws::Credentials*>(awscreds);
             };
           bufferer.reset(
             new S3TransferBufferer(

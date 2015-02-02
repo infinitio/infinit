@@ -5,6 +5,7 @@ from bson import ObjectId
 from functools import reduce
 import sys
 from infinit.oracles.meta.server import transaction_status
+from uuid import uuid4
 
 with Meta() as meta:
   alice = User(meta, "alice@infinit.io")
@@ -77,3 +78,47 @@ with Meta() as meta:
 
   res = bob.get('user/synchronize?init=1')
   assert len(res['links']) == 1
+
+# Same device.
+with Meta() as meta:
+  device_id = uuid4()
+
+  alice = User(meta, "alice@infinit.io")
+  bob = User(meta, "bob@infinit.io")
+
+  # Both share the same device.
+  alice.device_id = device_id
+  bob.device_id = device_id
+
+  alice.login()
+  bob.login()
+
+  # Make sure the last sync his user & device specific.
+  # By the way, this should never happen because infinit can't be run multiple
+  # times with with the same infinit home.
+
+  # Create a link.
+  file_list = [
+    ['file1', 42],
+    ['file2', 43],
+    ['file3', 44],
+  ]
+  message = 'salut!'
+  res = bob.post('link',
+    {'files': file_list, 'name': 'some files.zip', 'message': message})
+
+  res = alice.get('user/synchronize?init=0')
+  assert len(res['links']) == 0
+
+  res = bob.get('user/synchronize?init=0')
+  assert len(res['links']) == 1
+
+  message = 'salut!'
+  res = alice.post('link',
+    {'files': file_list, 'name': 'some files.zip', 'message': message})
+
+  res = alice.get('user/synchronize?init=0')
+  assert len(res['links']) == 1
+
+  res = bob.get('user/synchronize?init=0')
+  assert len(res['links']) == 0

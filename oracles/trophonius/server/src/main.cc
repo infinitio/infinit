@@ -33,8 +33,11 @@ parse_options(int argc, char** argv)
      "specify max time between client connect and login request in seconds (default 10)")
     ("port-ssl,pssl", value<int>(), "specify the SSL port to listen on")
     ("port-tcp,ptcp", value<int>(), "specify the TCP port to listen on")
-    ("meta,m", value<std::string>(),
-     "specify the meta protocol://host[:port] to connect to")
+    ("meta,m",
+     value<std::string>()->default_value
+     ("meta." BOOST_PP_STRINGIZE(INFINIT_VERSION_MINOR) "."
+      BOOST_PP_STRINGIZE(INFINIT_VERSION_MAJOR) ".api.production.infinit.io"),
+     "meta host")
     ("ignore-meta",
      "make meta registration errors non fatal")
     ("notifications-port,n", value<int>(),
@@ -81,36 +84,9 @@ int main(int argc, char** argv)
   try
   {
     auto options = parse_options(argc, argv);
+    ELLE_ASSERT(options.count("meta"));
+    std::string meta = options["meta"].as<std::string>();
     bool meta_fatal = true;
-    std::string meta_protocol = "http";
-    std::string meta_host = "";
-    int meta_port = 80;
-    if (!options.count("meta"))
-      throw std::runtime_error("meta argument is mandatory");
-    else
-    {
-      std::string meta = options["meta"].as<std::string>();
-      std::vector<std::string> result;
-      boost::split(result, meta, boost::is_any_of(":"));
-      if (result.size() > 3)
-        throw std::runtime_error("meta must be <host>(:<port>)");
-      else if (result.size() == 3)
-      {
-        meta_protocol = result[0];
-        meta_host = result[1];
-        // Remove slashes after protocol.
-        meta_host.erase(std::remove(meta_host.begin(), meta_host.end(), '/'),
-                        meta_host.end());
-        meta_port = std::stoi(result[2]);
-      }
-      else
-      {
-        meta_host = meta;
-      }
-
-      if (meta_host.empty())
-        throw std::runtime_error("meta host is empty");
-    }
     if (options.count("ignore-meta"))
       meta_fatal = false;
     int port_ssl = 0;
@@ -141,9 +117,7 @@ int main(int argc, char** argv)
           new Trophonius(
             port_ssl,
             port_tcp,
-            meta_protocol,
-            meta_host,
-            meta_port,
+            meta,
             notifications_port,
             boost::posix_time::seconds(ping),
             boost::posix_time::seconds(60),

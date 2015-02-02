@@ -92,6 +92,7 @@ with mongobox.MongoBox() as mongo:
     transaction_create(meta, sender, 'ghost@infinit.io')
     tid1 = transaction_create(meta, sender, 'ghost@infinit.io',
                               size = 100)
+    meta._cloud_buffer(tid1, sender)
     meta._transaction_update(tid1, statuses['ghost_uploaded'],
                              device, None, sender)
     recipient = meta.user_register('recipient@infinit.io',

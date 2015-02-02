@@ -37,8 +37,8 @@ namespace surface
 
         // XXX: not all transactions will need AWS credentials.
         virtual
-        aws::Credentials
-        _aws_credentials(bool regenerate) override;
+        std::unique_ptr<infinit::oracles::meta::CloudCredentials>
+        _cloud_credentials(bool regenerate) override;
 
         virtual
         void

@@ -29,11 +29,9 @@ class TestDevices(unittest.TestCase):
         mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
       with utils.TemporaryData('foo', 1000) as tmp:
         s1 = o.state()
-        s1.login('mefyl@infinit.io',
-                state.hash_password('mefyl@infinit.io', 'mefyl'))
+        s1.login('mefyl@infinit.io', 'mefyl')
         s2 = o.state()
-        s2.login('mefyl2@infinit.io',
-                state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+        s2.login('mefyl2@infinit.io', 'mefyl2')
         tid = s1.send_files('mefyl2@infinit.io', [tmp.full_path], 'foo')
         reactor.sleep(datetime.timedelta(seconds = 1))
         #Not accepted, nothing happened
@@ -44,8 +42,7 @@ class TestDevices(unittest.TestCase):
         second_home = tempfile.mkdtemp('infinit-test-dl')
         os.environ['INFINIT_HOME'] = second_home
         s2bis = o.state('00000000-824b-474d-bd3a-000000000000')
-        s2bis.login('mefyl2@infinit.io',
-                state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+        s2bis.login('mefyl2@infinit.io', 'mefyl2')
         tr = s1.transaction(tid)
         tindex2 = s2bis.find_transaction(tr['id'])
         s2bis.transaction_accept(tindex2)
@@ -58,8 +55,7 @@ class TestDevices(unittest.TestCase):
         #log in second user from first device and check trasnaction status
         os.environ['INFINIT_HOME'] = prev_home
         os.environ['INFINIT_DISABLE_META_SYNC'] = '1'
-        s2.login('mefyl2@infinit.io',
-                state.hash_password('mefyl2@infinit.io', 'mefyl2'))
+        s2.login('mefyl2@infinit.io', 'mefyl2')
         reactor.sleep(datetime.timedelta(seconds = 3))
         tindex2 = s2.find_transaction(tr['id'])
         self.assertEqual(s2.transaction_status(tindex2), 'transaction_on_other_device')

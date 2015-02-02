@@ -369,7 +369,10 @@ namespace surface
         {
           auto get_credentials = [this] (bool first_time)
             {
-              return this->_aws_credentials(first_time);
+              auto creds = this->_cloud_credentials(first_time);
+              auto awscreds = dynamic_cast<infinit::oracles::meta::CloudCredentialsAws*>(creds.get());
+              ELLE_ASSERT(awscreds);
+              return *static_cast<aws::Credentials*>(awscreds);
             };
           this->_bufferer.reset(
             new S3TransferBufferer(

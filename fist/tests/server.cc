@@ -10,7 +10,6 @@
 #include <elle/os/path.hh>
 #include <elle/finally.hh>
 #include <elle/container/map.hh>
-#include <elle/container/vector.hh>
 #include <elle/serialization/json/SerializerIn.hh>
 #include <elle/system/home_directory.hh>
 
@@ -580,6 +579,7 @@ Server::Server()
         "  \"transaction\": %s,"
         "  \"aws_credentials\": "
         "  {"
+        "    \"protocol\": \"aws\","
         "    \"access_key_id\": \"\","
         "    \"bucket\": \"\","
         "    \"expiration\": \"2016-01-12T09-37-42Z\","
@@ -645,6 +645,7 @@ Server::Server()
           auto tomorrow = now + boost::posix_time::hours(24);
           return elle::sprintf(
             "{"
+            "  \"protocol\": \"aws\","
             "  \"access_key_id\": \"\","
             "  \"secret_access_key\": \"\","
             "  \"session_token\": \"\","
@@ -766,16 +767,16 @@ Server::User&
 Server::register_user(std::string const& email,
                       std::string const& password)
 {
+  auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
   auto generator = boost::uuids::random_generator();
   auto id = generator();
   auto keys =
     cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                     papier::Identity::keypair_length);
-  auto hashed_password = State::hash_password(email, password);
   Device device{ keys.K() };
   ELLE_TRACE_SCOPE("%s: generate user %s on device %s", *this, id, device);
   auto identity = generate_identity(
-    keys, boost::lexical_cast<std::string>(id), "my identity", hashed_password);
+    keys, boost::lexical_cast<std::string>(id), "my identity", password_hash);
   std::string identity_serialized;
   identity.Save(identity_serialized);
   auto response =

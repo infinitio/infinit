@@ -14,7 +14,6 @@
 # include <elle/Buffer.hh>
 # include <elle/Version.hh>
 # include <elle/container/map.hh>
-# include <elle/container/vector.hh>
 # include <elle/serialize/BinaryArchive.hh>
 # include <elle/system/system.hh>
 

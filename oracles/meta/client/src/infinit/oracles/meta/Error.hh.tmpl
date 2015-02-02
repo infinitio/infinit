@@ -1,0 +1,24 @@
+#ifndef INFINIT_ORACLES_META_CLIENT_ERROR_HH
+# define INFINIT_ORACLES_META_CLIENT_ERROR_HH
+
+namespace infinit
+{
+  namespace oracles
+  {
+    namespace meta
+    {
+      enum class Error
+      {
+        <%! from infinit.oracles.meta.error import errors %>
+        %for name, (code, comment) in sorted(errors.items()):
+          ${name} = ${code},
+          %endfor
+      };
+
+      std::ostream&
+      operator <<(std::ostream& out, Error e);
+    }
+  }
+}
+
+#endif

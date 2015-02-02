@@ -54,6 +54,7 @@ with mongobox.MongoBox() as mongo:
     check_no_mail(emailer.emails)
 
     # Check the mail is not sent upon upload
+    meta._cloud_buffer(tid, sender)
     meta._transaction_update(tid, statuses['ghost_uploaded'],
                              'device', 'device', sender)
     sisy.boulders_run()

@@ -19,6 +19,7 @@ namespace infinit
         Admin(std::string const& protocol,
               std::string const& host,
               uint16_t port);
+        Admin(std::string const& meta);
 
         void
         connect(boost::uuids::uuid const& uuid,
@@ -40,6 +41,7 @@ namespace infinit
           int port_client_ssl,
           std::string const& hostname,
           int users,
+          bool shutting_down = false,
           boost::optional<std::string> zone = boost::optional<std::string>());
 
         void

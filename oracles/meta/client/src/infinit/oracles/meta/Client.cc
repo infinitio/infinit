@@ -1,33 +1,40 @@
 #include <cmath>
 #include <sstream>
+#include <fstream>
 
-#include <boost/uuid/uuid_io.hpp>
-#include <boost/uuid/string_generator.hpp>
-#include <boost/lexical_cast.hpp>
+#include <openssl/sha.h>
+
+#include <boost/algorithm/string/predicate.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/regex.hpp>
+#include <boost/uuid/string_generator.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 #include <elle/container/list.hh>
 #include <elle/format/json/Dictionary.hh>
 #include <elle/json/exceptions.hh>
+#include <elle/Exception.hh>
 #include <elle/json/json.hh>
 #include <elle/log.hh>
 #include <elle/os/environ.hh>
 #include <elle/print.hh>
 #include <elle/serialization/json.hh>
 #include <elle/system/platform.hh>
+#include <elle/serialize/HexadecimalArchive.hh>
 
 #include <reactor/scheduler.hh>
 #include <reactor/http/exceptions.hh>
 
 #include <infinit/oracles/meta/Client.hh>
-#include <infinit/oracles/meta/ErrorCode.hh>
+#include <infinit/oracles/meta/Error.hh>
 #include <infinit/oracles/meta/macro.hh>
 
 #include <surface/gap/Error.hh>
 
 #include <version.hh>
 
-ELLE_LOG_COMPONENT("infinit.plasma.meta.Client");
+ELLE_LOG_COMPONENT("infinit.oracles.meta.Client");
 
 /*-------------.
 | Transactions |
@@ -39,6 +46,52 @@ namespace infinit
   {
     namespace meta
     {
+      static
+      std::string
+      hash(std::string const& to_hash)
+      {
+        unsigned char hash[SHA256_DIGEST_LENGTH];
+        SHA256_CTX context;
+        if (SHA256_Init(&context) == 0 ||
+            SHA256_Update(&context, to_hash.c_str(), to_hash.size()) == 0 ||
+            SHA256_Final(hash, &context) == 0)
+          throw elle::Exception("Unable to hash password");
+        std::ostringstream out;
+        elle::serialize::OutputHexadecimalArchive ar(out);
+        ar.SaveBinary(hash, SHA256_DIGEST_LENGTH);
+        return out.str();
+      }
+
+      static
+      std::string
+      old_salt(std::string const& email,
+               std::string const& password)
+      {
+        return email + "MEGABIET" + password + email + "MEGABIET";
+      }
+
+      static
+      std::string
+      salt(std::string const& password)
+      {
+        auto p = "Pe9chee|" + password;
+        return p;
+      }
+
+      std::string
+      old_password_hash(std::string const& email,
+                        std::string const& password)
+      {
+        return hash(old_salt(email, password));
+      }
+
+      static
+      std::string
+      password_hash(std::string const& password)
+      {
+        return hash(salt(password));
+      }
+
       /*--------.
       | Helpers |
       `--------*/
@@ -221,20 +274,63 @@ namespace infinit
       | Construction |
       `-------------*/
 
+      static
+      std::tuple<std::string, std::string, int>
+      _parse_meta_url(std::string const& meta)
+      {
+        boost::regex const re("(?:([a-z]*)://)?([^:]+)(?::([0-9]+))?");
+        boost::smatch res;
+        if (!boost::regex_match(meta, res, re))
+          throw elle::Error(
+            elle::sprintf("unable to parse meta url: %s", meta));
+        std::string scheme = "https";
+        std::string host = res.str(2);
+        int port = 443;
+        if (res[1].matched)
+          scheme = res.str(1);
+        if (res[3].matched)
+          try
+          {
+            port = boost::lexical_cast<int>(res.str(3));
+          }
+          catch (boost::bad_lexical_cast const&)
+          {
+            throw elle::Error(elle::sprintf("invalid port: %s", res.str(3)));
+          }
+        return std::make_tuple(
+          std::move(scheme), std::move(host), std::move(port));
+      }
+
+      Client::Client(std::string const& meta)
+        : Client(_parse_meta_url(meta))
+      {}
+
       Client::Client(std::string const& protocol,
                      std::string const& server,
-                     uint16_t port):
-        _protocol(protocol),
-        _host(server),
-        _port(port),
-        _root_url{elle::sprintf("%s://%s:%d", protocol, server, port)},
-        _client{"MetaClient/" INFINIT_VERSION},
-        _default_configuration(_requests_timeout(),
-                               {},
-                               reactor::http::Version::v10),
-        _email{},
-        _logged_in{false}
+                     uint16_t port)
+        : Client(std::make_tuple(protocol, server, port))
       {
+        // Don't check the host name since we have only one certificate but we
+        // change hostname between minor versions.
+        this->_default_configuration.ssl_verify_host(false);
+        this->_rng.seed(static_cast<unsigned int>(std::time(0)));
+      }
+
+      Client::Client(std::tuple<std::string, std::string, int> meta)
+        : _protocol(std::move(std::get<0>(meta)))
+        , _host(std::move(std::get<1>(meta)))
+        , _port(std::move(std::get<2>(meta)))
+        , _root_url(elle::sprintf("%s://%s:%d",
+                                  this->_protocol, this->_host, this->_port))
+        , _client(elle::os::getenv("INFINIT_USER_AGENT",
+                                   "MetaClient/" INFINIT_VERSION))
+        , _default_configuration(_requests_timeout(),
+                                 {},
+                                 reactor::http::Version::v10)
+        , _email()
+        , _logged_in(false)
+      {
+        ELLE_TRACE_SCOPE("%s: bound to %s", *this, this->_root_url);
         // Don't check the host name since we have only one certificate but we
         // change hostname between minor versions.
         this->_default_configuration.ssl_verify_host(false);
@@ -360,6 +456,8 @@ namespace infinit
                     boost::uuids::uuid const& device_uuid,
                     boost::optional<std::string const&> device_push_token)
       {
+        ELLE_TRACE_SCOPE("%s: login as %s on device %s",
+                         *this, email, device_uuid);
         std::string struuid = boost::lexical_cast<std::string>(device_uuid);
 
         auto url = "/login";
@@ -368,15 +466,20 @@ namespace infinit
           Method::POST,
           [&] (reactor::http::Request& r)
           {
+            auto old_password = old_password_hash(email, password);
+            ELLE_DUMP("old password hash: %s", old_password);
+            auto new_password = password_hash(password);
+            ELLE_DUMP("new password hash: %s", new_password);
             elle::serialization::json::SerializerOut output(r, false);
             output.serialize("email", const_cast<std::string&>(email));
-            output.serialize("password", const_cast<std::string&>(password));
             if (device_push_token && !device_push_token.get().empty())
             {
               output.serialize(
                 "device_push_token",
                 const_cast<std::string&>(device_push_token.get()));
             }
+            output.serialize("password", const_cast<std::string&>(old_password));
+            output.serialize("password_hash", const_cast<std::string&>(new_password));
             std::string struuid = boost::lexical_cast<std::string>(device_uuid);
             output.serialize("device_id", struuid);
             auto os = elle::system::platform::os_name();
@@ -388,16 +491,16 @@ namespace infinit
           SerializerIn input(url, request);
           int error_code;
           input.serialize("code", error_code);
-          using ErrorCode = ::oracles::meta::client::ErrorCode;
-          switch (ErrorCode(error_code))
+          using Error = infinit::oracles::meta::Error;
+          switch (Error(error_code))
           {
-            case ErrorCode::email_not_confirmed:
+            case Error::email_not_confirmed:
               throw infinit::state::UnconfirmedEmailError();
-            case ErrorCode::email_password_dont_match:
+            case Error::email_password_dont_match:
               throw infinit::state::CredentialError();
-            case ErrorCode::already_logged_in:
+            case Error::already_logged_in:
               throw infinit::state::AlreadyLoggedIn();
-            case ErrorCode::deprecated:
+            case Error::deprecated:
               throw infinit::state::VersionRejected();
             default:
               throw infinit::state::LoginError(
@@ -448,6 +551,7 @@ namespace infinit
                         std::string const& fullname,
                         std::string const& password) const
       {
+        ELLE_TRACE_SCOPE("%s: register %s <%s>", *this, fullname, email);
         std::string source = "app";
         auto url = "/user/register";
         auto request = this->_request(
@@ -455,10 +559,15 @@ namespace infinit
           Method::POST,
           [&] (reactor::http::Request& request)
           {
+            auto old_password = old_password_hash(email, password);
+            ELLE_DUMP("old password hash: %s", old_password);
+            auto new_password = password_hash(password);
+            ELLE_DUMP("new password hash: %s", new_password);
             elle::serialization::json::SerializerOut output(request, false);
             output.serialize("email", const_cast<std::string&>(email));
             output.serialize("fullname", const_cast<std::string&>(fullname));
-            output.serialize("password", const_cast<std::string&>(password));
+            output.serialize("password", const_cast<std::string&>(old_password));
+            output.serialize("password_hash", const_cast<std::string&>(new_password));
             output.serialize("source", const_cast<std::string&>(source));
           });
         std::string user_id = "";
@@ -473,18 +582,18 @@ namespace infinit
         {
           int error_code;
           input.serialize("error_code", error_code);
-          using ErrorCode = ::oracles::meta::client::ErrorCode;
-          switch(ErrorCode(error_code))
+          using Error = infinit::oracles::meta::Error;
+          switch(Error(error_code))
           {
-            case ErrorCode::already_logged_in:
+            case Error::already_logged_in:
               throw infinit::state::AlreadyLoggedIn();
-            case ErrorCode::email_already_registered:
+            case Error::email_already_registered:
               throw infinit::state::EmailAlreadyRegistered();
-            case ErrorCode::email_not_valid:
+            case Error::email_not_valid:
               throw infinit::state::EmailNotValid();
-            case ErrorCode::password_not_valid:
+            case Error::password_not_valid:
               throw infinit::state::PasswordNotValid();
-            case ErrorCode::fullname_not_valid:
+            case Error::fullname_not_valid:
               throw infinit::state::FullnameNotValid();
 
             default:
@@ -889,7 +998,7 @@ namespace infinit
         return Fallback(input);
       }
 
-      aws::Credentials
+      std::unique_ptr<CloudCredentials>
       Client::get_cloud_buffer_token(std::string const& transaction_id,
                                      bool force_regenerate) const
       {
@@ -905,7 +1014,9 @@ namespace infinit
             this->_handle_errors(request);
         }
         SerializerIn input(url, request);
-        return aws::Credentials(input);
+        std::unique_ptr<CloudCredentials> res;
+        input.serialize_forward(res);
+        return res;
       }
 
       /*------.
@@ -922,7 +1033,7 @@ namespace infinit
       CreateLinkTransactionResponse::serialize(
         elle::serialization::Serializer& s)
       {
-        s.serialize("aws_credentials", this->_aws_credentials);
+        s.serialize("aws_credentials", this->_cloud_credentials);
         s.serialize("transaction", this->_transaction);
       }
 
@@ -981,7 +1092,7 @@ namespace infinit
         return res;
       }
 
-      aws::Credentials
+      std::unique_ptr<CloudCredentials>
       Client::link_credentials(std::string const& id,
                                bool regenerate) const
       {
@@ -999,7 +1110,9 @@ namespace infinit
             true)
           : this->_request(url, Method::GET);
         SerializerIn input(url, request);
-        return aws::Credentials(input);
+        std::unique_ptr<CloudCredentials> res;
+        input.serialize_forward(res);
+        return res;
       }
 
       /*--------------.
@@ -1085,12 +1198,12 @@ namespace infinit
             SerializerIn input(url, request);
             int error_code;
             input.serialize("code", error_code);
-            using ErrorCode = ::oracles::meta::client::ErrorCode;
-            switch (ErrorCode(error_code))
+            using Error = infinit::oracles::meta::Error;
+            switch (Error(error_code))
             {
-              case ErrorCode::email_already_registered:
+              case Error::email_already_registered:
                 throw infinit::state::EmailAlreadyRegistered();
-              case ErrorCode::password_not_valid:
+              case Error::password_not_valid:
                 throw infinit::state::CredentialError();
               default:
                 throw infinit::state::SelfUserError(
@@ -1104,7 +1217,7 @@ namespace infinit
 
       void
       Client::change_password(std::string const& old_password,
-                              std::string const& new_password) const
+                              std::string const& password) const
       {
         auto url = "/user/change_password";
         auto request = this->_request(
@@ -1112,11 +1225,16 @@ namespace infinit
           Method::POST,
           [&] (reactor::http::Request& request)
           {
+            auto current_password = old_password_hash(this->email(), old_password);
+            auto new_password = old_password_hash(this->email(), password);
+            auto new_password_hash = password_hash(password);
             elle::serialization::json::SerializerOut output(request, false);
             output.serialize("old_password",
-                             const_cast<std::string&>(old_password));
+                             const_cast<std::string&>(current_password));
             output.serialize("new_password",
                              const_cast<std::string&>(new_password));
+            output.serialize("new_password_hash",
+                             const_cast<std::string&>(new_password_hash));
           });
         SerializerIn input(url, request);
         bool success;
@@ -1125,10 +1243,10 @@ namespace infinit
         {
           int error_code;
           input.serialize("error_code", error_code);
-          using ErrorCode = ::oracles::meta::client::ErrorCode;
-          switch (ErrorCode(error_code))
+          using Error = infinit::oracles::meta::Error;
+          switch (Error(error_code))
           {
-            case ErrorCode::password_not_valid:
+            case Error::password_not_valid:
               throw infinit::state::CredentialError();
             default:
               throw infinit::state::SelfUserError(elle::sprintf(
@@ -1158,10 +1276,10 @@ namespace infinit
         {
           int error_code;
           input.serialize("error_code", error_code);
-          using ErrorCode = ::oracles::meta::client::ErrorCode;
-          switch (ErrorCode(error_code))
+          using Error = infinit::oracles::meta::Error;
+          switch (Error(error_code))
           {
-            case ErrorCode::handle_already_registered:
+            case Error::handle_already_registered:
               throw infinit::state::HandleAlreadyRegistered();
             default:
               throw infinit::state::SelfUserError(
@@ -1379,24 +1497,6 @@ namespace infinit
         }
       }
 
-      //- Properties ------------------------------------------------------------
-
-      std::ostream&
-      operator <<(std::ostream& out,
-                  Error e)
-      {
-        switch (e)
-        {
-          <%! from infinit.oracles.meta.error import errors %>
-          %for name, (code, comment) in sorted(errors.items()):
-            case Error::${name}:
-              out << "${name} (${comment})";
-              break;
-          %endfor
-        }
-        return out;
-      }
-
       void
       User::print(std::ostream& stream) const
       {
@@ -1411,6 +1511,45 @@ namespace infinit
       {
         stream << "meta::Client(" << this->_host << ":" << this->_port << " @" << this->_email << ")";
       }
+
+      CloudCredentialsAws::CloudCredentialsAws(elle::serialization::SerializerIn& s)
+      : aws::Credentials(s)
+      {}
+
+      void
+      CloudCredentialsAws::serialize(elle::serialization::Serializer& s)
+      {
+        aws::Credentials::serialize(s);
+      }
+      CloudCredentials*
+      CloudCredentialsAws::clone() const
+      {
+        return new CloudCredentialsAws(*this);
+      }
+      CloudCredentials*
+      CloudCredentialsGCS::clone() const
+      {
+        return new CloudCredentialsGCS(*this);
+      }
+      CloudCredentialsGCS::CloudCredentialsGCS(elle::serialization::SerializerIn& s)
+      {
+        serialize(s);
+      }
+      void
+      CloudCredentialsGCS::serialize(elle::serialization::Serializer& s)
+      {
+        s.serialize("url", this->_url);
+        s.serialize("expiration", this->_expiry);
+        s.serialize("current_time", this->_server_time);
+      }
+
+      static const elle::serialization::Hierarchy<CloudCredentials>::
+      Register<CloudCredentialsAws>
+      _register_AwsCredentials("aws");
+      static const elle::serialization::Hierarchy<CloudCredentials>::
+      Register<CloudCredentialsGCS>
+      _register_GcsCredentials("gcs");
     }
+
   }
 }

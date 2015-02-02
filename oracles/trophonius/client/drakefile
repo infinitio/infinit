@@ -12,6 +12,7 @@ lib = None
 def configure(elle,
               python_common,
               transaction_lib,
+              transaction_config,
               boost = None,
               python3 = None,
               prefix = drake.Path('/usr/local'),
@@ -22,6 +23,12 @@ def configure(elle,
 ):
 
   global build, check, install, config, lib
+
+  config = drake.cxx.Config()
+  config += elle.elle.config
+  config += elle.reactor.config
+  config += transaction_config
+  config.add_local_include_path('src')
 
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
@@ -44,10 +51,7 @@ def configure(elle,
       drake.copy(boost.test_dynamic,
                  'lib', strip_prefix = True))
 
-  local_cxx_config = drake.cxx.Config(cxx_config)
-  local_cxx_config += elle.elle.config
-  local_cxx_config += elle.reactor.config
-  local_cxx_config.add_local_include_path('src')
+  local_cxx_config = cxx_config + config
 
   build = drake.Rule('build')
   install = drake.Rule('install')
@@ -87,7 +91,6 @@ def configure(elle,
                 sources + [reactor_lib, elle_lib, transaction_lib],
                 cxx_toolkit,
                 lib_cxx_config)
-  config = lib_cxx_config
   build << lib
 
   ## ------ ##

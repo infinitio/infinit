@@ -160,9 +160,13 @@ class Oracles:
     if self.__force_trophonius_port is not None:
       tropho_tcp_port = self.__force_trophonius_port
     self._trophonius = infinit.oracles.trophonius.server.Trophonius(
-      tropho_tcp_port, 0, 'http', '127.0.0.1', self._meta.port, 0,
-      timedelta(seconds=30), timedelta(seconds = 60), timedelta(seconds=10))
-    self.trophonius = ('tcp', '127.0.0.1', self._trophonius.port_tcp(), self._trophonius.port_ssl())
+      tropho_tcp_port, 0, 'http://127.0.0.1:%s' % self._meta.port, 0,
+      timedelta(seconds=30),
+      timedelta(seconds = 60),
+      timedelta(seconds=10))
+    self.trophonius = (
+      'tcp', '127.0.0.1', self._trophonius.port_tcp(),
+      self._trophonius.port_ssl())
     elle.log.trace('tropho started on %s' % self._trophonius.port_tcp())
   def trophonius_stop(self, wait = True):
     if self._trophonius is not None:
@@ -200,5 +204,10 @@ class Oracles:
   def resurect_trophonius(self):
     elle.log.trace("Restarting trophonius")
     self._trophonius = infinit.oracles.trophonius.server.Trophonius(
-      self.trophonius[3], self.trophonius[2], 'http', '127.0.0.1', self._meta.port, 0,
-      timedelta(seconds=30), timedelta(seconds = 60), timedelta(seconds=10))
+      self.trophonius[3],
+      self.trophonius[2],
+      'http://127.0.0.1:%s' % self._meta.port,
+      0,
+      timedelta(seconds=30),
+      timedelta(seconds = 60),
+      timedelta(seconds=10))

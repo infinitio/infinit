@@ -119,11 +119,11 @@ class TestLogin(unittest.TestCase):
       #Remove abtests
       mongo = pymongo.MongoClient(host='127.0.0.1', port=o._mongo.port)
       mongo.meta.abtest.remove({})
-      s1 = o.state()
-      s1.login('mefyl@infinit.io', 'mefyl')
       s2 = o.state()
       s2.login('mefyl2@infinit.io', 'mefyl2')
-      self.assertEqual(s1.features(), {'test_feature': '1'})
+      s1 = o.state()
+      s1.login('mefyl@infinit.io', 'mefyl')
+      reactor.sleep(datetime.timedelta(milliseconds = 500))
       self.assertEqual(s2.features(), {})
       self.assertEqual(s1.features(), {'test_feature': '1'})
       users1 = s1.users()
@@ -136,7 +136,7 @@ class TestLogin(unittest.TestCase):
     with infinit.oracles.servers.Oracles(
       mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
       s = o.state()
-      expect_raise(lambda: s.login("nosuchuser@infinit.io", 'foobar'))
+      expect_raise(lambda: s.login("nosuchuser@infinit.io", 'bar'))
 
   def test_login_change_password(self):
     with infinit.oracles.servers.Oracles(
@@ -151,8 +151,7 @@ class TestLogin(unittest.TestCase):
       for i in range(10):
         s.poll()
       self.assertTrue(last_statuses[-1]['status'])
-      s.change_password(state.hash_password('mefyl@infinit.io', 'mefyl'),
-                        state.hash_password('mefyl@infinit.io', 'newpassword'))
+      s.change_password('mefyl', 'newpassword')
       for i in range(10):
         s.poll()
         reactor.sleep(datetime.timedelta(milliseconds = 100))
@@ -296,7 +295,7 @@ class TestLogin(unittest.TestCase):
       s2.login('mefyl2@infinit.io', 'mefyl2')
       reactor.sleep(datetime.timedelta(milliseconds = 200))
       f = s2.features()
-      self.assertTrue('testc' in f.keys())
+      self.assertTrue('testc' not in f.keys())
       s3 = o.state()
       s3.register('mefyl3', 'mefyl3@infinit.io', 'mefyl3')
       reactor.sleep(datetime.timedelta(milliseconds = 200))

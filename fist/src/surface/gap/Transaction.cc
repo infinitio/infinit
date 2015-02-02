@@ -5,7 +5,6 @@
 #include <elle/AtomicFile.hh>
 #include <elle/Error.hh>
 #include <elle/serialization/json.hh>
-#include <elle/container/vector.hh>
 
 #include <surface/gap/enums.hh>
 #include <surface/gap/Exception.hh>
@@ -727,9 +726,34 @@ namespace surface
           // To avoid weird rollbacks in status, just ignore that case.
           auto rollback_status = (this->_data->status == Status::cloud_buffered &&
                                   peer->status == Status::initialized);
+          auto data = std::dynamic_pointer_cast<PeerTransaction>(this->_data);
+          std::string previous_recipient_id{data->recipient_id};
           *std::dynamic_pointer_cast<PeerTransaction>(this->_data) = *peer;
           if (rollback_status)
             this->_data->status = Status::cloud_buffered;
+          if (peer->recipient_id != previous_recipient_id)
+          {
+            ELLE_TRACE_SCOPE("recipient id changed: %s -> %s",
+                             peer->recipient_id != previous_recipient_id);
+            // Merge recipient if the new one is not in your list.
+            // XXX: Because we should always receive a new_swagger notification
+            // this code is just a security.
+            surface::gap::PeerTransaction notification(
+              this->id(),
+              this->status(),
+              this->state().user_indexes().at(peer->sender_id),
+              peer->sender_device_id,
+              this->state().user_indexes().at(peer->recipient_id),
+              peer->recipient_device_id,
+              peer->mtime,
+              peer->files,
+              peer->total_size,
+              peer->is_directory,
+              peer->message,
+              peer->canceler,
+              peer->id);
+            this->state().enqueue(notification);
+          }
         }
         else
           ELLE_ERR("%s: unknown transaction type: %s",

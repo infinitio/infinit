@@ -50,6 +50,19 @@ def avatar(i):
   meta = 'https://meta.api.production.infinit.io'
   return '%s/user/%s/avatar' % (meta, i)
 
+def merge_result(a, b):
+  for key, value in b.items():
+    if isinstance(value, int):
+      a.setdefault(key, 0)
+      a[key] += value
+    elif isinstance(value, list):
+      a.setdefault(key, [])
+      a[key] += value
+    elif isinstance(value, dict):
+      a.setdefault(key, {})
+      merge_result(a[key], value)
+    else:
+      raise Exception('can\'t merge a %s: %s' % (b.__class__, b))
 
 class Drip(Emailing):
 
@@ -60,7 +73,14 @@ class Drip(Emailing):
 
   @property
   def user_fields(self):
-    return ['_id',  'email', 'fullname', 'unsubscriptions', 'features']
+    return [
+      '_id',
+      'email',
+      'fullname',
+      'unsubscriptions',
+      'features',
+      'os',
+    ]
 
   @property
   def fields(self):
@@ -131,6 +151,7 @@ class Drip(Emailing):
       },
       multi = True,
     )
+    result = {}
     elts = list(self.__table.find(
       { self.field_lock: self.lock_id },
       fields = self.fields,
@@ -177,9 +198,11 @@ class Drip(Emailing):
         res['unpicked'] = n
       if unsubscribed:
         res['unsubscribed'] = [u['email'] for u, e in unsubscribed]
-      return {'%s -> %s' % (start, end): res}
-    else:
+      merge_result(result, res)
+    if result == {}:
       return {}
+    else:
+      return {'%s -> %s' % (start, end): result}
 
   def _pick_template(self, template, users):
     return [(template, users)]
@@ -223,16 +246,16 @@ class Drip(Emailing):
               'sender': self.sender(vars),
             }
             for user, elt, vars in
-            map(lambda e: (e[0], e[1], self._vars(e[1], e[0])), users)
+            map(lambda e: (e[0], e[1], self.__vars(e[1], e[0])), users)
           ]
           if self.sisyphus.emailer is not None:
             res = self.sisyphus.emailer.send_template(
               template,
               recipients,
             )
-            elle.log.debug('emailer answer: %s' % res)
+            elle.log.debug('emailer response: %s' % res)
         if self.sisyphus.metrics is not None:
-          self.sisyphus.metrics.send([
+          res = self.sisyphus.metrics.send([
             {
               'event': 'email',
               'campaign': self.campaign,
@@ -248,6 +271,10 @@ class Drip(Emailing):
   def _user(self, elt):
     return elt
 
+  def __vars(self, elt, user):
+    with elle.log.debug('%s: get variables for %s' % (self, user['email'])):
+      return self._vars(elt, user)
+
   def _vars(self, elt, user):
     return {}
 
@@ -257,6 +284,7 @@ class Drip(Emailing):
       'email': user['email'],
       'fullname': user['fullname'],
       'id': str(user['_id']),
+      'os': user['os'] if 'os' in user else [],
     }
 
   def transaction_vars(self, transaction, user):
@@ -1061,6 +1089,7 @@ class WeeklyReport(Drip):
         'files': [f['name'] for f in t['file_list']],
         'size': sum(f['size'] for f in t['file_list']),
         'count': t['click_count'],
+        'url': 'http://inft.ly/%s' % t['hash'],
       } for t in sorted(links,
                         key = lambda t: t.get('click_count'),
                         reverse = True)
@@ -1188,4 +1217,68 @@ class PendingReminder(Drip):
     return [
       (template, [u for u in users if u[0]['features']['drip_pending-reminder_template'] == 'a']),
       (None, [u for u in users if u[0]['features']['drip_pending-reminder_template'] == 'control']),
+    ]
+
+
+class Retention(Drip):
+
+  def __init__(self, sisyphus, pretend = False):
+    super().__init__(sisyphus, 'retention', 'users', pretend)
+    self.sisyphus.mongo.meta.users.ensure_index(
+      [
+        ('emailing.retention.state', pymongo.ASCENDING),
+        ('register_status', pymongo.ASCENDING),
+        ('activated', pymongo.ASCENDING),
+        ('emailing.retention.activation_time', pymongo.ASCENDING),
+      ])
+
+  @property
+  def now(self):
+    return datetime.datetime.utcnow()
+
+  def run(self):
+    response = {}
+    # -> 1
+    transited = self.transition(
+      None,
+      'activated',
+      {
+        # Fully registered
+        'register_status': 'ok',
+        # Activated
+        'activated': True,
+      },
+      template = False,
+      update = {
+        'emailing.retention.activation_time': self.now,
+      }
+    )
+    response.update(transited)
+    for i in range(6):
+      # 1 -> 2
+      transited = self.transition(
+        str(i) if i > 0 else 'activated',
+        str(i + 1),
+        {
+          # Fully registered
+          'register_status': 'ok',
+          # Activated
+          'activated': True,
+          # For long enough
+          'emailing.retention.activation_time': {
+            '$lt': self.now - self.delay_nth_reminder(i),
+          },
+        },
+      )
+      response.update(transited)
+    return response
+
+  def delay_nth_reminder(self, nth):
+    # Starts after two weeks
+    return datetime.timedelta(weeks = nth + 2)
+
+  def _pick_template(self, template, users):
+    return [
+      (template, [u for u in users if u[0]['features']['drip_retention_template'] == 'a']),
+      (None, [u for u in users if u[0]['features']['drip_retention_template'] == 'control']),
     ]

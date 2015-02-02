@@ -11,6 +11,7 @@ lib = None
 
 def configure(elle,
               transaction_lib,
+              transaction_config,
               server_python,
               boost = None,
               python3 = None,
@@ -26,10 +27,12 @@ def configure(elle,
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
 
-  local_cxx_config = drake.cxx.Config(cxx_config)
-  local_cxx_config += elle.elle.config
-  local_cxx_config += elle.reactor.config
-  local_cxx_config.add_local_include_path('src')
+  config = drake.cxx.Config()
+  config += elle.elle.config
+  config += elle.reactor.config
+  config += transaction_config
+  config.add_local_include_path('src')
+  local_cxx_config = cxx_config + config
 
   build = drake.Rule('build')
   install = drake.Rule('install')
@@ -38,15 +41,26 @@ def configure(elle,
     sources = server_python,
     pythonpath = ('../server/lib/python',))
 
+  def boost_config(name):
+    config = getattr(boost, 'config_%s' % name)
+    if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
+      return drake.cxx.Config(config(static = True))
+    else:
+      res = drake.cxx.Config(config(link = False))
+      lib = getattr(boost, '%s_dynamic' % name)
+      res.library_add(drake.copy(lib, 'lib', strip_prefix = True))
+      return res
+
   ## ------- ##
   ## Library ##
   ## ------- ##
 
   with template_context:
     sources = drake.nodes(
-      'src/infinit/oracles/meta/ErrorCode.hh.tmpl',
-      'src/infinit/oracles/meta/Client.cc.tmpl',
-      'src/infinit/oracles/meta/Client.hh.tmpl',
+      'src/infinit/oracles/meta/Error.hh.tmpl',
+      'src/infinit/oracles/meta/Error.cc.tmpl',
+      'src/infinit/oracles/meta/Client.cc',
+      'src/infinit/oracles/meta/Client.hh',
       'src/infinit/oracles/meta/Client.hxx',
       'src/infinit/oracles/meta/Admin.cc',
       'src/infinit/oracles/meta/Admin.hh',
@@ -67,6 +81,7 @@ def configure(elle,
     transaction_lib = drake.copy(transaction_lib, 'lib', strip_prefix = True)
 
   lib_cxx_config = drake.cxx.Config(local_cxx_config)
+  lib_cxx_config += boost_config('regex')
   lib_cxx_config.lib_path_runtime('../lib')
   lib = Library(
     'lib/metaclient',
@@ -74,9 +89,19 @@ def configure(elle,
     cxx_toolkit,
     lib_cxx_config)
 
-  config = lib_cxx_config
-
   build << lib
+
+  ## ------ ##
+  ## Binary ##
+  ## ------ ##
+
+  boost_po = boost_config('program_options')
+  boost_system = boost_config('system')
+  bin = drake.cxx.Executable(
+    'bin/meta-client',
+    [drake.node('main.cc'), lib, reactor_lib, elle_lib],
+    cxx_toolkit,
+    local_cxx_config + boost_po + boost_system)
 
   ## ------ ##
   ## Python ##
@@ -115,15 +140,6 @@ def configure(elle,
   tests_cxx_config.add_local_include_path('../../../elle/reactor/tests')
   if valgrind is not None:
     tests_cxx_config.define('VALGRIND')
-  def boost_config(name):
-    config = getattr(boost, 'config_%s' % name)
-    if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
-      return drake.cxx.Config(config(static = True))
-    else:
-      res = drake.cxx.Config(config(link = False))
-      lib = getattr(boost, '%s_dynamic' % name)
-      res.library_add(drake.copy(lib, 'lib', strip_prefix = True))
-      return res
   tests_cxx_config += boost_config('date_time')
   tests_cxx_config += boost_config('system')
   tests_cxx_config += boost_config('test')

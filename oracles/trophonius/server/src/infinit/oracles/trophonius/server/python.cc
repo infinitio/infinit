@@ -28,8 +28,6 @@ BOOST_PYTHON_MODULE(server)
      boost::python::init<int,
                          int,
                          std::string const&,
-                         std::string const&,
-                         int,
                          int,
                          boost::posix_time::time_duration const&,
                          boost::posix_time::time_duration const&,

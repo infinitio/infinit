@@ -146,12 +146,12 @@ namespace surface
       return this->_transfer_machine->progress();
     }
 
-    aws::Credentials
-    PeerMachine::_aws_credentials(bool first_time)
+    std::unique_ptr<infinit::oracles::meta::CloudCredentials>
+    PeerMachine::_cloud_credentials(bool first_time)
     {
       auto& meta = this->state().meta();
       int delay = 1;
-      aws::Credentials credentials;
+      std::unique_ptr<infinit::oracles::meta::CloudCredentials> credentials;
       while (true)
       {
         try
@@ -169,7 +169,7 @@ namespace surface
           delay = std::min(delay * 2, 60 * 10);
         }
       }
-      return credentials;
+      return std::move(credentials);
     }
 
     void

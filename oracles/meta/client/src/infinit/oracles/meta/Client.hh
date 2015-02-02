@@ -20,7 +20,7 @@
 # include <elle/json/json.hh>
 # include <elle/log.hh>
 # include <elle/serialization/fwd.hh>
-# include <elle/serialization/SerializerIn.hh>
+# include <elle/serialization/Serializer.hh>
 
 # include <aws/Credentials.hh>
 
@@ -29,6 +29,7 @@
 
 # include <infinit/oracles/LinkTransaction.hh>
 # include <infinit/oracles/PeerTransaction.hh>
+# include <infinit/oracles/meta/Error.hh>
 
 namespace infinit
 {
@@ -36,15 +37,11 @@ namespace infinit
   {
     namespace meta
     {
-      namespace json = elle::format::json;
+      std::string
+      old_password_hash(std::string const& email,
+                        std::string const& password);
 
-      enum class Error: int
-      {
-        <%! from infinit.oracles.meta.error import errors %>
-        %for name, (code, comment) in sorted(errors.items()):
-          ${name} = ${code},
-        %endfor
-      };
+      namespace json = elle::format::json;
 
       class Exception
         : public elle::Exception
@@ -262,12 +259,44 @@ namespace infinit
         serialize(elle::serialization::Serializer& s);
       };
 
+      class CloudCredentials: public elle::serialization::VirtuallySerializable
+      {
+      public:
+        static constexpr char const* virtually_serializable_key = "protocol";
+        virtual CloudCredentials* clone() const = 0;
+      };
+
+      class CloudCredentialsGCS: public CloudCredentials
+      {
+      public:
+        CloudCredentialsGCS(elle::serialization::SerializerIn& s);
+        void
+        serialize(elle::serialization::Serializer& s);
+        CloudCredentials*
+        clone() const override;
+        ELLE_ATTRIBUTE_R(std::string,  url);
+        ELLE_ATTRIBUTE_R(boost::posix_time::ptime, server_time);
+        ELLE_ATTRIBUTE_R(boost::posix_time::ptime, expiry);
+      };
+
+      class CloudCredentialsAws: public CloudCredentials, public aws::Credentials
+      {
+      public:
+        CloudCredentialsAws(elle::serialization::SerializerIn& s);
+        void
+        serialize(elle::serialization::Serializer& s);
+        CloudCredentials*
+        clone() const override;
+      };
+
       class CreateLinkTransactionResponse
       {
       public:
         CreateLinkTransactionResponse() = default;
+        CreateLinkTransactionResponse(CreateLinkTransactionResponse&&)
+          = default;
         ELLE_ATTRIBUTE_R(LinkTransaction, transaction);
-        ELLE_ATTRIBUTE_R(aws::Credentials, aws_credentials);
+        ELLE_ATTRIBUTE_X(std::unique_ptr<CloudCredentials>, cloud_credentials);
 
         CreateLinkTransactionResponse(elle::serialization::SerializerIn& s);
         void
@@ -296,16 +325,20 @@ namespace infinit
         void
         session_id(std::string const&);
 
+      /*-------------.
+      | Construction |
+      `-------------*/
       public:
+        Client(std::string const& meta);
         Client(std::string const& protocol,
                std::string const& server,
                uint16_t port);
-
         virtual
         ~Client();
-
         Client(const Client&) = delete;
         void operator = (const Client&) = delete;
+      private:
+        Client(std::tuple<std::string, std::string, int> meta);
 
       /*--------.
       | Helpers |
@@ -455,7 +488,7 @@ namespace infinit
         Fallback
         fallback(std::string const& _id) const;
 
-        aws::Credentials
+        std::unique_ptr<CloudCredentials>
         get_cloud_buffer_token(std::string const& transaction_id,
                                bool force_regenerate) const;
 
@@ -475,7 +508,7 @@ namespace infinit
         links(int offset = 0,
               int count = 500,
               bool include_expired = false) const;
-        aws::Credentials
+        std::unique_ptr<CloudCredentials>
         link_credentials(std::string const& id,
                          bool regenerate = false) const;
 

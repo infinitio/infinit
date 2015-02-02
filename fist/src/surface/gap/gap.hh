@@ -134,6 +134,16 @@ gap_link_callback(
   gap_State* state,
   std::function<void (surface::gap::LinkTransaction const&)> const& callback);
 
+/// New transaction callback.
+typedef void (*gap_recipient_changed_callback_t)(uint32_t transaction_id,
+                                                 uint32_t recipient_id);
+
+/// Recipient changeh callback.
+gap_Status
+gap_transaction_recipient_changed_callback(
+  gap_State* state,
+  gap_recipient_changed_callback_t callback);
+
 /// Transaction getters.
 gap_Status
 gap_peer_transaction_by_id(gap_State* state,
@@ -270,6 +280,10 @@ gap_is_favorite(gap_State* state, uint32_t id);
 /// Check if a transaction is a link transaction.
 bool
 gap_is_link_transaction(gap_State* state, uint32_t id);
+
+/// Check if a transaction is a p2p transaction.
+bool
+gap_is_p2p_transaction(gap_State* state, uint32_t id);
 
 /// Create a link transaction.
 uint32_t

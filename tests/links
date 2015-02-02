@@ -65,7 +65,7 @@ class TestLinks(unittest.TestCase):
       with utils.TemporaryData('foo', 10000000) as tmp:
         s = o.state()
         s.configuration_set_max_mirror_size(1)
-        s.login('mefyl@infinit.io','mefyl')
+        s.login('mefyl@infinit.io', 'mefyl')
         id = s.create_link([tmp.full_path], "foo")
         for i in range(500):
           s.poll()
@@ -75,7 +75,7 @@ class TestLinks(unittest.TestCase):
         tid = tr['id']
         s.logout()
         s.login('mefyl@infinit.io', 'mefyl')
-        for i in range(100):
+        for i in range(200):
           s.poll()
           reactor.sleep(datetime.timedelta(milliseconds = 10))
         tindex = s.find_transaction(tid)

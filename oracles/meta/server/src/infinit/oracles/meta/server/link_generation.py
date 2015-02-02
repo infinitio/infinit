@@ -9,7 +9,7 @@ import elle.log
 
 from pymongo import errors, DESCENDING
 from .utils import api, require_logged_in, require_admin, json_value
-from . import cloud_buffer_token, error, notifier, regexp, conf, invitation, mail, transaction_status
+from . import cloud_buffer_token, cloud_buffer_token_gcs, error, notifier, regexp, conf, invitation, mail, transaction_status
 
 #
 # Link Generation
@@ -66,25 +66,39 @@ class Mixin:
     """
     Fetch AWS credentials.
     """
-    token_maker = cloud_buffer_token.CloudBufferToken(
+
+    if self.user_gcs_enabled:
+      link = self.database.links.find_one({'_id': link_id})
+      file_name = link['name']
+      token_maker = cloud_buffer_token_gcs.CloudBufferTokenGCS(
+        link_id, file_name, self.gcs_link_bucket)
+      url = token_maker.get_upload_token()
+      credentials = dict()
+      credentials['protocol']          = 'gcs'
+      now = time.strftime('%Y-%m-%dT%H-%M-%SZ', time.gmtime())
+      credentials['current_time']      = now
+      credentials['expiration']        = (datetime.date.today()+datetime.timedelta(days=7)).isoformat()
+      credentials['url'] = url
+    else:
+      token_maker = cloud_buffer_token.CloudBufferToken(
         user['_id'], link_id, 'ALL',
         aws_region = self.aws_region, bucket_name = self.aws_link_bucket)
-    raw_creds = token_maker.generate_s3_token()
+      raw_creds = token_maker.generate_s3_token()
 
-    if raw_creds is None:
-      return None
+      if raw_creds is None:
+        return None
 
-    credentials = dict()
-    credentials['access_key_id']     = raw_creds['AccessKeyId']
-    credentials['bucket']            = self.aws_link_bucket
-    credentials['expiration']        = raw_creds['Expiration']
-    credentials['folder']            = link_id
-    credentials['protocol']          = 'aws'
-    credentials['region']            = self.aws_region
-    credentials['secret_access_key'] = raw_creds['SecretAccessKey']
-    credentials['session_token']     = raw_creds['SessionToken']
-    now = time.strftime('%Y-%m-%dT%H-%M-%SZ', time.gmtime())
-    credentials['current_time']      = now
+      credentials = dict()
+      credentials['access_key_id']     = raw_creds['AccessKeyId']
+      credentials['bucket']            = self.aws_link_bucket
+      credentials['expiration']        = raw_creds['Expiration']
+      credentials['folder']            = link_id
+      credentials['protocol']          = 'aws'
+      credentials['region']            = self.aws_region
+      credentials['secret_access_key'] = raw_creds['SecretAccessKey']
+      credentials['session_token']     = raw_creds['SessionToken']
+      now = time.strftime('%Y-%m-%dT%H-%M-%SZ', time.gmtime())
+      credentials['current_time']      = now
 
     return credentials
 
@@ -203,6 +217,7 @@ class Mixin:
       while True:
         try:
           link_hash = self._hash_link_id(link_id)
+          elle.log.log('Your hash is %s' % (link_hash))
           elle.log.debug('trying to store created hash (%s), attempt: %s' %
                          (link_hash, attempt))
           link = self.database.links.find_and_modify(
@@ -234,7 +249,7 @@ class Mixin:
 
   def __owner_link(self, link):
     """
-    This function is used to extract the fields needed by the link owner.
+    Extract the fields needed by the link owner.
     """
     mapping = {
       'id': '_id',
@@ -378,11 +393,19 @@ class Mixin:
       set_dict = dict()
       set_dict['last_accessed'] = time_now
       if self.__need_update_get_link(link):
-        link['link'] = cloud_buffer_token.generate_get_url(
-          self.aws_region, self.aws_link_bucket,
-          link['_id'],
-          link['name'],
-          valid_days = link_lifetime_days)
+        proto = link['aws_credentials']['protocol']
+        if proto == 'aws':
+          link['link'] = cloud_buffer_token.generate_get_url(
+            self.aws_region, self.aws_link_bucket,
+            link['_id'],
+            link['name'],
+            valid_days = link_lifetime_days)
+        else:
+          link['link'] = cloud_buffer_token_gcs.generate_get_url(
+            self.gcs_region, self.gcs_link_bucket,
+            link['_id'],
+            link['name'],
+            valid_days = link_lifetime_days)
         set_dict['link'] = link['link']
         set_dict['get_url_updated'] = time_now
       if no_count:
@@ -424,6 +447,7 @@ class Mixin:
                  mtime = None,
                  offset: int = 0,
                  count: int = 500,
+                 include_deleted: bool = False,
                  include_expired: bool = False):
     """
     Returns a list of the user's links.
@@ -448,6 +472,8 @@ class Mixin:
           {'expiry_time': None},
           {'expiry_time': {'$gt': self.now}},
         ]
+      if not include_deleted:
+        query['status'] = {'$ne': transaction_status.DELETED}
       res = list()
       for link in self.database.links.aggregate([
         {'$match': query},

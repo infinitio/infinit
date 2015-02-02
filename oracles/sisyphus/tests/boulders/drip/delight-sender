@@ -20,6 +20,7 @@ class DelightSender(sisyphus.boulders.drip.DelightSender):
 
 def send(sender, recipient, files = ['foobar']):
   tid = transaction_create(meta, sender, recipient)
+  meta._cloud_buffer(tid, sender)
   meta._transaction_update(tid, statuses['ghost_uploaded'],
                            'device', None, sender)
   meta.transaction_download(tid)

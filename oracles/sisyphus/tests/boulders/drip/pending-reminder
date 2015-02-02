@@ -62,6 +62,7 @@ with mongobox.MongoBox() as mongo:
     meta.set_connection_status(
       sender['_id'], sender_device['id'], True)
     tid = transaction_create(meta, sender, 'ghost@infinit.io')
+    meta._cloud_buffer(tid, sender)
     meta._transaction_update(tid, statuses['ghost_uploaded'],
                              device, None, sender)
     sisy.boulders_run()

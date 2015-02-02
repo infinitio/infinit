@@ -25,7 +25,8 @@
 #include <surface/gap/State.hh>
 #include <surface/gap/Error.hh>
 
-#include <infinit/oracles/meta/ErrorCode.hh>
+#include <infinit/oracles/meta/Error.hh>
+#include <infinit/oracles/meta/Client.hh>
 
 #include <version.hh>
 
@@ -379,14 +380,13 @@ ELLE_TEST_SCHEDULED(login)
 {
   auto email = "em@il.com";
   auto password = "secret";
-  auto hashed_password = surface::gap::State::hash_password(email, password);
+  auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
   auto user_id = boost::uuids::random_generator()();
   cryptography::KeyPair keys =
     cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                     papier::Identity::keypair_length);
   auto identity = generate_identity(
-    keys, boost::lexical_cast<std::string>(user_id), "my identity",
-    hashed_password);
+    keys, boost::lexical_cast<std::string>(user_id), "my identity", password_hash);
   auto device_id = boost::uuids::random_generator()();
   Server<> server(identity, device_id);
   auto temp_dir = elle::filesystem::TemporaryDirectory();
@@ -406,14 +406,13 @@ ELLE_TEST_SCHEDULED(login_failure)
 {
   auto email = "em@il.com";
   auto password = "secret";
-  auto hashed_password = surface::gap::State::hash_password(email, password);
+  auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
   auto user_id = boost::uuids::random_generator()();
   cryptography::KeyPair keys =
     cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                     papier::Identity::keypair_length);
   auto identity = generate_identity(
-    keys, boost::lexical_cast<std::string>(user_id), "my identity",
-    hashed_password);
+    keys, boost::lexical_cast<std::string>(user_id), "my identity", password_hash);
   auto device_id = boost::uuids::random_generator()();
   Server<> server(identity, device_id);
   auto temp_dir = elle::filesystem::TemporaryDirectory();
@@ -488,14 +487,13 @@ ELLE_TEST_SCHEDULED(trophonius_forbidden)
 {
   auto email = "em@il.com";
   auto password = "secret";
-  auto hashed_password = surface::gap::State::hash_password(email, password);
+  auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
   auto user_id = boost::uuids::random_generator()();
   cryptography::KeyPair keys =
     cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                     papier::Identity::keypair_length);
   auto identity = generate_identity(
-    keys, boost::lexical_cast<std::string>(user_id), "my identity",
-    hashed_password);
+    keys, boost::lexical_cast<std::string>(user_id), "my identity", password_hash);
   auto device_id = boost::uuids::random_generator()();
   ForbiddenTrophoniusMeta server(identity, device_id);
   auto temp_dir = elle::filesystem::TemporaryDirectory();
@@ -573,14 +571,13 @@ ELLE_TEST_SCHEDULED(trophonius_timeout)
 {
   auto email = "em@il.com";
   auto password = "secret";
-  auto hashed_password = surface::gap::State::hash_password(email, password);
+  auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
   auto user_id = boost::uuids::random_generator()();
   cryptography::KeyPair keys =
     cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                     papier::Identity::keypair_length);
   auto identity = generate_identity(
-    keys, boost::lexical_cast<std::string>(user_id), "my identity",
-    hashed_password);
+    keys, boost::lexical_cast<std::string>(user_id), "my identity", password_hash);
   auto device_id = boost::uuids::random_generator()();
   TimeoutTrophoniusMeta server(identity, device_id);
   auto temp_dir = elle::filesystem::TemporaryDirectory();

@@ -50,8 +50,8 @@ namespace surface
       transaction_status_update(
         infinit::oracles::Transaction::Status status) override;
       virtual
-      aws::Credentials
-      _aws_credentials(bool regenerate) override;
+      std::unique_ptr<infinit::oracles::meta::CloudCredentials>
+      _cloud_credentials(bool regenerate) override;
     protected:
       virtual
       void
@@ -65,7 +65,7 @@ namespace surface
       void
       _run_from_snapshot();
       ELLE_ATTRIBUTE(reactor::fsm::State&, upload_state);
-      ELLE_ATTRIBUTE(boost::optional<aws::Credentials>, credentials);
+      ELLE_ATTRIBUTE(std::unique_ptr<infinit::oracles::meta::CloudCredentials>, credentials);
     };
   }
 }

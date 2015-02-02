@@ -75,10 +75,10 @@ namespace surface
         return this->_transfer_machine->progress();
       }
 
-      aws::Credentials
-      ReceiveMachine::_aws_credentials(bool regenerate)
+      std::unique_ptr<infinit::oracles::meta::CloudCredentials>
+      ReceiveMachine::_cloud_credentials(bool regenerate)
       {
-        return aws::Credentials();
+        return std::unique_ptr<infinit::oracles::meta::CloudCredentials>();
       }
 
       void

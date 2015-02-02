@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+from uuid import uuid4
+
+def params(port, users, shutting_down = False):
+  return {
+    'port': 23456,
+    'port_client': port,
+    'port_client_ssl': port,
+    'users': users,
+    'shutting_down': shutting_down,
+  }
+
+with Meta() as meta:
+  tropho1 = uuid4()
+  tropho2 = uuid4()
+  meta.put('trophonius/%s' % tropho1, params(1, 1))
+  meta.put('trophonius/%s' % tropho2, params(2, 2))
+  assert len(meta.get('trophoniuses')['trophoniuses']) == 2
+
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  assert alice.get('trophonius')['port'] == 1
+  assert alice.get('trophonius')['port'] == 1
+  assert alice.get('trophonius')['port'] == 1
+  meta.put('trophonius/%s' % tropho1, params(1, 1, True))
+  assert alice.get('trophonius')['port'] == 2
