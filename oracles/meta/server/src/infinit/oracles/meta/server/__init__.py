@@ -218,6 +218,10 @@ class Meta(bottle.Bottle,
     # - Auxiliary emails.
     # Sparse because users may have no pending_auxiliary_emails field.
     self.__database.users.ensure_index([("pending_auxiliary_emails.hash", 1)], unique = True, sparse = True)
+    # - lw_handle
+    self.__database.users.ensure_index([('lw_handle', 1)],
+                                       unique = False)
+
     #---------------------------------------------------------------------------
     # Devices
     #---------------------------------------------------------------------------
@@ -263,6 +267,10 @@ class Meta(bottle.Bottle,
     # - Download by link hash.
     self.__database.links.ensure_index([('hash', 1)],
                                        unique = True, sparse = True)
+
+    # Sessions
+    self.__database.sessions.ensure_index([('device', 1)],
+                                          unique = False)
 
   @property
   def mailer(self):
