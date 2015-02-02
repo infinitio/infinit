@@ -2087,8 +2087,11 @@ class Mixin:
                   init : int = 1):
     init = bool(init)
     device = self.current_device
+    if device is None:
+      self.forbidden()
+    user = self.user
     last_sync = self.database.devices.find_and_modify(
-      query = {'id': device['id']},
+      query = {'id': device['id'], 'owner': user['_id']},
       update = {
         '$set': {
           'last_sync': {
