@@ -67,12 +67,15 @@ class Notifier:
           critera,
           fields = ['id', 'owner', 'trophonius', 'push_token'],
       ):
-        devices_trophonius.append((
-          device['id'],
-          device['owner'],
-          device['trophonius'],
-          device.get('push_token'),
-        ))
+        tropho = device.get('trophonius')
+        push = device.get('push_token')
+        if tropho is not None or push is not None:
+          devices_trophonius.append((
+            device['id'],
+            device['owner'],
+            tropho,
+            push,
+          ))
       elle.log.debug('targets: %s' % devices_trophonius)
       # Fetch trophoniuses
       trophonius = dict(
@@ -81,7 +84,8 @@ class Notifier:
             {
               '_id':
               {
-                '$in': [t[2] for t in devices_trophonius],
+                '$in': [t[2] for t in devices_trophonius
+                        if t[2] is not None],
               }
             },
             fields = ['hostname', 'port', '_id']
@@ -95,6 +99,8 @@ class Notifier:
         if push is not None:
           push_tokens.add(push)
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if tropho is None:
+          continue
         tropho = trophonius.get(tropho)
         if tropho is None:
           continue
