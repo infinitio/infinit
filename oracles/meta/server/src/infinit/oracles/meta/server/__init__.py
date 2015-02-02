@@ -366,6 +366,12 @@ class Meta(bottle.Bottle,
       else:
         return tuple(map(int, match.groups()))
 
+  @property
+  def user_gcs_enabled(self):
+    if self.user_version < (0, 9, 26):
+      return False
+    return self.user['features'].get('gcs_enabled', False)
+
   def user_by_id_or_email(self, id_or_email):
     id_or_email = id_or_email.lower()
     if '@' in id_or_email:

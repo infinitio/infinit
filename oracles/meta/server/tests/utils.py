@@ -527,6 +527,9 @@ class User(Client):
     }
 
     res = self.post('transaction/create', transaction)
+    ghost = res['recipient_is_ghost']
+    if ghost:
+      self.get('transaction/%s/cloud_buffer' % res['created_transaction_id'])
     if initialize:
       self.transaction_update(res['created_transaction_id'],
                               transaction_status.INITIALIZED)

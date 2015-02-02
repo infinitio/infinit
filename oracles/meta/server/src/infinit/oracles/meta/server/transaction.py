@@ -1013,11 +1013,13 @@ class Mixin:
   @require_logged_in
   def cloud_buffer(self, transaction_id : bson.ObjectId,
                    force_regenerate : json_value = True):
+    self._cloud_buffer(transaction_id, self.user, force_regenerate)
+
+  def _cloud_buffer(self, transaction_id, user, force_regenerate = True):
     """
     Return AWS credentials giving the user permissions to PUT (sender) or GET
     (recipient) from the cloud buffer.
     """
-    user = self.user
     transaction = self.transaction(transaction_id, owner_id = user['_id'])
 
     # Ensure transaction is not in a final state.
@@ -1040,7 +1042,7 @@ class Mixin:
     # As long as those creds are transaction specific there is no risk
     # in letting the recipient have WRITE access. This will no longuer hold
     # if cloud data ever gets shared among transactions.
-    if transaction['is_ghost'] and self.user_version >= (0, 9, 26):
+    if transaction['is_ghost'] and self.user_gcs_enabled:
       ghost_upload_file = self._upload_file_name(transaction)
       token_maker = cloud_buffer_token_gcs.CloudBufferTokenGCS(
         transaction_id, ghost_upload_file, self.gcs_buffer_bucket)
