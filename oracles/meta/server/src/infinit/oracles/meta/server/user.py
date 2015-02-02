@@ -2101,8 +2101,9 @@ class Mixin:
       # Introspect to give us more info
       did = bottle.request.session.get('device')
       raise Exception('device not found from _id %s' %(did))
+    user = self.user
     last_sync = self.database.devices.find_and_modify(
-      query = {'id': device['id']},
+      query = {'id': device['id'], 'owner': user['_id']},
       update = {
         '$set': {
           'last_sync': {
