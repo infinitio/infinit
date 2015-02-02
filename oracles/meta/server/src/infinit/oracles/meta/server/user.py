@@ -549,83 +549,145 @@ class Mixin:
     except error.Error as e:
       self.fail(*e.args)
 
-  @api('/user/auxiliary_account/email', method = 'POST')
+  @api('/user/accounts')
+  @require_logged_in
+  def accounts(self):
+    user = self.user
+    res = {
+      'primary': user['email']
+    }
+    if len(user['accounts']) > 1:
+      res.update({
+        'auxiliary': {
+          'emails': [account['id'] for account in user.get('accounts', {}) if account['type'] == 'email' and account['id'] != user['email']],
+        }})
+    if len(user.get('pending_auxiliary_emails', [])) > 0:
+      res.update({
+        'pending': {
+          'emails': [account['email'] for account in user.get('pending_auxiliary_emails', [])],
+        }})
+    return self.success(res)
+
+  @api('/user/accounts/email/add', method = 'POST')
   @require_logged_in
   def add_auxiliary_email_address(self,
                                   email):
-      _validators = [
-        (email, regexp.EmailValidator),
-      ]
-      for arg, validator in _validators:
-        res = validator(arg)
-        if res != 0:
-          return self._forbidden_with_error(error.EMAIL_NOT_VALID)
-      other = self.user_by_email(email, ensure_existence = False)
-      if other is not None: # and other['register_status'] != 'ghost':
-        return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
-      user = self.user
-      from time import time
-      import hashlib
-      seed = str(time()) + email + user['email']
-      hash = hashlib.md5(seed.encode('utf-8')).hexdigest()
-      self.mailer.send_template(
-        email,
-        'add-auxiliary-email-address',
-        merge_vars = {
-          email : {
+    _validators = [
+      (email, regexp.EmailValidator),
+    ]
+    for arg, validator in _validators:
+      res = validator(arg)
+      if res != 0:
+        return self._forbidden_with_error(error.EMAIL_NOT_VALID)
+    other = self.user_by_email(email, ensure_existence = False)
+    if other is not None and other['register_status'] != 'ghost':
+      return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
+    user = self.user
+    from time import time
+    import hashlib
+    seed = str(time()) + email + user['email']
+    hash = hashlib.md5(seed.encode('utf-8')).hexdigest()
+    self.mailer.send_template(
+      email,
+      'add-auxiliary-email-address',
+      merge_vars = {
+        email : {
+          'hash': hash,
+          'auxiliary_email_address': email,
+          'primary_email_address': user['email'],
+        'user_fullname': user['fullname']
+        }
+      })
+    res = self.database.users.find_and_modify(
+      {
+        "_id": user['_id'],
+        "pending_auxiliary_emails.email": {"$ne": email},
+      },
+      {
+        "$addToSet": {
+          "pending_auxiliary_emails": {
+            'email': email,
             'hash': hash,
-            'auxiliary_email_address': email,
-            'primary_email_address': user['email'],
-            'user_fullname': user['fullname']
           }
-        })
-      self.database.users.find_and_modify(
-        { "_id": user['_id'] },
-        {
-          "$addToSet": {
-            "pending_auxiliary_emails": {
-              'email': email,
-              'hash': hash,
-            }
-          }
-        })
-      return {}
+        }
+      }, new = True)
+    if res == None:
+      return self._forbidden_with_error(error.EMAIL_ALREADY_ADDED)
+    return self.success({})
 
-  @api('/user/auxiliary_account/email/<hash>', method = 'POST')
+  @api('/user/accounts/email/validate/<hash>', method = 'POST')
   def validate_auxiliary_email(self,
                                hash):
-    res = self.database.users.find_one(
-      {
-        'pending_auxiliary_emails.hash': hash
-      },
-      fields = ['pending_auxiliary_emails.$'],
-    )
-    if res is None or not 'pending_auxiliary_emails' in res or len(res['pending_auxiliary_emails']) == 0:
-      return self._forbidden_with_error(error.UNKNOWN_EMAIL_CONFIRMATION_HASH)
-    account = res['pending_auxiliary_emails'][0] # account is {'hash': hash, 'email': email}
-    email = account['email']
-    user = self.user_by_email(email, ensure_existence = False)
-    if user is not None: # and user['register_status'] != 'ghost':
-      return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
-    if account['email'] != email:
-      return self._forbidden_with_error(error.UNKNOWN_EMAIL_ADDRESS)
-    update = {
-      '$pull': {'pending_auxiliary_emails': account},
-      '$addToSet': {'accounts': {'id': account['email'], 'type': 'email'}},
-    }
-    self.database.users.find_and_modify(
-      {
-        'pending_auxiliary_emails.hash': hash
-      },
-      update
-    )
-    return {}
+    with elle.log.trace('validate auxiliary email'):
+      res = self.database.users.find_one(
+        {
+          'pending_auxiliary_emails.hash': hash
+        },
+        fields = ['email', 'pending_auxiliary_emails.$'],
+      )
+      if res is None or not 'pending_auxiliary_emails' in res or len(res['pending_auxiliary_emails']) == 0:
+        return self._forbidden_with_error(error.UNKNOWN_EMAIL_CONFIRMATION_HASH)
+      account = res['pending_auxiliary_emails'][0] # account is {'hash': hash, 'email': email}
+      email = account['email']
+      elle.log.debug('add %s to user %s' % (email, res['email']))
+      user = self.user_by_email(email, ensure_existence = False)
+      if user is not None and user['register_status'] != 'ghost':
+        return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
+      update = {
+        '$pull': {'pending_auxiliary_emails': account},
+        '$addToSet': {'accounts': {'id': account['email'], 'type': 'email'}},
+      }
+      # If a ghost exists for the given email.
+      if user:
+        elle.log.trace('a ghost was found %s' % user)
+        swaggers = user.get('swaggers', {})
+        swaggers_prefixed = {'swaggers.%s' % id: swaggers[id] for id in swaggers}
+        update.update({'$inc': swaggers_prefixed})
+        self.database.users.update(
+          {
+            "_id": {"$in": list(swaggers.keys())}
+          },
+          {
+            '$inc': {'swaggers.%s' % res['_id']: 1},
+          })
+        for swagger in swaggers:
+          self.notifier.notify_some(
+            notifier.NEW_SWAGGER,
+            message = {'user_id': swagger},
+            recipient_ids = {res['_id']},
+          )
+        self.user_delete(user, merge_with = res)
+      self.database.users.find_and_modify(
+        {
+          'pending_auxiliary_emails.hash': hash
+        },
+        update
+      )
+      return self.success({})
 
-  @api('/user/auxiliary_account/email', method = 'DELETE')
+  @api('/user/accounts/email/pending/delete', method = 'DELETE')
+  @require_logged_in
+  def delete_pending_auxiliary_email_address(self, email):
+    user = self.user
+    res = self.database.users.find_and_modify(
+      {
+        'pending_auxiliary_emails.email': email,
+        '_id': user['_id'],
+      },
+      {
+        '$pull': {'pending_auxiliary_emails': {'email': email}}
+      })
+    if res is None:
+      return self._forbidden_with_error(error.UNKNOWN_EMAIL_ADDRESS)
+    return self.success({})
+
+  @api('/user/accounts/email/delete', method = 'DELETE')
   @require_logged_in
   def remove_auxiliary_email_address(self,
                                      email):
     user = self.user
+    if user['email'] == email:
+      return self._forbidden_with_error(error.CANNOT_DELETE_YOUR_PRIMARY_ACCOUNT)
     res = self.database.users.find_and_modify(
       {
         'accounts.id': email,
@@ -638,9 +700,9 @@ class Mixin:
       })
     if res is None:
       return self._forbidden_with_error(error.UNKNOWN_EMAIL_ADDRESS)
-    return {}
+    return self.success({})
 
-  @api('/user/swap_primary_account', method = 'POST')
+  @api('/user/accounts/make_primary', method = 'POST')
   @require_logged_in
   def swap_primary_account(self,
                            new_email,
@@ -888,10 +950,10 @@ class Mixin:
 
   @api('/users/<user>', method = 'DELETE')
   @require_admin
-  def user_delete_specifyc(self, user: str):
+  def user_delete_specific(self, user: str):
     self.user_delete(self.user_by_id_or_email(user))
 
-  def user_delete(self, user):
+  def user_delete(self, user, merge_with = None):
     """The idea is to just keep the user's id and fullname so that transactions
        can still be shown properly to other users. We will leave them in other
        users's swagger lists as we may want to generate the transaction history
@@ -916,46 +978,59 @@ class Mixin:
     # If this is somehow a duplicate, do not unregister the user from lists
     if self.database.users.find({'email': user['email']}).count() == 1:
       self.invitation.unsubscribe(user['email'])
-    self.cancel_transactions(user)
-    self.delete_all_links(user)
-    self.remove_devices(user)
+    if merge_with is not None:
+      self.change_transactions_recipient(user, merge_with)
+      # self.change_links_ownership(user, merge_with)
+    else:
+      self.cancel_transactions(user)
+      self.delete_all_links(user)
+      self.remove_devices(user)
     try:
       user.pop('avatar')
       user.pop('small_avatar')
     except:
       elle.log.debug('user has no avatar')
     swaggers = set(map(bson.ObjectId, user['swaggers'].keys()))
-    self.database.users.update(
+    cleared_user = {
+      'accounts': [],
+      'connected': False,
+      'connected_devices': [],
+      'devices': [],
+      'email': '',
+      'favorites': [],
+      'handle': '',
+      'identity': '',
+      'lw_handle': '',
+      'networks': [],
+      'notifications': [],
+      'old_notifications': [],
+      'password': '',
+      'public_key': '',
+      'swaggers': {},
+    }
+    if merge_with is not None:
+      cleared_user['register_status'] = 'merged'
+      cleared_user['merged_with'] = merge_with['_id']
+    else:
+      cleared_user['register_status'] = 'deleted'
+    deleted_user = self.database.users.find_and_modify(
       {'_id': user['_id']},
       {
-        '$set':
-        {
-          'accounts': [],
-          'connected': False,
-          'connected_devices': [],
-          'devices': [],
-          'email': '',
-          'favorites': [],
-          'handle': '',
-          'identity': '',
-          'lw_handle': '',
-          'networks': [],
-          'notifications': [],
-          'old_notifications': [],
-          'password': '',
-          'public_key': '',
-          'register_status': 'deleted',
-          'swaggers': {},
-        },
+        '$set': cleared_user,
         '$unset':
         {
           'avatar': '',
           'small_avatar': ''
         }
-      })
+      },
+      new = True)
     self.notifier.notify_some(notifier.DELETED_SWAGGER,
-      recipient_ids = swaggers,
-      message = {'user_id': user['_id']})
+                              recipient_ids = swaggers,
+                              message = {'user_id': user['_id']})
+    if merge_with:
+      self.notifier.notify_some(notifier.NEW_SWAGGER,
+                                recipient_ids = swaggers,
+                                message = {'user_id': deleted_user['merged_with']})
     self.remove_user_as_favorite_and_notify(user)
     return self.success()
 

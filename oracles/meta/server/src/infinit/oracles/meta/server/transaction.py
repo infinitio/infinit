@@ -52,6 +52,32 @@ class Mixin:
         self.forbidden('transaction %s doesn\'t belong to you' % id)
     return transaction
 
+  def change_transactions_recipient(self, current_owner, new_owner):
+    # We can't do that as a batch because update won't give us the list
+    # of updated transactions.
+    while True:
+      transaction = self.database.transactions.find_and_modify(
+        {
+          'recipient_id': current_owner['_id']
+        },
+        {
+          '$set': {
+            'recipient_id': new_owner['_id'],
+            'modification_time': self.now,
+            'mtime': time.time(),
+          }
+        },
+        new = True)
+      if transaction is None:
+        return
+      if transaction['status'] != transaction_status.CREATED:
+        self.notifier.notify_some(
+          notifier.PEER_TRANSACTION,
+          recipient_ids = {transaction['sender_id'],
+                           transaction['recipient_id']},
+          message = transaction,
+        )
+
   def cancel_transactions(self, user):
     for transaction in self.database.transactions.find(
       {
@@ -216,14 +242,13 @@ class Mixin:
         elle.log.debug("%s is an email" % id_or_email)
         peer_email = id_or_email.lower().strip()
         # XXX: search email in each accounts.
-        recipient = self.database.users.find_one({'email': peer_email})
+        recipient = self.database.users.find_one({'accounts.id': peer_email})
         # if the user doesn't exist, create a ghost and invite.
 
         if not recipient:
           elle.log.trace("recipient unknown, create a ghost")
           new_user = True
           recipient_id = self._register(
-            _id = self.database.users.save({}),
             email = peer_email,
             fullname = peer_email, # This is safe as long as we don't allow searching for ghost users.
             register_status = 'ghost',
@@ -258,6 +283,13 @@ class Mixin:
 
       if recipient is None:
         return self.fail(error.USER_ID_NOT_VALID)
+      if recipient['register_status'] == 'merged':
+        assert isinstance(recipient['merged_with'], bson.ObjectId)
+        recipient = self.database.users.find_one({
+          '_id': recipient['merged_with']
+        })
+        if recipient is None:
+          return self.fail(error.USER_ID_NOT_VALID)
       if recipient['register_status'] == 'deleted':
         self.gone({
           'reason': 'user %s is deleted' % recipient['_id'],

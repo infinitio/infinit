@@ -325,6 +325,7 @@ namespace surface
     GhostReceiveMachine::_wait_for_cloud_upload()
     {
       ELLE_TRACE("%s: _wait_for_cloud_upload()", *this);
+      this->gap_status(gap_transaction_waiting_data);
     }
 
     void

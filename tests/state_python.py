@@ -22,8 +22,7 @@ class Wrapper:
     return test_state
 
   def _login(self, test_state):
-    hashed_password = state.hash_password(self.email, self.password)
-    test_state.login(self.email, hashed_password)
+    test_state.login(self.email, self.password)
 
   def login_logout_test(self, email='chris2@infinit.io', password='password'):
     test_state = self._initialise_state()
