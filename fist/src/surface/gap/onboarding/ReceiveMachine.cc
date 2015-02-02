@@ -90,7 +90,8 @@ namespace surface
       {}
 
       void
-      ReceiveMachine::accept(boost::optional<std::string const&> output_dir)
+      ReceiveMachine::accept(
+        boost::optional<std::string const&> relative_output_dir)
       {
         if (!this->_accepted.opened())
         {
@@ -101,7 +102,7 @@ namespace surface
               onboarding);
         }
         this->data()->recipient_device_id = this->state().device().id;
-        surface::gap::ReceiveMachine::accept(output_dir);
+        surface::gap::ReceiveMachine::accept(relative_output_dir);
       }
 
       void
