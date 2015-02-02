@@ -101,7 +101,9 @@ class Meta(bottle.Bottle,
       force_admin = False,
       debug = False,
       zone = None,
+      production = False,
   ):
+    self.__production = production
     import os
     system_logger = os.getenv("META_LOG_SYSTEM")
     if system_logger is not None:
@@ -147,7 +149,8 @@ class Meta(bottle.Bottle,
     # Routing.
     api.register(self)
     # Notifier.
-    self.notifier = notifier.Notifier(self.__database)
+    self.notifier = notifier.Notifier(self.__database,
+                                      production = self.production)
     # Share
     share_path = os.path.realpath('/'.join(__file__.split('/')[:-7]))
     share_path = '%s/share/infinit/meta/server/' % share_path
@@ -187,6 +190,10 @@ class Meta(bottle.Bottle,
     self.gcs_link_bucket = gcs_link_bucket
     waterfall.Waterfall.__init__(self)
     self.__zone = zone
+
+  @property
+  def production(self):
+    return self.__production
 
   def __set_constraints(self):
     #---------------------------------------------------------------------------

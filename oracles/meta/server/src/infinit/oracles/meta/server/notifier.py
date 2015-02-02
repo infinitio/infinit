@@ -23,11 +23,13 @@ ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Notifier'
 
 class Notifier:
 
-  def __init__(self, database):
+  def __init__(self, database, production):
+    cert = conf.INFINIT_APS_CERT_PATH_PRODUCTION \
+           if production else conf.INFINIT_APS_CERT_PATH
     self.__database = database
     self.__apns = apns.APNs(
       use_sandbox = True,
-      cert_file = conf.INFINIT_APS_CERT_PATH)
+      cert_file = cert)
 
   @property
   def database(self):
