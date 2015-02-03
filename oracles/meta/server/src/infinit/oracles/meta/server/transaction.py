@@ -1111,7 +1111,7 @@ class Mixin:
     return self.success(credentials)
 
   def _user_transactions(self,
-                         mtime = None,
+                         modification_time = None,
                          limit = 100):
     user_id = self.user['_id']
     query = {
@@ -1129,18 +1129,18 @@ class Mixin:
       })
     runnings = self.database.transactions.aggregate([
         {'$match': query},
-        {'$sort': {'mtime': DESCENDING}},
+        {'$sort': {'modification_time': DESCENDING}},
       ])['result']
 
     # Then get the 100 most recent transactions.
     query.update({
       'status': {'$in': transaction_status.final}
       })
-    if mtime:
-      query.update({'mtime': {'$gt': mtime}})
+    if modification_time:
+      query.update({'modification_time': {'$gt': modification_time}})
     finals = self.database.transactions.aggregate([
         {'$match': query},
-        {'$sort': {'mtime': DESCENDING}},
+        {'$sort': {'modification_time': DESCENDING}},
         {'$limit': limit},
       ])['result']
     return {
