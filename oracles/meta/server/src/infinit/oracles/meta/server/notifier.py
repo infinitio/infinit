@@ -95,11 +95,9 @@ class Notifier:
       elle.log.debug('trophonius to contact: %s' % trophonius)
       notification = {'notification': jsonify(message)}
       # Ensure unique push tokens are used.
-      push_tokens = set()
+      used_push_tokens = set()
       # Freezing slow.
       for device, owner, tropho, push in devices_trophonius:
-        if push is not None:
-          push_tokens.add(push)
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if tropho is None:
           continue
@@ -122,16 +120,17 @@ class Notifier:
                        (tropho['_id'], e))
         finally:
           s.close()
-      for push in push_tokens:
-        try:
-          pl = self.ios_notification(notification_type,
-                                     device,
-                                     owner,
-                                     message)
-          if pl is not None:
-            self.__apns.gateway_server.send_notification(push, pl)
-        except Exception as e:
-          elle.log.err('unable to push notification to %s: %s' % (device, e))
+        if push is not None and push not in used_push_tokens:
+          try:
+            pl = self.ios_notification(notification_type,
+                                       device,
+                                       owner,
+                                       message)
+            if pl is not None:
+              used_push_tokens.add(push)
+              self.__apns.gateway_server.send_notification(push, pl)
+          except Exception as e:
+            elle.log.err('unable to push notification to %s: %s' % (device, e))
 
   def ios_notification(self, notification_type, device, owner, message):
     if notification_type is not PEER_TRANSACTION:
@@ -139,27 +138,47 @@ class Notifier:
     sender_id = str(message['sender_id'])
     recipient_id = str(message['recipient_id'])
     status = int(message['status'])
+    content_available = False
+    badge = 0
+    sound = None
     if (str(owner) == sender_id) and (device == message['sender_device_id']):
       if status not in [transaction_status.REJECTED, transaction_status.FINISHED]:
         return None
-    elif (str(owner) == recipient_id):
+    elif str(owner) == recipient_id:
       if status not in [transaction_status.INITIALIZED]:
         return None
+      content_available = True
+      badge = 1
+      sound = 'default'
     else:
       return None
-    custom = { 'i': {
-      'type': PEER_TRANSACTION,
-      'status': status,
-      'sender': sender_id,
-      'sender_device': message['sender_device_id'],
-      'sender_name': message['sender_fullname'],
-      'recipient': recipient_id,
-      'recipient_device': message['recipient_device_id'],
-      'recipient_name': message['recipient_fullname'],
-      'file_count': message['files_count'],
-    }}
-    return apns.Payload(alert = '',
-                        sound = '',
-                        badge = 0,
-                        content_available = True,
-                        custom = custom)
+    if sender_id == recipient_id:
+      to_self = True
+    else:
+      to_self = False
+    alert = None
+    if message['files_count'] == 1:
+      files = '1 file'
+    else:
+      files = '%s files' % message['files_count']
+    if status is transaction_status.INITIALIZED: # Only sent to recipient
+      if to_self:
+        alert = "You'd like to send %s" % files
+      else:
+        alert = "%s wants to send %s" % (message['sender_fullname'], files)
+    elif status is transaction_status.REJECTED: # Only sent to sender
+      if to_self:
+        alert = 'You declined the transfer'
+      else:
+        alert = '%s declined the transfer' % message['recipient_fullname']
+    elif status is transaction_status.FINISHED:
+      if to_self:
+        alert = 'Your other device received the files!'
+      else:
+        alert = '%s received your files!' % message['recipient_fullname']
+    if alert is None:
+      return None
+    return apns.Payload(alert = alert,
+                        badge = badge,
+                        sound = sound,
+                        content_available = content_available)
