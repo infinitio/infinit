@@ -64,7 +64,7 @@ gap_clean_state(gap_State* state);
 gap_Status
 gap_login(gap_State* state,
           std::string const& email,
-          std::string const& hash_password,
+          std::string const& password,
           boost::optional<std::string const&> device_push_token = {});
 
 /// Fetch features.
@@ -133,16 +133,6 @@ gap_Status
 gap_link_callback(
   gap_State* state,
   std::function<void (surface::gap::LinkTransaction const&)> const& callback);
-
-/// New transaction callback.
-typedef void (*gap_recipient_changed_callback_t)(uint32_t transaction_id,
-                                                 uint32_t recipient_id);
-
-/// Recipient changeh callback.
-gap_Status
-gap_transaction_recipient_changed_callback(
-  gap_State* state,
-  gap_recipient_changed_callback_t callback);
 
 /// Transaction getters.
 gap_Status
