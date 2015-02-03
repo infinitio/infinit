@@ -26,6 +26,26 @@ import bottle
 
 from uuid import uuid4, UUID
 
+class Notification(dict):
+  def __init__(self, body):
+    super().__init__(body)
+
+  @property
+  def type(self):
+    return self.notification_type
+  def __getattr__(self, key):
+    return self[key]
+  def __setattr__(self, key, value):
+    self[key] = value
+  def __lt__(self, other):
+    return self.notification_type < other.notification_type
+  def __gt__(self, other):
+    return self.notification_type > other.notification_type
+  def __le__(self, other):
+    return self.notification_type <= other.notification_type
+  def __ge__(self, other):
+    return self.notification_type >= other.notification_type
+
 class HTTPException(Exception):
 
   def __init__(self, status, method, url, body, content):
@@ -124,7 +144,7 @@ class Trophonius(Client):
             return
           d['notification'].pop('timestamp')
           for user in self.trophonius.users_on_device[UUID(d['device_id'])]:
-            user.notifications.append(d['notification'])
+            user.notifications.append(Notification(d['notification']))
           self.socket.listen(1)
         except:
           return
@@ -161,7 +181,7 @@ class Trophonius(Client):
                    (self.__uuid, user_id, str(user.device_id)))
     assert res['success']
     self.__users.setdefault(user_id, [])
-    self.__users[user_id] += str(user.device_id)
+    self.__users[user_id].append(user.device_id)
     self.users_on_device[user.device_id].add(user)
 
   def disconnect_user(self, user):
@@ -436,6 +456,8 @@ class User(Client):
     res.update(sync)
     assert 'swaggers' in res
     assert res['swaggers'] == self.full_swaggers
+    if self.trophonius is not None:
+      self.trophonius.connect_user(self)
     return res
 
   def __hash__(self):
@@ -444,6 +466,8 @@ class User(Client):
   def logout(self):
     res = self.post('logout', {})
     assert res['success']
+    if self.trophonius is not None:
+      self.trophonius.disconnect_user(self)
 
   def synchronize(self, init = False):
     return self.get('user/synchronize?init=%s' % (init and '1' or '0'))
@@ -546,25 +570,11 @@ class User(Client):
 
   @property
   def next_notification(self):
-    class Notification(dict):
-      def __init__(self, body):
-        super().__init__(body)
-
-      @property
-      def type(self):
-        return self.notification_type
-
-      def __getattr__(self, key):
-        return self[key]
-
-      def __setattr__(self, key, value):
-        self[key] = value
-
     assert self.trophonius is not None
     from time import sleep
     sleep(0.1)
     self.trophonius.poll()
-    return Notification(self.notifications.pop(0))
+    return self.notifications.pop(0)
 
   def __eq__(self, other):
     if isinstance(other, User):
