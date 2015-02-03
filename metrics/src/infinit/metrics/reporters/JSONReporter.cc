@@ -47,13 +47,15 @@ namespace infinit
     void
     JSONReporter::_transaction_connected(
       std::string const& transaction_id,
-      std::string const& connection_method)
+      std::string const& connection_method,
+      int attempt)
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] =
         std::string("connected");
       data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
       data[this->_key_str(JSONKey::connection_method)] = connection_method;
+      data[this->_key_str(JSONKey::attempt_number)] = attempt;
 
       this->_send(this->_transaction_dest, data);
     }
@@ -139,7 +141,8 @@ namespace infinit
      void
      JSONReporter::_transaction_transfer_begin(std::string const& transaction_id,
                                                TransferMethod method,
-                                               float initialization_time)
+                                               float initialization_time,
+                                               int attempt)
      {
        elle::json::Object data;
        data[this->_key_str(JSONKey::event)] = std::string("transfer_begin");
@@ -147,6 +150,7 @@ namespace infinit
        data[this->_key_str(JSONKey::transfer_method)] =
          this->_transfer_method_str(method);
        data[this->_key_str(JSONKey::initialization_time)] = initialization_time;
+       data[this->_key_str(JSONKey::attempt_number)] = attempt;
        this->_send(this->_transaction_dest, data);
      }
 
@@ -156,7 +160,8 @@ namespace infinit
                                              float duration,
                                              uint64_t bytes_transfered,
                                              TransferExitReason reason,
-                                             std::string const& message)
+                                             std::string const& message,
+                                             int attempt)
      {
        elle::json::Object data;
        data[this->_key_str(JSONKey::event)] = std::string("transfer_end");
@@ -169,6 +174,7 @@ namespace infinit
        data[this->_key_str(JSONKey::exit_reason)] =
          this->_transfer_exit_reason_str(reason);
        data[this->_key_str(JSONKey::message)] = message;
+       data[this->_key_str(JSONKey::attempt_number)] = attempt;
        this->_send(this->_transaction_dest, data);
      }
 
