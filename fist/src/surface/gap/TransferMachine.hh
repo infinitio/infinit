@@ -55,6 +55,8 @@ namespace surface
       typedef std::vector<std::pair<std::string, int>> Endpoints;
       ELLE_ATTRIBUTE_R(Endpoints, peer_local_endpoints);
       ELLE_ATTRIBUTE_R(Endpoints, peer_public_endpoints);
+      // Number of connection attempts so far
+      ELLE_ATTRIBUTE_RP(int, attempt, protected:);
 
     /*-------.
     | Status |

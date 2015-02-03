@@ -105,12 +105,14 @@ namespace infinit
 
     void
     CompositeReporter::_transaction_connected(std::string const& transaction_id,
-                           std::string const& connection_method)
+                           std::string const& connection_method,
+                           int attempt)
     {
       this->_dispatch(std::bind(&Reporter::_transaction_connected,
                                 std::placeholders::_1,
                                 transaction_id,
-                                connection_method));
+                                connection_method,
+                                attempt));
     }
 
     void
@@ -185,13 +187,15 @@ namespace infinit
     void
     CompositeReporter::_transaction_transfer_begin(std::string const& transaction_id,
                                                    TransferMethod method,
-                                                   float initialization_time)
+                                                   float initialization_time,
+                                                   int attempt)
     {
       this->_dispatch(std::bind(&Reporter::_transaction_transfer_begin,
                                 std::placeholders::_1,
                                 transaction_id,
                                 method,
-                                initialization_time));
+                                initialization_time,
+                                attempt));
     }
 
     void
@@ -200,12 +204,13 @@ namespace infinit
                                                  float duration,
                                                  uint64_t bytes_transfered,
                                                  TransferExitReason reason,
-                                                 std::string const& message)
+                                                 std::string const& message,
+                                                 int attempt)
     {
       this->_dispatch(std::bind(&Reporter::_transaction_transfer_end,
                                 std::placeholders::_1,
                                 transaction_id, method, duration,
-                                bytes_transfered, reason, message));
+                                bytes_transfered, reason, message, attempt));
     }
 
     void

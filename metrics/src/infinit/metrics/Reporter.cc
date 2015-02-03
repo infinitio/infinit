@@ -133,12 +133,14 @@ namespace infinit
 
     void
     Reporter::transaction_connected(std::string const& transaction_id,
-                                    std::string const& connection_method)
+                                    std::string const& connection_method,
+                                    int attempt)
     {
       this->_push(std::bind(&Reporter::_transaction_connected,
                                          this,
                                          transaction_id,
-                                         connection_method));
+                                         connection_method,
+                                         attempt));
     }
 
     void
@@ -208,12 +210,14 @@ namespace infinit
     void
     Reporter::transaction_transfer_begin(std::string const& transaction_id,
                                          TransferMethod method,
-                                         float initialization_time)
+                                         float initialization_time,
+                                         int attempt)
     {
       this->_push(std::bind(&Reporter::_transaction_transfer_begin,
                                           this,
                                           transaction_id,
-                                          method, initialization_time));
+                                          method, initialization_time,
+                                          attempt));
     }
 
     void
@@ -222,12 +226,13 @@ namespace infinit
                                        float duration,
                                        uint64_t bytes_transfered,
                                        TransferExitReason reason,
-                                       std::string const& message)
+                                       std::string const& message,
+                                       int attempt)
     {
       this->_push(std::bind(&Reporter::_transaction_transfer_end,
                                           this, transaction_id,
                                           method, duration, bytes_transfered,
-                                          reason, message));
+                                          reason, message, attempt));
     }
 
     void
@@ -412,7 +417,8 @@ namespace infinit
 
     void
     Reporter::_transaction_connected(std::string const& transaction_id,
-                                     std::string const& connection_method)
+                                     std::string const& connection_method,
+                                     int attempt)
     {}
 
     void
@@ -450,7 +456,8 @@ namespace infinit
     void
     Reporter::_transaction_transfer_begin(std::string const& transaction_id,
                                           TransferMethod method,
-                                          float initialization_time)
+                                          float initialization_time,
+                                          int attempt)
     {}
 
     void
@@ -459,7 +466,8 @@ namespace infinit
                                         float duration,
                                         uint64_t bytes_transfered,
                                         TransferExitReason reason,
-                                        std::string const& message)
+                                        std::string const& message,
+                                        int attempt)
     {}
 
     void
