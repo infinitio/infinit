@@ -159,14 +159,15 @@ class Notifier:
       to_self = False
     alert = None
     if message['files_count'] == 1:
-      files = '1 file'
+      files = 'file'
     else:
-      files = '%s files' % message['files_count']
+      files = 'files'
     if status is transaction_status.INITIALIZED: # Only sent to recipient
       if to_self:
-        alert = "You'd like to send %s" % files
+        alert = "You'd like to send %s %s" % (message['files_count'], files)
       else:
-        alert = "%s wants to send %s" % (message['sender_fullname'], files)
+        alert = "%s wants to send %s %s" % \
+          (message['sender_fullname'], message['files_count'], files)
     elif status is transaction_status.REJECTED: # Only sent to sender
       if to_self:
         alert = 'You declined the transfer'
@@ -174,9 +175,9 @@ class Notifier:
         alert = '%s declined the transfer' % message['recipient_fullname']
     elif status is transaction_status.FINISHED:
       if to_self:
-        alert = 'Your other device received the files!'
+        alert = 'Your other device received the %s!' % files
       else:
-        alert = '%s received your files!' % message['recipient_fullname']
+        alert = '%s received your %s!' % (message['recipient_fullname'], files)
     if alert is None:
       return None
     return apns.Payload(alert = alert,
