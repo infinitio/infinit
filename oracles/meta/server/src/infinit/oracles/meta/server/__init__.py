@@ -101,7 +101,9 @@ class Meta(bottle.Bottle,
       force_admin = False,
       debug = False,
       zone = None,
+      production = False,
   ):
+    self.__production = production
     import os
     system_logger = os.getenv("META_LOG_SYSTEM")
     if system_logger is not None:
@@ -147,7 +149,8 @@ class Meta(bottle.Bottle,
     # Routing.
     api.register(self)
     # Notifier.
-    self.notifier = notifier.Notifier(self.__database)
+    self.notifier = notifier.Notifier(self.__database,
+                                      production = self.production)
     # Share
     share_path = os.path.realpath('/'.join(__file__.split('/')[:-7]))
     share_path = '%s/share/infinit/meta/server/' % share_path
@@ -188,6 +191,10 @@ class Meta(bottle.Bottle,
     waterfall.Waterfall.__init__(self)
     self.__zone = zone
 
+  @property
+  def production(self):
+    return self.__production
+
   def __set_constraints(self):
     #---------------------------------------------------------------------------
     # Users
@@ -210,6 +217,10 @@ class Meta(bottle.Bottle,
     # - Auxiliary emails.
     # Sparse because users may have no pending_auxiliary_emails field.
     self.__database.users.ensure_index([("pending_auxiliary_emails.hash", 1)], unique = True, sparse = True)
+    # - lw_handle
+    self.__database.users.ensure_index([('lw_handle', 1)],
+                                       unique = False)
+
     #---------------------------------------------------------------------------
     # Devices
     self.__database.devices.ensure_index([("id", 1), ("owner", 1)],
@@ -235,13 +246,17 @@ class Meta(bottle.Bottle,
     # - Download by link transaction hash.
     self.__database.transactions.ensure_index([('transaction_hash', 1)],
                                               unique = True, sparse = True)
-    # Finding transaction by peer
+    # - Finding transaction by peer
     self.__database.transactions.ensure_index(
       [('sender_id', pymongo.ASCENDING),
        ('ctime', pymongo.ASCENDING)])
     self.__database.transactions.ensure_index(
       [('recipient_id', pymongo.ASCENDING),
        ('ctime', pymongo.ASCENDING)])
+    # - Listing transactions for one user. More efficient than using status
+    self.__database.transactions.ensure_index(
+      [('involved', pymongo.ASCENDING),
+      ('mtime', pymongo.DESCENDING)])
 
     #---------------------------------------------------------------------------
     # Link Generation
@@ -253,6 +268,10 @@ class Meta(bottle.Bottle,
     # - Download by link hash.
     self.__database.links.ensure_index([('hash', 1)],
                                        unique = True, sparse = True)
+
+    # Sessions
+    self.__database.sessions.ensure_index([('device', 1)],
+                                          unique = False)
 
   @property
   def mailer(self):

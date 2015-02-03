@@ -23,11 +23,13 @@ ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Notifier'
 
 class Notifier:
 
-  def __init__(self, database):
+  def __init__(self, database, production):
+    cert = conf.INFINIT_APS_CERT_PATH_PRODUCTION \
+           if production else conf.INFINIT_APS_CERT_PATH
     self.__database = database
     self.__apns = apns.APNs(
       use_sandbox = True,
-      cert_file = conf.INFINIT_APS_CERT_PATH)
+      cert_file = cert)
 
   @property
   def database(self):
@@ -96,6 +98,18 @@ class Notifier:
       used_push_tokens = set()
       # Freezing slow.
       for device, owner, tropho, push in devices_trophonius:
+        if push is not None and push not in used_push_tokens:
+          try:
+            pl = self.ios_notification(notification_type,
+                                       device,
+                                       owner,
+                                       message)
+            if pl is not None:
+              used_push_tokens.add(push)
+              elle.log.debug('pushing notification to: %s' % device)
+              self.__apns.gateway_server.send_notification(push, pl)
+          except Exception as e:
+            elle.log.err('unable to push notification to %s: %s' % (device, e))
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if tropho is None:
           continue
@@ -118,17 +132,6 @@ class Notifier:
                        (tropho['_id'], e))
         finally:
           s.close()
-        if push is not None and push not in used_push_tokens:
-          try:
-            pl = self.ios_notification(notification_type,
-                                       device,
-                                       owner,
-                                       message)
-            if pl is not None:
-              used_push_tokens.add(push)
-              self.__apns.gateway_server.send_notification(push, pl)
-          except Exception as e:
-            elle.log.err('unable to push notification to %s: %s' % (device, e))
 
   def ios_notification(self, notification_type, device, owner, message):
     if notification_type is not PEER_TRANSACTION:

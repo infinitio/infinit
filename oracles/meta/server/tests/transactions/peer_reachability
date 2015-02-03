@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+
+from utils import Meta, Trophonius, User, NoOpMailer, HTTPException
+from pprint import pprint
+from operator import itemgetter, attrgetter
+
+from time import sleep
+from bson.objectid import ObjectId
+from infinit.oracles.meta import error
+from infinit.oracles.meta.server.transaction_status import CANCELED
+
+from infinit.oracles.notification import notifications
+for name, value in notifications.items():
+  globals()[name.upper()] = value
+
+from infinit.oracles.meta.server.transaction_status import INITIALIZED, ACCEPTED, FINISHED
+
+class MailService(NoOpMailer):
+
+  def __init__(self):
+    self.hashes = {}
+    super().__init__(True)
+
+  def template_message(self, template_message, message):
+    merges = {}
+    for entry in message['merge_vars'][0]['vars']:
+      merges[entry['name']] = entry['content']
+    if template_message == 'add-auxiliary-email-address':
+       self.hashes.update(
+         {
+           merges['auxiliary_email_address']: merges['hash']
+         })
+
+
+# Normal.
+with Meta(enable_emails = True) as meta:
+  with Trophonius(meta) as trophonius:
+    alice = User(meta, 'alice@infinit.io')
+    bob = User(meta, 'bob@infinit.io')
+
+    print("alice device", alice.device_id)
+    print("bob device", bob.device_id)
+    alice.login(trophonius = trophonius)
+    bob.login(trophonius = trophonius)
+    _, res = alice.sendfile('bob@infinit.io', initialize = True)
+
+    bob.transaction_update(res['created_transaction_id'], ACCEPTED)
+
+    sleep(0.3)
+    trophonius.poll()
+    trophonius.poll()
+    trophonius.poll()
+
+    bob.notifications.clear()
+    alice.notifications.clear()
+    bob.put('transaction/%s/endpoints' % res['created_transaction_id'],
+            {
+              'device': str(bob.device_id),
+              'locals': [{'ip':'192.168.0.13', 'port': 3124}],
+              'externals': [{'ip':'12.168.0.13', 'port': 3124}],
+            })
+    trophonius.poll()
+    print(bob.notifications)
+    print(alice.notifications)
+    assert len(bob.notifications) == 0
+    assert len(alice.notifications) == 0
+
+    alice.put('transaction/%s/endpoints' % res['created_transaction_id'],
+              {
+                'device': str(alice.device_id),
+                'locals': [{'ip':'192.168.0.25', 'port': 3124}],
+                'externals': [{'ip':'12.168.0.25', 'port': 3124}],
+              })
+    sleep(0.3)
+
+    notif = alice.next_notification
+    assert notif.notification_type == PEER_CONNECTION_UPDATE
+    assert notif.status == True
+
+    notif = bob.next_notification
+    assert notif.notification_type == PEER_CONNECTION_UPDATE
+    assert notif.status == True
+
+    bob.logout()
+
+    trophonius.poll()
+    assert len(alice.notifications) == 2
+    alice.notifications.sort()
+    assert alice.notifications[0]['notification_type'] == USER_STATUS
+    assert alice.notifications[1]['notification_type'] == PEER_CONNECTION_UPDATE
+    assert alice.notifications[1]['status'] == 0
+
+    alice.notifications.clear()
+
+    bob.login(trophonius = trophonius)

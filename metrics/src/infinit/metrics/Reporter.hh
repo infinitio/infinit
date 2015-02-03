@@ -95,7 +95,8 @@ namespace infinit
 
       void
       transaction_connected(std::string const& transaction_id,
-                            std::string const& connection_method);
+                            std::string const& connection_method,
+                            int attempt);
 
       void
       link_transaction_created(std::string const& transaction_id,
@@ -132,7 +133,8 @@ namespace infinit
       void
       transaction_transfer_begin(std::string const& transaction_id,
                                  TransferMethod method,
-                                 float initialization_time);
+                                 float initialization_time,
+                                 int attempt=0);
 
       void
       transaction_transfer_end(std::string const& transaction_id,
@@ -140,7 +142,8 @@ namespace infinit
                                float duration,
                                uint64_t bytes_transfered,
                                TransferExitReason reason,
-                               std::string const& message);
+                               std::string const& message,
+                               int attempt=0);
 
       void
       aws_error(std::string const& transaction_id,
@@ -161,7 +164,8 @@ namespace infinit
       virtual
       void
       _transaction_connected(std::string const& transaction_id,
-                             std::string const& connection_method);
+                             std::string const& connection_method,
+                             int attempt);
 
       virtual
       void
@@ -199,7 +203,8 @@ namespace infinit
       void
       _transaction_transfer_begin(std::string const& transaction_id,
                                  TransferMethod method,
-                                 float initialization_time);
+                                 float initialization_time,
+                                 int attempt);
 
       virtual
       void
@@ -208,7 +213,8 @@ namespace infinit
                                float duration,
                                uint64_t bytes_transfered,
                                TransferExitReason reason,
-                               std::string const& message);
+                               std::string const& message,
+                               int attempt);
 
       virtual
       void

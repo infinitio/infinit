@@ -508,9 +508,13 @@ namespace surface
       FileSize initial_progress = 0;
       if (this->_snapshot != nullptr)
         initial_progress = this->_snapshot->progress();
+      int attempt = _transfer_machine->attempt();
+      bool skip_report = (attempt > 10 && attempt % (unsigned)pow(10, (unsigned)log10(attempt)));
+      auto& mr = state().metrics_reporter();
       elle::SafeFinally write_end_message([&,this]
       {
-        if (auto& mr = state().metrics_reporter())
+        auto& mr = state().metrics_reporter();
+        if (mr && !skip_report)
         {
           auto now = boost::posix_time::microsec_clock::universal_time();
           float duration =
@@ -520,16 +524,18 @@ namespace surface
                                        duration,
                                        total_bytes_transfered,
                                        exit_reason,
-                                       exit_message);
+                                       exit_message,
+                                       attempt);
         }
       });
-      if (auto& mr = state().metrics_reporter())
+      if (mr && !skip_report)
       {
         auto now = boost::posix_time::microsec_clock::universal_time();
         mr->transaction_transfer_begin(
           this->transaction_id(),
           infinit::metrics::TransferMethodP2P,
-          float((now - start_time).total_milliseconds()) / 1000.0f);
+          float((now - start_time).total_milliseconds()) / 1000.0f,
+          attempt);
       }
       try
       {
