@@ -427,16 +427,6 @@ namespace surface
       {
         // Check for an updated final status from meta
         ELLE_ASSERT(state.synchronize_response() != nullptr);
-        auto it = state.synchronize_response()->transactions.find(snapshot.data()->id);
-        auto data = (it != state.synchronize_response()->transactions.end())
-          ? it->second
-          :  _state.meta().transaction(snapshot.data()->id);
-        if (sender_final_statuses.find(data.status) != sender_final_statuses.end())
-        {
-          ELLE_TRACE("%s: meta returned a final status %s", *this, data.status);
-          _data = std::make_shared<infinit::oracles::PeerTransaction>(data);
-          return;
-        }
         using TransactionStatus = infinit::oracles::Transaction::Status;
         if (this->_data->is_ghost &&
             this->_data->status == TransactionStatus::ghost_uploaded &&
@@ -445,6 +435,10 @@ namespace surface
           ELLE_TRACE("%s sender of ghost_uploaded transaction", *this);
           return;
         }
+        auto it = state.synchronize_response()->transactions.find(snapshot.data()->id);
+        auto data = (it != state.synchronize_response()->transactions.end())
+          ? it->second
+          :  _state.meta().transaction(snapshot.data()->id);
         // this->_sender is set true when creating a transaction on this device.
         if (this->_sender)
         {
@@ -479,6 +473,8 @@ namespace surface
                 new PeerReceiveMachine(*this, this->_id, peer_data));
           }
         }
+        this->on_transaction_update(
+          std::make_shared<infinit::oracles::PeerTransaction>(data));
       }
       else if (auto link_data =
                std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
