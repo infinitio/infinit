@@ -32,7 +32,8 @@ namespace surface
       _peer_online("peer online"),
       _peer_offline("peer offline"),
       _peer_reachable("peer reachable"),
-      _peer_unreachable("peer unreachable")
+      _peer_unreachable("peer unreachable"),
+      _attempt(0)
     {
       // Online / Offline barrier can't be initialized here, because
       // TransactionMachine is abstract.

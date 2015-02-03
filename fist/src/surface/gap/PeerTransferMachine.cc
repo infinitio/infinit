@@ -141,6 +141,7 @@ namespace surface
     std::unique_ptr<station::Host>
     PeerTransferMachine::_connect()
     {
+      ++_attempt;
       ELLE_TRACE_SCOPE("%s: connect to peer", *this);
       std::vector<std::unique_ptr<Round>> rounds;
       rounds.emplace_back(new AddressRound("local", this->peer_local_endpoints()));
@@ -182,12 +183,14 @@ namespace surface
                 ELLE_ASSERT_EQ(host, nullptr);
                 host = std::move(res);
                 found.open();
-                if (this->_owner.state().metrics_reporter())
+                bool skip_report = (_attempt > 10 && _attempt % (unsigned)pow(10, (unsigned)log10(_attempt)));
+                if (!skip_report && this->_owner.state().metrics_reporter())
                 {
                   this->_owner.state().metrics_reporter()->transaction_connected(
-                  this->_owner.transaction_id(),
-                  round->name()
-                );
+                    this->_owner.transaction_id(),
+                    round->name(),
+                    _attempt
+                    );
                 }
                 ELLE_TRACE("%s: connected to peer with %s",
                            *this, *round);

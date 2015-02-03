@@ -513,17 +513,22 @@ namespace surface
       float initial_progress = this->frete().progress();
       // Canceling from within RPC error handler is troublesome, do it async.
       bool must_cancel = false;
-      if (auto& mr = state().metrics_reporter())
+      int attempt = _transfer_machine->attempt();
+      bool skip_report = (attempt > 10 && attempt % (unsigned)pow(10, (unsigned)log10(attempt)));
+      auto& mr = state().metrics_reporter();
+      if (mr && !skip_report)
       {
         auto now = boost::posix_time::microsec_clock::universal_time();
         mr->transaction_transfer_begin(
           this->transaction_id(),
           infinit::metrics::TransferMethodP2P,
-          float((now - start_time).total_milliseconds()) / 1000.0f);
+          float((now - start_time).total_milliseconds()) / 1000.0f,
+          attempt);
       }
       elle::SafeFinally write_end_message([&,this]
         {
-          if (auto& mr = state().metrics_reporter())
+          auto& mr = state().metrics_reporter();
+          if (mr && !skip_report)
           {
             ELLE_ASSERT_NEQ(exit_reason, boost::none); // all codepath set the boost::optional
             auto now = boost::posix_time::microsec_clock::universal_time();
@@ -534,7 +539,8 @@ namespace surface
                                          duration,
                                          total_bytes_transfered,
                                          *exit_reason,
-                                         exit_message);
+                                         exit_message,
+                                         attempt);
           }
         });
       // Handler for exceptions thrown by registered RPC procedures
@@ -688,7 +694,8 @@ namespace surface
           mr->transaction_transfer_begin(
             this->transaction_id(),
             infinit::metrics::TransferMethodCloud,
-            float((now - start_time).total_milliseconds()) / 1000.0f);
+            float((now - start_time).total_milliseconds()) / 1000.0f
+            );
         }
         /* Pipelined cloud upload with periodic local snapshot update
         */

@@ -85,7 +85,8 @@ namespace infinit
 
       void
       _transaction_connected(std::string const& transaction_id,
-                             std::string const& connection_method) override;
+                             std::string const& connection_method,
+                             int attempt) override;
 
       void
       _link_transaction_created(std::string const& transaction_id,
@@ -119,7 +120,8 @@ namespace infinit
       void
       _transaction_transfer_begin(std::string const& transaction_id,
                                  TransferMethod method,
-                                 float initialization_time) override;
+                                 float initialization_time,
+                                 int attempt) override;
 
       void
       _transaction_transfer_end(std::string const& transaction_id,
@@ -127,7 +129,8 @@ namespace infinit
                                float duration,
                                uint64_t bytes_transfered,
                                TransferExitReason reason,
-                               std::string const& message) override;
+                               std::string const& message,
+                               int attempt) override;
       void
       _aws_error(std::string const& transaction_id,
                 std::string const& operation,
