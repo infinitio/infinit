@@ -693,6 +693,7 @@ class Mixin:
         fmt = 'changing final status %s to %s not permitted'
         response(403, {'reason': fmt % args})
       diff = {}
+      operation = {}
       if status == transaction_status.ACCEPTED:
         diff.update(self.on_accept(transaction = transaction,
                                    user = user,
@@ -720,6 +721,8 @@ class Mixin:
           transaction['sender_id'],
           counts = ['reached_peer', 'reached'],
           time = False)
+      if status in transaction_status.final:
+        operation["$unset"] = {"nodes": 1}
       # Don't override accepted with cloud_buffered.
       if status == transaction_status.CLOUD_BUFFERED and \
          transaction['status'] == transaction_status.ACCEPTED:
@@ -733,6 +736,7 @@ class Mixin:
       # Don't update with an empty dictionary: it would empty the
       # object.
       if diff:
+        operation["$set"] = diff
         if status in transaction_status.final:
           for i in ['recipient_id', 'sender_id']:
             self.__complete_transaction_stats(transaction[i],
@@ -743,7 +747,7 @@ class Mixin:
                                             transaction)
         transaction = self.database.transactions.find_and_modify(
           {'_id': transaction['_id']},
-          {'$set': diff},
+          operation,
           new = True,
         )
         elle.log.debug("transaction updated")
