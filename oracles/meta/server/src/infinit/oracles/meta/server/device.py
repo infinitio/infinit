@@ -96,7 +96,6 @@ class Mixin:
       device = {
         'id': id,
         'name': name.strip(),
-        'owner': owner['_id'],
         'passport': papier.generate_passport(
           id,
           name,

@@ -505,7 +505,6 @@ class User(Client):
     device = self.device
     assert res['name'] == device['name']
     assert res['id'] == device['id']
-    assert res['owner'] == device['owner']
     assert res['passport'] == device['passport']
 
   @property
