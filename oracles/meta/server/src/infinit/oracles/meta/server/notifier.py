@@ -28,7 +28,7 @@ class Notifier:
            if production else conf.INFINIT_APS_CERT_PATH
     self.__database = database
     self.__apns = apns.APNs(
-      use_sandbox = True,
+      use_sandbox = not production,
       cert_file = cert)
 
   @property
