@@ -148,7 +148,6 @@ class Notifier:
     elif str(owner) == recipient_id:
       if status not in [transaction_status.INITIALIZED]:
         return None
-      content_available = True
       badge = 1
       sound = 'default'
     else:
