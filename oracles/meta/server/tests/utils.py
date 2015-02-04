@@ -524,7 +524,7 @@ class User(Client):
     try:
       res = self.data
       assert res['success']
-      assert str(self.device_id) in map(lambda x: x['id'], res['devices'])
+      assert str(self.device_id) in res['devices']
       return True
     except HTTPException as e:
       assert e.status == 403
