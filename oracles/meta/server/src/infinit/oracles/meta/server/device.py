@@ -21,13 +21,14 @@ class Mixin:
              id,
              owner = None,
              ensure_existence = True,
+             include_passport = False,
              **kwargs):
     if isinstance(id, uuid.UUID):
       id = str(id)
     query = {'devices.id': id}
     if owner is not None:
       assert isinstance(owner, bson.ObjectId)
-      if self.user is not None and self.user['_id'] == owner:
+      if self.user is not None and self.user['_id'] == owner and not include_passport:
         # No need to query the DB in that case
         matches = list(filter(lambda x: x['id'] == id, self.user['devices']))
         if ensure_existence and len(matches) == 0:
@@ -69,7 +70,8 @@ class Mixin:
     assert isinstance(id, uuid.UUID)
     try:
       return self.success(self.device(id = str(id),
-                                      owner = self.user['_id']))
+                                      owner = self.user['_id'],
+                                      include_passport = True))
     except error.Error as e:
       self.fail(*e.args)
 
@@ -171,11 +173,13 @@ class Mixin:
       device = self.device(id = str(id), owner = user['_id'])
     except error.Error as e:
       self.fail(*e.args)
-    self.database.users.update({'_id': user['_id'], 'devices.id': str(id)},
+    user = self.database.users.find_and_modify(
+                               {'_id': user['_id'], 'devices.id': str(id)},
                                {"$set": {"devices.$.name": name}})
+    passport = list(filter(lambda x: x['id'] == str(id), user['devices']))[0]['passport']
     return self.success({
         'id': str(id),
-        'passport': device['passport'],
+        'passport': passport,
         'name' : name,
       })
 

@@ -1124,7 +1124,7 @@ class Mixin:
     ensure_existence -- if set, raise if user is invald.
     """
     email = email.lower().strip()
-    user = self.database.users.find_one({'accounts.id': email})
+    user = self.database.users.find_one({'accounts.id': email}, fields={'devices.passport': 0})
     if ensure_existence:
       self.__ensure_user_existence(user)
     return user
