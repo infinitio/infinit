@@ -149,24 +149,23 @@ class Mixin:
       # If creation process was interrupted, generate identity now.
       if 'public_key' not in user:
         self.__generate_identity(user['_id'], email, password)
-      query = {'id': str(device_id), 'owner': user['_id']}
       elle.log.debug("%s: look for session" % email)
-      device = self.database.devices.find_and_modify(
-        query,
-        {'$set': {'push_token': device_push_token}},
+      usr = self.database.users.find_and_modify(
+        {'_id': user['_id'], 'devices.id': str(device_id)},
+        {'$set': {'devices.$.push_token': device_push_token}},
       )
-      if device is None:
+      if usr is None:
         elle.log.trace("user logged with an unknown device")
         device = self._create_device(
           id = device_id,
           owner = user,
           device_push_token = device_push_token)
       else:
-        assert str(device_id) in user['devices']
+        device = list(filter(lambda x: x['id'] == str(device_id), usr['devices']))[0]
       # Remove potential leaked previous session.
-      self.sessions.remove({'email': email, 'device': device['_id']})
+      self.sessions.remove({'email': email, 'device': device['id']})
       elle.log.debug("%s: store session" % email)
-      bottle.request.session['device'] = device['_id']
+      bottle.request.session['device'] = device['id']
       bottle.request.session['email'] = email
 
       user = self.user
@@ -1643,7 +1642,7 @@ class Mixin:
         'fullname': user['fullname'],
         'handle': user['handle'],
         'email': user['email'],
-        'devices': user.get('devices', []),
+        'devices': [x['id'] for x in user.get('devices', [])],
         'networks': user.get('networks', []),
         'identity': user['identity'],
         'public_key': user['public_key'],
@@ -1792,7 +1791,6 @@ class Mixin:
       user = self.database.users.find_one({"_id": user_id})
       assert user is not None
       device = self.device(id = str(device_id), owner = user_id)
-      assert str(device_id) in user['devices']
       update_action = status and '$addToSet' or '$pull'
       action = {update_action: {'connected_devices': str(device_id)}}
       # If we're connecting a device, then we are connected.
@@ -2101,15 +2099,17 @@ class Mixin:
       did = bottle.request.session.get('device')
       raise Exception('device not found from _id %s' %(did))
     user = self.user
-    last_sync = self.database.devices.find_and_modify(
-      query = {'id': device['id'], 'owner': user['_id']},
+    user2 = self.database.users.find_and_modify(
+      query = {'devices.id': device['id'], '_id': user['_id']},
       update = {
         '$set': {
-          'last_sync': {
+          'devices.$.last_sync': {
             'timestamp': time.time(),
             'date': self.now,
           }
-        }}).get('last_sync', {'timestamp': 1, 'date': datetime.date.fromtimestamp(1)})
+        }})
+    device = list(filter(lambda x: x['id'] == device['id'], user2['devices']))[0]
+    last_sync = device.get('last_sync', {'timestamp': 1, 'date': datetime.date.fromtimestamp(1)})
     # If it's the initialization, pull history, if not, only the one modified
     # since last synchronization!
     res = {

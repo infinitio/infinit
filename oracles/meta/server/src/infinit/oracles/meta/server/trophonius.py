@@ -66,9 +66,9 @@ class Mixin:
     with elle.log.log("unregister trophonius %s" % uid):
       assert isinstance(uid, uuid.UUID)
       elle.log.debug("trophonius %s: unregister all users" % uuid)
-      self.database.devices.update({'trophonius': str(uid)},
-                                   {'$set': {'trophonius': None}},
-                                   multi = True)
+      self.database.users.update({'devices.trophonius': str(uid)},
+                                 {'$set': {'devices.$.trophonius': None}},
+                                 )
       res = self.database.trophonius.remove({"_id": str(uid)})
       return self.success()
 
@@ -85,17 +85,17 @@ class Mixin:
       assert isinstance(uid, uuid.UUID)
       assert isinstance(device, uuid.UUID)
       version = version and OrderedDict(sorted(version.items()))
-      self.database.devices.update(
+      self.database.users.update(
         {
-          'id': str(device),
-          'owner': id,
+          'devices.id': str(device),
+          '_id': id,
         },
         {
           '$set':
           {
-            'trophonius': str(uid),
-            'version': version,
-            'os': os,
+            'devices.$.trophonius': str(uid),
+            'devices.$.version': version,
+            'devices.$.os': os,
           }
         }
       )
@@ -116,13 +116,13 @@ class Mixin:
                         (uid, id, device)):
       assert isinstance(uid, uuid.UUID)
       assert isinstance(device, uuid.UUID)
-      self.database.devices.update(
+      self.database.users.update(
         {
-          'id': str(device),
-          'owner': id,
-          'trophonius': str(uid),
+          'devices.id': str(device),
+          '_id': id,
+          'devices.trophonius': str(uid),
         },
-        {'$set': {'trophonius': None}}
+        {'$set': {'devices.$.trophonius': None}}
       )
       try:
         self.set_connection_status(user_id = id,
@@ -181,12 +181,13 @@ class Mixin:
                            version['minor'],
                            version['subminor'])
 
-    clients = self.database.devices.aggregate([
-      {'$match': {'trophonius': {'$in': [t['_id'] for t in trophoniuses]}}},
+    clients = self.database.users.aggregate([
+      {'$unwind': '$devices'},
+      {'$match': {'devices.trophonius': {'$in': [t['_id'] for t in trophoniuses]}}},
       {
         '$group':
         {
-          '_id': {'os': '$os', 'version': '$version'},
+          '_id': {'os': '$devices.os', 'version': '$devices.version'},
           'count': {'$sum': 1},
         }
       },

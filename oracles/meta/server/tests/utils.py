@@ -505,7 +505,6 @@ class User(Client):
     device = self.device
     assert res['name'] == device['name']
     assert res['id'] == device['id']
-    assert res['_id'] == device['_id']
     assert res['owner'] == device['owner']
     assert res['passport'] == device['passport']
 
@@ -526,7 +525,7 @@ class User(Client):
     try:
       res = self.data
       assert res['success']
-      assert str(self.device_id) in res['devices']
+      assert str(self.device_id) in map(lambda x: x['id'], res['devices'])
       return True
     except HTTPException as e:
       assert e.status == 403

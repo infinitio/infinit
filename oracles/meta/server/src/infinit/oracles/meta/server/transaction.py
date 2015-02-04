@@ -256,7 +256,7 @@ class Mixin:
             networks = [],
             swaggers = {},
             accounts = [{'type':'email', 'id':peer_email}],
-            features = self._roll_features(True)
+            features = self._roll_features(True),
           )
           recipient = self.database.users.find_one(recipient_id)
           # Post new_ghost event to metrics
@@ -533,7 +533,7 @@ class Mixin:
       if device_id is None or device_name is None:
         self.bad_request()
       device_id = uuid.UUID(device_id)
-      if str(device_id) not in user['devices']:
+      if str(device_id) not in map(lambda x: x['id'], user['devices']):
         raise error.Error(error.DEVICE_DOESNT_BELONG_TO_YOU)
       self.__update_transaction_stats(
         user,
