@@ -27,6 +27,12 @@ class Mixin:
     query = {'devices.id': id}
     if owner is not None:
       assert isinstance(owner, bson.ObjectId)
+      if self.user is not None and self.user['_id'] == owner:
+        # No need to query the DB in that case
+        matches = list(filter(lambda x: x['id'] == id, self.user['devices']))
+        if ensure_existence and len(matches) == 0:
+          raise error.Error(error.DEVICE_NOT_FOUND)
+        return (len(matches) != 0) and matches[0] or None
       query['_id'] = owner
     user = self.database.users.find_one(query, **kwargs)
     if ensure_existence and user is None:
