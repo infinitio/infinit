@@ -153,32 +153,36 @@ namespace surface
             elle::AtomicFile source(snapshot_path / "transaction.snapshot");
             if (!source.exists())
               throw elle::Error("transaction snapshot is missing.");
-            source.read() << [&] (elle::AtomicFile::Read& read)
-            {
-              elle::serialization::json::SerializerIn input
-                (read.stream(), false);
-              Transaction::Snapshot snapshot(input);
-              auto const& data = *snapshot.data();
-              if (!data.id.empty())
+            Transaction::Snapshot snapshot = [&] () {
+              return source.read() << [&] (elle::AtomicFile::Read& read)
               {
-                auto it = std::find_if(
-                  std::begin(this->_transactions),
-                  std::end(this->_transactions),
-                  [&] (TransactionConstPair const& pair)
-                  {
-                    return (pair.second->data()->id == data.id);
-                  });
-                if (it != std::end(this->_transactions))
-                  throw elle::Exception(
-                    elle::sprintf(
-                      "duplicate snapshot for transaction %s", data.id));
-              }
-              auto _id = generate_id();
-              this->_transactions.emplace(
-                _id,
-                elle::make_unique<Transaction>(
-                  *this, _id, std::move(snapshot), snapshot_path));
-            };
+                using namespace elle::serialization;
+                json::SerializerIn input(read.stream(), false);
+                return Transaction::Snapshot(input);
+              };
+            }();
+            auto const& data = *snapshot.data();
+            if (data.id.empty())
+              throw elle::Error("transaction id was empty");
+            if (!data.id.empty())
+            {
+              auto it = std::find_if(
+                std::begin(this->_transactions),
+                std::end(this->_transactions),
+                [&] (TransactionConstPair const& pair)
+                {
+                  return (pair.second->data()->id == data.id);
+                });
+              if (it != std::end(this->_transactions))
+                throw elle::Exception(
+                  elle::sprintf(
+                    "duplicate snapshot for transaction %s", data.id));
+            }
+            auto _id = generate_id();
+            this->_transactions.emplace(
+              _id,
+              elle::make_unique<Transaction>(
+                *this, _id, std::move(snapshot), snapshot_path));
           }
           catch (elle::Exception const& ) // FIXME: should be elle::Error
           {
