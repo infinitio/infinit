@@ -230,9 +230,6 @@ class Mixin:
     with elle.log.trace("create transaction (recipient %s)" % id_or_email):
       id_or_email = id_or_email.strip().lower()
 
-      # if self.database.devices.find_one(bson.ObjectId(device_id)) is None:
-      #   return self.fail(error.DEVICE_NOT_FOUND)
-
       new_user = False
       is_ghost = False
       invitee = 0

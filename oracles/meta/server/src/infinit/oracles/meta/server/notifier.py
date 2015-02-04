@@ -69,7 +69,6 @@ class Notifier:
           critera,
           #fields = ['devices.id', 'devices.owner', 'devices.trophonius', 'devices.push_token'],
       ):
-        print('usr: %s' % (usr))
         if 'devices' not in usr:
           continue
         devices = usr['devices']

@@ -223,16 +223,6 @@ class Meta(bottle.Bottle,
                                        unique = False)
 
     #---------------------------------------------------------------------------
-    # Devices
-    #---------------------------------------------------------------------------
-    # - Default search.
-    self.__database.devices.ensure_index([("id", 1), ("owner", 1)],
-                                         unique = True)
-    # - Trophonius disconnection.
-    self.__database.devices.ensure_index([("trophonius", 1)],
-                                         unique = False)
-
-    #---------------------------------------------------------------------------
     # Transactions
     #---------------------------------------------------------------------------
     # - ??
