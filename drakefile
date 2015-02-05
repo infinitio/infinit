@@ -181,6 +181,7 @@ def configure(cxx_toolkit = None,
     boost_system = drake.cxx.Config(boost.config_system(static = True))
     boost_test = drake.cxx.Config(boost.config_test(static = True))
     boost_thread = drake.cxx.Config(boost.config_thread(static = True))
+    boost_regex = drake.cxx.Config(boost.config_regex(static = True))
   else:
     boost_date_time = drake.cxx.Config(boost.config_date_time(link = False))
     boost_date_time.library_add(copy_lib(boost.date_time_dynamic))
@@ -584,6 +585,7 @@ def configure(cxx_toolkit = None,
   gap_cxx_config_libs += boost_signals
   gap_cxx_config_libs += boost_system
   gap_cxx_config_libs += boost_thread
+  gap_cxx_config_libs += boost_regex
   if cxx_toolkit.os == drake.os.windows:
     gap_cxx_config_libs.lib('shlwapi')
     gap_cxx_config_libs.lib('ws2_32')
