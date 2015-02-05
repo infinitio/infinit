@@ -1095,37 +1095,41 @@ class Mixin:
     if user is None:
       raise error.Error(error.UNKNOWN_USER)
 
-  def _user_by_id(self, _id, ensure_existence = True):
+  def _user_by_id(self, _id, ensure_existence = True, avatar = False):
     """Get a user using by id.
 
     _id -- the _id of the user.
     ensure_existence -- if set, raise if user is invald.
     """
     assert isinstance(_id, bson.ObjectId)
-    user = self.database.users.find_one(_id)
+    fields = (not avatar) and {'avatar': False, 'small_avatar': False} or {'avatar': False}
+    user = self.database.users.find_one(_id, fields = fields)
     if ensure_existence:
       self.__ensure_user_existence(user)
     return user
 
-  def user_by_public_key(self, key, ensure_existence = True):
+  def user_by_public_key(self, key, ensure_existence = True, avatar = False):
     """Get a user from is public_key.
 
     public_key -- the public_key of the user.
     ensure_existence -- if set, raise if user is invald.
     """
-    user = self.database.users.find_one({'public_key': key})
+    fields = (not avatar) and {'avatar': False, 'small_avatar': False} or {'avatar': False}
+    user = self.database.users.find_one({'public_key': key}, fields = fields)
     if ensure_existence:
       self.__ensure_user_existence(user)
     return user
 
-  def user_by_email(self, email, ensure_existence = True):
+  def user_by_email(self, email, ensure_existence = True, avatar = False):
     """Get a user with given email.
 
     email -- the email of the user.
     ensure_existence -- if set, raise if user is invald.
     """
     email = email.lower().strip()
-    user = self.database.users.find_one({'accounts.id': email})
+    fields = (not avatar) and {'avatar': False, 'small_avatar': False} or {'avatar': False}
+    user = self.database.users.find_one({'accounts.id': email},
+                                        fields = fields)
     if ensure_existence:
       self.__ensure_user_existence(user)
     return user
@@ -1134,17 +1138,19 @@ class Mixin:
                              email,
                              password,
                              password_hash,
-                             ensure_existence = True):
-    """Get a user from is email.
+                             ensure_existence = True,
+                             avatar = False):
+    """Get a user from his email.
 
     email -- The email of the user.
     password -- The password for that account.
     ensure_existence -- if set, raise if user is invald.
     """
+    fields = (not avatar) and {'avatar': False, 'small_avatar': False} or {'avatar': False}
     if password_hash is not None:
       user = self.database.users.find_one({
         'email': email,
-        'password_hash': utils.password_hash(password_hash)})
+        'password_hash': utils.password_hash(password_hash)}, fields = fields)
       if user is not None:
         return user
       user = self.database.users.find_and_modify(
@@ -1157,7 +1163,8 @@ class Mixin:
             'password_hash': utils.password_hash(password_hash),
           },
         },
-        new = True)
+        new = True,
+        fields = fields)
       if user is None and ensure_existence:
         raise error.Error(error.EMAIL_PASSWORD_DONT_MATCH)
       return user
@@ -1165,18 +1172,20 @@ class Mixin:
       user = self.database.users.find_one({
         'email': email,
         'password': hash_password(password),
-      })
+      }, fields = fields)
       if user is None and ensure_existence:
         raise error.Error(error.EMAIL_PASSWORD_DONT_MATCH)
       return user
 
-  def user_by_handle(self, handle, ensure_existence = True):
+  def user_by_handle(self, handle, ensure_existence = True, avatar = False):
     """Get a user from is handle.
 
     handle -- the handle of the user.
     ensure_existence -- if set, raise if user is invald.
     """
-    user = self.database.users.find_one({'lw_handle': handle.lower()})
+    fields = (not avatar) and {'avatar': False, 'small_avatar': False} or {'avatar': False}
+    user = self.database.users.find_one({'lw_handle': handle.lower()},
+                                        fields = fields)
     if ensure_existence:
       self.__ensure_user_existence(user)
     return user
@@ -1699,7 +1708,7 @@ class Mixin:
                  id: bson.ObjectId,
                  date: int = 0,
                  no_place_holder: bool = False):
-    user = self._user_by_id(id, ensure_existence = False)
+    user = self._user_by_id(id, ensure_existence = False, avatar = True)
     if user is None:
       if no_place_holder:
         return self.not_found()
@@ -1715,32 +1724,11 @@ class Mixin:
       response.content_type = 'image/png'
       return bytes(small_image)
     else:
-      image = user.get('avatar')
-      if image:
-        from io import BytesIO
-        from PIL import Image
-        image_data = BytesIO(bytes(image))
-        image_data.seek(0)
-        small_image = self._small_avatar(Image.open(image_data))
-        small_out = BytesIO()
-        small_image.save(small_out, 'PNG')
-        small_out.seek(0)
-        res = self.database.users.find_and_modify(
-          {'_id': user['_id']},
-          {'$set': {
-            'small_avatar': bson.binary.Binary(small_out.read()),
-          }},
-          new = True,
-          fields = {'small_avatar': True, '_id': False})['small_avatar']
-        from bottle import response
-        response.content_type = 'image/png'
-        return bytes(res)
-      else:
-        if no_place_holder:
-          return self.not_found()
-        else: # Return the default avatar for backwards compatibility (< 0.9.2).
-          from bottle import static_file
-          return static_file('place_holder_avatar.png',
+      if no_place_holder:
+        return self.not_found()
+      else: # Return the default avatar for backwards compatibility (< 0.9.2).
+        from bottle import static_file
+        return static_file('place_holder_avatar.png',
                              root = os.path.dirname(__file__),
                              mimetype = 'image/png')
 
