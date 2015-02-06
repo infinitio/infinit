@@ -170,9 +170,9 @@ class Mixin:
       bottle.request.session['email'] = email
 
       user = self.user
-      self.database.users.find_and_modify(
-        query = {'_id': user['_id']},
-        update = {'$set': {'last_connection': time.time(),}})
+      self.database.users.update(
+        {'_id': user['_id']},
+        {'$set': {'last_connection': time.time(),}})
       elle.log.trace("%s: successfully connected as %s on device %s" %
                      (email, user['_id'], device['id']))
       if OS is not None and OS in invitation.os_lists.keys():
@@ -422,7 +422,7 @@ class Mixin:
         conf.INFINIT_AUTHORITY_PATH,
         conf.INFINIT_AUTHORITY_PASSWORD
         )
-      self.database.users.find_and_modify(
+      self.database.users.update(
         {
           '_id': user_id,
         },
@@ -453,12 +453,12 @@ class Mixin:
       try:
         user = self.__account_from_hash(hash)
         elle.log.trace('confirm %s\'s account' % user['email'])
-        self.database.users.find_and_modify(
-          query = {"email_confirmation_hash": hash},
-          update = {
+        self.database.users.update(
+          {"email_confirmation_hash": hash},
+          {
             '$unset': {'unconfirmed_email_leeway': True},
             '$set': {'email_confirmed': True}
-            })
+          })
         return self.success()
       except error.Error as e:
         self.fail(*e.args)
@@ -667,7 +667,7 @@ class Mixin:
             recipient_ids = {res['_id']},
           )
         self.user_delete(user, merge_with = res)
-      self.database.users.find_and_modify(
+      self.database.users.update(
         {
           'pending_auxiliary_emails.hash': hash
         },
@@ -776,7 +776,7 @@ class Mixin:
             "user_fullname": user['fullname']
           }
         })
-      self.database.users.find_and_modify(
+      self.database.users.update(
         { "_id": user['_id'] },
         {
           "$set": {
@@ -940,7 +940,7 @@ class Mixin:
       operation['$unset'] = {
         'password_hash': True
       }
-    self.database.users.find_and_modify(
+    self.database.users.update(
       {'_id': user['_id']},
       operation
     )
@@ -1593,7 +1593,7 @@ class Mixin:
     update = {
       '$set': {'handle': handle, 'lw_handle': lw_handle, 'fullname': fullname}
     }
-    self.database.users.find_and_modify(
+    self.database.users.update(
       {'_id': user['_id']},
       update)
     return self.success()
@@ -1752,9 +1752,9 @@ class Mixin:
     out.seek(0)
     small_out.seek(0)
     import bson.binary
-    res = self.database.users.find_and_modify(
-      query = {'_id': self.user['_id']},
-      update = {'$set': {
+    self.database.users.update(
+      {'_id': self.user['_id']},
+      {'$set': {
         'avatar': bson.binary.Binary(out.read()),
         'small_avatar': bson.binary.Binary(small_out.read()),
       }})
