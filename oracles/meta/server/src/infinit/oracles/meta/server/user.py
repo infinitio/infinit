@@ -169,13 +169,12 @@ class Mixin:
       bottle.request.session['device'] = device['_id']
       bottle.request.session['email'] = email
 
-      user = self.user
       self.database.users.update(
         {'_id': user['_id']},
         {'$set': {'last_connection': time.time(),}})
       elle.log.trace("%s: successfully connected as %s on device %s" %
                      (email, user['_id'], device['id']))
-      if OS is not None and OS in invitation.os_lists.keys():
+      if OS is not None and OS in invitation.os_lists.keys() and ('os' not in user or OS not in user['os']):
         elle.log.debug("connected on os: %s" % OS)
         res = self.database.users.find_and_modify({"_id": user['_id'], "os.%s" % OS: None},
                                                   {"$addToSet": {"os": OS}})
