@@ -30,6 +30,15 @@ namespace surface
       status(status)
     {}
 
+    Notification::Type Transaction::RecipientChangedNotification::type =
+      NotificationType_TransactionRecipientChanged;
+    Transaction::RecipientChangedNotification::RecipientChangedNotification(
+      uint32_t id,
+      uint32_t recipient_id):
+      id(id),
+      recipient_id(recipient_id)
+    {}
+
     std::set<infinit::oracles::Transaction::Status>
     Transaction::recipient_final_statuses({
       infinit::oracles::Transaction::Status::rejected,
@@ -418,16 +427,6 @@ namespace surface
       {
         // Check for an updated final status from meta
         ELLE_ASSERT(state.synchronize_response() != nullptr);
-        auto it = state.synchronize_response()->transactions.find(snapshot.data()->id);
-        auto data = (it != state.synchronize_response()->transactions.end())
-          ? it->second
-          :  _state.meta().transaction(snapshot.data()->id);
-        if (sender_final_statuses.find(data.status) != sender_final_statuses.end())
-        {
-          ELLE_TRACE("%s: meta returned a final status %s", *this, data.status);
-          _data = std::make_shared<infinit::oracles::PeerTransaction>(data);
-          return;
-        }
         using TransactionStatus = infinit::oracles::Transaction::Status;
         if (this->_data->is_ghost &&
             this->_data->status == TransactionStatus::ghost_uploaded &&
@@ -436,6 +435,10 @@ namespace surface
           ELLE_TRACE("%s sender of ghost_uploaded transaction", *this);
           return;
         }
+        auto it = state.synchronize_response()->transactions.find(snapshot.data()->id);
+        auto data = (it != state.synchronize_response()->transactions.end())
+          ? it->second
+          :  _state.meta().transaction(snapshot.data()->id);
         // this->_sender is set true when creating a transaction on this device.
         if (this->_sender)
         {
@@ -470,6 +473,8 @@ namespace surface
                 new PeerReceiveMachine(*this, this->_id, peer_data));
           }
         }
+        this->on_transaction_update(
+          std::make_shared<infinit::oracles::PeerTransaction>(data));
       }
       else if (auto link_data =
                std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
@@ -664,9 +669,26 @@ namespace surface
           // To avoid weird rollbacks in status, just ignore that case.
           auto rollback_status = (this->_data->status == Status::cloud_buffered &&
                                   peer->status == Status::initialized);
+          auto data = std::dynamic_pointer_cast<PeerTransaction>(this->_data);
+          std::string previous_recipient_id{data->recipient_id};
           *std::dynamic_pointer_cast<PeerTransaction>(this->_data) = *peer;
           if (rollback_status)
             this->_data->status = Status::cloud_buffered;
+          if (peer->recipient_id != previous_recipient_id)
+          {
+            ELLE_TRACE_SCOPE("recipient id changed: %s -> %s",
+                             peer->recipient_id != previous_recipient_id);
+            // Merge recipient if the new one is not in your list.
+            // XXX: Because we should always receive a new_swagger notification
+            // this code is just a security.
+            auto& recipient = this->state().user(peer->recipient_id);
+            // XXX: Waiting for Chris' TransactionNotification.
+            // For the moment, inform the frontend that something changed on the
+            // notification and let it check if hte recipient is different.
+            this->state().enqueue(
+              RecipientChangedNotification(
+                this->id(), this->state().user_indexes().at(recipient.id)));
+          }
         }
         else
           ELLE_ERR("%s: unknown transaction type: %s",

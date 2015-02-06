@@ -1,0 +1,160 @@
+#!/usr/bin/env python3
+
+from utils import Meta, Trophonius, User, NoOpMailer, HTTPException
+from pprint import pprint
+
+from bson.objectid import ObjectId
+from infinit.oracles.meta import error
+from infinit.oracles.meta.server.transaction_status import CANCELED
+
+from infinit.oracles.notification import notifications
+for name, value in notifications.items():
+  globals()[name.upper()] = value
+
+from infinit.oracles.meta.server.transaction_status import INITIALIZED, ACCEPTED, FINISHED
+
+class MailService(NoOpMailer):
+
+  def __init__(self):
+    self.hashes = {}
+    super().__init__(True)
+
+  def template_message(self, template_message, message):
+    merges = {}
+    for entry in message['merge_vars'][0]['vars']:
+      merges[entry['name']] = entry['content']
+    if template_message == 'add-auxiliary-email-address':
+       self.hashes.update(
+         {
+           merges['auxiliary_email_address']: merges['hash']
+         })
+
+# Normal.
+with Meta(enable_emails = True) as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  bob = User(meta, 'bob@infinit.io')
+  # Spoiler: Eve is bob...
+  eve = 'eve@infinit.io'
+  alice.sendfile(eve)
+  bob.login()
+  assert bob.get('users/%s' % eve)['register_status'] == 'ghost'
+  meta.mailer = MailService()
+  bob.post('user/accounts/email/add', {'email': eve})
+  bob.post('user/accounts/email/validate/%s' % meta.mailer.hashes[eve])
+  # Spoiler: Eve is bob...
+  assert bob.get('users/%s' % eve)['register_status'] == 'ok'
+  assert bob.id == bob.get('users/%s' % eve)['_id']
+  assert len(bob.swaggers) == 1
+  assert bob.swaggers[0] == alice.id
+
+# Try to merge an existing user.
+with Meta(enable_emails = True) as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  bob = User(meta, 'bob@infinit.io')
+  try:
+    bob.post('user/accounts/email/add', {'email': alice.email})
+    assert False
+  except HTTPException:
+    pass
+
+  try:
+    bob.post('user/accounts/email/add', {'email': bob.email})
+    assert False
+  except HTTPException:
+    pass
+
+  eve = 'eve@infinit.io'
+  alice.sendfile(eve)
+  meta.mailer = MailService()
+  bob.login()
+  bob.post('user/accounts/email/add', {'email': eve})
+  # But eve registers...
+  eve = User(meta, eve)
+  try:
+    bob.post('user/accounts/email/validate/%s' % meta.mailer.hashes[eve.email])
+    assert False
+  except HTTPException:
+    pass
+
+# Notifications.
+with Meta(enable_emails = True) as meta:
+  with Trophonius(meta) as trophonius:
+    alice = User(meta, 'alice@infinit.io')
+    alice.login(trophonius = trophonius)
+    bob = User(meta, 'bob@infinit.io')
+    bob.login(trophonius = trophonius)
+
+    trophonius.connect_user(alice)
+    trophonius.connect_user(bob)
+
+    email = 'navet@infinit.io'
+    alice.sendfile(email)
+
+    assert alice.next_notification.type == NEW_SWAGGER
+
+    meta.mailer = MailService()
+    bob.post('user/accounts/email/add', {'email': email})
+    bob.post('user/accounts/email/validate/%s' % meta.mailer.hashes[email])
+
+    trophonius.poll()
+    assert len(bob.notifications) == 1
+    assert bob.next_notification.type == NEW_SWAGGER
+
+    # Ghost is now bob.
+    assert alice.next_notification.type == DELETED_SWAGGER
+    assert alice.next_notification.type == NEW_SWAGGER
+
+    email = 'poireau@infinit.io'
+    tr, _ = alice.sendfile(email)
+    alice.transaction_update(tr['_id'], INITIALIZED)
+    # Ghost is a new swagger.
+    assert alice.next_notification.type == NEW_SWAGGER
+    # Transaction notification.
+    assert alice.next_notification.type == PEER_TRANSACTION
+
+    assert len(bob.notifications) == 0
+
+    meta.mailer = MailService()
+    bob.post('user/accounts/email/add', {'email': email})
+    bob.post('user/accounts/email/validate/%s' % meta.mailer.hashes[email])
+
+    # Alice is a bob new swagger.
+    assert bob.next_notification.type == NEW_SWAGGER
+    # Bob get the notification for the ghost transaction.
+    notif = bob.next_notification
+    assert notif.type == PEER_TRANSACTION
+    assert notif.status == INITIALIZED
+    assert notif.sender_id == alice.id
+
+    # Ownership changed.
+    # Fake trophonius is not deterministic...
+    alices_notifications = [alice.next_notification.type,
+                            alice.next_notification.type,
+                            alice.next_notification.type]
+    alices_notifications.sort()
+    expected_notifications = [PEER_TRANSACTION, DELETED_SWAGGER, NEW_SWAGGER]
+    expected_notifications.sort()
+    assert alices_notifications == expected_notifications
+    assert len(alice.notifications) == 0
+
+    # Check if bob can update transaction and get the notifications
+    bob.transaction_update(tr['_id'], ACCEPTED)
+
+    notif = alice.next_notification
+    assert notif.type == PEER_TRANSACTION
+
+    assert notif.status == ACCEPTED
+    notif = bob.next_notification
+    assert notif.type == PEER_TRANSACTION
+    assert notif.status == ACCEPTED
+
+    bob.transaction_update(tr['_id'], FINISHED)
+
+    notif = alice.next_notification
+    assert notif.type == PEER_TRANSACTION
+    assert notif.status == FINISHED
+    notif = bob.next_notification
+    assert notif.type == PEER_TRANSACTION
+    assert notif.status == FINISHED

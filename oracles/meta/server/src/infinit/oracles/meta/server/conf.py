@@ -21,6 +21,14 @@ INFINIT_AUTHORITY_PATH = os.path.join(
     os.path.abspath(os.path.dirname(__file__)),
     "infinit.auth"
 )
+INFINIT_APS_CERT_PATH = os.path.join(
+  os.path.abspath(os.path.dirname(__file__)),
+  'aps.pem',
+)
+INFINIT_APS_CERT_PATH_PRODUCTION = os.path.join(
+  os.path.abspath(os.path.dirname(__file__)),
+  'aps_production.pem',
+)
 
 INFINIT_AUTHORITY_PASSWORD = ""
 

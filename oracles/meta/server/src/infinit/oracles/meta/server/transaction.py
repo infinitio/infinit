@@ -52,6 +52,32 @@ class Mixin:
         self.forbidden('transaction %s doesn\'t belong to you' % id)
     return transaction
 
+  def change_transactions_recipient(self, current_owner, new_owner):
+    # We can't do that as a batch because update won't give us the list
+    # of updated transactions.
+    while True:
+      transaction = self.database.transactions.find_and_modify(
+        {
+          'recipient_id': current_owner['_id']
+        },
+        {
+          '$set': {
+            'recipient_id': new_owner['_id'],
+            'modification_time': self.now,
+            'mtime': time.time(),
+          }
+        },
+        new = True)
+      if transaction is None:
+        return
+      if transaction['status'] != transaction_status.CREATED:
+        self.notifier.notify_some(
+          notifier.PEER_TRANSACTION,
+          recipient_ids = {transaction['sender_id'],
+                           transaction['recipient_id']},
+          message = transaction,
+        )
+
   def cancel_transactions(self, user):
     for transaction in self.database.transactions.find(
       {
@@ -216,14 +242,13 @@ class Mixin:
         elle.log.debug("%s is an email" % id_or_email)
         peer_email = id_or_email.lower().strip()
         # XXX: search email in each accounts.
-        recipient = self.database.users.find_one({'email': peer_email})
+        recipient = self.database.users.find_one({'accounts.id': peer_email})
         # if the user doesn't exist, create a ghost and invite.
 
         if not recipient:
           elle.log.trace("recipient unknown, create a ghost")
           new_user = True
           recipient_id = self._register(
-            _id = self.database.users.save({}),
             email = peer_email,
             fullname = peer_email, # This is safe as long as we don't allow searching for ghost users.
             register_status = 'ghost',
@@ -258,6 +283,13 @@ class Mixin:
 
       if recipient is None:
         return self.fail(error.USER_ID_NOT_VALID)
+      if recipient['register_status'] == 'merged':
+        assert isinstance(recipient['merged_with'], bson.ObjectId)
+        recipient = self.database.users.find_one({
+          '_id': recipient['merged_with']
+        })
+        if recipient is None:
+          return self.fail(error.USER_ID_NOT_VALID)
       if recipient['register_status'] == 'deleted':
         self.gone({
           'reason': 'user %s is deleted' % recipient['_id'],
@@ -277,6 +309,7 @@ class Mixin:
         'recipient_id': recipient['_id'],
         'recipient_fullname': recipient['fullname'],
 
+        'involved': [_id, recipient['_id']],
         # Empty until accepted.
         'recipient_device_id': '',
         'recipient_device_name': '',
@@ -395,18 +428,14 @@ class Mixin:
       user_id = self.user['_id']
       if peer_id is not None:
         query = {
-          '$or':
+          '$and':
           [
-            { 'recipient_id': user_id, 'sender_id': peer_id, },
-            { 'sender_id': user_id, 'recipient_id': peer_id, },
+            { 'involved': user_id},
+            { 'involved': peer_id},
           ]}
       else:
         query = {
-          '$or':
-          [
-            { 'sender_id': user_id },
-            { 'recipient_id': user_id },
-          ]
+          'involved': user_id
         }
       query['status'] = {'$%s' % (negate and 'nin' or 'in'): filter}
       res = self.database.transactions.aggregate([
@@ -664,6 +693,7 @@ class Mixin:
         fmt = 'changing final status %s to %s not permitted'
         response(403, {'reason': fmt % args})
       diff = {}
+      operation = {}
       if status == transaction_status.ACCEPTED:
         diff.update(self.on_accept(transaction = transaction,
                                    user = user,
@@ -691,6 +721,8 @@ class Mixin:
           transaction['sender_id'],
           counts = ['reached_peer', 'reached'],
           time = False)
+      if status in transaction_status.final:
+        operation["$unset"] = {"nodes": 1}
       # Don't override accepted with cloud_buffered.
       if status == transaction_status.CLOUD_BUFFERED and \
          transaction['status'] == transaction_status.ACCEPTED:
@@ -704,6 +736,7 @@ class Mixin:
       # Don't update with an empty dictionary: it would empty the
       # object.
       if diff:
+        operation["$set"] = diff
         if status in transaction_status.final:
           for i in ['recipient_id', 'sender_id']:
             self.__complete_transaction_stats(transaction[i],
@@ -714,7 +747,7 @@ class Mixin:
                                             transaction)
         transaction = self.database.transactions.find_and_modify(
           {'_id': transaction['_id']},
-          {'$set': diff},
+          operation,
           new = True,
         )
         elle.log.debug("transaction updated")
@@ -768,8 +801,8 @@ class Mixin:
       return self.database.transactions.find(
         {
           '$or': [ # this optimizes the request by preventing a full table scan
-            {'sender_device_id': device_id, 'sender_id': user_id},
-            {'recipient_device_id': device_id, 'recipient_id': user_id},
+            {'sender_device_id': str(device_id), 'sender_id': user_id},
+            {'recipient_device_id': str(device_id), 'recipient_id': user_id},
           ],
           "nodes.%s" % self.__user_key(user_id, device_id): {"$exists": True}
         })
@@ -1013,7 +1046,8 @@ class Mixin:
   @require_logged_in
   def cloud_buffer(self, transaction_id : bson.ObjectId,
                    force_regenerate : json_value = True):
-    self._cloud_buffer(transaction_id, self.user, force_regenerate)
+    return self._cloud_buffer(transaction_id, self.user,
+                              force_regenerate)
 
   def _cloud_buffer(self, transaction_id, user, force_regenerate = True):
     """
@@ -1081,15 +1115,11 @@ class Mixin:
     return self.success(credentials)
 
   def _user_transactions(self,
-                         mtime = None,
+                         modification_time = None,
                          limit = 100):
     user_id = self.user['_id']
     query = {
-      '$or':
-      [
-        { 'sender_id': user_id },
-        { 'recipient_id': user_id },
-      ],
+       'involved': user_id
     }
     # XXX: Fix race condition!
     # If the transaction is updated between the 2 calls, it will be in both
@@ -1103,18 +1133,18 @@ class Mixin:
       })
     runnings = self.database.transactions.aggregate([
         {'$match': query},
-        {'$sort': {'mtime': DESCENDING}},
+        {'$sort': {'modification_time': DESCENDING}},
       ])['result']
 
     # Then get the 100 most recent transactions.
     query.update({
       'status': {'$in': transaction_status.final}
       })
-    if mtime:
-      query.update({'mtime': {'$gt': mtime}})
+    if modification_time:
+      query.update({'modification_time': {'$gt': modification_time}})
     finals = self.database.transactions.aggregate([
         {'$match': query},
-        {'$sort': {'mtime': DESCENDING}},
+        {'$sort': {'modification_time': DESCENDING}},
         {'$limit': limit},
       ])['result']
     return {

@@ -679,4 +679,3 @@ class TestMultiDeviceTransfer(unittest.TestCase):
                              credentials = credentials)
 
 utils.run(unittest.main)
-

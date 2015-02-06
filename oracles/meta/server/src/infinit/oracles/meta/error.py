@@ -35,6 +35,8 @@ errors = {
   'unknown_email_confirmation_hash': (-118, "Unknown hash."),
   'unknown_email_address': (-117, "Unknown email address."),
   'email_is_the_same': (-119, "Current email address is the same."),
+  'cannot_delete_your_primary_account': (-120, "You can't delete your primary email."),
+  'email_already_added': (-121, "email_already_added"),
   'email_already_registered': (-10003, "This email has already been taken."),
   'email_not_confirmed': (-105, "Your email has not been confirmed."),
   'email_not_valid': (-210, "This email is not valid."),
