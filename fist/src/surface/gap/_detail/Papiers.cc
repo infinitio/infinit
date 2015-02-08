@@ -31,7 +31,7 @@ namespace surface
       ELLE_TRACE_METHOD(name);
 
       ELLE_DEBUG("update device name to %s", name);
-      std::string passport_path = common::infinit::passport_path(this->me().id);
+      std::string passport_path = common::infinit::passport_path(this->home(), this->me().id);
 
       ELLE_ASSERT(this->_device != nullptr);
 

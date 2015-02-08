@@ -132,6 +132,7 @@ namespace surface
                  std::string const& download_dir,
                  std::unique_ptr<infinit::metrics::Reporter> metrics)
       : _logger_intializer()
+      , _home(common::infinit::home())
       , _meta(meta_protocol, meta_host, meta_port)
       , _meta_message("")
       , _trophonius_fingerprint(trophonius_fingerprint)
@@ -162,7 +163,7 @@ namespace surface
       config.max_mirror_size = 0;
       config.max_compress_size = 0;
       config.disable_upnp = false;
-      std::ifstream fconfig(common::infinit::configuration_path());
+      std::ifstream fconfig(common::infinit::configuration_path(this->home()));
       if (fconfig.good())
       {
         try
@@ -316,15 +317,16 @@ namespace surface
     void
     State::_check_first_launch()
     {
-      if (boost::filesystem::exists(common::infinit::first_launch_path()))
+      if (boost::filesystem::exists(
+            common::infinit::first_launch_path(this->home())))
         return;
 
-      if (!boost::filesystem::exists(common::infinit::home()))
+      if (!boost::filesystem::exists(this->home()))
       {
         boost::filesystem::create_directories(
-          boost::filesystem::path(common::infinit::home()));
+          boost::filesystem::path(this->home()));
       }
-      elle::AtomicFile f(common::infinit::first_launch_path());
+      elle::AtomicFile f(common::infinit::first_launch_path(this->home()));
       f.write() << [] (elle::AtomicFile::Write& write)
         {
           write.stream() << "0\n";
@@ -524,14 +526,15 @@ namespace surface
               throw Exception(gap_internal_error,
                               "Cannot save the identity file.");
             auto user_id = this->_identity->id();
-            elle::io::Path path(elle::os::path::join(
-                                  common::infinit::user_directory(user_id),
-                                  user_id + ".idy"));
+            elle::io::Path path(
+              elle::os::path::join(
+                common::infinit::user_directory(this->home(), user_id),
+                user_id + ".idy"));
             this->_identity->store(path);
           }
 
           std::ofstream identity_infos{
-            common::infinit::identity_path(this->me().id)};
+            common::infinit::identity_path(this->home(), this->me().id)};
 
           if (identity_infos.good())
           {
@@ -545,7 +548,7 @@ namespace surface
           // Device.
           this->_device.reset(new Device(login_response.device));
           std::string passport_path =
-            common::infinit::passport_path(this->me().id);
+            common::infinit::passport_path(this->home(), this->me().id);
           this->_passport.reset(new papier::Passport());
           if (this->_passport->Restore(this->_device->passport) == elle::Status::Error)
             throw Exception(gap_wrong_passport, "Cannot load the passport");
@@ -894,7 +897,7 @@ namespace surface
     {
       ELLE_TRACE_METHOD("");
 
-      return common::infinit::user_directory(this->me().id);
+      return common::infinit::user_directory(this->home(), this->me().id);
     }
 
     void
@@ -1161,7 +1164,7 @@ namespace surface
       this->_configuration.serialize(input);
 
       metrics::Reporter::metric_features(this->_configuration.features);
-      std::ofstream fconfig(common::infinit::configuration_path());
+      std::ofstream fconfig(common::infinit::configuration_path(this->home()));
       elle::json::write(fconfig, json);
     }
 

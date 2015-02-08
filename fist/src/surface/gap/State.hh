@@ -66,6 +66,7 @@ namespace surface
       /*--------.
       | Servers |
       `--------*/
+      ELLE_ATTRIBUTE_R(std::string, home);
       /// Metrics are sent using HTTP.
       ELLE_ATTRIBUTE_R(reactor::network::Proxy, http_proxy);
       /// Meta is HTTPS on production.
