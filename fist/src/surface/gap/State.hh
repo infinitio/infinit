@@ -171,12 +171,6 @@ namespace surface
       _check_first_launch();
 
     public:
-      bool
-      logged_in() const
-      {
-        return this->_meta.logged_in();
-      }
-
       //- Login & register -----------------------------------------------------
       std::unique_ptr<Self> mutable _me;
 
@@ -194,8 +188,8 @@ namespace surface
 
       ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, login_thread);
       ELLE_ATTRIBUTE(reactor::Mutex, login_mutex);
-      ELLE_ATTRIBUTE(reactor::Barrier, logged_in);
-      ELLE_ATTRIBUTE(reactor::Barrier, logged_out);
+      ELLE_ATTRIBUTE_X(reactor::Barrier, logged_in);
+      ELLE_ATTRIBUTE_X(reactor::Barrier, logged_out);
     public:
       /// Login to meta. Keeps trying, returns on success or throw on definitive failure
       void

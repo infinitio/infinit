@@ -430,7 +430,7 @@ namespace surface
         reactor::Lock l(this->_login_mutex);
         // Ensure we don't have an old Meta message
         this->_meta_message.clear();
-        if (this->logged_in())
+        if (this->_meta.logged_in())
           throw Exception(gap_already_logged_in, "already logged in");
 
         this->_cleanup();
@@ -688,7 +688,7 @@ namespace surface
 
       ELLE_DEBUG("%s: cleaned up", *this);
 
-      if (!this->logged_in())
+      if (!this->_meta.logged_in())
       {
         ELLE_DEBUG("%s: state was not logged in", *this);
         this->_logged_out.open();
@@ -931,7 +931,7 @@ namespace surface
         bool resynched{false};
         do
         {
-          if (!this->logged_in())
+          if (!this->_meta.logged_in())
           {
             ELLE_TRACE("%s: not logged in, aborting", *this);
             return;
