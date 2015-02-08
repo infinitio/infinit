@@ -83,6 +83,13 @@ namespace common
     std::string
     passport_path(std::string const& user)
     {
+      return passport_path(home(), user);
+    }
+
+    std::string
+    passport_path(std::string const& home,
+                  std::string const& user)
+    {
       return path::join(infinit::user_directory(user), user + ".ppt");
     }
 
@@ -90,37 +97,78 @@ namespace common
     std::string
     device_id_path()
     {
-      return path::join(home(), "device.uuid");
+      return device_id_path(home());
+    }
+
+    /// Returns the path of the file containing the computer device uuid.
+    std::string
+    device_id_path(std::string const& home)
+    {
+      return path::join(home, "device.uuid");
     }
 
     std::string
     configuration_path()
     {
-      return path::join(home(), "configuration");
+      return configuration_path(home());
+    }
+
+    std::string
+    configuration_path(std::string const& home)
+    {
+      return path::join(home, "configuration");
     }
 
     std::string
     first_launch_path()
     {
-      return path::join(home(), "first_launch");
+      return first_launch_path(home());
+    }
+
+    std::string
+    first_launch_path(std::string const& home)
+    {
+      return path::join(home, "first_launch");
     }
 
     std::string
     user_directory(std::string const& user_id)
     {
-      return path::join(home(), "users", user_id);
+      return user_directory(home(), user_id);
+    }
+
+    std::string
+    user_directory(std::string const& home,
+                   std::string const& user_id)
+    {
+      return path::join(home, "users", user_id);
     }
 
     std::string
     transactions_directory(std::string const& user_id)
     {
-      return path::join(user_directory(user_id), "transaction");
+      return transactions_directory(home());
     }
+
+    std::string
+    transactions_directory(std::string const& home,
+                           std::string const& user_id)
+    {
+      return path::join(user_directory(home, user_id), "transaction");
+    }
+
 
     std::string
     transaction_snapshots_directory(std::string const& user_id)
     {
-      return path::join(transactions_directory(user_id), ".snapshot");
+      return transaction_snapshots_directory(home(), user_id);
+    }
+
+    std::string
+    transaction_snapshots_directory(std::string const& home,
+                                    std::string const& user_id)
+    {
+      return path::join(transactions_directory(home, user_id), ".snapshot");
     }
 
     std::string
@@ -133,8 +181,15 @@ namespace common
     std::string
     identity_path(std::string const& user_id)
     {
+      return identity_path(home(), user_id);
+    }
+
+    std::string
+    identity_path(std::string const& home,
+                  std::string const& user_id)
+    {
       return path::join(
-        infinit::user_directory(user_id),
+        infinit::user_directory(home, user_id),
         "identity"
       );
     }

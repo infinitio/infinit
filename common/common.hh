@@ -66,18 +66,36 @@ namespace common
     std::string
     passport_path(std::string const& user);
 
+    /// Returns passport path.
+    std::string
+    passport_path(std::string const& home,
+                  std::string const& user);
+
     /// Returns the path of the file containing the computer device uuid.
     std::string
     device_id_path();
+
+    /// Returns the path of the file containing the computer device uuid.
+    std::string
+    device_id_path(std::string const& home);
 
     /// Return the path to the configuration file.
     std::string
     configuration_path();
 
+    /// Return the path to the configuration file.
+    std::string
+    configuration_path(std::string const& home);
+
     /// Returns the path of the file showing that Infinit has been launched
     /// before.
     std::string
     first_launch_path();
+
+    /// Returns the path of the file showing that Infinit has been launched
+    /// before.
+    std::string
+    first_launch_path(std::string const& home);
 
     /// Returns user directory path.
     std::string
@@ -85,11 +103,26 @@ namespace common
 
     /// Returns user directory path.
     std::string
+    user_directory(std::string const& home,
+                   std::string const& user_id);
+
+    /// Returns user directory path.
+    std::string
     transactions_directory(std::string const& user_id);
+
+    /// Returns user directory path.
+    std::string
+    transactions_directory(std::string const& home,
+                           std::string const& user_id);
 
     /// Returns user diaries directory path.
     std::string
     transaction_snapshots_directory(std::string const& user_id);
+
+    /// Returns user diaries directory path.
+    std::string
+    transaction_snapshots_directory(std::string const& home,
+                                    std::string const& user_id);
 
     /// Returns frete diary for a specific transaction.
     std::string
@@ -99,6 +132,11 @@ namespace common
     /// The path to the identity file.
     std::string
     identity_path(std::string const& user_id);
+
+    /// The path to the identity file.
+    std::string
+    identity_path(std::string const& home,
+                  std::string const& user_id);
   }
 
   /// System and Operating System related stuffs
