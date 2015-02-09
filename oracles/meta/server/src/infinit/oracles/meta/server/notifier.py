@@ -67,7 +67,10 @@ class Notifier:
       devices_trophonius = []
       for usr in self.database.users.find(
           critera,
-          fields = {'devices.passport': 0}
+          fields = {
+            'avatar': False, 'small_avatar': False, 'identity': False,
+            'devices.passport': False
+          }
       ):
         if 'devices' not in usr:
           continue

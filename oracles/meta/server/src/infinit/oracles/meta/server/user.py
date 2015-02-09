@@ -28,12 +28,14 @@ ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.User'
 
 class Mixin:
 
-  def __get_fields_filter(self, avatar, identity):
+  def __get_fields_filter(self, avatar=False, identity=False, passport=False):
     filter = {'avatar': False}
     if not avatar:
       filter.update({'small_avatar': False})
     if not identity:
       filter.update({'identity': False})
+    if not passport:
+      filter.update({'devices.passport': False})
     return filter
   ## ------ ##
   ## Handle ##
@@ -1119,31 +1121,33 @@ class Mixin:
       self.__ensure_user_existence(user)
     return user
 
-  def user_by_public_key(self, key, ensure_existence = True, avatar = False, identity = False):
+  def user_by_public_key(self, key, ensure_existence = True,
+                         avatar = False, identity = False, passport = False):
     """Get a user from is public_key.
 
     public_key -- the public_key of the user.
     ensure_existence -- if set, raise if user is invald.
     """
-    fields = self.__get_fields_filter(avatar = avatar, identity = identity)
+    fields = self.__get_fields_filter(avatar = avatar, identity = identity, passport = passport)
     user = self.database.users.find_one({'public_key': key}, fields = fields)
     if ensure_existence:
       self.__ensure_user_existence(user)
     return user
 
-  def user_by_email(self, email, ensure_existence = True, avatar = False, identity = False):
+  def user_by_email(self, email, ensure_existence = True,
+                    avatar = False, identity = False, passport = False):
     """Get a user with given email.
 
     email -- the email of the user.
     ensure_existence -- if set, raise if user is invald.
     """
     email = email.lower().strip()
-    fields = self.__get_fields_filter(avatar = avatar, identity = identity)
-    fields.update({{'devices.passport': False})
+    fields = self.__get_fields_filter(avatar = avatar, identity = identity, passport = passport)
+    fields.update({'devices.passport': False})
     user = self.database.users.find_one(
       {'accounts.id': email},
       fields = fields
-      })
+      )
     if ensure_existence:
       self.__ensure_user_existence(user)
     return user
@@ -1154,14 +1158,15 @@ class Mixin:
                              password_hash,
                              ensure_existence = True,
                              avatar = False,
-                             identity = False):
+                             identity = False,
+                             passport = False):
     """Get a user from his email.
 
     email -- The email of the user.
     password -- The password for that account.
     ensure_existence -- if set, raise if user is invald.
     """
-    fields = self.__get_fields_filter(avatar = avatar, identity = identity)
+    fields = self.__get_fields_filter(avatar = avatar, identity = identity, passport = passport)
     if password_hash is not None:
       user = self.database.users.find_one({
         'email': email,
@@ -1192,13 +1197,14 @@ class Mixin:
         raise error.Error(error.EMAIL_PASSWORD_DONT_MATCH)
       return user
 
-  def user_by_handle(self, handle, ensure_existence = True, avatar = False, identity = False):
+  def user_by_handle(self, handle, ensure_existence = True,
+                     avatar = False, identity = False, passport = False):
     """Get a user from is handle.
 
     handle -- the handle of the user.
     ensure_existence -- if set, raise if user is invald.
     """
-    fields = self.__get_fields_filter(avatar = avatar, identity = identity)
+    fields = self.__get_fields_filter(avatar = avatar, identity = identity, passport = passport)
     user = self.database.users.find_one({'lw_handle': handle.lower()},
                                         fields = fields)
     if ensure_existence:

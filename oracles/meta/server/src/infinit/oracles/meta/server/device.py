@@ -35,7 +35,9 @@ class Mixin:
           raise error.Error(error.DEVICE_NOT_FOUND)
         return (len(matches) != 0) and matches[0] or None
       query['_id'] = owner
-    user = self.database.users.find_one(query, **kwargs)
+    user = self.database.users.find_one(query,
+      fields = self.__get_fields_filter(avatar=False, identity=False,
+                                        passport = include_passport), **kwargs)
     if ensure_existence and user is None:
       elle.log.trace('Could not fetch device %s for owner %s' % (id, owner))
       raise error.Error(error.DEVICE_NOT_FOUND)
