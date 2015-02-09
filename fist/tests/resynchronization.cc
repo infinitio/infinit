@@ -83,7 +83,7 @@ ELLE_TEST_SCHEDULED(links_another_device)
   t.id = boost::lexical_cast<std::string>(boost::uuids::random_generator()());
   t.ctime = 2173213;
   t.sender_id = boost::lexical_cast<std::string>(sender.user.id());
-  t.sender_device_id = boost::lexical_cast<std::string>(sender.user.device_id()) + "other";
+  t.sender_device_id = boost::lexical_cast<std::string>(sender.device_id) + "other";
   t.status = infinit::oracles::Transaction::Status::initialized;
   sender.user.links.push_back(t);
 

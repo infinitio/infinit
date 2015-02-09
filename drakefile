@@ -598,6 +598,7 @@ def configure(cxx_toolkit = None,
   gap_tests_cxx_config += boost_test
   gap_tests_cxx_config += boost_system
   gap_tests_cxx_config += boost_date_time
+  gap_tests_cxx_config += boost_filesystem
   gap_tests_cxx_config.lib_path_runtime('../../lib')
   for name in ('state', 'cloud-buffer', 'ghost-invite', 'resynchronization'):
     sources = drake.nodes('fist/tests/%s.cc' % name)
@@ -617,7 +618,10 @@ def configure(cxx_toolkit = None,
         elle.openssl_lib_ssl,
         trophonius_client_lib,
         oracles.transaction_lib,
-      ],
+        metrics_lib,
+        crash_lib
+      ] + drake.nodes('common/common.cc',
+                      'common/common.hh'),
       cxx_toolkit, gap_tests_cxx_config)
     gap_tests << test
     runner = drake.Runner(exe = test)

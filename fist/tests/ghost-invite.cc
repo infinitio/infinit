@@ -1,3 +1,4 @@
+#include <elle/filesystem/TemporaryFile.hh>
 #include <elle/log.hh>
 #include <elle/test.hh>
 
@@ -15,11 +16,11 @@ ELLE_TEST_SCHEDULED(send_ghost)
   auto const email = "em@il.com";
   auto const password = "secret";
   auto user = server.register_user(email, password);
-  State state(server, user.device_id().get());
+  Server::Client client(server, user);
   // Callbacks
   reactor::Barrier transferring;
   reactor::Barrier finished;
-  state.attach_callback<surface::gap::Transaction::Notification>(
+  client.state.attach_callback<surface::gap::Transaction::Notification>(
     [&] (surface::gap::Transaction::Notification const& notif)
     {
       // Check the GUI goes created -> transferring -> finished.
@@ -41,18 +42,28 @@ ELLE_TEST_SCHEDULED(send_ghost)
           BOOST_ERROR(elle::sprintf("unexpected GAP status: %s", status));
       }
     });
-  state.login(email, password);
+  client.login(password);
   std::string const ghost_email = "ghost@infinit.io";
-  server.generate_ghost_user(ghost_email);
-  auto& state_transaction = state.transaction_peer_create(
+  // server.generate_ghost_user(ghost_email);
+  elle::filesystem::TemporaryFile transfered("filename");
+  {
+    boost::filesystem::ofstream f(transfered.path());
+    BOOST_CHECK(f.good());
+    for (int i = 0; i < 2048; ++i)
+    {
+      char c = i % 256;
+      f.write(&c, 1);
+    }
+  }
+  auto& state_transaction = client.state.transaction_peer_create(
     ghost_email,
-    std::vector<std::string>{"/etc/passwd"},
+    std::vector<std::string>{transfered.path().c_str()},
     "message");
   while (state_transaction.data()->status ==
          infinit::oracles::Transaction::Status::created)
   {
     reactor::sleep(10_ms);
-    state.poll();
+    client.state.poll();
   }
   BOOST_CHECK_EQUAL(state_transaction.data()->status,
                     infinit::oracles::Transaction::Status::initialized);
@@ -61,7 +72,7 @@ ELLE_TEST_SCHEDULED(send_ghost)
   while (!finished)
   {
     reactor::sleep(100_ms);
-    state.poll();
+    client.state.poll();
   }
 }
 

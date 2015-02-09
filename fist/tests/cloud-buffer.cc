@@ -16,11 +16,10 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
   auto const email = "sender@infinit.io";
   auto const password = "secret";
   auto user = server.register_user(email, password);
-
+  Server::Client client(server, user);
   std::string const recipient_email = "recipient@infinit.io";
   auto recipient = server.register_user("recipient@infinit.io", password);
-  State state(server, user.device_id().get());
-  elle::filesystem::TemporaryFile transfered("cloud-buffered");
+  elle::filesystem::TemporaryFile transfered("filename");
   {
     boost::filesystem::ofstream f(transfered.path());
     BOOST_CHECK(f.good());
@@ -30,8 +29,8 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
       f.write(&c, 1);
     }
   }
-  state.login(email, password);
-  auto& state_transaction = state.transaction_peer_create(
+  client.state.login(email, password);
+  auto& state_transaction = client.state.transaction_peer_create(
     recipient_email,
     std::vector<std::string>{transfered.path().c_str()},
     "message");
@@ -47,7 +46,7 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
         case gap_transaction_transferring:
         {
           BOOST_CHECK_EQUAL(
-            server_transaction.status(),
+            server_transaction.status,
             infinit::oracles::Transaction::Status::initialized);
           transferring.open();
           break;
@@ -56,7 +55,7 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
         {
           BOOST_CHECK(transferring);
           BOOST_CHECK_EQUAL(
-            server_transaction.status(),
+            server_transaction.status,
             infinit::oracles::Transaction::Status::cloud_buffered);
           BOOST_CHECK(server.cloud_buffered());
           cloud_buffered.open();
