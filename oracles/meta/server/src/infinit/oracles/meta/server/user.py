@@ -11,7 +11,7 @@ import elle.log
 import papier
 
 from .plugins.response import response, Response
-from .utils import api, require_logged_in, require_admin, require_logged_in_or_admin, hash_password, json_value, require_key, key
+from .utils import api, require_logged_in, require_logged_in_identity, require_admin, require_logged_in_or_admin, hash_password, json_value, require_key, key
 from . import utils
 from . import error, notifier, regexp, conf, invitation, mail
 
@@ -28,6 +28,13 @@ ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.User'
 
 class Mixin:
 
+  def __get_fields_filter(self, avatar, identity):
+    filter = {'avatar': False}
+    if not avatar:
+      filter.update({'small_avatar': False})
+    if not identity:
+      filter.update({'identity': False})
+    return filter
   ## ------ ##
   ## Handle ##
   ## ------ ##
@@ -86,7 +93,8 @@ class Mixin:
              password_hash = None):
     try:
       user = self.user_by_email_password(
-        email, password = password, password_hash = password_hash, ensure_existence = True)
+        email, password = password, password_hash = password_hash,
+        ensure_existence = True, identity = True)
       # If email confirmed is not present, we can consider it's an old user,
       # so his address will not be confirmed.
       if not user.get('email_confirmed', True):
@@ -105,7 +113,7 @@ class Mixin:
                       web = False):
     if self.user_version >= (0, 9, 25) and not web:
       assert device is not None
-      return {'self': self._user_self()}
+      return {'self': self._user_self(user)}
     else:
       res = {
         '_id' : user['_id'],
@@ -243,6 +251,9 @@ class Mixin:
 
   @property
   def user(self):
+    return self._user_from_session()
+
+  def _user_from_session(self, avatar = False, identity = False):
     elle.log.trace("get user from session")
     if hasattr(bottle.request, 'user'):
       return bottle.request.user
@@ -250,7 +261,8 @@ class Mixin:
       return None
     email = bottle.request.session.get('email', None)
     if email is not None:
-      user = self.user_by_email(email, ensure_existence = False)
+      user = self.user_by_email(email, ensure_existence = False, avatar = avatar,
+                                identity = identity)
       bottle.request.user = user
       return user
     elle.log.trace("session not found")
@@ -1093,44 +1105,44 @@ class Mixin:
     if user is None:
       raise error.Error(error.UNKNOWN_USER)
 
-  def _user_by_id(self, _id, ensure_existence = True, avatar = False):
+  def _user_by_id(self, _id, ensure_existence = True, avatar = False, identity = False):
     """Get a user using by id.
 
     _id -- the _id of the user.
     ensure_existence -- if set, raise if user is invald.
     """
     assert isinstance(_id, bson.ObjectId)
-    fields = (not avatar) and {'avatar': False, 'small_avatar': False} or {'avatar': False}
+
+    fields = self.__get_fields_filter(avatar = avatar, identity = identity)
     user = self.database.users.find_one(_id, fields = fields)
     if ensure_existence:
       self.__ensure_user_existence(user)
     return user
 
-  def user_by_public_key(self, key, ensure_existence = True, avatar = False):
+  def user_by_public_key(self, key, ensure_existence = True, avatar = False, identity = False):
     """Get a user from is public_key.
 
     public_key -- the public_key of the user.
     ensure_existence -- if set, raise if user is invald.
     """
-    fields = (not avatar) and {'avatar': False, 'small_avatar': False} or {'avatar': False}
+    fields = self.__get_fields_filter(avatar = avatar, identity = identity)
     user = self.database.users.find_one({'public_key': key}, fields = fields)
     if ensure_existence:
       self.__ensure_user_existence(user)
     return user
 
-  def user_by_email(self, email, ensure_existence = True, avatar = False):
+  def user_by_email(self, email, ensure_existence = True, avatar = False, identity = False):
     """Get a user with given email.
 
     email -- the email of the user.
     ensure_existence -- if set, raise if user is invald.
     """
     email = email.lower().strip()
+    fields = self.__get_fields_filter(avatar = avatar, identity = identity)
+    fields.update({{'devices.passport': False})
     user = self.database.users.find_one(
       {'accounts.id': email},
-      fields = {
-        'devices.passport': False,
-        'small_avatar': avatar,
-        'avatar': False,
+      fields = fields
       })
     if ensure_existence:
       self.__ensure_user_existence(user)
@@ -1141,14 +1153,15 @@ class Mixin:
                              password,
                              password_hash,
                              ensure_existence = True,
-                             avatar = False):
+                             avatar = False,
+                             identity = False):
     """Get a user from his email.
 
     email -- The email of the user.
     password -- The password for that account.
     ensure_existence -- if set, raise if user is invald.
     """
-    fields = (not avatar) and {'avatar': False, 'small_avatar': False} or {'avatar': False}
+    fields = self.__get_fields_filter(avatar = avatar, identity = identity)
     if password_hash is not None:
       user = self.database.users.find_one({
         'email': email,
@@ -1179,13 +1192,13 @@ class Mixin:
         raise error.Error(error.EMAIL_PASSWORD_DONT_MATCH)
       return user
 
-  def user_by_handle(self, handle, ensure_existence = True, avatar = False):
+  def user_by_handle(self, handle, ensure_existence = True, avatar = False, identity = False):
     """Get a user from is handle.
 
     handle -- the handle of the user.
     ensure_existence -- if set, raise if user is invald.
     """
-    fields = (not avatar) and {'avatar': False, 'small_avatar': False} or {'avatar': False}
+    fields = self.__get_fields_filter(avatar = avatar, identity = identity)
     user = self.database.users.find_one({'lw_handle': handle.lower()},
                                         fields = fields)
     if ensure_existence:
@@ -1641,8 +1654,9 @@ class Mixin:
         fields = {'email': True, '_id': False}
     )))})
 
-  def _user_self(self, short = False):
-    user = self.user
+  def _user_self(self, user = None, short = False):
+    if user is None:
+      user = self._user_from_session(avatar = False, identity = True)
     res = {
       '_id': user['_id'], # Used until 0.9.9
       'id': user['_id'],
@@ -1674,7 +1688,7 @@ class Mixin:
     return res
 
   @api('/user/self')
-  @require_logged_in
+  @require_logged_in_identity
   def user_self(self):
     """Return self data."""
     return self.success(self._user_self())

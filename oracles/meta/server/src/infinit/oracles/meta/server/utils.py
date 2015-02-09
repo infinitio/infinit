@@ -18,6 +18,16 @@ def require_logged_in(method):
     return wrapped(self, *args, **kwargs)
   return decorator.decorator(wrapper, method)
 
+def require_logged_in_identity(method):
+  if hasattr(method, '__api__'):
+    raise Exception(
+      'require_logged_in for %r wraps the API' % method.__name__)
+  def wrapper(wrapped, self, *args, **kwargs):
+    if self._user_from_session(identity = True) is None:
+      self.forbidden()
+    return wrapped(self, *args, **kwargs)
+  return decorator.decorator(wrapper, method)
+
 def require_admin(method):
   if hasattr(method, '__api__'):
     raise Exception(
