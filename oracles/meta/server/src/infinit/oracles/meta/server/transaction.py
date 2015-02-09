@@ -693,6 +693,7 @@ class Mixin:
         fmt = 'changing final status %s to %s not permitted'
         response(403, {'reason': fmt % args})
       diff = {}
+      operation = {}
       if status == transaction_status.ACCEPTED:
         diff.update(self.on_accept(transaction = transaction,
                                    user = user,
@@ -720,6 +721,8 @@ class Mixin:
           transaction['sender_id'],
           counts = ['reached_peer', 'reached'],
           time = False)
+      if status in transaction_status.final:
+        operation["$unset"] = {"nodes": 1}
       # Don't override accepted with cloud_buffered.
       if status == transaction_status.CLOUD_BUFFERED and \
          transaction['status'] == transaction_status.ACCEPTED:
@@ -733,6 +736,7 @@ class Mixin:
       # Don't update with an empty dictionary: it would empty the
       # object.
       if diff:
+        operation["$set"] = diff
         if status in transaction_status.final:
           for i in ['recipient_id', 'sender_id']:
             self.__complete_transaction_stats(transaction[i],
@@ -743,7 +747,7 @@ class Mixin:
                                             transaction)
         transaction = self.database.transactions.find_and_modify(
           {'_id': transaction['_id']},
-          {'$set': diff},
+          operation,
           new = True,
         )
         elle.log.debug("transaction updated")
@@ -797,8 +801,8 @@ class Mixin:
       return self.database.transactions.find(
         {
           '$or': [ # this optimizes the request by preventing a full table scan
-            {'sender_device_id': device_id, 'sender_id': user_id},
-            {'recipient_device_id': device_id, 'recipient_id': user_id},
+            {'sender_device_id': str(device_id), 'sender_id': user_id},
+            {'recipient_device_id': str(device_id), 'recipient_id': user_id},
           ],
           "nodes.%s" % self.__user_key(user_id, device_id): {"$exists": True}
         })
@@ -1042,7 +1046,8 @@ class Mixin:
   @require_logged_in
   def cloud_buffer(self, transaction_id : bson.ObjectId,
                    force_regenerate : json_value = True):
-    self._cloud_buffer(transaction_id, self.user, force_regenerate)
+    return self._cloud_buffer(transaction_id, self.user,
+                              force_regenerate)
 
   def _cloud_buffer(self, transaction_id, user, force_regenerate = True):
     """
@@ -1110,7 +1115,7 @@ class Mixin:
     return self.success(credentials)
 
   def _user_transactions(self,
-                         mtime = None,
+                         modification_time = None,
                          limit = 100):
     user_id = self.user['_id']
     query = {
@@ -1128,18 +1133,18 @@ class Mixin:
       })
     runnings = self.database.transactions.aggregate([
         {'$match': query},
-        {'$sort': {'mtime': DESCENDING}},
+        {'$sort': {'modification_time': DESCENDING}},
       ])['result']
 
     # Then get the 100 most recent transactions.
     query.update({
       'status': {'$in': transaction_status.final}
       })
-    if mtime:
-      query.update({'mtime': {'$gt': mtime}})
+    if modification_time:
+      query.update({'modification_time': {'$gt': modification_time}})
     finals = self.database.transactions.aggregate([
         {'$match': query},
-        {'$sort': {'mtime': DESCENDING}},
+        {'$sort': {'modification_time': DESCENDING}},
         {'$limit': limit},
       ])['result']
     return {

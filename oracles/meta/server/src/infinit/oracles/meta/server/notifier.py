@@ -23,11 +23,13 @@ ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Notifier'
 
 class Notifier:
 
-  def __init__(self, database):
+  def __init__(self, database, production):
+    cert = conf.INFINIT_APS_CERT_PATH_PRODUCTION \
+           if production else conf.INFINIT_APS_CERT_PATH
     self.__database = database
     self.__apns = apns.APNs(
-      use_sandbox = True,
-      cert_file = conf.INFINIT_APS_CERT_PATH)
+      use_sandbox = not production,
+      cert_file = cert)
 
   @property
   def database(self):
@@ -96,6 +98,18 @@ class Notifier:
       used_push_tokens = set()
       # Freezing slow.
       for device, owner, tropho, push in devices_trophonius:
+        if push is not None and push not in used_push_tokens:
+          try:
+            pl = self.ios_notification(notification_type,
+                                       device,
+                                       owner,
+                                       message)
+            if pl is not None:
+              used_push_tokens.add(push)
+              elle.log.debug('pushing notification to: %s' % device)
+              self.__apns.gateway_server.send_notification(push, pl)
+          except Exception as e:
+            elle.log.err('unable to push notification to %s: %s' % (device, e))
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if tropho is None:
           continue
@@ -156,14 +170,15 @@ class Notifier:
       to_self = False
     alert = None
     if message['files_count'] == 1:
-      files = '1 file'
+      files = 'file'
     else:
-      files = '%s files' % message['files_count']
+      files = 'files'
     if status is transaction_status.INITIALIZED: # Only sent to recipient
       if to_self:
-        alert = "You'd like to send %s" % files
+        alert = "You'd like to send %s %s" % (message['files_count'], files)
       else:
-        alert = "%s wants to send %s" % (message['sender_fullname'], files)
+        alert = "%s wants to send %s %s" % \
+          (message['sender_fullname'], message['files_count'], files)
     elif status is transaction_status.REJECTED: # Only sent to sender
       if to_self:
         alert = 'You declined the transfer'
@@ -171,9 +186,9 @@ class Notifier:
         alert = '%s declined the transfer' % message['recipient_fullname']
     elif status is transaction_status.FINISHED:
       if to_self:
-        alert = 'Your other device received the files!'
+        alert = 'Your other device received the %s!' % files
       else:
-        alert = '%s received your files!' % message['recipient_fullname']
+        alert = '%s received your %s!' % (message['recipient_fullname'], files)
     if alert is None:
       return None
     return apns.Payload(alert = alert,

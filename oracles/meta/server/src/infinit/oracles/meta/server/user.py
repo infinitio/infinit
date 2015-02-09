@@ -169,13 +169,12 @@ class Mixin:
       bottle.request.session['device'] = device['_id']
       bottle.request.session['email'] = email
 
-      user = self.user
-      self.database.users.find_and_modify(
-        query = {'_id': user['_id']},
-        update = {'$set': {'last_connection': time.time(),}})
+      self.database.users.update(
+        {'_id': user['_id']},
+        {'$set': {'last_connection': time.time(),}})
       elle.log.trace("%s: successfully connected as %s on device %s" %
                      (email, user['_id'], device['id']))
-      if OS is not None and OS in invitation.os_lists.keys():
+      if OS is not None and OS in invitation.os_lists.keys() and ('os' not in user or OS not in user['os']):
         elle.log.debug("connected on os: %s" % OS)
         res = self.database.users.find_and_modify({"_id": user['_id'], "os.%s" % OS: None},
                                                   {"$addToSet": {"os": OS}})
@@ -422,7 +421,7 @@ class Mixin:
         conf.INFINIT_AUTHORITY_PATH,
         conf.INFINIT_AUTHORITY_PASSWORD
         )
-      self.database.users.find_and_modify(
+      self.database.users.update(
         {
           '_id': user_id,
         },
@@ -453,12 +452,12 @@ class Mixin:
       try:
         user = self.__account_from_hash(hash)
         elle.log.trace('confirm %s\'s account' % user['email'])
-        self.database.users.find_and_modify(
-          query = {"email_confirmation_hash": hash},
-          update = {
+        self.database.users.update(
+          {"email_confirmation_hash": hash},
+          {
             '$unset': {'unconfirmed_email_leeway': True},
             '$set': {'email_confirmed': True}
-            })
+          })
         return self.success()
       except error.Error as e:
         self.fail(*e.args)
@@ -667,7 +666,7 @@ class Mixin:
             recipient_ids = {res['_id']},
           )
         self.user_delete(user, merge_with = res)
-      self.database.users.find_and_modify(
+      self.database.users.update(
         {
           'pending_auxiliary_emails.hash': hash
         },
@@ -776,7 +775,7 @@ class Mixin:
             "user_fullname": user['fullname']
           }
         })
-      self.database.users.find_and_modify(
+      self.database.users.update(
         { "_id": user['_id'] },
         {
           "$set": {
@@ -940,7 +939,7 @@ class Mixin:
       operation['$unset'] = {
         'password_hash': True
       }
-    self.database.users.find_and_modify(
+    self.database.users.update(
       {'_id': user['_id']},
       operation
     )
@@ -1095,37 +1094,41 @@ class Mixin:
     if user is None:
       raise error.Error(error.UNKNOWN_USER)
 
-  def _user_by_id(self, _id, ensure_existence = True):
+  def _user_by_id(self, _id, ensure_existence = True, avatar = False):
     """Get a user using by id.
 
     _id -- the _id of the user.
     ensure_existence -- if set, raise if user is invald.
     """
     assert isinstance(_id, bson.ObjectId)
-    user = self.database.users.find_one(_id)
+    fields = (not avatar) and {'avatar': False, 'small_avatar': False} or {'avatar': False}
+    user = self.database.users.find_one(_id, fields = fields)
     if ensure_existence:
       self.__ensure_user_existence(user)
     return user
 
-  def user_by_public_key(self, key, ensure_existence = True):
+  def user_by_public_key(self, key, ensure_existence = True, avatar = False):
     """Get a user from is public_key.
 
     public_key -- the public_key of the user.
     ensure_existence -- if set, raise if user is invald.
     """
-    user = self.database.users.find_one({'public_key': key})
+    fields = (not avatar) and {'avatar': False, 'small_avatar': False} or {'avatar': False}
+    user = self.database.users.find_one({'public_key': key}, fields = fields)
     if ensure_existence:
       self.__ensure_user_existence(user)
     return user
 
-  def user_by_email(self, email, ensure_existence = True):
+  def user_by_email(self, email, ensure_existence = True, avatar = False):
     """Get a user with given email.
 
     email -- the email of the user.
     ensure_existence -- if set, raise if user is invald.
     """
     email = email.lower().strip()
-    user = self.database.users.find_one({'accounts.id': email})
+    fields = (not avatar) and {'avatar': False, 'small_avatar': False} or {'avatar': False}
+    user = self.database.users.find_one({'accounts.id': email},
+                                        fields = fields)
     if ensure_existence:
       self.__ensure_user_existence(user)
     return user
@@ -1134,17 +1137,19 @@ class Mixin:
                              email,
                              password,
                              password_hash,
-                             ensure_existence = True):
-    """Get a user from is email.
+                             ensure_existence = True,
+                             avatar = False):
+    """Get a user from his email.
 
     email -- The email of the user.
     password -- The password for that account.
     ensure_existence -- if set, raise if user is invald.
     """
+    fields = (not avatar) and {'avatar': False, 'small_avatar': False} or {'avatar': False}
     if password_hash is not None:
       user = self.database.users.find_one({
         'email': email,
-        'password_hash': utils.password_hash(password_hash)})
+        'password_hash': utils.password_hash(password_hash)}, fields = fields)
       if user is not None:
         return user
       user = self.database.users.find_and_modify(
@@ -1157,7 +1162,8 @@ class Mixin:
             'password_hash': utils.password_hash(password_hash),
           },
         },
-        new = True)
+        new = True,
+        fields = fields)
       if user is None and ensure_existence:
         raise error.Error(error.EMAIL_PASSWORD_DONT_MATCH)
       return user
@@ -1165,18 +1171,20 @@ class Mixin:
       user = self.database.users.find_one({
         'email': email,
         'password': hash_password(password),
-      })
+      }, fields = fields)
       if user is None and ensure_existence:
         raise error.Error(error.EMAIL_PASSWORD_DONT_MATCH)
       return user
 
-  def user_by_handle(self, handle, ensure_existence = True):
+  def user_by_handle(self, handle, ensure_existence = True, avatar = False):
     """Get a user from is handle.
 
     handle -- the handle of the user.
     ensure_existence -- if set, raise if user is invald.
     """
-    user = self.database.users.find_one({'lw_handle': handle.lower()})
+    fields = (not avatar) and {'avatar': False, 'small_avatar': False} or {'avatar': False}
+    user = self.database.users.find_one({'lw_handle': handle.lower()},
+                                        fields = fields)
     if ensure_existence:
       self.__ensure_user_existence(user)
     return user
@@ -1584,7 +1592,7 @@ class Mixin:
     update = {
       '$set': {'handle': handle, 'lw_handle': lw_handle, 'fullname': fullname}
     }
-    self.database.users.find_and_modify(
+    self.database.users.update(
       {'_id': user['_id']},
       update)
     return self.success()
@@ -1699,7 +1707,7 @@ class Mixin:
                  id: bson.ObjectId,
                  date: int = 0,
                  no_place_holder: bool = False):
-    user = self._user_by_id(id, ensure_existence = False)
+    user = self._user_by_id(id, ensure_existence = False, avatar = True)
     if user is None:
       if no_place_holder:
         return self.not_found()
@@ -1715,32 +1723,11 @@ class Mixin:
       response.content_type = 'image/jpeg'
       return bytes(small_image)
     else:
-      image = user.get('avatar')
-      if image:
-        from io import BytesIO
-        from PIL import Image
-        image_data = BytesIO(bytes(image))
-        image_data.seek(0)
-        small_image = self._small_avatar(Image.open(image_data))
-        small_out = BytesIO()
-        small_image.save(small_out, 'JPEG')
-        small_out.seek(0)
-        res = self.database.users.find_and_modify(
-          {'_id': user['_id']},
-          {'$set': {
-            'small_avatar': bson.binary.Binary(small_out.read()),
-          }},
-          new = True,
-          fields = {'small_avatar': True, '_id': False})['small_avatar']
-        from bottle import response
-        response.content_type = 'image/jpeg'
-        return bytes(res)
-      else:
-        if no_place_holder:
-          return self.not_found()
-        else: # Return the default avatar for backwards compatibility (< 0.9.2).
-          from bottle import static_file
-          return static_file('place_holder_avatar.png',
+      if no_place_holder:
+        return self.not_found()
+      else: # Return the default avatar for backwards compatibility (< 0.9.2).
+        from bottle import static_file
+        return static_file('place_holder_avatar.png',
                              root = os.path.dirname(__file__),
                              mimetype = 'image/png')
 
@@ -1764,9 +1751,9 @@ class Mixin:
     out.seek(0)
     small_out.seek(0)
     import bson.binary
-    res = self.database.users.find_and_modify(
-      query = {'_id': self.user['_id']},
-      update = {'$set': {
+    self.database.users.update(
+      {'_id': self.user['_id']},
+      {'$set': {
         'avatar': bson.binary.Binary(out.read()),
         'small_avatar': bson.binary.Binary(small_out.read()),
       }})
@@ -2118,7 +2105,7 @@ class Mixin:
     mtime = {'timestamp': None, 'date': None}
     if not init:
       mtime = last_sync
-    res.update(self._user_transactions(mtime = mtime['timestamp']))
+    res.update(self._user_transactions(modification_time = mtime['date']))
     # Include deleted links only during updates. At start up, ignore them.
     res.update(self.links_list(mtime = mtime['date'], include_deleted = (not init)))
     return self.success(res)
