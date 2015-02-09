@@ -163,6 +163,7 @@ class Mixin:
       usr = self.database.users.find_and_modify(
         {'_id': user['_id'], 'devices.id': str(device_id)},
         {'$set': {'devices.$.push_token': device_push_token}},
+        fields = self.__get_fields_filter()
       )
       if usr is None:
         elle.log.trace("user logged with an unknown device")
@@ -186,7 +187,8 @@ class Mixin:
       if OS is not None and OS in invitation.os_lists.keys() and ('os' not in user or OS not in user['os']):
         elle.log.debug("connected on os: %s" % OS)
         res = self.database.users.find_and_modify({"_id": user['_id'], "os.%s" % OS: None},
-                                                  {"$addToSet": {"os": OS}})
+                                                  {"$addToSet": {"os": OS}},
+                                                  fields = ['os'])
         # Because new is not set, find_and_modify will return the non modified user:
         # - os was not present.
         # - os was present but the os was not in the list.
@@ -490,13 +492,13 @@ class Mixin:
           self.check_key(key)
         elif hash is not None:
           query['email_confirmation_hash'] = hash
-      res = self.database.users.find_and_modify(
-        query = query,
-        update = {
+      res = self.database.users.update(
+        query,
+        {
           '$unset': {'unconfirmed_email_leeway': True},
           '$set': {'email_confirmed': True}
         })
-      if res is None:
+      if res['n'] == 0:
         self.forbidden({
           'user': user,
           'reason': 'invalid confirmation hash or email',
@@ -527,7 +529,7 @@ class Mixin:
       # XXX: Waiting for mandrill to put cooldown on mail.
       now = self.now
       confirmation_cooldown = now - self.email_confirmation_cooldown
-      res = self.database.users.find_and_modify(
+      res = self.database.users.update(
         {
           'email': user['email'],
           '$or': [
@@ -551,7 +553,7 @@ class Mixin:
             'last_email_confirmation': now,
           }
         })
-      if res is not None:
+      if res['n'] != 0:
         self.mailer.send_template(
           to = user['email'],
           template_name = 'reconfirm-sign-up',
@@ -620,7 +622,7 @@ class Mixin:
         'user_fullname': user['fullname']
         }
       })
-    res = self.database.users.find_and_modify(
+    res = self.database.users.update(
       {
         "_id": user['_id'],
         "pending_auxiliary_emails.email": {"$ne": email},
@@ -633,7 +635,7 @@ class Mixin:
           }
         }
       }, new = True)
-    if res == None:
+    if res['n'] == 0:
       return self._forbidden_with_error(error.EMAIL_ALREADY_ADDED)
     return self.success({})
 
@@ -691,7 +693,7 @@ class Mixin:
   @require_logged_in
   def delete_pending_auxiliary_email_address(self, email):
     user = self.user
-    res = self.database.users.find_and_modify(
+    res = self.database.users.update(
       {
         'pending_auxiliary_emails.email': email,
         '_id': user['_id'],
@@ -699,7 +701,7 @@ class Mixin:
       {
         '$pull': {'pending_auxiliary_emails': {'email': email}}
       })
-    if res is None:
+    if res['n'] == 0:
       return self._forbidden_with_error(error.UNKNOWN_EMAIL_ADDRESS)
     return self.success({})
 
@@ -710,7 +712,7 @@ class Mixin:
     user = self.user
     if user['email'] == email:
       return self._forbidden_with_error(error.CANNOT_DELETE_YOUR_PRIMARY_ACCOUNT)
-    res = self.database.users.find_and_modify(
+    res = self.database.users.update(
       {
         'accounts.id': email,
         'accounts.type': 'email',
@@ -720,7 +722,7 @@ class Mixin:
       {
         '$pull': {'accounts': {'type': 'email', 'id': email}}
       })
-    if res is None:
+    if res['n'] == 0:
       return self._forbidden_with_error(error.UNKNOWN_EMAIL_ADDRESS)
     return self.success({})
 
@@ -806,7 +808,8 @@ class Mixin:
     hash -- Hash stored in DB for changing email address (new_main_email_hash).
     """
     with elle.log.trace('fetch new email address from hash: %s' % hash):
-      user = self.database.users.find_one({'new_main_email_hash': hash})
+      user = self.database.users.find_one({'new_main_email_hash': hash},
+        fields = ['new_main_email'])
       if user is None:
         return self.not_found()
       return {'new_email': user['new_main_email']}
@@ -834,7 +837,8 @@ class Mixin:
         if res != 0:
           return self._forbidden_with_error(error.PASSWORD_NOT_VALID)
       # Check that the hash exists and pull user based on it.
-      user = self.database.users.find_one({'new_main_email_hash': hash})
+      user = self.database.users.find_one({'new_main_email_hash': hash},
+        fields = self.__get_fields_filter())
       if user is None:
         return self._forbidden_with_error(error.UNKNOWN_USER)
       # Check that the email has not been registered.
@@ -1090,10 +1094,9 @@ class Mixin:
     self._notify_swaggers(notifier.DELETED_SWAGGER,
                           {'user_id': bson.ObjectId(user_id)},
                           user_id)
-    user = self.database.users.find_and_modify(
+    self.database.users.update(
       {'_id': user_id},
-      {'$set': {'swaggers': {}}},
-      new = True
+      {'$set': {'swaggers': {}}}
     )
 
   ## -------------- ##
@@ -1447,7 +1450,8 @@ class Mixin:
         res = self.database.users.find_and_modify(
           {'_id': user},
           {'$inc': {'swaggers.%s' % peer: 1}},
-          new = True)
+          new = True,
+          fields = ['swaggers'])
         if res['swaggers'][str(peer)] == 1: # New swagger.
           self.notifier.notify_some(
             notifier.NEW_SWAGGER,
@@ -1605,7 +1609,8 @@ class Mixin:
         "Handle is too short",
         field = 'handle',
         )
-    other = self.database.users.find_one({'lw_handle': lw_handle})
+    other = self.database.users.find_one({'lw_handle': lw_handle},
+      fields = [])
     if other is not None and other['_id'] != user['_id']:
       return self.fail(
         error.HANDLE_ALREADY_REGISTERED,
@@ -1883,15 +1888,17 @@ class Mixin:
         user = self.database.users.find_and_modify(
           {"email": user['email']},
           {"$set": {'email_hash': hash}},
-          new = True)
+          new = True,
+          fields = ['email_hash'])
     return user['email_hash']
 
-  def __user_by_email_hash(self, hash):
+  def __user_by_email_hash(self, hash, avatar = False, identity=False, passport=False):
     """
     Return the user linked the hash.
     """
     with elle.log.debug('get user from email hash'):
-      user = self.database.users.find_one({'email_hash': hash})
+      user = self.database.users.find_one({'email_hash': hash},
+        fields = self.__get_fields_filter(avatar = avatar, identity = identity, passport = passport))
       if user is None:
         raise error.Error(
           error.UNKNOWN_USER,

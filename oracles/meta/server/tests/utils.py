@@ -505,7 +505,9 @@ class User(Client):
     device = self.device
     assert res['name'] == device['name']
     assert res['id'] == device['id']
-    assert res['passport'] == device['passport']
+    passport = res.get('passport', None)
+    if passport is not None:
+      assert passport == device['passport']
 
   @property
   def swaggers(self):
