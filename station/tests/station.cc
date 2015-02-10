@@ -11,12 +11,6 @@
 #include <station/InvalidPassport.hh>
 #include <station/Station.hh>
 
-#ifdef VALGRIND
-# include <valgrind/valgrind.h>
-#else
-# define RUNNING_ON_VALGRIND 0
-#endif
-
 ELLE_LOG_COMPONENT("station.test")
 
 infinit::cryptography::KeyPair authority_keys =
@@ -385,7 +379,7 @@ ELLE_TEST_SCHEDULED(connect_close_connect, (bool, swap))
 
 ELLE_TEST_SUITE()
 {
-  auto timeout = RUNNING_ON_VALGRIND ? 20 : 40;
+  auto timeout = valgrind(20);
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(construction), 0, timeout);
   suite.add(BOOST_TEST_CASE(connection), 0, timeout);

@@ -1388,7 +1388,7 @@ namespace ssl_shutdown
 
 ELLE_TEST_SUITE()
 {
-  auto timeout = RUNNING_ON_VALGRIND ? 20 : 5;
+  auto timeout = valgrind(5);
   auto& suite = boost::unit_test::framework::master_test_suite();
   {
     boost::unit_test::test_suite* poke = BOOST_TEST_SUITE("poke");

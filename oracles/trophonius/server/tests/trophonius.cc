@@ -21,12 +21,6 @@
 
 ELLE_LOG_COMPONENT("infinit.oracles.trophonius.server.test")
 
-#ifdef VALGRIND
-# include <valgrind/valgrind.h>
-#else
-# define RUNNING_ON_VALGRIND 0
-#endif
-
 // Local fingerprint as sha1.
 
 static const std::vector<unsigned char> fingerprint =
@@ -920,7 +914,7 @@ ELLE_TEST_SCHEDULED(terminate)
 
 ELLE_TEST_SUITE()
 {
-  auto timeout = RUNNING_ON_VALGRIND ? 15 : 3;
+  auto timeout = valgrind(3);
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(register_unregister), 0, timeout);
 
