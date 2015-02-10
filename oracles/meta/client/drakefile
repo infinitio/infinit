@@ -43,7 +43,7 @@ def configure(elle,
 
   def boost_config(name):
     config = getattr(boost, 'config_%s' % name)
-    if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
+    if cxx_toolkit.os in [drake.os.windows, drake.os.ios, drake.os.android]:
       return drake.cxx.Config(config(static = True))
     else:
       res = drake.cxx.Config(config(link = False))
