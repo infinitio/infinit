@@ -13,6 +13,7 @@ import drake.cxx.qt
 cxx_config = drake.cxx.Config()
 cxx_config.enable_debug_symbols()
 cxx_config.enable_optimization(False)
+cxx_config.flag('-pthread')
 
 try:
   qt = drake.cxx.qt.Qt(
