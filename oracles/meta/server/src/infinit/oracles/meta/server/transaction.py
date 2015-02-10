@@ -349,8 +349,9 @@ class Mixin:
 
       if not peer_email:
         peer_email = recipient['email']
-
-      if not new_user and not recipient.get('connected', False) and not is_ghost:
+      recipient_offline = all(d.get('trophonius') is None
+                              for d in recipient.get('devices', []))
+      if not new_user and recipient_offline and not is_ghost:
         elle.log.debug("recipient is disconnected")
         template_id = 'accept-file-only-offline'
 

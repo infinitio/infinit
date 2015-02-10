@@ -266,7 +266,9 @@ class Mixin:
       return None
     email = bottle.request.session.get('email', None)
     if email is not None:
-      user = self.user_by_email(email, ensure_existence = False, avatar = avatar,
+      user = self.user_by_email(email,
+                                ensure_existence = False,
+                                avatar = avatar,
                                 identity = identity)
       bottle.request.user = user
       return user
@@ -277,7 +279,6 @@ class Mixin:
   ## -------- ##
 
   def _register(self, **kwargs):
-    kwargs['connected'] = False
     user = self.database.users.save(kwargs)
     return user
 
@@ -340,7 +341,6 @@ class Mixin:
       hash = hashlib.md5(hash).hexdigest()
       handle = self.unique_handle(fullname)
       user_content = {
-        'connected': False,
         'features': self._roll_features(True),
         'register_status': 'ok',
         'email': email,
@@ -351,7 +351,6 @@ class Mixin:
         'swaggers': {},
         'networks': [],
         'devices': [],
-        'connected_devices': [],
         'notifications': [],
         'old_notifications': [],
         'accounts': [
@@ -1019,8 +1018,6 @@ class Mixin:
     swaggers = set(map(bson.ObjectId, user['swaggers'].keys()))
     cleared_user = {
       'accounts': [],
-      'connected': False,
-      'connected_devices': [],
       'devices': [],
       'email': '',
       'favorites': [],
@@ -1125,8 +1122,12 @@ class Mixin:
       self.__ensure_user_existence(user)
     return user
 
-  def user_by_public_key(self, key, ensure_existence = True,
-                         avatar = False, identity = False, passport = False):
+  def user_by_public_key(self,
+                         key,
+                         ensure_existence = True,
+                         avatar = False,
+                         identity = False,
+                         passport = False):
     """Get a user from is public_key.
 
     public_key -- the public_key of the user.
@@ -1208,9 +1209,12 @@ class Mixin:
     handle -- the handle of the user.
     ensure_existence -- if set, raise if user is invald.
     """
-    fields = self.__get_fields_filter(avatar = avatar, identity = identity, passport = passport)
-    user = self.database.users.find_one({'lw_handle': handle.lower()},
-                                        fields = fields)
+    fields = self.__get_fields_filter(avatar = avatar,
+                                      identity = identity,
+                                      passport = passport)
+    user = self.database.users.find_one(
+      {'lw_handle': handle.lower()},
+      fields = fields)
     if ensure_existence:
       self.__ensure_user_existence(user)
     return user
@@ -1226,8 +1230,6 @@ class Mixin:
       'public_key': '$public_key',
       'fullname': '$fullname',
       'handle': '$handle',
-      'connected_devices': '$connected_devices',
-      'status': '$connected',
       'register_status': '$register_status',
       '_id': False,
     }
@@ -1680,7 +1682,7 @@ class Mixin:
         'fullname': user['fullname'],
         'handle': user['handle'],
         'email': user['email'],
-        'devices': [x['id'] for x in user.get('devices', [])],
+        'devices': [d['id'] for d in user.get('devices', [])],
         'networks': user.get('networks', []),
         'identity': user['identity'],
         'public_key': user['public_key'],
@@ -1811,7 +1813,7 @@ class Mixin:
       user = self.database.users.find_one({"_id": user_id})
       assert user is not None
       update_action = status and '$addToSet' or '$pull'
-      action = {update_action: {'connected_devices': str(device_id)}}
+      action = {}
       if version is not None:
         version = collections.OrderedDict(sorted(version.items()))
       match = {
@@ -1820,7 +1822,6 @@ class Mixin:
       }
       if status:
         action['$set'] = {
-          'connected': True,
           'connection_time': self.now,
           'devices.$.trophonius': str(trophonius_id),
           'devices.$.version': version,
@@ -1829,6 +1830,7 @@ class Mixin:
       else:
         match['devices.trophonius'] = str(trophonius_id)
         action['$set'] = {
+          'disconnection_time': self.now,
           'devices.$.trophonius': None,
         }
       res = self.database.users.update(
@@ -1838,21 +1840,6 @@ class Mixin:
       )
       if res['n'] == 0:
         raise error.Error(error.DEVICE_NOT_FOUND)
-      # If we're disconnecting a device, use DB to determine if we're offline.
-      if not status:
-        self.database.users.update(
-          {
-            '_id': user_id,
-            'connected_devices': {'$size': 0}
-          },
-          {
-            '$set':
-            {
-              'connected': False,
-              'disconnection_time': self.now,
-            }
-          }
-        )
       # XXX:
       # This should not be in user.py, but it's the only place
       # we know the device has been disconnected.
