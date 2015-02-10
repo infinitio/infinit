@@ -2,6 +2,7 @@
 
 import bottle
 import bson
+import collections
 import datetime
 import json
 import random
@@ -1793,7 +1794,10 @@ class Mixin:
   def set_connection_status(self,
                             user_id,
                             device_id,
-                            status):
+                            status,
+                            trophonius_id,
+                            version,
+                            os):
     """Add or remove the device from user connected devices.
 
     device_id -- the id of the requested device
@@ -1806,20 +1810,34 @@ class Mixin:
       assert isinstance(device_id, uuid.UUID)
       user = self.database.users.find_one({"_id": user_id})
       assert user is not None
-      device = self.device(id = str(device_id), owner = user_id)
       update_action = status and '$addToSet' or '$pull'
       action = {update_action: {'connected_devices': str(device_id)}}
-      # If we're connecting a device, then we are connected.
+      if version is not None:
+        version = collections.OrderedDict(sorted(version.items()))
+      match = {
+        '_id': user_id,
+        'devices.id': str(device_id),
+      }
       if status:
         action['$set'] = {
           'connected': True,
           'connection_time': self.now,
+          'devices.$.trophonius': str(trophonius_id),
+          'devices.$.version': version,
+          'devices.$.os': os,
         }
-      self.database.users.update(
-        {'_id': user_id},
+      else:
+        match['devices.trophonius'] = str(trophonius_id)
+        action['$set'] = {
+          'devices.$.trophonius': None,
+        }
+      res = self.database.users.update(
+        match,
         action,
         multi = False,
       )
+      if res['n'] == 0:
+        raise error.Error(error.DEVICE_NOT_FOUND)
       # If we're disconnecting a device, use DB to determine if we're offline.
       if not status:
         self.database.users.update(

@@ -66,9 +66,17 @@ class Mixin:
     with elle.log.log("unregister trophonius %s" % uid):
       assert isinstance(uid, uuid.UUID)
       elle.log.debug("trophonius %s: unregister all users" % uuid)
-      self.database.users.update({'devices.trophonius': str(uid)},
-                                 {'$set': {'devices.$.trophonius': None}},
-                                 )
+      self.database.users.update(
+        {
+          'devices.trophonius': str(uid),
+        },
+        {
+          '$set':
+          {
+            'devices.$.trophonius': None,
+          },
+        },
+      )
       res = self.database.trophonius.remove({"_id": str(uid)})
       return self.success()
 
@@ -84,25 +92,13 @@ class Mixin:
                         (uid, id, device)):
       assert isinstance(uid, uuid.UUID)
       assert isinstance(device, uuid.UUID)
-      version = version and OrderedDict(sorted(version.items()))
-      self.database.users.update(
-        {
-          'devices.id': str(device),
-          '_id': id,
-        },
-        {
-          '$set':
-          {
-            'devices.$.trophonius': str(uid),
-            'devices.$.version': version,
-            'devices.$.os': os,
-          }
-        }
-      )
       try:
         self.set_connection_status(user_id = id,
                                    device_id = device,
-                                   status = True)
+                                   status = True,
+                                   trophonius_id = uid,
+                                   version = version,
+                                   os = os)
       except error.Error as e:
         return self.fail(*e.args)
       return self.success()
@@ -116,18 +112,13 @@ class Mixin:
                         (uid, id, device)):
       assert isinstance(uid, uuid.UUID)
       assert isinstance(device, uuid.UUID)
-      self.database.users.update(
-        {
-          'devices.id': str(device),
-          '_id': id,
-          'devices.trophonius': str(uid),
-        },
-        {'$set': {'devices.$.trophonius': None}}
-      )
       try:
         self.set_connection_status(user_id = id,
                                    device_id = device,
-                                   status = False)
+                                   status = False,
+                                   trophonius_id = uid,
+                                   version = None,
+                                   os = None)
       except error.Error as e:
         return self.fail(*e.args)
       return self.success()
