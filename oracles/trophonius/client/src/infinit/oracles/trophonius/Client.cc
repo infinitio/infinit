@@ -799,8 +799,7 @@ namespace infinit
           ELLE_DUMP_SCOPE("%s: read message", *this);
           auto buffer = socket->read_until("\n", timeout);
           ELLE_TRACE("%s: got message: %f", *this, buffer);
-          elle::InputStreamBuffer<elle::Buffer> streambuffer(buffer);
-          std::istream input(&streambuffer);
+          std::istream input(buffer.istreambuf());
           auto json = boost::any_cast<elle::json::Object>(
             elle::json::read(input));
           return notification_from_dict(json);
