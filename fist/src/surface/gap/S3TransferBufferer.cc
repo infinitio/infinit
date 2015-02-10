@@ -44,8 +44,7 @@ namespace surface
       {
         // Fetch transfer meta-data from cloud.
         elle::Buffer buf = this->_s3_handler->get_object("meta_data");
-        elle::InputStreamBuffer<elle::Buffer> buffer(buf);
-        std::istream stream(&buffer);
+        std::istream stream(buf.istreambuf());
         auto meta_data =
           boost::any_cast<elle::json::Object>(elle::json::read(stream));
         this->_count = boost::any_cast<int64_t>(meta_data["count"]);
@@ -127,8 +126,7 @@ namespace surface
       elle::serialize::to_string(key_str) << this->_key_code;
       meta_data["key_code"] = elle::format::base64::encode(key_str).string();
       elle::Buffer buffer;
-      elle::OutputStreamBuffer<elle::Buffer> out_buffer(buffer);
-      std::ostream stream(&out_buffer);
+      std::ostream stream(buffer.ostreambuf());
       elle::json::write(stream, meta_data);
       this->_s3_handler->put_object(buffer, "meta_data");
     }
