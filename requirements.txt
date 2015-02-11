@@ -2,6 +2,7 @@ decorator==3.4.0
 greenlet==0.4.5
 httplib2==0.9
 iso8601==0.1.10
+mailsnake==1.6.2
 Mako==1.0.1
 MarkupSafe==0.23
 oset==0.1.3
