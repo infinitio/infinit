@@ -99,7 +99,7 @@ Trophonius::_serve()
     {
       auto socket = elle::utility::move_on_copy(this->_server.accept());
       scope.run_background(
-        elle::sprintf("serve %s", *socket),
+        *socket ? elle::sprintf("serve %s", **socket) : elle::sprintf("serve %s", *socket),
         [socket, this]
         {
           this->_serve(std::move(*socket));
