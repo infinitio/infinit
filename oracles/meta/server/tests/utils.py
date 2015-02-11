@@ -495,11 +495,8 @@ class User(Client):
     assert res['identity'] == me['identity']
     assert res['handle'] == me['handle']
     assert res['email'] == me['email']
-    assert res['_id'] == me['_id']
     assert res['id'] == me['id']
     assert res['fullname'] == me['fullname']
-    assert res['favorites'] == me['favorites']
-    assert res['token_generation_key'] == me['token_generation_key']
 
   def compare_device_response(self, res):
     device = self.device
