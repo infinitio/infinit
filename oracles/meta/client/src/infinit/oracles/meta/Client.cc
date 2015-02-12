@@ -712,7 +712,7 @@ namespace infinit
       std::vector<User>
       Client::get_swaggers() const
       {
-        std::string url = "/user/full_swaggers";
+        std::string url = "/user/swaggers";
         auto request = this->_request(url, Method::GET);
         SerializerIn input(url, request);
         std::vector<User> res;

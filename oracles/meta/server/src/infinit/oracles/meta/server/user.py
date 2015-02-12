@@ -1527,35 +1527,29 @@ class Mixin:
             recipient_ids = {peer},
           )
 
-  # Used up to 0.9.1 for fetching swaggers.
-  @api('/user/swaggers')
-  @require_logged_in
-  def swaggers(self):
-    user = self.user
-    with elle.log.trace("%s: get his swaggers" % user['email']):
-      return self.success({"swaggers" : list(user["swaggers"].keys())})
-
-  def _full_swaggers(self):
+  def _swaggers(self):
     user = self.user
     swaggers = user['swaggers']
-    query = {
-      '_id': {
-        '$in': list(map(bson.ObjectId, swaggers.keys()))
-      }
-    }
-    res = (
-      self.extract_user_fields(user)
-      for user in self.database.users.aggregate([
-          {'$match': query},
-          {'$project': self.user_public_fields},
-      ])['result'])
-    return sorted(res, key = lambda u: swaggers[str(u['id'])])
+    users = self.__users_fetch(
+      {
+        '_id':
+        {
+          '$in': list(map(bson.ObjectId, swaggers.keys()))
+        }
+      })
+    return sorted(map(self.__user_view, users),
+                  key = lambda u: swaggers[str(u['id'])])
 
-  # Replaces /user/swaggers as of 0.9.2.
+  # Backward up to 0.9.27
   @api('/user/full_swaggers')
   @require_logged_in
   def full_swaggers(self):
-    return self.success({'swaggers': self._full_swaggers()})
+    return {'swaggers': self._swaggers()}
+
+  @api('/user/swaggers')
+  @require_logged_in
+  def swaggers(self):
+    return {'swaggers': self._swaggers()}
 
   @api('/user/add_swagger', method = 'POST')
   @require_admin
@@ -2149,7 +2143,7 @@ class Mixin:
     # If it's the initialization, pull history, if not, only the one modified
     # since last synchronization!
     res = {
-      'swaggers': self._full_swaggers(),
+      'swaggers': self._swaggers(),
     }
     mtime = {'timestamp': None, 'date': None}
     if not init:

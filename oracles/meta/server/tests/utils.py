@@ -507,11 +507,11 @@ class User(Client):
 
   @property
   def swaggers(self):
-    return self.get('user/swaggers')['swaggers']
+    return [s['id'] for s in self.full_swaggers]
 
   @property
   def full_swaggers(self):
-    return self.get('user/full_swaggers')['swaggers']
+    return self.get('user/swaggers')['swaggers']
 
   @property
   def favorites(self):
