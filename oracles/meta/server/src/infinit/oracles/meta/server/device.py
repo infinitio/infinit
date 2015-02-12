@@ -86,7 +86,8 @@ class Mixin:
     """
     with elle.log.trace('create device %s with owner %s' %
                         (id, owner['_id'])):
-      if id is not None:
+      has_id = (id is not None)
+      if has_id:
         assert isinstance(id, uuid.UUID)
       else:
         id = uuid.uuid4()
@@ -110,8 +111,13 @@ class Mixin:
       }
       if device_push_token is not None:
         device['push_token'] = device_push_token
-      self.database.users.update({'_id': owner['_id']},
-                                 {'$push': {'devices': device}})
+      res = None
+      if has_id:
+         res = self.database.users.update({'_id': owner['_id'], 'devices.id': id},
+                                          {'$set': {'devices.$': device}})
+      if not has_id or res['n'] == 0:
+        self.database.users.update({'_id': owner['_id']},
+                                   {'$push': {'devices': device}})
       return device
 
   @api('/device/create', method="POST")
