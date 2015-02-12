@@ -55,6 +55,8 @@ class Mixin:
     del user['_id']
     user['status'] = user['connected'] # FIXME: seriously WTF
     user['devices'] = [d['id'] for d in user['devices']]
+    if 'favorites' not in user:
+      user['favorites'] = []
     return user
 
   @property
