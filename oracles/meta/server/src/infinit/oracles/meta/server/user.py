@@ -1429,42 +1429,6 @@ class Mixin:
                                  offset : int = 0):
     return self.__users_by_emails_search(emails, limit, offset)
 
-
-  # Historically we used _id but we're moving to id. This function extracts
-  # fields for both cases.
-  def extract_user_fields(self, user):
-    if '_id' in user.keys():
-      user_id = user['_id']
-    else:
-      user_id = user['id']
-    if self.admin:
-      res = dict(user)
-      for key in ['avatar', 'small_avatar']:
-        if key in res.keys():
-          del res[key]
-        if 'public_key' not in res.keys():
-          res['public_key'] = ''
-        if 'fullname' not in res.keys():
-          res['fullname'] = ''
-        if 'handle' not in res.keys():
-          res['handle'] = ''
-        if 'connected_devices' not in res.keys():
-          res['connected_devices'] = []
-    else:
-      res = {
-        'public_key': user.get('public_key', ''),
-        'fullname': user.get('fullname', ''),
-        'handle': user.get('handle', ''),
-        'connected_devices': user.get('connected_devices', []),
-        'register_status': user.get('register_status'),
-      }
-    res.update({
-      '_id': user_id, # Backwards compatibility.
-      'id': user_id,
-      'status': self._is_connected(user_id),
-    })
-    return res
-
   @api('/users/<id_or_email>')
   def view_user(self, id_or_email):
     """

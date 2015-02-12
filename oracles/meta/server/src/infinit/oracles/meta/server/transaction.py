@@ -375,7 +375,7 @@ class Mixin:
           'created_transaction_id': transaction_id,
           'remaining_invitations': sender.get('remaining_invitations', 0),
           'recipient_is_ghost': is_ghost,
-          'recipient': self.extract_user_fields(recipient)
+          'recipient': self.__user_view(recipient),
         })
 
   def __update_transaction_stats(self,
