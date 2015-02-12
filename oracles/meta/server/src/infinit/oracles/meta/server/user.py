@@ -87,8 +87,7 @@ class Mixin:
 
   def __user_fetch(self, query, fields = None):
     return self.__user_fill(
-            self.__users_fetch_fields(
-              self.database.users.find_one, query, fields))
+      self.database.users.find_one(query, fields = fields))
 
   def __user_fetch_and_modify(self, query, update, fields, new):
     return self.__user_fill(self.database.users.find_and_modify(
@@ -102,8 +101,7 @@ class Mixin:
                     fields = None,
                     limit = None,
                     skip = None):
-    users = self.__users_fetch_fields(
-              self.database.users.find, query, fields)
+    users = self.database.users.find(query, fields = fields)
     if skip is not None:
       users = users.skip(skip)
     if limit is not None:
@@ -112,9 +110,6 @@ class Mixin:
 
   def __users_count(self, query, fields = None):
     return self.database.users.find(query, fields = ['_id']).count()
-
-  def __users_fetch_fields(self, f, query, fields):
-    return f(query, fields = fields)
 
   ## ------ ##
   ## Handle ##
