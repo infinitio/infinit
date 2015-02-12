@@ -6,6 +6,7 @@
 #include <boost/random.hpp>
 
 #include <elle/Buffer.hh>
+#include <elle/IOStream.hh>
 #include <elle/assert.hh>
 #include <elle/cast.hh>
 #include <elle/finally.hh>
@@ -799,7 +800,7 @@ namespace infinit
           ELLE_DUMP_SCOPE("%s: read message", *this);
           auto buffer = socket->read_until("\n", timeout);
           ELLE_TRACE("%s: got message: %f", *this, buffer);
-          std::istream input(buffer.istreambuf());
+          elle::IOStream input(buffer.istreambuf());
           auto json = boost::any_cast<elle::json::Object>(
             elle::json::read(input));
           return notification_from_dict(json);
