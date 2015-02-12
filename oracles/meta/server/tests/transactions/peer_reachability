@@ -51,8 +51,8 @@ with Meta(enable_emails = True) as meta:
     trophonius.poll()
     trophonius.poll()
 
-    bob.notifications.clear()
-    alice.notifications.clear()
+    del bob.notifications[:]
+    del alice.notifications[:]
     bob.put('transaction/%s/endpoints' % res['created_transaction_id'],
             {
               'device': str(bob.device_id),
@@ -90,6 +90,6 @@ with Meta(enable_emails = True) as meta:
     assert alice.notifications[1]['notification_type'] == PEER_CONNECTION_UPDATE
     assert alice.notifications[1]['status'] == 0
 
-    alice.notifications.clear()
+    del alice.notifications[:]
 
     bob.login(trophonius = trophonius)
