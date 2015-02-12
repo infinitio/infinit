@@ -338,6 +338,24 @@ ELLE_TEST_SCHEDULED(transactions)
   BOOST_CHECK(c.transactions().empty());
 }
 
+ELLE_TEST_SCHEDULED(transaction_create)
+{
+  HTTPServer s;
+  s.register_route(
+    "/transaction/create_empty",
+    reactor::http::Method::POST,
+    [] (HTTPServer::Headers const&,
+        HTTPServer::Cookies const&,
+        HTTPServer::Parameters const&,
+        elle::Buffer const& body)
+    {
+      ELLE_LOG("BITE");
+      return "BITE";
+    });
+  Client c("http", "127.0.0.1", s.port());
+  c.create_transaction();
+}
+
 ELLE_TEST_SCHEDULED(trophonius)
 {
   HTTPServer s;

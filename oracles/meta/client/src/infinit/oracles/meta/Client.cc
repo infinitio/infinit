@@ -852,14 +852,18 @@ namespace infinit
                                  bool is_dir,
                                  // boost::uuids::uuid const& device_uuid,
                                  std::string const& struuid,
-                                 std::string const& message) const
+                                 std::string const& message,
+                                 boost::optional<std::string const&> transaction_id) const
       {
         ELLE_TRACE("%s: create transaction to %s with files: %s (size: %s)",
                    *this, recipient_id_or_email, files, size);
-        std::string const url = "/transaction/create";
+        std::string const url = transaction_id ?
+          "/transaction/" + *transaction_id :
+          "/transaction/create";
+        auto method = transaction_id ? Method::PUT : Method::POST;
         auto request = this->_request(
           url,
-          Method::POST,
+          method,
           [&] (reactor::http::Request& r)
           {
             elle::serialization::json::SerializerOut query(r, false);
@@ -874,9 +878,24 @@ namespace infinit
             query.serialize("is_directory", is_dir);
             query.serialize("device_id", const_cast<std::string&>(struuid));
             query.serialize("message", const_cast<std::string&>(message));
+            if (transaction_id)
+              query.serialize("t_id",
+                              const_cast<std::string&>(*transaction_id));
           });
         SerializerIn input(url, request);
         return CreatePeerTransactionResponse(input);
+      }
+
+      std::string
+      Client::create_transaction() const
+      {
+        ELLE_TRACE("%s: create empty transaction", *this);
+        std::string const url = "/transaction/create_empty";
+        auto request = this->_request( url, Method::POST);
+        SerializerIn input(url, request);
+        std::string created_transaction_id;
+        input.serialize("created_transaction_id", created_transaction_id);
+        return created_transaction_id;
       }
 
       UpdatePeerTransactionResponse
