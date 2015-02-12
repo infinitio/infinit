@@ -116,16 +116,6 @@ class Mixin:
   def __users_fetch_fields(self, f, query, fields):
     return f(query, fields = fields)
 
-  def __get_fields_filter(self, avatar=False, identity=False, passport=False):
-    filter = {'avatar': False}
-    if not avatar:
-      filter.update({'small_avatar': False})
-    if not identity:
-      filter.update({'identity': False})
-    if not passport:
-      filter.update({'devices.passport': False})
-    return filter
-
   ## ------ ##
   ## Handle ##
   ## ------ ##
@@ -258,7 +248,7 @@ class Mixin:
       usr = self.database.users.find_and_modify(
         {'_id': user['_id'], 'devices.id': str(device_id)},
         {'$set': {'devices.$.push_token': device_push_token}},
-        fields = self.__get_fields_filter()
+        fields = ['devices']
       )
       if usr is None:
         elle.log.trace("user logged with an unknown device")

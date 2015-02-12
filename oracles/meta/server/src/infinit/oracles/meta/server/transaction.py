@@ -239,8 +239,9 @@ class Mixin:
         elle.log.debug("%s is an email" % id_or_email)
         peer_email = id_or_email.lower().strip()
         # XXX: search email in each accounts.
-        recipient = self.database.users.find_one({'accounts.id': peer_email},
-          fields = self.__get_fields_filter())
+        recipient = self.__user_fetch(
+          {'accounts.id': peer_email},
+          fields = self.__user_view_fields)
         # if the user doesn't exist, create a ghost and invite.
 
         if not recipient:
@@ -257,7 +258,8 @@ class Mixin:
             accounts = [{'type':'email', 'id':peer_email}],
             features = self._roll_features(True),
           )
-          recipient = self.database.users.find_one(recipient_id, fields = self.__get_fields_filter())
+          recipient = self.__user_fetch(
+            recipient_id, fields = self.__user_view_fields)
           # Post new_ghost event to metrics
           url = 'http://metrics.9.0.api.production.infinit.io/collections/users'
           metrics = {
@@ -278,15 +280,19 @@ class Mixin:
           recipient_id = bson.ObjectId(id_or_email)
         except Exception as e:
           return self.fail(error.USER_ID_NOT_VALID)
-        recipient = self.database.users.find_one(recipient_id, fields = self.__get_fields_filter())
+        recipient = self.__user_fetch(
+          recipient_id, fields = self.__user_view_fields)
 
       if recipient is None:
         return self.fail(error.USER_ID_NOT_VALID)
       if recipient['register_status'] == 'merged':
         assert isinstance(recipient['merged_with'], bson.ObjectId)
-        recipient = self.database.users.find_one({
-          '_id': recipient['merged_with']
-        }, fields = self.__get_fields_filter())
+        recipient = self.__user_fetch(
+          {
+            '_id': recipient['merged_with']
+          },
+          fields = self.__user_view_field
+        )
         if recipient is None:
           return self.fail(error.USER_ID_NOT_VALID)
       if recipient['register_status'] == 'deleted':
@@ -570,8 +576,8 @@ class Mixin:
   def on_ghost_uploaded(self, transaction, device_id, device_name, user):
     elle.log.log('Transaction finished');
     # Guess if this was a ghost cloud upload or not
-    recipient = self.database.users.find_one(transaction['recipient_id'],
-      fields = self.__get_fields_filter())
+    recipient = self.__user_fetch(transaction['recipient_id'],
+                                  fields = self.__user_view_fields)
     if recipient['register_status'] == 'deleted':
       self.gone({
         'reason': 'user %s is deleted' % recipient['_id'],
