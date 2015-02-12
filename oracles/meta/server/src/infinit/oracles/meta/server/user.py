@@ -1495,12 +1495,6 @@ class Mixin:
       else:
         return self.__user_view(user)
 
-  @api('/user/from_public_key')
-  def view_from_publick_key(self, public_key):
-    with elle.log.trace("%s: search user from public key %s" % (self, public_key)):
-      user = self.user_by_public_key(public_key)
-      return self.success(self.extract_user_fields(user))
-
   ## ------- ##
   ## Swagger ##
   ## ------- ##

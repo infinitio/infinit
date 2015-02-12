@@ -24,7 +24,6 @@ with Meta() as meta:
   throws(lambda: meta.get('user/email@email.com/view'), 200)
   throws(lambda: meta.get('user/5241b9d226b9f10fff8be391/view'), 200)
   throws(lambda: meta.get('user/from_handle/bob/view'), 200)
-  throws(lambda: meta.get('user/from_public_key', {}), 400)
   throws(lambda: meta.get('user/swaggers'), 403)
   throws(lambda: meta.get('user/full_swaggers'), 403)
   throws(lambda: meta.post('user/add_swagger', {}), 400)
