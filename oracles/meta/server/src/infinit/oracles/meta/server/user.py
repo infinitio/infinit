@@ -1308,24 +1308,6 @@ class Mixin:
   ## Search ##
   ## ------ ##
 
-  @property
-  def user_public_fields(self):
-    res = {
-      'id': '$_id',
-      'public_key': '$public_key',
-      'fullname': '$fullname',
-      'handle': '$handle',
-      'register_status': '$register_status',
-      '_id': False,
-    }
-    if self.admin:
-      res['features'] = '$features'
-      res['creation_time'] = '$creation_time'
-      res['email'] = '$email'
-      res['email_confirmed'] = '$email_confirmed'
-      res['os'] = '$os'
-    return res
-
   def __object_id(self, id):
     try:
       return bson.ObjectId(id.strip())
@@ -1363,12 +1345,15 @@ class Mixin:
           {'handle' : {'$regex' : search, '$options': 'i'}},
         ]
       pipeline.append({'$match': match})
-      # Mongo 2.6 requires a project after a match with an or.
-      fields = self.user_public_fields
+      # FIXME: workaround mongo 2.6 which requires a project after a
+      # match with an or.
+      fields = {f.split('.')[0]: '$%s' % f.split('.')[0]
+                for f in self.__user_view_fields}
       fields['swaggers'] = '$swaggers'
       pipeline.append({
         '$project': fields,
       })
+      # /FIXME
       if self.logged_in:
         pipeline.append({
           '$sort': {'swaggers.%s' % str(self.user['_id']) : -1}
@@ -1378,7 +1363,8 @@ class Mixin:
       users = self.database.users.aggregate(pipeline)
       for user in users['result']:
         del user['swaggers']
-      return {'users': users['result']}
+        self.__user_fill(user)
+      return {'users': [self.__user_view(u) for u in users['result']]}
 
   def __users_by_emails_search(self, emails, limit, offset):
     """Search users for a list of emails.
