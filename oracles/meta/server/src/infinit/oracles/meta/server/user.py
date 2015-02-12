@@ -1770,7 +1770,7 @@ class Mixin:
         version = collections.OrderedDict(sorted(version.items()))
       match = {
         '_id': user_id,
-        'devices.id': str(device_id),
+        'devices': {'$elemMatch': {'id': str(device_id)}},
       }
       if status:
         action['$set'] = {
@@ -1780,7 +1780,7 @@ class Mixin:
           'devices.$.os': os,
         }
       else:
-        match['devices.trophonius'] = str(trophonius_id)
+        match['devices']['$elemMatch']['trophonius'] = str(trophonius_id)
         action['$set'] = {
           'disconnection_time': self.now,
           'devices.$.trophonius': None,
