@@ -30,6 +30,7 @@ ELLE_TEST_SCHEDULED(links)
   sender.login();
   ELLE_ASSERT_EQ(sender.state.transactions().size(), 0);
 
+  reactor::Barrier barrier;
   elle::filesystem::TemporaryFile transfered("filename");
   {
     boost::filesystem::ofstream f(transfered.path());
@@ -40,14 +41,20 @@ ELLE_TEST_SCHEDULED(links)
       f.write(&c, 1);
     }
   }
-  sender.state.create_link(
+  auto id = sender.state.create_link(
     std::vector<std::string>{transfered.path().string().c_str()}, "message");
   // Because our trophonius is a brick, we will not receive the notification.
   ELLE_ASSERT_EQ(sender.state.transactions().size(), 1);
   // At the stage, status is new.
   ELLE_ASSERT_EQ(sender.state.transactions().begin()->second->data()->status,
                  infinit::oracles::Transaction::Status::created);
-  reactor::sleep(500_ms);
+  sender.state.attach_callback<surface::gap::Transaction::Notification>(
+    [&] (surface::gap::Transaction::Notification const& notif)
+    {
+      if (id == notif.id)
+        barrier.open();
+    });
+  barrier.wait();
   // At this stage, status has been set locally.
   ELLE_ASSERT_EQ(sender.state.transactions().begin()->second->data()->status,
                  infinit::oracles::Transaction::Status::finished);
