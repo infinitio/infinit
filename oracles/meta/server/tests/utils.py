@@ -419,7 +419,7 @@ class User(Client):
     self.email = email is not None and email or random_email() + '@infinit.io'
     self.password = meta.create_user(self.email,
                                      **kwargs)
-    self.id = meta.get('user/%s/view' % self.email)['_id']
+    self.id = meta.get('users/%s' % self.email)['id']
     self.device_id = uuid4()
     self.notifications = []
 
@@ -434,7 +434,6 @@ class User(Client):
   @property
   def data(self):
     res = self.get('user/self')
-    assert res['success']
     return res
 
   def login(self, device_id = None, trophonius = None, **kw):
@@ -522,7 +521,6 @@ class User(Client):
   def logged_in(self):
     try:
       res = self.data
-      assert res['success']
       assert str(self.device_id) in res['devices']
       return True
     except HTTPException as e:

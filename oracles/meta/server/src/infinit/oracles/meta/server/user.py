@@ -12,7 +12,7 @@ import elle.log
 import papier
 
 from .plugins.response import response, Response
-from .utils import api, require_logged_in, require_logged_in_identity, require_admin, require_logged_in_or_admin, hash_password, json_value, require_key, key
+from .utils import api, require_logged_in, require_logged_in_fields, require_admin, require_logged_in_or_admin, hash_password, json_value, require_key, key
 from . import utils
 from . import error, notifier, regexp, conf, invitation, mail
 
@@ -41,17 +41,20 @@ class Mixin:
     return user
 
   def __user_view(self, user):
+    '''Layout user to be returned to clients'''
     user = self.__user_self(user)
     # Devices are fetched to compute connectivity, hide them
     del user['devices']
     return user
 
   def __user_self(self, user):
+    '''Layout self-user to be returned to clients'''
     if user is None:
       return user
     user['id'] = user['_id']
     del user['_id']
     user['status'] = user['connected'] # FIXME: seriously WTF
+    user['devices'] = [d['id'] for d in user['devices']]
     return user
 
   @property
@@ -79,7 +82,7 @@ class Mixin:
   @property
   def __user_self_fields(self):
     res = self.__user_view_fields
-    res += ['email', 'favorites', 'identity']
+    res += ['email', 'favorites', 'identity', 'swaggers', 'accounts']
     return res
 
   def __user_fetch(self, query, fields = None):
@@ -311,12 +314,10 @@ class Mixin:
                 password):
     email = email.replace(' ', '')
     with elle.log.trace("%s: web login" % email):
-      user = self._login(email,
-                         password = password,
-                         fields = self.__user_self_fields)
+      f = self.__user_self_fields + ['unconfirmed_email_deadline']
+      user = self._login(email, password = password, fields = f)
       elle.log.debug("%s: store session" % email)
       bottle.request.session['email'] = email
-      user = self.user
       elle.log.trace("%s: successfully connected as %s" %
                      (email, user['_id']))
       return self.success(self._login_response(user, web = True))
@@ -349,9 +350,9 @@ class Mixin:
 
   @property
   def user(self):
-    return self._user_from_session()
+    return self._user_from_session(fields = self.__user_self_fields)
 
-  def _user_from_session(self, avatar = False, identity = False):
+  def _user_from_session(self, fields):
     elle.log.trace("get user from session")
     if hasattr(bottle.request, 'user'):
       return bottle.request.user
@@ -361,8 +362,7 @@ class Mixin:
     if email is not None:
       user = self.user_by_email(email,
                                 ensure_existence = False,
-                                avatar = avatar,
-                                identity = identity)
+                                fields = fields)
       bottle.request.user = user
       return user
     elle.log.trace("session not found")
@@ -507,15 +507,14 @@ class Mixin:
         },
         user_id = user_id,
       )
-      user = self.user_by_email(email, ensure_existence = True)
       self.mailer.send_template(
-        to = user['email'],
+        to = email,
         template_name = 'confirm-sign-up',
         merge_vars = {
-          user['email']: {
-            'CONFIRM_KEY': key('/users/%s/confirm-email' % user['_id']),
-            'USER_FULLNAME': user['fullname'],
-            'USER_ID': str(user['_id']),
+          email: {
+            'CONFIRM_KEY': key('/users/%s/confirm-email' % user_id),
+            'USER_FULLNAME': fullname,
+            'USER_ID': str(user_id),
           }}
       )
       return user
@@ -611,7 +610,13 @@ class Mixin:
                                 user: str):
     with elle.log.trace(
         'resending confirmation email request for %s' % user):
-      user = self.user_by_id_or_email(user)
+      user = self.user_by_id_or_email(user,
+                                      fields = [
+                                        'email',
+                                        'email_confirmed',
+                                        'email_confirmation_hash',
+                                        'fullname',
+                                      ])
       if user is None:
         response(404, {'reason': 'user not found'})
       if user.get('email_confirmed', True):
@@ -665,7 +670,7 @@ class Mixin:
       self.fail(*e.args)
 
   @api('/user/accounts')
-  @require_logged_in
+  @require_logged_in_fields(['pending_auxiliary_emails'])
   def accounts(self):
     user = self.user
     res = {
@@ -694,7 +699,9 @@ class Mixin:
       res = validator(arg)
       if res != 0:
         return self._forbidden_with_error(error.EMAIL_NOT_VALID)
-    other = self.user_by_email(email, ensure_existence = False)
+    other = self.user_by_email(email,
+                               ensure_existence = False,
+                               fields = ['register_status'])
     if other is not None and other['register_status'] != 'ghost':
       return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
     user = self.user
@@ -743,7 +750,10 @@ class Mixin:
       account = res['pending_auxiliary_emails'][0] # account is {'hash': hash, 'email': email}
       email = account['email']
       elle.log.debug('add %s to user %s' % (email, res['email']))
-      user = self.user_by_email(email, ensure_existence = False)
+      user = self.user_by_email(
+        email,
+        fields = ['email', 'swaggers', 'register_status'],
+        ensure_existence = False)
       if user is not None and user['register_status'] != 'ghost':
         return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
       update = {
@@ -751,6 +761,7 @@ class Mixin:
         '$addToSet': {'accounts': {'id': account['email'], 'type': 'email'}},
       }
       # If a ghost exists for the given email.
+      # FIXME: this must be done in user_delete
       if user:
         elle.log.trace('a ghost was found %s' % user)
         swaggers = user.get('swaggers', {})
@@ -760,6 +771,7 @@ class Mixin:
           {
             "_id": {"$in": list(swaggers.keys())}
           },
+          # FIXME: we lose the swag amount
           {
             '$inc': {'swaggers.%s' % res['_id']: 1},
           })
@@ -816,12 +828,16 @@ class Mixin:
     return self.success({})
 
   @api('/user/accounts/make_primary', method = 'POST')
-  @require_logged_in
+  @require_logged_in_fields(['password'])
   def swap_primary_account(self,
                            new_email,
                            password):
     user = self.user
-    user_from_new_address = self.user_by_email(new_email, ensure_existence = False)
+    user_from_new_address = self.user_by_email(
+      new_email,
+      fields = ['_id'],
+      ensure_existence = False,
+    )
     # It like change email...
     if user_from_new_address is None:
       return self.change_email_request(new_email, password)
@@ -835,7 +851,7 @@ class Mixin:
     return {}
 
   @api('/user/change_email_request', method = 'POST')
-  @require_logged_in
+  @require_logged_in_fields(['password'])
   def change_email_request(self,
                            new_email,
                            password):
@@ -861,7 +877,9 @@ class Mixin:
 
       new_email = new_email.lower().strip()
       # Check if the new address is already in use.
-      if self.user_by_email(new_email, ensure_existence = False) is not None:
+      if self.user_by_email(new_email,
+                            fields = [],
+                            ensure_existence = False) is not None:
         return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
       if hash_password(password) != user['password']:
         return self._forbidden_with_error(error.PASSWORD_NOT_VALID)
@@ -936,7 +954,9 @@ class Mixin:
         return self._forbidden_with_error(error.UNKNOWN_USER)
       # Check that the email has not been registered.
       new_email = user['new_main_email']
-      if self.user_by_email(new_email, ensure_existence = False) is not None:
+      if self.user_by_email(new_email,
+                            fields = [],
+                            ensure_existence = False) is not None:
         return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
       self._change_email(user, new_email, password)
 
@@ -987,7 +1007,7 @@ class Mixin:
     return {}
 
   @api('/user/change_password', method = 'POST')
-  @require_logged_in
+  @require_logged_in_fields(['password'])
   def change_password(self,
                       old_password,
                       new_password,
@@ -1011,7 +1031,6 @@ class Mixin:
       res = validator(arg)
       if res != 0:
         return self.fail(res)
-
     user = self.user
     if user['password'] != hash_password(old_password):
       return self.fail(error.PASSWORD_NOT_VALID)
@@ -1069,7 +1088,8 @@ class Mixin:
   @api('/users/<user>', method = 'DELETE')
   @require_admin
   def user_delete_specific(self, user: str):
-    self.user_delete(self.user_by_id_or_email(user))
+    self.user_delete(
+      self.user_by_id_or_email(user, fields = ['email', 'swaggers']))
 
   def user_delete(self, user, merge_with = None):
     """The idea is to just keep the user's id and fullname so that transactions
@@ -1180,14 +1200,14 @@ class Mixin:
     if user is None:
       raise error.Error(error.UNKNOWN_USER)
 
-  def _user_by_id(self, _id, ensure_existence = True, avatar = False, identity = False):
+  def _user_by_id(self, _id, fields, ensure_existence = True):
     """Get a user using by id.
 
     _id -- the _id of the user.
     ensure_existence -- if set, raise if user is invald.
     """
     assert isinstance(_id, bson.ObjectId)
-    user = self.__user_fetch(_id)
+    user = self.__user_fetch(_id, fields = fields)
     if ensure_existence:
       self.__ensure_user_existence(user)
     return user
@@ -1205,19 +1225,14 @@ class Mixin:
 
   def user_by_email(self,
                     email,
-                    ensure_existence = True,
-                    avatar = False,
-                    identity = False,
-                    passport = False):
+                    fields,
+                    ensure_existence = True):
     """Get a user with given email.
 
     email -- the email of the user.
     ensure_existence -- if set, raise if user is invald.
     """
     email = email.lower().strip()
-    fields = self.__get_fields_filter(avatar = avatar,
-                                      identity = identity,
-                                      passport = passport)
     user = self.__user_fetch(
       {'accounts.id': email},
       fields = fields,
@@ -1283,6 +1298,21 @@ class Mixin:
     if ensure_existence:
       self.__ensure_user_existence(user)
     return user
+
+  def user_by_id_or_email(self, id_or_email, fields):
+    id_or_email = id_or_email.lower()
+    if '@' in id_or_email:
+      return self.user_by_email(id_or_email,
+                                fields = fields,
+                                ensure_existence = False)
+    else:
+      try:
+        id = bson.ObjectId(id_or_email)
+        return self._user_by_id(id,
+                                fields = fields,
+                                ensure_existence = False)
+      except bson.errors.InvalidId:
+        self.bad_request('invalid user id: %r' % id_or_email)
 
   ## ------ ##
   ## Search ##
@@ -1440,23 +1470,15 @@ class Mixin:
     """
     Get user's public information by user_id or email.
     """
-    user = self.user_by_id_or_email(id_or_email)
+    user = self.user_by_id_or_email(id_or_email,
+                                    fields = self.__user_view_fields)
     if user is None:
-      return self.not_found()
+      self.not_found({
+        'reason': 'user %s not found' % id_or_email,
+        'id': id_or_email,
+      })
     else:
-      return self.extract_user_fields(user)
-
-  # Required for version <= 0.9.14.
-  @api('/user/<id_or_email>/view')
-  def view_user_old(self, id_or_email):
-    """
-    Get user's public information by user_id or email.
-    """
-    user = self.user_by_id_or_email(id_or_email)
-    if user is None:
-      return self.fail(error.UNKNOWN_USER)
-    else:
-      return self.success(self.extract_user_fields(user))
+      return self.__user_view(user)
 
   @api('/users/from_handle/<handle>')
   @require_logged_in
@@ -1585,11 +1607,9 @@ class Mixin:
     user_id -- emiter of the notification (optional,
                if logged in source is the user)
     """
-    if user_id is None:
-      user_id = self.user['_id']
-    else:
-      assert isinstance(user_id, bson.ObjectId)
-    user = self._user_by_id(user_id)
+    assert isinstance(user_id, bson.ObjectId)
+    # FIXME: surely that user is already fetched
+    user = self._user_by_id(user_id, fields = ['swaggers'])
     swaggers = set(map(bson.ObjectId, user['swaggers'].keys()))
     d = {"user_id" : user_id}
     d.update(data)
@@ -1719,55 +1739,11 @@ class Mixin:
       'user': list(map(lambda u: u['email'], invitees)),
     })
 
-  def _user_self(self, user = None, short = False):
-    if user is None:
-      user = self._user_from_session(avatar = False, identity = True)
-    res = {
-      '_id': user['_id'], # Used until 0.9.9
-      'id': user['_id'],
-      'register_status': user['register_status'],
-      'token_generation_key': user.get('token_generation_key', ''),
-    }
-    if not short:
-      res.update({
-        'fullname': user['fullname'],
-        'handle': user['handle'],
-        'email': user['email'],
-        'devices': [d['id'] for d in user.get('devices', [])],
-        'networks': user.get('networks', []),
-        'identity': user['identity'],
-        'public_key': user['public_key'],
-        'accounts': user['accounts'],
-        'remaining_invitations': user.get('remaining_invitations', 0),
-        'favorites': user.get('favorites', []),
-        'connected_devices': user.get('connected_devices', []),
-        'creation_time': user.get('creation_time', None),
-        'last_connection': user.get('last_connection', 0),
-      })
-    if not user.get('email_confirmed', True):
-      from time import time
-      res.update({
-        'unconfirmed_email_leeway': user['unconfirmed_email_deadline'] - time()
-      })
-    return res
-
   @api('/user/self')
-  @require_logged_in_identity
+  @require_logged_in_fields(['identity'])
   def user_self(self):
     """Return self data."""
-    return self.success(self._user_self())
-
-  @api('/user/minimum_self')
-  @require_logged_in
-  def minimum_self(self):
-    """Return minimum self data.
-    """
-    user = self.user
-    return self.success(
-      {
-        'email': user['email'],
-        'identity': user['identity'],
-      })
+    return self.__user_self(self.user)
 
   @api('/user/remaining_invitations')
   @require_logged_in
@@ -1788,7 +1764,9 @@ class Mixin:
                  id: bson.ObjectId,
                  date: int = 0,
                  no_place_holder: bool = False):
-    user = self._user_by_id(id, ensure_existence = False, avatar = True)
+    user = self._user_by_id(id,
+                            ensure_existence = False,
+                            fields = ['small_avatar'])
     if user is None:
       if no_place_holder:
         return self.not_found()
@@ -1849,8 +1827,8 @@ class Mixin:
                             device_id,
                             status,
                             trophonius_id,
-                            version,
-                            os):
+                            version = None,
+                            os = None):
     """Add or remove the device from user connected devices.
 
     device_id -- the id of the requested device
@@ -1957,29 +1935,23 @@ class Mixin:
         )
       return user
 
-  def __subscriptions(self, user):
-    """
-    Return the status of every subscriptions for a specified user.
-
-    user -- The user.
-    """
-    unsubscribed = user.get('unsubscriptions', [])
-    return {
-      k:
-      {
-        'status': not k in unsubscribed,
-        'pretty': mail.subscriptions[k]
-      } for k in mail.subscriptions.keys()
-    }
-
   @api('/user/email_subscriptions', method = 'GET')
-  @require_logged_in
+  @require_logged_in_fields(['unsubscriptions'])
   def mail_subscriptions(self):
     """
     Return the status of every subscriptions.
     """
-    user = self.user
-    return self.success({"subscriptions": self.__subscriptions(user)})
+    return self.success({
+      'subscriptions':
+      {
+        k:
+        {
+          'status': not k in self.user.get('unsubscriptions', []),
+          'pretty': mail.subscriptions[k]
+        }
+        for k in mail.subscriptions.keys()
+      }
+    })
 
   def has_email_subscription(self, user, name):
     subscription = mail.subscription_name(name)
@@ -1994,7 +1966,7 @@ class Mixin:
     type -- The name of the subscription.
     """
     try:
-      user = self.user
+      user = self._user_from_session(fields = ['unsubscriptions'])
       return self.success({name: self.has_email_subscription(user, name)})
     except mail.EmailSubscriptionNotFound as e:
       self.not_found()
@@ -2065,7 +2037,7 @@ class Mixin:
     user -- Email or id of the user to unsubscribe.
     name -- Name of the email set.
     """
-    user = self.user_by_id_or_email(user)
+    user = self.user_by_id_or_email(user, fields = ['email'])
     return self.__modify_subscription(user, name, True)
 
   @api('/users/<user>/email_subscriptions/<name>', method = 'DELETE')
@@ -2077,7 +2049,7 @@ class Mixin:
     user -- Email or id of the user to unsubscribe.
     name -- Name of the email set.
     """
-    user = self.user_by_id_or_email(user)
+    user = self.user_by_id_or_email(user, fields = ['email'])
     if user is None:
       self.not_found({
         'reason': 'user %s not found' % user,

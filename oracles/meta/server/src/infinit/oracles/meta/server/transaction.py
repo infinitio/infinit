@@ -252,6 +252,7 @@ class Mixin:
             register_status = 'ghost',
             notifications = [],
             networks = [],
+            devices = [],
             swaggers = {},
             accounts = [{'type':'email', 'id':peer_email}],
             features = self._roll_features(True),

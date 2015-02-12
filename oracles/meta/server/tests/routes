@@ -37,7 +37,6 @@ with Meta() as meta:
   throws(lambda: meta.post('user/admin_invite', {}), 404)
   throws(lambda: meta.get('user/invited'), 200)
   throws(lambda: meta.get('user/self'), 403)
-  throws(lambda: meta.get('user/minimum_self'), 403)
   throws(lambda: meta.get('user/remaining_invitations'), 200)
   throws(lambda: meta.get('user/5241b9d226b9f10fff8be391/avatar'), 200)
   throws(lambda: meta.post('user/avatar', {}), 403)
