@@ -90,6 +90,7 @@ jobject to_array(JNIEnv* env, C const& source,
   {
     jobject v = element_converter(env, e);
     env->SetObjectArrayElement(res, idx, v);
+    env->DeleteLocalRef(v);
     ++idx;
   }
   return res;
@@ -107,16 +108,23 @@ static jobject to_user(JNIEnv* env, surface::gap::User const& u)
   }
   jobject res = env->NewObject(u_class, u_init);
   jfieldID f;
+  jobject tmp;
   f = env->GetFieldID(u_class, "id", "I");
   env->SetIntField(res, f, u.id);
   f = env->GetFieldID(u_class, "status", "Z");
   env->SetBooleanField(res, f, u.status);
   f = env->GetFieldID(u_class, "fullname", "Ljava/lang/String;");
-  env->SetObjectField(res, f, env->NewStringUTF(u.fullname.c_str()));
+  tmp = env->NewStringUTF(u.fullname.c_str());
+  env->SetObjectField(res, f, tmp);
+  env->DeleteLocalRef(tmp);
   f = env->GetFieldID(u_class, "handle", "Ljava/lang/String;");
-  env->SetObjectField(res, f, env->NewStringUTF(u.handle.c_str()));
+  tmp = env->NewStringUTF(u.handle.c_str());
+  env->SetObjectField(res, f, tmp);
+  env->DeleteLocalRef(tmp);
   f = env->GetFieldID(u_class, "metaId", "Ljava/lang/String;");
-  env->SetObjectField(res, f, env->NewStringUTF(u.meta_id.c_str()));
+  tmp = env->NewStringUTF(u.meta_id.c_str());
+  env->SetObjectField(res, f, tmp);
+  env->DeleteLocalRef(tmp);
   f = env->GetFieldID(u_class, "swagger", "Z");
   env->SetBooleanField(res, f, u.swagger);
   f = env->GetFieldID(u_class, "deleted", "Z");
@@ -143,22 +151,30 @@ static jobject to_linktransaction(JNIEnv* env, surface::gap::LinkTransaction con
     ts_get_value = env->GetStaticMethodID(ts_class, "GetValue", "(I)Lio/infinit/TransactionStatus;");
   }
   jobject res = env->NewObject(lt_class, lt_init);
+  jobject tmp;
   jfieldID f;
   f = env->GetFieldID(lt_class, "id", "I");
   env->SetIntField(res, f, t.id);
   f = env->GetFieldID(lt_class, "name", "Ljava/lang/String;");
-  env->SetObjectField(res, f, env->NewStringUTF(t.name.c_str()));
+  tmp = env->NewStringUTF(t.name.c_str());
+  env->SetObjectField(res, f, tmp);
+  env->DeleteLocalRef(tmp);
   f = env->GetFieldID(lt_class, "mtime", "D");
   env->SetDoubleField(res, f, t.mtime);
   f = env->GetFieldID(lt_class, "link", "Ljava/lang/String;");
-  env->SetObjectField(res, f, env->NewStringUTF(t.link? t.link->c_str():""));
+  tmp = env->NewStringUTF(t.link? t.link->c_str():"");
+  env->SetObjectField(res, f, tmp);
+  env->DeleteLocalRef(tmp);
   f = env->GetFieldID(lt_class, "clickCount", "I");
   env->SetIntField(res, f, t.click_count);
   f = env->GetFieldID(lt_class, "status", "Lio/infinit/TransactionStatus;");
   jobject status = env->CallStaticObjectMethod(ts_class, ts_get_value, (int)t.status);
   env->SetObjectField(res, f, status);
+  env->DeleteLocalRef(status);
   f = env->GetFieldID(lt_class, "senderDeviceId", "Ljava/lang/String;");
-  env->SetObjectField(res, f, env->NewStringUTF(t.sender_device_id.c_str()));
+  tmp = env->NewStringUTF(t.sender_device_id.c_str());
+  env->SetObjectField(res, f, tmp);
+  env->DeleteLocalRef(tmp);
   return res;
 }
 static jobject to_peertransaction(JNIEnv* env, surface::gap::PeerTransaction const& t)
@@ -182,21 +198,26 @@ static jobject to_peertransaction(JNIEnv* env, surface::gap::PeerTransaction con
     ts_get_value = env->GetStaticMethodID(ts_class, "GetValue", "(I)Lio/infinit/TransactionStatus;");
   }
   jobject res = env->NewObject(pt_class, pt_init);
+  jobject tmp;
   jfieldID f;
   f = env->GetFieldID(pt_class, "id", "I");
   env->SetIntField(res, f, t.id);
   f = env->GetFieldID(pt_class, "status", "Lio/infinit/TransactionStatus;");
   jobject status = env->CallStaticObjectMethod(ts_class, ts_get_value, (int)t.status);
   env->SetObjectField(res, f, status);
-
+  env->DeleteLocalRef(status);
   f = env->GetFieldID(pt_class, "senderId", "I");
   env->SetIntField(res, f, t.sender_id);
   f = env->GetFieldID(pt_class, "senderDeviceId", "Ljava/lang/String;");
-  env->SetObjectField(res, f, env->NewStringUTF(t.sender_device_id.c_str()));
+  tmp = env->NewStringUTF(t.sender_device_id.c_str());
+  env->SetObjectField(res, f, tmp);
+  env->DeleteLocalRef(tmp);
   f = env->GetFieldID(pt_class, "recipientId", "I");
   env->SetIntField(res, f, t.recipient_id);
   f = env->GetFieldID(pt_class, "recipientDeviceId", "Ljava/lang/String;");
-  env->SetObjectField(res, f, env->NewStringUTF(t.recipient_device_id.c_str()));
+  tmp = env->NewStringUTF(t.recipient_device_id.c_str());
+  env->SetObjectField(res, f, tmp);
+  env->DeleteLocalRef(tmp);
   f = env->GetFieldID(pt_class, "mtime", "D");
   env->SetDoubleField(res, f, t.mtime);
 
@@ -207,16 +228,21 @@ static jobject to_peertransaction(JNIEnv* env, surface::gap::PeerTransaction con
   int idx = 0;
   for (std::string const& s: t.file_names)
   {
-    env->SetObjectArrayElement(array, idx, env->NewStringUTF(s.c_str()));
+    tmp = env->NewStringUTF(s.c_str());
+    env->SetObjectArrayElement(array, idx, tmp);
+    env->DeleteLocalRef(tmp);
     ++idx;
   }
-
+  env->SetObjectField(res, f, array);
+  env->DeleteLocalRef(array);
   f = env->GetFieldID(pt_class, "totalSize", "J");
   env->SetLongField(res, f, t.total_size);
   f = env->GetFieldID(pt_class, "isDirectory", "Z");
   env->SetBooleanField(res, f, t.is_directory);
   f = env->GetFieldID(pt_class, "message", "Ljava/lang/String;");
-  env->SetObjectField(res, f, env->NewStringUTF(t.message.c_str()));
+  tmp = env->NewStringUTF(t.message.c_str());
+  env->SetObjectField(res, f, tmp);
+  env->DeleteLocalRef(tmp);
   return res;
 }
 
