@@ -349,11 +349,15 @@ ELLE_TEST_SCHEDULED(transaction_create)
         HTTPServer::Parameters const&,
         elle::Buffer const& body)
     {
-      ELLE_LOG("BITE");
-      return "BITE";
+      return R"JSON(
+        {
+          "created_transaction_id": "42"
+        }
+        )JSON";
     });
   Client c("http", "127.0.0.1", s.port());
-  c.create_transaction();
+  auto t_id = c.create_transaction();
+  BOOST_CHECK(t_id == "42");
 }
 
 ELLE_TEST_SCHEDULED(trophonius)
@@ -480,4 +484,5 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(trophonius));
   suite.add(BOOST_TEST_CASE(upload_avatar));
   suite.add(BOOST_TEST_CASE(link_credentials));
+  suite.add(BOOST_TEST_CASE(transaction_create));
 }
