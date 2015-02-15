@@ -591,4 +591,7 @@ gap_send_last_crash_logs(gap_State* state,
                          std::string const& state_log,
                          std::string const& additional_info);
 
+gap_Status
+gap_facebook_connect(gap_State* state, std::string const& code);
+
 #endif

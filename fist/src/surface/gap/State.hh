@@ -221,6 +221,9 @@ namespace surface
                 std::string const& email,
                 std::string const& password);
 
+      void
+      facebook_connect(std::string const& code);
+
       std::string
       user_directory();
 

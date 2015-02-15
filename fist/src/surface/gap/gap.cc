@@ -1863,3 +1863,16 @@ gap_send_last_crash_logs(gap_State* state,
     }, disposable);
   return gap_ok;
 }
+
+gap_Status
+gap_facebook_connect(gap_State* state, std::string const& code)
+{
+  return run<gap_Status>(
+    state,
+    "accept transaction",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.facebook_connect(code);
+      return gap_ok;
+    });
+}

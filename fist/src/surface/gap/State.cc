@@ -452,9 +452,7 @@ namespace surface
           << [&] (elle::Finally& finally_logout)
         {
           auto login_response =
-            this->_meta.login(lower_email,
-                              password,
-                              _device_uuid);
+            this->_meta.login(lower_email, password, _device_uuid);
           ELLE_LOG("%s: logged in as %s", *this, email);
           this->_me.reset(new Self(login_response.self));
           this->user_sync(this->me());
@@ -850,6 +848,24 @@ namespace surface
       }
       this->_metrics_reporter->user_register(true, "");
       this->login(lower_email, password);
+    }
+
+    void
+    State::facebook_connect(std::string const& code)
+    {
+      std::string error_details;
+      // XXX: Add metric.
+      try
+      {
+        this->meta(false).facebook_connect(
+          code,
+          boost::lexical_cast<std::string>(this->device_uuid()));
+        facebook_login_failed.abort();
+      }
+      catch (elle::Error const& error)
+      {
+        error_details = error.what();
+      }
     }
 
     Self const&
