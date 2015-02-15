@@ -286,6 +286,10 @@ class Meta:
     self.__meta = None
     self.__meta_args = kw
 
+  @property
+  def domain(self):
+    return "http://localhost:%s" % self.__server.port
+
   def __enter__(self):
     self.__mongo.__enter__()
     client = pymongo.MongoClient(port = self.__mongo.port)
@@ -314,6 +318,10 @@ class Meta:
       import time
       time.sleep(.1)
     return self
+
+  @property
+  def inner(self):
+    return self.__meta
 
   @property
   def mailer(self):
@@ -422,6 +430,17 @@ class User(Client):
     self.id = meta.get('user/%s/view' % self.email)['_id']
     self.device_id = uuid4()
     self.notifications = []
+    self.trophonius = None
+
+  @property
+  def id(self):
+    if self.__id is None:
+      self.__id = self.me['id']
+    return self.__id
+
+  @property
+  def facebook_id(self):
+    return self.me['facebook_id']
 
   @property
   def login_parameters(self):
