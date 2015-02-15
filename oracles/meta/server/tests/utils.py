@@ -421,13 +421,16 @@ class User(Client):
                meta,
                email = None,
                device_name = 'device',
+               facebook = False,
                **kwargs):
     super().__init__(meta)
 
-    self.email = email is not None and email or random_email() + '@infinit.io'
-    self.password = meta.create_user(self.email,
-                                     **kwargs)
-    self.id = meta.get('user/%s/view' % self.email)['_id']
+    if not facebook:
+      self.email = email is not None and email or random_email() + '@infinit.io'
+      self.password = meta.create_user(self.email, **kwargs)
+      self.__id = meta.get('user/%s/view' % self.email)['_id']
+    else:
+      self.__id = None
     self.device_id = uuid4()
     self.notifications = []
     self.trophonius = None
@@ -479,6 +482,17 @@ class User(Client):
       self.trophonius.connect_user(self)
     return res
 
+  def facebook_connect(self, code):
+    args = {
+      'code': code,
+    }
+    if self.device_id is not None:
+      args.update({
+        'device_id': str(self.device_id)
+      })
+
+    self.post('facebook_connect', args)
+
   def __hash__(self):
     return str(self.id).__hash__()
 
@@ -502,7 +516,8 @@ class User(Client):
 
   @property
   def me(self):
-    return self.get('user/self')
+    res = self.get('user/self')
+    return res
 
   @property
   def accounts(self):

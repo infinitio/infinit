@@ -205,6 +205,8 @@ class Mixin:
       user = self.__user_from_hash(hash)
     except error.Error as e:
       self.fail(*e.args)
+    # Remove sessions.
+    self.remove_session(user)
     # Cancel all the current transactions.
     self.cancel_transactions(user)
     # Remove all the devices from the user because they are based on his old

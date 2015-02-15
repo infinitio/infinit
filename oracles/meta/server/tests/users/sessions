@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-from utils import Meta, Client, HTTPException
+from utils import Meta, Client, HTTPException, User
 from uuid import uuid4
+from bson import ObjectId
 import copy
 
 with Meta() as meta:
@@ -63,4 +64,27 @@ with Meta() as meta:
   # Logout user on device 0.
   res = client0.post('logout')
   assert res['success']
+  assert meta.database.sessions.count() == 0
+
+
+# Session migration.
+with Meta(enable_emails = True) as meta:
+  user = User(meta, 'foobar@infinit.io')
+  user.login()
+  assert meta.database.sessions.count() == 1
+  # Modify the current session to the old pattern.
+  meta.database.sessions.find_and_modify(
+    {
+      'identifier': ObjectId(user.id)
+    },
+    {
+      '$unset': {'identifier': 1},
+      '$set': {'email': user.email},
+    })
+  assert 'email' in meta.database.sessions.find_one()
+  assert 'identifier' not in meta.database.sessions.find_one()
+
+  user.me
+
+  user.logout()
   assert meta.database.sessions.count() == 0

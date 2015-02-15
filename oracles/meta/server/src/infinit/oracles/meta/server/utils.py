@@ -64,6 +64,8 @@ def require_key(method):
   return require_key
 
 def hash_password(password):
+  if password is None:
+    return None
   import hashlib
   seasoned = password + conf.SALT
   seasoned = seasoned.encode('utf-8')

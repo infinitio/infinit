@@ -23,6 +23,10 @@ from infinit.oracles.meta.server.utils import json_value
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Transaction'
 
+# This create a code with more than 8 billions possibilities.
+code_alphabet = '23456789abcdefghijkmnpqrstuvwxyz'
+code_length = 7
+
 class Mixin:
 
   def is_sender(self, transaction, owner_id, device_id = None):
@@ -256,7 +260,8 @@ class Mixin:
             networks = [],
             swaggers = {},
             accounts = [{'type':'email', 'id':peer_email}],
-            features = self._roll_features(True)
+            features = self._roll_features(True),
+
           )
           recipient = self.database.users.find_one(recipient_id)
           # Post new_ghost event to metrics
@@ -334,10 +339,10 @@ class Mixin:
         'strings': ' '.join([
               sender['fullname'],
               sender['handle'],
-              sender['email'],
+              self.user_email_or_facebook_id(sender),
               recipient['fullname'],
               recipient.get('handle', ""),
-              recipient['email'],
+              self.user_email_or_facebook_id(recipient),
               message,
               ] + files)
         }
@@ -350,24 +355,28 @@ class Mixin:
         time = True)
 
       if not peer_email:
-        peer_email = recipient['email']
+        peer_email = recipient.get('email', None)
 
-      if not new_user and not recipient.get('connected', False) and not is_ghost:
-        elle.log.debug("recipient is disconnected")
-        template_id = 'accept-file-only-offline'
+      if peer_email is not None:
+        if not new_user and not recipient.get('connected', False) and not is_ghost:
+          elle.log.debug("recipient is disconnected")
+          template_id = 'accept-file-only-offline'
 
-        self.mailer.send_template(
-          to = peer_email,
-          template_name = template_id,
-          reply_to = "%s <%s>" % (sender['fullname'], sender['email']),
-          merge_vars = {
-            peer_email: {
-              'filename': files[0],
-              'note': message,
-              'sendername': sender['fullname'],
-              'avatar': self.user_avatar_route(recipient['_id']),
-            }}
-          )
+          reply_to = sender.get('email', None) and \
+                     "%s <%s>" % (sender['fullname'], sender['email']) or \
+                     "notifications@infinit.io"
+          self.mailer.send_template(
+            to = peer_email,
+            template_name = template_id,
+            reply_to = reply_to,
+            merge_vars = {
+              peer_email: {
+                'filename': files[0],
+                'note': message,
+                'sendername': sender['fullname'],
+                'avatar': self.user_avatar_route(recipient['_id']),
+              }}
+            )
 
       self._increase_swag(sender['_id'], recipient['_id'])
 
@@ -612,11 +621,13 @@ class Mixin:
       mail_template = 'send-file-url'
       if 'features' in recipient and 'send_file_url_template' in recipient['features']:
         mail_template = recipient['features']['send_file_url_template']
+
+      source = (user['fullname'], self.user_email_or_facebook_id(user))
       invitation.invite_user(
         peer_email,
         mailer = self.mailer,
         mail_template = mail_template,
-        source = (user['fullname'], user['email']),
+        source = source,
         database = self.database,
         merge_vars = {
           peer_email: {
@@ -624,7 +635,7 @@ class Mixin:
             'recipient_email': recipient['email'],
             'recipient_name': recipient['fullname'],
             'sendername': user['fullname'],
-            'sender_email': user['email'],
+            'sender_email': user.get('email', ''),
             'sender_avatar': 'https://%s/user/%s/avatar' %
               (bottle.request.urlparts[1], user['_id']),
             'note': transaction['message'],

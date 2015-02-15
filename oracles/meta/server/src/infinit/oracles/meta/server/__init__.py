@@ -43,6 +43,7 @@ from . import transaction
 from . import trophonius
 from . import user
 from . import waterfall
+from . import facebook
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.Meta'
 
@@ -102,6 +103,7 @@ class Meta(bottle.Bottle,
       debug = False,
       zone = None,
       production = False,
+      facebook_domain = "https://graph.facebook.com",
   ):
     self.__production = production
     import os
@@ -190,6 +192,8 @@ class Meta(bottle.Bottle,
     self.gcs_link_bucket = gcs_link_bucket
     waterfall.Waterfall.__init__(self)
     self.__zone = zone
+    # Facebook.
+    self.facebook = facebook.FacebookGraph(facebook_domain)
 
   @property
   def production(self):
