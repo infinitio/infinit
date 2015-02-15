@@ -1314,6 +1314,45 @@ namespace infinit
           content_type);
       }
 
+      LoginResponse
+      Client::facebook_connect(std::string const& code,
+                               boost::uuids::uuid const& device_uuid) const
+      {
+        std::string content_type = "application/json";
+        std::string url{"/facebook_connect"};
+        auto request = this->_request(
+          url,
+          reactor::http::Method::POST,
+          [&] (reactor::http::Request& request)
+          {
+            elle::serialization::json::SerializerOut output(request, false);
+            output.serialize("code", const_cast<std::string&>(code));
+            std::string struuid = boost::lexical_cast<std::string>(device_uuid);
+            output.serialize("device_id", struuid);
+            auto os = elle::system::platform::os_name();
+            output.serialize("OS", os);
+          },
+          false);
+
+        if (request.status() == reactor::http::StatusCode::Forbidden)
+        {
+          SerializerIn input(url, request);
+          int error_code;
+          input.serialize("code", error_code);
+          using Error = infinit::oracles::meta::Error;
+          switch (Error(error_code))
+          {
+            case Error::email_password_dont_match:
+              throw infinit::state::CredentialError();
+            default:
+              throw elle::Error("have fun");
+          }
+        }
+
+        SerializerIn input(url, request);
+        return LoginResponse(input);
+      }
+
       /*--------.
       | Helpers |
       `--------*/

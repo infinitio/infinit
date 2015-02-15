@@ -444,6 +444,68 @@ ELLE_TEST_SCHEDULED(link_credentials)
   c.link_credentials(id, true);
 }
 
+ELLE_TEST_SCHEDULED(facebook_connect_success)
+{
+  HTTPServer s;
+  s.register_route("/facebook_connect", reactor::http::Method::POST,
+                   [] (HTTPServer::Headers const&,
+                       HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
+                       elle::Buffer const& body) -> std::string
+                   {
+                     return "{"
+                       " \"device\": {\"id\": \"1\", \"name\": \"johny\", \"passport\": \"passport\"},"
+                       " \"trophonius\": {\"host\": \"192.168.1.1\", \"port\": 4923, \"port_ssl\": 4233},"
+                       " \"features\": [],"
+                       " \"self\": {"
+                       "   \"_id\": \"0\","
+                       "   \"id\": \"0\","
+                       "   \"fullname\": \"jean\","
+                       "   \"email\": \"jean@infinit.io\","
+                       "   \"handle\": \"jean\","
+                       "   \"register_status\": \"ok\","
+                       "   \"identity\": \"identity\","
+                       "   \"passport\": \"passport\","
+                       "   \"devices\": [\"1\"],"
+                       "   \"networks\": [],"
+                       "   \"public_key\": \"public_key\","
+                       "   \"name\": \"FUUUUUUUUUUCK\","
+                       "   \"accounts\": [],"
+                       "   \"remaining_invitations\": 0,"
+                       "   \"token_generation_key\": \"token_generation_key\","
+                       "   \"favorites\": [],"
+                       "   \"connected_devices\": [\"1\"],"
+                       "   \"status\": 1,"
+                       "   \"creation_time\": 1420565249,"
+                       "   \"last_connection\": 1420565249"
+                       "   }"
+                       " }";
+                   });
+  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+  c.facebook_connect("foobar", boost::uuids::nil_uuid());
+}
+
+ELLE_TEST_SCHEDULED(facebook_connect_failiure)
+{
+  HTTPServer s;
+  s.register_route("/facebook_connect", reactor::http::Method::POST,
+                   [] (HTTPServer::Headers const&,
+                       HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
+                       elle::Buffer const& body) -> std::string
+                   {
+                     throw HTTPServer::Exception("",
+                                                 reactor::http::StatusCode::Forbidden,
+                                                 "{"
+                                                 " \"code\": -10101,"
+                                                 " \"message\": \"email password dont match\""
+                                                 "}");
+                   });
+  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+  BOOST_CHECK_THROW(c.facebook_connect("foobar", boost::uuids::nil_uuid()),
+                    infinit::state::CredentialError);
+}
+
 ELLE_TEST_SUITE()
 {
   auto& suite = boost::unit_test::framework::master_test_suite();
@@ -462,4 +524,6 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(trophonius));
   suite.add(BOOST_TEST_CASE(upload_avatar));
   suite.add(BOOST_TEST_CASE(link_credentials));
+  suite.add(BOOST_TEST_CASE(facebook_connect_success));
+  suite.add(BOOST_TEST_CASE(facebook_connect_failiure));
 }

@@ -536,6 +536,14 @@ namespace infinit
         void
         icon(elle::ConstWeakBuffer const& icon) const;
 
+      /*---------.
+      | Facebook |
+      `---------*/
+      public:
+        LoginResponse
+        facebook_connect(std::string const& code,
+                         boost::uuids::uuid const& device_uuid) const;
+
       /*----------.
       | Printable |
       `----------*/
