@@ -240,7 +240,7 @@ class Mixin:
         fields = self.__user_self_fields + ['public_key'])
       # If creation process was interrupted, generate identity now.
       if 'public_key' not in user:
-        self.__generate_identity(user['_id'], email, password)
+        self.__generate_identity(user, email, password)
       elle.log.debug("%s: look for session" % email)
       usr = self.database.users.find_and_modify(
         {'_id': user['_id'], 'devices.id': str(device_id)},
@@ -484,7 +484,7 @@ class Mixin:
           # The user existed.
           raise Exception(error.EMAIL_ALREADY_REGISTERED)
       user_id = user['_id']
-      self.__generate_identity(user_id, email, password)
+      self.__generate_identity(user, email, password)
       with elle.log.trace("add user to the mailing list"):
         self.invitation.subscribe(email)
       self._notify_swaggers(
@@ -506,27 +506,28 @@ class Mixin:
       )
       return user
 
-  def __generate_identity(self, user_id, email, password):
+  def __generate_identity(self, user, email, password):
     with elle.log.trace('generate identity'):
       identity, public_key = papier.generate_identity(
-        str(user_id),
+        str(user['_id']),
         email,
         password,
         conf.INFINIT_AUTHORITY_PATH,
         conf.INFINIT_AUTHORITY_PASSWORD
         )
+      update = {
+        'identity': identity,
+        'public_key': public_key,
+      }
       self.database.users.update(
         {
-          '_id': user_id,
+          '_id': user['_id'],
         },
         {
-          '$set':
-          {
-            'identity': identity,
-            'public_key': public_key,
-          },
+          '$set': update,
         },
       )
+      user.update(update)
 
   # Deprecated
   @api('/user/confirm_email/<hash>', method = 'POST')
