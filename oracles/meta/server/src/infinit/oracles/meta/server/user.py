@@ -1213,13 +1213,15 @@ class Mixin:
 
   def user_by_email(self,
                     email,
-                    fields,
+                    fields = None,
                     ensure_existence = True):
     """Get a user with given email.
 
     email -- the email of the user.
     ensure_existence -- if set, raise if user is invald.
     """
+    if fields is None:
+      fields = self.__user_view_fields
     email = email.lower().strip()
     user = self.__user_fetch(
       {'accounts.id': email},
