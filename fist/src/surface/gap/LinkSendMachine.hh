@@ -58,6 +58,9 @@ namespace surface
       _create_transaction() override;
       virtual
       void
+      _initialize_transaction() override;
+      virtual
+      void
       _finalize(infinit::oracles::Transaction::Status) override;
     private:
       void

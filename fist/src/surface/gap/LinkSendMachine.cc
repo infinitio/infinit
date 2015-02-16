@@ -51,6 +51,8 @@ namespace surface
       , _credentials()
     {
       this->_machine.transition_add(this->_create_transaction_state,
+                                    this->_initialize_transaction_state);
+      this->_machine.transition_add(this->_initialize_transaction_state,
                                     this->_upload_state);
       this->_machine.transition_add(
         this->_upload_state,
@@ -95,6 +97,8 @@ namespace surface
           this->_run(this->_cancel_state);
         else if (snapshot.current_state() == "create transaction")
           this->_run(this->_create_transaction_state);
+        else if (snapshot.current_state() == "initialize transaction")
+            this->_run(this->_initialize_transaction_state);
         else if (snapshot.current_state() == "end")
           this->_run(this->_end_state);
         else if (snapshot.current_state() == "fail")
@@ -236,8 +240,13 @@ namespace surface
         this->_credentials->clone());
     }
 
+    void LinkSendMachine::_create_transaction()
+    {
+        // TODO: Chewie
+    }
+
     void
-    LinkSendMachine::_create_transaction()
+    LinkSendMachine::_initialize_transaction()
     {
       infinit::oracles::LinkTransaction::FileList files;
       // FIXME: handle directories, non existing files, empty list and shit.

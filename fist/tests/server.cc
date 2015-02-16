@@ -316,6 +316,7 @@ Server::Client::logout()
   this->user.connected_devices.erase(this->user.device_id().get());
 }
 
+
 Server::Server()
   : _session_id(boost::uuids::random_generator()())
   , trophonius()
@@ -601,64 +602,151 @@ Server::Server()
          Server::Parameters const&,
          elle::Buffer const& content)
     {
-      auto& user = this->user(cookies);
-      auto t = elle::make_unique<Transaction>();
-      ELLE_TRACE_SCOPE("%s: create transaction %s", *this, t->id());
-      elle::IOStream stream(content.istreambuf());
-      elle::serialization::json::SerializerIn input(stream, false);
-      std::string recipient_email;
-      input.serialize("id_or_email", recipient_email);
-      ELLE_DEBUG("%s: recipient: %s", *this, recipient_email);
-      t->status(infinit::oracles::Transaction::Status::created);
+    ELLE_WARN("THIS SHOULD NOT BE CALLED");
+    auto& user = this->user(cookies);
+    auto t = elle::make_unique<Transaction>();
+    ELLE_TRACE_SCOPE("%s: create transaction %s", *this, t->id());
+    elle::IOStream stream(content.istreambuf());
+    elle::serialization::json::SerializerIn input(stream, false);
+    std::string recipient_email;
+    input.serialize("id_or_email", recipient_email);
+    ELLE_DEBUG("%s: recipient: %s", *this, recipient_email);
+    t->status(infinit::oracles::Transaction::Status::created);
 
-      bool ghost;
-      auto& users_by_email = this->_users.get<1>();
-      auto recipient = users_by_email.find(recipient_email);
-      ghost = recipient == users_by_email.end();
-      auto& rec = ghost
+    bool ghost;
+    auto& users_by_email = this->_users.get<1>();
+    auto recipient = users_by_email.find(recipient_email);
+    ghost = recipient == users_by_email.end();
+    auto& rec = ghost
         ? generate_ghost_user(recipient_email)
         : **recipient;
 
-      rec.swaggers.insert(&user);
-      user.swaggers.insert(&rec);
+    rec.swaggers.insert(&user);
+    user.swaggers.insert(&rec);
 
-      auto res = elle::sprintf(
-        "{"
-        "  \"created_transaction_id\": \"%s\","
-        "  \"recipient_is_ghost\": %s,"
-        "  \"recipient\": %s"
-        "}",
-        t->id(),
-        ghost ? "true" : "false",
-        rec.json());
-      this->register_route(
-        elle::sprintf("/transaction/%s/cloud_buffer", t->id()),
-        reactor::http::Method::GET,
-        [&] (Server::Headers const&,
-             Server::Cookies const&,
-             Server::Parameters const&,
-             elle::Buffer const&)
-        {
-          auto now = boost::posix_time::second_clock::universal_time();
-          auto tomorrow = now + boost::posix_time::hours(24);
-          return elle::sprintf(
-            "{"
-            "  \"protocol\": \"aws\","
-            "  \"access_key_id\": \"\","
-            "  \"secret_access_key\": \"\","
-            "  \"session_token\": \"\","
-            "  \"region\": \"region\","
-            "  \"bucket\": \"bucket\","
-            "  \"folder\": \"folder\","
-            "  \"expiration\": \"%s\","
-            "  \"current_time\": \"%s\""
-            "}",
-            boost::posix_time::to_iso_extended_string(tomorrow),
-            boost::posix_time::to_iso_extended_string(now));
-        });
-      this->_transactions.insert(std::move(t));
-      return res;
+    auto res = elle::sprintf(
+                             "{"
+                             "  \"created_transaction_id\": \"%s\","
+                             "  \"recipient_is_ghost\": %s,"
+                             "  \"recipient\": %s"
+                             "}",
+                             t->id(),
+                             ghost ? "true" : "false",
+                             rec.json());
+    this->register_route(
+                         elle::sprintf("/transaction/%s/cloud_buffer", t->id()),
+                         reactor::http::Method::GET,
+                         [&] (Server::Headers const&,
+                              Server::Cookies const&,
+                              Server::Parameters const&,
+                              elle::Buffer const&)
+                         {
+                         auto now = boost::posix_time::second_clock::universal_time();
+                         auto tomorrow = now + boost::posix_time::hours(24);
+                         return elle::sprintf(
+                                              "{"
+                                              "  \"protocol\": \"aws\","
+                                              "  \"access_key_id\": \"\","
+                                              "  \"secret_access_key\": \"\","
+                                              "  \"session_token\": \"\","
+                                              "  \"region\": \"region\","
+                                              "  \"bucket\": \"bucket\","
+                                              "  \"folder\": \"folder\","
+                                              "  \"expiration\": \"%s\","
+                                              "  \"current_time\": \"%s\""
+                                              "}",
+                                              boost::posix_time::to_iso_extended_string(tomorrow),
+                                              boost::posix_time::to_iso_extended_string(now));
+                         });
+    this->_transactions.insert(std::move(t));
+    return res;
     });
+
+  {
+  this->register_route(
+    "/transaction/create_empty",
+    reactor::http::Method::POST,
+    [&] (Server::Headers const&,
+         Server::Cookies const&,
+         Server::Parameters const&,
+         elle::Buffer const&)
+    {
+      auto t = elle::make_unique<Transaction>();
+      auto id = t->id();
+      ELLE_TRACE_SCOPE("%s: create transaction %s", *this, id);
+      this->_transactions.insert(std::move(t));
+      this->register_route(
+      elle::sprintf("/transaction/%s", id),
+      reactor::http::Method::PUT,
+      [&, id] (Server::Headers const&,
+           Server::Cookies const& cookies,
+           Server::Parameters const&,
+           elle::Buffer const& content)
+      {
+          auto& user = this->user(cookies);
+          elle::IOStream stream(content.istreambuf());
+          elle::serialization::json::SerializerIn input(stream, false);
+          std::string recipient_email;
+          input.serialize("id_or_email", recipient_email);
+          ELLE_DEBUG("%s: recipient: %s", *this, recipient_email);
+          auto it = this->_transactions.find(id);
+          (*it)->status(infinit::oracles::Transaction::Status::created);
+
+
+          bool ghost;
+          auto& users_by_email = this->_users.get<1>();
+          auto recipient = users_by_email.find(recipient_email);
+          ghost = recipient == users_by_email.end();
+          auto& rec = ghost
+              ? generate_ghost_user(recipient_email)
+              : **recipient;
+
+          rec.swaggers.insert(&user);
+          user.swaggers.insert(&rec);
+
+          auto res = elle::sprintf(
+                                   "{"
+                                   "  \"created_transaction_id\": \"%s\","
+                                   "  \"recipient_is_ghost\": %s,"
+                                   "  \"recipient\": %s"
+                                   "}",
+                                   id,
+                                   ghost ? "true" : "false",
+                                   rec.json());
+          this->register_route(
+                               elle::sprintf("/transaction/%s/cloud_buffer", id),
+                               reactor::http::Method::GET,
+                               [&] (Server::Headers const&,
+                                    Server::Cookies const&,
+                                    Server::Parameters const&,
+                                    elle::Buffer const&)
+                               {
+                               auto now = boost::posix_time::second_clock::universal_time();
+                               auto tomorrow = now + boost::posix_time::hours(24);
+                               return elle::sprintf(
+                                                    "{"
+                                                    "  \"protocol\": \"aws\","
+                                                    "  \"access_key_id\": \"\","
+                                                    "  \"secret_access_key\": \"\","
+                                                    "  \"session_token\": \"\","
+                                                    "  \"region\": \"region\","
+                                                    "  \"bucket\": \"bucket\","
+                                                    "  \"folder\": \"folder\","
+                                                    "  \"expiration\": \"%s\","
+                                                    "  \"current_time\": \"%s\""
+                                                    "}",
+                                                    boost::posix_time::to_iso_extended_string(tomorrow),
+                                                    boost::posix_time::to_iso_extended_string(now));
+                               });
+          return res;
+      });
+    return elle::sprintf(
+                        "{"
+                        "\"created_transaction_id\": \"%s\""
+                        "}",
+                        id);
+    });
+  }
 
   this->register_route(
     "/transaction/update",
