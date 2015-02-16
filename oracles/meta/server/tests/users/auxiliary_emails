@@ -75,6 +75,10 @@ with Meta(enable_emails = True) as meta:
             {
               'email': email
             })
+  user.post('user/accounts/email/add',
+            {
+              'email': 'baz@infinit.io',
+            })
   try:
     user.post('user/accounts/email/add',
               {
