@@ -387,6 +387,7 @@ class Mixin:
             {'$set': transaction})
       else:
         transaction_id = self.database.transactions.insert(transaction)
+      transaction['_id'] = transaction_id
       self.__update_transaction_stats(
         sender,
         counts = ['sent_peer', 'sent'],

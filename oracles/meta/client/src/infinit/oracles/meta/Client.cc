@@ -878,9 +878,6 @@ namespace infinit
             query.serialize("is_directory", is_dir);
             query.serialize("device_id", const_cast<std::string&>(struuid));
             query.serialize("message", const_cast<std::string&>(message));
-            if (transaction_id)
-              query.serialize("t_id",
-                              const_cast<std::string&>(*transaction_id));
           });
         SerializerIn input(url, request);
         return CreatePeerTransactionResponse(input);
