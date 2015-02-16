@@ -1130,7 +1130,8 @@ class PendingReminder(Drip):
         ('transactions.pending_has', pymongo.ASCENDING),
         # By disconnection time
         ('disconnection_time', pymongo.ASCENDING),
-      ])
+      ],
+      name = 'emailing.pending-reminder')
 
   def run(self):
     response = {}
@@ -1154,7 +1155,7 @@ class PendingReminder(Drip):
       {
         # Fully registered
         'register_status': 'ok',
-        # Disconnected
+        # Connected
         'online': True,
       },
       template = False,
