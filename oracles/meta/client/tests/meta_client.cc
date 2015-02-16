@@ -485,7 +485,7 @@ ELLE_TEST_SCHEDULED(facebook_connect_success)
   c.facebook_connect("foobar", boost::uuids::nil_uuid());
 }
 
-ELLE_TEST_SCHEDULED(facebook_connect_failiure)
+ELLE_TEST_SCHEDULED(facebook_connect_failure)
 {
   HTTPServer s;
   s.register_route("/facebook_connect", reactor::http::Method::POST,
@@ -525,5 +525,5 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(upload_avatar));
   suite.add(BOOST_TEST_CASE(link_credentials));
   suite.add(BOOST_TEST_CASE(facebook_connect_success));
-  suite.add(BOOST_TEST_CASE(facebook_connect_failiure));
+  suite.add(BOOST_TEST_CASE(facebook_connect_failure));
 }
