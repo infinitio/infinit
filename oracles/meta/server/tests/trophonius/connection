@@ -39,7 +39,3 @@ with Meta() as meta:
 
   res = bob.get('user/self')
   assert len(res['connected_devices']) == 0
-
-  res = bob.put('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, str(uuid4())))
-  assert not res['success']
-  assert res['error_code'] == error.DEVICE_NOT_FOUND[0]
