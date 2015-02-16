@@ -1780,6 +1780,7 @@ class Mixin:
         action['$set'] = {
           'connection_time': self.now,
           'devices.$.trophonius': str(trophonius_id),
+          'devices.$.online': True,
           'devices.$.version': version,
           'devices.$.os': os,
           'online': True,
@@ -1789,6 +1790,7 @@ class Mixin:
         action['$set'] = {
           'disconnection_time': self.now,
           'devices.$.trophonius': None,
+          'devices.$.online': False,
         }
       res = self.database.users.update(
         match,
@@ -1801,24 +1803,10 @@ class Mixin:
       if status is False:
         self.database.users.update({
           '_id': user_id,
-          '$where': bson.code.Code('''
-            function ()
-            {
-              if (this.devices)
-                return this.devices.every(
-                  function (d)
-                  {
-                    return !d.trophonius;
-                  });
-              return true;
-            }
-          ''')
+          'devices.online': {'$ne': True},
         },
         {
-          '$set':
-          {
-            'online': False,
-          }
+          '$set': {'online': False,}
         })
         with elle.log.trace("%s: disconnect nodes" % user_id):
           transactions = self.find_nodes(user_id = user_id,
