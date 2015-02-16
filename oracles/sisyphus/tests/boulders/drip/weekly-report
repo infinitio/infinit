@@ -100,8 +100,9 @@ with mongobox.MongoBox() as mongo:
 
     # Create a peer transaction
     forward(datetime.timedelta(minutes = 1))
+    # FIXME: create_device should fill devices
     recipient_device = meta._create_device(recipient)
-    recipient['devices'].append(recipient_device['id'])
+    recipient['devices'].append({'id': recipient_device['id']})
     transaction_create(meta, sender,
                        recipient['email'])
     tid2 = transaction_create(

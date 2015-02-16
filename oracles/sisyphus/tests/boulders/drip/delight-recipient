@@ -43,8 +43,9 @@ with mongobox.MongoBox() as mongo:
     ghost_email = 'ghost@infinit.io'
     recipient = meta.user_register('recipient@infinit.io',
                                  '*' * 64, 'Foo Bar')
+    # FIXME: create_device should fill devices
     recipient_device = meta._create_device(recipient)
-    recipient['devices'].append(recipient_device['id'])
+    recipient['devices'].append({'id': recipient_device['id']})
     sender = meta.user_register('sender@infinit.io',
                                 '*' * 64, 'Foo Bar')
 

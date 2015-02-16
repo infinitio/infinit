@@ -5,6 +5,7 @@ import bson
 import collections
 import datetime
 import json
+import bson.code
 import random
 import uuid
 
@@ -1781,6 +1782,7 @@ class Mixin:
           'devices.$.trophonius': str(trophonius_id),
           'devices.$.version': version,
           'devices.$.os': os,
+          'online': True,
         }
       else:
         match['devices']['$elemMatch']['trophonius'] = str(trophonius_id)
@@ -1793,12 +1795,31 @@ class Mixin:
         action,
         multi = False,
       )
-      if res['n'] == 0:
-        raise error.Error(error.DEVICE_NOT_FOUND)
       # XXX:
       # This should not be in user.py, but it's the only place
       # we know the device has been disconnected.
       if status is False:
+        self.database.users.update({
+          '_id': user_id,
+          '$where': bson.code.Code('''
+            function ()
+            {
+              if (this.devices)
+                return this.devices.every(
+                  function (d)
+                  {
+                    return !d.trophonius;
+                  });
+              return true;
+            }
+          ''')
+        },
+        {
+          '$set':
+          {
+            'online': False,
+          }
+        })
         with elle.log.trace("%s: disconnect nodes" % user_id):
           transactions = self.find_nodes(user_id = user_id,
                                          device_id = device_id)
