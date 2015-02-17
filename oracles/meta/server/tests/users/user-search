@@ -70,4 +70,7 @@ with Meta() as meta:
     emails.append(email)
   res = bob.post('user/search_emails?limit=10&offset=0', {'emails': emails})
   assert len(res['users']) == 8
+  for user in res['users']:
+    # assert 'connected' in user
+    assert 'connected_devices' in user
   bob.logout()

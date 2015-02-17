@@ -29,7 +29,6 @@ ELLE_TEST_SCHEDULED(links)
   Server::Client sender(server, "sender@infinit.io");
   sender.login();
   ELLE_ASSERT_EQ(sender.state.transactions().size(), 0);
-
   elle::filesystem::TemporaryFile transfered("filename");
   {
     boost::filesystem::ofstream f(transfered.path());
@@ -41,16 +40,20 @@ ELLE_TEST_SCHEDULED(links)
     }
   }
   sender.state.create_link(
-    std::vector<std::string>{transfered.path().c_str()}, "message");
+    std::vector<std::string>{transfered.path().string().c_str()}, "message");
   // Because our trophonius is a brick, we will not receive the notification.
   ELLE_ASSERT_EQ(sender.state.transactions().size(), 1);
   // At the stage, status is new.
   ELLE_ASSERT_EQ(sender.state.transactions().begin()->second->data()->status,
                  infinit::oracles::Transaction::Status::created);
-  reactor::sleep(500_ms);
-  // At this stage, status has been set locally.
-  ELLE_ASSERT_EQ(sender.state.transactions().begin()->second->data()->status,
-                 infinit::oracles::Transaction::Status::finished);
+
+  while (true)
+  {
+    // At this stage, status has been set locally.
+    if (sender.state.transactions().begin()->second->data()->status == infinit::oracles::Transaction::Status::finished)
+      break;
+    reactor::yield();
+  }
   ELLE_ASSERT_EQ(sender.user.links.begin()->status, oracles::Transaction::Status::finished);
 
   sender.user.links.begin()->status =  oracles::Transaction::Status::canceled;

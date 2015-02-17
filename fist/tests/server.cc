@@ -602,22 +602,21 @@ Server::Server()
          Server::Parameters const&,
          elle::Buffer const& content)
     {
-    ELLE_WARN("THIS SHOULD NOT BE CALLED");
-    auto& user = this->user(cookies);
-    auto t = elle::make_unique<Transaction>();
-    ELLE_TRACE_SCOPE("%s: create transaction %s", *this, t->id());
-    elle::IOStream stream(content.istreambuf());
-    elle::serialization::json::SerializerIn input(stream, false);
-    std::string recipient_email;
-    input.serialize("id_or_email", recipient_email);
-    ELLE_DEBUG("%s: recipient: %s", *this, recipient_email);
-    t->status(infinit::oracles::Transaction::Status::created);
+      auto& user = this->user(cookies);
+      auto t = elle::make_unique<Transaction>();
+      ELLE_TRACE_SCOPE("%s: create transaction %s", *this, t->id());
+      elle::IOStream stream(content.istreambuf());
+      elle::serialization::json::SerializerIn input(stream, false);
+      std::string recipient_email;
+      input.serialize("id_or_email", recipient_email);
+      ELLE_DEBUG("%s: recipient: %s", *this, recipient_email);
+      t->status(infinit::oracles::Transaction::Status::created);
 
-    bool ghost;
-    auto& users_by_email = this->_users.get<1>();
-    auto recipient = users_by_email.find(recipient_email);
-    ghost = recipient == users_by_email.end();
-    auto& rec = ghost
+      bool ghost;
+      auto& users_by_email = this->_users.get<1>();
+      auto recipient = users_by_email.find(recipient_email);
+      ghost = recipient == users_by_email.end();
+      auto& rec = ghost
         ? generate_ghost_user(recipient_email)
         : **recipient;
 

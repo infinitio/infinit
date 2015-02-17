@@ -111,8 +111,7 @@ namespace surface
           elle::network::Interface::Filter::no_autoip
           );
         for (auto const& pair: interfaces)
-          if (pair.second.ipv4_address.size() > 0 &&
-              pair.second.mac_address.size() > 0)
+          if (pair.second.ipv4_address.size() > 0)
           {
             auto const& ipv4 = pair.second.ipv4_address;
             addresses.emplace_back(ipv4, this->_station.port());

@@ -21,29 +21,37 @@ class Mixin:
              id,
              owner = None,
              ensure_existence = True,
+             include_passport = False,
              **kwargs):
     if isinstance(id, uuid.UUID):
       id = str(id)
-    query = {'id': id}
+    query = {'devices.id': id}
     if owner is not None:
       assert isinstance(owner, bson.ObjectId)
-      query['owner'] = owner
-    device = self.database.devices.find_one(query, **kwargs)
-    if ensure_existence and device is None:
+      if self.user is not None and self.user['_id'] == owner and not include_passport:
+        # No need to query the DB in that case
+        matches = list(filter(lambda x: x['id'] == id, self.user['devices']))
+        if ensure_existence and len(matches) == 0:
+          raise error.Error(error.DEVICE_NOT_FOUND)
+        return (len(matches) != 0) and matches[0] or None
+      query['_id'] = owner
+    user = self.__user_fetch(query, fields = ['devices'])
+    if ensure_existence and user is None:
       elle.log.trace('Could not fetch device %s for owner %s' % (id, owner))
       raise error.Error(error.DEVICE_NOT_FOUND)
-    return device
+    return list(filter(lambda x: x['id'] == id, user['devices']))[0]
 
   def remove_devices(self, user):
-    self.database.devices.remove({"owner": user['_id']})
+    self.database.users.update({'_id': user['_id']},
+                               { '$set': { 'devices': []}})
 
   @property
   def current_device(self):
     device = bottle.request.session.get('device')
-    if device is not None:
-      assert isinstance(device, bson.ObjectId)
-      return self.database.devices.find_one({'_id': device})
-    return None
+    if device is None:
+      return None
+    else:
+      return list(filter(lambda x: x['id'] == device, self.user['devices']))[0]
 
 
   @api('/devices')
@@ -51,7 +59,7 @@ class Mixin:
   def devices(self):
     """Return all user's device ids.
     """
-    return self.success({'devices': self.user.get('devices', [])})
+    return self.success({'devices': list(map(lambda x: x['id'], self.user.get('devices', [])))})
 
   @api('/device/<id>/view')
   @require_logged_in
@@ -62,7 +70,8 @@ class Mixin:
     assert isinstance(id, uuid.UUID)
     try:
       return self.success(self.device(id = str(id),
-                                      owner = self.user['_id']))
+                                      owner = self.user['_id'],
+                                      include_passport = True))
     except error.Error as e:
       self.fail(*e.args)
 
@@ -75,7 +84,8 @@ class Mixin:
     """
     with elle.log.trace('create device %s with owner %s' %
                         (id, owner['_id'])):
-      if id is not None:
+      has_id = (id is not None)
+      if has_id:
         assert isinstance(id, uuid.UUID)
       else:
         id = uuid.uuid4()
@@ -89,7 +99,6 @@ class Mixin:
       device = {
         'id': id,
         'name': name.strip(),
-        'owner': owner['_id'],
         'passport': papier.generate_passport(
           id,
           name,
@@ -100,14 +109,13 @@ class Mixin:
       }
       if device_push_token is not None:
         device['push_token'] = device_push_token
-      try:
-        self.database.devices.insert(device)
-      except pymongo.errors.DuplicateKeyError:
-        self.fail(error.DEVICE_ALREADY_REGISTERED)
-      self.database.users.find_and_modify(
-        {'_id': owner['_id']},
-        {'$addToSet': {'devices': id}},
-      )
+      res = None
+      if has_id:
+         res = self.database.users.update({'_id': owner['_id'], 'devices.id': id},
+                                          {'$set': {'devices.$': device}})
+      if not has_id or res['n'] == 0:
+        self.database.users.update({'_id': owner['_id']},
+                                   {'$push': {'devices': device}})
       return device
 
   @api('/device/create', method="POST")
@@ -147,16 +155,15 @@ class Mixin:
     if device_id is not None:
       assert isinstance(device_id, uuid.UUID)
       user = self._user_by_id(user_id)
-      if str(device_id) not in user['devices']:
+      if str(device_id) not in map(lambda x: x['id'], user['devices']):
         raise error.Error(error.DEVICE_DOESNT_BELONG_TO_YOU)
       return self.device(id = str(device_id),
-                         owner =  user_id,
-                         fields = ['trophonius']).get('trophonius') is not None
+                         owner =  user_id).get('trophonius') is not None
     else:
-      return self.database.devices.find(
+      return self.database.users.find(
         {
-          "owner": user_id,
-          "trophonius": {"$ne": None},
+          "_id": user_id,
+          "devices.trophonius": {"$ne": None},
         }).count() > 0
 
   @api('/device/update', method = "POST")
@@ -169,15 +176,16 @@ class Mixin:
     assert user is not None
     query = {'id': str(id), 'owner': user['_id']}
     try:
-      device = self.device(**query)
+      device = self.device(id = str(id), owner = user['_id'])
     except error.Error as e:
       self.fail(*e.args)
-    if not str(id) in user['devices']:
-      self.fail(error.DEVICE_DOESNT_BELONG_TO_YOU)
-      self.database.device.update(query, {"$set": {"name": name}})
+    user = self.database.users.find_and_modify(
+                               {'_id': user['_id'], 'devices.id': str(id)},
+                               {"$set": {"devices.$.name": name}})
+    passport = list(filter(lambda x: x['id'] == str(id), user['devices']))[0]['passport']
     return self.success({
         'id': str(id),
-        'passport': device['passport'],
+        'passport': passport,
         'name' : name,
       })
 
@@ -196,8 +204,5 @@ class Mixin:
     except error.Error as e:
       return self.fail(*e.args)
 
-    if not str(id) in user.get('devices', []):
-      self.fail(error.DEVICE_DOESNT_BELONG_TO_YOU)
-    self.database.devices.remove(query)
-    self.database.users.update({'_id': user['_id']}, {'$pull': {'devices': str(id)}})
+    self.database.users.update({'_id': user['_id']}, {'$pull': {'devices': {'id': str(id)}}})
     return self.success({'id': str(id)})

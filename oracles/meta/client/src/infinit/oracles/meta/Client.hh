@@ -406,9 +406,6 @@ namespace infinit
         User
         user_from_handle(std::string const& handle) const;
 
-        User
-        user_from_public_key(std::string const& public_key) const;
-
         std::unordered_map<std::string, User>
         search_users_by_emails(std::vector<std::string> const& emails,
                                int limit = 10,

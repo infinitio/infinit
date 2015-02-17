@@ -18,7 +18,6 @@ with Meta() as meta:
   res = client.post('login', user)
   assert res['success']
   res = client.get('user/self')
-  assert res['success']
   assert meta.database.sessions.count() == 1
 
   # Login another client and check the previosu session is dropped.
@@ -26,7 +25,6 @@ with Meta() as meta:
   res = client.post('login', user)
   assert res['success']
   res = client.get('user/self')
-  assert res['success']
   print(meta.database.sessions.count())
   assert meta.database.sessions.count() == 1
 
@@ -34,7 +32,6 @@ with Meta() as meta:
   res = client.post('login', user)
   assert res['success']
   res = client.get('user/self')
-  assert res['success']
   assert meta.database.sessions.count() == 1
 
   # Logout and check the session is dropped.

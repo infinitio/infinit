@@ -269,9 +269,6 @@ class Mixin:
     with elle.log.trace("create transaction (recipient %s)" % id_or_email):
       id_or_email = id_or_email.strip().lower()
 
-      # if self.database.devices.find_one(bson.ObjectId(device_id)) is None:
-      #   return self.fail(error.DEVICE_NOT_FOUND)
-
       new_user = False
       is_ghost = False
       invitee = 0
@@ -281,7 +278,9 @@ class Mixin:
         elle.log.debug("%s is an email" % id_or_email)
         peer_email = id_or_email.lower().strip()
         # XXX: search email in each accounts.
-        recipient = self.database.users.find_one({'accounts.id': peer_email})
+        recipient = self.__user_fetch(
+          {'accounts.id': peer_email},
+          fields = self.__user_view_fields)
         # if the user doesn't exist, create a ghost and invite.
 
         if not recipient:
@@ -293,11 +292,13 @@ class Mixin:
             register_status = 'ghost',
             notifications = [],
             networks = [],
+            devices = [],
             swaggers = {},
             accounts = [{'type':'email', 'id':peer_email}],
-            features = self._roll_features(True)
+            features = self._roll_features(True),
           )
-          recipient = self.database.users.find_one(recipient_id)
+          recipient = self.__user_fetch(
+            recipient_id, fields = self.__user_view_fields)
           # Post new_ghost event to metrics
           url = 'http://metrics.9.0.api.production.infinit.io/collections/users'
           metrics = {
@@ -318,15 +319,19 @@ class Mixin:
           recipient_id = bson.ObjectId(id_or_email)
         except Exception as e:
           return self.fail(error.USER_ID_NOT_VALID)
-        recipient = self.database.users.find_one(recipient_id)
+        recipient = self.__user_fetch(
+          recipient_id, fields = self.__user_view_fields)
 
       if recipient is None:
         return self.fail(error.USER_ID_NOT_VALID)
       if recipient['register_status'] == 'merged':
         assert isinstance(recipient['merged_with'], bson.ObjectId)
-        recipient = self.database.users.find_one({
-          '_id': recipient['merged_with']
-        })
+        recipient = self.__user_fetch(
+          {
+            '_id': recipient['merged_with']
+          },
+          fields = self.__user_view_field
+        )
         if recipient is None:
           return self.fail(error.USER_ID_NOT_VALID)
       if recipient['register_status'] == 'deleted':
@@ -396,8 +401,9 @@ class Mixin:
 
       if not peer_email:
         peer_email = recipient['email']
-
-      if not new_user and not recipient.get('connected', False) and not is_ghost:
+      recipient_offline = all(d.get('trophonius') is None
+                              for d in recipient.get('devices', []))
+      if not new_user and recipient_offline and not is_ghost:
         elle.log.debug("recipient is disconnected")
         template_id = 'accept-file-only-offline'
 
@@ -420,7 +426,7 @@ class Mixin:
           'created_transaction_id': transaction_id,
           'remaining_invitations': sender.get('remaining_invitations', 0),
           'recipient_is_ghost': is_ghost,
-          'recipient': self.extract_user_fields(recipient)
+          'recipient': self.__user_view(recipient),
         })
 
   def __update_transaction_stats(self,
@@ -578,7 +584,7 @@ class Mixin:
       if device_id is None or device_name is None:
         self.bad_request()
       device_id = uuid.UUID(device_id)
-      if str(device_id) not in user['devices']:
+      if str(device_id) not in map(lambda x: x['id'], user['devices']):
         raise error.Error(error.DEVICE_DOESNT_BELONG_TO_YOU)
       self.__update_transaction_stats(
         user,
@@ -615,7 +621,8 @@ class Mixin:
   def on_ghost_uploaded(self, transaction, device_id, device_name, user):
     elle.log.log('Transaction finished');
     # Guess if this was a ghost cloud upload or not
-    recipient = self.database.users.find_one(transaction['recipient_id'])
+    recipient = self.__user_fetch(transaction['recipient_id'],
+                                  fields = self.__user_view_fields)
     if recipient['register_status'] == 'deleted':
       self.gone({
         'reason': 'user %s is deleted' % recipient['_id'],

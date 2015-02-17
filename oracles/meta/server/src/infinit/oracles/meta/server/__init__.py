@@ -223,18 +223,6 @@ class Meta(bottle.Bottle,
                                        unique = False)
 
     #---------------------------------------------------------------------------
-    # Devices
-    #---------------------------------------------------------------------------
-    # - Default search.
-    self.__database.devices.ensure_index([("id", 1), ("owner", 1)],
-                                         unique = True)
-    # - Trophonius disconnection.
-    self.__database.devices.ensure_index([("trophonius", 1)],
-                                         unique = False)
-    # - Search
-    self.__database.devices.ensure_index([("owner", 1)],
-                                         unique = False)
-    #---------------------------------------------------------------------------
     # Transactions
     #---------------------------------------------------------------------------
     # - ??
@@ -326,6 +314,12 @@ class Meta(bottle.Bottle,
   def bad_request(self, message = None):
     response(400, message)
 
+  def bad_request(self, message = None):
+    response(400, message)
+
+  def conflict(self, message = None):
+    response(409, message)
+
   @api('/js/<filename:path>')
   def static_javascript(self, filename):
     return self.__static('js/%s' % filename)
@@ -392,17 +386,6 @@ class Meta(bottle.Bottle,
     if self.user_version < (0, 9, 26):
       return False
     return self.user['features'].get('gcs_enabled', False)
-
-  def user_by_id_or_email(self, id_or_email):
-    id_or_email = id_or_email.lower()
-    if '@' in id_or_email:
-      return self.user_by_email(id_or_email, ensure_existence = False)
-    else:
-      try:
-        id = bson.ObjectId(id_or_email)
-        return self._user_by_id(id, ensure_existence = False)
-      except bson.errors.InvalidId:
-        self.bad_request('invalid user id: %r' % id_or_email)
 
   def report_fatal_error(self, route, exception):
     import traceback
