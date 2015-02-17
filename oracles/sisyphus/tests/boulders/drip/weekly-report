@@ -61,9 +61,8 @@ with mongobox.MongoBox() as mongo:
                              emailer = emailer)
     gestapo(sisy.mongo)
     report = WeeklyReport(sisy)
-    # This is a Friday
-    report.now = datetime.datetime(2014, 12, 12, 10, 58, 11)
-
+    # This is a Monday
+    report.now = datetime.datetime(2014, 12, 15, 10, 58, 11)
     def forward(duration):
       report.now += duration
       meta.now = report.now
@@ -152,9 +151,9 @@ with mongobox.MongoBox() as mongo:
     assertEq(emails[0][1]['size'], 20010100)
     assertEq(emails[0][1]['people'], 4)
     assertEq(emails[0][1]['start'],
-             datetime.datetime(2014, 12, 12, 15, 00, 00))
+             datetime.datetime(2014, 12, 15, 15, 00, 00))
     assertEq(emails[0][1]['end'],
-             datetime.datetime(2014, 12, 19, 15, 00, 00))
+             datetime.datetime(2014, 12, 22, 15, 00, 00))
 
     # Check report is empty the next week
     forward(datetime.timedelta(weeks = 1))
@@ -162,6 +161,6 @@ with mongobox.MongoBox() as mongo:
     emails = emailer.emails
     check_mail(emails, email, 0, 0)
     assertEq(emails[0][1]['start'],
-             datetime.datetime(2014, 12, 19, 15, 00, 00))
+             datetime.datetime(2014, 12, 22, 15, 00, 00))
     assertEq(emails[0][1]['end'],
-             datetime.datetime(2014, 12, 26, 15, 00, 00))
+             datetime.datetime(2014, 12, 29, 15, 00, 00))

@@ -987,15 +987,18 @@ class WeeklyReport(Drip):
     now = self.now
     offset = datetime.timedelta(
       # 3 was for Friday. 0 is for Monday.
-      # days = now.weekday() + 3,
+      days = now.weekday() + 0,
       hours = now.time().hour - 15,
       minutes = now.time().minute,
       seconds = now.time().second,
       microseconds = now.time().microsecond,
     )
-    self.current = now - offset % datetime.timedelta(weeks = 1)
+    offset %= datetime.timedelta(weeks = 1)
+    self.current = now - offset
     self.previous = self.current - datetime.timedelta(weeks = 1)
     self.next = self.current + datetime.timedelta(weeks = 1)
+    elle.log.debug('%s: send report for %s to %s' %
+                   (self, self.previous, self.current))
     # -> initialized
     transited = self.transition(
       None,
