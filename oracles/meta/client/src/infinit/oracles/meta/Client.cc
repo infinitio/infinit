@@ -1188,7 +1188,8 @@ namespace infinit
           {
             elle::serialization::json::SerializerOut output(request, false);
             output.serialize("new_email", const_cast<std::string&>(email));
-            output.serialize("password", const_cast<std::string&>(password));
+            auto hashed_password = password_hash(password);
+            output.serialize("password", hashed_password);
           },
           false);
         switch (request.status())
