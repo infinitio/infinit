@@ -44,7 +44,7 @@ with Meta(enable_emails = True) as meta:
   bob.post('user/accounts/email/validate/%s' % meta.mailer.hashes[eve])
   # Spoiler: Eve is bob...
   assert bob.get('users/%s' % eve)['register_status'] == 'ok'
-  assert bob.id == bob.get('users/%s' % eve)['_id']
+  assert bob.id == bob.get('users/%s' % eve)['id']
   assert len(bob.swaggers) == 1
   assert bob.swaggers[0] == alice.id
 

@@ -9,7 +9,7 @@ with Meta() as meta:
   transaction, res = bob.sendfile(recipient_id = alice_email)
   assert res['success']
   transaction_id = res['created_transaction_id']
-  ghost = meta.get('user/%s/view' % alice_email)
+  ghost = meta.get('users/%s' % alice_email)
   expected_fullname = "alice in chains"
   alice = User(meta, alice_email, fullname = expected_fullname)
   alice.login()

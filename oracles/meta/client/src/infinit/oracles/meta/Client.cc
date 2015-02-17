@@ -709,28 +709,10 @@ namespace infinit
         return Self(input);
       }
 
-      User
-      Client::user_from_public_key(std::string const& public_key) const
-      {
-        if (public_key.size() == 0)
-          throw elle::Exception("empty public key!");
-        auto url = "/user/from_public_key";
-        auto request = this->_request(
-          url, Method::POST,
-          [&] (reactor::http::Request& r)
-          {
-            elle::serialization::json::SerializerOut query(r, false);
-            query.serialize("public_key",
-                            const_cast<std::string&>(public_key));
-          });
-        SerializerIn input(url, request);
-        return User(input);
-      }
-
       std::vector<User>
       Client::get_swaggers() const
       {
-        std::string url = "/user/full_swaggers";
+        std::string url = "/user/swaggers";
         auto request = this->_request(url, Method::GET);
         SerializerIn input(url, request);
         std::vector<User> res;

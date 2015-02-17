@@ -8,15 +8,21 @@ from itertools import chain
 from infinit.oracles.meta.server import conf
 from infinit.oracles.utils import api, json_value, utf8_string, key
 
-def require_logged_in(method):
-  if hasattr(method, '__api__'):
-    raise Exception(
-      'require_logged_in for %r wraps the API' % method.__name__)
-  def wrapper(wrapped, self, *args, **kwargs):
-    if self.user is None:
-      self.forbidden()
-    return wrapped(self, *args, **kwargs)
-  return decorator.decorator(wrapper, method)
+def require_logged_in_fields(fields):
+  def require_logged_in(method):
+    if hasattr(method, '__api__'):
+      raise Exception(
+        'require_logged_in for %r wraps the API' % method.__name__)
+    def wrapper(wrapped, self, *args, **kwargs):
+      user = self._user_from_session(
+        fields = self._Mixin__user_self_fields + fields)
+      if self.user is None:
+        self.forbidden()
+      return wrapped(self, *args, **kwargs)
+    return decorator.decorator(wrapper, method)
+  return require_logged_in
+
+require_logged_in = require_logged_in_fields([])
 
 def require_admin(method):
   if hasattr(method, '__api__'):

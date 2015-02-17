@@ -1125,12 +1125,13 @@ class PendingReminder(Drip):
         # Fully registered
         ('register_status', pymongo.ASCENDING),
         # Disconnected
-        ('connected', pymongo.ASCENDING),
+        ('online', pymongo.ASCENDING),
         # With pending transfers
         ('transactions.pending_has', pymongo.ASCENDING),
         # By disconnection time
         ('disconnection_time', pymongo.ASCENDING),
-      ])
+      ],
+      name = 'emailing.pending-reminder')
 
   def run(self):
     response = {}
@@ -1142,7 +1143,7 @@ class PendingReminder(Drip):
         # Fully registered
         'register_status': 'ok',
         # Connected
-        'connected': True,
+        'online': True,
       },
       template = False,
     )
@@ -1154,8 +1155,8 @@ class PendingReminder(Drip):
       {
         # Fully registered
         'register_status': 'ok',
-        # Disconnected
-        'connected': True,
+        # Connected
+        'online': True,
       },
       template = False,
     )
@@ -1175,7 +1176,7 @@ class PendingReminder(Drip):
           # Has pending transactions
           'transactions.pending_has': True,
           # Disconnected
-          'connected': False,
+          'online': False,
           # For some time
           'disconnection_time':
           {
