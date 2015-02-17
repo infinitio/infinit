@@ -986,7 +986,8 @@ class WeeklyReport(Drip):
     response = {}
     now = self.now
     offset = datetime.timedelta(
-      days = now.weekday() + 3,
+      # 3 was for Friday. 0 is for Monday.
+      # days = now.weekday() + 3,
       hours = now.time().hour - 15,
       minutes = now.time().minute,
       seconds = now.time().second,
