@@ -457,7 +457,7 @@ ELLE_TEST_SCHEDULED(change_email)
                        HTTPServer::Parameters const&,
                        elle::Buffer const& body) -> std::string
                    {
-                     std::istream stream(body.istreambuf());
+                     elle::IOStream stream(body.istreambuf());
                      elle::serialization::json::SerializerIn input(stream, false);
                      std::string password_hash, email;
                      input.serialize("password", password_hash);
@@ -488,7 +488,7 @@ ELLE_TEST_SCHEDULED(change_email)
                        HTTPServer::Parameters const&,
                        elle::Buffer const& body) -> std::string
                    {
-                     std::istream stream(body.istreambuf());
+                     elle::IOStream stream(body.istreambuf());
                      elle::serialization::json::SerializerIn input(stream, false);
                      std::string password_hash, email;
                      input.serialize("password_hash", password_hash);
