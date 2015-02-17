@@ -17,6 +17,7 @@ from .utils import api, require_logged_in, require_logged_in_fields, require_adm
 from . import utils
 from . import error, notifier, regexp, conf, invitation, mail
 
+import pymongo
 from pymongo import DESCENDING
 import os
 import string
@@ -659,149 +660,116 @@ class Mixin:
       self.fail(*e.args)
 
   @api('/user/accounts')
-  @require_logged_in_fields(['pending_auxiliary_emails'])
+  @require_logged_in
   def accounts(self):
     user = self.user
-    res = {
-      'primary': user['email']
+    return {
+      'email': user.get('email'),
+      'accounts': user['accounts'],
     }
-    if len(user['accounts']) > 1:
-      res.update({
-        'auxiliary': {
-          'emails': [account['id'] for account in user.get('accounts', {}) if account['type'] == 'email' and account['id'] != user['email']],
-        }})
-    if len(user.get('pending_auxiliary_emails', [])) > 0:
-      res.update({
-        'pending': {
-          'emails': [account['email'] for account in user.get('pending_auxiliary_emails', [])],
-        }})
-    return self.success(res)
 
-  @api('/user/accounts/email/add', method = 'POST')
+  @api('/user/accounts/<email>', method = 'PUT')
   @require_logged_in
-  def add_auxiliary_email_address(self,
-                                  email):
-    _validators = [
-      (email, regexp.EmailValidator),
-    ]
-    for arg, validator in _validators:
-      res = validator(arg)
-      if res != 0:
-        return self._forbidden_with_error(error.EMAIL_NOT_VALID)
+  def account_add(self, email):
+    if regexp.EmailValidator(email) != 0:
+      self.bad_request({
+        'reason': 'invalid email',
+        'email': email,
+      })
     other = self.user_by_email(email,
                                ensure_existence = False,
                                fields = ['register_status'])
     if other is not None and other['register_status'] != 'ghost':
-      return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
-    user = self.user
-    from time import time
-    import hashlib
-    seed = str(time()) + email + user['email']
-    hash = hashlib.md5(seed.encode('utf-8')).hexdigest()
+      self.conflict({
+          'reason': 'email already registered',
+          'email': email,
+        })
+    k = key('/users/%s/accounts/%s/confirm' %
+            (self.user['email'], email))
     self.mailer.send_template(
       email,
-      'add-auxiliary-email-address',
+      'account-add-email',
       merge_vars = {
         email : {
-          'hash': hash,
-          'auxiliary_email_address': email,
-          'primary_email_address': user['email'],
-        'user_fullname': user['fullname']
+          'email': email,
+          'user': self.__user_view(self.user),
+          'key': k,
         }
       })
-    res = self.database.users.update(
-      {
-        "_id": user['_id'],
-        "pending_auxiliary_emails.email": {"$ne": email},
-      },
-      {
-        "$addToSet": {
-          "pending_auxiliary_emails": {
-            'email': email,
-            'hash': hash,
+    return {}
+
+  @api('/users/<user>/accounts/<name>/confirm', method = 'POST')
+  @require_key
+  def account_confirm(self, user, name):
+    with elle.log.trace('validate email %s for user %s' %
+                        (name, user)):
+      update = {
+        '$push':
+        {
+          'accounts':
+          {
+            'id': name,
+            'type': 'email',
           }
         }
-      }, new = True)
-    if res['n'] == 0:
-      return self._forbidden_with_error(error.EMAIL_ALREADY_ADDED)
-    return self.success({})
-
-  @api('/user/accounts/email/validate/<hash>', method = 'POST')
-  def validate_auxiliary_email(self,
-                               hash):
-    with elle.log.trace('validate auxiliary email'):
-      res = self.__user_fetch(
-        {'pending_auxiliary_emails.hash': hash},
-        fields = ['email', 'pending_auxiliary_emails.$'],
-      )
-      if res is None or not 'pending_auxiliary_emails' in res or len(res['pending_auxiliary_emails']) == 0:
-        return self._forbidden_with_error(error.UNKNOWN_EMAIL_CONFIRMATION_HASH)
-      account = res['pending_auxiliary_emails'][0] # account is {'hash': hash, 'email': email}
-      email = account['email']
-      elle.log.debug('add %s to user %s' % (email, res['email']))
-      user = self.user_by_email(
-        email,
-        fields = ['email', 'swaggers', 'register_status'],
-        ensure_existence = False)
-      if user is not None and user['register_status'] != 'ghost':
-        return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
-      update = {
-        '$pull': {'pending_auxiliary_emails': account},
-        '$addToSet': {'accounts': {'id': account['email'], 'type': 'email'}},
       }
-      # If a ghost exists for the given email.
-      # FIXME: this must be done in user_delete
-      if user:
-        elle.log.trace('a ghost was found %s' % user)
-        swaggers = user.get('swaggers', {})
-        swaggers_prefixed = {'swaggers.%s' % id: swaggers[id] for id in swaggers}
-        update.update({'$inc': swaggers_prefixed})
-        self.database.users.update(
-          {
-            "_id": {"$in": list(swaggers.keys())}
-          },
-          # FIXME: we lose the swag amount
-          {
-            '$inc': {'swaggers.%s' % res['_id']: 1},
-          })
-        for swagger in swaggers:
-          self.notifier.notify_some(
-            notifier.NEW_SWAGGER,
-            message = {'user_id': swagger},
-            recipient_ids = {res['_id']},
+      user = self.user_by_id_or_email(user, fields = ['_id'])
+      while True:
+        try:
+          self.database.users.update(
+            {'_id': user['_id']},
+            update,
           )
-        self.user_delete(user, merge_with = res)
-      self.database.users.update(
-        {
-          'pending_auxiliary_emails.hash': hash
-        },
-        update
-      )
-      return self.success({})
+          break
+        except pymongo.errors.DuplicateKeyError:
+          previous = self.user_by_id_or_email(
+            name,
+            fields = ['email', 'register_status', 'swaggers'],
+            ensure = False)
+          if previous is None:
+            elle.log.warn('email confirmation duplicate disappeared')
+            continue
+          # FIXME: don't err if it's ourself
+          status = previous['register_status']
+          if status in ['ok', 'merged']:
+            elle.log.trace(
+              'account %s has non-mergeable register status: %s' %
+              (name, status))
+            self.forbidden({
+              'reason': 'email already registered',
+              'email': name,
+            })
+          if status in ['ghost', 'deleted']:
+            swaggers = previous.get('swaggers', {})
+            # Increase swaggers swag for self
+            update.update({
+              '$inc':
+              {
+                'swaggers.%s' % id: swaggers[id] for id in swaggers
+              }
+            })
+            # Increase self swag for swaggers
+            for swagger, amount in swaggers.items():
+              self.database.users.update(
+                {'_id': swagger},
+                {'$inc': {'swaggers.%s' % user['_id']: amount}})
+              self.notifier.notify_some(
+                notifier.NEW_SWAGGER,
+                message = {'user_id': swagger},
+                recipient_ids = {user['_id']},
+              )
+            self.user_delete(previous, merge_with = user)
+            continue
+      return {}
 
-  @api('/user/accounts/email/pending/delete', method = 'DELETE')
+  @api('/user/accounts/<email>', method = 'DELETE')
   @require_logged_in
-  def delete_pending_auxiliary_email_address(self, email):
-    user = self.user
-    res = self.database.users.update(
-      {
-        'pending_auxiliary_emails.email': email,
-        '_id': user['_id'],
-      },
-      {
-        '$pull': {'pending_auxiliary_emails': {'email': email}}
-      })
-    if res['n'] == 0:
-      return self._forbidden_with_error(error.UNKNOWN_EMAIL_ADDRESS)
-    return self.success({})
-
-  @api('/user/accounts/email/delete', method = 'DELETE')
-  @require_logged_in
-  def remove_auxiliary_email_address(self,
-                                     email):
+  def remove_auxiliary_email_address(self, email):
     user = self.user
     if user['email'] == email:
-      return self._forbidden_with_error(error.CANNOT_DELETE_YOUR_PRIMARY_ACCOUNT)
+      self.forbidden({
+        'reason': 'deleting primary account is forbidden',
+      })
     res = self.database.users.update(
       {
         'accounts.id': email,
@@ -813,29 +781,25 @@ class Mixin:
         '$pull': {'accounts': {'type': 'email', 'id': email}}
       })
     if res['n'] == 0:
-      return self._forbidden_with_error(error.UNKNOWN_EMAIL_ADDRESS)
+      return self.not_found({
+        'reason': 'no such email address in account: %s' % email,
+        'email': email,
+      })
     return self.success({})
 
-  @api('/user/accounts/make_primary', method = 'POST')
+  @api('/user/accounts/<email>/make_primary', method = 'POST')
   @require_logged_in_fields(['password'])
-  def swap_primary_account(self,
-                           new_email,
-                           password):
+  def swap_primary_account(self, email, password):
     user = self.user
-    user_from_new_address = self.user_by_email(
-      new_email,
-      fields = ['_id'],
-      ensure_existence = False,
-    )
-    # It like change email...
-    if user_from_new_address is None:
-      return self.change_email_request(new_email, password)
-    if user['email'] == new_email:
-      return self._forbidden_with_error(error.EMAIL_IS_THE_SAME)
-    if user['_id'] != user_from_new_address['_id']:
-      return self._forbidden_with_error(error.UNKNOWN_EMAIL_ADDRESS)
+    if not any(a['id'] == email for a in user['accounts']):
+      self.not_found({
+        'reason': 'no such email in account: %s' % email,
+        'email': email,
+      })
+    if user['email'] == email:
+      return {}
     self._change_email(user = user,
-                       new_email = new_email,
+                       new_email = email,
                        password = password)
     return {}
 
@@ -1189,6 +1153,10 @@ class Mixin:
     if user is None:
       raise error.Error(error.UNKNOWN_USER)
 
+  def user_by_id_query(self, id):
+    assert isinstance(id, bson.ObjectId)
+    return id
+
   def _user_by_id(self, _id, fields, ensure_existence = True):
     """Get a user using by id.
 
@@ -1196,7 +1164,8 @@ class Mixin:
     ensure_existence -- if set, raise if user is invald.
     """
     assert isinstance(_id, bson.ObjectId)
-    user = self.__user_fetch(_id, fields = fields)
+    user = self.__user_fetch(self.user_by_id_query(_id),
+                             fields = fields)
     if ensure_existence:
       self.__ensure_user_existence(user)
     return user
@@ -1212,6 +1181,10 @@ class Mixin:
       self.__ensure_user_existence(user)
     return user
 
+  def user_by_email_query(self, email):
+    email = email.lower().strip()
+    return {'accounts.id': email}
+
   def user_by_email(self,
                     email,
                     fields = None,
@@ -1223,9 +1196,8 @@ class Mixin:
     """
     if fields is None:
       fields = self.__user_view_fields
-    email = email.lower().strip()
     user = self.__user_fetch(
-      {'accounts.id': email},
+      self.user_by_email_query(email),
       fields = fields,
     )
     if ensure_existence:
@@ -1290,20 +1262,35 @@ class Mixin:
       self.__ensure_user_existence(user)
     return user
 
-  def user_by_id_or_email(self, id_or_email, fields):
+  def user_by_id_or_email(self, id_or_email, fields,
+                          ensure = False):
     id_or_email = id_or_email.lower()
     if '@' in id_or_email:
       return self.user_by_email(id_or_email,
                                 fields = fields,
-                                ensure_existence = False)
+                                ensure_existence = ensure)
     else:
       try:
         id = bson.ObjectId(id_or_email)
         return self._user_by_id(id,
                                 fields = fields,
-                                ensure_existence = False)
+                                ensure_existence = ensure)
       except bson.errors.InvalidId:
         self.bad_request('invalid user id: %r' % id_or_email)
+
+  def user_by_id_or_email_query(self, id_or_email):
+    id_or_email = id_or_email.lower()
+    if '@' in id_or_email:
+      return self.user_by_email_query(id_or_email)
+    else:
+      try:
+        id = bson.ObjectId(id_or_email)
+        return self.user_by_id_equery(id)
+      except bson.errors.InvalidId:
+        self.bad_request({
+          'reason': 'invalid user id: %r' % id_or_email,
+          'id': id_or_email,
+        })
 
   ## ------ ##
   ## Search ##

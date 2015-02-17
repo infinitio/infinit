@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from utils import Meta, Trophonius, User, NoOpMailer, HTTPException
+from utils import throws
 from pprint import pprint
 
 from bson.objectid import ObjectId
@@ -16,17 +17,17 @@ from infinit.oracles.meta.server.transaction_status import INITIALIZED, ACCEPTED
 class MailService(NoOpMailer):
 
   def __init__(self):
-    self.hashes = {}
+    self.keys = {}
     super().__init__(True)
 
   def template_message(self, template_message, message):
     merges = {}
     for entry in message['merge_vars'][0]['vars']:
       merges[entry['name']] = entry['content']
-    if template_message == 'add-auxiliary-email-address':
-       self.hashes.update(
+    if template_message == 'account-add-email':
+       self.keys.update(
          {
-           merges['auxiliary_email_address']: merges['hash']
+           merges['email']: merges['key']
          })
 
 # Normal.
@@ -40,8 +41,9 @@ with Meta(enable_emails = True) as meta:
   bob.login()
   assert bob.get('users/%s' % eve)['register_status'] == 'ghost'
   meta.mailer = MailService()
-  bob.post('user/accounts/email/add', {'email': eve})
-  bob.post('user/accounts/email/validate/%s' % meta.mailer.hashes[eve])
+  bob.put('user/accounts/%s' % eve)
+  bob.post('users/%s/accounts/%s/confirm' % (bob.email, eve),
+           {'key': meta.mailer.keys[eve]})
   # Spoiler: Eve is bob...
   assert bob.get('users/%s' % eve)['register_status'] == 'ok'
   assert bob.id == bob.get('users/%s' % eve)['id']
@@ -69,14 +71,13 @@ with Meta(enable_emails = True) as meta:
   alice.sendfile(eve)
   meta.mailer = MailService()
   bob.login()
-  bob.post('user/accounts/email/add', {'email': eve})
+  bob.put('user/accounts/%s' % eve)
   # But eve registers...
   eve = User(meta, eve)
-  try:
-    bob.post('user/accounts/email/validate/%s' % meta.mailer.hashes[eve.email])
-    assert False
-  except HTTPException:
-    pass
+  throws(lambda:
+         bob.post(
+           'users/%s/accounts/%s/confirm' % (bob.email, eve.email),
+           {'key':meta.mailer.keys[eve.email]}))
 
 # Notifications.
 with Meta(enable_emails = True) as meta:
@@ -95,8 +96,9 @@ with Meta(enable_emails = True) as meta:
     assert alice.next_notification.type == NEW_SWAGGER
 
     meta.mailer = MailService()
-    bob.post('user/accounts/email/add', {'email': email})
-    bob.post('user/accounts/email/validate/%s' % meta.mailer.hashes[email])
+    bob.put('user/accounts/%s' % email)
+    bob.post('users/%s/accounts/%s/confirm' % (bob.email, email),
+             {'key': meta.mailer.keys[email]})
 
     trophonius.poll()
     assert len(bob.notifications) == 1
@@ -117,8 +119,9 @@ with Meta(enable_emails = True) as meta:
     assert len(bob.notifications) == 0
 
     meta.mailer = MailService()
-    bob.post('user/accounts/email/add', {'email': email})
-    bob.post('user/accounts/email/validate/%s' % meta.mailer.hashes[email])
+    bob.put('user/accounts/%s' % email)
+    bob.post('users/%s/accounts/%s/confirm' % (bob.email, email),
+             {'key': meta.mailer.keys[email]})
 
     # Alice is a bob new swagger.
     assert bob.next_notification.type == NEW_SWAGGER

@@ -639,3 +639,7 @@ class User(Client):
                 'progress': 1,
                 'status': status,
               })
+
+def assertEq(a, b):
+  if a != b:
+    raise Exception('%r != %r' % (a, b))

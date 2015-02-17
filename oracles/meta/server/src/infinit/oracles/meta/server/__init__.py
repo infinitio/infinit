@@ -314,6 +314,12 @@ class Meta(bottle.Bottle,
   def bad_request(self, message = None):
     response(400, message)
 
+  def bad_request(self, message = None):
+    response(400, message)
+
+  def conflict(self, message = None):
+    response(409, message)
+
   @api('/js/<filename:path>')
   def static_javascript(self, filename):
     return self.__static('js/%s' % filename)
