@@ -47,6 +47,13 @@ class Mixin:
     user = self.__user_self(user)
     # Devices are fetched to compute connectivity, hide them
     del user['devices']
+    # FIXME: Here's the joke: we return ghost and registered users
+    # mixed, and the client expects public_key and handle strings. Fix
+    # this.
+    if 'public_key' not in user:
+      user['public_key'] = ''
+    if 'handle' not in user:
+      user['handle'] = ''
     return user
 
   def __user_self(self, user):
