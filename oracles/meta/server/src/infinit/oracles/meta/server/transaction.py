@@ -247,6 +247,7 @@ class Mixin:
         if not recipient:
           elle.log.trace("recipient unknown, create a ghost")
           new_user = True
+          features = self._roll_features(True)
           recipient_id = self._register(
             email = peer_email,
             fullname = peer_email, # This is safe as long as we don't allow searching for ghost users.
@@ -256,7 +257,7 @@ class Mixin:
             devices = [],
             swaggers = {},
             accounts = [{'type':'email', 'id':peer_email}],
-            features = self._roll_features(True),
+            features = features
           )
           recipient = self.__user_fetch(
             recipient_id, fields = self.__user_view_fields)
@@ -265,7 +266,7 @@ class Mixin:
           metrics = {
             'event': 'new_ghost',
             'user': str(recipient['_id']),
-            'features': recipient['features'],
+            'features': features,
             'sender': str(sender['_id']),
             'timestamp': time.time(),
           }
