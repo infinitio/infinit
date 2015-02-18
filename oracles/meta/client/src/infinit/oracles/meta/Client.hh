@@ -542,7 +542,7 @@ namespace infinit
       public:
         LoginResponse
         facebook_connect(std::string const& code,
-                         boost::uuids::uuid const& device_uuid) const;
+                         boost::uuids::uuid const& device_uuid);
 
       /*----------.
       | Printable |

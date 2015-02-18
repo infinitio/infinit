@@ -1316,7 +1316,7 @@ namespace infinit
 
       LoginResponse
       Client::facebook_connect(std::string const& code,
-                               boost::uuids::uuid const& device_uuid) const
+                               boost::uuids::uuid const& device_uuid)
       {
         std::string content_type = "application/json";
         std::string url{"/facebook_connect"};
@@ -1349,6 +1349,7 @@ namespace infinit
           }
         }
 
+        this->_logged_in = true;
         SerializerIn input(url, request);
         return LoginResponse(input);
       }

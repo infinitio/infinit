@@ -276,7 +276,7 @@ gap_logged_in(gap_State* state)
                        "logged",
                        [&] (surface::gap::State& state) -> gap_Bool
                        {
-                         return state.logged_in();
+                         return state.meta().logged_in();
                        });
 }
 

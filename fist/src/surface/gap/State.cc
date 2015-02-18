@@ -338,14 +338,6 @@ namespace surface
     void
     State::login(
       std::string const& email,
-      std::string const& password)
-    {
-      this->login(email, password, reactor::DurationOpt());
-    }
-
-    void
-    State::login(
-      std::string const& email,
       std::string const& password,
       reactor::DurationOpt timeout)
     {
@@ -366,21 +358,17 @@ namespace surface
     }
 
     void
-    State::login(
-      std::string const& email,
-      std::string const& password,
-      std::unique_ptr<infinit::oracles::trophonius::Client> trophonius,
-      reactor::DurationOpt timeout)
+    State::_login_with_timeout(std::function<void ()> login_function,
+                               reactor::DurationOpt timeout)
     {
-      if (this->_logged_in)
+      if (this->_meta.logged_in())
         this->logout();
       this->_logged_out.close();
-      auto tropho = elle::utility::move_on_copy(std::move(trophonius));
       this-> _login_thread.reset(new reactor::Thread(
         "login",
         [=]
         {
-          this->_login(email, password, tropho);
+          login_function();
         }));
       this->_login_watcher_thread = reactor::scheduler().current();
       elle::SafeFinally reset_login_thread(
@@ -406,8 +394,20 @@ namespace surface
       };
 
       ELLE_TRACE("Login user thread unblocked");
-      if (!this->_logged_in)
+      if (!this->_meta.logged_in())
         throw elle::Error("Login failure");
+    }
+
+    void
+    State::login(
+      std::string const& email,
+      std::string const& password,
+      std::unique_ptr<infinit::oracles::trophonius::Client> trophonius,
+      reactor::DurationOpt timeout)
+    {
+      auto tropho = elle::utility::move_on_copy(std::move(trophonius));
+      return this->_login_with_timeout([&] { this->_login(email, password, tropho); },
+                               timeout);
     }
 
     typedef infinit::oracles::trophonius::Client TrophoniusClient;
@@ -418,42 +418,62 @@ namespace surface
       std::string const& password,
       elle::utility::Move<std::unique_ptr<TrophoniusClient>> trophonius)
     {
+      ELLE_TRACE_SCOPE("%s: attempt to login as %s", *this, email);
       this->_email = email;
       this->_password = password;
+
+      std::string lower_email = email;
+      std::transform(lower_email.begin(),
+                     lower_email.end(),
+                     lower_email.begin(),
+                     ::tolower);
+      auto hashed_password = infinit::oracles::meta::old_password_hash(
+              lower_email, password);
+      infinit::metrics::Reporter::metric_sender_id(lower_email);
+      this->_login(
+        [&] {
+          return this->_meta.login(lower_email, password, this->_device_uuid);
+        },
+        trophonius,
+        [=] { return hashed_password; },
+        [&] (bool success, std::string const& failure_reason) {
+          this->_metrics_reporter->facebook_connect(success, failure_reason);
+        });
+        this->_metrics_reporter->user_login(true, "");
+    }
+
+    void
+    State::_login(
+      std::function<infinit::oracles::meta::LoginResponse ()> login_function,
+      elle::utility::Move<std::unique_ptr<TrophoniusClient>> trophonius,
+      std::function<std::string ()> identity_password,
+      LoginMetric metric)
+    {
       while(true) try
       {
-        ELLE_TRACE_SCOPE("%s: login to meta as %s", *this, email);
+        ELLE_TRACE_SCOPE("%s: login to meta", *this);
         ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
         reactor::Scheduler& scheduler = *reactor::Scheduler::scheduler();
         reactor::Lock l(this->_login_mutex);
         // Ensure we don't have an old Meta message
         this->_meta_message.clear();
-        if (this->logged_in())
+        if (this->_meta.logged_in())
           throw Exception(gap_already_logged_in, "already logged in");
-
         this->_cleanup();
-
-        std::string lower_email = email;
-        std::transform(lower_email.begin(),
-                       lower_email.end(),
-                       lower_email.begin(),
-                       ::tolower);
         std::string failure_reason;
         elle::With<elle::Finally>([&]
           {
             failure_reason = elle::exception_string();
             ELLE_WARN("%s: error during login, logout: %s",
                       *this, failure_reason);
-            infinit::metrics::Reporter::metric_sender_id(lower_email);
-            this->_metrics_reporter->user_login(false, failure_reason);
+            metric(false, failure_reason);
             if (this->_meta.logged_in())
               this->_meta.logout();
           })
           << [&] (elle::Finally& finally_logout)
         {
-          auto login_response =
-            this->_meta.login(lower_email, password, _device_uuid);
-          ELLE_LOG("%s: logged in as %s", *this, email);
+          auto login_response = login_function();
+          ELLE_TRACE("%s: logged in to meta", *this);
           this->_me.reset(new Self(login_response.self));
           this->user_sync(this->me());
           this->_configuration.features = login_response.features;
@@ -497,18 +517,15 @@ namespace surface
                   }
                 }});
           infinit::metrics::Reporter::metric_sender_id(this->me().id);
-          this->_metrics_reporter->user_login(true, "");
 
           // Identity.
           std::string identity_clear;
           ELLE_TRACE("%s: decrypt identity", *this)
           {
-            auto hashed_password = infinit::oracles::meta::old_password_hash(
-              lower_email, password);
             this->_identity.reset(new papier::Identity());
             if (this->_identity->Restore(this->me().identity) == elle::Status::Error)
               throw Exception(gap_internal_error, "unable to restore the identity");
-            if (this->_identity->Decrypt(hashed_password) == elle::Status::Error)
+            if (this->_identity->Decrypt(identity_password()) == elle::Status::Error)
               throw Exception(gap_internal_error, "unable to decrypt the identity");
             if (this->_identity->Clear() == elle::Status::Error)
               throw Exception(gap_internal_error, "unable to clear the identity");
@@ -542,13 +559,13 @@ namespace surface
 
           // Device.
           this->_device.reset(new Device(login_response.device));
+          ELLE_ASSERT_EQ(boost::lexical_cast<std::string>(this->_device_uuid), this->_device->id);
           std::string passport_path =
             common::infinit::passport_path(this->me().id);
           this->_passport.reset(new papier::Passport());
           if (this->_passport->Restore(this->_device->passport) == elle::Status::Error)
             throw Exception(gap_wrong_passport, "Cannot load the passport");
           this->_passport->store(elle::io::Path(passport_path));
-
           ELLE_TRACE("%s: connecting to trophonius on %s:%s",
                      *this,
                      login_response.trophonius.host,
@@ -635,6 +652,7 @@ namespace surface
 
           finally_logout.abort();
         };
+        ELLE_TRACE("%s: logged in", *this);
         this->_logged_in.open();
         return;
       }
@@ -683,7 +701,7 @@ namespace surface
 
       ELLE_DEBUG("%s: cleaned up", *this);
 
-      if (!this->logged_in())
+      if (!this->_meta.logged_in())
       {
         ELLE_DEBUG("%s: state was not logged in", *this);
         this->_logged_out.open();
@@ -834,9 +852,6 @@ namespace surface
             lower_email,
             fullname,
             password);
-
-        infinit::metrics::Reporter::metric_sender_id(user_id);
-
         register_failed.abort();
         ELLE_DEBUG("registered new user %s <%s>", fullname, lower_email);
         infinit::metrics::Reporter::metric_sender_id(user_id);
@@ -851,21 +866,32 @@ namespace surface
     }
 
     void
+    State::facebook_connect(
+      std::string const& code,
+      std::unique_ptr<infinit::oracles::trophonius::Client> trophonius,
+      reactor::DurationOpt timeout)
+    {
+      this->_login_with_timeout(
+      [&] {
+        auto tropho = elle::utility::move_on_copy(std::move(trophonius));
+        this->_login([&] {
+          return this->_meta.facebook_connect(code, this->device_uuid()); },
+          tropho,
+          [&] {
+            return "";
+          },
+          [&] (bool success, std::string const& failure_reason) {
+            this->_metrics_reporter->facebook_connect(success, failure_reason);
+          });
+      },
+      timeout);
+       this->_metrics_reporter->facebook_connect(true, "");
+    }
+
+    void
     State::facebook_connect(std::string const& code)
     {
-      std::string error_details;
-      // XXX: Add metric.
-      try
-      {
-        this->meta(false).facebook_connect(
-          code,
-          boost::lexical_cast<std::string>(this->device_uuid()));
-        facebook_login_failed.abort();
-      }
-      catch (elle::Error const& error)
-      {
-        error_details = error.what();
-      }
+      return this->facebook_connect(code, TrophoniusClientPtr{});
     }
 
     Self const&
@@ -944,7 +970,7 @@ namespace surface
         bool resynched{false};
         do
         {
-          if (!this->logged_in())
+          if (!this->_meta.logged_in())
           {
             ELLE_TRACE("%s: not logged in, aborting", *this);
             return;
@@ -975,7 +1001,7 @@ namespace surface
 
             resynched = true;
             ELLE_TRACE("Opening logged_in barrier");
-            _logged_in.open();
+            this->_logged_in.open();
             this->_synchronized.signal();
           }
           catch (reactor::Terminate const&)
@@ -993,7 +1019,7 @@ namespace surface
       }
       else
       { // not connected
-        _logged_in.close();
+        this->_logged_in.close();
         if (!connection_state.still_trying)
           logout();
       }
