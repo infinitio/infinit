@@ -502,7 +502,16 @@ namespace infinit
         CreateLinkTransactionResponse
         create_link(LinkTransaction::FileList const& file_list,
                     std::string const& name,
-                    std::string const& message) const;
+                    std::string const& message,
+                    boost::optional<std::string const&> link_id = boost::none) const;
+
+        /// create an empty link, to be initialized later.
+        /// @return: the link ID.
+        std::string
+        create_link() const;
+
+
+
         void
         update_link(std::string const& id,
                     double progress,

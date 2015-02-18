@@ -242,7 +242,8 @@ namespace surface
 
     void LinkSendMachine::_create_transaction()
     {
-        // TODO: Chewie
+      auto link_id = this->state().meta().create_link();
+      this->transaction_id(link_id);
     }
 
     void
@@ -273,7 +274,8 @@ namespace surface
         auto lock = this->state().transaction_update_lock.lock();
         auto response =
           this->state().meta().create_link(
-            files, this->archive_info().first, this->message());
+            files, this->archive_info().first, this->message(),
+            this->transaction_id());
         *this->_data = std::move(response.transaction());
         this->transaction()._snapshot_save();
         this->_credentials = std::move(response.cloud_credentials());

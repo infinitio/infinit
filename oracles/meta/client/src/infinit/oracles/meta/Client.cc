@@ -1028,14 +1028,28 @@ namespace infinit
         s.serialize("transaction", this->_transaction);
       }
 
+      std::string
+      Client::create_link() const
+      {
+        ELLE_TRACE("%s: create empty link", *this);
+        std::string const url = "/link_empty";
+        auto request = this->_request(url, Method::POST);
+        SerializerIn input(url, request);
+        std::string created_link_id;
+        input.serialize("created_link_id", created_link_id);
+        return created_link_id;
+      }
+
       CreateLinkTransactionResponse
       Client::create_link(LinkTransaction::FileList const& files,
                           std::string const& name,
-                          std::string const& message) const
+                          std::string const& message,
+                          boost::optional<std::string const&> link_id) const
       {
-        auto url = "/link";
+        auto url = link_id ? "/link/" + *link_id : "/link" ;
+        auto method = link_id ? Method::PUT : Method::POST;
         auto request = this->_request(
-          url, Method::POST,
+          url, method,
           [&] (reactor::http::Request& request)
           {
             elle::serialization::json::SerializerOut query(request, false);
