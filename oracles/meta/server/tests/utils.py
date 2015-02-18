@@ -58,7 +58,7 @@ class Client:
 
   def __init__(self, meta):
     self.__cookies = None
-    self.__meta_port = meta._Meta__server.port
+    self.__meta_port = meta.port
     self.user_agent = 'MetaClient/' + version.version
 
   def __get_cookies(self, headers):
@@ -316,6 +316,14 @@ class Meta:
     return self
 
   @property
+  def meta(self):
+    return self.__meta
+
+  @property
+  def port(self):
+    return self.__server.port
+
+  @property
   def mailer(self):
     return self.__meta.mailer
 
@@ -511,7 +519,10 @@ class User(Client):
 
   @property
   def full_swaggers(self):
-    return self.get('user/swaggers')['swaggers']
+    swaggers = self.get('user/swaggers')['swaggers']
+    for swagger in swaggers:
+      assertIn(swagger['register_status'], ['ok', 'deleted'])
+    return swaggers
 
   @property
   def favorites(self):
@@ -643,3 +654,8 @@ class User(Client):
 def assertEq(a, b):
   if a != b:
     raise Exception('%r != %r' % (a, b))
+
+
+def assertIn(e, c):
+  if e not in c:
+    raise Exception('%r not in %r' % (e, c))

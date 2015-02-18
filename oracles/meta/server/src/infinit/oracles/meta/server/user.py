@@ -389,7 +389,7 @@ class Mixin:
                                 activation_code = activation_code,
                                 password_hash = password_hash)
       return self.success({
-        'registered_user_id': user['_id'],
+        'registered_user_id': user['id'],
         'invitation_source': '',
         'unconfirmed_email_leeway': self.unconfirmed_email_leeway,
       })
@@ -513,7 +513,7 @@ class Mixin:
             'USER_ID': str(user_id),
           }}
       )
-      return user
+      return self.__user_view(self.__user_fill(user))
 
   def __generate_identity(self, user, email, password):
     with elle.log.trace('generate identity'):

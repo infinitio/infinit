@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+
+import subprocess
+import sys
+import tempfile
+
+from infinit.oracles.meta.server.tests.utils import Meta
+
+with Meta() as meta:
+  user = meta.meta.user_register(
+    'php@infinit.io',
+    password = 'crappy__language' * 4,
+    fullname = 'ass_stupid_parser',
+    source = 'the hairy butt of a script kiddy',
+    activation_code = 'please kill me',
+    password_hash = 'still_crappy',
+  )
+  def check(code):
+    params = {
+      'meta_client': sys.argv[2],
+      'php_requests': sys.argv[1],
+      'code': code,
+      'port': meta.port,
+    }
+    with tempfile.NamedTemporaryFile(mode = 'w') as f:
+      print('''
+      <?php
+      require(%(php_requests)r);
+      Requests::register_autoloader();
+      require(%(meta_client)r);
+      $meta = new MetaClient("http://localhost:%(port)s");
+      %(code)s;
+      ?>
+      ''' % params, file = f)
+      f.flush();
+      subprocess.check_output(['php', '-f', f.name])
+
+  check('')
+  check('''\
+  $user = $meta->user(%r);
+  if ($user["fullname"] != "ass_stupid_parser")
+    throw Exception();
+  if (!array_key_exists("handle", $user))
+    throw Exception();
+  ''' % str(user['id']))
+  inexistent_id = str(user['id'])
+  if inexistent_id[0] == '0':
+    inexistent_id = 'f' + inexistent_id[1:]
+  else:
+    inexistent_id = '0' + inexistent_id[1:]
+  check('''\
+  try
+  {
+    $meta->user(%r);
+    throw Exception('should be a 404');
+  }
+  catch (Exception $e)
+  {}
+  ''' % inexistent_id)
