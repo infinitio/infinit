@@ -811,7 +811,7 @@ class Mixin:
     return {}
 
   @api('/user/change_email_request', method = 'POST')
-  @require_logged_in_fields(['password'])
+  @require_logged_in_fields(['password', 'password_hash'])
   def change_email_request(self,
                            new_email,
                            password):
@@ -841,7 +841,7 @@ class Mixin:
                             fields = [],
                             ensure_existence = False) is not None:
         return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
-      if hash_password(password) != user['password']:
+      if hash_password(password) != user['password'] and utils.password_hash(password) != user['password_hash']:
         return self._forbidden_with_error(error.PASSWORD_NOT_VALID)
       from time import time
       import hashlib
