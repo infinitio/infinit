@@ -466,6 +466,148 @@ Server::Server()
       return "{\"success\": true, \"links\": []}";
     });
 
+  /// XXX: Ugly, ugly code duplication
+  this->register_route(
+    "/link_empty",
+    reactor::http::Method::POST,
+    [&] (Server::Headers const&,
+         Server::Cookies const& cookies,
+         Server::Parameters const&,
+         elle::Buffer const&)
+    {
+      auto& user = this->user(cookies);
+      infinit::oracles::LinkTransaction t;
+      t.click_count = 3;
+      t.id = boost::lexical_cast<std::string>(boost::uuids::random_generator()());
+      t.ctime = 2173213;
+      t.sender_id = boost::lexical_cast<std::string>(user.id());
+      t.sender_device_id = boost::lexical_cast<std::string>(user.device_id());
+      t.status = infinit::oracles::Transaction::Status::initialized;
+      user.links.push_back(t);
+
+      this->register_route(
+        elle::sprintf("/link/%s", t.id),
+        reactor::http::Method::PUT,
+        [&, t] (Server::Headers const&,
+                Server::Cookies const& cookies,
+                Server::Parameters const& parameters,
+                elle::Buffer const& body)
+        {
+          return elle::sprintf(
+            "{"
+            "  \"transaction\": %s,"
+            "  \"aws_credentials\": "
+            "  {"
+            "    \"protocol\": \"aws\","
+            "    \"access_key_id\": \"\","
+            "    \"bucket\": \"\","
+            "    \"expiration\": \"2016-01-12T09-37-42Z\","
+            "    \"folder\": \"%s\","
+            "    \"protocol\": \"aws\","
+            "    \"region\": \"us-east-1\","
+            "    \"secret_access_key\": \"\","
+            "    \"session_token\": \"\","
+            "    \"current_time\": \"2015-01-12T09-37-42Z\""
+            "  }"
+            "}",
+            link_representation(t),
+            t.id);
+        });
+
+      this->register_route(
+        elle::sprintf("/link/%s", t.id),
+        reactor::http::Method::POST,
+        [&, t] (Server::Headers const&,
+                Server::Cookies const& cookies,
+                Server::Parameters const& parameters,
+                elle::Buffer const& body)
+        {
+          elle::IOStream stream(body.istreambuf());
+          elle::serialization::json::SerializerIn input(stream, false);
+          int status;
+          input.serialize("status", status);
+          auto& user = this->user(cookies);
+          for (auto& link: user.links)
+            if (link.id == t.id)
+              link.status =
+                static_cast<infinit::oracles::Transaction::Status>(status);
+          return "{\"success\": true}";
+        });
+
+      this->register_route(
+        elle::sprintf("/s3/%s/filename", t.id),
+        reactor::http::Method::POST,
+        [&, t] (Server::Headers const&,
+                Server::Cookies const&,
+                Server::Parameters const& parameters,
+                elle::Buffer const&)
+        {
+          static bool b = true;
+          elle::SafeFinally f([&] { b = false; });
+          if (b)
+            return std::string{
+              "<InitiateMultipartUploadResult>"
+              "  <Bucket>bucket</Bucket>"
+              "  <Key>filename</Key>"
+              "  <UploadId>VXBsb2FkIElEIGZvciA2aWWpbmcncyBteS1tb3ZpZS5tMnRzIHVwbG9hZA</UploadId>"
+              "</InitiateMultipartUploadResult>"};
+          else
+            return elle::sprintf(
+              "<CompleteMultipartUploadResult>"
+              "<Location></Location>"
+              "<Bucket>bucket</Bucket>"
+              "<Key>filename</Key>"
+              "<ETag>%s</ETag>"
+              "</CompleteMultipartUploadResult>",
+              this->headers()["ETag"]);
+        });
+
+      this->register_route(
+        elle::sprintf("/s3/%s/filename", t.id),
+        reactor::http::Method::PUT,
+        [&, t] (Server::Headers const&,
+                Server::Cookies const&,
+                Server::Parameters const& parameters,
+                elle::Buffer const&)
+        {
+          this->headers()["ETag"] = boost::lexical_cast<std::string>(boost::uuids::random_generator()());
+          return elle::sprintf(
+            "<CompleteMultipartUploadResult>"
+            "<Location></Location>"
+            "<Bucket>bucket</Bucket>"
+            "<Key>filename</Key>"
+            "<ETag>%s</ETag>"
+            "</CompleteMultipartUploadResult>",
+            this->headers()["ETag"]);
+        });
+
+      this->register_route(
+        elle::sprintf("/s3/%s_data", t.id),
+        reactor::http::Method::PUT,
+        [] (Server::Headers const&,
+            Server::Cookies const&,
+            Server::Parameters const&,
+            elle::Buffer const&)
+        {
+          return "";
+        });
+
+      this->register_route(
+        elle::sprintf("/s3/%s/000000000000_0000", t.id),
+        reactor::http::Method::PUT,
+        [this] (Server::Headers const&,
+                Server::Cookies const&,
+                Server::Parameters const&,
+                elle::Buffer const&)
+        {
+          return "";
+        });
+
+      return elle::sprintf(
+        "{\"created_link_id\": \"%s\"}"
+        , t.id);
+    });
+
   this->register_route(
     "/link",
     reactor::http::Method::POST,
