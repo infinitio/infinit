@@ -399,6 +399,7 @@ class Meta(bottle.Bottle,
           traceback.format_exception(type(e), e, None)),
         'hostname': hostname,
         'route': route,
+        'session': bottle.request.session,
         'user': self.user,
       }
       self.mailer.send(to = 'infrastructure@infinit.io',
@@ -408,6 +409,7 @@ class Meta(bottle.Bottle,
 Error while querying %(route)s:
 
 User: %(user)s
+Session: %(session)s
 
 %(backtrace)s''' % args)
 
