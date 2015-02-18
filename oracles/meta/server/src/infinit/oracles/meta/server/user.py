@@ -1464,7 +1464,8 @@ class Mixin:
         {
           '$in': list(map(bson.ObjectId, swaggers.keys()))
         }
-      })
+      },
+      fields = self.__user_view_fields)
     return sorted(map(self.__user_view, users),
                   key = lambda u: swaggers[str(u['id'])])
 
