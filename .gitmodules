@@ -26,4 +26,4 @@
 	url = https://github.com/mefyl/PyAPNs.git
 [submodule "oracles/meta/client/Requests"]
 	path = oracles/meta/client/Requests
-	url = git@github.com:rmccue/Requests.git
+	url = https://github.com/rmccue/Requests.git
