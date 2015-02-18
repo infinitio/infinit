@@ -28,34 +28,6 @@ ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.User'
 
 class Mixin:
 
-  @api('/facebook_connect', method = 'POST')
-  def facebook_connect(self,
-                       code,
-                       device_id: uuid.UUID = None,
-                       OS: str = None):
-    try:
-      facebook_user = self.facebook.user(code)
-      user = self.database.users.find_one({
-        'accounts.id': facebook_user.user_id,
-        'accounts.type': 'facebook'
-      })
-      if user is None: # Register the user.
-        user = self.facebook_register(
-          facebook_id = facebook_user.user_id,
-          email = facebook_user.data.get("email", None),
-          name = facebook_user.data["name"])
-      if device_id is not None:
-        res = self._in_app_login(user,
-                                 password = None,
-                                 device_id = device_id,
-                                 OS = OS)
-        bottle.request.session['facebook_access_token'] = facebook_user.access_token
-        return self.success(res)
-      else:
-        return self.success(self._web_login(user))
-    except error.Error as e:
-      self._forbidden_with_error(e.args[0])
-
   ## ------ ##
   ## Handle ##
   ## ------ ##
@@ -290,6 +262,34 @@ class Mixin:
       elle.log.trace("%s: successfully connected as %s" %
                      (self.user_email_or_facebook_id(user), user['_id']))
       return self.success(self._login_response(user, web = True))
+
+  @api('/facebook_connect', method = 'POST')
+  def facebook_connect(self,
+                       code,
+                       device_id: uuid.UUID = None,
+                       OS: str = None):
+    try:
+      facebook_user = self.facebook.user(code)
+      user = self.database.users.find_one({
+        'accounts.id': facebook_user.user_id,
+        'accounts.type': 'facebook'
+      })
+      if user is None: # Register the user.
+        user = self.facebook_register(
+          facebook_id = facebook_user.user_id,
+          email = facebook_user.data.get("email", None),
+          name = facebook_user.data["name"])
+      if device_id is not None:
+        res = self._in_app_login(user,
+                                 password = None,
+                                 device_id = device_id,
+                                 OS = OS)
+        bottle.request.session['facebook_access_token'] = facebook_user.access_token
+        return self.success(res)
+      else:
+        return self.success(self._web_login(user))
+    except error.Error as e:
+      self._forbidden_with_error(e.args[0])
 
   @api('/logout', method = 'POST')
   @require_logged_in
