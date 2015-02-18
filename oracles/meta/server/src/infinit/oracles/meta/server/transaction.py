@@ -579,7 +579,7 @@ class Mixin:
     elle.log.log('Transaction finished');
     # Guess if this was a ghost cloud upload or not
     recipient = self.__user_fetch(transaction['recipient_id'],
-                                  fields = self.__user_view_fields)
+                                  fields = self.__user_view_fields + ['email'])
     if recipient['register_status'] == 'deleted':
       self.gone({
         'reason': 'user %s is deleted' % recipient['_id'],
