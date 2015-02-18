@@ -86,7 +86,7 @@ class Mixin:
   @property
   def __user_self_fields(self):
     res = self.__user_view_fields
-    res += ['email', 'favorites', 'identity', 'swaggers', 'accounts']
+    res += ['email', 'favorites', 'identity', 'swaggers', 'accounts', 'features']
     return res
 
   def __user_fetch(self, query, fields = None):
