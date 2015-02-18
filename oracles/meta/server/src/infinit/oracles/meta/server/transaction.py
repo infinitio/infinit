@@ -260,7 +260,8 @@ class Mixin:
             features = features
           )
           recipient = self.__user_fetch(
-            recipient_id, fields = self.__user_view_fields)
+            recipient_id,
+            fields = self.__user_view_fields + ['email'])
           # Post new_ghost event to metrics
           url = 'http://metrics.9.0.api.production.infinit.io/collections/users'
           metrics = {
@@ -282,7 +283,8 @@ class Mixin:
         except Exception as e:
           return self.fail(error.USER_ID_NOT_VALID)
         recipient = self.__user_fetch(
-          recipient_id, fields = self.__user_view_fields)
+          recipient_id,
+          fields = self.__user_view_fields + ['email'])
 
       if recipient is None:
         return self.fail(error.USER_ID_NOT_VALID)
