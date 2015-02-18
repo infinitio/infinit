@@ -225,6 +225,17 @@ namespace infinit
     }
 
     void
+    JSONReporter::_facebook_connect(bool success, std::string const& info)
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] = std::string("app/facebook_connect");
+      data[this->_key_str(JSONKey::status)] = this->_status_string(success);
+      if (!success)
+        data[this->_key_str(JSONKey::fail_reason)] = info;
+      this->_send(this->_user_dest, data);
+    }
+
+    void
     JSONReporter::_user_logout(bool success, std::string const& info)
     {
       elle::json::Object data;
