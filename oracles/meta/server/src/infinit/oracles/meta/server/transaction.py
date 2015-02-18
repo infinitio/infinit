@@ -342,7 +342,6 @@ class Mixin:
               sender['email'],
               recipient['fullname'],
               recipient.get('handle', ""),
-              recipient['email'],
               message,
               ] + files)
         }
