@@ -602,7 +602,22 @@ def configure(cxx_toolkit = None,
   for name in ('state', 'cloud-buffer', 'ghost-invite', 'resynchronization'):
     sources = drake.nodes('fist/tests/%s.cc' % name)
     if name != 'state':
-      sources.append(drake.node('fist/tests/server.cc'))
+      sources += drake.nodes(
+        'fist/tests/server.cc',
+        'fist/tests/server.hh',
+        'fist/tests/_detail/User.cc',
+        'fist/tests/_detail/User.hh',
+        'fist/tests/_detail/Device.cc',
+        'fist/tests/_detail/Device.hh',
+        'fist/tests/_detail/uuids.cc',
+        'fist/tests/_detail/uuids.hh',
+        'fist/tests/_detail/State.cc',
+        'fist/tests/_detail/State.hh',
+        'fist/tests/_detail/Trophonius.cc',
+        'fist/tests/_detail/Trophonius.hh',
+        'fist/tests/_detail/Transaction.cc',
+        'fist/tests/_detail/Transaction.hh',
+      )
     test = drake.cxx.Executable(
       'fist/tests/%s' % name,
       sources +

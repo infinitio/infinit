@@ -12,14 +12,15 @@ ELLE_LOG_COMPONENT("surface.gap.State.test");
 // Cloud buffered peer transaction.
 ELLE_TEST_SCHEDULED(cloud_buffer)
 {
-  Server server;
+  tests::Server server;
   auto const email = "sender@infinit.io";
   auto const password = "secret";
-  auto user = server.register_user(email, password);
+  auto& user = server.register_user(email, password);
 
   std::string const recipient_email = "recipient@infinit.io";
-  auto recipient = server.register_user("recipient@infinit.io", password);
-  State state(server, user.device_id().get());
+  auto& recipient = server.register_user("recipient@infinit.io", password);
+  auto random = boost::uuids::random_generator();
+  tests::State state(server, random());
   elle::filesystem::TemporaryFile transfered("cloud-buffered");
   {
     boost::filesystem::ofstream f(transfered.path());
@@ -47,7 +48,7 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
         case gap_transaction_transferring:
         {
           BOOST_CHECK_EQUAL(
-            server_transaction.status(),
+            server_transaction.status,
             infinit::oracles::Transaction::Status::initialized);
           transferring.open();
           break;
@@ -56,7 +57,7 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
         {
           BOOST_CHECK(transferring);
           BOOST_CHECK_EQUAL(
-            server_transaction.status(),
+            server_transaction.status,
             infinit::oracles::Transaction::Status::cloud_buffered);
           BOOST_CHECK(server.cloud_buffered());
           cloud_buffered.open();

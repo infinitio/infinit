@@ -13,7 +13,8 @@ ELLE_LOG_COMPONENT("surface.gap.State.test");
 
 static
 void
-synchronize(Server& server, surface::gap::State& state)
+synchronize(tests::Server& server,
+            surface::gap::State& state)
 {
   elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
   {
@@ -25,8 +26,8 @@ synchronize(Server& server, surface::gap::State& state)
 
 ELLE_TEST_SCHEDULED(links)
 {
-  Server server;
-  Server::Client sender(server, "sender@infinit.io");
+  tests::Server server;
+  tests::Client sender(server, "sender@infinit.io");
   sender.login();
   ELLE_ASSERT_EQ(sender.state.transactions().size(), 0);
   elle::filesystem::TemporaryFile transfered("filename");
@@ -66,8 +67,8 @@ ELLE_TEST_SCHEDULED(links)
 
 ELLE_TEST_SCHEDULED(links_another_device)
 {
-  Server server;
-  Server::Client sender(server, "sender@infinit.io");
+  tests::Server server;
+  tests::Client sender(server, "sender@infinit.io");
   sender.login();
 
   elle::filesystem::TemporaryFile transfered("filename");
@@ -86,7 +87,7 @@ ELLE_TEST_SCHEDULED(links_another_device)
   t.id = boost::lexical_cast<std::string>(boost::uuids::random_generator()());
   t.ctime = 2173213;
   t.sender_id = boost::lexical_cast<std::string>(sender.user.id());
-  t.sender_device_id = boost::lexical_cast<std::string>(sender.user.device_id()) + "other";
+  t.sender_device_id = boost::lexical_cast<std::string>(sender.device_id) + "other";
   t.status = infinit::oracles::Transaction::Status::initialized;
   sender.user.links.push_back(t);
 
@@ -108,10 +109,10 @@ ELLE_TEST_SCHEDULED(links_another_device)
 
 ELLE_TEST_SCHEDULED(swaggers)
 {
-  Server server;
-  Server::Client bob(server, "bob@infinit.io");
-  Server::Client alice(server, "alice@infinit.io");
-  Server::Client eve(server, "eve@infinit.io");
+  tests::Server server;
+  tests::Client bob(server, "bob@infinit.io");
+  tests::Client alice(server, "alice@infinit.io");
+  tests::Client eve(server, "eve@infinit.io");
 
   alice.user.swaggers.insert(&bob.user);
   bob.user.swaggers.insert(&alice.user);
