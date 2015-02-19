@@ -247,6 +247,7 @@ class Mixin:
         if not recipient:
           elle.log.trace("recipient unknown, create a ghost")
           new_user = True
+          features = self._roll_features(True)
           recipient_id = self._register(
             email = peer_email,
             fullname = peer_email, # This is safe as long as we don't allow searching for ghost users.
@@ -256,16 +257,17 @@ class Mixin:
             devices = [],
             swaggers = {},
             accounts = [{'type':'email', 'id':peer_email}],
-            features = self._roll_features(True),
+            features = features
           )
           recipient = self.__user_fetch(
-            recipient_id, fields = self.__user_view_fields)
+            recipient_id,
+            fields = self.__user_view_fields + ['email'])
           # Post new_ghost event to metrics
           url = 'http://metrics.9.0.api.production.infinit.io/collections/users'
           metrics = {
             'event': 'new_ghost',
             'user': str(recipient['_id']),
-            'features': recipient['features'],
+            'features': features,
             'sender': str(sender['_id']),
             'timestamp': time.time(),
           }
@@ -281,7 +283,8 @@ class Mixin:
         except Exception as e:
           return self.fail(error.USER_ID_NOT_VALID)
         recipient = self.__user_fetch(
-          recipient_id, fields = self.__user_view_fields)
+          recipient_id,
+          fields = self.__user_view_fields + ['email'])
 
       if recipient is None:
         return self.fail(error.USER_ID_NOT_VALID)
@@ -342,7 +345,6 @@ class Mixin:
               sender['email'],
               recipient['fullname'],
               recipient.get('handle', ""),
-              recipient['email'],
               message,
               ] + files)
         }
@@ -577,7 +579,7 @@ class Mixin:
     elle.log.log('Transaction finished');
     # Guess if this was a ghost cloud upload or not
     recipient = self.__user_fetch(transaction['recipient_id'],
-                                  fields = self.__user_view_fields)
+                                  fields = self.__user_view_fields + ['email'])
     if recipient['register_status'] == 'deleted':
       self.gone({
         'reason': 'user %s is deleted' % recipient['_id'],

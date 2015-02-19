@@ -49,10 +49,8 @@ with mongobox.MongoBox() as mongo:
     assert not emailer.emails
 
     device = 'device'
-    sender = meta.user_register('sender@infinit.io',
-                                '*' * 64, 'Foo Bar')
-    recipient = meta.user_register('recipient@infinit.io',
-                                '*' * 64, 'Foo Bar')
+    sender = user_register(meta, 'sender@infinit.io')
+    recipient = user_register(meta, 'recipient@infinit.io')
     # Create a ghost transsaction to test mongo queries complexity
     ghost_email = 'ghost@infinit.io'
     transaction_create(meta, sender, ghost_email)

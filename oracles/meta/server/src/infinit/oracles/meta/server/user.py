@@ -47,6 +47,13 @@ class Mixin:
     user = self.__user_self(user)
     # Devices are fetched to compute connectivity, hide them
     del user['devices']
+    # FIXME: Here's the joke: we return ghost and registered users
+    # mixed, and the client expects public_key and handle strings. Fix
+    # this.
+    if 'public_key' not in user:
+      user['public_key'] = ''
+    if 'handle' not in user:
+      user['handle'] = ''
     return user
 
   def __user_self(self, user):
@@ -86,7 +93,15 @@ class Mixin:
   @property
   def __user_self_fields(self):
     res = self.__user_view_fields
-    res += ['email', 'favorites', 'identity', 'swaggers', 'accounts']
+    res += [
+      'accounts',
+      'creation_time',
+      'email',
+      'favorites',
+      'features',
+      'identity',
+      'swaggers',
+    ]
     return res
 
   def __user_fetch(self, query, fields = None):
@@ -382,7 +397,7 @@ class Mixin:
                                 activation_code = activation_code,
                                 password_hash = password_hash)
       return self.success({
-        'registered_user_id': user['_id'],
+        'registered_user_id': user['id'],
         'invitation_source': '',
         'unconfirmed_email_leeway': self.unconfirmed_email_leeway,
       })
@@ -506,7 +521,7 @@ class Mixin:
             'USER_ID': str(user_id),
           }}
       )
-      return user
+      return self.__user_view(self.__user_fill(user))
 
   def __generate_identity(self, user, email, password):
     with elle.log.trace('generate identity'):
@@ -804,7 +819,7 @@ class Mixin:
     return {}
 
   @api('/user/change_email_request', method = 'POST')
-  @require_logged_in_fields(['password'])
+  @require_logged_in_fields(['password', 'password_hash'])
   def change_email_request(self,
                            new_email,
                            password):
@@ -834,7 +849,7 @@ class Mixin:
                             fields = [],
                             ensure_existence = False) is not None:
         return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
-      if hash_password(password) != user['password']:
+      if hash_password(password) != user['password'] and utils.password_hash(password) != user['password_hash']:
         return self._forbidden_with_error(error.PASSWORD_NOT_VALID)
       from time import time
       import hashlib
@@ -1464,7 +1479,8 @@ class Mixin:
         {
           '$in': list(map(bson.ObjectId, swaggers.keys()))
         }
-      })
+      },
+      fields = self.__user_view_fields)
     return sorted(map(self.__user_view, users),
                   key = lambda u: swaggers[str(u['id'])])
 

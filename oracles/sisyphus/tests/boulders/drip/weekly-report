@@ -74,7 +74,7 @@ with mongobox.MongoBox() as mongo:
     # Create an activated user
     device = 'device'
     email = 'user@infinit.io'
-    sender = meta.user_register(email, '*' * 64, 'Foo Bar')
+    sender = user_register(meta, email)
     sender_device = meta._create_device(sender)
     transaction_create(meta, sender, 'ghost@infinit.io')
 
@@ -94,8 +94,7 @@ with mongobox.MongoBox() as mongo:
     meta._cloud_buffer(tid1, sender)
     meta._transaction_update(tid1, statuses['ghost_uploaded'],
                              device, None, sender)
-    recipient = meta.user_register('recipient@infinit.io',
-                                   '*' * 64, 'Foo Bar')
+    recipient = user_register(meta, 'recipient@infinit.io')
 
     # Create a peer transaction
     forward(datetime.timedelta(minutes = 1))
