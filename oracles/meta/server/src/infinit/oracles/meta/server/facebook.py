@@ -4,6 +4,7 @@ from io import StringIO
 from hashlib import sha256
 import hmac
 from . import error
+import urllib
 
 app_secret = '84e706b54659497ad23fb27eb9f0831d'
 app_id = '1599363463620738'
@@ -42,7 +43,7 @@ class FacebookGraph:
           self.__app_access_token = text[13:]
         else:
           raise FacebookGraph.AuthenticationFailure()
-      except HTTPError as e:
+      except urllib.error.HTTPError as e:
         raise FacebookGraph.AuthenticationFailure()
     return self.__app_access_token
 
@@ -60,6 +61,7 @@ class FacebookGraph:
       self.__data = None
       self.__me = None
       self.__friends = None
+      self.__appsecret_proof = None
 
     @property
     def access_token(self):
@@ -82,7 +84,7 @@ class FacebookGraph:
             self.__access_token = text[13:text.find("&")]
           else:
             raise FacebookGraph.Client.UserAuthenticationFailure()
-        except HTTPError as e:
+        except urllib.error.HTTPError as e:
           raise FacebookGraph.Client.UserAuthenticationFailure()
       return self.__access_token
 
@@ -91,41 +93,22 @@ class FacebookGraph:
       self.__access_token = token
 
     @property
-    def data(self):
-      if self.__data is None:
-        f = hmac.new('84e706b54659497ad23fb27eb9f0831d'.encode(),
+    def appsecret_proof(self):
+      if self.__appsecret_proof is None:
+        f = hmac.new(app_secret.encode(),
                      msg = self.access_token.encode(),
                      digestmod = sha256)
-        url = '%(domain)s/v2.2/%(user_id)s' \
-               '?access_token=%(access_token)s' \
-               '&appsecret_proof=%(appsecret_proof)s' % {
-                 'domain': self.__server.domain,
-                 'user_id': self.me['id'],
-                 'appsecret_proof': str(f.hexdigest()),
-                 'access_token': self.access_token,
-               }
-        try:
-          response = requests.get(url)
-          response.raise_for_status()
-          if 'id' in response.json().keys():
-            self.__data = response.json()
-          else:
-            raise FacebookGraph.Client.UserAuthenticationFailure()
-        except HTTPError as e:
-          raise FacebookGraph.Client.UserAuthenticationFailure()
-      return self.__data
+        self.__appsecret_proof = str(f.hexdigest())
+      return self.__appsecret_proof
 
     @property
     def me(self):
       if self.__me is None:
-        f = hmac.new('84e706b54659497ad23fb27eb9f0831d'.encode(),
-                     msg = self.access_token.encode(),
-                     digestmod = sha256)
         url = '%(domain)s/v2.2/me' \
                '?access_token=%(access_token)s' \
                '&appsecret_proof=%(appsecret_proof)s' % {
                  'domain': self.__server.domain,
-                 'appsecret_proof': str(f.hexdigest()),
+                 'appsecret_proof': self.appsecret_proof,
                  'access_token': self.access_token,
                }
         try:
@@ -140,16 +123,17 @@ class FacebookGraph:
       return self.__me
 
     @property
+    def data(self):
+      return self.me
+
+    @property
     def friends(self):
       if self.__friends is None:
-        f = hmac.new(app_secret.encode(),
-                     msg = self.access_token.encode(),
-                     digestmod = sha256)
         url = '%(domain)s/v2.2/me/friends' \
               '?access_token=%(access_token)s' \
               '&appsecret_proof=%(appsecret_proof)s' % {
                 'domain': self.__server.domain,
-                'appsecret_proof': str(f.hexdigest()),
+                'appsecret_proof': self.appsecret_proof,
                 'access_token': self.access_token,
               }
         try:
@@ -159,12 +143,12 @@ class FacebookGraph:
             self.__friends = response.json()
           else:
             raise FacebookGraph.Client.UserAuthenticationFailure()
-        except HTTPError as e:
+        except urllib.error.HTTPError as e:
           raise FacebookGraph.Client.UserAuthenticationFailure()
       return self.__friends
 
     @property
-    def id(self):
+    def facebook_id(self):
       return self.data['id']
 
     @property

@@ -271,12 +271,12 @@ class Mixin:
     try:
       facebook_user = self.facebook.user(code)
       user = self.database.users.find_one({
-        'accounts.id': facebook_user.user_id,
+        'accounts.id': facebook_user.facebook_id,
         'accounts.type': 'facebook'
       })
       if user is None: # Register the user.
         user = self.facebook_register(
-          facebook_id = facebook_user.user_id,
+          facebook_id = facebook_user.facebook_id,
           email = facebook_user.data.get("email", None),
           name = facebook_user.data["name"])
       if device_id is not None:
