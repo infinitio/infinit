@@ -41,13 +41,11 @@ with mongobox.MongoBox() as mongo:
 
     # Create users
     ghost_email = 'ghost@infinit.io'
-    recipient = meta.user_register('recipient@infinit.io',
-                                 '*' * 64, 'Foo Bar')
+    recipient = user_register(meta, 'recipient@infinit.io')
     # FIXME: create_device should fill devices
     recipient_device = meta._create_device(recipient)
     recipient['devices'].append({'id': recipient_device['id']})
-    sender = meta.user_register('sender@infinit.io',
-                                '*' * 64, 'Foo Bar')
+    sender = user_register(meta, 'sender@infinit.io')
 
     # Check nothing is sent with no transaction
     sisy.boulders_run()
