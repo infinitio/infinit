@@ -283,6 +283,7 @@ class Mixin:
         res = self._in_app_login(user,
                                  password = None,
                                  device_id = device_id,
+                                 pick_trophonius = True,
                                  OS = OS)
         bottle.request.session['facebook_access_token'] = facebook_user.access_token
         return self.success(res)
