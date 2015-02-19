@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
+# Import our modules first to load our OpenSSL.
+from infinit.oracles.meta.server.tests.utils import Meta
+
 import subprocess
 import sys
 import tempfile
-
-from infinit.oracles.meta.server.tests.utils import Meta
 
 with Meta() as meta:
   user = meta.meta.user_register(
