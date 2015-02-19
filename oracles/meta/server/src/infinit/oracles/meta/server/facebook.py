@@ -152,6 +152,24 @@ class FacebookGraph:
       return self.data['id']
 
     @property
+    def avatar(self):
+      url = '%(domain)s/v2.2/me/picture' \
+            '?access_token=%(access_token)s' \
+            '&appsecret_proof=%(appsecret_proof)s' \
+            '&height=256'\
+            '&width=256' % {
+              'domain': self.__server.domain,
+              'appsecret_proof': self.appsecret_proof,
+              'access_token': self.access_token,
+            }
+      try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.content
+      except urllib.error.HTTPError as e:
+        raise FacebookGraph.Client.UserAuthenticationFailure()
+
+    @property
     def friend_list(self):
       pass
 

@@ -274,11 +274,18 @@ class Mixin:
         'accounts.id': facebook_user.facebook_id,
         'accounts.type': 'facebook'
       })
+      register = False
       if user is None: # Register the user.
         user = self.facebook_register(
           facebook_id = facebook_user.facebook_id,
           email = facebook_user.data.get("email", None),
           name = facebook_user.data["name"])
+        register = True
+      if register:
+        try:
+          self._set_avatar(user, facebook_user.avatar)
+        except:
+          pass
       if device_id is not None:
         res = self._in_app_login(user,
                                  password = None,
@@ -286,7 +293,7 @@ class Mixin:
                                  pick_trophonius = True,
                                  OS = OS)
         bottle.request.session['facebook_access_token'] = facebook_user.access_token
-        return self.success(res)
+        return res
       else:
         return self.success(self._web_login(user))
     except error.Error as e:
@@ -1906,9 +1913,13 @@ class Mixin:
   @require_logged_in
   def set_avatar(self):
     from bottle import request
-    from io import BytesIO
+    self._set_avatar(self.user, request.body)
+
+  def _set_avatar(self, user, image):
     from PIL import Image
-    image = Image.open(request.body)
+    if isinstance(image, bytes):
+      from io import BytesIO
+      image = Image.open(BytesIO(image))
     small_image = self._small_avatar(image)
     out = BytesIO()
     small_out = BytesIO()
@@ -1918,7 +1929,7 @@ class Mixin:
     small_out.seek(0)
     import bson.binary
     self.database.users.update(
-      {'_id': self.user['_id']},
+      {'_id': user['_id']},
       {'$set': {
         'avatar': bson.binary.Binary(out.read()),
         'small_avatar': bson.binary.Binary(small_out.read()),
