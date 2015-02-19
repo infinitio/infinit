@@ -386,6 +386,12 @@ gap_send_metric(gap_State* state,
                 UIMetricsType metric,
                 Additionals additional = Additionals{});
 
+gap_Status
+gap_send_generic_metric(gap_State* state,
+                        std::string const& key,
+                        std::string const& method,
+                        Additionals additional = Additionals{});
+
 /// Send user report
 gap_Status
 gap_send_user_report(gap_State* state,
