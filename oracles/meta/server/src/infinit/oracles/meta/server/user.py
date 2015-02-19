@@ -4,6 +4,7 @@ import bottle
 import bson
 import datetime
 import json
+import pymongo
 import random
 import uuid
 
@@ -151,10 +152,22 @@ class Mixin:
         self.__generate_identity(user['_id'], email, password)
       query = {'id': str(device_id), 'owner': user['_id']}
       elle.log.debug("%s: look for session" % email)
-      device = self.database.devices.find_and_modify(
-        query,
-        {'$set': {'push_token': device_push_token}},
-      )
+      if device_push_token is None:
+        device = self.database.devices.find_one(query)
+      else:
+        while True:
+          try:
+            device = self.database.devices.find_and_modify(
+              query,
+              {'$set': {'push_token': device_push_token}},
+            )
+            break
+          except pymongo.errors.DuplicateKeyError:
+            self.database.devices.update(
+              {'push_token': device_push_token},
+              {'$unset': {'push_token': True}},
+            )
+            continue
       if device is None:
         elle.log.trace("user logged with an unknown device")
         device = self._create_device(
@@ -227,6 +240,18 @@ class Mixin:
         # Web sessions have no device.
         if 'device' in bottle.request.session:
           elle.log.debug("%s: remove session device" % user['email'])
+          self.database.devices.update(
+            {
+              'id': str(bottle.request.session['device']),
+              'owner': self.user['_id'],
+            },
+            {
+              '$set':
+              {
+                'push_token': None,
+              }
+            },
+          )
           del bottle.request.session['device']
         del bottle.request.session['email']
         return self.success()

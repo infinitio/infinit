@@ -225,6 +225,11 @@ class Meta(bottle.Bottle,
     # Devices
     self.__database.devices.ensure_index([("id", 1), ("owner", 1)],
                                          unique = True)
+    self.__database.devices.ensure_index(
+      [('push_token', 1)],
+      unique = True,
+      sparse = True,
+    )
     self.__database.devices.ensure_index([('id', 1)])
     self.__database.devices.ensure_index([('owner', 1)])
     self.__database.devices.ensure_index([("trophonius", 1)])
