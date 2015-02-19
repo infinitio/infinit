@@ -221,7 +221,8 @@ class Meta(bottle.Bottle,
     # - lw_handle
     self.__database.users.ensure_index([('lw_handle', 1)],
                                        unique = False)
-
+    self.__database.users.ensure_index([('devices.id', 1)],
+                                       unique = False)
     #---------------------------------------------------------------------------
     # Transactions
     #---------------------------------------------------------------------------
