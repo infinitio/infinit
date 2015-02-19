@@ -173,6 +173,8 @@ class Mixin:
                            version['subminor'])
 
     clients = self.database.users.aggregate([
+      #Much faster with a match before the unwind.
+      {'$match': {'devices.trophonius': {'$in': [t['_id'] for t in trophoniuses]}}},
       {'$unwind': '$devices'},
       {'$match': {'devices.trophonius': {'$in': [t['_id'] for t in trophoniuses]}}},
       {
