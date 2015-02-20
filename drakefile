@@ -165,7 +165,7 @@ def configure(cxx_toolkit = None,
     if isinstance(lib, drake.cxx.StaticLib):
       return lib
     else:
-      return drake.copy(lib, where, True)
+      return drake.copy(lib, where, True, set_local_libcxx(cxx_toolkit))
 
   elle = drake.include('elle',
                        cxx_toolkit = cxx_toolkit,
@@ -181,6 +181,10 @@ def configure(cxx_toolkit = None,
   python3 = elle.python3
   valgrind = elle.valgrind
   cxx_config += boost.config()
+  if elle.reactor.cxx_lib:
+    cxx_lib = drake.copy(elle.reactor.cxx_lib, 'lib', True)
+  else:
+    cxx_lib = []
   if cxx_toolkit.os in (drake.os.macos, drake.os.windows, drake.os.ios):
     boost_filesystem = drake.cxx.Config(boost.config_filesystem(static = True))
   else:
@@ -676,7 +680,7 @@ def configure(cxx_toolkit = None,
   )
   cli_send_bin = drake.cxx.Executable(
     'bin/8send',
-    cli_send_sources + [gap_lib, elle_lib, reactor_lib, crash_lib],
+    cli_send_sources + [gap_lib, elle_lib, reactor_lib, crash_lib] + cxx_lib,
     cxx_toolkit,
     cli_cxx_config
   )
@@ -687,7 +691,7 @@ def configure(cxx_toolkit = None,
   )
   cli_recv_bin = drake.cxx.Executable(
     'bin/8recv',
-    cli_recv_sources + [gap_lib, elle_lib, reactor_lib, crash_lib],
+    cli_recv_sources + [gap_lib, elle_lib, reactor_lib, crash_lib] + cxx_lib,
     cxx_toolkit,
     cli_cxx_config
   )
@@ -715,7 +719,7 @@ def configure(cxx_toolkit = None,
   )
   cli_online_bin = drake.cxx.Executable(
     'bin/8online',
-    cli_online_sources + [gap_lib, elle_lib, reactor_lib, crash_lib],
+    cli_online_sources + [gap_lib, elle_lib, reactor_lib, crash_lib] + cxx_lib,
     cxx_toolkit,
     cli_cxx_config
   )
