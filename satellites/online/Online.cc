@@ -6,13 +6,15 @@
 #endif
 
 #include <boost/program_options.hpp>
-
+#define BOOST_CHECK_EQUAL(a, b) ELLE_ASSERT_EQ(a, b)
+#define BOOST_CHECK(a) ELLE_ASSERT(a)
 #include <elle/Exception.hh>
 #include <elle/assert.hh>
 #include <elle/log.hh>
 #include <elle/os/environ.hh>
 
 #include <reactor/scheduler.hh>
+#include <reactor/Scope.hh>
 
 #include <CrashReporter.hh>
 #include <common/common.hh>
@@ -52,7 +54,8 @@ parse_options(int argc, char** argv)
     ("password,p", value<std::string>(), "the password")
     ("fullname,f", value<std::string>(), "full user name")
     ("register,g", value<bool>(), "Register new account")
-    ("production,r", value<bool>(), "send metrics to production");
+    ("production,r", value<bool>(), "send metrics to production")
+    ("check", value<bool>(), "run a self test diagnostic");
 
   variables_map vm;
   try
@@ -80,6 +83,116 @@ parse_options(int argc, char** argv)
   mandatory(vm, "password");
 
   return vm;
+}
+
+static
+void
+exception_yield_pattern(std::vector<unsigned int> yield_pattern,
+                        std::vector<bool> enable_pattern,
+                        std::vector<unsigned int> no_exception)
+{
+  elle::With<reactor::Scope>() << [&] (reactor::Scope& s)
+    {
+      if (enable_pattern[0])
+        s.run_background("t1", [&] {
+            /* Workaround compiler bug when using captures in catch(...) block
+             * Symptom: error: '...' handler must be the last handler for its
+             * try block [-fpermissive]
+            */
+            unsigned yield_count = yield_pattern[0];
+            try
+            {
+              throw std::runtime_error("t1");
+            }
+            catch(...)
+            {
+              for (unsigned i=0; i < yield_count; ++i)
+                reactor::yield();
+              BOOST_CHECK_EQUAL(elle::exception_string(), "t1");
+            }
+        });
+      if (enable_pattern[1])
+        s.run_background("t2", [&] {
+            unsigned yield_count = yield_pattern[1];
+            try
+            {
+              throw std::runtime_error("t2");
+            }
+            catch(...)
+            {
+              for (unsigned i=0; i < yield_count; ++i)
+                reactor::yield();
+              BOOST_CHECK_EQUAL(elle::exception_string(), "t2");
+            }
+        });
+      if (enable_pattern[2])
+        s.run_background("t3", [&] {
+            unsigned yield_count = yield_pattern[2];
+            try
+            {
+              throw std::runtime_error("t3");
+            }
+            catch(...)
+            {
+              for (unsigned i=0; i < yield_count; ++i)
+                reactor::yield();
+              try
+              {
+                throw;
+              }
+              catch(...)
+              {
+                BOOST_CHECK_EQUAL(elle::exception_string(), "t3");
+              }
+            }
+        });
+      if (enable_pattern[3])
+        s.run_background("t4", [&] {
+            unsigned yield_count = yield_pattern[3];
+            try
+            {
+              try
+              {
+                throw std::runtime_error("t4");
+              }
+              catch(...)
+              {
+                for (unsigned i=0; i<yield_count; ++i)
+                  reactor::yield();
+                throw;
+              }
+            }
+            catch(...)
+            {
+              BOOST_CHECK_EQUAL(elle::exception_string(), "t4");
+            }
+        });
+      // check that current_exception stays empty on non-throwing threads
+      auto no_exception_test = [&](unsigned int count) {
+        if (!!std::current_exception())
+            ELLE_ERR("Exception in no_exception thread: %s", elle::exception_string());
+        BOOST_CHECK(!std::current_exception());
+        for (unsigned i=0; i<count; ++i)
+        {
+          reactor::yield();
+          if (!!std::current_exception())
+            ELLE_ERR("Exception in no_exception thread: %s", elle::exception_string());
+          BOOST_CHECK(!std::current_exception());
+        }
+      };
+      for (unsigned i=0; i <no_exception.size(); ++i)
+        s.run_background("tcheck",
+          [&no_exception_test, &no_exception, i] {no_exception_test(no_exception[i]);});
+      s.wait();
+    };
+}
+
+static void test_exception()
+{
+  exception_yield_pattern({ 2, 1, 2, 1}, {true, true, true, true}, {1,3});
+  exception_yield_pattern({ 2, 1, 2, 1}, {true, true, true, true}, {});
+  exception_yield_pattern({ 1, 2, 3, 4}, {true, true, true, true}, {});
+  exception_yield_pattern({ 4, 3, 2, 1}, {true, true, true, true}, {});
 }
 
 int main(int argc, char** argv)
@@ -129,6 +242,12 @@ int main(int argc, char** argv)
             ELLE_TRACE_SCOPE("connection status notification: %s", notif);
             if (!notif.status && !notif.still_trying)
               stop = true;
+            if (options.count("check"))
+            {
+              ELLE_LOG("Running coro check...")
+              test_exception();
+              ELLE_LOG("...check PASSED");
+            }
           }
         );
 
