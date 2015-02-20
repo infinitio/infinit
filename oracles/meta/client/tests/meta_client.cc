@@ -6,6 +6,7 @@
 #include <elle/log.hh>
 #include <elle/Exception.hh>
 #include <elle/json/exceptions.hh>
+#include <elle/serialization/json.hh>
 #include <elle/serialization/json/MissingKey.hh>
 
 #include <reactor/scheduler.hh>
@@ -444,6 +445,109 @@ ELLE_TEST_SCHEDULED(link_credentials)
   c.link_credentials(id, true);
 }
 
+  c.login("bob@bob.com", "pass", boost::uuids::nil_uuid());
+  c.change_email("bob2@bob.com", "pass");
+  c.logout();
+  BOOST_CHECK_THROW(c.login("bob@bob.com",
+                            "pass",
+                            boost::uuids::nil_uuid()),
+    infinit::state::CredentialError);
+  c.login("bob2@bob.com", "pass", boost::uuids::nil_uuid());
+}
+
+ELLE_TEST_SCHEDULED(change_email)
+{
+  HTTPServer s;
+  std::string stored_password;
+  std::string stored_email;
+  s.register_route("/user/change_email_request", reactor::http::Method::POST,
+                   [&] (HTTPServer::Headers const&,
+                       HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
+                       elle::Buffer const& body) -> std::string
+                   {
+                     elle::IOStream stream(body.istreambuf());
+                     elle::serialization::json::SerializerIn input(stream, false);
+                     std::string password_hash, email;
+                     input.serialize("password", password_hash);
+                     input.serialize("new_email", email);
+                     if (password_hash != stored_password)
+                     {
+                       throw HTTPServer::Exception("",
+                         reactor::http::StatusCode::Forbidden,
+                         "{"
+                         " \"code\": -10101,"
+                         " \"message\": \"email password dont match\""
+                         "}");
+                     }
+                     stored_email = email;
+                     return "{}";
+                   });
+  s.register_route("/logout", reactor::http::Method::POST,
+                   [&] (HTTPServer::Headers const&,
+                        HTTPServer::Cookies const&,
+                        HTTPServer::Parameters const&,
+                        elle::Buffer const& body) -> std::string
+                   {
+                     return "{}";
+                   });
+  s.register_route("/login", reactor::http::Method::POST,
+                   [&] (HTTPServer::Headers const&,
+                       HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
+                       elle::Buffer const& body) -> std::string
+                   {
+                     elle::IOStream stream(body.istreambuf());
+                     elle::serialization::json::SerializerIn input(stream, false);
+                     std::string password_hash, email;
+                     input.serialize("password_hash", password_hash);
+                     input.serialize("email", email);
+                     if (stored_password.empty())
+                     {
+                       stored_password = password_hash;
+                       stored_email = email;
+                     }
+                     else if (stored_password != password_hash
+                       || stored_email != email)
+                     {
+                       throw HTTPServer::Exception("",
+                         reactor::http::StatusCode::Forbidden,
+                         "{"
+                         " \"code\": -10101,"
+                         " \"message\": \"email password dont match\""
+                         "}");
+                     }
+                     return "{"
+                       " \"device\": {\"id\": \"1\", \"name\": \"johny\", \"passport\": \"passport\"},"
+                       " \"trophonius\": {\"host\": \"192.168.1.1\", \"port\": 4923, \"port_ssl\": 4233},"
+                       " \"features\": [],"
+                       " \"self\": {"
+                       "   \"_id\": \"0\","
+                       "   \"id\": \"0\","
+                       "   \"fullname\": \"jean\","
+                       "   \"email\": \"jean@infinit.io\","
+                       "   \"handle\": \"jean\","
+                       "   \"register_status\": \"ok\","
+                       "   \"identity\": \"identity\","
+                       "   \"passport\": \"passport\","
+                       "   \"devices\": [\"1\"],"
+                       "   \"networks\": [],"
+                       "   \"public_key\": \"public_key\","
+                       "   \"name\": \"FUUUUUUUUUUCK\","
+                       "   \"accounts\": [],"
+                       "   \"remaining_invitations\": 0,"
+                       "   \"token_generation_key\": \"token_generation_key\","
+                       "   \"favorites\": [],"
+                       "   \"connected_devices\": [\"1\"],"
+                       "   \"status\": 1,"
+                       "   \"creation_time\": 1420565249,"
+                       "   \"last_connection\": 1420565249"
+                       "   }"
+                       " }";
+                   });
+  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+}
+
 ELLE_TEST_SCHEDULED(facebook_connect_success)
 {
   HTTPServer s;
@@ -481,9 +585,9 @@ ELLE_TEST_SCHEDULED(facebook_connect_success)
                        "   }"
                        " }";
                    });
-  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
   c.facebook_connect("foobar", boost::uuids::nil_uuid());
 }
+
 
 ELLE_TEST_SCHEDULED(facebook_connect_failure)
 {
@@ -524,6 +628,7 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(trophonius));
   suite.add(BOOST_TEST_CASE(upload_avatar));
   suite.add(BOOST_TEST_CASE(link_credentials));
+  suite.add(BOOST_TEST_CASE(change_email));
   suite.add(BOOST_TEST_CASE(facebook_connect_success));
   suite.add(BOOST_TEST_CASE(facebook_connect_failure));
 }

@@ -21,7 +21,6 @@ with Meta() as meta:
   res = client0.post('login', user_device_0)
   assert res['success']
   res = client0.get('user/self')
-  assert res['success']
   assert meta.database.sessions.count() == 1
 
   # Login the same user but on web.
@@ -29,7 +28,6 @@ with Meta() as meta:
   res = web_client0.post('web-login', user)
   assert res['success']
   res = web_client0.get('user/self')
-  assert res['success']
   assert meta.database.sessions.count() == 2
 
   # Login the same user but on web twice.
@@ -37,7 +35,6 @@ with Meta() as meta:
   res = web_client1.post('web-login', user)
   assert res['success']
   res = web_client1.get('user/self')
-  assert res['success']
   assert meta.database.sessions.count() == 3
 
   # Logout user on device 0.

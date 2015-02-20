@@ -6,6 +6,6 @@ from uuid import uuid4
 with Meta() as meta:
   user = User(meta, 'foo@bar.baz')
   user.login()
-  assert user.data['last_connection'] < time()
-
-  assert (time() - user.data['last_connection'] < 1)
+  import sys
+  print(user.data, file = sys.stderr)
+  assert not user.data['connected']

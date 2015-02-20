@@ -228,8 +228,6 @@ class Mixin:
       'public_key': public_key,
       'networks': [],
       'devices': [],
-      'connected_devices': [],
-      'connected': False,
       'notifications': [],
       'old_notifications': [],
       'email_confirmed': True, # User got a reset account mail, email confirmed.
@@ -352,7 +350,13 @@ class Mixin:
     Make all client commit suicide.
     """
     # XXX: add broadcast capability to trophonius.
-    targets = { user['_id'] for user in self.database.users.find({'connected': True}) }
+    targets = {
+      user['_id']
+      for user in self.database.users.find(
+          {
+            'devices.trophonius': {'$ne': null},
+          }
+      )}
     self.notifier.notify_some(notifier.SUICIDE,
                               message = {},
                               recipient_ids = targets)

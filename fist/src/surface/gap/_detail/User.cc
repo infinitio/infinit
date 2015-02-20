@@ -205,23 +205,6 @@ namespace surface
       }
     }
 
-    State::User const&
-    State::user_from_public_key(std::string const& public_key) const
-    {
-      ELLE_TRACE_SCOPE("%s: user from public key %s", *this, public_key);
-      try
-      {
-        return this->user([this, public_key] (State::UserPair const& pair)
-                          {
-                            return pair.second.public_key == public_key;
-                          });
-      }
-      catch (State::UserNotFoundException const&)
-      {
-        return this->user_sync(this->meta().user_from_public_key(public_key));
-      }
-    }
-
     /// Return 2 vectors:
     /// - One containing the newly connected devices.
     /// - One containing the disconnected devices.
