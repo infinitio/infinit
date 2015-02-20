@@ -307,10 +307,16 @@ namespace surface
     infinit::oracles::meta::Client const&
     State::meta(bool authentication_required) const
     {
-      if (authentication_required && !this->_meta.logged_in())
+      if (authentication_required && !this->logged_in_to_meta())
         throw Exception{gap_not_logged_in, "you must be logged in"};
 
       return this->_meta;
+    }
+
+    bool
+    State::logged_in_to_meta() const
+    {
+      return this->_meta.logged_in();
     }
 
     void
@@ -335,6 +341,14 @@ namespace surface
     /*----------------------.
     | Login/Logout/Register |
     `----------------------*/
+
+    void
+    State::login(std::string const& email,
+                 std::string const& password)
+    {
+      this->login(email, password, reactor::DurationOpt{});
+    }
+
     void
     State::login(
       std::string const& email,
@@ -361,7 +375,7 @@ namespace surface
     State::_login_with_timeout(std::function<void ()> login_function,
                                reactor::DurationOpt timeout)
     {
-      if (this->_meta.logged_in())
+      if (this->logged_in_to_meta())
         this->logout();
       this->_logged_out.close();
       this-> _login_thread.reset(new reactor::Thread(
@@ -394,7 +408,7 @@ namespace surface
       };
 
       ELLE_TRACE("Login user thread unblocked");
-      if (!this->_meta.logged_in())
+      if (!this->logged_in_to_meta())
         throw elle::Error("Login failure");
     }
 
@@ -457,7 +471,7 @@ namespace surface
         reactor::Lock l(this->_login_mutex);
         // Ensure we don't have an old Meta message
         this->_meta_message.clear();
-        if (this->_meta.logged_in())
+        if (this->logged_in_to_meta())
           throw Exception(gap_already_logged_in, "already logged in");
         this->_cleanup();
         std::string failure_reason;
@@ -467,7 +481,7 @@ namespace surface
             ELLE_WARN("%s: error during login, logout: %s",
                       *this, failure_reason);
             metric(false, failure_reason);
-            if (this->_meta.logged_in())
+            if (this->logged_in_to_meta())
               this->_meta.logout();
           })
           << [&] (elle::Finally& finally_logout)
@@ -701,7 +715,7 @@ namespace surface
 
       ELLE_DEBUG("%s: cleaned up", *this);
 
-      if (!this->_meta.logged_in())
+      if (!this->logged_in_to_meta())
       {
         ELLE_DEBUG("%s: state was not logged in", *this);
         this->_logged_out.open();
@@ -970,7 +984,7 @@ namespace surface
         bool resynched{false};
         do
         {
-          if (!this->_meta.logged_in())
+          if (!this->logged_in_to_meta())
           {
             ELLE_TRACE("%s: not logged in, aborting", *this);
             return;

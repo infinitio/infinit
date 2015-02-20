@@ -111,6 +111,8 @@ namespace surface
       infinit::oracles::meta::Client const&
       meta(bool authentication_required = true) const;
 
+      bool
+      logged_in_to_meta() const;
     private:
       bool
       _trophonius_server_check();
@@ -192,11 +194,16 @@ namespace surface
     public:
       typedef std::unique_ptr<infinit::oracles::trophonius::Client>
       TrophoniusClientPtr;
+
+      /// Keeps trying, returns on success or throw on definitive failure.
+      void
+      login(std::string const& email,
+            std::string const& password);
       /// Keeps trying, returns on success or throw on definitive failure.
       void
       login(std::string const& email,
             std::string const& password,
-            reactor::DurationOpt timeout = reactor::DurationOpt());
+            reactor::DurationOpt timeout);
       /// Login to meta.
       void
       login(
