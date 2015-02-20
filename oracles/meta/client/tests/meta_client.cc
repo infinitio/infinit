@@ -445,16 +445,6 @@ ELLE_TEST_SCHEDULED(link_credentials)
   c.link_credentials(id, true);
 }
 
-  c.login("bob@bob.com", "pass", boost::uuids::nil_uuid());
-  c.change_email("bob2@bob.com", "pass");
-  c.logout();
-  BOOST_CHECK_THROW(c.login("bob@bob.com",
-                            "pass",
-                            boost::uuids::nil_uuid()),
-    infinit::state::CredentialError);
-  c.login("bob2@bob.com", "pass", boost::uuids::nil_uuid());
-}
-
 ELLE_TEST_SCHEDULED(change_email)
 {
   HTTPServer s;
@@ -545,8 +535,19 @@ ELLE_TEST_SCHEDULED(change_email)
                        "   }"
                        " }";
                    });
+
   infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+
+  c.login("bob@bob.com", "pass", boost::uuids::nil_uuid());
+  c.change_email("bob2@bob.com", "pass");
+  c.logout();
+  BOOST_CHECK_THROW(c.login("bob@bob.com",
+                            "pass",
+                            boost::uuids::nil_uuid()),
+    infinit::state::CredentialError);
+  c.login("bob2@bob.com", "pass", boost::uuids::nil_uuid());
 }
+
 
 ELLE_TEST_SCHEDULED(facebook_connect_success)
 {
@@ -585,6 +586,7 @@ ELLE_TEST_SCHEDULED(facebook_connect_success)
                        "   }"
                        " }";
                    });
+  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
   c.facebook_connect("foobar", boost::uuids::nil_uuid());
 }
 
