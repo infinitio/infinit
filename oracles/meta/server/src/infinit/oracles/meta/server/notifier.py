@@ -28,8 +28,9 @@ ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Notifier'
 class Notifier:
 
   def __init__(self, database, production):
-    self.__database = database
     self.__apns = None
+    self.__database = database
+    self.__production = production
 
   @property
   def database(self):
@@ -162,9 +163,9 @@ class Notifier:
   def push_notification(self, recipient_id, token, payload):
     if self.__apns is None:
       cert = conf.INFINIT_APS_CERT_PATH_PRODUCTION \
-             if production else conf.INFINIT_APS_CERT_PATH
+             if self.__production else conf.INFINIT_APS_CERT_PATH
       self.__apns = apns.APNs(
-        use_sandbox = not production,
+        use_sandbox = not self.__production,
         cert_file = cert)
     self.__apns.gateway_server.send_notification(token, payload)
 
