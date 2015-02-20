@@ -5,9 +5,10 @@ import sys
 from itertools import chain
 
 SELF = os.path.realpath(__file__)
+SELF_DIR = os.path.dirname(SELF)
 sys.path.insert(
   0,
-  '%s/../lib/python%s.%s' % tuple([os.path.dirname(SELF),
+  '%s/../lib/python%s.%s' % tuple([SELF_DIR,
                                    sys.version_info[0],
                                    sys.version_info[1]]))
 sys.path.insert(0, '%s/../lib/python' % os.path.dirname(SELF))
@@ -17,6 +18,7 @@ sys.path.insert(0, '%s/../lib/python' % os.path.dirname(SELF))
 # libcrypto.so through a RPATH on our native module.
 import infinit.oracles.sisyphus
 import infinit.oracles.sisyphus.boulders
+import infinit.oracles.sisyphus.boulders.apns
 import infinit.oracles.sisyphus.boulders.drip
 import infinit.oracles.sisyphus.emailer
 import infinit.oracles.sisyphus.metrics
@@ -72,6 +74,14 @@ infinit.oracles.sisyphus.boulders.drip.Onboarding(app, pretend = pretend)
 infinit.oracles.sisyphus.boulders.drip.PendingReminder(app, pretend = pretend)
 infinit.oracles.sisyphus.boulders.drip.Retention(app, pretend = pretend)
 infinit.oracles.sisyphus.boulders.drip.WeeklyReport(app, pretend = pretend)
+
+apns_cert = '%s/../share/aps.pem' % SELF_DIR
+apns_cert_prod = '%s/../share/aps_production.pem' % SELF_DIR
+infinit.oracles.sisyphus.boulders.apns.APNSUnregister(
+  app,
+  certificate = apns_cert_prod,
+  production = True,
+)
 
 bottle.run(app = app,
            host = '127.0.0.1',

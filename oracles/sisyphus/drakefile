@@ -36,6 +36,7 @@ def configure(
     sources = drake.nodes(
       'src/infinit/oracles/sisyphus/__init__.py',
       'src/infinit/oracles/sisyphus/boulders/__init__.py',
+      'src/infinit/oracles/sisyphus/boulders/apns.py',
       'src/infinit/oracles/sisyphus/boulders/drip.py',
       'src/infinit/oracles/sisyphus/emailer.py',
       'src/infinit/oracles/sisyphus/metrics.py',
@@ -45,6 +46,10 @@ def configure(
     build_python_path = drake.Path('lib/python')
     sources_built = drake.copy(sources, build_python_path, 'src')
     sources_built.append(version)
+    sources_built += drake.copy(
+      apns.nodes,
+      'lib/python',
+      drake.Path('..') / apns.root)
     elle_python = drake.copy(elle.elle.python, '.', '../../elle/elle')
     for source in sources_built:
       source.dependencies_add(elle_python)
@@ -57,6 +62,9 @@ def configure(
     build << build_binary
     build << drake.copy(sendwithus.nodes, build_python_path,
                         drake.Path('..') / sendwithus.root)
+    build << drake.copy([apns_cert, apns_cert_prod],
+                        'share',
+                        strip_prefix = True)
 
     check = drake.Rule('check')
     pythonpath = \

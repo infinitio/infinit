@@ -141,7 +141,7 @@ def configure(production_build,
     strip_prefix = 'tests'))
   sources_built += drake.copy(
     [apns_cert, apns_cert_prod],
-    build_python_path / 'infinit/oracles/meta/server',
+    'infinit/oracles/meta/server',
     strip_prefix = True)
   if python3 is not None:
     for source in sources_built:
