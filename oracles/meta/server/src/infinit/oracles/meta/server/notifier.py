@@ -103,18 +103,15 @@ class Notifier:
         ))
       elle.log.debug('trophonius to contact: %s' % trophonius)
       notification = {'notification': jsonify(message)}
-      # Ensure unique push tokens are used.
-      used_push_tokens = set()
       # Freezing slow.
       for device, owner, tropho, push in devices_trophonius:
-        if push is not None and push not in used_push_tokens:
+        if push is not None:
           try:
             pl = self.ios_notification(notification_type,
                                        device,
                                        owner,
                                        message)
             if pl is not None:
-              used_push_tokens.add(push)
               elle.log.debug('pushing notification to: %s' % device)
               self.__apns.gateway_server.send_notification(push, pl)
           except Exception as e:
