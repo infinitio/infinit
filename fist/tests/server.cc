@@ -189,11 +189,10 @@ namespace tests
         {
           auto& user = this->register_user("", "");
           // Replace identity.
-          auto password_hash = infinit::oracles::meta::old_password_hash(boost::lexical_cast<std::string>(user.id()), "");
           auto keys =
             cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                             papier::Identity::keypair_length);
-          std::unique_ptr<papier::Identity> identity{generate_identity(keys, boost::lexical_cast<std::string>(user.id()), "my identity", password_hash)};
+          std::unique_ptr<papier::Identity> identity{generate_identity(keys, boost::lexical_cast<std::string>(user.id()), "my identity", "")};
           user.identity().reset(identity.release());
           facebook_ids[code] = user.facebook_id();
         }
