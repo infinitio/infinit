@@ -57,85 +57,107 @@ class Notifier:
       # Fetch devices
       if recipient_ids is not None:
         assert isinstance(recipient_ids, set)
-        critera = {'_id': {'$in': list(recipient_ids)}}
+        criteria = {
+          '_id':
+          {
+            '$in': list(recipient_ids),
+          }
+        }
       else:
         assert isinstance(device_ids, set)
-        critera = {
-          'devices.id': {'$in': [str(device_id) for device_id in device_ids]}
+        criteria = {
+          'devices.id':
+          {
+            '$in': [str(device_id) for device_id in device_ids],
+          }
         }
-      devices_trophonius = []
-      for usr in self.database.users.find(
-          critera,
+      targets = []
+      # Find all involved devices
+      for user in self.database.users.find(
+          criteria,
           fields = {
-            'avatar': False, 'small_avatar': False, 'identity': False,
-            'devices.passport': False
+            'devices.id': True,
+            'devices.trophonius': True,
+            'devices.push_token': True,
           }
       ):
-        if 'devices' not in usr:
+        if 'devices' not in user:
           continue
-        devices = usr['devices']
-        if recipient_ids is None:
-          devices = filter(lambda x: x['id'] in device_ids, devices)
+        devices = user['devices']
+        if device_ids is not None:
+          devices = [d for d in devices if d['id'] in device_ids]
         for device in devices:
           tropho = device.get('trophonius')
           push = device.get('push_token')
           if tropho is not None or push is not None:
-            devices_trophonius.append((
+            targets.append((
               device['id'],
-              usr['_id'],
+              user['_id'],
               tropho,
               push,
             ))
-      elle.log.debug('targets: %s' % devices_trophonius)
-      # Fetch trophoniuses
-      trophonius = dict(
-        (record['_id'], record)
-        for record in self.database.trophonius.find(
+      elle.log.debug('targets: %s' % targets)
+      # Fetch involved trophoniuses
+      trophonius = {
+        record['_id']: record
+        for record in
+        self.database.trophonius.find(
+          {
+            '_id':
             {
-              '_id':
-              {
-                '$in': [t[2] for t in devices_trophonius
-                        if t[2] is not None],
-              }
-            },
-            fields = ['hostname', 'port', '_id']
-        ))
-      elle.log.debug('trophonius to contact: %s' % trophonius)
-      notification = {'notification': jsonify(message)}
+              '$in': [t[2] for t in targets
+                      if t[2] is not None],
+            }
+          },
+          fields = ['hostname', 'port', '_id']
+        )
+      }
+      elle.log.dump('involved trophoniuses: %s' % trophonius)
       # Freezing slow.
-      for device, owner, tropho, push in devices_trophonius:
-        if push is not None:
-          try:
-            pl = self.ios_notification(notification_type,
-                                       device,
-                                       owner,
-                                       message)
-            if pl is not None:
-              self.push_notification(owner, push, pl)
-          except Exception as e:
-            elle.log.err('unable to push notification to %s: %s' % (device, e))
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if tropho is None:
-          continue
-        tropho = trophonius.get(tropho)
-        if tropho is None:
-          continue
-        notification['device_id'] = str(device)
-        notification['user_id'] = str(owner)
-        elle.log.debug('notification to be sent: %s' % notification)
-        try:
-          s = socket.create_connection(
-            address = (tropho['hostname'], tropho['port']),
-            timeout = 4,
-          )
-          json_str = \
-            json.dumps(notification, ensure_ascii = False) + '\n'
-          s.send(json_str.encode('utf-8'))
-        except Exception as e:
-          elle.log.err('unable to contact %s: %s' %
-                       (tropho['_id'], e))
-        finally:
-          s.close()
+      notification = {'notification': jsonify(message)}
+      elle.log.dump('notification: %s' % notification)
+      for device, owner, tropho, push in targets:
+        with elle.log.debug(
+            'send notifications to %s (tropho: %s, push: %s)' %
+            (device, tropho, push)):
+          if push is not None:
+            try:
+              pl = self.ios_notification(notification_type,
+                                         device,
+                                         owner,
+                                         message)
+              if pl is not None:
+                with elle.log.debug(
+                    'push notification to: %s' % push):
+                  self.push_notification(owner, push, pl)
+              else:
+                elle.log.debug('skip push notification for %s' % push)
+
+            except Exception as e:
+              elle.log.err('unable to push notification to %s: %s'
+                           % (push, e))
+          s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+          if tropho is None:
+            continue
+          tropho = trophonius.get(tropho)
+          if tropho is None:
+            continue
+          with elle.log.debug('send notification to: %s' % device):
+            notification['device_id'] = str(device)
+            notification['user_id'] = str(owner)
+            try:
+              s = socket.create_connection(
+                address = (tropho['hostname'], tropho['port']),
+                timeout = 4,
+              )
+              json_str = \
+                json.dumps(notification, ensure_ascii = False) + '\n'
+              s.send(json_str.encode('utf-8'))
+            except Exception as e:
+              elle.log.err('unable to contact %s: %s' %
+                           (tropho['_id'], e))
+            finally:
+              s.close()
 
   def push_notification(self, recipient_id, token, payload):
     if self.__apns is None:
@@ -144,8 +166,7 @@ class Notifier:
       self.__apns = apns.APNs(
         use_sandbox = not production,
         cert_file = cert)
-    with elle.log.debug('pushing notification to: %s' % device):
-      self.__apns.gateway_server.send_notification(token, payload)
+    self.__apns.gateway_server.send_notification(token, payload)
 
 
   def ios_notification(self, notification_type, device, owner, message):
