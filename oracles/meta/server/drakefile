@@ -18,6 +18,8 @@ def configure(production_build,
               elle,
               python3,
               apns,
+              apns_cert,
+              apns_cert_prod,
               python_common,
               papier_python,
               prefix = drake.Path('/usr/local')):
@@ -56,8 +58,6 @@ def configure(production_build,
     'src/infinit/oracles/meta/error.py',
     'src/infinit/oracles/meta/server/__init__.py',
     'src/infinit/oracles/meta/server/apertus.py',
-    'src/infinit/oracles/meta/server/aps.pem',
-    'src/infinit/oracles/meta/server/aps_production.pem',
     'src/infinit/oracles/meta/server/cloud_buffer_token.py',
     'src/infinit/oracles/meta/server/cloud_buffer_token_gcs.py',
     'src/infinit/oracles/meta/server/conf.py',
@@ -139,6 +139,10 @@ def configure(production_build,
     drake.node('tests/utils.py'),
     build_python_path / 'infinit/oracles/meta/server/tests',
     strip_prefix = 'tests'))
+  sources_built += drake.copy(
+    [apns_cert, apns_cert_prod],
+    build_python_path / 'infinit/oracles/meta/server',
+    strip_prefix = True)
   if python3 is not None:
     for source in sources_built:
       source.dependencies_add(elle_python)

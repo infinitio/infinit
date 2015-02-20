@@ -18,6 +18,9 @@ def configure(
     sendwithus,
     elle,
     meta,
+    apns,
+    apns_cert,
+    apns_cert_prod,
     python_common,
     production_build,
 ):
