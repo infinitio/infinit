@@ -21,15 +21,15 @@ for name, value in notifications.items():
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Notifier'
 
+# FIXME: the notifier is not supposed to be the guy that search the
+# database for devices trophoniuses and push token. It's supposed to
+# be the guy that notifies. Perform the searches in meta and just
+# delegate the notification routing to the notifier. Simplify tests/push-notifications accordingly.
 class Notifier:
 
   def __init__(self, database, production):
-    cert = conf.INFINIT_APS_CERT_PATH_PRODUCTION \
-           if production else conf.INFINIT_APS_CERT_PATH
     self.__database = database
-    self.__apns = apns.APNs(
-      use_sandbox = not production,
-      cert_file = cert)
+    self.__apns = None
 
   @property
   def database(self):
@@ -47,14 +47,13 @@ class Notifier:
     device_ids        -- Devices to send the notification to.
     message           -- The payload.
     '''
-    with elle.log.trace('notification(%s): %s to %s' %
+    with elle.log.trace('notify %s (%s) to %s' %
                         (notification_type, message, recipient_ids)):
       assert (recipient_ids is not None) or (device_ids is not None)
       assert message is not None
       # Build message
       message['notification_type'] = notification_type
       message['timestamp'] = time.time() #timestamp in s.
-      elle.log.debug('message to be sent: %s' % message)
       # Fetch devices
       if recipient_ids is not None:
         assert isinstance(recipient_ids, set)
@@ -112,8 +111,7 @@ class Notifier:
                                        owner,
                                        message)
             if pl is not None:
-              elle.log.debug('pushing notification to: %s' % device)
-              self.__apns.gateway_server.send_notification(push, pl)
+              self.push_notification(owner, push, pl)
           except Exception as e:
             elle.log.err('unable to push notification to %s: %s' % (device, e))
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -138,6 +136,17 @@ class Notifier:
                        (tropho['_id'], e))
         finally:
           s.close()
+
+  def push_notification(self, recipient_id, token, payload):
+    if self.__apns is None:
+      cert = conf.INFINIT_APS_CERT_PATH_PRODUCTION \
+             if production else conf.INFINIT_APS_CERT_PATH
+      self.__apns = apns.APNs(
+        use_sandbox = not production,
+        cert_file = cert)
+    with elle.log.debug('pushing notification to: %s' % device):
+      self.__apns.gateway_server.send_notification(token, payload)
+
 
   def ios_notification(self, notification_type, device, owner, message):
     if notification_type is not PEER_TRANSACTION:
