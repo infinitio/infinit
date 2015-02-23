@@ -6,8 +6,8 @@ import hmac
 from . import error
 import urllib
 
-app_secret = '84e706b54659497ad23fb27eb9f0831d'
-app_id = '1599363463620738'
+app_secret = '5779a2aa495c253bd867d2fb3b528c42'
+app_id = '839001662829159'
 
 class FacebookGraph:
 
