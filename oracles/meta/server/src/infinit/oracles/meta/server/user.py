@@ -98,6 +98,7 @@ class Mixin:
       'accounts',
       'creation_time',
       'email',
+      'facebook_id',
       'favorites',
       'features',
       'identity',
@@ -374,10 +375,11 @@ class Mixin:
                        OS: str = None):
     try:
       facebook_user = self.facebook.user(code)
-      user = self.database.users.find_one({
+      user = self.__user_fetch({
         'accounts.id': facebook_user.facebook_id,
         'accounts.type': 'facebook'
-      })
+      },
+      fields = self.__user_self_fields + ['public_key'])
       register = False
       if user is None: # Register the user.
         user = self.facebook_register(
@@ -519,7 +521,7 @@ class Mixin:
       )
       user = res['value']
       user_id = user['_id']
-      user = self.__generate_identity(user, password = '')
+      self.__generate_identity(user, password = '')
       if email:
         with elle.log.trace("add user to the mailing list"):
           self.invitation.subscribe(email)
@@ -530,6 +532,14 @@ class Mixin:
         },
         user_id = user_id,
       )
+      # Could be better, but we generate the identity after the register.
+      # By the way, for some reasons, if fields during find_and_modify,
+      # some are ignored (e.g. connected_devices).
+      user = self.__user_fetch({
+        'accounts.id': facebook_id,
+        'accounts.type': 'facebook'
+        },
+        fields = self.__user_self_fields + ['public_key'])
       return user
 
   def user_register(self,
