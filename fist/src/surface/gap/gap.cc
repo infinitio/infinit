@@ -1864,6 +1864,13 @@ gap_send_last_crash_logs(gap_State* state,
   return gap_ok;
 }
 
+std::string
+gap_facebook_app_id()
+{
+  // We could even ask meta for the id.
+  return "839001662829159";
+}
+
 gap_Status
 gap_facebook_connect(gap_State* state, std::string const& code)
 {
