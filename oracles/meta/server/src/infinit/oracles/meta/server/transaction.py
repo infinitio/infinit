@@ -53,8 +53,15 @@ class Mixin:
     return transaction
 
   def change_transactions_recipient(self, current_owner, new_owner):
-    # We can't do that as a batch because update won't give us the list
-    # of updated transactions.
+    # XXX:
+    # 1: We can't do that as a batch because update won't give us the list
+    # of updated transactions to send notifications.
+    # 2: Also, involved will contain both new and old recipient id.
+    #
+    # 1: could be achived by doing a 'resynch' notification, forcing the user
+    # to resynch in model.
+    # 2: could be done in two steps, in order to get the sender id and reforge
+    # a complete 'involved' field.
     while True:
       transaction = self.database.transactions.find_and_modify(
         {
@@ -65,6 +72,13 @@ class Mixin:
             'recipient_id': new_owner['_id'],
             'modification_time': self.now,
             'mtime': time.time(),
+          },
+          # Cannot pull the old one and add the new one at the same time.
+          # '$pull': {
+          #   'involved': current_owner['_id']
+          # },
+          '$addToSet': {
+            'involved': new_owner['_id']
           }
         },
         new = True)
