@@ -135,8 +135,8 @@ def configure(production_build,
                                strip_prefix = True)
   python = [version]
   sources_built = drake.copy(sources, build_python_path, 'src')
-  sources_built.append(drake.copy(
-    drake.node('tests/utils.py'),
+  sources_built += drake.copy(
+    drake.nodes('tests/utils.py', 'tests/__init__.py'),
     build_python_path / 'infinit/oracles/meta/server/tests',
     strip_prefix = 'tests'))
   sources_built += drake.copy(
