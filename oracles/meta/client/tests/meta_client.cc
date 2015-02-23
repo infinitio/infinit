@@ -10,6 +10,7 @@
 #include <elle/serialization/json/MissingKey.hh>
 
 #include <reactor/scheduler.hh>
+#include <reactor/http/exceptions.hh>
 
 #include <infinit/oracles/meta/Admin.hh>
 #include <infinit/oracles/meta/Client.hh>
@@ -467,7 +468,6 @@ ELLE_TEST_SCHEDULED(link_credentials)
   c.link_credentials(id, true);
 }
 
-
 ELLE_TEST_SCHEDULED(change_email)
 {
   HTTPServer s;
@@ -569,6 +569,99 @@ ELLE_TEST_SCHEDULED(change_email)
   c.login("bob2@bob.com", "pass", boost::uuids::nil_uuid());
 }
 
+ELLE_TEST_SCHEDULED(merge_ghost)
+{
+  HTTPServer s;
+  s.register_route("/user/foo/merge", reactor::http::Method::POST,
+                   [] (HTTPServer::Headers const&,
+                       HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
+                       elle::Buffer const& body) -> std::string
+                   {
+                     return "{}";
+                   });
+  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+  c.use_ghost_code("foo");
+}
+
+ELLE_TEST_SCHEDULED(merge_ghost_failure)
+{
+  HTTPServer s;
+  s.register_route("/user/bar/merge", reactor::http::Method::POST,
+                   [] (HTTPServer::Headers const&,
+                       HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
+                       elle::Buffer const& body) -> std::string
+                   {
+                     throw HTTPServer::Exception("",
+                                                 reactor::http::StatusCode::Not_Found,
+                                                 "{"
+                                                 "}");
+
+                   });
+  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+  // This should check for reactor::http::RequestError but it doesn't work.
+  BOOST_CHECK_THROW(c.use_ghost_code("foo"), elle::Exception);
+}
+
+ELLE_TEST_SCHEDULED(ghost_user)
+{
+  HTTPServer s;
+  s.register_route("/users/id", reactor::http::Method::GET,
+                   [] (HTTPServer::Headers const&,
+                       HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
+                       elle::Buffer const& body) -> std::string
+                   {
+                     return "{"
+                       "   \"id\": \"0\","
+                       "   \"fullname\": \"jean\","
+                       "   \"handle\": \"jean\","
+                       "   \"register_status\": \"ghost\","
+                       "   \"devices\": [],"
+                       "   \"public_key\": \"public_key\","
+                       "   \"connected_devices\": [],"
+                       "   \"ghost_code\": \"foo\""
+                       "   }"
+                       " }";
+                   });
+  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+  auto user = c.user("id");
+  ELLE_ASSERT_EQ(user.ghost_code.get(), "foo");
+  ELLE_ASSERT_EQ(user.register_status, "ghost");
+  ELLE_ASSERT(!user.online());
+  ELLE_ASSERT(user.ghost());
+  ELLE_ASSERT(!user.deleted());
+}
+
+ELLE_TEST_SCHEDULED(normal_user)
+{
+  HTTPServer s;
+  s.register_route("/users/id", reactor::http::Method::GET,
+                   [] (HTTPServer::Headers const&,
+                       HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
+                       elle::Buffer const& body) -> std::string
+                   {
+                     return "{"
+                       "   \"id\": \"1\","
+                       "   \"fullname\": \"jean\","
+                       "   \"handle\": \"jean\","
+                       "   \"register_status\": \"ok\","
+                       "   \"devices\": [\"32\"],"
+                       "   \"public_key\": \"public_key\","
+                       "   \"connected_devices\": [\"32\"]"
+                       "   }"
+                       " }";
+                   });
+  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+  auto user = c.user("id");
+  ELLE_ASSERT(user.online());
+  ELLE_ASSERT(!user.ghost());
+  ELLE_ASSERT(!user.deleted());
+  ELLE_ASSERT(!user.online_excluding_device("32"));
+  ELLE_ASSERT(user.online());
+}
 
 ELLE_TEST_SUITE()
 {
@@ -590,4 +683,8 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(link_credentials));
   suite.add(BOOST_TEST_CASE(transaction_create));
   suite.add(BOOST_TEST_CASE(change_email));
+  suite.add(BOOST_TEST_CASE(merge_ghost));
+  suite.add(BOOST_TEST_CASE(merge_ghost_failure));
+  suite.add(BOOST_TEST_CASE(normal_user));
+  suite.add(BOOST_TEST_CASE(ghost_user));
 }

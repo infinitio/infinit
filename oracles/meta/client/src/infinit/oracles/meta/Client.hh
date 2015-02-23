@@ -66,7 +66,7 @@ namespace infinit
         std::string register_status;
         Devices connected_devices;
         std::string public_key;
-
+        boost::optional<std::string> ghost_code;
         User() = default;
 
         User(std::string const& id,
@@ -253,6 +253,8 @@ namespace infinit
       public:
         UpdatePeerTransactionResponse() = default;
         ELLE_ATTRIBUTE_R(boost::optional<aws::Credentials>, aws_credentials);
+        // The ghost invitation code.
+        ELLE_ATTRIBUTE_R(boost::optional<std::string>, ghost_code);
 
         UpdatePeerTransactionResponse(elle::serialization::SerializerIn& s);
         void
@@ -402,6 +404,9 @@ namespace infinit
 
         Self
         self() const;
+
+        void
+        use_ghost_code(std::string const& code) const;
 
         User
         user_from_handle(std::string const& handle) const;

@@ -394,6 +394,7 @@ namespace infinit
         s.serialize("register_status", this->register_status);
         s.serialize("connected_devices", this->connected_devices);
         s.serialize("public_key", this->public_key);
+        s.serialize("ghost_code", this->ghost_code);
       }
 
       LoginResponse::LoginResponse(
@@ -605,6 +606,20 @@ namespace infinit
         auto request = this->_request(url, Method::GET);
         SerializerIn input(url, request);
         return SynchronizeResponse{input};
+      }
+
+      void
+      Client::use_ghost_code(std::string const& code) const
+      {
+        std::string url = elle::sprintf("/user/%s/merge", code);
+        auto request = this->_request(url, Method::POST);
+        switch (request.status())
+        {
+          case reactor::http::StatusCode::OK:
+            break;
+          default:
+            throw infinit::state::InvalidGhostCode();
+        }
       }
 
       static
@@ -824,6 +839,7 @@ namespace infinit
         elle::serialization::Serializer& s)
       {
         s.serialize("aws_credentials", this->_aws_credentials);
+        s.serialize("ghost_code", this->_ghost_code);
       }
 
       CreatePeerTransactionResponse
