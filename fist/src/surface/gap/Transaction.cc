@@ -145,7 +145,8 @@ namespace surface
                              std::string const& message)
       // FIXME: ensure better uniqueness.
       : _snapshots_directory(
-        boost::filesystem::path(common::infinit::user_directory(state.me().id))
+        boost::filesystem::path(
+          common::infinit::user_directory(state.home(), state.me().id))
         / "transactions" / boost::filesystem::unique_path())
       , _snapshot_path(this->_snapshots_directory / "transaction.snapshot")
       , _state(state)
@@ -188,7 +189,8 @@ namespace surface
                              std::string const& message)
       // FIXME: ensure better uniqueness.
       : _snapshots_directory(
-        boost::filesystem::path(common::infinit::user_directory(state.me().id))
+        boost::filesystem::path(
+          common::infinit::user_directory(state.home(), state.me().id))
         / "transactions" / boost::filesystem::unique_path())
       , _snapshot_path(this->_snapshots_directory / "transaction.snapshot")
       , _state(state)
@@ -259,7 +261,8 @@ namespace surface
                              bool history,
                              bool login)
       : _snapshots_directory(
-        boost::filesystem::path(common::infinit::user_directory(state.me().id))
+        boost::filesystem::path(
+          common::infinit::user_directory(state.home(), state.me().id))
         / "transactions" / boost::filesystem::unique_path())
       , _snapshot_path(this->_snapshots_directory / "transaction.snapshot")
       , _state(state)

@@ -44,7 +44,9 @@ class State
   : public surface::gap::State
 {
 public:
-  State(Server& server, boost::uuids::uuid device_id);
+  State(Server& server,
+        boost::uuids::uuid device_id,
+        boost::filesystem::path path = boost::filesystem::path());
 };
 
 class Trophonius
@@ -147,12 +149,13 @@ public:
   /*-------.
   | Client |
   `-------*/
+
   class Client
   {
   public:
     Client(Server& server,
-           User& user);
-
+           User& user,
+           boost::filesystem::path home = boost::filesystem::path());
     Client(Server& server,
            std::string const& email);
 
@@ -194,6 +197,7 @@ public:
   Server();
   Server(Server const&) = default;
 
+
   User&
   register_user(std::string const& email, std::string const& password);
   User&
@@ -207,6 +211,9 @@ public:
   user(Cookies const& cookies) const;
 
 protected:
+  virtual
+  boost::uuids::uuid
+  _create_empty();
   std::string
   _get_trophonius(Headers const&,
                   Cookies const&,

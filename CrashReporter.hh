@@ -4,6 +4,7 @@
 # include <cstring>
 
 # include <boost/noncopyable.hpp>
+# include <boost/filesystem/path.hpp>
 
 # include <elle/Backtrace.hh>
 
@@ -53,6 +54,8 @@ namespace elle
 
       class Impl;
       std::unique_ptr<Impl> _impl;
+
+      ELLE_ATTRIBUTE_R(boost::filesystem::path, home);
     };
   } // End of signal.
 #endif // INFINIT_IOS
@@ -73,6 +76,7 @@ namespace elle
     transfer_failed_report(std::string const& meta_protocol,
                            std::string const& meta_host,
                            uint16_t meta_port,
+                           boost::filesystem::path const& attachment,
                            std::string const& user_name="",
                            std::string const& transaction_id="",
                            std::string const& reason="");
@@ -82,6 +86,7 @@ namespace elle
     user_report(std::string const& meta_protocol,
                 std::string const& meta_host,
                 uint16_t meta_port,
+                boost::filesystem::path const& attachment,
                 std::string const& user_name = "",
                 std::string const& message = "",
                 std::string const& user_file = "");

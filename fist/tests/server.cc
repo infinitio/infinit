@@ -289,18 +289,17 @@ Server::User::self_json() const
 }
 
 Server::Client::Client(Server& server,
-                       User& user)
+                       User& user,
+                       boost::filesystem::path home)
   : _server(server)
   , user(user)
-  , state(server, user.device_id().get())
-{
-}
+  , state(server, user.device_id().get(), home)
+{}
 
 Server::Client::Client(Server& server,
                        std::string const& email)
   : Client(server, server.register_user(email, "password"))
-{
-}
+{}
 
 void
 Server::Client::login(std::string const& password)
@@ -803,7 +802,6 @@ Server::Server()
     return res;
     });
 
-  {
   this->register_route(
     "/transaction/create_empty",
     reactor::http::Method::POST,
@@ -812,82 +810,13 @@ Server::Server()
          Server::Parameters const&,
          elle::Buffer const&)
     {
-      auto t = elle::make_unique<Transaction>();
-      auto id = t->id();
-      ELLE_TRACE_SCOPE("%s: create transaction %s", *this, id);
-      this->_transactions.insert(std::move(t));
-      this->register_route(
-      elle::sprintf("/transaction/%s", id),
-      reactor::http::Method::PUT,
-      [&, id] (Server::Headers const&,
-           Server::Cookies const& cookies,
-           Server::Parameters const&,
-           elle::Buffer const& content)
-      {
-          auto& user = this->user(cookies);
-          elle::IOStream stream(content.istreambuf());
-          elle::serialization::json::SerializerIn input(stream, false);
-          std::string recipient_email;
-          input.serialize("id_or_email", recipient_email);
-          ELLE_DEBUG("%s: recipient: %s", *this, recipient_email);
-          auto it = this->_transactions.find(id);
-          (*it)->status(infinit::oracles::Transaction::Status::created);
-
-
-          bool ghost;
-          auto& users_by_email = this->_users.get<1>();
-          auto recipient = users_by_email.find(recipient_email);
-          ghost = recipient == users_by_email.end();
-          auto& rec = ghost
-              ? generate_ghost_user(recipient_email)
-              : **recipient;
-
-          rec.swaggers.insert(&user);
-          user.swaggers.insert(&rec);
-
-          auto res = elle::sprintf(
-                                   "{"
-                                   "  \"created_transaction_id\": \"%s\","
-                                   "  \"recipient_is_ghost\": %s,"
-                                   "  \"recipient\": %s"
-                                   "}",
-                                   id,
-                                   ghost ? "true" : "false",
-                                   rec.json());
-          this->register_route(
-                               elle::sprintf("/transaction/%s/cloud_buffer", id),
-                               reactor::http::Method::GET,
-                               [&] (Server::Headers const&,
-                                    Server::Cookies const&,
-                                    Server::Parameters const&,
-                                    elle::Buffer const&)
-                               {
-                               auto now = boost::posix_time::second_clock::universal_time();
-                               auto tomorrow = now + boost::posix_time::hours(24);
-                               return elle::sprintf(
-                                                    "{"
-                                                    "  \"protocol\": \"aws\","
-                                                    "  \"access_key_id\": \"\","
-                                                    "  \"secret_access_key\": \"\","
-                                                    "  \"session_token\": \"\","
-                                                    "  \"region\": \"region\","
-                                                    "  \"bucket\": \"bucket\","
-                                                    "  \"folder\": \"folder\","
-                                                    "  \"expiration\": \"%s\","
-                                                    "  \"current_time\": \"%s\""
-                                                    "}",
-                                                    boost::posix_time::to_iso_extended_string(tomorrow),
-                                                    boost::posix_time::to_iso_extended_string(now));
-                               });
-          return res;
-      });
-    return elle::sprintf(
-                        "{"
-                        "\"created_transaction_id\": \"%s\""
-                        "}",
-                        id);
+      auto id = this->_create_empty();
+      return elle::sprintf(
+        "{"
+        "\"created_transaction_id\": \"%s\""
+        "}",
+        id);
     });
-  }
 
   this->register_route(
     "/transaction/update",
@@ -988,6 +917,78 @@ Server::user(Server::Cookies const& cookies) const
   for (auto const& user: this->_users.get<0>())
     ELLE_LOG("user: %s", *user);
   throw Server::Exception(" ", reactor::http::StatusCode::Forbidden, " ");
+}
+
+
+boost::uuids::uuid
+Server::_create_empty()
+{
+  auto t = elle::make_unique<Transaction>();
+  auto id = t->id();
+  ELLE_TRACE_SCOPE("%s: create transaction %s", *this, id);
+  this->_transactions.insert(std::move(t));
+  this->register_route(
+    elle::sprintf("/transaction/%s", id),
+    reactor::http::Method::PUT,
+    [&, id] (Server::Headers const&,
+             Server::Cookies const& cookies,
+             Server::Parameters const&,
+             elle::Buffer const& content)
+    {
+      auto& user = this->user(cookies);
+      elle::IOStream stream(content.istreambuf());
+      elle::serialization::json::SerializerIn input(stream, false);
+      std::string recipient_email;
+      input.serialize("id_or_email", recipient_email);
+      ELLE_DEBUG("%s: recipient: %s", *this, recipient_email);
+      auto it = this->_transactions.find(id);
+      (*it)->status(infinit::oracles::Transaction::Status::created);
+      bool ghost;
+      auto& users_by_email = this->_users.get<1>();
+      auto recipient = users_by_email.find(recipient_email);
+      ghost = recipient == users_by_email.end();
+      auto& rec = ghost
+        ? generate_ghost_user(recipient_email)
+        : **recipient;
+      rec.swaggers.insert(&user);
+      user.swaggers.insert(&rec);
+      auto res = elle::sprintf(
+        "{"
+        "  \"created_transaction_id\": \"%s\","
+        "  \"recipient_is_ghost\": %s,"
+        "  \"recipient\": %s"
+        "}",
+        id,
+        ghost ? "true" : "false",
+        rec.json());
+      this->register_route(
+        elle::sprintf("/transaction/%s/cloud_buffer", id),
+        reactor::http::Method::GET,
+        [&] (Server::Headers const&,
+             Server::Cookies const&,
+             Server::Parameters const&,
+             elle::Buffer const&)
+        {
+          auto now = boost::posix_time::second_clock::universal_time();
+          auto tomorrow = now + boost::posix_time::hours(24);
+          return elle::sprintf(
+            "{"
+            "  \"protocol\": \"aws\","
+            "  \"access_key_id\": \"\","
+            "  \"secret_access_key\": \"\","
+            "  \"session_token\": \"\","
+            "  \"region\": \"region\","
+            "  \"bucket\": \"bucket\","
+            "  \"folder\": \"folder\","
+            "  \"expiration\": \"%s\","
+            "  \"current_time\": \"%s\""
+            "}",
+            boost::posix_time::to_iso_extended_string(tomorrow),
+            boost::posix_time::to_iso_extended_string(now));
+        });
+      return res;
+    });
+  return id;
 }
 
 Server::User&
@@ -1148,11 +1149,17 @@ Server::Transaction::print(std::ostream& out) const
 }
 
 State::State(Server& server,
-             boost::uuids::uuid device_id)
+             boost::uuids::uuid device_id,
+             boost::filesystem::path home)
   : surface::gap::State(
-    "http", "127.0.0.1", server.port(),
-    std::move(device_id), fingerprint,
-    elle::os::path::join(elle::system::home_directory().string(), "Downloads"))
+    "http",
+    "127.0.0.1",
+    server.port(),
+    std::move(device_id),
+    fingerprint,
+    elle::os::path::join(elle::system::home_directory().string(), "Downloads"),
+    home.empty() ? "" : home.string()
+    )
 {
   this->s3_hostname(aws::URL{"http://",
                              elle::sprintf("localhost:%s", server.port()),

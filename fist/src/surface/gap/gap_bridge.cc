@@ -45,6 +45,7 @@ gap_State::gap_State(bool production,
                                 this->_configuration.device_id(),
                                 this->_configuration.trophonius_fingerprint(),
                                 this->_configuration.download_dir(),
+                                this->_configuration.home(),
                                 common::metrics(this->configuration())));
     });
 }

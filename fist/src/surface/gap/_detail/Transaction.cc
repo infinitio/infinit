@@ -134,7 +134,7 @@ namespace surface
     {
       ELLE_ASSERT(this->_transactions.empty());
       boost::filesystem::path snapshots_path(
-        common::infinit::user_directory(this->me().id));
+        common::infinit::user_directory(this->_home, this->me().id));
       snapshots_path /= "transactions";
       ELLE_TRACE("%s: load transactions from snapshots at %s",
                  *this, snapshots_path)

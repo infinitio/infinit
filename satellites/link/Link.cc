@@ -103,6 +103,7 @@ int main(int argc, char** argv)
                                   config.device_id(),
                                   config.trophonius_fingerprint(),
                                   config.download_dir(),
+                                  config.home(),
                                   common::metrics(config));
         uint32_t id = surface::gap::null_id;
 
