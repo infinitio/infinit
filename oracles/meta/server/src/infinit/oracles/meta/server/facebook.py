@@ -43,7 +43,7 @@ class FacebookGraph:
           self.__app_access_token = text[13:]
         else:
           raise FacebookGraph.AuthenticationFailure()
-      except urllib.error.HTTPError as e:
+      except requests.exceptions.HTTPError as e:
         raise FacebookGraph.AuthenticationFailure()
     return self.__app_access_token
 
@@ -84,7 +84,7 @@ class FacebookGraph:
             self.__access_token = text[13:text.find("&")]
           else:
             raise FacebookGraph.Client.UserAuthenticationFailure()
-        except urllib.error.HTTPError as e:
+        except requests.exceptions.HTTPError as e:
           raise FacebookGraph.Client.UserAuthenticationFailure()
       return self.__access_token
 
@@ -143,7 +143,7 @@ class FacebookGraph:
             self.__friends = response.json()
           else:
             raise FacebookGraph.Client.UserAuthenticationFailure()
-        except urllib.error.HTTPError as e:
+        except requests.exceptions.HTTPError as e:
           raise FacebookGraph.Client.UserAuthenticationFailure()
       return self.__friends
 
@@ -166,7 +166,7 @@ class FacebookGraph:
         response = requests.get(url)
         response.raise_for_status()
         return response.content
-      except urllib.error.HTTPError as e:
+      except requests.exceptions.HTTPError as e:
         raise FacebookGraph.Client.UserAuthenticationFailure()
 
     @property
