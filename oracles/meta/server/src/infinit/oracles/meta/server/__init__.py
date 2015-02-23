@@ -223,6 +223,10 @@ class Meta(bottle.Bottle,
                                        unique = False)
     self.__database.users.ensure_index([('devices.id', 1)],
                                        unique = False)
+
+    # - Ghost code.
+    self.__database.users.ensure_index([('ghost_code', 1)], unique = False, sparse = True)
+
     #---------------------------------------------------------------------------
     # Transactions
     #---------------------------------------------------------------------------

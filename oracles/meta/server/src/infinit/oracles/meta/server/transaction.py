@@ -23,6 +23,9 @@ from infinit.oracles.meta.server.utils import json_value
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Transaction'
 
+code_alphabet = '123467890abcdefghilklmnopqrstuvwxyz'
+code_length = 5
+
 class Mixin:
 
   def is_sender(self, transaction, owner_id, device_id = None):
@@ -62,6 +65,9 @@ class Mixin:
     # to resynch in model.
     # 2: could be done in two steps, in order to get the sender id and reforge
     # a complete 'involved' field.
+    #
+    # Let's consider that most of the ghosts don't have that many
+    # transactions...
     while True:
       transaction = self.database.transactions.find_and_modify(
         {
@@ -74,6 +80,7 @@ class Mixin:
             'mtime': time.time(),
           },
           # Cannot pull the old one and add the new one at the same time.
+          # (read 2.).
           # '$pull': {
           #   'involved': current_owner['_id']
           # },
@@ -252,6 +259,15 @@ class Mixin:
       device_id,
       message)
 
+  def generate_random_sequence(self, alphabet = code_alphabet, length = code_length):
+    """Return a pseudo-random string.
+    alphabet -- A list of characters.
+    length -- The size of the wanted random sequence.
+    """
+    import random
+    random.seed()
+    return ''.join(random.choice(alphabet) for _ in range(length))
+
   def transaction_create(self,
                          sender,
                          id_or_email,
@@ -310,11 +326,13 @@ class Mixin:
             devices = [],
             swaggers = {},
             accounts = [{'type':'email', 'id':peer_email}],
-            features = features
+            features = features,
+            ghost_code = self.generate_random_sequence(),
+            ghost_code_expiration = self.now + datetime.timedelta(days=14),
           )
           recipient = self.__user_fetch(
             recipient_id,
-            fields = self.__user_view_fields + ['email'])
+            fields = self.__user_view_fields + ['email', 'ghost_code'])
           # Post new_ghost event to metrics
           url = 'http://metrics.9.0.api.production.infinit.io/collections/users'
           metrics = {
@@ -621,6 +639,13 @@ class Mixin:
         })
       return res
 
+  def on_initialized(self, transaction):
+    recipient = self.__user_fetch(transaction['recipient_id'],
+                                  fields = ['ghost_code'])
+    if 'ghost_code' in recipient:
+      return {'ghost_code': recipient['ghost_code']}
+    return {}
+
   def _hash_transaction(self, transaction):
     """
     Generate a unique hash for a transaction based on a random number and the
@@ -638,7 +663,7 @@ class Mixin:
     elle.log.log('Transaction finished');
     # Guess if this was a ghost cloud upload or not
     recipient = self.__user_fetch(transaction['recipient_id'],
-                                  fields = self.__user_view_fields + ['email'])
+                                  fields = self.__user_view_fields + ['email', 'ghost_code'])
     if recipient['register_status'] == 'deleted':
       self.gone({
         'reason': 'user %s is deleted' % recipient['_id'],
@@ -699,6 +724,8 @@ class Mixin:
             'transaction_hash': transaction_hash,
             'transaction_id': str(transaction['_id']),
             'number_of_other_files': len(transaction['files']) - 1,
+            # Ghost created pre 0.9.30 has no ghost code.
+            'code': recipient.get('ghost_code', ''),
           }}
       )
       return {
@@ -762,6 +789,8 @@ class Mixin:
         response(403, {'reason': fmt % args})
       diff = {}
       operation = {}
+      if status == transaction_status.INITIALIZED:
+        diff.update(self.on_initialized(transaction))
       if status == transaction_status.ACCEPTED:
         diff.update(self.on_accept(transaction = transaction,
                                    user = user,

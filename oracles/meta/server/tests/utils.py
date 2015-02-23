@@ -623,13 +623,13 @@ class User(Client):
     return transaction, res
 
   def transaction_update(self, transaction, status):
-    self.post('transaction/update',
-              {
-                'transaction_id': transaction,
-                'status': status,
-                'device_id': str(self.device_id),
-                'device_name': self.device_name,
-              })
+    return self.post('transaction/update',
+                     {
+                       'transaction_id': transaction,
+                       'status': status,
+                       'device_id': str(self.device_id),
+                       'device_name': self.device_name,
+                     })
 
   # FIXME: remove when link & peer transactions are merged
   def getalink(self,

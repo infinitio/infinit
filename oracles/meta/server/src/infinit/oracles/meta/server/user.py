@@ -79,6 +79,7 @@ class Mixin:
       'handle',
       'public_key',
       'register_status',
+      'ghost_code',
     ]
     if self.admin:
       res += [
@@ -482,14 +483,17 @@ class Mixin:
         if user['register_status'] == 'ghost':
           for field in ['swaggers', 'features']:
             user_content[field] = user[field]
+          update = {
+            '$set': user_content,
+          }
+          if 'ghost_code' in user:
+            update['$unset'] = {'ghost_code': 1}
           user = self.database.users.find_and_modify(
             query = {
               'accounts.id': email,
               'register_status': 'ghost',
             },
-            update = {
-              '$set': user_content,
-            },
+            update = update,
             new = True,
             upsert = False,
           )
@@ -673,6 +677,26 @@ class Mixin:
       return self.success({"connected": self._is_connected(id)})
     except error.Error as e:
       self.fail(*e.args)
+
+  @api('/user/<code>/merge', method = 'POST')
+  @require_logged_in
+  def merge_ghost(self,
+                  code : str):
+    with elle.log.trace("merge ghost with code %s" % code):
+      # XXX: Add cooldown.
+      if len(code) == 0:
+        return self.bad_request({
+          'reason': 'code cannot be empty',
+        })
+      account = self.database.users.find_one({'ghost_code': code})
+      if account is None or account['ghost_code_expiration'] < self.now:
+        return self.not_found({
+          'reason': 'unknown code : %s' % code,
+          'code': code,
+        })
+      elle.log.debug('account found: %s' % account)
+      self.user_delete(account, merge_with = self.user)
+      return {}
 
   @api('/user/accounts')
   @require_logged_in
@@ -1125,7 +1149,8 @@ class Mixin:
         '$unset':
         {
           'avatar': '',
-          'small_avatar': ''
+          'small_avatar': '',
+          'ghost_code': '',
         }
       },
       new = True)
