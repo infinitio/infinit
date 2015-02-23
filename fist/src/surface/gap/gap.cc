@@ -1869,7 +1869,7 @@ gap_facebook_connect(gap_State* state, std::string const& code)
 {
   return run<gap_Status>(
     state,
-    "accept transaction",
+    "facebook connect",
     [&] (surface::gap::State& state) -> gap_Status
     {
       state.facebook_connect(code);
