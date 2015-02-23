@@ -755,24 +755,6 @@ class Mixin:
               'email': name,
             })
           if status in ['ghost', 'deleted']:
-            swaggers = previous.get('swaggers', {})
-            # Increase swaggers swag for self
-            update.update({
-              '$inc':
-              {
-                'swaggers.%s' % id: swaggers[id] for id in swaggers
-              }
-            })
-            # Increase self swag for swaggers
-            for swagger, amount in swaggers.items():
-              self.database.users.update(
-                {'_id': swagger},
-                {'$inc': {'swaggers.%s' % user['_id']: amount}})
-              self.notifier.notify_some(
-                notifier.NEW_SWAGGER,
-                message = {'user_id': swagger},
-                recipient_ids = {user['_id']},
-              )
             self.user_delete(previous, merge_with = user)
             continue
       return {}
@@ -1085,6 +1067,25 @@ class Mixin:
     if self.__users_count({'email': user['email']}) == 1:
       self.invitation.unsubscribe(user['email'])
     if merge_with is not None:
+      swaggers = user.get('swaggers', {})
+      # Increase swaggers swag for self
+      update = {
+        '$inc':
+        {
+          'swaggers.%s' % id: swaggers[id] for id in swaggers
+        }
+      }
+      self.database.users.update({'_id': merge_with['_id']}, update)
+      # Increase self swag for swaggers
+      for swagger, amount in swaggers.items():
+        self.database.users.update(
+          {'_id': swagger},
+          {'$inc': {'swaggers.%s' % merge_with['_id']: amount}})
+        self.notifier.notify_some(
+          notifier.NEW_SWAGGER,
+          message = {'user_id': swagger},
+          recipient_ids = {merge_with['_id']},
+        )
       self.change_transactions_recipient(user, merge_with)
       # self.change_links_ownership(user, merge_with)
     else:
