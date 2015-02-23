@@ -382,7 +382,9 @@ gap_self_email(gap_State* state)
                           "self email",
                           [&] (surface::gap::State& state) -> std::string
                           {
-                            return state.me().email;
+                            if (state.me().email)
+                              return state.me().email.get();
+                            return "";
                           });
 }
 

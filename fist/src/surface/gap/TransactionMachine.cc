@@ -265,7 +265,7 @@ namespace surface
         elle::crash::transfer_failed_report(this->state().meta().protocol(),
                                             this->state().meta().host(),
                                             this->state().meta().port(),
-                                            this->state().me().email,
+                                            this->state().me().identifier(),
                                             transaction_id,
                                             this->transaction().failure_reason());
       }

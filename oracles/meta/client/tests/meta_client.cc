@@ -590,6 +590,87 @@ ELLE_TEST_SCHEDULED(facebook_connect_success)
   c.facebook_connect("foobar", boost::uuids::nil_uuid());
 }
 
+ELLE_TEST_SCHEDULED(facebook_connect_success_no_email)
+{
+  HTTPServer s;
+  s.register_route("/facebook_connect", reactor::http::Method::POST,
+                   [] (HTTPServer::Headers const&,
+                       HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
+                       elle::Buffer const& body) -> std::string
+                   {
+                     return "{"
+                       " \"device\": {\"id\": \"1\", \"name\": \"johny\", \"passport\": \"passport\"},"
+                       " \"trophonius\": {\"host\": \"192.168.1.1\", \"port\": 4923, \"port_ssl\": 4233},"
+                       " \"features\": [],"
+                       " \"self\": {"
+                       "   \"_id\": \"0\","
+                       "   \"id\": \"0\","
+                       "   \"fullname\": \"jean\","
+                       "   \"handle\": \"jean\","
+                       "   \"facebook_id\": \"12491274912789412984\","
+                       "   \"register_status\": \"ok\","
+                       "   \"identity\": \"identity\","
+                       "   \"passport\": \"passport\","
+                       "   \"devices\": [\"1\"],"
+                       "   \"networks\": [],"
+                       "   \"public_key\": \"public_key\","
+                       "   \"name\": \"FUUUUUUUUUUCK\","
+                       "   \"accounts\": [],"
+                       "   \"remaining_invitations\": 0,"
+                       "   \"token_generation_key\": \"token_generation_key\","
+                       "   \"favorites\": [],"
+                       "   \"connected_devices\": [\"1\"],"
+                       "   \"status\": 1,"
+                       "   \"creation_time\": 1420565249,"
+                       "   \"last_connection\": 1420565249"
+                       "   }"
+                       " }";
+                   });
+  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+  c.facebook_connect("foobar", boost::uuids::nil_uuid());
+}
+
+ELLE_TEST_SCHEDULED(facebook_connect_success_nor_facebook_id_nor_email)
+{
+  HTTPServer s;
+  s.register_route("/facebook_connect", reactor::http::Method::POST,
+                   [] (HTTPServer::Headers const&,
+                       HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
+                       elle::Buffer const& body) -> std::string
+                   {
+                     return "{"
+                       " \"device\": {\"id\": \"1\", \"name\": \"johny\", \"passport\": \"passport\"},"
+                       " \"trophonius\": {\"host\": \"192.168.1.1\", \"port\": 4923, \"port_ssl\": 4233},"
+                       " \"features\": [],"
+                       " \"self\": {"
+                       "   \"_id\": \"0\","
+                       "   \"id\": \"0\","
+                       "   \"fullname\": \"jean\","
+                       "   \"handle\": \"jean\","
+                       "   \"register_status\": \"ok\","
+                       "   \"identity\": \"identity\","
+                       "   \"passport\": \"passport\","
+                       "   \"devices\": [\"1\"],"
+                       "   \"networks\": [],"
+                       "   \"public_key\": \"public_key\","
+                       "   \"name\": \"FUUUUUUUUUUCK\","
+                       "   \"accounts\": [],"
+                       "   \"remaining_invitations\": 0,"
+                       "   \"token_generation_key\": \"token_generation_key\","
+                       "   \"favorites\": [],"
+                       "   \"connected_devices\": [\"1\"],"
+                       "   \"status\": 1,"
+                       "   \"creation_time\": 1420565249,"
+                       "   \"last_connection\": 1420565249"
+                       "   }"
+                       " }";
+                   });
+  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+  c.facebook_connect("foobar", boost::uuids::nil_uuid());
+}
+
 
 ELLE_TEST_SCHEDULED(facebook_connect_failure)
 {
@@ -632,5 +713,7 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(link_credentials));
   suite.add(BOOST_TEST_CASE(change_email));
   suite.add(BOOST_TEST_CASE(facebook_connect_success));
+  suite.add(BOOST_TEST_CASE(facebook_connect_success_no_email));
+  suite.add(BOOST_TEST_CASE(facebook_connect_success_nor_facebook_id_nor_email));
   suite.add(BOOST_TEST_CASE(facebook_connect_failure));
 }
