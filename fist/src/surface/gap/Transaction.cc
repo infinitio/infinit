@@ -155,13 +155,7 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: construct to send %s files",
                        *this, this->_files.get().size());
 
-      // Save the snapshot when the transaction id is set, otherwise, we will
-      // not be able to restore it.
-      this->_machine->transaction_id_set().connect(
-        [&] (std::string const&)
-        {
-          this->_snapshot_save();
-        });
+      this->_snapshot_save();
     }
 
     // Construct to create link.
@@ -442,10 +436,15 @@ namespace surface
           ELLE_TRACE("%s sender of ghost_uploaded transaction", *this);
           return;
         }
-        auto it = state.synchronize_response()->transactions.find(snapshot.data()->id);
-        auto data = (it != state.synchronize_response()->transactions.end())
-          ? it->second
-          :  _state.meta().transaction(snapshot.data()->id);
+        if (!snapshot.data()->id.empty())
+        {
+          auto it = state.synchronize_response()->transactions.find(snapshot.data()->id);
+          auto data = (it != state.synchronize_response()->transactions.end())
+            ? it->second
+            :  _state.meta().transaction(snapshot.data()->id);
+          this->on_transaction_update(
+            std::make_shared<infinit::oracles::PeerTransaction>(data));
+        }
         // this->_sender is set true when creating a transaction on this device.
         if (this->_sender)
         {
@@ -480,8 +479,6 @@ namespace surface
                 new PeerReceiveMachine(*this, this->_id, peer_data));
           }
         }
-        this->on_transaction_update(
-          std::make_shared<infinit::oracles::PeerTransaction>(data));
       }
       else if (auto link_data =
                std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(

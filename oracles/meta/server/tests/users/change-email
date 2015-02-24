@@ -65,7 +65,7 @@ with Meta(enable_emails = True,
 
   # Check user data has been changed in the database.
   new_user_data = meta.database.users.find_one(
-    {'_id': ObjectId(user_data['_id'])},
+    {'_id': ObjectId(user_data['id'])},
     fields = ['email', 'public_key', 'identity']
   )
   assert new_user_data['email'] == new_email_address

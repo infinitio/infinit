@@ -56,11 +56,11 @@ with mongobox.MongoBox() as mongo:
     # Create an activated user
     device = 'device'
     email = 'user@infinit.io'
-    sender = meta.user_register(email, '*' * 64, 'Foo Bar')
+    sender = user_register(meta, email)
     sender_device = meta._create_device(sender)
     sender_device['id'] = uuid.UUID(sender_device['id'])
     meta.set_connection_status(
-      sender['_id'], sender_device['id'], True)
+      sender['_id'], sender_device['id'], True, 'tropho-id')
     tid = transaction_create(meta, sender, 'ghost@infinit.io')
     meta._cloud_buffer(tid, sender)
     meta._transaction_update(tid, statuses['ghost_uploaded'],
@@ -68,7 +68,7 @@ with mongobox.MongoBox() as mongo:
     sisy.boulders_run()
     assert not emailer.emails
     meta.set_connection_status(
-      sender['_id'], sender_device['id'], False)
+      sender['_id'], sender_device['id'], False, 'tropho-id')
     forward(reminder.delay_third_reminder* 1.1)
 
     # Check nothing is sent for a finished transaction
@@ -77,10 +77,10 @@ with mongobox.MongoBox() as mongo:
 
     # Check nothing is sent too early
     meta.set_connection_status(
-      sender['_id'], sender_device['id'], True)
+      sender['_id'], sender_device['id'], True, 'tropho-id')
     tid = transaction_create(meta, sender, 'ghost@infinit.io')
     meta.set_connection_status(
-      sender['_id'], sender_device['id'], False)
+      sender['_id'], sender_device['id'], False, 'tropho-id')
     forward(reminder.delay_first_reminder * 0.5)
     sisy.boulders_run()
     assert not emailer.emails
@@ -93,11 +93,11 @@ with mongobox.MongoBox() as mongo:
 
     # Check coming online resets
     meta.set_connection_status(
-      sender['_id'], sender_device['id'], True)
+      sender['_id'], sender_device['id'], True, 'tropho-id')
     sisy.boulders_run()
     assert not emailer.emails
     meta.set_connection_status(
-      sender['_id'], sender_device['id'], False)
+      sender['_id'], sender_device['id'], False, 'tropho-id')
     forward(reminder.delay_first_reminder * 1.1)
     sisy.boulders_run()
     check_mail(emailer.emails, email,

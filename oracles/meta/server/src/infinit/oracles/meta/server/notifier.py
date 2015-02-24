@@ -58,26 +58,35 @@ class Notifier:
       # Fetch devices
       if recipient_ids is not None:
         assert isinstance(recipient_ids, set)
-        critera = {'owner': {'$in': list(recipient_ids)}}
+        critera = {'_id': {'$in': list(recipient_ids)}}
       else:
         assert isinstance(device_ids, set)
         critera = {
-          'id': {'$in': [str(device_id) for device_id in device_ids]}
+          'devices.id': {'$in': [str(device_id) for device_id in device_ids]}
         }
       devices_trophonius = []
-      for device in self.database.devices.find(
+      for usr in self.database.users.find(
           critera,
-          fields = ['id', 'owner', 'trophonius', 'push_token'],
+          fields = {
+            'avatar': False, 'small_avatar': False, 'identity': False,
+            'devices.passport': False
+          }
       ):
-        tropho = device.get('trophonius')
-        push = device.get('push_token')
-        if tropho is not None or push is not None:
-          devices_trophonius.append((
-            device['id'],
-            device['owner'],
-            tropho,
-            push,
-          ))
+        if 'devices' not in usr:
+          continue
+        devices = usr['devices']
+        if recipient_ids is None:
+          devices = filter(lambda x: x['id'] in device_ids, devices)
+        for device in devices:
+          tropho = device.get('trophonius')
+          push = device.get('push_token')
+          if tropho is not None or push is not None:
+            devices_trophonius.append((
+              device['id'],
+              usr['_id'],
+              tropho,
+              push,
+            ))
       elle.log.debug('targets: %s' % devices_trophonius)
       # Fetch trophoniuses
       trophonius = dict(

@@ -42,6 +42,15 @@ namespace surface
                                     _cancel_state,
                                     reactor::Waitables{&this->canceled()},
                                     true);
+
+      // Due to a bug revealed by the 0.9.26, some users have finished
+      // transaction snapshots but with fsm in the "wait_for_decision" state.
+      // Because meta is king, just go the finish state.
+      // XXX: metrics will be resent.
+      this->_machine.transition_add(this->_wait_for_decision_state,
+                                    this->_finish_state,
+                                    reactor::Waitables{&this->finished()},
+                                    true);
       this->_machine.transition_add(
         _accept_state,
         _cancel_state,

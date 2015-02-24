@@ -986,15 +986,19 @@ class WeeklyReport(Drip):
     response = {}
     now = self.now
     offset = datetime.timedelta(
-      days = now.weekday() + 3,
+      # 3 was for Friday. 0 is for Monday.
+      days = now.weekday() + 0,
       hours = now.time().hour - 15,
       minutes = now.time().minute,
       seconds = now.time().second,
       microseconds = now.time().microsecond,
     )
-    self.current = now - offset % datetime.timedelta(weeks = 1)
+    offset %= datetime.timedelta(weeks = 1)
+    self.current = now - offset
     self.previous = self.current - datetime.timedelta(weeks = 1)
     self.next = self.current + datetime.timedelta(weeks = 1)
+    elle.log.debug('%s: send report for %s to %s' %
+                   (self, self.previous, self.current))
     # -> initialized
     transited = self.transition(
       None,
@@ -1125,12 +1129,13 @@ class PendingReminder(Drip):
         # Fully registered
         ('register_status', pymongo.ASCENDING),
         # Disconnected
-        ('connected', pymongo.ASCENDING),
+        ('online', pymongo.ASCENDING),
         # With pending transfers
         ('transactions.pending_has', pymongo.ASCENDING),
         # By disconnection time
         ('disconnection_time', pymongo.ASCENDING),
-      ])
+      ],
+      name = 'emailing.pending-reminder')
 
   def run(self):
     response = {}
@@ -1142,7 +1147,7 @@ class PendingReminder(Drip):
         # Fully registered
         'register_status': 'ok',
         # Connected
-        'connected': True,
+        'online': True,
       },
       template = False,
     )
@@ -1154,8 +1159,8 @@ class PendingReminder(Drip):
       {
         # Fully registered
         'register_status': 'ok',
-        # Disconnected
-        'connected': True,
+        # Connected
+        'online': True,
       },
       template = False,
     )
@@ -1175,7 +1180,7 @@ class PendingReminder(Drip):
           # Has pending transactions
           'transactions.pending_has': True,
           # Disconnected
-          'connected': False,
+          'online': False,
           # For some time
           'disconnection_time':
           {

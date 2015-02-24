@@ -41,6 +41,10 @@ namespace surface
         this->_machine.state_make(
           "create transaction",
           std::bind(&SendMachine::_create_transaction, this)))
+      , _initialize_transaction_state(
+        this->_machine.state_make(
+          "initialize transaction",
+          std::bind(&SendMachine::_initialize_transaction, this)))
       , _files_mirrored(false)
     {
       // Cancel.

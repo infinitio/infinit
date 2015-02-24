@@ -114,6 +114,7 @@ using infinit::oracles::meta::LoginResponse;
 using infinit::oracles::meta::User;
 using infinit::oracles::meta::Self;
 using infinit::oracles::meta::Device;
+using infinit::oracles::meta::CreatePeerTransactionResponse;
 
 class MetaClient:
   public Client
@@ -233,8 +234,26 @@ void export_meta_client()
     .def("email", &login::email)
   ;
 
+  py::class_<CreatePeerTransactionResponse>("CreatePeerTransactionResponse");
+
   void (MetaClient::*set_email)(std::string const &) = &MetaClient::email;
   std::string const& (MetaClient::*get_email)() const = &MetaClient::email;
+
+  /// MetaClient::create_transaction has two overloads, so they need to be
+  /// explicitely specified:
+  std::string (MetaClient::*create_empty)() const = &MetaClient::create_transaction;
+
+  /// XXX: handle default parameter values
+  CreatePeerTransactionResponse (MetaClient::*initialize)(
+    std::string const&,
+    std::list<std::string> const&,
+    uint64_t,
+    uint64_t,
+    bool,
+    // boost::uuids::uuid const& device_uuid,
+    std::string const&,
+    std::string const&,
+    boost::optional<std::string const&>) const = &MetaClient::create_transaction;
 
   py::class_<MetaClient, boost::noncopyable>(
     "Meta", py::init<std::string const&, std::string const&, int>())
@@ -244,13 +263,13 @@ void export_meta_client()
     .def("register", &MetaClient::register_)
     //.def("user_icon", &MetaClient::user_icon)
     .def("self", &MetaClient::self)
-    .def("user_from_public_key", &MetaClient::user_from_public_key)
     .def("users_search", &MetaClient::users_search)
     .def("get_swaggers", &MetaClient::get_swaggers)
     .def("update_device", &MetaClient::update_device)
     .def("transaction", &MetaClient::transaction)
     // .def("transactions", &MetaClient::transactions)
-    .def("create_transaction", &MetaClient::create_transaction)
+    .def("create_transaction", create_empty)
+    .def("create_transaction", initialize)
     .def("update_transaction", &MetaClient::update_transaction)
     .add_property("email",
                   make_function(get_email, by_value()),

@@ -31,8 +31,9 @@ class Apertus:
     self.meta.delete('apertus/%s' % str(self.uuid))
 
   def update_bandwidth(self, bandwidth, count):
-    self.meta.post('apertus/%s/bandwidth' % str(self.uuid), {'bandwidth': bandwidth,
-                                                             'number_of_transfers': count})
+    self.meta.post('apertus/%s/bandwidth' % str(self.uuid),
+                   {'bandwidth': bandwidth,
+                    'number_of_transfers': count})
 
 with Meta() as meta:
   assert len(meta.get('apertus')['apertus']) == 0
@@ -43,21 +44,26 @@ with Meta() as meta:
     bandwith = 910002199
     apertus0.update_bandwidth(bandwith, 1)
 
-    assert meta.database.apertus.find({"load": {"$ne": 0}}).count() == 1
+    assert meta.database.apertus.find(
+      {"load": {"$ne": 0}}).count() == 1
 
     apertus1.update_bandwidth(bandwith * 2, 2)
 
-    assert meta.database.apertus.find({"load": {"$ne": 0}}).count() == 2
+    assert meta.database.apertus.find(
+      {"load": {"$ne": 0}}).count() == 2
 
-    best = meta.database.apertus.find_one({"load": {"$ne": 0}},
-                                          sort = [("load", pymongo.ASCENDING)])
+    best = meta.database.apertus.find_one(
+      {"load": {"$ne": 0}},
+      sort = [("load", pymongo.ASCENDING)])
     assert best['_id'] == str(apertus0.uuid)
 
     apertus0.register_or_ping()
     apertus1.register_or_ping()
 
-    assert meta.database.apertus.find({"load": {"$ne": 0}}).count() == 2
+    assert meta.database.apertus.find(
+      {"load": {"$ne": 0}}).count() == 2
 
-    best = meta.database.apertus.find_one({"load": {"$ne": 0}},
-                                          sort = [("load", pymongo.ASCENDING)])
+    best = meta.database.apertus.find_one(
+      {"load": {"$ne": 0}},
+      sort = [("load", pymongo.ASCENDING)])
     assert best['_id'] == str(apertus0.uuid)

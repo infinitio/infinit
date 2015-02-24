@@ -130,7 +130,6 @@ class Waterfall:
             'handle': '$handle',
             'email': '$email',
             'fullname': '$fullname',
-            'connected': '$connected',
           })
     return days
 
@@ -203,7 +202,6 @@ class Waterfall:
             'handle': '$handle',
             'email': '$email',
             'fullname': '$fullname',
-            'connected': '$connected',
           })
     return {
       'groups': list(groups),

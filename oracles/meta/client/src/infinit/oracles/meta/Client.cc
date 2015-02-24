@@ -716,28 +716,10 @@ namespace infinit
         return Self(input);
       }
 
-      User
-      Client::user_from_public_key(std::string const& public_key) const
-      {
-        if (public_key.size() == 0)
-          throw elle::Exception("empty public key!");
-        auto url = "/user/from_public_key";
-        auto request = this->_request(
-          url, Method::POST,
-          [&] (reactor::http::Request& r)
-          {
-            elle::serialization::json::SerializerOut query(r, false);
-            query.serialize("public_key",
-                            const_cast<std::string&>(public_key));
-          });
-        SerializerIn input(url, request);
-        return User(input);
-      }
-
       std::vector<User>
       Client::get_swaggers() const
       {
-        std::string url = "/user/full_swaggers";
+        std::string url = "/user/swaggers";
         auto request = this->_request(url, Method::GET);
         SerializerIn input(url, request);
         std::vector<User> res;
@@ -859,14 +841,18 @@ namespace infinit
                                  bool is_dir,
                                  // boost::uuids::uuid const& device_uuid,
                                  std::string const& struuid,
-                                 std::string const& message) const
+                                 std::string const& message,
+                                 boost::optional<std::string const&> transaction_id) const
       {
         ELLE_TRACE("%s: create transaction to %s with files: %s (size: %s)",
                    *this, recipient_id_or_email, files, size);
-        std::string const url = "/transaction/create";
+        std::string const url = transaction_id ?
+          "/transaction/" + *transaction_id :
+          "/transaction/create";
+        auto method = transaction_id ? Method::PUT : Method::POST;
         auto request = this->_request(
           url,
-          Method::POST,
+          method,
           [&] (reactor::http::Request& r)
           {
             elle::serialization::json::SerializerOut query(r, false);
@@ -884,6 +870,18 @@ namespace infinit
           });
         SerializerIn input(url, request);
         return CreatePeerTransactionResponse(input);
+      }
+
+      std::string
+      Client::create_transaction() const
+      {
+        ELLE_TRACE("%s: create empty transaction", *this);
+        std::string const url = "/transaction/create_empty";
+        auto request = this->_request( url, Method::POST);
+        SerializerIn input(url, request);
+        std::string created_transaction_id;
+        input.serialize("created_transaction_id", created_transaction_id);
+        return created_transaction_id;
       }
 
       UpdatePeerTransactionResponse
@@ -1037,14 +1035,28 @@ namespace infinit
         s.serialize("transaction", this->_transaction);
       }
 
+      std::string
+      Client::create_link() const
+      {
+        ELLE_TRACE("%s: create empty link", *this);
+        std::string const url = "/link_empty";
+        auto request = this->_request(url, Method::POST);
+        SerializerIn input(url, request);
+        std::string created_link_id;
+        input.serialize("created_link_id", created_link_id);
+        return created_link_id;
+      }
+
       CreateLinkTransactionResponse
       Client::create_link(LinkTransaction::FileList const& files,
                           std::string const& name,
-                          std::string const& message) const
+                          std::string const& message,
+                          boost::optional<std::string const&> link_id) const
       {
-        auto url = "/link";
+        auto url = link_id ? "/link/" + *link_id : "/link" ;
+        auto method = link_id ? Method::PUT : Method::POST;
         auto request = this->_request(
-          url, Method::POST,
+          url, method,
           [&] (reactor::http::Request& request)
           {
             elle::serialization::json::SerializerOut query(request, false);
@@ -1188,7 +1200,8 @@ namespace infinit
           {
             elle::serialization::json::SerializerOut output(request, false);
             output.serialize("new_email", const_cast<std::string&>(email));
-            output.serialize("password", const_cast<std::string&>(password));
+            auto hashed_password = password_hash(password);
+            output.serialize("password", hashed_password);
           },
           false);
         switch (request.status())

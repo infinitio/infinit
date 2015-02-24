@@ -18,6 +18,12 @@ def jsonify(value):
   else:
     return value
 
+def jsonify_dict(value):
+  if isinstance(value, dict):
+    return jsonify(value)
+  else:
+    return value
+
 class Plugin(object):
 
   '''Bottle plugin to load the beaker session in the bottle request.'''
@@ -32,7 +38,6 @@ class Plugin(object):
   def apply(self, callback, route):
     def wrapper(*args, **kwargs):
       res = callback(*args, **kwargs)
-      if isinstance(res, dict):
-        res = jsonify(res)
+      res = jsonify_dict(res)
       return res
     return wrapper

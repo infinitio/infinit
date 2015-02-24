@@ -22,6 +22,7 @@ def configure(cxx_toolkit = None,
               boost = None,
               python3 = None,
               python_version = None,
+              php = None,
               production_build = False,
               enable_debug = True,
       	      qt = None,
@@ -103,6 +104,25 @@ def configure(cxx_toolkit = None,
     drake.cxx.Config.Warnings.Error
   cxx_config.warnings.delete_non_virtual_dtor = \
     drake.cxx.Config.Warnings.Error
+
+  ## --- ##
+  ## PHP ##
+  ## --- ##
+
+  if php is False:
+    php = None
+  else:
+    if php is True or php is None:
+      path = drake.Path('php')
+    else:
+      path = php
+    try:
+      subprocess.check_output([str(path), '--version'])
+    except:
+      if php is not None:
+        raise Exception('unable to find PHP interpreter (%s)' % path)
+    else:
+      php = path
 
   ## ------- ##
   ## Version ##
@@ -454,6 +474,7 @@ def configure(cxx_toolkit = None,
     papier_python = papier_python_lib,
     boost = boost,
     python3 = python3,
+    php = php,
     prefix = prefix,
     cxx_toolkit = cxx_toolkit,
     cxx_config = cxx_config,

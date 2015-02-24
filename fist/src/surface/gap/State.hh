@@ -472,9 +472,6 @@ namespace surface
       User const&
       user_from_handle(std::string const& handle) const;
 
-      User const&
-      user_from_public_key(std::string const& public_key) const;
-
       void
       _user_resync(std::vector<User> const& users);
 
