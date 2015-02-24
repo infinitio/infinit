@@ -158,8 +158,10 @@ def configure(elle,
     cxx_toolkit,
     tests_cxx_config)
   if valgrind_tests:
-    runner = drake.valgrind.ValgrindRunner(test_bin,
-                                           valgrind = valgrind)
+    runner = drake.valgrind.ValgrindRunner(
+      test_bin,
+      valgrind = valgrind,
+      valgrind_args = ['--suppressions=%s' % (drake.path_source() / 'elle' / 'valgrind.suppr')])
   else:
     runner = drake.Runner(test_bin)
   runner.reporting = drake.Runner.Reporting.on_failure
