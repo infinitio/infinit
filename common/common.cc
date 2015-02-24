@@ -242,7 +242,7 @@ namespace common
         elle::os::getenv(
           "INFINIT_METRICS_INFINIT_PORT", "80"));
       // Device
-      auto device_id_path = common::infinit::device_id_path(home);
+      auto device_id_path = common::infinit::device_id_path(this->_home);
       auto device_uuid = boost::uuids::nil_generator()();
       bool force_regenerate
         = !elle::os::getenv("INFINIT_FORCE_NEW_DEVICE_ID", "").empty();
