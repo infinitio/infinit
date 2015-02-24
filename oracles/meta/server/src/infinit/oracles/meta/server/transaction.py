@@ -191,7 +191,7 @@ class Mixin:
 
   @api('/transaction/create_empty', method='POST')
   @require_logged_in
-  def transaction_create_empty(self):
+  def transaction_create_empty_api(self):
     """
     Create an empty transaction, to be filled in a separate API call.
     This allows for the client finer snapshot granularity, along with easier
@@ -199,11 +199,14 @@ class Mixin:
 
     Return: the newly created transaction id.
     """
+    return self.transaction_create_empty()
 
+
+  def transaction_create_empty(self):
     transaction_id = self.database.transactions.insert({})
-    return self.success({
+    return {
       'created_transaction_id': transaction_id,
-      })
+      }
 
   @api('/transaction/<t_id>', method='PUT')
   @require_logged_in
