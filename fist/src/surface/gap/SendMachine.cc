@@ -46,10 +46,13 @@ namespace surface
           "initialize transaction",
           std::bind(&SendMachine::_initialize_transaction, this)))
     {
-      // Cancel.
-      this->_machine.transition_add(this->_create_transaction_state,
-                                    this->_cancel_state,
-                                    reactor::Waitables{&this->canceled()}, true);
+      this->_machine.transition_add(
+        this->_create_transaction_state,
+        this->_initialize_transaction_state);
+      this->_machine.transition_add(
+        this->_create_transaction_state,
+        this->_cancel_state,
+        reactor::Waitables{&this->canceled()}, true);
     }
 
     // Constructor for sender device.

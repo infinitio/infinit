@@ -44,8 +44,6 @@ namespace surface
       , _data(data)
       , _credentials()
     {
-      this->_machine.transition_add(this->_create_transaction_state,
-                                    this->_initialize_transaction_state);
       this->_machine.transition_add(this->_initialize_transaction_state,
                                     this->_transfer_state);
       this->_machine.transition_add_catch(

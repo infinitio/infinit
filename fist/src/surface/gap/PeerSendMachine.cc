@@ -81,10 +81,6 @@ namespace surface
           std::bind(&PeerSendMachine::_wait_for_accept, this)))
     {
       ELLE_TRACE_SCOPE("%s: generic peer send machine", *this);
-
-      this->_machine.transition_add(
-        this->_create_transaction_state,
-        this->_initialize_transaction_state);
       this->_machine.transition_add(
         this->_initialize_transaction_state,
         this->_wait_for_accept_state);
