@@ -28,64 +28,50 @@ namespace surface
                        std::shared_ptr<Data> data,
                        std::string const& file_path,
                        reactor::Duration duration = 5_sec);
-
         ~ReceiveMachine();
-
         virtual
         float
         progress() const override;
-
         // XXX: not all transactions will need AWS credentials.
         virtual
         std::unique_ptr<infinit::oracles::meta::CloudCredentials>
         _cloud_credentials(bool regenerate) override;
-
         virtual
         void
         _save_snapshot() const override;
-
         virtual
         void
         _transfer_operation(frete::RPCFrete& frete) override;
-
         virtual
         void
         _cloud_synchronize() override;
-
         virtual
         void
         _cloud_operation() override;
-
         virtual
         void
         cleanup() override;
-
         virtual
         void
         accept() override;
-
         bool
         pause() override;
-
         virtual
         void
         reject() override;
-
         virtual
         std::unique_ptr<frete::RPCFrete>
         rpcs(infinit::protocol::ChanneledStream& socket) override;
-
+        virtual
         void
         interrupt() override;
-
-        // Overload because it talks to meta.
+        virtual
         void
         _accept() override;
-
-        // Overload because it talks to meta.
+        // Don't talk to meta
+        virtual
         void
-        _finalize(infinit::oracles::Transaction::Status) override;
-
+        _update_meta_status(infinit::oracles::Transaction::Status) override;
         ELLE_ATTRIBUTE(std::string, file_path);
 
       /*--------.

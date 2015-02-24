@@ -74,6 +74,7 @@ namespace surface
       , _recipient(std::move(recipient))
       , _accepted("accepted")
       , _rejected("rejected")
+      , _ghost_uploaded("rejected")
       , _frete()
       , _wait_for_accept_state(
         this->_machine.state_make(
@@ -87,7 +88,7 @@ namespace surface
       this->_machine.transition_add(
         this->_wait_for_accept_state,
         this->_finish_state,
-        reactor::Waitables{&this->finished()},
+        reactor::Waitables{&this->ghost_uploaded()},
         true);
       this->_machine.transition_add(
         this->_wait_for_accept_state,
@@ -449,7 +450,10 @@ namespace surface
         if (this->state().me().id == peer.id)
           peer_online = peer.online_excluding_device(this->state().device().id);
         if (this->data()->is_ghost)
+        {
           this->_plain_upload();
+          this->_ghost_uploaded.open();
+        }
         else if (this->data()->status == TransactionStatus::cloud_buffered)
         {
           ELLE_TRACE("%s: cloud buffered, nothing to do", *this);

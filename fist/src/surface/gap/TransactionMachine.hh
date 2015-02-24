@@ -192,9 +192,8 @@ namespace surface
       virtual
       void
       _transfer() = 0;
-      virtual
       void
-      _finalize(infinit::oracles::Transaction::Status) = 0;
+      _finalize(infinit::oracles::Transaction::Status);
       // invoked to cleanup data when this transaction will never restart
       virtual
       void
@@ -245,10 +244,12 @@ namespace surface
       transaction_id(std::string const& id);
       ELLE_ATTRIBUTE_RX(
         boost::signals2::signal<void (std::string const&)>, transaction_id_set);
-
       virtual
       bool
       concerns_this_device() = 0;
+      virtual
+      void
+      _update_meta_status(infinit::oracles::Transaction::Status) = 0;
 
     public:
       virtual

@@ -53,8 +53,6 @@ namespace surface
     private:
       void
       _run_from_snapshot();
-      void
-      _finalize(infinit::oracles::Transaction::Status) override;
 
     public:
       virtual

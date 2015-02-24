@@ -119,7 +119,6 @@ namespace surface
       std::string url = initurl;
       ELLE_TRACE("%s: gcs upload on %s", *this, url);
       uint64_t file_size = boost::filesystem::file_size(file_path);
-
       using reactor::http::StatusCode;
       using reactor::http::Request;
       std::vector<StatusCode> transient = {
@@ -129,9 +128,7 @@ namespace surface
         StatusCode::Service_Unavailable,
         StatusCode::Gateway_Timeout
       };
-
       int attempt = 0;
-
       auto status_check = [&](reactor::http::StatusCode s, Request& r) -> bool
       {
         if ((int)s != 308 && ((int)s/100) != 2)
@@ -171,7 +168,6 @@ namespace surface
           if (r.status() == StatusCode::OK)
           {
             ELLE_TRACE("%s: Upload reported finished", *this);
-            this->finished().open();
             return;
           }
           else if (!status_check(r.status(), r))
@@ -215,7 +211,6 @@ namespace surface
             conf.header_add("Content-Range",
                             elle::sprintf("bytes %s-%s/%s", position, end-1, endSize));
             auto buffer = file.read(position, end - position);
-
             Request r(url, reactor::http::Method::PUT, "application/octet-stream",
                       conf);
             r.progress_changed().connect([&](Request::Progress const& p)
@@ -247,7 +242,6 @@ namespace surface
             std::min(int(500 * pow(2,attempt)), 20000)));
         }
       } // while true
-      this->finished().open();
     }
 
     void
@@ -368,8 +362,6 @@ namespace surface
         }
         else
           source_file_path = *this->_files.begin();
-
-
         ELLE_TRACE("%s: will ghost-cloud-upload %s of size %s",
                    *this, source_file_path, file_size);
         auto credentials = this->_cloud_credentials(true);
@@ -566,10 +558,8 @@ namespace surface
               return a.first < b.first;
             });
         handler.multipart_finalize(source_file_name, upload_id, chunks);
-        // Let the finished state update gap and meta.
-        this->finished().open();
         exit_reason = metrics::TransferExitReasonFinished;
-      } // try
+      }
       catch (boost::filesystem::filesystem_error const& e)
       {
         exit_message = e.what();

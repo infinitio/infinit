@@ -365,7 +365,6 @@ namespace surface
           this->get(*_bufferer);
         // We finished
         ELLE_ASSERT_EQ(progress(), 1);
-        this->finished().open();
         exit_reason = metrics::TransferExitReasonFinished;
         ELLE_ASSERT_NEQ(this->_snapshot, nullptr);
         total_bytes_transfered = this->_snapshot->progress() - initial_progress;
@@ -713,7 +712,6 @@ namespace surface
         source.finish();
       }
       clean_snpashot();
-      this->finished().open();
     }
 
     PeerReceiveMachine::FileSize
@@ -1120,25 +1118,5 @@ namespace surface
     , start_position(b.start_position)
     , file_index(b.file_index)
     {}
-
-    void
-    PeerReceiveMachine::_finalize(infinit::oracles::Transaction::Status s)
-    {
-      if (s == infinit::oracles::Transaction::Status::finished)
-      {
-        bool onboarding = false;
-        if (this->state().metrics_reporter())
-        {
-          this->state().metrics_reporter()->transaction_ended(
-            this->transaction_id(),
-            s,
-            s == infinit::oracles::Transaction::Status::failed?
-              transaction().failure_reason() : "",
-            onboarding,
-            this->transaction().canceled_by_user());
-        }
-      }
-      PeerMachine::_finalize(s);
-    }
   }
 }

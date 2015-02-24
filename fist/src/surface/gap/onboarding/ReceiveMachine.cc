@@ -146,19 +146,9 @@ namespace surface
       {}
 
       void
-      ReceiveMachine::_finalize(infinit::oracles::Transaction::Status s)
+      ReceiveMachine::_update_meta_status(infinit::oracles::Transaction::Status)
       {
-        if (this->state().metrics_reporter())
-        {
-          bool onboarding = true;
-          if (this->state().metrics_reporter())
-            this->state().metrics_reporter()->transaction_ended(
-            this->transaction_id(),
-            s,
-            "",
-            onboarding,
-            this->transaction().canceled_by_user());
-        }
+        // nothing
       }
 
       /*--------.

@@ -67,6 +67,7 @@ namespace surface
     public:
       ELLE_ATTRIBUTE_RX(reactor::Barrier, accepted);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, rejected);
+      ELLE_ATTRIBUTE_RX(reactor::Barrier, ghost_uploaded);
       ELLE_ATTRIBUTE(std::unique_ptr<frete::Frete>, frete);
 
     /*-------.

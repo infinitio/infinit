@@ -268,36 +268,10 @@ namespace surface
     }
 
     void
-    LinkSendMachine::_finalize(infinit::oracles::Transaction::Status s)
+    LinkSendMachine::_update_meta_status(
+      infinit::oracles::Transaction::Status status)
     {
-      ELLE_TRACE_SCOPE("%s: finalize transaction: %s", *this, s);
-      if (this->data()->id.empty())
-      {
-        ELLE_WARN("%s: can't finalize not yet created transaction", *this);
-        return;
-      }
-      try
-      {
-        this->state().meta().update_link(this->data()->id, 0, s);
-        this->data()->status = s;
-        this->transaction()._snapshot_save();
-        if (this->state().metrics_reporter() && this->concerns_this_device())
-        {
-          bool onboarding = false;
-          this->state().metrics_reporter()->transaction_ended(
-            this->transaction_id(),
-            s,
-            s == infinit::oracles::Transaction::Status::failed?
-              transaction().failure_reason() : "",
-            onboarding,
-            this->transaction().canceled_by_user());
-        }
-      }
-      catch (elle::Exception const&)
-      {
-        ELLE_ERR("%s: unable to finalize the transaction %s: %s",
-                 *this, this->transaction_id(), elle::exception_string());
-      }
+      this->state().meta().update_link(this->data()->id, 0, status);
     }
   }
 }

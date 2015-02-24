@@ -130,7 +130,10 @@ namespace surface
       // Transfer end.
       this->_machine.transition_add(
         this->_transfer_state,
-        this->_finish_state,
+        this->_finish_state);
+      this->_machine.transition_add(
+        this->_transfer_state,
+        this->_end_state,
         reactor::Waitables{&this->finished()},
         true);
       this->_machine.transition_add(
@@ -247,6 +250,7 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: end", *this);
       this->_transaction._over = true;
+      this->cleanup();
       boost::system::error_code error;
       auto path = this->transaction().snapshots_directory();
       boost::filesystem::remove_all(path, error);
@@ -427,6 +431,41 @@ namespace surface
         ELLE_DEBUG("%s: terminate machine thread", *this)
           this->_machine_thread->terminate_now();
         this->_machine_thread.reset();
+      }
+    }
+
+    void
+    TransactionMachine::_finalize(infinit::oracles::Transaction::Status s)
+    {
+      ELLE_TRACE_SCOPE("%s: finalize transaction: %s", *this, s);
+      if (this->data()->id.empty())
+        ELLE_TRACE("%s: no need to finalize transaction: id is still empty",
+                   *this);
+      else
+      {
+        try
+        {
+          this->_update_meta_status(s);
+          this->data()->status = s;
+          this->transaction()._snapshot_save();
+          this->_metrics_ended(s);
+        }
+        catch (infinit::oracles::meta::Exception const& e)
+        {
+          using infinit::oracles::meta::Error;
+          if (e.err == Error::transaction_already_finalized)
+            ELLE_TRACE("%s: transaction already finalized", *this);
+          else if (e.err == Error::transaction_already_has_this_status)
+            ELLE_TRACE("%s: transaction already in this state", *this);
+          else
+            ELLE_ERR("%s: unable to finalize the transaction %s: %s",
+                     *this, this->transaction_id(), elle::exception_string());
+        }
+        catch (elle::Error const&)
+        {
+          ELLE_ERR("%s: unable to finalize the transaction %s: %s",
+                   *this, this->transaction_id(), elle::exception_string());
+        }
       }
     }
 

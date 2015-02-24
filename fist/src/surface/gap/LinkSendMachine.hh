@@ -61,10 +61,10 @@ namespace surface
       _initialize_transaction() override;
       virtual
       void
-      _finalize(infinit::oracles::Transaction::Status) override;
+      _transfer() override;
       virtual
       void
-      _transfer() override;
+      _update_meta_status(infinit::oracles::Transaction::Status) override;
     private:
       void
       _run_from_snapshot();

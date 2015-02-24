@@ -138,62 +138,12 @@ namespace surface
     }
 
     void
-    PeerMachine::_finalize(infinit::oracles::Transaction::Status status)
+    PeerMachine::_update_meta_status(infinit::oracles::Transaction::Status s)
     {
-      ELLE_TRACE_SCOPE("%s: finalize machine: %s", *this, status);
-      if (!this->data()->id.empty())
-      {
-        try
-        {
-          this->data()->status = status;
-          // The status should only be set to finished by the recipient unless
-          // the recipient is a ghost.
-          auto peer = this->state().user(this->data()->recipient_id);
-          auto self_id = this->state().me().id;
-          auto self_device_id = this->state().device().id;
-          if (status == infinit::oracles::Transaction::Status::ghost_uploaded)
-          {
-            ELLE_ASSERT(peer.ghost() || transaction().data()->is_ghost);
-            ELLE_TRACE_SCOPE("%s: notifying meta of finished state", *this);
-            this->state().meta().update_transaction(
-              this->transaction_id(),
-              status);
-          }
-          else if (status == infinit::oracles::Transaction::Status::finished &&
-                   self_id == this->data()->recipient_id &&
-                   self_device_id == this->data()->recipient_device_id)
-          {
-            this->state().meta().update_transaction(
-              this->transaction_id(), status);
-          }
-          else if (status != infinit::oracles::Transaction::Status::finished)
-          {
-            this->state().meta().update_transaction(
-              this->transaction_id(), status);
-          }
-        }
-        catch (infinit::oracles::meta::Exception const& e)
-        {
-          using infinit::oracles::meta::Error;
-          if (e.err == Error::transaction_already_finalized)
-            ELLE_TRACE("%s: transaction already finalized", *this);
-          else if (e.err == Error::transaction_already_has_this_status)
-            ELLE_TRACE("%s: transaction already in this state", *this);
-          else
-            ELLE_ERR("%s: unable to finalize the transaction %s: %s",
-                     *this, this->transaction_id(), elle::exception_string());
-        }
-        catch (std::exception const&)
-        {
-          ELLE_ERR("%s: unable to finalize the transaction %s: %s",
-                   *this, this->transaction_id(), elle::exception_string());
-        }
-      }
-      else
-      {
-        ELLE_ERR("%s: can't finalize transaction: id is still empty", *this);
-      }
-      this->cleanup();
+      this->state().meta().update_transaction(this->transaction_id(),
+                                              s,
+                                              this->state().device().id,
+                                              this->state().device().name);
     }
   }
 }

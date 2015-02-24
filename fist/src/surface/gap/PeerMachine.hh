@@ -70,7 +70,7 @@ namespace surface
       _cloud_credentials(bool regenerate) override;
       virtual
       void
-      _finalize(infinit::oracles::Transaction::Status) override;
+      _update_meta_status(infinit::oracles::Transaction::Status) override;
     };
   }
 }

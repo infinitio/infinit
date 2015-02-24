@@ -318,11 +318,6 @@ namespace surface
           }
         }
       }
-      this->state().meta().update_transaction(this->transaction_id(),
-                                              TransactionStatus::finished,
-                                              this->state().device().id,
-                                              this->state().device().name);
-      this->finished().open();
     }
 
     void
@@ -330,25 +325,6 @@ namespace surface
     {
       ELLE_TRACE("%s: _wait_for_cloud_upload()", *this);
       this->gap_status(gap_transaction_waiting_data);
-    }
-
-    void
-    GhostReceiveMachine::_finalize(TransactionStatus status)
-    {
-      ELLE_TRACE("%s: finalize with status %s", *this, status);
-      if (status != infinit::oracles::Transaction::Status::finished)
-      {
-        this->state().meta().update_transaction(
-          this->transaction_id(), status);
-      }
-      if (this->state().metrics_reporter())
-        this->state().metrics_reporter()->transaction_ended(
-          this->transaction_id(),
-          status,
-          status == infinit::oracles::Transaction::Status::failed?
-            transaction().failure_reason() : "",
-          false,
-          this->transaction().canceled_by_user());
     }
 
     std::unique_ptr<infinit::oracles::meta::CloudCredentials>
@@ -365,6 +341,16 @@ namespace surface
     GhostReceiveMachine::~GhostReceiveMachine()
     {
       this->_stop();
+    }
+
+    void
+    GhostReceiveMachine::_update_meta_status
+    (infinit::oracles::Transaction::Status s)
+    {
+      this->state().meta().update_transaction(this->transaction_id(),
+                                              s,
+                                              this->state().device().id,
+                                              this->state().device().name);
     }
   }
 }
