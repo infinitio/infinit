@@ -122,7 +122,7 @@ namespace infinit
         bool
         deleted() const
         {
-          if (register_status == "deleted")
+          if (register_status == "deleted" || register_status == "merged")
             return true;
           else
             return false;
