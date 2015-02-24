@@ -143,6 +143,16 @@ namespace surface
         this->_fail_state,
         reactor::Waitables{&this->failed()},
         true);
+      this->_machine.transition_add_catch(
+        this->_transfer_state,
+        this->_fail_state)
+        .action_exception(
+          [this] (std::exception_ptr e)
+          {
+            ELLE_WARN("%s: error while transferring: %s",
+                      *this, elle::exception_string(e));
+            this->transaction().failure_reason(elle::exception_string(e));
+          });
       // Another device endings.
       this->_machine.transition_add(
         this->_another_device_state,

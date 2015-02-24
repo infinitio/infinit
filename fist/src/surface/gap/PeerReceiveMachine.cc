@@ -90,8 +90,6 @@ namespace surface
       , _snapshot(nullptr)
       , _nothing_in_the_cloud(false)
     {
-      // Exception.
-      this->_machine.transition_add_catch(_transfer_state, _fail_state);
       try
       {
         if (exists(this->_frete_snapshot_path))

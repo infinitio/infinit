@@ -46,16 +46,6 @@ namespace surface
     {
       this->_machine.transition_add(this->_initialize_transaction_state,
                                     this->_transfer_state);
-      this->_machine.transition_add_catch(
-        this->_transfer_state,
-        this->_fail_state)
-        .action_exception(
-          [this] (std::exception_ptr e)
-          {
-            ELLE_WARN("%s: error while uploading: %s",
-                      *this, elle::exception_string(e));
-            this->transaction().failure_reason(elle::exception_string(e));
-          });
       if (data->id.empty())
         // Transaction has just been created locally.
         this->_run(this->_create_transaction_state);
