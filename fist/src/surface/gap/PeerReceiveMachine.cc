@@ -90,12 +90,6 @@ namespace surface
       , _snapshot(nullptr)
       , _nothing_in_the_cloud(false)
     {
-      // Normal way.
-      this->_machine.transition_add(this->_accept_state,
-                                    this->_transfer_state);
-      this->_machine.transition_add(this->_transfer_state,
-                                    this->_finish_state);
-
       // Exception.
       this->_machine.transition_add_catch(_transfer_state, _fail_state);
       try

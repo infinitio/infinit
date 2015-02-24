@@ -127,6 +127,23 @@ namespace surface
       , _data(std::move(data))
     {
       ELLE_TRACE_SCOPE("%s: create transaction machine", *this);
+      // Transfer end.
+      this->_machine.transition_add(
+        this->_transfer_state,
+        this->_finish_state,
+        reactor::Waitables{&this->finished()},
+        true);
+      this->_machine.transition_add(
+        this->_transfer_state,
+        this->_cancel_state,
+        reactor::Waitables{&this->canceled()},
+        true);
+      this->_machine.transition_add(
+        this->_transfer_state,
+        this->_fail_state,
+        reactor::Waitables{&this->failed()},
+        true);
+      // Another device endings.
       this->_machine.transition_add(
         this->_another_device_state,
         this->_end_state,
@@ -139,12 +156,13 @@ namespace surface
         this->_another_device_state,
         this->_end_state,
         reactor::Waitables{&this->failed()});
+      // End.
       this->_machine.transition_add(this->_finish_state, this->_end_state);
       this->_machine.transition_add(this->_cancel_state, this->_end_state);
       this->_machine.transition_add(this->_fail_state, this->_end_state);
       // Reject.
       this->_machine.transition_add(this->_reject_state, this->_end_state);
-      // The catch transitions just open the barrier to logging purpose.
+      // The catch transitions just open the barrier for logging purpose.
       // The snapshot will be kept.
       this->_machine.transition_add_catch(this->_fail_state, this->_end_state)
         .action([this] { ELLE_ERR("%s: failure failed", *this); });

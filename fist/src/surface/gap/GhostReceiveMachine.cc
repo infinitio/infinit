@@ -33,10 +33,6 @@ namespace surface
       , _snapshot_path(this->transaction().snapshots_directory()
                         / "ghostreceive.snapshot")
     {
-      this->_machine.transition_add(this->_accept_state,
-                                    this->_transfer_state);
-      this->_machine.transition_add(this->_transfer_state,
-                                    this->_finish_state);
       this->_machine.transition_add(this->_wait_for_cloud_upload_state,
                                     this->_wait_for_decision_state,
                                     reactor::Waitables{&this->_cloud_uploaded});
@@ -326,6 +322,7 @@ namespace surface
                                               TransactionStatus::finished,
                                               this->state().device().id,
                                               this->state().device().name);
+      this->finished().open();
     }
 
     void

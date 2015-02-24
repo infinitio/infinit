@@ -29,6 +29,8 @@ namespace surface
       this->_machine.transition_add(this->_wait_for_decision_state,
                                     this->_accept_state,
                                     reactor::Waitables{&this->_accepted});
+      this->_machine.transition_add(this->_accept_state,
+                                    this->_transfer_state);
       // Another device way.
       this->_machine.transition_add(this->_wait_for_decision_state,
                                     this->_another_device_state,
