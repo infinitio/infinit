@@ -106,6 +106,11 @@ gap_register(gap_State* state,
              std::string const& email,
              std::string const& hashed_password);
 
+/// @brief Use a ghost code to merge ghost account account.
+gap_Status
+gap_use_ghot_code(gap_State* state,
+                  std::string const& code);
+
 //- Swaggers ----------------------------------------------------------------
 
 typedef void (*gap_new_swagger_callback_t)(uint32_t id);
@@ -251,6 +256,10 @@ gap_transaction_concern_device(gap_State* state,
 uint32_t
 gap_transaction_canceler_id(gap_State* state, uint32_t id);
 
+
+std::string
+gap_transaction_ghost_code(gap_State* state,
+                           uint32_t id);
 
 /* /// Force transaction to be fetched again from server. */
 /* gap_Status */

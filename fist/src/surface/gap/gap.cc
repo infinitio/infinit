@@ -310,6 +310,29 @@ gap_register(gap_State* state,
 }
 
 gap_Status
+gap_use_ghot_code(gap_State* state,
+                  std::string const& code)
+{
+  assert(state != nullptr);
+  if (code.empty())
+    return gap_unknown_user;
+  return run<gap_Status>(state,
+                         "use ghost code",
+                         [&] (surface::gap::State& state) -> gap_Status
+    {
+      try
+      {
+        state.meta().use_ghost_code(code);
+      }
+      catch (elle::Error const&)
+      {
+        return gap_unknown_user;
+      }
+      return gap_ok;
+    });
+}
+
+gap_Status
 gap_poll(gap_State* state)
 {
   gap_Status ret = gap_ok;
@@ -1201,6 +1224,31 @@ gap_transaction_concern_device(gap_State* state,
       }
     }
   );
+}
+
+std::string
+gap_transaction_ghost_code(gap_State* state,
+                           uint32_t id)
+{
+  assert(state != nullptr);
+  assert(id != surface::gap::null_id);
+
+  return run<std::string>(
+    state,
+    "transaction_files",
+    [&] (surface::gap::State& state) -> std::string
+    {
+      using namespace infinit::oracles;
+      auto peer_data = std::dynamic_pointer_cast<PeerTransaction>(
+        state.transactions().at(id)->data());
+      auto const& user = state.user(peer_data->recipient_id);
+      if (user.ghost())
+      {
+        if (user.ghost_code)
+          return user.ghost_code.get();
+      }
+      return std::string{};
+    });
 }
 
 uint32_t
