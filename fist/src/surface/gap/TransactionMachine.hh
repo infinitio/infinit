@@ -191,6 +191,9 @@ namespace surface
       _cancel();
       virtual
       void
+      _transfer() = 0;
+      virtual
+      void
       _finalize(infinit::oracles::Transaction::Status) = 0;
       // invoked to cleanup data when this transaction will never restart
       virtual
@@ -206,11 +209,12 @@ namespace surface
       // This state has to be protected to allow the children to start the
       // machine in this state.
       reactor::fsm::State& _another_device_state;
+      reactor::fsm::State& _cancel_state;
+      reactor::fsm::State& _end_state;
+      reactor::fsm::State& _fail_state;
       reactor::fsm::State& _finish_state;
       reactor::fsm::State& _reject_state;
-      reactor::fsm::State& _cancel_state;
-      reactor::fsm::State& _fail_state;
-      reactor::fsm::State& _end_state;
+      reactor::fsm::State& _transfer_state;
 
     public:
       ELLE_ATTRIBUTE_RX(reactor::Barrier, finished);

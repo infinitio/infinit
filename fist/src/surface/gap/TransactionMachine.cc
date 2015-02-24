@@ -100,21 +100,24 @@ namespace surface
         this->_machine.state_make(
           "another device",
           std::bind(&TransactionMachine::_another_device, this)))
+      , _cancel_state(
+        this->_machine.state_make(
+          "cancel", std::bind(&TransactionMachine::_cancel, this)))
+      , _end_state(
+        this->_machine.state_make(
+          "end", std::bind(&TransactionMachine::_end, this)))
+      , _fail_state(
+        this->_machine.state_make(
+          "fail", std::bind(&TransactionMachine::_fail, this)))
       , _finish_state(
         this->_machine.state_make(
           "finish", std::bind(&TransactionMachine::_finish, this)))
       , _reject_state(
         this->_machine.state_make(
           "reject", std::bind(&TransactionMachine::_reject, this)))
-      , _cancel_state(
+      , _transfer_state(
         this->_machine.state_make(
-          "cancel", std::bind(&TransactionMachine::_cancel, this)))
-      , _fail_state(
-        this->_machine.state_make(
-          "fail", std::bind(&TransactionMachine::_fail, this)))
-      , _end_state(
-        this->_machine.state_make(
-          "end", std::bind(&TransactionMachine::_end, this)))
+          "transfer", std::bind(&TransactionMachine::_transfer, this)))
       , _finished("finished")
       , _rejected("rejected")
       , _canceled("canceled")

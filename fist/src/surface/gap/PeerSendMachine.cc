@@ -95,7 +95,7 @@ namespace surface
         true);
       this->_machine.transition_add(
         this->_wait_for_accept_state,
-        this->_transfer_core_state,
+        this->_transfer_state,
         reactor::Waitables{&this->accepted()},
         true);
       this->_machine.transition_add(
@@ -211,7 +211,7 @@ namespace surface
         else if (snapshot.current_state() == "reject")
           this->_run(this->_reject_state);
         else if (snapshot.current_state() == "transfer core")
-          this->_run(this->_transfer_core_state);
+          this->_run(this->_transfer_state);
         else if (snapshot.current_state() == "wait for accept")
           this->_run(this->_wait_for_accept_state);
         else if (snapshot.current_state() == "another device")
@@ -253,7 +253,7 @@ namespace surface
           break;
         case TransactionStatus::accepted:
           if (this->concerns_this_device())
-            this->_run(this->_transfer_core_state);
+            this->_run(this->_transfer_state);
           break;
         case TransactionStatus::finished:
         case TransactionStatus::ghost_uploaded:

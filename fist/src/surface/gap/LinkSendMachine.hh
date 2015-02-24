@@ -62,12 +62,12 @@ namespace surface
       virtual
       void
       _finalize(infinit::oracles::Transaction::Status) override;
+      virtual
+      void
+      _transfer() override;
     private:
       void
-      _upload();
-      void
       _run_from_snapshot();
-      ELLE_ATTRIBUTE(reactor::fsm::State&, upload_state);
       ELLE_ATTRIBUTE(std::unique_ptr<infinit::oracles::meta::CloudCredentials>, credentials);
     };
   }

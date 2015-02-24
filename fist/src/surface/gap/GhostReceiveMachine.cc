@@ -34,6 +34,8 @@ namespace surface
                         / "ghostreceive.snapshot")
     {
       this->_machine.transition_add(this->_accept_state,
+                                    this->_transfer_state);
+      this->_machine.transition_add(this->_transfer_state,
                                     this->_finish_state);
       this->_machine.transition_add(this->_wait_for_cloud_upload_state,
                                     this->_wait_for_decision_state,
@@ -149,6 +151,11 @@ namespace surface
     {
       ELLE_TRACE("%s accepting", *this);
       ReceiveMachine::_accept();
+    }
+
+    void
+    GhostReceiveMachine::_transfer()
+    {
       auto peer_data =
         std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
           transaction().data());

@@ -23,9 +23,6 @@ namespace surface
       , Super(transaction, id, data)
       , _message(data->message)
       , _data(data)
-      , _upload_state(
-        this->_machine.state_make(
-          "upload", std::bind(&LinkSendMachine::_upload, this)))
     {
       if (run_to_fail)
         this->_run(this->_fail_state);
@@ -45,26 +42,23 @@ namespace surface
       , Super(transaction, id, std::move(files), data)
       , _message(message)
       , _data(data)
-      , _upload_state(
-        this->_machine.state_make(
-          "upload", std::bind(&LinkSendMachine::_upload, this)))
       , _credentials()
     {
       this->_machine.transition_add(this->_create_transaction_state,
                                     this->_initialize_transaction_state);
       this->_machine.transition_add(this->_initialize_transaction_state,
-                                    this->_upload_state);
+                                    this->_transfer_state);
       this->_machine.transition_add(
-        this->_upload_state,
+        this->_transfer_state,
         this->_finish_state,
         reactor::Waitables{&this->finished()},
         true);
       this->_machine.transition_add(
-        this->_upload_state,
+        this->_transfer_state,
         this->_cancel_state,
         reactor::Waitables{&this->canceled()}, true);
       this->_machine.transition_add_catch(
-        this->_upload_state,
+        this->_transfer_state,
         this->_fail_state)
         .action_exception(
           [this] (std::exception_ptr e)
@@ -74,7 +68,7 @@ namespace surface
             this->transaction().failure_reason(elle::exception_string(e));
           });
       this->_machine.transition_add(
-        this->_upload_state,
+        this->_transfer_state,
         this->_fail_state,
         reactor::Waitables{&this->failed()}, true);
       if (data->id.empty())
@@ -108,7 +102,7 @@ namespace surface
         else if (snapshot.current_state() == "reject")
           this->_run(this->_reject_state);
         else if (snapshot.current_state() == "upload")
-          this->_run(this->_upload_state);
+          this->_run(this->_transfer_state);
         else if (snapshot.current_state() == "another device")
           this->_run(this->_another_device_state);
         else
@@ -138,7 +132,7 @@ namespace surface
             if (this->data()->id.empty())
               this->_run(this->_create_transaction_state);
             else
-              this->_run(this->_upload_state);
+              this->_run(this->_transfer_state);
           }
           else
           {
@@ -292,7 +286,7 @@ namespace surface
     }
 
     void
-    LinkSendMachine::_upload()
+    LinkSendMachine::_transfer()
     {
       this->gap_status(gap_transaction_transferring);
       this->_plain_upload();

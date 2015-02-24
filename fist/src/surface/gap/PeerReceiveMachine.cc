@@ -92,12 +92,12 @@ namespace surface
     {
       // Normal way.
       this->_machine.transition_add(this->_accept_state,
-                                    this->_transfer_core_state);
-      this->_machine.transition_add(this->_transfer_core_state,
+                                    this->_transfer_state);
+      this->_machine.transition_add(this->_transfer_state,
                                     this->_finish_state);
 
       // Exception.
-      this->_machine.transition_add_catch(_transfer_core_state, _fail_state);
+      this->_machine.transition_add_catch(_transfer_state, _fail_state);
       try
       {
         if (exists(this->_frete_snapshot_path))
@@ -154,7 +154,7 @@ namespace surface
           else if (snapshot.current_state() == "reject")
             this->_run(this->_reject_state);
           else if (snapshot.current_state() == "transfer core")
-            this->_run(this->_transfer_core_state);
+            this->_run(this->_transfer_state);
           else if (snapshot.current_state() == "wait for decision")
             this->_run(this->_wait_for_decision_state);
           else if (snapshot.current_state() == "another device")
@@ -183,7 +183,7 @@ namespace surface
       {
         case TransactionStatus::accepted:
           if (this->concerns_this_device())
-            this->_run(this->_transfer_core_state);
+            this->_run(this->_transfer_state);
           else
             this->_run(this->_another_device_state);
           break;

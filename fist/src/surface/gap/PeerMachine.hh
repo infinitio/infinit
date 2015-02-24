@@ -52,9 +52,9 @@ namespace surface
       void
       _cloud_synchronize() = 0;
       std::unique_ptr<Transferer> _transfer_machine;
+      virtual
       void
-      _transfer_core();
-      reactor::fsm::State& _transfer_core_state;
+      _transfer() override;
       virtual
       void
       peer_available(std::vector<std::pair<std::string, int>> const& local_endpoints,

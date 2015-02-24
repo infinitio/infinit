@@ -32,17 +32,17 @@ namespace surface
 
         // Normal way.
         this->_machine.transition_add(this->_accept_state,
-                                      this->_transfer_core_state);
-        this->_machine.transition_add(this->_transfer_core_state,
+                                      this->_transfer_state);
+        this->_machine.transition_add(this->_transfer_state,
                                       this->_finish_state);
 
         this->_machine.transition_add(
-          _transfer_core_state,
+          _transfer_state,
           _cancel_state,
           reactor::Waitables{&this->canceled()}, true);
 
         // Exception.
-        this->_machine.transition_add_catch(_transfer_core_state, _fail_state);
+        this->_machine.transition_add_catch(_transfer_state, _fail_state);
 
         if (this->state().metrics_reporter())
         {

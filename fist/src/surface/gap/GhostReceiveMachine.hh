@@ -25,20 +25,20 @@ namespace surface
 
       virtual
       ~GhostReceiveMachine();
-
       float
       progress() const override;
-
+      virtual
       void
       accept() override;
-
+      virtual
       void
       _accept() override;
-
+      virtual
+      void
+      _transfer() override;
       virtual
       void
       _wait_for_cloud_upload();
-
       void
       transaction_status_update(
         infinit::oracles::Transaction::Status status) override;

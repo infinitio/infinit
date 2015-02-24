@@ -19,21 +19,18 @@ namespace surface
       : Super(transaction, id, data)
       , _data(data)
       , _transfer_machine(new PeerTransferMachine(*this))
-      , _transfer_core_state(
-        this->_machine.state_make(
-          "transfer core", std::bind(&PeerMachine::_transfer_core, this)))
     {
       this->_machine.transition_add(
-        this->_transfer_core_state,
+        this->_transfer_state,
         this->_finish_state,
         reactor::Waitables{&this->finished()},
         true);
       this->_machine.transition_add(
-        this->_transfer_core_state,
+        this->_transfer_state,
         this->_cancel_state,
         reactor::Waitables{&this->canceled()}, true);
       this->_machine.transition_add_catch(
-        this->_transfer_core_state,
+        this->_transfer_state,
         this->_fail_state)
         .action_exception(
           [this] (std::exception_ptr e)
@@ -43,18 +40,18 @@ namespace surface
             this->transaction().failure_reason(elle::exception_string(e));
           });
       this->_machine.transition_add(
-        this->_transfer_core_state,
+        this->_transfer_state,
         this->_fail_state,
         reactor::Waitables{&this->failed()}, true);
       this->_machine.transition_add(
-        this->_transfer_core_state,
-        this->_transfer_core_state,
+        this->_transfer_state,
+        this->_transfer_state,
         reactor::Waitables{&this->reset_transfer_signal()},
         true);
     }
 
     void
-    PeerMachine::_transfer_core()
+    PeerMachine::_transfer()
     {
       ELLE_TRACE_SCOPE("%s: start transfer machine", *this);
       ELLE_ASSERT(reactor::Scheduler::scheduler() != nullptr);
