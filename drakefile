@@ -514,6 +514,8 @@ def configure(cxx_toolkit = None,
     'fist/src/surface/gap/GhostReceiveMachine.hh',
     'fist/src/surface/gap/LinkSendMachine.cc',
     'fist/src/surface/gap/LinkSendMachine.hh',
+    'fist/src/surface/gap/Notification.cc',
+    'fist/src/surface/gap/Notification.hh',
     'fist/src/surface/gap/PeerMachine.cc',
     'fist/src/surface/gap/PeerMachine.hh',
     'fist/src/surface/gap/PeerReceiveMachine.cc',
@@ -679,7 +681,13 @@ def configure(cxx_toolkit = None,
   )
   cli_send_bin = drake.cxx.Executable(
     'bin/8send',
-    cli_send_sources + [gap_lib, elle_lib, reactor_lib, crash_lib],
+    cli_send_sources + [
+      gap_lib,
+      elle_lib,
+      reactor_lib,
+      crash_lib,
+      oracles.transaction_lib,
+    ],
     cxx_toolkit,
     cli_cxx_config
   )
@@ -690,7 +698,13 @@ def configure(cxx_toolkit = None,
   )
   cli_recv_bin = drake.cxx.Executable(
     'bin/8recv',
-    cli_recv_sources + [gap_lib, elle_lib, reactor_lib, crash_lib],
+    cli_recv_sources + [
+      gap_lib,
+      elle_lib,
+      reactor_lib,
+      crash_lib,
+      oracles.transaction_lib,
+    ],
     cxx_toolkit,
     cli_cxx_config
   )

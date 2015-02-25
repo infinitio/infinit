@@ -100,21 +100,23 @@ namespace surface
         this->_machine.state_make(
           "another device",
           std::bind(&TransactionMachine::_another_device, this)))
-      , _finish_state(
-        this->_machine.state_make(
-          "finish", std::bind(&TransactionMachine::_finish, this)))
-      , _reject_state(
-        this->_machine.state_make(
-          "reject", std::bind(&TransactionMachine::_reject, this)))
       , _cancel_state(
         this->_machine.state_make(
           "cancel", std::bind(&TransactionMachine::_cancel, this)))
-      , _fail_state(
-        this->_machine.state_make(
-          "fail", std::bind(&TransactionMachine::_fail, this)))
       , _end_state(
         this->_machine.state_make(
           "end", std::bind(&TransactionMachine::_end, this)))
+      , _fail_state(
+        this->_machine.state_make(
+          "fail", std::bind(&TransactionMachine::_fail, this)))
+      , _finish_state
+        (this->_machine.state_make("finish", [this] {this->_finish(); }))
+      , _reject_state(
+        this->_machine.state_make(
+          "reject", std::bind(&TransactionMachine::_reject, this)))
+      , _transfer_state(
+        this->_machine.state_make(
+          "transfer", std::bind(&TransactionMachine::_transfer, this)))
       , _finished("finished")
       , _rejected("rejected")
       , _canceled("canceled")
@@ -124,6 +126,33 @@ namespace surface
       , _data(std::move(data))
     {
       ELLE_TRACE_SCOPE("%s: create transaction machine", *this);
+      // Transfer end.
+      this->_machine.transition_add(
+        this->_transfer_state,
+        this->_end_state,
+        reactor::Waitables{&this->finished()},
+        true);
+      this->_machine.transition_add(
+        this->_transfer_state,
+        this->_cancel_state,
+        reactor::Waitables{&this->canceled()},
+        true);
+      this->_machine.transition_add(
+        this->_transfer_state,
+        this->_fail_state,
+        reactor::Waitables{&this->failed()},
+        true);
+      this->_machine.transition_add_catch(
+        this->_transfer_state,
+        this->_fail_state)
+        .action_exception(
+          [this] (std::exception_ptr e)
+          {
+            ELLE_WARN("%s: error while transferring: %s",
+                      *this, elle::exception_string(e));
+            this->transaction().failure_reason(elle::exception_string(e));
+          });
+      // Another device endings.
       this->_machine.transition_add(
         this->_another_device_state,
         this->_end_state,
@@ -136,12 +165,13 @@ namespace surface
         this->_another_device_state,
         this->_end_state,
         reactor::Waitables{&this->failed()});
+      // End.
       this->_machine.transition_add(this->_finish_state, this->_end_state);
       this->_machine.transition_add(this->_cancel_state, this->_end_state);
       this->_machine.transition_add(this->_fail_state, this->_end_state);
       // Reject.
       this->_machine.transition_add(this->_reject_state, this->_end_state);
-      // The catch transitions just open the barrier to logging purpose.
+      // The catch transitions just open the barrier for logging purpose.
       // The snapshot will be kept.
       this->_machine.transition_add_catch(this->_fail_state, this->_end_state)
         .action([this] { ELLE_ERR("%s: failure failed", *this); });
@@ -215,7 +245,33 @@ namespace surface
     TransactionMachine::_end()
     {
       ELLE_TRACE_SCOPE("%s: end", *this);
+      auto status = this->data()->status;
+      switch (status)
+      {
+        case infinit::oracles::Transaction::Status::finished:
+        case infinit::oracles::Transaction::Status::ghost_uploaded:
+          this->gap_status(gap_transaction_finished);
+          break;
+        case infinit::oracles::Transaction::Status::rejected:
+          this->gap_status(gap_transaction_rejected);
+          break;
+        case infinit::oracles::Transaction::Status::canceled:
+          this->gap_status(gap_transaction_canceled);
+          break;
+        case infinit::oracles::Transaction::Status::failed:
+          this->gap_status(gap_transaction_failed);
+          break;
+        case infinit::oracles::Transaction::Status::none:
+        case infinit::oracles::Transaction::Status::initialized:
+        case infinit::oracles::Transaction::Status::accepted:
+        case infinit::oracles::Transaction::Status::deleted:
+        case infinit::oracles::Transaction::Status::cloud_buffered:
+        case infinit::oracles::Transaction::Status::started:
+          ELLE_ABORT("%s: impossible final status: %s", *this, status);
+          break;
+      }
       this->_transaction._over = true;
+      this->cleanup();
       boost::system::error_code error;
       auto path = this->transaction().snapshots_directory();
       boost::filesystem::remove_all(path, error);
@@ -227,16 +283,20 @@ namespace surface
     void
     TransactionMachine::_finish()
     {
+      this->_finish(infinit::oracles::Transaction::Status::finished);
+    }
+
+    void
+    TransactionMachine::_finish(infinit::oracles::Transaction::Status status)
+    {
       ELLE_TRACE_SCOPE("%s: finish", *this);
-      this->gap_status(gap_transaction_finished);
-      this->_finalize(infinit::oracles::Transaction::Status::finished);
+      this->_finalize(status);
     }
 
     void
     TransactionMachine::_reject()
     {
       ELLE_TRACE_SCOPE("%s: reject", *this);
-      this->gap_status(gap_transaction_rejected);
       this->_finalize(infinit::oracles::Transaction::Status::rejected);
     }
 
@@ -244,7 +304,6 @@ namespace surface
     TransactionMachine::_cancel()
     {
       ELLE_TRACE_SCOPE("%s: cancel", *this);
-      this->gap_status(gap_transaction_canceled);
       this->_finalize(infinit::oracles::Transaction::Status::canceled);
     }
 
@@ -273,7 +332,6 @@ namespace surface
       {
         ELLE_ERR("unable to report transaction failure: %s", e);
       }
-      this->gap_status(gap_transaction_failed);
       this->_finalize(infinit::oracles::Transaction::Status::failed);
     }
 
@@ -396,6 +454,41 @@ namespace surface
         ELLE_DEBUG("%s: terminate machine thread", *this)
           this->_machine_thread->terminate_now();
         this->_machine_thread.reset();
+      }
+    }
+
+    void
+    TransactionMachine::_finalize(infinit::oracles::Transaction::Status s)
+    {
+      ELLE_TRACE_SCOPE("%s: finalize transaction: %s", *this, s);
+      if (this->data()->id.empty())
+        ELLE_TRACE("%s: no need to finalize transaction: id is still empty",
+                   *this);
+      else
+      {
+        try
+        {
+          this->_update_meta_status(s);
+          this->data()->status = s;
+          this->transaction()._snapshot_save();
+          this->_metrics_ended(s);
+        }
+        catch (infinit::oracles::meta::Exception const& e)
+        {
+          using infinit::oracles::meta::Error;
+          if (e.err == Error::transaction_already_finalized)
+            ELLE_TRACE("%s: transaction already finalized", *this);
+          else if (e.err == Error::transaction_already_has_this_status)
+            ELLE_TRACE("%s: transaction already in this state", *this);
+          else
+            ELLE_ERR("%s: unable to finalize the transaction %s: %s",
+                     *this, this->transaction_id(), elle::exception_string());
+        }
+        catch (elle::Error const&)
+        {
+          ELLE_ERR("%s: unable to finalize the transaction %s: %s",
+                   *this, this->transaction_id(), elle::exception_string());
+        }
       }
     }
 

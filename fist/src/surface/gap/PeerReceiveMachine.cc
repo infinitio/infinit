@@ -88,16 +88,9 @@ namespace surface
       , _frete_snapshot_path(this->transaction().snapshots_directory()
                              / "frete.snapshot")
       , _snapshot(nullptr)
+      , _completed(false)
       , _nothing_in_the_cloud(false)
     {
-      // Normal way.
-      this->_machine.transition_add(this->_accept_state,
-                                    this->_transfer_core_state);
-      this->_machine.transition_add(this->_transfer_core_state,
-                                    this->_finish_state);
-
-      // Exception.
-      this->_machine.transition_add_catch(_transfer_core_state, _fail_state);
       try
       {
         if (exists(this->_frete_snapshot_path))
@@ -154,7 +147,7 @@ namespace surface
           else if (snapshot.current_state() == "reject")
             this->_run(this->_reject_state);
           else if (snapshot.current_state() == "transfer core")
-            this->_run(this->_transfer_core_state);
+            this->_run(this->_transfer_state);
           else if (snapshot.current_state() == "wait for decision")
             this->_run(this->_wait_for_decision_state);
           else if (snapshot.current_state() == "another device")
@@ -183,7 +176,7 @@ namespace surface
       {
         case TransactionStatus::accepted:
           if (this->concerns_this_device())
-            this->_run(this->_transfer_core_state);
+            this->_run(this->_transfer_state);
           else
             this->_run(this->_another_device_state);
           break;
@@ -278,18 +271,12 @@ namespace surface
       elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
         scope.run_background(
-          elle::sprintf("download %s", this->id()),
-          [&frete, this] ()
-          {
-            this->get(frete);
-          });
-        scope.run_background(
           elle::sprintf("run rpcs %s", this->id()),
           [&frete] ()
           {
             frete.run();
           });
-        scope.wait();
+        this->get(frete);
       };
     }
 
@@ -373,7 +360,6 @@ namespace surface
           this->get(*_bufferer);
         // We finished
         ELLE_ASSERT_EQ(progress(), 1);
-        this->finished().open();
         exit_reason = metrics::TransferExitReasonFinished;
         ELLE_ASSERT_NEQ(this->_snapshot, nullptr);
         total_bytes_transfered = this->_snapshot->progress() - initial_progress;
@@ -719,9 +705,15 @@ namespace surface
       if (peer_version >= elle::Version(0, 8, 7))
       {
         source.finish();
+        this->_completed = true;
       }
       clean_snpashot();
-      this->finished().open();
+    }
+
+    bool
+    PeerReceiveMachine::completed() const
+    {
+      return this->_completed;
     }
 
     PeerReceiveMachine::FileSize
@@ -1128,25 +1120,5 @@ namespace surface
     , start_position(b.start_position)
     , file_index(b.file_index)
     {}
-
-    void
-    PeerReceiveMachine::_finalize(infinit::oracles::Transaction::Status s)
-    {
-      if (s == infinit::oracles::Transaction::Status::finished)
-      {
-        bool onboarding = false;
-        if (this->state().metrics_reporter())
-        {
-          this->state().metrics_reporter()->transaction_ended(
-            this->transaction_id(),
-            s,
-            s == infinit::oracles::Transaction::Status::failed?
-              transaction().failure_reason() : "",
-            onboarding,
-            this->transaction().canceled_by_user());
-        }
-      }
-      PeerMachine::_finalize(s);
-    }
   }
 }

@@ -22,13 +22,21 @@ namespace surface
 {
   namespace gap
   {
-    Notification::Type Transaction::Notification::type =
+    Notification::Type
+    Transaction::Notification::type =
       NotificationType_TransactionUpdate;
     Transaction::Notification::Notification(uint32_t id,
                                             gap_TransactionStatus status):
       id(id),
       status(status)
     {}
+
+    void
+    Transaction::Notification::print(std::ostream& output) const
+    {
+      elle::fprintf(output, "surface::gap::Transaction::Notification(%s, %s)",
+                    this->id, this->status);
+    }
 
     Notification::Type Transaction::RecipientChangedNotification::type =
       NotificationType_TransactionRecipientChanged;

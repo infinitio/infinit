@@ -8,9 +8,11 @@
 #include <elle/os/path.hh>
 #include <elle/system/system.hh>
 
-#include <reactor/thread.hh>
+#include <reactor/Scope.hh>
 #include <reactor/exception.hh>
 #include <reactor/http/exceptions.hh>
+#include <reactor/network/exception.hh>
+#include <reactor/thread.hh>
 
 #include <aws/Credentials.hh>
 #include <aws/Exceptions.hh>
@@ -46,10 +48,13 @@ namespace surface
           "initialize transaction",
           std::bind(&SendMachine::_initialize_transaction, this)))
     {
-      // Cancel.
-      this->_machine.transition_add(this->_create_transaction_state,
-                                    this->_cancel_state,
-                                    reactor::Waitables{&this->canceled()}, true);
+      this->_machine.transition_add(
+        this->_create_transaction_state,
+        this->_initialize_transaction_state);
+      this->_machine.transition_add(
+        this->_create_transaction_state,
+        this->_cancel_state,
+        reactor::Waitables{&this->canceled()}, true);
     }
 
     // Constructor for sender device.
@@ -116,7 +121,6 @@ namespace surface
       std::string url = initurl;
       ELLE_TRACE("%s: gcs upload on %s", *this, url);
       uint64_t file_size = boost::filesystem::file_size(file_path);
-
       using reactor::http::StatusCode;
       using reactor::http::Request;
       std::vector<StatusCode> transient = {
@@ -126,9 +130,7 @@ namespace surface
         StatusCode::Service_Unavailable,
         StatusCode::Gateway_Timeout
       };
-
       int attempt = 0;
-
       auto status_check = [&](reactor::http::StatusCode s, Request& r) -> bool
       {
         if ((int)s != 308 && ((int)s/100) != 2)
@@ -168,7 +170,6 @@ namespace surface
           if (r.status() == StatusCode::OK)
           {
             ELLE_TRACE("%s: Upload reported finished", *this);
-            this->finished().open();
             return;
           }
           else if (!status_check(r.status(), r))
@@ -212,7 +213,6 @@ namespace surface
             conf.header_add("Content-Range",
                             elle::sprintf("bytes %s-%s/%s", position, end-1, endSize));
             auto buffer = file.read(position, end - position);
-
             Request r(url, reactor::http::Method::PUT, "application/octet-stream",
                       conf);
             r.progress_changed().connect([&](Request::Progress const& p)
@@ -244,12 +244,12 @@ namespace surface
             std::min(int(500 * pow(2,attempt)), 20000)));
         }
       } // while true
-      this->finished().open();
     }
 
     void
     SendMachine::_plain_upload()
     {
+      typedef uint64_t FileSize;
       static const std::unordered_map<std::string, std::string> mimes = {
         {"mp3", "audio/mpeg"},
         {"wav", "audio/wav"},
@@ -288,7 +288,6 @@ namespace surface
         });
       try
       {
-        typedef frete::Frete::FileSize FileSize;
         this->gap_status(gap_transaction_transferring);
         ELLE_TRACE_SCOPE("%s: start plain upload", *this);
         typedef boost::filesystem::path path;
@@ -365,8 +364,6 @@ namespace surface
         }
         else
           source_file_path = *this->_files.begin();
-
-
         ELLE_TRACE("%s: will ghost-cloud-upload %s of size %s",
                    *this, source_file_path, file_size);
         auto credentials = this->_cloud_credentials(true);
@@ -393,7 +390,6 @@ namespace surface
           {
             this->_report_s3_error(exception, will_retry);
           });
-        typedef frete::Frete::FileSize FileSize;
         auto const& config = this->transaction().state().configuration();
         // AWS constraints: no more than 10k chunks, at least 5Mo block size
         FileSize default_chunk_size(
@@ -563,10 +559,8 @@ namespace surface
               return a.first < b.first;
             });
         handler.multipart_finalize(source_file_name, upload_id, chunks);
-        // Let the finished state update gap and meta.
-        this->finished().open();
         exit_reason = metrics::TransferExitReasonFinished;
-      } // try
+      }
       catch (boost::filesystem::filesystem_error const& e)
       {
         exit_message = e.what();
@@ -643,9 +637,9 @@ namespace surface
     }
 
     void
-    SendMachine::try_mirroring_files(frete::Frete::FileSize total_size)
+    SendMachine::try_mirroring_files(uint64_t total_size)
     {
-      frete::Frete::FileSize max_mirror_size
+      uint64_t max_mirror_size
         = transaction().state().configuration().max_mirror_size;
       if (!max_mirror_size)
         max_mirror_size = 100 * 1000 * 1000; // 2s copy on 50Mb/s hard drive

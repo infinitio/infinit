@@ -74,6 +74,7 @@ namespace surface
       , _recipient(std::move(recipient))
       , _accepted("accepted")
       , _rejected("rejected")
+      , _ghost_uploaded("rejected")
       , _frete()
       , _wait_for_accept_state(
         this->_machine.state_make(
@@ -81,21 +82,17 @@ namespace surface
           std::bind(&PeerSendMachine::_wait_for_accept, this)))
     {
       ELLE_TRACE_SCOPE("%s: generic peer send machine", *this);
-
-      this->_machine.transition_add(
-        this->_create_transaction_state,
-        this->_initialize_transaction_state);
       this->_machine.transition_add(
         this->_initialize_transaction_state,
         this->_wait_for_accept_state);
       this->_machine.transition_add(
         this->_wait_for_accept_state,
         this->_finish_state,
-        reactor::Waitables{&this->finished()},
+        reactor::Waitables{&this->ghost_uploaded()},
         true);
       this->_machine.transition_add(
         this->_wait_for_accept_state,
-        this->_transfer_core_state,
+        this->_transfer_state,
         reactor::Waitables{&this->accepted()},
         true);
       this->_machine.transition_add(
@@ -211,7 +208,7 @@ namespace surface
         else if (snapshot.current_state() == "reject")
           this->_run(this->_reject_state);
         else if (snapshot.current_state() == "transfer core")
-          this->_run(this->_transfer_core_state);
+          this->_run(this->_transfer_state);
         else if (snapshot.current_state() == "wait for accept")
           this->_run(this->_wait_for_accept_state);
         else if (snapshot.current_state() == "another device")
@@ -253,7 +250,7 @@ namespace surface
           break;
         case TransactionStatus::accepted:
           if (this->concerns_this_device())
-            this->_run(this->_transfer_core_state);
+            this->_run(this->_transfer_state);
           break;
         case TransactionStatus::finished:
         case TransactionStatus::ghost_uploaded:
@@ -273,6 +270,12 @@ namespace surface
         case TransactionStatus::deleted:
           elle::unreachable();
       }
+    }
+
+    bool
+    PeerSendMachine::completed() const
+    {
+      return this->_frete ? this->_frete->finished() : false;
     }
 
     /*---------------.
@@ -453,7 +456,10 @@ namespace surface
         if (this->state().me().id == peer.id)
           peer_online = peer.online_excluding_device(this->state().device().id);
         if (this->data()->is_ghost)
+        {
           this->_plain_upload();
+          this->_ghost_uploaded.open();
+        }
         else if (this->data()->status == TransactionStatus::cloud_buffered)
         {
           ELLE_TRACE("%s: cloud buffered, nothing to do", *this);
@@ -504,12 +510,9 @@ namespace surface
     void
     PeerSendMachine::_finish()
     {
-      ELLE_TRACE_SCOPE("%s: finish", *this);
-      this->gap_status(gap_transaction_finished);
-      if (transaction().data()->is_ghost)
-        this->_finalize(infinit::oracles::Transaction::Status::ghost_uploaded);
-      else
-        this->_finalize(infinit::oracles::Transaction::Status::finished);
+      this->_finish(transaction().data()->is_ghost
+                    ? infinit::oracles::Transaction::Status::ghost_uploaded
+                    : infinit::oracles::Transaction::Status::finished);
     }
 
     void

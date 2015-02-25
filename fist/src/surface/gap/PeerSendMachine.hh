@@ -65,8 +65,12 @@ namespace surface
     | Attributes |
     `-----------*/
     public:
+      virtual
+      bool
+      completed() const override;
       ELLE_ATTRIBUTE_RX(reactor::Barrier, accepted);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, rejected);
+      ELLE_ATTRIBUTE_RX(reactor::Barrier, ghost_uploaded);
       ELLE_ATTRIBUTE(std::unique_ptr<frete::Frete>, frete);
 
     /*-------.
@@ -84,6 +88,7 @@ namespace surface
       virtual
       void
       _finish() override;
+      using TransactionMachine::_finish;
 
     public:
       virtual
