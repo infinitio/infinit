@@ -184,6 +184,24 @@ class Mixin:
     ret_msg = {'code': error[0], 'message': error[1]}
     response(403, ret_msg)
 
+  def remove_current_session(self, user = None, device = None):
+    for key in ['identifier', 'email']:
+      if key in bottle.request.session:
+        # Web sessions have no device.
+        if 'device' in bottle.request.session:
+          del bottle.request.session['device']
+        if 'facebook_access_token' in bottle.request.session:
+          del bottle.request.session['facebook_access_token']
+        del bottle.request.session[key]
+        return True
+    return False
+
+  def remove_session(self, user, device = None):
+    query = ({'identifier': {'$in': [user.get('email'), user['_id']]}})
+    if device:
+      query.update({'device': device['id']})
+    self.sessions.remove(query)
+
   def _login(self,
              email,
              fields,
@@ -274,11 +292,10 @@ class Mixin:
       else:
         device = list(filter(lambda x: x['id'] == str(device_id), usr['devices']))[0]
       # Remove potential leaked previous session.
-      self.sessions.remove({'email': email, 'device': device['id']})
+      self.remove_session(user, device)
       elle.log.debug("%s: store session" % email)
       bottle.request.session['device'] = device['id']
-      bottle.request.session['email'] = email
-
+      bottle.request.session['identifier'] = email
       self.database.users.update(
         {'_id': user['_id']},
         {'$set': {'last_connection': time.time(),}})
@@ -322,7 +339,7 @@ class Mixin:
       f = self.__user_self_fields + ['unconfirmed_email_deadline']
       user = self._login(email, password = password, fields = f)
       elle.log.debug("%s: store session" % email)
-      bottle.request.session['email'] = email
+      bottle.request.session['identifier'] = email
       elle.log.trace("%s: successfully connected as %s" %
                      (email, user['_id']))
       return self.success(self._login_response(user, web = True))
@@ -331,23 +348,16 @@ class Mixin:
   @require_logged_in
   def logout(self):
     user = self.user
-    with elle.log.trace("%s: logout" % user['email']):
-      if 'email' in bottle.request.session:
-        elle.log.debug("%s: remove session" % user['email'])
-        # Web sessions have no device.
-        if 'device' in bottle.request.session:
-          elle.log.debug("%s: remove session device" % user['email'])
-          del bottle.request.session['device']
-        del bottle.request.session['email']
+    with elle.log.trace("%s: logout" % user['_id']):
+      if self.remove_current_session():
         return self.success()
-      else:
-        return self.fail(error.NOT_LOGGED_IN)
+      return self.fail(error.NOT_LOGGED_IN)
 
   def kickout(self, reason, user = None):
     if user is None:
       user = self.user
     with elle.log.trace('kickout %s: %s' % (user['_id'], reason)):
-      self.database.sessions.remove({'email': user['email']})
+      self.remove_session(user)
       self.notifier.notify_some(
         notifier.INVALID_CREDENTIALS,
         recipient_ids = {user['_id']},
@@ -363,13 +373,19 @@ class Mixin:
       return bottle.request.user
     if not hasattr(bottle.request, 'session'):
       return None
-    email = bottle.request.session.get('email', None)
-    if email is not None:
-      user = self.user_by_email(email,
-                                ensure_existence = False,
-                                fields = fields)
-      bottle.request.user = user
-      return user
+    # For a smoother transition, sessions registered as
+    # email are still available.
+    for key in ['identifier', 'email']:
+      identifier = bottle.request.session.get(key, None)
+      if identifier is not None:
+        user = None
+        if isinstance(identifier, bson.ObjectId):
+          user = self._user_by_id(identifier, fields = fields, ensure_existence = False)
+        elif '@' in identifier:
+          user = self.user_by_email(identifier, fields = fields, ensure_existence = False)
+        if user is not None:
+          bottle.request.user = user
+          return user
     elle.log.trace("session not found")
 
   ## -------- ##
@@ -936,7 +952,7 @@ class Mixin:
 
   def _change_email(self, user, new_email, password):
     # Invalidate credentials.
-    self.sessions.remove({'email': user['email'], 'device': ''})
+    self.remove_session(user)
     # Kick them out of the app.
     self.notifier.notify_some(
       notifier.INVALID_CREDENTIALS,
@@ -1009,7 +1025,7 @@ class Mixin:
     if user['password'] != hash_password(old_password):
       return self.fail(error.PASSWORD_NOT_VALID)
     # Invalidate credentials.
-    self.sessions.remove({'email': self.user['email'], 'device': ''})
+    self.remove_session(user)
     # Kick them out of the app.
     self.notifier.notify_some(
       notifier.INVALID_CREDENTIALS,
@@ -1081,7 +1097,7 @@ class Mixin:
        - Keep the process as atomic at the DB level as possible.
     """
     # Invalidate credentials.
-    self.sessions.remove({'email': user['email'], 'device': ''})
+    self.remove_session(user)
     # Kick them out of the app.
     self.notifier.notify_some(
       notifier.INVALID_CREDENTIALS,
