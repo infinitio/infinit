@@ -19,7 +19,6 @@
 # include <aws/Exceptions.hh>
 # include <aws/S3.hh>
 
-# include <frete/Frete.hh>
 # include <infinit/oracles/Transaction.hh>
 # include <infinit/oracles/meta/Client.hh>
 # include <oracles/src/infinit/oracles/PeerTransaction.hh>

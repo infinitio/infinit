@@ -6,8 +6,11 @@
 #include <elle/serialization/json/SerializerIn.hh>
 #include <elle/serialization/json/SerializerOut.hh>
 #include <elle/system/system.hh>
+
+#include <reactor/exception.hh>
 #include <reactor/http/Request.hh>
 #include <reactor/http/exceptions.hh>
+#include <reactor/network/exception.hh>
 
 #include <infinit/metrics/Reporter.hh>
 

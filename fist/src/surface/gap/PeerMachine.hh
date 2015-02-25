@@ -3,6 +3,8 @@
 
 # include <surface/gap/TransactionMachine.hh>
 
+# include <frete/Frete.hh>
+
 namespace surface
 {
   namespace gap

@@ -8,9 +8,11 @@
 #include <elle/os/path.hh>
 #include <elle/system/system.hh>
 
-#include <reactor/thread.hh>
+#include <reactor/Scope.hh>
 #include <reactor/exception.hh>
 #include <reactor/http/exceptions.hh>
+#include <reactor/network/exception.hh>
+#include <reactor/thread.hh>
 
 #include <aws/Credentials.hh>
 #include <aws/Exceptions.hh>
@@ -247,6 +249,7 @@ namespace surface
     void
     SendMachine::_plain_upload()
     {
+      typedef uint64_t FileSize;
       static const std::unordered_map<std::string, std::string> mimes = {
         {"mp3", "audio/mpeg"},
         {"wav", "audio/wav"},
@@ -285,7 +288,6 @@ namespace surface
         });
       try
       {
-        typedef frete::Frete::FileSize FileSize;
         this->gap_status(gap_transaction_transferring);
         ELLE_TRACE_SCOPE("%s: start plain upload", *this);
         typedef boost::filesystem::path path;
@@ -388,7 +390,6 @@ namespace surface
           {
             this->_report_s3_error(exception, will_retry);
           });
-        typedef frete::Frete::FileSize FileSize;
         auto const& config = this->transaction().state().configuration();
         // AWS constraints: no more than 10k chunks, at least 5Mo block size
         FileSize default_chunk_size(
@@ -636,9 +637,9 @@ namespace surface
     }
 
     void
-    SendMachine::try_mirroring_files(frete::Frete::FileSize total_size)
+    SendMachine::try_mirroring_files(uint64_t total_size)
     {
-      frete::Frete::FileSize max_mirror_size
+      uint64_t max_mirror_size
         = transaction().state().configuration().max_mirror_size;
       if (!max_mirror_size)
         max_mirror_size = 100 * 1000 * 1000; // 2s copy on 50Mb/s hard drive
