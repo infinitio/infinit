@@ -681,7 +681,13 @@ def configure(cxx_toolkit = None,
   )
   cli_send_bin = drake.cxx.Executable(
     'bin/8send',
-    cli_send_sources + [gap_lib, elle_lib, reactor_lib, crash_lib],
+    cli_send_sources + [
+      gap_lib,
+      elle_lib,
+      reactor_lib,
+      crash_lib,
+      oracles.transaction_lib,
+    ],
     cxx_toolkit,
     cli_cxx_config
   )
@@ -692,7 +698,13 @@ def configure(cxx_toolkit = None,
   )
   cli_recv_bin = drake.cxx.Executable(
     'bin/8recv',
-    cli_recv_sources + [gap_lib, elle_lib, reactor_lib, crash_lib],
+    cli_recv_sources + [
+      gap_lib,
+      elle_lib,
+      reactor_lib,
+      crash_lib,
+      oracles.transaction_lib,
+    ],
     cxx_toolkit,
     cli_cxx_config
   )
