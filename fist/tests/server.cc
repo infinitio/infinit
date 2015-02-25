@@ -20,6 +20,7 @@
 
 ELLE_LOG_COMPONENT("fist.tests");
 
+
 std::unique_ptr<papier::Identity>
 generate_identity(cryptography::KeyPair const& keypair,
                   std::string const& id,
@@ -43,7 +44,7 @@ json(C& container)
 namespace tests
 {
   Server::Server()
-    : _session_id(boost::uuids::random_generator()())
+    : _session_id(random_uuid())
     , trophonius()
     , _cloud_buffered(false)
   {
@@ -274,7 +275,7 @@ namespace tests
       {
         auto& user = this->user(cookies);
         infinit::oracles::LinkTransaction t;
-        t.id = boost::lexical_cast<std::string>(boost::uuids::random_generator()());
+        t.id = boost::lexical_cast<std::string>(random_uuid());
         auto id = t.id;
         user.links[id] = t;
 
@@ -372,7 +373,7 @@ namespace tests
                   Server::Parameters const& parameters,
                   elle::Buffer const&)
           {
-            this->headers()["ETag"] = boost::lexical_cast<std::string>(boost::uuids::random_generator()());
+            this->headers()["ETag"] = boost::lexical_cast<std::string>(random_uuid());
             return elle::sprintf(
               "<CompleteMultipartUploadResult>"
               "<Location></Location>"
@@ -421,7 +422,7 @@ namespace tests
            elle::Buffer const&)
       {
         auto t = elle::make_unique<Transaction>();
-        auto id = t->id;
+        std::string id = t->id;
         ELLE_LOG_SCOPE("%s: create transaction %s", *this, id);
         this->_transactions.insert(std::move(t));
         this->register_route(
@@ -775,8 +776,7 @@ namespace tests
       cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                       papier::Identity::keypair_length);
     auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
-    auto generator = boost::uuids::random_generator();
-    boost::uuids::uuid id = generator();
+    boost::uuids::uuid id = random_uuid();
     ELLE_TRACE_SCOPE("%s: generate user %s", *this, id);
     auto identity =
       generate_identity(keys, boost::lexical_cast<std::string>(id), "my identity", password_hash);
@@ -820,7 +820,7 @@ namespace tests
   Server::generate_ghost_user(std::string const& email)
   {
     ELLE_ASSERT(this->_users.get<1>().find(email) == this->_users.get<1>().end());
-    auto id = boost::uuids::random_generator()();
+    auto id = random_uuid();
 
     auto user = elle::make_unique<User>(
       id,

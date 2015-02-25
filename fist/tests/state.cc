@@ -32,6 +32,15 @@
 
 ELLE_LOG_COMPONENT("surface.gap.State.test");
 
+static
+boost::uuids::uuid
+random_uuid()
+{
+  typedef boost::uuids::basic_random_generator<boost::mt19937> Generator;
+  Generator generator{};
+  return generator();
+}
+
 class KeyPair:
   public infinit::cryptography::KeyPair
 {
@@ -154,7 +163,7 @@ public:
   Server(papier::Identity identity,
          boost::uuids::uuid device_id)
     : _device_id(device_id)
-    , _session_id(boost::uuids::random_generator()())
+    , _session_id(random_uuid())
     , _identity(std::move(identity))
     , _trophonius()
     , _login_result(0)
@@ -381,13 +390,13 @@ ELLE_TEST_SCHEDULED(login)
   auto email = "em@il.com";
   auto password = "secret";
   auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
-  auto user_id = boost::uuids::random_generator()();
+  auto user_id = random_uuid();
   cryptography::KeyPair keys =
     cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                     papier::Identity::keypair_length);
   auto identity = generate_identity(
     keys, boost::lexical_cast<std::string>(user_id), "my identity", password_hash);
-  auto device_id = boost::uuids::random_generator()();
+  auto device_id = random_uuid();
   Server<> server(identity, device_id);
   std::string download_dir =
     elle::os::path::join(elle::system::home_directory().string(), "Downloads");
@@ -408,13 +417,13 @@ ELLE_TEST_SCHEDULED(login_failure)
   auto email = "em@il.com";
   auto password = "secret";
   auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
-  auto user_id = boost::uuids::random_generator()();
+  auto user_id = random_uuid();
   cryptography::KeyPair keys =
     cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                     papier::Identity::keypair_length);
   auto identity = generate_identity(
     keys, boost::lexical_cast<std::string>(user_id), "my identity", password_hash);
-  auto device_id = boost::uuids::random_generator()();
+  auto device_id = random_uuid();
   Server<> server(identity, device_id);
   std::string download_dir =
     elle::os::path::join(elle::system::home_directory().string(), "Downloads");
@@ -490,13 +499,13 @@ ELLE_TEST_SCHEDULED(trophonius_forbidden)
   auto email = "em@il.com";
   auto password = "secret";
   auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
-  auto user_id = boost::uuids::random_generator()();
+  auto user_id = random_uuid();
   cryptography::KeyPair keys =
     cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                     papier::Identity::keypair_length);
   auto identity = generate_identity(
     keys, boost::lexical_cast<std::string>(user_id), "my identity", password_hash);
-  auto device_id = boost::uuids::random_generator()();
+  auto device_id = random_uuid();
   ForbiddenTrophoniusMeta server(identity, device_id);
   std::string download_dir =
     elle::os::path::join(elle::system::home_directory().string(), "Downloads");
@@ -512,7 +521,7 @@ ELLE_TEST_SCHEDULED(trophonius_forbidden)
     {
       ELLE_LOG("Received update: %s", connected.connected);
       if (!connected.connected)
-        server.session_id(boost::uuids::random_generator()());
+        server.session_id(random_uuid());
       else
         reconnected.signal();
     },
@@ -575,13 +584,13 @@ ELLE_TEST_SCHEDULED(trophonius_timeout)
   auto email = "em@il.com";
   auto password = "secret";
   auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
-  auto user_id = boost::uuids::random_generator()();
+  auto user_id = random_uuid();
   cryptography::KeyPair keys =
     cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                     papier::Identity::keypair_length);
   auto identity = generate_identity(
     keys, boost::lexical_cast<std::string>(user_id), "my identity", password_hash);
-  auto device_id = boost::uuids::random_generator()();
+  auto device_id = random_uuid();
   TimeoutTrophoniusMeta server(identity, device_id);
   std::string download_dir =
     elle::os::path::join(elle::system::home_directory().string(), "Downloads");

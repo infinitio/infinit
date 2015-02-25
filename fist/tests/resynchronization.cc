@@ -1,5 +1,3 @@
-#include <boost/uuid/random_generator.hpp>
-
 #include <elle/filesystem/TemporaryFile.hh>
 #include <elle/log.hh>
 #include <elle/test.hh>
@@ -84,7 +82,7 @@ ELLE_TEST_SCHEDULED(links_another_device)
 
   infinit::oracles::LinkTransaction t;
   t.click_count = 3;
-  t.id = boost::lexical_cast<std::string>(boost::uuids::random_generator()());
+  t.id = boost::lexical_cast<std::string>(random_uuid());
   t.ctime = 2173213;
   t.sender_id = boost::lexical_cast<std::string>(sender.user.id());
   t.sender_device_id = boost::lexical_cast<std::string>(sender.device_id) + "other";
@@ -144,15 +142,15 @@ ELLE_TEST_SCHEDULED(swaggers)
   synchronize(server, bob.state);
   bob.state.poll();
   ELLE_ASSERT(!step0); // It should be valid now.
-  ELLE_ASSERT(step1); // It should be valid now.
+  ELLE_ASSERT(step1);  // It should be valid now.
   ELLE_ASSERT_EQ(bob.state.swaggers().size(), 2);
 
   // Disclaimer: It's really hard to play with multi device on a single device
   // when playing with real states. I'll use some random device ids to check
   // behaviours.
   bob.user.connected_devices.clear();
-  bob.user.connected_devices.insert(boost::uuids::random_generator()());
-  bob.user.connected_devices.insert(boost::uuids::random_generator()());
+  bob.user.connected_devices.insert(random_uuid());
+  bob.user.connected_devices.insert(random_uuid());
 
   bool step2 = false;
   alice.state.attach_callback<surface::gap::State::UserStatusNotification>([&] (surface::gap::State::UserStatusNotification notif)

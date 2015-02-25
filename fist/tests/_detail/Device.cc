@@ -11,7 +11,7 @@ namespace tests
 {
   Device::Device(cryptography::PublicKey const& key,
                    boost::optional<boost::uuids::uuid> device)
-    : _id(device ? device.get() : boost::uuids::random_generator()())
+    : _id(device ? device.get() : random_uuid())
     , _passport(boost::lexical_cast<std::string>(this->_id), "osef", key, authority)
   {
   }

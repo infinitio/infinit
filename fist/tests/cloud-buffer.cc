@@ -15,12 +15,11 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
   tests::Server server;
   auto const email = "sender@infinit.io";
   auto const password = "secret";
-  auto& user = server.register_user(email, password);
+  server.register_user(email, password);
 
   std::string const recipient_email = "recipient@infinit.io";
-  auto& recipient = server.register_user("recipient@infinit.io", password);
-  auto random = boost::uuids::random_generator();
-  tests::State state(server, random());
+  server.register_user("recipient@infinit.io", password);
+  tests::State state(server, random_uuid());
   elle::filesystem::TemporaryFile transfered("cloud-buffered");
   {
     boost::filesystem::ofstream f(transfered.path());

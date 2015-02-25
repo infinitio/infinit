@@ -1,5 +1,3 @@
-#include <boost/uuid/random_generator.hpp>
-
 #include <elle/filesystem/TemporaryFile.hh>
 #include <elle/log.hh>
 #include <elle/test.hh>
@@ -27,8 +25,7 @@ ELLE_TEST_SCHEDULED(normal)
         ELLE_TRACE_SCOPE("user status notification: %s", notif);
       });
   };
-  auto random = boost::uuids::random_generator();
-  tests::State recipient(server, random());
+  tests::State recipient(server, random_uuid());
   connect(recipient);
   ELLE_LOG("foo");
   recipient.facebook_connect("code");
@@ -42,7 +39,7 @@ ELLE_TEST_SCHEDULED(normal)
   ELLE_LOG("baz");
   ELLE_ASSERT(server.users().size() == 1);
 
-  tests::State sender(server, random());
+  tests::State sender(server, random_uuid());
   connect(sender);
   sender.facebook_connect("code_2");
   reactor::wait(sender.logged_in());

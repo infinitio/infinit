@@ -8,8 +8,7 @@ namespace tests
 {
   Transaction::Transaction()
   {
-    this->id = boost::lexical_cast<std::string>(
-      boost::uuids::random_generator()());
+    this->id = boost::lexical_cast<std::string>(random_uuid());
   }
 
   Transaction::~Transaction() noexcept(true)

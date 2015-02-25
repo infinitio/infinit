@@ -16,8 +16,7 @@ ELLE_TEST_SCHEDULED(send_ghost)
   auto const email = "em@il.com";
   auto const password = "secret";
   auto& user = server.register_user(email, password);
-  auto random = boost::uuids::random_generator();
-  tests::State state(server, random());
+  tests::State state(server, random_uuid());
 
   elle::filesystem::TemporaryFile transfered("cloud-buffered");
   {
