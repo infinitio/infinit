@@ -23,7 +23,6 @@ with Meta() as meta:
   assert res['success']
 
   _self = meta.get('user/self')
-  assert _self['success']
 
   assert _self['fullname'] == fullname
   res = meta.post('user/edit', {'fullname': 'jean-louis',
@@ -31,7 +30,6 @@ with Meta() as meta:
   assert res['success']
 
   res = meta.get('user/self')
-  assert res['success']
   assert res['fullname'] == 'jean-louis'
   assert res['handle'] == 'gossbo_du_39'
 

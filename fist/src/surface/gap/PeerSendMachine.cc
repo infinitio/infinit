@@ -86,6 +86,9 @@ namespace surface
 
       this->_machine.transition_add(
         this->_create_transaction_state,
+        this->_initialize_transaction_state);
+      this->_machine.transition_add(
+        this->_initialize_transaction_state,
         this->_wait_for_accept_state);
       this->_machine.transition_add(
         this->_wait_for_accept_state,
@@ -199,6 +202,8 @@ namespace surface
           this->_run(this->_cancel_state);
         else if (snapshot.current_state() == "create transaction")
           this->_run(this->_create_transaction_state);
+        else if (snapshot.current_state() == "initialize transaction")
+          this->_run(this->_initialize_transaction_state);
         else if (snapshot.current_state() == "end")
           this->_run(this->_end_state);
         else if (snapshot.current_state() == "fail")
@@ -350,8 +355,17 @@ namespace surface
     void
     PeerSendMachine::_create_transaction()
     {
+        // TODO: Chewie
+        ELLE_TRACE("%s: create transaction", *this);
+        this->transaction_id(this->state().meta().create_transaction());
+    }
+
+    void
+    PeerSendMachine::_initialize_transaction()
+    {
+        // TODO: Chewie
       this->gap_status(gap_transaction_new);
-      ELLE_TRACE_SCOPE("%s: create transaction", *this);
+      ELLE_TRACE_SCOPE("%s: initialize transaction", *this);
       int64_t size = 0;
       try
       {
@@ -385,7 +399,7 @@ namespace surface
       ELLE_ASSERT_EQ(file_list.size(), this->files().size());
       // Change state to SenderCreateTransaction once we've calculated the file
       // size and have the file list.
-      ELLE_TRACE("%s: create transaction, first_file=%s, dir=%s",
+      ELLE_TRACE("%s: initialize transaction, first_file=%s, dir=%s",
                  *this, first_file,
                  boost::filesystem::is_directory(first_file));
       {
@@ -398,7 +412,8 @@ namespace surface
             this->data()->total_size,
             boost::filesystem::is_directory(first_file),
             this->state().device().id,
-            this->_message
+            this->_message,
+            this->transaction_id()
             );
         auto const& peer = this->state().user_sync(
           transaction_response.recipient());
@@ -407,7 +422,7 @@ namespace surface
         // This will automatically save the snapshot.
         this->transaction_id(transaction_response.created_transaction_id());
       }
-      ELLE_TRACE("%s: created transaction %s", *this, this->transaction_id());
+      ELLE_TRACE("%s: initialized transaction %s", *this, this->transaction_id());
       // Populate the frete.
       if (!this->data()->is_ghost)
         this->frete().save_snapshot();

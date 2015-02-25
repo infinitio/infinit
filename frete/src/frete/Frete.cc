@@ -358,7 +358,7 @@ namespace frete
   {
     ELLE_DEBUG("%s: read and encrypt block %s of size %s at offset %s with old key %s",
                *this, f, size, start, this->_impl->old_key());
-    return this->_impl->old_key().encrypt(this->cleartext_read(f, start, size));
+    return this->_impl->old_key().legacy_encrypt_buffer(this->cleartext_read(f, start, size));
   }
 
   infinit::cryptography::Code
@@ -368,7 +368,7 @@ namespace frete
       "%s: read and encrypt block %s of size %s at offset %s with key %s",
       *this, f, size, start, this->_impl->key());
 
-    auto code = this->_impl->key()->encrypt(this->cleartext_read(f, start, size));
+    auto code = this->_impl->key()->legacy_encrypt_buffer(this->cleartext_read(f, start, size));
 
     ELLE_DUMP("encrypted data: %x", code);
     return code;
@@ -382,7 +382,7 @@ namespace frete
       "%s: read and encrypt block %s of size %s at offset %s with key %s",
       *this, f, size, start, this->_impl->key());
 
-    auto code = this->_impl->key()->encrypt(this->cleartext_read(f, start, size, false));
+    auto code = this->_impl->key()->legacy_encrypt_buffer(this->cleartext_read(f, start, size, false));
     auto& snapshot = *this->_transfer_snapshot;
     /* Since we might be pushing both in a bufferer and directly, there
      * are actually two progress positions.

@@ -1,6 +1,7 @@
 #include <boost/filesystem.hpp>
 
 #include <elle/log.hh>
+#include <elle/Exception.hh>
 
 #include <reactor/network/exception.hh>
 #include <reactor/scheduler.hh>
@@ -92,7 +93,7 @@ namespace surface
         catch (boost::filesystem::filesystem_error const& e)
         {
           ELLE_WARN("%s: error copying file: %s", *this, e.what());
-          throw e;
+          elle::Error("error while copying onboarding file");
         }
       }
 

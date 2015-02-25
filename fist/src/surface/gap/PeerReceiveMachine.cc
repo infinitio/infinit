@@ -951,7 +951,7 @@ namespace surface
         {
           try
           {
-            buffer = key.decrypt<elle::Buffer>(code);
+            buffer = key.legacy_decrypt_buffer(code);
           }
           catch(infinit::cryptography::Exception const& e)
           {

@@ -7,12 +7,11 @@ def targets(action):
   yield '//frete/%s' % action
   yield '//station/%s' % action
   yield '//papier/%s' % action
-  if osyst.startswith('linux'):
+  if osyst.startswith('linux') or osyst.startswith('osx'):
     yield '//oracles/%s' % action
   else:
     yield '//oracles/meta/client/%s' % action
     yield '//oracles/trophonius/client/%s' % action
-  if arch == 'i686' and osyst == 'win':
-    yield '//fist-gui-qt/%s' % action
+  # XXX: Until moc fix on Windows, do no run fist-gui-qt/build target.
   if action == 'build':
     yield '//python'

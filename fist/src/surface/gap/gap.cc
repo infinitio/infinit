@@ -1436,7 +1436,7 @@ gap_onboarding_set_peer_availability(gap_State* state, uint32_t id, bool status)
 gap_Status
 gap_send_metric(gap_State* state,
                 UIMetricsType metric,
-                std::unordered_map<std::string, std::string> additional)
+                Additionals additional)
 {
   return run<gap_Status>(
     state,
@@ -1565,6 +1565,22 @@ gap_send_metric(gap_State* state,
         default:
           elle::unreachable();
       }
+      return gap_ok;
+    });
+}
+
+gap_Status
+gap_send_generic_metric(gap_State* state,
+                        std::string const& key,
+                        std::string const& method,
+                        Additionals additional)
+{
+  return run<gap_Status>(
+    state,
+    "gap send generic metric",
+    [&] (surface::gap::State& state)
+    {
+      state.metrics_reporter()->ui(key, method, additional);
       return gap_ok;
     });
 }

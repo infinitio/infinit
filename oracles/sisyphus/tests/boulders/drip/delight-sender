@@ -40,25 +40,22 @@ with mongobox.MongoBox() as mongo:
     assert not emailer.emails
 
     # Check deleted user don't receive emails
-    del1 = meta.user_register('del1@infinit.io', '*' * 64, 'Foo Bar')
+    del1 = user_register(meta, 'del1@infinit.io')
     meta.user_delete(del1)
-    del2 = meta.user_register('del2@infinit.io', '*' * 64, 'Foo Bar')
+    del2 = user_register(meta, 'del2@infinit.io')
     for i in range(reminder.threshold_first):
       send(del2, ghost_email)
     meta.user_delete(del2)
-    del3 = meta.user_register('del3@infinit.io', '*' * 64, 'Foo Bar')
+    del3 = user_register(meta, 'del3@infinit.io')
     for i in range(reminder.threshold_second):
       send(del3, ghost_email)
     meta.user_delete(del3)
 
     # Create senders
     device = 'device'
-    sender1 = meta.user_register('sender1@infinit.io',
-                                 '*' * 64, 'Foo Bar')
-    sender2 = meta.user_register('sender2@infinit.io',
-                                 '*' * 64, 'Foo Bar')
-    sender3 = meta.user_register('sender3@infinit.io',
-                                 '*' * 64, 'Foo Bar')
+    sender1 = user_register(meta, 'sender1@infinit.io')
+    sender2 = user_register(meta, 'sender2@infinit.io')
+    sender3 = user_register(meta, 'sender3@infinit.io')
 
     for i in range(reminder.threshold_first):
       sisy.boulders_run()

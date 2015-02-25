@@ -1,1 +1,1 @@
-{ "indexes" : [ { "v" : 1, "key" : { "_id" : 1 }, "ns" : "meta.devices", "name" : "_id_" }, { "v" : 1, "key" : { "id" : 1, "owner" : 1 }, "unique" : true, "ns" : "meta.devices", "name" : "id_1_owner_1" } ] }
+{ "indexes" : [ { "v" : 1, "key" : { "_id" : 1 }, "name" : "_id_", "ns" : "meta.devices" }, { "v" : 1, "unique" : true, "key" : { "id" : 1, "owner" : 1 }, "name" : "id_1_owner_1", "ns" : "meta.devices" } ] }

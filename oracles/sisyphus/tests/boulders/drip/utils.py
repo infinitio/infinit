@@ -220,6 +220,14 @@ class DummyEmailer:
       self.__emails.append(
         (recipient['email'], recipient['vars'], template))
 
+def user_register(meta, email):
+  user = meta.user_register(email, '*' * 64, 'Foo Bar')
+  # FIXME: internal code see users as from-the-database objects, hence
+  # _id. Remove when meta uses rich objects.
+  user['_id'] = user['id']
+  user.setdefault('devices', [])
+  return user
+
 def transaction_create(meta, sender, recipient, files = ['foobar'],
                        initialize = True, size = 42):
   tid = meta.transaction_create(

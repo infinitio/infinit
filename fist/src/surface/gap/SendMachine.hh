@@ -56,10 +56,18 @@ namespace surface
     | FSM |
     `----*/
     protected:
+
+      /// Create an empty transaction, to be initialized later.
       virtual
       void
       _create_transaction() = 0;
       reactor::fsm::State& _create_transaction_state;
+
+      /// Initialize an empty transaction.
+      virtual
+      void
+      _initialize_transaction() = 0;
+      reactor::fsm::State& _initialize_transaction_state;
 
     /*-----------------.
     | Transaction data |

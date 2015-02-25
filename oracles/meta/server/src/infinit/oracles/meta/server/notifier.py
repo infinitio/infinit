@@ -58,26 +58,35 @@ class Notifier:
       # Fetch devices
       if recipient_ids is not None:
         assert isinstance(recipient_ids, set)
-        critera = {'owner': {'$in': list(recipient_ids)}}
+        critera = {'_id': {'$in': list(recipient_ids)}}
       else:
         assert isinstance(device_ids, set)
         critera = {
-          'id': {'$in': [str(device_id) for device_id in device_ids]}
+          'devices.id': {'$in': [str(device_id) for device_id in device_ids]}
         }
       devices_trophonius = []
-      for device in self.database.devices.find(
+      for usr in self.database.users.find(
           critera,
-          fields = ['id', 'owner', 'trophonius', 'push_token'],
+          fields = {
+            'avatar': False, 'small_avatar': False, 'identity': False,
+            'devices.passport': False
+          }
       ):
-        tropho = device.get('trophonius')
-        push = device.get('push_token')
-        if tropho is not None or push is not None:
-          devices_trophonius.append((
-            device['id'],
-            device['owner'],
-            tropho,
-            push,
-          ))
+        if 'devices' not in usr:
+          continue
+        devices = usr['devices']
+        if recipient_ids is None:
+          devices = filter(lambda x: x['id'] in device_ids, devices)
+        for device in devices:
+          tropho = device.get('trophonius')
+          push = device.get('push_token')
+          if tropho is not None or push is not None:
+            devices_trophonius.append((
+              device['id'],
+              usr['_id'],
+              tropho,
+              push,
+            ))
       elle.log.debug('targets: %s' % devices_trophonius)
       # Fetch trophoniuses
       trophonius = dict(
@@ -132,17 +141,6 @@ class Notifier:
                        (tropho['_id'], e))
         finally:
           s.close()
-        if push is not None and push not in used_push_tokens:
-          try:
-            pl = self.ios_notification(notification_type,
-                                       device,
-                                       owner,
-                                       message)
-            if pl is not None:
-              used_push_tokens.add(push)
-              self.__apns.gateway_server.send_notification(push, pl)
-          except Exception as e:
-            elle.log.err('unable to push notification to %s: %s' % (device, e))
 
   def ios_notification(self, notification_type, device, owner, message):
     if notification_type is not PEER_TRANSACTION:
@@ -159,7 +157,6 @@ class Notifier:
     elif str(owner) == recipient_id:
       if status not in [transaction_status.INITIALIZED]:
         return None
-      content_available = True
       badge = 1
       sound = 'default'
     else:
@@ -175,20 +172,17 @@ class Notifier:
       files = 'files'
     if status is transaction_status.INITIALIZED: # Only sent to recipient
       if to_self:
-        alert = "You'd like to send %s %s" % (message['files_count'], files)
+        alert = "Accept transfer from another device"
       else:
-        alert = "%s wants to send %s %s" % \
-          (message['sender_fullname'], message['files_count'], files)
+        alert = "Accept transfer from %s" % message['sender_fullname']
     elif status is transaction_status.REJECTED: # Only sent to sender
-      if to_self:
-        alert = 'You declined the transfer'
-      else:
-        alert = '%s declined the transfer' % message['recipient_fullname']
+      if not to_self:
+        alert = 'Canceled by %s' % message['recipient_fullname']
     elif status is transaction_status.FINISHED:
       if to_self:
-        alert = 'Your other device received the %s!' % files
+        alert = 'Transfer received'
       else:
-        alert = '%s received your %s!' % (message['recipient_fullname'], files)
+        alert = 'Transfer received by %s' % message['recipient_fullname']
     if alert is None:
       return None
     return apns.Payload(alert = alert,

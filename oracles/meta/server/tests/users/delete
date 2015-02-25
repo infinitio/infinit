@@ -25,7 +25,6 @@ with Meta(force_admin = True) as meta:
   u3 = User(meta, 'another@infinit.io')
   u3.login()
   assert meta.database.sessions.count() == 3
-  assert meta.database.devices.find({'owner': ObjectId(u1.id)}).count() == 1
 
   # Make a transaction.
   txn, res = u1.sendfile(recipient_id = u2.id)
@@ -82,9 +81,6 @@ with Meta(force_admin = True) as meta:
   assert len(deleted_user['favorites']) == 0
   assert len(deleted_user['devices']) == 0
   assert deleted_user['register_status'] == 'deleted'
-
-  # Check user's device is not in devices collection.
-  assert meta.database.devices.find({'owner': ObjectId(u1.id)}).count() == 0
 
   # Check other users have been cleaned.
   assert len(u2.favorites) == 1

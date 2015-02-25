@@ -106,11 +106,11 @@ with Meta() as meta:
   assert oses['unknown']['total'] == 1
 
   # Check if null entries are handled well.
-  entry = meta.database.devices.find_one()
-  entry.pop('_id')
+  usr = meta.database.users.find_one()
+  entry = usr['devices'][0]
   entry['id'] = str(bob_device2.device_id)
   entry.pop('os')
-  meta.database.devices.insert(entry)
+  meta.database.users.update({'_id': usr['_id']}, {'$push': {'devices': entry}})
 
   oses = meta.get('trophoniuses')['oses']
   import sys

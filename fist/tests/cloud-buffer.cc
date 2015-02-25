@@ -33,7 +33,7 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
   state.login(email, password);
   auto& state_transaction = state.transaction_peer_create(
     recipient_email,
-    std::vector<std::string>{transfered.path().c_str()},
+    std::vector<std::string>{transfered.path().string().c_str()},
     "message");
   reactor::Barrier transferring, cloud_buffered;
   state_transaction.status_changed().connect(

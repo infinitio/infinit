@@ -23,6 +23,7 @@ def configure(cxx_toolkit = None,
               boost = None,
               python3 = None,
               python_version = None,
+              php = None,
               production_build = False,
               enable_debug = True,
       	      qt = None,
@@ -49,7 +50,10 @@ def configure(cxx_toolkit = None,
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
 
-  prefer_static = cxx_toolkit.os in [drake.os.windows, drake.os.ios, drake.os.android]
+  if cxx_toolkit.os in [drake.os.macos]:
+    cxx_config.use_local_libcxx = True
+
+  prefer_static = cxx_toolkit.os in [drake.os.windows, drake.os.ios]
   def library(*args, **kwargs):
     lib_dyn, lib_static = (
       Library(*args, **kwargs)
@@ -107,6 +111,25 @@ def configure(cxx_toolkit = None,
   cxx_config.warnings.delete_non_virtual_dtor = \
     drake.cxx.Config.Warnings.Error
 
+  ## --- ##
+  ## PHP ##
+  ## --- ##
+
+  if php is False:
+    php = None
+  else:
+    if php is True or php is None:
+      path = drake.Path('php')
+    else:
+      path = php
+    try:
+      subprocess.check_output([str(path), '--version'])
+    except:
+      if php is not None:
+        raise Exception('unable to find PHP interpreter (%s)' % path)
+    else:
+      php = path
+
   ## ------- ##
   ## Version ##
   ## ------- ##
@@ -149,7 +172,7 @@ def configure(cxx_toolkit = None,
     if isinstance(lib, drake.cxx.StaticLib):
       return lib
     else:
-      return drake.copy(lib, where, True)
+      return drake.copy(lib, where, True, set_local_libcxx(cxx_toolkit))
 
   elle = drake.include('elle',
                        archs = archs,
@@ -468,6 +491,7 @@ def configure(cxx_toolkit = None,
     papier_python = papier_python_lib,
     boost = boost,
     python3 = python3,
+    php = php,
     prefix = prefix,
     cxx_toolkit = cxx_toolkit,
     cxx_config = cxx_config,

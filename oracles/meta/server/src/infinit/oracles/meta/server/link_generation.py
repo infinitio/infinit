@@ -145,6 +145,20 @@ class Mixin:
       else:
         return link['aws_credentials']
 
+  @api('/link_empty', method = 'POST')
+  @require_logged_in
+  def link_create_empty(self):
+    link_id = self.database.links.insert({})
+    return self.success({
+      'created_link_id': link_id,
+      })
+
+  @api('/link/<link_id>', method = 'PUT')
+  @require_logged_in
+  def link_initialize(self, link_id: bson.ObjectId, files, name, message):
+    return self.link_generate(files, name, message, self.user,
+                              self.current_device, link_id)
+
   @api('/link', method = 'POST')
   @require_logged_in
   def link_generate_api(self, files, name, message):
@@ -152,7 +166,7 @@ class Mixin:
                               user = self.user,
                               device = self.current_device)
 
-  def link_generate(self, files, name, message, user, device):
+  def link_generate(self, files, name, message, user, device, link_id = None):
     """
     Generate a link from a list of files and a message.
 
@@ -193,7 +207,13 @@ class Mixin:
         'status': transaction_status.CREATED, # Use same enum as transactions.
       }
 
-      link_id = self.database.links.save(link)
+      if link_id is not None:
+        self.database.links.update(
+            {'_id': link_id},
+            {'$set': link})
+      else:
+        link_id = self.database.links.save(link)
+      link['_id'] = link_id
       self.__update_transaction_stats(
         user,
         counts = ['sent_link', 'sent'],

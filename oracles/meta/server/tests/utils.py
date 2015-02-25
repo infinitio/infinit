@@ -58,7 +58,7 @@ class Client:
 
   def __init__(self, meta):
     self.__cookies = None
-    self.__meta_port = meta._Meta__server.port
+    self.__meta_port = meta.port
     self.user_agent = 'MetaClient/' + version.version
 
   def __get_cookies(self, headers):
@@ -139,13 +139,15 @@ class Trophonius(Client):
           representation = representation[:-1] # remove \n
           d = json.loads(representation)
           if d['notification']['notification_type'] == 14:
-            self.socket.listen(1)
+            # OS X requires a larger backlog for the tests to function.
+            self.socket.listen(5)
             self.poll()
             return
           d['notification'].pop('timestamp')
           for user in self.trophonius.users_on_device[UUID(d['device_id'])]:
             user.notifications.append(Notification(d['notification']))
-          self.socket.listen(1)
+          # OS X requires a larger backlog for the tests to function.
+          self.socket.listen(5)
         except:
           return
 
@@ -316,6 +318,14 @@ class Meta:
     return self
 
   @property
+  def meta(self):
+    return self.__meta
+
+  @property
+  def port(self):
+    return self.__server.port
+
+  @property
   def mailer(self):
     return self.__meta.mailer
 
@@ -419,7 +429,7 @@ class User(Client):
     self.email = email is not None and email or random_email() + '@infinit.io'
     self.password = meta.create_user(self.email,
                                      **kwargs)
-    self.id = meta.get('user/%s/view' % self.email)['_id']
+    self.id = meta.get('users/%s' % self.email)['id']
     self.device_id = uuid4()
     self.notifications = []
 
@@ -434,7 +444,6 @@ class User(Client):
   @property
   def data(self):
     res = self.get('user/self')
-    assert res['success']
     return res
 
   def login(self, device_id = None, trophonius = None, **kw):
@@ -495,27 +504,27 @@ class User(Client):
     assert res['identity'] == me['identity']
     assert res['handle'] == me['handle']
     assert res['email'] == me['email']
-    assert res['_id'] == me['_id']
     assert res['id'] == me['id']
     assert res['fullname'] == me['fullname']
-    assert res['favorites'] == me['favorites']
-    assert res['token_generation_key'] == me['token_generation_key']
 
   def compare_device_response(self, res):
     device = self.device
     assert res['name'] == device['name']
     assert res['id'] == device['id']
-    assert res['_id'] == device['_id']
-    assert res['owner'] == device['owner']
-    assert res['passport'] == device['passport']
+    passport = res.get('passport', None)
+    if passport is not None:
+      assert passport == device['passport']
 
   @property
   def swaggers(self):
-    return self.get('user/swaggers')['swaggers']
+    return [s['id'] for s in self.full_swaggers]
 
   @property
   def full_swaggers(self):
-    return self.get('user/full_swaggers')['swaggers']
+    swaggers = self.get('user/swaggers')['swaggers']
+    for swagger in swaggers:
+      assertIn(swagger['register_status'], ['ok', 'deleted'])
+    return swaggers
 
   @property
   def favorites(self):
@@ -525,7 +534,6 @@ class User(Client):
   def logged_in(self):
     try:
       res = self.data
-      assert res['success']
       assert str(self.device_id) in res['devices']
       return True
     except HTTPException as e:
@@ -644,3 +652,12 @@ class User(Client):
                 'progress': 1,
                 'status': status,
               })
+
+def assertEq(a, b):
+  if a != b:
+    raise Exception('%r != %r' % (a, b))
+
+
+def assertIn(e, c):
+  if e not in c:
+    raise Exception('%r not in %r' % (e, c))

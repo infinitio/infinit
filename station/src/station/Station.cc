@@ -24,7 +24,7 @@ namespace station
     _authority(authority),
     _passport(passport),
     _name(name),
-    _server(),
+    _server(true),
     _server_thread(*reactor::Scheduler::scheduler(),
                    elle::sprintf("%s server thread", *this),
                    [this] { this->_serve(); })

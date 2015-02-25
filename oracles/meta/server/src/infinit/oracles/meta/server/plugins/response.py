@@ -3,22 +3,7 @@ import bson
 import calendar
 import datetime
 import uuid
-
-
-def jsonify(value):
-  import collections
-  if isinstance(value, (bson.ObjectId, uuid.UUID)):
-    return str(value)
-  elif isinstance(value, dict):
-    return dict((key, jsonify(value)) for key, value in value.items())
-  elif isinstance(value, collections.Iterable) \
-       and not isinstance(value, str):
-    return value.__class__(jsonify(sub) for sub in value)
-  elif isinstance(value, datetime.datetime):
-    return calendar.timegm(value.timetuple())
-  else:
-    return value
-
+from infinit.oracles.meta.server.plugins import jsongo
 
 class Response(Exception):
 
@@ -52,5 +37,5 @@ class Plugin(object):
         return f(*args, **kwargs)
       except Response as response:
         bottle.response.status = response.status
-        return response.body
+        return jsongo.jsonify_dict(response.body)
     return wrapper

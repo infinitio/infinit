@@ -3,6 +3,8 @@ import drake.cxx
 import drake.cxx.boost
 import drake.valgrind
 
+from itertools import chain
+
 build = None
 check = None
 install = None
@@ -12,9 +14,11 @@ lib = None
 def configure(elle,
               transaction_lib,
               transaction_config,
-              server_python,
+              meta,
+              mongobox,
               boost = None,
               python3 = None,
+              php = None,
               prefix = drake.Path('/usr/local'),
               cxx_toolkit = None,
               cxx_config = None,
@@ -38,7 +42,7 @@ def configure(elle,
   install = drake.Rule('install')
 
   template_context = drake.templating.Context(
-    sources = server_python,
+    sources = meta.nodes,
     pythonpath = ('../server/lib/python',))
 
   def boost_config(name):
@@ -165,3 +169,26 @@ def configure(elle,
   runner.reporting = drake.Runner.Reporting.on_failure
   tests << test_bin
   check << runner.status
+
+  ## --- ##
+  ## PHP ##
+  ## --- ##
+
+  if php is not None:
+    php = drake.node('MetaClient.php')
+    php_requests = drake.node('Requests/library/Requests.php')
+
+    test = drake.node('tests/php')
+    test.dependency_add(php)
+    test.dependency_add(php_requests)
+    tests << test
+
+    runner = drake.Runner(
+      test,
+      args = [php_requests.path(), php.path()],
+      env = {
+        'PYTHONPATH': ':'.join(
+          str(p) for p in chain(meta.pythonpath, mongobox.pythonpath)),
+      })
+    runner.reporting = drake.Runner.Reporting.on_failure
+    check << runner.status
