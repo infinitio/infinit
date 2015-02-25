@@ -223,7 +223,7 @@ ELLE_TEST_SCHEDULED(connection)
           {
             ELLE_DEBUG("read 1024 bytes from file 0 with an offset of 0");
             elle::Buffer buffer(
-              key.decrypt<elle::Buffer>(rpcs.encrypted_read(0, 0, 1024)));
+              key.legacy_decrypt_buffer(rpcs.encrypted_read(0, 0, 1024)));
             BOOST_CHECK_EQUAL(buffer.size(), 0);
           }
       }
@@ -232,17 +232,17 @@ ELLE_TEST_SCHEDULED(connection)
         BOOST_CHECK_EQUAL(rpcs.path(1), "content");
         BOOST_CHECK_EQUAL(rpcs.file_size(1), 8);
         {
-          auto buffer = key.decrypt<elle::Buffer>(rpcs.encrypted_read(1, 0, 1024));
+          auto buffer = key.legacy_decrypt_buffer(rpcs.encrypted_read(1, 0, 1024));
           BOOST_CHECK_EQUAL(buffer.size(), 8);
           BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("content\n"));
         }
         {
-          auto buffer = key.decrypt<elle::Buffer>(rpcs.encrypted_read(1, 2, 2));
+          auto buffer = key.legacy_decrypt_buffer(rpcs.encrypted_read(1, 2, 2));
           BOOST_CHECK_EQUAL(buffer.size(), 2);
           BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("nt"));
         }
         {
-          auto buffer = key.decrypt<elle::Buffer>(rpcs.encrypted_read(1, 7, 3));
+          auto buffer = key.legacy_decrypt_buffer(rpcs.encrypted_read(1, 7, 3));
           BOOST_CHECK_EQUAL(buffer.size(), 1);
           BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("\n"));
         }
@@ -252,22 +252,22 @@ ELLE_TEST_SCHEDULED(connection)
         if (rpcs.path(2) == "dir" SEPARATOR "2")
         {
           BOOST_CHECK_EQUAL(rpcs.file_size(2), 1);
-          BOOST_CHECK_EQUAL(key.decrypt<elle::Buffer>(rpcs.encrypted_read(2, 0, 2)), elle::ConstWeakBuffer("2"));
+          BOOST_CHECK_EQUAL(key.legacy_decrypt_buffer(rpcs.encrypted_read(2, 0, 2)), elle::ConstWeakBuffer("2"));
         }
         else if (rpcs.path(2) == "dir" SEPARATOR "1")
         {
           BOOST_CHECK_EQUAL(rpcs.file_size(2), 1);
-          BOOST_CHECK_EQUAL(key.decrypt<elle::Buffer>(rpcs.encrypted_read(2, 0, 2)), elle::ConstWeakBuffer("1"));
+          BOOST_CHECK_EQUAL(key.legacy_decrypt_buffer(rpcs.encrypted_read(2, 0, 2)), elle::ConstWeakBuffer("1"));
         }
         else if (rpcs.path(3) == "dir" SEPARATOR "2")
         {
           BOOST_CHECK_EQUAL(rpcs.file_size(3), 1);
-          BOOST_CHECK_EQUAL(key.decrypt<elle::Buffer>(rpcs.encrypted_read(3, 0, 2)), elle::ConstWeakBuffer("2"));
+          BOOST_CHECK_EQUAL(key.legacy_decrypt_buffer(rpcs.encrypted_read(3, 0, 2)), elle::ConstWeakBuffer("2"));
         }
         else if (rpcs.path(3) == "dir" SEPARATOR "1")
         {
           BOOST_CHECK_EQUAL(rpcs.file_size(3), 1);
-          BOOST_CHECK_EQUAL(key.decrypt<elle::Buffer>(rpcs.encrypted_read(3, 0, 2)), elle::ConstWeakBuffer("1"));
+          BOOST_CHECK_EQUAL(key.legacy_decrypt_buffer(rpcs.encrypted_read(3, 0, 2)), elle::ConstWeakBuffer("1"));
         }
         else
         {
@@ -280,7 +280,7 @@ ELLE_TEST_SCHEDULED(connection)
         BOOST_CHECK_EQUAL(rpcs.path(4), "filename with whitespace");
         BOOST_CHECK_EQUAL(rpcs.file_size(4), 6);
         {
-          auto buffer = key.decrypt<elle::Buffer>(rpcs.encrypted_read(4, 0, 1024));
+          auto buffer = key.legacy_decrypt_buffer(rpcs.encrypted_read(4, 0, 1024));
           BOOST_CHECK_EQUAL(buffer.size(), 6);
           BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("stuff\n"));
         }
@@ -290,7 +290,7 @@ ELLE_TEST_SCHEDULED(connection)
         BOOST_CHECK_EQUAL(rpcs.path(5), "é.lol");
         BOOST_CHECK_EQUAL(rpcs.file_size(5), 12);
         {
-          auto buffer = key.decrypt<elle::Buffer>(rpcs.encrypted_read(5, 0, 1024));
+          auto buffer = key.legacy_decrypt_buffer(rpcs.encrypted_read(5, 0, 1024));
           BOOST_CHECK_EQUAL(buffer.size(), 12);
           BOOST_CHECK_EQUAL(buffer, elle::ConstWeakBuffer("stuff again\n"));
         }
