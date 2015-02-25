@@ -129,9 +129,6 @@ namespace surface
       // Transfer end.
       this->_machine.transition_add(
         this->_transfer_state,
-        this->_finish_state);
-      this->_machine.transition_add(
-        this->_transfer_state,
         this->_end_state,
         reactor::Waitables{&this->finished()},
         true);

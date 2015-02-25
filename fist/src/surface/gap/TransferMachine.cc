@@ -433,10 +433,7 @@ namespace surface
     bool
     Transferer::finished() const
     {
-      if (auto owner = dynamic_cast<PeerSendMachine*>(&this->_owner))
-        return owner->frete().finished();
-      else
-        return false; // FIXME
+      return this->_owner.completed();
     }
 
     /*-------.

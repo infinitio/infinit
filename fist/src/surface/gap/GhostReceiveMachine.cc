@@ -35,6 +35,7 @@ namespace surface
           std::bind(&GhostReceiveMachine::_wait_for_cloud_upload, this)))
       , _snapshot_path(this->transaction().snapshots_directory()
                         / "ghostreceive.snapshot")
+      , _completed(false)
     {
       this->_machine.transition_add(this->_wait_for_cloud_upload_state,
                                     this->_wait_for_decision_state,
@@ -321,6 +322,13 @@ namespace surface
           }
         }
       }
+      this->_completed = true;
+    }
+
+    bool
+    GhostReceiveMachine::completed() const
+    {
+      return this->_completed;
     }
 
     void

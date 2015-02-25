@@ -272,6 +272,12 @@ namespace surface
       }
     }
 
+    bool
+    PeerSendMachine::completed() const
+    {
+      return this->_frete ? this->_frete->finished() : false;
+    }
+
     /*---------------.
     | Implementation |
     `---------------*/

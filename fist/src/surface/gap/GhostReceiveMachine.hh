@@ -42,6 +42,9 @@ namespace surface
       void
       transaction_status_update(
         infinit::oracles::Transaction::Status status) override;
+      virtual
+      bool
+      completed() const override;
 
     protected:
       std::unique_ptr<infinit::oracles::meta::CloudCredentials>
@@ -62,6 +65,7 @@ namespace surface
       ELLE_ATTRIBUTE_R(std::unique_ptr<reactor::http::Request>, request);
       ELLE_ATTRIBUTE_R(int64_t, previous_progress);
       ELLE_ATTRIBUTE_R(boost::filesystem::path, path);
+      ELLE_ATTRIBUTE(bool, completed);
     };
   }
 }

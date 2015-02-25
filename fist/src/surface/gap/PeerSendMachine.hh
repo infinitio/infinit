@@ -65,6 +65,9 @@ namespace surface
     | Attributes |
     `-----------*/
     public:
+      virtual
+      bool
+      completed() const override;
       ELLE_ATTRIBUTE_RX(reactor::Barrier, accepted);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, rejected);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, ghost_uploaded);

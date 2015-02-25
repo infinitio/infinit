@@ -217,6 +217,9 @@ namespace surface
       reactor::fsm::State& _transfer_state;
 
     public:
+      virtual
+      bool
+      completed() const = 0;
       ELLE_ATTRIBUTE_RX(reactor::Barrier, finished);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, rejected);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, canceled);

@@ -151,6 +151,12 @@ namespace surface
         // nothing
       }
 
+      bool
+      ReceiveMachine::completed() const
+      {
+        return true;
+      }
+
       /*--------.
       | Metrics |
       `--------*/

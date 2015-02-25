@@ -23,6 +23,7 @@ namespace surface
       , Super(transaction, id, data)
       , _message(data->message)
       , _data(data)
+      , _completed(false)
     {
       if (run_to_fail)
         this->_run(this->_fail_state);
@@ -43,9 +44,14 @@ namespace surface
       , _message(message)
       , _data(data)
       , _credentials()
+      , _completed(false)
     {
-      this->_machine.transition_add(this->_initialize_transaction_state,
-                                    this->_transfer_state);
+      this->_machine.transition_add(
+        this->_initialize_transaction_state,
+        this->_transfer_state);
+      this->_machine.transition_add(
+        this->_transfer_state,
+        this->_finish_state);
       if (data->id.empty())
         // Transaction has just been created locally.
         this->_run(this->_create_transaction_state);
@@ -209,6 +215,12 @@ namespace surface
         this->_credentials->clone());
     }
 
+    bool
+    LinkSendMachine::completed() const
+    {
+      return this->_completed;
+    }
+
     void LinkSendMachine::_create_transaction()
     {
       auto link_id = this->state().meta().create_link();
@@ -265,6 +277,7 @@ namespace surface
     {
       this->gap_status(gap_transaction_transferring);
       this->_plain_upload();
+      this->_completed = true;
     }
 
     void

@@ -40,7 +40,6 @@ namespace surface
       ~LinkSendMachine();
       ELLE_ATTRIBUTE_R(std::string, message);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
-
     /*---------------.
     | Implementation |
     `---------------*/
@@ -52,6 +51,9 @@ namespace surface
       virtual
       std::unique_ptr<infinit::oracles::meta::CloudCredentials>
       _cloud_credentials(bool regenerate) override;
+      virtual
+      bool
+      completed() const override;
     protected:
       virtual
       void
@@ -68,7 +70,9 @@ namespace surface
     private:
       void
       _run_from_snapshot();
-      ELLE_ATTRIBUTE(std::unique_ptr<infinit::oracles::meta::CloudCredentials>, credentials);
+      ELLE_ATTRIBUTE(std::unique_ptr<infinit::oracles::meta::CloudCredentials>,
+                     credentials);
+      ELLE_ATTRIBUTE(bool, completed);
     };
   }
 }

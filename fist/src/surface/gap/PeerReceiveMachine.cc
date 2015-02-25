@@ -88,6 +88,7 @@ namespace surface
       , _frete_snapshot_path(this->transaction().snapshots_directory()
                              / "frete.snapshot")
       , _snapshot(nullptr)
+      , _completed(false)
       , _nothing_in_the_cloud(false)
     {
       try
@@ -270,18 +271,12 @@ namespace surface
       elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
         scope.run_background(
-          elle::sprintf("download %s", this->id()),
-          [&frete, this] ()
-          {
-            this->get(frete);
-          });
-        scope.run_background(
           elle::sprintf("run rpcs %s", this->id()),
           [&frete] ()
           {
             frete.run();
           });
-        scope.wait();
+        this->get(frete);
       };
     }
 
@@ -710,8 +705,15 @@ namespace surface
       if (peer_version >= elle::Version(0, 8, 7))
       {
         source.finish();
+        this->_completed = true;
       }
       clean_snpashot();
+    }
+
+    bool
+    PeerReceiveMachine::completed() const
+    {
+      return this->_completed;
     }
 
     PeerReceiveMachine::FileSize
