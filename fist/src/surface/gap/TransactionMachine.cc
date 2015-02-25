@@ -263,24 +263,24 @@ namespace surface
     TransactionMachine::_finish()
     {
       ELLE_TRACE_SCOPE("%s: finish", *this);
-      this->gap_status(gap_transaction_finished);
       this->_finalize(infinit::oracles::Transaction::Status::finished);
+      this->gap_status(gap_transaction_finished);
     }
 
     void
     TransactionMachine::_reject()
     {
       ELLE_TRACE_SCOPE("%s: reject", *this);
-      this->gap_status(gap_transaction_rejected);
       this->_finalize(infinit::oracles::Transaction::Status::rejected);
+      this->gap_status(gap_transaction_rejected);
     }
 
     void
     TransactionMachine::_cancel()
     {
       ELLE_TRACE_SCOPE("%s: cancel", *this);
-      this->gap_status(gap_transaction_canceled);
       this->_finalize(infinit::oracles::Transaction::Status::canceled);
+      this->gap_status(gap_transaction_canceled);
     }
 
     void
@@ -308,8 +308,8 @@ namespace surface
       {
         ELLE_ERR("unable to report transaction failure: %s", e);
       }
-      this->gap_status(gap_transaction_failed);
       this->_finalize(infinit::oracles::Transaction::Status::failed);
+      this->gap_status(gap_transaction_failed);
     }
 
     void
