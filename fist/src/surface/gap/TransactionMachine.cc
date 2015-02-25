@@ -245,6 +245,31 @@ namespace surface
     TransactionMachine::_end()
     {
       ELLE_TRACE_SCOPE("%s: end", *this);
+      auto status = this->data()->status;
+      switch (status)
+      {
+        case infinit::oracles::Transaction::Status::finished:
+        case infinit::oracles::Transaction::Status::ghost_uploaded:
+          this->gap_status(gap_transaction_finished);
+          break;
+        case infinit::oracles::Transaction::Status::rejected:
+          this->gap_status(gap_transaction_rejected);
+          break;
+        case infinit::oracles::Transaction::Status::canceled:
+          this->gap_status(gap_transaction_canceled);
+          break;
+        case infinit::oracles::Transaction::Status::failed:
+          this->gap_status(gap_transaction_failed);
+          break;
+        case infinit::oracles::Transaction::Status::none:
+        case infinit::oracles::Transaction::Status::initialized:
+        case infinit::oracles::Transaction::Status::accepted:
+        case infinit::oracles::Transaction::Status::deleted:
+        case infinit::oracles::Transaction::Status::cloud_buffered:
+        case infinit::oracles::Transaction::Status::started:
+          ELLE_ABORT("%s: impossible final status: %s", *this, status);
+          break;
+      }
       this->_transaction._over = true;
       this->cleanup();
       boost::system::error_code error;
@@ -266,7 +291,6 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: finish", *this);
       this->_finalize(status);
-      this->gap_status(gap_transaction_finished);
     }
 
     void
@@ -274,7 +298,6 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: reject", *this);
       this->_finalize(infinit::oracles::Transaction::Status::rejected);
-      this->gap_status(gap_transaction_rejected);
     }
 
     void
@@ -282,7 +305,6 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: cancel", *this);
       this->_finalize(infinit::oracles::Transaction::Status::canceled);
-      this->gap_status(gap_transaction_canceled);
     }
 
     void
@@ -311,7 +333,6 @@ namespace surface
         ELLE_ERR("unable to report transaction failure: %s", e);
       }
       this->_finalize(infinit::oracles::Transaction::Status::failed);
-      this->gap_status(gap_transaction_failed);
     }
 
     void
