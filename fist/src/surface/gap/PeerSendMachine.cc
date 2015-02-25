@@ -504,12 +504,9 @@ namespace surface
     void
     PeerSendMachine::_finish()
     {
-      ELLE_TRACE_SCOPE("%s: finish", *this);
-      this->gap_status(gap_transaction_finished);
-      if (transaction().data()->is_ghost)
-        this->_finalize(infinit::oracles::Transaction::Status::ghost_uploaded);
-      else
-        this->_finalize(infinit::oracles::Transaction::Status::finished);
+      this->_finish(transaction().data()->is_ghost
+                    ? infinit::oracles::Transaction::Status::ghost_uploaded
+                    : infinit::oracles::Transaction::Status::finished);
     }
 
     void

@@ -183,6 +183,8 @@ namespace surface
       void
       _finish();
       void
+      _finish(infinit::oracles::Transaction::Status status);
+      void
       _reject();
       virtual
       void

@@ -85,6 +85,7 @@ namespace surface
       virtual
       void
       _finish() override;
+      using TransactionMachine::_finish;
 
     public:
       virtual

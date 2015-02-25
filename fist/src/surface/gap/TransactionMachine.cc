@@ -109,9 +109,8 @@ namespace surface
       , _fail_state(
         this->_machine.state_make(
           "fail", std::bind(&TransactionMachine::_fail, this)))
-      , _finish_state(
-        this->_machine.state_make(
-          "finish", std::bind(&TransactionMachine::_finish, this)))
+      , _finish_state
+        (this->_machine.state_make("finish", [this] {this->_finish(); }))
       , _reject_state(
         this->_machine.state_make(
           "reject", std::bind(&TransactionMachine::_reject, this)))
@@ -262,8 +261,14 @@ namespace surface
     void
     TransactionMachine::_finish()
     {
+      this->_finish(infinit::oracles::Transaction::Status::finished);
+    }
+
+    void
+    TransactionMachine::_finish(infinit::oracles::Transaction::Status status)
+    {
       ELLE_TRACE_SCOPE("%s: finish", *this);
-      this->_finalize(infinit::oracles::Transaction::Status::finished);
+      this->_finalize(status);
       this->gap_status(gap_transaction_finished);
     }
 
