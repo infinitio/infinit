@@ -35,7 +35,7 @@ namespace tests
     typedef std::unordered_set<Device::Id> Devices;
     Devices devices;
     Devices connected_devices;
-    typedef std::vector<infinit::oracles::LinkTransaction> Links;
+    typedef std::unordered_map<std::string, infinit::oracles::LinkTransaction> Links;
   public:
     Links links;
     Links new_links;
@@ -54,6 +54,9 @@ namespace tests
 
     std::string
     swaggers_json() const;
+
+    bool
+    ghost() const;
 
     void
     print(std::ostream& stream) const override;

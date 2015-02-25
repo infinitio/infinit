@@ -55,9 +55,9 @@ ELLE_TEST_SCHEDULED(links)
       break;
     reactor::yield();
   }
-  ELLE_ASSERT_EQ(sender.user.links.begin()->status, oracles::Transaction::Status::finished);
+  ELLE_ASSERT_EQ(sender.user.links.begin()->second.status, oracles::Transaction::Status::finished);
 
-  sender.user.links.begin()->status =  oracles::Transaction::Status::canceled;
+  sender.user.links.begin()->second.status =  oracles::Transaction::Status::canceled;
   // Disconnect trophonius.
   synchronize(server, sender.state);
   // At this stage, state should have resynchronization
@@ -89,7 +89,7 @@ ELLE_TEST_SCHEDULED(links_another_device)
   t.sender_id = boost::lexical_cast<std::string>(sender.user.id());
   t.sender_device_id = boost::lexical_cast<std::string>(sender.device_id) + "other";
   t.status = infinit::oracles::Transaction::Status::initialized;
-  sender.user.links.push_back(t);
+  sender.user.links[t.id] = t;
 
   // Disconnect trophonius.
   synchronize(server, sender.state);
@@ -97,9 +97,7 @@ ELLE_TEST_SCHEDULED(links_another_device)
   ELLE_ASSERT_EQ(sender.state.transactions().begin()->second->data()->status,
                  oracles::Transaction::Status::initialized);
 
-  t.status = infinit::oracles::Transaction::Status::finished;
-  sender.user.links.clear();
-  sender.user.links.push_back(t);
+  sender.user.links[t.id].status = infinit::oracles::Transaction::Status::finished;
 
   synchronize(server, sender.state);
 

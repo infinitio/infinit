@@ -28,7 +28,7 @@ namespace tests
     // I wish I could use elle::serialization::SerializerOut.
     std::string str = "[";
     for (auto& link: this->links)
-      str += link_representation(link) + ", ";
+      str += link_representation(link.second) + ", ";
 
     if (!this->links.empty())
       str = str.substr(0, str.length() - 2);
@@ -91,9 +91,15 @@ namespace tests
       this->email(),
       this->devices_json(),
       this->connected_devices.empty() ? "false" : "true",
-      this->_keys ? "ok" : "ghost",
+      !this->ghost() ? "ok" : "ghost",
       this->id());
     return res;
+  }
+
+  bool
+  User::ghost() const
+  {
+    return !this->_keys;
   }
 
   std::string

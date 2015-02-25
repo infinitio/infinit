@@ -48,7 +48,9 @@ class Mixin:
   def transaction(self, id, owner_id = None):
     assert isinstance(id, bson.ObjectId)
     transaction = self.database.transactions.find_one(id)
-    if transaction is None:
+
+    # handle both negative search and empty transaction
+    if not transaction:
       self.not_found('transaction %s doesn\'t exist' % id)
     if owner_id is not None:
       assert isinstance(owner_id, bson.ObjectId)
@@ -140,7 +142,8 @@ class Mixin:
       {'$set': diff},
       new = False,
     )
-    if transaction is None:
+    # handle both negative search and empty transaction
+    if not transaction:
       self.not_found({
         'reason': 'transaction %s not found' % id,
         'transaction_id': id,
@@ -184,10 +187,47 @@ class Mixin:
           'sender_id': True,
           'total_size': True,
         })
-      if transaction is None:
+      # handle both negative search and empty transaction
+      if not transaction:
         self.not_found()
       else:
         return transaction
+
+  @api('/transaction/create_empty', method='POST')
+  @require_logged_in
+  def transaction_create_empty(self):
+    """
+    Create an empty transaction, to be filled in a separate API call.
+    This allows for the client finer snapshot granularity, along with easier
+    cleanup of unfulfilled transactions.
+
+    Return: the newly created transaction id.
+    """
+
+    transaction_id = self.database.transactions.insert({})
+    return self.success({
+      'created_transaction_id': transaction_id,
+      })
+
+  @api('/transaction/<t_id>', method='PUT')
+  @require_logged_in
+  def transaction_fill(self,
+                       t_id: bson.ObjectId,
+                       id_or_email,
+                       files,
+                       files_count,
+                       total_size,
+                       is_directory,
+                       device_id, # Can be determine by session.
+                       message = ""):
+    return self.transaction_create(
+      self.user,
+      id_or_email,
+      files, files_count, total_size, is_directory,
+      device_id,
+      message,
+      t_id)
+
 
   @api('/transaction/create', method = 'POST')
   @require_logged_in
@@ -214,7 +254,8 @@ class Mixin:
                          total_size,
                          is_directory,
                          device_id, # Can be determine by session.
-                         message = ""):
+                         message = "",
+                         transaction_id = None):
     """
     Send a file to a specific user.
     If you pass an email and the user is not registered in infinit,
@@ -227,6 +268,8 @@ class Mixin:
     is_directory -- if the sent file is a directory.
     device_id -- the emiter device id.
     message -- an optional message.
+    transaction_id -- id if the transaction was previously created with
+    create_empty.
 
     Errors:
     Using an id that doesn't exist.
@@ -354,7 +397,13 @@ class Mixin:
               ] + files)
         }
 
-      transaction_id = self.database.transactions.insert(transaction)
+      if transaction_id is not None:
+        self.database.transactions.update(
+            {'_id': transaction_id},
+            {'$set': transaction})
+      else:
+        transaction_id = self.database.transactions.insert(transaction)
+      transaction['_id'] = transaction_id
       self.__update_transaction_stats(
         sender,
         counts = ['sent_peer', 'sent'],

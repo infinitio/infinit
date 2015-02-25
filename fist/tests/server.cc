@@ -265,7 +265,7 @@ namespace tests
       });
 
     this->register_route(
-      "/link",
+      "/link_empty",
       reactor::http::Method::POST,
       [&] (Server::Headers const&,
            Server::Cookies const& cookies,
@@ -273,20 +273,54 @@ namespace tests
            elle::Buffer const&)
       {
         auto& user = this->user(cookies);
-        auto device = this->device(cookies);
         infinit::oracles::LinkTransaction t;
-        t.click_count = 3;
         t.id = boost::lexical_cast<std::string>(boost::uuids::random_generator()());
-        t.ctime = 2173213;
-        t.sender_id = boost::lexical_cast<std::string>(user.id());
-        t.sender_device_id = boost::lexical_cast<std::string>(device.id());
-        t.status = infinit::oracles::Transaction::Status::initialized;
-        user.links.push_back(t);
+        auto id = t.id;
+        user.links[id] = t;
+
+      this->register_route(
+        elle::sprintf("/link/%s", id),
+        reactor::http::Method::PUT,
+        [&, id] (Server::Headers const&,
+             Server::Cookies const& cookies,
+             Server::Parameters const& parameters,
+             elle::Buffer const& body)
+        {
+          auto& user = this->user(cookies);
+          auto& t =  user.links[id];
+          auto device = this->device(cookies);
+          t.click_count = 3;
+          t.ctime = 2173213;
+          t.sender_id = boost::lexical_cast<std::string>(user.id());
+          t.sender_device_id = boost::lexical_cast<std::string>(device.id());
+          t.status = infinit::oracles::Transaction::Status::initialized;
+
+          auto res = elle::sprintf(
+            "{"
+            "  \"transaction\": %s,"
+            "  \"aws_credentials\": "
+            "  {"
+            "    \"protocol\": \"aws\","
+            "    \"access_key_id\": \"\","
+            "    \"bucket\": \"\","
+            "    \"expiration\": \"2016-01-12T09-37-42Z\","
+            "    \"folder\": \"%s\","
+            "    \"protocol\": \"aws\","
+            "    \"region\": \"us-east-1\","
+            "    \"secret_access_key\": \"\","
+            "    \"session_token\": \"\","
+            "    \"current_time\": \"2015-01-12T09-37-42Z\""
+            "  }"
+            "}",
+            User::link_representation(t),
+            id);
+          return res;
+        });
 
         this->register_route(
-          elle::sprintf("/link/%s", t.id),
+          elle::sprintf("/link/%s", id),
           reactor::http::Method::POST,
-          [&, t] (Server::Headers const&,
+          [&, id] (Server::Headers const&,
                   Server::Cookies const& cookies,
                   Server::Parameters const& parameters,
                   elle::Buffer const& body)
@@ -294,19 +328,18 @@ namespace tests
             elle::IOStream stream(body.istreambuf());
             elle::serialization::json::SerializerIn input(stream, false);
             int status;
-            input.serialize("status", status);
             auto& user = this->user(cookies);
-            for (auto& link: user.links)
-              if (link.id == t.id)
-                link.status =
-                  static_cast<infinit::oracles::Transaction::Status>(status);
+            auto& t =  user.links[id];
+            input.serialize("status", status);
+            t.status =
+              static_cast<infinit::oracles::Transaction::Status>(status);
             return "{\"success\": true}";
           });
 
         this->register_route(
-          elle::sprintf("/s3/%s/filename", t.id),
+          elle::sprintf("/s3/%s/filename", id),
           reactor::http::Method::POST,
-          [&, t] (Server::Headers const&,
+          [&, id] (Server::Headers const&,
                   Server::Cookies const&,
                   Server::Parameters const& parameters,
                   elle::Buffer const&)
@@ -332,9 +365,9 @@ namespace tests
           });
 
         this->register_route(
-          elle::sprintf("/s3/%s/filename", t.id),
+          elle::sprintf("/s3/%s/filename", id),
           reactor::http::Method::PUT,
-          [&, t] (Server::Headers const&,
+          [&, id] (Server::Headers const&,
                   Server::Cookies const&,
                   Server::Parameters const& parameters,
                   elle::Buffer const&)
@@ -351,7 +384,7 @@ namespace tests
           });
 
         this->register_route(
-          elle::sprintf("/s3/%s_data", t.id),
+          elle::sprintf("/s3/%s_data", id),
           reactor::http::Method::PUT,
           [] (Server::Headers const&,
               Server::Cookies const&,
@@ -362,7 +395,7 @@ namespace tests
           });
 
         this->register_route(
-          elle::sprintf("/s3/%s/000000000000_0000", t.id),
+          elle::sprintf("/s3/%s/000000000000_0000", id),
           reactor::http::Method::PUT,
           [this] (Server::Headers const&,
                   Server::Cookies const&,
@@ -374,85 +407,77 @@ namespace tests
 
         return elle::sprintf(
           "{"
-          "  \"transaction\": %s,"
-          "  \"aws_credentials\": "
-          "  {"
-          "    \"protocol\": \"aws\","
-          "    \"access_key_id\": \"\","
-          "    \"bucket\": \"\","
-          "    \"expiration\": \"2016-01-12T09-37-42Z\","
-          "    \"folder\": \"%s\","
-          "    \"protocol\": \"aws\","
-          "    \"region\": \"us-east-1\","
-          "    \"secret_access_key\": \"\","
-          "    \"session_token\": \"\","
-          "    \"current_time\": \"2015-01-12T09-37-42Z\""
-          "  }"
+          "  \"created_link_id\": \"%s\""
           "}",
-          User::link_representation(t),
-          t.id);
+          id);
       });
 
     this->register_route(
-      "/transaction/create",
+      "/transaction/create_empty",
       reactor::http::Method::POST,
       [&] (Server::Headers const&,
-           Server::Cookies const& cookies,
+           Server::Cookies const&,
            Server::Parameters const&,
-           elle::Buffer const& content)
+           elle::Buffer const&)
       {
-        auto& user = this->user(cookies);
-        auto device = this->device(cookies);
-        ELLE_TRACE_SCOPE("%s: create transaction", *this);
-        elle::IOStream stream(content.istreambuf());
-        elle::serialization::json::SerializerIn input(stream, false);
-        std::string recipient_email_or_id;
-        input.serialize("id_or_email", recipient_email_or_id);
-        ELLE_DEBUG("%s: recipient: %s", *this, recipient_email_or_id);
-        std::list<std::string> files;
-        input.serialize("files", files);
-
-        bool ghost = false;
-        auto& rec = [&] () -> User& {
-          if (recipient_email_or_id.find('@') != std::string::npos)
-          {
-            auto& users_by_email = this->_users.get<1>();
-            auto recipient = users_by_email.find(recipient_email_or_id);
-            ghost = recipient == users_by_email.end();
-            return ghost
-            ? generate_ghost_user(recipient_email_or_id)
-            : **recipient;
-          }
-          else
-          {
-            auto id = recipient_email_or_id;
-            auto& users = this->_users.get<0>();
-            return **users.find(boost::uuids::string_generator()(id));
-          }}();
-
-        rec.swaggers.insert(&user);
-        user.swaggers.insert(&rec);
-
         auto t = elle::make_unique<Transaction>();
-        t->id = boost::lexical_cast<std::string>(boost::uuids::random_generator()());
-        t->sender_id = boost::lexical_cast<std::string>(user.id());
-        t->sender_device_id = boost::lexical_cast<std::string>(device.id());
-        t->files = files;
-        t->status = infinit::oracles::Transaction::Status::created;
-        t->recipient_id = boost::lexical_cast<std::string>(rec.id());
-        t->is_ghost = ghost;
-        ELLE_LOG("recipient is%s a ghost", ghost ? "" : "n't");
-        auto res = elle::sprintf(
-          "{"
-          "  \"created_transaction_id\": \"%s\","
-          "  \"recipient_is_ghost\": %s,"
-          "  \"recipient\": %s"
-          "}",
-          t->id,
-          ghost ? "true" : "false",
-          rec.json());
+        auto id = t->id;
+        ELLE_LOG_SCOPE("%s: create transaction %s", *this, id);
+        this->_transactions.insert(std::move(t));
+        this->register_route(
+          elle::sprintf("/transaction/%s", id),
+          reactor::http::Method::PUT,
+          [&, id] (Server::Headers const&,
+                   Server::Cookies const& cookies,
+                   Server::Parameters const&,
+                   elle::Buffer const& content)
+          {
+            auto& user = this->user(cookies);
+            auto device = this->device(cookies);
+            elle::IOStream stream(content.istreambuf());
+            elle::serialization::json::SerializerIn input(stream, false);
+            std::string recipient_email_or_id;
+            input.serialize("id_or_email", recipient_email_or_id);
+            ELLE_DEBUG("%s: recipient: %s", *this, recipient_email_or_id);
+            std::list<std::string> files;
+            input.serialize("files", files);
+            bool ghost = false;
+            auto& rec = [&] () -> User& {
+              if (recipient_email_or_id.find('@') != std::string::npos)
+              {
+                auto& users_by_email = this->_users.get<1>();
+                auto recipient = users_by_email.find(recipient_email_or_id);
+                ghost = recipient == users_by_email.end();
+                return ghost
+                ? generate_ghost_user(recipient_email_or_id)
+                : **recipient;
+              }
+              else
+              {
+                auto id = recipient_email_or_id;
+                auto& users = this->_users.get<0>();
+                return **users.find(boost::uuids::string_generator()(id));
+              }}();
 
-        std::string id = t->id;
+            auto& tr = **this->_transactions.find(id);
+            tr.status = infinit::oracles::Transaction::Status::initialized;
+            tr.sender_id = boost::lexical_cast<std::string>(user.id());
+            tr.sender_device_id = boost::lexical_cast<std::string>(device.id());
+            tr.files = files;
+            tr.recipient_id = boost::lexical_cast<std::string>(rec.id());
+            tr.is_ghost = ghost;
+
+            rec.swaggers.insert(&user);
+            user.swaggers.insert(&rec);
+            auto res = elle::sprintf(
+              "{"
+              "\"created_transaction_id\": \"%s\","
+              "\"recipient\": %s,"
+              "\"recipient_is_ghost\": %s"
+              "}", id, rec.json(),
+              rec.ghost() ? "true" : "false");
+            return res;
+          });
         this->register_route(
           elle::sprintf("/transaction/%s", id),
           reactor::http::Method::GET,
@@ -464,8 +489,6 @@ namespace tests
             auto& tr = **this->_transactions.find(id);
             return tr.json();
           });
-
-
         this->register_route(
           elle::sprintf("/transaction/%s/endpoints", id),
           reactor::http::Method::PUT,
@@ -483,7 +506,6 @@ namespace tests
             elle::IOStream stream(content.istreambuf());
             elle::serialization::json::SerializerIn input(stream, false);
             int port;
-            input.serialize("station_port", port);
 
             static std::unordered_map<std::string, uint16_t> first_time;
             if (first_time.find(id) == first_time.end())
@@ -531,11 +553,10 @@ namespace tests
             }
             return "{}";
           });
-
         this->register_route(
-          elle::sprintf("/transaction/%s/cloud_buffer", t->id),
+          elle::sprintf("/transaction/%s/cloud_buffer", id),
           reactor::http::Method::GET,
-          [&] (Server::Headers const&,
+          [&, id] (Server::Headers const&,
                Server::Cookies const&,
                Server::Parameters const&,
                elle::Buffer const&)
@@ -557,9 +578,6 @@ namespace tests
               boost::posix_time::to_iso_extended_string(tomorrow),
               boost::posix_time::to_iso_extended_string(now));
           });
-        this->_transactions.insert(std::move(t));
-        return res;
-      });
 
     this->register_route(
       "/transaction/update",
@@ -577,21 +595,24 @@ namespace tests
         input.serialize("status", status);
         auto it = this->_transactions.find(id);
         if (it == this->_transactions.end())
+        {
+          for (auto const& tr: this->_transactions)
+            ELLE_WARN("%s", *tr);
           throw reactor::http::tests::Server::Exception(
             "/transaction/update",
             reactor::http::StatusCode::Not_Found,
             "transaction not found");
-        auto& t = **it;
-        t.status = infinit::oracles::Transaction::Status(status);
-        t.status_changed()(t.status);
-        if (t.status == infinit::oracles::Transaction::Status::accepted)
+        }
+        auto& tr = **it;
+        tr.status = infinit::oracles::Transaction::Status(status);
+        tr.status_changed()(tr.status);
+        if (tr.status == infinit::oracles::Transaction::Status::accepted)
         {
           auto const& user = this->user(cookies);
           auto device = this->device(cookies);
-          t.recipient_id = boost::lexical_cast<std::string>(user.id());
-          t.recipient_device_id = boost::lexical_cast<std::string>(device.id());
+          tr.recipient_id = boost::lexical_cast<std::string>(user.id());
+          tr.recipient_device_id = boost::lexical_cast<std::string>(device.id());
         }
-        auto& tr = **this->_transactions.find(id);
         std::string transaction_notification = tr.json();
         transaction_notification.insert(1, "\"notification_type\":7,");
         for (auto& socket: this->trophonius.clients(boost::uuids::string_generator()(tr.sender_id)))
@@ -603,11 +624,19 @@ namespace tests
           "%s"
           "  \"updated_transaction_id\": \"%s\""
           "}",
-          t.status == infinit::oracles::Transaction::Status::accepted
+          tr.status == infinit::oracles::Transaction::Status::accepted
           ? elle::sprintf("  \"recipent_device_id\": \"%s\", \"recipient_device_name\": \"bite\", ", tr.recipient_device_id)
           : std::string{},
           tr.id
-          );
+        );
+        return res;
+      });
+
+        auto res = elle::sprintf(
+          "{"
+          "\"created_transaction_id\": \"%s\""
+          "}",
+          id);
         return res;
       });
 

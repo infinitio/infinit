@@ -14,7 +14,6 @@ namespace tests
     : _id(device ? device.get() : boost::uuids::random_generator()())
     , _passport(boost::lexical_cast<std::string>(this->_id), "osef", key, authority)
   {
-    ELLE_LOG("LLLLLLLLLLLLLLL %s", key);
   }
 
   std::string
@@ -23,7 +22,6 @@ namespace tests
     std::string passport_string;
     if (this->_passport.Save(passport_string) == elle::Status::Error)
       throw std::runtime_error("unabled to save the passport");
-ELLE_LOG("passport: %s", passport_string);
     return elle::sprintf(
       "{"
       "  \"id\" : \"%s\","

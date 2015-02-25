@@ -466,7 +466,14 @@ namespace infinit
                            bool is_dir,
                            // boost::uuids::uuid const& device_uuid,
                            std::string const& device_uuid,
-                           std::string const& message = "") const;
+                           std::string const& message = "",
+                           boost::optional<std::string const&> transaction_id =
+                           boost::none) const;
+
+        /// Create an empty transaction
+        /// @return: the transaction_id
+        std::string
+        create_transaction() const;
 
         UpdatePeerTransactionResponse
         update_transaction(std::string const& transaction_id,
@@ -499,7 +506,16 @@ namespace infinit
         CreateLinkTransactionResponse
         create_link(LinkTransaction::FileList const& file_list,
                     std::string const& name,
-                    std::string const& message) const;
+                    std::string const& message,
+                    boost::optional<std::string const&> link_id = boost::none) const;
+
+        /// create an empty link, to be initialized later.
+        /// @return: the link ID.
+        std::string
+        create_link() const;
+
+
+
         void
         update_link(std::string const& id,
                     double progress,

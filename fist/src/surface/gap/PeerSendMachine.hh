@@ -99,6 +99,8 @@ namespace surface
       virtual
       void
       _create_transaction() override;
+      virtual
+      void _initialize_transaction() override;
       void
       _transfer_operation(frete::RPCFrete& frete) override;
       // chunked upload to cloud

@@ -48,6 +48,9 @@ def configure(cxx_toolkit = None,
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
 
+  if cxx_toolkit.os in [drake.os.macos]:
+    cxx_config.use_local_libcxx = True
+
   prefer_static = cxx_toolkit.os in [drake.os.windows, drake.os.ios]
   def library(*args, **kwargs):
     lib_dyn, lib_static = (
@@ -165,7 +168,7 @@ def configure(cxx_toolkit = None,
     if isinstance(lib, drake.cxx.StaticLib):
       return lib
     else:
-      return drake.copy(lib, where, True)
+      return drake.copy(lib, where, True, set_local_libcxx(cxx_toolkit))
 
   elle = drake.include('elle',
                        cxx_toolkit = cxx_toolkit,

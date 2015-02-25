@@ -339,6 +339,28 @@ ELLE_TEST_SCHEDULED(transactions)
   BOOST_CHECK(c.transactions().empty());
 }
 
+ELLE_TEST_SCHEDULED(transaction_create)
+{
+  HTTPServer s;
+  s.register_route(
+    "/transaction/create_empty",
+    reactor::http::Method::POST,
+    [] (HTTPServer::Headers const&,
+        HTTPServer::Cookies const&,
+        HTTPServer::Parameters const&,
+        elle::Buffer const& body)
+    {
+      return R"JSON(
+        {
+          "created_transaction_id": "42"
+        }
+        )JSON";
+    });
+  Client c("http", "127.0.0.1", s.port());
+  auto t_id = c.create_transaction();
+  BOOST_CHECK(t_id == "42");
+}
+
 ELLE_TEST_SCHEDULED(trophonius)
 {
   HTTPServer s;
@@ -711,6 +733,7 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(trophonius));
   suite.add(BOOST_TEST_CASE(upload_avatar));
   suite.add(BOOST_TEST_CASE(link_credentials));
+  suite.add(BOOST_TEST_CASE(transaction_create));
   suite.add(BOOST_TEST_CASE(change_email));
   suite.add(BOOST_TEST_CASE(facebook_connect_success));
   suite.add(BOOST_TEST_CASE(facebook_connect_success_no_email));
