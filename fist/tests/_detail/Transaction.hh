@@ -10,6 +10,7 @@ namespace tests
   {
   public:
     Transaction();
+    ~Transaction() noexcept (true);
     ELLE_ATTRIBUTE_RX(
       boost::signals2::signal<void (infinit::oracles::Transaction::Status)>,
       status_changed);

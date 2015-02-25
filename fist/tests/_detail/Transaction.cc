@@ -12,6 +12,10 @@ namespace tests
       boost::uuids::random_generator()());
   }
 
+  Transaction::~Transaction() noexcept(true)
+  {
+  }
+
   void
   Transaction::print(std::ostream& out) const
   {
