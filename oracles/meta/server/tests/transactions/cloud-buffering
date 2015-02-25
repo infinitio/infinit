@@ -9,7 +9,7 @@ with Meta() as meta:
   sender.login()
 
   # Cloud buffer before acceptance
-  transaction, res = sender.sendfile(recipient_id = recipient.email,
+  transaction, res = sender.sendfile(recipient = recipient.email,
                                      initialize = True)
   transaction_id = res['created_transaction_id']
   sender.transaction_update(
@@ -19,7 +19,7 @@ with Meta() as meta:
   recipient.transaction_update(transaction_id, statuses['finished'])
 
   # Cloud buffer after acceptance
-  transaction, res = sender.sendfile(recipient_id = recipient.email,
+  transaction, res = sender.sendfile(recipient = recipient.email,
                                      initialize = True)
   transaction_id = res['created_transaction_id']
   recipient.login()

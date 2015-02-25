@@ -7,7 +7,7 @@ with Meta() as meta:
   bob = User(meta, "bob@infinit.io")
   bob.login()
   bob.sendfile("eve@infinit.io")
-  transaction, res = bob.sendfile(recipient_id = "alice@infinit.io")
+  transaction, res = bob.sendfile(recipient = "alice@infinit.io")
   res = bob.transaction_update(res['created_transaction_id'], INITIALIZED)
   assert 'ghost_code' in res
   ghost_code = res['ghost_code']

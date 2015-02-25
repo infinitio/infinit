@@ -589,7 +589,7 @@ class User(Client):
 
 
   def sendfile(self,
-               recipient_id,
+               recipient,
                files = ['50% off books.pdf',
                         'a file with strange encoding: é.file',
                         'another file with no extension'],
@@ -598,20 +598,20 @@ class User(Client):
                is_directory = False,
                device_id = None,
                initialize = False,
+               use_identifier = False,
                ):
     if device_id is None:
       device_id = self.device_id
 
     transaction = {
-      'id_or_email': recipient_id,
       'files': files,
       'files_count': len(files),
       'total_size': total_size,
       'message': message,
       'is_directory': is_directory,
       'device_id': str(device_id),
+      use_identifier and 'identifier' or 'id_or_email': recipient,
     }
-
     res = self.post('transaction/create', transaction)
     ghost = res['recipient_is_ghost']
     if ghost:

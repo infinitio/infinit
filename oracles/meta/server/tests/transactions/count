@@ -20,44 +20,44 @@ with Meta() as meta:
   i = bson.ObjectId(alice.id)
   assert 'transactions' not in meta.database.users.find_one({'_id': i})
   # Send to a peer.
-  transaction1, res = alice.sendfile(recipient_id = 'bob@infinit.io',
+  transaction1, res = alice.sendfile(recipient = 'bob@infinit.io',
                                      initialize = True)
   tid1 = res['created_transaction_id']
   # Send to a peer and accept.
-  transaction2, res = alice.sendfile(recipient_id = 'bob@infinit.io',
+  transaction2, res = alice.sendfile(recipient = 'bob@infinit.io',
                                      initialize = True)
   tid2 = res['created_transaction_id']
   bob.transaction_update(tid2, accepted)
   # Send to a peer and download.
-  transaction3, res = alice.sendfile(recipient_id = 'bob@infinit.io',
+  transaction3, res = alice.sendfile(recipient = 'bob@infinit.io',
                                      initialize = True)
   tid3 = res['created_transaction_id']
   bob.transaction_update(tid3, accepted)
   bob.transaction_update(tid3, finished)
   # Send to a peer and cloud-buffer.
-  transaction3bis, res = alice.sendfile(recipient_id = 'bob@infinit.io',
+  transaction3bis, res = alice.sendfile(recipient = 'bob@infinit.io',
                                      initialize = True)
   tid3bis = res['created_transaction_id']
   bob.transaction_update(tid3bis, accepted)
   alice.transaction_update(tid3bis, cloud_buffered)
   # Send to a ghost
-  transaction, res = alice.sendfile(recipient_id = 'carol@infinit.io',
+  transaction, res = alice.sendfile(recipient = 'carol@infinit.io',
                                     initialize = True)
   tid4 = res['created_transaction_id']
   # Send to a ghost and download
-  transaction, res = alice.sendfile(recipient_id = 'carol@infinit.io',
+  transaction, res = alice.sendfile(recipient = 'carol@infinit.io',
                                     initialize = True)
   tid5 = res['created_transaction_id']
   alice.transaction_update(tid5, ghost_uploaded)
   alice.post('transactions/%s/downloaded?key=admin' % tid5)
   # Download a transaction
-  transaction, res = bob.sendfile(recipient_id = 'alice@infinit.io',
+  transaction, res = bob.sendfile(recipient = 'alice@infinit.io',
                                   initialize = True)
   tid6 = res['created_transaction_id']
   alice.transaction_update(tid6, accepted)
   alice.transaction_update(tid6, finished)
   # Leave a pending transaction
-  transaction, res = bob.sendfile(recipient_id = 'alice@infinit.io',
+  transaction, res = bob.sendfile(recipient = 'alice@infinit.io',
                                   initialize = True)
   tid7 = res['created_transaction_id']
   alice.transaction_update(tid7, accepted)
