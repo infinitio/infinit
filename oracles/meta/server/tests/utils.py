@@ -139,13 +139,15 @@ class Trophonius(Client):
           representation = representation[:-1] # remove \n
           d = json.loads(representation)
           if d['notification']['notification_type'] == 14:
-            self.socket.listen(1)
+            # OS X requires a larger backlog for the tests to function.
+            self.socket.listen(5)
             self.poll()
             return
           d['notification'].pop('timestamp')
           for user in self.trophonius.users_on_device[UUID(d['device_id'])]:
             user.notifications.append(Notification(d['notification']))
-          self.socket.listen(1)
+          # OS X requires a larger backlog for the tests to function.
+          self.socket.listen(5)
         except:
           return
 
