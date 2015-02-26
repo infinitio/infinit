@@ -937,6 +937,25 @@ Server::_create_empty()
               std::placeholders::_3,
               std::placeholders::_4,
               id));
+  this->register_route(
+    elle::sprintf("/transaction/%s", id),
+    reactor::http::Method::GET,
+    [&] (Server::Headers const&,
+         Server::Cookies const&,
+         Server::Parameters const&,
+         elle::Buffer const&)
+    {
+      return elle::sprintf(
+        "{"
+        "\"download_link\": \"foo\","
+        "\"files\": \"foo\","
+        "\"message\": \"foo\","
+        "\"recipient_id\": %s,"
+        "\"sender_fullname\": \"foo\","
+        "\"sender_id\": %s,"
+        "\"total_size\": 42,"
+        , id, id);
+    });
   return id;
 }
 
