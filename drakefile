@@ -53,7 +53,7 @@ def configure(cxx_toolkit = None,
   if cxx_toolkit.os in [drake.os.macos]:
     cxx_config.use_local_libcxx = True
 
-  prefer_static = cxx_toolkit.os in [drake.os.windows, drake.os.ios]
+  prefer_static = cxx_toolkit.os in [drake.os.windows, drake.os.ios, drake.os.android]
   def library(*args, **kwargs):
     lib_dyn, lib_static = (
       Library(*args, **kwargs)
@@ -220,6 +220,9 @@ def configure(cxx_toolkit = None,
     boost_test.library_add(copy_lib(boost.test_dynamic))
     boost_thread = drake.cxx.Config(boost.config_thread(link = False))
     boost_thread.library_add(copy_lib(boost.thread_dynamic))
+    boost_regex = drake.cxx.Config(boost.config_regex(link = False))
+    boost_regex.library_add(copy_lib(boost.regex_dynamic))
+
 
   elle_lib = copy_lib(elle.elle.library)
   cryptography_lib = copy_lib(elle.cryptography.library)
