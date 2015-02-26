@@ -52,7 +52,8 @@ parse_options(int argc, char** argv)
     ("password,p", value<std::string>(), "the password")
     ("fullname,f", value<std::string>(), "full user name")
     ("register,g", value<bool>(), "Register new account")
-    ("production,r", value<bool>(), "send metrics to production");
+    ("production,r", value<bool>(), "send metrics to production")
+    ("new-password,n", value<std::string>(), "Update password");
 
   variables_map vm;
   try
@@ -123,6 +124,8 @@ int main(int argc, char** argv)
             ELLE_TRACE_SCOPE("connection status notification: %s", notif);
             if (!notif.status && !notif.still_trying)
               stop = true;
+            if (notif.status && options.count("new-password"))
+              state.change_password(password, options["new-password"].as<std::string>());
           }
         );
 
