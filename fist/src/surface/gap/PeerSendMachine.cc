@@ -356,7 +356,7 @@ namespace surface
     {
         ELLE_TRACE("%s: create transaction", *this);
         this->transaction_id(this->state().meta().create_transaction());
-        this->_save_snapshot();
+        this->transaction()._snapshot_save();
     }
 
     void
@@ -419,7 +419,7 @@ namespace surface
         this->data()->is_ghost = peer.ghost();
         this->data()->recipient_id = peer.id;
         this->transaction_id(transaction_response.created_transaction_id());
-        this->_save_snapshot();
+        this->transaction()._snapshot_save();
       }
       ELLE_TRACE("%s: initialized transaction %s", *this, this->transaction_id());
       // Populate the frete.
