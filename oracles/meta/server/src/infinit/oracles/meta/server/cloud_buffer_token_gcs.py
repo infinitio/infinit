@@ -115,11 +115,12 @@ def generate_get_url(region,
                      bucket_name,
                      transaction_id,
                      file_path,
-                     valid_days = 3650):
+                     valid_days = 3650,
+                     method = 'GET'):
     expiration = datetime.datetime.now() + datetime.timedelta(days=valid_days)
     expiration = int(time.mktime(expiration.timetuple()))
     resource = '/%s/%s/%s' % (bucket_name, transaction_id, file_path)
-    signature_string='%s\n%s\n%s\n%s\n%s' % ('GET', '', '', expiration, resource)
+    signature_string='%s\n%s\n%s\n%s\n%s' % (method, '', '', expiration, resource)
     shahash = SHA256.new(signature_string.encode('utf-8'))
     private_key = RSA.importKey(CloudBufferTokenGCS.private_key, passphrase='notasecret')
     signer = PKCS1_v1_5.new(private_key)
