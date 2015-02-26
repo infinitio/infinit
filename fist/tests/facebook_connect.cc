@@ -27,17 +27,13 @@ ELLE_TEST_SCHEDULED(normal)
   };
   tests::State recipient(server, random_uuid());
   connect(recipient);
-  ELLE_LOG("foo");
   recipient.facebook_connect("code");
   reactor::wait(recipient.logged_in());
   auto recipient_id = recipient.me().id;
-  ELLE_LOG("bar");
   recipient.logout();
   recipient.facebook_connect("code");
   reactor::wait(recipient.logged_in());
-
-  ELLE_LOG("baz");
-  ELLE_ASSERT(server.users().size() == 1);
+  ELLE_ASSERT_EQ(server.users().size(), 1);
 
   tests::State sender(server, random_uuid());
   connect(sender);
@@ -48,7 +44,7 @@ ELLE_TEST_SCHEDULED(normal)
   sender.facebook_connect("code_2");
   reactor::wait(sender.logged_in());
   ELLE_ASSERT_NEQ(sender.passport(), recipient.passport());
-  ELLE_ASSERT(server.users().size() == 2);
+  ELLE_ASSERT_EQ(server.users().size(), 2);
   ELLE_ASSERT_NEQ(sender.me().id, recipient_id);
 }
 
