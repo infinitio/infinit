@@ -55,7 +55,7 @@ ELLE_TEST_SCHEDULED(normal)
 
 ELLE_TEST_SUITE()
 {
-  auto timeout = RUNNING_ON_VALGRIND ? 40 : 40;
+  auto timeout = RUNNING_ON_VALGRIND ? 60 : 20;
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(normal), 0, timeout);
 }
