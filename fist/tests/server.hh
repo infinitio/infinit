@@ -214,6 +214,13 @@ protected:
   virtual
   boost::uuids::uuid
   _create_empty();
+  virtual
+  std::string
+  _transaction_put(Server::Headers const&,
+                   Server::Cookies const& cookies,
+                   Server::Parameters const&,
+                   elle::Buffer const& content,
+                   boost::uuids::uuid const& id);
   std::string
   _get_trophonius(Headers const&,
                   Cookies const&,

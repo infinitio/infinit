@@ -930,65 +930,75 @@ Server::_create_empty()
   this->register_route(
     elle::sprintf("/transaction/%s", id),
     reactor::http::Method::PUT,
-    [&, id] (Server::Headers const&,
-             Server::Cookies const& cookies,
-             Server::Parameters const&,
-             elle::Buffer const& content)
-    {
-      auto& user = this->user(cookies);
-      elle::IOStream stream(content.istreambuf());
-      elle::serialization::json::SerializerIn input(stream, false);
-      std::string recipient_email;
-      input.serialize("id_or_email", recipient_email);
-      ELLE_DEBUG("%s: recipient: %s", *this, recipient_email);
-      auto it = this->_transactions.find(id);
-      (*it)->status(infinit::oracles::Transaction::Status::created);
-      bool ghost;
-      auto& users_by_email = this->_users.get<1>();
-      auto recipient = users_by_email.find(recipient_email);
-      ghost = recipient == users_by_email.end();
-      auto& rec = ghost
-        ? generate_ghost_user(recipient_email)
-        : **recipient;
-      rec.swaggers.insert(&user);
-      user.swaggers.insert(&rec);
-      auto res = elle::sprintf(
-        "{"
-        "  \"created_transaction_id\": \"%s\","
-        "  \"recipient_is_ghost\": %s,"
-        "  \"recipient\": %s"
-        "}",
-        id,
-        ghost ? "true" : "false",
-        rec.json());
-      this->register_route(
-        elle::sprintf("/transaction/%s/cloud_buffer", id),
-        reactor::http::Method::GET,
-        [&] (Server::Headers const&,
-             Server::Cookies const&,
-             Server::Parameters const&,
-             elle::Buffer const&)
-        {
-          auto now = boost::posix_time::second_clock::universal_time();
-          auto tomorrow = now + boost::posix_time::hours(24);
-          return elle::sprintf(
-            "{"
-            "  \"protocol\": \"aws\","
-            "  \"access_key_id\": \"\","
-            "  \"secret_access_key\": \"\","
-            "  \"session_token\": \"\","
-            "  \"region\": \"region\","
-            "  \"bucket\": \"bucket\","
-            "  \"folder\": \"folder\","
-            "  \"expiration\": \"%s\","
-            "  \"current_time\": \"%s\""
-            "}",
-            boost::posix_time::to_iso_extended_string(tomorrow),
-            boost::posix_time::to_iso_extended_string(now));
-        });
-      return res;
-    });
+    std::bind(&Server::_transaction_put,
+              std::ref(*this),
+              std::placeholders::_1,
+              std::placeholders::_2,
+              std::placeholders::_3,
+              std::placeholders::_4,
+              id));
   return id;
+}
+
+std::string
+Server::_transaction_put(Server::Headers const&,
+                         Server::Cookies const& cookies,
+                         Server::Parameters const&,
+                         elle::Buffer const& content,
+                         boost::uuids::uuid const& id)
+{
+  auto& user = this->user(cookies);
+  elle::IOStream stream(content.istreambuf());
+  elle::serialization::json::SerializerIn input(stream, false);
+  std::string recipient_email;
+  input.serialize("id_or_email", recipient_email);
+  ELLE_DEBUG("%s: recipient: %s", *this, recipient_email);
+  auto it = this->_transactions.find(id);
+  (*it)->status(infinit::oracles::Transaction::Status::created);
+  bool ghost;
+  auto& users_by_email = this->_users.get<1>();
+  auto recipient = users_by_email.find(recipient_email);
+  ghost = recipient == users_by_email.end();
+  auto& rec = ghost
+    ? generate_ghost_user(recipient_email)
+    : **recipient;
+  rec.swaggers.insert(&user);
+  user.swaggers.insert(&rec);
+  auto res = elle::sprintf(
+    "{"
+    "  \"created_transaction_id\": \"%s\","
+    "  \"recipient_is_ghost\": %s,"
+    "  \"recipient\": %s"
+    "}",
+    id,
+    ghost ? "true" : "false",
+    rec.json());
+  this->register_route(
+    elle::sprintf("/transaction/%s/cloud_buffer", id),
+    reactor::http::Method::GET,
+    [&] (Server::Headers const&,
+         Server::Cookies const&,
+         Server::Parameters const&,
+         elle::Buffer const&)
+    {
+      auto now = boost::posix_time::second_clock::universal_time();
+      auto tomorrow = now + boost::posix_time::hours(24);
+      return elle::sprintf(
+        "{"
+        "  \"protocol\": \"aws\","
+        "  \"access_key_id\": \"\","
+        "  \"secret_access_key\": \"\","
+        "  \"session_token\": \"\","
+        "  \"region\": \"region\","
+        "  \"bucket\": \"bucket\","
+        "  \"folder\": \"folder\","
+        "  \"expiration\": \"%s\","
+        "  \"current_time\": \"%s\""
+        "}",
+        boost::posix_time::to_iso_extended_string(tomorrow),
+        boost::posix_time::to_iso_extended_string(now));
+    });
+  return res;
 }
 
 Server::User&
