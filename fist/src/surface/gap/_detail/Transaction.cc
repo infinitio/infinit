@@ -163,7 +163,7 @@ namespace surface
             }();
             auto const& data = *snapshot.data();
             if (data.id.empty())
-              ELLE_LOG("%s: No transaction id in snapshot, will start from scratch.", *this);
+              ELLE_TRACE("%s: no transaction id in snapshot", *this);
             else
             {
               auto it = std::find_if(
