@@ -234,6 +234,12 @@ public class State
   public int deleteTransaction(int id) { int res = gapDeleteTransaction(handle, id);_checkNZ("state change", res); return res;}
   public int rejectTransaction(int id) { int res = gapRejectTransaction(handle, id);_checkNZ("state change", res); return res;}
   public int acceptTransaction(int id) { int res = gapAcceptTransaction(handle, id);_checkNZ("state change", res); return res;}
+  public int acceptTransactionTo(int id, String relative_path)
+  {
+    int res = gapAcceptTransactionTo(handle, id, relative_path);
+    _checkNZ("state change", res);
+    return res;
+  }
 
   public class Onboarding
   {
@@ -419,6 +425,7 @@ public class State
   private native int gapDeleteTransaction(long handle, int id);
   private native int gapRejectTransaction(long handle, int id);
   private native int gapAcceptTransaction(long handle, int id);
+  private native int gapAcceptTransactionTo(long handle, int id, String relativePath);
 
   private native int gapOnboardingReceiveTransaction(long handle, String path, int transfer_time_sec);
   private native long gapOnboardingSetPeerStatus(long handle, int id, boolean status);
@@ -431,6 +438,8 @@ public class State
   private native long gapSendUserReport(long handle, String userName, String message, String file);
   private native long gapSendLastCrashLogs(long handle, String userName, String crashReport, String stateLog, String extraInfo);
   private native long gapInternetConnection(long handle, boolean connected);
+  public native void setenv(String key, String value);
+  public native String getenv(String key);
   /* this is used to load the 'hello-jni' library on application
   * startup. The library has already been unpacked into
   * /data/data/com.example.hellojni/lib/libhello-jni.so at

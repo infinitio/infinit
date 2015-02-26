@@ -16,6 +16,7 @@
  */
 #include <string.h>
 #include <jni.h>
+#include <elle/os/environ.hh>
 #include <surface/gap/gap.hh>
 
 #ifdef INFINIT_ANDROID
@@ -851,7 +852,12 @@ extern "C" jint Java_io_infinit_State_gapAcceptTransaction(
 {
   return gap_accept_transaction((gap_State*)handle, id);
 }
-
+extern "C" jint Java_io_infinit_State_gapAcceptTransactionTo(
+  JNIEnv* env, jobject thiz, jlong handle, jint id, jstring path)
+{
+  std::string rel_path(to_string(env, path));
+  return gap_accept_transaction((gap_State*)handle, id, rel_path);
+}
 extern "C" jint Java_io_infinit_State_gapOnboardingReceiveTransaction(
   JNIEnv* env, jobject thiz, jlong handle, jstring path, int tt)
 {
@@ -909,4 +915,17 @@ extern "C" jlong Java_io_infinit_State_gapSendLastCrashLogs(
   return gap_send_last_crash_logs((gap_State*)handle, to_string(env, a),
                               to_string(env, b), to_string(env, c),
                               to_string(env, d));
+}
+
+extern "C" void Java_io_infinit_State_setenv(
+  JNIEnv* env, jobject thiz, jstring key, jstring value)
+{
+  elle::os::setenv(to_string(env, key), to_string(env, value), true);
+}
+
+
+extern "C" jstring Java_io_infinit_State_getenv(
+  JNIEnv* env, jobject thiz, jstring key)
+{
+  return env->NewStringUTF(elle::os::getenv(to_string(env, key)).c_str());
 }
