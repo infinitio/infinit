@@ -6,6 +6,7 @@ import calendar
 import datetime
 import time
 import elle.log
+import requests
 
 from pymongo import errors, DESCENDING
 from .utils import api, require_logged_in, require_admin, json_value
@@ -317,6 +318,7 @@ class Mixin:
     with elle.log.trace('updating link %s with status %s and progress %s' %
                         (id, status, progress)):
       link = self.database.links.find_one({'_id': id})
+      extra = dict() # extra fields to set
       if link is None:
         self.not_found()
       if link['sender_id'] != user['_id']:
@@ -331,17 +333,45 @@ class Mixin:
         status is not transaction_status.DELETED:
           self.forbidden('cannot change status from %s to %s' %
                          (link['status'], status))
-      if status in transaction_status.final:
+      if status in transaction_status.final + [transaction_status.DELETED]:
         self.__complete_transaction_stats(user, link)
-      link = self.database.links.find_and_modify(
-        {'_id': id},
-        {
-          '$set':
-          {
+        if status != transaction_status.FINISHED:
+          # erase data
+          deleter = self._generate_op_url(link, 'DELETE')
+          elle.log.log(deleter)
+          r = requests.delete(deleter)
+          if int(r.status_code/100) != 2:
+            elle.log.warn('Link deletion failed with %s on %s: %s' %
+              ( r.status_code, link['_id'], r.content))
+        else:
+          # Get effective size
+          head = self._generate_op_url(link, 'HEAD')
+          r = requests.head(head)
+          if int(r.status_code/100) != 2:
+            elle.log.warn('Link HEAD failed with %s on %s: %s' %
+              ( r.status_code, link['_id'], r.content))
+          file_size = int(r.headers['Content-Length'])
+          extra = {'file_size': file_size}
+          self.database.users.update(
+            {'_id': user['_id']},
+            {'$inc': {'total_link_size': file_size}}
+            )
+      if link['status'] == transaction_status.FINISHED:
+        # Deleting a previously finished link (all other case threw above)
+        self.database.users.update(
+            {'_id': user['_id']},
+            {'$inc': {'total_link_size': link['file_size'] * -1}}
+            )
+      setter = {
             'mtime': self.now,
             'progress': progress,
             'status': status,
           }
+      setter.update(extra)
+      link = self.database.links.find_and_modify(
+        {'_id': id},
+        {
+          '$set': setter
         },
         new = True,
       )
@@ -505,6 +535,18 @@ class Mixin:
 
   # Used when a user deletes their account.
   def delete_all_links(self, user):
+    links = self.database.links.find(
+      {
+        'sender_id': user['_id'],
+        'status': {'$nin': [transaction_status.DELETED]}
+      },
+      fields = ['aws_credentials', 'name'])
+    for link in links:
+      deleter = self._generate_op_url(link, 'DELETE')
+      r = requests.delete(deleter)
+      if int(r.status_code/100) != 2:
+        elle.log.warn('Link deletion failed with %s on %s: %s' %
+          ( r.status_code, link['_id'], r.content))
     self.database.links.update(
       {
         'sender_id': user['_id'],
@@ -517,3 +559,29 @@ class Mixin:
         }
       },
       multi = True)
+
+  # Generate url on storage for given HTTP operation
+  def _generate_op_url(self, link, op):
+    proto = link['aws_credentials']['protocol']
+    if proto == 'aws':
+      res = cloud_buffer_token.generate_get_url(
+        self.aws_region, self.aws_link_bucket,
+        link['_id'],
+        link['name'],
+        valid_days = link_lifetime_days,
+        method = op)
+    else:
+      res = cloud_buffer_token_gcs.generate_get_url(
+        self.gcs_region, self.gcs_link_bucket,
+        link['_id'],
+        link['name'],
+        valid_days = link_lifetime_days,
+        method = op)
+    return res
+
+  @api('/adm/link/<id>/delete')
+  @require_admin
+  def adm_link_delete(self, id: bson.ObjectId):
+    user_id = self.database.links.find_one({'_id': id})['sender_id']
+    user = self.database.users.find_one(user_id)
+    self.link_update(id, 1, transaction_status.DELETED, user)
