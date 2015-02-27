@@ -23,9 +23,7 @@ namespace surface
       , Super(transaction, id, data)
       , _message(data->message)
       , _data(data)
-      , _upload_state(
-        this->_machine.state_make(
-          "upload", std::bind(&LinkSendMachine::_upload, this)))
+      , _completed(false)
     {
       if (run_to_fail)
         this->_run(this->_fail_state);
@@ -45,47 +43,15 @@ namespace surface
       , Super(transaction, id, std::move(files), data)
       , _message(message)
       , _data(data)
-      , _upload_state(
-        this->_machine.state_make(
-          "upload", std::bind(&LinkSendMachine::_upload, this)))
       , _credentials()
+      , _completed(false)
     {
-      this->_machine.transition_add(this->_create_transaction_state,
-                                    this->_initialize_transaction_state);
-      this->_machine.transition_add(this->_initialize_transaction_state,
-                                    this->_upload_state);
       this->_machine.transition_add(
-        this->_upload_state,
-        this->_pause_state,
-        reactor::Waitables{&this->paused()},
-        true);
+        this->_initialize_transaction_state,
+        this->_transfer_state);
       this->_machine.transition_add(
-        this->_pause_state,
-        this->_upload_state,
-        reactor::Waitables{&this->resumed()});
-      this->_machine.transition_add(
-        this->_upload_state,
-        this->_finish_state,
-        reactor::Waitables{&this->finished()},
-        true);
-      this->_machine.transition_add(
-        this->_upload_state,
-        this->_cancel_state,
-        reactor::Waitables{&this->canceled()}, true);
-      this->_machine.transition_add_catch(
-        this->_upload_state,
-        this->_fail_state)
-        .action_exception(
-          [this] (std::exception_ptr e)
-          {
-            ELLE_WARN("%s: error while uploading: %s",
-                      *this, elle::exception_string(e));
-            this->transaction().failure_reason(elle::exception_string(e));
-          });
-      this->_machine.transition_add(
-        this->_upload_state,
-        this->_fail_state,
-        reactor::Waitables{&this->failed()}, true);
+        this->_transfer_state,
+        this->_finish_state);
       if (data->id.empty())
         // Transaction has just been created locally.
         this->_run(this->_create_transaction_state);
@@ -117,11 +83,9 @@ namespace surface
         else if (snapshot.current_state() == "reject")
           this->_run(this->_reject_state);
         else if (snapshot.current_state() == "upload")
-          this->_run(this->_upload_state);
+          this->_run(this->_transfer_state);
         else if (snapshot.current_state() == "another device")
           this->_run(this->_another_device_state);
-        else if (snapshot.current_state() == "pause")
-          this->_run(this->_pause_state);
         else
         {
           ELLE_WARN("%s: unkown state in snapshot: %s",
@@ -149,7 +113,7 @@ namespace surface
             if (this->data()->id.empty())
               this->_run(this->_create_transaction_state);
             else
-              this->_run(this->_upload_state);
+              this->_run(this->_transfer_state);
           }
           else
           {
@@ -251,6 +215,12 @@ namespace surface
         this->_credentials->clone());
     }
 
+    bool
+    LinkSendMachine::completed() const
+    {
+      return this->_completed;
+    }
+
     void LinkSendMachine::_create_transaction()
     {
       auto link_id = this->state().meta().create_link();
@@ -303,43 +273,18 @@ namespace surface
     }
 
     void
-    LinkSendMachine::_upload()
+    LinkSendMachine::_transfer()
     {
       this->gap_status(gap_transaction_transferring);
       this->_plain_upload();
+      this->_completed = true;
     }
 
     void
-    LinkSendMachine::_finalize(infinit::oracles::Transaction::Status s)
+    LinkSendMachine::_update_meta_status(
+      infinit::oracles::Transaction::Status status)
     {
-      ELLE_TRACE_SCOPE("%s: finalize transaction: %s", *this, s);
-      if (this->data()->id.empty())
-      {
-        ELLE_WARN("%s: can't finalize not yet created transaction", *this);
-        return;
-      }
-      try
-      {
-        this->state().meta().update_link(this->data()->id, 0, s);
-        this->data()->status = s;
-        this->transaction()._snapshot_save();
-        if (this->state().metrics_reporter() && this->concerns_this_device())
-        {
-          bool onboarding = false;
-          this->state().metrics_reporter()->transaction_ended(
-            this->transaction_id(),
-            s,
-            s == infinit::oracles::Transaction::Status::failed?
-              transaction().failure_reason() : "",
-            onboarding,
-            this->transaction().canceled_by_user());
-        }
-      }
-      catch (elle::Exception const&)
-      {
-        ELLE_ERR("%s: unable to finalize the transaction %s: %s",
-                 *this, this->transaction_id(), elle::exception_string());
-      }
+      this->state().meta().update_link(this->data()->id, 0, status);
     }
   }
 }

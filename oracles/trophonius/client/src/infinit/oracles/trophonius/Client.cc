@@ -845,7 +845,7 @@ namespace infinit
             }
             else
             {
-              ELLE_DUMP("%s: enqueue notification", *this);
+              ELLE_TRACE("%s: enqueue notification", *this);
               this->_notifications.put(std::move(notif));
             }
           }

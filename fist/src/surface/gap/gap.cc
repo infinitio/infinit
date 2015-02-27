@@ -1257,14 +1257,15 @@ gap_pause_transaction(gap_State* state, uint32_t id)
 {
   ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
-  return run<gap_Status>(
-    state,
-    "pause transaction",
-    [&] (surface::gap::State& state) -> gap_Status
-    {
-      state.transactions().at(id)->pause();
-      return gap_ok;
-    });
+  elle::unreachable();
+  // return run<gap_Status>(
+  //   state,
+  //   "pause transaction",
+  //   [&] (surface::gap::State& state) -> gap_Status
+  //   {
+  //     state.transactions().at(id)->pause();
+  //     return gap_ok;
+  //   });
 }
 
 gap_Status
@@ -1272,14 +1273,15 @@ gap_resume_transaction(gap_State* state, uint32_t id)
 {
   ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
-  return run<gap_Status>(
-    state,
-    "resume transaction",
-    [&] (surface::gap::State& state) -> gap_Status
-    {
-      state.transactions().at(id)->resume();
-      return gap_ok;
-    });
+  elle::unreachable();
+  // return run<gap_Status>(
+  //   state,
+  //   "resume transaction",
+  //   [&] (surface::gap::State& state) -> gap_Status
+  //   {
+  //     state.transactions().at(id)->resume();
+  //     return gap_ok;
+  //   });
 }
 
 gap_Status
@@ -1588,8 +1590,7 @@ gap_Status
 gap_send_user_report(gap_State* state,
                      std::string const& user_name,
                      std::string const& message,
-                     std::string const& file,
-                     boost::optional<std::vector<std::string>> infinit_files)
+                     std::vector<std::string> files)
 {
   ELLE_ASSERT(state != nullptr);
   // In order to avoid blocking the GUI, let's create a disposable thread and
@@ -1605,13 +1606,10 @@ gap_send_user_report(gap_State* state,
         [=] ()
         {
           auto& _state = state->state();
-          elle::crash::user_report(_state.meta(false).protocol(),
-                                   _state.meta(false).host(),
-                                   _state.meta(false).port(),
+          elle::crash::user_report(_state.local_configuration(),
+                                   files,
                                    user_name,
-                                   message,
-                                   file,
-                                   infinit_files);
+                                   message);
           return gap_ok;
         }, "send user report");
     }, disposable);

@@ -544,28 +544,6 @@ namespace surface
     }
 
     void
-    Transaction::pause()
-    {
-      ELLE_TRACE_SCOPE("%s: pausing transaction", *this);
-      if (this->_machine == nullptr)
-      {
-        throw BadOperation(BadOperation::Type::pause);
-      }
-      this->_machine->pause();
-    }
-
-    void
-    Transaction::resume()
-    {
-      ELLE_TRACE_SCOPE("%s: resuming transaction", *this);
-      if (this->_machine == nullptr)
-      {
-        throw BadOperation(BadOperation::Type::resume);
-      }
-      this->_machine->resume();
-    }
-
-    void
     Transaction::cancel(bool user_request)
     {
       ELLE_TRACE_SCOPE("%s: canceling transaction", *this);

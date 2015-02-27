@@ -58,7 +58,7 @@ class TestDevices(unittest.TestCase):
         s2.login('mefyl2@infinit.io', 'mefyl2')
         reactor.sleep(datetime.timedelta(seconds = 3))
         tindex2 = s2.find_transaction(tr['id'])
-        self.assertEqual(s2.transaction_status(tindex2), 'transaction_on_other_device')
+        self.assertEqual(s2.transaction_status(tindex2), 'transaction_waiting_accept')
         shutil.rmtree(second_home)
 
 

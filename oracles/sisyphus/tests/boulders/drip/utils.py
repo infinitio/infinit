@@ -230,9 +230,13 @@ def user_register(meta, email):
 
 def transaction_create(meta, sender, recipient, files = ['foobar'],
                        initialize = True, size = 42):
-  tid = meta.transaction_create(
-    sender, recipient, files, 1, size, False, 'device')
+  tid = meta.transaction_create_empty()
   tid = tid['created_transaction_id']
+  transaction_details = meta.transaction_create(
+    sender, recipient, files, 1, size, False, 'device',
+    transaction_id = tid)
+  tid2 = transaction_details['created_transaction_id']
+  assertEq(tid, tid2)
   if initialize:
     meta._transaction_update(tid, statuses['initialized'],
                              'device', None, sender)

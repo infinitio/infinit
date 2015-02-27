@@ -160,8 +160,8 @@ namespace surface
             }();
             auto const& data = *snapshot.data();
             if (data.id.empty())
-              throw elle::Error("transaction id was empty");
-            if (!data.id.empty())
+              ELLE_TRACE("%s: no transaction id in snapshot", *this);
+            else
             {
               auto it = std::find_if(
                 std::begin(this->_transactions),

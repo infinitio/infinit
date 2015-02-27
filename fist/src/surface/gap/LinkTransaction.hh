@@ -18,8 +18,7 @@ namespace surface
     /// This class translates transactions so that headers aren't leaked into
     /// the GUI.
     class LinkTransaction
-      : public elle::Printable
-      , public surface::gap::Notification
+      : public surface::gap::Notification
     {
     public:
       LinkTransaction() = default;

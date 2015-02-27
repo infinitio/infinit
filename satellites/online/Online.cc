@@ -6,7 +6,6 @@
 #endif
 
 #include <boost/program_options.hpp>
-
 #include <elle/Exception.hh>
 #include <elle/assert.hh>
 #include <elle/log.hh>
@@ -52,7 +51,8 @@ parse_options(int argc, char** argv)
     ("password,p", value<std::string>(), "the password")
     ("fullname,f", value<std::string>(), "full user name")
     ("register,g", value<bool>(), "Register new account")
-    ("production,r", value<bool>(), "send metrics to production");
+    ("production,r", value<bool>(), "send metrics to production")
+    ("check", value<bool>(), "run a self test diagnostic");
 
   variables_map vm;
   try

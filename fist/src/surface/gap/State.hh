@@ -159,6 +159,7 @@ namespace surface
             boost::optional<boost::uuids::uuid const&> device_id = {},
             boost::optional<std::string const&> download_dir = {});
       ~State();
+      ELLE_ATTRIBUTE_R(boost::filesystem::path, home);
 
       ELLE_ATTRIBUTE_RP(
         common::infinit::Configuration, local_configuration, mutable);

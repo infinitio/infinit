@@ -14,7 +14,9 @@
 #include <elle/serialize/HexadecimalArchive.hh>
 #include <elle/system/platform.hh>
 
+#include <reactor/Scope.hh>
 #include <reactor/duration.hh>
+#include <reactor/exception.hh>
 #include <reactor/http/exceptions.hh>
 
 #include <common/common.hh>
@@ -531,7 +533,6 @@ namespace surface
 
           std::ofstream identity_infos{
             this->local_configuration().identity_path(this->me().id)};
-
           if (identity_infos.good())
           {
             identity_infos << this->me().identity << "\n"
@@ -1151,12 +1152,10 @@ namespace surface
       elle::serialization::json::SerializerIn input(json);
       input.partial(true);
       this->_configuration.serialize(input);
-
       metrics::Reporter::metric_features(this->_configuration.features);
       std::ofstream fconfig(this->local_configuration().configuration_path());
       elle::json::write(fconfig, json);
     }
-
 
     void
     State::change_password(std::string const& password,

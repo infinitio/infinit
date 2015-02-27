@@ -397,9 +397,7 @@ gap_Status
 gap_send_user_report(gap_State* state,
                      std::string const& user_name,
                      std::string const& message,
-                     std::string const& file,
-                     boost::optional<std::vector<std::string>>
-                      infinit_files = {});
+                     std::vector<std::string> files);
 
 /// Send existing crash log to the server
 gap_Status

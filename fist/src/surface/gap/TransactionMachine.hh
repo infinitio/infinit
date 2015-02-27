@@ -19,7 +19,6 @@
 # include <aws/Exceptions.hh>
 # include <aws/S3.hh>
 
-# include <frete/Frete.hh>
 # include <infinit/oracles/Transaction.hh>
 # include <infinit/oracles/meta/Client.hh>
 # include <oracles/src/infinit/oracles/PeerTransaction.hh>
@@ -103,15 +102,6 @@ namespace surface
       void
       cancel(std::string const& reason);
 
-      /// Pause the transfer.
-      void
-      pause();
-
-      /// Resume the transfer.
-      void
-      resume();
-
-
       /// Join the machine thread.
       /// The machine must be in his way to a final state, otherwise the caller
       /// will deadlock.
@@ -176,11 +166,11 @@ namespace surface
     protected:
       void
       _another_device();
-      void
-      _pause();
       virtual
       void
       _finish();
+      void
+      _finish(infinit::oracles::Transaction::Status status);
       void
       _reject();
       virtual
@@ -190,7 +180,9 @@ namespace surface
       _cancel();
       virtual
       void
-      _finalize(infinit::oracles::Transaction::Status) = 0;
+      _transfer() = 0;
+      void
+      _finalize(infinit::oracles::Transaction::Status);
       // invoked to cleanup data when this transaction will never restart
       virtual
       void
@@ -205,16 +197,17 @@ namespace surface
       // This state has to be protected to allow the children to start the
       // machine in this state.
       reactor::fsm::State& _another_device_state;
-      reactor::fsm::State& _pause_state;
+      reactor::fsm::State& _cancel_state;
+      reactor::fsm::State& _end_state;
+      reactor::fsm::State& _fail_state;
       reactor::fsm::State& _finish_state;
       reactor::fsm::State& _reject_state;
-      reactor::fsm::State& _cancel_state;
-      reactor::fsm::State& _fail_state;
-      reactor::fsm::State& _end_state;
+      reactor::fsm::State& _transfer_state;
 
     public:
-      ELLE_ATTRIBUTE_RX(reactor::Barrier, paused);
-      ELLE_ATTRIBUTE_RX(reactor::Barrier, resumed);
+      virtual
+      bool
+      completed() const = 0;
       ELLE_ATTRIBUTE_RX(reactor::Barrier, finished);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, rejected);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, canceled);
@@ -240,13 +233,17 @@ namespace surface
 
     protected:
       void
+      _fail_on_exception(reactor::fsm::State& state);
+      void
       transaction_id(std::string const& id);
       ELLE_ATTRIBUTE_RX(
         boost::signals2::signal<void (std::string const&)>, transaction_id_set);
-
       virtual
       bool
       concerns_this_device() = 0;
+      virtual
+      void
+      _update_meta_status(infinit::oracles::Transaction::Status) = 0;
 
     public:
       virtual

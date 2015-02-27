@@ -4,6 +4,9 @@
 # include <cstring>
 
 # include <boost/noncopyable.hpp>
+# include <boost/filesystem/path.hpp>
+
+# include <common/common.hh>
 
 # include <elle/Backtrace.hh>
 
@@ -53,6 +56,8 @@ namespace elle
 
       class Impl;
       std::unique_ptr<Impl> _impl;
+
+      ELLE_ATTRIBUTE_R(boost::filesystem::path, home);
     };
   } // End of signal.
 #endif // INFINIT_IOS
@@ -70,22 +75,17 @@ namespace elle
 
     /// Function for sending a report when a transfer fails.
     void
-    transfer_failed_report(std::string const& meta_protocol,
-                           std::string const& meta_host,
-                           uint16_t meta_port,
-                           std::string const& user_name="",
-                           std::string const& transaction_id="",
-                           std::string const& reason="");
+    transfer_failed_report(common::infinit::Configuration const& config,
+                           std::string const& user_name,
+                           std::string const& transaction_id,
+                           std::string const& reason);
 
     /// Function for sending user reports.
     void
-    user_report(std::string const& meta_protocol,
-                std::string const& meta_host,
-                uint16_t meta_port,
-                std::string const& user_name = "",
-                std::string const& message = "",
-                std::string const& user_file = "",
-                boost::optional<std::vector<std::string>> infinit_files = {});
+    user_report(common::infinit::Configuration const& config,
+                std::vector<std::string> const& attachments,
+                std::string const& user_name,
+                std::string const& message);
 
   }
 }

@@ -1,4 +1,4 @@
-#ifndef  COMMON_COMMON_HH
+#ifndef COMMON_COMMON_HH
 # define COMMON_COMMON_HH
 
 # include <memory>
@@ -6,8 +6,9 @@
 # include <string>
 # include <vector>
 
-# include <boost/uuid/uuid.hpp>
+# include <boost/filesystem/path.hpp>
 # include <boost/optional.hpp>
+# include <boost/uuid/uuid.hpp>
 
 # include <elle/attribute.hh>
 
@@ -21,7 +22,6 @@ namespace infinit
 
 namespace common
 {
-
   /// All infinit related generic variables
   namespace infinit
   {

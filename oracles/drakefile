@@ -115,6 +115,8 @@ def configure(production_build,
     'PyAPNs',
     'lib/python',
     drake.copy(apns, 'lib/python', strip_prefix = 'PyAPNs'))
+  apns_cert = drake.node('aps.pem')
+  apns_cert_prod = drake.node('aps_production.pem')
 
   meta = drake.include('meta',
                        production_build = production_build,
@@ -127,6 +129,8 @@ def configure(production_build,
                        python3 = python3,
                        php = php,
                        apns = apns,
+                       apns_cert = apns_cert,
+                       apns_cert_prod = apns_cert_prod,
                        boost = boost,
                        prefix = prefix,
                        cxx_toolkit = cxx_toolkit,
@@ -173,6 +177,9 @@ def configure(production_build,
                            elle = elle,
                            meta = meta.server.meta,
                            python_common = python_built,
+                           apns = apns,
+                           apns_cert = apns_cert,
+                           apns_cert_prod = apns_cert_prod,
                            production_build = production_build,
   )
 
