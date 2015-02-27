@@ -9,7 +9,7 @@ import elle.log
 import requests
 
 from pymongo import errors, DESCENDING
-from .utils import api, require_logged_in, require_admin, json_value
+from .utils import api, require_logged_in, require_logged_in_fields, require_admin, json_value
 from . import cloud_buffer_token, cloud_buffer_token_gcs, error, notifier, regexp, conf, invitation, mail, transaction_status
 
 #
@@ -146,23 +146,36 @@ class Mixin:
       else:
         return link['aws_credentials']
 
+  def _link_check_quota(self):
+    elle.log.trace('Checking link quota')
+    user = self.user
+    if 'quota' in user and 'total_link_size' in user['quota']:
+      quota = user['quota']['total_link_size']
+      usage = user.get('total_link_size',0)
+      elle.log.trace('usage: %s quota: %s' %(usage, quota))
+      if quota >= 0 and quota < usage:
+        self.forbidden('Link size quota of %s reached.' % (quota))
+
   @api('/link_empty', method = 'POST')
-  @require_logged_in
+  @require_logged_in_fields(['quota', 'total_link_size'])
   def link_create_empty(self):
+    self._link_check_quota()
     link_id = self.database.links.insert({})
     return self.success({
       'created_link_id': link_id,
       })
 
   @api('/link/<link_id>', method = 'PUT')
-  @require_logged_in
+  @require_logged_in_fields(['quota', 'total_link_size'])
   def link_initialize(self, link_id: bson.ObjectId, files, name, message):
+    self._link_check_quota()
     return self.link_generate(files, name, message, self.user,
                               self.current_device, link_id)
 
   @api('/link', method = 'POST')
-  @require_logged_in
+  @require_logged_in_fields(['quota', 'total_link_size'])
   def link_generate_api(self, files, name, message):
+    self._link_check_quota()
     return self.link_generate(files, name, message,
                               user = self.user,
                               device = self.current_device)
