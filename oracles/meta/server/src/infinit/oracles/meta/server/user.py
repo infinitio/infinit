@@ -764,13 +764,16 @@ class Mixin:
         return self.bad_request({
           'reason': 'code cannot be empty',
         })
+      # Because we delete 'ghost_code' from the user, we are not be able to
+      # return a clean 'gone' http status.
       account = self.database.users.find_one({'ghost_code': code})
       if account is None:
         return self.not_found({
           'reason': 'unknown code : %s' % code,
           'code': code,
         })
-      if account['ghost_code_expiration'] < self.now:
+      if account['ghost_code_expiration'] < self.now or \
+         account['register_status'] != 'ghost':
         return self.gone({
           'reason': 'this user is not accessible anymore',
           'code': code,
@@ -1261,11 +1264,11 @@ class Mixin:
       {'_id': user['_id']},
       {
         '$set': cleared_user,
-        '$unset':
-        {
+        '$unset': {
           'avatar': '',
           'small_avatar': '',
           'ghost_code': '',
+          'ghost_code_expiration': '',
         }
       },
       new = True)
