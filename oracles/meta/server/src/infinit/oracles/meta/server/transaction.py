@@ -356,6 +356,7 @@ class Mixin:
       elle.log.debug('Sender agent %s, version %s, peer_new %s peer_ghost %s'
                      % (self.user_agent, self.user_version, new_user,  is_ghost))
       transaction = {
+        'paused': False,
         'sender_id': _id,
         'sender_fullname': sender['fullname'],
         'sender_device_id': device_id, # bson.ObjectId(device_id),
@@ -386,14 +387,14 @@ class Mixin:
         'aws_credentials': None,
         'is_ghost': is_ghost,
         'strings': ' '.join([
-              sender['fullname'],
-              sender['handle'],
-              sender['email'],
-              recipient['fullname'],
-              recipient.get('handle', ""),
-              message,
-              ] + files)
-        }
+          sender['fullname'],
+          sender['handle'],
+          sender['email'],
+          recipient['fullname'],
+          recipient.get('handle', ""),
+          message,
+        ] + files)
+      }
 
       if transaction_id is not None:
         self.database.transactions.update(
@@ -818,6 +819,40 @@ class Mixin:
           message = transaction,
         )
       return diff
+
+  @api('/transactions/<id>', method = 'POST')
+  @require_logged_in
+  def transaction_update(self,
+                         transaction_id : bson.ObjectId,
+                         paused : bool = None):
+    user = self.user
+    transaction = self.transaction(transaction_id,
+                                   owner_id = user['_id'])
+    match = {
+      '_id': transaction_id,
+    }
+    update = {}
+    fields = []
+    # paused
+    if paused is not None and pause != transaction['paused']:
+      assert isinstance(paused, bool)
+      nonfinal = [infinit.oracles.statuses[s]
+                  for s in ('accepted',
+                            'created',
+                            'initialized',
+                            'cloud_buffered')]
+      # Final statuses can be safely ignored.
+      match['status'] = {'$in': nonfinal},
+      update['paused'] = {'$set': paused}
+      fields.append('paused')
+      res = self.transaction.find_and_modify(match,
+                                             update,
+                                             new = True,
+                                             fields = fields)
+    if res is None:
+      return {}
+    else:
+      return res
 
   @api('/transaction/search')
   @require_logged_in
