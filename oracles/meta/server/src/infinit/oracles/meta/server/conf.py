@@ -49,3 +49,7 @@ HEARTBEAT_PORT = 9898
 APERTUS_HOST = "apertus.api.development.infinit.io"
 APERTUS_PORT = 9899
 STUN_PORT = 3478
+
+BITLY_LOGIN = "infinitdimrok"
+BITLY_API_KEY = "R_40fb738e17a3437c8721cf2cb5646e97"
+BITLY_SECRET = "weakpassword"

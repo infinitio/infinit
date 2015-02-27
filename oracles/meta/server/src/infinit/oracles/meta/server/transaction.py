@@ -626,6 +626,9 @@ class Mixin:
 
   # Shorten for real.
   def shorten(self, url):
+    from .bitly import bitly
+    b = bitly()
+    url = b.shorten(url)['url']
     return url
 
   def on_initialized(self, transaction):
@@ -633,6 +636,7 @@ class Mixin:
       transaction['recipient_id'],
       fields = ['_id', 'ghost_code', 'register_status'])
     if recipient['register_status'] == 'ghost' and 'ghost_code' in recipient:
+      print(self.shorten(self.__ghost_profile_url(recipient)))
       return {
         'ghost_code': recipient['ghost_code'],
         'ghost_profile': self.shorten(self.__ghost_profile_url(recipient))
