@@ -291,6 +291,8 @@ class Mixin:
         # if the user doesn't exist, create a ghost and invite.
 
         if not recipient:
+          if total_size > 2000000000: # Warning, check duplicated below
+            self.forbidden('Transaction to nonexisting users limited to 2G')
           elle.log.trace("recipient unknown, create a ghost")
           new_user = True
           features = self._roll_features(True)
@@ -350,6 +352,8 @@ class Mixin:
           'recipient_id': recipient['_id'],
         })
       is_ghost = recipient['register_status'] == 'ghost'
+      if is_ghost and total_size > 2000000000:
+        self.forbidden('Transaction to nonexisting users limited to 2G')
       elle.log.debug("transaction recipient has id %s" % recipient['_id'])
       _id = sender['_id']
 
