@@ -624,19 +624,18 @@ class Mixin:
         })
       return res
 
-  # XXX
+  # Shorten for real.
   def shorten(self, url):
     return url
 
   def on_initialized(self, transaction):
-    recipient = self.__user_fetch(transaction['recipient_id'],
-                                  fields = ['_id', 'ghost_code', 'register_status'])
+    recipient = self.__user_fetch(
+      transaction['recipient_id'],
+      fields = ['_id', 'ghost_code', 'register_status'])
     if recipient['register_status'] == 'ghost' and 'ghost_code' in recipient:
       return {
         'ghost_code': recipient['ghost_code'],
-        'url': self.shorten(
-          self.__ghost_profile_url(ghost_id = recipient['_id'],
-                                   code = recipient['ghost_code']))
+        'ghost_profile': self.shorten(self.__ghost_profile_url(recipient))
       }
     return {}
 
@@ -656,8 +655,9 @@ class Mixin:
   def on_ghost_uploaded(self, transaction, device_id, device_name, user):
     elle.log.log('Transaction finished');
     # Guess if this was a ghost cloud upload or not
-    recipient = self.__user_fetch(transaction['recipient_id'],
-                                  fields = self.__user_view_fields + ['email', 'ghost_code'])
+    recipient = self.__user_fetch(
+      transaction['recipient_id'],
+      fields = self.__user_view_fields + ['email', 'ghost_code'])
     if recipient['register_status'] == 'deleted':
       self.gone({
         'reason': 'user %s is deleted' % recipient['_id'],
@@ -715,10 +715,8 @@ class Mixin:
       }
       if 'ghost_code' in recipient:
         merges.update({
-          'code': recipient['ghost_code'],
-          'url': self.shorten(
-            self.__ghost_profile_url(transaction['recipient_id'],
-                                     code = recipient['ghost_code']))
+          'ghost_code': recipient['ghost_code'],
+          'ghost_code': self.shorten(self.__ghost_profile_url(recipient))
         })
 
       invitation.invite_user(

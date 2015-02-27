@@ -702,7 +702,9 @@ class Mixin:
   ## Ghost ##
   ## ----- ##
   def generate_random_sequence(self, alphabet = code_alphabet, length = code_length):
-    """Return a pseudo-random string.
+    """
+    Return a pseudo-random string.
+
     alphabet -- A list of characters.
     length -- The size of the wanted random sequence.
     """
@@ -727,9 +729,19 @@ class Mixin:
     request.update(extra_fields)
     return self._register(**request)
 
-  def __ghost_profile_url(self, ghost_id, code):
+  def __ghost_profile_url(self, ghost):
+    """
+    Return the url of the user ghost profile on the website.
+    We have to specify the full url because this url will be shorten by another
+    service (e.g. bitly).
+
+    ghost -- The ghost.
+    """
+    ghost_id = ghost['_id']
+    code = ghost['ghost_code']
     url = '/ghost/%s' % str(ghost_id)
-    ghost_profile_url = "https://www.infinit.io/invitation/%(ghost_id)s?key=%(key)s&code=%(code)s" % {
+    ghost_profile_url = "https://www.infinit.io/" \
+                        "invitation/%(ghost_id)s?key=%(key)s&code=%(code)s" % {
       'ghost_id': str(ghost_id),
       'key': key(url),
       'code': code,
@@ -740,7 +752,8 @@ class Mixin:
   @require_logged_in
   def merge_ghost(self,
                   code : str):
-    """Merge a ghost to an existing user account.
+    """
+    Merge a ghost to an existing user account.
     The code is given (via email, sms) to the recipient.
 
     code -- The code.
@@ -771,6 +784,9 @@ class Mixin:
   def ghost_profile(self,
                     user_id : bson.ObjectId):
     """
+    Return the ghost data.
+
+    user_id -- The ghost id.
     """
     with elle.log.trace("get ghost page %s" % user_id):
       account = self.__user_fetch(
@@ -793,7 +809,9 @@ class Mixin:
         },
         fields = self.__transaction_hash_fields
       ))
-      return {'transactions': transactions}
+      return {
+        'transactions': transactions
+      }
 
   @api('/user/accounts')
   @require_logged_in
