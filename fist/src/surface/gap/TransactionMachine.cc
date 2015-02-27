@@ -327,9 +327,13 @@ namespace surface
       try
       {
         // Send report for failed transfer
+        auto transaction_dir =
+          common::infinit::transactions_directory(this->state().home(),
+                                                  this->state().me().id);
         elle::crash::transfer_failed_report(this->state().meta().protocol(),
                                             this->state().meta().host(),
                                             this->state().meta().port(),
+                                            transaction_dir,
                                             this->state().me().email,
                                             transaction_id,
                                             this->transaction().failure_reason());
