@@ -940,21 +940,59 @@ Server::_create_empty()
   this->register_route(
     elle::sprintf("/transaction/%s", id),
     reactor::http::Method::GET,
-    [&] (Server::Headers const&,
-         Server::Cookies const&,
+    [this, id] (Server::Headers const&,
+         Server::Cookies const& cookies,
          Server::Parameters const&,
          elle::Buffer const&)
     {
+      auto& user = this->user(cookies);
       return elle::sprintf(
         "{"
-        "\"download_link\": \"foo\","
-        "\"files\": \"foo\","
-        "\"message\": \"foo\","
-        "\"recipient_id\": %s,"
+        "\"_id\": \"%s\","
+        "\"sender_id\": \"%s\","
         "\"sender_fullname\": \"foo\","
-        "\"sender_id\": %s,"
-        "\"total_size\": 42,"
-        , id, id);
+        "\"sender_device_id\": \"foo\","
+        "\"download_link\": \"foo\","
+        "\"recipient_id\": \"%s\","
+        "\"recipient_fullname\": \"foo\","
+        "\"recipient_device_id\": \"foo\","
+        "\"recipient_device_name\": \"foo\","
+
+        "\"status\": 6,"
+
+        "\"message\": \"foo\","
+        "\"files\": [],"
+        "\"files_count\": 0,"
+        "\"total_size\": 0,"
+        "\"ctime\": 0,"
+        "\"mtime\": 0,"
+        "\"is_directory\": false"
+        "}"
+        , id, user.id(), user.id());
+    });
+  this->register_route(
+    elle::sprintf("/users/%s", id),
+    reactor::http::Method::GET,
+    [this, id] (Server::Headers const&,
+      Server::Cookies const&,
+      Server::Parameters const&,
+      elle::Buffer const&)
+    {
+      return elle::sprintf(
+        "{"
+        "  \"id\": \"%s\","
+        "  \"email\": \"foo@infinit.io\","
+        "  \"identity\": \"foo\","
+        "  \"public_key\": \"foo\","
+        "  \"fullname\": \"John User\","
+        "  \"handle\": \"john\","
+        "  \"connected_devices\": [],"
+        "  \"status\": false,"
+        "  \"devices\": [],"
+        "  \"favorites\": [],"
+        "  \"register_status\": \"ok\""
+        "}"
+        , id);
     });
   return id;
 }
