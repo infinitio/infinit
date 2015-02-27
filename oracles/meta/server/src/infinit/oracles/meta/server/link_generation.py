@@ -504,7 +504,7 @@ class Mixin:
       return web_link
 
   @api('/links')
-  @require_logged_in
+  @require_logged_in_fields(['quota', 'total_link_size'])
   def links_list(self,
                  mtime = None,
                  offset: int = 0,
@@ -544,7 +544,10 @@ class Mixin:
         {'$limit': count},
       ])['result']:
         res.append(self.__owner_link(link))
-      return {'links': res}
+      return {'links': res,
+        'total_link_size': user.get('total_link_size', 0),
+        'quota': user.get('quota', {}).get('total_link_size', 'unlimited'),
+      }
 
   # Used when a user deletes their account.
   def delete_all_links(self, user):
