@@ -363,7 +363,7 @@ class Mixin:
           if int(r.status_code/100) != 2:
             elle.log.warn('Link HEAD failed with %s on %s: %s' %
               ( r.status_code, link['_id'], r.content))
-          file_size = int(r.headers['Content-Length'])
+          file_size = int(r.headers.get('Content-Length', 0))
           extra = {'file_size': file_size}
           self.database.users.update(
             {'_id': user['_id']},
