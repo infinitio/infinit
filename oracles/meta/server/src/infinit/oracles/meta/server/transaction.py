@@ -626,9 +626,11 @@ class Mixin:
 
   # Shorten for real.
   def shorten(self, url):
-    from .bitly import bitly
-    b = bitly()
-    url = b.shorten(url)['url']
+    if self.shorten_ghost_profile_url:
+      from .bitly import bitly
+      b = bitly()
+      url = b.shorten(url)['url']
+      return url
     return url
 
   def on_initialized(self, transaction):

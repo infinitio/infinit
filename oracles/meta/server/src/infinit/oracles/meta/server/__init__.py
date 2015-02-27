@@ -92,6 +92,7 @@ class Meta(bottle.Bottle,
       unconfirmed_email_leeway = 604800, # in sec, 7 days.
       daily_summary_hour = 18, #in sec.
       email_confirmation_cooldown = datetime.timedelta(weeks = 1),
+      shorten_ghost_profile_url = True,
       aws_region = None,
       aws_buffer_bucket = None,
       aws_link_bucket = None,
@@ -170,6 +171,7 @@ class Meta(bottle.Bottle,
     self.unconfirmed_email_leeway = int(unconfirmed_email_leeway)
     self.daily_summary_hour = int(daily_summary_hour)
     self.email_confirmation_cooldown = email_confirmation_cooldown
+    self.shorten_ghost_profile_url = shorten_ghost_profile_url
     if aws_region is None:
       aws_region = cloud_buffer_token.aws_default_region
     self.aws_region = aws_region
