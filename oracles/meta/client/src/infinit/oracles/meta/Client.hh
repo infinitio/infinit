@@ -30,6 +30,7 @@
 # include <infinit/oracles/LinkTransaction.hh>
 # include <infinit/oracles/PeerTransaction.hh>
 # include <infinit/oracles/meta/Error.hh>
+# include <surface/gap/Transaction.hh>
 
 namespace infinit
 {
@@ -303,6 +304,24 @@ namespace infinit
         serialize(elle::serialization::Serializer& s);
       };
 
+      class TransactionUpdate
+      {
+      /*-----------.
+      | Attributes |
+      `-----------*/
+      public:
+        TransactionUpdate();
+        boost::optional<bool> paused;
+
+      /*--------------.
+      | Serialization |
+      `--------------*/
+      public:
+        TransactionUpdate(elle::serialization::SerializerIn& s);
+        void
+        serialize(elle::serialization::Serializer& s);
+      };
+
       typedef elle::ConstWeakBuffer UserIcon;
 
       class Client: public elle::Printable
@@ -476,6 +495,15 @@ namespace infinit
                            Transaction::Status status,
                            std::string const& device_id = "",
                            std::string const& device_name = "") const;
+
+        TransactionUpdate
+        transaction_update(std::string const& transaction_id,
+                           TransactionUpdate const& update) const;
+        TransactionUpdate
+        transaction_pause(std::string const& transaction_id);
+        TransactionUpdate
+        transaction_unpause(std::string const& transaction_id);
+
 
       private:
         typedef std::vector<std::pair<std::string, uint16_t>> adapter_type;

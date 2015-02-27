@@ -31,6 +31,7 @@
 #include <infinit/oracles/meta/macro.hh>
 
 #include <surface/gap/Error.hh>
+#include <surface/gap/Transaction.hh>
 
 #include <version.hh>
 
@@ -912,6 +913,63 @@ namespace infinit
           });
         SerializerIn input(url, request);
         return UpdatePeerTransactionResponse(input);
+      }
+
+      /*--------------------.
+      | Transactions update |
+      `--------------------*/
+
+      TransactionUpdate::TransactionUpdate()
+        : paused()
+      {}
+
+      TransactionUpdate::TransactionUpdate(elle::serialization::SerializerIn& s)
+        : paused()
+      {
+        this->serialize(s);
+      }
+
+      void
+      TransactionUpdate::serialize(elle::serialization::Serializer& s)
+      {
+        s.serialize("paused", this->paused);
+      }
+
+
+      TransactionUpdate
+      Client::transaction_update(std::string const& transaction_id,
+                                 TransactionUpdate const& update) const
+      {
+        ELLE_TRACE_SCOPE("%s: update transaction %s", *this, transaction_id);
+        auto url = elle::sprintf("/transactions/%s", transaction_id);
+        auto request = this->_request(
+          url,
+          Method::POST,
+          [&] (reactor::http::Request& r)
+          {
+            elle::serialization::json::SerializerOut query(r, false);
+            // FIXME: get rid of const casts when output serialization has his
+            // const API
+            query.serialize_forward(const_cast<TransactionUpdate&>(update));
+          });
+        SerializerIn input(url, request);
+        return TransactionUpdate(input);
+      }
+
+      TransactionUpdate
+      Client::transaction_pause(std::string const& transaction_id)
+      {
+        TransactionUpdate update;
+        update.paused = true;
+        return this->transaction_update(transaction_id, update);
+      }
+
+      TransactionUpdate
+      Client::transaction_unpause(std::string const& transaction_id)
+      {
+        TransactionUpdate update;
+        update.paused = false;
+        return this->transaction_update(transaction_id, update);
       }
 
       PeerTransaction
