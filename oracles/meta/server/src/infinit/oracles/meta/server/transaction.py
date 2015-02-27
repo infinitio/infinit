@@ -44,7 +44,9 @@ class Mixin:
   def transaction(self, id, owner_id = None):
     assert isinstance(id, bson.ObjectId)
     transaction = self.database.transactions.find_one(id)
-    if transaction is None:
+
+    # handle both negative search and empty transaction
+    if not transaction:
       self.not_found('transaction %s doesn\'t exist' % id)
     if owner_id is not None:
       assert isinstance(owner_id, bson.ObjectId)
@@ -160,7 +162,8 @@ class Mixin:
       {'$set': diff},
       new = False,
     )
-    if transaction is None:
+    # handle both negative search and empty transaction
+    if not transaction:
       self.not_found({
         'reason': 'transaction %s not found' % id,
         'transaction_id': id,
@@ -204,7 +207,8 @@ class Mixin:
           'sender_id': True,
           'total_size': True,
         })
-      if transaction is None:
+      # handle both negative search and empty transaction
+      if not transaction:
         self.not_found()
       else:
         return transaction
