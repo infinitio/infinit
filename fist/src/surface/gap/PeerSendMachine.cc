@@ -362,7 +362,6 @@ namespace surface
     void
     PeerSendMachine::_initialize_transaction()
     {
-        // TODO: Chewie
       this->gap_status(gap_transaction_new);
       ELLE_TRACE_SCOPE("%s: initialize transaction", *this);
       int64_t size = 0;

@@ -225,6 +225,7 @@ namespace surface
     {
       auto link_id = this->state().meta().create_link();
       this->transaction_id(link_id);
+      this->transaction()._snapshot_save();
     }
 
     void
