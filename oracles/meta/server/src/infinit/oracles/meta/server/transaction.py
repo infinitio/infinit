@@ -120,6 +120,20 @@ class Mixin:
                       str(transaction['_id']))
         continue
 
+  @property
+  def __transaction_hash_fields(self):
+    res = {
+      '_id': False,
+      'download_link': True,
+      'files': True,
+      'message': True,
+      'recipient_id': True,
+      'sender_fullname': True,
+      'sender_id': True,
+      'total_size': True,
+    }
+    return res
+
   @api('/transaction/by_hash/<transaction_hash>')
   def transaction_by_hash(self, transaction_hash):
     """
@@ -130,16 +144,8 @@ class Mixin:
     with elle.log.debug('fetch transaction with hash: %s' % transaction_hash):
       transaction = self.database.transactions.find_one(
         {'transaction_hash': transaction_hash},
-        fields = {
-          '_id': False,
-          'download_link': True,
-          'files': True,
-          'message': True,
-          'recipient_id': True,
-          'sender_fullname': True,
-          'sender_id': True,
-          'total_size': True,
-        })
+        fields = self.__transaction_hash_fields
+      )
       if transaction is None:
         return self.not_found()
       else:
