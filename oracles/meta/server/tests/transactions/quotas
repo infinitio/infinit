@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User, throws
+import infinit.oracles.meta.server.transaction_status as transaction_status
+
+with Meta() as meta:
+  alice = User(meta, "alice@infinit.io")
+  alice.login()
+  # Send to ghost size limit
+  throws(lambda:
+      alice.sendfile("bob@infinit.io", total_size = 5000000000),
+      403)
+  # Link quotas
+  meta.database.users.update({'accounts.id': 'alice@infinit.io'},
+    {'$set': { 'quota.total_link_size': 1000}})
+  link = alice.getalink()
+  alice.link_update(link, transaction_status.FINISHED)
+  # server is updating quota by reading cloud storage file size, emulate that
+  meta.database.users.update({'accounts.id': 'alice@infinit.io'},
+    {'$inc': {'total_link_size': 1100}})
+  meta.database.links.update({'hash': link['hash']},
+    {'$set': {'file_size': 1100}})
+  throws(
+    lambda: alice.getalink(),
+    403)
+  # user erases one, below quota now
+  alice.link_update(link, transaction_status.DELETED)
+  link = alice.getalink()
+  alice.link_update(link, transaction_status.FINISHED)
