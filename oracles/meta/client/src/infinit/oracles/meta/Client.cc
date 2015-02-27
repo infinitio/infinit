@@ -395,6 +395,7 @@ namespace infinit
         s.serialize("connected_devices", this->connected_devices);
         s.serialize("public_key", this->public_key);
         s.serialize("ghost_code", this->ghost_code);
+        s.serialize("ghost_profile", this->ghost_profile_url);
       }
 
       LoginResponse::LoginResponse(
@@ -840,6 +841,7 @@ namespace infinit
       {
         s.serialize("aws_credentials", this->_aws_credentials);
         s.serialize("ghost_code", this->_ghost_code);
+        s.serialize("ghost_profile", this->_ghost_profile_url);
       }
 
       CreatePeerTransactionResponse
