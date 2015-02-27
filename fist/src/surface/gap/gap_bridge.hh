@@ -54,7 +54,9 @@ public:
   }
 
 public:
-  gap_State(bool production, std::string const& download_dir);
+  gap_State(bool production,
+            std::string const& home_dir,
+            std::string const& download_dir);
 
   ~gap_State()
   {
