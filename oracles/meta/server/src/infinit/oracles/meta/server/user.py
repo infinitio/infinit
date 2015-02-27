@@ -15,7 +15,7 @@ import papier
 from .plugins.response import response, Response
 from .utils import api, require_logged_in, require_logged_in_fields, require_admin, require_logged_in_or_admin, hash_password, json_value, require_key, key
 from . import utils
-from . import error, notifier, regexp, conf, invitation, mail
+from . import error, notifier, regexp, conf, invitation, mail, transaction_status
 
 import pymongo
 from pymongo import DESCENDING
@@ -23,6 +23,10 @@ import os
 import string
 import time
 import unicodedata
+
+
+code_alphabet = '123467890abcdefghilklmnopqrstuvwxyz'
+code_length = 5
 
 #
 # Users
@@ -694,10 +698,53 @@ class Mixin:
     except error.Error as e:
       self.fail(*e.args)
 
-  @api('/user/<code>/merge', method = 'POST')
+  ## ----- ##
+  ## Ghost ##
+  ## ----- ##
+  def generate_random_sequence(self, alphabet = code_alphabet, length = code_length):
+    """Return a pseudo-random string.
+    alphabet -- A list of characters.
+    length -- The size of the wanted random sequence.
+    """
+    import random
+    random.seed()
+    return ''.join(random.choice(alphabet) for _ in range(length))
+
+  def __register_ghost(self,
+                       extra_fields):
+    features = self._roll_features(True)
+    request = {
+      'register_status': 'ghost',
+      'notifications': [],
+      'networks': [],
+      'devices': [],
+      'swaggers': {},
+      'features': features,
+      # Ghost code is used for merging mechanism.
+      'ghost_code': self.generate_random_sequence(),
+      'ghost_code_expiration': self.now + datetime.timedelta(days=14),
+    }
+    request.update(extra_fields)
+    return self._register(**request)
+
+  def __ghost_profile_url(self, ghost_id, code):
+    url = '/ghost/%s' % str(ghost_id)
+    ghost_profile_url = "https://www.infinit.io/invitation/%(ghost_id)s?key=%(key)s&code=%(code)s" % {
+      'ghost_id': str(ghost_id),
+      'key': key(url),
+      'code': code,
+    }
+    return ghost_profile_url
+
+  @api('/ghost/<code>/merge', method = 'POST')
   @require_logged_in
   def merge_ghost(self,
                   code : str):
+    """Merge a ghost to an existing user account.
+    The code is given (via email, sms) to the recipient.
+
+    code -- The code.
+    """
     with elle.log.trace("merge ghost with code %s" % code):
       # XXX: Add cooldown.
       if len(code) == 0:
@@ -705,14 +752,48 @@ class Mixin:
           'reason': 'code cannot be empty',
         })
       account = self.database.users.find_one({'ghost_code': code})
-      if account is None or account['ghost_code_expiration'] < self.now:
+      if account is None:
         return self.not_found({
           'reason': 'unknown code : %s' % code,
+          'code': code,
+        })
+      if account['ghost_code_expiration'] < self.now:
+        return self.gone({
+          'reason': 'this user is not accessible anymore',
           'code': code,
         })
       elle.log.debug('account found: %s' % account)
       self.user_delete(account, merge_with = self.user)
       return {}
+
+  @api('/ghost/<user_id>', method = 'GET')
+  @require_key
+  def ghost_profile(self,
+                    user_id : bson.ObjectId):
+    """
+    """
+    with elle.log.trace("get ghost page %s" % user_id):
+      account = self.__user_fetch(
+        {'_id': user_id},
+        fields = self.__user_view_fields + ['ghost_code_expiration'])
+      if account is None:
+        return self.not_found({
+          'reason': 'User not found',
+          'id': str(user_id),
+        })
+      if account['register_status'] in ['deleted', 'merged', 'ok']:
+        return self.gone({
+          'reason': 'This user doesn\'t exist anymore',
+          'id': str(user_id),
+        })
+      transactions = list(self.database.transactions.find(
+        {
+          'involved': account['_id'],
+          'status': {'$nin': transaction_status.final + [transaction_status.CREATED] }
+        },
+        fields = self.__transaction_hash_fields
+      ))
+      return {'transactions': transactions}
 
   @api('/user/accounts')
   @require_logged_in

@@ -12,7 +12,7 @@ import json
 
 import elle.log
 from .utils import \
-  api, require_logged_in, require_logged_in_or_admin, require_key
+  api, require_logged_in, require_logged_in_or_admin, require_key, key
 from . import regexp, error, transaction_status, notifier, invitation, cloud_buffer_token, cloud_buffer_token_gcs, mail
 import uuid
 import re
@@ -22,9 +22,6 @@ from .plugins.response import response
 from infinit.oracles.meta.server.utils import json_value
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Transaction'
-
-code_alphabet = '123467890abcdefghilklmnopqrstuvwxyz'
-code_length = 5
 
 class Mixin:
 
@@ -265,15 +262,6 @@ class Mixin:
       device_id,
       message)
 
-  def generate_random_sequence(self, alphabet = code_alphabet, length = code_length):
-    """Return a pseudo-random string.
-    alphabet -- A list of characters.
-    length -- The size of the wanted random sequence.
-    """
-    import random
-    random.seed()
-    return ''.join(random.choice(alphabet) for _ in range(length))
-
   def transaction_create(self,
                          sender,
                          id_or_email,
@@ -322,29 +310,20 @@ class Mixin:
         if not recipient:
           elle.log.trace("recipient unknown, create a ghost")
           new_user = True
-          features = self._roll_features(True)
-          recipient_id = self._register(
-            email = peer_email,
-            fullname = peer_email, # This is safe as long as we don't allow searching for ghost users.
-            register_status = 'ghost',
-            notifications = [],
-            networks = [],
-            devices = [],
-            swaggers = {},
-            accounts = [{'type':'email', 'id':peer_email}],
-            features = features,
-            ghost_code = self.generate_random_sequence(),
-            ghost_code_expiration = self.now + datetime.timedelta(days=14),
-          )
+          recipient_id = self.__register_ghost({
+            'accounts': [{'type':'email', 'id': peer_email}],
+            'email': peer_email,
+            'fullname': peer_email,
+          })
           recipient = self.__user_fetch(
             recipient_id,
-            fields = self.__user_view_fields + ['email', 'ghost_code'])
+            fields = self.__user_view_fields + ['email', 'ghost_code', 'features'])
           # Post new_ghost event to metrics
           url = 'http://metrics.9.0.api.production.infinit.io/collections/users'
           metrics = {
             'event': 'new_ghost',
             'user': str(recipient['_id']),
-            'features': features,
+            'features': recipient['features'],
             'sender': str(sender['_id']),
             'timestamp': time.time(),
           }
@@ -645,11 +624,20 @@ class Mixin:
         })
       return res
 
+  # XXX
+  def shorten(self, url):
+    return url
+
   def on_initialized(self, transaction):
     recipient = self.__user_fetch(transaction['recipient_id'],
-                                  fields = ['ghost_code'])
-    if 'ghost_code' in recipient:
-      return {'ghost_code': recipient['ghost_code']}
+                                  fields = ['_id', 'ghost_code', 'register_status'])
+    if recipient['register_status'] == 'ghost' and 'ghost_code' in recipient:
+      return {
+        'ghost_code': recipient['ghost_code'],
+        'url': self.shorten(
+          self.__ghost_profile_url(ghost_id = recipient['_id'],
+                                   code = recipient['ghost_code']))
+      }
     return {}
 
   def _hash_transaction(self, transaction):
@@ -711,29 +699,35 @@ class Mixin:
       mail_template = 'send-file-url'
       if 'features' in recipient and 'send_file_url_template' in recipient['features']:
         mail_template = recipient['features']['send_file_url_template']
+      merges = {
+        'filename': transaction['files'][0],
+        'recipient_email': recipient['email'],
+        'recipient_name': recipient['fullname'],
+        'sendername': user['fullname'],
+        'sender_email': user['email'],
+        'sender_avatar': 'https://%s/user/%s/avatar' %
+        (bottle.request.urlparts[1], user['_id']),
+        'note': transaction['message'],
+        'transaction_hash': transaction_hash,
+        'transaction_id': str(transaction['_id']),
+        'number_of_other_files': len(transaction['files']) - 1,
+        # Ghost created pre 0.9.30 has no ghost code.
+      }
+      if 'ghost_code' in recipient:
+        merges.update({
+          'code': recipient['ghost_code'],
+          'url': self.shorten(
+            self.__ghost_profile_url(transaction['recipient_id'],
+                                     code = recipient['ghost_code']))
+        })
+
       invitation.invite_user(
         peer_email,
         mailer = self.mailer,
         mail_template = mail_template,
         source = (user['fullname'], user['email']),
         database = self.database,
-        merge_vars = {
-          peer_email: {
-            'filename': transaction['files'][0],
-            'recipient_email': recipient['email'],
-            'recipient_name': recipient['fullname'],
-            'sendername': user['fullname'],
-            'sender_email': user['email'],
-            'sender_avatar': 'https://%s/user/%s/avatar' %
-              (bottle.request.urlparts[1], user['_id']),
-            'note': transaction['message'],
-            'transaction_hash': transaction_hash,
-            'transaction_id': str(transaction['_id']),
-            'number_of_other_files': len(transaction['files']) - 1,
-            # Ghost created pre 0.9.30 has no ghost code.
-            'code': recipient.get('ghost_code', ''),
-          }}
-      )
+        merge_vars = {peer_email: merges})
       return {
         'transaction_hash': transaction_hash,
         'download_link': ghost_get_url,
