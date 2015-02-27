@@ -40,7 +40,8 @@ class MailService(NoOpMailer):
 
 
 # Normal.
-with Meta(enable_emails = True) as meta:
+with Meta(enable_emails = True,
+          shorten_ghost_profile_url = False) as meta:
   alice = User(meta, 'alice@infinit.io')
   alice.login()
   bob = User(meta, 'bob@infinit.io')
@@ -197,7 +198,6 @@ with Meta(enable_emails = True) as meta:
   bob.post('ghost/%s/merge' % code, {})
   assert bob.get('users/%s' % eve_id)['register_status'] == 'merged'
   bob.synchronize(init = True)
-  print(bob.transactions)
   assert len(bob.transactions) == 2
   assert len(bob.swaggers) == 2
   try:
