@@ -674,6 +674,7 @@ namespace surface
         void serialize(elle::serialization::Serializer& s);
         int64_t max_mirror_size; // Copy files to send if below this size
         int64_t max_compress_size; // Only compresss archive if content below this size
+        int64_t max_cloud_buffer_size; // Only cloud buffer below this size
         bool disable_upnp;
         typedef std::unordered_map<std::string, std::string> Features;
         Features features;

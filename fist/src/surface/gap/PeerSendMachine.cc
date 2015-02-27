@@ -452,6 +452,16 @@ namespace surface
       {
         // Normal p2p case.
         bool peer_online = peer.online();
+        int64_t max_cloud_buffer_size = this->state().configuration().max_cloud_buffer_size;
+        if (max_cloud_buffer_size == 0)
+          max_cloud_buffer_size = 10LL * 1000LL * 1000LL * 1000LL;
+        bool cloud_allowed = this->total_size() < max_cloud_buffer_size;
+        if (!cloud_allowed)
+          ELLE_TRACE("%s: cloud buffer disabled: size %s exceeds limit %s",
+            *this, this->total_size(), max_cloud_buffer_size);
+        else
+          ELLE_TRACE("%s: allowing cloud buffer for size %s", *this,
+            this->total_size());
         // Send to self case.
         if (this->state().me().id == peer.id)
           peer_online = peer.online_excluding_device(this->state().device().id);
@@ -465,9 +475,11 @@ namespace surface
           ELLE_TRACE("%s: cloud buffered, nothing to do", *this);
           this->gap_status(gap_transaction_cloud_buffered);
         }
-        else if (!peer.ghost() && !peer_online)
+        else if (!peer.ghost()
+          && !peer_online
+          && cloud_allowed)
           this->_cloud_operation();
-        else if (!peer.ghost())
+        else if (!peer.ghost() && cloud_allowed)
         {
           // Peer is online. Wait for a grace period, and then
           // preemptively buffer to the cloud

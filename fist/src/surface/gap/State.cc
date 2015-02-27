@@ -168,6 +168,7 @@ namespace surface
       config.s3.multipart_upload.chunk_size = 0;
       config.max_mirror_size = 0;
       config.max_compress_size = 0;
+      config.max_cloud_buffer_size = 0;
       config.disable_upnp = false;
       boost::filesystem::ifstream fconfig
         (common::infinit::configuration_path(this->home()));
@@ -1135,6 +1136,7 @@ namespace surface
       s.serialize("s3", this->s3);
       s.serialize("max_mirror_size", this->max_mirror_size);
       s.serialize("max_compress_size", this->max_compress_size);
+      s.serialize("max_cloud_buffer_size", this->max_cloud_buffer_size);
       s.serialize("disable_upnp", this->disable_upnp);
       s.serialize("features", this->features);
     }
