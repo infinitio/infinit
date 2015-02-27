@@ -722,7 +722,7 @@ class Mixin:
       if 'ghost_code' in recipient:
         merges.update({
           'ghost_code': recipient['ghost_code'],
-          'ghost_code': self.shorten(self.__ghost_profile_url(recipient))
+          'ghost_profile': self.shorten(self.__ghost_profile_url(recipient))
         })
 
       invitation.invite_user(

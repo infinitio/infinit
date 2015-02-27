@@ -33,7 +33,7 @@ class MailService(NoOpMailer):
     elif template_message == 'send-file-url':
       self.codes.update(
         {
-          merges['sendername']: merges['code']
+          merges['sendername']: merges['ghost_code']
         })
 
 
@@ -194,7 +194,7 @@ with Meta(enable_emails = True) as meta:
   assert meta.mailer.codes[alice.fullname] == meta.mailer.codes[luc.fullname]
   code = meta.mailer.codes[alice.fullname]
   assert len(bob.transactions) == 0
-  bob.post('user/%s/merge' % code, {})
+  bob.post('ghost/%s/merge' % code, {})
   assert bob.get('users/%s' % eve_id)['register_status'] == 'merged'
   bob.synchronize(init = True)
   print(bob.transactions)

@@ -29,7 +29,8 @@ class MailService(NoOpMailer):
     self.messages[template_message].append(merges)
     print(merges)
 
-with Meta(enable_emails = True) as meta:
+with Meta(enable_emails = True,
+          shorten_ghost_profile_url = False) as meta:
   with Trophonius(meta) as trophonius:
     alice = User(meta, 'alice@infinit.io')
     alice.login(trophonius = trophonius)
@@ -58,6 +59,7 @@ with Meta(enable_emails = True) as meta:
     # Check if the 3 emails have been delivered and contain ghost_code and url.
     assert len(meta.mailer.messages['send-file-url']) == 3
     for message in meta.mailer.messages['send-file-url']:
+      print(message['ghost_code'], res0['ghost_code'])
       assert message['ghost_code'] == res0['ghost_code']
       assert message['ghost_profile'] == res0['ghost_profile']
 
