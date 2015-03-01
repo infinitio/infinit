@@ -32,28 +32,28 @@ namespace tests
     Server();
     Server(Server const&) = default;
 
-    User&
+    User const&
     register_user(std::string const& email,
                   std::string const& password = "password");
     void
-    register_device(User& user,
+    register_device(User const& user,
                     boost::optional<boost::uuids::uuid> device);
 
     Client
     client(std::string const& email,
            std::string const& password);
 
-    User&
+    User const&
     generate_ghost_user(std::string const& email);
     void
     session_id(boost::uuids::uuid id);
     Transaction&
     transaction(std::string const& id);
 
-    User&
+    User const&
     user(Cookies const& cookies) const;
 
-    Device
+    Device const&
     device(Cookies const& cookies) const;
 
   protected:
@@ -79,7 +79,7 @@ namespace tests
     bmi::const_mem_fun<User, std::string const&, &User::facebook_id>
     FacebookId;
     typedef boost::multi_index_container<
-      std::unique_ptr<User>,
+      User,
       bmi::indexed_by<bmi::hashed_unique<UserId>,
                       bmi::hashed_non_unique<UserEmail>,
                       bmi::hashed_unique<FacebookId>>

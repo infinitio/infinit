@@ -135,8 +135,6 @@ ELLE_TEST_SCHEDULED(swaggers)
   bob.state.poll();
   ELLE_ASSERT(step0); // Nothing should have changed.
   ELLE_ASSERT(!step1); // Eve is a swagger but not online.
-  for (auto const& user: server.users().get<0>())
-    ELLE_WARN("%s", *user);
   ELLE_ASSERT_EQ(bob.state.swaggers().size(), 2);
   eve.login();
   synchronize(server, bob.state);

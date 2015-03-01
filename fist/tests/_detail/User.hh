@@ -16,7 +16,7 @@ namespace tests
   public:
     static
     std::string
-    link_representation(infinit::oracles::LinkTransaction& link);
+    link_representation(infinit::oracles::LinkTransaction const& link);
 
   public:
     User(boost::uuids::uuid id,
@@ -28,7 +28,7 @@ namespace tests
     ELLE_ATTRIBUTE_R(boost::uuids::uuid, id);
     ELLE_ATTRIBUTE_R(std::string, email);
     ELLE_ATTRIBUTE_R(boost::optional<cryptography::KeyPair>, keys);
-    ELLE_ATTRIBUTE_X(std::unique_ptr<papier::Identity>, identity);
+    ELLE_ATTRIBUTE_RX(std::unique_ptr<papier::Identity>, identity);
     ELLE_ATTRIBUTE_R(std::string, facebook_id);
     typedef std::unordered_set<User*> Swaggers;
     Swaggers swaggers;
@@ -47,7 +47,7 @@ namespace tests
     self_json() const;
 
     std::string
-    links_json();
+    links_json() const;
 
     std::string
     devices_json() const;

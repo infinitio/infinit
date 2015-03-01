@@ -24,11 +24,11 @@ namespace tests
   {}
 
   std::string
-  User::links_json()
+  User::links_json() const
   {
     // I wish I could use elle::serialization::SerializerOut.
     std::string str = "[";
-    for (auto& link: this->links)
+    for (auto const& link: this->links)
       str += link_representation(link.second) + ", ";
 
     if (!this->links.empty())
@@ -160,7 +160,7 @@ namespace tests
 
   Client::Client(Server& server,
                  std::string const& email)
-    : Client(server, server.register_user(email, "password"))
+    : Client(server, const_cast<User&>(server.register_user(email, "password")))
   {
   }
 
@@ -180,12 +180,12 @@ namespace tests
   }
 
   std::string
-  User::link_representation(infinit::oracles::LinkTransaction& link)
+  User::link_representation(infinit::oracles::LinkTransaction const& link)
   {
     std::stringstream link_stream;
     {
       typename elle::serialization::json::SerializerOut output(link_stream);
-      link.serialize(output);
+      const_cast<infinit::oracles::LinkTransaction&>(link).serialize(output);
     }
     return link_stream.str();
   }

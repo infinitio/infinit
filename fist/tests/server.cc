@@ -83,11 +83,11 @@ namespace tests
             "/login",
             reactor::http::StatusCode::Not_Found,
             "user not found");
-        auto& user = **it;
+        User const& user = *it;
         this->headers()["Set-Cookie"] = elle::sprintf("session-id=%s+%s", user.id(), device_id_str);
         if (this->_devices.find(device_id) == this->_devices.end())
           this->register_device(user, device_id);
-        auto& device = this->_devices.at(device_id);
+        auto const& device = this->_devices.at(device_id);
         return elle::sprintf(
           "{"
           " \"self\": %s,"
@@ -128,7 +128,7 @@ namespace tests
            Server::Parameters const& parameters,
            elle::Buffer const&)
       {
-        auto& user = this->user(cookies);
+        User const& user = this->user(cookies);
         std::vector<Transaction*> runnings;
         std::vector<Transaction*> finals;
         for (auto& transaction: this->_transactions)
@@ -188,13 +188,27 @@ namespace tests
         static std::unordered_map<std::string, std::string> facebook_ids;
         if (facebook_ids.find(code) == facebook_ids.end())
         {
-          auto& user = this->register_user("", "");
+          User const& user = this->register_user("", "");
           // Replace identity.
           auto keys =
             cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                             papier::Identity::keypair_length);
           std::unique_ptr<papier::Identity> identity{generate_identity(keys, boost::lexical_cast<std::string>(user.id()), "my identity", "")};
-          user.identity().reset(identity.release());
+          struct UpdateIdentity
+          {
+            UpdateIdentity(std::unique_ptr<papier::Identity>&& identity)
+              : identity(std::move(identity))
+            {}
+
+            void
+            operator()(User& user)
+            {
+              user.identity().reset(this->identity.release());
+            }
+
+            std::unique_ptr<papier::Identity> identity;
+          };
+          this->_users.modify(this->_users.get<0>().find(user.id()), UpdateIdentity(std::move(identity)));
           facebook_ids[code] = user.facebook_id();
         }
         auto const& facebook_id = facebook_ids[code];
@@ -205,7 +219,7 @@ namespace tests
             "/facebook_connect",
             reactor::http::StatusCode::Not_Found,
             "user not found");
-        auto& user = **it;
+        User const& user = *it;
         this->headers()["Set-Cookie"] = elle::sprintf("session-id=%s+%s", user.id(), device_id_str);
         if (this->_devices.find(device_id) == this->_devices.end())
           this->register_device(user, device_id);
@@ -273,11 +287,25 @@ namespace tests
            Server::Parameters const&,
            elle::Buffer const&)
       {
-        auto& user = this->user(cookies);
+        User const& user = this->user(cookies);
         infinit::oracles::LinkTransaction t;
         t.id = boost::lexical_cast<std::string>(random_uuid());
         auto id = t.id;
-        user.links[id] = t;
+        struct InsertLink
+        {
+          InsertLink(infinit::oracles::LinkTransaction t)
+            : t(t)
+          {}
+
+          void
+          operator()(User& user)
+          {
+            user.links[t.id] = t;
+          }
+
+          infinit::oracles::LinkTransaction t;
+        };
+        this->_users.modify(this->_users.get<0>().find(user.id()), InsertLink(t));
 
       this->register_route(
         elle::sprintf("/link/%s", id),
@@ -287,15 +315,33 @@ namespace tests
              Server::Parameters const& parameters,
              elle::Buffer const& body)
         {
-          auto& user = this->user(cookies);
-          auto& t =  user.links[id];
-          auto device = this->device(cookies);
-          t.click_count = 3;
-          t.ctime = 2173213;
-          t.sender_id = boost::lexical_cast<std::string>(user.id());
-          t.sender_device_id = boost::lexical_cast<std::string>(device.id());
-          t.status = infinit::oracles::Transaction::Status::initialized;
+          User const& user = this->user(cookies);
+          auto const& device = this->device(cookies);
 
+          struct UpdateLink
+          {
+            UpdateLink(std::string const& id,
+                       Device const& device)
+              : id(id)
+              , device(device)
+            {}
+
+            void
+            operator()(User& user)
+            {
+              auto& t = user.links.at(this->id);
+              t.click_count = 3;
+              t.ctime = 2173213;
+              t.sender_id = boost::lexical_cast<std::string>(user.id());
+              t.sender_device_id = boost::lexical_cast<std::string>(device.id());
+              t.status = infinit::oracles::Transaction::Status::initialized;
+            }
+            std::string id;
+            Device const& device;
+          };
+          this->_users.modify(this->_users.get<0>().find(user.id()), UpdateLink(id, device));
+
+          auto const& t = this->_users.get<0>().find(user.id())->links.at(id);
           auto res = elle::sprintf(
             "{"
             "  \"transaction\": %s,"
@@ -329,11 +375,30 @@ namespace tests
             elle::IOStream stream(body.istreambuf());
             elle::serialization::json::SerializerIn input(stream, false);
             int status;
-            auto& user = this->user(cookies);
-            auto& t =  user.links[id];
+            User const& user = this->user(cookies);
+            struct UpdateLink
+            {
+              UpdateLink(std::string const& id,
+                         infinit::oracles::Transaction::Status status)
+                : id(id)
+                , status(status)
+              {}
+
+              void
+              operator()(User& user)
+              {
+                auto& t = user.links.at(this->id);
+                t.status = this->status;
+              }
+              std::string id;
+              infinit::oracles::Transaction::Status status;
+            };
             input.serialize("status", status);
-            t.status =
-              static_cast<infinit::oracles::Transaction::Status>(status);
+            this->_users.modify(
+              this->_users.get<0>().find(
+                user.id()),
+              UpdateLink(id,
+                         static_cast<infinit::oracles::Transaction::Status>(status)));
             return "{\"success\": true}";
           });
 
@@ -433,8 +498,8 @@ namespace tests
                    Server::Parameters const&,
                    elle::Buffer const& content)
           {
-            auto& user = this->user(cookies);
-            auto device = this->device(cookies);
+            User const& user = this->user(cookies);
+            auto const& device = this->device(cookies);
             elle::IOStream stream(content.istreambuf());
             elle::serialization::json::SerializerIn input(stream, false);
             std::string recipient_email_or_id;
@@ -443,7 +508,7 @@ namespace tests
             std::list<std::string> files;
             input.serialize("files", files);
             bool ghost = false;
-            auto& rec = [&] () -> User& {
+            auto const& rec = [&] () -> User const& {
               if (recipient_email_or_id.find('@') != std::string::npos)
               {
                 auto& users_by_email = this->_users.get<1>();
@@ -451,15 +516,16 @@ namespace tests
                 ghost = recipient == users_by_email.end();
                 return ghost
                 ? generate_ghost_user(recipient_email_or_id)
-                : **recipient;
+                : *recipient;
               }
               else
               {
                 auto id = recipient_email_or_id;
                 auto& users = this->_users.get<0>();
-                return **users.find(boost::uuids::string_generator()(id));
+                return *users.find(boost::uuids::string_generator()(id));
               }}();
 
+            // BMI shouldn't be used like that...
             auto& tr = **this->_transactions.find(id);
             tr.status = infinit::oracles::Transaction::Status::initialized;
             tr.sender_id = boost::lexical_cast<std::string>(user.id());
@@ -468,8 +534,23 @@ namespace tests
             tr.recipient_id = boost::lexical_cast<std::string>(rec.id());
             tr.is_ghost = ghost;
 
-            rec.swaggers.insert(&user);
-            user.swaggers.insert(&rec);
+            struct UpdateSwag
+            {
+              UpdateSwag(User const& swagger)
+                : swagger(swagger)
+              {}
+
+              void
+              operator()(User& user)
+              {
+                user.swaggers.insert(&user);
+              }
+
+              User const& swagger;
+            };
+            this->_users.modify(this->_users.get<0>().find(user.id()), UpdateSwag(rec));
+            this->_users.modify(this->_users.get<0>().find(rec.id()), UpdateSwag(user));
+
             auto res = elle::sprintf(
               "{"
               "\"created_transaction_id\": \"%s\","
@@ -498,8 +579,8 @@ namespace tests
                    Server::Parameters const&,
                    elle::Buffer const& content)
           {
-            auto device = this->device(cookies);
-            auto& user = this->user(cookies);
+            auto const& device = this->device(cookies);
+            User const& user = this->user(cookies);
             // typedef std::vector<std::pair<std::string, int>> Locals;
             // Locals locals;
 
@@ -610,7 +691,7 @@ namespace tests
         if (tr.status == infinit::oracles::Transaction::Status::accepted)
         {
           auto const& user = this->user(cookies);
-          auto device = this->device(cookies);
+          auto const& device = this->device(cookies);
           tr.recipient_id = boost::lexical_cast<std::string>(user.id());
           tr.recipient_device_id = boost::lexical_cast<std::string>(device.id());
         }
@@ -717,22 +798,21 @@ namespace tests
       });
   }
 
-  User&
+  User const&
   Server::user(Server::Cookies const& cookies) const
   {
     try
     {
       if (contains(cookies, "session-id"))
       {
-        auto& users = this->_users.get<0>();
         std::string session_id = cookies.at("session-id");
         std::vector<std::string> strs;
         boost::split(strs, session_id, boost::is_any_of("+"));
-        auto const& user = users.find(boost::uuids::string_generator()(strs[0]));
-        if (user != users.end())
+        auto& users = this->_users.get<0>();
+        auto it = users.find(boost::uuids::string_generator()(strs[0]));
+        if (it != users.end())
         {
-          if (*user != nullptr)
-            return **user;
+          return *it;
         }
       }
     }
@@ -740,11 +820,11 @@ namespace tests
     {}
     ELLE_LOG("cookies: %s", cookies);
     for (auto const& user: this->_users.get<0>())
-      ELLE_LOG("user: %s", *user);
+      ELLE_LOG("user: %s", user);
     throw Server::Exception(" ", reactor::http::StatusCode::Forbidden, " ");
   }
 
-  Device
+  Device const&
   Server::device(Server::Cookies const& cookies) const
   {
     try
@@ -755,10 +835,10 @@ namespace tests
         std::string session_id = cookies.at("session-id");
         std::vector<std::string> strs;
         boost::split(strs, session_id, boost::is_any_of("+"));
-        auto const& device = devices.find(boost::uuids::string_generator()(strs[1]));
-        if (device != devices.end())
+        auto it = devices.find(boost::uuids::string_generator()(strs[1]));
+        if (it != devices.end())
         {
-          return device->second;
+          return it->second;
         }
       }
     }
@@ -768,7 +848,7 @@ namespace tests
     throw Server::Exception(" ", reactor::http::StatusCode::Forbidden, " ");
   }
 
-  User&
+  User const&
   Server::register_user(std::string const& email,
                         std::string const& password)
   {
@@ -796,37 +876,26 @@ namespace tests
             elle::sprintf("user/%s not found", id),
             reactor::http::StatusCode::Not_Found,
             "user not found");
-        return (*it)->json();
+        return (*it).json();
       };
     this->register_route(elle::sprintf("/users/%s", email),
                          reactor::http::Method::GET, response);
     this->register_route(elle::sprintf("/users/%s", id),
                          reactor::http::Method::GET, response);
-    auto user = elle::make_unique<User>(
-      id,
-      std::move(email),
-      std::move(keys),
-      std::move(identity));
-    this->_users.insert(std::move(user));
-
+    this->_users.emplace(id, email, std::move(keys), std::move(identity));
     {
-      auto& users = this->_users.get<0>();
+      auto const& users = this->_users.get<0>();
       auto it = users.find(id);
-      return **it;
+      ELLE_ASSERT(it != users.end());
+      return *it;
     }
   }
 
-  User&
+  User const&
   Server::generate_ghost_user(std::string const& email)
   {
     ELLE_ASSERT(this->_users.get<1>().find(email) == this->_users.get<1>().end());
     auto id = random_uuid();
-
-    auto user = elle::make_unique<User>(
-      id,
-      std::move(email),
-      boost::optional<cryptography::KeyPair>{},
-      std::unique_ptr<papier::Identity>{});
 
     auto response =
       [this, id, email]
@@ -852,18 +921,40 @@ namespace tests
                          reactor::http::Method::GET, response);
     this->register_route(elle::sprintf("/users/%s", id),
                          reactor::http::Method::GET, response);
+    this->_users.emplace(id,
+                         email,
+                         boost::optional<cryptography::KeyPair>{},
+                         std::unique_ptr<papier::Identity>{});
 
-    auto raw = user.get();
-    this->_users.insert(std::move(user));
-    return *raw;
+    {
+      auto& users = this->_users.get<0>();
+      auto it = users.find(id);
+      ELLE_ASSERT(it != users.end());
+      return *it;
+    }
   }
 
   void
-  Server::register_device(User& user,
+  Server::register_device(User const& user,
                           boost::optional<boost::uuids::uuid> device_id)
   {
     Device device{ user.identity()->pair().K(), device_id };
-    user.devices.insert(device.id());
+
+    struct AddDevice
+    {
+      AddDevice(Device::Id const& id)
+        : id(id)
+      {}
+
+      void
+      operator()(User& user)
+      {
+        user.devices.insert(this->id);
+      }
+
+      Device::Id id;
+    };
+    this->_users.modify(this->_users.get<0>().find(user.id()), AddDevice(device.id()));
     this->_devices.emplace(device.id(), device);
     this->register_route(
       elle::sprintf("/device/%s/view", device.id()),
