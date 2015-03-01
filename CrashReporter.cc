@@ -465,25 +465,29 @@ namespace elle
                 boost::filesystem::path const& attachment,
                 std::string const& user_name,
                 std::string const& message,
-                std::string const& user_file_)
+                std::string const& user_file)
     {
-      ELLE_TRACE_SCOPE("user report");
       std::string url = elle::sprintf("%s://%s:%s/debug/report/user",
                                       meta_protocol,
                                       meta_host,
                                       meta_port);
+      ELLE_TRACE_SCOPE("report (%s) from %s message %s, attachments {%s, %s}",
+                       url, user_name, message, attachment, user_file);
       elle::filesystem::TemporaryDirectory tmp;
       boost::filesystem::path destination(tmp.path() / "report.tar.bz2");
+      std::vector<boost::filesystem::path> attachements;
+      attachements.push_back(attachment);
 #ifdef INFINIT_WINDOWS
       // On windows, libarchive behaves differently regarding of sharing a fd.
       // We need to create a copy of the log before archiving it.
-      boost::filesystem::path home(home);
-      boost::filesystem::path copied_log = home / "current_state.log";
       boost::system::error_code erc;
-      boost::filesystem::copy(elle::os::getenv("INFINIT_LOG_FILE"), copied_log , erc);
+      boost::filesystem::path log(elle::os::getenv("INFINIT_LOG_FILE"));
+      boost::filesystem::path copied_log = log;
+      copied_log.replace_extension("copied.txt");
+      boost::filesystem::copy(log, copied_log , erc);
       if (erc)
       {
-        ELLE_WARN("error while copying %s: %s", user_file_, copied_log);
+        ELLE_WARN("error while copying log(%s): %s", log, copied_log);
       }
       elle::SafeFinally cleanup{
         [&] {
@@ -492,29 +496,17 @@ namespace elle
           if (erc)
             ELLE_WARN("removing copied file %s failed: %s", copied_log, erc);
         }};
-      std::string user_file = copied_log.string();
-#else
-      std::string user_file = user_file_;
+      attachements.push_back(copied_log);
 #endif
-
-      if (user_file.length() == 0)
-      {
-        elle::archive::archive(elle::archive::Format::tar_gzip,
-                               {attachment},
-                               destination,
-                               elle::archive::Renamer(),
-                               temp_file_excluder,
-                               true);
-      }
-      else
-      {
-        elle::archive::archive(elle::archive::Format::tar_gzip,
-                               {user_file, attachment},
-                               destination,
-                               elle::archive::Renamer(),
-                               temp_file_excluder,
-                               true);
-      }
+      if (!user_file.empty())
+        attachements.push_back(user_file);
+      ELLE_LOG(">> %s", attachements);
+      elle::archive::archive(elle::archive::Format::tar_gzip,
+                             attachements,
+                             destination,
+                             elle::archive::Renamer(),
+                             temp_file_excluder,
+                             true);
       _send_report(url, user_name, message, _to_base64(destination));
     }
   }
