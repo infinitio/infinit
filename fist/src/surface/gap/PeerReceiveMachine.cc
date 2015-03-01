@@ -291,6 +291,7 @@ namespace surface
       }
       if (this->_nothing_in_the_cloud)
       {
+        ELLE_TRACE("nothing was in the cloud");
         this->_nothing_in_the_cloud = false;
         return;
       }
