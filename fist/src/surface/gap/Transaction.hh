@@ -166,32 +166,28 @@ namespace surface
       virtual
       void
       accept();
-
       virtual
       void
       reject();
-
       virtual
       void
       cancel(bool user_request = false);
-
       // Only for LinkTransactions.
       virtual
       void
       delete_();
-
       virtual
       void
       join();
-
       virtual
       float
       progress() const;
-
       virtual
-      bool
+      void
       pause();
-
+      virtual
+      void
+      unpause();
       virtual
       void
       interrupt();

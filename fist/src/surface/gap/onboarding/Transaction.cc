@@ -116,10 +116,16 @@ namespace surface
         }
       }
 
-      bool
+      void
       Transaction::pause()
       {
-        return this->_machine->pause();
+        // nothing
+      }
+
+      void
+      Transaction::unpause()
+      {
+        // nothing
       }
 
       void

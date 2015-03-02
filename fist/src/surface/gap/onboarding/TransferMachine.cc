@@ -24,13 +24,11 @@ namespace surface
           Transferer(owner),
           _progress(0.0f),
           _duration(duration),
-          _running("running"),
           _interrupt(false),
           _file_path(file_path),
           _output_dir(output_dir)
       {
         ELLE_TRACE_SCOPE("%s: creation", *this);
-        this->_running.open();
       }
 
       void
@@ -69,7 +67,6 @@ namespace surface
         while (this->_progress < 1.0f)
         {
           static reactor::Duration step = 100_ms;
-          this->_running.wait();
           if (this->_interrupt)
           {
             this->_interrupt = false;

@@ -500,9 +500,9 @@ namespace infinit
         transaction_update(std::string const& transaction_id,
                            TransactionUpdate const& update) const;
         TransactionUpdate
-        transaction_pause(std::string const& transaction_id);
+        transaction_pause(std::string const& transaction_id) const;
         TransactionUpdate
-        transaction_unpause(std::string const& transaction_id);
+        transaction_unpause(std::string const& transaction_id) const;
 
 
       private:

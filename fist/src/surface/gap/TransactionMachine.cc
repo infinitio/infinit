@@ -111,6 +111,8 @@ namespace surface
           "fail", std::bind(&TransactionMachine::_fail, this)))
       , _finish_state
         (this->_machine.state_make("finish", [this] {this->_finish(); }))
+      , _paused_state
+        (this->_machine.state_make("paused", [this] {this->_paused(); }))
       , _reject_state(
         this->_machine.state_make(
           "reject", std::bind(&TransactionMachine::_reject, this)))
@@ -184,12 +186,20 @@ namespace surface
             this->transaction().failure_reason(elle::exception_string(e));
             this->_failed.open();
           });
+      // Pause
+      // this->_machine.transition_add(
+      //   this->_transfer_state,
+      //   this->_paused_state,
+      //   reactor::Waitables{&this->_data->paused},
+      //   true);
+      //  Log transitions
       this->_machine.transition_triggered().connect(
         [this] (reactor::fsm::Transition& transition)
         {
           ELLE_LOG_COMPONENT("surface.gap.TransactionMachine.Transition");
           ELLE_TRACE("%s: %s triggered", *this, transition);
         });
+      // Log and save snapshot on state change
       this->_machine.state_changed().connect(
         [this] (reactor::fsm::State const& state)
         {
@@ -412,12 +422,14 @@ namespace surface
       this->_canceled.open();
     }
 
-    bool
-    TransactionMachine::pause()
+    /*------.
+    | Pause |
+    `------*/
+
+    void
+    TransactionMachine::_paused()
     {
-      ELLE_TRACE_SCOPE("%s: pause transaction %s", *this, this->data()->id);
-      throw elle::Exception(
-        elle::sprintf("%s: pause not implemented yet", *this));
+      ELLE_TRACE("%s: paused", *this);
     }
 
     void

@@ -636,11 +636,16 @@ namespace surface
       return this->_machine->progress();
     }
 
-    bool
+    void
     Transaction::pause()
     {
-      ELLE_WARN("%s: pause not implemented yet", *this);
-      throw BadOperation(BadOperation::Type::pause);
+      this->state().meta().transaction_pause(this->_data->id);
+    }
+
+    void
+    Transaction::unpause()
+    {
+      this->state().meta().transaction_unpause(this->_data->id);
     }
 
     void

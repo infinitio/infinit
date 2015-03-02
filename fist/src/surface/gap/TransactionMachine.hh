@@ -102,11 +102,6 @@ namespace surface
       void
       cancel(std::string const& reason);
 
-      /// Pause the transfer.
-      /// XXX: Not implemented yet.
-      virtual
-      bool
-      pause();
 
       /// For the transfer to roll back to the connection state.
       /// XXX: Not implemented yet.
@@ -184,6 +179,8 @@ namespace surface
       void
       _finish(infinit::oracles::Transaction::Status status);
       void
+      _paused();
+      void
       _reject();
       virtual
       void
@@ -213,6 +210,7 @@ namespace surface
       reactor::fsm::State& _end_state;
       reactor::fsm::State& _fail_state;
       reactor::fsm::State& _finish_state;
+      reactor::fsm::State& _paused_state;
       reactor::fsm::State& _reject_state;
       reactor::fsm::State& _transfer_state;
 

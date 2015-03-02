@@ -957,7 +957,7 @@ namespace infinit
       }
 
       TransactionUpdate
-      Client::transaction_pause(std::string const& transaction_id)
+      Client::transaction_pause(std::string const& transaction_id) const
       {
         TransactionUpdate update;
         update.paused = true;
@@ -965,7 +965,7 @@ namespace infinit
       }
 
       TransactionUpdate
-      Client::transaction_unpause(std::string const& transaction_id)
+      Client::transaction_unpause(std::string const& transaction_id) const
       {
         TransactionUpdate update;
         update.paused = false;

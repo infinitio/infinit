@@ -54,8 +54,6 @@ namespace surface
         virtual
         void
         accept() override;
-        bool
-        pause() override;
         virtual
         void
         reject() override;

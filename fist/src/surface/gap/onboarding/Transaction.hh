@@ -38,8 +38,10 @@ namespace surface
       public:
         void
         accept() override;
-        bool
+        void
         pause() override;
+        void
+        unpause() override;
         void
         interrupt() override;
         void
