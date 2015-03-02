@@ -228,15 +228,15 @@ namespace elle
 
     ScopedGuard::ScopedGuard(reactor::Scheduler& sched,
                              std::vector<int> const& sigs,
-                             Handler const& handler):
-      _impl{new AsyncImpl{sched, handler}}
+                             Handler const& handler)
+      : _impl{new AsyncImpl{sched, handler}}
     {
       this->_impl->launch(sigs);
     }
 
     ScopedGuard::ScopedGuard(std::vector<int> const& sigs,
-                             sighandler_t const& handler):
-      _impl{new SyncImpl{handler}}
+                             sighandler_t const& handler)
+      : _impl{new SyncImpl{handler}}
     {
       this->_impl->launch(sigs);
     }
@@ -412,12 +412,12 @@ namespace elle
     transfer_failed_report(std::string const& meta_protocol,
                            std::string const& meta_host,
                            uint16_t meta_port,
+                           boost::filesystem::path const& attachment,
                            std::string const& user_name,
                            std::string const& transaction_id,
                            std::string const& reason)
     {
-      ELLE_TRACE("transaction failed report, attaching %s",
-                 common::infinit::home());
+      ELLE_TRACE("transaction failed report, attaching %s", attachment);
       std::string url = elle::sprintf("%s://%s:%s/debug/report/transaction",
                                       meta_protocol,
                                       meta_host,
@@ -428,7 +428,7 @@ namespace elle
       if (elle::os::inenv("INFINIT_LOG_FILE"))
       {
         std::string log_path = elle::os::getenv("INFINIT_LOG_FILE", "");
-        boost::filesystem::path home(common::infinit::home());
+        boost::filesystem::path home(attachment);
         boost::filesystem::path copied_log = home / "current_state.log";
         elle::SafeFinally cleanup{
           [&] {
@@ -439,7 +439,7 @@ namespace elle
           }};
         copy_file(log_path, copied_log, cleanup);
         elle::archive::archive(elle::archive::Format::tar_gzip,
-                               {copied_log, common::infinit::home()},
+                               {copied_log, attachment},
                                destination,
                                elle::archive::Renamer(),
                                temp_file_excluder,
@@ -448,7 +448,7 @@ namespace elle
       else
       {
         elle::archive::archive(elle::archive::Format::tar_gzip,
-                               {common::infinit::home()},
+                               {attachment},
                                destination,
                                elle::archive::Renamer(),
                                temp_file_excluder,
@@ -462,27 +462,32 @@ namespace elle
     user_report(std::string const& meta_protocol,
                 std::string const& meta_host,
                 uint16_t meta_port,
+                boost::filesystem::path const& attachment,
                 std::string const& user_name,
                 std::string const& message,
-                std::string const& user_file_)
+                std::string const& user_file)
     {
-      ELLE_TRACE_SCOPE("user report");
       std::string url = elle::sprintf("%s://%s:%s/debug/report/user",
                                       meta_protocol,
                                       meta_host,
                                       meta_port);
+      ELLE_TRACE_SCOPE("report (%s) from %s message %s, attachments {%s, %s}",
+                       url, user_name, message, attachment, user_file);
       elle::filesystem::TemporaryDirectory tmp;
       boost::filesystem::path destination(tmp.path() / "report.tar.bz2");
+      std::vector<boost::filesystem::path> attachements;
+      attachements.push_back(attachment);
 #ifdef INFINIT_WINDOWS
       // On windows, libarchive behaves differently regarding of sharing a fd.
       // We need to create a copy of the log before archiving it.
-      boost::filesystem::path home(common::infinit::home());
-      boost::filesystem::path copied_log = home / "current_state.log";
       boost::system::error_code erc;
-      boost::filesystem::copy(elle::os::getenv("INFINIT_LOG_FILE"), copied_log , erc);
+      boost::filesystem::path log(elle::os::getenv("INFINIT_LOG_FILE"));
+      boost::filesystem::path copied_log = log;
+      copied_log.replace_extension("copied.txt");
+      boost::filesystem::copy(log, copied_log , erc);
       if (erc)
       {
-        ELLE_WARN("error while copying %s: %s", user_file_, copied_log);
+        ELLE_WARN("error while copying log(%s): %s", log, copied_log);
       }
       elle::SafeFinally cleanup{
         [&] {
@@ -491,29 +496,17 @@ namespace elle
           if (erc)
             ELLE_WARN("removing copied file %s failed: %s", copied_log, erc);
         }};
-      std::string user_file = copied_log.string();
-#else
-      std::string user_file = user_file_;
+      attachements.push_back(copied_log);
 #endif
-
-      if (user_file.length() == 0)
-      {
-        elle::archive::archive(elle::archive::Format::tar_gzip,
-                               {common::infinit::home()},
-                               destination,
-                               elle::archive::Renamer(),
-                               temp_file_excluder,
-                               true);
-      }
-      else
-      {
-        elle::archive::archive(elle::archive::Format::tar_gzip,
-                               {user_file, common::infinit::home()},
-                               destination,
-                               elle::archive::Renamer(),
-                               temp_file_excluder,
-                               true);
-      }
+      if (!user_file.empty())
+        attachements.push_back(user_file);
+      ELLE_LOG(">> %s", attachements);
+      elle::archive::archive(elle::archive::Format::tar_gzip,
+                             attachements,
+                             destination,
+                             elle::archive::Renamer(),
+                             temp_file_excluder,
+                             true);
       _send_report(url, user_name, message, _to_base64(destination));
     }
   }

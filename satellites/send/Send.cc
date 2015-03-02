@@ -114,6 +114,7 @@ int main(int argc, char** argv)
                                   config.device_id(),
                                   config.trophonius_fingerprint(),
                                   config.download_dir(),
+                                  config.home(),
                                   common::metrics(config));
         state.login(user, password);
         std::vector<std::string> files;

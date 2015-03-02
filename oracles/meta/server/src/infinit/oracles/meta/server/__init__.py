@@ -223,6 +223,10 @@ class Meta(bottle.Bottle,
                                        unique = False)
     self.__database.users.ensure_index([('devices.id', 1)],
                                        unique = False)
+    self.__database.users.ensure_index(
+      [('devices.push_token', 1)],
+      unique = True,
+      sparse = True)
     #---------------------------------------------------------------------------
     # Transactions
     #---------------------------------------------------------------------------

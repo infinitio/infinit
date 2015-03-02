@@ -53,8 +53,6 @@ namespace surface
     private:
       void
       _run_from_snapshot();
-      void
-      _finalize(infinit::oracles::Transaction::Status) override;
 
     public:
       virtual
@@ -85,12 +83,13 @@ namespace surface
                                     bool user_status,
                                     std::string const& device_id,
                                     bool device_status) override;
-
-      /*-----------------.
-      | Transaction data |
-      `-----------------*/
+    /*-----------------.
+    | Transaction data |
+    `-----------------*/
+    public:
       ELLE_ATTRIBUTE(boost::filesystem::path, frete_snapshot_path);
       ELLE_ATTRIBUTE_R(std::unique_ptr<frete::TransferSnapshot>, snapshot)
+
     protected:
       void
       _save_frete_snapshot();
@@ -119,6 +118,10 @@ namespace surface
           EncryptionLevel level,
           std::string const& name_policy,
           elle::Version const& peer_version);
+      virtual
+      bool
+      completed() const override;
+      ELLE_ATTRIBUTE(bool, completed);
     protected:
       void
       cleanup() override;

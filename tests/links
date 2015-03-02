@@ -56,7 +56,7 @@ class TestLinks(unittest.TestCase):
         tindex = s.find_transaction(tid)
         self.assertNotEqual(tindex, -1)
         tr = s.transaction(tindex)
-        self.assertEqual(s.transaction_status(tindex) ,"transaction_on_other_device")
+        self.assertEqual(s.transaction_status(tindex), 'transaction_finished')
         self.assertEqual(tr['click_count'], 1)
 
   def test_remove_file(self):

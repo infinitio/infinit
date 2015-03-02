@@ -6,8 +6,11 @@
 #include <elle/serialization/json/SerializerIn.hh>
 #include <elle/serialization/json/SerializerOut.hh>
 #include <elle/system/system.hh>
+
+#include <reactor/exception.hh>
 #include <reactor/http/Request.hh>
 #include <reactor/http/exceptions.hh>
+#include <reactor/network/exception.hh>
 
 #include <infinit/metrics/Reporter.hh>
 
@@ -32,9 +35,8 @@ namespace surface
           std::bind(&GhostReceiveMachine::_wait_for_cloud_upload, this)))
       , _snapshot_path(this->transaction().snapshots_directory()
                         / "ghostreceive.snapshot")
+      , _completed(false)
     {
-      this->_machine.transition_add(this->_accept_state,
-                                    this->_finish_state);
       this->_machine.transition_add(this->_wait_for_cloud_upload_state,
                                     this->_wait_for_decision_state,
                                     reactor::Waitables{&this->_cloud_uploaded});
@@ -149,6 +151,11 @@ namespace surface
     {
       ELLE_TRACE("%s accepting", *this);
       ReceiveMachine::_accept();
+    }
+
+    void
+    GhostReceiveMachine::_transfer()
+    {
       auto peer_data =
         std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
           transaction().data());
@@ -315,10 +322,13 @@ namespace surface
           }
         }
       }
-      this->state().meta().update_transaction(this->transaction_id(),
-                                              TransactionStatus::finished,
-                                              this->state().device().id,
-                                              this->state().device().name);
+      this->_completed = true;
+    }
+
+    bool
+    GhostReceiveMachine::completed() const
+    {
+      return this->_completed;
     }
 
     void
@@ -326,25 +336,6 @@ namespace surface
     {
       ELLE_TRACE("%s: _wait_for_cloud_upload()", *this);
       this->gap_status(gap_transaction_waiting_data);
-    }
-
-    void
-    GhostReceiveMachine::_finalize(TransactionStatus status)
-    {
-      ELLE_TRACE("%s: finalize with status %s", *this, status);
-      if (status != infinit::oracles::Transaction::Status::finished)
-      {
-        this->state().meta().update_transaction(
-          this->transaction_id(), status);
-      }
-      if (this->state().metrics_reporter())
-        this->state().metrics_reporter()->transaction_ended(
-          this->transaction_id(),
-          status,
-          status == infinit::oracles::Transaction::Status::failed?
-            transaction().failure_reason() : "",
-          false,
-          this->transaction().canceled_by_user());
     }
 
     std::unique_ptr<infinit::oracles::meta::CloudCredentials>
@@ -361,6 +352,16 @@ namespace surface
     GhostReceiveMachine::~GhostReceiveMachine()
     {
       this->_stop();
+    }
+
+    void
+    GhostReceiveMachine::_update_meta_status
+    (infinit::oracles::Transaction::Status s)
+    {
+      this->state().meta().update_transaction(this->transaction_id(),
+                                              s,
+                                              this->state().device().id,
+                                              this->state().device().name);
     }
   }
 }

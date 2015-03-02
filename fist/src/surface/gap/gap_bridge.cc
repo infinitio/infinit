@@ -5,8 +5,9 @@
 ELLE_LOG_COMPONENT("surface.gap.gap_State")
 
 gap_State::gap_State(bool production,
+                     std::string const& home_dir,
                      std::string const& download_dir):
-  _configuration(production, download_dir),
+  _configuration(production, home_dir, download_dir),
   _scheduler{},
   _keep_alive{this->_scheduler, "State keep alive",
       [this]
@@ -45,6 +46,7 @@ gap_State::gap_State(bool production,
                                 this->_configuration.device_id(),
                                 this->_configuration.trophonius_fingerprint(),
                                 this->_configuration.download_dir(),
+                                this->_configuration.home(),
                                 common::metrics(this->configuration())));
     });
 }
