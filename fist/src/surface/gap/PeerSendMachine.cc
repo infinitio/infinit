@@ -437,8 +437,6 @@ namespace surface
           this->data()->is_ghost,
           onboarding);
       }
-      this->state().meta().update_transaction(this->transaction_id(),
-                                              TransactionStatus::initialized);
       this->transaction().data()->status = TransactionStatus::initialized;
     }
 
