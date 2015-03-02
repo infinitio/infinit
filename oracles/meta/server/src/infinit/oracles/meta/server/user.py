@@ -2163,3 +2163,15 @@ class Mixin:
     if len(funset):
       update.update({'$unset': funset})
     self.database.users.update({'_id': user['_id']}, update)
+
+  def batch_check_plan_validity(self):
+    res = self.database.users.find(
+      {
+        'plan': {'$ne': 'basic'},
+        'plan_expiration_date': {'$lt': datetime.datetime.now()}
+      },
+      fields = ['plan']
+    )
+    for u in res:
+      #FIXME send a mail or something
+      self._change_plan(u, 'basic', None)

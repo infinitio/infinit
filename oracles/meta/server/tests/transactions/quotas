@@ -19,7 +19,8 @@ with Meta() as meta:
     {'$set': { 'quota.total_link_size': 1000}})
   link = alice.getalink()
   alice.link_update(link, transaction_status.FINISHED)
-  # server is updating quota by reading cloud storage file size, emulate that
+  # server is updating quota by reading cloud storage file size which is
+  # not realy uploaded here, so insert the result ourselve in db
   meta.database.users.update({'accounts.id': 'alice@infinit.io'},
     {'$inc': {'total_link_size': 1100}})
   meta.database.links.update({'hash': link['hash']},
@@ -42,13 +43,13 @@ with Meta() as meta:
   assert me['quota']['total_link_size'] == 1e9
   print(me['id'])
   meta.meta.change_plan(bson.ObjectId(me['id']), 'premium',
-                        datetime.datetime.now() + datetime.timedelta(30))
+                        datetime.datetime.now() + datetime.timedelta(0, 0, 10))
   me = bob.me
   assert me['plan'] == 'premium'
   assert me['features'].get('nag') is None
   assert me['features'].get('turbo')
   assert me['quota']['total_link_size'] == 5e10
-  meta.meta.change_plan(bson.ObjectId(me['id']), 'basic')
+  meta.meta.batch_check_plan_validity()
   me = bob.me
   assert me['plan'] == 'basic'
   assert me['features']['nag']
