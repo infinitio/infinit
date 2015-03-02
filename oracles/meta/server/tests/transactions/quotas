@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 
+import datetime
+
 from utils import Meta, User, throws
 import infinit.oracles.meta.server.transaction_status as transaction_status
+
+import bson
 
 with Meta() as meta:
   alice = User(meta, "alice@infinit.io")
@@ -27,3 +31,26 @@ with Meta() as meta:
   alice.link_update(link, transaction_status.DELETED)
   link = alice.getalink()
   alice.link_update(link, transaction_status.FINISHED)
+
+
+  bob = User(meta, 'bob@infinit.io')
+  bob.login()
+  me = bob.me
+  assert me['plan'] == 'basic'
+  assert me['features']['nag']
+  assert me['features'].get('turbo') is None
+  assert me['quota']['total_link_size'] == 1e9
+  print(me['id'])
+  meta.meta.change_plan(bson.ObjectId(me['id']), 'premium',
+                        datetime.datetime.now() + datetime.timedelta(30))
+  me = bob.me
+  assert me['plan'] == 'premium'
+  assert me['features'].get('nag') is None
+  assert me['features'].get('turbo')
+  assert me['quota']['total_link_size'] == 5e10
+  meta.meta.change_plan(bson.ObjectId(me['id']), 'basic')
+  me = bob.me
+  assert me['plan'] == 'basic'
+  assert me['features']['nag']
+  assert me['features'].get('turbo') is None
+  assert me['quota']['total_link_size'] == 1e9

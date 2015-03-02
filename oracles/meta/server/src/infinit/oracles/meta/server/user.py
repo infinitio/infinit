@@ -102,6 +102,8 @@ class Mixin:
       'features',
       'identity',
       'swaggers',
+      'plan',
+      'quota'
     ]
     return res
 
@@ -458,8 +460,11 @@ class Mixin:
       hash = hash.encode('utf-8')
       hash = hashlib.md5(hash).hexdigest()
       handle = self.unique_handle(fullname)
+      plan = self.database.plans.find_one({'name': 'basic'})
+      features = self._roll_features(True)
+      features.update(plan.get('features', {}))
       user_content = {
-        'features': self._roll_features(True),
+        'features': features,
         'register_status': 'ok',
         'email': email,
         'fullname': fullname,
@@ -479,6 +484,9 @@ class Mixin:
         'unconfirmed_email_deadline':
           time.time() + self.unconfirmed_email_leeway,
         'email_confirmation_hash': str(hash),
+        'plan': 'basic',
+        'quota': plan.get('quota', {}),
+        'plan_expiration_date': None,
       }
       if password_hash is not None:
         user_content.update(
@@ -2125,3 +2133,33 @@ class Mixin:
     # Include deleted links only during updates. At start up, ignore them.
     res.update(self.links_list(mtime = mtime['date'], include_deleted = (not init)))
     return self.success(res)
+
+  def change_plan(self, uid, new_plan, expires_at = None):
+    return self._change_plan(self._user_by_id(uid, self.__user_self_fields),
+                             new_plan, expires_at)
+
+  def _change_plan(self, user, new_plan_name, expires_at):
+    current_plan = self.database.plans.find_one({'name': user['plan']})
+    new_plan = self.database.plans.find_one({'name': new_plan_name})
+    fset = dict()
+    funset = dict()
+    for (k, v) in new_plan['features'].items():
+      fset.update({'features.' + k: v})
+    for (k, v) in current_plan['features'].items():
+      if k not in new_plan['features']:
+        funset.update({'features.'+k: 1})
+    qset = dict()
+    qunset = dict()
+    for (k, v) in new_plan['quota'].items():
+      qset.update({'quota.' + k: v})
+    for (k, v) in current_plan['quota'].items():
+      if k not in new_plan['quota']:
+        qunset.update({'quota.'+k: 1})
+    fset.update(qset)
+    funset.update(qunset)
+    fset.update({'plan': new_plan_name})
+    fset.update({'plan_expiration_date': expires_at})
+    update = {'$set': fset}
+    if len(funset):
+      update.update({'$unset': funset})
+    self.database.users.update({'_id': user['_id']}, update)

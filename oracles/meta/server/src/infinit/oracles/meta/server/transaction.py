@@ -295,7 +295,9 @@ class Mixin:
             self.forbidden('Transaction to nonexisting users limited to 2G')
           elle.log.trace("recipient unknown, create a ghost")
           new_user = True
+          plan = self.database.plans.find_one({'name': 'basic'})
           features = self._roll_features(True)
+          features.update(plan.get('features', {}))
           recipient_id = self._register(
             email = peer_email,
             fullname = peer_email, # This is safe as long as we don't allow searching for ghost users.
@@ -305,7 +307,9 @@ class Mixin:
             devices = [],
             swaggers = {},
             accounts = [{'type':'email', 'id':peer_email}],
-            features = features
+            features = features,
+            quota = plan.get('quota', {}),
+            plan_expiration_date = None
           )
           recipient = self.__user_fetch(
             recipient_id,
