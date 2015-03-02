@@ -297,6 +297,15 @@ class Mixin:
       bottle.request.session['device'] = device['id']
       bottle.request.session['email'] = email
 
+      # Check if this is the first login of this user
+      res = self.database.users.find_one(
+        {
+          '_id': user['_id'],
+          'last_connection': {'$exists': False},
+        },
+        fields = ['referred_by'])
+      if res is not None and 'referred_by' in res:
+        self.process_referrals(user, res['referred_by'])
       self.database.users.update(
         {'_id': user['_id']},
         {'$set': {'last_connection': time.time(),}})
@@ -2175,3 +2184,32 @@ class Mixin:
     for u in res:
       #FIXME send a mail or something
       self._change_plan(u, 'basic', None)
+
+  def process_referrals(self, new_user, referrals):
+    """ Called once per new_user upon first login.
+        @param new_user User struct for the invitee
+        @param referrals List of user ids who invited new_user
+    """
+    #policy: +1G for referrers up to 10G,  + 500Mo for referred
+    #FIXME: send email
+    self.database.users.update(
+      {
+        '_id': {'$in': referrals},
+        'plan': 'basic',
+        'quota.total_link_size': {'$lt': 1e10}
+      },
+      {
+        '$inc': { 'quota.total_link_size': 1e9}
+      },
+      multi = True
+    )
+    self.database.users.update(
+      {
+        '_id': new_user['_id'],
+        'plan': 'basic',
+        'quota.total_link_size': {'$lt': 1e10}
+      },
+      {
+        '$inc': { 'quota.total_link_size': 5e8}
+      },
+    )
