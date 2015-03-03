@@ -133,11 +133,12 @@ namespace tests
   }
 
   Client::Client(Server& server,
-                 User& user)
+                 User const& user,
+                 boost::filesystem::path const& home_path)
     : _server(server)
     , device_id(random_uuid())
-    , user(user)
-    , state(server, device_id)
+    , user(const_cast<User&>(user))
+    , state(server, device_id, home_path)
   {
     state.attach_callback<surface::gap::State::ConnectionStatus>(
       [&] (surface::gap::State::ConnectionStatus const& notif)
@@ -159,8 +160,11 @@ namespace tests
   }
 
   Client::Client(Server& server,
-                 std::string const& email)
-    : Client(server, const_cast<User&>(server.register_user(email, "password")))
+                 std::string const& email,
+                 boost::filesystem::path const& home_path)
+    : Client(server,
+             server.register_user(email, "password"),
+             home_path)
   {
   }
 

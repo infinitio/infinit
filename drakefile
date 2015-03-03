@@ -222,7 +222,6 @@ def configure(cxx_toolkit = None,
     python_build << reactor_python_lib
   protocol_lib = copy_lib(elle.protocol.library)
   aws_lib = copy_lib(elle.aws.library)
-  facebook_lib = copy_lib(elle.facebook.library)
 
   cxx_config += elle.config
   cxx_config.add_local_include_path('.')
@@ -707,21 +706,6 @@ def configure(cxx_toolkit = None,
     cli_cxx_config
   )
   cli_add_bin(cli_send_bin)
-
-  cli_fb_sources = drake.nodes(
-    'satellites/fb/Fb.cc',
-  )
-  cli_fb_bin = drake.cxx.Executable(
-    'bin/8fb',
-    cli_fb_sources + [
-      elle_lib,
-      reactor_lib,
-      facebook_lib,
-    ],
-    cxx_toolkit,
-    cli_cxx_config
-  )
-  cli_add_bin(cli_fb_bin)
 
   cli_recv_sources = drake.nodes(
     'satellites/recv/Recv.cc',

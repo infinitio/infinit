@@ -55,6 +55,18 @@ namespace tests
     device(Cookies const& cookies) const;
 
   protected:
+    virtual
+    boost::uuids::uuid
+    _create_empty();
+
+    virtual
+    std::string
+    _transaction_put(Headers const&,
+                     Cookies const&,
+                     Parameters const&,
+                     elle::Buffer const&,
+                     boost::uuids::uuid const&);
+
     std::string
     _get_trophonius(Headers const&,
                     Cookies const&,

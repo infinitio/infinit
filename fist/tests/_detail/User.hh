@@ -66,10 +66,12 @@ namespace tests
   {
   public:
     Client(Server& server,
-           User& user);
+           User const& user,
+           boost::filesystem::path const& home_path = boost::filesystem::path{});
 
     Client(Server& server,
-           std::string const& email);
+           std::string const& email,
+           boost::filesystem::path const& home_path = boost::filesystem::path{});
 
     virtual
     ~Client();

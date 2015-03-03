@@ -286,12 +286,13 @@ class Mixin:
           'devices.$.push_token': device_push_token,
         }
       }
-
-    usr = self.database.users.find_and_modify(
-      {'_id': user['_id'], 'devices.id': str(device_id)},
-      push_token_update,
-      fields = ['devices']
-    )
+    def login():
+      return self.database.users.find_and_modify(
+        {'_id': user['_id'], 'devices.id': str(device_id)},
+        push_token_update,
+        fields = ['devices']
+      )
+    usr = self.device_override_push_token(device_push_token, login)
     if usr is None:
       elle.log.trace("user logged with an unknown device")
       device = self._create_device(
