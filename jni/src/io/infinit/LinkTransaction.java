@@ -10,4 +10,5 @@ public class LinkTransaction
   public int clickCount;
   public TransactionStatus status;
   public String senderDeviceId;
+  public String metaId;
 }

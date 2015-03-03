@@ -14,4 +14,5 @@ public class PeerTransaction
   public long totalSize;
   public boolean isDirectory;
   public String message;
+  public String metaId;
 }

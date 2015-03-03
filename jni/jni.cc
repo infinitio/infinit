@@ -180,6 +180,10 @@ static jobject to_linktransaction(JNIEnv* env, surface::gap::LinkTransaction con
   tmp = env->NewStringUTF(t.sender_device_id.c_str());
   env->SetObjectField(res, f, tmp);
   env->DeleteLocalRef(tmp);
+  f = env->GetFieldID(lt_class, "metaId", "Ljava/lang/String;");
+  tmp = env->NewStringUTF(t.meta_id.c_str());
+  env->SetObjectField(res, f, tmp);
+  env->DeleteLocalRef(tmp);
   return res;
 }
 static jobject to_peertransaction(JNIEnv* env, surface::gap::PeerTransaction const& t)
@@ -246,6 +250,10 @@ static jobject to_peertransaction(JNIEnv* env, surface::gap::PeerTransaction con
   env->SetBooleanField(res, f, t.is_directory);
   f = env->GetFieldID(pt_class, "message", "Ljava/lang/String;");
   tmp = env->NewStringUTF(t.message.c_str());
+  env->SetObjectField(res, f, tmp);
+  env->DeleteLocalRef(tmp);
+  f = env->GetFieldID(pt_class, "metaId", "Ljava/lang/String;");
+  tmp = env->NewStringUTF(t.meta_id.c_str());
   env->SetObjectField(res, f, tmp);
   env->DeleteLocalRef(tmp);
   return res;
