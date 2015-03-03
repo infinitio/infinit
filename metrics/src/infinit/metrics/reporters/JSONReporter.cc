@@ -503,7 +503,7 @@ namespace infinit
         case JSONKey::features:
           return "features";
         default:
-          elle::unreachable();
+          ELLE_ABORT("invalid metrics JSON key: %s", k);
       }
     }
 
@@ -541,7 +541,7 @@ namespace infinit
         case infinit::oracles::Transaction::Status::started:
           return "started";
         default:
-          elle::unreachable();
+          ELLE_ABORT("invalid transaction status: %s", status);
       }
     }
 
@@ -557,7 +557,7 @@ namespace infinit
         case TransferMethodGhostCloud:
           return "ghost-buffering";
         default:
-          elle::unreachable();
+          ELLE_ABORT("invalid trasnfer method: %s", method);
       }
     }
 
@@ -577,7 +577,7 @@ namespace infinit
         case TransferExitReasonUnknown:
           return "unknown";
         default:
-          elle::unreachable();
+          ELLE_ABORT("invalid exit reason: %s", reason);
       }
     }
 
@@ -591,7 +591,7 @@ namespace infinit
         case PeerTransaction:
           return "peer";
         default:
-          elle::unreachable();
+          ELLE_ABORT("invalid transaction type: %s", type);
       }
     }
   }
