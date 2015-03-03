@@ -1877,14 +1877,14 @@ gap_facebook_app_id()
 }
 
 gap_Status
-gap_facebook_connect(gap_State* state, std::string const& code)
+gap_facebook_connect(gap_State* state, std::string const& token)
 {
   return run<gap_Status>(
     state,
     "facebook connect",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      state.facebook_connect(code);
+      state.facebook_connect(token);
       return gap_ok;
     });
 }

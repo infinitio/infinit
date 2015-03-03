@@ -596,6 +596,6 @@ std::string
 gap_facebook_app_id();
 
 gap_Status
-gap_facebook_connect(gap_State* state, std::string const& code);
+gap_facebook_connect(gap_State* state, std::string const& token);
 
 #endif

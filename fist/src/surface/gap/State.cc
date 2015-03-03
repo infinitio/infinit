@@ -886,7 +886,7 @@ namespace surface
 
     void
     State::facebook_connect(
-      std::string const& code,
+      std::string const& token,
       std::unique_ptr<infinit::oracles::trophonius::Client> trophonius,
       reactor::DurationOpt timeout)
     {
@@ -894,7 +894,7 @@ namespace surface
       [&] {
         auto tropho = elle::utility::move_on_copy(std::move(trophonius));
         this->_login([&] {
-          return this->_meta.facebook_connect(code, this->device_uuid()); },
+          return this->_meta.facebook_connect(token, this->device_uuid()); },
           tropho,
           // Password.
           [&] {
@@ -909,9 +909,9 @@ namespace surface
     }
 
     void
-    State::facebook_connect(std::string const& code)
+    State::facebook_connect(std::string const& token)
     {
-      return this->facebook_connect(code, TrophoniusClientPtr{});
+      return this->facebook_connect(token, TrophoniusClientPtr{});
     }
 
     Self const&

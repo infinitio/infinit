@@ -335,7 +335,7 @@ namespace infinit
                                   this->_protocol, this->_host, this->_port))
         , _client(elle::os::getenv("INFINIT_USER_AGENT",
                                    "MetaClient/" INFINIT_VERSION))
-        , _default_configuration(_requests_timeout(),
+        ,  _default_configuration(_requests_timeout(),
                                  {},
                                  reactor::http::Version::v10)
         , _email()
@@ -1339,7 +1339,7 @@ namespace infinit
       }
 
       LoginResponse
-      Client::facebook_connect(std::string const& code,
+      Client::facebook_connect(std::string const& long_lived_access_token,
                                boost::uuids::uuid const& device_uuid)
       {
         std::string content_type = "application/json";
@@ -1350,7 +1350,8 @@ namespace infinit
           [&] (reactor::http::Request& request)
           {
             elle::serialization::json::SerializerOut output(request, false);
-            output.serialize("code", const_cast<std::string&>(code));
+            output.serialize("long_lived_access_token",
+                             const_cast<std::string&>(long_lived_access_token));
             std::string struuid = boost::lexical_cast<std::string>(device_uuid);
             output.serialize("device_id", struuid);
             auto os = elle::system::platform::os_name();

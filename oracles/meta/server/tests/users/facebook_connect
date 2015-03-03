@@ -30,7 +30,6 @@ class Facebook:
       self.__next_client_data = {
         'id': int(uniform(1000000000000000, 1500000000000000)),
         'has_email': False,
-        'access_token': "ccccccccccccccc",
       }
     return self.__next_client_data
 
@@ -40,13 +39,11 @@ class Facebook:
   class Client:
     def __init__(self,
                  server,
-                 code,
-                 access_token,
+                 long_lived_access_token,
                  id,
                  has_email):
       self.__server = server
-      self.__code = code
-      self.__access_token = access_token
+      self.__long_lived_access_token = long_lived_access_token
       self.__data = None
       self.__data = {
         'name': 'Joseph Total',
@@ -60,7 +57,7 @@ class Facebook:
         })
 
     @property
-    def access_token(self):
+    def long_lived_access_token(self):
       if self.__server.broken_at == 'client_access_token':
         raise error.Error(error.EMAIL_PASSWORD_DONT_MATCH)
       if self.__access_token is None:
@@ -81,14 +78,17 @@ class Facebook:
     def permissions(self):
       pass
 
-  def user(self, code):
+  def user(self,
+           code = None,
+           short_lived_access_token = None,
+           long_lived_access_token = None):
     data = self.next_client_data
-    return Facebook.Client(server = self,
-                           code = code,
-                           access_token = data['access_token'],
-                           id = data['id'],
-                           has_email = data['has_email'],
-                         )
+    return Facebook.Client(
+      server = self,
+      long_lived_access_token = long_lived_access_token,
+      id = data['id'],
+      has_email = data['has_email'],
+    )
 ############################################################
 # Fake
 ############################################################
@@ -99,7 +99,7 @@ with Meta(enable_emails = False) as meta:
     bob = User(meta, facebook = True)
 
     for _ in range(2):
-      bob.facebook_connect("bite")
+      bob.facebook_connect("token")
       facebook_id = bob.facebook_id
       bob.logout()
       try:
@@ -108,7 +108,7 @@ with Meta(enable_emails = False) as meta:
         e.status == 403
       else:
         raise Exception("User still logged in")
-      bob.facebook_connect("bite")
+      bob.facebook_connect("token")
       assert facebook_id == bob.facebook_id
       bob.me
       bob.logout()
@@ -120,14 +120,13 @@ with Meta(enable_emails = False) as meta:
   with Trophonius(meta):
     meta.inner.facebook = Facebook()
     bob = User(meta, facebook = True)
-    bob.facebook_connect("bite")
+    bob.facebook_connect("token")
     meta.inner.facebook.set_next_client_data({
       'id': int(uniform(1000000000000000, 1500000000000000)),
       'has_email': False,
-      'access_token': "fooooooo",
     })
     alice = User(meta, facebook = True)
-    alice.facebook_connect("foo")
+    alice.facebook_connect("fooooooo")
     assert meta.database.users.count() == 2
 
 # Connected on multiple devices.
@@ -138,7 +137,6 @@ with Meta(enable_emails = False) as meta:
       meta.inner.facebook.set_next_client_data({
         'id': 31290390128409,
         'has_email': False,
-        'access_token': ''.join(random.choice('/0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz') for _ in range(200))
       })
     meta.inner.facebook = Facebook()
     bob = User(meta, facebook = True)
@@ -149,9 +147,9 @@ with Meta(enable_emails = False) as meta:
     bob_device_1.device_id = str(uuid4())
 
     give_a_different_access_token(meta)
-    bob_device_0.facebook_connect("bite")
+    bob_device_0.facebook_connect("TokenToken")
     give_a_different_access_token(meta)
-    bob_device_1.facebook_connect("bite")
+    bob_device_1.facebook_connect("TokenToken")
 
     assert meta.database.sessions.count() == 2
     bob_device_0.logout()
@@ -169,9 +167,9 @@ with Meta(enable_emails = False) as meta:
     bob_web_1.device_id = None
 
     give_a_different_access_token(meta)
-    bob_web_0.facebook_connect("bite")
+    bob_web_0.facebook_connect("TokenToken")
     give_a_different_access_token(meta)
-    bob_web_1.facebook_connect("bite")
+    bob_web_1.facebook_connect("TokenToken")
 
     bob_web_0.me
     bob_web_1.me
@@ -208,14 +206,13 @@ with Meta(enable_emails = True) as meta:
     meta.inner.facebook.set_next_client_data({
       'id': int(uniform(1000000000000000, 1500000000000000)),
       'has_email': False,
-      'access_token': "fooooooo",
     })
     alice = User(meta, facebook = True)
     alice.facebook_connect("foo")
     bob.sendfile(alice.id, initialize = True)
     alice.logout()
     bob.sendfile(alice.id, initialize = True)
-    alice.facebook_connect("foo")
+    alice.facebook_connect("foobar")
     assert len(alice.transactions) == 2
 
 # Reverse send.

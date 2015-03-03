@@ -54,49 +54,51 @@ class FacebookGraph:
       def __init__(self):
         super().__init__(error.EMAIL_PASSWORD_DONT_MATCH)
 
-    def __init__(self, server, code):
+    def __init__(self, server,
+                 code = None,
+                 short_lived_access_token = None,
+                 long_lived_access_token = None):
       self.__server = server
       self.__code = code
-      self.__access_token = None
+      self.__short_lived_access_token = short_lived_access_token
+      self.__long_lived_access_token = long_lived_access_token
       self.__data = None
       self.__me = None
       self.__friends = None
       self.__appsecret_proof = None
 
     @property
-    def access_token(self):
-      if self.__access_token is None:
+    def long_lived_access_token(self):
+      if self.__long_lived_access_token is None:
+        print("turn short lived to  long lived")
         url = '%(domain)s/oauth/access_token' \
-              '?client_id=%(app_id)s' \
-              '&redirect_uri=https://www.facebook.com/connect/login_success.html' \
+              '?grant_type=fb_exchange_token' \
+              '&client_id=%(app_id)s' \
               '&client_secret=%(app_secret)s' \
-              '&code=%(code)s' % {
+              '&fb_exchange_token=%(access_token)s' % {
           'domain': self.__server.domain,
-          'code': self.__code,
           'app_id': app_id,
-          'app_secret': app_secret
+          'app_secret': app_secret,
+          'access_token': self.short_lived_access_token
         }
         try:
           response = requests.get(url)
           response.raise_for_status()
           text = response.text
+          print(text)
           if text.startswith('access_token='):
-            self.__access_token = text[13:text.find("&")]
+            self.__long_lived_access_token = text[13:text.find("&")]
           else:
             raise FacebookGraph.Client.UserAuthenticationFailure()
         except requests.exceptions.HTTPError as e:
           raise FacebookGraph.Client.UserAuthenticationFailure()
-      return self.__access_token
-
-    @access_token.setter
-    def access_token(self, token):
-      self.__access_token = token
+      return self.__long_lived_access_token
 
     @property
     def appsecret_proof(self):
       if self.__appsecret_proof is None:
         f = hmac.new(app_secret.encode(),
-                     msg = self.access_token.encode(),
+                     msg = self.long_lived_access_token.encode(),
                      digestmod = sha256)
         self.__appsecret_proof = str(f.hexdigest())
       return self.__appsecret_proof
@@ -109,7 +111,7 @@ class FacebookGraph:
                '&appsecret_proof=%(appsecret_proof)s' % {
                  'domain': self.__server.domain,
                  'appsecret_proof': self.appsecret_proof,
-                 'access_token': self.access_token,
+                 'access_token': self.long_lived_access_token,
                }
         try:
           response = requests.get(url)
@@ -134,7 +136,7 @@ class FacebookGraph:
               '&appsecret_proof=%(appsecret_proof)s' % {
                 'domain': self.__server.domain,
                 'appsecret_proof': self.appsecret_proof,
-                'access_token': self.access_token,
+                'access_token': self.long_lived_access_token,
               }
         try:
           response = requests.get(url)
@@ -160,7 +162,7 @@ class FacebookGraph:
             '&width=256' % {
               'domain': self.__server.domain,
               'appsecret_proof': self.appsecret_proof,
-              'access_token': self.access_token,
+              'access_token': self.long_lived_access_token,
             }
       try:
         response = requests.get(url)
@@ -177,5 +179,42 @@ class FacebookGraph:
     def permissions(self):
       pass
 
-  def user(self, code):
-    return FacebookGraph.Client(server = self, code = code)
+    # To be implemented.
+    @property
+    def short_lived_access_token(self):
+      if self.__short_lived_access_token is None:
+        url = '%(domain)s/oauth/access_token' \
+              '?client_id=%(app_id)s' \
+              '&redirect_uri=https://www.facebook.com/connect/login_success.html' \
+              '&client_secret=%(app_secret)s' \
+              '&code=%(code)s' % {
+          'domain': self.__server.domain,
+          'code': self.__code,
+          'app_id': app_id,
+          'app_secret': app_secret
+        }
+        try:
+          response = requests.get(url)
+          response.raise_for_status()
+          text = response.text
+          if text.startswith('access_token='):
+            self.__short_lived_access_token = text[13:text.find("&")]
+          else:
+            raise FacebookGraph.Client.UserAuthenticationFailure()
+        except requests.exceptions.HTTPError as e:
+          raise FacebookGraph.Client.UserAuthenticationFailure()
+      return self.__short_lived_access_token
+
+    @short_lived_access_token.setter
+    def short_lived_access_token(self, token):
+      self.__short_lived_access_token = token
+
+  def user(self,
+           code = None,
+           short_lived_access_token = None,
+           long_lived_access_token = None):
+    return FacebookGraph.Client(
+      server = self,
+      short_lived_access_token = short_lived_access_token,
+      long_lived_access_token = long_lived_access_token,
+      code = code)

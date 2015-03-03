@@ -391,11 +391,19 @@ class Mixin:
 
   @api('/facebook_connect', method = 'POST')
   def facebook_connect(self,
-                       code = code,
+                       short_lived_access_token = None,
+                       long_lived_access_token = None,
                        device_id: uuid.UUID = None,
                        OS: str = None):
+    # Xor.
+    if bool(short_lived_access_token) == bool(long_lived_access_token):
+      return self.bad_request({
+        'reason': 'you must provide short or long lived token'
+      })
     try:
-      facebook_user = self.facebook.user(code)
+      facebook_user = self.facebook.user(
+        short_lived_access_token = short_lived_access_token,
+        long_lived_access_token = long_lived_access_token)
       user = self.__user_fetch({
           'accounts.id': facebook_user.facebook_id,
           'accounts.type': 'facebook'

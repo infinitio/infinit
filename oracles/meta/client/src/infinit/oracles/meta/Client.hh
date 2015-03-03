@@ -558,7 +558,7 @@ namespace infinit
       `---------*/
       public:
         LoginResponse
-        facebook_connect(std::string const& code,
+        facebook_connect(std::string const& long_lived_access_token,
                          boost::uuids::uuid const& device_uuid);
 
       /*----------.
