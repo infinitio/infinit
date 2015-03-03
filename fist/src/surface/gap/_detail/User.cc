@@ -277,7 +277,7 @@ namespace surface
           std::unique(user.connected_devices.begin(),
                       user.connected_devices.end()),
           user.connected_devices.end());
-        auto res = compare<std::string>(
+        auto res = compare<elle::UUID>(
           old_user.connected_devices, user.connected_devices);
 
         ELLE_DEBUG("%s: %s newly connected device(s): %s",
@@ -397,7 +397,7 @@ namespace surface
 
     bool
     State::device_status(std::string const& user_id,
-                         std::string const& device_id) const
+                         elle::UUID const& device_id) const
     {
       ELLE_TRACE_METHOD(user_id, device_id);
 

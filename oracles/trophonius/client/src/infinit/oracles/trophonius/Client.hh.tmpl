@@ -130,18 +130,12 @@ namespace infinit
       struct UserStatusNotification:
         public Notification
       {
+        UserStatusNotification();
+        UserStatusNotification(elle::serialization::SerializerIn& input);
         std::string user_id;
         bool user_status;
-        std::string device_id;
+        elle::UUID device_id;
         bool device_status;
-
-        ELLE_SERIALIZE_CONSTRUCT(UserStatusNotification,
-                                 Notification)
-        {}
-
-        UserStatusNotification():
-          Notification{NotificationType::user_status}
-        {}
 
         void
         print(std::ostream& stream) const override;
@@ -151,11 +145,8 @@ namespace infinit
         public Notification,
         public LinkTransaction
       {
-        ELLE_SERIALIZE_CONSTRUCT(LinkTransactionNotification,
-                                 Notification,
-                                 LinkTransaction)
-        {}
-
+      public:
+        LinkTransactionNotification(elle::serialization::SerializerIn& input);
         virtual
         void
         print(std::ostream& stream) const override;
@@ -229,8 +220,8 @@ namespace infinit
 
         void
         connect(std::string const& _id,
-                std::string const& session_id,
-                std::string const& device_id);
+                elle::UUID const& device_id,
+                std::string const& session_id);
         void
         server(std::string const& host, int port);
         void
