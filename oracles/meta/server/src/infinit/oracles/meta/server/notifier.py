@@ -21,6 +21,11 @@ for name, value in notifications.items():
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Notifier'
 
+# FIXME: Use real API key for production
+# This value should ideally be acquired with env vars
+API_KEY = 'AIzaSyDUsENEk75dKRuhhpMWFzPT-JgwaqWM7c8'
+GCM_URL = 'https://android.googleapis.com/gcm/send'
+
 # FIXME: the notifier is not supposed to be the guy that search the
 # database for devices trophoniuses and push token. It's supposed to
 # be the guy that notifies. Perform the searches in meta and just
