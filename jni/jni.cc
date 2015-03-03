@@ -15,9 +15,13 @@
  *
  */
 #include <string.h>
+#include <fstream>
 #include <jni.h>
 #include <elle/os/environ.hh>
 #include <surface/gap/gap.hh>
+
+#include <elle/log.hh>
+#include <elle/log/TextLogger.hh>
 
 #ifdef INFINIT_ANDROID
 #include <android/log.h>
@@ -283,7 +287,11 @@ JNI_OnLoad(JavaVM* vm, void* reserved)
 static JNIEnv* get_env()
 {
   JNIEnv* env;
+#ifdef __arm__
   java_vm->AttachCurrentThread(&env, 0);
+#else
+  java_vm->AttachCurrentThread((void**)&env, 0);
+#endif
   return env;
 }
 static void on_critical(jobject thiz)
@@ -365,10 +373,10 @@ static void on_link(jobject thiz,
 }
 
 #ifdef INFINIT_ANDROID
-class AndroidLogger: public elle::log::Logger
+class AndroidLogger: public elle::log::TextLogger
 {
 public:
-  AndroidLogger(std::string const& log_level);
+  AndroidLogger(std::string const& log_level, std::ostream& out);
 protected:
   void _message(Level level,
                elle::log::Logger::Type type,
@@ -382,10 +390,12 @@ protected:
                std::string const& function) override;
 };
 
-AndroidLogger::AndroidLogger(std::string const& log_level)
-:elle::log::Logger(log_level)
+AndroidLogger::AndroidLogger(std::string const& log_level,
+                             std::ostream& out)
+: elle::log::TextLogger(out, log_level, true, false, true, true, false)
 {
 }
+
 void
 AndroidLogger::_message(Level level,
                elle::log::Logger::Type type,
@@ -415,6 +425,8 @@ AndroidLogger::_message(Level level,
   case Logger::Type::error: prio = ANDROID_LOG_ERROR; break;
   }
   __android_log_write(prio, component.c_str(), message.c_str());
+  elle::log::TextLogger::_message(level, type, component, time, message, tags,
+                                  indentation, file, line, function);
 }
 #endif
 
@@ -425,8 +437,9 @@ extern "C" jlong Java_io_infinit_State_gapInitialize(JNIEnv* env,
   jlong max_mirroring_size)
 {
   thiz = env->NewGlobalRef(thiz);
+  std::string persistent_config_dir_str = to_string(env, persistent_config_dir);
   gap_State* state = gap_new(production,
-    to_string(env, download_dir), to_string(env, persistent_config_dir),
+    to_string(env, download_dir), persistent_config_dir_str,
     to_string(env, non_persistent_config_dir),
     enable_mirroring,
     max_mirroring_size);
@@ -441,6 +454,7 @@ extern "C" jlong Java_io_infinit_State_gapInitialize(JNIEnv* env,
   gap_peer_transaction_callback(state, std::bind(on_peer_transaction, thiz, _1));
   gap_link_callback(state, std::bind(on_link, thiz, _1));
 #ifdef INFINIT_ANDROID
+  std::string log_file = persistent_config_dir_str + "/state.log";
   std::string log_level =
           "elle.CrashReporter:DEBUG,"
           "*FIST*:TRACE,"
@@ -455,8 +469,11 @@ extern "C" jlong Java_io_infinit_State_gapInitialize(JNIEnv* env,
           "surface.gap.*:TRACE,"
           "surface.gap.TransferMachine:DEBUG,"
           "*trophonius*:DEBUG";
+  std::ofstream* output = new std::ofstream{
+    log_file,
+    std::fstream::trunc | std::fstream::out};
   std::unique_ptr<elle::log::Logger> logger
-    = elle::make_unique<AndroidLogger>(log_level);
+    = elle::make_unique<AndroidLogger>(log_level, *output);
   elle::log::logger(std::move(logger));
 #endif
   return (jlong)state;
