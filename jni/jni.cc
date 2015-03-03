@@ -86,8 +86,13 @@ jobject to_array(JNIEnv* env, C const& source,
   std::string const& class_name,
   std::function<jobject (JNIEnv*, typename C::value_type const& v)> element_converter)
 {
-  jclass c = env->FindClass(class_name.c_str());
-  jmethodID init = env->GetMethodID(c, "<init>", "()V");
+  static jclass c = 0;
+  static jmethodID init;
+  if (!c)
+  {
+    c = env->FindClass(class_name.c_str());
+    init = env->GetMethodID(c, "<init>", "()V");
+  }
   jobject obj = env->NewObject(c, init);
   jobjectArray res = env->NewObjectArray(source.size(), c, obj);
   int idx = 0;
