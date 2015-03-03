@@ -59,40 +59,44 @@ ELLE_TEST_SCHEDULED(connection_refused)
 ELLE_TEST_SCHEDULED(login_success)
 {
   HTTPServer s;
-  s.register_route("/login", reactor::http::Method::POST,
-                   [] (HTTPServer::Headers const&,
-                       HTTPServer::Cookies const&,
-                       HTTPServer::Parameters const&,
-                       elle::Buffer const& body) -> std::string
-                   {
-                     return "{"
-                       " \"device\": {\"id\": \"1\", \"name\": \"johny\", \"passport\": \"passport\"},"
-                       " \"trophonius\": {\"host\": \"192.168.1.1\", \"port\": 4923, \"port_ssl\": 4233},"
-                       " \"features\": [],"
-                       " \"self\": {"
-                       "   \"_id\": \"0\","
-                       "   \"id\": \"0\","
-                       "   \"fullname\": \"jean\","
-                       "   \"email\": \"jean@infinit.io\","
-                       "   \"handle\": \"jean\","
-                       "   \"register_status\": \"ok\","
-                       "   \"identity\": \"identity\","
-                       "   \"passport\": \"passport\","
-                       "   \"devices\": [\"1\"],"
-                       "   \"networks\": [],"
-                       "   \"public_key\": \"public_key\","
-                       "   \"name\": \"FUUUUUUUUUUCK\","
-                       "   \"accounts\": [],"
-                       "   \"remaining_invitations\": 0,"
-                       "   \"token_generation_key\": \"token_generation_key\","
-                       "   \"favorites\": [],"
-                       "   \"connected_devices\": [\"1\"],"
-                       "   \"status\": 1,"
-                       "   \"creation_time\": 1420565249,"
-                       "   \"last_connection\": 1420565249"
-                       "   }"
-                       " }";
-                   });
+  s.register_route(
+    "/login",
+    reactor::http::Method::POST,
+    [] (HTTPServer::Headers const&,
+        HTTPServer::Cookies const&,
+        HTTPServer::Parameters const&,
+        elle::Buffer const& body) -> std::string
+    {
+      auto id = elle::UUID::random();
+      return elle::sprintf("{"
+                           " \"device\": {\"id\": \"%s\", \"name\": \"johny\", \"passport\": \"passport\"},"
+                           " \"trophonius\": {\"host\": \"192.168.1.1\", \"port\": 4923, \"port_ssl\": 4233},"
+                           " \"features\": [],"
+                           " \"self\": {"
+                           "   \"_id\": \"0\","
+                           "   \"id\": \"0\","
+                           "   \"fullname\": \"jean\","
+                           "   \"email\": \"jean@infinit.io\","
+                           "   \"handle\": \"jean\","
+                           "   \"register_status\": \"ok\","
+                           "   \"identity\": \"identity\","
+                           "   \"passport\": \"passport\","
+                           "   \"devices\": [\"%s\"],"
+                           "   \"networks\": [],"
+                           "   \"public_key\": \"public_key\","
+                           "   \"name\": \"FUUUUUUUUUUCK\","
+                           "   \"accounts\": [],"
+                           "   \"remaining_invitations\": 0,"
+                           "   \"token_generation_key\": \"token_generation_key\","
+                           "   \"favorites\": [],"
+                           "   \"connected_devices\": [\"%s\"],"
+                           "   \"status\": 1,"
+                           "   \"creation_time\": 1420565249,"
+                           "   \"last_connection\": 1420565249"
+                           "   }"
+                           " }",
+                           id, id, id);
+    });
   s.register_route("/logout", reactor::http::Method::POST,
                    [] (HTTPServer::Headers const&,
                        HTTPServer::Cookies const&,
@@ -504,60 +508,65 @@ ELLE_TEST_SCHEDULED(change_email)
                    {
                      return "{}";
                    });
-  s.register_route("/login", reactor::http::Method::POST,
-                   [&] (HTTPServer::Headers const&,
-                       HTTPServer::Cookies const&,
-                       HTTPServer::Parameters const&,
-                       elle::Buffer const& body) -> std::string
-                   {
-                     elle::IOStream stream(body.istreambuf());
-                     elle::serialization::json::SerializerIn input(stream, false);
-                     std::string password_hash, email;
-                     input.serialize("password_hash", password_hash);
-                     input.serialize("email", email);
-                     if (stored_password.empty())
-                     {
-                       stored_password = password_hash;
-                       stored_email = email;
-                     }
-                     else if (stored_password != password_hash
-                       || stored_email != email)
-                     {
-                       throw HTTPServer::Exception("",
-                         reactor::http::StatusCode::Forbidden,
-                         "{"
-                         " \"code\": -10101,"
-                         " \"message\": \"email password dont match\""
-                         "}");
-                     }
-                     return "{"
-                       " \"device\": {\"id\": \"1\", \"name\": \"johny\", \"passport\": \"passport\"},"
-                       " \"trophonius\": {\"host\": \"192.168.1.1\", \"port\": 4923, \"port_ssl\": 4233},"
-                       " \"features\": [],"
-                       " \"self\": {"
-                       "   \"_id\": \"0\","
-                       "   \"id\": \"0\","
-                       "   \"fullname\": \"jean\","
-                       "   \"email\": \"jean@infinit.io\","
-                       "   \"handle\": \"jean\","
-                       "   \"register_status\": \"ok\","
-                       "   \"identity\": \"identity\","
-                       "   \"passport\": \"passport\","
-                       "   \"devices\": [\"1\"],"
-                       "   \"networks\": [],"
-                       "   \"public_key\": \"public_key\","
-                       "   \"name\": \"FUUUUUUUUUUCK\","
-                       "   \"accounts\": [],"
-                       "   \"remaining_invitations\": 0,"
-                       "   \"token_generation_key\": \"token_generation_key\","
-                       "   \"favorites\": [],"
-                       "   \"connected_devices\": [\"1\"],"
-                       "   \"status\": 1,"
-                       "   \"creation_time\": 1420565249,"
-                       "   \"last_connection\": 1420565249"
-                       "   }"
-                       " }";
-                   });
+  s.register_route(
+    "/login",
+    reactor::http::Method::POST,
+    [&] (HTTPServer::Headers const&,
+         HTTPServer::Cookies const&,
+         HTTPServer::Parameters const&,
+         elle::Buffer const& body) -> std::string
+    {
+      elle::IOStream stream(body.istreambuf());
+      elle::serialization::json::SerializerIn input(stream, false);
+      std::string password_hash, email;
+      input.serialize("password_hash", password_hash);
+      input.serialize("email", email);
+      if (stored_password.empty())
+      {
+        stored_password = password_hash;
+        stored_email = email;
+      }
+      else if (stored_password != password_hash
+               || stored_email != email)
+      {
+        throw HTTPServer::Exception("",
+                                    reactor::http::StatusCode::Forbidden,
+                                    "{"
+                                    " \"code\": -10101,"
+                                    " \"message\": \"email password dont match\""
+                                    "}");
+      }
+      auto id = elle::UUID::random();
+      return elle::sprintf(
+        "{"
+        " \"device\": {\"id\": \"%s\", \"name\": \"johny\", \"passport\": \"passport\"},"
+        " \"trophonius\": {\"host\": \"192.168.1.1\", \"port\": 4923, \"port_ssl\": 4233},"
+        " \"features\": [],"
+        " \"self\": {"
+        "   \"_id\": \"0\","
+        "   \"id\": \"0\","
+        "   \"fullname\": \"jean\","
+        "   \"email\": \"jean@infinit.io\","
+        "   \"handle\": \"jean\","
+        "   \"register_status\": \"ok\","
+        "   \"identity\": \"identity\","
+        "   \"passport\": \"passport\","
+        "   \"devices\": [\"%s\"],"
+        "   \"networks\": [],"
+        "   \"public_key\": \"public_key\","
+        "   \"name\": \"FUUUUUUUUUUCK\","
+        "   \"accounts\": [],"
+        "   \"remaining_invitations\": 0,"
+        "   \"token_generation_key\": \"token_generation_key\","
+        "   \"favorites\": [],"
+        "   \"connected_devices\": [\"%s\"],"
+        "   \"status\": 1,"
+        "   \"creation_time\": 1420565249,"
+        "   \"last_connection\": 1420565249"
+        "   }"
+        " }",
+        id, id, id);
+    });
   infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
   c.login("bob@bob.com", "pass", boost::uuids::nil_uuid());
   c.change_email("bob2@bob.com", "pass");
@@ -565,7 +574,7 @@ ELLE_TEST_SCHEDULED(change_email)
   BOOST_CHECK_THROW(c.login("bob@bob.com",
                             "pass",
                             boost::uuids::nil_uuid()),
-    infinit::state::CredentialError);
+                    infinit::state::CredentialError);
   c.login("bob2@bob.com", "pass", boost::uuids::nil_uuid());
 }
 

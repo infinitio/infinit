@@ -285,7 +285,7 @@ ELLE_TEST_SCHEDULED(poke_success)
     fingerprint);
   try
   {
-    client.connect("", "", "");
+    client.connect("", elle::UUID::random(), "");
   }
   catch (infinit::oracles::trophonius::Unreachable const&)
   {
@@ -320,7 +320,7 @@ ELLE_TEST_SCHEDULED(poke_no_reply)
           reactor::yield();
         }, // reconnection failed callback
     fingerprint);
-  BOOST_CHECK_NO_THROW(client.connect("", "", ""));
+  BOOST_CHECK_NO_THROW(client.connect("", elle::UUID::random(), ""));
   b.wait();b.close();b.wait();
   BOOST_CHECK_EQUAL(reconnectCount, 1);
   BOOST_CHECK_EQUAL(connectCount, 1);
@@ -351,7 +351,7 @@ ELLE_TEST_SCHEDULED(poke_resolution_failure)
           reactor::yield();
         }, // reconnection failed callback
         fingerprint);
-  BOOST_CHECK_NO_THROW(client.connect("", "", ""));
+  BOOST_CHECK_NO_THROW(client.connect("", elle::UUID::random(), ""));
   b.wait();b.close();b.wait();
   BOOST_CHECK_EQUAL(reconnectCount, 1);
   BOOST_CHECK_EQUAL(connectCount, 1);
@@ -383,7 +383,7 @@ ELLE_TEST_SCHEDULED(poke_json)
           reactor::yield();
         }, // reconnection failed callback
         fingerprint, 1_sec);
-  BOOST_CHECK_NO_THROW(client.connect("", "", ""));
+  BOOST_CHECK_NO_THROW(client.connect("", elle::UUID::random(), ""));
   b.wait();b.close();b.wait();
   BOOST_CHECK_EQUAL(reconnectCount, 1);
   BOOST_CHECK_EQUAL(connectCount, 1);
@@ -421,7 +421,7 @@ ELLE_TEST_SCHEDULED(poke_html)
           reactor::yield();
         }, // reconnection failed callback
         fingerprint);
-  BOOST_CHECK_NO_THROW(client.connect("", "", ""));
+  BOOST_CHECK_NO_THROW(client.connect("", elle::UUID::random(), ""));
   b.wait();b.close();b.wait();
   BOOST_CHECK_EQUAL(reconnectCount, 1);
   BOOST_CHECK_EQUAL(connectCount, 1);
@@ -457,7 +457,7 @@ ELLE_TEST_SCHEDULED(poke_connection_refused)
           reactor::yield();
         }, // reconnection failed callback
         fingerprint);
-  BOOST_CHECK_NO_THROW(client.connect("", "", ""));
+  BOOST_CHECK_NO_THROW(client.connect("", elle::UUID::random(), ""));
   b.wait();b.close();b.wait();
   BOOST_CHECK_EQUAL(reconnectCount, 1);
   BOOST_CHECK_EQUAL(connectCount, 1);
@@ -504,7 +504,7 @@ ELLE_TEST_SCHEDULED(notification)
       [] (infinit::oracles::trophonius::ConnectionState const& connected) {}, // connect callback
       [] (void) {}, // reconnection failed callback
       fingerprint);
-    client.connect("0", "0", "0");
+    client.connect("0", elle::UUID::random(), "0");
     reactor::wait(client.connected());
     BOOST_CHECK(client.connected());
     for (int i = 0; i < reconnections; ++i)
@@ -607,7 +607,7 @@ ELLE_TEST_SCHEDULED(ping)
     [] (void) {}, // reconnection failed callback
     fingerprint);
   client.ping_period(period);
-  client.connect("0", "0", "0");
+  client.connect("0", elle::UUID::random(), "0");
   reactor::wait(client.connected());
   BOOST_CHECK(client.connected());
   reactor::sleep(run_time);
@@ -691,7 +691,7 @@ ELLE_TEST_SCHEDULED(no_ping)
     [] (void) {}, // reconnection failed callback
     fingerprint);
   client.ping_period(period);
-  client.connect("0", "0", "0");
+  client.connect("0", elle::UUID::random(), "0");
   reactor::wait(client.connected());
   BOOST_CHECK(client.connected());
   reactor::sleep(run_time);
@@ -799,7 +799,7 @@ ELLE_TEST_SCHEDULED(reconnection)
   client.ping_period(1_sec);
   ELLE_LOG("connect")
   {
-    client.connect("0", "0", "0");
+    client.connect("0", elle::UUID::random(), "0");
     reactor::wait(client.connected());
     BOOST_CHECK(client.connected());
   }
@@ -869,7 +869,7 @@ ELLE_TEST_SCHEDULED_THROWS(connection_callback_throws, std::runtime_error)
     fingerprint);
   client.ping_period(100_ms);
   ELLE_LOG("connect")
-    client.connect("0", "0", "0");
+    client.connect("0", elle::UUID::random(), "0");
     for (int i=0; i<30 && !beacon; ++i)
       reactor::sleep(valgrind(100_ms));
   BOOST_CHECK(beacon);
@@ -950,7 +950,7 @@ ELLE_TEST_SCHEDULED(reconnection_failed_callback)
   client.poke_timeout(500_ms);
   client.ping_period(2_sec);
   ELLE_LOG("connect");
-  client.connect("0", "0", "0");
+  client.connect("0", elle::UUID::random(), "0");
   reactor::wait(callback_called);
   BOOST_CHECK(!client.connected());
 }
@@ -1029,7 +1029,7 @@ ELLE_TEST_SCHEDULED(socket_close_after_poke)
         }, // reconnection failed callback
         fingerprint);
   client.ping_period(200_ms);
-  BOOST_CHECK_NO_THROW(client.connect("", "", ""));
+  BOOST_CHECK_NO_THROW(client.connect("", elle::UUID::random(), ""));
   b.wait();b.close();b.wait();
   BOOST_CHECK_EQUAL(reconnectCount, 1);
   BOOST_CHECK_EQUAL(connectCount, 1);
@@ -1081,7 +1081,7 @@ ELLE_TEST_SCHEDULED(notify_disconnect)
     [] (void) {},
     fingerprint);
   client.ping_period(0_sec);
-  client.connect("0", "0", "0");
+  client.connect("0", elle::UUID::random(), "0");
   ELLE_LOG("%s: poll", client)
     client.poll();
 }
@@ -1147,11 +1147,12 @@ ELLE_TEST_SCHEDULED(login_reconnect)
     fingerprint);
   client.ping_period(100_ms);
   client.reconnection_cooldown(1_sec);
+  auto device_id = elle::UUID::random();
   ELLE_LOG("first connection")
-    client.connect("0", "0", "0");
+    client.connect("0", device_id, "0");
   reactor::sleep(300_ms);
   ELLE_LOG("second connection")
-    client.connect("0", "0", "0");
+    client.connect("0", device_id, "0");
   ELLE_LOG("final sleep")
     reactor::sleep(2_sec);
   ELLE_LOG("done");
@@ -1199,7 +1200,7 @@ ELLE_TEST_SCHEDULED(invalid_credentials)
     },
     [] (void) {},
     fingerprint);
-  client.connect("0", "0", "0");
+  client.connect("0", elle::UUID::random(), "0");
   reactor::wait(client.connected());
   ELLE_LOG("poll for credentials invalid notification");
   auto notif = client.poll();
@@ -1257,7 +1258,7 @@ ELLE_TEST_SCHEDULED(connect_read_timeout)
         }, // reconnection failed callback
         fingerprint);
   client.connect_timeout(500_ms);
-  BOOST_CHECK_NO_THROW(client.connect("0", "0", "0"));
+  BOOST_CHECK_NO_THROW(client.connect("0", elle::UUID::random(), "0"));
   b.wait();b.close();b.wait();
   BOOST_CHECK_EQUAL(reconnectCount, 1);
   BOOST_CHECK_EQUAL(connectCount, 1);
@@ -1315,7 +1316,7 @@ namespace ssl_shutdown
         fingerprint);
     client.poke_timeout(50_ms);
     client.connect_timeout(50_ms);
-    BOOST_CHECK_NO_THROW(client.connect("0", "0", "0"));
+    BOOST_CHECK_NO_THROW(client.connect("0", elle::UUID::random(), "0"));
     b.wait();b.close();b.wait();
     BOOST_CHECK_EQUAL(reconnectCount, 1);
     BOOST_CHECK_EQUAL(connectCount, 1);
@@ -1352,7 +1353,7 @@ namespace ssl_shutdown
       [] (void) {},
       fingerprint);
     client.ping_period(100_ms);
-    client.connect("0", "0", "0");
+    client.connect("0", elle::UUID::random(), "0");
     reactor::wait(tropho.done());
   }
 
@@ -1380,7 +1381,7 @@ namespace ssl_shutdown
       [] (void) {},
       fingerprint);
     client.connect_timeout(valgrind(200_ms));
-    client.connect("0", "0", "0");
+    client.connect("0", elle::UUID::random(), "0");
   }
 }
 
