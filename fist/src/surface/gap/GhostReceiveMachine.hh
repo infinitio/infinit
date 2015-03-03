@@ -25,31 +25,33 @@ namespace surface
 
       virtual
       ~GhostReceiveMachine();
-
       float
       progress() const override;
-
+      virtual
       void
       accept() override;
-
+      virtual
       void
       _accept() override;
-
+      virtual
+      void
+      _transfer() override;
       virtual
       void
       _wait_for_cloud_upload();
-
       void
       transaction_status_update(
         infinit::oracles::Transaction::Status status) override;
+      virtual
+      bool
+      completed() const override;
 
     protected:
       std::unique_ptr<infinit::oracles::meta::CloudCredentials>
       _cloud_credentials(bool regenerate) override;
-
+      virtual
       void
-      _finalize(infinit::oracles::Transaction::Status) override;
-
+      _update_meta_status(infinit::oracles::Transaction::Status) override;
       void
       cleanup() override;
 
@@ -63,6 +65,7 @@ namespace surface
       ELLE_ATTRIBUTE_R(std::unique_ptr<reactor::http::Request>, request);
       ELLE_ATTRIBUTE_R(int64_t, previous_progress);
       ELLE_ATTRIBUTE_R(boost::filesystem::path, path);
+      ELLE_ATTRIBUTE(bool, completed);
     };
   }
 }

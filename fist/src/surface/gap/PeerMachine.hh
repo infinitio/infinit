@@ -3,6 +3,8 @@
 
 # include <surface/gap/TransactionMachine.hh>
 
+# include <frete/Frete.hh>
+
 namespace surface
 {
   namespace gap
@@ -52,9 +54,9 @@ namespace surface
       void
       _cloud_synchronize() = 0;
       std::unique_ptr<Transferer> _transfer_machine;
+      virtual
       void
-      _transfer_core();
-      reactor::fsm::State& _transfer_core_state;
+      _transfer() override;
       virtual
       void
       peer_available(std::vector<std::pair<std::string, int>> const& local_endpoints,
@@ -70,7 +72,7 @@ namespace surface
       _cloud_credentials(bool regenerate) override;
       virtual
       void
-      _finalize(infinit::oracles::Transaction::Status) override;
+      _update_meta_status(infinit::oracles::Transaction::Status) override;
     };
   }
 }

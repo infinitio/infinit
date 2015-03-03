@@ -19,6 +19,7 @@ typedef struct gap_State gap_State;
 /// Create a new state.
 /// Returns NULL on failure.
 gap_State* gap_new(bool production,
+                   std::string const& home_dir = "",
                    std::string const& download_dir = "");
 
 /// Release a state.

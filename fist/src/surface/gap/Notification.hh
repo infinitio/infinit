@@ -3,21 +3,26 @@
 
 # include <stdint.h>
 
+# include <elle/Printable.hh>
+
 namespace surface
 {
   namespace gap
   {
     class Notification
+      : public elle::Printable
     {
     public:
       typedef uint32_t Type;
-
-    public:
       virtual
       ~Notification() = default;
+
+    protected:
+      virtual
+      void
+      print(std::ostream& output) const override;
     };
   }
 }
-
 
 #endif

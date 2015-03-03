@@ -18,6 +18,7 @@ from . import utils
 from . import error, notifier, regexp, conf, invitation, mail, transaction_status
 
 import pymongo
+import pymongo.errors
 from pymongo import DESCENDING
 import os
 import string
@@ -193,6 +194,10 @@ class Mixin:
       if key in bottle.request.session:
         # Web sessions have no device.
         if 'device' in bottle.request.session:
+          self.database.users.update(
+            {'devices.id': bottle.request.session['device']},
+            {'$unset': {'devices.$.push_token': True}},
+          )
           del bottle.request.session['device']
         if 'facebook_access_token' in bottle.request.session:
           del bottle.request.session['facebook_access_token']
@@ -282,11 +287,27 @@ class Mixin:
       if 'public_key' not in user:
         self.__generate_identity(user, email, password)
       elle.log.debug("%s: look for session" % email)
-      usr = self.database.users.find_and_modify(
-        {'_id': user['_id'], 'devices.id': str(device_id)},
-        {'$set': {'devices.$.push_token': device_push_token}},
-        fields = ['devices']
-      )
+      if device_push_token is None:
+        push_token_update = {
+          '$unset':
+          {
+            'devices.$.push_token': True,
+          }
+        }
+      else:
+        push_token_update = {
+          '$set':
+          {
+            'devices.$.push_token': device_push_token,
+          }
+        }
+      def login():
+        return self.database.users.find_and_modify(
+          {'_id': user['_id'], 'devices.id': str(device_id)},
+          push_token_update,
+          fields = ['devices']
+        )
+      usr = self.device_override_push_token(device_push_token, login)
       if usr is None:
         elle.log.trace("user logged with an unknown device")
         device = self._create_device(
