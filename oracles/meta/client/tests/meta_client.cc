@@ -67,7 +67,7 @@ ELLE_TEST_SCHEDULED(login_success)
         HTTPServer::Parameters const&,
         elle::Buffer const& body) -> std::string
     {
-      auto id = elle::UUID::random();
+      auto id = elle::UUID("00000000-0000-0000-0000-000000000001");
       return elle::sprintf("{"
                            " \"device\": {\"id\": \"%s\", \"name\": \"johny\", \"passport\": \"passport\"},"
                            " \"trophonius\": {\"host\": \"192.168.1.1\", \"port\": 4923, \"port_ssl\": 4233},"
@@ -536,7 +536,7 @@ ELLE_TEST_SCHEDULED(change_email)
                                     " \"message\": \"email password dont match\""
                                     "}");
       }
-      auto id = elle::UUID::random();
+      auto id = elle::UUID("00000000-0000-0000-0000-000000000001");
       return elle::sprintf(
         "{"
         " \"device\": {\"id\": \"%s\", \"name\": \"johny\", \"passport\": \"passport\"},"
