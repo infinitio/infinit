@@ -16,6 +16,9 @@ namespace tests
     State(Server& server,
           boost::uuids::uuid device_id,
           boost::filesystem::path const& path = boost::filesystem::path());
+
+    void
+    synchronize();
   };
 }
 

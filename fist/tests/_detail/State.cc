@@ -22,6 +22,12 @@ namespace tests
           elle::sprintf("localhost:%s", server.port()),
           "/s3"});
   }
+
+  void
+  State::synchronize()
+  {
+    this->_synchronize();
+  }
 }
 
 const std::vector<unsigned char> fingerprint =

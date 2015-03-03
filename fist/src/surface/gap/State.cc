@@ -973,6 +973,13 @@ namespace surface
     }
 
     void
+    State::_synchronize()
+    {
+      this->on_connection_changed(
+      ConnectionState{true, elle::Error(""), false}, false);
+    }
+
+    void
     State::on_connection_changed(ConnectionState const& connection_state,
                                  bool first_connection)
     {

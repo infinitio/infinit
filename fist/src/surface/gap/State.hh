@@ -334,6 +334,11 @@ namespace surface
       `--------------*/
       ELLE_ATTRIBUTE_R(std::unique_ptr<reactor::Thread>, polling_thread);
 
+    protected:
+      void
+      _synchronize();
+
+    public:
       void
       on_connection_changed(infinit::oracles::trophonius::ConnectionState const&,
                             bool first_connection=false);

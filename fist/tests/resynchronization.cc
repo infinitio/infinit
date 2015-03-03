@@ -9,19 +9,6 @@
 
 ELLE_LOG_COMPONENT("surface.gap.State.test");
 
-static
-void
-synchronize(tests::Server& server,
-            surface::gap::State& state)
-{
-  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
-  {
-    scope.run_background("reseter", [&] { reactor::sleep(300_ms); server.trophonius.disconnect_all_users(); });
-    scope.run_background("synchronized", [&] { reactor::wait(state.synchronized()); });
-    scope.wait();
-  };
-}
-
 ELLE_TEST_SCHEDULED(links)
 {
   tests::Server server;
@@ -57,7 +44,7 @@ ELLE_TEST_SCHEDULED(links)
 
   sender.user.links.begin()->second.status =  oracles::Transaction::Status::canceled;
   // Disconnect trophonius.
-  synchronize(server, sender.state);
+  sender.state.synchronize();
   // At this stage, state should have resynchronization
   ELLE_ASSERT_EQ(sender.state.transactions().begin()->second->data()->status,
                  oracles::Transaction::Status::canceled);
@@ -90,14 +77,14 @@ ELLE_TEST_SCHEDULED(links_another_device)
   sender.user.links[t.id] = t;
 
   // Disconnect trophonius.
-  synchronize(server, sender.state);
+  sender.state.synchronize();
 
   ELLE_ASSERT_EQ(sender.state.transactions().begin()->second->data()->status,
                  oracles::Transaction::Status::initialized);
 
   sender.user.links[t.id].status = infinit::oracles::Transaction::Status::finished;
 
-  synchronize(server, sender.state);
+  sender.state.synchronize();
 
   ELLE_ASSERT_EQ(sender.state.transactions().begin()->second->data()->status,
                  oracles::Transaction::Status::finished);
@@ -131,16 +118,16 @@ ELLE_TEST_SCHEDULED(swaggers)
       step1 = notif.status;
     }
   });
-  synchronize(server, bob.state);
+  bob.state.synchronize();
   bob.state.poll();
   ELLE_ASSERT(step0); // Nothing should have changed.
   ELLE_ASSERT(!step1); // Eve is a swagger but not online.
   ELLE_ASSERT_EQ(bob.state.swaggers().size(), 2);
   eve.login();
-  synchronize(server, bob.state);
+  bob.state.synchronize();
   bob.state.poll();
   ELLE_ASSERT(!step0); // It should be valid now.
-  ELLE_ASSERT(step1);  // It should be valid now.
+  ELLE_ASSERT(step1); // It should be valid now.
   ELLE_ASSERT_EQ(bob.state.swaggers().size(), 2);
 
   // Disclaimer: It's really hard to play with multi device on a single device
@@ -150,21 +137,18 @@ ELLE_TEST_SCHEDULED(swaggers)
   bob.user.connected_devices.insert(random_uuid());
   bob.user.connected_devices.insert(random_uuid());
 
-  bool step2 = false;
+  int step2 = 0;
   alice.state.attach_callback<surface::gap::State::UserStatusNotification>([&] (surface::gap::State::UserStatusNotification notif)
   {
-    if (step2) return;
-
-    ELLE_ERR("%s", notif.id);
     auto it = alice.state.users().find(notif.id);
     if (it->second.id == boost::lexical_cast<std::string>(bob.user.id()))
     {
-      step2 = notif.status;
+      step2 += notif.status;
     }
   });
-  synchronize(server, alice.state);
+  alice.state.synchronize();
   alice.state.poll();
-  ELLE_ASSERT(step2);
+  ELLE_ASSERT_EQ(step2, 2);
 
   bob.user.connected_devices.clear();
   bob.logout();
@@ -179,8 +163,7 @@ ELLE_TEST_SCHEDULED(swaggers)
     }
   });
 
-  synchronize(server, alice.state);
-
+  alice.state.synchronize();
   alice.state.poll();
   ELLE_ASSERT(step3);
 }
