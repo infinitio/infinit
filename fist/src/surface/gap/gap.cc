@@ -76,11 +76,13 @@ _cpp_stringlist_to_c_stringlist(std::list<std::string> const& list)
 
 /// - gap ctor & dtor -----------------------------------------------------
 
-gap_State* gap_new(bool production, std::string const& download_dir)
+gap_State* gap_new(bool production,
+                   std::string const& home_dir,
+                   std::string const& download_dir)
 {
   try
   {
-    gap_State* state = new gap_State(production, download_dir);
+    gap_State* state = new gap_State(production, home_dir, download_dir);
     return state;
   }
   catch (std::exception const& err)
@@ -1820,6 +1822,7 @@ gap_send_user_report(gap_State* state,
           elle::crash::user_report(_state.meta(false).protocol(),
                                    _state.meta(false).host(),
                                    _state.meta(false).port(),
+                                   _state.home(),
                                    user_name,
                                    message,
                                    file);

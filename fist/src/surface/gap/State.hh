@@ -164,8 +164,10 @@ namespace surface
             boost::uuids::uuid device,
             std::vector<unsigned char> trophonius_fingerprint,
             std::string const& download_dir,
+            boost::filesystem::path infinit_home = boost::filesystem::path(),
             std::unique_ptr<infinit::metrics::Reporter> metrics = nullptr);
       ~State();
+      ELLE_ATTRIBUTE_R(boost::filesystem::path, home);
 
     private:
       void

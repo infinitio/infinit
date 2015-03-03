@@ -14,7 +14,9 @@
 #include <elle/serialize/HexadecimalArchive.hh>
 #include <elle/system/platform.hh>
 
+#include <reactor/Scope.hh>
 #include <reactor/duration.hh>
+#include <reactor/exception.hh>
 #include <reactor/http/exceptions.hh>
 
 #include <common/common.hh>
@@ -124,12 +126,14 @@ namespace surface
     /*-------------------------.
     | Construction/Destruction |
     `-------------------------*/
+
     State::State(std::string const& meta_protocol,
                  std::string const& meta_host,
                  uint16_t meta_port,
                  boost::uuids::uuid device,
                  std::vector<unsigned char> trophonius_fingerprint,
                  std::string const& download_dir,
+                 boost::filesystem::path infinit_home,
                  std::unique_ptr<infinit::metrics::Reporter> metrics)
       : _logger_intializer()
       , _meta(meta_protocol, meta_host, meta_port)
@@ -139,6 +143,7 @@ namespace surface
       , _forced_trophonius_host()
       , _forced_trophonius_port(0)
       , _metrics_reporter(std::move(metrics))
+      , _home(infinit_home)
       , _me()
       , _output_dir(download_dir)
       , _reconnection_cooldown(10_sec)
@@ -146,6 +151,8 @@ namespace surface
       , _device()
       , _login_watcher_thread(nullptr)
     {
+      if (this->_home.empty())
+        this->_home = common::infinit::infinit_default_home();
       this->_logged_out.open();
       ELLE_TRACE_SCOPE("%s: create state", *this);
       if (!this->_metrics_reporter)
@@ -162,7 +169,8 @@ namespace surface
       config.max_mirror_size = 0;
       config.max_compress_size = 0;
       config.disable_upnp = false;
-      std::ifstream fconfig(common::infinit::configuration_path());
+      boost::filesystem::ifstream fconfig
+        (common::infinit::configuration_path(this->home()));
       if (fconfig.good())
       {
         try
@@ -322,15 +330,13 @@ namespace surface
     void
     State::_check_first_launch()
     {
-      if (boost::filesystem::exists(common::infinit::first_launch_path()))
+      if (exists(common::infinit::first_launch_path(this->home())))
         return;
-
-      if (!boost::filesystem::exists(common::infinit::home()))
+      if (!exists(this->home()))
       {
-        boost::filesystem::create_directories(
-          boost::filesystem::path(common::infinit::home()));
+        create_directories(this->home());
       }
-      elle::AtomicFile f(common::infinit::first_launch_path());
+      elle::AtomicFile f(common::infinit::first_launch_path(this->home()));
       f.write() << [] (elle::AtomicFile::Write& write)
         {
           write.stream() << "0\n";
@@ -451,7 +457,7 @@ namespace surface
         trophonius,
         [=] { return hashed_password; },
         [&] (bool success, std::string const& failure_reason) {
-          this->_metrics_reporter->facebook_connect(success, failure_reason);
+          this->_metrics_reporter->user_login(success, failure_reason);
         });
         this->_metrics_reporter->user_login(true, "");
     }
@@ -553,15 +559,13 @@ namespace surface
               throw Exception(gap_internal_error,
                               "Cannot save the identity file.");
             auto user_id = this->_identity->id();
-            elle::io::Path path(elle::os::path::join(
-                                  common::infinit::user_directory(user_id),
-                                  user_id + ".idy"));
-            this->_identity->store(path);
+            auto path =
+              common::infinit::user_directory(this->home(), user_id) /
+              (user_id + ".idy");
+            this->_identity->store(elle::io::Path(path.string()));
           }
-
-          std::ofstream identity_infos{
-            common::infinit::identity_path(this->me().id)};
-
+          boost::filesystem::ofstream identity_infos(
+            common::infinit::identity_path(this->home(), this->me().id));
           if (identity_infos.good())
           {
             identity_infos << this->me().identity << "\n"
@@ -574,12 +578,13 @@ namespace surface
           // Device.
           this->_device.reset(new Device(login_response.device));
           ELLE_ASSERT_EQ(boost::lexical_cast<std::string>(this->_device_uuid), this->_device->id);
-          std::string passport_path =
-            common::infinit::passport_path(this->me().id);
+          auto passport_path =
+            common::infinit::passport_path(this->home(), this->me().id);
           this->_passport.reset(new papier::Passport());
           if (this->_passport->Restore(this->_device->passport) == elle::Status::Error)
             throw Exception(gap_wrong_passport, "Cannot load the passport");
-          this->_passport->store(elle::io::Path(passport_path));
+          this->_passport->store(elle::io::Path(passport_path.string()));
+
           ELLE_TRACE("%s: connecting to trophonius on %s:%s",
                      *this,
                      login_response.trophonius.host,
@@ -891,6 +896,7 @@ namespace surface
         this->_login([&] {
           return this->_meta.facebook_connect(code, this->device_uuid()); },
           tropho,
+          // Password.
           [&] {
             return "";
           },
@@ -948,9 +954,8 @@ namespace surface
     std::string
     State::user_directory()
     {
-      ELLE_TRACE_METHOD("");
-
-      return common::infinit::user_directory(this->me().id);
+      return common::infinit::user_directory
+        (this->home(), this->me().id).string();
     }
 
     void
@@ -1215,12 +1220,11 @@ namespace surface
       elle::serialization::json::SerializerIn input(json);
       input.partial(true);
       this->_configuration.serialize(input);
-
       metrics::Reporter::metric_features(this->_configuration.features);
-      std::ofstream fconfig(common::infinit::configuration_path());
-      elle::json::write(fconfig, json);
+      boost::filesystem::ofstream f
+        (common::infinit::configuration_path(this->home()));
+      elle::json::write(f, json);
     }
-
 
     void
     State::change_password(std::string const& password,

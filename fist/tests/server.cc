@@ -571,6 +571,7 @@ namespace tests
             auto& tr = **this->_transactions.find(id);
             return tr.json();
           });
+
         this->register_route(
           elle::sprintf("/transaction/%s/endpoints", id),
           reactor::http::Method::PUT,
@@ -661,64 +662,32 @@ namespace tests
               boost::posix_time::to_iso_extended_string(now));
           });
 
-    this->register_route(
-      "/transaction/update",
-      reactor::http::Method::POST,
-      [&] (Server::Headers const&,
-           Server::Cookies const& cookies,
-           Server::Parameters const&,
-           elle::Buffer const& content)
-      {
-        elle::IOStream stream(content.istreambuf());
-        elle::serialization::json::SerializerIn input(stream, false);
-        std::string id;
-        int status;
-        input.serialize("transaction_id", id);
-        input.serialize("status", status);
-        auto it = this->_transactions.find(id);
-        if (it == this->_transactions.end())
-        {
-          for (auto const& tr: this->_transactions)
-            ELLE_WARN("%s", *tr);
-          throw reactor::http::tests::Server::Exception(
-            "/transaction/update",
-            reactor::http::StatusCode::Not_Found,
-            "transaction not found");
-        }
-        auto& tr = **it;
-        tr.status = infinit::oracles::Transaction::Status(status);
-        tr.status_changed()(tr.status);
-        if (tr.status == infinit::oracles::Transaction::Status::accepted)
-        {
-          auto const& user = this->user(cookies);
-          auto const& device = this->device(cookies);
-          tr.recipient_id = boost::lexical_cast<std::string>(user.id());
-          tr.recipient_device_id = boost::lexical_cast<std::string>(device.id());
-        }
-        std::string transaction_notification = tr.json();
-        transaction_notification.insert(1, "\"notification_type\":7,");
-        for (auto& socket: this->trophonius.clients(boost::uuids::string_generator()(tr.sender_id)))
-          socket->write(transaction_notification);
-        for (auto& socket: this->trophonius.clients(boost::uuids::string_generator()(tr.recipient_id)))
-          socket->write(transaction_notification);
-        auto res = elle::sprintf(
-          "{"
-          "%s"
-          "  \"updated_transaction_id\": \"%s\""
-          "}",
-          tr.status == infinit::oracles::Transaction::Status::accepted
-          ? elle::sprintf("  \"recipent_device_id\": \"%s\", \"recipient_device_name\": \"bite\", ", tr.recipient_device_id)
-          : std::string{},
-          tr.id
-        );
-        return res;
-      });
-
-        auto res = elle::sprintf(
-          "{"
-          "\"created_transaction_id\": \"%s\""
-          "}",
-          id);
+        this->register_route(
+          elle::sprintf("/transaction/%s/cloud_buffer", t->id()),
+          reactor::http::Method::GET,
+          [&] (Server::Headers const&,
+               Server::Cookies const&,
+               Server::Parameters const&,
+               elle::Buffer const&)
+          {
+            auto now = boost::posix_time::second_clock::universal_time();
+            auto tomorrow = now + boost::posix_time::hours(24);
+            return elle::sprintf(
+              "{"
+              "  \"protocol\": \"aws\","
+              "  \"access_key_id\": \"\","
+              "  \"secret_access_key\": \"\","
+              "  \"session_token\": \"\","
+              "  \"region\": \"region\","
+              "  \"bucket\": \"bucket\","
+              "  \"folder\": \"folder\","
+              "  \"expiration\": \"%s\","
+              "  \"current_time\": \"%s\""
+              "}",
+              boost::posix_time::to_iso_extended_string(tomorrow),
+              boost::posix_time::to_iso_extended_string(now));
+          });
+        this->_transactions.insert(std::move(t));
         return res;
       });
 
@@ -826,7 +795,7 @@ namespace tests
 
   Device const&
   Server::device(Server::Cookies const& cookies) const
-  {
+   {
     try
     {
       if (contains(cookies, "session-id"))

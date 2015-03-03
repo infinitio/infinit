@@ -18,6 +18,7 @@ from . import utils
 from . import error, notifier, regexp, conf, invitation, mail
 
 import pymongo
+import pymongo.errors
 from pymongo import DESCENDING
 import os
 import string
@@ -198,6 +199,10 @@ class Mixin:
       if key in bottle.request.session:
         # Web sessions have no device.
         if 'device' in bottle.request.session:
+          self.database.users.update(
+            {'devices.id': bottle.request.session['device']},
+            {'$unset': {'devices.$.push_token': True}},
+          )
           del bottle.request.session['device']
         if 'facebook_access_token' in bottle.request.session:
           del bottle.request.session['facebook_access_token']
@@ -266,9 +271,25 @@ class Mixin:
     if 'public_key' not in user:
       user = self.__generate_identity(user, password)
     query = {'id': str(device_id), 'owner': user['_id']}
+
+    if device_push_token is None:
+      push_token_update = {
+        '$unset':
+        {
+          'devices.$.push_token': True,
+        }
+      }
+    else:
+      push_token_update = {
+        '$set':
+        {
+          'devices.$.push_token': device_push_token,
+        }
+      }
+
     usr = self.database.users.find_and_modify(
       {'_id': user['_id'], 'devices.id': str(device_id)},
-      {'$set': {'devices.$.push_token': device_push_token}},
+      push_token_update,
       fields = ['devices']
     )
     if usr is None:
@@ -342,7 +363,6 @@ class Mixin:
                          fields = self.__user_self_fields + ['public_key'],
                          password = password,
                          password_hash = password_hash)
-
       return self._in_app_login(user = user,
                                 password = password,
                                 device_id = device_id,
@@ -370,36 +390,33 @@ class Mixin:
 
   @api('/facebook_connect', method = 'POST')
   def facebook_connect(self,
-                       code,
+                       code = code,
                        device_id: uuid.UUID = None,
                        OS: str = None):
     try:
       facebook_user = self.facebook.user(code)
       user = self.__user_fetch({
-        'accounts.id': facebook_user.facebook_id,
-        'accounts.type': 'facebook'
-      },
-      fields = self.__user_self_fields + ['public_key'])
-      register = False
+          'accounts.id': facebook_user.facebook_id,
+          'accounts.type': 'facebook'
+         },
+        fields = self.__user_self_fields + ['public_key'])
       if user is None: # Register the user.
         user = self.facebook_register(
           facebook_id = facebook_user.facebook_id,
           email = facebook_user.data.get("email", None),
           name = facebook_user.data["name"])
-        register = True
-      if register:
         try:
           self._set_avatar(user, facebook_user.avatar)
         except:
           pass
       if device_id is not None:
-        res = self._in_app_login(user,
-                                 password = None,
-                                 device_id = device_id,
-                                 pick_trophonius = True,
-                                 OS = OS)
-        bottle.request.session['facebook_access_token'] = facebook_user.access_token
-        return res
+         res = self._in_app_login(
+           user,
+           password = None,
+           device_id = device_id,
+           pick_trophonius = True,
+           OS = OS)
+         return res
       else:
         return self._web_login(user)
     except error.Error as e:

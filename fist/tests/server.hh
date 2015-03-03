@@ -21,8 +21,6 @@ namespace bmi = boost::multi_index;
 
 namespace tests
 {
-  class Server;
-
   class Server
     : public reactor::http::tests::Server
   {

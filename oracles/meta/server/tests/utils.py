@@ -491,9 +491,10 @@ class User(Client):
       self.trophonius.connect_user(self)
     return res
 
-  def facebook_connect(self, code):
+  def facebook_connect(self,
+                       long_lived_access_token):
     args = {
-      'code': code,
+      'long_lived_access_token': long_lived_access_token
     }
     if self.device_id is not None:
       args.update({

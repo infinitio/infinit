@@ -51,11 +51,14 @@ namespace surface
       {
       public:
         static surface::gap::Notification::Type type;
-
         Notification(uint32_t id, gap_TransactionStatus status);
-
         uint32_t id;
         gap_TransactionStatus status;
+
+      protected:
+        virtual
+        void
+        print(std::ostream& output) const override;
       };
 
       class RecipientChangedNotification:

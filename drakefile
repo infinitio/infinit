@@ -222,6 +222,7 @@ def configure(cxx_toolkit = None,
     python_build << reactor_python_lib
   protocol_lib = copy_lib(elle.protocol.library)
   aws_lib = copy_lib(elle.aws.library)
+  facebook_lib = copy_lib(elle.facebook.library)
 
   cxx_config += elle.config
   cxx_config.add_local_include_path('.')
@@ -514,6 +515,8 @@ def configure(cxx_toolkit = None,
     'fist/src/surface/gap/GhostReceiveMachine.hh',
     'fist/src/surface/gap/LinkSendMachine.cc',
     'fist/src/surface/gap/LinkSendMachine.hh',
+    'fist/src/surface/gap/Notification.cc',
+    'fist/src/surface/gap/Notification.hh',
     'fist/src/surface/gap/PeerMachine.cc',
     'fist/src/surface/gap/PeerMachine.hh',
     'fist/src/surface/gap/PeerReceiveMachine.cc',
@@ -623,7 +626,12 @@ def configure(cxx_toolkit = None,
   gap_tests_cxx_config += boost_system
   gap_tests_cxx_config += boost_date_time
   gap_tests_cxx_config.lib_path_runtime('../../lib')
-  for name in ('state', 'cloud-buffer', 'ghost-invite', 'resynchronization', 'facebook_connect'):
+  for name in ('state',
+               'cloud-buffer',
+               'ghost-invite',
+               'resynchronization',
+               'snapshot-resume',
+               'facebook_connect'):
     sources = drake.nodes('fist/tests/%s.cc' % name)
     if name != 'state':
       sources += drake.nodes(
@@ -688,18 +696,45 @@ def configure(cxx_toolkit = None,
   )
   cli_send_bin = drake.cxx.Executable(
     'bin/8send',
-    cli_send_sources + [gap_lib, elle_lib, reactor_lib, crash_lib],
+    cli_send_sources + [
+      gap_lib,
+      elle_lib,
+      reactor_lib,
+      crash_lib,
+      oracles.transaction_lib,
+    ],
     cxx_toolkit,
     cli_cxx_config
   )
   cli_add_bin(cli_send_bin)
+
+  cli_fb_sources = drake.nodes(
+    'satellites/fb/Fb.cc',
+  )
+  cli_fb_bin = drake.cxx.Executable(
+    'bin/8fb',
+    cli_fb_sources + [
+      elle_lib,
+      reactor_lib,
+      facebook_lib,
+    ],
+    cxx_toolkit,
+    cli_cxx_config
+  )
+  cli_add_bin(cli_fb_bin)
 
   cli_recv_sources = drake.nodes(
     'satellites/recv/Recv.cc',
   )
   cli_recv_bin = drake.cxx.Executable(
     'bin/8recv',
-    cli_recv_sources + [gap_lib, elle_lib, reactor_lib, crash_lib],
+    cli_recv_sources + [
+      gap_lib,
+      elle_lib,
+      reactor_lib,
+      crash_lib,
+      oracles.transaction_lib,
+    ],
     cxx_toolkit,
     cli_cxx_config
   )

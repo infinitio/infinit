@@ -50,7 +50,7 @@ class Mixin:
     transaction = self.database.transactions.find_one(id)
 
     # handle both negative search and empty transaction
-    if not transaction:
+    if not transaction or len(transaction) == 1:
       self.not_found('transaction %s doesn\'t exist' % id)
     if owner_id is not None:
       assert isinstance(owner_id, bson.ObjectId)
@@ -143,7 +143,7 @@ class Mixin:
       new = False,
     )
     # handle both negative search and empty transaction
-    if not transaction:
+    if not transaction or len(transaction) == 1:
       self.not_found({
         'reason': 'transaction %s not found' % id,
         'transaction_id': id,
@@ -195,7 +195,7 @@ class Mixin:
 
   @api('/transaction/create_empty', method='POST')
   @require_logged_in
-  def transaction_create_empty(self):
+  def transaction_create_empty_api(self):
     """
     Create an empty transaction, to be filled in a separate API call.
     This allows for the client finer snapshot granularity, along with easier
@@ -203,11 +203,14 @@ class Mixin:
 
     Return: the newly created transaction id.
     """
+    return self.transaction_create_empty()
 
+
+  def transaction_create_empty(self):
     transaction_id = self.database.transactions.insert({})
-    return self.success({
+    return {
       'created_transaction_id': transaction_id,
-      })
+      }
 
   @api('/transaction/<t_id>', method='PUT')
   @require_logged_in

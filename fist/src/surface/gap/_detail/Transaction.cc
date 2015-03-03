@@ -134,7 +134,7 @@ namespace surface
     {
       ELLE_ASSERT(this->_transactions.empty());
       boost::filesystem::path snapshots_path(
-        common::infinit::user_directory(this->me().id));
+        common::infinit::user_directory(this->_home, this->me().id));
       snapshots_path /= "transactions";
       ELLE_TRACE("%s: load transactions from snapshots at %s",
                  *this, snapshots_path)
@@ -163,8 +163,8 @@ namespace surface
             }();
             auto const& data = *snapshot.data();
             if (data.id.empty())
-              throw elle::Error("transaction id was empty");
-            if (!data.id.empty())
+              ELLE_TRACE("%s: no transaction id in snapshot", *this);
+            else
             {
               auto it = std::find_if(
                 std::begin(this->_transactions),
