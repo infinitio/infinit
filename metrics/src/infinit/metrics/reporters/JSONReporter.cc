@@ -520,29 +520,7 @@ namespace infinit
     JSONReporter::_transaction_status_str(
       infinit::oracles::Transaction::Status status)
     {
-      switch (status)
-      {
-        case infinit::oracles::Transaction::Status::accepted:
-          return "accepted";
-        case infinit::oracles::Transaction::Status::canceled:
-          return "cancelled";
-        case infinit::oracles::Transaction::Status::created:
-          return "created";
-        case infinit::oracles::Transaction::Status::failed:
-          return "failed";
-        case infinit::oracles::Transaction::Status::finished:
-          return "finished";
-        case infinit::oracles::Transaction::Status::initialized:
-          return "initialized";
-        case infinit::oracles::Transaction::Status::none:
-          return "none";
-        case infinit::oracles::Transaction::Status::rejected:
-          return "rejected";
-        case infinit::oracles::Transaction::Status::started:
-          return "started";
-        default:
-          ELLE_ABORT("invalid transaction status: %s", status);
-      }
+      return boost::lexical_cast<std::string>(status);
     }
 
     std::string
