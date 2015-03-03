@@ -80,6 +80,7 @@ class Notifier:
             'devices.id': True,
             'devices.trophonius': True,
             'devices.push_token': True,
+            'devices.os' : True,
           }
       ):
         if 'devices' not in user:
@@ -96,6 +97,7 @@ class Notifier:
               user['_id'],
               tropho,
               push,
+              device.get('os'),
             ))
       elle.log.debug('targets: %s' % targets)
       # Fetch involved trophoniuses
@@ -117,16 +119,17 @@ class Notifier:
       # Freezing slow.
       notification = {'notification': jsonify(message)}
       elle.log.dump('notification: %s' % notification)
-      for device, owner, tropho, push in targets:
+      for device, owner, tropho, push, os in targets:
         with elle.log.debug(
             'send notifications to %s (tropho: %s, push: %s)' %
             (device, tropho, push)):
           if push is not None:
             try:
-              pl = self.ios_notification(notification_type,
-                                         device,
-                                         owner,
-                                         message)
+              pl = self.prepare_notification(notification_type,
+                                             device,
+                                             owner,
+                                             message,
+                                             os)
               if pl is not None:
                 with elle.log.debug(
                     'push notification to: %s' % push):
@@ -160,17 +163,28 @@ class Notifier:
             finally:
               s.close()
 
-  def push_notification(self, recipient_id, token, payload):
-    if self.__apns is None:
-      cert = conf.INFINIT_APS_CERT_PATH_PRODUCTION \
-             if self.__production else conf.INFINIT_APS_CERT_PATH
-      self.__apns = apns.APNs(
-        use_sandbox = not self.__production,
-        cert_file = cert)
-    self.__apns.gateway_server.send_notification(token, payload)
+  def push_notification(self, recipient_id, token, payload, os):
+    if os == 'iOS':
+      if self.__apns is None:
+        cert = conf.INFINIT_APS_CERT_PATH_PRODUCTION \
+               if self.__production else conf.INFINIT_APS_CERT_PATH
+        self.__apns = apns.APNs(
+          use_sandbox = not self.__production,
+          cert_file = cert)
+      self.__apns.gateway_server.send_notification(token, payload)
+    elif os == 'Android':
+      headers = {
+          'Authorization' : 'key=%s' % API_KEY,
+          'Content-Type' : 'application/json',
+          }
+      data = {
+          'registration_ids' : [recipient_id],
+          'data' : payload,
+          }
+      requests.post(GCM_URL, headers=headers, data=data)
 
 
-  def ios_notification(self, notification_type, device, owner, message):
+  def prepare_notification(self, notification_type, device, owner, message, os):
     if notification_type is not PEER_TRANSACTION:
       return None
     sender_id = str(message['sender_id'])
@@ -213,7 +227,12 @@ class Notifier:
         alert = 'Transfer received by %s' % message['recipient_fullname']
     if alert is None:
       return None
-    return apns.Payload(alert = alert,
-                        badge = badge,
-                        sound = sound,
-                        content_available = content_available)
+    if os == 'iOS':
+      return apns.Payload(alert = alert,
+                          badge = badge,
+                          sound = sound,
+                          content_available = content_available)
+    elif os == 'Android':
+      return { 'message' : alert }
+    else:
+      return None
