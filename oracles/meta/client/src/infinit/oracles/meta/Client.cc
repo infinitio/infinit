@@ -940,7 +940,7 @@ namespace infinit
         adapter_type const& public_endpoints) const
       {
         elle::json::Object json;
-        json["device"] = device_id;
+        json["device"] = boost::lexical_cast<std::string>(device_id);
         auto convert_endpoints = [&](adapter_type const& endpoints)
           {
             std::vector<boost::any> res;
