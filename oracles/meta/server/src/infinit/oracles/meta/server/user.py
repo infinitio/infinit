@@ -1216,9 +1216,24 @@ class Mixin:
        - Remove user as a favourite for other users.
        - Remove user from mailing lists.
 
+       ==============
+       = merge_with =
+       merge_with argument makes the process transfer elements from the account
+       to delete to the 'merge_with' user, including:
+       - transactions
+       - accounts
+       - swaggers (and update swaggers swagger to add merge_with).
+       Note that merge with only works with ghost because they have no public
+       key, can't be transaction sender and hence the transactions in which
+       they are involved can be modified with no risks.
+
        Considerations:
        - Keep the process as atomic at the DB level as possible.
     """
+    if merge_with and user['register_status'] not in ['ghost', 'deleted']:
+      self.bad_request({
+        'reason': 'Only ghost accounts can be merged'
+      })
     # Invalidate credentials.
     self.remove_session(user)
     # Kick them out of the app.
@@ -1227,31 +1242,10 @@ class Mixin:
       recipient_ids = {user['_id']},
       message = {'response_details': 'user deleted'})
     # If this is somehow a duplicate, do not unregister the user from lists
-    if self.__users_count({'email': user['email']}) == 1:
-      self.invitation.unsubscribe(user['email'])
-    if merge_with is not None:
-      swaggers = user.get('swaggers', {})
-      # Increase swaggers swag for self
-      update = {
-        '$inc':
-        {
-          'swaggers.%s' % id: swaggers[id] for id in swaggers
-        }
-      }
-      self.database.users.update({'_id': merge_with['_id']}, update)
-      # Increase self swag for swaggers
-      for swagger, amount in swaggers.items():
-        self.database.users.update(
-          {'_id': swagger},
-          {'$inc': {'swaggers.%s' % merge_with['_id']: amount}})
-        self.notifier.notify_some(
-          notifier.NEW_SWAGGER,
-          message = {'user_id': swagger},
-          recipient_ids = {merge_with['_id']},
-        )
-      self.change_transactions_recipient(user, merge_with)
-      # self.change_links_ownership(user, merge_with)
-    else:
+    if 'email' in user:
+      if self.__users_count({'email': user['email']}) == 1:
+        self.invitation.unsubscribe(user['email'])
+    if not merge_with:
       self.cancel_transactions(user)
       self.delete_all_links(user)
       self.remove_devices(user)
@@ -1279,6 +1273,8 @@ class Mixin:
     if merge_with is not None:
       cleared_user['register_status'] = 'merged'
       cleared_user['merged_with'] = merge_with['_id']
+      deleted_user_swaggers = user.get('swaggers', {})
+      deleted_user_accounts = user.get('accounts', [])
     else:
       cleared_user['register_status'] = 'deleted'
     deleted_user = self.database.users.find_and_modify(
@@ -1293,6 +1289,32 @@ class Mixin:
         }
       },
       new = True)
+    if merge_with is not None:
+      # Increase swaggers swag for self
+      update = {
+        '$inc': {
+          'swaggers.%s' % id: deleted_user_swaggers[id] for id in deleted_user_swaggers
+        },
+        '$addToSet': {
+          'accounts': {
+            '$each': deleted_user_accounts,
+          }
+        }
+      }
+      self.database.users.update({'_id': merge_with['_id']}, update)
+      # Increase self swag for swaggers
+      for swagger, amount in deleted_user_swaggers.items():
+        self.database.users.update(
+          {'_id': swagger},
+          {'$inc': {'swaggers.%s' % merge_with['_id']: amount}})
+        self.notifier.notify_some(
+          notifier.NEW_SWAGGER,
+          message = {'user_id': swagger},
+          recipient_ids = {merge_with['_id']},
+        )
+      self.change_transactions_recipient(
+        current_owner = user, new_owner = merge_with)
+      # self.change_links_ownership(user, merge_with)
     self.notifier.notify_some(notifier.DELETED_SWAGGER,
                               recipient_ids = swaggers,
                               message = {'user_id': user['_id']})
