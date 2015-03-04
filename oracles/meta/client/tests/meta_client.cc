@@ -582,7 +582,7 @@ ELLE_TEST_SCHEDULED(change_email)
 ELLE_TEST_SCHEDULED(facebook_connect_success)
 {
   HTTPServer s;
-  s.register_route("/facebook_connect", reactor::http::Method::POST,
+  s.register_route("/login", reactor::http::Method::POST,
                    [] (HTTPServer::Headers const&,
                        HTTPServer::Cookies const&,
                        HTTPServer::Parameters const&,
@@ -625,7 +625,7 @@ ELLE_TEST_SCHEDULED(facebook_connect_success)
 ELLE_TEST_SCHEDULED(facebook_connect_success_no_email)
 {
   HTTPServer s;
-  s.register_route("/facebook_connect", reactor::http::Method::POST,
+  s.register_route("/login", reactor::http::Method::POST,
                    [] (HTTPServer::Headers const&,
                        HTTPServer::Cookies const&,
                        HTTPServer::Parameters const&,
@@ -668,7 +668,7 @@ ELLE_TEST_SCHEDULED(facebook_connect_success_no_email)
 ELLE_TEST_SCHEDULED(facebook_connect_success_nor_facebook_id_nor_email)
 {
   HTTPServer s;
-  s.register_route("/facebook_connect", reactor::http::Method::POST,
+  s.register_route("/login", reactor::http::Method::POST,
                    [] (HTTPServer::Headers const&,
                        HTTPServer::Cookies const&,
                        HTTPServer::Parameters const&,
@@ -711,7 +711,7 @@ ELLE_TEST_SCHEDULED(facebook_connect_success_nor_facebook_id_nor_email)
 ELLE_TEST_SCHEDULED(facebook_connect_failure)
 {
   HTTPServer s;
-  s.register_route("/facebook_connect", reactor::http::Method::POST,
+  s.register_route("/login", reactor::http::Method::POST,
                    [] (HTTPServer::Headers const&,
                        HTTPServer::Cookies const&,
                        HTTPServer::Parameters const&,

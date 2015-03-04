@@ -72,19 +72,32 @@ namespace tests
       {
         elle::IOStream stream(content.istreambuf());
         elle::serialization::json::SerializerIn input(stream, false);
-        std::string email;
+        boost::optional<std::string> email;
         input.serialize("email", email);
+        boost::optional<std::string> long_lived_access_token;
+        input.serialize("long_lived_access_token", long_lived_access_token);
+        auto const& user = [&] () -> User const&
+          {
+            if (email)
+            {
+              auto& users = this->_users.get<1>();
+              auto it = users.find(email.get());
+              if (it == users.end())
+                throw reactor::http::tests::Server::Exception(
+                  "/login",
+                  reactor::http::StatusCode::Not_Found,
+                  "user not found");
+              return *it;
+            }
+            else if (long_lived_access_token)
+            {
+              return this->facebook_connect(long_lived_access_token.get());
+            }
+            elle::unreachable();
+          }();
         std::string device_id_str;
         input.serialize("device_id", device_id_str);
         auto device_id = boost::uuids::string_generator()(device_id_str);
-        auto& users = this->_users.get<1>();
-        auto it = users.find(email);
-        if (it == users.end())
-          throw reactor::http::tests::Server::Exception(
-            "/login",
-            reactor::http::StatusCode::Not_Found,
-            "user not found");
-        User const& user = *it;
         this->headers()["Set-Cookie"] = elle::sprintf("session-id=%s+%s", user.id(), device_id_str);
         if (this->_devices.find(device_id) == this->_devices.end())
           this->register_device(user, device_id);
@@ -168,73 +181,6 @@ namespace tests
           elle::Buffer const&)
       {
         return "{\"success\": true}";
-      });
-
-    this->register_route(
-      "/facebook_connect",
-      reactor::http::Method::POST,
-      [&] (Server::Headers const&,
-           Server::Cookies const&,
-           Server::Parameters const&,
-           elle::Buffer const& content)
-      {
-        elle::IOStream stream(content.istreambuf());
-        elle::serialization::json::SerializerIn input(stream, false);
-        std::string token;
-        input.serialize("long_lived_access_token", token);
-        std::string device_id_str;
-        input.serialize("device_id", device_id_str);
-        auto device_id = boost::uuids::string_generator()(device_id_str);
-
-        static std::unordered_map<std::string, std::string> facebook_ids;
-        if (facebook_ids.find(token) == facebook_ids.end())
-        {
-          User const& user = this->register_user("", "");
-          // Replace identity.
-          auto keys =
-            cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
-                                            papier::Identity::keypair_length);
-          std::unique_ptr<papier::Identity> identity{generate_identity(keys, boost::lexical_cast<std::string>(user.id()), "my identity", "")};
-          struct UpdateIdentity
-          {
-            UpdateIdentity(std::unique_ptr<papier::Identity>&& identity)
-              : identity(std::move(identity))
-            {}
-
-            void
-            operator()(User& user)
-            {
-              user.identity().reset(this->identity.release());
-            }
-
-            std::unique_ptr<papier::Identity> identity;
-          };
-          this->_users.modify(this->_users.get<0>().find(user.id()), UpdateIdentity(std::move(identity)));
-          facebook_ids[token] = user.facebook_id();
-        }
-        auto const& facebook_id = facebook_ids[token];
-        auto& users = this->_users.get<2>();
-        auto it = users.find(facebook_id);
-        if (it == users.end())
-          throw reactor::http::tests::Server::Exception(
-            "/facebook_connect",
-            reactor::http::StatusCode::Not_Found,
-            "user not found");
-        User const& user = *it;
-        this->headers()["Set-Cookie"] = elle::sprintf("session-id=%s+%s", user.id(), device_id_str);
-        if (this->_devices.find(device_id) == this->_devices.end())
-          this->register_device(user, device_id);
-        auto& device = this->_devices.at(device_id);
-        return elle::sprintf(
-          "{"
-          " \"self\": %s,"
-          " \"device\": %s,"
-          " \"features\": [],"
-          " \"trophonius\" : %s"
-          "}",
-          user.self_json(),
-          device.json(),
-          this->trophonius.json());
       });
 
     this->register_route(
@@ -567,6 +513,45 @@ namespace tests
       });
   }
 
+  User const&
+  Server::facebook_connect(std::string const& token)
+  {
+    static std::unordered_map<std::string, std::string> facebook_ids;
+    if (facebook_ids.find(token) == facebook_ids.end())
+    {
+      User const& user = this->register_user("", "");
+      // Replace identity.
+      auto keys =
+        cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
+                                        papier::Identity::keypair_length);
+      std::unique_ptr<papier::Identity> identity{generate_identity(keys, boost::lexical_cast<std::string>(user.id()), "my identity", "")};
+      struct UpdateIdentity
+      {
+        UpdateIdentity(std::unique_ptr<papier::Identity>&& identity)
+          : identity(std::move(identity))
+        {}
+
+        void
+        operator()(User& user)
+        {
+          user.identity().reset(this->identity.release());
+        }
+
+        std::unique_ptr<papier::Identity> identity;
+      };
+      this->_users.modify(this->_users.get<0>().find(user.id()), UpdateIdentity(std::move(identity)));
+      facebook_ids[token] = user.facebook_id();
+    }
+    auto const& facebook_id = facebook_ids[token];
+    auto& users = this->_users.get<2>();
+    auto it = users.find(facebook_id);
+    if (it == users.end())
+      throw reactor::http::tests::Server::Exception(
+        "/login",
+        reactor::http::StatusCode::Not_Found,
+        "user not found");
+    return *it;
+  }
   boost::uuids::uuid
   Server::_create_empty()
   {

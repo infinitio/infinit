@@ -33,6 +33,9 @@ namespace tests
     User const&
     register_user(std::string const& email,
                   std::string const& password = "password");
+    User const&
+    facebook_connect(std::string const& token);
+
     void
     register_device(User const& user,
                     boost::optional<boost::uuids::uuid> device);
@@ -43,6 +46,7 @@ namespace tests
 
     User const&
     generate_ghost_user(std::string const& email);
+
     void
     session_id(boost::uuids::uuid id);
     Transaction&

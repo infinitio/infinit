@@ -343,59 +343,10 @@ class Mixin:
     response['device'] = device
     return response
 
-  @api('/login', method = 'POST')
-  def login(self,
-            email,
-            password,
-            device_id: uuid.UUID,
-            password_hash = None,
-            OS: str = None,
-            pick_trophonius: bool = True,
-            device_push_token: str = None):
-    email = email.replace(' ', '')
-    if OS is not None:
-      OS = OS.strip().lower()
-    # FIXME: 0.0.0.0 is the website.
-    if self.user_version < (0, 9, 0) and self.user_version != (0, 0, 0):
-      return self.fail(error.DEPRECATED)
-    with elle.log.trace("%s: log on device %s" % (email, device_id)):
-      email = email.lower()
-      user = self._login(email = email,
-                         fields = self.__user_self_fields + ['public_key'],
-                         password = password,
-                         password_hash = password_hash)
-      return self._in_app_login(user = user,
-                                password = password,
-                                device_id = device_id,
-                                OS = OS,
-                                pick_trophonius = pick_trophonius,
-                                device_push_token = device_push_token)
-
-  @api('/web-login', method = 'POST')
-  def web_login(self,
-                email,
-                password):
-    email = email.replace(' ', '')
-    with elle.log.trace("%s: web login" % email):
-      f = self.__user_self_fields + ['unconfirmed_email_deadline']
-      user = self._login(email, password = password, fields = f)
-      elle.log.debug("%s: store session" % email)
-      return self._web_login(user)
-
-  def _web_login(self, user):
-      bottle.request.session['identifier'] = user['_id']
-      user = self.user
-      elle.log.trace("%s: successfully connected as %s" %
-                     (self.user_identifier(user), user['_id']))
-      return self.success(self._login_response(user, web = True))
-
-  @api('/facebook_connect', method = 'POST')
-  def facebook_connect(self,
-                       short_lived_access_token = None,
-                       long_lived_access_token = None,
-                       device_id: uuid.UUID = None,
-                       OS: str = None):
-    # Xor.
+  def __facebook_connect(self,
+                         fields,
+                         short_lived_access_token = None,
+                         long_lived_access_token = None):
     if bool(short_lived_access_token) == bool(long_lived_access_token):
       return self.bad_request({
         'reason': 'you must provide short or long lived token'
@@ -405,31 +356,100 @@ class Mixin:
         short_lived_access_token = short_lived_access_token,
         long_lived_access_token = long_lived_access_token)
       user = self.__user_fetch({
-          'accounts.id': facebook_user.facebook_id,
-          'accounts.type': 'facebook'
-         },
-        fields = self.__user_self_fields + ['public_key'])
+        'accounts.id': facebook_user.facebook_id,
+        'accounts.type': 'facebook'
+        },
+        fields = fields)
       if user is None: # Register the user.
         user = self.facebook_register(
           facebook_id = facebook_user.facebook_id,
           email = facebook_user.data.get("email", None),
-          name = facebook_user.data["name"])
+          name = facebook_user.data["name"],
+          fields = fields)
         try:
           self._set_avatar(user, facebook_user.avatar)
         except:
           pass
-      if device_id is not None:
-         res = self._in_app_login(
-           user,
-           password = None,
-           device_id = device_id,
-           pick_trophonius = True,
-           OS = OS)
-         return res
-      else:
-        return self._web_login(user)
+      return user
     except error.Error as e:
       self._forbidden_with_error(e.args[0])
+
+  @api('/login', method = 'POST')
+  def login(self,
+            device_id: uuid.UUID,
+            email = None,
+            password = None,
+            short_lived_access_token = None,
+            long_lived_access_token = None,
+            password_hash = None,
+            OS: str = None,
+            pick_trophonius: bool = True,
+            device_push_token: str = None):
+    # Xor facebook_token or email / passwor.
+    with_email = bool(email and (password or password_hash))
+    with_facebook = bool(long_lived_access_token or short_lived_access_token)
+    if with_email == with_facebook:
+      return self.bad_request({
+        'reason': 'you must provide facebook_token or (email, password)'
+      })
+    if OS is not None:
+      OS = OS.strip().lower()
+    # FIXME: 0.0.0.0 is the website.
+    if self.user_version < (0, 9, 0) and self.user_version != (0, 0, 0):
+      return self.fail(error.DEPRECATED)
+    fields = self.__user_self_fields + ['public_key']
+    with elle.log.trace("%s: log on device %s" % (email or 'facebook user', device_id)):
+      print(with_email)
+      if with_email:
+        email = email.strip().lower()
+        user = self._login(email = email,
+                           fields = fields,
+                           password = password,
+                           password_hash = password_hash)
+      elif with_facebook:
+        print(with_facebook)
+        user = self.__facebook_connect(
+          short_lived_access_token = short_lived_access_token,
+          long_lived_access_token = long_lived_access_token,
+          fields = fields)
+      return self._in_app_login(user = user,
+                                password = password,
+                                device_id = device_id,
+                                OS = OS,
+                                pick_trophonius = pick_trophonius,
+                                device_push_token = device_push_token)
+
+  @api('/web-login', method = 'POST')
+  def web_login(self,
+                email = None,
+                password = None,
+                short_lived_access_token = None,
+                long_lived_access_token = None):
+    # Xor facebook_token or email / passwor.
+    with_email = bool(email and password)
+    with_facebook = bool(long_lived_access_token or short_lived_access_token)
+    if with_email == with_facebook:
+      return self.bad_request({
+        'reason': 'you must provide facebook_token or (email, password)'
+      })
+    fields = self.__user_self_fields + ['unconfirmed_email_deadline']
+    if with_email:
+      email = email.replace(' ', '')
+      with elle.log.trace("%s: web login" % email):
+        user = self._login(email, password = password, fields = fields)
+    elif with_facebook:
+      user = self.__facebook_connect(
+        short_lived_access_token = short_lived_access_token,
+        long_lived_access_token = long_lived_access_token,
+        fields = fields)
+    return self._web_login(user)
+
+  def _web_login(self, user):
+      bottle.request.session['identifier'] = user['_id']
+      user = self.user
+      elle.log.trace("%s: successfully connected as %s" %
+                     (self.user_identifier(user), user['_id']))
+      return self.success(self._login_response(user, web = True))
 
   @api('/logout', method = 'POST')
   @require_logged_in
@@ -512,6 +532,7 @@ class Mixin:
   def facebook_register(self,
                         name,
                         facebook_id,
+                        fields,
                         email = None,
                         source = None):
     with elle.log.trace("facebook registration: %s as %s" % (facebook_id, name)):
@@ -565,7 +586,7 @@ class Mixin:
         'accounts.id': facebook_id,
         'accounts.type': 'facebook'
         },
-        fields = self.__user_self_fields + ['public_key'])
+        fields = fields)
       return user
 
   def user_register(self,
