@@ -72,6 +72,9 @@ namespace surface
       _cloud_operation() override;
       void
       _cloud_synchronize() override;
+      virtual
+      void
+      _wait_for_decision() override;
 
     /*-----------------------.
     | Machine implementation |
