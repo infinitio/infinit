@@ -218,6 +218,7 @@ class Mixin:
                        total_size,
                        is_directory,
                        device_id, # Can be determine by session.
+                       recipient_device_id = None,
                        message = ""):
     return self.transaction_create(
       self.user,
@@ -225,7 +226,8 @@ class Mixin:
       files, files_count, total_size, is_directory,
       device_id,
       message,
-      t_id)
+      t_id,
+      recipient_device_id = recipient_device_id)
 
 
   @api('/transaction/create', method = 'POST')
@@ -254,7 +256,8 @@ class Mixin:
                          is_directory,
                          device_id, # Can be determine by session.
                          message = "",
-                         transaction_id = None):
+                         transaction_id = None,
+                         recipient_device_id = None):
     """
     Send a file to a specific user.
     If you pass an email and the user is not registered in infinit,
@@ -281,13 +284,17 @@ class Mixin:
       invitee = 0
       peer_email = ""
 
+      recipient_fields = self.__user_view_fields + [
+        'email',
+        'devices.id',
+      ]
       if re.match(regexp.Email, id_or_email): # email.
         elle.log.debug("%s is an email" % id_or_email)
         peer_email = id_or_email.lower().strip()
         # XXX: search email in each accounts.
         recipient = self.__user_fetch(
           {'accounts.id': peer_email},
-          fields = self.__user_view_fields)
+          fields = recipient_fields)
         # if the user doesn't exist, create a ghost and invite.
 
         if not recipient:
@@ -307,7 +314,7 @@ class Mixin:
           )
           recipient = self.__user_fetch(
             recipient_id,
-            fields = self.__user_view_fields + ['email'])
+            fields = recipient_fields)
           # Post new_ghost event to metrics
           url = 'http://metrics.9.0.api.production.infinit.io/collections/users'
           metrics = {
@@ -330,8 +337,7 @@ class Mixin:
           return self.fail(error.USER_ID_NOT_VALID)
         recipient = self.__user_fetch(
           recipient_id,
-          fields = self.__user_view_fields + ['email'])
-
+          fields = recipient_fields)
       if recipient is None:
         return self.fail(error.USER_ID_NOT_VALID)
       if recipient['register_status'] == 'merged':
@@ -349,6 +355,13 @@ class Mixin:
           'reason': 'user %s is deleted' % recipient['_id'],
           'recipient_id': recipient['_id'],
         })
+      if recipient_device_id is not None:
+        if not any(d['id'] == recipient_device_id for d in recipient['devices']):
+          self.not_found({
+            'reason': 'no such device for user',
+            'user': recipient['id'],
+            'device': recipient_device_id,
+          })
       is_ghost = recipient['register_status'] == 'ghost'
       elle.log.debug("transaction recipient has id %s" % recipient['_id'])
       _id = sender['_id']
@@ -362,10 +375,10 @@ class Mixin:
 
         'recipient_id': recipient['_id'],
         'recipient_fullname': recipient['fullname'],
-
+        'recipient_device_id':
+        recipient_device_id if recipient_device_id else '',
         'involved': [_id, recipient['_id']],
         # Empty until accepted.
-        'recipient_device_id': '',
         'recipient_device_name': '',
 
         'message': message,
