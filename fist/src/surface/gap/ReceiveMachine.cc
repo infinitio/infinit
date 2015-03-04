@@ -1,5 +1,8 @@
 #include <surface/gap/ReceiveMachine.hh>
 
+#include <surface/gap/State.hh>
+#include <surface/gap/Transaction.hh>
+
 ELLE_LOG_COMPONENT("surface.gap.ReceiveMachine");
 
 namespace surface

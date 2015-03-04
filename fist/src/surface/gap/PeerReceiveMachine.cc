@@ -31,6 +31,7 @@
 #include <surface/gap/FilesystemTransferBufferer.hh>
 #include <surface/gap/S3TransferBufferer.hh>
 #include <surface/gap/PeerReceiveMachine.hh>
+#include <surface/gap/State.hh>
 
 #include <version.hh>
 

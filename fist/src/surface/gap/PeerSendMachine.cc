@@ -17,6 +17,7 @@
 #include <papier/Identity.hh>
 #include <surface/gap/FilesystemTransferBufferer.hh>
 #include <surface/gap/S3TransferBufferer.hh>
+#include <surface/gap/State.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.PeerSendMachine")
 
