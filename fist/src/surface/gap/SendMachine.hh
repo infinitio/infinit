@@ -2,7 +2,6 @@
 # define SURFACE_GAP_SEND_MACHINE_HH
 
 # include <surface/gap/TransactionMachine.hh>
-# include <surface/gap/State.hh>
 
 namespace surface
 {

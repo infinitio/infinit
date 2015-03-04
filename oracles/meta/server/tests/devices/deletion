@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import Meta, User
+from utils import *
 from infinit.oracles.meta import error
 import uuid
 
@@ -17,10 +17,10 @@ with Meta() as meta:
   assert foobar['success']
   devices = bob.get('devices')['devices']
 
-  assert len(devices) == 2
-  assert devices[1] == foobar['id']
+  assertEq(len(devices), 2)
+  assertEq(devices[1]['id'], foobar['id'])
 
-  device_id = devices[1]
+  device_id = devices[1]['id']
 
   foobar = bob.get('device/%s/view' % device_id)
   assert foobar['success']

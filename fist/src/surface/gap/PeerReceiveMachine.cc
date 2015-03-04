@@ -31,6 +31,7 @@
 #include <surface/gap/FilesystemTransferBufferer.hh>
 #include <surface/gap/S3TransferBufferer.hh>
 #include <surface/gap/PeerReceiveMachine.hh>
+#include <surface/gap/State.hh>
 
 #include <version.hh>
 
@@ -1087,6 +1088,31 @@ namespace surface
     PeerReceiveMachine::_cloud_synchronize()
     {
       this->_cloud_operation();
+    }
+
+    void
+    PeerReceiveMachine::_wait_for_decision()
+    {
+      ELLE_TRACE_SCOPE("%s: waiting for decision", *this);
+      this->gap_status(gap_transaction_waiting_accept);
+      if (this->data()->sender_id == this->state().me().id &&
+          !this->data()->recipient_device_id.is_nil())
+      {
+        if (this->data()->recipient_device_id == this->state().device_uuid())
+        {
+          ELLE_TRACE("%s: auto accept transaction specifically for this device",
+                     *this);
+          this->transaction().accept();
+        }
+        else
+        {
+          ELLE_TRACE("%s: transaction is specifically for another device",
+                     *this);
+          // FIXME: not really accepted elsewhere, just only acceptable
+          // elsewhere. Change when acceptance gets reworked.
+          this->_accepted_elsewhere.open();
+        }
+      }
     }
 
     void

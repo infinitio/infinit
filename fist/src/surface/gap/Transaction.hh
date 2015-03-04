@@ -147,6 +147,13 @@ namespace surface
                   std::string const& peer_id,
                   std::vector<std::string> files,
                   std::string const& message);
+      /// Construct as new for file sending.
+      Transaction(surface::gap::State& state,
+                  uint32_t id,
+                  std::string const& peer_id,
+                  elle::UUID const& peer_device_id,
+                  std::vector<std::string> files,
+                  std::string const& message);
       /// Construct as new for link generation.
       Transaction(surface::gap::State& state,
                   uint32_t id,

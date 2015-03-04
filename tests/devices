@@ -52,12 +52,13 @@ class TestDevices(unittest.TestCase):
           reactor.sleep(datetime.timedelta(seconds = 1))
         self.assertEqual(s2bis.transaction_status(tindex2), 'transaction_finished')
         s2bis.logout()
-        #log in second user from first device and check trasnaction status
+        #log in second user from first device and check transaction status
         os.environ['INFINIT_HOME'] = prev_home
         os.environ['INFINIT_DISABLE_META_SYNC'] = '1'
         s2.login('mefyl2@infinit.io', 'mefyl2')
         reactor.sleep(datetime.timedelta(seconds = 3))
         tindex2 = s2.find_transaction(tr['id'])
+        self.assertNotEqual(tindex2, -1)
         self.assertEqual(s2.transaction_status(tindex2), 'transaction_waiting_accept')
         shutil.rmtree(second_home)
 

@@ -433,6 +433,9 @@ namespace infinit
         // SwaggerResponse
         // get_swagger(std::string const& id) const;
 
+        std::vector<Device>
+        devices() const;
+
         Device
         update_device(boost::uuids::uuid const& device_uuid,
                       std::string const& name) const;
@@ -460,15 +463,17 @@ namespace infinit
                      int count = 0) const;
 
         CreatePeerTransactionResponse
-        create_transaction(std::string const& recipient_id_or_email,
-                           std::list<std::string> const& files,
-                           uint64_t count,
-                           uint64_t size,
-                           bool is_dir,
-                           elle::UUID const& device_uuid,
-                           std::string const& message = "",
-                           boost::optional<std::string const&> transaction_id =
-                           boost::none) const;
+        create_transaction(
+          std::string const& recipient_id_or_email,
+          std::list<std::string> const& files,
+          uint64_t count,
+          uint64_t size,
+          bool is_dir,
+          elle::UUID const& device_uuid,
+          std::string const& message = "",
+          boost::optional<std::string const&> transaction_id = boost::none,
+          boost::optional<elle::UUID> recipient_device_id = {}
+          ) const;
 
         /// Create an empty transaction
         /// @return: the transaction_id

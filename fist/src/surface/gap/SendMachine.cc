@@ -20,6 +20,9 @@
 #include <common/common.hh>
 #include <papier/Identity.hh>
 #include <station/Station.hh>
+#include <surface/gap/Exception.hh>
+#include <surface/gap/State.hh>
+#include <surface/gap/Transaction.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.SendMachine");
 

@@ -32,8 +32,6 @@ namespace surface
 {
   namespace gap
   {
-    class State;
-
     enum EncryptionLevel
     {
       EncryptionLevel_None = 0,
