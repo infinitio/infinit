@@ -810,17 +810,24 @@ namespace infinit
       }
 
       CreatePeerTransactionResponse
-      Client::create_transaction(std::string const& recipient_id_or_email,
-                                 std::list<std::string> const& files,
-                                 uint64_t count,
-                                 uint64_t size,
-                                 bool is_dir,
-                                 elle::UUID const& device_id,
-                                 std::string const& message,
-                                 boost::optional<std::string const&> transaction_id) const
+      Client::create_transaction(
+        std::string const& recipient_id_or_email,
+        std::list<std::string> const& files,
+        uint64_t count,
+        uint64_t size,
+        bool is_dir,
+        elle::UUID const& device_id,
+        std::string const& message,
+        boost::optional<std::string const&> transaction_id,
+        boost::optional<elle::UUID> recipient_device_id
+        ) const
       {
-        ELLE_TRACE("%s: create transaction to %s with files: %s (size: %s)",
-                   *this, recipient_id_or_email, files, size);
+        ELLE_TRACE_SCOPE(
+          "%s: create peer transaction to %s%s",
+          *this,
+          recipient_id_or_email,
+          recipient_device_id
+          ? elle::sprintf(" on device %s", recipient_device_id.get()) : "");
         std::string const url = transaction_id ?
           "/transaction/" + *transaction_id :
           "/transaction/create";
@@ -842,6 +849,7 @@ namespace infinit
             query.serialize("is_directory", is_dir);
             query.serialize("device_id", const_cast<elle::UUID&>(device_id));
             query.serialize("message", const_cast<std::string&>(message));
+            query.serialize("recipient_device_id", recipient_device_id);
           });
         SerializerIn input(url, request);
         return CreatePeerTransactionResponse(input);
