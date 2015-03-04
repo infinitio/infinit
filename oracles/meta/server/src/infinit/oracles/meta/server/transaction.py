@@ -640,6 +640,20 @@ class Mixin:
         })
       return res
 
+  def on_reject(self, transaction, user, device_id, device_name):
+    with elle.log.trace("reject transaction as %s" % device_id):
+      if device_id is None or device_name is None:
+        return {} # Backwards compatibility < 0.9.30
+      device_id = uuid.UUID(device_id)
+      if str(device_id) not in map(lambda x: x['id'], user['devices']):
+        raise error.Error(error.DEVICE_DOESNT_BELONG_TO_YOU)
+      res = {
+        'recipient_fullname': user['fullname'],
+        'recipient_device_name' : device_name,
+        'recipient_device_id': str(device_id)
+      }
+      return res
+
   def _hash_transaction(self, transaction):
     """
     Generate a unique hash for a transaction based on a random number and the
@@ -788,6 +802,12 @@ class Mixin:
                                    user = user,
                                    device_id = device_id,
                                    device_name = device_name))
+      elif status == transaction_status.REJECTED:
+        diff.update(self.on_reject(transaction = transaction,
+                                   user = user,
+                                   device_id = device_id,
+                                   device_name = device_name))
+        diff.update(self.cloud_cleanup_transaction(transaction = transaction))
       elif status == transaction_status.GHOST_UPLOADED:
         diff.update(self.on_ghost_uploaded(transaction = transaction,
                                      device_id = device_id,
@@ -797,10 +817,8 @@ class Mixin:
         if not transaction.get('canceler', None):
           diff.update({'canceler': {'user': user['_id'], 'device': device_id}})
           diff.update(self.cloud_cleanup_transaction(transaction = transaction))
-      elif status in (transaction_status.FAILED,
-                      transaction_status.REJECTED):
-        diff.update(self.cloud_cleanup_transaction(
-          transaction = transaction))
+      elif status == transaction_status.FAILED:
+        diff.update(self.cloud_cleanup_transaction(transaction = transaction))
       elif status == transaction_status.FINISHED:
         self.__update_transaction_stats(
           transaction['recipient_id'],
