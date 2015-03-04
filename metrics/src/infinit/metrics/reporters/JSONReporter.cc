@@ -503,7 +503,7 @@ namespace infinit
         case JSONKey::features:
           return "features";
         default:
-          elle::unreachable();
+          ELLE_ABORT("invalid metrics JSON key: %s", k);
       }
     }
 
@@ -520,29 +520,7 @@ namespace infinit
     JSONReporter::_transaction_status_str(
       infinit::oracles::Transaction::Status status)
     {
-      switch (status)
-      {
-        case infinit::oracles::Transaction::Status::accepted:
-          return "accepted";
-        case infinit::oracles::Transaction::Status::canceled:
-          return "cancelled";
-        case infinit::oracles::Transaction::Status::created:
-          return "created";
-        case infinit::oracles::Transaction::Status::failed:
-          return "failed";
-        case infinit::oracles::Transaction::Status::finished:
-          return "finished";
-        case infinit::oracles::Transaction::Status::initialized:
-          return "initialized";
-        case infinit::oracles::Transaction::Status::none:
-          return "none";
-        case infinit::oracles::Transaction::Status::rejected:
-          return "rejected";
-        case infinit::oracles::Transaction::Status::started:
-          return "started";
-        default:
-          elle::unreachable();
-      }
+      return boost::lexical_cast<std::string>(status);
     }
 
     std::string
@@ -557,7 +535,7 @@ namespace infinit
         case TransferMethodGhostCloud:
           return "ghost-buffering";
         default:
-          elle::unreachable();
+          ELLE_ABORT("invalid trasnfer method: %s", method);
       }
     }
 
@@ -577,7 +555,7 @@ namespace infinit
         case TransferExitReasonUnknown:
           return "unknown";
         default:
-          elle::unreachable();
+          ELLE_ABORT("invalid exit reason: %s", reason);
       }
     }
 
@@ -591,7 +569,7 @@ namespace infinit
         case PeerTransaction:
           return "peer";
         default:
-          elle::unreachable();
+          ELLE_ABORT("invalid transaction type: %s", type);
       }
     }
   }

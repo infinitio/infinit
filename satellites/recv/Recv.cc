@@ -126,7 +126,9 @@ int main(int argc, char** argv)
       "recv",
       [&] () -> int
       {
-        common::infinit::Configuration config(production, download_dir);
+        common::infinit::Configuration config(production,
+                                              boost::filesystem::path(),
+                                              download_dir);
         surface::gap::State state(config.meta_protocol(),
                                   config.meta_host(),
                                   config.meta_port(),

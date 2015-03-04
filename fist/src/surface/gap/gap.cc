@@ -626,12 +626,13 @@ gap_user_realid(gap_State* state,
 std::string
 gap_self_device_id(gap_State* state)
 {
-  return run<std::string>(state,
-                          "self device id",
-                          [&] (surface::gap::State& state) -> std::string
-                          {
-                            return state.device().id;
-                          });
+  return run<std::string>(
+    state,
+    "self device id",
+    [&] (surface::gap::State& state) -> std::string
+    {
+      return boost::lexical_cast<std::string>(state.device().id);
+    });
 }
 
 gap_Status
@@ -1102,30 +1103,33 @@ gap_transaction_ ## _field_(gap_State* state,                                 \
 
 #define NO_TRANSFORM
 #define GET_CSTR(_expr_) (_expr_).c_str()
+#define GET_UUID(Expr) boost::lexical_cast<std::string>(Expr)
 #define GET_USER_ID(_expr_) (state.user_indexes().at(_expr_))
 
-#define DEFINE_TRANSACTION_GETTER_STR(_field_)                                \
-DEFINE_TRANSACTION_GETTER(char const*, _field_, GET_CSTR)                   \
-/**/
-#define DEFINE_TRANSACTION_GETTER_INT(_field_)                                \
-DEFINE_TRANSACTION_GETTER(int, _field_, NO_TRANSFORM)                       \
-/**/
-#define DEFINE_TRANSACTION_GETTER_INT(_field_)                                \
-DEFINE_TRANSACTION_GETTER(int, _field_, NO_TRANSFORM)                       \
-/**/
-#define DEFINE_TRANSACTION_GETTER_DOUBLE(_field_)                             \
-DEFINE_TRANSACTION_GETTER(double, _field_, NO_TRANSFORM)                    \
-/**/
-#define DEFINE_TRANSACTION_GETTER_BOOL(_field_)                               \
-DEFINE_TRANSACTION_GETTER(gap_Bool, _field_, NO_TRANSFORM)                  \
-/**/
+#define DEFINE_TRANSACTION_GETTER_STR(_field_)                          \
+  DEFINE_TRANSACTION_GETTER(char const*, _field_, GET_CSTR)             \
+
+#define DEFINE_TRANSACTION_GETTER_UUID(_field_)                         \
+  DEFINE_TRANSACTION_GETTER(std::string, _field_, GET_UUID)             \
+
+#define DEFINE_TRANSACTION_GETTER_INT(_field_)                          \
+  DEFINE_TRANSACTION_GETTER(int, _field_, NO_TRANSFORM)                 \
+
+#define DEFINE_TRANSACTION_GETTER_INT(_field_)                          \
+  DEFINE_TRANSACTION_GETTER(int, _field_, NO_TRANSFORM)                 \
+
+#define DEFINE_TRANSACTION_GETTER_DOUBLE(_field_)                       \
+  DEFINE_TRANSACTION_GETTER(double, _field_, NO_TRANSFORM)              \
+
+#define DEFINE_TRANSACTION_GETTER_BOOL(_field_)                         \
+  DEFINE_TRANSACTION_GETTER(gap_Bool, _field_, NO_TRANSFORM)            \
 
 DEFINE_TRANSACTION_GETTER(uint32_t, sender_id, GET_USER_ID)
 DEFINE_TRANSACTION_GETTER_STR(sender_fullname)
-DEFINE_TRANSACTION_GETTER_STR(sender_device_id)
+DEFINE_TRANSACTION_GETTER_UUID(sender_device_id)
 DEFINE_TRANSACTION_GETTER(uint32_t, recipient_id, GET_USER_ID)
 DEFINE_TRANSACTION_GETTER_STR(recipient_fullname)
-DEFINE_TRANSACTION_GETTER_STR(recipient_device_id)
+DEFINE_TRANSACTION_GETTER_UUID(recipient_device_id)
 DEFINE_TRANSACTION_GETTER_STR(message)
 DEFINE_TRANSACTION_GETTER(int64_t, files_count, NO_TRANSFORM)
 DEFINE_TRANSACTION_GETTER(int64_t, total_size, NO_TRANSFORM)
@@ -1187,7 +1191,7 @@ gap_transaction_concern_device(gap_State* state,
       {
         return
           (data->recipient_id == state.me().id &&
-           ((true_if_empty_recipient && data->recipient_device_id.empty()) ||
+           ((true_if_empty_recipient && data->recipient_device_id.is_nil()) ||
             data->recipient_device_id == state.device().id)) ||
           (data->sender_id == state.me().id &&
            data->sender_device_id == state.device().id);

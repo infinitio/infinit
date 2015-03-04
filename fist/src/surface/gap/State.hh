@@ -489,7 +489,7 @@ namespace surface
 
       bool
       device_status(std::string const& user_id,
-                    std::string const& device_id) const;
+                    elle::UUID const& device_id) const;
 
       ///- Swaggers --------------------------------------------------------------
       UserIndexes

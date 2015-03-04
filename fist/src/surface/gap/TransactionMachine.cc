@@ -398,7 +398,7 @@ namespace surface
     void
     TransactionMachine::notify_user_connection_status(std::string const&,
                                                       bool,
-                                                      std::string const&,
+                                                      elle::UUID const&,
                                                       bool)
     {}
 

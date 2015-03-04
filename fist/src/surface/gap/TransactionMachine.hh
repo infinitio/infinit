@@ -7,6 +7,7 @@
 # include <boost/signals2/signal.hpp>
 
 # include <elle/Printable.hh>
+# include <elle/UUID.hh>
 # include <elle/serialize/construct.hh>
 
 # include <reactor/Barrier.hh>
@@ -93,7 +94,7 @@ namespace surface
       void
       notify_user_connection_status(std::string const& user_id,
                                     bool user_status,
-                                    std::string const& device_id,
+                                    elle::UUID const& device_id,
                                     bool device_status);
 
       /// Cancel the transaction.

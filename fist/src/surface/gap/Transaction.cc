@@ -317,7 +317,6 @@ namespace surface
           std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
             this->_data))
       {
-        auto recipient_device = peer_data->recipient_device_id;
         auto recipient = peer_data->recipient_id;
         if (me == sender)
         {
@@ -729,7 +728,7 @@ namespace surface
     void
     Transaction::notify_user_connection_status(std::string const& user_id,
                                                bool user_status,
-                                               std::string const& device_id,
+                                               elle::UUID const& device_id,
                                                bool device_status)
     {
       if (this->_machine == nullptr)
