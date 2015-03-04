@@ -121,7 +121,7 @@ namespace surface
       void
       notify_user_connection_status(std::string const& user_id,
                                     bool user_status,
-                                    std::string const& device_id,
+                                    elle::UUID const& device_id,
                                     bool device_status) override;
     };
   }
