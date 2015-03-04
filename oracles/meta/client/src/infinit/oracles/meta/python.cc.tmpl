@@ -252,7 +252,9 @@ void export_meta_client()
     bool,
     elle::UUID const&,
     std::string const&,
-    boost::optional<std::string const&>) const = &MetaClient::create_transaction;
+    boost::optional<std::string const&>,
+    boost::optional<elle::UUID>
+    ) const = &MetaClient::create_transaction;
 
   py::class_<MetaClient, boost::noncopyable>(
     "Meta", py::init<std::string const&, std::string const&, int>())
