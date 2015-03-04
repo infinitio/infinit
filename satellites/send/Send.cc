@@ -45,6 +45,7 @@ parse_options(int argc, char** argv)
     ("password,p", value<std::string>(), "the password")
     ("to,t", value<std::string>(), "the recipient")
     ("file,f", value<std::string>(), "the file to send, or comma-separated list")
+    ("device,d", value<std::string>(), "send to specific device")
     ("production,r", value<bool>(), "send metrics to production");
 
   variables_map vm;
@@ -92,7 +93,9 @@ int main(int argc, char** argv)
     bool production = false;
     if (options.count("production") != 0)
       production = options["production"].as<bool>();
-
+    boost::optional<elle::UUID> recipient_device_id;
+    if (options.count("device") != 0)
+      recipient_device_id = elle::UUID(options["device"].as<std::string>());
     reactor::Scheduler sched;
 
     sched.signal_handle(
@@ -119,22 +122,28 @@ int main(int argc, char** argv)
         state.login(user, password);
         std::vector<std::string> files;
         boost::algorithm::split(files, file, boost::is_any_of(","));
-        auto id = state.send_files(to, std::move(files), "");
+        auto& transaction = [&] () -> surface::gap::Transaction&
+          {
+            if (recipient_device_id)
+              return state.transaction_peer_create(
+                to, recipient_device_id.get(), std::move(files), "");
+            else
+              return state.transaction_peer_create(to, std::move(files), "");
+          }();
         state.attach_callback<surface::gap::Transaction::Notification>(
           [&] (surface::gap::Transaction::Notification const& notif)
           {
-            if (notif.id != id)
+            if (notif.id != transaction.id())
             {
               ELLE_DEBUG("received notification for another transaction: %s",
                          notif);
               return;
             }
             ELLE_TRACE_SCOPE("received notification: %s", notif);
-            auto& txn = state.transactions().at(id);
             if (contains(surface::gap::Transaction::sender_final_statuses,
-                         txn->data()->status))
+                         transaction.data()->status))
             {
-              txn->join();
+              transaction.join();
               ELLE_TRACE_SCOPE("transaction is finished");
               stop = true;
             }
@@ -150,7 +159,7 @@ int main(int argc, char** argv)
           if (stop)
             progress = 1.0;
           else
-            progress = state.transactions().at(id)->progress();
+            progress = state.transactions().at(transaction.id())->progress();
           if (progress != previous_progress)
           {
             previous_progress = progress;
