@@ -49,6 +49,7 @@ namespace surface
       reject();
 
     private:
+      virtual
       void
       _wait_for_decision();
 

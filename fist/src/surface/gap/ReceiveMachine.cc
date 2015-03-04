@@ -45,8 +45,8 @@ namespace surface
                                     this->_reject_state,
                                     reactor::Waitables{&this->rejected()});
       // Cancel.
-      this->_machine.transition_add(_wait_for_decision_state,
-                                    _cancel_state,
+      this->_machine.transition_add(this->_wait_for_decision_state,
+                                    this->_cancel_state,
                                     reactor::Waitables{&this->canceled()},
                                     true);
 
