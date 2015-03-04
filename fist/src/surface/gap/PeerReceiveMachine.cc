@@ -1096,11 +1096,22 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: waiting for decision", *this);
       this->gap_status(gap_transaction_waiting_accept);
       if (this->data()->sender_id == this->state().me().id &&
-          this->data()->recipient_device_id == this->state().device_uuid())
+          !this->data()->recipient_device_id.is_nil())
       {
-        ELLE_TRACE("%s: auto accept transaction specifically for this device",
-                   *this);
-        this->transaction().accept();
+        if (this->data()->recipient_device_id == this->state().device_uuid())
+        {
+          ELLE_TRACE("%s: auto accept transaction specifically for this device",
+                     *this);
+          this->transaction().accept();
+        }
+        else
+        {
+          ELLE_TRACE("%s: transaction is specifically for another device",
+                     *this);
+          // FIXME: not really accepted elsewhere, just only acceptable
+          // elsewhere. Change when acceptance gets reworked.
+          this->_accepted_elsewhere.open();
+        }
       }
     }
 
