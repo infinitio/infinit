@@ -542,7 +542,7 @@ class User(Client):
 
   @property
   def _id(self):
-    return bson.ObjectId(self.data['_id'])
+    return bson.ObjectId(self.data['id'])
 
   @property
   def devices(self):
