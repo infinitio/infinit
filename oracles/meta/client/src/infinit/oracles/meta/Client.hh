@@ -429,6 +429,9 @@ namespace infinit
         // SwaggerResponse
         // get_swagger(std::string const& id) const;
 
+        std::vector<Device>
+        devices() const;
+
         Device
         update_device(boost::uuids::uuid const& device_uuid,
                       std::string const& name) const;

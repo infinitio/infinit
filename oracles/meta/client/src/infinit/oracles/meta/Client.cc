@@ -748,6 +748,17 @@ namespace infinit
       | Devices |
       `--------*/
 
+      std::vector<Device>
+      Client::devices() const
+      {
+        std::string url = "/devices";
+        auto request = this->_request(url, Method::GET);
+        SerializerIn input(url, request);
+        std::vector<Device> res;
+        input.serialize("devices", res);
+        return res;
+      }
+
       Device
       Client::update_device(boost::uuids::uuid const& device_uuid,
                             std::string const& name) const
