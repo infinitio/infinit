@@ -542,14 +542,17 @@ namespace infinit
     /*--------------------------.
     | Default UI Implementation |
     `--------------------------*/
+
     void
     Reporter::_ui(std::string const& event,
                   std::string const& from,
                   Additional const&)
     {}
+
     /*----------.
     | Printable |
     `----------*/
+
     void
     Reporter::print(std::ostream& stream) const
     {

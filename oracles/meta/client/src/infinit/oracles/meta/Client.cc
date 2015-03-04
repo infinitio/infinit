@@ -371,26 +371,6 @@ namespace infinit
       | Users |
       `------*/
 
-      static
-      User
-      user_from_json(boost::any const& json_)
-      {
-        auto const& json = boost::any_cast<elle::json::Object>(json_);
-        User u;
-        u.id = boost::any_cast<std::string>(json.at("id"));
-        u.fullname = boost::any_cast<std::string>(json.at("fullname"));
-        u.handle = boost::any_cast<std::string>(json.at("handle"));
-        u.public_key = boost::any_cast<std::string>(json.at("public_key"));
-        u.register_status =
-          boost::any_cast<std::string>(json.at("register_status"));
-        for (auto const& device:
-             boost::any_cast<elle::json::Array>(json.at("connected_devices")))
-        {
-          u.connected_devices.push_back(boost::any_cast<std::string>(device));
-        }
-        return u;
-      }
-
       User::User(elle::serialization::SerializerIn& s)
       {
         this->serialize(s);
@@ -625,7 +605,10 @@ namespace infinit
         auto const& json = boost::any_cast<elle::json::Object>(json_);
         std::pair<std::string, User> res;
         res.first = boost::any_cast<std::string>(json.at("email"));
-        res.second = user_from_json(json_);
+        {
+          elle::serialization::json::SerializerIn input(json_);
+          res.second = User(input);
+        }
         return res;
       }
 
@@ -843,8 +826,7 @@ namespace infinit
                                  uint64_t count,
                                  uint64_t size,
                                  bool is_dir,
-                                 // boost::uuids::uuid const& device_uuid,
-                                 std::string const& struuid,
+                                 elle::UUID const& device_id,
                                  std::string const& message,
                                  boost::optional<std::string const&> transaction_id) const
       {
@@ -869,7 +851,7 @@ namespace infinit
             int64_t size_integral = static_cast<int64_t>(size);
             query.serialize("total_size", size_integral);
             query.serialize("is_directory", is_dir);
-            query.serialize("device_id", const_cast<std::string&>(struuid));
+            query.serialize("device_id", const_cast<elle::UUID&>(device_id));
             query.serialize("message", const_cast<std::string&>(message));
           });
         SerializerIn input(url, request);
@@ -891,7 +873,7 @@ namespace infinit
       UpdatePeerTransactionResponse
       Client::update_transaction(std::string const& transaction_id,
                                  Transaction::Status status,
-                                 std::string const& device_id,
+                                 elle::UUID const& device_id,
                                  std::string const& device_name) const
       {
         ELLE_TRACE("%s: update %s transaction with new status %s",
@@ -913,10 +895,10 @@ namespace infinit
             query.serialize("status", status_integral);
             if (status == oracles::Transaction::Status::accepted)
             {
-              ELLE_ASSERT_GT(device_id.length(), 0u);
+              ELLE_ASSERT(!device_id.is_nil());
               ELLE_ASSERT_GT(device_name.length(), 0u);
               query.serialize("device_id",
-                              const_cast<std::string&>(device_id));
+                              const_cast<elle::UUID&>(device_id));
               query.serialize("device_name",
                               const_cast<std::string&>(device_name));
             }
@@ -964,12 +946,12 @@ namespace infinit
       void
       Client::transaction_endpoints_put(
         std::string const& transaction_id,
-        std::string const& device_id,
+        elle::UUID const& device_id,
         adapter_type const& local_endpoints,
         adapter_type const& public_endpoints) const
       {
         elle::json::Object json;
-        json["device"] = device_id;
+        json["device"] = boost::lexical_cast<std::string>(device_id);
         auto convert_endpoints = [&](adapter_type const& endpoints)
           {
             std::vector<boost::any> res;

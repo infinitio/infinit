@@ -104,7 +104,7 @@ namespace surface
                             "Infinit Team",
                             "Infinit",
                             "ok",
-                            {"Infinit"});
+                            {elle::UUID::random()});
 
       auto onboarder_id = this->user_indexes().at(
         this->user_sync(onboarder).id);

@@ -401,9 +401,15 @@ class Mixin:
         }
 
       if transaction_id is not None:
+        transaction['status'] = transaction_status.INITIALIZED
         self.database.transactions.update(
             {'_id': transaction_id},
             {'$set': transaction})
+        self.notifier.notify_some(
+          notifier.PEER_TRANSACTION,
+          recipient_ids = {transaction['recipient_id']},
+          message = transaction,
+        )
       else:
         transaction_id = self.database.transactions.insert(transaction)
       transaction['_id'] = transaction_id

@@ -577,7 +577,7 @@ namespace surface
 
           // Device.
           this->_device.reset(new Device(login_response.device));
-          ELLE_ASSERT_EQ(boost::lexical_cast<std::string>(this->_device_uuid), this->_device->id);
+          ELLE_ASSERT_EQ(this->_device_uuid, this->_device->id);
           auto passport_path =
             common::infinit::passport_path(this->home(), this->me().id);
           this->_passport.reset(new papier::Passport());

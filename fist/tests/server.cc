@@ -6,6 +6,7 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include <elle/Buffer.hh>
+#include <elle/UUID.hh>
 #include <elle/log.hh>
 #include <elle/finally.hh>
 #include <elle/container/map.hh>
@@ -543,7 +544,7 @@ namespace tests
         return "{}";
       });
     this->register_route(
-      "/s3/folder/000000000000_0",
+      "/s3/folder/000000000000_0000",
       reactor::http::Method::PUT,
       [this] (Server::Headers const&,
               Server::Cookies const&,
@@ -554,7 +555,7 @@ namespace tests
         return "";
       });
     this->register_route(
-      "/s3/folder/000000000000_0",
+      "/s3/folder/000000000000_0000",
       reactor::http::Method::GET,
       [this] (Server::Headers const&,
               Server::Cookies const&,
@@ -621,7 +622,7 @@ namespace tests
         else
         {
           auto& tr = **this->_transactions.find(id);
-          bool sender = tr.sender_device_id == boost::lexical_cast<std::string>(device.id()) &&
+          bool sender = tr.sender_device_id == device.id() &&
             tr.sender_id == boost::lexical_cast<std::string>(user.id());
           auto other_notif = elle::sprintf(
             "{"
@@ -648,8 +649,8 @@ namespace tests
             tr.sender_device_id,
             tr.recipient_device_id);
           auto generator = boost::uuids::string_generator();
-          auto* to_sender = this->trophonius.socket(generator(tr.sender_id), generator(tr.sender_device_id));
-          auto* to_recipient = this->trophonius.socket(generator(tr.recipient_id), generator(tr.recipient_device_id));
+          auto* to_sender = this->trophonius.socket(generator(tr.sender_id), tr.sender_device_id);
+          auto* to_recipient = this->trophonius.socket(generator(tr.recipient_id), tr.recipient_device_id);
           if (to_sender)
           {
             to_sender->write(sender ? our_notif : other_notif);
