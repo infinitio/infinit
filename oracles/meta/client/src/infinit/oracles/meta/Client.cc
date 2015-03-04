@@ -907,7 +907,8 @@ namespace infinit
                             const_cast<std::string&>(transaction_id));
             int status_integral = static_cast<int>(status);
             query.serialize("status", status_integral);
-            if (status == oracles::Transaction::Status::accepted)
+            if (status == oracles::Transaction::Status::accepted ||
+                status == oracles::Transaction::Status::rejected)
             {
               ELLE_ASSERT_GT(device_id.length(), 0u);
               ELLE_ASSERT_GT(device_name.length(), 0u);
