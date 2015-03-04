@@ -1,0 +1,271 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User, Trophonius
+import copy
+from infinit.oracles.meta.server.facebook import FacebookGraph
+from infinit.oracles.utils import api
+from infinit.oracles.meta import error
+from utils import Meta, HTTPException
+from bottle import route, run, template
+from random import uniform
+from uuid import uuid4
+import random
+
+class Facebook:
+
+  def __init__(self,
+               broken_at = False):
+    self.broken_at = broken_at
+    self.__next_client_data = None
+
+  @property
+  def app_access_token(self):
+    if self.broken_at == 'app_access_token':
+      raise error.Error(error.EMAIL_PASSWORD_DONT_MATCH)
+    return self.__app_access_token
+
+  @property
+  def next_client_data(self):
+    if self.__next_client_data is None:
+      self.__next_client_data = {
+        'id': int(uniform(1000000000000000, 1500000000000000)),
+        'has_email': False,
+      }
+    return self.__next_client_data
+
+  def set_next_client_data(self, data):
+    self.__next_client_data = data
+
+  class Client:
+    def __init__(self,
+                 server,
+                 long_lived_access_token,
+                 id,
+                 has_email):
+      self.__server = server
+      self.__long_lived_access_token = long_lived_access_token
+      self.__data = None
+      self.__data = {
+        'name': 'Joseph Total',
+        'first_name': 'Joseph',
+        'last_name': 'Total',
+        'id': str(id)
+      }
+      if has_email:
+        self.__data.update({
+          'email': 'joseph%s@tfbnw.net' % self.__data['id']
+        })
+
+    @property
+    def long_lived_access_token(self):
+      if self.__server.broken_at == 'client_access_token':
+        raise error.Error(error.EMAIL_PASSWORD_DONT_MATCH)
+      if self.__access_token is None:
+        self.__access_token = self.__server.client_access_token
+      return self.__access_token
+
+    @property
+    def data(self):
+      if self.__server.broken_at == 'client_data':
+        raise error.Error(error.EMAIL_PASSWORD_DONT_MATCH)
+      return self.__data
+
+    @property
+    def facebook_id(self):
+      return str(self.data['id'])
+
+    @property
+    def permissions(self):
+      pass
+
+  def user(self,
+           code = None,
+           short_lived_access_token = None,
+           long_lived_access_token = None):
+    data = self.next_client_data
+    return Facebook.Client(
+      server = self,
+      long_lived_access_token = long_lived_access_token,
+      id = data['id'],
+      has_email = data['has_email'],
+    )
+############################################################
+# Fake
+############################################################
+# Normal.
+with Meta(enable_emails = False) as meta:
+  with Trophonius(meta):
+    meta.inner.facebook = Facebook()
+    bob = User(meta, facebook = True)
+
+    for _ in range(2):
+      bob.facebook_connect("token")
+      facebook_id = bob.facebook_id
+      bob.logout()
+      try:
+        print(bob.me)
+      except HTTPException as e:
+        e.status == 403
+      else:
+        raise Exception("User still logged in")
+      bob.facebook_connect("token")
+      assert facebook_id == bob.facebook_id
+      bob.me
+      bob.logout()
+    assert meta.database.users.count() == 1
+    bob.facebook_connect("bite")
+
+# Multiple users.
+with Meta(enable_emails = False) as meta:
+  with Trophonius(meta):
+    meta.inner.facebook = Facebook()
+    bob = User(meta, facebook = True)
+    bob.facebook_connect("token")
+    meta.inner.facebook.set_next_client_data({
+      'id': int(uniform(1000000000000000, 1500000000000000)),
+      'has_email': False,
+    })
+    alice = User(meta, facebook = True)
+    alice.facebook_connect("fooooooo")
+    assert meta.database.users.count() == 2
+
+# Connected on multiple devices.
+with Meta(enable_emails = False) as meta:
+  with Trophonius(meta):
+    def give_a_different_access_token(meta):
+      random.seed()
+      meta.inner.facebook.set_next_client_data({
+        'id': 31290390128409,
+        'has_email': False,
+      })
+    meta.inner.facebook = Facebook()
+    bob = User(meta, facebook = True)
+    bob_device_0 = copy.deepcopy(bob)
+    bob_device_0.device_id = str(uuid4())
+
+    bob_device_1 = copy.deepcopy(bob)
+    bob_device_1.device_id = str(uuid4())
+
+    give_a_different_access_token(meta)
+    bob_device_0.facebook_connect("TokenToken")
+    give_a_different_access_token(meta)
+    bob_device_1.facebook_connect("TokenToken")
+
+    assert meta.database.sessions.count() == 2
+    bob_device_0.logout()
+    assert meta.database.sessions.count() == 1
+    try:
+      bob_device_0.me
+      assert False
+    except HTTPException:
+      pass
+    bob_device_1.me
+
+    bob_web_0 = copy.deepcopy(bob)
+    bob_web_0.device_id = None
+    bob_web_1 = copy.deepcopy(bob)
+    bob_web_1.device_id = None
+
+    give_a_different_access_token(meta)
+    bob_web_0.facebook_connect("TokenToken")
+    give_a_different_access_token(meta)
+    bob_web_1.facebook_connect("TokenToken")
+
+    bob_web_0.me
+    bob_web_1.me
+    assert meta.database.sessions.count() == 3
+    bob_web_1.logout()
+    try:
+      bob_web_1.me
+      assert False
+    except HTTPException as e:
+      pass
+    assert meta.database.sessions.count() == 2
+    bob_web_0.logout()
+    try:
+      bob_web_0.me
+      assert False
+    except HTTPException as e:
+      pass
+    assert meta.database.sessions.count() == 1
+    bob_device_1.logout()
+    assert meta.database.sessions.count() == 0
+    try:
+      bob_device_1.me
+      assert False
+    except HTTPException as e:
+      pass
+
+
+# Send.
+with Meta(enable_emails = True) as meta:
+  with Trophonius(meta):
+    meta.inner.facebook = Facebook()
+    bob = User(meta, facebook = True)
+    bob.facebook_connect("bite")
+    meta.inner.facebook.set_next_client_data({
+      'id': int(uniform(1000000000000000, 1500000000000000)),
+      'has_email': False,
+    })
+    alice = User(meta, facebook = True)
+    alice.facebook_connect("foo")
+    bob.sendfile(alice.id, initialize = True)
+    alice.logout()
+    bob.sendfile(alice.id, initialize = True)
+    alice.facebook_connect("foobar")
+    assert len(alice.transactions) == 2
+
+# Reverse send.
+with Meta(enable_emails = True) as meta:
+  with Trophonius(meta):
+    meta.inner.facebook = Facebook()
+    meta.inner.facebook.set_next_client_data({
+      'id': int(uniform(1000000000000000, 1500000000000000)),
+      'has_email': False,
+      'access_token': "fooooooo",
+    })
+    bob = User(meta, facebook = True)
+    bob.facebook_connect("bite")
+    meta.inner.facebook.set_next_client_data({
+      'id': int(uniform(1000000000000000, 1500000000000000)),
+      'has_email': True,
+      'access_token': "fooooooo",
+    })
+    alice = User(meta, facebook = True)
+    alice.facebook_connect("foo")
+    bob.sendfile(alice.id, initialize = True)
+    alice.logout()
+    bob.sendfile(alice.id, initialize = True)
+    alice.facebook_connect("foo")
+    assert len(alice.transactions) == 2
+
+############################################################
+# Real.
+############################################################
+# class Logger:
+#   def __init__(self, level = 0):
+#     self.__level = level
+#   def info(self, text):
+#     if self.__level >= 0:
+#       print('ghost:', text)
+
+#   def debug(self, text):
+#     if self.__level >= 1:
+#       print('ghost:', text)
+
+# with Meta(enable_emails = True) as meta:
+#   with Trophonius(meta):
+#     from ghost import Ghost
+#     ghost = Ghost()
+#     ghost.logger = Logger()
+
+#     # This 'spawns' the 'login to facebook' page.
+#     page, extra_resources = ghost.open("https://www.facebook.com/dialog/oauth?client_id=1599363463620738&redirect_uri=https://www.facebook.com/connect/login_success.html&response_type=code&scope=email&display=popup")
+#     assert page.http_status == 200
+#     # Fill both email & password fields with a test user data.
+#     ghost.evaluate(script = """document.getElementById('email').value = 'ymhdwea_wisemanstein_1423128027@tfbnw.net';""")
+#     ghost.evaluate(script = """document.getElementById('pass').value = 'mdptmp01';""")
+#     # Click the allow button.
+#     ghost.click('input#u_0_1')
+#     ghost.wait_for_page_loaded()
+#     XXX: Understand why ghost.py get a 'user denied' even if you simulate the click on accept.

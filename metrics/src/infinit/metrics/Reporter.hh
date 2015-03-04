@@ -236,6 +236,9 @@ namespace infinit
                  std::string const& info);
 
       void
+      facebook_connect(bool success, std::string const& info);
+
+      void
       user_logout(bool success,
                   std::string const& info);
 
@@ -271,6 +274,11 @@ namespace infinit
       void
       _user_login(bool success,
                   std::string const& info);
+
+      virtual
+      void
+      _facebook_connect(bool success,
+                        std::string const& info);
 
       virtual
       void

@@ -334,7 +334,7 @@ namespace surface
                                             this->state().meta().host(),
                                             this->state().meta().port(),
                                             transaction_dir,
-                                            this->state().me().email,
+                                            this->state().me().identifier(),
                                             transaction_id,
                                             this->transaction().failure_reason());
       }

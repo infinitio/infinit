@@ -185,7 +185,9 @@ namespace login
   std::string
   email(LoginResponse const& res)
   {
-    return res.self.email;
+    if (res.self.email)
+      return res.self.email.get();
+    return "";
   }
 }
 

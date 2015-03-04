@@ -129,9 +129,20 @@ namespace infinit
       {
         User::serialize(s);
         s.serialize("email", this->email);
+        s.serialize("facebook_id", this->facebook_id);
         s.serialize("identity", this->identity);
         s.serialize("devices", this->devices);
         s.serialize("favorites", this->favorites);
+      }
+
+      std::string
+      Self::identifier() const
+      {
+        if (this->email)
+          return this->email.get();
+        if (this->facebook_id)
+          return this->facebook_id.get();
+        return "";
       }
 
       /*-------.
@@ -324,7 +335,7 @@ namespace infinit
                                   this->_protocol, this->_host, this->_port))
         , _client(elle::os::getenv("INFINIT_USER_AGENT",
                                    "MetaClient/" INFINIT_VERSION))
-        , _default_configuration(_requests_timeout(),
+        ,  _default_configuration(_requests_timeout(),
                                  {},
                                  reactor::http::Version::v10)
         , _email()
@@ -1326,6 +1337,47 @@ namespace infinit
             request.write((char const*) icon.contents(), icon.size());
           }),
           content_type);
+      }
+
+      LoginResponse
+      Client::facebook_connect(std::string const& long_lived_access_token,
+                               boost::uuids::uuid const& device_uuid)
+      {
+        std::string content_type = "application/json";
+        std::string url{"/facebook_connect"};
+        auto request = this->_request(
+          url,
+          reactor::http::Method::POST,
+          [&] (reactor::http::Request& request)
+          {
+            elle::serialization::json::SerializerOut output(request, false);
+            output.serialize("long_lived_access_token",
+                             const_cast<std::string&>(long_lived_access_token));
+            std::string struuid = boost::lexical_cast<std::string>(device_uuid);
+            output.serialize("device_id", struuid);
+            auto os = elle::system::platform::os_name();
+            output.serialize("OS", os);
+          },
+          false);
+
+        if (request.status() == reactor::http::StatusCode::Forbidden)
+        {
+          SerializerIn input(url, request);
+          int error_code;
+          input.serialize("code", error_code);
+          using Error = infinit::oracles::meta::Error;
+          switch (Error(error_code))
+          {
+            case Error::email_password_dont_match:
+              throw infinit::state::CredentialError();
+            default:
+              throw elle::Error("have fun");
+          }
+        }
+
+        this->_logged_in = true;
+        SerializerIn input(url, request);
+        return LoginResponse(input);
       }
 
       /*--------.

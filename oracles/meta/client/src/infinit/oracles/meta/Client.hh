@@ -151,12 +151,16 @@ namespace infinit
         void
         serialize(elle::serialization::Serializer& s);
         std::string identity;
-        std::string email;
+        boost::optional<std::string> email;
+        boost::optional<std::string> facebook_id;
         int remaining_invitations;
         std::string token_generation_key;
         // std::list<boost::uuids::uuid> devices;
         std::list<std::string> devices;
         std::list<std::string> favorites;
+
+        std::string
+        identifier() const;
       };
 
       struct Device
@@ -553,6 +557,14 @@ namespace infinit
 
         void
         icon(elle::ConstWeakBuffer const& icon) const;
+
+      /*---------.
+      | Facebook |
+      `---------*/
+      public:
+        LoginResponse
+        facebook_connect(std::string const& long_lived_access_token,
+                         boost::uuids::uuid const& device_uuid);
 
       /*----------.
       | Printable |
