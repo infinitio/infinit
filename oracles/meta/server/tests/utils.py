@@ -500,8 +500,10 @@ class User(Client):
       args.update({
         'device_id': str(self.device_id)
       })
-
-    self.post('facebook_connect', args)
+    if 'device_id' in args:
+      self.post('login', args)
+    else:
+      self.post('web-login', args)
 
   def __hash__(self):
     return str(self.id).__hash__()

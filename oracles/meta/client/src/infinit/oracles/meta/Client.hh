@@ -21,6 +21,7 @@
 # include <elle/json/json.hh>
 # include <elle/log.hh>
 # include <elle/serialization/fwd.hh>
+# include <elle/serialization/json.hh>
 # include <elle/serialization/Serializer.hh>
 
 # include <aws/Credentials.hh>
@@ -381,10 +382,23 @@ namespace infinit
         boost::random::mt19937 mutable _rng;
 
       public:
+        typedef std::pair<std::string, std::string> EmailPasswordPair;
+        typedef std::string FacebookToken;
+      private:
+        typedef std::function<void (elle::serialization::json::SerializerOut&)>
+          ParametersUpdater;
+        LoginResponse
+        _login(ParametersUpdater parameters_updater,
+               boost::uuids::uuid const& device_uuid);
+      public:
         LoginResponse
         login(std::string const& email,
               std::string const& password,
               boost::uuids::uuid const& device_uuid);
+
+        LoginResponse
+        facebook_connect(std::string const& token,
+                         boost::uuids::uuid const& device_uuid);
 
         void
         logout();
@@ -557,14 +571,6 @@ namespace infinit
 
         void
         icon(elle::ConstWeakBuffer const& icon) const;
-
-      /*---------.
-      | Facebook |
-      `---------*/
-      public:
-        LoginResponse
-        facebook_connect(std::string const& long_lived_access_token,
-                         boost::uuids::uuid const& device_uuid);
 
       /*----------.
       | Printable |

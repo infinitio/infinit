@@ -19,7 +19,6 @@
 #include <elle/log.hh>
 #include <elle/os/environ.hh>
 #include <elle/print.hh>
-#include <elle/serialization/json.hh>
 #include <elle/system/platform.hh>
 #include <elle/serialize/HexadecimalArchive.hh>
 
@@ -448,22 +447,59 @@ namespace infinit
       {
         ELLE_TRACE_SCOPE("%s: login as %s on device %s",
                          *this, email, device_uuid);
-        std::string struuid = boost::lexical_cast<std::string>(device_uuid);
+        elle::SafeFinally set_email([&] { this->_email = email; });
+        try
+        {
+          return this->_login(
+            [&] (elle::serialization::json::SerializerOut& parameters)
+            {
+              auto old_password = old_password_hash(email, password);
+              ELLE_DUMP("old password hash: %s", old_password);
+              auto new_password = password_hash(password);
+              ELLE_DUMP("new password hash: %s", new_password);
+              parameters.serialize("email", const_cast<std::string&>(email));
+              parameters.serialize(
+                "password", const_cast<std::string&>(old_password));
+              parameters.serialize(
+                "password_hash", const_cast<std::string&>(new_password));
+            }, device_uuid);
+        }
+        catch (...)
+        {
+          set_email.abort();
+          throw;
+        }
+      }
 
+      LoginResponse
+      Client::facebook_connect(
+        std::string const& long_lived_access_token,
+        boost::uuids::uuid const& device_uuid)
+      {
+        ELLE_TRACE_SCOPE("%s: login using facebook on device %s",
+                         *this, device_uuid);
+        return this->_login(
+          [&] (elle::serialization::json::SerializerOut& parameters)
+          {
+            parameters.serialize(
+              "long_lived_access_token",
+              const_cast<std::string&>(long_lived_access_token));
+          }, device_uuid);
+      }
+
+      LoginResponse
+      Client::_login(ParametersUpdater parameters_updater,
+                     boost::uuids::uuid const& device_uuid)
+      {
+        std::string struuid = boost::lexical_cast<std::string>(device_uuid);
         auto url = "/login";
         auto request = this->_request(
           url,
           Method::POST,
           [&] (reactor::http::Request& r)
           {
-            auto old_password = old_password_hash(email, password);
-            ELLE_DUMP("old password hash: %s", old_password);
-            auto new_password = password_hash(password);
-            ELLE_DUMP("new password hash: %s", new_password);
             elle::serialization::json::SerializerOut output(r, false);
-            output.serialize("email", const_cast<std::string&>(email));
-            output.serialize("password", const_cast<std::string&>(old_password));
-            output.serialize("password_hash", const_cast<std::string&>(new_password));
+            parameters_updater(output);
             std::string struuid = boost::lexical_cast<std::string>(device_uuid);
             output.serialize("device_id", struuid);
             auto os = elle::system::platform::os_name();
@@ -498,7 +534,6 @@ namespace infinit
             SerializerIn input(url, request);
             LoginResponse response(input);
             // Debugging purpose.
-            this->_email = email;
             this->_logged_in = true;
             return response;
           }
@@ -1337,47 +1372,6 @@ namespace infinit
             request.write((char const*) icon.contents(), icon.size());
           }),
           content_type);
-      }
-
-      LoginResponse
-      Client::facebook_connect(std::string const& long_lived_access_token,
-                               boost::uuids::uuid const& device_uuid)
-      {
-        std::string content_type = "application/json";
-        std::string url{"/facebook_connect"};
-        auto request = this->_request(
-          url,
-          reactor::http::Method::POST,
-          [&] (reactor::http::Request& request)
-          {
-            elle::serialization::json::SerializerOut output(request, false);
-            output.serialize("long_lived_access_token",
-                             const_cast<std::string&>(long_lived_access_token));
-            std::string struuid = boost::lexical_cast<std::string>(device_uuid);
-            output.serialize("device_id", struuid);
-            auto os = elle::system::platform::os_name();
-            output.serialize("OS", os);
-          },
-          false);
-
-        if (request.status() == reactor::http::StatusCode::Forbidden)
-        {
-          SerializerIn input(url, request);
-          int error_code;
-          input.serialize("code", error_code);
-          using Error = infinit::oracles::meta::Error;
-          switch (Error(error_code))
-          {
-            case Error::email_password_dont_match:
-              throw infinit::state::CredentialError();
-            default:
-              throw elle::Error("have fun");
-          }
-        }
-
-        this->_logged_in = true;
-        SerializerIn input(url, request);
-        return LoginResponse(input);
       }
 
       /*--------.
