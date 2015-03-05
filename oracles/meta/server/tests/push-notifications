@@ -14,7 +14,7 @@ class Notifier(infinit.oracles.meta.server.notifier.Notifier):
   def push_notification(self, recipient, token, payload):
     self.__notifications.append((recipient, token, payload))
 
-  def ios_notification(self, *args, **kwargs):
+  def prepare_notification(self, *args, **kwargs):
     return {}
 
   @property
