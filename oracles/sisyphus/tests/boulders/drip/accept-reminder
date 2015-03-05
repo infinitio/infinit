@@ -53,9 +53,9 @@ with mongobox.MongoBox() as mongo:
     recipient = user_register(meta, 'recipient@infinit.io')
     # Create a ghost transsaction to test mongo queries complexity
     ghost_email = 'ghost@infinit.io'
-    transaction_create(meta, sender, ghost_email)
+    transaction_create(meta, sender, recipient_identifier = ghost_email)
     # Create transaction
-    tid = transaction_create(meta, sender, recipient['email'],
+    tid = transaction_create(meta, sender, recipient_identifier = recipient['email'],
                              initialize = False)
     # Check nothing is sent for a fresh transaction
     forward(reminder.delay_second_reminder * 2)

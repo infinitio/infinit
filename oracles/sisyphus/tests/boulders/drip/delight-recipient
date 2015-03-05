@@ -52,7 +52,7 @@ with mongobox.MongoBox() as mongo:
     assert not emailer.emails
 
     # Check nothing is sent with ghost transactions
-    tid = transaction_create(meta, sender, ghost_email)
+    tid = transaction_create(meta, sender, recipient_identifier = ghost_email)
     meta._cloud_buffer(tid, sender)
     meta._transaction_update(tid, statuses['ghost_uploaded'],
                              'device', 'device', sender)
@@ -61,7 +61,7 @@ with mongobox.MongoBox() as mongo:
     assert not emailer.emails
 
     # Check the mail is not sent upon creation
-    tid = transaction_create(meta, sender, recipient['email'])
+    tid = transaction_create(meta, sender, recipient_identifier = recipient['email'])
     sisy.boulders_run()
     assert not emailer.emails
 
@@ -87,7 +87,7 @@ with mongobox.MongoBox() as mongo:
     assert not emailer.emails
 
     # And not for subsequent transfers
-    tid = transaction_create(meta, sender, recipient['email'])
+    tid = transaction_create(meta, sender, recipient_identifier = recipient['email'])
     meta._transaction_update(tid, statuses['accepted'],
                              recipient_device['id'],
                              recipient_device['name'],

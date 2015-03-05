@@ -61,7 +61,7 @@ with mongobox.MongoBox() as mongo:
     sender_device['id'] = uuid.UUID(sender_device['id'])
     meta.set_connection_status(
       sender['_id'], sender_device['id'], True, 'tropho-id')
-    tid = transaction_create(meta, sender, 'ghost@infinit.io')
+    tid = transaction_create(meta, sender, recipient_identifier ='ghost@infinit.io')
     meta._cloud_buffer(tid, sender)
     meta._transaction_update(tid, statuses['ghost_uploaded'],
                              device, None, sender)
@@ -78,7 +78,7 @@ with mongobox.MongoBox() as mongo:
     # Check nothing is sent too early
     meta.set_connection_status(
       sender['_id'], sender_device['id'], True, 'tropho-id')
-    tid = transaction_create(meta, sender, 'ghost@infinit.io')
+    tid = transaction_create(meta, sender, recipient_identifier = 'ghost@infinit.io')
     meta.set_connection_status(
       sender['_id'], sender_device['id'], False, 'tropho-id')
     forward(reminder.delay_first_reminder * 0.5)

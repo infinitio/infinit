@@ -14,6 +14,7 @@ ID = re.compile(r'^[a-zA-Z0-9]{24,40}$')
 DeviceID = re.compile(r'^[a-zA-Z0-9]{24,40}$')
 NetworkID = re.compile(r'^[a-zA-Z0-9]{24,40}$')
 TransactionID = re.compile(r'^[a-zA-Z0-9]{24,40}$')
+PhoneNumber = re.compile(r'^\+?[0-9]{2,14}$')
 NotNull = re.compile(r'^.+$')
 
 class Validator:

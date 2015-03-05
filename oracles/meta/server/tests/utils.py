@@ -59,6 +59,7 @@ class Client:
   def __init__(self, meta):
     self.__cookies = None
     self.__meta_port = meta.port
+    self.meta = meta
     self.user_agent = 'MetaClient/' + version.version
 
   def __get_cookies(self, headers):
@@ -566,7 +567,11 @@ class User(Client):
 
   @property
   def transactions(self):
+    print('=' * 80, self._id)
+    print(list(self.meta.database.transactions.find({'involved': self._id})))
+    print('=' * 80)
     res = self.get('transactions')
+    print(res)
     assert res['success']
     return res['transactions']
 
@@ -612,7 +617,7 @@ class User(Client):
       'message': message,
       'is_directory': is_directory,
       'device_id': str(device_id),
-      use_identifier and 'identifier' or 'id_or_email': recipient,
+      use_identifier and 'recipient_identifier' or 'id_or_email': recipient,
     }
     res = self.post('transaction/create', transaction)
     ghost = res['recipient_is_ghost']

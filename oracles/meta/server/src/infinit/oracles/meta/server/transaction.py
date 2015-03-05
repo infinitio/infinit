@@ -255,28 +255,34 @@ class Mixin:
   @api('/transaction/create', method = 'POST')
   @require_logged_in
   def transaction_create_api(self,
-                             id_or_email,
                              files,
                              files_count,
                              total_size,
                              is_directory,
                              device_id, # Can be determine by session.
-                             message = ""):
+                             message = "",
+                             recipient_identifier = None,
+                             id_or_email = None):
     return self.transaction_create(
-      self.user,
-      id_or_email,
-      files, files_count, total_size, is_directory,
-      device_id,
-      message)
+      sender = self.user,
+      files = files,
+      files_count = files_count,
+      total_size = total_size,
+      is_directory = is_directory,
+      id_or_email = id_or_email,
+      recipient_identifier = recipient_identifier,
+      device_id = device_id,
+      message = message)
 
   def transaction_create(self,
                          sender,
-                         id_or_email,
                          files,
                          files_count,
                          total_size,
                          is_directory,
                          device_id, # Can be determine by session.
+                         id_or_email = None,
+                         recipient_identifier = None,
                          message = "",
                          transaction_id = None):
     """
@@ -284,12 +290,13 @@ class Mixin:
     If you pass an email and the user is not registered in infinit,
     create a 'ghost' in the database, waiting for him to register.
 
-    id_or_email -- the recipient id or email.
     files -- the list of files names.
     files_count -- the number of files.
     total_size -- the total size.
     is_directory -- if the sent file is a directory.
     device_id -- the emiter device id.
+    id_or_email -- the recipient id or email.
+    recipient -- a more generic id_or_email.
     message -- an optional message.
     transaction_id -- id if the transaction was previously created with
     create_empty.
@@ -297,31 +304,50 @@ class Mixin:
     Errors:
     Using an id that doesn't exist.
     """
-    with elle.log.trace("create transaction (recipient %s)" % id_or_email):
-      id_or_email = id_or_email.strip().lower()
-
+    if id_or_email is None and recipient_identifier is None:
+      self.bad_request({
+        'reason': 'you must provide id_or_email or recipient_identifier'
+      })
+    recipient_identifier = recipient_identifier or id_or_email
+    with elle.log.trace("create transaction (recipient %s)" % recipient_identifier):
+      recipient = recipient_identifier.strip().lower()
       new_user = False
       is_ghost = False
       invitee = 0
-      peer_email = ""
-
-      if re.match(regexp.Email, id_or_email): # email.
-        elle.log.debug("%s is an email" % id_or_email)
-        peer_email = id_or_email.lower().strip()
-        # XXX: search email in each accounts.
-        recipient = self.__user_fetch(
-          {'accounts.id': peer_email},
-          fields = self.__user_view_fields)
-        # if the user doesn't exist, create a ghost and invite.
+      peer_email = None
+      is_an_email = re.match(regexp.Email, recipient_identifier)
+      is_a_phone_number = re.match(regexp.PhoneNumber, recipient_identifier)
+      if is_an_email or is_a_phone_number:
+        if is_an_email:
+          elle.log.debug("%s is an email" % recipient_identifier)
+          peer_email = recipient_identifier.lower().strip()
+          # XXX: search email in each accounts.
+          recipient = self.__user_fetch(
+            {'accounts.id': peer_email},
+            fields = self.__user_view_fields)
+          # if the user doesn't exist, create a ghost and invite.
+        if is_a_phone_number:
+          elle.log.debug("%s is an phone" % recipient_identifier)
+          phone_number = recipient_identifier
+          recipient = self.__user_fetch(
+            {'accounts.id': phone_number, 'accounts.type': 'phone'},
+            fields = self.__user_view_fields)
 
         if not recipient:
           elle.log.trace("recipient unknown, create a ghost")
           new_user = True
-          recipient_id = self.__register_ghost({
-            'accounts': [{'type':'email', 'id': peer_email}],
-            'email': peer_email,
-            'fullname': peer_email,
-          })
+          if is_an_email:
+            recipient_id = self.__register_ghost({
+              'email': peer_email,
+              'fullname': peer_email, # This is safe as long as we don't allow searching for ghost users.
+              'accounts': [{'type':'email', 'id': peer_email}],
+            })
+          if is_a_phone_number:
+            recipient_id = self.__register_ghost({
+              'phone_number': phone_number,
+              'fullname': phone_number, # Same comment.
+              'accounts': [{'type':'phone', 'id': phone_number}],
+            })
           recipient = self.__user_fetch(
             recipient_id,
             fields = self.__user_view_fields + ['email', 'ghost_code', 'features'])
@@ -342,19 +368,20 @@ class Mixin:
           elle.log.debug('metrics answer: %s' % res)
       else:
         try:
-          recipient_id = bson.ObjectId(id_or_email)
+          recipient_id = bson.ObjectId(recipient_identifier)
         except Exception as e:
-          return self.fail(error.USER_ID_NOT_VALID)
+          return self.bad_request({
+            'reason': 'recipient_identifier was ill-formed'
+          })
         recipient = self.__user_fetch(
-          recipient_id,
+          {'_id': recipient_id},
           fields = self.__user_view_fields + ['email'])
 
       if recipient is None:
         return self.fail(error.USER_ID_NOT_VALID)
       if recipient['register_status'] == 'merged':
         assert isinstance(recipient['merged_with'], bson.ObjectId)
-        recipient = self.__user_fetch(
-          {
+        recipient = self.__user_fetch({
             '_id': recipient['merged_with']
           },
           fields = self.__user_view_field
@@ -369,7 +396,6 @@ class Mixin:
       is_ghost = recipient['register_status'] == 'ghost'
       elle.log.debug("transaction recipient has id %s" % recipient['_id'])
       _id = sender['_id']
-
       elle.log.debug('Sender agent %s, version %s, peer_new %s peer_ghost %s'
                      % (self.user_agent, self.user_version, new_user,  is_ghost))
       transaction = {
@@ -426,25 +452,26 @@ class Mixin:
         time = True)
 
       if not peer_email:
-        peer_email = recipient['email']
-      recipient_offline = all(d.get('trophonius') is None
-                              for d in recipient.get('devices', []))
-      if not new_user and recipient_offline and not is_ghost:
-        elle.log.debug("recipient is disconnected")
-        template_id = 'accept-file-only-offline'
+        peer_email = recipient.get('email')
+      if peer_email:
+        recipient_offline = all(d.get('trophonius') is None
+                                for d in recipient.get('devices', []))
+        if not new_user and recipient_offline and not is_ghost:
+          elle.log.debug("recipient is disconnected")
+          template_id = 'accept-file-only-offline'
 
-        self.mailer.send_template(
-          to = peer_email,
-          template_name = template_id,
-          reply_to = "%s <%s>" % (sender['fullname'], sender['email']),
-          merge_vars = {
-            peer_email: {
-              'filename': files[0],
-              'note': message,
-              'sendername': sender['fullname'],
-              'avatar': self.user_avatar_route(recipient['_id']),
-            }}
-          )
+          self.mailer.send_template(
+            to = peer_email,
+            template_name = template_id,
+            reply_to = "%s <%s>" % (sender['fullname'], sender['email']),
+            merge_vars = {
+              peer_email: {
+                'filename': files[0],
+                'note': message,
+                'sendername': sender['fullname'],
+                'avatar': self.user_avatar_route(recipient['_id']),
+              }}
+            )
 
       self._increase_swag(sender['_id'], recipient['_id'])
 
@@ -645,7 +672,6 @@ class Mixin:
       transaction['recipient_id'],
       fields = ['_id', 'ghost_code', 'register_status'])
     if recipient['register_status'] == 'ghost' and 'ghost_code' in recipient:
-      print(self.shorten(self.__ghost_profile_url(recipient)))
       return {
         'ghost_code': recipient['ghost_code'],
         'ghost_profile': self.shorten(self.__ghost_profile_url(recipient))

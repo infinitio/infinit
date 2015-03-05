@@ -780,7 +780,6 @@ class Mixin:
     code -- The code.
     """
     with elle.log.trace("merge ghost with code %s" % code):
-      # XXX: Add cooldown.
       if len(code) == 0:
         return self.bad_request({
           'reason': 'code cannot be empty',
@@ -891,7 +890,7 @@ class Mixin:
           }
         }
       }
-      user = self.user_by_id_or_email(user, fields = ['_id'])
+      user = self.user_by_id_or_email(user, fields = ['_id', 'accounts'])
       while True:
         try:
           self.database.users.update(
@@ -1274,6 +1273,13 @@ class Mixin:
       cleared_user['register_status'] = 'merged'
       cleared_user['merged_with'] = merge_with['_id']
       deleted_user_swaggers = user.get('swaggers', {})
+      # XXX: Obvious race condition here.
+      # Accounts fields are unique. If we want to copy user['accounts'] to
+      # merge_with, we need to copy and delete them first, and the add them
+      # to merge_with.
+      # The problem is that during that time lap, someone could send to the
+      # user to be deleted email address, creating a new ghost with accounts
+      # that can conflit in the database.
       deleted_user_accounts = user.get('accounts', [])
     else:
       cleared_user['register_status'] = 'deleted'
