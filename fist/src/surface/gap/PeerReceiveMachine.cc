@@ -147,7 +147,7 @@ namespace surface
             this->_run(this->_finish_state);
           else if (snapshot.current_state() == "reject")
             this->_run(this->_reject_state);
-          else if (snapshot.current_state() == "transfer core")
+          else if (snapshot.current_state() == "transfer")
             this->_run(this->_transfer_state);
           else if (snapshot.current_state() == "wait for decision")
             this->_run(this->_wait_for_decision_state);
