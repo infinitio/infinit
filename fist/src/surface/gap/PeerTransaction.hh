@@ -5,6 +5,7 @@
 # include <stdint.h>
 # include <string>
 
+# include <elle/UUID.hh>
 # include <elle/Printable.hh>
 
 # include <infinit/oracles/PeerTransaction.hh>
@@ -28,9 +29,9 @@ namespace surface
       PeerTransaction(uint32_t id,
                       gap_TransactionStatus status,
                       uint32_t sender_id,
-                      std::string const& sender_device_id,
+                      elle::UUID const& sender_device_id,
                       uint32_t recipient_id,
-                      std::string const& recipient_device_id,
+                      elle::UUID const& recipient_device_id,
                       double mtime,
                       std::list<std::string> const& file_names,
                       int64_t total_size,

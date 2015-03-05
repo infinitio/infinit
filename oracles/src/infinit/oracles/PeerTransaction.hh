@@ -14,10 +14,10 @@ namespace infinit
     public:
       TransactionCanceler();
       TransactionCanceler(std::string const& user_id,
-                          std::string const& device_id);
+                          elle::UUID device_id);
 
-    std::string user_id;
-    std::string device_id;
+      std::string user_id;
+      elle::UUID device_id;
     public:
       TransactionCanceler(elle::serialization::SerializerIn& s);
       void
@@ -34,12 +34,13 @@ namespace infinit
       PeerTransaction();
       PeerTransaction(std::string sender_id,
                       std::string sender_fullname,
-                      std::string sender_device_id,
+                      elle::UUID sender_device_id,
                       std::string recipient_id);
       PeerTransaction(PeerTransaction&&) = default;
       PeerTransaction(PeerTransaction const&) = default;
       PeerTransaction&
       operator =(PeerTransaction const&) = default;
+      virtual
       ~PeerTransaction() noexcept(true);
 
     /*-----.
@@ -52,7 +53,7 @@ namespace infinit
       std::string message;
       std::string recipient_id;
       std::string recipient_fullname;
-      std::string recipient_device_id;
+      elle::UUID recipient_device_id;
       std::string recipient_device_name;
       std::string sender_fullname;
       boost::optional<std::string> download_link;

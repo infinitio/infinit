@@ -147,6 +147,13 @@ namespace surface
                   std::string const& peer_id,
                   std::vector<std::string> files,
                   std::string const& message);
+      /// Construct as new for file sending.
+      Transaction(surface::gap::State& state,
+                  uint32_t id,
+                  std::string const& peer_id,
+                  elle::UUID const& peer_device_id,
+                  std::vector<std::string> files,
+                  std::string const& message);
       /// Construct as new for link generation.
       Transaction(surface::gap::State& state,
                   uint32_t id,
@@ -195,7 +202,7 @@ namespace surface
       void
       notify_user_connection_status(std::string const& user_id,
                                     bool user_status,
-                                    std::string const& device_id,
+                                    elle::UUID const& device_id,
                                     bool device_status);
       void
       notify_peer_reachable(std::vector<std::pair<std::string, int>> const& local_endpoints,

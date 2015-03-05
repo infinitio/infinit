@@ -17,6 +17,7 @@
 #include <papier/Identity.hh>
 #include <surface/gap/FilesystemTransferBufferer.hh>
 #include <surface/gap/S3TransferBufferer.hh>
+#include <surface/gap/State.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.PeerSendMachine")
 
@@ -364,7 +365,6 @@ namespace surface
     void
     PeerSendMachine::_initialize_transaction()
     {
-        // TODO: Chewie
       this->gap_status(gap_transaction_new);
       ELLE_TRACE_SCOPE("%s: initialize transaction", *this);
       int64_t size = 0;
@@ -405,6 +405,9 @@ namespace surface
                  boost::filesystem::is_directory(first_file));
       {
         auto lock = this->state().transaction_update_lock.lock();
+        boost::optional<elle::UUID> recipient_device_id;
+        if (!this->data()->recipient_device_id.is_nil())
+          recipient_device_id = this->data()->recipient_device_id;
         auto transaction_response =
           this->state().meta().create_transaction(
             this->data()->recipient_id,
@@ -414,7 +417,8 @@ namespace surface
             boost::filesystem::is_directory(first_file),
             this->state().device().id,
             this->_message,
-            this->transaction_id()
+            this->transaction_id(),
+            recipient_device_id
             );
         auto const& peer = this->state().user_sync(
           transaction_response.recipient());
@@ -440,8 +444,6 @@ namespace surface
           this->data()->is_ghost,
           onboarding);
       }
-      this->state().meta().update_transaction(this->transaction_id(),
-                                              TransactionStatus::initialized);
       this->transaction().data()->status = TransactionStatus::initialized;
     }
 
@@ -914,12 +916,12 @@ namespace surface
     PeerSendMachine::notify_user_connection_status(
       std::string const& user_id,
       bool user_status,
-      std::string const& device_id,
+      elle::UUID const& device_id,
       bool device_status)
     {
       auto const& txn = this->data();
       // User hasn't accepted yet.
-      if (user_id == txn->recipient_id && txn->recipient_device_id.empty())
+      if (user_id == txn->recipient_id && txn->recipient_device_id.is_nil())
       {
         this->_peer_connection_changed(user_status);
       }

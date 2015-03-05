@@ -224,7 +224,7 @@ gap_logged_in(gap_State* state)
     "logged",
     [&] (surface::gap::State& state)
     {
-      return state.logged_in();
+      return state.meta().logged_in();
     });
 }
 
@@ -338,7 +338,9 @@ gap_self_email(gap_State* state)
     "self email",
     [&] (surface::gap::State& state) -> std::string
     {
-      return state.me().email;
+      if (state.me().email)
+        return state.me().email.get();
+      return "";
     });
 }
 
@@ -525,7 +527,7 @@ gap_self_device_id(gap_State* state)
     "self device id",
     [&] (surface::gap::State& state) -> std::string
     {
-      return state.device().id;
+      return boost::lexical_cast<std::string>(state.device().id);
     });
 }
 
@@ -1020,7 +1022,7 @@ gap_transaction_concern_device(gap_State* state,
       {
         return
           (data->recipient_id == state.me().id &&
-           ((true_if_empty_recipient && data->recipient_device_id.empty()) ||
+           ((true_if_empty_recipient && data->recipient_device_id.is_nil()) ||
             data->recipient_device_id == state.device().id)) ||
           (data->sender_id == state.me().id &&
            data->sender_device_id == state.device().id);
@@ -1652,4 +1654,26 @@ gap_send_last_crash_logs(gap_State* state,
         }, "send last crash report");
     }, disposable);
   return gap_ok;
+}
+
+std::string
+gap_facebook_app_id()
+{
+  // We could even ask meta for the id.
+  return "839001662829159";
+}
+
+gap_Status
+gap_facebook_connect(gap_State* state,
+                     std::string const& facebook_token,
+                     boost::optional<std::string const&> device_push_token)
+{
+  return run<gap_Status>(
+    state,
+    "facebook connect",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.facebook_connect(facebook_token);
+      return gap_ok;
+    });
 }

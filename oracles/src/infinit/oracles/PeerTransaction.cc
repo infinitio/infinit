@@ -13,9 +13,9 @@ namespace infinit
     {}
 
     TransactionCanceler::TransactionCanceler(std::string const& user_id,
-                                             std::string const& device_id)
+                                             elle::UUID device_id)
       : user_id(user_id)
-      , device_id(device_id)
+      , device_id(std::move(device_id))
     {}
 
     TransactionCanceler::TransactionCanceler(
@@ -52,7 +52,7 @@ namespace infinit
 
     PeerTransaction::PeerTransaction(std::string sender_id,
                                      std::string sender_fullname,
-                                     std::string sender_device_id,
+                                     elle::UUID sender_device_id,
                                      std::string recipient_id)
       : Transaction(std::move(sender_id), std::move(sender_device_id))
       , files()
@@ -119,7 +119,7 @@ namespace infinit
       catch (elle::serialization::Error const&)
       {
         this->canceler.user_id = "";
-        this->canceler.device_id = "";
+        this->canceler.device_id = elle::UUID();
       }
       s.serialize("status", this->status, elle::serialization::as<int>());
     }

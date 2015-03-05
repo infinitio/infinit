@@ -328,7 +328,7 @@ namespace surface
       {
         // Send report for failed transfer
         elle::crash::transfer_failed_report(this->state().local_configuration(),
-                                            this->state().me().email,
+                                            this->state().me().identifier(),
                                             transaction_id,
                                             this->transaction().failure_reason());
       }
@@ -392,7 +392,7 @@ namespace surface
     void
     TransactionMachine::notify_user_connection_status(std::string const&,
                                                       bool,
-                                                      std::string const&,
+                                                      elle::UUID const&,
                                                       bool)
     {}
 

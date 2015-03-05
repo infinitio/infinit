@@ -3,6 +3,9 @@
 #include <elle/Error.hh>
 #include <elle/os/file.hh>
 
+#include <surface/gap/State.hh>
+#include <surface/gap/Transaction.hh>
+
 ELLE_LOG_COMPONENT("surface.gap.LinkSendMachine");
 
 namespace surface
@@ -225,6 +228,7 @@ namespace surface
     {
       auto link_id = this->state().meta().create_link();
       this->transaction_id(link_id);
+      this->transaction()._snapshot_save();
     }
 
     void

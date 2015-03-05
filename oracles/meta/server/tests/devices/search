@@ -25,11 +25,9 @@ with Meta() as meta:
   assert barfoo['name'] == "barfoo"
 
   res = bob.get('devices')
-
-  assert res['success']
   assert len(res['devices']) == 3
 
-  assert set(res['devices']) == set([
+  assert set(d['id'] for d in res['devices']) == set([
       foobar['id'],
       barfoo['id'],
       str(bob.device_id),

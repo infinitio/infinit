@@ -10,7 +10,7 @@ namespace surface
                                      boost::optional<std::string> link_,
                                      uint32_t click_count_,
                                      gap_TransactionStatus status_,
-                                     std::string const& sender_device_id_,
+                                     elle::UUID const& sender_device_id_,
                                      std::string const& message_,
                                      std::string const& meta_id_)
       : id(id_)
@@ -19,7 +19,7 @@ namespace surface
       , link()
       , click_count(click_count_)
       , status(status_)
-      , sender_device_id(sender_device_id_)
+      , sender_device_id(sender_device_id_.repr())
       , message(message_)
       , meta_id(meta_id_)
     {

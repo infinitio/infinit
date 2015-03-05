@@ -317,8 +317,12 @@ class Mixin:
     with elle.log.trace('updating link %s with status %s and progress %s' %
                         (id, status, progress)):
       link = self.database.links.find_one({'_id': id})
-      if link is None:
-        self.not_found()
+      # If it's not found or the empty object.
+      if link is None or len(link) == 1:
+        self.not_found({
+          'reason': 'link %s does not exist' % id,
+          'link': id,
+        })
       if link['sender_id'] != user['_id']:
         self.forbidden()
       if progress < 0.0 or progress > 1.0:

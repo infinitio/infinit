@@ -429,13 +429,14 @@ namespace elle
 #ifdef INFINIT_WINDOWS
       // On windows, libarchive behaves differently regarding of sharing a fd.
       // We need to create a copy of the log before archiving it.
-      boost::filesystem::path home(home);
-      boost::filesystem::path copied_log = home / "current_state.log";
       boost::system::error_code erc;
-      boost::filesystem::copy(elle::os::getenv("INFINIT_LOG_FILE"), copied_log , erc);
+      boost::filesystem::path log(elle::os::getenv("INFINIT_LOG_FILE"));
+      boost::filesystem::path copied_log = log;
+      copied_log.replace_extension("copied.txt");
+      boost::filesystem::copy(log, copied_log , erc);
       if (erc)
       {
-        ELLE_WARN("error while copying %s: %s", user_file_, copied_log);
+        ELLE_WARN("error while copying log(%s): %s", log, copied_log);
       }
       elle::SafeFinally cleanup{
         [&] {

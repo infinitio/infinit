@@ -8,9 +8,9 @@ namespace surface
       uint32_t id_,
       gap_TransactionStatus status_,
       uint32_t sender_id_,
-      std::string const& sender_device_id_,
+      elle::UUID const& sender_device_id_,
       uint32_t recipient_id_,
-      std::string const& recipient_device_id_,
+      elle::UUID const& recipient_device_id_,
       double mtime_,
       std::list<std::string> const& file_names_,
       int64_t total_size_,
@@ -21,9 +21,9 @@ namespace surface
         : id(id_)
         , status(status_)
         , sender_id(sender_id_)
-        , sender_device_id(sender_device_id_)
+        , sender_device_id(sender_device_id_.repr())
         , recipient_id(recipient_id_)
-        , recipient_device_id(recipient_device_id_)
+        , recipient_device_id(recipient_device_id_.repr())
         , mtime(mtime_)
         , file_names(file_names_)
         , total_size(total_size_)
