@@ -79,6 +79,13 @@ namespace infinit
       inline VersionRejected();
     };
 
+    class MissingEmail
+      : public LoginError
+    {
+    public:
+      inline MissingEmail();
+    };
+
     /*-----------------.
     | Self User Errors |
     `-----------------*/

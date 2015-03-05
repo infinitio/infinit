@@ -552,7 +552,8 @@ class Mixin:
     email = preferred_email or email
     if email is None:
       return self.bad_request({
-        'reason': 'you must provide an email'
+        'reason': 'you must provide an email',
+        'code': error.EMAIL_NOT_VALID[0]
       })
     name = facebook_user.data['name']
     extra_fields = {

@@ -45,6 +45,10 @@ namespace infinit
       : LoginError("version rejected")
     {}
 
+    MissingEmail::MissingEmail()
+      : LoginError("you need an email")
+    {}
+
     /*-----------------.
     | Self User Errors |
     `-----------------*/
