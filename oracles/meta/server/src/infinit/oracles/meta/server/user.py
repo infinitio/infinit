@@ -515,11 +515,11 @@ class Mixin:
                         password_hash = None):
     if self.user is not None:
       return self.fail(error.ALREADY_LOGGED_IN)
+    if password is None:
+      return self.bad_request({
+        'reason': 'Password field cannot be null',
+      })
     try:
-      if password is None:
-        return self.bad_request({
-          'reason': 'Password field cannot be null'
-        })
       user = self.user_register(email = email,
                                 password = password,
                                 fullname = fullname,
