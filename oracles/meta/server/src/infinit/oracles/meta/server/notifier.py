@@ -241,6 +241,6 @@ class Notifier:
                           sound = sound,
                           content_available = content_available)
     elif os == 'Android':
-      return { 'message' : alert }
+        return { 'title' : 'Infinit', 'message' : alert }
     else:
       return None
