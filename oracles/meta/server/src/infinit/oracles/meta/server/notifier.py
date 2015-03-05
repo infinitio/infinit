@@ -2,8 +2,10 @@
 
 import socket
 import json
+import requests
 
 import bson
+import bson.json_util
 import re
 import os
 import sys
@@ -138,7 +140,7 @@ class Notifier:
               if pl is not None:
                 with elle.log.debug(
                     'push notification to: %s' % push):
-                  self.push_notification(owner, push, pl)
+                  self.push_notification(owner, push, pl, os)
               else:
                 elle.log.debug('skip push notification for %s' % push)
 
@@ -183,10 +185,11 @@ class Notifier:
           'Content-Type' : 'application/json',
           }
       data = {
-          'registration_ids' : [recipient_id],
+          'registration_ids' : [token],
           'data' : payload,
           }
-      requests.post(GCM_URL, headers=headers, data=data)
+      r = requests.post(GCM_URL, headers=headers, data=bson.json_util.dumps(data))
+      elle.log.trace('Android notification: %s' % r.content)
 
 
   def prepare_notification(self, notification_type, device, owner, message, os):
