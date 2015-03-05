@@ -11,8 +11,8 @@ class Notifier(infinit.oracles.meta.server.notifier.Notifier):
     super().__init__(database, production)
     self.__notifications = []
 
-  def push_notification(self, recipient, token, payload):
-    self.__notifications.append((recipient, token, payload))
+  def push_notification(self, recipient, token, payload, os):
+    self.__notifications.append((recipient, token, payload, os))
 
   def prepare_notification(self, *args, **kwargs):
     return {}
