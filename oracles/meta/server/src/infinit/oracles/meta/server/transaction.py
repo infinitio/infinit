@@ -418,6 +418,7 @@ class Mixin:
         self.database.transactions.update(
             {'_id': transaction_id},
             {'$set': transaction})
+        transaction['_id'] = transaction_id
         self.notifier.notify_some(
           notifier.PEER_TRANSACTION,
           recipient_ids = {transaction['recipient_id']},

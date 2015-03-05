@@ -140,14 +140,14 @@ namespace tests
     , user(const_cast<User&>(user))
     , state(server, device_id, home_path)
   {
-    state.attach_callback<surface::gap::State::ConnectionStatus>(
+    state->attach_callback<surface::gap::State::ConnectionStatus>(
       [&] (surface::gap::State::ConnectionStatus const& notif)
       {
         ELLE_TRACE_SCOPE("connection status notification: %s", notif);
       }
       );
 
-    state.attach_callback<surface::gap::State::UserStatusNotification>(
+    state->attach_callback<surface::gap::State::UserStatusNotification>(
       [&] (surface::gap::State::UserStatusNotification const& notif)
       {
         ELLE_TRACE_SCOPE("user status notification: %s", notif);
@@ -171,15 +171,15 @@ namespace tests
   void
   Client::login(std::string const& password)
   {
-    this->state.login(this->user.email(), password);
-    this->state.logged_in().wait();
+    this->state->login(this->user.email(), password);
+    this->state->logged_in().wait();
     this->user.connected_devices.insert(this->device_id);
   }
 
   void
   Client::logout()
   {
-    this->state.logout();
+    this->state->logout();
     this->user.connected_devices.erase(this->device_id);
   }
 

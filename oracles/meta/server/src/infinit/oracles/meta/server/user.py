@@ -346,7 +346,9 @@ class Mixin:
   def __facebook_connect(self,
                          fields,
                          short_lived_access_token = None,
-                         long_lived_access_token = None):
+                         long_lived_access_token = None,
+                         preferred_email = None,
+                         source = None):
     if bool(short_lived_access_token) == bool(long_lived_access_token):
       return self.bad_request({
         'reason': 'you must provide short or long lived token'
@@ -362,13 +364,14 @@ class Mixin:
         fields = fields)
       if user is None: # Register the user.
         user = self.facebook_register(
-          facebook_id = facebook_user.facebook_id,
-          email = facebook_user.data.get("email", None),
-          name = facebook_user.data["name"],
+          facebook_user = facebook_user,
+          preferred_email = preferred_email,
+          source = source,
           fields = fields)
         try:
           self._set_avatar(user, facebook_user.avatar)
-        except:
+        except BaseException as e:
+          elle.log.warn('unable to get facebook avatar: %s' % e)
           pass
       return user
     except error.Error as e:
@@ -377,11 +380,12 @@ class Mixin:
   @api('/login', method = 'POST')
   def login(self,
             device_id: uuid.UUID,
-            email = None,
-            password = None,
-            short_lived_access_token = None,
-            long_lived_access_token = None,
-            password_hash = None,
+            email: str = None,
+            password: str = None,
+            short_lived_access_token: str = None,
+            long_lived_access_token: str = None,
+            preferred_email: str = None,
+            password_hash: str = None,
             OS: str = None,
             pick_trophonius: bool = True,
             device_push_token: str = None):
@@ -399,7 +403,6 @@ class Mixin:
       return self.fail(error.DEPRECATED)
     fields = self.__user_self_fields + ['public_key']
     with elle.log.trace("%s: log on device %s" % (email or 'facebook user', device_id)):
-      print(with_email)
       if with_email:
         email = email.strip().lower()
         user = self._login(email = email,
@@ -407,10 +410,10 @@ class Mixin:
                            password = password,
                            password_hash = password_hash)
       elif with_facebook:
-        print(with_facebook)
         user = self.__facebook_connect(
           short_lived_access_token = short_lived_access_token,
           long_lived_access_token = long_lived_access_token,
+          preferred_email = preferred_email,
           fields = fields)
       return self._in_app_login(user = user,
                                 password = password,
@@ -512,6 +515,10 @@ class Mixin:
                         password_hash = None):
     if self.user is not None:
       return self.fail(error.ALREADY_LOGGED_IN)
+    if password is None:
+      return self.bad_request({
+        'reason': 'Password field cannot be null',
+      })
     try:
       user = self.user_register(email = email,
                                 password = password,
@@ -530,64 +537,64 @@ class Mixin:
   # facebook_register is a kind a clone of the register function except some
   # attributes aren't usefull:
   def facebook_register(self,
-                        name,
-                        facebook_id,
+                        facebook_user,
                         fields,
-                        email = None,
+                        preferred_email = None,
                         source = None):
-    with elle.log.trace("facebook registration: %s as %s" % (facebook_id, name)):
-      handle = self.unique_handle(name)
-      user_content = {
-        'connected': False,
-        'features': self._roll_features(True),
-        'register_status': 'ok',
-        'fullname': name,
-        'handle': handle,
-        'facebook_id': facebook_id,
-        'lw_handle': handle.lower(),
-        'swaggers': {},
-        'devices': [],
-        'connected_devices': [],
-        'accounts': {'type': 'facebook', 'id': facebook_id},
-        'creation_time': self.now,
-      }
-      if email is not None:
-        user_content['email'] = email
-      if source is not None:
-        user_content['source'] = source
-      res = self.database.users.find_and_modify(
-        query = {
-          'accounts.id': facebook_id,
-        },
-        update = {
-          '$setOnInsert': user_content,
-        },
-        full_response = True,
-        new = True,
-        upsert = True,
-      )
-      user = res['value']
-      user_id = user['_id']
-      self.__generate_identity(user, password = '')
-      if email:
-        with elle.log.trace("add user to the mailing list"):
-          self.invitation.subscribe(email)
-      self._notify_swaggers(
-        notifier.NEW_SWAGGER,
-        {
-          'user_id' : str(user_id),
-        },
-        user_id = user_id,
-      )
-      # Could be better, but we generate the identity after the register.
-      # By the way, for some reasons, if fields during find_and_modify,
-      # some are ignored (e.g. connected_devices).
-      user = self.__user_fetch({
-        'accounts.id': facebook_id,
+    # XXX: Make that cleaner...
+    email = facebook_user.data.get('email', None)
+    if email is not None:
+      email = email.strip().lower()
+    if preferred_email is not None:
+      preferred_email = preferred_email.lower().strip()
+    # Confirmed by facebook.
+    already_confirmed = preferred_email == email
+    email = preferred_email or email
+    if email is None:
+      return self.bad_request({
+        'reason': 'you must provide an email'
+      })
+    name = facebook_user.data['name']
+    extra_fields = {
+      'facebook': {},
+      'accounts': [{
+        'type': 'facebook',
+        'id': facebook_user.facebook_id
+      }],
+      'facebook_id': facebook_user.facebook_id,
+    }
+    for field in ['first_name', 'last_name', 'gender', 'timezone', 'locale', 'birthday']:
+      if field in facebook_user.data:
+        extra_fields['facebook'][field] = facebook_user.data[field]
+    self.user_register(
+      email = email,
+      password = None,
+      fullname = name,
+      password_hash = None,
+      source = source,
+      email_is_already_confirmed = already_confirmed,
+      extra_fields = extra_fields,
+      activation_code = None)
+    user = self.__user_fetch(
+      {
+        'accounts.id': facebook_user.facebook_id,
         'accounts.type': 'facebook'
-        },
-        fields = fields)
-      return user
+      },
+      fields = fields)
+    return user
+
+  def __email_confirmation_fields(self, email):
+    email = email.strip().lower()
+    import hashlib
+    hash = str(time.time()) + email
+    hash = hash.encode('utf-8')
+    hash = hashlib.md5(hash).hexdigest()
+    return {
+      'email_confirmed': False,
+      'unconfirmed_email_deadline':
+        time.time() + self.unconfirmed_email_leeway,
+      'email_confirmation_hash': str(hash)
+    }
 
   def user_register(self,
                     email,
@@ -595,6 +602,8 @@ class Mixin:
                     fullname,
                     password_hash = None,
                     source = None,
+                    email_is_already_confirmed = False,
+                    extra_fields = None,
                     activation_code = None):
     """Register a new user.
 
@@ -603,12 +612,13 @@ class Mixin:
     fullname -- the user fullname.
     activation_code -- the activation code.
     """
-    email = email.replace(' ', '')
+    email = email.strip().lower()
     _validators = [
       (email, regexp.EmailValidator),
-      (password, regexp.PasswordValidator),
       (fullname, regexp.FullnameValidator),
     ]
+    if password is not None:
+      _validators.append((password, regexp.PasswordValidator))
     for arg, validator in _validators:
       res = validator(arg)
       if res != 0:
@@ -616,10 +626,6 @@ class Mixin:
     fullname = fullname.strip()
     with elle.log.trace("registration: %s as %s" % (email, fullname)):
       email = email.strip().lower()
-      import hashlib
-      hash = str(time.time()) + email
-      hash = hash.encode('utf-8')
-      hash = hashlib.md5(hash).hexdigest()
       handle = self.unique_handle(fullname)
       user_content = {
         'features': self._roll_features(True),
@@ -634,14 +640,18 @@ class Mixin:
         'devices': [],
         'notifications': [],
         'old_notifications': [],
-
         'accounts': [{'type': 'email', 'id': email}],
         'creation_time': self.now,
-        'email_confirmed': False,
-        'unconfirmed_email_deadline':
-          time.time() + self.unconfirmed_email_leeway,
-        'email_confirmation_hash': str(hash),
       }
+      if email_is_already_confirmed:
+        user_content.update({'email_confirmed': True})
+      else:
+        user_content.update(self.__email_confirmation_fields(email))
+      if extra_fields:
+        if 'accounts' in extra_fields:
+          user_content['accounts'] += extra_fields['accounts']
+          del extra_fields['accounts']
+        user_content.update(extra_fields)
       if password_hash is not None:
         user_content.update(
           {
@@ -1926,13 +1936,12 @@ class Mixin:
   @require_logged_in
   def set_avatar(self):
     from bottle import request
-    self._set_avatar(self.user, request.body)
+    from PIL import Image
+    image = Image.open(request.body)
+    self._set_avatar(self.user, image)
 
   def _set_avatar(self, user, image):
-    from PIL import Image
     from io import BytesIO
-    # if isinstance(image, bytes):
-    image = Image.open(image)
     small_image = self._small_avatar(image)
     out = BytesIO()
     small_out = BytesIO()

@@ -321,7 +321,7 @@ struct transaction_to_python_dict
       PyDict_SetItemString(dict, "recipient_fullname",
         PyUnicode_FromString(peer_data->recipient_fullname.c_str()));
       PyDict_SetItemString(dict, "recipient_device_id",
-        PyUnicode_FromString(peer_data->recipient_device_id.c_str()));
+        PyUnicode_FromString(peer_data->recipient_device_id.repr().c_str()));
       PyDict_SetItemString(dict, "recipient_device_name",
         PyUnicode_FromString(peer_data->recipient_device_name.c_str()));
       PyDict_SetItemString(dict, "sender_fullname",
@@ -350,7 +350,7 @@ struct transaction_to_python_dict
       PyDict_SetItemString(dict, "share_link",
         PyUnicode_FromString(link_data->share_link.c_str()));
       PyDict_SetItemString(dict, "sender_device_id",
-        PyUnicode_FromString(link_data->sender_device_id.c_str()));
+        PyUnicode_FromString(link_data->sender_device_id.repr().c_str()));
     }
     return dict;
   }
@@ -470,6 +470,12 @@ public:
       });
   }
 
+  bool
+  wrap_logged_in()
+  {
+    return logged_in().opened();
+  }
+
   void
   wrap_login(std::string const& email, std::string const& password)
   {
@@ -586,7 +592,7 @@ BOOST_PYTHON_MODULE(state)
      boost::python::init<std::string const&,
                          std::string const&,
                          uint16_t>())
-    .def("logged_in", &State::logged_in)
+    .def("logged_in", &PythonState::wrap_logged_in)
     .def("login", &PythonState::wrap_login)
     .def("logout", &State::logout)
     .def("poll", &State::poll)

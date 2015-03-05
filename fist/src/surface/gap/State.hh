@@ -231,12 +231,14 @@ namespace surface
       void
       facebook_connect(
         std::string const& facebook_token,
+        boost::optional<std::string> preferred_email = boost::none,
         boost::optional<std::string const&> device_push_token = {});
 
       void
       facebook_connect(
         std::string const& facebook_token,
         TrophoniusClientPtr trophonius,
+        boost::optional<std::string> preferred_email = boost::none,
         boost::optional<std::string const&> device_push_token = {},
         reactor::DurationOpt timeout = reactor::DurationOpt());
 
@@ -338,9 +340,9 @@ namespace surface
       `--------------*/
       ELLE_ATTRIBUTE_R(std::unique_ptr<reactor::Thread>, polling_thread);
 
-    protected:
+    public:
       void
-      _synchronize();
+      synchronize();
 
     public:
       void
@@ -507,6 +509,9 @@ namespace surface
 
       User const&
       user_from_handle(std::string const& handle) const;
+
+      uint32_t
+      user_id(std::string const& user_meta_id) const;
 
       void
       _user_resync(std::vector<User> const& users);

@@ -243,7 +243,7 @@ namespace common
       if (!elle::os::getenv("INFINIT_HOME", "").empty() || home_dir)
       {
         boost::filesystem::path default_path(
-          elle::os::getenv("INFINIT_HOME", home_dir.get()));
+          elle::os::getenv("INFINIT_HOME", home_dir ? home_dir.get() : ""));
         if (!boost::filesystem::exists(default_path))
         {
           boost::filesystem::create_directories(default_path);

@@ -4,7 +4,7 @@
 
 #include "server.hh"
 
-ELLE_LOG_COMPONENT("surface.gap.State.test");
+ELLE_LOG_COMPONENT("surface.gap.state.test");
 
 class CreateEmptyServer
   : public tests::Server
@@ -34,7 +34,7 @@ ELLE_TEST_SCHEDULED(create_transaction)
     tests::Client sender_client(server, sender, home.path());
     sender_client.login();
     ELLE_LOG("create transaction")
-      sender_client.state.transaction_peer_create(
+      sender_client.state->transaction_peer_create(
         recipient.email(),
         std::vector<std::string>{transfered.path().string()},
         "message");
@@ -100,7 +100,7 @@ ELLE_TEST_SCHEDULED(initialize_transaction)
     tests::Client sender_client(server, sender, home.path());
     sender_client.login();
     ELLE_LOG("create transaction")
-      sender_client.state.transaction_peer_create(
+      sender_client.state->transaction_peer_create(
         recipient.email(),
         std::vector<std::string>{transfered.path().string()},
         "message");

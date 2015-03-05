@@ -13,22 +13,16 @@ namespace tests
                boost::uuids::uuid device_id,
                boost::filesystem::path const& home)
     : _temporary_dir()
-    , surface::gap::State(
+    , _state(
       "http", "127.0.0.1", server.port(),
       fingerprint,
       device_id,
-      elle::os::path::join(this->_temporary_dir.path().string(), "Downloads"),
+      this->_temporary_dir.path().string(),
       !home.empty() ? home.string() : this->_temporary_dir.path().string())
   {
-    this->s3_hostname(aws::URL{"http://",
-          elle::sprintf("localhost:%s", server.port()),
-          "/s3"});
-  }
-
-  void
-  State::synchronize()
-  {
-    this->_synchronize();
+    this->_state.s3_hostname(aws::URL{"http://",
+                             elle::sprintf("localhost:%s", server.port()),
+                             "/s3"});
   }
 }
 

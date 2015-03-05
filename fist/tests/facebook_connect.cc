@@ -14,12 +14,12 @@ ELLE_TEST_SCHEDULED(normal)
   tests::Server server;
   auto connect = [] (tests::State& state)
   {
-    state.attach_callback<surface::gap::State::ConnectionStatus>(
+    state->attach_callback<surface::gap::State::ConnectionStatus>(
       [&] (surface::gap::State::ConnectionStatus const& notif)
       {
         ELLE_TRACE_SCOPE("connection status notification: %s", notif);
       });
-    state.attach_callback<surface::gap::State::UserStatusNotification>(
+    state->attach_callback<surface::gap::State::UserStatusNotification>(
       [&] (surface::gap::State::UserStatusNotification const& notif)
       {
         ELLE_TRACE_SCOPE("user status notification: %s", notif);
@@ -27,25 +27,25 @@ ELLE_TEST_SCHEDULED(normal)
   };
   tests::State recipient(server, random_uuid());
   connect(recipient);
-  recipient.facebook_connect("code");
-  reactor::wait(recipient.logged_in());
-  auto recipient_id = recipient.me().id;
-  recipient.logout();
-  recipient.facebook_connect("code");
-  reactor::wait(recipient.logged_in());
+  recipient->facebook_connect("code");
+  reactor::wait(recipient->logged_in());
+  auto recipient_id = recipient->me().id;
+  recipient->logout();
+  recipient->facebook_connect("code");
+  reactor::wait(recipient->logged_in());
   ELLE_ASSERT_EQ(server.users().size(), 1);
 
   tests::State sender(server, random_uuid());
   connect(sender);
-  sender.facebook_connect("code_2");
-  reactor::wait(sender.logged_in());
-  ELLE_ASSERT_NEQ(sender.passport(), recipient.passport());
-  sender.logout();
-  sender.facebook_connect("code_2");
-  reactor::wait(sender.logged_in());
-  ELLE_ASSERT_NEQ(sender.passport(), recipient.passport());
+  sender->facebook_connect("code_2");
+  reactor::wait(sender->logged_in());
+  ELLE_ASSERT_NEQ(sender->passport(), recipient->passport());
+  sender->logout();
+  sender->facebook_connect("code_2");
+  reactor::wait(sender->logged_in());
+  ELLE_ASSERT_NEQ(sender->passport(), recipient->passport());
   ELLE_ASSERT_EQ(server.users().size(), 2);
-  ELLE_ASSERT_NEQ(sender.me().id, recipient_id);
+  ELLE_ASSERT_NEQ(sender->me().id, recipient_id);
 }
 
 

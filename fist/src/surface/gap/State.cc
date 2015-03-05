@@ -892,6 +892,7 @@ namespace surface
     State::facebook_connect(
       std::string const& facebook_token,
       std::unique_ptr<infinit::oracles::trophonius::Client> trophonius,
+      boost::optional<std::string> preferred_email,
       boost::optional<std::string const&> device_push_token,
       reactor::DurationOpt timeout)
     {
@@ -901,7 +902,9 @@ namespace surface
         this->_login([&] {
           return this->_meta.facebook_connect(facebook_token,
                                               this->device_uuid(),
-                                              device_push_token); },
+                                              preferred_email,
+                                              device_push_token);
+          },
           tropho,
           // Password.
           [&] {
@@ -917,12 +920,12 @@ namespace surface
 
     void
     State::facebook_connect(
-      std::string const& facebook_token,
+      std::string const& token,
+      boost::optional<std::string> preferred_email,
       boost::optional<std::string const&> device_push_token)
     {
-      return this->facebook_connect(facebook_token,
-                                    TrophoniusClientPtr{},
-                                    device_push_token);
+      return this->facebook_connect(
+        token, TrophoniusClientPtr{}, preferred_email, device_push_token);
     }
 
     Self const&
@@ -977,7 +980,7 @@ namespace surface
     }
 
     void
-    State::_synchronize()
+    State::synchronize()
     {
       this->on_connection_changed(
       ConnectionState{true, elle::Error(""), false}, false);

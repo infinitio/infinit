@@ -287,9 +287,9 @@ namespace surface
             surface::gap::PeerTransaction notification(
               this->id(),
               this->status(),
-              this->state().user_indexes().at(peer_data->sender_id),
+              this->state().user_id(peer_data->sender_id),
               peer_data->sender_device_id,
-              this->state().user_indexes().at(peer_data->recipient_id),
+              this->state().user_id(peer_data->recipient_id),
               peer_data->recipient_device_id,
               peer_data->mtime,
               peer_data->files,
@@ -638,9 +638,9 @@ namespace surface
           surface::gap::PeerTransaction notification(
             this->id(),
             status,
-            this->state().user_indexes().at(peer_data->sender_id),
+            this->state().user_id(peer_data->sender_id),
             peer_data->sender_device_id,
-            this->state().user_indexes().at(peer_data->recipient_id),
+            this->state().user_id(peer_data->recipient_id),
             peer_data->recipient_device_id,
             peer_data->mtime,
             peer_data->files,
@@ -723,12 +723,13 @@ namespace surface
             // Merge recipient if the new one is not in your list.
             // XXX: Because we should always receive a new_swagger notification
             // this code is just a security.
+            auto& recipient = this->state().user(peer->recipient_id);
             surface::gap::PeerTransaction notification(
               this->id(),
               this->status(),
-              this->state().user_indexes().at(peer->sender_id),
+              this->state().user_id(peer->sender_id),
               peer->sender_device_id,
-              this->state().user_indexes().at(peer->recipient_id),
+              this->state().user_id(recipient.id),
               peer->recipient_device_id,
               peer->mtime,
               peer->files,

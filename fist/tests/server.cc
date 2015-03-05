@@ -21,7 +21,6 @@
 
 ELLE_LOG_COMPONENT("fist.tests");
 
-
 std::unique_ptr<papier::Identity>
 generate_identity(cryptography::KeyPair const& keypair,
                   std::string const& id,
@@ -1021,20 +1020,20 @@ namespace tests
   {
     this->_session_id = std::move(id);
   }
+}
 
-  std::unique_ptr<papier::Identity>
-  generate_identity(cryptography::KeyPair const& keypair,
-                    std::string const& id,
-                    std::string const& description,
-                    std::string const& password)
-  {
-    std::unique_ptr<papier::Identity> identity(new papier::Identity);
-    if (identity->Create(id, description, keypair) == elle::Status::Error)
-      throw std::runtime_error("unable to create the identity");
-    if (identity->Encrypt(password) == elle::Status::Error)
-      throw std::runtime_error("unable to encrypt the identity");
-    if (identity->Seal(tests::authority) == elle::Status::Error)
-      throw std::runtime_error("unable to seal the identity");
-    return identity;
-  }
+std::unique_ptr<papier::Identity>
+generate_identity(cryptography::KeyPair const& keypair,
+                  std::string const& id,
+                  std::string const& description,
+                  std::string const& password)
+{
+  std::unique_ptr<papier::Identity> identity(new papier::Identity);
+  if (identity->Create(id, description, keypair) == elle::Status::Error)
+    throw std::runtime_error("unable to create the identity");
+  if (identity->Encrypt(password) == elle::Status::Error)
+    throw std::runtime_error("unable to encrypt the identity");
+  if (identity->Seal(tests::authority) == elle::Status::Error)
+    throw std::runtime_error("unable to seal the identity");
+  return identity;
 }

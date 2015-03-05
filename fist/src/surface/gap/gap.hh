@@ -413,6 +413,7 @@ gap_facebook_app_id();
 gap_Status
 gap_facebook_connect(gap_State* state,
                      std::string const& facebook_token,
+                     boost::optional<std::string> preferred_email = boost::none,
                      boost::optional<std::string const&> device_push_token = {});
 
 #endif

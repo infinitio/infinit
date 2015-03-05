@@ -3,18 +3,18 @@
 #include <elle/test.hh>
 
 #include <surface/gap/Exception.hh>
-#include <surface/gap/State.hh>
+#include <surface/gap/state.hh>
 
 #include "server.hh"
 
-ELLE_LOG_COMPONENT("surface.gap.State.test");
+ELLE_LOG_COMPONENT("surface.gap.state.test");
 
 ELLE_TEST_SCHEDULED(links)
 {
   tests::Server server;
   tests::Client sender(server, "sender@infinit.io");
   sender.login();
-  ELLE_ASSERT_EQ(sender.state.transactions().size(), 0);
+  ELLE_ASSERT_EQ(sender.state->transactions().size(), 0);
   elle::filesystem::TemporaryFile transfered("filename");
   {
     boost::filesystem::ofstream f(transfered.path());
@@ -25,18 +25,18 @@ ELLE_TEST_SCHEDULED(links)
       f.write(&c, 1);
     }
   }
-  sender.state.create_link(
+  sender.state->create_link(
     std::vector<std::string>{transfered.path().string().c_str()}, "message");
   // Because our trophonius is a brick, we will not receive the notification.
-  ELLE_ASSERT_EQ(sender.state.transactions().size(), 1);
+  ELLE_ASSERT_EQ(sender.state->transactions().size(), 1);
   // At the stage, status is new.
-  ELLE_ASSERT_EQ(sender.state.transactions().begin()->second->data()->status,
+  ELLE_ASSERT_EQ(sender.state->transactions().begin()->second->data()->status,
                  infinit::oracles::Transaction::Status::created);
 
   while (true)
   {
     // At this stage, status has been set locally.
-    if (sender.state.transactions().begin()->second->data()->status == infinit::oracles::Transaction::Status::finished)
+    if (sender.state->transactions().begin()->second->data()->status == infinit::oracles::Transaction::Status::finished)
       break;
     reactor::yield();
   }
@@ -44,9 +44,9 @@ ELLE_TEST_SCHEDULED(links)
 
   sender.user.links.begin()->second.status =  oracles::Transaction::Status::canceled;
   // Disconnect trophonius.
-  sender.state.synchronize();
+  sender.state->synchronize();
   // At this stage, state should have resynchronization
-  ELLE_ASSERT_EQ(sender.state.transactions().begin()->second->data()->status,
+  ELLE_ASSERT_EQ(sender.state->transactions().begin()->second->data()->status,
                  oracles::Transaction::Status::canceled);
 }
 
@@ -77,16 +77,16 @@ ELLE_TEST_SCHEDULED(links_another_device)
   sender.user.links[t.id] = t;
 
   // Disconnect trophonius.
-  sender.state.synchronize();
+  sender.state->synchronize();
 
-  ELLE_ASSERT_EQ(sender.state.transactions().begin()->second->data()->status,
+  ELLE_ASSERT_EQ(sender.state->transactions().begin()->second->data()->status,
                  oracles::Transaction::Status::initialized);
 
   sender.user.links[t.id].status = infinit::oracles::Transaction::Status::finished;
 
-  sender.state.synchronize();
+  sender.state->synchronize();
 
-  ELLE_ASSERT_EQ(sender.state.transactions().begin()->second->data()->status,
+  ELLE_ASSERT_EQ(sender.state->transactions().begin()->second->data()->status,
                  oracles::Transaction::Status::finished);
 }
 
@@ -102,33 +102,33 @@ ELLE_TEST_SCHEDULED(swaggers)
 
   alice.login();
   bob.login();
-  ELLE_ASSERT_EQ(bob.state.swaggers().size(), 1);
+  ELLE_ASSERT_EQ(bob.state->swaggers().size(), 1);
 
   eve.user.swaggers.insert(&bob.user);
   bob.user.swaggers.insert(&eve.user);
 
   bool step0 = true; // Alice was logged in before (no notification).
   bool step1 = false;
-  bob.state.attach_callback<surface::gap::State::UserStatusNotification>([&] (surface::gap::State::UserStatusNotification notif)
+  bob.state->attach_callback<surface::gap::State::UserStatusNotification>([&] (surface::gap::State::UserStatusNotification notif)
   {
     step0 = false;
-    auto it = bob.state.users().find(notif.id);
+    auto it = bob.state->users().find(notif.id);
     if (it->second.id == boost::lexical_cast<std::string>(eve.user.id()))
     {
       step1 = notif.status;
     }
   });
-  bob.state.synchronize();
-  bob.state.poll();
+  bob.state->synchronize();
+  bob.state->poll();
   ELLE_ASSERT(step0); // Nothing should have changed.
   ELLE_ASSERT(!step1); // Eve is a swagger but not online.
-  ELLE_ASSERT_EQ(bob.state.swaggers().size(), 2);
+  ELLE_ASSERT_EQ(bob.state->swaggers().size(), 2);
   eve.login();
-  bob.state.synchronize();
-  bob.state.poll();
+  bob.state->synchronize();
+  bob.state->poll();
   ELLE_ASSERT(!step0); // It should be valid now.
   ELLE_ASSERT(step1); // It should be valid now.
-  ELLE_ASSERT_EQ(bob.state.swaggers().size(), 2);
+  ELLE_ASSERT_EQ(bob.state->swaggers().size(), 2);
 
   // Disclaimer: It's really hard to play with multi device on a single device
   // when playing with real states. I'll use some random device ids to check
@@ -138,33 +138,33 @@ ELLE_TEST_SCHEDULED(swaggers)
   bob.user.connected_devices.insert(random_uuid());
 
   int step2 = 0;
-  alice.state.attach_callback<surface::gap::State::UserStatusNotification>([&] (surface::gap::State::UserStatusNotification notif)
+  alice.state->attach_callback<surface::gap::State::UserStatusNotification>([&] (surface::gap::State::UserStatusNotification notif)
   {
-    auto it = alice.state.users().find(notif.id);
+    auto it = alice.state->users().find(notif.id);
     if (it->second.id == boost::lexical_cast<std::string>(bob.user.id()))
     {
       step2 += notif.status;
     }
   });
-  alice.state.synchronize();
-  alice.state.poll();
+  alice.state->synchronize();
+  alice.state->poll();
   ELLE_ASSERT_EQ(step2, 2);
 
   bob.user.connected_devices.clear();
   bob.logout();
 
   bool step3 = false;
-  alice.state.attach_callback<surface::gap::State::UserStatusNotification>([&] (surface::gap::State::UserStatusNotification notif)
+  alice.state->attach_callback<surface::gap::State::UserStatusNotification>([&] (surface::gap::State::UserStatusNotification notif)
   {
-    auto it = alice.state.users().find(notif.id);
+    auto it = alice.state->users().find(notif.id);
     if (it->second.id == boost::lexical_cast<std::string>(bob.user.id()))
     {
       step3 = !notif.status;
     }
   });
 
-  alice.state.synchronize();
-  alice.state.poll();
+  alice.state->synchronize();
+  alice.state->poll();
   ELLE_ASSERT(step3);
 }
 

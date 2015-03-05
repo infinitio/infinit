@@ -208,6 +208,12 @@ namespace surface
       }
     }
 
+    uint32_t
+    State::user_id(std::string const& user_meta_id) const
+    {
+      return this->user_indexes().at(this->user(user_meta_id).id);
+    }
+
     /// Return 2 vectors:
     /// - One containing the newly connected devices.
     /// - One containing the disconnected devices.

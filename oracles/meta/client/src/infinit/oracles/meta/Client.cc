@@ -474,8 +474,9 @@ namespace infinit
 
       LoginResponse
       Client::facebook_connect(
-        std::string const& long_lived_access_token,
+        std::string const& facebook_token,
         boost::uuids::uuid const& device_uuid,
+        boost::optional<std::string> preferred_email,
         boost::optional<std::string const&> device_push_token)
       {
         ELLE_TRACE_SCOPE("%s: login using facebook on device %s",
@@ -485,7 +486,13 @@ namespace infinit
           {
             parameters.serialize(
               "long_lived_access_token",
-              const_cast<std::string&>(long_lived_access_token));
+              const_cast<std::string&>(facebook_token));
+            if (preferred_email)
+            {
+              std::string preferred_email_str = preferred_email.get();
+              parameters.serialize(
+                "preferred_email", preferred_email_str);
+            }
           }, device_uuid, device_push_token);
       }
 

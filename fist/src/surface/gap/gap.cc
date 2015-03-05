@@ -974,9 +974,9 @@ gap_peer_transaction_by_id(gap_State* state,
       res = surface::gap::PeerTransaction(
         id,
         status,
-        state.user_indexes().at(peer_data->sender_id),
+        state.user_id(peer_data->sender_id),
         peer_data->sender_device_id,
-        state.user_indexes().at(peer_data->recipient_id),
+        state.user_id(peer_data->recipient_id),
         peer_data->recipient_device_id,
         peer_data->mtime,
         peer_data->files,
@@ -1201,9 +1201,9 @@ gap_peer_transactions(gap_State* state,
           surface::gap::PeerTransaction txn(
             it->first,
             status,
-            state.user_indexes().at(peer_data->sender_id),
+            state.user_id(peer_data->sender_id),
             peer_data->sender_device_id,
-            state.user_indexes().at(peer_data->recipient_id),
+            state.user_id(peer_data->recipient_id),
             peer_data->recipient_device_id,
             peer_data->mtime,
             peer_data->files,
@@ -1666,6 +1666,7 @@ gap_facebook_app_id()
 gap_Status
 gap_facebook_connect(gap_State* state,
                      std::string const& facebook_token,
+                     boost::optional<std::string> preferred_email,
                      boost::optional<std::string const&> device_push_token)
 {
   return run<gap_Status>(
@@ -1673,7 +1674,10 @@ gap_facebook_connect(gap_State* state,
     "facebook connect",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      state.facebook_connect(facebook_token);
+      state.facebook_connect(
+        facebook_token,
+        preferred_email,
+        device_push_token);
       return gap_ok;
     });
 }

@@ -400,8 +400,9 @@ namespace infinit
 
         LoginResponse
         facebook_connect(
-          std::string const& token,
+          std::string const& facebok_token,
           boost::uuids::uuid const& device_uuid,
+          boost::optional<std::string> preferred_email = boost::none,
           boost::optional<std::string const&> device_push_token = {});
 
         void

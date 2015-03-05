@@ -3,11 +3,11 @@
 #include <elle/test.hh>
 
 #include <surface/gap/Exception.hh>
-#include <surface/gap/State.hh>
+#include <surface/gap/state.hh>
 
 #include "server.hh"
 
-ELLE_LOG_COMPONENT("surface.gap.State.test");
+ELLE_LOG_COMPONENT("surface.gap.state->test");
 
 // Cloud buffered peer transaction.
 ELLE_TEST_SCHEDULED(cloud_buffer)
@@ -30,8 +30,8 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
       f.write(&c, 1);
     }
   }
-  state.login(email, password);
-  auto& state_transaction = state.transaction_peer_create(
+  state->login(email, password);
+  auto& state_transaction = state->transaction_peer_create(
     recipient_email,
     std::vector<std::string>{transfered.path().string().c_str()},
     "message");
