@@ -368,7 +368,8 @@ class Mixin:
           fields = fields)
         try:
           self._set_avatar(user, facebook_user.avatar)
-        except:
+        except BaseException as e:
+          elle.log.warn('unable to get facebook avatar: %s' % e)
           pass
       return user
     except error.Error as e:
@@ -1926,13 +1927,12 @@ class Mixin:
   @require_logged_in
   def set_avatar(self):
     from bottle import request
-    self._set_avatar(self.user, request.body)
+    from PIL import Image
+    image = Image.open(request.body)
+    self._set_avatar(self.user, image)
 
   def _set_avatar(self, user, image):
-    from PIL import Image
     from io import BytesIO
-    # if isinstance(image, bytes):
-    image = Image.open(image)
     small_image = self._small_avatar(image)
     out = BytesIO()
     small_out = BytesIO()
