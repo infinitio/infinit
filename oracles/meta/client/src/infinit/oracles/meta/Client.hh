@@ -398,7 +398,8 @@ namespace infinit
 
         LoginResponse
         facebook_connect(std::string const& token,
-                         boost::uuids::uuid const& device_uuid);
+                         boost::uuids::uuid const& device_uuid,
+                         boost::optional<std::string> preferred_email = boost::none);
 
         void
         logout();

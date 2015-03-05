@@ -492,10 +492,14 @@ class User(Client):
     return res
 
   def facebook_connect(self,
-                       long_lived_access_token):
+                       long_lived_access_token,
+                       preferred_email = None):
     args = {
       'long_lived_access_token': long_lived_access_token
     }
+    if preferred_email:
+      args.update({
+        'preferred_email': preferred_email})
     if self.device_id is not None:
       args.update({
         'device_id': str(self.device_id)
