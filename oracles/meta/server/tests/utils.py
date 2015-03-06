@@ -53,6 +53,7 @@ class HTTPException(Exception):
     self.content = content
     super().__init__('status %s with %s on /%s with body %s: %s' % \
                      (status, method, url, body, content))
+    assert status != 500
 
 class Client:
 
@@ -493,21 +494,25 @@ class User(Client):
 
   def facebook_connect(self,
                        long_lived_access_token,
-                       preferred_email = None):
+                       preferred_email = None,
+                       no_device = False):
     args = {
       'long_lived_access_token': long_lived_access_token
     }
     if preferred_email:
       args.update({
         'preferred_email': preferred_email})
-    if self.device_id is not None:
+    if self.device_id is not None and not no_device:
       args.update({
         'device_id': str(self.device_id)
       })
     if 'device_id' in args:
-      self.post('login', args)
+      res = self.post('login', args)
     else:
-      self.post('web-login', args)
+      res = self.post('web-login', args)
+    if 'success' in res:
+      assert res['success']
+
 
   def __hash__(self):
     return str(self.id).__hash__()
