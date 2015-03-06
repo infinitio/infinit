@@ -892,7 +892,7 @@ namespace infinit
 
       CreatePeerTransactionResponse
       Client::create_transaction(
-        std::string const& recipient_id_or_email,
+        std::string const& recipient_identifier,
         std::list<std::string> const& files,
         uint64_t count,
         uint64_t size,
@@ -906,7 +906,7 @@ namespace infinit
         ELLE_TRACE_SCOPE(
           "%s: create peer transaction to %s%s",
           *this,
-          recipient_id_or_email,
+          recipient_identifier,
           recipient_device_id
           ? elle::sprintf(" on device %s", recipient_device_id.get()) : "");
         std::string const url = transaction_id ?
@@ -920,7 +920,7 @@ namespace infinit
           {
             elle::serialization::json::SerializerOut query(r, false);
             query.serialize("recipient_identifier",
-                            const_cast<std::string&>(recipient_id_or_email));
+                            const_cast<std::string&>(recipient_identifier));
             query.serialize("files",
                             const_cast<std::list<std::string>&>(files));
             int64_t count_integral = static_cast<int64_t>(count);
@@ -948,7 +948,7 @@ namespace infinit
         return created_transaction_id;
       }
       std::string
-      Client::create_transaction(std::string const& recipient_id_or_email,
+      Client::create_transaction(std::string const& recipient_identifier,
                                  std::list<std::string> const& files,
                                  uint64_t count,
                                  std::string const& message) const
@@ -956,7 +956,7 @@ namespace infinit
         ELLE_TRACE_SCOPE(
           "%s: create barebones peer transaction to %s",
           *this,
-          recipient_id_or_email);
+          recipient_identifier);
         std::string const url = "/transactions";
         auto method = Method::POST;
         auto request = this->_request(
@@ -965,8 +965,8 @@ namespace infinit
           [&] (reactor::http::Request& r)
           {
             elle::serialization::json::SerializerOut query(r, false);
-            query.serialize("id_or_email",
-                            const_cast<std::string&>(recipient_id_or_email));
+            query.serialize("recipient_identifier",
+                            const_cast<std::string&>(recipient_identifier));
             query.serialize("files",
                             const_cast<std::list<std::string>&>(files));
             int64_t count_integral = static_cast<int64_t>(count);
