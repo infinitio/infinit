@@ -361,7 +361,7 @@ namespace surface
     State::login(
       std::string const& email,
       std::string const& password,
-      boost::optional<std::string const&> device_push_token)
+      boost::optional<std::string> device_push_token)
     {
       this->login(email, password, reactor::DurationOpt(), device_push_token);
     }
@@ -371,7 +371,7 @@ namespace surface
       std::string const& email,
       std::string const& password,
       reactor::DurationOpt timeout,
-      boost::optional<std::string const&> device_push_token)
+      boost::optional<std::string> device_push_token)
     {
       this->login(
         email, password,
@@ -436,7 +436,7 @@ namespace surface
       std::string const& email,
       std::string const& password,
       TrophoniusClientPtr trophonius,
-      boost::optional<std::string const&> device_push_token,
+      boost::optional<std::string> device_push_token,
       reactor::DurationOpt timeout)
     {
       auto tropho = elle::utility::move_on_copy(std::move(trophonius));
@@ -454,7 +454,7 @@ namespace surface
       std::string const& email,
       std::string const& password,
       elle::utility::Move<TrophoniusClientPtr> trophonius,
-      boost::optional<std::string const&> device_push_token)
+      boost::optional<std::string> device_push_token)
     {
       ELLE_TRACE_SCOPE("%s: attempt to login as %s", *this, email);
       this->_email = email;
@@ -845,7 +845,7 @@ namespace surface
     State::register_(std::string const& fullname,
                      std::string const& email,
                      std::string const& password,
-                     boost::optional<std::string const&> device_push_token)
+                     boost::optional<std::string> device_push_token)
     {
       // !WARNING! Do not log the password.
       ELLE_TRACE_SCOPE("%s: register as %s: email %s",
@@ -893,7 +893,7 @@ namespace surface
       std::string const& facebook_token,
       std::unique_ptr<infinit::oracles::trophonius::Client> trophonius,
       boost::optional<std::string> preferred_email,
-      boost::optional<std::string const&> device_push_token,
+      boost::optional<std::string> device_push_token,
       reactor::DurationOpt timeout)
     {
       this->_login_with_timeout(
@@ -922,7 +922,7 @@ namespace surface
     State::facebook_connect(
       std::string const& token,
       boost::optional<std::string> preferred_email,
-      boost::optional<std::string const&> device_push_token)
+      boost::optional<std::string> device_push_token)
     {
       return this->facebook_connect(
         token, TrophoniusClientPtr{}, preferred_email, device_push_token);
