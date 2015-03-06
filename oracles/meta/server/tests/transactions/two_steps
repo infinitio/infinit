@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+
+from infinit.oracles.meta.server.transaction_status import GHOST_UPLOADED
+
+from uuid import uuid4, UUID
+
+data = {
+  'recipient_identifier': 'dimrok@infinit.io',
+  'message': 'foo',
+  'files': ['bite.txt'],
+  'files_count': 1
+}
+extended_data = data.copy()
+
+with Meta() as meta:
+  bob = User(meta, "bob@infinit.io")
+  bob.login()
+  transaction_count = 3
+  for _ in range(0, transaction_count):
+    extended_data.update({
+      'is_directory': False,
+      'total_size': 3289412,
+      'device_id': str(bob.device_id),
+    })
+    res = bob.post('transactions', data)
+    assert meta.database.users.count() == 2
+    bob.put('transaction/%s' % res['created_transaction_id'],
+            extended_data)
+    bob.get('transaction/%s/cloud_buffer' % res['created_transaction_id'])
+    bob.post('transaction/update',
+             {
+               'transaction_id': res['created_transaction_id'],
+               'status': GHOST_UPLOADED,
+             })
+
+  alice = User(meta, "dimrok@infinit.io")
+  alice.login()
+  assert len(alice.transactions) == transaction_count
+
+with Meta() as meta:
+  bob = User(meta, "bob@infinit.io")
+  bob.login()
+  transaction_count = 3
+  for _ in range(0, transaction_count):
+    extended_data.update({
+      'is_directory': False,
+      'total_size': 3289412,
+      'device_id': str(bob.device_id),
+    })
+    res = bob.post('transactions', data)
+    assert meta.database.users.count() == 2
+    bob.put('transaction/%s' % res['created_transaction_id'],
+            extended_data)
+    bob.get('transaction/%s/cloud_buffer' % res['created_transaction_id'])
+    bob.post('transaction/update',
+             {
+               'transaction_id': res['created_transaction_id'],
+               'status': GHOST_UPLOADED,
+             })
+
+  alice = User(meta, "dimrok@infinit.io")
+  alice.login()
+  assert len(alice.transactions) == transaction_count
