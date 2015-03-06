@@ -443,7 +443,7 @@ class Mixin:
       })
     fields = self.__user_self_fields + ['unconfirmed_email_deadline']
     if with_email:
-      email = email.replace(' ', '')
+      email = email.lower().strip()
       with elle.log.trace("%s: web login" % email):
         user = self._login(email, password = password, fields = fields)
     elif with_facebook:
