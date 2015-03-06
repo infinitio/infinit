@@ -5,6 +5,7 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include <elle/Buffer.hh>
+#include <elle/UUID.hh>
 #include <elle/log.hh>
 #include <elle/os/path.hh>
 #include <elle/finally.hh>
@@ -748,11 +749,11 @@ Server::_create_empty()
         "\"_id\": \"%s\","
         "\"sender_id\": \"%s\","
         "\"sender_fullname\": \"foo\","
-        "\"sender_device_id\": \"foo\","
+        "\"sender_device_id\": \"%s\","
         "\"download_link\": \"foo\","
         "\"recipient_id\": \"%s\","
         "\"recipient_fullname\": \"foo\","
-        "\"recipient_device_id\": \"foo\","
+        "\"recipient_device_id\": \"%s\","
         "\"recipient_device_name\": \"foo\","
 
         "\"status\": 6,"
@@ -764,8 +765,8 @@ Server::_create_empty()
         "\"ctime\": 0,"
         "\"mtime\": 0,"
         "\"is_directory\": false"
-        "}"
-        , id, user.id(), user.id());
+        "}",
+        id, user.id(), elle::UUID::random(), user.id(), elle::UUID::random());
     });
   this->register_route(
     elle::sprintf("/users/%s", id),
@@ -808,7 +809,7 @@ Server::_transaction_put(Server::Headers const&,
   input.serialize("id_or_email", recipient_email);
   ELLE_DEBUG("%s: recipient: %s", *this, recipient_email);
   auto it = this->_transactions.find(id);
-  (*it)->status(infinit::oracles::Transaction::Status::created);
+  (*it)->status(infinit::oracles::Transaction::Status::initialized);
   bool ghost;
   auto& users_by_email = this->_users.get<1>();
   auto recipient = users_by_email.find(recipient_email);

@@ -4,9 +4,7 @@
 # include <boost/filesystem.hpp>
 # include <boost/filesystem/fstream.hpp>
 
-# include <surface/gap/State.hh>
 # include <surface/gap/TransactionMachine.hh>
-# include <infinit/oracles/Transaction.hh>
 
 namespace surface
 {
@@ -51,6 +49,7 @@ namespace surface
       reject();
 
     private:
+      virtual
       void
       _wait_for_decision();
 

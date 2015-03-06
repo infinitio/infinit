@@ -84,7 +84,7 @@ class Mixin:
       'handle',
       'public_key',
       'register_status',
-      'ghost_code',
+#      'ghost_code',
     ]
     if self.admin:
       res += [
@@ -736,6 +736,7 @@ class Mixin:
   def __register_ghost(self,
                        extra_fields):
     features = self._roll_features(True)
+    ghost_code = self.generate_random_sequence()
     request = {
       'register_status': 'ghost',
       'notifications': [],
@@ -744,11 +745,22 @@ class Mixin:
       'swaggers': {},
       'features': features,
       # Ghost code is used for merging mechanism.
-      'ghost_code': self.generate_random_sequence(),
+      'ghost_code': ghost_code,
       'ghost_code_expiration': self.now + datetime.timedelta(days=14),
     }
     request.update(extra_fields)
-    return self._register(**request)
+    user_id = self._register(**request)
+    self.database.users.update(
+      {
+        "_id": user_id
+      },
+      {
+        '$set': {
+          'shorten_ghost_profile_url': self.shorten(
+            self.__ghost_profile_url({'_id': user_id, 'ghost_code': ghost_code}))
+        }
+      })
+    return user_id
 
   def __ghost_profile_url(self, ghost):
     """
@@ -1292,6 +1304,7 @@ class Mixin:
           'small_avatar': '',
           'ghost_code': '',
           'ghost_code_expiration': '',
+          'shorten_ghost_profile_url': '',
         }
       },
       new = True)

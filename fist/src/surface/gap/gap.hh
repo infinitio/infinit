@@ -189,7 +189,7 @@ char const*
 gap_transaction_sender_fullname(gap_State*,
                                 uint32_t);
 
-char const*
+std::string
 gap_transaction_sender_device_id(gap_State*,
                                  uint32_t);
 
@@ -201,7 +201,7 @@ char const*
 gap_transaction_recipient_fullname(gap_State*,
                                    uint32_t);
 
-char const*
+std::string
 gap_transaction_recipient_device_id(gap_State*,
                                     uint32_t);
 

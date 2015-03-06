@@ -11,25 +11,25 @@ namespace infinit
     `-------------*/
 
     Transaction::Transaction(std::string const& sender_id,
-                             std::string const& sender_device_id):
-      id(),
-      sender_id(sender_id),
-      sender_device_id(sender_device_id),
-      status(Status::created),
-      ctime(),
-      mtime(),
-      is_ghost()
+                             elle::UUID sender_device_id)
+      : id()
+      , sender_id(sender_id)
+      , sender_device_id(sender_device_id)
+      , status(Status::created)
+      , ctime()
+      , mtime()
+      , is_ghost()
     {}
 
-    Transaction::Transaction():
-      id(),
-      sender_id(),
-      sender_device_id(),
-      status(Status::created),
-      ctime(),
-      mtime(),
-      is_ghost()
-      {}
+    Transaction::Transaction()
+      : id()
+      , sender_id()
+      , sender_device_id()
+      , status(Status::created)
+      , ctime()
+      , mtime()
+      , is_ghost()
+    {}
 
     /*-----------.
     | Properties |

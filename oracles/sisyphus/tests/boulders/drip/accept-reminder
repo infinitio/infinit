@@ -63,8 +63,7 @@ with mongobox.MongoBox() as mongo:
     assert not emailer.emails
     # Check timer begins after initialization
     forward(reminder.delay_second_reminder * 2)
-    meta._transaction_update(tid, statuses['initialized'],
-                             'device', None, sender)
+    transaction_initialize(meta, tid, sender, recipient['email'])
     sisy.boulders_run()
     assert not emailer.emails
     # Check first mail is sent

@@ -57,9 +57,8 @@ class Mixin:
   @api('/devices')
   @require_logged_in
   def devices(self):
-    """Return all user's device ids.
-    """
-    return self.success({'devices': list(map(lambda x: x['id'], self.user.get('devices', [])))})
+    """All user's devices. """
+    return {'devices': self.user.get('devices', [])}
 
   @api('/device/<id>/view')
   @require_logged_in

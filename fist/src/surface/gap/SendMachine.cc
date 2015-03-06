@@ -20,6 +20,9 @@
 #include <common/common.hh>
 #include <papier/Identity.hh>
 #include <station/Station.hh>
+#include <surface/gap/Exception.hh>
+#include <surface/gap/State.hh>
+#include <surface/gap/Transaction.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.SendMachine");
 
@@ -342,17 +345,19 @@ namespace surface
                 return path.stem().string() + " (1)" + path.extension().string();
               };
             ELLE_TRACE("%s: begin archiving thread", *this);
+            auto total_size = this->_total_size;
+            auto max_compress_size =
+              this->transaction().state().configuration().max_compress_size;
+            if (max_compress_size == 0)
+              max_compress_size = 10*1000*1000;
             reactor::background(
-              [&]
+              [total_size, max_compress_size,
+               sources, archive_path, renaming_callback]
               {
-                int64_t max_compress_size =
-                  this->transaction().state().configuration().max_compress_size;
-                if (max_compress_size == 0)
-                  max_compress_size = 10*1000*1000;
-                bool compress = this->_total_size <= max_compress_size;
                 elle::archive::archive(
-                  compress ? elle::archive::Format::zip
-                           : elle::archive::Format::zip_uncompressed,
+                  total_size <= max_compress_size
+                  ? elle::archive::Format::zip
+                  : elle::archive::Format::zip_uncompressed,
                   sources, archive_path, renaming_callback);
               });
             ELLE_TRACE("%s: join archiving thread", *this)

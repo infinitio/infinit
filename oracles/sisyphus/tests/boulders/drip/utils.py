@@ -232,21 +232,27 @@ def transaction_create(meta, sender, recipient_identifier, files = ['foobar'],
                        initialize = True, size = 42):
   tid = meta.transaction_create_empty()
   tid = tid['created_transaction_id']
-  transaction_details = meta.transaction_create(
+  if initialize:
+    tid2 = transaction_initialize(
+      meta, tid, sender, recipient_identifier, files, size)
+    assertEq(tid, tid2)
+  return tid
+
+def transaction_initialize(meta,
+                           tid,
+                           sender,
+                           recipient,
+                           files = ['foobar'],
+                           size = 42):
+  return meta.transaction_create(
     sender = sender,
     files = files,
-    recipient_identifier = recipient_identifier,
+    recipient_identifier = recipient,
     files_count = 1,
     total_size = size,
     is_directory = False,
     device_id = 'device',
-    transaction_id = tid)
-  tid2 = transaction_details['created_transaction_id']
-  assertEq(tid, tid2)
-  if initialize:
-    meta._transaction_update(tid, statuses['initialized'],
-                             'device', None, sender)
-  return tid
+    transaction_id = tid)['created_transaction_id']
 
 def check_mail(mails, user, template):
   assertEq(len(mails), 1)

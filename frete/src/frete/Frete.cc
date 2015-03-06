@@ -158,7 +158,8 @@ namespace frete
          this->_snapshot_destination.parent_path() / "archive";
         boost::filesystem::create_directories(archive_path);
         boost::filesystem::path archive_full_path = archive_path / archive_name;
-        reactor::background([&]
+        reactor::background(
+          [path, archive_full_path]
           {
             std::vector<boost::filesystem::path> pathes;
             pathes.push_back(path);

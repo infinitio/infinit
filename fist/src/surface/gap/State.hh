@@ -489,7 +489,7 @@ namespace surface
 
       bool
       device_status(std::string const& user_id,
-                    std::string const& device_id) const;
+                    elle::UUID const& device_id) const;
 
       ///- Swaggers --------------------------------------------------------------
       UserIndexes
@@ -611,9 +611,15 @@ namespace surface
       | Peer Transactions |
       `------------------*/
 
-
+      // Create peer transaction.
       Transaction&
       transaction_peer_create(std::string const& peer_id,
+                              std::vector<std::string> files,
+                              std::string const& message);
+      // Create peer transaction to a specific device.
+      Transaction&
+      transaction_peer_create(std::string const& peer_id,
+                              elle::UUID const& peer_device_id,
                               std::vector<std::string> files,
                               std::string const& message);
       /// Deprecated, see transaction_peer_create.
@@ -627,6 +633,10 @@ namespace surface
                        reactor::Duration const& transfer_duration = 5_sec);
 
     private:
+      template <typename ... T>
+      Transaction&
+      _transaction_peer_create(std::string const& peer_id, T&& ... args);
+
       void
       _transactions_init();
 

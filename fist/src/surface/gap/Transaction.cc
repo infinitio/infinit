@@ -151,6 +151,16 @@ namespace surface
                              std::string const& peer_id,
                              std::vector<std::string> files,
                              std::string const& message)
+      : Transaction(state, id, peer_id, elle::UUID(), std::move(files), message)
+    {}
+
+    // Construct to send files to a specific device.
+    Transaction::Transaction(State& state,
+                             uint32_t id,
+                             std::string const& peer_id,
+                             elle::UUID const& peer_device_id,
+                             std::vector<std::string> files,
+                             std::string const& message)
       // FIXME: ensure better uniqueness.
       : _snapshots_directory(
         boost::filesystem::path(
@@ -174,13 +184,18 @@ namespace surface
         state.me().fullname,
         state.device().id,
         peer_id);
+      data->recipient_device_id = peer_device_id;
       this->_data = data;
       this->_machine.reset(
         new PeerSendMachine(*this, this->_id, peer_id,
                             this->_files.get(), message, data));
-      ELLE_TRACE_SCOPE("%s: construct to send %s files",
-                       *this, this->_files.get().size());
-
+      ELLE_TRACE_SCOPE(\
+        "%s: construct to send %s files to %s%s",
+        *this,
+        this->_files.get().size(),
+        peer_id,
+        peer_device_id.is_nil()
+        ? "" : elle::sprintf(" on device %s", peer_device_id));
       this->_snapshot_save();
     }
 
@@ -317,7 +332,6 @@ namespace surface
           std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
             this->_data))
       {
-        auto recipient_device = peer_data->recipient_device_id;
         auto recipient = peer_data->recipient_id;
         if (me == sender)
         {
@@ -729,7 +743,7 @@ namespace surface
     void
     Transaction::notify_user_connection_status(std::string const& user_id,
                                                bool user_status,
-                                               std::string const& device_id,
+                                               elle::UUID const& device_id,
                                                bool device_status)
     {
       if (this->_machine == nullptr)
