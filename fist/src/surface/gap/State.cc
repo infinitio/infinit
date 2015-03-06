@@ -477,7 +477,7 @@ namespace surface
                      lower_email.begin(),
                      ::tolower);
       auto hashed_password = infinit::oracles::meta::old_password_hash(
-              lower_email, password);
+        lower_email, password);
       infinit::metrics::Reporter::metric_sender_id(lower_email);
       this->_login(
         [&] {
@@ -709,6 +709,7 @@ namespace surface
       RETHROW(state::VersionRejected)
       RETHROW(state::AlreadyLoggedIn)
       RETHROW(state::MissingEmail)
+      RETHROW(state::EmailAlreadyRegistered)
       #undef RETHROW
       catch(elle::Exception const& e)
       { // Assume temporary failure and retry
