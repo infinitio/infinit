@@ -581,7 +581,8 @@ namespace surface
           auto passport_path =
             common::infinit::passport_path(this->home(), this->me().id);
           this->_passport.reset(new papier::Passport());
-          if (this->_passport->Restore(this->_device->passport) == elle::Status::Error)
+          if (this->_passport->Restore(this->_device->passport.get()) ==
+              elle::Status::Error)
             throw Exception(gap_wrong_passport, "Cannot load the passport");
           this->_passport->store(elle::io::Path(passport_path.string()));
 

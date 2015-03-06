@@ -172,7 +172,9 @@ namespace infinit
         Device(elle::serialization::SerializerIn& s);
         elle::UUID id;
         std::string name;
-        std::string passport;
+        boost::optional<std::string> os;
+        boost::optional<std::string> passport;
+        boost::optional<boost::posix_time::ptime> last_sync;
         void
         serialize(elle::serialization::Serializer& s);
         virtual
