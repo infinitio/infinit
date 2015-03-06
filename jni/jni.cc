@@ -120,6 +120,8 @@ static jobject to_user(JNIEnv* env, surface::gap::User const& u)
   if (!u_class)
   {
     u_class = env->FindClass("io/infinit/User");
+    if (!u_class)
+      return nullptr;
     u_class = (jclass)env->NewGlobalRef(u_class);
     u_init = env->GetMethodID(u_class, "<init>", "()V");
   }
@@ -510,9 +512,13 @@ extern "C" void Java_io_infinit_State_gapFinalize(
 
 extern "C" jlong Java_io_infinit_State_gapLogin(
   JNIEnv* env, jobject thiz, jlong handle,
-  jstring mail, jstring hash_password)
+  jstring mail, jstring hash_password, jstring device_push_token)
 {
-  gap_Status s = gap_login((gap_State*)handle, to_string(env, mail), to_string(env, hash_password));
+  std::string token = to_string(env, device_push_token);
+  boost::optional<std::string const&> token_opt;
+  if (!token.empty())
+    token_opt = token;
+  gap_Status s = gap_login((gap_State*)handle, to_string(env, mail), to_string(env, hash_password), token_opt);
   return s;
 }
 
