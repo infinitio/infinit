@@ -867,7 +867,7 @@ namespace infinit
           [&] (reactor::http::Request& r)
           {
             elle::serialization::json::SerializerOut query(r, false);
-            query.serialize("id_or_email",
+            query.serialize("recipient_identifier",
                             const_cast<std::string&>(recipient_id_or_email));
             query.serialize("files",
                             const_cast<std::list<std::string>&>(files));
