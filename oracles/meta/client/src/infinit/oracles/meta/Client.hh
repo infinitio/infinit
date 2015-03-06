@@ -68,7 +68,8 @@ namespace infinit
         std::string register_status;
         Devices connected_devices;
         std::string public_key;
-
+        boost::optional<std::string> ghost_code;
+        boost::optional<std::string> ghost_profile_url;
         User() = default;
 
         User(std::string const& id,
@@ -77,6 +78,22 @@ namespace infinit
              std::string const& register_status,
              Devices const& connected_devices = {},
              std::string const& public_key = "");
+
+        User&
+        operator =(User const& user)
+        {
+          this->id = user.id;
+          this->fullname = user.fullname;
+          this->handle = user.handle;
+          this->register_status = user.register_status;
+          this->connected_devices = user.connected_devices;
+          this->public_key = user.public_key;
+          if (user.ghost_code)
+            this->ghost_code = user.ghost_code;
+          if (user.ghost_profile_url)
+            this->ghost_profile_url = user.ghost_profile_url;
+          return *this;
+        }
 
         bool
         online() const
@@ -124,7 +141,7 @@ namespace infinit
         bool
         deleted() const
         {
-          if (register_status == "deleted")
+          if (register_status == "deleted" || register_status == "merged")
             return true;
           else
             return false;
@@ -261,6 +278,10 @@ namespace infinit
       public:
         UpdatePeerTransactionResponse() = default;
         ELLE_ATTRIBUTE_R(boost::optional<aws::Credentials>, aws_credentials);
+        // The ghost invitation code.
+        ELLE_ATTRIBUTE_R(boost::optional<std::string>, ghost_code);
+        // The ghost profile url.
+        ELLE_ATTRIBUTE_R(boost::optional<std::string>, ghost_profile_url);
 
         UpdatePeerTransactionResponse(elle::serialization::SerializerIn& s);
         void
@@ -424,6 +445,9 @@ namespace infinit
 
         Self
         self() const;
+
+        void
+        use_ghost_code(std::string const& code) const;
 
         User
         user_from_handle(std::string const& handle) const;

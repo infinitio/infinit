@@ -312,6 +312,29 @@ gap_register(gap_State* state,
 }
 
 gap_Status
+gap_use_ghot_code(gap_State* state,
+                  std::string const& code)
+{
+  assert(state != nullptr);
+  if (code.empty())
+    return gap_unknown_user;
+  return run<gap_Status>(state,
+                         "use ghost code",
+                         [&] (surface::gap::State& state) -> gap_Status
+    {
+      try
+      {
+        state.meta().use_ghost_code(code);
+      }
+      catch (elle::Error const&)
+      {
+        return gap_unknown_user;
+      }
+      return gap_ok;
+    });
+}
+
+gap_Status
 gap_poll(gap_State* state)
 {
   gap_Status ret = gap_ok;
@@ -595,6 +618,50 @@ gap_user_ghost(gap_State* state, uint32_t id)
                         return user.ghost();
                        });
   return false;
+}
+
+std::string
+gap_user_ghost_code(gap_State* state,
+                    uint32_t id)
+{
+  assert(state != nullptr);
+  assert(id != surface::gap::null_id);
+
+  return run<std::string>(
+    state,
+    "user ghost code",
+    [&] (surface::gap::State& state) -> std::string
+    {
+      auto const& user = state.user(id);
+      if (user.ghost())
+      {
+        if (user.ghost_code)
+          return user.ghost_code.get();
+      }
+      return std::string{};
+    });
+}
+
+std::string
+gap_user_ghost_profile_url(gap_State* state,
+                           uint32_t id)
+{
+  assert(state != nullptr);
+  assert(id != surface::gap::null_id);
+
+  return run<std::string>(
+    state,
+    "user ghost profile url",
+    [&] (surface::gap::State& state) -> std::string
+    {
+      auto const& user = state.user(id);
+      if (user.ghost())
+      {
+        if (user.ghost_profile_url)
+          return user.ghost_profile_url.get();
+      }
+      return std::string{};
+    });
 }
 
 gap_Bool

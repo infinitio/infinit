@@ -133,6 +133,16 @@ namespace infinit
     public:
       inline TransactionFinalized();
     };
+
+    /*--------------.
+    | Merge account |
+    `--------------*/
+    class InvalidGhostCode
+      : public Error
+    {
+    public:
+      inline InvalidGhostCode();
+    };
   }
 }
 

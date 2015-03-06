@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+from infinit.oracles.meta.server.transaction_status import INITIALIZED, ACCEPTED, FINISHED
+
+with Meta() as meta:
+  bob = User(meta, "bob@infinit.io")
+  bob.login()
+  bob.sendfile("eve@infinit.io")
+  transaction, res = bob.sendfile(recipient = "alice@infinit.io", initialize = True)
+  print("**********", res)
+  assert 'ghost_code' in res['recipient']
+  ghost_code = res['recipient']['ghost_code']
