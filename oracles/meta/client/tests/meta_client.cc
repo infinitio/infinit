@@ -582,7 +582,7 @@ ELLE_TEST_SCHEDULED(change_email)
 ELLE_TEST_SCHEDULED(merge_ghost)
 {
   HTTPServer s;
-  s.register_route("/user/foo/merge", reactor::http::Method::POST,
+  s.register_route("/ghost/foo/merge", reactor::http::Method::POST,
                    [] (HTTPServer::Headers const&,
                        HTTPServer::Cookies const&,
                        HTTPServer::Parameters const&,
@@ -597,7 +597,7 @@ ELLE_TEST_SCHEDULED(merge_ghost)
 ELLE_TEST_SCHEDULED(merge_ghost_failure)
 {
   HTTPServer s;
-  s.register_route("/user/bar/merge", reactor::http::Method::POST,
+  s.register_route("/ghost/bar/merge", reactor::http::Method::POST,
                    [] (HTTPServer::Headers const&,
                        HTTPServer::Cookies const&,
                        HTTPServer::Parameters const&,
