@@ -400,6 +400,10 @@ class Mixin:
           elle.log.warn('unable to get facebook avatar: %s' % e)
           pass
       return user
+    except Response as r:
+      raise r
+    except Exception as e:
+      self._forbidden_with_error(e.args[0])
     except error.Error as e:
       self._forbidden_with_error(e.args[0])
 
@@ -453,6 +457,7 @@ class Mixin:
   def web_login(self,
                 email = None,
                 password = None,
+                preferred_email = None,
                 short_lived_access_token = None,
                 long_lived_access_token = None):
     # Xor facebook_token or email / password.
@@ -472,6 +477,7 @@ class Mixin:
       user = self.__facebook_connect(
         short_lived_access_token = short_lived_access_token,
         long_lived_access_token = long_lived_access_token,
+        preferred_email = preferred_email,
         fields = fields)
     return self._web_login(user)
 
