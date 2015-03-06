@@ -14,8 +14,13 @@ def require_logged_in_fields(fields):
       raise Exception(
         'require_logged_in for %r wraps the API' % method.__name__)
     def wrapper(wrapped, self, *args, **kwargs):
+      # Fuck you, just fuck you MongoDB
+      self_fields = [
+        f for f in self._Mixin__user_self_fields
+        if not any(f.startswith(x) for x in fields)
+      ]
       user = self._user_from_session(
-        fields = self._Mixin__user_self_fields + fields)
+        fields = self_fields + fields)
       if self.user is None:
         self.forbidden()
       return wrapped(self, *args, **kwargs)
@@ -34,15 +39,23 @@ def require_admin(method):
     return wrapped(self, *args, **kwargs)
   return decorator.decorator(wrapper, method)
 
-def require_logged_in_or_admin(method):
-  if hasattr(method, '__api__'):
-    raise Exception(
-      'require_logged_in_or_admin for %r wraps the API' % method.__name__)
-  def wrapper(wrapped, self, *args, **kwargs):
-    if not self.logged_in and not self.admin:
-      self.forbidden()
-    return wrapped(self, *args, **kwargs)
-  return decorator.decorator(wrapper, method)
+def require_logged_in_or_admin_fields(fields):
+  def require_logged_in_or_admin(method):
+    if hasattr(method, '__api__'):
+      raise Exception(
+        'require_logged_in_or_admin for %r wraps the API' % method.__name__)
+    def wrapper(wrapped, self, *args, **kwargs):
+      user = self._user_from_session(
+        fields = self._Mixin__user_self_fields + fields)
+      if self.user is None and not self.admin:
+        self.forbidden({
+          'reason': 'not logged in',
+        })
+      return wrapped(self, *args, **kwargs)
+    return decorator.decorator(wrapper, method)
+  return require_logged_in_or_admin
+
+require_logged_in_or_admin = require_logged_in_or_admin_fields([])
 
 def require_key(method):
   if hasattr(method, '__api__'):

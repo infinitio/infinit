@@ -340,7 +340,7 @@ class Mixin:
         {'_id': user['_id']},
         {'$set': { 'features': features}})
     response['features'] = list(features.items())
-    response['device'] = device
+    response['device'] = self.device_view(device)
     return response
 
   def __facebook_connect(self,

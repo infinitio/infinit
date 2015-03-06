@@ -24,7 +24,7 @@ with Meta() as meta:
   assert barfoo['success']
   assert barfoo['name'] == "barfoo"
 
-  res = bob.get('devices')
+  res = bob.get('user/devices')
   assert len(res['devices']) == 3
 
   assert set(d['id'] for d in res['devices']) == set([
