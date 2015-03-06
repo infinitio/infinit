@@ -389,9 +389,10 @@ class Mixin:
             OS: str = None,
             pick_trophonius: bool = True,
             device_push_token: str = None):
-    # Xor facebook_token or email / passwor.
-    with_email = bool(email and (password or password_hash))
-    with_facebook = bool(long_lived_access_token or short_lived_access_token)
+    # Xor facebook_token or email / password.
+    with_email = bool(email is not None and password is not None)
+    with_facebook = bool(long_lived_access_token is not None or
+                         short_lived_access_token is not None)
     if with_email == with_facebook:
       return self.bad_request({
         'reason': 'you must provide facebook_token or (email, password)'
@@ -428,9 +429,10 @@ class Mixin:
                 password = None,
                 short_lived_access_token = None,
                 long_lived_access_token = None):
-    # Xor facebook_token or email / passwor.
-    with_email = bool(email and password)
-    with_facebook = bool(long_lived_access_token or short_lived_access_token)
+    # Xor facebook_token or email / password.
+    with_email = bool(email is not None and password is not None)
+    with_facebook = bool(long_lived_access_token is not None or
+                         short_lived_access_token is not None)
     if with_email == with_facebook:
       return self.bad_request({
         'reason': 'you must provide facebook_token or (email, password)'
