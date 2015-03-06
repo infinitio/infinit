@@ -1,452 +1,295 @@
 #include "server.hh"
 
 #include <boost/uuid/random_generator.hpp>
+#include <boost/lexical_cast.hpp>
 #include <boost/uuid/string_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
 #include <elle/Buffer.hh>
 #include <elle/UUID.hh>
 #include <elle/log.hh>
-#include <elle/os/path.hh>
 #include <elle/finally.hh>
 #include <elle/container/map.hh>
 #include <elle/serialization/json/SerializerIn.hh>
-#include <elle/system/home_directory.hh>
-
-#include <reactor/network/exception.hh>
+#include <elle/serialization/json.hh>
 
 #include <papier/Authority.hh>
 
 #include <version.hh>
 
+#include <fist/tests/_detail/Authority.hh>
+
 ELLE_LOG_COMPONENT("fist.tests");
 
-extern const std::vector<unsigned char> fingerprint;
-extern const std::vector<char> server_certificate;
-extern const std::vector<char> server_key;
-extern const std::vector<char> server_dh1024;
 
-class KeyPair:
-  public infinit::cryptography::KeyPair
-{
-public:
-  KeyPair()
-    : infinit::cryptography::KeyPair(
-      infinit::cryptography::KeyPair::generate(
-        infinit::cryptography::Cryptosystem::rsa, 1024))
-  {}
-};
-
-KeyPair authority_keys;
-papier::Authority authority(authority_keys);
-
-papier::Identity
+std::unique_ptr<papier::Identity>
 generate_identity(cryptography::KeyPair const& keypair,
                   std::string const& id,
                   std::string const& description,
-                  std::string const& password)
-{
-  papier::Identity identity;
-  if (identity.Create(id, description, keypair) == elle::Status::Error)
-    throw std::runtime_error("unable to create the identity");
-  if (identity.Encrypt(password) == elle::Status::Error)
-    throw std::runtime_error("unable to encrypt the identity");
-  if (identity.Seal(authority) == elle::Status::Error)
-    throw std::runtime_error("unable to seal the identity");
-  return identity;
-}
+                  std::string const& password);
 
-Trophonius::Trophonius()
-  : _server(elle::make_unique<reactor::network::SSLCertificate>(
-              server_certificate,
-              server_key,
-              server_dh1024))
-  , _accepter(new reactor::Thread{elle::sprintf("%s accepter", *this),
-                                    boost::bind(&Trophonius::_serve, this)})
-{
-  this->_server.listen();
-}
-
-Trophonius::~Trophonius()
-{
-  this->_accepter->terminate_now();
-}
-
+template <typename C>
 std::string
-Trophonius::json() const
+json(C& container)
 {
-  return elle::sprintf(
-    "{"
-    "  \"host\": \"127.0.0.1\","
-    "  \"port\": 0,"
-    "  \"port_ssl\": %s"
-    "}",
-    this->port());
+  std::string str = "[";
+  for (auto& item: container)
+    str += item->json() + ", ";
+
+  if (!container.empty())
+    str = str.substr(0, str.length() - 2);
+  str += "]";
+  return str;
 }
 
-int
-Trophonius::port() const
+namespace tests
 {
-  return this->_server.port();
-}
-
-void
-Trophonius::_serve()
-{
-  elle::With<reactor::Scope>() << [this] (reactor::Scope& scope)
+  Server::Server()
+    : _session_id(random_uuid())
+    , trophonius()
+    , _cloud_buffered(false)
   {
-    while (true)
-    {
-      auto socket = elle::utility::move_on_copy(this->_server.accept());
-      scope.run_background(
-        elle::sprintf("serve %s", *socket),
-        [socket, this]
+    this->headers()["X-Fist-Meta-Version"] = INFINIT_VERSION;
+
+    this->register_route(
+      "/status",
+      reactor::http::Method::GET,
+      [] (Server::Headers const&,
+          Server::Cookies const&,
+          Server::Parameters const&,
+          elle::Buffer const&)
+      {
+        return "{\"status\" : true}";
+      });
+
+    this->register_route(
+      "/login",
+      reactor::http::Method::POST,
+      [&] (Server::Headers const&,
+           Server::Cookies const&,
+           Server::Parameters const&,
+           elle::Buffer const& content)
+      {
+        elle::IOStream stream(content.istreambuf());
+        elle::serialization::json::SerializerIn input(stream, false);
+        boost::optional<std::string> email;
+        input.serialize("email", email);
+        boost::optional<std::string> long_lived_access_token;
+        input.serialize("long_lived_access_token", long_lived_access_token);
+        auto const& user = [&] () -> User const&
+          {
+            if (email)
+            {
+              auto& users = this->_users.get<1>();
+              auto it = users.find(email.get());
+              if (it == users.end())
+                throw reactor::http::tests::Server::Exception(
+                  "/login",
+                  reactor::http::StatusCode::Not_Found,
+                  "user not found");
+              return *it;
+            }
+            else if (long_lived_access_token)
+            {
+              return this->facebook_connect(long_lived_access_token.get());
+            }
+            elle::unreachable();
+          }();
+        std::string device_id_str;
+        input.serialize("device_id", device_id_str);
+        auto device_id = boost::uuids::string_generator()(device_id_str);
+        this->headers()["Set-Cookie"] = elle::sprintf("session-id=%s+%s", user.id(), device_id_str);
+        if (this->_devices.find(device_id) == this->_devices.end())
+          this->register_device(user, device_id);
+        auto const& device = this->_devices.at(device_id);
+        return elle::sprintf(
+          "{"
+          " \"self\": %s,"
+          " \"device\": %s,"
+          " \"features\": [],"
+          " \"trophonius\" : %s"
+          "}",
+          user.self_json(),
+          device.json(),
+          this->trophonius.json());
+      });
+
+    // this->register_route(
+    //   "/users",
+    //   reactor::http::Method::GET,
+    //   [&] (Server::Headers const&,
+    //        Server::Cookies const& cookies,
+    //        Server::Parameters const& parameters,
+    //        elle::Buffer const&)
+    //   {
+
+    //   });
+    this->register_route(
+      "/trophonius",
+      reactor::http::Method::GET,
+      std::bind(&Server::_get_trophonius,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2,
+                std::placeholders::_3,
+                std::placeholders::_4));
+
+    this->register_route(
+      "/user/synchronize",
+      reactor::http::Method::GET,
+      [&] (Server::Headers const&,
+           Server::Cookies const& cookies,
+           Server::Parameters const& parameters,
+           elle::Buffer const&)
+      {
+        User const& user = this->user(cookies);
+        std::vector<Transaction*> runnings;
+        std::vector<Transaction*> finals;
+        for (auto& transaction: this->_transactions)
+          if (transaction->sender_id == boost::lexical_cast<std::string>(user.id()) ||
+              transaction->recipient_id == boost::lexical_cast<std::string>(user.id()))
+          {
+            auto const& final_statuses = transaction->sender_id == boost::lexical_cast<std::string>(user.id())
+              ? surface::gap::Transaction::sender_final_statuses
+              : surface::gap::Transaction::recipient_final_statuses;
+
+            if (final_statuses.find(transaction->status) == final_statuses.end())
+              runnings.emplace_back(transaction.get());
+            else
+              finals.emplace_back(transaction.get());
+          }
+        auto res = elle::sprintf(
+          "{"
+          "  \"swaggers\": %s,"
+          "  \"running_transactions\": %s,"
+          "  \"final_transactions\": %s,"
+          "  \"links\": %s"
+          "}",
+          user.swaggers_json(),
+          json(runnings),
+          json(finals),
+          user.links_json());
+        return res;
+      });
+
+    this->register_route(
+      "/logout",
+      reactor::http::Method::POST,
+      [] (Server::Headers const&,
+          Server::Cookies const&,
+          Server::Parameters const&,
+          elle::Buffer const&)
+      {
+        return "{\"success\": true}";
+      });
+
+    this->register_route(
+      "/user/self",
+      reactor::http::Method::GET,
+      [&] (Server::Headers const& header,
+           Server::Cookies const& cookies,
+           Server::Parameters const& parameters,
+           elle::Buffer const& buffer)
+      {
+        auto id = this->user(cookies).id();
+        return this->routes()[elle::sprintf("/user/%s", id)][reactor::http::Method::GET](
+          header, cookies, parameters, buffer);
+      });
+    this->register_route(
+      "/user/full_swaggers",
+      reactor::http::Method::GET,
+      [&] (Server::Headers const&,
+           Server::Cookies const&,
+           Server::Parameters const&,
+           elle::Buffer const&)
+      {
+        return "{\"success\": true, \"swaggers\": []}";
+      });
+    this->register_route(
+      "/transactions",
+      reactor::http::Method::GET,
+      [&] (Server::Headers const&,
+           Server::Cookies const&,
+           Server::Parameters const&,
+           elle::Buffer const&)
+      {
+        return "{\"success\": true, \"transactions\": []}";
+      });
+    this->register_route(
+      "/links",
+      reactor::http::Method::GET,
+      [&] (Server::Headers const&,
+           Server::Cookies const&,
+           Server::Parameters const&,
+           elle::Buffer const&)
+      {
+        return "{\"success\": true, \"links\": []}";
+      });
+
+    this->register_route(
+      "/link_empty",
+      reactor::http::Method::POST,
+      [&] (Server::Headers const&,
+           Server::Cookies const& cookies,
+           Server::Parameters const&,
+           elle::Buffer const&)
+      {
+        User const& user = this->user(cookies);
+        infinit::oracles::LinkTransaction t;
+        t.id = boost::lexical_cast<std::string>(random_uuid());
+        auto id = t.id;
+        struct InsertLink
         {
-          this->_serve(std::move(*socket));
-        });
-    }
-  };
-}
+          InsertLink(infinit::oracles::LinkTransaction t)
+            : t(t)
+          {}
 
-void
-Trophonius::disconnect_all_users()
-{
-  this->_accepter->terminate_now();
-  this->_accepter.reset(new reactor::Thread{
-      elle::sprintf("%s accepter", *this), boost::bind(&Trophonius::_serve, this)});
-}
+          void
+          operator()(User& user)
+          {
+            user.links[t.id] = t;
+          }
 
-void
-Trophonius::_serve(std::unique_ptr<reactor::network::SSLSocket> socket)
-{
-  socket->write("{\"poke\": \"ouch\"}\n");
-  socket->write("{\"notification_type\": -666, \"response_code\": 200, \"response_details\": \"details\"}\n");
-  try
-  {
-    while (true)
-      socket->read_until("\n");
-  }
-  catch (reactor::network::ConnectionClosed const&)
-  {}
-}
-
-Server::Device::Device(cryptography::PublicKey const& key)
-  : _id(boost::uuids::random_generator()())
-  , _passport(boost::lexical_cast<std::string>(this->_id), "osef", key, authority)
-{
-}
-
-std::string
-Server::Device::json() const
-{
-  std::string passport_string;
-  if (this->_passport.Save(passport_string) == elle::Status::Error)
-    throw std::runtime_error("unabled to save the passport");
-  return elle::sprintf(
-    "{"
-    "  \"id\" : \"%s\","
-    "  \"name\": \"device\","
-    "  \"passport\": \"%s\""
-    "}",
-    this->id(),
-    passport_string);
-}
-
-static
-std::string
-link_representation(infinit::oracles::LinkTransaction const& link)
-{
-  return elle::sprintf(
-    "{"
-    "  \"id\": \"%s\","
-    "  \"click_count\": 3,"
-    "  \"ctime\": 319234,"
-    "  \"message\": \"\","
-    "  \"mtime\": 319293,"
-    "  \"name\": \"foo\","
-    "  \"sender_device_id\": \"%s\","
-    "  \"sender_id\": \"%s\","
-    "  \"share_link\": \"http://stuff.com\","
-    "  \"status\": %s"
-    "}",
-    link.id,
-    link.sender_device_id,
-    link.sender_id,
-    (int) link.status);
-}
-
-Server::User::User(boost::uuids::uuid id,
-                   boost::optional<boost::uuids::uuid> device_id,
-                   std::string email,
-                   boost::optional<cryptography::KeyPair> keys,
-                   boost::optional<papier::Identity> identity)
-  : _id(std::move(id))
-  , _device_id(device_id)
-  , _email(std::move(email))
-  , _keys(keys)
-  , _identity(identity)
-{}
-
-std::string
-Server::User::links_json() const
-{
-  // I wish I could use elle::serialization::SerializerOut.
-  std::string str = "[";
-  for (auto const& link: this->links)
-    str += link_representation(link) + ", ";
-
-  if (!this->links.empty())
-    str = str.substr(0, str.length() - 2  );
-  str += "]";
-  return str;
-}
-
-std::string
-Server::User::swaggers_json() const
-{
-  std::string str = "[";
-  for (auto const& user: this->swaggers)
-    str += user->json() + ", ";
-
-  if (!this->swaggers.empty())
-    str = str.substr(0, str.length() - 2);
-  str += "]";
-  return str;
-}
-
-void
-Server::User::print(std::ostream& stream) const
-{
-  stream << "User(" << this->email() << ", " << this->id() << ")";
-}
-
-std::string
-Server::User::devices_json() const
-{
-  std::string str = "[";
-  for (auto const& device: this->connected_devices)
-    str += elle::sprintf("\"%s\", ", device);
-  if (!this->connected_devices.empty())
-    str = str.substr(0, str.length() - 2);
-  str += "]";
-  return str;
-}
-
-std::string
-Server::User::json() const
-{
-  std::string public_key_serialized;
-  if (this->_keys)
-    this->_keys.get().K().Save(public_key_serialized);
-
-  auto res = elle::sprintf(
-    "{"
-    "  \"id\": \"%s\","
-    "  \"public_key\": \"%s\","
-    "  \"fullname\": \"%s\","
-    "  \"handle\": \"%s\","
-    "  \"connected_devices\": %s,"
-    "  \"status\": true,"
-    "  \"register_status\": \"%s\","
-    "  \"_id\": \"%s\""
-    "}",
-    this->id(),
-    public_key_serialized,
-    this->email(),
-    this->email(),
-    this->devices_json(),
-    public_key_serialized.empty() ? "ghost" : "ok",
-    this->id());
-  return res;
-}
-
-std::string
-Server::User::self_json() const
-{
-  std::string identity_serialized;
-  this->_identity.get().Save(identity_serialized);
-
-  std::string public_key_serialized;
-  this->_keys.get().K().Save(public_key_serialized);
-  return elle::sprintf(
-    "{"
-    "  \"id\": \"%s\","
-    "  \"public_key\": \"%s\","
-    "  \"fullname\": \"\","
-    "  \"handle\": \"\","
-    "  \"connected_devices\": %s,"
-    "  \"register_status\": \"\","
-    "  \"email\": \"%s\","
-    "  \"identity\": \"%s\","
-    "  \"devices\": [],"
-    "  \"favorites\": [],"
-    "  \"success\": true"
-    "}",
-    this->id(),
-    public_key_serialized,
-    this->devices_json(),
-    this->email(),
-    identity_serialized);
-}
-
-Server::Client::Client(Server& server,
-                       User& user,
-                       boost::filesystem::path home)
-  : _server(server)
-  , user(user)
-  , state(server, user.device_id().get(), home)
-{}
-
-Server::Client::Client(Server& server,
-                       std::string const& email)
-  : Client(server, server.register_user(email, "password"))
-{}
-
-void
-Server::Client::login(std::string const& password)
-{
-  this->state.login(this->user.email(), password);
-  this->user.connected_devices.insert(this->user.device_id().get());
-}
-
-void
-Server::Client::logout()
-{
-  this->state.logout();
-  this->user.connected_devices.erase(this->user.device_id().get());
-}
-
-Server::Server()
-  : _session_id(boost::uuids::random_generator()())
-  , trophonius()
-  , _cloud_buffered(false)
-{
-  this->headers()["X-Fist-Meta-Version"] = INFINIT_VERSION;
-
-  // Status.
-  this->register_route(
-    "/status",
-    reactor::http::Method::GET,
-    [] (Server::Headers const&,
-        Server::Cookies const&,
-        Server::Parameters const&,
-        elle::Buffer const&)
-    {
-      return "{\"status\" : true}";
-    });
-
-  // Login.
-  this->register_route(
-    "/login",
-    reactor::http::Method::POST,
-    [&] (Server::Headers const&,
-         Server::Cookies const&,
-         Server::Parameters const&,
-         elle::Buffer const& content)
-    {
-      elle::IOStream stream(content.istreambuf());
-      elle::serialization::json::SerializerIn input(stream, false);
-      std::string email;
-      input.serialize("email", email);
-      auto& users = this->_users.get<1>();
-      auto it = users.find(email);
-      if (it == users.end())
-        throw reactor::http::tests::Server::Exception(
-          "/login",
-          reactor::http::StatusCode::Not_Found,
-          "user not found");
-      auto& user = **it;
-      this->headers()["Set-Cookie"] = elle::sprintf("session-id=%s", user.id());
-      auto& device = this->_devices.at(user.device_id().get());
-
-      return elle::sprintf(
-         "{"
-         " \"self\": %s,"
-         " \"device\": %s,"
-         " \"features\": [],"
-         " \"trophonius\" : %s"
-         "}",
-         user.self_json(),
-         device.json(),
-         this->trophonius.json());
-    });
-
-  // Logout.
-  this->register_route(
-    "/logout",
-    reactor::http::Method::POST,
-    [&] (Server::Headers const&,
-        Server::Cookies const& cookies,
-        Server::Parameters const&,
-        elle::Buffer const&)
-    {
-      auto const& user = this->user(cookies);
-      this->headers()["Set-Cookie"] = "";
-      return "{\"success\": true}";
-    });
-
-  // Trophonius.
-  this->register_route(
-    "/trophonius",
-    reactor::http::Method::GET,
-    std::bind(&Server::_get_trophonius,
-              this,
-              std::placeholders::_1,
-              std::placeholders::_2,
-              std::placeholders::_3,
-              std::placeholders::_4));
-
-  // Synchronize.
-  this->register_route(
-    "/user/synchronize",
-    reactor::http::Method::GET,
-    [&] (Server::Headers const&,
-        Server::Cookies const& cookies,
-         Server::Parameters const& parameters,
-         elle::Buffer const&)
-    {
-      auto const& user = this->user(cookies);
-      return elle::sprintf(
-        "{"
-        "  \"swaggers\": %s,"
-        "  \"running_transactions\": [],"
-        "  \"final_transactions\": [],"
-        "  \"links\": %s"
-        "}",
-        user.swaggers_json(),
-        user.links_json());
-    });
-
-  /*------.
-  | Links |
-  `------*/
-  this->register_route(
-    "/link_empty",
-    reactor::http::Method::POST,
-    [&] (Server::Headers const&,
-         Server::Cookies const& cookies,
-         Server::Parameters const&,
-         elle::Buffer const&)
-    {
-      auto& user = this->user(cookies);
-      infinit::oracles::LinkTransaction t;
-      t.click_count = 3;
-      t.id = boost::lexical_cast<std::string>(boost::uuids::random_generator()());
-      t.ctime = 2173213;
-      t.sender_id = boost::lexical_cast<std::string>(user.id());
-      t.sender_device_id = boost::lexical_cast<std::string>(user.device_id());
-      t.status = infinit::oracles::Transaction::Status::initialized;
-      user.links.push_back(t);
+          infinit::oracles::LinkTransaction t;
+        };
+        this->_users.modify(this->_users.get<0>().find(user.id()), InsertLink(t));
 
       this->register_route(
-        elle::sprintf("/link/%s", t.id),
+        elle::sprintf("/link/%s", id),
         reactor::http::Method::PUT,
-        [&, t] (Server::Headers const&,
-                Server::Cookies const& cookies,
-                Server::Parameters const& parameters,
-                elle::Buffer const& body)
+        [&, id] (Server::Headers const&,
+             Server::Cookies const& cookies,
+             Server::Parameters const& parameters,
+             elle::Buffer const& body)
         {
-          return elle::sprintf(
+          User const& user = this->user(cookies);
+          auto const& device = this->device(cookies);
+
+          struct UpdateLink
+          {
+            UpdateLink(std::string const& id,
+                       Device const& device)
+              : id(id)
+              , device(device)
+            {}
+
+            void
+            operator()(User& user)
+            {
+              auto& t = user.links.at(this->id);
+              t.click_count = 3;
+              t.ctime = 2173213;
+              t.sender_id = boost::lexical_cast<std::string>(user.id());
+              t.sender_device_id = boost::lexical_cast<std::string>(device.id());
+              t.status = infinit::oracles::Transaction::Status::initialized;
+            }
+            std::string id;
+            Device const& device;
+          };
+          this->_users.modify(this->_users.get<0>().find(user.id()), UpdateLink(id, device));
+
+          auto const& t = this->_users.get<0>().find(user.id())->links.at(id);
+          auto res = elle::sprintf(
             "{"
             "  \"transaction\": %s,"
             "  \"aws_credentials\": "
@@ -463,48 +306,86 @@ Server::Server()
             "    \"current_time\": \"2015-01-12T09-37-42Z\""
             "  }"
             "}",
-            link_representation(t),
-            t.id);
+            User::link_representation(t),
+            id);
+          return res;
         });
 
-      this->register_route(
-        elle::sprintf("/link/%s", t.id),
-        reactor::http::Method::POST,
-        [&, t] (Server::Headers const&,
-                Server::Cookies const& cookies,
-                Server::Parameters const& parameters,
-                elle::Buffer const& body)
-        {
-          elle::IOStream stream(body.istreambuf());
-          elle::serialization::json::SerializerIn input(stream, false);
-          int status;
-          input.serialize("status", status);
-          auto& user = this->user(cookies);
-          for (auto& link: user.links)
-            if (link.id == t.id)
-              link.status =
-                static_cast<infinit::oracles::Transaction::Status>(status);
-          return "{\"success\": true}";
-        });
+        this->register_route(
+          elle::sprintf("/link/%s", id),
+          reactor::http::Method::POST,
+          [&, id] (Server::Headers const&,
+                  Server::Cookies const& cookies,
+                  Server::Parameters const& parameters,
+                  elle::Buffer const& body)
+          {
+            elle::IOStream stream(body.istreambuf());
+            elle::serialization::json::SerializerIn input(stream, false);
+            int status;
+            User const& user = this->user(cookies);
+            struct UpdateLink
+            {
+              UpdateLink(std::string const& id,
+                         infinit::oracles::Transaction::Status status)
+                : id(id)
+                , status(status)
+              {}
 
-      this->register_route(
-        elle::sprintf("/s3/%s/filename", t.id),
-        reactor::http::Method::POST,
-        [&, t] (Server::Headers const&,
-                Server::Cookies const&,
-                Server::Parameters const& parameters,
-                elle::Buffer const&)
-        {
-          static bool b = true;
-          elle::SafeFinally f([&] { b = false; });
-          if (b)
-            return std::string{
-              "<InitiateMultipartUploadResult>"
-              "  <Bucket>bucket</Bucket>"
-              "  <Key>filename</Key>"
-              "  <UploadId>VXBsb2FkIElEIGZvciA2aWWpbmcncyBteS1tb3ZpZS5tMnRzIHVwbG9hZA</UploadId>"
-              "</InitiateMultipartUploadResult>"};
-          else
+              void
+              operator()(User& user)
+              {
+                auto& t = user.links.at(this->id);
+                t.status = this->status;
+              }
+              std::string id;
+              infinit::oracles::Transaction::Status status;
+            };
+            input.serialize("status", status);
+            this->_users.modify(
+              this->_users.get<0>().find(
+                user.id()),
+              UpdateLink(id,
+                         static_cast<infinit::oracles::Transaction::Status>(status)));
+            return "{\"success\": true}";
+          });
+
+        this->register_route(
+          elle::sprintf("/s3/%s/filename", id),
+          reactor::http::Method::POST,
+          [&, id] (Server::Headers const&,
+                  Server::Cookies const&,
+                  Server::Parameters const& parameters,
+                  elle::Buffer const&)
+          {
+            static bool b = true;
+            elle::SafeFinally f([&] { b = false; });
+            if (b)
+              return std::string{
+                "<InitiateMultipartUploadResult>"
+                  "  <Bucket>bucket</Bucket>"
+                  "  <Key>filename</Key>"
+                  "  <UploadId>VXBsb2FkIElEIGZvciA2aWWpbmcncyBteS1tb3ZpZS5tMnRzIHVwbG9hZA</UploadId>"
+                  "</InitiateMultipartUploadResult>"};
+            else
+              return elle::sprintf(
+                "<CompleteMultipartUploadResult>"
+                "<Location></Location>"
+                "<Bucket>bucket</Bucket>"
+                "<Key>filename</Key>"
+                "<ETag>%s</ETag>"
+                "</CompleteMultipartUploadResult>",
+                this->headers()["ETag"]);
+          });
+
+        this->register_route(
+          elle::sprintf("/s3/%s/filename", id),
+          reactor::http::Method::PUT,
+          [&, id] (Server::Headers const&,
+                  Server::Cookies const&,
+                  Server::Parameters const& parameters,
+                  elle::Buffer const&)
+          {
+            this->headers()["ETag"] = boost::lexical_cast<std::string>(random_uuid());
             return elle::sprintf(
               "<CompleteMultipartUploadResult>"
               "<Location></Location>"
@@ -513,927 +394,648 @@ Server::Server()
               "<ETag>%s</ETag>"
               "</CompleteMultipartUploadResult>",
               this->headers()["ETag"]);
-        });
+          });
 
-      this->register_route(
-        elle::sprintf("/s3/%s/filename", t.id),
-        reactor::http::Method::PUT,
-        [&, t] (Server::Headers const&,
-                Server::Cookies const&,
-                Server::Parameters const& parameters,
-                elle::Buffer const&)
+        this->register_route(
+          elle::sprintf("/s3/%s_data", id),
+          reactor::http::Method::PUT,
+          [] (Server::Headers const&,
+              Server::Cookies const&,
+              Server::Parameters const&,
+              elle::Buffer const&)
+          {
+            return "";
+          });
+
+        this->register_route(
+          elle::sprintf("/s3/%s/000000000000_0000", id),
+          reactor::http::Method::PUT,
+          [this] (Server::Headers const&,
+                  Server::Cookies const&,
+                  Server::Parameters const&,
+                  elle::Buffer const&)
+          {
+            return "";
+          });
+
+        return elle::sprintf(
+          "{"
+          "  \"created_link_id\": \"%s\""
+          "}",
+          id);
+      });
+
+    this->register_route(
+      "/transaction/create_empty",
+      reactor::http::Method::POST,
+      [&] (Server::Headers const&,
+           Server::Cookies const&,
+           Server::Parameters const&,
+           elle::Buffer const&)
+      {
+        return elle::sprintf(
+          "{\"created_transaction_id\":\"%s\"}", this->_create_empty());
+      });
+
+    this->register_route(
+      "/s3/folder/cloud-buffered",
+      reactor::http::Method::POST,
+      [] (Server::Headers const&,
+          Server::Cookies const&,
+          Server::Parameters const& parameters,
+          elle::Buffer const&)
+      {
+        if (contains(parameters, "uploads"))
+          return
+            "<InitiateMultipartUploadResult>"
+            "  <UploadId>upload-id</UploadId>"
+            "</InitiateMultipartUploadResult>";
+        else
+          return
+            "<CompleteMultipartUploadResult>"
+            "</CompleteMultipartUploadResult>";
+      });
+    this->register_route(
+      "/s3/folder/cloud-buffered",
+      reactor::http::Method::PUT,
+      [] (Server::Headers const&,
+          Server::Cookies const&,
+          Server::Parameters const&,
+          elle::Buffer const&)
+      {
+        return "";
+      });
+    this->register_route(
+      "/s3/folder/meta_data",
+      reactor::http::Method::PUT,
+      [] (Server::Headers const&,
+          Server::Cookies const&,
+          Server::Parameters const&,
+          elle::Buffer const&)
+      {
+        return "";
+      });
+    this->register_route(
+      "/s3/folder/meta_data",
+      reactor::http::Method::GET,
+      [] (Server::Headers const&,
+          Server::Cookies const&,
+          Server::Parameters const&,
+          elle::Buffer const&)
+      {
+        throw reactor::http::tests::Server::Exception(
+          "/s3/folder/meta_data",
+          reactor::http::StatusCode::Not_Found,
+          "no meta data");
+        return "{}";
+      });
+    this->register_route(
+      "/s3/folder/000000000000_0000",
+      reactor::http::Method::PUT,
+      [this] (Server::Headers const&,
+              Server::Cookies const&,
+              Server::Parameters const&,
+              elle::Buffer const&)
+      {
+        this->_cloud_buffered = true;
+        return "";
+      });
+    this->register_route(
+      "/s3/folder/000000000000_0000",
+      reactor::http::Method::GET,
+      [this] (Server::Headers const&,
+              Server::Cookies const&,
+              Server::Parameters const&,
+              elle::Buffer const&)
+      {
+        this->_cloud_buffered = true;
+        return "";
+      });
+  }
+
+  User const&
+  Server::facebook_connect(std::string const& token)
+  {
+    static std::unordered_map<std::string, std::string> facebook_ids;
+    if (facebook_ids.find(token) == facebook_ids.end())
+    {
+      User const& user = this->register_user("", "");
+      // Replace identity.
+      auto keys =
+        cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
+                                        papier::Identity::keypair_length);
+      std::unique_ptr<papier::Identity> identity{generate_identity(keys, boost::lexical_cast<std::string>(user.id()), "my identity", "")};
+      struct UpdateIdentity
+      {
+        UpdateIdentity(std::unique_ptr<papier::Identity>&& identity)
+          : identity(std::move(identity))
+        {}
+
+        void
+        operator()(User& user)
+        {
+          user.identity().reset(this->identity.release());
+        }
+
+        std::unique_ptr<papier::Identity> identity;
+      };
+      this->_users.modify(this->_users.get<0>().find(user.id()), UpdateIdentity(std::move(identity)));
+      facebook_ids[token] = user.facebook_id();
+    }
+    auto const& facebook_id = facebook_ids[token];
+    auto& users = this->_users.get<2>();
+    auto it = users.find(facebook_id);
+    if (it == users.end())
+      throw reactor::http::tests::Server::Exception(
+        "/login",
+        reactor::http::StatusCode::Not_Found,
+        "user not found");
+    return *it;
+  }
+  boost::uuids::uuid
+  Server::_create_empty()
+  {
+    auto t = elle::make_unique<Transaction>();
+    std::string id = t->id;
+    ELLE_LOG_SCOPE("%s: create transaction %s", *this, id);
+    this->_transactions.insert(std::move(t));
+
+    this->register_route(
+      elle::sprintf("/transaction/%s", id),
+      reactor::http::Method::PUT,
+      std::bind(&Server::_transaction_put,
+                std::ref(*this),
+                std::placeholders::_1,
+                std::placeholders::_2,
+                std::placeholders::_3,
+                std::placeholders::_4,
+                boost::uuids::string_generator()(id)));
+
+    this->register_route(
+      elle::sprintf("/transaction/%s", id),
+      reactor::http::Method::GET,
+      [&, id] (Server::Headers const&,
+               Server::Cookies const& cookies,
+               Server::Parameters const&,
+               elle::Buffer const& content)
+      {
+        auto& tr = **this->_transactions.find(id);
+        return tr.json();
+      });
+
+    this->register_route(
+      elle::sprintf("/transaction/%s/endpoints", id),
+      reactor::http::Method::PUT,
+      [&, id] (Server::Headers const&,
+               Server::Cookies const& cookies,
+               Server::Parameters const&,
+               elle::Buffer const& content)
+      {
+        auto const& device = this->device(cookies);
+        User const& user = this->user(cookies);
+        // typedef std::vector<std::pair<std::string, int>> Locals;
+        // Locals locals;
+
+        // XXX: Doesn't work.
+        elle::IOStream stream(content.istreambuf());
+        elle::serialization::json::SerializerIn input(stream, false);
+        int port;
+
+        static std::unordered_map<std::string, uint16_t> first_time;
+        if (first_time.find(id) == first_time.end())
+          first_time[id] = port;
+        else
+        {
+          auto& tr = **this->_transactions.find(id);
+          bool sender = tr.sender_device_id == device.id() &&
+            tr.sender_id == boost::lexical_cast<std::string>(user.id());
+          auto other_notif = elle::sprintf(
+            "{"
+            " \"notification_type\": 11,"
+            " \"transaction_id\":\"%s\","
+            " \"peer_endpoints\":{\"locals\":[{\"ip\":\"127.0.0.1\",\"port\":%s}],\"externals\":[]},"
+            " \"devices\":[\"%s\", \"%s\"],"
+            " \"status\":true"
+            "}\n",
+            id,
+            port,
+            tr.sender_device_id,
+            tr.recipient_device_id);
+          auto our_notif = elle::sprintf(
+            "{"
+            " \"notification_type\": 11,"
+            " \"transaction_id\":\"%s\","
+            " \"peer_endpoints\":{\"locals\":[{\"ip\":\"127.0.0.1\",\"port\":%s}],\"externals\":[]},"
+            " \"devices\":[\"%s\", \"%s\"],"
+            " \"status\":true"
+            "}\n",
+            id,
+            first_time[id],
+            tr.sender_device_id,
+            tr.recipient_device_id);
+          auto generator = boost::uuids::string_generator();
+          auto* to_sender = this->trophonius.socket(generator(tr.sender_id), tr.sender_device_id);
+          auto* to_recipient = this->trophonius.socket(generator(tr.recipient_id), tr.recipient_device_id);
+          if (to_sender)
+          {
+            to_sender->write(sender ? our_notif : other_notif);
+          }
+          if (to_recipient)
+          {
+            to_recipient->write(sender ? other_notif : our_notif);
+          }
+        }
+        return "{}";
+      });
+
+    this->register_route(
+      "/transaction/update",
+      reactor::http::Method::POST,
+      [&] (Server::Headers const&,
+           Server::Cookies const& cookies,
+           Server::Parameters const&,
+           elle::Buffer const& content)
+      {
+        elle::IOStream stream(content.istreambuf());
+        elle::serialization::json::SerializerIn input(stream, false);
+        std::string id;
+        int status;
+        input.serialize("transaction_id", id);
+        input.serialize("status", status);
+        auto it = this->_transactions.find(id);
+        if (it == this->_transactions.end())
+          throw reactor::http::tests::Server::Exception(
+            "/transaction/update",
+            reactor::http::StatusCode::Not_Found,
+            "transaction not found");
+        auto& t = **it;
+        t.status = infinit::oracles::Transaction::Status(status);
+        t.status_changed()(t.status);
+        if (t.status == infinit::oracles::Transaction::Status::accepted)
         {
           this->headers()["ETag"] = boost::lexical_cast<std::string>(boost::uuids::random_generator()());
-          return elle::sprintf(
-            "<CompleteMultipartUploadResult>"
-            "<Location></Location>"
-            "<Bucket>bucket</Bucket>"
-            "<Key>filename</Key>"
-            "<ETag>%s</ETag>"
-            "</CompleteMultipartUploadResult>",
-            this->headers()["ETag"]);
-        });
+          auto const& user = this->user(cookies);
+          auto const& device = this->device(cookies);
+          t.recipient_id = boost::lexical_cast<std::string>(user.id());
+          t.recipient_device_id = boost::lexical_cast<std::string>(device.id());
+        }
+        auto& tr = **this->_transactions.find(id);
+        std::string transaction_notification = tr.json();
+        transaction_notification.insert(1, "\"notification_type\":7,");
+        for (auto& socket: this->trophonius.clients(boost::uuids::string_generator()(tr.sender_id)))
+          socket->write(transaction_notification);
+        for (auto& socket: this->trophonius.clients(boost::uuids::string_generator()(tr.recipient_id)))
+          socket->write(transaction_notification);
+        auto res = elle::sprintf(
+          "{"
+          "%s"
+          "  \"updated_transaction_id\": \"%s\""
+          "}",
+          t.status == infinit::oracles::Transaction::Status::accepted
+          ? elle::sprintf("  \"recipent_device_id\": \"%s\", \"recipient_device_name\": \"bite\", ", tr.recipient_device_id)
+          : std::string{},
+          tr.id
+          );
+        return res;
+      });
 
-      this->register_route(
-        elle::sprintf("/s3/%s_data", t.id),
-        reactor::http::Method::PUT,
-        [] (Server::Headers const&,
-            Server::Cookies const&,
-            Server::Parameters const&,
-            elle::Buffer const&)
+    this->register_route(
+      elle::sprintf("/transaction/%s/cloud_buffer", id),
+      reactor::http::Method::GET,
+      [&, id] (Server::Headers const&,
+               Server::Cookies const&,
+               Server::Parameters const&,
+               elle::Buffer const&)
+      {
+        auto now = boost::posix_time::second_clock::universal_time();
+        auto tomorrow = now + boost::posix_time::hours(24);
+        return elle::sprintf(
+          "{"
+          "  \"protocol\": \"aws\","
+          "  \"access_key_id\": \"\","
+          "  \"secret_access_key\": \"\","
+          "  \"session_token\": \"\","
+          "  \"region\": \"region\","
+          "  \"bucket\": \"bucket\","
+          "  \"folder\": \"folder\","
+          "  \"expiration\": \"%s\","
+          "  \"current_time\": \"%s\""
+          "}",
+          boost::posix_time::to_iso_extended_string(tomorrow),
+          boost::posix_time::to_iso_extended_string(now));
+      });
+
+    this->register_route(
+      elle::sprintf("/transaction/%s/cloud_buffer", id),
+      reactor::http::Method::GET,
+      [&] (Server::Headers const&,
+           Server::Cookies const&,
+           Server::Parameters const&,
+           elle::Buffer const&)
+      {
+        auto now = boost::posix_time::second_clock::universal_time();
+        auto tomorrow = now + boost::posix_time::hours(24);
+        return elle::sprintf(
+          "{"
+          "  \"protocol\": \"aws\","
+          "  \"access_key_id\": \"\","
+          "  \"secret_access_key\": \"\","
+          "  \"session_token\": \"\","
+          "  \"region\": \"region\","
+          "  \"bucket\": \"bucket\","
+          "  \"folder\": \"folder\","
+          "  \"expiration\": \"%s\","
+          "  \"current_time\": \"%s\""
+          "}",
+          boost::posix_time::to_iso_extended_string(tomorrow),
+          boost::posix_time::to_iso_extended_string(now));
+      });
+    return boost::uuids::string_generator()(id);
+  }
+
+  std::string
+  Server::_transaction_put(Server::Headers const&,
+                           Server::Cookies const& cookies,
+                           Server::Parameters const&,
+                           elle::Buffer const& content,
+                           boost::uuids::uuid const& id)
+  {
+    User const& user = this->user(cookies);
+    auto const& device = this->device(cookies);
+    elle::IOStream stream(content.istreambuf());
+    elle::serialization::json::SerializerIn input(stream, false);
+    std::string recipient_email_or_id;
+    input.serialize("recipient_identifier", recipient_email_or_id);
+    ELLE_LOG("%s: recipient: %s", *this, recipient_email_or_id);
+    std::list<std::string> files;
+    input.serialize("files", files);
+    bool ghost = false;
+    auto const& rec = [&] () -> User const& {
+      if (recipient_email_or_id.find('@') != std::string::npos)
+      {
+        auto& users_by_email = this->_users.get<1>();
+        auto recipient = users_by_email.find(recipient_email_or_id);
+        ghost = recipient == users_by_email.end();
+        return ghost
+        ? generate_ghost_user(recipient_email_or_id)
+        : *recipient;
+      }
+      else
+      {
+        auto id = recipient_email_or_id;
+        auto& users = this->_users.get<0>();
+        return *users.find(boost::uuids::string_generator()(id));
+      }}();
+
+    // BMI shouldn't be used like that...
+    auto& tr = **this->_transactions.find(boost::lexical_cast<std::string>(id));
+    tr.status = infinit::oracles::Transaction::Status::initialized;
+    tr.sender_id = boost::lexical_cast<std::string>(user.id());
+    tr.sender_device_id = boost::lexical_cast<std::string>(device.id());
+    tr.files = files;
+    tr.recipient_id = boost::lexical_cast<std::string>(rec.id());
+    tr.is_ghost = ghost;
+
+    struct UpdateSwag
+    {
+      UpdateSwag(User const& swagger)
+        : swagger(swagger)
+      {}
+
+      void
+      operator()(User& user)
+      {
+        user.swaggers.insert(&user);
+      }
+
+      User const& swagger;
+    };
+    this->_users.modify(this->_users.get<0>().find(user.id()), UpdateSwag(rec));
+    this->_users.modify(this->_users.get<0>().find(rec.id()), UpdateSwag(user));
+
+    auto res = elle::sprintf(
+      "{"
+      "\"created_transaction_id\": \"%s\","
+      "\"recipient\": %s,"
+      "\"recipient_is_ghost\": %s"
+      "}", id, rec.json(),
+      rec.ghost() ? "true" : "false");
+    return res;
+  }
+
+  User const&
+  Server::user(Server::Cookies const& cookies) const
+  {
+    try
+    {
+      if (contains(cookies, "session-id"))
+      {
+        std::string session_id = cookies.at("session-id");
+        std::vector<std::string> strs;
+        boost::split(strs, session_id, boost::is_any_of("+"));
+        auto& users = this->_users.get<0>();
+        auto it = users.find(boost::uuids::string_generator()(strs[0]));
+        if (it != users.end())
         {
-          return "";
-        });
+          return *it;
+        }
+      }
+    }
+    catch (...)
+    {}
+    ELLE_LOG("cookies: %s", cookies);
+    for (auto const& user: this->_users.get<0>())
+      ELLE_LOG("user: %s", user);
+    throw Server::Exception(" ", reactor::http::StatusCode::Forbidden, " ");
+  }
 
-      this->register_route(
-        elle::sprintf("/s3/%s/000000000000_0000", t.id),
-        reactor::http::Method::PUT,
-        [this] (Server::Headers const&,
+  Device const&
+  Server::device(Server::Cookies const& cookies) const
+   {
+    try
+    {
+      if (contains(cookies, "session-id"))
+      {
+        auto& devices = this->_devices;
+        std::string session_id = cookies.at("session-id");
+        std::vector<std::string> strs;
+        boost::split(strs, session_id, boost::is_any_of("+"));
+        auto it = devices.find(boost::uuids::string_generator()(strs[1]));
+        if (it != devices.end())
+        {
+          return it->second;
+        }
+      }
+    }
+    catch (...)
+    {}
+    ELLE_LOG("cookies: %s", cookies);
+    throw Server::Exception(" ", reactor::http::StatusCode::Forbidden, " ");
+  }
+
+  User const&
+  Server::register_user(std::string const& email,
+                        std::string const& password)
+  {
+    auto keys =
+      cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
+                                      papier::Identity::keypair_length);
+    auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
+    boost::uuids::uuid id = random_uuid();
+    ELLE_TRACE_SCOPE("%s: generate user %s", *this, id);
+    auto identity =
+      generate_identity(keys, boost::lexical_cast<std::string>(id), "my identity", password_hash);
+    std::string identity_serialized;
+    identity->Save(identity_serialized);
+    auto response =
+      [this, id, email, identity_serialized, keys]
+      (Server::Headers const&,
+       Server::Cookies const&,
+       Server::Parameters const&,
+       elle::Buffer const&)
+      {
+        auto& users = this->_users.get<0>();
+        auto it = users.find(id);
+        if (it == users.end())
+          throw reactor::http::tests::Server::Exception(
+            elle::sprintf("user/%s not found", id),
+            reactor::http::StatusCode::Not_Found,
+            "user not found");
+        return (*it).json();
+      };
+    this->register_route(elle::sprintf("/users/%s", email),
+                         reactor::http::Method::GET, response);
+    this->register_route(elle::sprintf("/users/%s", id),
+                         reactor::http::Method::GET, response);
+    this->_users.emplace(id, email, std::move(keys), std::move(identity));
+    {
+      auto const& users = this->_users.get<0>();
+      auto it = users.find(id);
+      ELLE_ASSERT(it != users.end());
+      return *it;
+    }
+  }
+
+  User const&
+  Server::generate_ghost_user(std::string const& email)
+  {
+    ELLE_ASSERT(this->_users.get<1>().find(email) == this->_users.get<1>().end());
+    auto id = random_uuid();
+
+    auto response =
+      [this, id, email]
+      (Server::Headers const&,
+       Server::Cookies const&,
+       Server::Parameters const&,
+       elle::Buffer const&)
+      {
+        ELLE_TRACE_SCOPE("%s: fetch ghost user %s (%s)", *this, id, email);
+        return elle::sprintf(
+          "{"
+          "  \"id\": \"%s\","
+          "  \"public_key\": \"\","
+          "  \"fullname\": \"Eric Draven\","
+          "  \"handle\": \"thecrow\","
+          "  \"connected_devices\": [],"
+          "  \"status\": false,"
+          "  \"register_status\": \"ghost\""
+          "}",
+          id);
+      };
+    this->register_route(elle::sprintf("/users/%s", email),
+                         reactor::http::Method::GET, response);
+    this->register_route(elle::sprintf("/users/%s", id),
+                         reactor::http::Method::GET, response);
+    this->_users.emplace(id,
+                         email,
+                         boost::optional<cryptography::KeyPair>{},
+                         std::unique_ptr<papier::Identity>{});
+
+    {
+      auto& users = this->_users.get<0>();
+      auto it = users.find(id);
+      ELLE_ASSERT(it != users.end());
+      return *it;
+    }
+  }
+
+  void
+  Server::register_device(User const& user,
+                          boost::optional<boost::uuids::uuid> device_id)
+  {
+    Device device{ user.identity()->pair().K(), device_id };
+
+    struct AddDevice
+    {
+      AddDevice(Device::Id const& id)
+        : id(id)
+      {}
+
+      void
+      operator()(User& user)
+      {
+        user.devices.insert(this->id);
+      }
+
+      Device::Id id;
+    };
+    this->_users.modify(this->_users.get<0>().find(user.id()), AddDevice(device.id()));
+    this->_devices.emplace(device.id(), device);
+    this->register_route(
+      elle::sprintf("/device/%s/view", device.id()),
+      reactor::http::Method::GET,
+      [device] (Server::Headers const&,
                 Server::Cookies const&,
                 Server::Parameters const&,
                 elle::Buffer const&)
-        {
-          return "";
-        });
-
-      return elle::sprintf(
-        "{\"created_link_id\": \"%s\"}",
-        t.id);
-    });
-
-  this->register_route(
-    "/transaction/create_empty",
-    reactor::http::Method::POST,
-    [&] (Server::Headers const&,
-         Server::Cookies const&,
-         Server::Parameters const&,
-         elle::Buffer const&)
-    {
-      auto id = this->_create_empty();
-      return elle::sprintf(
-        "{"
-        "\"created_transaction_id\": \"%s\""
-        "}",
-        id);
-    });
-
-  this->register_route(
-    "/transaction/update",
-    reactor::http::Method::POST,
-    [&] (Server::Headers const&,
-         Server::Cookies const&,
-         Server::Parameters const&,
-         elle::Buffer const& content)
-    {
-      elle::IOStream stream(content.istreambuf());
-      elle::serialization::json::SerializerIn input(stream, false);
-      std::string id;
-      int status;
-      input.serialize("transaction_id", id);
-      input.serialize("status", status);
-      auto it = this->_transactions.find(boost::uuids::string_generator()(id));
-      if (it == this->_transactions.end())
-        throw reactor::http::tests::Server::Exception(
-          "/transaction/update",
-          reactor::http::StatusCode::Not_Found,
-          "transaction not found");
-      auto& t = **it;
-      t._status = infinit::oracles::Transaction::Status(status);
-      t.status_changed()(t._status);
-      return "{}";
-    });
-
-  this->register_route(
-    "/s3/folder/passwd",
-    reactor::http::Method::POST,
-    [] (Server::Headers const&,
-        Server::Cookies const&,
-        Server::Parameters const& parameters,
-        elle::Buffer const&)
-    {
-      if (contains(parameters, "uploads"))
-        return
-          "<InitiateMultipartUploadResult>"
-          "  <UploadId>upload-id</UploadId>"
-          "</InitiateMultipartUploadResult>";
-      else
-        return
-          "<CompleteMultipartUploadResult>"
-          "</CompleteMultipartUploadResult>";
-    });
-  this->register_route(
-    "/s3/folder/passwd",
-    reactor::http::Method::PUT,
-    [] (Server::Headers const&,
-        Server::Cookies const&,
-        Server::Parameters const&,
-        elle::Buffer const&)
-    {
-      return "";
-    });
-  this->register_route(
-    "/s3/folder/meta_data",
-    reactor::http::Method::PUT,
-    [] (Server::Headers const&,
-        Server::Cookies const&,
-        Server::Parameters const&,
-        elle::Buffer const&)
-    {
-      return "";
-    });
-  this->register_route(
-    "/s3/folder/000000000000_0000",
-    reactor::http::Method::PUT,
-    [this] (Server::Headers const&,
-            Server::Cookies const&,
-            Server::Parameters const&,
-            elle::Buffer const&)
-    {
-      this->_cloud_buffered = true;
-      return "";
-    });
-
-  // Full swaggers.
-  // XXX: Fix.
-  this->register_route(
-    "/user/full_swaggers",
-    reactor::http::Method::GET,
-    [&] (Server::Headers const&,
-         Server::Cookies const&,
-         Server::Parameters const&,
-         elle::Buffer const&)
-    {
-      return "{\"success\": true, \"swaggers\": []}";
-    });
-
-  // Transactions.
-  // XXX: Fix.
-  this->register_route(
-    "/transactions",
-    reactor::http::Method::GET,
-    [&] (Server::Headers const&,
-         Server::Cookies const&,
-         Server::Parameters const&,
-         elle::Buffer const&)
-    {
-      return "{\"success\": true, \"transactions\": []}";
-    });
-
-  // Links.
-  // XXX: Fix.
-  this->register_route(
-    "/links",
-    reactor::http::Method::GET,
-    [&] (Server::Headers const&,
-         Server::Cookies const&,
-         Server::Parameters const&,
-         elle::Buffer const&)
-    {
-      return "{\"success\": true, \"links\": []}";
-    });
-
-}
-Server::User&
-Server::user(Server::Cookies const& cookies) const
-{
-  try
-  {
-    if (contains(cookies, "session-id"))
-    {
-      auto& users = this->_users.get<0>();
-      auto const& user = users.find(boost::uuids::string_generator()(cookies.at("session-id")));
-      if (user != users.end())
       {
-        if (*user != nullptr)
-          return **user;
-      }
-    }
+        return device.json();
+      });
   }
-  catch (...)
-  {}
-  ELLE_LOG("cookies: %s", cookies);
-  for (auto const& user: this->_users.get<0>())
-    ELLE_LOG("user: %s", *user);
-  throw Server::Exception(" ", reactor::http::StatusCode::Forbidden, " ");
-}
 
-
-boost::uuids::uuid
-Server::_create_empty()
-{
-  auto t = elle::make_unique<Transaction>();
-  auto id = t->id();
-  ELLE_TRACE_SCOPE("%s: create transaction %s", *this, id);
-  this->_transactions.insert(std::move(t));
-  this->register_route(
-    elle::sprintf("/transaction/%s", id),
-    reactor::http::Method::PUT,
-    std::bind(&Server::_transaction_put,
-              std::ref(*this),
-              std::placeholders::_1,
-              std::placeholders::_2,
-              std::placeholders::_3,
-              std::placeholders::_4,
-              id));
-  this->register_route(
-    elle::sprintf("/transaction/%s", id),
-    reactor::http::Method::GET,
-    [this, id] (Server::Headers const&,
-         Server::Cookies const& cookies,
-         Server::Parameters const&,
-         elle::Buffer const&)
-    {
-      auto& user = this->user(cookies);
-      return elle::sprintf(
-        "{"
-        "\"_id\": \"%s\","
-        "\"sender_id\": \"%s\","
-        "\"sender_fullname\": \"foo\","
-        "\"sender_device_id\": \"%s\","
-        "\"download_link\": \"foo\","
-        "\"recipient_id\": \"%s\","
-        "\"recipient_fullname\": \"foo\","
-        "\"recipient_device_id\": \"%s\","
-        "\"recipient_device_name\": \"foo\","
-
-        "\"status\": 6,"
-
-        "\"message\": \"foo\","
-        "\"files\": [],"
-        "\"files_count\": 0,"
-        "\"total_size\": 0,"
-        "\"ctime\": 0,"
-        "\"mtime\": 0,"
-        "\"is_directory\": false"
-        "}",
-        id, user.id(), elle::UUID::random(), user.id(), elle::UUID::random());
-    });
-  this->register_route(
-    elle::sprintf("/users/%s", id),
-    reactor::http::Method::GET,
-    [this, id] (Server::Headers const&,
-      Server::Cookies const&,
-      Server::Parameters const&,
-      elle::Buffer const&)
-    {
-      return elle::sprintf(
-        "{"
-        "  \"id\": \"%s\","
-        "  \"email\": \"foo@infinit.io\","
-        "  \"identity\": \"foo\","
-        "  \"public_key\": \"foo\","
-        "  \"fullname\": \"John User\","
-        "  \"handle\": \"john\","
-        "  \"connected_devices\": [],"
-        "  \"status\": false,"
-        "  \"devices\": [],"
-        "  \"favorites\": [],"
-        "  \"register_status\": \"ok\""
-        "}"
-        , id);
-    });
-  return id;
-}
-
-std::string
-Server::_transaction_put(Server::Headers const&,
-                         Server::Cookies const& cookies,
-                         Server::Parameters const&,
-                         elle::Buffer const& content,
-                         boost::uuids::uuid const& id)
-{
-  auto& user = this->user(cookies);
-  elle::IOStream stream(content.istreambuf());
-  elle::serialization::json::SerializerIn input(stream, false);
-  std::string recipient_email;
-  input.serialize("id_or_email", recipient_email);
-  ELLE_DEBUG("%s: recipient: %s", *this, recipient_email);
-  auto it = this->_transactions.find(id);
-  (*it)->status(infinit::oracles::Transaction::Status::initialized);
-  bool ghost;
-  auto& users_by_email = this->_users.get<1>();
-  auto recipient = users_by_email.find(recipient_email);
-  ghost = recipient == users_by_email.end();
-  auto& rec = ghost
-    ? generate_ghost_user(recipient_email)
-    : **recipient;
-  rec.swaggers.insert(&user);
-  user.swaggers.insert(&rec);
-  auto res = elle::sprintf(
-    "{"
-    "  \"created_transaction_id\": \"%s\","
-    "  \"recipient_is_ghost\": %s,"
-    "  \"recipient\": %s"
-    "}",
-    id,
-    ghost ? "true" : "false",
-    rec.json());
-  this->register_route(
-    elle::sprintf("/transaction/%s/cloud_buffer", id),
-    reactor::http::Method::GET,
-    [&] (Server::Headers const&,
-         Server::Cookies const&,
-         Server::Parameters const&,
-         elle::Buffer const&)
-    {
-      auto now = boost::posix_time::second_clock::universal_time();
-      auto tomorrow = now + boost::posix_time::hours(24);
-      return elle::sprintf(
-        "{"
-        "  \"protocol\": \"aws\","
-        "  \"access_key_id\": \"\","
-        "  \"secret_access_key\": \"\","
-        "  \"session_token\": \"\","
-        "  \"region\": \"region\","
-        "  \"bucket\": \"bucket\","
-        "  \"folder\": \"folder\","
-        "  \"expiration\": \"%s\","
-        "  \"current_time\": \"%s\""
-        "}",
-        boost::posix_time::to_iso_extended_string(tomorrow),
-        boost::posix_time::to_iso_extended_string(now));
-    });
-  return res;
-}
-
-Server::User&
-Server::register_user(std::string const& email,
-                      std::string const& password)
-{
-  auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
-  auto generator = boost::uuids::random_generator();
-  auto id = generator();
-  auto keys =
-    cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
-                                    papier::Identity::keypair_length);
-  Device device{ keys.K() };
-  ELLE_TRACE_SCOPE("%s: generate user %s on device %s", *this, id, device);
-  auto identity = generate_identity(
-    keys, boost::lexical_cast<std::string>(id), "my identity", password_hash);
-  std::string identity_serialized;
-  identity.Save(identity_serialized);
-  auto response =
-    [this, id, email, identity_serialized, keys]
-    (Server::Headers const&,
-     Server::Cookies const&,
-     Server::Parameters const&,
-     elle::Buffer const&)
-    {
-      ELLE_TRACE_SCOPE("%s: fetch user %s (%s)", *this, id, email);
-      std::string public_key;
-      keys.K().Save(public_key);
-      return elle::sprintf(
-        "{"
-        "  \"id\": \"%s\","
-        "  \"email\": \"%s\","
-        "  \"identity\": \"%s\","
-        "  \"public_key\": \"%s\","
-        "  \"fullname\": \"John User\","
-        "  \"handle\": \"john\","
-        "  \"connected_devices\": [],"
-        "  \"status\": false,"
-        "  \"devices\": [],"
-        "  \"favorites\": [],"
-        "  \"register_status\": \"ok\""
-        "}",
-        id, email, identity_serialized, public_key);
-    };
-  this->register_route(elle::sprintf("/users/%s", email),
-                       reactor::http::Method::GET, response);
-  this->register_route(elle::sprintf("/users/%s", id),
-                       reactor::http::Method::GET, response);
-  this->register_route("/user/self",
-                       reactor::http::Method::GET, response);
-
-  this->_devices.emplace(device.id(), device);
-  this->register_route(
-    elle::sprintf("/device/%s/view", device.id()),
-    reactor::http::Method::GET,
-    [device] (Server::Headers const&,
-                           Server::Cookies const&,
-                           Server::Parameters const&,
-              elle::Buffer const&)
-    {
-      return device.json();
-    });
-
-  auto user = elle::make_unique<User>(
-    id,
-    device.id(),
-    std::move(email),
-    std::move(keys),
-    std::move(identity));
-  auto raw = user.get();
-  this->_users.insert(std::move(user));
-  return *raw;
-}
-
-Server::User&
-Server::generate_ghost_user(std::string const& email)
-{
-  ELLE_ASSERT(this->_users.get<1>().find(email) == this->_users.get<1>().end());
-  auto id = boost::uuids::random_generator()();
-
-  auto user = elle::make_unique<User>(
-    id,
-    boost::optional<boost::uuids::uuid>{},
-    std::move(email),
-    boost::optional<cryptography::KeyPair>{},
-    boost::optional<papier::Identity>{});
-
-  auto response =
-    [this, id, email]
-    (Server::Headers const&,
-     Server::Cookies const&,
-     Server::Parameters const&,
-     elle::Buffer const&)
-    {
-      ELLE_TRACE_SCOPE("%s: fetch ghost user %s (%s)", *this, id, email);
-      return elle::sprintf(
-        "{"
-        "  \"id\": \"%s\","
-        "  \"public_key\": \"\","
-        "  \"fullname\": \"Eric Draven\","
-        "  \"handle\": \"thecrow\","
-        "  \"connected_devices\": [],"
-        "  \"status\": false,"
-        "  \"register_status\": \"ghost\""
-        "}",
-        id);
-    };
-  this->register_route(elle::sprintf("/users/%s", email),
-                       reactor::http::Method::GET, response);
-  this->register_route(elle::sprintf("/users/%s", id),
-                       reactor::http::Method::GET, response);
-
-  auto raw = user.get();
-  this->_users.insert(std::move(user));
-  return *raw;
-}
-
-std::string
-Server::_get_trophonius(Headers const&,
-                        Cookies const&,
-                        Parameters const&,
-                        elle::Buffer const&) const
-{
-  return elle::sprintf(
-    "{"
-    "  \"host\": \"127.0.0.1\","
-    "  \"port\": 0,"
-    "  \"port_ssl\": %s"
-    "}",
-    this->trophonius.port());
-}
-
-Server::Transaction&
-Server::transaction(std::string const& id)
-{
-  auto it = this->_transactions.find(boost::uuids::string_generator()(id));
-  ELLE_ASSERT(it != this->_transactions.end());
-  return **it;
-}
-
-void
-Server::session_id(boost::uuids::uuid id)
-{
-  this->_session_id = std::move(id);
-}
-
-Server::Transaction::Transaction()
-  : _id(boost::uuids::random_generator()())
-{}
-
-void
-Server::Transaction::print(std::ostream& out) const
-{
-  out << "Transaction("
-      << this->id() << ", "
-      << this->status()
-      << ")";
-}
-
-State::State(Server& server,
-             boost::uuids::uuid device_id,
-             boost::filesystem::path home)
-  : surface::gap::State(
-    "http",
-    "127.0.0.1",
-    server.port(),
-    std::move(device_id),
-    fingerprint,
-    elle::os::path::join(elle::system::home_directory().string(), "Downloads"),
-    home.empty() ? "" : home.string()
-    )
-{
-  this->s3_hostname(aws::URL{"http://",
-                             elle::sprintf("localhost:%s", server.port()),
-                             "/s3"});
-}
-
-const std::vector<unsigned char> fingerprint =
-{
-  0x66, 0x84, 0x68, 0xEB, 0xBE, 0x83, 0xA0, 0x5C, 0x6A, 0x32,
-  0xAD, 0xD2, 0x58, 0x62, 0x01, 0x31, 0x79, 0x96, 0x78, 0xB8
-};
-
-const std::vector<char> server_certificate =
-{
-  0x43, 0x65, 0x72, 0x74, 0x69, 0x66, 0x69, 0x63, 0x61, 0x74, 0x65, 0x3a,
-  0x0a, 0x20, 0x20, 0x20, 0x20, 0x44, 0x61, 0x74, 0x61, 0x3a, 0x0a, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x56, 0x65, 0x72, 0x73, 0x69,
-  0x6f, 0x6e, 0x3a, 0x20, 0x33, 0x20, 0x28, 0x30, 0x78, 0x32, 0x29, 0x0a,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x53, 0x65, 0x72, 0x69,
-  0x61, 0x6c, 0x20, 0x4e, 0x75, 0x6d, 0x62, 0x65, 0x72, 0x3a, 0x20, 0x34,
-  0x30, 0x39, 0x36, 0x20, 0x28, 0x30, 0x78, 0x31, 0x30, 0x30, 0x30, 0x29,
-  0x0a, 0x20, 0x20, 0x20, 0x20, 0x53, 0x69, 0x67, 0x6e, 0x61, 0x74, 0x75,
-  0x72, 0x65, 0x20, 0x41, 0x6c, 0x67, 0x6f, 0x72, 0x69, 0x74, 0x68, 0x6d,
-  0x3a, 0x20, 0x73, 0x68, 0x61, 0x31, 0x57, 0x69, 0x74, 0x68, 0x52, 0x53,
-  0x41, 0x45, 0x6e, 0x63, 0x72, 0x79, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x0a,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x49, 0x73, 0x73, 0x75,
-  0x65, 0x72, 0x3a, 0x20, 0x43, 0x3d, 0x46, 0x52, 0x2c, 0x20, 0x53, 0x54,
-  0x3d, 0x49, 0x6c, 0x65, 0x2d, 0x64, 0x65, 0x2d, 0x46, 0x72, 0x61, 0x6e,
-  0x63, 0x65, 0x2c, 0x20, 0x4c, 0x3d, 0x50, 0x61, 0x72, 0x69, 0x73, 0x2c,
-  0x20, 0x4f, 0x3d, 0x49, 0x6e, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x2e, 0x69,
-  0x6f, 0x2c, 0x20, 0x4f, 0x55, 0x3d, 0x44, 0x65, 0x76, 0x65, 0x6c, 0x6f,
-  0x70, 0x6d, 0x65, 0x6e, 0x74, 0x2c, 0x20, 0x43, 0x4e, 0x3d, 0x4c, 0x6f,
-  0x75, 0x69, 0x73, 0x20, 0x46, 0x45, 0x55, 0x56, 0x52, 0x49, 0x45, 0x52,
-  0x2f, 0x65, 0x6d, 0x61, 0x69, 0x6c, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73,
-  0x73, 0x3d, 0x6c, 0x6f, 0x75, 0x69, 0x73, 0x2e, 0x66, 0x65, 0x75, 0x76,
-  0x72, 0x69, 0x65, 0x72, 0x40, 0x69, 0x6e, 0x66, 0x69, 0x6e, 0x69, 0x74,
-  0x2e, 0x69, 0x6f, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x56, 0x61, 0x6c, 0x69, 0x64, 0x69, 0x74, 0x79, 0x0a, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x4e, 0x6f, 0x74,
-  0x20, 0x42, 0x65, 0x66, 0x6f, 0x72, 0x65, 0x3a, 0x20, 0x44, 0x65, 0x63,
-  0x20, 0x20, 0x35, 0x20, 0x31, 0x30, 0x3a, 0x35, 0x39, 0x3a, 0x34, 0x38,
-  0x20, 0x32, 0x30, 0x31, 0x33, 0x20, 0x47, 0x4d, 0x54, 0x0a, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x4e, 0x6f,
-  0x74, 0x20, 0x41, 0x66, 0x74, 0x65, 0x72, 0x20, 0x3a, 0x20, 0x44, 0x65,
-  0x63, 0x20, 0x20, 0x35, 0x20, 0x31, 0x30, 0x3a, 0x35, 0x39, 0x3a, 0x34,
-  0x38, 0x20, 0x32, 0x30, 0x31, 0x34, 0x20, 0x47, 0x4d, 0x54, 0x0a, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x53, 0x75, 0x62, 0x6a, 0x65,
-  0x63, 0x74, 0x3a, 0x20, 0x43, 0x3d, 0x46, 0x52, 0x2c, 0x20, 0x53, 0x54,
-  0x3d, 0x49, 0x6c, 0x65, 0x2d, 0x64, 0x65, 0x2d, 0x46, 0x72, 0x61, 0x6e,
-  0x63, 0x65, 0x2c, 0x20, 0x4f, 0x3d, 0x49, 0x6e, 0x66, 0x69, 0x6e, 0x69,
-  0x74, 0x2e, 0x69, 0x6f, 0x2c, 0x20, 0x4f, 0x55, 0x3d, 0x44, 0x65, 0x76,
-  0x65, 0x6c, 0x6f, 0x70, 0x6d, 0x65, 0x6e, 0x74, 0x2c, 0x20, 0x43, 0x4e,
-  0x3d, 0x4c, 0x6f, 0x75, 0x69, 0x73, 0x20, 0x46, 0x45, 0x55, 0x56, 0x52,
-  0x49, 0x45, 0x52, 0x2f, 0x65, 0x6d, 0x61, 0x69, 0x6c, 0x41, 0x64, 0x64,
-  0x72, 0x65, 0x73, 0x73, 0x3d, 0x6c, 0x6f, 0x75, 0x69, 0x73, 0x2e, 0x66,
-  0x65, 0x75, 0x76, 0x72, 0x69, 0x65, 0x72, 0x40, 0x69, 0x6e, 0x66, 0x69,
-  0x6e, 0x69, 0x74, 0x2e, 0x69, 0x6f, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x53, 0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x20, 0x50,
-  0x75, 0x62, 0x6c, 0x69, 0x63, 0x20, 0x4b, 0x65, 0x79, 0x20, 0x49, 0x6e,
-  0x66, 0x6f, 0x3a, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x50, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x20, 0x4b,
-  0x65, 0x79, 0x20, 0x41, 0x6c, 0x67, 0x6f, 0x72, 0x69, 0x74, 0x68, 0x6d,
-  0x3a, 0x20, 0x72, 0x73, 0x61, 0x45, 0x6e, 0x63, 0x72, 0x79, 0x70, 0x74,
-  0x69, 0x6f, 0x6e, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x50, 0x75, 0x62, 0x6c,
-  0x69, 0x63, 0x2d, 0x4b, 0x65, 0x79, 0x3a, 0x20, 0x28, 0x31, 0x30, 0x32,
-  0x34, 0x20, 0x62, 0x69, 0x74, 0x29, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x4d,
-  0x6f, 0x64, 0x75, 0x6c, 0x75, 0x73, 0x3a, 0x0a, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x30, 0x30, 0x3a, 0x64, 0x30, 0x3a, 0x66, 0x66,
-  0x3a, 0x61, 0x30, 0x3a, 0x34, 0x34, 0x3a, 0x63, 0x66, 0x3a, 0x65, 0x35,
-  0x3a, 0x30, 0x65, 0x3a, 0x63, 0x34, 0x3a, 0x62, 0x66, 0x3a, 0x32, 0x32,
-  0x3a, 0x35, 0x33, 0x3a, 0x64, 0x38, 0x3a, 0x30, 0x65, 0x3a, 0x36, 0x39,
-  0x3a, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x35, 0x61,
-  0x3a, 0x31, 0x61, 0x3a, 0x33, 0x65, 0x3a, 0x31, 0x64, 0x3a, 0x37, 0x38,
-  0x3a, 0x63, 0x39, 0x3a, 0x35, 0x32, 0x3a, 0x38, 0x35, 0x3a, 0x38, 0x30,
-  0x3a, 0x31, 0x63, 0x3a, 0x65, 0x35, 0x3a, 0x65, 0x64, 0x3a, 0x66, 0x35,
-  0x3a, 0x32, 0x62, 0x3a, 0x30, 0x37, 0x3a, 0x0a, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x66, 0x63, 0x3a, 0x63, 0x37, 0x3a, 0x32, 0x62,
-  0x3a, 0x63, 0x61, 0x3a, 0x31, 0x38, 0x3a, 0x37, 0x35, 0x3a, 0x66, 0x37,
-  0x3a, 0x39, 0x31, 0x3a, 0x35, 0x61, 0x3a, 0x39, 0x32, 0x3a, 0x37, 0x39,
-  0x3a, 0x35, 0x35, 0x3a, 0x66, 0x36, 0x3a, 0x65, 0x39, 0x3a, 0x34, 0x32,
-  0x3a, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x65, 0x30,
-  0x3a, 0x65, 0x30, 0x3a, 0x61, 0x33, 0x3a, 0x64, 0x66, 0x3a, 0x66, 0x62,
-  0x3a, 0x33, 0x65, 0x3a, 0x62, 0x34, 0x3a, 0x34, 0x32, 0x3a, 0x64, 0x30,
-  0x3a, 0x34, 0x62, 0x3a, 0x66, 0x35, 0x3a, 0x65, 0x62, 0x3a, 0x30, 0x35,
-  0x3a, 0x34, 0x34, 0x3a, 0x33, 0x32, 0x3a, 0x0a, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x32, 0x63, 0x3a, 0x34, 0x61, 0x3a, 0x38, 0x35,
-  0x3a, 0x64, 0x30, 0x3a, 0x65, 0x31, 0x3a, 0x61, 0x33, 0x3a, 0x36, 0x63,
-  0x3a, 0x61, 0x61, 0x3a, 0x66, 0x30, 0x3a, 0x30, 0x31, 0x3a, 0x66, 0x37,
-  0x3a, 0x31, 0x32, 0x3a, 0x63, 0x34, 0x3a, 0x30, 0x65, 0x3a, 0x66, 0x66,
-  0x3a, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x30, 0x30,
-  0x3a, 0x61, 0x31, 0x3a, 0x37, 0x34, 0x3a, 0x64, 0x32, 0x3a, 0x36, 0x35,
-  0x3a, 0x32, 0x30, 0x3a, 0x64, 0x62, 0x3a, 0x35, 0x61, 0x3a, 0x30, 0x33,
-  0x3a, 0x37, 0x38, 0x3a, 0x63, 0x37, 0x3a, 0x35, 0x34, 0x3a, 0x61, 0x31,
-  0x3a, 0x62, 0x63, 0x3a, 0x64, 0x37, 0x3a, 0x0a, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x38, 0x33, 0x3a, 0x66, 0x66, 0x3a, 0x39, 0x37,
-  0x3a, 0x37, 0x38, 0x3a, 0x62, 0x64, 0x3a, 0x31, 0x34, 0x3a, 0x64, 0x36,
-  0x3a, 0x35, 0x31, 0x3a, 0x33, 0x35, 0x3a, 0x62, 0x61, 0x3a, 0x36, 0x30,
-  0x3a, 0x31, 0x62, 0x3a, 0x66, 0x66, 0x3a, 0x39, 0x34, 0x3a, 0x62, 0x66,
-  0x3a, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x37, 0x65,
-  0x3a, 0x34, 0x63, 0x3a, 0x34, 0x34, 0x3a, 0x61, 0x62, 0x3a, 0x63, 0x63,
-  0x3a, 0x62, 0x36, 0x3a, 0x39, 0x33, 0x3a, 0x30, 0x63, 0x3a, 0x36, 0x61,
-  0x3a, 0x35, 0x66, 0x3a, 0x38, 0x36, 0x3a, 0x38, 0x65, 0x3a, 0x32, 0x38,
-  0x3a, 0x36, 0x62, 0x3a, 0x39, 0x31, 0x3a, 0x0a, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x65, 0x64, 0x3a, 0x32, 0x38, 0x3a, 0x62, 0x61,
-  0x3a, 0x34, 0x61, 0x3a, 0x36, 0x66, 0x3a, 0x34, 0x66, 0x3a, 0x33, 0x33,
-  0x3a, 0x33, 0x66, 0x3a, 0x34, 0x35, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x45,
-  0x78, 0x70, 0x6f, 0x6e, 0x65, 0x6e, 0x74, 0x3a, 0x20, 0x36, 0x35, 0x35,
-  0x33, 0x37, 0x20, 0x28, 0x30, 0x78, 0x31, 0x30, 0x30, 0x30, 0x31, 0x29,
-  0x0a, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x58, 0x35, 0x30,
-  0x39, 0x76, 0x33, 0x20, 0x65, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f,
-  0x6e, 0x73, 0x3a, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x58, 0x35, 0x30, 0x39, 0x76, 0x33, 0x20, 0x42,
-  0x61, 0x73, 0x69, 0x63, 0x20, 0x43, 0x6f, 0x6e, 0x73, 0x74, 0x72, 0x61,
-  0x69, 0x6e, 0x74, 0x73, 0x3a, 0x20, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x43,
-  0x41, 0x3a, 0x46, 0x41, 0x4c, 0x53, 0x45, 0x0a, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x4e, 0x65, 0x74, 0x73,
-  0x63, 0x61, 0x70, 0x65, 0x20, 0x43, 0x6f, 0x6d, 0x6d, 0x65, 0x6e, 0x74,
-  0x3a, 0x20, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x4f, 0x70, 0x65, 0x6e, 0x53,
-  0x53, 0x4c, 0x20, 0x47, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64,
-  0x20, 0x43, 0x65, 0x72, 0x74, 0x69, 0x66, 0x69, 0x63, 0x61, 0x74, 0x65,
-  0x0a, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x58, 0x35, 0x30, 0x39, 0x76, 0x33, 0x20, 0x53, 0x75, 0x62, 0x6a,
-  0x65, 0x63, 0x74, 0x20, 0x4b, 0x65, 0x79, 0x20, 0x49, 0x64, 0x65, 0x6e,
-  0x74, 0x69, 0x66, 0x69, 0x65, 0x72, 0x3a, 0x20, 0x0a, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x44, 0x35, 0x3a, 0x35, 0x44, 0x3a, 0x43, 0x36, 0x3a, 0x32, 0x43,
-  0x3a, 0x41, 0x42, 0x3a, 0x31, 0x46, 0x3a, 0x42, 0x44, 0x3a, 0x32, 0x41,
-  0x3a, 0x35, 0x42, 0x3a, 0x45, 0x38, 0x3a, 0x34, 0x46, 0x3a, 0x43, 0x36,
-  0x3a, 0x36, 0x38, 0x3a, 0x42, 0x38, 0x3a, 0x42, 0x42, 0x3a, 0x33, 0x32,
-  0x3a, 0x38, 0x37, 0x3a, 0x44, 0x34, 0x3a, 0x31, 0x44, 0x3a, 0x45, 0x35,
-  0x0a, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x58, 0x35, 0x30, 0x39, 0x76, 0x33, 0x20, 0x41, 0x75, 0x74, 0x68,
-  0x6f, 0x72, 0x69, 0x74, 0x79, 0x20, 0x4b, 0x65, 0x79, 0x20, 0x49, 0x64,
-  0x65, 0x6e, 0x74, 0x69, 0x66, 0x69, 0x65, 0x72, 0x3a, 0x20, 0x0a, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x6b, 0x65, 0x79, 0x69, 0x64, 0x3a, 0x33, 0x37, 0x3a,
-  0x38, 0x38, 0x3a, 0x37, 0x35, 0x3a, 0x43, 0x33, 0x3a, 0x34, 0x45, 0x3a,
-  0x34, 0x42, 0x3a, 0x31, 0x33, 0x3a, 0x46, 0x33, 0x3a, 0x30, 0x32, 0x3a,
-  0x37, 0x46, 0x3a, 0x30, 0x43, 0x3a, 0x42, 0x44, 0x3a, 0x44, 0x30, 0x3a,
-  0x39, 0x43, 0x3a, 0x38, 0x35, 0x3a, 0x34, 0x36, 0x3a, 0x46, 0x39, 0x3a,
-  0x42, 0x46, 0x3a, 0x34, 0x31, 0x3a, 0x44, 0x46, 0x0a, 0x0a, 0x20, 0x20,
-  0x20, 0x20, 0x53, 0x69, 0x67, 0x6e, 0x61, 0x74, 0x75, 0x72, 0x65, 0x20,
-  0x41, 0x6c, 0x67, 0x6f, 0x72, 0x69, 0x74, 0x68, 0x6d, 0x3a, 0x20, 0x73,
-  0x68, 0x61, 0x31, 0x57, 0x69, 0x74, 0x68, 0x52, 0x53, 0x41, 0x45, 0x6e,
-  0x63, 0x72, 0x79, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x0a, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x32, 0x61, 0x3a, 0x36, 0x35, 0x3a,
-  0x63, 0x39, 0x3a, 0x33, 0x31, 0x3a, 0x66, 0x39, 0x3a, 0x65, 0x66, 0x3a,
-  0x62, 0x35, 0x3a, 0x37, 0x37, 0x3a, 0x65, 0x37, 0x3a, 0x37, 0x36, 0x3a,
-  0x66, 0x61, 0x3a, 0x30, 0x63, 0x3a, 0x34, 0x39, 0x3a, 0x64, 0x61, 0x3a,
-  0x33, 0x33, 0x3a, 0x36, 0x33, 0x3a, 0x61, 0x38, 0x3a, 0x35, 0x38, 0x3a,
-  0x0a, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x38, 0x33,
-  0x3a, 0x38, 0x31, 0x3a, 0x64, 0x61, 0x3a, 0x64, 0x37, 0x3a, 0x37, 0x32,
-  0x3a, 0x36, 0x35, 0x3a, 0x66, 0x39, 0x3a, 0x39, 0x63, 0x3a, 0x30, 0x36,
-  0x3a, 0x65, 0x31, 0x3a, 0x39, 0x36, 0x3a, 0x36, 0x36, 0x3a, 0x66, 0x63,
-  0x3a, 0x38, 0x38, 0x3a, 0x61, 0x38, 0x3a, 0x63, 0x34, 0x3a, 0x31, 0x63,
-  0x3a, 0x38, 0x66, 0x3a, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x62, 0x65, 0x3a, 0x36, 0x36, 0x3a, 0x39, 0x38, 0x3a, 0x33,
-  0x64, 0x3a, 0x64, 0x62, 0x3a, 0x61, 0x65, 0x3a, 0x36, 0x32, 0x3a, 0x63,
-  0x33, 0x3a, 0x66, 0x63, 0x3a, 0x37, 0x32, 0x3a, 0x66, 0x63, 0x3a, 0x32,
-  0x62, 0x3a, 0x64, 0x37, 0x3a, 0x36, 0x63, 0x3a, 0x39, 0x37, 0x3a, 0x30,
-  0x65, 0x3a, 0x31, 0x63, 0x3a, 0x35, 0x32, 0x3a, 0x0a, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x66, 0x39, 0x3a, 0x63, 0x63, 0x3a,
-  0x66, 0x64, 0x3a, 0x65, 0x35, 0x3a, 0x66, 0x32, 0x3a, 0x65, 0x39, 0x3a,
-  0x62, 0x36, 0x3a, 0x65, 0x31, 0x3a, 0x31, 0x38, 0x3a, 0x31, 0x30, 0x3a,
-  0x33, 0x32, 0x3a, 0x36, 0x63, 0x3a, 0x31, 0x35, 0x3a, 0x38, 0x66, 0x3a,
-  0x36, 0x63, 0x3a, 0x61, 0x34, 0x3a, 0x32, 0x64, 0x3a, 0x64, 0x35, 0x3a,
-  0x0a, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x63, 0x31,
-  0x3a, 0x35, 0x39, 0x3a, 0x38, 0x31, 0x3a, 0x39, 0x65, 0x3a, 0x37, 0x34,
-  0x3a, 0x62, 0x32, 0x3a, 0x66, 0x35, 0x3a, 0x64, 0x35, 0x3a, 0x34, 0x37,
-  0x3a, 0x38, 0x32, 0x3a, 0x34, 0x32, 0x3a, 0x32, 0x61, 0x3a, 0x31, 0x36,
-  0x3a, 0x35, 0x32, 0x3a, 0x38, 0x32, 0x3a, 0x30, 0x61, 0x3a, 0x62, 0x63,
-  0x3a, 0x32, 0x61, 0x3a, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x37, 0x33, 0x3a, 0x30, 0x39, 0x3a, 0x66, 0x65, 0x3a, 0x38,
-  0x63, 0x3a, 0x61, 0x36, 0x3a, 0x34, 0x30, 0x3a, 0x30, 0x63, 0x3a, 0x34,
-  0x39, 0x3a, 0x30, 0x36, 0x3a, 0x66, 0x62, 0x3a, 0x31, 0x34, 0x3a, 0x66,
-  0x62, 0x3a, 0x35, 0x38, 0x3a, 0x63, 0x30, 0x3a, 0x34, 0x66, 0x3a, 0x36,
-  0x32, 0x3a, 0x33, 0x63, 0x3a, 0x65, 0x30, 0x3a, 0x0a, 0x20, 0x20, 0x20,
-  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x63, 0x61, 0x3a, 0x62, 0x36, 0x3a,
-  0x63, 0x38, 0x3a, 0x36, 0x36, 0x3a, 0x38, 0x64, 0x3a, 0x37, 0x37, 0x3a,
-  0x63, 0x30, 0x3a, 0x36, 0x62, 0x3a, 0x36, 0x61, 0x3a, 0x64, 0x32, 0x3a,
-  0x37, 0x33, 0x3a, 0x39, 0x37, 0x3a, 0x61, 0x35, 0x3a, 0x33, 0x33, 0x3a,
-  0x30, 0x63, 0x3a, 0x62, 0x33, 0x3a, 0x64, 0x33, 0x3a, 0x34, 0x62, 0x3a,
-  0x0a, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x30, 0x39,
-  0x3a, 0x39, 0x33, 0x0a, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x42, 0x45, 0x47,
-  0x49, 0x4e, 0x20, 0x43, 0x45, 0x52, 0x54, 0x49, 0x46, 0x49, 0x43, 0x41,
-  0x54, 0x45, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x0a, 0x4d, 0x49, 0x49, 0x44,
-  0x4b, 0x6a, 0x43, 0x43, 0x41, 0x70, 0x4f, 0x67, 0x41, 0x77, 0x49, 0x42,
-  0x41, 0x67, 0x49, 0x43, 0x45, 0x41, 0x41, 0x77, 0x44, 0x51, 0x59, 0x4a,
-  0x4b, 0x6f, 0x5a, 0x49, 0x68, 0x76, 0x63, 0x4e, 0x41, 0x51, 0x45, 0x46,
-  0x42, 0x51, 0x41, 0x77, 0x67, 0x61, 0x4d, 0x78, 0x43, 0x7a, 0x41, 0x4a,
-  0x42, 0x67, 0x4e, 0x56, 0x42, 0x41, 0x59, 0x54, 0x41, 0x6b, 0x5a, 0x53,
-  0x0a, 0x4d, 0x52, 0x59, 0x77, 0x46, 0x41, 0x59, 0x44, 0x56, 0x51, 0x51,
-  0x49, 0x44, 0x41, 0x31, 0x4a, 0x62, 0x47, 0x55, 0x74, 0x5a, 0x47, 0x55,
-  0x74, 0x52, 0x6e, 0x4a, 0x68, 0x62, 0x6d, 0x4e, 0x6c, 0x4d, 0x51, 0x34,
-  0x77, 0x44, 0x41, 0x59, 0x44, 0x56, 0x51, 0x51, 0x48, 0x44, 0x41, 0x56,
-  0x51, 0x59, 0x58, 0x4a, 0x70, 0x63, 0x7a, 0x45, 0x54, 0x4d, 0x42, 0x45,
-  0x47, 0x41, 0x31, 0x55, 0x45, 0x0a, 0x43, 0x67, 0x77, 0x4b, 0x53, 0x57,
-  0x35, 0x6d, 0x61, 0x57, 0x35, 0x70, 0x64, 0x43, 0x35, 0x70, 0x62, 0x7a,
-  0x45, 0x55, 0x4d, 0x42, 0x49, 0x47, 0x41, 0x31, 0x55, 0x45, 0x43, 0x77,
-  0x77, 0x4c, 0x52, 0x47, 0x56, 0x32, 0x5a, 0x57, 0x78, 0x76, 0x63, 0x47,
-  0x31, 0x6c, 0x62, 0x6e, 0x51, 0x78, 0x46, 0x7a, 0x41, 0x56, 0x42, 0x67,
-  0x4e, 0x56, 0x42, 0x41, 0x4d, 0x4d, 0x44, 0x6b, 0x78, 0x76, 0x0a, 0x64,
-  0x57, 0x6c, 0x7a, 0x49, 0x45, 0x5a, 0x46, 0x56, 0x56, 0x5a, 0x53, 0x53,
-  0x55, 0x56, 0x53, 0x4d, 0x53, 0x67, 0x77, 0x4a, 0x67, 0x59, 0x4a, 0x4b,
-  0x6f, 0x5a, 0x49, 0x68, 0x76, 0x63, 0x4e, 0x41, 0x51, 0x6b, 0x42, 0x46,
-  0x68, 0x6c, 0x73, 0x62, 0x33, 0x56, 0x70, 0x63, 0x79, 0x35, 0x6d, 0x5a,
-  0x58, 0x56, 0x32, 0x63, 0x6d, 0x6c, 0x6c, 0x63, 0x6b, 0x42, 0x70, 0x62,
-  0x6d, 0x5a, 0x70, 0x0a, 0x62, 0x6d, 0x6c, 0x30, 0x4c, 0x6d, 0x6c, 0x76,
-  0x4d, 0x42, 0x34, 0x58, 0x44, 0x54, 0x45, 0x7a, 0x4d, 0x54, 0x49, 0x77,
-  0x4e, 0x54, 0x45, 0x77, 0x4e, 0x54, 0x6b, 0x30, 0x4f, 0x46, 0x6f, 0x58,
-  0x44, 0x54, 0x45, 0x30, 0x4d, 0x54, 0x49, 0x77, 0x4e, 0x54, 0x45, 0x77,
-  0x4e, 0x54, 0x6b, 0x30, 0x4f, 0x46, 0x6f, 0x77, 0x67, 0x5a, 0x4d, 0x78,
-  0x43, 0x7a, 0x41, 0x4a, 0x42, 0x67, 0x4e, 0x56, 0x0a, 0x42, 0x41, 0x59,
-  0x54, 0x41, 0x6b, 0x5a, 0x53, 0x4d, 0x52, 0x59, 0x77, 0x46, 0x41, 0x59,
-  0x44, 0x56, 0x51, 0x51, 0x49, 0x44, 0x41, 0x31, 0x4a, 0x62, 0x47, 0x55,
-  0x74, 0x5a, 0x47, 0x55, 0x74, 0x52, 0x6e, 0x4a, 0x68, 0x62, 0x6d, 0x4e,
-  0x6c, 0x4d, 0x52, 0x4d, 0x77, 0x45, 0x51, 0x59, 0x44, 0x56, 0x51, 0x51,
-  0x4b, 0x44, 0x41, 0x70, 0x4a, 0x62, 0x6d, 0x5a, 0x70, 0x62, 0x6d, 0x6c,
-  0x30, 0x0a, 0x4c, 0x6d, 0x6c, 0x76, 0x4d, 0x52, 0x51, 0x77, 0x45, 0x67,
-  0x59, 0x44, 0x56, 0x51, 0x51, 0x4c, 0x44, 0x41, 0x74, 0x45, 0x5a, 0x58,
-  0x5a, 0x6c, 0x62, 0x47, 0x39, 0x77, 0x62, 0x57, 0x56, 0x75, 0x64, 0x44,
-  0x45, 0x58, 0x4d, 0x42, 0x55, 0x47, 0x41, 0x31, 0x55, 0x45, 0x41, 0x77,
-  0x77, 0x4f, 0x54, 0x47, 0x39, 0x31, 0x61, 0x58, 0x4d, 0x67, 0x52, 0x6b,
-  0x56, 0x56, 0x56, 0x6c, 0x4a, 0x4a, 0x0a, 0x52, 0x56, 0x49, 0x78, 0x4b,
-  0x44, 0x41, 0x6d, 0x42, 0x67, 0x6b, 0x71, 0x68, 0x6b, 0x69, 0x47, 0x39,
-  0x77, 0x30, 0x42, 0x43, 0x51, 0x45, 0x57, 0x47, 0x57, 0x78, 0x76, 0x64,
-  0x57, 0x6c, 0x7a, 0x4c, 0x6d, 0x5a, 0x6c, 0x64, 0x58, 0x5a, 0x79, 0x61,
-  0x57, 0x56, 0x79, 0x51, 0x47, 0x6c, 0x75, 0x5a, 0x6d, 0x6c, 0x75, 0x61,
-  0x58, 0x51, 0x75, 0x61, 0x57, 0x38, 0x77, 0x67, 0x5a, 0x38, 0x77, 0x0a,
-  0x44, 0x51, 0x59, 0x4a, 0x4b, 0x6f, 0x5a, 0x49, 0x68, 0x76, 0x63, 0x4e,
-  0x41, 0x51, 0x45, 0x42, 0x42, 0x51, 0x41, 0x44, 0x67, 0x59, 0x30, 0x41,
-  0x4d, 0x49, 0x47, 0x4a, 0x41, 0x6f, 0x47, 0x42, 0x41, 0x4e, 0x44, 0x2f,
-  0x6f, 0x45, 0x54, 0x50, 0x35, 0x51, 0x37, 0x45, 0x76, 0x79, 0x4a, 0x54,
-  0x32, 0x41, 0x35, 0x70, 0x57, 0x68, 0x6f, 0x2b, 0x48, 0x58, 0x6a, 0x4a,
-  0x55, 0x6f, 0x57, 0x41, 0x0a, 0x48, 0x4f, 0x58, 0x74, 0x39, 0x53, 0x73,
-  0x48, 0x2f, 0x4d, 0x63, 0x72, 0x79, 0x68, 0x68, 0x31, 0x39, 0x35, 0x46,
-  0x61, 0x6b, 0x6e, 0x6c, 0x56, 0x39, 0x75, 0x6c, 0x43, 0x34, 0x4f, 0x43,
-  0x6a, 0x33, 0x2f, 0x73, 0x2b, 0x74, 0x45, 0x4c, 0x51, 0x53, 0x2f, 0x58,
-  0x72, 0x42, 0x55, 0x51, 0x79, 0x4c, 0x45, 0x71, 0x46, 0x30, 0x4f, 0x47,
-  0x6a, 0x62, 0x4b, 0x72, 0x77, 0x41, 0x66, 0x63, 0x53, 0x0a, 0x78, 0x41,
-  0x37, 0x2f, 0x41, 0x4b, 0x46, 0x30, 0x30, 0x6d, 0x55, 0x67, 0x32, 0x31,
-  0x6f, 0x44, 0x65, 0x4d, 0x64, 0x55, 0x6f, 0x62, 0x7a, 0x58, 0x67, 0x2f,
-  0x2b, 0x58, 0x65, 0x4c, 0x30, 0x55, 0x31, 0x6c, 0x45, 0x31, 0x75, 0x6d,
-  0x41, 0x62, 0x2f, 0x35, 0x53, 0x2f, 0x66, 0x6b, 0x78, 0x45, 0x71, 0x38,
-  0x79, 0x32, 0x6b, 0x77, 0x78, 0x71, 0x58, 0x34, 0x61, 0x4f, 0x4b, 0x47,
-  0x75, 0x52, 0x0a, 0x37, 0x53, 0x69, 0x36, 0x53, 0x6d, 0x39, 0x50, 0x4d,
-  0x7a, 0x39, 0x46, 0x41, 0x67, 0x4d, 0x42, 0x41, 0x41, 0x47, 0x6a, 0x65,
-  0x7a, 0x42, 0x35, 0x4d, 0x41, 0x6b, 0x47, 0x41, 0x31, 0x55, 0x64, 0x45,
-  0x77, 0x51, 0x43, 0x4d, 0x41, 0x41, 0x77, 0x4c, 0x41, 0x59, 0x4a, 0x59,
-  0x49, 0x5a, 0x49, 0x41, 0x59, 0x62, 0x34, 0x51, 0x67, 0x45, 0x4e, 0x42,
-  0x42, 0x38, 0x57, 0x48, 0x55, 0x39, 0x77, 0x0a, 0x5a, 0x57, 0x35, 0x54,
-  0x55, 0x30, 0x77, 0x67, 0x52, 0x32, 0x56, 0x75, 0x5a, 0x58, 0x4a, 0x68,
-  0x64, 0x47, 0x56, 0x6b, 0x49, 0x45, 0x4e, 0x6c, 0x63, 0x6e, 0x52, 0x70,
-  0x5a, 0x6d, 0x6c, 0x6a, 0x59, 0x58, 0x52, 0x6c, 0x4d, 0x42, 0x30, 0x47,
-  0x41, 0x31, 0x55, 0x64, 0x44, 0x67, 0x51, 0x57, 0x42, 0x42, 0x54, 0x56,
-  0x58, 0x63, 0x59, 0x73, 0x71, 0x78, 0x2b, 0x39, 0x4b, 0x6c, 0x76, 0x6f,
-  0x0a, 0x54, 0x38, 0x5a, 0x6f, 0x75, 0x4c, 0x73, 0x79, 0x68, 0x39, 0x51,
-  0x64, 0x35, 0x54, 0x41, 0x66, 0x42, 0x67, 0x4e, 0x56, 0x48, 0x53, 0x4d,
-  0x45, 0x47, 0x44, 0x41, 0x57, 0x67, 0x42, 0x51, 0x33, 0x69, 0x48, 0x58,
-  0x44, 0x54, 0x6b, 0x73, 0x54, 0x38, 0x77, 0x4a, 0x2f, 0x44, 0x4c, 0x33,
-  0x51, 0x6e, 0x49, 0x56, 0x47, 0x2b, 0x62, 0x39, 0x42, 0x33, 0x7a, 0x41,
-  0x4e, 0x42, 0x67, 0x6b, 0x71, 0x0a, 0x68, 0x6b, 0x69, 0x47, 0x39, 0x77,
-  0x30, 0x42, 0x41, 0x51, 0x55, 0x46, 0x41, 0x41, 0x4f, 0x42, 0x67, 0x51,
-  0x41, 0x71, 0x5a, 0x63, 0x6b, 0x78, 0x2b, 0x65, 0x2b, 0x31, 0x64, 0x2b,
-  0x64, 0x32, 0x2b, 0x67, 0x78, 0x4a, 0x32, 0x6a, 0x4e, 0x6a, 0x71, 0x46,
-  0x69, 0x44, 0x67, 0x64, 0x72, 0x58, 0x63, 0x6d, 0x58, 0x35, 0x6e, 0x41,
-  0x62, 0x68, 0x6c, 0x6d, 0x62, 0x38, 0x69, 0x4b, 0x6a, 0x45, 0x0a, 0x48,
-  0x49, 0x2b, 0x2b, 0x5a, 0x70, 0x67, 0x39, 0x32, 0x36, 0x35, 0x69, 0x77,
-  0x2f, 0x78, 0x79, 0x2f, 0x43, 0x76, 0x58, 0x62, 0x4a, 0x63, 0x4f, 0x48,
-  0x46, 0x4c, 0x35, 0x7a, 0x50, 0x33, 0x6c, 0x38, 0x75, 0x6d, 0x32, 0x34,
-  0x52, 0x67, 0x51, 0x4d, 0x6d, 0x77, 0x56, 0x6a, 0x32, 0x79, 0x6b, 0x4c,
-  0x64, 0x58, 0x42, 0x57, 0x59, 0x47, 0x65, 0x64, 0x4c, 0x4c, 0x31, 0x31,
-  0x55, 0x65, 0x43, 0x0a, 0x51, 0x69, 0x6f, 0x57, 0x55, 0x6f, 0x49, 0x4b,
-  0x76, 0x43, 0x70, 0x7a, 0x43, 0x66, 0x36, 0x4d, 0x70, 0x6b, 0x41, 0x4d,
-  0x53, 0x51, 0x62, 0x37, 0x46, 0x50, 0x74, 0x59, 0x77, 0x45, 0x39, 0x69,
-  0x50, 0x4f, 0x44, 0x4b, 0x74, 0x73, 0x68, 0x6d, 0x6a, 0x58, 0x66, 0x41,
-  0x61, 0x32, 0x72, 0x53, 0x63, 0x35, 0x65, 0x6c, 0x4d, 0x77, 0x79, 0x7a,
-  0x30, 0x30, 0x73, 0x4a, 0x6b, 0x77, 0x3d, 0x3d, 0x0a, 0x2d, 0x2d, 0x2d,
-  0x2d, 0x2d, 0x45, 0x4e, 0x44, 0x20, 0x43, 0x45, 0x52, 0x54, 0x49, 0x46,
-  0x49, 0x43, 0x41, 0x54, 0x45, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x0a,
-};
-
-const std::vector<char> server_key =
-{
-  0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x42, 0x45, 0x47, 0x49, 0x4e, 0x20, 0x50,
-  0x52, 0x49, 0x56, 0x41, 0x54, 0x45, 0x20, 0x4b, 0x45, 0x59, 0x2d, 0x2d,
-  0x2d, 0x2d, 0x2d, 0x0a, 0x4d, 0x49, 0x49, 0x43, 0x65, 0x41, 0x49, 0x42,
-  0x41, 0x44, 0x41, 0x4e, 0x42, 0x67, 0x6b, 0x71, 0x68, 0x6b, 0x69, 0x47,
-  0x39, 0x77, 0x30, 0x42, 0x41, 0x51, 0x45, 0x46, 0x41, 0x41, 0x53, 0x43,
-  0x41, 0x6d, 0x49, 0x77, 0x67, 0x67, 0x4a, 0x65, 0x41, 0x67, 0x45, 0x41,
-  0x41, 0x6f, 0x47, 0x42, 0x41, 0x4e, 0x44, 0x2f, 0x6f, 0x45, 0x54, 0x50,
-  0x35, 0x51, 0x37, 0x45, 0x76, 0x79, 0x4a, 0x54, 0x0a, 0x32, 0x41, 0x35,
-  0x70, 0x57, 0x68, 0x6f, 0x2b, 0x48, 0x58, 0x6a, 0x4a, 0x55, 0x6f, 0x57,
-  0x41, 0x48, 0x4f, 0x58, 0x74, 0x39, 0x53, 0x73, 0x48, 0x2f, 0x4d, 0x63,
-  0x72, 0x79, 0x68, 0x68, 0x31, 0x39, 0x35, 0x46, 0x61, 0x6b, 0x6e, 0x6c,
-  0x56, 0x39, 0x75, 0x6c, 0x43, 0x34, 0x4f, 0x43, 0x6a, 0x33, 0x2f, 0x73,
-  0x2b, 0x74, 0x45, 0x4c, 0x51, 0x53, 0x2f, 0x58, 0x72, 0x42, 0x55, 0x51,
-  0x79, 0x0a, 0x4c, 0x45, 0x71, 0x46, 0x30, 0x4f, 0x47, 0x6a, 0x62, 0x4b,
-  0x72, 0x77, 0x41, 0x66, 0x63, 0x53, 0x78, 0x41, 0x37, 0x2f, 0x41, 0x4b,
-  0x46, 0x30, 0x30, 0x6d, 0x55, 0x67, 0x32, 0x31, 0x6f, 0x44, 0x65, 0x4d,
-  0x64, 0x55, 0x6f, 0x62, 0x7a, 0x58, 0x67, 0x2f, 0x2b, 0x58, 0x65, 0x4c,
-  0x30, 0x55, 0x31, 0x6c, 0x45, 0x31, 0x75, 0x6d, 0x41, 0x62, 0x2f, 0x35,
-  0x53, 0x2f, 0x66, 0x6b, 0x78, 0x45, 0x0a, 0x71, 0x38, 0x79, 0x32, 0x6b,
-  0x77, 0x78, 0x71, 0x58, 0x34, 0x61, 0x4f, 0x4b, 0x47, 0x75, 0x52, 0x37,
-  0x53, 0x69, 0x36, 0x53, 0x6d, 0x39, 0x50, 0x4d, 0x7a, 0x39, 0x46, 0x41,
-  0x67, 0x4d, 0x42, 0x41, 0x41, 0x45, 0x43, 0x67, 0x59, 0x42, 0x53, 0x4c,
-  0x4c, 0x41, 0x76, 0x58, 0x69, 0x36, 0x4a, 0x36, 0x41, 0x48, 0x65, 0x31,
-  0x57, 0x69, 0x57, 0x41, 0x67, 0x5a, 0x54, 0x57, 0x79, 0x6a, 0x72, 0x0a,
-  0x58, 0x50, 0x7a, 0x39, 0x55, 0x4b, 0x6f, 0x4d, 0x48, 0x63, 0x76, 0x50,
-  0x35, 0x34, 0x77, 0x55, 0x49, 0x37, 0x75, 0x4b, 0x63, 0x70, 0x65, 0x73,
-  0x70, 0x78, 0x67, 0x41, 0x62, 0x54, 0x52, 0x76, 0x38, 0x73, 0x50, 0x49,
-  0x6a, 0x36, 0x5a, 0x35, 0x65, 0x75, 0x59, 0x56, 0x66, 0x79, 0x44, 0x65,
-  0x79, 0x46, 0x47, 0x42, 0x78, 0x74, 0x68, 0x7a, 0x56, 0x4c, 0x6f, 0x54,
-  0x78, 0x36, 0x65, 0x5a, 0x0a, 0x46, 0x4d, 0x70, 0x35, 0x47, 0x68, 0x42,
-  0x37, 0x57, 0x64, 0x69, 0x33, 0x59, 0x55, 0x77, 0x50, 0x56, 0x66, 0x4c,
-  0x53, 0x73, 0x4c, 0x5a, 0x41, 0x42, 0x71, 0x6c, 0x64, 0x4b, 0x36, 0x74,
-  0x6e, 0x4d, 0x39, 0x54, 0x6f, 0x4a, 0x50, 0x38, 0x30, 0x39, 0x2f, 0x4d,
-  0x6a, 0x66, 0x4e, 0x44, 0x32, 0x64, 0x36, 0x59, 0x2f, 0x52, 0x75, 0x30,
-  0x55, 0x36, 0x73, 0x6f, 0x72, 0x71, 0x50, 0x55, 0x76, 0x0a, 0x56, 0x77,
-  0x73, 0x49, 0x4b, 0x78, 0x42, 0x71, 0x57, 0x69, 0x62, 0x6e, 0x56, 0x50,
-  0x74, 0x35, 0x41, 0x51, 0x4a, 0x42, 0x41, 0x50, 0x53, 0x68, 0x59, 0x34,
-  0x72, 0x31, 0x63, 0x47, 0x38, 0x66, 0x56, 0x70, 0x6e, 0x6b, 0x6e, 0x4b,
-  0x45, 0x64, 0x67, 0x31, 0x50, 0x47, 0x78, 0x77, 0x46, 0x68, 0x47, 0x37,
-  0x56, 0x44, 0x42, 0x36, 0x74, 0x57, 0x51, 0x37, 0x62, 0x6d, 0x6a, 0x35,
-  0x4e, 0x51, 0x0a, 0x53, 0x5a, 0x43, 0x64, 0x64, 0x65, 0x51, 0x5a, 0x6d,
-  0x47, 0x66, 0x62, 0x4f, 0x6b, 0x48, 0x6c, 0x31, 0x58, 0x4e, 0x5a, 0x79,
-  0x67, 0x56, 0x2b, 0x31, 0x31, 0x6c, 0x6c, 0x71, 0x7a, 0x58, 0x53, 0x38,
-  0x51, 0x52, 0x37, 0x69, 0x57, 0x54, 0x68, 0x41, 0x4b, 0x30, 0x43, 0x51,
-  0x51, 0x44, 0x61, 0x74, 0x6b, 0x6f, 0x4e, 0x71, 0x72, 0x56, 0x38, 0x68,
-  0x6a, 0x6e, 0x72, 0x38, 0x61, 0x55, 0x4a, 0x0a, 0x46, 0x50, 0x63, 0x55,
-  0x30, 0x2f, 0x4f, 0x79, 0x77, 0x33, 0x37, 0x54, 0x7a, 0x39, 0x6a, 0x4f,
-  0x38, 0x64, 0x75, 0x74, 0x47, 0x34, 0x35, 0x7a, 0x59, 0x67, 0x47, 0x78,
-  0x52, 0x61, 0x63, 0x33, 0x37, 0x77, 0x4e, 0x39, 0x51, 0x30, 0x38, 0x38,
-  0x76, 0x38, 0x37, 0x50, 0x4d, 0x62, 0x6c, 0x72, 0x38, 0x56, 0x38, 0x31,
-  0x63, 0x39, 0x5a, 0x51, 0x6b, 0x6e, 0x35, 0x2f, 0x2f, 0x53, 0x50, 0x4b,
-  0x0a, 0x56, 0x39, 0x50, 0x35, 0x41, 0x6b, 0x45, 0x41, 0x67, 0x65, 0x39,
-  0x2f, 0x4b, 0x66, 0x33, 0x33, 0x2f, 0x47, 0x34, 0x4f, 0x31, 0x36, 0x73,
-  0x41, 0x4c, 0x75, 0x75, 0x34, 0x4a, 0x37, 0x56, 0x37, 0x57, 0x70, 0x59,
-  0x7a, 0x32, 0x33, 0x47, 0x42, 0x44, 0x31, 0x62, 0x41, 0x6e, 0x4e, 0x4f,
-  0x57, 0x43, 0x30, 0x38, 0x6e, 0x34, 0x2f, 0x4a, 0x65, 0x2f, 0x67, 0x74,
-  0x43, 0x55, 0x6c, 0x65, 0x31, 0x0a, 0x64, 0x2b, 0x38, 0x57, 0x45, 0x7a,
-  0x44, 0x73, 0x42, 0x30, 0x4d, 0x36, 0x4b, 0x7a, 0x65, 0x2f, 0x57, 0x74,
-  0x56, 0x79, 0x51, 0x30, 0x6c, 0x43, 0x7a, 0x78, 0x78, 0x62, 0x2b, 0x51,
-  0x4a, 0x42, 0x41, 0x4a, 0x79, 0x49, 0x5a, 0x50, 0x33, 0x64, 0x46, 0x4f,
-  0x46, 0x58, 0x79, 0x2f, 0x4c, 0x44, 0x55, 0x77, 0x50, 0x70, 0x2f, 0x6d,
-  0x44, 0x6f, 0x78, 0x58, 0x31, 0x48, 0x44, 0x2b, 0x6d, 0x57, 0x0a, 0x30,
-  0x36, 0x78, 0x68, 0x53, 0x34, 0x46, 0x63, 0x76, 0x4a, 0x70, 0x32, 0x4a,
-  0x5a, 0x48, 0x7a, 0x73, 0x52, 0x65, 0x47, 0x4f, 0x44, 0x41, 0x5a, 0x30,
-  0x59, 0x64, 0x41, 0x48, 0x45, 0x73, 0x4d, 0x59, 0x70, 0x49, 0x51, 0x41,
-  0x62, 0x31, 0x6d, 0x39, 0x35, 0x64, 0x5a, 0x45, 0x62, 0x4b, 0x57, 0x77,
-  0x56, 0x76, 0x62, 0x65, 0x6a, 0x6b, 0x43, 0x51, 0x51, 0x44, 0x52, 0x46,
-  0x42, 0x39, 0x73, 0x0a, 0x66, 0x39, 0x68, 0x53, 0x33, 0x57, 0x4d, 0x69,
-  0x38, 0x65, 0x47, 0x6e, 0x43, 0x4d, 0x33, 0x58, 0x34, 0x4c, 0x32, 0x32,
-  0x7a, 0x68, 0x61, 0x46, 0x42, 0x74, 0x68, 0x33, 0x73, 0x51, 0x7a, 0x78,
-  0x72, 0x63, 0x4a, 0x35, 0x51, 0x4a, 0x55, 0x4d, 0x78, 0x57, 0x69, 0x44,
-  0x6c, 0x45, 0x4f, 0x72, 0x76, 0x71, 0x47, 0x77, 0x4c, 0x48, 0x79, 0x67,
-  0x50, 0x4f, 0x38, 0x59, 0x59, 0x38, 0x58, 0x6c, 0x0a, 0x74, 0x79, 0x59,
-  0x63, 0x45, 0x64, 0x6c, 0x43, 0x4c, 0x35, 0x36, 0x71, 0x74, 0x41, 0x34,
-  0x59, 0x0a, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x45, 0x4e, 0x44, 0x20, 0x50,
-  0x52, 0x49, 0x56, 0x41, 0x54, 0x45, 0x20, 0x4b, 0x45, 0x59, 0x2d, 0x2d,
-  0x2d, 0x2d, 0x2d, 0x0a,
-};
-
-const std::vector<char> server_dh1024 =
-{
-  0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x42, 0x45, 0x47, 0x49, 0x4e, 0x20, 0x44,
-  0x48, 0x20, 0x50, 0x41, 0x52, 0x41, 0x4d, 0x45, 0x54, 0x45, 0x52, 0x53,
-  0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x0a, 0x4d, 0x49, 0x47, 0x48, 0x41, 0x6f,
-  0x47, 0x42, 0x41, 0x4c, 0x50, 0x35, 0x33, 0x68, 0x32, 0x31, 0x59, 0x6d,
-  0x6a, 0x47, 0x4a, 0x4f, 0x34, 0x53, 0x2f, 0x38, 0x42, 0x7a, 0x44, 0x61,
-  0x57, 0x63, 0x4b, 0x6f, 0x46, 0x6c, 0x6a, 0x56, 0x32, 0x46, 0x37, 0x4f,
-  0x66, 0x39, 0x4e, 0x50, 0x33, 0x31, 0x33, 0x4b, 0x54, 0x42, 0x2f, 0x51,
-  0x55, 0x62, 0x6c, 0x58, 0x70, 0x6e, 0x65, 0x4e, 0x2b, 0x62, 0x0a, 0x32,
-  0x41, 0x70, 0x76, 0x4e, 0x31, 0x32, 0x69, 0x33, 0x51, 0x46, 0x75, 0x52,
-  0x2b, 0x4a, 0x6e, 0x4e, 0x70, 0x2b, 0x51, 0x2f, 0x6d, 0x47, 0x7a, 0x34,
-  0x6b, 0x77, 0x32, 0x2b, 0x45, 0x48, 0x6d, 0x35, 0x67, 0x65, 0x68, 0x38,
-  0x6f, 0x35, 0x54, 0x47, 0x6a, 0x57, 0x6a, 0x57, 0x50, 0x69, 0x33, 0x42,
-  0x30, 0x78, 0x6c, 0x4c, 0x76, 0x4e, 0x4a, 0x4c, 0x54, 0x31, 0x32, 0x68,
-  0x41, 0x56, 0x42, 0x0a, 0x76, 0x31, 0x6f, 0x38, 0x65, 0x50, 0x68, 0x30,
-  0x72, 0x5a, 0x65, 0x66, 0x43, 0x47, 0x7a, 0x74, 0x68, 0x32, 0x4a, 0x2f,
-  0x6a, 0x4b, 0x4c, 0x4f, 0x41, 0x57, 0x46, 0x36, 0x30, 0x6e, 0x32, 0x53,
-  0x33, 0x45, 0x36, 0x34, 0x37, 0x5a, 0x4a, 0x74, 0x74, 0x32, 0x2f, 0x4b,
-  0x47, 0x47, 0x6b, 0x76, 0x37, 0x56, 0x33, 0x62, 0x41, 0x67, 0x45, 0x43,
-  0x0a, 0x2d, 0x2d, 0x2d, 0x2d, 0x2d, 0x45, 0x4e, 0x44, 0x20, 0x44, 0x48,
-  0x20, 0x50, 0x41, 0x52, 0x41, 0x4d, 0x45, 0x54, 0x45, 0x52, 0x53, 0x2d,
-  0x2d, 0x2d, 0x2d, 0x2d, 0x0a,
-};
-
-
-namespace std
-{
-  std::size_t
-  hash<boost::uuids::uuid>::operator()(boost::uuids::uuid const& s) const
+  std::string
+  Server::_get_trophonius(Headers const&,
+                          Cookies const&,
+                          Parameters const&,
+                          elle::Buffer const&) const
   {
-    auto hasher = hash<string>{};
-    return hasher(boost::lexical_cast<string>(s));
+    return elle::sprintf(
+      "{"
+      "  \"host\": \"127.0.0.1\","
+      "  \"port\": 0,"
+      "  \"port_ssl\": %s"
+      "}",
+      this->trophonius.port());
   }
+
+  Transaction&
+  Server::transaction(std::string const& id)
+  {
+    auto it = this->_transactions.find(id);
+    ELLE_ASSERT(it != this->_transactions.end());
+    return **it;
+  }
+
+  void
+  Server::session_id(boost::uuids::uuid id)
+  {
+    this->_session_id = std::move(id);
+  }
+
+}
+
+std::unique_ptr<papier::Identity>
+generate_identity(cryptography::KeyPair const& keypair,
+                  std::string const& id,
+                  std::string const& description,
+                  std::string const& password)
+{
+  std::unique_ptr<papier::Identity> identity(new papier::Identity);
+  if (identity->Create(id, description, keypair) == elle::Status::Error)
+    throw std::runtime_error("unable to create the identity");
+  if (identity->Encrypt(password) == elle::Status::Error)
+    throw std::runtime_error("unable to encrypt the identity");
+  if (identity->Seal(tests::authority) == elle::Status::Error)
+    throw std::runtime_error("unable to seal the identity");
+  return identity;
 }

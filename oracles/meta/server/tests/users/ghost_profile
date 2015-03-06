@@ -43,15 +43,16 @@ with Meta(enable_emails = True,
     meta.mailer = MailService()
     email = 'navet@infinit.io'
     # Check if the recipient always have the same ghost code & id.
-    t0 = alice.sendfile(email)[1]['created_transaction_id']
-    t1 = bob.sendfile(email)[1]['created_transaction_id']
-    t2 = bob.sendfile(email)[1]['created_transaction_id']
-    res0 = alice.transaction_update(t0, INITIALIZED)
-    res1 = bob.transaction_update(t1, INITIALIZED)
-    res2 = bob.transaction_update(t2, INITIALIZED)
-    assert res0['ghost_profile'] == res1['ghost_profile'] == res2['ghost_profile']
-    assert res0['ghost_code'] == res1['ghost_code'] == res2['ghost_code']
+    _, res0 = alice.sendfile(email, initialize = True)
+    _, res1 = bob.sendfile(email, initialize = True)
+    _, res2 = bob.sendfile(email,    initialize = True)
 
+    assert res0['recipient']['ghost_profile'] == res1['recipient']['ghost_profile'] == res2['recipient']['ghost_profile']
+    assert res0['recipient']['ghost_code'] == res1['recipient']['ghost_code'] == res2['recipient']['ghost_code']
+    recipient = res0['recipient']
+    t0 = res0['created_transaction_id']
+    t1 = res1['created_transaction_id']
+    t2 = res2['created_transaction_id']
     alice.transaction_update(t0, GHOST_UPLOADED)
     bob.transaction_update(t1, GHOST_UPLOADED)
     bob.transaction_update(t2, GHOST_UPLOADED)
@@ -59,12 +60,12 @@ with Meta(enable_emails = True,
     # Check if the 3 emails have been delivered and contain ghost_code and url.
     assert len(meta.mailer.messages['send-file-url']) == 3
     for message in meta.mailer.messages['send-file-url']:
-      print(message['ghost_code'], res0['ghost_code'])
-      assert message['ghost_code'] == res0['ghost_code']
-      assert message['ghost_profile'] == res0['ghost_profile']
+      print(message['ghost_code'], recipient['ghost_code'])
+      assert message['ghost_code'] == recipient['ghost_code']
+      assert message['ghost_profile'] == recipient['ghost_profile']
 
     ghost = meta.database.users.find_one({"register_status": "ghost"})
-    ghost['ghost_code'] == res0['ghost_code']
+    assert ghost['ghost_code'] == recipient['ghost_code']
     url = 'ghost/%s' % ghost['_id']
     def clear_url(url):
       url = url.replace('https://www.infinit.io/invitation', 'ghost')
@@ -72,15 +73,14 @@ with Meta(enable_emails = True,
       url = url[0:url.find('&')]
       return url
     # Check the ghost profile 'page'.
-    for url in [x['ghost_profile'] for x in [res0, res1, res2]]:
-      url = clear_url(url)
-      res = meta.get(url)
-      transactions = res['transactions']
-      assert len(transactions) == 3
-      recipients = set([transaction['recipient_id'] for transaction in transactions])
-      assert len(recipients) == 1
-      id = recipients.pop()
-      assert id == str(ghost['_id'])
+    url = clear_url(recipient['ghost_profile'])
+    res = meta.get(url)
+    transactions = res['transactions']
+    assert len(transactions) == 3
+    recipients = set([transaction['recipient_id'] for transaction in transactions])
+    assert len(recipients) == 1
+    id = recipients.pop()
+    assert id == str(ghost['_id'])
 
     # Merge ghost into eve.
     eve = User(meta, 'eve@infinit.io')
@@ -91,13 +91,12 @@ with Meta(enable_emails = True,
     assert len(eve.transactions) == 3
 
     # Check if the page is gone.
-    for url in [x['ghost_profile'] for x in [res0, res1, res2]]:
-      url = clear_url(url)
-      try:
-        res = meta.get(url)
-        assert False
-      except HTTPException as e:
-        assert e.status == 410
+    url = clear_url(recipient['ghost_profile'])
+    try:
+      res = meta.get(url)
+      assert False
+    except HTTPException as e:
+      assert e.status == 410
 
     try:
       eve.post('ghost/%s/merge' % ghost['ghost_code'])

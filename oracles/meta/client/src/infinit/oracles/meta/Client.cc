@@ -19,7 +19,6 @@
 #include <elle/log.hh>
 #include <elle/os/environ.hh>
 #include <elle/print.hh>
-#include <elle/serialization/json.hh>
 #include <elle/system/platform.hh>
 #include <elle/serialize/HexadecimalArchive.hh>
 
@@ -129,9 +128,20 @@ namespace infinit
       {
         User::serialize(s);
         s.serialize("email", this->email);
+        s.serialize("facebook_id", this->facebook_id);
         s.serialize("identity", this->identity);
         s.serialize("devices", this->devices);
         s.serialize("favorites", this->favorites);
+      }
+
+      std::string
+      Self::identifier() const
+      {
+        if (this->email)
+          return this->email.get();
+        if (this->facebook_id)
+          return this->facebook_id.get();
+        return "";
       }
 
       /*-------.
@@ -324,7 +334,7 @@ namespace infinit
                                   this->_protocol, this->_host, this->_port))
         , _client(elle::os::getenv("INFINIT_USER_AGENT",
                                    "MetaClient/" INFINIT_VERSION))
-        , _default_configuration(_requests_timeout(),
+        ,  _default_configuration(_requests_timeout(),
                                  {},
                                  reactor::http::Version::v10)
         , _email()
@@ -439,22 +449,66 @@ namespace infinit
       {
         ELLE_TRACE_SCOPE("%s: login as %s on device %s",
                          *this, email, device_uuid);
-        std::string struuid = boost::lexical_cast<std::string>(device_uuid);
+        elle::SafeFinally set_email([&] { this->_email = email; });
+        try
+        {
+          return this->_login(
+            [&] (elle::serialization::json::SerializerOut& parameters)
+            {
+              auto old_password = old_password_hash(email, password);
+              ELLE_DUMP("old password hash: %s", old_password);
+              auto new_password = password_hash(password);
+              ELLE_DUMP("new password hash: %s", new_password);
+              parameters.serialize("email", const_cast<std::string&>(email));
+              parameters.serialize(
+                "password", const_cast<std::string&>(old_password));
+              parameters.serialize(
+                "password_hash", const_cast<std::string&>(new_password));
+            }, device_uuid);
+        }
+        catch (...)
+        {
+          set_email.abort();
+          throw;
+        }
+      }
 
+      LoginResponse
+      Client::facebook_connect(
+        std::string const& long_lived_access_token,
+        boost::uuids::uuid const& device_uuid,
+        boost::optional<std::string> preferred_email)
+      {
+        ELLE_TRACE_SCOPE("%s: login using facebook on device %s",
+                         *this, device_uuid);
+        return this->_login(
+          [&] (elle::serialization::json::SerializerOut& parameters)
+          {
+            parameters.serialize(
+              "long_lived_access_token",
+              const_cast<std::string&>(long_lived_access_token));
+            if (preferred_email)
+            {
+              std::string preferred_email_str = preferred_email.get();
+              parameters.serialize(
+                "preferred_email", preferred_email_str);
+            }
+          }, device_uuid);
+      }
+
+      LoginResponse
+      Client::_login(ParametersUpdater parameters_updater,
+                     boost::uuids::uuid const& device_uuid)
+      {
+        std::string struuid = boost::lexical_cast<std::string>(device_uuid);
         auto url = "/login";
         auto request = this->_request(
           url,
           Method::POST,
           [&] (reactor::http::Request& r)
           {
-            auto old_password = old_password_hash(email, password);
-            ELLE_DUMP("old password hash: %s", old_password);
-            auto new_password = password_hash(password);
-            ELLE_DUMP("new password hash: %s", new_password);
             elle::serialization::json::SerializerOut output(r, false);
-            output.serialize("email", const_cast<std::string&>(email));
-            output.serialize("password", const_cast<std::string&>(old_password));
-            output.serialize("password_hash", const_cast<std::string&>(new_password));
+            parameters_updater(output);
             std::string struuid = boost::lexical_cast<std::string>(device_uuid);
             output.serialize("device_id", struuid);
             auto os = elle::system::platform::os_name();
@@ -489,7 +543,6 @@ namespace infinit
             SerializerIn input(url, request);
             LoginResponse response(input);
             // Debugging purpose.
-            this->_email = email;
             this->_logged_in = true;
             return response;
           }
@@ -919,7 +972,8 @@ namespace infinit
                             const_cast<std::string&>(transaction_id));
             int status_integral = static_cast<int>(status);
             query.serialize("status", status_integral);
-            if (status == oracles::Transaction::Status::accepted)
+            if (status == oracles::Transaction::Status::accepted ||
+                status == oracles::Transaction::Status::rejected)
             {
               ELLE_ASSERT(!device_id.is_nil());
               ELLE_ASSERT_GT(device_name.length(), 0u);

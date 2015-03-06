@@ -7,14 +7,7 @@ with Meta() as meta:
   bob = User(meta, "bob@infinit.io")
   bob.login()
   bob.sendfile("eve@infinit.io")
-  transaction, res = bob.sendfile(recipient = "alice@infinit.io")
-  res = bob.transaction_update(res['created_transaction_id'], INITIALIZED)
-  assert 'ghost_code' in res
-  ghost_code = res['ghost_code']
-  sync = bob.synchronize(init = False)
-  assert len(sync['running_transactions']) == 1 and 'ghost_code' in sync['running_transactions'][0]
-  sync = bob.synchronize(init = True)
-  assert len(sync['running_transactions']) == 1 and 'ghost_code' in sync['running_transactions'][0]
-  ghost_code2 = sync['running_transactions'][0]['ghost_code']
-  assert ghost_code == ghost_code
-  assert len(bob.transactions) == 1 and bob.transactions[0]['ghost_code'] == ghost_code
+  transaction, res = bob.sendfile(recipient = "alice@infinit.io", initialize = True)
+  print("**********", res)
+  assert 'ghost_code' in res['recipient']
+  ghost_code = res['recipient']['ghost_code']

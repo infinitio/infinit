@@ -278,7 +278,7 @@ gap_logged_in(gap_State* state)
                        "logged",
                        [&] (surface::gap::State& state) -> gap_Bool
                        {
-                         return state.logged_in();
+                         return state.meta().logged_in();
                        });
 }
 
@@ -407,7 +407,9 @@ gap_self_email(gap_State* state)
                           "self email",
                           [&] (surface::gap::State& state) -> std::string
                           {
-                            return state.me().email;
+                            if (state.me().email)
+                              return state.me().email.get();
+                            return "";
                           });
 }
 
@@ -1936,4 +1938,28 @@ gap_send_last_crash_logs(gap_State* state,
         }, "send last crash report");
     }, disposable);
   return gap_ok;
+}
+
+std::string
+gap_facebook_app_id()
+{
+  // We could even ask meta for the id.
+  return "839001662829159";
+}
+
+gap_Status
+gap_facebook_connect(gap_State* state,
+                     std::string const& token,
+                     boost::optional<std::string> preferred_email)
+{
+  return run<gap_Status>(
+    state,
+    "facebook connect",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.facebook_connect(
+        token,
+        preferred_email);
+      return gap_ok;
+    });
 }

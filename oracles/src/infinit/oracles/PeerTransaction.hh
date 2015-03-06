@@ -40,6 +40,7 @@ namespace infinit
       PeerTransaction(PeerTransaction const&) = default;
       PeerTransaction&
       operator =(PeerTransaction const&) = default;
+      virtual
       ~PeerTransaction() noexcept(true);
 
     /*-----.

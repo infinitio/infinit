@@ -3,6 +3,7 @@
 
 #include <elle/container/map.hh>
 #include <elle/container/set.hh>
+#include <elle/memory.hh>
 
 #include <reactor/scheduler.hh>
 
@@ -285,13 +286,12 @@ namespace surface
           for (auto const& device: init ? swagger.connected_devices : res.first)
           {
             ELLE_DEBUG("%s: updating device %s", *this, device);
-            auto* notif_ptr = new trophonius::UserStatusNotification{};
-            notif_ptr->user_id = user.id;
-            notif_ptr->user_status = user.online();
-            notif_ptr->device_id = device;
-            notif_ptr->device_status = true;
-            std::unique_ptr<trophonius::UserStatusNotification> notif(
-              notif_ptr);
+            std::unique_ptr<trophonius::UserStatusNotification> notif{new
+                trophonius::UserStatusNotification};
+            notif->user_id = user.id;
+            notif->user_status = user.online();
+            notif->device_id = device;
+            notif->device_status = true;
             this->handle_notification(std::move(notif));
           }
 
@@ -300,15 +300,12 @@ namespace surface
           for (auto const& device: res.second)
           {
             ELLE_DEBUG("%s: updating device %s", *this, device);
-            auto* notif_ptr = new trophonius::UserStatusNotification{};
-            notif_ptr->user_id = user.id;
-            notif_ptr->user_status = user.online();
-            notif_ptr->device_id = device;
-            notif_ptr->device_status = false;
-
-            std::unique_ptr<trophonius::UserStatusNotification> notif(
-              notif_ptr);
-
+            std::unique_ptr<trophonius::UserStatusNotification> notif{new
+                trophonius::UserStatusNotification};
+            notif->user_id = user.id;
+            notif->user_status = user.online();
+            notif->device_id = device;
+            notif->device_status = false;
             this->handle_notification(std::move(notif));
           }
         this->_swagger_indexes.insert(this->_user_indexes.at(user.id));

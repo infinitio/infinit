@@ -84,7 +84,7 @@ class Mixin:
       'handle',
       'public_key',
       'register_status',
-#      'ghost_code',
+      'facebook_id',
     ]
     if self.admin:
       res += [
@@ -103,6 +103,7 @@ class Mixin:
       'accounts',
       'creation_time',
       'email',
+      'facebook_id',
       'favorites',
       'features',
       'identity',
@@ -179,11 +180,21 @@ class Mixin:
       h += str(int(random.random() * 10))
     return h
 
-
-
   ## -------- ##
   ## Sessions ##
   ## -------- ##
+
+  def user_identifier(self, user):
+    # Because a big part of the system was based on the fact that an user
+    # always have an email address, facebook users are problematic because
+    # it's not mandatory.
+    res = user.get('email')
+    if res is None:
+      res = user.get('facebook_id')
+    if res is None:
+      res = user.get('fullname')
+    assert len(res)
+    return res
 
   def _forbidden_with_error(self, error):
     ret_msg = {'code': error[0], 'message': error[1]}
@@ -243,7 +254,7 @@ class Mixin:
       res = {
         '_id' : user['_id'],
         'fullname': user['fullname'],
-        'email': user['email'],
+        'email': user.get('email', ''),
         'handle': user['handle'],
         'register_status': user['register_status'],
       }
@@ -253,84 +264,67 @@ class Mixin:
           'identity': user['identity'],
           'device_id': device['id'],
         })
-      if not user.get('email_confirmed', True):
-        from time import time
-        res.update({
-          'unconfirmed_email_leeway': user['unconfirmed_email_deadline'] - time()
-        })
       return res
 
-  @api('/login', method = 'POST')
-  def login(self,
-            email,
-            password,
-            device_id: uuid.UUID,
-            password_hash = None,
-            OS: str = None,
-            pick_trophonius: bool = True,
-            device_push_token: str = None):
-    email = email.replace(' ', '')
-    if OS is not None:
-      OS = OS.strip().lower()
-    # FIXME: 0.0.0.0 is the website.
-    if self.user_version < (0, 9, 0) and self.user_version != (0, 0, 0):
-      return self.fail(error.DEPRECATED)
-    with elle.log.trace("%s: log on device %s" % (email, device_id)):
-      assert isinstance(device_id, uuid.UUID)
-      email = email.lower()
-      user = self._login(
-        email,
-        password = password,
-        password_hash = password_hash,
-        fields = self.__user_self_fields + ['public_key'])
-      # If creation process was interrupted, generate identity now.
-      if 'public_key' not in user:
-        self.__generate_identity(user, email, password)
-      elle.log.debug("%s: look for session" % email)
-      if device_push_token is None:
-        push_token_update = {
-          '$unset':
-          {
-            'devices.$.push_token': True,
-          }
+  def _in_app_login(self,
+                    user,
+                    device_id,
+                    password,
+                    OS = None,
+                    pick_trophonius = None,
+                    device_push_token: str = None):
+    # If creation process was interrupted, generate identity now.
+    if 'public_key' not in user:
+      user = self.__generate_identity(user, password)
+    query = {'id': str(device_id), 'owner': user['_id']}
+
+    if device_push_token is None:
+      push_token_update = {
+        '$unset':
+        {
+          'devices.$.push_token': True,
         }
-      else:
-        push_token_update = {
-          '$set':
-          {
-            'devices.$.push_token': device_push_token,
-          }
+      }
+    else:
+      push_token_update = {
+        '$set':
+        {
+          'devices.$.push_token': device_push_token,
         }
-      def login():
-        return self.database.users.find_and_modify(
-          {'_id': user['_id'], 'devices.id': str(device_id)},
-          push_token_update,
-          fields = ['devices']
-        )
-      usr = self.device_override_push_token(device_push_token, login)
-      if usr is None:
-        elle.log.trace("user logged with an unknown device")
-        device = self._create_device(
-          id = device_id,
-          owner = user,
-          device_push_token = device_push_token)
-      else:
-        device = list(filter(lambda x: x['id'] == str(device_id), usr['devices']))[0]
-      # Remove potential leaked previous session.
-      self.remove_session(user, device)
-      elle.log.debug("%s: store session" % email)
-      bottle.request.session['device'] = device['id']
-      bottle.request.session['identifier'] = email
-      self.database.users.update(
-        {'_id': user['_id']},
-        {'$set': {'last_connection': time.time(),}})
-      elle.log.trace("%s: successfully connected as %s on device %s" %
-                     (email, user['_id'], device['id']))
+      }
+    def login():
+      return self.database.users.find_and_modify(
+        {'_id': user['_id'], 'devices.id': str(device_id)},
+        push_token_update,
+        fields = ['devices']
+      )
+    usr = self.device_override_push_token(device_push_token, login)
+    if usr is None:
+      elle.log.trace("user logged with an unknown device")
+      device = self._create_device(
+        id = device_id,
+        owner = user,
+        device_push_token = device_push_token)
+    else:
+      device = list(filter(lambda x: x['id'] == str(device_id), usr['devices']))[0]
+    # Remove potential leaked previous session.
+    self.remove_session(user, device)
+    elle.log.debug("%s: store session" % user['_id'])
+
+    bottle.request.session['device'] = device['id']
+    bottle.request.session['identifier'] = user['_id']
+
+    self.database.users.update(
+      {'_id': user['_id']},
+      {'$set': {'last_connection': time.time(),}})
+    elle.log.trace("successfully connected as %s on device %s" %
+                   (user['_id'], device['id']))
+    if 'email' in user:
+      email = user['email']
       if OS is not None and OS in invitation.os_lists.keys() and ('os' not in user or OS not in user['os']):
         elle.log.debug("connected on os: %s" % OS)
         res = self.database.users.find_and_modify({"_id": user['_id'], "os.%s" % OS: None},
-                                                  {"$addToSet": {"os": OS}},
-                                                  fields = ['os'])
+                                                  {"$addToSet": {"os": OS}})
         # Because new is not set, find_and_modify will return the non modified user:
         # - os was not present.
         # - os was present but the os was not in the list.
@@ -338,35 +332,132 @@ class Mixin:
           self.invitation.subscribe(list_name = OS,
                                     email = user['email'])
       else:
-        elle.log.debug("%s: no OS specified" % user['email'])
-      response = self.success(self._login_response(user,
-                                                   device = device,
-                                                   web = False))
-      if pick_trophonius:
-        response['trophonius'] = self.trophonius_pick()
-      # Update missing features
-      current_features = user.get('features', {})
-      features = self._roll_features(False, current_features)
-      if features != current_features:
-        self.database.users.update(
-          {'_id': user['_id']},
-          {'$set': { 'features': features}})
-      response['features'] = list(features.items())
-      response['device'] = device
-      return response
+        elle.log.debug("%s: no OS specified" % user['_id'])
+    response = self.success(self._login_response(user,
+                                                 device = device,
+                                                 web = False))
+    if pick_trophonius:
+      response['trophonius'] = self.trophonius_pick()
+    # Update missing features
+    current_features = user.get('features', {})
+    features = self._roll_features(False, current_features)
+    if features != current_features:
+      self.database.users.update(
+        {'_id': user['_id']},
+        {'$set': { 'features': features}})
+    response['features'] = list(features.items())
+    response['device'] = device
+    return response
+
+  def __facebook_connect(self,
+                         fields,
+                         short_lived_access_token = None,
+                         long_lived_access_token = None,
+                         preferred_email = None,
+                         source = None):
+    if bool(short_lived_access_token) == bool(long_lived_access_token):
+      return self.bad_request({
+        'reason': 'you must provide short or long lived token'
+      })
+    try:
+      facebook_user = self.facebook.user(
+        short_lived_access_token = short_lived_access_token,
+        long_lived_access_token = long_lived_access_token)
+      user = self.__user_fetch({
+        'accounts.id': facebook_user.facebook_id,
+        'accounts.type': 'facebook'
+        },
+        fields = fields)
+      if user is None: # Register the user.
+        user = self.facebook_register(
+          facebook_user = facebook_user,
+          preferred_email = preferred_email,
+          source = source,
+          fields = fields)
+        try:
+          self._set_avatar(user, facebook_user.avatar)
+        except BaseException as e:
+          elle.log.warn('unable to get facebook avatar: %s' % e)
+          pass
+      return user
+    except error.Error as e:
+      self._forbidden_with_error(e.args[0])
+
+  @api('/login', method = 'POST')
+  def login(self,
+            device_id: uuid.UUID,
+            email: str = None,
+            password: str = None,
+            short_lived_access_token: str = None,
+            long_lived_access_token: str = None,
+            preferred_email: str = None,
+            password_hash: str = None,
+            OS: str = None,
+            pick_trophonius: bool = True,
+            device_push_token: str = None):
+    # Xor facebook_token or email / passwor.
+    with_email = bool(email and (password or password_hash))
+    with_facebook = bool(long_lived_access_token or short_lived_access_token)
+    if with_email == with_facebook:
+      return self.bad_request({
+        'reason': 'you must provide facebook_token or (email, password)'
+      })
+    if OS is not None:
+      OS = OS.strip().lower()
+    # FIXME: 0.0.0.0 is the website.
+    if self.user_version < (0, 9, 0) and self.user_version != (0, 0, 0):
+      return self.fail(error.DEPRECATED)
+    fields = self.__user_self_fields + ['public_key']
+    with elle.log.trace("%s: log on device %s" % (email or 'facebook user', device_id)):
+      if with_email:
+        email = email.strip().lower()
+        user = self._login(email = email,
+                           fields = fields,
+                           password = password,
+                           password_hash = password_hash)
+      elif with_facebook:
+        user = self.__facebook_connect(
+          short_lived_access_token = short_lived_access_token,
+          long_lived_access_token = long_lived_access_token,
+          preferred_email = preferred_email,
+          fields = fields)
+      return self._in_app_login(user = user,
+                                password = password,
+                                device_id = device_id,
+                                OS = OS,
+                                pick_trophonius = pick_trophonius,
+                                device_push_token = device_push_token)
 
   @api('/web-login', method = 'POST')
   def web_login(self,
-                email,
-                password):
-    email = email.replace(' ', '')
-    with elle.log.trace("%s: web login" % email):
-      f = self.__user_self_fields + ['unconfirmed_email_deadline']
-      user = self._login(email, password = password, fields = f)
-      elle.log.debug("%s: store session" % email)
-      bottle.request.session['identifier'] = email
+                email = None,
+                password = None,
+                short_lived_access_token = None,
+                long_lived_access_token = None):
+    # Xor facebook_token or email / passwor.
+    with_email = bool(email and password)
+    with_facebook = bool(long_lived_access_token or short_lived_access_token)
+    if with_email == with_facebook:
+      return self.bad_request({
+        'reason': 'you must provide facebook_token or (email, password)'
+      })
+    fields = self.__user_self_fields + ['unconfirmed_email_deadline']
+    if with_email:
+      email = email.replace(' ', '')
+      with elle.log.trace("%s: web login" % email):
+        user = self._login(email, password = password, fields = fields)
+    elif with_facebook:
+      user = self.__facebook_connect(
+        short_lived_access_token = short_lived_access_token,
+        long_lived_access_token = long_lived_access_token,
+        fields = fields)
+    return self._web_login(user)
+
+  def _web_login(self, user):
+      bottle.request.session['identifier'] = user['_id']
+      user = self.user
       elle.log.trace("%s: successfully connected as %s" %
-                     (email, user['_id']))
+                     (self.user_identifier(user), user['_id']))
       return self.success(self._login_response(user, web = True))
 
   @api('/logout', method = 'POST')
@@ -400,14 +491,13 @@ class Mixin:
       return None
     # For a smoother transition, sessions registered as
     # email are still available.
-    for key in ['identifier', 'email']:
+    methods = {'identifier': self._user_by_id, 'email': self.user_by_email}
+    for key in methods:
       identifier = bottle.request.session.get(key, None)
       if identifier is not None:
-        user = None
-        if isinstance(identifier, bson.ObjectId):
-          user = self._user_by_id(identifier, fields = fields, ensure_existence = False)
-        elif '@' in identifier:
-          user = self.user_by_email(identifier, fields = fields, ensure_existence = False)
+        user = methods[key](identifier,
+                            ensure_existence = False,
+                            fields = fields)
         if user is not None:
           bottle.request.user = user
           return user
@@ -431,6 +521,10 @@ class Mixin:
                         password_hash = None):
     if self.user is not None:
       return self.fail(error.ALREADY_LOGGED_IN)
+    if password is None:
+      return self.bad_request({
+        'reason': 'Password field cannot be null',
+      })
     try:
       user = self.user_register(email = email,
                                 password = password,
@@ -446,6 +540,67 @@ class Mixin:
     except Exception as e:
       return self.fail(e.args[0])
 
+  # facebook_register is a kind a clone of the register function except some
+  # attributes aren't usefull:
+  def facebook_register(self,
+                        facebook_user,
+                        fields,
+                        preferred_email = None,
+                        source = None):
+    # XXX: Make that cleaner...
+    email = facebook_user.data.get('email', None)
+    if email is not None:
+      email = email.strip().lower()
+    if preferred_email is not None:
+      preferred_email = preferred_email.lower().strip()
+    # Confirmed by facebook.
+    already_confirmed = preferred_email == email
+    email = preferred_email or email
+    if email is None:
+      return self.bad_request({
+        'reason': 'you must provide an email'
+      })
+    name = facebook_user.data['name']
+    extra_fields = {
+      'facebook': {},
+      'accounts': [{
+        'type': 'facebook',
+        'id': facebook_user.facebook_id
+      }],
+      'facebook_id': facebook_user.facebook_id,
+    }
+    for field in ['first_name', 'last_name', 'gender', 'timezone', 'locale', 'birthday']:
+      if field in facebook_user.data:
+        extra_fields['facebook'][field] = facebook_user.data[field]
+    self.user_register(
+      email = email,
+      password = None,
+      fullname = name,
+      password_hash = None,
+      source = source,
+      email_is_already_confirmed = already_confirmed,
+      extra_fields = extra_fields,
+      activation_code = None)
+    user = self.__user_fetch(
+      {
+        'accounts.id': facebook_user.facebook_id,
+        'accounts.type': 'facebook'
+      },
+      fields = fields)
+    return user
+
+  def __email_confirmation_fields(self, email):
+    email = email.strip().lower()
+    import hashlib
+    hash = str(time.time()) + email
+    hash = hash.encode('utf-8')
+    hash = hashlib.md5(hash).hexdigest()
+    return {
+      'email_confirmed': False,
+      'unconfirmed_email_deadline':
+        time.time() + self.unconfirmed_email_leeway,
+      'email_confirmation_hash': str(hash)
+    }
 
   def user_register(self,
                     email,
@@ -453,6 +608,8 @@ class Mixin:
                     fullname,
                     password_hash = None,
                     source = None,
+                    email_is_already_confirmed = False,
+                    extra_fields = None,
                     activation_code = None):
     """Register a new user.
 
@@ -461,12 +618,13 @@ class Mixin:
     fullname -- the user fullname.
     activation_code -- the activation code.
     """
-    email = email.replace(' ', '')
+    email = email.strip().lower()
     _validators = [
       (email, regexp.EmailValidator),
-      (password, regexp.PasswordValidator),
       (fullname, regexp.FullnameValidator),
     ]
+    if password is not None:
+      _validators.append((password, regexp.PasswordValidator))
     for arg, validator in _validators:
       res = validator(arg)
       if res != 0:
@@ -474,10 +632,6 @@ class Mixin:
     fullname = fullname.strip()
     with elle.log.trace("registration: %s as %s" % (email, fullname)):
       email = email.strip().lower()
-      import hashlib
-      hash = str(time.time()) + email
-      hash = hash.encode('utf-8')
-      hash = hashlib.md5(hash).hexdigest()
       handle = self.unique_handle(fullname)
       user_content = {
         'features': self._roll_features(True),
@@ -492,15 +646,18 @@ class Mixin:
         'devices': [],
         'notifications': [],
         'old_notifications': [],
-        'accounts': [
-          {'type':'email', 'id': email}
-        ],
+        'accounts': [{'type': 'email', 'id': email}],
         'creation_time': self.now,
-        'email_confirmed': False,
-        'unconfirmed_email_deadline':
-          time.time() + self.unconfirmed_email_leeway,
-        'email_confirmation_hash': str(hash),
       }
+      if email_is_already_confirmed:
+        user_content.update({'email_confirmed': True})
+      else:
+        user_content.update(self.__email_confirmation_fields(email))
+      if extra_fields:
+        if 'accounts' in extra_fields:
+          user_content['accounts'] += extra_fields['accounts']
+          del extra_fields['accounts']
+        user_content.update(extra_fields)
       if password_hash is not None:
         user_content.update(
           {
@@ -546,7 +703,7 @@ class Mixin:
           # The user existed.
           raise Exception(error.EMAIL_ALREADY_REGISTERED)
       user_id = user['_id']
-      self.__generate_identity(user, email, password)
+      self.__generate_identity(user, password)
       with elle.log.trace("add user to the mailing list"):
         self.invitation.subscribe(email)
       self._notify_swaggers(
@@ -556,23 +713,27 @@ class Mixin:
         },
         user_id = user_id,
       )
-      self.mailer.send_template(
-        to = email,
-        template_name = 'confirm-sign-up',
-        merge_vars = {
-          email: {
-            'CONFIRM_KEY': key('/users/%s/confirm-email' % user_id),
-            'USER_FULLNAME': fullname,
-            'USER_ID': str(user_id),
-          }}
-      )
+
+      if not user.get('email_confirmed', False):
+        self.mailer.send_template(
+          to = email,
+          template_name = 'confirm-sign-up',
+          merge_vars = {
+            email: {
+              'CONFIRM_KEY': key('/users/%s/confirm-email' % user_id),
+              'USER_FULLNAME': fullname,
+              'USER_ID': str(user_id),
+            }}
+        )
       return self.__user_view(self.__user_fill(user))
 
-  def __generate_identity(self, user, email, password):
+  def __generate_identity(self, user, password):
     with elle.log.trace('generate identity'):
+      if password is None:
+        password = ''
       identity, public_key = papier.generate_identity(
         str(user['_id']),
-        email,
+        str(self.user_identifier(user)),
         password,
         conf.INFINIT_AUTHORITY_PATH,
         conf.INFINIT_AUTHORITY_PASSWORD
@@ -590,6 +751,7 @@ class Mixin:
         },
       )
       user.update(update)
+      return user
 
   # Deprecated
   @api('/user/confirm_email/<hash>', method = 'POST')
@@ -873,8 +1035,7 @@ class Mixin:
           'reason': 'email already registered',
           'email': email,
         })
-    k = key('/users/%s/accounts/%s/confirm' %
-            (self.user['email'], email))
+    k = key('/users/%s/accounts/%s/confirm' % (self.user['_id'], email))
     self.mailer.send_template(
       email,
       'account-add-email',
@@ -937,7 +1098,7 @@ class Mixin:
   @require_logged_in
   def remove_auxiliary_email_address(self, email):
     user = self.user
-    if user['email'] == email:
+    if user.get('email') == email:
       self.forbidden({
         'reason': 'deleting primary account is forbidden',
       })
@@ -956,7 +1117,7 @@ class Mixin:
         'reason': 'no such email address in account: %s' % email,
         'email': email,
       })
-    return self.success({})
+    return {}
 
   @api('/user/accounts/<email>/make_primary', method = 'POST')
   @require_logged_in_fields(['password'])
@@ -967,7 +1128,7 @@ class Mixin:
         'reason': 'no such email in account: %s' % email,
         'email': email,
       })
-    if user['email'] == email:
+    if user.get('email') == email:
       return {}
     self._change_email(user = user,
                        new_email = email,
@@ -1085,7 +1246,6 @@ class Mixin:
       self._change_email(user, new_email, password)
 
   def _change_email(self, user, new_email, password):
-    # Invalidate credentials.
     self.remove_session(user)
     # Kick them out of the app.
     self.notifier.notify_some(
@@ -1095,7 +1255,8 @@ class Mixin:
     # Cancel transactions as identity will change.
     self.cancel_transactions(user)
     # Handle mailing list subscriptions.
-    self.invitation.unsubscribe(user['email'])
+    if 'email' in user:
+      self.invitation.unsubscribe(user['email'])
     self.invitation.subscribe(new_email)
     with elle.log.trace('generate identity'):
       identity, public_key = papier.generate_identity(
@@ -1156,6 +1317,8 @@ class Mixin:
       if res != 0:
         return self.fail(res)
     user = self.user
+    if 'email' not in user:
+      self._forbidden_with_error(error.EMAIL_NOT_CONFIRMED)
     if user['password'] != hash_password(old_password):
       return self.fail(error.PASSWORD_NOT_VALID)
     # Invalidate credentials.
@@ -1169,6 +1332,7 @@ class Mixin:
     # Cancel transactions as identity will change.
     self.cancel_transactions(user)
 
+    assert 'email' in user
     with elle.log.trace('generate identity'):
       identity, public_key = papier.generate_identity(
         str(user['_id']),  # Unique ID.
@@ -1256,7 +1420,10 @@ class Mixin:
     if 'email' in user:
       if self.__users_count({'email': user['email']}) == 1:
         self.invitation.unsubscribe(user['email'])
-    if not merge_with:
+    if merge_with is not None:
+      self.change_transactions_recipient(user, merge_with)
+      # self.change_links_ownership(user, merge_with)
+    else:
       self.cancel_transactions(user)
       self.delete_all_links(user)
       self.remove_devices(user)
@@ -1437,6 +1604,8 @@ class Mixin:
     password -- The password for that account.
     ensure_existence -- if set, raise if user is invald.
     """
+    if password is None:
+      raise error.Error(error.EMAIL_PASSWORD_DONT_MATCH)
     if password_hash is not None:
       user = self.__user_fetch(
         {
@@ -1843,7 +2012,7 @@ class Mixin:
     admin_token -- the admin token.
     """
     user = self.user
-    with elle.log.trace("%s: invite %s" % (user['email'], email)):
+    with elle.log.trace("%s: invite %s" % (user['_id'], email)):
       if regexp.EmailValidator(email) != 0:
         return self.fail(error.EMAIL_NOT_VALID)
       if self.__users_count({"email": email}) > 0:
@@ -1852,7 +2021,7 @@ class Mixin:
         email = email,
         send_email = True,
         mailer = self.mailer,
-        source = (user['fullname'], user['email']),
+        source = (user['fullname'], self.user_identifier(self.user)),
         database = self.database,
         merge_vars = {
           email: {
@@ -1869,9 +2038,11 @@ class Mixin:
   def invited(self):
     """Return the list of users invited.
     """
+    user = self.user
+    source = user.get('email', self.user_identifier(user))
     invitees = self.database.invitations.find(
       {
-        'source': self.user['email'],
+        'source': source,
       },
       fields = {'email': True, '_id': False}
     )
@@ -1939,9 +2110,12 @@ class Mixin:
   @require_logged_in
   def set_avatar(self):
     from bottle import request
-    from io import BytesIO
     from PIL import Image
     image = Image.open(request.body)
+    self._set_avatar(self.user, image)
+
+  def _set_avatar(self, user, image):
+    from io import BytesIO
     small_image = self._small_avatar(image)
     out = BytesIO()
     small_out = BytesIO()
@@ -1951,7 +2125,7 @@ class Mixin:
     small_out.seek(0)
     import bson.binary
     self.database.users.update(
-      {'_id': self.user['_id']},
+      {'_id': user['_id']},
       {'$set': {
         'avatar': bson.binary.Binary(out.read()),
         'small_avatar': bson.binary.Binary(small_out.read()),
@@ -2127,6 +2301,8 @@ class Mixin:
     name -- The name of the subscription to edit.
     value -- The status wanted for the subscription.
     """
+    if 'email' not in user:
+      return
     action = value and 'subscribe' or 'unsubscribe'
     with elle.log.debug(
         '%s %s from %s emails' % (action, user['email'], name)):

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import Meta, User
+from utils import Meta, User, HTTPException
 
 with Meta(enable_emails = True) as meta:
   email = 'foobar@infinit.io'
@@ -33,3 +33,30 @@ with Meta() as meta:
   assert user['fullname'] == fullname
   assert user['source'] == 'test'
   assert 'creation_time' in user
+
+# Check that null passwords are rejected.
+with Meta() as meta:
+  email = 'jeantest@infinit.io'
+  fullname = 'Jean Test'
+  try:
+    meta.post('register', {
+      'email': email,
+      'fullname': fullname,
+      'password': None}
+    )
+    assert False
+  except HTTPException as e:
+    pass
+
+# Check that password is needed.
+with Meta() as meta:
+  email = 'jeantest@infinit.io'
+  fullname = 'Jean Test'
+  try:
+    meta.post('register', {
+      'email': email,
+      'fullname': fullname
+    })
+    assert False
+  except HTTPException as e:
+    pass
