@@ -188,7 +188,7 @@ gap_Status
 gap_login(gap_State* state,
           std::string const& email,
           std::string const& password,
-          boost::optional<std::string const&> device_push_token)
+          boost::optional<std::string> device_push_token)
 {
   ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
@@ -247,7 +247,7 @@ gap_register(gap_State* state,
              std::string const& fullname,
              std::string const& email,
              std::string const& password,
-             boost::optional<std::string const&> device_push_token)
+             boost::optional<std::string> device_push_token)
 {
   ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
@@ -1225,13 +1225,16 @@ gap_send_files_by_email(gap_State* state,
                         std::vector<std::string> const& files,
                         std::string const& message)
 {
+  ELLE_ASSERT(email.length() > 0);
   ELLE_ASSERT(state != nullptr);
   return run<uint32_t>(
     state,
     "send files",
     [&] (surface::gap::State& state) -> uint32_t
     {
-      return state.send_files(email, std::move(files), message);
+      return state.transaction_peer_create(email,
+                                           std::move(files),
+                                           message).id();
     });
 }
 
@@ -1239,7 +1242,8 @@ uint32_t
 gap_send_files(gap_State* state,
                uint32_t id,
                std::vector<std::string> const& files,
-               std::string const& message)
+               std::string const& message,
+               boost::optional<std::string> device_id)
 {
   ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
@@ -1248,9 +1252,19 @@ gap_send_files(gap_State* state,
     "send files",
     [&] (surface::gap::State& state) -> uint32_t
     {
-      return state.send_files(state.users().at(id).id,
-                              std::move(files),
-                              message);
+      if (device_id && device_id.get().length() > 0)
+      {
+        return state.transaction_peer_create(state.users().at(id).id,
+                                             device_id.get(),
+                                             std::move(files),
+                                             message).id();
+      }
+      else
+      {
+        return state.transaction_peer_create(state.users().at(id).id,
+                                             std::move(files),
+                                             message).id();
+      }
     });
 }
 
@@ -1667,7 +1681,7 @@ gap_Status
 gap_facebook_connect(gap_State* state,
                      std::string const& facebook_token,
                      boost::optional<std::string> preferred_email,
-                     boost::optional<std::string const&> device_push_token)
+                     boost::optional<std::string> device_push_token)
 {
   return run<gap_Status>(
     state,
