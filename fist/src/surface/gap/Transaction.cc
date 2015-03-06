@@ -125,6 +125,16 @@ namespace surface
                              std::string const& peer_id,
                              std::vector<std::string> files,
                              std::string const& message)
+      : Transaction(state, id, peer_id, elle::UUID(), std::move(files), message)
+    {}
+
+    // Construct to send files to a specific device.
+    Transaction::Transaction(State& state,
+                             uint32_t id,
+                             std::string const& peer_id,
+                             elle::UUID const& peer_device_id,
+                             std::vector<std::string> files,
+                             std::string const& message)
       // FIXME: ensure better uniqueness.
       : _snapshots_directory(
         boost::filesystem::path(
@@ -148,13 +158,18 @@ namespace surface
         state.me().fullname,
         state.device().id,
         peer_id);
+      data->recipient_device_id = peer_device_id;
       this->_data = data;
       this->_machine.reset(
         new PeerSendMachine(*this, this->_id, peer_id,
                             this->_files.get(), message, data));
-      ELLE_TRACE_SCOPE("%s: construct to send %s files",
-                       *this, this->_files.get().size());
-
+      ELLE_TRACE_SCOPE(\
+        "%s: construct to send %s files to %s%s",
+        *this,
+        this->_files.get().size(),
+        peer_id,
+        peer_device_id.is_nil()
+        ? "" : elle::sprintf(" on device %s", peer_device_id));
       this->_snapshot_save();
     }
 
@@ -272,9 +287,9 @@ namespace surface
             surface::gap::PeerTransaction notification(
               this->id(),
               this->status(),
-              this->state().user_indexes().at(peer_data->sender_id),
+              this->state().user_id(peer_data->sender_id),
               peer_data->sender_device_id,
-              this->state().user_indexes().at(peer_data->recipient_id),
+              this->state().user_id(peer_data->recipient_id),
               peer_data->recipient_device_id,
               peer_data->mtime,
               peer_data->files,
@@ -310,7 +325,6 @@ namespace surface
           std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
             this->_data))
       {
-        auto recipient_device = peer_data->recipient_device_id;
         auto recipient = peer_data->recipient_id;
         if (me == sender)
         {
@@ -544,28 +558,6 @@ namespace surface
     }
 
     void
-    Transaction::pause()
-    {
-      ELLE_TRACE_SCOPE("%s: pausing transaction", *this);
-      if (this->_machine == nullptr)
-      {
-        throw BadOperation(BadOperation::Type::pause);
-      }
-      this->_machine->pause();
-    }
-
-    void
-    Transaction::resume()
-    {
-      ELLE_TRACE_SCOPE("%s: resuming transaction", *this);
-      if (this->_machine == nullptr)
-      {
-        throw BadOperation(BadOperation::Type::resume);
-      }
-      this->_machine->resume();
-    }
-
-    void
     Transaction::cancel(bool user_request)
     {
       ELLE_TRACE_SCOPE("%s: canceling transaction", *this);
@@ -646,9 +638,9 @@ namespace surface
           surface::gap::PeerTransaction notification(
             this->id(),
             status,
-            this->state().user_indexes().at(peer_data->sender_id),
+            this->state().user_id(peer_data->sender_id),
             peer_data->sender_device_id,
-            this->state().user_indexes().at(peer_data->recipient_id),
+            this->state().user_id(peer_data->recipient_id),
             peer_data->recipient_device_id,
             peer_data->mtime,
             peer_data->files,
@@ -731,12 +723,13 @@ namespace surface
             // Merge recipient if the new one is not in your list.
             // XXX: Because we should always receive a new_swagger notification
             // this code is just a security.
+            auto& recipient = this->state().user(peer->recipient_id);
             surface::gap::PeerTransaction notification(
               this->id(),
               this->status(),
-              this->state().user_indexes().at(peer->sender_id),
+              this->state().user_id(peer->sender_id),
               peer->sender_device_id,
-              this->state().user_indexes().at(peer->recipient_id),
+              this->state().user_id(recipient.id),
               peer->recipient_device_id,
               peer->mtime,
               peer->files,
@@ -782,7 +775,7 @@ namespace surface
     void
     Transaction::notify_user_connection_status(std::string const& user_id,
                                                bool user_status,
-                                               std::string const& device_id,
+                                               elle::UUID const& device_id,
                                                bool device_status)
     {
       if (this->_machine == nullptr)

@@ -1,3 +1,4 @@
+#include <elle/filesystem/TemporaryFile.hh>
 #include <elle/log.hh>
 #include <elle/test.hh>
 
@@ -11,15 +12,27 @@ ELLE_LOG_COMPONENT("surface.gap.State.test");
 // Send a file to a ghost.
 ELLE_TEST_SCHEDULED(send_ghost)
 {
-  Server server;
+  tests::Server server;
   auto const email = "em@il.com";
   auto const password = "secret";
-  auto user = server.register_user(email, password);
-  State state(server, user.device_id().get());
+  server.register_user(email, password);
+  tests::State state(server, random_uuid());
+
+  elle::filesystem::TemporaryFile transfered("cloud-buffered");
+  {
+    boost::filesystem::ofstream f(transfered.path());
+    BOOST_CHECK(f.good());
+    for (int i = 0; i < 2048; ++i)
+    {
+      char c = i % 256;
+      f.write(&c, 1);
+    }
+  }
+
   // Callbacks
   reactor::Barrier transferring;
   reactor::Barrier finished;
-  state.attach_callback<surface::gap::PeerTransaction>(
+  state->attach_callback<surface::gap::PeerTransaction>(
     [&] (surface::gap::PeerTransaction const& transaction)
     {
       // Check the GUI goes created -> transferring -> finished.
@@ -41,18 +54,17 @@ ELLE_TEST_SCHEDULED(send_ghost)
           BOOST_ERROR(elle::sprintf("unexpected GAP status: %s", status));
       }
     });
-  state.login(email, password);
+  state->login(email, password);
   std::string const ghost_email = "ghost@infinit.io";
-  server.generate_ghost_user(ghost_email);
-  auto& state_transaction = state.transaction_peer_create(
+  auto& state_transaction = state->transaction_peer_create(
     ghost_email,
-    std::vector<std::string>{"/etc/passwd"},
+    std::vector<std::string>{transfered.path().string().c_str()},
     "message");
   while (state_transaction.data()->status ==
          infinit::oracles::Transaction::Status::created)
   {
     reactor::sleep(10_ms);
-    state.poll();
+    state->poll();
   }
   BOOST_CHECK_EQUAL(state_transaction.data()->status,
                     infinit::oracles::Transaction::Status::initialized);
@@ -61,7 +73,7 @@ ELLE_TEST_SCHEDULED(send_ghost)
   while (!finished)
   {
     reactor::sleep(100_ms);
-    state.poll();
+    state->poll();
   }
 }
 

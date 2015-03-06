@@ -225,6 +225,17 @@ namespace infinit
     }
 
     void
+    JSONReporter::_facebook_connect(bool success, std::string const& info)
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] = std::string("app/facebook_connect");
+      data[this->_key_str(JSONKey::status)] = this->_status_string(success);
+      if (!success)
+        data[this->_key_str(JSONKey::fail_reason)] = info;
+      this->_send(this->_user_dest, data);
+    }
+
+    void
     JSONReporter::_user_logout(bool success, std::string const& info)
     {
       elle::json::Object data;
@@ -505,7 +516,7 @@ namespace infinit
         case JSONKey::features:
           return "features";
         default:
-          elle::unreachable();
+          ELLE_ABORT("invalid metrics JSON key: %s", k);
       }
     }
 
@@ -522,29 +533,7 @@ namespace infinit
     JSONReporter::_transaction_status_str(
       infinit::oracles::Transaction::Status status)
     {
-      switch (status)
-      {
-        case infinit::oracles::Transaction::Status::accepted:
-          return "accepted";
-        case infinit::oracles::Transaction::Status::canceled:
-          return "cancelled";
-        case infinit::oracles::Transaction::Status::created:
-          return "created";
-        case infinit::oracles::Transaction::Status::failed:
-          return "failed";
-        case infinit::oracles::Transaction::Status::finished:
-          return "finished";
-        case infinit::oracles::Transaction::Status::initialized:
-          return "initialized";
-        case infinit::oracles::Transaction::Status::none:
-          return "none";
-        case infinit::oracles::Transaction::Status::rejected:
-          return "rejected";
-        case infinit::oracles::Transaction::Status::started:
-          return "started";
-        default:
-          elle::unreachable();
-      }
+      return boost::lexical_cast<std::string>(status);
     }
 
     std::string
@@ -559,7 +548,7 @@ namespace infinit
         case TransferMethodGhostCloud:
           return "ghost-buffering";
         default:
-          elle::unreachable();
+          ELLE_ABORT("invalid trasnfer method: %s", method);
       }
     }
 
@@ -579,7 +568,7 @@ namespace infinit
         case TransferExitReasonUnknown:
           return "unknown";
         default:
-          elle::unreachable();
+          ELLE_ABORT("invalid exit reason: %s", reason);
       }
     }
 
@@ -593,7 +582,7 @@ namespace infinit
         case PeerTransaction:
           return "peer";
         default:
-          elle::unreachable();
+          ELLE_ABORT("invalid transaction type: %s", type);
       }
     }
   }

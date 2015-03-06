@@ -67,8 +67,7 @@ gap_Status
 gap_login(gap_State* state,
           std::string const& email,
           std::string const& password,
-          boost::optional<std::string const&> device_push_token = {},
-          reactor::DurationOpt timeout = reactor::DurationOpt());
+          boost::optional<std::string> device_push_token = {});
 
 /// Fetch features.
 std::unordered_map<std::string, std::string>
@@ -91,7 +90,7 @@ gap_register(gap_State* state,
              std::string const& fullname,
              std::string const& email,
              std::string const& password,
-             boost::optional<std::string const&> device_push_token = {});
+             boost::optional<std::string> device_push_token = {});
 
 gap_Status
 gap_new_swagger_callback(
@@ -302,11 +301,14 @@ gap_peer_transactions(gap_State* state,
 
 /// C++ version of gap_send_files.
 /// If the return value is 0, the operation failed.
+/// A user can send an auto-accepted transaction to their own device by
+/// specifying a device ID.
 uint32_t
 gap_send_files(gap_State* state,
                uint32_t id,
                std::vector<std::string> const& files,
-               std::string const& message);
+               std::string const& message,
+               boost::optional<std::string> device_id = {});
 
 /// C++ version for send_files_by_email.
 /// If the return value is 0, the operation failed.
@@ -400,9 +402,7 @@ gap_Status
 gap_send_user_report(gap_State* state,
                      std::string const& user_name,
                      std::string const& message,
-                     std::string const& file,
-                     boost::optional<std::vector<std::string>>
-                      infinit_files = {});
+                     std::vector<std::string> files);
 
 /// Send existing crash log to the server
 gap_Status
@@ -411,5 +411,14 @@ gap_send_last_crash_logs(gap_State* state,
                          std::string const& crash_report,
                          std::string const& state_log,
                          std::string const& additional_info);
+
+std::string
+gap_facebook_app_id();
+
+gap_Status
+gap_facebook_connect(gap_State* state,
+                     std::string const& facebook_token,
+                     boost::optional<std::string> preferred_email = {},
+                     boost::optional<std::string> device_push_token = {});
 
 #endif

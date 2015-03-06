@@ -767,7 +767,7 @@ ELLE_TEST_SCHEDULED(replace, (bool, ssl))
     }
   }
   // Let trophonius see we disconnected.
-  reactor::sleep(100_ms);
+  reactor::sleep(valgrind(100_ms, 20));
   BOOST_CHECK(t.clients.find(id) == t.clients.end());
 }
 

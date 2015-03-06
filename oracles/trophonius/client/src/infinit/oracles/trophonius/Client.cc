@@ -106,31 +106,6 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::DeletedFavoriteNotification,
   ar & named("user_id", value.user_id);
 }
 
-ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::UserStatusNotification);
-ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::UserStatusNotification,
-                      ar,
-                      value,
-                      version)
-{
-  (void)version;
-  ar & base_class<infinit::oracles::trophonius::Notification>(value);
-  ar & named("user_id", value.user_id);
-  ar & named("status", value.user_status);
-  ar & named("device_id", value.device_id);
-  ar & named("device_status", value.device_status);
-}
-
-ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::LinkTransactionNotification);
-ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::LinkTransactionNotification,
-                      ar,
-                      value,
-                      version)
-{
-  (void)version;
-  ar & base_class<infinit::oracles::trophonius::Notification>(value);
-  ar & base_class<infinit::oracles::LinkTransaction>(value);
-}
-
 ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::MessageNotification);
 ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::MessageNotification,
                       ar,
@@ -161,6 +136,27 @@ namespace infinit
         : Notification(NotificationType::peer_transaction)
         , PeerTransaction(input)
       {}
+
+
+      LinkTransactionNotification::LinkTransactionNotification(
+        elle::serialization::SerializerIn& input)
+        : Notification(NotificationType::link_transaction)
+        , LinkTransaction(input)
+      {}
+
+      UserStatusNotification::UserStatusNotification()
+        : Notification(NotificationType::user_status)
+      {}
+
+      UserStatusNotification::UserStatusNotification(
+        elle::serialization::SerializerIn& input)
+        : Notification(NotificationType::user_status)
+      {
+        input.serialize("user_id", this->user_id);
+        input.serialize("status", this->user_status);
+        input.serialize("device_id", this->device_id);
+        input.serialize("device_status", this->device_status);
+      }
 
       void
       Notification::print(std::ostream& stream) const
@@ -245,6 +241,16 @@ namespace infinit
             elle::serialization::json::SerializerIn input(json);
             return elle::make_unique<PeerTransactionNotification>(input);
           }
+          case NotificationType::link_transaction:
+          {
+            elle::serialization::json::SerializerIn input(json);
+            return elle::make_unique<LinkTransactionNotification>(input);
+          }
+          case NotificationType::user_status:
+          {
+            elle::serialization::json::SerializerIn input(json);
+            return elle::make_unique<UserStatusNotification>(input);
+          }
           default:
             ; // Nothing.
         }
@@ -259,7 +265,7 @@ namespace infinit
           case NotificationType::ping:
             return Ptr(new Notification{extractor});
           case NotificationType::link_transaction:
-            return Ptr(new LinkTransactionNotification{extractor});
+            elle::unreachable();
           case NotificationType::peer_transaction:
             elle::unreachable();
           case NotificationType::peer_connection_update:
@@ -270,8 +276,6 @@ namespace infinit
             return Ptr(new DeletedSwaggerNotification{extractor});
           case NotificationType::deleted_favorite:
             return Ptr(new DeletedFavoriteNotification{extractor});
-          case NotificationType::user_status:
-            return Ptr(new UserStatusNotification{extractor});
           case NotificationType::message:
             return Ptr(new MessageNotification{extractor});
           case NotificationType::connection_enabled:
@@ -301,7 +305,7 @@ namespace infinit
         boost::asio::streambuf response;
         boost::system::error_code last_error;
         std::string user_id;
-        std::string user_device_id;
+        elle::UUID user_device_id;
         std::string user_session_id;
         Client::ConnectCallback connect_callback;
         Client::ReconnectPokeFailedCallback reconnect_failed_callback;
@@ -533,7 +537,7 @@ namespace infinit
 
         void
         _connect(std::string const& user_id,
-                 std::string const& device_id,
+                 elle::UUID const& device_id,
                  std::string const& session_id)
         {
           this->user_id = user_id;
@@ -568,7 +572,8 @@ namespace infinit
             {
               request["user_id"] = this->user_id;
               request["session_id"] = this->user_session_id;
-              request["device_id"] = this->user_device_id;
+              request["device_id"] =
+                boost::lexical_cast<std::string>(this->user_device_id);
               {
                 elle::json::Object version;
                 version["major"] = INFINIT_VERSION_MAJOR;
@@ -845,7 +850,7 @@ namespace infinit
             }
             else
             {
-              ELLE_DUMP("%s: enqueue notification", *this);
+              ELLE_TRACE("%s: enqueue notification", *this);
               this->_notifications.put(std::move(notif));
             }
           }
@@ -962,7 +967,7 @@ namespace infinit
 
       void
       Client::connect(std::string const& _id,
-                      std::string const& device_id,
+                      elle::UUID const& device_id,
                       std::string const& session_id)
       {
         ELLE_TRACE_SCOPE(

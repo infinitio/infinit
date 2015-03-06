@@ -188,8 +188,7 @@ gap_Status
 gap_login(gap_State* state,
           std::string const& email,
           std::string const& password,
-          boost::optional<std::string const&> device_push_token,
-          reactor::DurationOpt timeout)
+          boost::optional<std::string> device_push_token)
 {
   ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
@@ -197,7 +196,7 @@ gap_login(gap_State* state,
     "login",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      state.login(email, password, timeout, device_push_token);
+      state.login(email, password, device_push_token);
       return gap_ok;
     });
 }
@@ -225,7 +224,7 @@ gap_logged_in(gap_State* state)
     "logged",
     [&] (surface::gap::State& state)
     {
-      return state.logged_in();
+      return state.meta().logged_in();
     });
 }
 
@@ -248,7 +247,7 @@ gap_register(gap_State* state,
              std::string const& fullname,
              std::string const& email,
              std::string const& password,
-             boost::optional<std::string const&> device_push_token)
+             boost::optional<std::string> device_push_token)
 {
   ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
@@ -339,7 +338,9 @@ gap_self_email(gap_State* state)
     "self email",
     [&] (surface::gap::State& state) -> std::string
     {
-      return state.me().email;
+      if (state.me().email)
+        return state.me().email.get();
+      return "";
     });
 }
 
@@ -526,7 +527,7 @@ gap_self_device_id(gap_State* state)
     "self device id",
     [&] (surface::gap::State& state) -> std::string
     {
-      return state.device().id;
+      return boost::lexical_cast<std::string>(state.device().id);
     });
 }
 
@@ -973,9 +974,9 @@ gap_peer_transaction_by_id(gap_State* state,
       res = surface::gap::PeerTransaction(
         id,
         status,
-        state.user_indexes().at(peer_data->sender_id),
+        state.user_id(peer_data->sender_id),
         peer_data->sender_device_id,
-        state.user_indexes().at(peer_data->recipient_id),
+        state.user_id(peer_data->recipient_id),
         peer_data->recipient_device_id,
         peer_data->mtime,
         peer_data->files,
@@ -1021,7 +1022,7 @@ gap_transaction_concern_device(gap_State* state,
       {
         return
           (data->recipient_id == state.me().id &&
-           ((true_if_empty_recipient && data->recipient_device_id.empty()) ||
+           ((true_if_empty_recipient && data->recipient_device_id.is_nil()) ||
             data->recipient_device_id == state.device().id)) ||
           (data->sender_id == state.me().id &&
            data->sender_device_id == state.device().id);
@@ -1200,9 +1201,9 @@ gap_peer_transactions(gap_State* state,
           surface::gap::PeerTransaction txn(
             it->first,
             status,
-            state.user_indexes().at(peer_data->sender_id),
+            state.user_id(peer_data->sender_id),
             peer_data->sender_device_id,
-            state.user_indexes().at(peer_data->recipient_id),
+            state.user_id(peer_data->recipient_id),
             peer_data->recipient_device_id,
             peer_data->mtime,
             peer_data->files,
@@ -1224,13 +1225,16 @@ gap_send_files_by_email(gap_State* state,
                         std::vector<std::string> const& files,
                         std::string const& message)
 {
+  ELLE_ASSERT(email.length() > 0);
   ELLE_ASSERT(state != nullptr);
   return run<uint32_t>(
     state,
     "send files",
     [&] (surface::gap::State& state) -> uint32_t
     {
-      return state.send_files(email, std::move(files), message);
+      return state.transaction_peer_create(email,
+                                           std::move(files),
+                                           message).id();
     });
 }
 
@@ -1238,7 +1242,8 @@ uint32_t
 gap_send_files(gap_State* state,
                uint32_t id,
                std::vector<std::string> const& files,
-               std::string const& message)
+               std::string const& message,
+               boost::optional<std::string> device_id)
 {
   ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
@@ -1247,9 +1252,19 @@ gap_send_files(gap_State* state,
     "send files",
     [&] (surface::gap::State& state) -> uint32_t
     {
-      return state.send_files(state.users().at(id).id,
-                              std::move(files),
-                              message);
+      if (device_id && device_id.get().length() > 0)
+      {
+        return state.transaction_peer_create(state.users().at(id).id,
+                                             device_id.get(),
+                                             std::move(files),
+                                             message).id();
+      }
+      else
+      {
+        return state.transaction_peer_create(state.users().at(id).id,
+                                             std::move(files),
+                                             message).id();
+      }
     });
 }
 
@@ -1258,14 +1273,15 @@ gap_pause_transaction(gap_State* state, uint32_t id)
 {
   ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
-  return run<gap_Status>(
-    state,
-    "pause transaction",
-    [&] (surface::gap::State& state) -> gap_Status
-    {
-      state.transactions().at(id)->pause();
-      return gap_ok;
-    });
+  elle::unreachable();
+  // return run<gap_Status>(
+  //   state,
+  //   "pause transaction",
+  //   [&] (surface::gap::State& state) -> gap_Status
+  //   {
+  //     state.transactions().at(id)->pause();
+  //     return gap_ok;
+  //   });
 }
 
 gap_Status
@@ -1273,14 +1289,15 @@ gap_resume_transaction(gap_State* state, uint32_t id)
 {
   ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
-  return run<gap_Status>(
-    state,
-    "resume transaction",
-    [&] (surface::gap::State& state) -> gap_Status
-    {
-      state.transactions().at(id)->resume();
-      return gap_ok;
-    });
+  elle::unreachable();
+  // return run<gap_Status>(
+  //   state,
+  //   "resume transaction",
+  //   [&] (surface::gap::State& state) -> gap_Status
+  //   {
+  //     state.transactions().at(id)->resume();
+  //     return gap_ok;
+  //   });
 }
 
 gap_Status
@@ -1589,8 +1606,7 @@ gap_Status
 gap_send_user_report(gap_State* state,
                      std::string const& user_name,
                      std::string const& message,
-                     std::string const& file,
-                     boost::optional<std::vector<std::string>> infinit_files)
+                     std::vector<std::string> files)
 {
   ELLE_ASSERT(state != nullptr);
   // In order to avoid blocking the GUI, let's create a disposable thread and
@@ -1606,13 +1622,10 @@ gap_send_user_report(gap_State* state,
         [=] ()
         {
           auto& _state = state->state();
-          elle::crash::user_report(_state.meta(false).protocol(),
-                                   _state.meta(false).host(),
-                                   _state.meta(false).port(),
+          elle::crash::user_report(_state.local_configuration(),
+                                   files,
                                    user_name,
-                                   message,
-                                   file,
-                                   infinit_files);
+                                   message);
           return gap_ok;
         }, "send user report");
     }, disposable);
@@ -1655,4 +1668,30 @@ gap_send_last_crash_logs(gap_State* state,
         }, "send last crash report");
     }, disposable);
   return gap_ok;
+}
+
+std::string
+gap_facebook_app_id()
+{
+  // We could even ask meta for the id.
+  return "839001662829159";
+}
+
+gap_Status
+gap_facebook_connect(gap_State* state,
+                     std::string const& facebook_token,
+                     boost::optional<std::string> preferred_email,
+                     boost::optional<std::string> device_push_token)
+{
+  return run<gap_Status>(
+    state,
+    "facebook connect",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.facebook_connect(
+        facebook_token,
+        preferred_email,
+        device_push_token);
+      return gap_ok;
+    });
 }

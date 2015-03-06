@@ -105,7 +105,7 @@ class Boulder:
     self.sisyphus = sisyphus
     self.sisyphus << self
 
-  def run(self, sisyphus):
+  def run(self):
     pass
 
   def __str__(self):

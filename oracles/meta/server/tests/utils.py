@@ -288,6 +288,10 @@ class Meta:
     self.__meta = None
     self.__meta_args = kw
 
+  @property
+  def domain(self):
+    return "http://localhost:%s" % self.__server.port
+
   def __enter__(self):
     self.__mongo.__enter__()
     client = pymongo.MongoClient(port = self.__mongo.port)
@@ -316,6 +320,10 @@ class Meta:
       import time
       time.sleep(.1)
     return self
+
+  @property
+  def inner(self):
+    return self.__meta
 
   @property
   def meta(self):
@@ -423,15 +431,29 @@ class User(Client):
                meta,
                email = None,
                device_name = 'device',
+               facebook = False,
                **kwargs):
     super().__init__(meta)
 
-    self.email = email is not None and email or random_email() + '@infinit.io'
-    self.password = meta.create_user(self.email,
-                                     **kwargs)
-    self.id = meta.get('users/%s' % self.email)['id']
+    if not facebook:
+      self.email = email is not None and email or random_email() + '@infinit.io'
+      self.password = meta.create_user(self.email, **kwargs)
+      self.__id = meta.get('users/%s' % self.email)['id']
+    else:
+      self.__id = None
     self.device_id = uuid4()
     self.notifications = []
+    self.trophonius = None
+
+  @property
+  def id(self):
+    if self.__id is None:
+      self.__id = self.me['id']
+    return self.__id
+
+  @property
+  def facebook_id(self):
+    return self.me['facebook_id']
 
   @property
   def login_parameters(self):
@@ -469,6 +491,24 @@ class User(Client):
       self.trophonius.connect_user(self)
     return res
 
+  def facebook_connect(self,
+                       long_lived_access_token,
+                       preferred_email = None):
+    args = {
+      'long_lived_access_token': long_lived_access_token
+    }
+    if preferred_email:
+      args.update({
+        'preferred_email': preferred_email})
+    if self.device_id is not None:
+      args.update({
+        'device_id': str(self.device_id)
+      })
+    if 'device_id' in args:
+      self.post('login', args)
+    else:
+      self.post('web-login', args)
+
   def __hash__(self):
     return str(self.id).__hash__()
 
@@ -492,7 +532,8 @@ class User(Client):
 
   @property
   def me(self):
-    return self.get('user/self')
+    res = self.get('user/self')
+    return res
 
   @property
   def accounts(self):

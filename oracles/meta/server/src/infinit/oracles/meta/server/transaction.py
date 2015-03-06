@@ -23,6 +23,10 @@ from infinit.oracles.meta.server.utils import json_value
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Transaction'
 
+# This create a code with more than 8 billions possibilities.
+code_alphabet = '23456789abcdefghijkmnpqrstuvwxyz'
+code_length = 7
+
 class Mixin:
 
   def is_sender(self, transaction, owner_id, device_id = None):
@@ -46,7 +50,7 @@ class Mixin:
     transaction = self.database.transactions.find_one(id)
 
     # handle both negative search and empty transaction
-    if not transaction:
+    if not transaction or len(transaction) == 1:
       self.not_found('transaction %s doesn\'t exist' % id)
     if owner_id is not None:
       assert isinstance(owner_id, bson.ObjectId)
@@ -139,7 +143,7 @@ class Mixin:
       new = False,
     )
     # handle both negative search and empty transaction
-    if not transaction:
+    if not transaction or len(transaction) == 1:
       self.not_found({
         'reason': 'transaction %s not found' % id,
         'transaction_id': id,
@@ -191,7 +195,7 @@ class Mixin:
 
   @api('/transaction/create_empty', method='POST')
   @require_logged_in
-  def transaction_create_empty(self):
+  def transaction_create_empty_api(self):
     """
     Create an empty transaction, to be filled in a separate API call.
     This allows for the client finer snapshot granularity, along with easier
@@ -199,11 +203,14 @@ class Mixin:
 
     Return: the newly created transaction id.
     """
+    return self.transaction_create_empty()
 
+
+  def transaction_create_empty(self):
     transaction_id = self.database.transactions.insert({})
-    return self.success({
+    return {
       'created_transaction_id': transaction_id,
-      })
+      }
 
   @api('/transaction/<t_id>', method='PUT')
   @require_logged_in
@@ -215,6 +222,7 @@ class Mixin:
                        total_size,
                        is_directory,
                        device_id, # Can be determine by session.
+                       recipient_device_id = None,
                        message = ""):
     return self.transaction_create(
       self.user,
@@ -222,7 +230,8 @@ class Mixin:
       files, files_count, total_size, is_directory,
       device_id,
       message,
-      t_id)
+      t_id,
+      recipient_device_id = recipient_device_id)
 
 
   @api('/transaction/create', method = 'POST')
@@ -251,7 +260,8 @@ class Mixin:
                          is_directory,
                          device_id, # Can be determine by session.
                          message = "",
-                         transaction_id = None):
+                         transaction_id = None,
+                         recipient_device_id = None):
     """
     Send a file to a specific user.
     If you pass an email and the user is not registered in infinit,
@@ -278,13 +288,17 @@ class Mixin:
       invitee = 0
       peer_email = ""
 
+      recipient_fields = self.__user_view_fields + [
+        'email',
+        'devices.id',
+      ]
       if re.match(regexp.Email, id_or_email): # email.
         elle.log.debug("%s is an email" % id_or_email)
         peer_email = id_or_email.lower().strip()
         # XXX: search email in each accounts.
         recipient = self.__user_fetch(
           {'accounts.id': peer_email},
-          fields = self.__user_view_fields)
+          fields = recipient_fields)
         # if the user doesn't exist, create a ghost and invite.
 
         if not recipient:
@@ -304,7 +318,7 @@ class Mixin:
           )
           recipient = self.__user_fetch(
             recipient_id,
-            fields = self.__user_view_fields + ['email'])
+            fields = recipient_fields)
           # Post new_ghost event to metrics
           url = 'http://metrics.9.0.api.production.infinit.io/collections/users'
           metrics = {
@@ -327,8 +341,7 @@ class Mixin:
           return self.fail(error.USER_ID_NOT_VALID)
         recipient = self.__user_fetch(
           recipient_id,
-          fields = self.__user_view_fields + ['email'])
-
+          fields = recipient_fields)
       if recipient is None:
         return self.fail(error.USER_ID_NOT_VALID)
       if recipient['register_status'] == 'merged':
@@ -346,6 +359,13 @@ class Mixin:
           'reason': 'user %s is deleted' % recipient['_id'],
           'recipient_id': recipient['_id'],
         })
+      if recipient_device_id is not None:
+        if not any(d['id'] == recipient_device_id for d in recipient['devices']):
+          self.not_found({
+            'reason': 'no such device for user',
+            'user': recipient['id'],
+            'device': recipient_device_id,
+          })
       is_ghost = recipient['register_status'] == 'ghost'
       elle.log.debug("transaction recipient has id %s" % recipient['_id'])
       _id = sender['_id']
@@ -359,10 +379,10 @@ class Mixin:
 
         'recipient_id': recipient['_id'],
         'recipient_fullname': recipient['fullname'],
-
+        'recipient_device_id':
+        recipient_device_id if recipient_device_id else '',
         'involved': [_id, recipient['_id']],
         # Empty until accepted.
-        'recipient_device_id': '',
         'recipient_device_name': '',
 
         'message': message,
@@ -385,17 +405,25 @@ class Mixin:
         'strings': ' '.join([
               sender['fullname'],
               sender['handle'],
-              sender['email'],
+              self.user_identifier(sender),
               recipient['fullname'],
               recipient.get('handle', ""),
+              self.user_identifier(recipient),
               message,
               ] + files)
         }
 
       if transaction_id is not None:
+        transaction['status'] = transaction_status.INITIALIZED
         self.database.transactions.update(
             {'_id': transaction_id},
             {'$set': transaction})
+        transaction['_id'] = transaction_id
+        self.notifier.notify_some(
+          notifier.PEER_TRANSACTION,
+          recipient_ids = {transaction['recipient_id']},
+          message = transaction,
+        )
       else:
         transaction_id = self.database.transactions.insert(transaction)
       transaction['_id'] = transaction_id
@@ -406,25 +434,27 @@ class Mixin:
         time = True)
 
       if not peer_email:
-        peer_email = recipient['email']
-      recipient_offline = all(d.get('trophonius') is None
-                              for d in recipient.get('devices', []))
-      if not new_user and recipient_offline and not is_ghost:
-        elle.log.debug("recipient is disconnected")
-        template_id = 'accept-file-only-offline'
+        peer_email = recipient.get('email', None)
 
-        self.mailer.send_template(
-          to = peer_email,
-          template_name = template_id,
-          reply_to = "%s <%s>" % (sender['fullname'], sender['email']),
-          merge_vars = {
-            peer_email: {
-              'filename': files[0],
-              'note': message,
-              'sendername': sender['fullname'],
-              'avatar': self.user_avatar_route(recipient['_id']),
-            }}
-          )
+      if peer_email is not None:
+        recipient_offline = all(d.get('trophonius') is None
+                                for d in recipient.get('devices', []))
+        if not new_user and recipient_offline and not is_ghost:
+          elle.log.debug("recipient is disconnected")
+          template_id = 'accept-file-only-offline'
+
+          self.mailer.send_template(
+            to = peer_email,
+            template_name = template_id,
+            reply_to = "%s <%s>" % (sender['fullname'], self.user_identifier(sender)),
+            merge_vars = {
+              peer_email: {
+                'filename': files[0],
+                'note': message,
+                'sendername': sender['fullname'],
+                'avatar': self.user_avatar_route(recipient['_id']),
+              }}
+            )
 
       self._increase_swag(sender['_id'], recipient['_id'])
 
@@ -611,6 +641,20 @@ class Mixin:
         })
       return res
 
+  def on_reject(self, transaction, user, device_id, device_name):
+    with elle.log.trace("reject transaction as %s" % device_id):
+      if device_id is None or device_name is None:
+        return {} # Backwards compatibility < 0.9.30
+      device_id = uuid.UUID(device_id)
+      if str(device_id) not in map(lambda x: x['id'], user['devices']):
+        raise error.Error(error.DEVICE_DOESNT_BELONG_TO_YOU)
+      res = {
+        'recipient_fullname': user['fullname'],
+        'recipient_device_name' : device_name,
+        'recipient_device_id': str(device_id)
+      }
+      return res
+
   def _hash_transaction(self, transaction):
     """
     Generate a unique hash for a transaction based on a random number and the
@@ -670,11 +714,13 @@ class Mixin:
       mail_template = 'send-file-url'
       if 'features' in recipient and 'send_file_url_template' in recipient['features']:
         mail_template = recipient['features']['send_file_url_template']
+
+      source = (user['fullname'], self.user_identifier(user))
       invitation.invite_user(
         peer_email,
         mailer = self.mailer,
         mail_template = mail_template,
-        source = (user['fullname'], user['email']),
+        source = source,
         database = self.database,
         merge_vars = {
           peer_email: {
@@ -682,7 +728,7 @@ class Mixin:
             'recipient_email': recipient['email'],
             'recipient_name': recipient['fullname'],
             'sendername': user['fullname'],
-            'sender_email': user['email'],
+            'sender_email': user.get('email', ''),
             'sender_avatar': 'https://%s/user/%s/avatar' %
               (bottle.request.urlparts[1], user['_id']),
             'note': transaction['message'],
@@ -757,6 +803,12 @@ class Mixin:
                                    user = user,
                                    device_id = device_id,
                                    device_name = device_name))
+      elif status == transaction_status.REJECTED:
+        diff.update(self.on_reject(transaction = transaction,
+                                   user = user,
+                                   device_id = device_id,
+                                   device_name = device_name))
+        diff.update(self.cloud_cleanup_transaction(transaction = transaction))
       elif status == transaction_status.GHOST_UPLOADED:
         diff.update(self.on_ghost_uploaded(transaction = transaction,
                                      device_id = device_id,
@@ -766,10 +818,8 @@ class Mixin:
         if not transaction.get('canceler', None):
           diff.update({'canceler': {'user': user['_id'], 'device': device_id}})
           diff.update(self.cloud_cleanup_transaction(transaction = transaction))
-      elif status in (transaction_status.FAILED,
-                      transaction_status.REJECTED):
-        diff.update(self.cloud_cleanup_transaction(
-          transaction = transaction))
+      elif status == transaction_status.FAILED:
+        diff.update(self.cloud_cleanup_transaction(transaction = transaction))
       elif status == transaction_status.FINISHED:
         self.__update_transaction_stats(
           transaction['recipient_id'],

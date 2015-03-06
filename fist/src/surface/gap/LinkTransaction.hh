@@ -6,6 +6,7 @@
 
 # include <boost/optional.hpp>
 
+# include <elle/UUID.hh>
 # include <elle/Printable.hh>
 
 # include <surface/gap/enums.hh>
@@ -18,8 +19,7 @@ namespace surface
     /// This class translates transactions so that headers aren't leaked into
     /// the GUI.
     class LinkTransaction
-      : public elle::Printable
-      , public surface::gap::Notification
+      : public surface::gap::Notification
     {
     public:
       LinkTransaction() = default;
@@ -29,7 +29,7 @@ namespace surface
                       boost::optional<std::string> link,
                       uint32_t click_count,
                       gap_TransactionStatus status,
-                      std::string const& sender_device_id,
+                      elle::UUID const& sender_device_id,
                       std::string const& message,
                       std::string const& meta_id);
       ~LinkTransaction() noexcept(true);

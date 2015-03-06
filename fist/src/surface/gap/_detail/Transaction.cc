@@ -67,11 +67,27 @@ namespace surface
                                    std::vector<std::string> files,
                                    std::string const& message)
     {
+      return this->_transaction_peer_create(peer_id, files, message);
+    }
+
+    Transaction&
+    State::transaction_peer_create(std::string const& peer_id,
+                                   elle::UUID const& peer_device_id,
+                                   std::vector<std::string> files,
+                                   std::string const& message)
+    {
+      return this->_transaction_peer_create(
+        peer_id, peer_device_id, files, message);
+    }
+
+    template <typename ... T>
+    Transaction&
+    State::_transaction_peer_create(std::string const& peer_id, T&& ... args)
+    {
       ELLE_TRACE_SCOPE("%s: send files to %s", *this, peer_id);
       auto id = generate_id();
-      auto transaction =
-        elle::make_unique<Transaction>(*this, id, peer_id,
-                                       std::move(files), message);
+      auto transaction = elle::make_unique<Transaction>(
+          *this, id, peer_id, std::forward<T>(args)...);
       auto& res = *transaction;
       this->_transactions.emplace(id, std::move(transaction));
       return res;
@@ -102,7 +118,7 @@ namespace surface
                             "Infinit Team",
                             "Infinit",
                             "ok",
-                            {"Infinit"});
+                            {elle::UUID::random()});
 
       auto onboarder_id = this->user_indexes().at(
         this->user_sync(onboarder).id);
@@ -160,8 +176,8 @@ namespace surface
             }();
             auto const& data = *snapshot.data();
             if (data.id.empty())
-              throw elle::Error("transaction id was empty");
-            if (!data.id.empty())
+              ELLE_TRACE("%s: no transaction id in snapshot", *this);
+            else
             {
               auto it = std::find_if(
                 std::begin(this->_transactions),
@@ -343,9 +359,9 @@ namespace surface
             surface::gap::PeerTransaction notification(
               id,
               transaction->status(),
-              this->user_indexes().at(peer_data->sender_id),
+              this->user_id(peer_data->sender_id),
               peer_data->sender_device_id,
-              this->user_indexes().at(peer_data->recipient_id),
+              this->user_id(peer_data->recipient_id),
               peer_data->recipient_device_id,
               peer_data->mtime,
               peer_data->files,

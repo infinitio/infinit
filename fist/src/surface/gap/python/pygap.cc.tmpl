@@ -318,7 +318,7 @@ namespace
 
   void
   _gap_user_status_callback(gap_State* state,
-                           boost::python::object cb)
+                            boost::python::object cb)
   {
     auto cpp_cb = [cb] (surface::gap::State::UserStatusNotification const& notif)
       {

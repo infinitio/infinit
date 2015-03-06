@@ -11,6 +11,9 @@ install = None
 config = None
 lib = None
 
+with open(str(drake.path_source('../../../elle/drake-utils.py')), 'r') as f:
+  exec(f.read(), globals(), globals())
+
 def configure(elle,
               transaction_lib,
               transaction_config,
@@ -52,7 +55,8 @@ def configure(elle,
     else:
       res = drake.cxx.Config(config(link = False))
       lib = getattr(boost, '%s_dynamic' % name)
-      res.library_add(drake.copy(lib, 'lib', strip_prefix = True))
+      res.library_add(drake.copy(lib, 'lib', strip_prefix = True,
+                      post_process = set_local_libcxx(cxx_toolkit)))
       return res
 
   ## ------- ##
@@ -162,8 +166,10 @@ def configure(elle,
     cxx_toolkit,
     tests_cxx_config)
   if valgrind_tests:
-    runner = drake.valgrind.ValgrindRunner(test_bin,
-                                           valgrind = valgrind)
+    runner = drake.valgrind.ValgrindRunner(
+      test_bin,
+      valgrind = valgrind,
+      valgrind_args = ['--suppressions=%s' % (drake.path_source() / 'elle' / 'valgrind.suppr')])
   else:
     runner = drake.Runner(test_bin)
   runner.reporting = drake.Runner.Reporting.on_failure

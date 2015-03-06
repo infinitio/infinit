@@ -533,6 +533,8 @@ def configure(cxx_toolkit = None,
     'fist/src/surface/gap/GhostReceiveMachine.hh',
     'fist/src/surface/gap/LinkSendMachine.cc',
     'fist/src/surface/gap/LinkSendMachine.hh',
+    'fist/src/surface/gap/Notification.cc',
+    'fist/src/surface/gap/Notification.hh',
     'fist/src/surface/gap/PeerMachine.cc',
     'fist/src/surface/gap/PeerMachine.hh',
     'fist/src/surface/gap/PeerReceiveMachine.cc',
@@ -650,10 +652,30 @@ def configure(cxx_toolkit = None,
   gap_tests_cxx_config += boost_system
   gap_tests_cxx_config += boost_date_time
   gap_tests_cxx_config.lib_path_runtime('../../lib')
-  for name in ('state', 'cloud-buffer', 'ghost-invite', 'resynchronization'):
+  for name in ('state',
+               'cloud-buffer',
+               'ghost-invite',
+               'resynchronization',
+               'snapshot-resume',
+               'facebook_connect'):
     sources = drake.nodes('fist/tests/%s.cc' % name)
     if name != 'state':
-      sources.append(drake.node('fist/tests/server.cc'))
+      sources += drake.nodes(
+        'fist/tests/server.cc',
+        'fist/tests/server.hh',
+        'fist/tests/_detail/User.cc',
+        'fist/tests/_detail/User.hh',
+        'fist/tests/_detail/Device.cc',
+        'fist/tests/_detail/Device.hh',
+        'fist/tests/_detail/uuids.cc',
+        'fist/tests/_detail/uuids.hh',
+        'fist/tests/_detail/State.cc',
+        'fist/tests/_detail/State.hh',
+        'fist/tests/_detail/Trophonius.cc',
+        'fist/tests/_detail/Trophonius.hh',
+        'fist/tests/_detail/Transaction.cc',
+        'fist/tests/_detail/Transaction.hh',
+      )
     test = drake.cxx.Executable(
       'fist/tests/%s' % name,
       sources +
@@ -707,7 +729,13 @@ def configure(cxx_toolkit = None,
   )
   cli_send_bin = drake.cxx.Executable(
     'bin/8send',
-    cli_send_sources + [gap_lib, elle_lib, reactor_lib, crash_lib],
+    cli_send_sources + [
+      gap_lib,
+      elle_lib,
+      reactor_lib,
+      crash_lib,
+      oracles.transaction_lib,
+    ],
     cxx_toolkit,
     cli_cxx_config
   )
@@ -718,7 +746,13 @@ def configure(cxx_toolkit = None,
   )
   cli_recv_bin = drake.cxx.Executable(
     'bin/8recv',
-    cli_recv_sources + [gap_lib, elle_lib, reactor_lib, crash_lib],
+    cli_recv_sources + [
+      gap_lib,
+      elle_lib,
+      reactor_lib,
+      crash_lib,
+      oracles.transaction_lib,
+    ],
     cxx_toolkit,
     cli_cxx_config
   )

@@ -57,9 +57,8 @@ class Mixin:
   @api('/devices')
   @require_logged_in
   def devices(self):
-    """Return all user's device ids.
-    """
-    return self.success({'devices': list(map(lambda x: x['id'], self.user.get('devices', [])))})
+    """All user's devices. """
+    return {'devices': self.user.get('devices', [])}
 
   @api('/device/<id>/view')
   @require_logged_in
@@ -110,13 +109,31 @@ class Mixin:
       if device_push_token is not None:
         device['push_token'] = device_push_token
       res = None
-      if has_id:
-         res = self.database.users.update({'_id': owner['_id'], 'devices.id': id},
-                                          {'$set': {'devices.$': device}})
-      if not has_id or res['n'] == 0:
-        self.database.users.update({'_id': owner['_id']},
-                                   {'$push': {'devices': device}})
+      def create():
+        if has_id:
+           res = self.database.users.update(
+             {'_id': owner['_id'], 'devices.id': id},
+             {'$set': {'devices.$': device}},
+           )
+        if not has_id or res['n'] == 0:
+          self.database.users.update(
+            {'_id': owner['_id']},
+            {'$push': {'devices': device}},
+          )
+      self.device_override_push_token(device_push_token, create)
       return device
+
+  def device_override_push_token(self, token, action):
+    while True:
+      try:
+        return action()
+      except pymongo.errors.DuplicateKeyError:
+        assert token is not None
+        self.database.users.update(
+          {'devices.push_token': token},
+          {'$unset': {'devices.$.push_token': True}}
+        )
+        continue
 
   @api('/device/create', method="POST")
   @require_logged_in

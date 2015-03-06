@@ -1,0 +1,61 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User, assertEq, assertIn
+
+import bson
+import infinit.oracles.meta.server.notifier
+
+class Notifier(infinit.oracles.meta.server.notifier.Notifier):
+
+  def __init__(self, database, production):
+    super().__init__(database, production)
+    self.__notifications = []
+
+  def push_notification(self, recipient, token, payload, os):
+    self.__notifications.append((recipient, token, payload, os))
+
+  def prepare_notification(self, *args, **kwargs):
+    return {}
+
+  @property
+  def notifications(self):
+    res = self.__notifications
+    self.__notifications = []
+    return res
+
+with Meta(force_admin = True) as meta:
+  def check_notification(recipient):
+    notifications = meta.notifier.notifications
+    assertEq(len(notifications), 1)
+    assertEq(notifications[0][0], bson.ObjectId(recipient.id))
+  def check_no_notification():
+    notifications = meta.notifier.notifications
+    assertEq(len(notifications), 0)
+  def notify(user):
+    meta.notifier.notify_some(
+      0, recipient_ids = set((bson.ObjectId(user.id),)), message = {})
+  meta.notifier = Notifier(meta.database, False)
+  # Check push token is set
+  user1 = User(meta)
+  user1.login(device_push_token = 'token')
+  notify(user1)
+  check_notification(user1)
+  # Check device creation overrides push token
+  user2 = User(meta)
+  user2.login(device_push_token = 'token')
+  notify(user1)
+  check_no_notification()
+  notify(user2)
+  check_notification(user2)
+  # Check login overrides push token
+  user1.login(device_push_token = 'token')
+  notify(user2)
+  check_no_notification()
+  notify(user1)
+  check_notification(user1)
+  # Check logout unsets push token
+  user1.logout()
+  notify(user1)
+  check_no_notification()
+  notify(user2)
+  check_no_notification()

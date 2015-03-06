@@ -46,6 +46,7 @@ parse_options(int argc, char** argv)
     ("password,p", value<std::string>(), "the password")
     ("to,t", value<std::string>(), "the recipient")
     ("file,f", value<std::string>(), "the file to send, or comma-separated list")
+    ("device,d", value<std::string>(), "send to specific device")
     ("production,r", value<bool>(), "send metrics to production");
 
   variables_map vm;
@@ -93,7 +94,9 @@ int main(int argc, char** argv)
     bool production = false;
     if (options.count("production") != 0)
       production = options["production"].as<bool>();
-
+    boost::optional<elle::UUID> recipient_device_id;
+    if (options.count("device") != 0)
+      recipient_device_id = elle::UUID(options["device"].as<std::string>());
     reactor::Scheduler sched;
 
     sched.signal_handle(
@@ -127,7 +130,6 @@ int main(int argc, char** argv)
             if (contains(surface::gap::Transaction::sender_final_statuses,
                          txn->data()->status))
             {
-              txn->join();
               ELLE_TRACE_SCOPE("transaction is finished");
               stop = true;
             }

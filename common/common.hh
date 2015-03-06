@@ -1,4 +1,4 @@
-#ifndef  COMMON_COMMON_HH
+#ifndef COMMON_COMMON_HH
 # define COMMON_COMMON_HH
 
 # include <memory>
@@ -6,8 +6,9 @@
 # include <string>
 # include <vector>
 
-# include <boost/uuid/uuid.hpp>
+# include <boost/filesystem/path.hpp>
 # include <boost/optional.hpp>
+# include <boost/uuid/uuid.hpp>
 
 # include <elle/attribute.hh>
 
@@ -21,7 +22,6 @@ namespace infinit
 
 namespace common
 {
-
   /// All infinit related generic variables
   namespace infinit
   {
@@ -33,16 +33,17 @@ namespace common
         bool production,
         bool enable_mirroring = true,
         uint64_t max_mirror_size = 0,
-        boost::optional<std::string const&> download_dir = {},
-        boost::optional<std::string const&> persistent_config_dir = {},
-        boost::optional<std::string const&> non_persistent_config_dir = {});
+        boost::optional<std::string> download_dir = {},
+        boost::optional<std::string> persistent_config_dir = {},
+        boost::optional<std::string> non_persistent_config_dir = {});
       Configuration(
         std::string const& meta_protocol,
         std::string const& meta_host,
         uint16_t meta_port,
         std::vector<unsigned char> trophonius_fingerprint,
         boost::optional<boost::uuids::uuid const&> device_id = {},
-        boost::optional<std::string const&> download_dir = {});
+        boost::optional<std::string> download_dir = {},
+        boost::optional<std::string> home_dir = {});
       Configuration() = default;
 
       ELLE_ATTRIBUTE_R(bool, production);

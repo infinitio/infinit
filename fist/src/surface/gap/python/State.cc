@@ -62,11 +62,11 @@ struct meta_user_from_python_dict
     user->public_key =
       PyUnicode_AS_DATA(PyDict_GetItemString(pydict, "public_key"));
     auto device_list = PyDict_GetItemString(pydict, "connected_devices");
-    std::vector<std::string> connected_devices;
+    std::vector<elle::UUID> connected_devices;
     for (int i = 0; i < PyList_Size(device_list); i++)
     {
-      connected_devices.push_back(PyUnicode_AS_DATA(
-                                  PyList_GetItem(device_list, i)));
+      connected_devices.push_back(
+        elle::UUID(PyUnicode_AS_DATA(PyList_GetItem(device_list, i))));
     }
     user->connected_devices = connected_devices;
     data->convertible = storage;
@@ -88,9 +88,11 @@ struct meta_user_to_python_dict
     PyDict_SetItemString(dict, "public_key",
                          PyUnicode_FromString(user.public_key.c_str()));
     auto device_list = PyList_New(0);
-    for (std::string const& device: user.connected_devices)
+    for (auto const& device: user.connected_devices)
     {
-      PyList_Append(device_list, PyUnicode_FromString(device.c_str()));
+      PyList_Append(
+        device_list,
+        PyUnicode_FromString(boost::lexical_cast<std::string>(device).data()));
     }
     PyDict_SetItemString(dict, "connected_devices", device_list);
     return dict;
@@ -283,7 +285,8 @@ struct transaction_to_python_dict
       PyUnicode_FromString(data->sender_id.c_str()));
     PyDict_SetItemString(
       dict, "sender_device_id",
-      PyUnicode_FromString(data->sender_device_id.c_str()));
+      PyUnicode_FromString(
+        boost::lexical_cast<std::string>(data->sender_device_id).data()));
     PyDict_SetItemString(
       dict, "is_ghost",
       PyBool_FromLong(data->is_ghost));
@@ -318,7 +321,7 @@ struct transaction_to_python_dict
       PyDict_SetItemString(dict, "recipient_fullname",
         PyUnicode_FromString(peer_data->recipient_fullname.c_str()));
       PyDict_SetItemString(dict, "recipient_device_id",
-        PyUnicode_FromString(peer_data->recipient_device_id.c_str()));
+        PyUnicode_FromString(peer_data->recipient_device_id.repr().c_str()));
       PyDict_SetItemString(dict, "recipient_device_name",
         PyUnicode_FromString(peer_data->recipient_device_name.c_str()));
       PyDict_SetItemString(dict, "sender_fullname",
@@ -347,7 +350,7 @@ struct transaction_to_python_dict
       PyDict_SetItemString(dict, "share_link",
         PyUnicode_FromString(link_data->share_link.c_str()));
       PyDict_SetItemString(dict, "sender_device_id",
-        PyUnicode_FromString(link_data->sender_device_id.c_str()));
+        PyUnicode_FromString(link_data->sender_device_id.repr().c_str()));
     }
     return dict;
   }
@@ -467,6 +470,12 @@ public:
       });
   }
 
+  bool
+  wrap_logged_in()
+  {
+    return logged_in().opened();
+  }
+
   void
   wrap_login(std::string const& email, std::string const& password)
   {
@@ -552,8 +561,6 @@ public:
   TOP(cancel, void)
   TOP(join, void)
   TOP(progress, float)
-  TOP(pause, void)
-  TOP(resume, void)
   TOP(reset, void)
   TOP(final, bool)
   #undef TOP
@@ -585,7 +592,7 @@ BOOST_PYTHON_MODULE(state)
      boost::python::init<std::string const&,
                          std::string const&,
                          uint16_t>())
-    .def("logged_in", &State::logged_in)
+    .def("logged_in", &PythonState::wrap_logged_in)
     .def("login", &PythonState::wrap_login)
     .def("logout", &State::logout)
     .def("poll", &State::poll)
@@ -596,8 +603,6 @@ BOOST_PYTHON_MODULE(state)
     .def("transaction_join", &PythonState::transaction_join)
     .def("transaction_cancel", &PythonState::transaction_cancel)
     .def("transaction_progress", &PythonState::transaction_progress)
-    .def("transaction_pause", &PythonState::transaction_pause)
-    .def("transaction_resume", &PythonState::transaction_resume)
     .def("transaction_reset", &PythonState::transaction_reset)
     .def("transaction_final", &PythonState::transaction_final)
     .def("transaction_status", &PythonState::wrap_transaction_status)

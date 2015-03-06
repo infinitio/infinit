@@ -2,7 +2,6 @@
 # define SURFACE_GAP_SEND_MACHINE_HH
 
 # include <surface/gap/TransactionMachine.hh>
-# include <surface/gap/State.hh>
 
 namespace surface
 {
@@ -97,7 +96,7 @@ namespace surface
       * _files is expanded to yield the definitive file list).
       */
       void
-      try_mirroring_files(frete::Frete::FileSize total_size);
+      try_mirroring_files(uint64_t total_size);
       virtual
       void
       cleanup () override;

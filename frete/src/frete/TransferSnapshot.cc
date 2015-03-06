@@ -160,8 +160,8 @@ namespace frete
                                boost::filesystem::path const& path,
                                Frete::FileSize size)
     : _file_id(file_id)
-    , _root(root.string())
-    , _path(path.string())
+    , _root(root.generic_string())
+    , _path(path.generic_string())
     , _full_path(root / path)
     , _size(size)
     , _progress(0)

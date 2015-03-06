@@ -3,23 +3,23 @@
 #include <elle/test.hh>
 
 #include <surface/gap/Exception.hh>
-#include <surface/gap/State.hh>
+#include <surface/gap/state.hh>
 
 #include "server.hh"
 
-ELLE_LOG_COMPONENT("surface.gap.State.test");
+ELLE_LOG_COMPONENT("surface.gap.state->test");
 
 // Cloud buffered peer transaction.
 ELLE_TEST_SCHEDULED(cloud_buffer)
 {
-  Server server;
+  tests::Server server;
   auto const email = "sender@infinit.io";
   auto const password = "secret";
-  auto user = server.register_user(email, password);
+  server.register_user(email, password);
 
   std::string const recipient_email = "recipient@infinit.io";
-  auto recipient = server.register_user("recipient@infinit.io", password);
-  State state(server, user.device_id().get());
+  server.register_user("recipient@infinit.io", password);
+  tests::State state(server, random_uuid());
   elle::filesystem::TemporaryFile transfered("cloud-buffered");
   {
     boost::filesystem::ofstream f(transfered.path());
@@ -30,8 +30,8 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
       f.write(&c, 1);
     }
   }
-  state.login(email, password);
-  auto& state_transaction = state.transaction_peer_create(
+  state->login(email, password);
+  auto& state_transaction = state->transaction_peer_create(
     recipient_email,
     std::vector<std::string>{transfered.path().string().c_str()},
     "message");
@@ -47,7 +47,7 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
         case gap_transaction_transferring:
         {
           BOOST_CHECK_EQUAL(
-            server_transaction.status(),
+            server_transaction.status,
             infinit::oracles::Transaction::Status::initialized);
           transferring.open();
           break;
@@ -56,7 +56,7 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
         {
           BOOST_CHECK(transferring);
           BOOST_CHECK_EQUAL(
-            server_transaction.status(),
+            server_transaction.status,
             infinit::oracles::Transaction::Status::cloud_buffered);
           BOOST_CHECK(server.cloud_buffered());
           cloud_buffered.open();
