@@ -444,7 +444,7 @@ namespace infinit
       Client::login(std::string const& email,
                     std::string const& password,
                     boost::uuids::uuid const& device_uuid,
-                    boost::optional<std::string const&> device_push_token)
+                    boost::optional<std::string> device_push_token)
       {
         ELLE_TRACE_SCOPE("%s: login as %s on device %s",
                          *this, email, device_uuid);
@@ -477,7 +477,7 @@ namespace infinit
         std::string const& facebook_token,
         boost::uuids::uuid const& device_uuid,
         boost::optional<std::string> preferred_email,
-        boost::optional<std::string const&> device_push_token)
+        boost::optional<std::string> device_push_token)
       {
         ELLE_TRACE_SCOPE("%s: login using facebook on device %s",
                          *this, device_uuid);
@@ -499,7 +499,7 @@ namespace infinit
       LoginResponse
       Client::_login(ParametersUpdater parameters_updater,
                      boost::uuids::uuid const& device_uuid,
-                     boost::optional<std::string const&> device_push_token)
+                     boost::optional<std::string> device_push_token)
       {
         std::string struuid = boost::lexical_cast<std::string>(device_uuid);
         auto url = "/login";
