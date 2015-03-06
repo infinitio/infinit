@@ -1220,25 +1220,6 @@ gap_peer_transactions(gap_State* state,
 }
 
 uint32_t
-gap_send_files_by_email(gap_State* state,
-                        std::string const& email,
-                        std::vector<std::string> const& files,
-                        std::string const& message)
-{
-  ELLE_ASSERT(email.length() > 0);
-  ELLE_ASSERT(state != nullptr);
-  return run<uint32_t>(
-    state,
-    "send files",
-    [&] (surface::gap::State& state) -> uint32_t
-    {
-      return state.transaction_peer_create(email,
-                                           std::move(files),
-                                           message).id();
-    });
-}
-
-uint32_t
 gap_send_files(gap_State* state,
                uint32_t id,
                std::vector<std::string> const& files,
@@ -1265,6 +1246,25 @@ gap_send_files(gap_State* state,
                                              std::move(files),
                                              message).id();
       }
+    });
+}
+
+uint32_t
+gap_send_files(gap_State* state,
+               std::string const& email,
+               std::vector<std::string> const& files,
+               std::string const& message)
+{
+  ELLE_ASSERT(state != nullptr);
+  ELLE_ASSERT(email.length() > 0);
+  return run<uint32_t>(
+    state,
+    "send files",
+    [&] (surface::gap::State& state) -> uint32_t
+    {
+      return state.transaction_peer_create(email,
+                                           std::move(files),
+                                           message).id();
     });
 }
 

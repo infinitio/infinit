@@ -308,13 +308,11 @@ gap_send_files(gap_State* state,
                std::string const& message,
                boost::optional<std::string> device_id = {});
 
-/// C++ version for send_files_by_email.
-/// If the return value is 0, the operation failed.
 uint32_t
-gap_send_files_by_email(gap_State* state,
-                        std::string const& email,
-                        std::vector<std::string> const& files,
-                        std::string const& message);
+gap_send_files(gap_State* state,
+               std::string const& email,
+               std::vector<std::string> const& files,
+               std::string const& message);
 
 /// Pause transaction.
 /// If the return value is 0, the operation failed.
