@@ -245,12 +245,14 @@ class Mixin:
     Create a bare transaction, with minimal information and placeholder values.
     Deprecates /transactions/create_empty POST.
     """
-    return self._transactions(id_or_email,
+    return self._transactions(self.user,
+                              id_or_email,
                               message,
                               files,
                               files_count)
 
   def _transactions(self,
+                    sender,
                     id_or_email,
                     message,
                     files,
@@ -320,14 +322,14 @@ class Mixin:
         fields = recipient_fields)
 
     transaction = {
-      'sender_id': '',
+      'sender_id': sender['_id'],
       'sender_fullname': '',
       'sender_device_id': '',
 
       'recipient_id': bson.ObjectId(recipient['_id']),
       'recipient_fullname': '',
       'recipient_device_id': '',
-      'involved': ['', recipient['_id']],
+      'involved': [sender['_id'], recipient['_id']],
       # Empty until accepted.
       'recipient_device_name': '',
 
