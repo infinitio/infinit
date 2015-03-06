@@ -99,7 +99,7 @@ class Meta(bottle.Bottle,
       gcs_region = None,
       gcs_buffer_bucket = None,
       gcs_link_bucket = None,
-      force_admin = False,
+      force_admin = None,
       debug = False,
       zone = None,
       production = False,
@@ -352,7 +352,8 @@ class Meta(bottle.Bottle,
   @property
   def admin(self):
     source = bottle.request.environ.get('REMOTE_ADDR')
-    force = self.__force_admin or source == '127.0.0.1'
+    force = self.__force_admin or \
+      (self.__force_admin is not False and source == '127.0.0.1')
     return force or bottle.request.certificate in [
       'antony.mechin@infinit.io',
       'baptiste.fradin@infinit.io',

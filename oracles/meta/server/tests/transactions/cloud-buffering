@@ -27,6 +27,6 @@ with Meta() as meta:
   sender.transaction_update(
     transaction_id, statuses['cloud_buffered'])
   # Check cloud-buffered does not override accepted
-  meta_transaction = meta.get('transaction/%s' % transaction_id)
+  meta_transaction = sender.get('transaction/%s' % transaction_id)
   assert meta_transaction['status'] == statuses['accepted']
   recipient.transaction_update(transaction_id, statuses['finished'])
