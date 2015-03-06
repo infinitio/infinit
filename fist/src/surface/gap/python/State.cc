@@ -479,7 +479,7 @@ public:
   void
   wrap_login(std::string const& email, std::string const& password)
   {
-    boost::optional<std::string const&> push_token = {};
+    boost::optional<std::string> push_token = {};
     return login(email, password, push_token);
   }
 
@@ -488,7 +488,7 @@ public:
                  std::string const& email,
                  std::string const& password)
   {
-    boost::optional<std::string const&> push_token = {};
+    boost::optional<std::string> push_token = {};
     return register_(fullname, email, password, push_token);
   }
 
