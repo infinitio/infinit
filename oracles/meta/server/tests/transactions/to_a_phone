@@ -27,7 +27,6 @@ with Meta() as meta:
   bob.login()
   assert(len(bob.transactions) == 0)
   bob.post('ghost/%s/merge' % recipient['ghost_code'])
-  print(bob.transactions)
   assert(len(bob.transactions) == 1)
   alice.transaction_update(ti2, transaction_status.INITIALIZED)
   assert(len(alice.transactions) == 2)
