@@ -515,7 +515,7 @@ extern "C" jlong Java_io_infinit_State_gapLogin(
   jstring mail, jstring hash_password, jstring device_push_token)
 {
   std::string token = to_string(env, device_push_token);
-  boost::optional<std::string const&> token_opt;
+  boost::optional<std::string> token_opt;
   if (!token.empty())
     token_opt = token;
   gap_Status s = gap_login((gap_State*)handle, to_string(env, mail), to_string(env, hash_password), token_opt);
@@ -959,8 +959,10 @@ extern "C" jlong Java_io_infinit_State_gapSendMetric(
 extern "C" jlong Java_io_infinit_State_gapSendUserReport(
   JNIEnv* env, jobject thiz, jlong handle, jstring un, jstring m, jstring f)
 {
+  std::vector<std::string> files;
+  files.push_back(to_string(env, f));
   return gap_send_user_report((gap_State*)handle, to_string(env, un),
-                              to_string(env, m), to_string(env, f));
+                              to_string(env, m), files);
 }
 
 extern "C" jlong Java_io_infinit_State_gapSendLastCrashLogs(
@@ -982,6 +984,25 @@ extern "C" jstring Java_io_infinit_State_getenv(
   JNIEnv* env, jobject thiz, jstring key)
 {
   return env->NewStringUTF(elle::os::getenv(to_string(env, key)).c_str());
+}
+
+extern "C" jstring Java_io_infinit_State_gapFacebookAppId(JNIEnv* env, jobject thiz, jlong handdle)
+{
+  return env->NewStringUTF(gap_facebook_app_id().c_str());
+}
+
+extern "C" jlong Java_io_infinit_State_gapFacebookConnect(
+  JNIEnv* env, jobject thiz, jlong handle,
+  jstring facebook_token, jstring preferred_email,
+  jstring device_push_token)
+{
+  boost::optional<std::string> mail, token;
+  if (preferred_email != nullptr)
+    mail = to_string(env, preferred_email);
+  if (device_push_token != nullptr)
+    token = to_string(env, device_push_token);
+  return gap_facebook_connect((gap_State*)handle, to_string(env, facebook_token),
+                              mail, token);
 }
 
 std::map<std::string, elle::network::Interface> interface_get_map()

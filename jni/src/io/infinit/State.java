@@ -323,6 +323,18 @@ public class State
     _check("internet connection", res);
   }
 
+  public String facebookAppId()
+  {
+    return gapFacebookAppId(handle);
+  }
+
+  public void facebookConnect(String facebook_token, String preferred_email,
+                              String device_push_token)
+  {
+    long res = gapFacebookConnect(handle, token, preferred_email, device_push_token);
+    _check("facebook connect", res);
+  }
+
   /// Callbacks
 
   /// A critical error occurred
@@ -438,6 +450,10 @@ public class State
   private native long gapSendUserReport(long handle, String userName, String message, String file);
   private native long gapSendLastCrashLogs(long handle, String userName, String crashReport, String stateLog, String extraInfo);
   private native long gapInternetConnection(long handle, boolean connected);
+  private native String gapFacebookAppId(long handle);
+  private native long gapFacebookConnect(long handle, String facebook_token,
+                                         String preferred_email,
+                                         String device_push_token);
   public native void setenv(String key, String value);
   public native String getenv(String key);
   /* this is used to load the 'hello-jni' library on application
