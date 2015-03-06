@@ -16,16 +16,28 @@
  */
 #include <string.h>
 #include <fstream>
+#include <semaphore.h>
 #include <jni.h>
 #include <elle/os/environ.hh>
 #include <surface/gap/gap.hh>
 
 #include <elle/log.hh>
 #include <elle/log/TextLogger.hh>
+#include <elle/network/Interface.hh>
+
+#include <reactor/scheduler.hh>
 
 #ifdef INFINIT_ANDROID
 #include <android/log.h>
 #endif
+
+ELLE_LOG_COMPONENT("jni");
+
+static jobject global_state_instance = nullptr;
+static int request_map = 0;
+static sem_t semaphore;
+static std::map<std::string, elle::network::Interface> interface_map;
+static std::map<std::string, elle::network::Interface> interface_get_map();
 
 static jobject to_integer(JNIEnv* env, int value)
 {
@@ -444,26 +456,29 @@ extern "C" jlong Java_io_infinit_State_gapInitialize(JNIEnv* env,
   jboolean enable_mirroring,
   jlong max_mirroring_size)
 {
+  sem_init(&semaphore, 0, 0);
   thiz = env->NewGlobalRef(thiz);
+  global_state_instance = thiz;
   std::string persistent_config_dir_str = to_string(env, persistent_config_dir);
   gap_State* state = gap_new(production,
     to_string(env, download_dir), persistent_config_dir_str,
     to_string(env, non_persistent_config_dir),
     enable_mirroring,
     max_mirroring_size);
-  using namespace std::placeholders;
-  gap_critical_callback(state, std::bind(on_critical, thiz));
-  gap_new_swagger_callback(state, std::bind(on_new_swagger, thiz, _1));
-  gap_deleted_swagger_callback(state, std::bind(on_deleted_swagger, thiz, _1));
-  gap_deleted_favorite_callback(state, std::bind(on_deleted_favorite, thiz, _1));
-  gap_user_status_callback(state, std::bind(on_user_status, thiz, _1, _2));
-  gap_avatar_available_callback(state, std::bind(on_avatar_available, thiz, _1));
-  gap_connection_callback(state, std::bind(on_connection, thiz, _1, _2, _3));
-  gap_peer_transaction_callback(state, std::bind(on_peer_transaction, thiz, _1));
-  gap_link_callback(state, std::bind(on_link, thiz, _1));
+  //using namespace std::placeholders;
+  gap_critical_callback(state, boost::bind(on_critical, thiz));
+  gap_new_swagger_callback(state, boost::bind(on_new_swagger, thiz, _1));
+  gap_deleted_swagger_callback(state, boost::bind(on_deleted_swagger, thiz, _1));
+  gap_deleted_favorite_callback(state, boost::bind(on_deleted_favorite, thiz, _1));
+  gap_user_status_callback(state, boost::bind(on_user_status, thiz, _1, _2));
+  gap_avatar_available_callback(state, boost::bind(on_avatar_available, thiz, _1));
+  gap_connection_callback(state, boost::bind(on_connection, thiz, _1, _2, _3));
+  gap_peer_transaction_callback(state, boost::bind(on_peer_transaction, thiz, _1));
+  gap_link_callback(state, boost::bind(on_link, thiz, _1));
 #ifdef INFINIT_ANDROID
   std::string log_file = persistent_config_dir_str + "/state.log";
   std::string log_level =
+          "jni:DEBUG,"
           "elle.CrashReporter:DEBUG,"
           "*FIST*:TRACE,"
           "*FIST.State*:DEBUG,"
@@ -588,6 +603,14 @@ extern "C" jboolean Java_io_infinit_State_gapTransactionConcernDevice(
 extern "C" jlong Java_io_infinit_State_gapPoll(
   JNIEnv* env, jobject thiz, jlong handle)
 {
+  if (request_map)
+  {
+    interface_map = interface_get_map();
+    do {
+      sem_post(&semaphore);
+    }
+    while (--request_map);
+  }
   return gap_poll((gap_State*)handle);
 }
 
@@ -953,4 +976,53 @@ extern "C" jstring Java_io_infinit_State_getenv(
   JNIEnv* env, jobject thiz, jstring key)
 {
   return env->NewStringUTF(elle::os::getenv(to_string(env, key)).c_str());
+}
+
+std::map<std::string, elle::network::Interface> interface_get_map()
+{
+  std::map<std::string, elle::network::Interface> result;
+  JNIEnv* env = get_env();
+  jclass clazz = env->GetObjectClass(global_state_instance);
+  jmethodID m = env->GetMethodID(clazz, "getNetworkInterfaces", "()[Lio/infinit/NetInterface;");
+  jclass ifClass = env->FindClass("io/infinit/NetInterface");
+  jfieldID idMac = env->GetFieldID(ifClass, "mac", "Ljava/lang/String;");
+  jfieldID idIP = env->GetFieldID(ifClass, "ip", "Ljava/lang/String;");
+  jfieldID idName = env->GetFieldID(ifClass, "name", "Ljava/lang/String;");
+
+  jobjectArray res = (jobjectArray)env->CallObjectMethod(global_state_instance, m);
+  int sz = env->GetArrayLength(res);
+  for (int i=0; i<sz; ++i)
+  {
+    jobject e = env->GetObjectArrayElement(res, i);
+    jobject jmac = env->GetObjectField(e, idMac);
+    jobject jip = env->GetObjectField(e, idIP);
+    jobject jname = env->GetObjectField(e, idName);
+    std::string mac = to_string(env, jmac);
+    std::string ip = to_string(env, jip);
+    std::string name = to_string(env, jname);
+    if (ip.find_first_of('.') == ip.npos)
+      continue;
+    elle::network::Interface itf;
+    itf.mac_address = mac;
+    itf.ipv4_address = ip;
+    result[name] = itf;
+  }
+  return result;
+}
+
+namespace elle
+{
+  namespace network
+  {
+    std::map<std::string, Interface>
+    Interface::get_map(Interface::Filter filter)
+    {
+      ++request_map;
+      ELLE_TRACE("Requesting interface map, waiting...");
+      while (sem_wait(&semaphore) == EAGAIN)
+        reactor::sleep(100_ms);
+      ELLE_TRACE("...done, got %s results", interface_map.size());
+      return interface_map;
+    }
+  }
 }
