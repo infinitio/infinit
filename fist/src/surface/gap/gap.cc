@@ -656,7 +656,7 @@ gap_user_ghost_profile_url(gap_State* state,
       if (user.ghost())
       {
         if (user.ghost_profile_url)
-          return user.ghost_code.get();
+          return user.ghost_profile_url.get();
       }
       return std::string{};
     });
