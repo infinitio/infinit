@@ -94,7 +94,7 @@ namespace surface
         // data by the new fetched one.
         id = this->_user_indexes.at(user.id);
         ELLE_ASSERT_NEQ(id, 0u);
-        this->_users.at(id) = std::move(user);
+        this->_users.at(id) = user;
       }
 
       ELLE_ASSERT_NEQ(id, 0u);
