@@ -532,6 +532,8 @@ namespace infinit
               throw infinit::state::VersionRejected();
             case Error::email_not_valid:
               throw infinit::state::MissingEmail();
+            case Error::email_already_registered:
+              throw infinit::state::EmailAlreadyRegistered();
             default:
               throw infinit::state::LoginError(
                 elle::sprintf("%s: Unknown, good luck!", error_code));
