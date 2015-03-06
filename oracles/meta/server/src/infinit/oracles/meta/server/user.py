@@ -1858,6 +1858,8 @@ class Mixin:
           email: {
             'sendername': user['fullname'],
             'user_id': str(user['_id']),
+            'sender_avatar': 'https://%s/user/%s/avatar' %
+              (bottle.request.urlparts[1], user['_id']),
           }}
       )
       return self.success()
