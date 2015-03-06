@@ -587,7 +587,7 @@ class User(Client):
 
   @property
   def devices(self):
-    return self.get('devices')['devices']
+    return self.get('user/devices')['devices']
 
   @property
   def avatar(self):

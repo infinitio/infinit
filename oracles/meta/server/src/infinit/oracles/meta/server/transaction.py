@@ -200,6 +200,7 @@ class Mixin:
     Create an empty transaction, to be filled in a separate API call.
     This allows for the client finer snapshot granularity, along with easier
     cleanup of unfulfilled transactions.
+    Deprecated by /transactions POST.
 
     Return: the newly created transaction id.
     """
@@ -232,6 +233,128 @@ class Mixin:
       message,
       t_id,
       recipient_device_id = recipient_device_id)
+
+  @api('/transactions', method = 'POST')
+  @require_logged_in
+  def transaction_post(self,
+                       id_or_email,
+                       files,
+                       files_count,
+                       message):
+    """
+    Create a bare transaction, with minimal information and placeholder values.
+    Deprecates /transactions/create_empty POST.
+    """
+    return self._transactions(id_or_email,
+                              message,
+                              files,
+                              files_count)
+
+  def _transactions(self,
+                    id_or_email,
+                    message,
+                    files,
+                    files_count):
+
+    # Get id from email
+    id_or_email = id_or_email.strip().lower()
+
+    new_user = False
+    is_ghost = False
+    invitee = 0
+    peer_email = ""
+
+    recipient_fields = self.__user_view_fields + [
+      'email',
+      'devices.id',
+    ]
+    if re.match(regexp.Email, id_or_email): # email.
+      elle.log.debug("%s is an email" % id_or_email)
+      peer_email = id_or_email.lower().strip()
+      # XXX: search email in each accounts.
+      recipient = self.__user_fetch(
+        {'accounts.id': peer_email},
+        fields = recipient_fields)
+      # if the user doesn't exist, create a ghost and invite.
+
+      if not recipient:
+        elle.log.trace("recipient unknown, create a ghost")
+        new_user = True
+        features = self._roll_features(True)
+        recipient_id = self._register(
+          email = peer_email,
+          fullname = peer_email, # This is safe as long as we don't allow searching for ghost users.
+          register_status = 'ghost',
+          notifications = [],
+          networks = [],
+          devices = [],
+          swaggers = {},
+          accounts = [{'type':'email', 'id':peer_email}],
+          features = features
+        )
+        recipient = self.__user_fetch(
+          recipient_id,
+          fields = recipient_fields)
+        # Post new_ghost event to metrics
+        url = 'http://metrics.9.0.api.production.infinit.io/collections/users'
+        metrics = {
+          'event': 'new_ghost',
+          'user': str(recipient['_id']),
+          'features': features,
+          'sender': str(sender['_id']),
+          'timestamp': time.time(),
+        }
+        res = requests.post(
+          url,
+          headers = {'content-type': 'application/json'},
+          data = json.dumps(metrics),
+        )
+        elle.log.debug('metrics answer: %s' % res)
+    else:
+      try:
+        recipient_id = bson.ObjectId(id_or_email)
+      except Exception as e:
+        return self.fail(error.USER_ID_NOT_VALID)
+      recipient = self.__user_fetch(
+        recipient_id,
+        fields = recipient_fields)
+
+    transaction = {
+      'sender_id': '',
+      'sender_fullname': '',
+      'sender_device_id': '',
+
+      'recipient_id': bson.ObjectId(recipient['_id']),
+      'recipient_fullname': '',
+      'recipient_device_id': '',
+      'involved': ['', recipient['_id']],
+      # Empty until accepted.
+      'recipient_device_name': '',
+
+      'message': message,
+
+      'files': files,
+      'files_count': files_count,
+      'total_size': 0,
+      'is_directory': False,
+
+      'creation_time': self.now,
+      'modification_time': self.now,
+      'ctime': time.time(),
+      'mtime': time.time(),
+      'status': transaction_status.CREATED,
+      'fallback_host': None,
+      'fallback_port_ssl': None,
+      'fallback_port_tcp': None,
+      'aws_credentials': None,
+      'is_ghost': False,
+      'strings': ''
+      }
+    transaction_id = self.database.transactions.insert(transaction)
+    return {
+      'created_transaction_id': transaction_id,
+      }
+
 
 
   @api('/transaction/create', method = 'POST')
@@ -377,7 +500,7 @@ class Mixin:
         'sender_fullname': sender['fullname'],
         'sender_device_id': device_id, # bson.ObjectId(device_id),
 
-        'recipient_id': recipient['_id'],
+        'recipient_id': recipient['_id'], #X
         'recipient_fullname': recipient['fullname'],
         'recipient_device_id':
         recipient_device_id if recipient_device_id else '',
@@ -539,77 +662,6 @@ class Mixin:
           t['status'] = transaction_status.INITIALIZED
       # /FIXME
       return self.success({'transactions': res})
-
-  # Previous (shitty) transactions fetching API that only returns ids.
-  # This is for backwards compatability < 0.9.1.
-  @api('/transactions', method = 'POST')
-  @require_logged_in
-  def transaction_post(self,
-                       filter = transaction_status.final + [transaction_status.CREATED],
-                       type = False,
-                       peer_id = None,
-                       count = 100,
-                       offset = 0):
-    return self._transactions(filter = filter,
-                              peer_id = peer_id,
-                              type = type,
-                              count = count,
-                              offset = offset)
-
-  def _transactions(self,
-                    filter,
-                    type,
-                    peer_id,
-                    count,
-                    offset):
-    """
-    Get all transaction involving user (as sender or recipient) which fit parameters.
-
-    filter -- a list of transaction status.
-    type -- make request inclusiv or exclusiv.
-    count -- the number of transactions to get.
-    offset -- the number of transactions to skip.
-    _with -- The peer id if specified.
-    """
-    inclusive = type
-    user_id = self.user['_id']
-
-    if peer_id is not None:
-      peer_id = bson.ObjectId(peer_id)
-      query = {
-        '$or':
-        [
-          { 'recipient_id': user_id, 'sender_id': peer_id, },
-          { 'sender_id': user_id, 'recipient_id': peer_id, },
-        ]}
-    else:
-      query = {
-        '$or':
-          [
-            { 'sender_id': user_id },
-            { 'recipient_id': user_id },
-          ]
-        }
-
-    query['status'] = {'$%s' % (inclusive and 'in' or 'nin'): filter}
-
-    from pymongo import ASCENDING, DESCENDING
-    find_params = {
-      'spec': query,
-      'limit': count,
-      'skip': offset,
-      'fields': ['_id'],
-      'sort': [
-        ('mtime', DESCENDING),
-        ],
-      }
-
-    return self.success(
-      {
-        "transactions": [ t['_id'] for t in self.database.transactions.find(**find_params)
-                        ]
-      }
-    )
 
   def cloud_cleanup_transaction(self, transaction):
     # cloud_buffer_token.delete_directory(transaction.id)

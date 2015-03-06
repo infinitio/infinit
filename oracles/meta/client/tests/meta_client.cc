@@ -1,3 +1,4 @@
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/uuid/nil_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/uuid/uuid.hpp>
@@ -729,6 +730,62 @@ ELLE_TEST_SCHEDULED(facebook_connect_failure)
                     infinit::state::CredentialError);
 }
 
+namespace devices
+{
+  ELLE_TEST_SCHEDULED(devices)
+  {
+    auto uuid1 = elle::UUID("00000000-0000-0000-0000-000000000001");
+    auto uuid2 = elle::UUID("00000000-0000-0000-0000-000000000002");
+    using namespace boost::posix_time;
+    HTTPServer s;
+    s.register_route("/user/devices",
+                     reactor::http::Method::GET,
+                     [uuid1, uuid2] (
+                       HTTPServer::Headers const&,
+                       HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
+                       elle::Buffer const& body
+                     ) -> std::string
+                     {
+                       return elle::sprintf(R"JSON({
+                         "devices": [
+                           {
+                             "id": "%s",
+                             "name": "device-name-1",
+                             "passport": "device-passport",
+                             "os": "gnu-linux",
+                             "last_sync": "2015-03-06T01:02:03Z"
+                           },
+                           {
+                             "id": "%s",
+                             "name": "device-name-2"
+                           }
+                         ]
+                       })JSON", uuid1, uuid2);
+                     });
+    infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+    auto devices = c.devices();
+    BOOST_CHECK_EQUAL(devices.size(), 2);
+    {
+      auto device = devices[0];
+      BOOST_CHECK_EQUAL(device.id, uuid1);
+      BOOST_CHECK_EQUAL(device.name, "device-name-1");
+      BOOST_CHECK_EQUAL(device.passport.get(), "device-passport");
+      BOOST_CHECK_EQUAL(device.os.get(), "gnu-linux");
+      BOOST_CHECK_EQUAL(device.last_sync.get(),
+                        time_from_string("2015-03-06 01:02:03.000"));
+    }
+    {
+      auto device = devices[1];
+      BOOST_CHECK_EQUAL(device.id, uuid2);
+      BOOST_CHECK_EQUAL(device.name, "device-name-2");
+      BOOST_CHECK(!device.passport);
+      BOOST_CHECK(!device.os);
+      BOOST_CHECK(!device.last_sync);
+    }
+  }
+}
+
 ELLE_TEST_SUITE()
 {
   auto& suite = boost::unit_test::framework::master_test_suite();
@@ -753,4 +810,10 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(facebook_connect_success_no_email));
   suite.add(BOOST_TEST_CASE(facebook_connect_success_nor_facebook_id_nor_email));
   suite.add(BOOST_TEST_CASE(facebook_connect_failure));
+  {
+    boost::unit_test::test_suite* s = BOOST_TEST_SUITE("devices");
+    suite.add(s);
+    auto devices = &devices::devices;
+    s->add(BOOST_TEST_CASE(devices));
+  }
 }

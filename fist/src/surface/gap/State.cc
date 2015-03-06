@@ -584,7 +584,8 @@ namespace surface
           std::string passport_path =
             this->local_configuration().passport_path();
           this->_passport.reset(new papier::Passport());
-          if (this->_passport->Restore(this->_device->passport) == elle::Status::Error)
+          if (this->_passport->Restore(this->_device->passport.get()) ==
+              elle::Status::Error)
             throw Exception(gap_wrong_passport, "Cannot load the passport");
           this->_passport->store(elle::io::Path(passport_path));
 

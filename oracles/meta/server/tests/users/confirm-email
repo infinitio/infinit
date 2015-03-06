@@ -61,9 +61,9 @@ with Meta(enable_emails = True, unconfirmed_email_leeway = 0) as meta:
   else:
     raise Exception('invalid login should have yield 403 forbidden')
 
-  res = u.post('users/%s/confirm-email' % email,
+  res = u.post('users/%s/confirm-email' % u.id,
                {'key': meta.mailer.email_confirmation_hash})
-  res = u.post('users/%s/confirm-email' % email,
+  res = u.post('users/%s/confirm-email' % u.id,
                {'key': meta.mailer.email_confirmation_hash})
   u.login()
 
@@ -106,7 +106,7 @@ as meta:
   res = u.post('users/%s/resend-confirmation-email' % u.email)
   assert hasattr(meta.mailer, 'email_reconfirmation_hash')
 
-  res = u.post('users/%s/confirm-email' % email,
+  res = u.post('users/%s/confirm-email' % u.id,
                {'key': str(meta.mailer.email_reconfirmation_hash)})
 
   try:

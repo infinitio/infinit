@@ -42,7 +42,7 @@ with Meta(enable_emails = True) as meta:
   assert bob.get('users/%s' % eve)['register_status'] == 'ghost'
   meta.mailer = MailService()
   bob.put('user/accounts/%s' % eve)
-  bob.post('users/%s/accounts/%s/confirm' % (bob.email, eve),
+  bob.post('users/%s/accounts/%s/confirm' % (bob.id, eve),
            {'key': meta.mailer.keys[eve]})
   # Spoiler: Eve is bob...
   assert bob.get('users/%s' % eve)['register_status'] == 'ok'
@@ -76,7 +76,7 @@ with Meta(enable_emails = True) as meta:
   eve = User(meta, eve)
   throws(lambda:
          bob.post(
-           'users/%s/accounts/%s/confirm' % (bob.email, eve.email),
+           'users/%s/accounts/%s/confirm' % (bob.id, eve.email),
            {'key':meta.mailer.keys[eve.email]}))
 
 # Notifications.
@@ -97,7 +97,7 @@ with Meta(enable_emails = True) as meta:
 
     meta.mailer = MailService()
     bob.put('user/accounts/%s' % email)
-    bob.post('users/%s/accounts/%s/confirm' % (bob.email, email),
+    bob.post('users/%s/accounts/%s/confirm' % (bob.id, email),
              {'key': meta.mailer.keys[email]})
 
     trophonius.poll()
@@ -120,7 +120,7 @@ with Meta(enable_emails = True) as meta:
 
     meta.mailer = MailService()
     bob.put('user/accounts/%s' % email)
-    bob.post('users/%s/accounts/%s/confirm' % (bob.email, email),
+    bob.post('users/%s/accounts/%s/confirm' % (bob.id, email),
              {'key': meta.mailer.keys[email]})
 
     # Alice is a bob new swagger.

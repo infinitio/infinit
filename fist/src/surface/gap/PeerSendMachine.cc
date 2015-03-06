@@ -357,9 +357,21 @@ namespace surface
     void
     PeerSendMachine::_create_transaction()
     {
-        ELLE_TRACE("%s: create transaction", *this);
-        this->transaction_id(this->state().meta().create_transaction());
-        this->transaction()._snapshot_save();
+      ELLE_TRACE("%s: create transaction", *this);
+      std::list<std::string> file_list{this->files().size()};
+      std::transform(
+        this->files().begin(),
+        this->files().end(),
+        file_list.begin(),
+        [] (std::string const& el) {
+          return boost::filesystem::path(el).filename().string();
+        });
+      this->transaction_id(this->state().meta().create_transaction(
+        this->data()->recipient_id,
+        file_list,
+        file_list.size(),
+        this->_message));
+      this->transaction()._snapshot_save();
     }
 
     void

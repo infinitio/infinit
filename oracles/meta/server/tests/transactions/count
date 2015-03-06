@@ -12,7 +12,9 @@ from infinit.oracles.meta.server.transaction_status import \
   GHOST_UPLOADED as ghost_uploaded, \
   INITIALIZED as initialized
 
-with Meta() as meta:
+# FIXME: Force admin to avoid managing keys to post on
+# transaction/downloaded. Remove it and manage keys.
+with Meta(force_admin = True) as meta:
   alice = User(meta, 'alice@infinit.io')
   alice.login()
   bob = User(meta, 'bob@infinit.io')

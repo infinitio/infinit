@@ -41,7 +41,8 @@ class TestPreemptiveBuffering(unittest.TestCase):
 
   def test_enabled(self):
     with infinit.oracles.servers.Oracles(
-        mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
+        mongo_dump = '%s/two-users' % os.environ['DUMPS'],
+        force_admin = True) as o:
       with utils.TemporaryData('foo', 1000) as tmp:
         r = requests.put(('%s://%s:%s/features/' % o.meta) + 'preemptive_buffering_delay',
                           headers = {'content-type': 'application/json'},
@@ -69,7 +70,8 @@ class TestPreemptiveBuffering(unittest.TestCase):
 
   def test_unused(self):
     with infinit.oracles.servers.Oracles(
-        mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
+        mongo_dump = '%s/two-users' % os.environ['DUMPS'],
+        force_admin = True) as o:
       with utils.TemporaryData('foo', 1000) as tmp:
         r = requests.put(('%s://%s:%s/features/' % o.meta) + 'preemptive_buffering_delay',
                           headers = {'content-type': 'application/json'},

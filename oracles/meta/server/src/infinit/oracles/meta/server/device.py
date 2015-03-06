@@ -8,7 +8,7 @@ import elle.log
 import pymongo
 
 from . import conf, error, regexp
-from .utils import api, require_logged_in
+from .utils import *
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Device'
 
@@ -53,26 +53,73 @@ class Mixin:
     else:
       return list(filter(lambda x: x['id'] == device, self.user['devices']))[0]
 
+  def device_view(self, device):
+    res = {
+      'id': device['id'],
+      'name': device['name'],
+      'passport': device['passport'],
+    }
+    if 'os' in device:
+      res['os'] = device['os']
+    if 'last_sync' in device:
+      res['last_sync'] = device['last_sync']['date'].isoformat()
+    return res
 
-  @api('/devices')
-  @require_logged_in
-  def devices(self):
-    """All user's devices. """
-    return {'devices': self.user.get('devices', [])}
+  @api('/user/devices')
+  @require_logged_in_fields(['devices'])
+  def devices_user_api(self):
+    return self.devices(self.user)
 
-  @api('/device/<id>/view')
-  @require_logged_in
-  def device_view(self,
-                  id: uuid.UUID):
-    """Return one user device.
-    """
-    assert isinstance(id, uuid.UUID)
+  @api('/users/<user>/devices')
+  @require_logged_in_or_admin
+  def devices_users_api(self, user):
+    user = self.user_by_id_or_email(user, fields = ['devices'])
+    if not self.admin and user['_id'] != self.user['_id']:
+      self.forbidden({
+        'reason': 'not your devices',
+      })
+    return self.devices(user)
+
+  def devices(self, user):
+    return {
+      'devices':
+      [self.device_view(d) for d in user.get('devices', [])],
+    }
+
+  @api('/devices/<id>')
+  @require_logged_in_or_admin
+  def device_api(self, id: uuid.UUID):
+    # FIXME: when the old API gets dropped, remove the whole
+    # error.Error concept.
     try:
-      return self.success(self.device(id = str(id),
-                                      owner = self.user['_id'],
-                                      include_passport = True))
-    except error.Error as e:
-      self.fail(*e.args)
+      if self.admin:
+        guard = {}
+      else:
+        guard = {
+          'owner': self.user['_id'],
+        }
+      # FIXME: this 404's even if the device exists but is not
+      # ours. Replace with a 403.
+      device = self.device(id = id,
+                           include_passport = True,
+                           **guard)
+      return self.device_view(device)
+    except error.Error:
+      self.not_found({
+        'reason': 'device %s does not exist' % id,
+        'device': id,
+      })
+
+  @api('/devices/<id>', method = "POST")
+  @require_logged_in
+  def update_device(self, id: uuid.UUID, name):
+    user = self.database.users.find_and_modify(
+      {'_id': user['_id'], 'devices.id': str(id)},
+      {'$set': {"devices.$.name": name}},
+      fields = ['devices'],
+    )
+    device = list(filter(lambda x: x['id'] == str(id), user['devices']))[0]
+    return self.device_view(device)
 
   def _create_device(self,
                      owner,
@@ -135,33 +182,6 @@ class Mixin:
         )
         continue
 
-  @api('/device/create', method="POST")
-  @require_logged_in
-  def create_device(self,
-                    id = None,
-                    name = None):
-    if id is not None:
-      assert isinstance(id, uuid.UUID)
-    else:
-      id = uuid.uuid4()
-
-    device = self._create_device(owner = self.user, id = id, name = name)
-    assert device is not None
-    return self.success({"id": device['id'],
-                         "passport": device['passport'],
-                         "name": device['name']})
-
-  @api('/device/<id>/<device_id>/connected')
-  def is_device_connected(self,
-                          id: bson.ObjectId,
-                          device_id: uuid.UUID):
-    assert isinstance(id, bson.ObjectId)
-    assert isinstance(device_id, uuid.UUID)
-    try:
-      return self.success({"connected": self._is_connected(id, device_id)})
-    except error.Error as e:
-      self.fail(*e.args)
-
   def _is_connected(self, user_id, device_id = None):
     """Get the connection status of a given user.
 
@@ -182,6 +202,40 @@ class Mixin:
           "_id": user_id,
           "devices.trophonius": {"$ne": None},
         }).count() > 0
+
+  ## ------------------- ##
+  ## Backward pre-0.9.31 ##
+  ## ------------------- ##
+
+  # Anything below this is unused and can (should) be dropped.
+
+  @api('/device/<id>/view')
+  @require_logged_in
+  def device_view_deprecated(self, id: uuid.UUID):
+    """Return one user device.
+    """
+    try:
+      return self.success(self.device(id = id,
+                                      owner = self.user['_id'],
+                                      include_passport = True))
+    except error.Error as e:
+      self.fail(*e.args)
+
+  @api('/device/create', method="POST")
+  @require_logged_in
+  def create_device(self,
+                    id = None,
+                    name = None):
+    if id is not None:
+      assert isinstance(id, uuid.UUID)
+    else:
+      id = uuid.uuid4()
+
+    device = self._create_device(owner = self.user, id = id, name = name)
+    assert device is not None
+    return self.success({"id": device['id'],
+                         "passport": device['passport'],
+                         "name": device['name']})
 
   @api('/device/update', method = "POST")
   @require_logged_in

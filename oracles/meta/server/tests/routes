@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import Meta, HTTPException
+from utils import Meta, HTTPException, assertEq
 
 def throws(f, status):
   assert isinstance(status, int)
@@ -10,7 +10,7 @@ def throws(f, status):
   except HTTPException as e:
     if status != 200:
       assert isinstance(e.status, int)
-      assert e.status == status
+      assertEq(e.status, status)
 
 with Meta() as meta:
   # User
@@ -48,7 +48,7 @@ with Meta() as meta:
   throws(lambda: meta.post('transaction/connect_device'), 400)
   throws(lambda: meta.post('transaction/5241b9d226b9f10fff8be391/endpoints'), 400)
   # Device
-  throws(lambda: meta.get('devices'), 403)
+  throws(lambda: meta.get('user/devices'), 403)
   throws(lambda: meta.get('device/861e6a7b-4d51-45d7-a5b7-f192ea6d9728/view'), 403)
   throws(lambda: meta.post('device/create', {}), 403)
   throws(lambda: meta.get('device/5241b9d226b9f10fff8be391/861e6a7b-4d51-45d7-a5b7-f192ea6d9728/connected'), 200)

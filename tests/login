@@ -225,7 +225,8 @@ class TestLogin(unittest.TestCase):
   def test_features_reroll(self):
     """ Check we eventually get both possible values when rerolling."""
     with infinit.oracles.servers.Oracles(
-      mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
+        mongo_dump = '%s/two-users' % os.environ['DUMPS'],
+        force_admin = True) as o:
       vals = set()
       for i in range(20):
         s = o.state()
@@ -245,7 +246,8 @@ class TestLogin(unittest.TestCase):
 
   def test_features_reroll_custom(self):
     with infinit.oracles.servers.Oracles(
-      mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
+        mongo_dump = '%s/two-users' % os.environ['DUMPS'],
+        force_admin = True) as o:
       r = requests.post('%s://%s:%s/features' % o.meta,
                         data=json.dumps({'reroll': '1',
                                         'abtests': [{'key': 'testc', 'value': '1'},
@@ -260,7 +262,8 @@ class TestLogin(unittest.TestCase):
 
   def test_features_remove(self):
     with infinit.oracles.servers.Oracles(
-      mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
+        mongo_dump = '%s/two-users' % os.environ['DUMPS'],
+        force_admin = True) as o:
       r = requests.delete('%s://%s:%s/features/testa' % o.meta)
       self.assertEqual(r.status_code, 200)
       s2 = o.state()
@@ -270,7 +273,8 @@ class TestLogin(unittest.TestCase):
 
   def test_features_add(self):
     with infinit.oracles.servers.Oracles(
-      mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
+        mongo_dump = '%s/two-users' % os.environ['DUMPS'],
+        force_admin = True) as o:
       r = requests.put('%s://%s:%s/features/testc' % o.meta,
                        data = json.dumps({'value': 'v3'}),
                        headers = {'content-type': 'application/json'})
