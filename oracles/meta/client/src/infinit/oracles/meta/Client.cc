@@ -929,6 +929,37 @@ namespace infinit
         input.serialize("created_transaction_id", created_transaction_id);
         return created_transaction_id;
       }
+      std::string
+      Client::create_transaction(std::string const& recipient_id_or_email,
+                                 std::list<std::string> const& files,
+                                 uint64_t count,
+                                 std::string const& message) const
+      {
+        ELLE_TRACE_SCOPE(
+          "%s: create barebones peer transaction to %s",
+          *this,
+          recipient_id_or_email);
+        std::string const url = "/transactions";
+        auto method = Method::POST;
+        auto request = this->_request(
+          url,
+          method,
+          [&] (reactor::http::Request& r)
+          {
+            elle::serialization::json::SerializerOut query(r, false);
+            query.serialize("id_or_email",
+                            const_cast<std::string&>(recipient_id_or_email));
+            query.serialize("files",
+                            const_cast<std::list<std::string>&>(files));
+            int64_t count_integral = static_cast<int64_t>(count);
+            query.serialize("files_count", count_integral);
+            query.serialize("message", const_cast<std::string&>(message));
+          });
+        SerializerIn input(url, request);
+        std::string created_transaction_id;
+        input.serialize("created_transaction_id", created_transaction_id);
+        return created_transaction_id;
+      }
 
       UpdatePeerTransactionResponse
       Client::update_transaction(std::string const& transaction_id,

@@ -493,6 +493,7 @@ namespace infinit
           ) const;
 
         /// Create an empty transaction
+        /// Deprecated by barebones overload
         /// @return: the transaction_id
         std::string
         create_transaction() const;
@@ -502,6 +503,12 @@ namespace infinit
                            Transaction::Status status,
                            elle::UUID const& device_id = elle::UUID(),
                            std::string const& device_name = "") const;
+
+        std::string
+        create_transaction(std::string const& recipient_id_or_email,
+                           std::list<std::string> const& files,
+                           uint64_t count,
+                           std::string const& message = "") const;
 
       private:
         typedef std::vector<std::pair<std::string, uint16_t>> adapter_type;

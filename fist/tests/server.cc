@@ -438,6 +438,19 @@ namespace tests
       });
 
     this->register_route(
+      "/transactions",
+      reactor::http::Method::POST,
+      [&] (Server::Headers const&,
+           Server::Cookies const&,
+           Server::Parameters const&,
+           elle::Buffer const&)
+      {
+        return elle::sprintf(
+          "{\"created_transaction_id\":\"%s\"}", this->_create_empty());
+      });
+
+
+    this->register_route(
       "/s3/folder/cloud-buffered",
       reactor::http::Method::POST,
       [] (Server::Headers const&,
