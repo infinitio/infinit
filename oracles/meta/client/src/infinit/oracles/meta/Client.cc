@@ -645,7 +645,7 @@ namespace infinit
       void
       Client::use_ghost_code(std::string const& code) const
       {
-        std::string url = elle::sprintf("/user/%s/merge", code);
+        std::string url = elle::sprintf("/ghost/%s/merge", code);
         auto request = this->_request(url, Method::POST);
         switch (request.status())
         {
