@@ -1,6 +1,5 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/uuid/nil_generator.hpp>
-#include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/uuid/uuid.hpp>
 
@@ -735,8 +734,8 @@ namespace devices
 {
   ELLE_TEST_SCHEDULED(devices)
   {
-    auto uuid1 = boost::uuids::random_generator()();
-    auto uuid2 = boost::uuids::random_generator()();
+    auto uuid1 = elle::UUID("00000000-0000-0000-0000-000000000001");
+    auto uuid2 = elle::UUID("00000000-0000-0000-0000-000000000002");
     using namespace boost::posix_time;
     HTTPServer s;
     s.register_route("/user/devices",
