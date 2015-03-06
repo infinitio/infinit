@@ -28,6 +28,7 @@ with Meta() as meta:
   User(meta,
        email = 'space@blah.com',
        fullname = 'Space Man')
+
   res = meta.post('login',
                   {
                     'device_id': str(uuid4()),

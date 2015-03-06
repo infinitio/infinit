@@ -7,7 +7,7 @@
 ELLE_LOG_COMPONENT("surface.gap.State.test");
 
 class CreateEmptyServer
-  : public Server
+  : public tests::Server
 {
 protected:
   virtual
@@ -24,14 +24,14 @@ protected:
 ELLE_TEST_SCHEDULED(create_transaction)
 {
   CreateEmptyServer server;
-  auto sender = server.register_user("sender@infinit.io", "password");
-  auto recipient = server.register_user("recipient@infinit.io", "password");
+  auto const& sender = server.register_user("sender@infinit.io", "password");
+  auto const& recipient = server.register_user("recipient@infinit.io", "password");
   elle::filesystem::TemporaryFile transfered("filename");
   elle::filesystem::TemporaryDirectory home(
     "snapshot-resume_create-transaction");
   ELLE_LOG("first session")
   {
-    Server::Client sender_client(server, sender, home.path());
+    tests::Client sender_client(server, sender, home.path());
     sender_client.login();
     ELLE_LOG("create transaction")
       sender_client.state.transaction_peer_create(
@@ -44,7 +44,7 @@ ELLE_TEST_SCHEDULED(create_transaction)
   server.created().close();
   ELLE_LOG("second session")
   {
-    Server::Client sender_client(server, sender, home.path());
+    tests::Client sender_client(server, sender, home.path());
     sender_client.login();
     reactor::wait(server.created());
     ELLE_LOG("shutdown state");
@@ -52,13 +52,12 @@ ELLE_TEST_SCHEDULED(create_transaction)
 }
 
 class InitializeTransactionServer
-  : public Server
+  : public tests::Server
 {
 public:
-  typedef Server Super;
+  typedef tests::Server Super;
 
 protected:
-  virtual
   boost::uuids::uuid
   _create_empty() override
   {
@@ -68,15 +67,16 @@ protected:
     return this->_id;
   }
 
-  virtual
   std::string
-  _transaction_put(Server::Headers const&,
+  _transaction_put(Server::Headers const& headers,
                    Server::Cookies const& cookies,
-                   Server::Parameters const&,
+                   Server::Parameters const& params,
                    elle::Buffer const& content,
-                   boost::uuids::uuid const& id)
+                   boost::uuids::uuid const& id) override
   {
+
     BOOST_CHECK_EQUAL(id, this->_id);
+    Super::_transaction_put(headers, cookies, params, content, id);
     this->_initialized.open();
     reactor::sleep();
     return "unused";
@@ -90,14 +90,14 @@ protected:
 ELLE_TEST_SCHEDULED(initialize_transaction)
 {
   InitializeTransactionServer server;
-  auto sender = server.register_user("sender@infinit.io", "password");
-  auto recipient = server.register_user("recipient@infinit.io", "password");
+  auto const& sender = server.register_user("sender@infinit.io", "password");
+  auto const& recipient = server.register_user("recipient@infinit.io", "password");
   elle::filesystem::TemporaryFile transfered("filename");
   elle::filesystem::TemporaryDirectory home(
     "snapshot-resume_initialize-transaction");
   ELLE_LOG("first session")
   {
-    Server::Client sender_client(server, sender, home.path());
+    tests::Client sender_client(server, sender, home.path());
     sender_client.login();
     ELLE_LOG("create transaction")
       sender_client.state.transaction_peer_create(
@@ -110,7 +110,7 @@ ELLE_TEST_SCHEDULED(initialize_transaction)
   server.initialized().close();
   ELLE_LOG("second session")
   {
-    Server::Client sender_client(server, sender, home.path());
+    tests::Client sender_client(server, sender, home.path());
     sender_client.login();
     reactor::wait(server.initialized());
     ELLE_LOG("shutdown state");

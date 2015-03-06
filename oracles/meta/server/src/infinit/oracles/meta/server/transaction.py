@@ -23,6 +23,10 @@ from infinit.oracles.meta.server.utils import json_value
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Transaction'
 
+# This create a code with more than 8 billions possibilities.
+code_alphabet = '23456789abcdefghijkmnpqrstuvwxyz'
+code_length = 7
+
 class Mixin:
 
   def is_sender(self, transaction, owner_id, device_id = None):
@@ -401,9 +405,10 @@ class Mixin:
         'strings': ' '.join([
               sender['fullname'],
               sender['handle'],
-              sender['email'],
+              self.user_identifier(sender),
               recipient['fullname'],
               recipient.get('handle', ""),
+              self.user_identifier(recipient),
               message,
               ] + files)
         }
@@ -413,6 +418,7 @@ class Mixin:
         self.database.transactions.update(
             {'_id': transaction_id},
             {'$set': transaction})
+        transaction['_id'] = transaction_id
         self.notifier.notify_some(
           notifier.PEER_TRANSACTION,
           recipient_ids = {transaction['recipient_id']},
@@ -428,25 +434,27 @@ class Mixin:
         time = True)
 
       if not peer_email:
-        peer_email = recipient['email']
-      recipient_offline = all(d.get('trophonius') is None
-                              for d in recipient.get('devices', []))
-      if not new_user and recipient_offline and not is_ghost:
-        elle.log.debug("recipient is disconnected")
-        template_id = 'accept-file-only-offline'
+        peer_email = recipient.get('email', None)
 
-        self.mailer.send_template(
-          to = peer_email,
-          template_name = template_id,
-          reply_to = "%s <%s>" % (sender['fullname'], sender['email']),
-          merge_vars = {
-            peer_email: {
-              'filename': files[0],
-              'note': message,
-              'sendername': sender['fullname'],
-              'avatar': self.user_avatar_route(recipient['_id']),
-            }}
-          )
+      if peer_email is not None:
+        recipient_offline = all(d.get('trophonius') is None
+                                for d in recipient.get('devices', []))
+        if not new_user and recipient_offline and not is_ghost:
+          elle.log.debug("recipient is disconnected")
+          template_id = 'accept-file-only-offline'
+
+          self.mailer.send_template(
+            to = peer_email,
+            template_name = template_id,
+            reply_to = "%s <%s>" % (sender['fullname'], self.user_identifier(sender)),
+            merge_vars = {
+              peer_email: {
+                'filename': files[0],
+                'note': message,
+                'sendername': sender['fullname'],
+                'avatar': self.user_avatar_route(recipient['_id']),
+              }}
+            )
 
       self._increase_swag(sender['_id'], recipient['_id'])
 
@@ -633,6 +641,20 @@ class Mixin:
         })
       return res
 
+  def on_reject(self, transaction, user, device_id, device_name):
+    with elle.log.trace("reject transaction as %s" % device_id):
+      if device_id is None or device_name is None:
+        return {} # Backwards compatibility < 0.9.30
+      device_id = uuid.UUID(device_id)
+      if str(device_id) not in map(lambda x: x['id'], user['devices']):
+        raise error.Error(error.DEVICE_DOESNT_BELONG_TO_YOU)
+      res = {
+        'recipient_fullname': user['fullname'],
+        'recipient_device_name' : device_name,
+        'recipient_device_id': str(device_id)
+      }
+      return res
+
   def _hash_transaction(self, transaction):
     """
     Generate a unique hash for a transaction based on a random number and the
@@ -692,11 +714,13 @@ class Mixin:
       mail_template = 'send-file-url'
       if 'features' in recipient and 'send_file_url_template' in recipient['features']:
         mail_template = recipient['features']['send_file_url_template']
+
+      source = (user['fullname'], self.user_identifier(user))
       invitation.invite_user(
         peer_email,
         mailer = self.mailer,
         mail_template = mail_template,
-        source = (user['fullname'], user['email']),
+        source = source,
         database = self.database,
         merge_vars = {
           peer_email: {
@@ -704,7 +728,7 @@ class Mixin:
             'recipient_email': recipient['email'],
             'recipient_name': recipient['fullname'],
             'sendername': user['fullname'],
-            'sender_email': user['email'],
+            'sender_email': user.get('email', ''),
             'sender_avatar': 'https://%s/user/%s/avatar' %
               (bottle.request.urlparts[1], user['_id']),
             'note': transaction['message'],
@@ -779,6 +803,12 @@ class Mixin:
                                    user = user,
                                    device_id = device_id,
                                    device_name = device_name))
+      elif status == transaction_status.REJECTED:
+        diff.update(self.on_reject(transaction = transaction,
+                                   user = user,
+                                   device_id = device_id,
+                                   device_name = device_name))
+        diff.update(self.cloud_cleanup_transaction(transaction = transaction))
       elif status == transaction_status.GHOST_UPLOADED:
         diff.update(self.on_ghost_uploaded(transaction = transaction,
                                      device_id = device_id,
@@ -788,10 +818,8 @@ class Mixin:
         if not transaction.get('canceler', None):
           diff.update({'canceler': {'user': user['_id'], 'device': device_id}})
           diff.update(self.cloud_cleanup_transaction(transaction = transaction))
-      elif status in (transaction_status.FAILED,
-                      transaction_status.REJECTED):
-        diff.update(self.cloud_cleanup_transaction(
-          transaction = transaction))
+      elif status == transaction_status.FAILED:
+        diff.update(self.cloud_cleanup_transaction(transaction = transaction))
       elif status == transaction_status.FINISHED:
         self.__update_transaction_stats(
           transaction['recipient_id'],

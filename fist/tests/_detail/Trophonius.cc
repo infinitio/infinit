@@ -1,125 +1,46 @@
-#include <boost/uuid/random_generator.hpp>
-#include <boost/uuid/uuid_io.hpp>
+#include "Trophonius.hh"
 
+#include <boost/algorithm/string.hpp>
+
+#include <elle/With.hh>
 #include <elle/log.hh>
-#include <elle/memory.hh>
-#include <elle/os/path.hh>
-#include <elle/reactor/tests/http_server.hh>
-#include <elle/system/home_directory.hh>
-#include <elle/test.hh>
 #include <elle/utility/Move.hh>
-
-#include <cryptography/KeyPair.hh>
+#include <elle/serialization/json.hh>
 
 #include <reactor/network/exception.hh>
-#include <reactor/network/ssl-server.hh>
-#include <reactor/scheduler.hh>
+#include <reactor/Scope.hh>
 
-#include <infinit/oracles/trophonius/Client.hh>
-
-#include <papier/Authority.hh>
-#include <papier/Identity.hh>
-#include <papier/Passport.hh>
-
-#include <surface/gap/Exception.hh>
-#include <surface/gap/State.hh>
-#include <surface/gap/Error.hh>
-
-#include <infinit/oracles/meta/Error.hh>
-#include <infinit/oracles/meta/Client.hh>
-
-#include <version.hh>
-
-ELLE_LOG_COMPONENT("surface.gap.State.test");
-
-static
-boost::uuids::uuid
-random_uuid()
-{
-  typedef boost::uuids::basic_random_generator<boost::mt19937> Generator;
-  Generator generator{};
-  return generator();
-}
-
-class KeyPair:
-  public infinit::cryptography::KeyPair
-{
-public:
-  KeyPair()
-    : infinit::cryptography::KeyPair(
-      infinit::cryptography::KeyPair::generate(
-        infinit::cryptography::Cryptosystem::rsa, 1024))
-  {}
-};
-
-KeyPair authority_keys;
-papier::Authority authority(authority_keys);
-
-static
-papier::Identity
-generate_identity(cryptography::KeyPair const& keypair,
-                  std::string const& id,
-                  std::string const& description,
-                  std::string const& password)
-{
-  papier::Identity identity;
-  if (identity.Create(id, description, keypair) == elle::Status::Error)
-    throw std::runtime_error("unable to create the identity");
-  if (identity.Encrypt(password) == elle::Status::Error)
-    throw std::runtime_error("unable to encrypt the identity");
-  if (identity.Seal(authority) == elle::Status::Error)
-    throw std::runtime_error("unable to seal the identity");
-  return identity;
-}
-
-static
-std::string
-generate_passport(boost::uuids::uuid const& id,
-                  std::string const& name,
-                  cryptography::PublicKey const& key)
-{
-  papier::Passport passport(boost::lexical_cast<std::string>(id),
-                            name, key, authority);
-  std::string passport_string;
-  if (passport.Save(passport_string) == elle::Status::Error)
-    throw std::runtime_error("unabled to save the passport");
-  return passport_string;
-}
-
-extern const std::vector<unsigned char> fingerprint;
+ELLE_LOG_COMPONENT("fists.tests");
 extern const std::vector<char> server_certificate;
 extern const std::vector<char> server_key;
 extern const std::vector<char> server_dh1024;
 
-class Trophonius
+namespace tests
 {
-public:
-  Trophonius()
+  Trophonius::Trophonius()
     : _server(elle::make_unique<reactor::network::SSLCertificate>(
                 server_certificate,
                 server_key,
                 server_dh1024))
-    , _accepter(elle::sprintf("%s accepter", *this),
-                boost::bind(&Trophonius::_serve, this))
+    , _accepter(new reactor::Thread{elle::sprintf("%s accepter", *this),
+          boost::bind(&Trophonius::_serve, this)})
   {
     this->_server.listen();
   }
 
-  ~Trophonius()
+  Trophonius::~Trophonius()
   {
-    this->_accepter.terminate_now();
+    this->_accepter->terminate_now();
   }
 
   int
-  port() const
+  Trophonius::port() const
   {
     return this->_server.port();
   }
 
-protected:
-  virtual
   void
-  _serve()
+  Trophonius::_serve()
   {
     elle::With<reactor::Scope>() << [this] (reactor::Scope& scope)
     {
@@ -136,232 +57,76 @@ protected:
     };
   }
 
-  virtual
   void
-  _serve(std::unique_ptr<reactor::network::SSLSocket> socket)
+  Trophonius::disconnect_all_users()
   {
-    socket->write("{\"poke\": \"ouch\"}\n");
-    socket->write("{\"notification_type\": -666, \"response_code\": 200, \"response_details\": \"details\"}\n");
+    this->_accepter->terminate_now();
+    this->_accepter.reset(new reactor::Thread{
+        elle::sprintf("%s accepter", *this), boost::bind(&Trophonius::_serve, this)});
+  }
+
+  void
+  Trophonius::_serve(std::unique_ptr<reactor::network::SSLSocket> socket)
+  {
+    std::string key{};
+    while (key.empty())
+    {
+      auto json_read = elle::json::read(*socket);
+      auto json = boost::any_cast<elle::json::Object>(json_read);
+      if (json.find("poke") != json.end())
+      {
+        auto poke = json["poke"];
+        elle::json::write(*socket, json);
+        continue;
+      }
+      if (json.find("user_id") == json.end())
+        continue;
+      auto device_id = boost::uuids::string_generator()(boost::any_cast<std::string>(json["device_id"]));
+      auto user_id = boost::uuids::string_generator()(boost::any_cast<std::string>(json["user_id"]));
+      key = elle::sprintf("%s+%s", user_id, device_id);
+    }
+    ELLE_LOG("Trophonius, new connection: %s", key);
+    elle::SafeFinally remove{[&] { try { this->_clients.erase(key); } catch (...) { }}};
+    this->_clients.emplace(key, std::move(socket));
+    this->_clients.at(key)->write("{\"notification_type\": -666, \"response_code\": 200, \"response_details\": \"details\"}\n");
     try
     {
       while (true)
-        socket->read_until("\n");
+        this->_clients.at(key)->read_until("\n");
     }
     catch (reactor::network::ConnectionClosed const&)
     {}
   }
 
-  ELLE_ATTRIBUTE(reactor::network::SSLServer, server);
-  ELLE_ATTRIBUTE(reactor::Thread, accepter);
-};
-
-template <typename Trophonius = Trophonius>
-class Server
-  : public reactor::http::tests::Server
-{
-public:
-  Server(papier::Identity identity,
-         boost::uuids::uuid device_id)
-    : _device_id(device_id)
-    , _session_id(random_uuid())
-    , _identity(std::move(identity))
-    , _trophonius()
-    , _login_result(0)
+  std::vector<reactor::network::SSLSocket*>
+  Trophonius::clients(boost::uuids::uuid const& user_id)
   {
-    this->headers()["X-Fist-Meta-Version"] = INFINIT_VERSION;
-    this->headers()["Set-Cookie"] =
-      elle::sprintf("session-id=%s", this->_session_id);
-    this->register_route(
-      "/status",
-      reactor::http::Method::GET,
-      [] (Server::Headers const&,
-          Server::Cookies const&,
-          Server::Parameters const&,
-          elle::Buffer const&)
-      {
-        return "{\"status\" : true, \"success\": true}";
-      });
-
-    this->register_route(
-      "/login",
-      reactor::http::Method::POST,
-      std::bind(&Server::_post_login,
-                this,
-                std::placeholders::_1,
-                std::placeholders::_2,
-                std::placeholders::_3,
-                std::placeholders::_4));
-
-    this->register_route(
-      "/user/synchronize",
-      reactor::http::Method::GET,
-      [] (Server::Headers const&,
-          Server::Cookies const&,
-          Server::Parameters const&,
-          elle::Buffer const&)
-      {
-        return "{"
-          "  \"swaggers\": [],"
-          "  \"running_transactions\": [],"
-          "  \"final_transactions\": [],"
-          "  \"links\": []"
-          "}";
-      });
-
-    this->register_route(
-      "/trophonius",
-      reactor::http::Method::GET,
-      std::bind(&Server::_get_trophonius,
-                this,
-                std::placeholders::_1,
-                std::placeholders::_2,
-                std::placeholders::_3,
-                std::placeholders::_4));
-    this->register_route(
-      elle::sprintf("/device/%s/view", this->_device_id),
-      reactor::http::Method::GET,
-      [&] (Server::Headers const&,
-           Server::Cookies const&,
-           Server::Parameters const&,
-           elle::Buffer const&)
-      {
-        return elle::sprintf(
-          "{"
-          "  \"id\" : \"%s\","
-          "  \"name\": \"device\","
-          "  \"passport\": \"%s\","
-          "  \"success\": true"
-          "}",
-          this->_device_id,
-          generate_passport(this->_device_id, "DEVICE",
-                            this->_identity.pair().K()));
-      });
-    this->register_route(
-      "/logout",
-      reactor::http::Method::POST,
-      [] (Server::Headers const&,
-          Server::Cookies const&,
-          Server::Parameters const&,
-          elle::Buffer const&)
-      {
-        return "{\"success\": true}";
-      });
-    auto self =
-      [&] (Server::Headers const&,
-           Server::Cookies const&,
-           Server::Parameters const&,
-           elle::Buffer const&)
-      {
-        return elle::sprintf(
-          "{"
-          "  \"id\": \"%s\","
-          "  \"public_key\": \"\","
-          "  \"fullname\": \"\","
-          "  \"handle\": \"\","
-          "  \"connected_devices\": [],"
-          "  \"register_status\": \"\","
-          "  \"email\": \"\","
-          "  \"identity\": \"\","
-          "  \"devices\": [],"
-          "  \"favorites\": [],"
-          "  \"success\": true"
-          "}",
-          this->_identity.id());
-      };
-    this->register_route(
-      "/user/self",
-      reactor::http::Method::GET,
-      self);
-    this->register_route(
-      elle::sprintf("/users/%s", this->_identity.id()),
-      reactor::http::Method::GET,
-      self);
-    this->register_route(
-      "/user/full_swaggers",
-      reactor::http::Method::GET,
-      [&] (Server::Headers const&,
-           Server::Cookies const&,
-           Server::Parameters const&,
-           elle::Buffer const&)
-      {
-        return "{\"success\": true, \"swaggers\": []}";
-      });
-    this->register_route(
-      "/transactions",
-      reactor::http::Method::GET,
-      [&] (Server::Headers const&,
-           Server::Cookies const&,
-           Server::Parameters const&,
-           elle::Buffer const&)
-      {
-        return "{\"success\": true, \"transactions\": []}";
-      });
-    this->register_route(
-      "/links",
-      reactor::http::Method::GET,
-      [&] (Server::Headers const&,
-           Server::Cookies const&,
-           Server::Parameters const&,
-           elle::Buffer const&)
-      {
-        return "{\"success\": true, \"links\": []}";
-      });
-  }
-
-  std::string
-  _post_login(Headers const&,
-              Cookies const&,
-              Parameters const&,
-              elle::Buffer const&)
-  {
-    if (_login_result == 0)
+    std::vector<reactor::network::SSLSocket*> sockets;
+    for (auto& socket: this->_clients)
     {
-       std::string identity_serialized;
-       this->_identity.Save(identity_serialized);
-       return elle::sprintf(
-         "{"
-         "  \"self\": {"
-         "    \"id\": \"000\","
-         "    \"public_key\": \"\","
-         "    \"fullname\": \"\","
-         "    \"handle\": \"\","
-         "    \"connected_devices\": [],"
-         "    \"register_status\": \"\","
-         "    \"email\": \"\","
-         "    \"identity\": \"%s\","
-         "    \"devices\": [],"
-         "    \"favorites\": [],"
-         "    \"success\": true"
-         "  },"
-         "  \"device\": {"
-         "    \"id\" : \"%s\","
-         "    \"name\": \"device\","
-         "    \"passport\": \"%s\","
-         "    \"success\": true"
-         "  },"
-         "  \"features\": [],"
-         "  \"trophonius\" : {"
-         "    \"host\": \"127.0.0.1\","
-         "    \"port\": 0,"
-         "    \"port_ssl\": %s"
-         "  }"
-         "}",
-         identity_serialized,
-         this->_device_id,
-         generate_passport(this->_device_id, "DEVICE",
-                           this->_identity.pair().K()),
-         this->_trophonius.port());
-     }
-     throw Exception("/login", reactor::http::StatusCode::Forbidden,
-                     elle::sprintf("{\"code\": %s}", _login_result));
+      std::vector<std::string> strs;
+      boost::split(strs, socket.first, boost::is_any_of("+"));
+      if (boost::uuids::string_generator()(strs[0]) == user_id)
+        sockets.push_back(socket.second.get());
+    }
+    return sockets;
   }
 
-  virtual
+  reactor::network::SSLSocket*
+  Trophonius::socket(boost::uuids::uuid const& user_id,
+                     boost::uuids::uuid const& device_id)
+  {
+    auto key = elle::sprintf("%s+%s", user_id, device_id);
+    for (auto& socket: this->_clients)
+    {
+      if (socket.first == key)
+        return socket.second.get();
+    }
+    return nullptr;
+  }
+
   std::string
-  _get_trophonius(Headers const&,
-                  Cookies const&,
-                  Parameters const&,
-                  elle::Buffer const&) const
+  Trophonius::json() const
   {
     return elle::sprintf(
       "{"
@@ -369,267 +134,9 @@ public:
       "  \"port\": 0,"
       "  \"port_ssl\": %s"
       "}",
-      this->_trophonius.port());
+      this->port());
   }
-
-  void
-  session_id(boost::uuids::uuid id)
-  {
-    this->_session_id = std::move(id);
-  }
-
-  ELLE_ATTRIBUTE_R(boost::uuids::uuid, device_id)
-  ELLE_ATTRIBUTE_R(boost::uuids::uuid, session_id)
-  ELLE_ATTRIBUTE_R(papier::Identity, identity)
-  ELLE_ATTRIBUTE_R(Trophonius, trophonius);
-  ELLE_ATTRIBUTE_RW(int, login_result);
-};
-
-ELLE_TEST_SCHEDULED(login)
-{
-  auto email = "em@il.com";
-  auto password = "secret";
-  auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
-  auto user_id = random_uuid();
-  cryptography::KeyPair keys =
-    cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
-                                    papier::Identity::keypair_length);
-  auto identity = generate_identity(
-    keys, boost::lexical_cast<std::string>(user_id), "my identity", password_hash);
-  auto device_id = random_uuid();
-  Server<> server(identity, device_id);
-  std::string download_dir =
-    elle::os::path::join(elle::system::home_directory().string(), "Downloads");
-  surface::gap::State state("http",
-                            "127.0.0.1",
-                            server.port(),
-                            device_id,
-                            fingerprint,
-                            download_dir);
-  ELLE_LOG("Logging in");
-  state.login(email, password);
-  ELLE_LOG("Done");
 }
-
-
-ELLE_TEST_SCHEDULED(login_failure)
-{
-  auto email = "em@il.com";
-  auto password = "secret";
-  auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
-  auto user_id = random_uuid();
-  cryptography::KeyPair keys =
-    cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
-                                    papier::Identity::keypair_length);
-  auto identity = generate_identity(
-    keys, boost::lexical_cast<std::string>(user_id), "my identity", password_hash);
-  auto device_id = random_uuid();
-  Server<> server(identity, device_id);
-  std::string download_dir =
-    elle::os::path::join(elle::system::home_directory().string(), "Downloads");
-  surface::gap::State state("http",
-                            "127.0.0.1",
-                            server.port(),
-                            device_id,
-                            fingerprint,
-                            download_dir);
-  using Error = infinit::oracles::meta::Error;
-  server.login_result((int)Error::email_not_confirmed);
-  BOOST_CHECK_THROW(state.login(email, password), std::exception);
-  server.login_result((int)Error::email_password_dont_match);
-  BOOST_CHECK_THROW(state.login(email, password), std::exception);
-  server.login_result((int)Error::deprecated);
-  BOOST_CHECK_THROW(state.login(email, password), std::exception);
-  server.login_result((int)Error::already_logged_in);
-  BOOST_CHECK_THROW(state.login(email, password), std::exception);
-  server.login_result(0);
-  BOOST_CHECK_NO_THROW(state.login(email, password));
-}
-
-class ForbiddenTrophonius
-  : public Trophonius
-{
-public:
-  ForbiddenTrophonius()
-    : Trophonius()
-    , _i(0)
-  {}
-
-protected:
-  virtual
-  void
-  _serve(std::unique_ptr<reactor::network::SSLSocket> socket) override
-  {
-    if (++this->_i == 2)
-      return;
-    Trophonius::_serve(std::move(socket));
-  }
-
-  ELLE_ATTRIBUTE(int, i);
-};
-
-class ForbiddenTrophoniusMeta:
-  public Server<ForbiddenTrophonius>
-{
-public:
-  ForbiddenTrophoniusMeta(papier::Identity identity,
-                          boost::uuids::uuid device_id)
-    : Server<ForbiddenTrophonius>(identity, device_id)
-  {}
-
-  virtual
-  std::string
-  _get_trophonius(Headers const& headers,
-                  Cookies const& cookies,
-                  Parameters const& parameters,
-                  elle::Buffer const& body) const override
-  {
-    if (cookies.at("session-id") !=
-        boost::lexical_cast<std::string>(this->session_id()))
-      throw Exception(
-        "/trophonius",
-        reactor::http::StatusCode::Forbidden,
-        "{}");
-    return Server<ForbiddenTrophonius>::_get_trophonius(headers, cookies, parameters, body);
-  }
-};
-
-ELLE_TEST_SCHEDULED(trophonius_forbidden)
-{
-  auto email = "em@il.com";
-  auto password = "secret";
-  auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
-  auto user_id = random_uuid();
-  cryptography::KeyPair keys =
-    cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
-                                    papier::Identity::keypair_length);
-  auto identity = generate_identity(
-    keys, boost::lexical_cast<std::string>(user_id), "my identity", password_hash);
-  auto device_id = random_uuid();
-  ForbiddenTrophoniusMeta server(identity, device_id);
-  std::string download_dir =
-    elle::os::path::join(elle::system::home_directory().string(), "Downloads");
-  surface::gap::State state("http",
-                            "127.0.0.1",
-                            server.port(),
-                            device_id,
-                            fingerprint,
-                            download_dir);
-  reactor::Signal reconnected;
-  auto tropho = elle::make_unique<infinit::oracles::trophonius::Client>(
-    [&] (infinit::oracles::trophonius::ConnectionState connected)
-    {
-      ELLE_LOG("Received update: %s", connected.connected);
-      if (!connected.connected)
-        server.session_id(random_uuid());
-      else
-        reconnected.signal();
-    },
-    std::bind(&surface::gap::State::on_reconnection_failed, &state),
-    fingerprint);
-  tropho->ping_period(500_ms);
-  tropho->reconnection_cooldown(0_sec);
-  ELLE_LOG("Logging in...");
-  state.login(email, password, std::move(tropho));
-  ELLE_LOG("Logged in, waiting for reconnected");
-  reactor::wait(reconnected);
-}
-
-/*-------------------.
-| Trophonius Timeout |
-`-------------------*/
-
-// Ensure that if the Trophonius connection stalls after the poke that it is
-// timed out.
-
-class TimeoutTrophonius
-  : public Trophonius
-{
-public:
-  TimeoutTrophonius()
-    : Trophonius()
-  {}
-
-protected:
-  virtual
-  void
-  _serve(std::unique_ptr<reactor::network::SSLSocket> socket) override
-  {
-    socket->write("{\"poke\": \"ouch\"}\n");
-    reactor::sleep(1_sec);
-    socket->write("{\"notification_type\": -666, \"response_code\": 200, \"response_details\": \"details\"}\n");
-    auto connect_data = elle::json::read(*socket);
-    try
-    {
-      while (true)
-        socket->read_until("\n");
-    }
-    catch (reactor::network::ConnectionClosed const&)
-    {}
-  }
-};
-
-class TimeoutTrophoniusMeta:
-  public Server<TimeoutTrophonius>
-{
-public:
-  TimeoutTrophoniusMeta(papier::Identity identity,
-                          boost::uuids::uuid device_id)
-    : Server<TimeoutTrophonius>(identity, device_id)
-  {}
-};
-
-ELLE_TEST_SCHEDULED(trophonius_timeout)
-{
-  auto email = "em@il.com";
-  auto password = "secret";
-  auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
-  auto user_id = random_uuid();
-  cryptography::KeyPair keys =
-    cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
-                                    papier::Identity::keypair_length);
-  auto identity = generate_identity(
-    keys, boost::lexical_cast<std::string>(user_id), "my identity", password_hash);
-  auto device_id = random_uuid();
-  TimeoutTrophoniusMeta server(identity, device_id);
-  std::string download_dir =
-    elle::os::path::join(elle::system::home_directory().string(), "Downloads");
-  surface::gap::State state("http",
-                            "127.0.0.1",
-                            server.port(),
-                            device_id,
-                            fingerprint,
-                            download_dir);
-  auto tropho = elle::make_unique<infinit::oracles::trophonius::Client>(
-    [&] (infinit::oracles::trophonius::ConnectionState connected) {},
-    std::bind(&surface::gap::State::on_reconnection_failed, &state),
-    fingerprint, 500_ms);
-  auto trophoPtr = tropho.get();
-  state.reconnection_cooldown(100_ms);
-  tropho->connect_timeout(100_ms);
-  reactor::Thread thread("fix_login", [&]
-    {
-      reactor::sleep(2_sec);
-      trophoPtr->connect_timeout(1_min);
-    });
-  BOOST_CHECK_NO_THROW(state.login(email, password, std::move(tropho)));
-  BOOST_CHECK_EQUAL(state.logged_in(), true);
-}
-
-ELLE_TEST_SUITE()
-{
-  auto& suite = boost::unit_test::framework::master_test_suite();
-  suite.add(BOOST_TEST_CASE(login), 0, 20);
-  suite.add(BOOST_TEST_CASE(login_failure), 0, 20);
-  suite.add(BOOST_TEST_CASE(trophonius_forbidden), 0, 20);
-  suite.add(BOOST_TEST_CASE(trophonius_timeout), 0, 10);
-}
-
-const std::vector<unsigned char> fingerprint =
-{
-  0x66, 0x84, 0x68, 0xEB, 0xBE, 0x83, 0xA0, 0x5C, 0x6A, 0x32,
-  0xAD, 0xD2, 0x58, 0x62, 0x01, 0x31, 0x79, 0x96, 0x78, 0xB8
-};
 
 const std::vector<char> server_certificate =
 {

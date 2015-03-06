@@ -2,8 +2,10 @@
 
 import socket
 import json
+import requests
 
 import bson
+import bson.json_util
 import re
 import os
 import sys
@@ -20,6 +22,11 @@ for name, value in notifications.items():
   globals()[name.upper()] = value
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Notifier'
+
+# FIXME: Use real API key for production
+# This value should ideally be acquired with env vars
+API_KEY = 'AIzaSyDUsENEk75dKRuhhpMWFzPT-JgwaqWM7c8'
+GCM_URL = 'https://android.googleapis.com/gcm/send'
 
 # FIXME: the notifier is not supposed to be the guy that search the
 # database for devices trophoniuses and push token. It's supposed to
@@ -80,6 +87,7 @@ class Notifier:
             'devices.id': True,
             'devices.trophonius': True,
             'devices.push_token': True,
+            'devices.os' : True,
           }
       ):
         if 'devices' not in user:
@@ -96,6 +104,7 @@ class Notifier:
               user['_id'],
               tropho,
               push,
+              device.get('os'),
             ))
       elle.log.debug('targets: %s' % targets)
       # Fetch involved trophoniuses
@@ -117,20 +126,21 @@ class Notifier:
       # Freezing slow.
       notification = {'notification': jsonify(message)}
       elle.log.dump('notification: %s' % notification)
-      for device, owner, tropho, push in targets:
+      for device, owner, tropho, push, os in targets:
         with elle.log.debug(
             'send notifications to %s (tropho: %s, push: %s)' %
             (device, tropho, push)):
           if push is not None:
             try:
-              pl = self.ios_notification(notification_type,
-                                         device,
-                                         owner,
-                                         message)
+              pl = self.prepare_notification(notification_type,
+                                             device,
+                                             owner,
+                                             message,
+                                             os)
               if pl is not None:
                 with elle.log.debug(
                     'push notification to: %s' % push):
-                  self.push_notification(owner, push, pl)
+                  self.push_notification(owner, push, pl, os)
               else:
                 elle.log.debug('skip push notification for %s' % push)
 
@@ -160,17 +170,29 @@ class Notifier:
             finally:
               s.close()
 
-  def push_notification(self, recipient_id, token, payload):
-    if self.__apns is None:
-      cert = conf.INFINIT_APS_CERT_PATH_PRODUCTION \
-             if self.__production else conf.INFINIT_APS_CERT_PATH
-      self.__apns = apns.APNs(
-        use_sandbox = not self.__production,
-        cert_file = cert)
-    self.__apns.gateway_server.send_notification(token, payload)
+  def push_notification(self, recipient_id, token, payload, os):
+    if os == 'iOS':
+      if self.__apns is None:
+        cert = conf.INFINIT_APS_CERT_PATH_PRODUCTION \
+               if self.__production else conf.INFINIT_APS_CERT_PATH
+        self.__apns = apns.APNs(
+          use_sandbox = not self.__production,
+          cert_file = cert)
+      self.__apns.gateway_server.send_notification(token, payload)
+    elif os == 'Android':
+      headers = {
+          'Authorization' : 'key=%s' % API_KEY,
+          'Content-Type' : 'application/json',
+          }
+      data = {
+          'registration_ids' : [token],
+          'data' : payload,
+          }
+      r = requests.post(GCM_URL, headers=headers, data=bson.json_util.dumps(data))
+      elle.log.trace('Android notification: %s' % r.content)
 
 
-  def ios_notification(self, notification_type, device, owner, message):
+  def prepare_notification(self, notification_type, device, owner, message, os):
     if notification_type is not PEER_TRANSACTION:
       return None
     sender_id = str(message['sender_id'])
@@ -213,7 +235,12 @@ class Notifier:
         alert = 'Transfer received by %s' % message['recipient_fullname']
     if alert is None:
       return None
-    return apns.Payload(alert = alert,
-                        badge = badge,
-                        sound = sound,
-                        content_available = content_available)
+    if os == 'iOS':
+      return apns.Payload(alert = alert,
+                          badge = badge,
+                          sound = sound,
+                          content_available = content_available)
+    elif os == 'Android':
+        return { 'title' : 'Infinit', 'message' : alert }
+    else:
+      return None

@@ -21,6 +21,7 @@
 # include <elle/json/json.hh>
 # include <elle/log.hh>
 # include <elle/serialization/fwd.hh>
+# include <elle/serialization/json.hh>
 # include <elle/serialization/Serializer.hh>
 
 # include <aws/Credentials.hh>
@@ -151,12 +152,16 @@ namespace infinit
         void
         serialize(elle::serialization::Serializer& s);
         std::string identity;
-        std::string email;
+        boost::optional<std::string> email;
+        boost::optional<std::string> facebook_id;
         int remaining_invitations;
         std::string token_generation_key;
         // std::list<boost::uuids::uuid> devices;
         std::list<std::string> devices;
         std::list<std::string> favorites;
+
+        std::string
+        identifier() const;
       };
 
       struct Device
@@ -377,10 +382,24 @@ namespace infinit
         boost::random::mt19937 mutable _rng;
 
       public:
+        typedef std::pair<std::string, std::string> EmailPasswordPair;
+        typedef std::string FacebookToken;
+      private:
+        typedef std::function<void (elle::serialization::json::SerializerOut&)>
+          ParametersUpdater;
+        LoginResponse
+        _login(ParametersUpdater parameters_updater,
+               boost::uuids::uuid const& device_uuid);
+      public:
         LoginResponse
         login(std::string const& email,
               std::string const& password,
               boost::uuids::uuid const& device_uuid);
+
+        LoginResponse
+        facebook_connect(std::string const& token,
+                         boost::uuids::uuid const& device_uuid,
+                         boost::optional<std::string> preferred_email = boost::none);
 
         void
         logout();

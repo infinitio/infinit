@@ -1,5 +1,3 @@
-#include <boost/uuid/random_generator.hpp>
-
 #include <elle/filesystem/TemporaryFile.hh>
 #include <elle/log.hh>
 #include <elle/test.hh>
@@ -11,22 +9,10 @@
 
 ELLE_LOG_COMPONENT("surface.gap.State.test");
 
-static
-void
-synchronize(Server& server, surface::gap::State& state)
-{
-  elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
-  {
-    scope.run_background("reseter", [&] { reactor::sleep(300_ms); server.trophonius.disconnect_all_users(); });
-    scope.run_background("synchronized", [&] { reactor::wait(state.synchronized()); });
-    scope.wait();
-  };
-}
-
 ELLE_TEST_SCHEDULED(links)
 {
-  Server server;
-  Server::Client sender(server, "sender@infinit.io");
+  tests::Server server;
+  tests::Client sender(server, "sender@infinit.io");
   sender.login();
   ELLE_ASSERT_EQ(sender.state.transactions().size(), 0);
   elle::filesystem::TemporaryFile transfered("filename");
@@ -54,11 +40,11 @@ ELLE_TEST_SCHEDULED(links)
       break;
     reactor::yield();
   }
-  ELLE_ASSERT_EQ(sender.user.links.begin()->status, oracles::Transaction::Status::finished);
+  ELLE_ASSERT_EQ(sender.user.links.begin()->second.status, oracles::Transaction::Status::finished);
 
-  sender.user.links.begin()->status =  oracles::Transaction::Status::canceled;
+  sender.user.links.begin()->second.status =  oracles::Transaction::Status::canceled;
   // Disconnect trophonius.
-  synchronize(server, sender.state);
+  sender.state.synchronize();
   // At this stage, state should have resynchronization
   ELLE_ASSERT_EQ(sender.state.transactions().begin()->second->data()->status,
                  oracles::Transaction::Status::canceled);
@@ -66,8 +52,8 @@ ELLE_TEST_SCHEDULED(links)
 
 ELLE_TEST_SCHEDULED(links_another_device)
 {
-  Server server;
-  Server::Client sender(server, "sender@infinit.io");
+  tests::Server server;
+  tests::Client sender(server, "sender@infinit.io");
   sender.login();
 
   elle::filesystem::TemporaryFile transfered("filename");
@@ -83,24 +69,22 @@ ELLE_TEST_SCHEDULED(links_another_device)
 
   infinit::oracles::LinkTransaction t;
   t.click_count = 3;
-  t.id = boost::lexical_cast<std::string>(boost::uuids::random_generator()());
+  t.id = boost::lexical_cast<std::string>(random_uuid());
   t.ctime = 2173213;
   t.sender_id = boost::lexical_cast<std::string>(sender.user.id());
-  t.sender_device_id = boost::lexical_cast<std::string>(sender.user.device_id()) + "other";
+  t.sender_device_id = boost::lexical_cast<std::string>(sender.device_id) + "other";
   t.status = infinit::oracles::Transaction::Status::initialized;
-  sender.user.links.push_back(t);
+  sender.user.links[t.id] = t;
 
   // Disconnect trophonius.
-  synchronize(server, sender.state);
+  sender.state.synchronize();
 
   ELLE_ASSERT_EQ(sender.state.transactions().begin()->second->data()->status,
                  oracles::Transaction::Status::initialized);
 
-  t.status = infinit::oracles::Transaction::Status::finished;
-  sender.user.links.clear();
-  sender.user.links.push_back(t);
+  sender.user.links[t.id].status = infinit::oracles::Transaction::Status::finished;
 
-  synchronize(server, sender.state);
+  sender.state.synchronize();
 
   ELLE_ASSERT_EQ(sender.state.transactions().begin()->second->data()->status,
                  oracles::Transaction::Status::finished);
@@ -108,10 +92,10 @@ ELLE_TEST_SCHEDULED(links_another_device)
 
 ELLE_TEST_SCHEDULED(swaggers)
 {
-  Server server;
-  Server::Client bob(server, "bob@infinit.io");
-  Server::Client alice(server, "alice@infinit.io");
-  Server::Client eve(server, "eve@infinit.io");
+  tests::Server server;
+  tests::Client bob(server, "bob@infinit.io");
+  tests::Client alice(server, "alice@infinit.io");
+  tests::Client eve(server, "eve@infinit.io");
 
   alice.user.swaggers.insert(&bob.user);
   bob.user.swaggers.insert(&alice.user);
@@ -134,15 +118,13 @@ ELLE_TEST_SCHEDULED(swaggers)
       step1 = notif.status;
     }
   });
-  synchronize(server, bob.state);
+  bob.state.synchronize();
   bob.state.poll();
   ELLE_ASSERT(step0); // Nothing should have changed.
   ELLE_ASSERT(!step1); // Eve is a swagger but not online.
-  for (auto const& user: server.users().get<0>())
-    ELLE_WARN("%s", *user);
   ELLE_ASSERT_EQ(bob.state.swaggers().size(), 2);
   eve.login();
-  synchronize(server, bob.state);
+  bob.state.synchronize();
   bob.state.poll();
   ELLE_ASSERT(!step0); // It should be valid now.
   ELLE_ASSERT(step1); // It should be valid now.
@@ -152,24 +134,21 @@ ELLE_TEST_SCHEDULED(swaggers)
   // when playing with real states. I'll use some random device ids to check
   // behaviours.
   bob.user.connected_devices.clear();
-  bob.user.connected_devices.insert(boost::uuids::random_generator()());
-  bob.user.connected_devices.insert(boost::uuids::random_generator()());
+  bob.user.connected_devices.insert(random_uuid());
+  bob.user.connected_devices.insert(random_uuid());
 
-  bool step2 = false;
+  int step2 = 0;
   alice.state.attach_callback<surface::gap::State::UserStatusNotification>([&] (surface::gap::State::UserStatusNotification notif)
   {
-    if (step2) return;
-
-    ELLE_ERR("%s", notif.id);
     auto it = alice.state.users().find(notif.id);
     if (it->second.id == boost::lexical_cast<std::string>(bob.user.id()))
     {
-      step2 = notif.status;
+      step2 += notif.status;
     }
   });
-  synchronize(server, alice.state);
+  alice.state.synchronize();
   alice.state.poll();
-  ELLE_ASSERT(step2);
+  ELLE_ASSERT_EQ(step2, 2);
 
   bob.user.connected_devices.clear();
   bob.logout();
@@ -184,8 +163,7 @@ ELLE_TEST_SCHEDULED(swaggers)
     }
   });
 
-  synchronize(server, alice.state);
-
+  alice.state.synchronize();
   alice.state.poll();
   ELLE_ASSERT(step3);
 }

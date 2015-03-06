@@ -249,6 +249,15 @@ namespace infinit
     }
 
     void
+    CompositeReporter::_facebook_connect(bool success, std::string const& info)
+    {
+      this->_dispatch(std::bind(&Reporter::_facebook_connect,
+                                std::placeholders::_1,
+                                success,
+                                info));
+    }
+
+    void
     CompositeReporter::_user_logout(bool success, std::string const& info)
     {
       this->_dispatch(std::bind(&Reporter::_user_logout,
