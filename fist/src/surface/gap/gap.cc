@@ -1,26 +1,4 @@
 #include <surface/gap/gap.hh>
-#include <surface/gap/gap_bridge.hh>
-#include <surface/gap/State.hh>
-#include <surface/gap/Transaction.hh>
-#include <surface/gap/onboarding/Transaction.hh>
-
-#include <infinit/oracles/meta/Client.hh>
-
-#include <common/common.hh>
-
-#include <elle/log.hh>
-#include <elle/elle.hh>
-#include <elle/assert.hh>
-#include <elle/finally.hh>
-#include <elle/HttpClient.hh>
-#include <elle/container/list.hh>
-#include <CrashReporter.hh>
-
-#include <reactor/scheduler.hh>
-#include <reactor/thread.hh>
-#include <reactor/network/proxy.hh>
-
-#include <boost/range/join.hpp>
 
 #include <algorithm>
 #include <cassert>
@@ -30,6 +8,29 @@
 #include <memory>
 #include <string.h>
 #include <unordered_set>
+
+#include <boost/range/join.hpp>
+
+#include <common/common.hh>
+
+#include <CrashReporter.hh>
+#include <elle/assert.hh>
+#include <elle/container/list.hh>
+#include <elle/elle.hh>
+#include <elle/finally.hh>
+#include <elle/HttpClient.hh>
+#include <elle/log.hh>
+
+#include <reactor/network/proxy.hh>
+#include <reactor/scheduler.hh>
+#include <reactor/thread.hh>
+
+#include <infinit/oracles/meta/Client.hh>
+
+#include <surface/gap/gap_bridge.hh>
+#include <surface/gap/onboarding/Transaction.hh>
+#include <surface/gap/State.hh>
+#include <surface/gap/Transaction.hh>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap");
 
@@ -321,6 +322,25 @@ gap_poll(gap_State* state)
 }
 
 /// - Device --------------------------------------------------------------
+
+gap_Status
+gap_devices(gap_State* state, std::vector<surface::gap::Device>& devices)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "devices",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      for (auto const& device_: state.devices())
+      {
+        devices.push_back(
+          surface::gap::Device(device_.id, device_.name, device_.os));
+      }
+      return gap_ok;
+    });
+}
+
 gap_Status
 gap_device_status(gap_State* state)
 {

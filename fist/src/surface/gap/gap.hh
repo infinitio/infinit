@@ -8,6 +8,7 @@
 /// Used by the iOS application.
 # include <infinit/oracles/TransactionStatuses.hh>
 
+# include <surface/gap/Device.hh>
 # include <surface/gap/enums.hh>
 # include <surface/gap/LinkTransaction.hh>
 # include <surface/gap/PeerTransaction.hh>
@@ -158,6 +159,10 @@ gap_transaction_concern_device(gap_State* state,
 /// Poll
 gap_Status
 gap_poll(gap_State* state);
+
+/// Fetch a list of user's devices.
+gap_Status
+gap_devices(gap_State* state, std::vector<surface::gap::Device>& devices);
 
 /// Returns the local device status.
 gap_Status
