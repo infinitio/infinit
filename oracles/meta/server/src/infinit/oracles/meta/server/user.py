@@ -26,7 +26,7 @@ import time
 import unicodedata
 
 
-code_alphabet = '123467890abcdefghilklmnopqrstuvwxyz'
+code_alphabet = '2346789abcdefghilkmnpqrstuvwxyz'
 code_length = 5
 
 #
