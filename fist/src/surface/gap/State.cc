@@ -72,7 +72,7 @@ namespace surface
           "reactor.network.upnp:DEBUG,"
           "station.Station:DEBUG,"
           "surface.gap.*:TRACE,"
-          "surface.gap.TransferMachine:DEBUG,"
+          "surface.gap.*Machine:DEBUG,"
           "*trophonius*:DEBUG";
         bool display_type = true;
         bool enable_pid = false;
