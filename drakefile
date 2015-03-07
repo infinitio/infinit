@@ -506,6 +506,7 @@ def configure(cxx_toolkit = None,
   )
 
   raw_gap_sources = [
+    'fist/src/surface/gap/Device.cc',
     'fist/src/surface/gap/Device.hh',
     'fist/src/surface/gap/Exception.hh',
     'fist/src/surface/gap/Error.hh',
