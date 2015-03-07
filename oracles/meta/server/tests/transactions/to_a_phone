@@ -65,3 +65,27 @@ with Meta() as meta:
   assert(len(bob.transactions) == 1)
   bob.post('ghost/%s/merge' % recipientplus['ghost_code'])
   assert(len(bob.transactions) == 2)
+
+# GHOST UPLOADED.
+with Meta() as meta:
+  alice = User(meta, "alice@infinit.io")
+  alice.login()
+
+  ti1 = alice.sendfile(recipient = '+33600000000', use_identifier = True)[1]['created_transaction_id']
+  assert meta.database.users.count() == 2
+  ti2 = alice.sendfile(recipient = '0600000000', use_identifier = True)[1]['created_transaction_id']
+  assert meta.database.users.count() == 3
+  assert meta.database.users.find_one(
+    {'accounts.id': '+33600000000'})
+  assert meta.database.users.find_one(
+    {'accounts.id': '0600000000'})
+  recipientplus = meta.database.users.find_one(
+    {'accounts.id': '+33600000000'})
+  recipient = meta.database.users.find_one(
+    {'accounts.id': '0600000000'})
+  assert recipient['_id'] != recipientplus['_id']
+  assert recipient['ghost_code'] != recipientplus['ghost_code']
+  alice.transaction_update(ti1, transaction_status.INITIALIZED)
+  alice.transaction_update(ti2, transaction_status.INITIALIZED)
+  alice.transaction_update(ti1, transaction_status.GHOST_UPLOADED)
+  alice.transaction_update(ti2, transaction_status.GHOST_UPLOADED)

@@ -810,8 +810,8 @@ class Mixin:
       })
     elle.log.log('Peer status: %s' % recipient['register_status'])
     elle.log.log('transaction: %s' % transaction.keys())
-    if transaction.get('is_ghost', False):
-      peer_email = recipient['email']
+    peer_email = recipient.get('email', '')
+    if transaction.get('is_ghost', False) and peer_email:
       transaction_id = transaction['_id']
       elle.log.trace("send invitation to new user %s for transaction %s" % (
         peer_email, transaction_id))
@@ -846,7 +846,7 @@ class Mixin:
         mail_template = recipient['features']['send_file_url_template']
       merges = {
         'filename': transaction['files'][0],
-        'recipient_email': recipient['email'],
+        'recipient_email': peer_email,
         'recipient_name': recipient['fullname'],
         'sendername': user['fullname'],
         'sender_email': user['email'],
