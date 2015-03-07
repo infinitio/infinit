@@ -1197,6 +1197,15 @@ namespace surface
       }
     }
 
+    /*--------.
+    | Devices |
+    `--------*/
+    std::vector<State::Device>
+    State::devices() const
+    {
+      return this->meta().devices();
+    }
+
     /*--------------.
     | Configuration |
     `--------------*/

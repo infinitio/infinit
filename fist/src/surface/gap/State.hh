@@ -29,7 +29,6 @@
 # include <infinit/oracles/Transaction.hh>
 # include <infinit/oracles/trophonius/fwd.hh>
 
-# include <surface/gap/Device.hh>
 # include <surface/gap/Exception.hh>
 # include <surface/gap/gap.hh>
 # include <surface/gap/Notification.hh>
@@ -361,14 +360,16 @@ namespace surface
       /*--------.
       | Papiers |
       `--------*/
+    public:
+      typedef infinit::oracles::meta::Device Device;
+      /// Get the remote device informations.
+      Device const&
+      device() const;
+
     private:
       ELLE_ATTRIBUTE_R(boost::uuids::uuid, device_uuid);
       ELLE_ATTRIBUTE_P(std::unique_ptr<Device>, device, mutable);
       ELLE_ATTRIBUTE_P(reactor::Mutex, device_mutex, mutable);
-    public:
-      /// Get the remote device informations.
-      Device const&
-      device() const;
 
       ELLE_ATTRIBUTE_P(std::unique_ptr<papier::Passport>, passport, mutable);
       ELLE_ATTRIBUTE_P(reactor::Mutex, passport_mutex, mutable);
@@ -395,6 +396,14 @@ namespace surface
       void
       change_password(std::string const& old_password,
                       std::string const& new_password);
+
+      /*--------.
+      | Devices |
+      `--------*/
+    public:
+      std::vector<Device>
+      devices() const;
+
       // Could be factorized.
       /*------.
       | Users |
