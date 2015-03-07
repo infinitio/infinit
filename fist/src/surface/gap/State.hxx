@@ -1,6 +1,8 @@
 #ifndef SURFACE_GAP_STATE_HXX
 # define SURFACE_GAP_STATE_HXX
 
+# include <elle/log.hh>
+
 namespace surface
 {
   namespace gap
@@ -16,6 +18,9 @@ namespace surface
     void
     State::Runner<T>::operator () () const
     {
+      ELLE_LOG_COMPONENT("infinit.surface.gap.Runner");
+      ELLE_DUMP("%s: run callback: %s", *this,
+                elle::demangle(typeid(this->_notification).name()));
       this->_cb(this->_notification);
     }
 
