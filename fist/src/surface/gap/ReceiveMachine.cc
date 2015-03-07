@@ -24,7 +24,7 @@ namespace surface
                                          this)))
       , _accept_state(
         this->_machine.state_make(
-          "accept", std::bind(&ReceiveMachine::_accept, this)))
+          "accept", [this] { this->_accept(); }))
       , _accepted("accepted")
       , _accepted_elsewhere("accepted elsewhere")
     {
