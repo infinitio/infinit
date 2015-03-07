@@ -6,7 +6,6 @@
 # include <string>
 
 # include <elle/UUID.hh>
-# include <elle/Printable.hh>
 
 # include <infinit/oracles/PeerTransaction.hh>
 
