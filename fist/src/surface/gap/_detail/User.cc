@@ -99,9 +99,23 @@ namespace surface
         ELLE_ASSERT_NEQ(id, 0u);
         this->_users.at(id) = user;
       }
+      auto const& synced_user = this->_users.at(id);
+
+      surface::gap::User notification(
+        id,
+        user.online(),
+        user.fullname,
+        user.handle,
+        user.id,
+        this->is_swagger(id),
+        user.deleted(),
+        user.ghost(),
+        user.ghost_code,
+        user.ghost_profile_url);
+      this->enqueue(notification);
 
       ELLE_ASSERT_NEQ(id, 0u);
-      return this->_users.at(id);
+      return synced_user;
     }
 
     State::User const&
