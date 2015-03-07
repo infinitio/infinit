@@ -4,6 +4,8 @@
 # include <stdint.h>
 # include <string>
 
+# include <boost/optional.hpp>
+
 # include <elle/Printable.hh>
 
 # include <surface/gap/enums.hh>
@@ -16,8 +18,7 @@ namespace surface
     /// This class translates transactions so that headers aren't leaked into
     /// the GUI.
     class User
-      : public elle::Printable
-      , public surface::gap::Notification
+      : public surface::gap::Notification
     {
     public:
       User() = default;
@@ -28,7 +29,9 @@ namespace surface
            std::string const& meta_id,
            bool swagger,
            bool deleted,
-           bool ghost);
+           bool ghost,
+           boost::optional<std::string> ghost_code = {},
+           boost::optional<std::string> ghost_invitation_url = {});
       ~User() noexcept(true);
 
       uint32_t id;
@@ -39,6 +42,9 @@ namespace surface
       bool swagger;
       bool deleted;
       bool ghost;
+      std::string ghost_code;
+      std::string ghost_invitation_url;
+
 
       static Notification::Type type;
 

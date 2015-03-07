@@ -78,5 +78,12 @@ namespace infinit
     TransactionFinalized::TransactionFinalized()
       : Error("transaction is already finalized")
     {}
+
+    /*--------------.
+    | Merge account |
+    `--------------*/
+    InvalidGhostCode::InvalidGhostCode()
+      : Error("code is invalid")
+    {}
   }
 }

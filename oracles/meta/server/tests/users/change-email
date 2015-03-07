@@ -36,7 +36,7 @@ with Meta(enable_emails = True,
   u2 = User(meta, 'jeantest@infinit.io') # User we're going to send a file to.
   u2.login()
   # Make a transaction.
-  txn, res = u.sendfile(recipient_id = u2.id)
+  txn, res = u.sendfile(recipient = u2.id)
   assert res['success']
   txn_id = res['created_transaction_id']
 

@@ -21,8 +21,7 @@ namespace surface
     /// the GUI.
     typedef infinit::oracles::TransactionCanceler TransactionCanceler;
     class PeerTransaction
-      : public elle::Printable
-      , public surface::gap::Notification
+      : public surface::gap::Notification
     {
     public:
       PeerTransaction() = default;

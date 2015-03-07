@@ -4,10 +4,8 @@ from utils import Meta, User
 
 with Meta() as meta:
   bob = User(meta, "bob@infinit.io")
-
   bob.login()
-
-  transaction, res = bob.sendfile(recipient_id = "alice@infinit.io")
+  transaction, res = bob.sendfile(recipient = "alice@infinit.io", use_identifier = False)
   assert res['success']
 
   transaction_id = res['created_transaction_id']

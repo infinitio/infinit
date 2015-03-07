@@ -91,7 +91,11 @@ gap_register(gap_State* state,
              boost::optional<std::string> device_push_token = {});
 
 gap_Status
-gap_new_swagger_callback(
+gap_use_ghost_code(gap_State* state,
+                  std::string const& code);
+
+gap_Status
+gap_update_user_callback(
   gap_State* state,
   std::function<void (surface::gap::User const&)> const& callback);
 

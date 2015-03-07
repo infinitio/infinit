@@ -386,6 +386,8 @@ namespace infinit
         s.serialize("register_status", this->register_status);
         s.serialize("connected_devices", this->connected_devices);
         s.serialize("public_key", this->public_key);
+        s.serialize("ghost_code", this->ghost_code);
+        s.serialize("ghost_profile", this->ghost_profile_url);
       }
 
       LoginResponse::LoginResponse(
@@ -651,6 +653,20 @@ namespace infinit
         return SynchronizeResponse{input};
       }
 
+      void
+      Client::use_ghost_code(std::string const& code) const
+      {
+        std::string url = elle::sprintf("/ghost/%s/merge", code);
+        auto request = this->_request(url, Method::POST);
+        switch (request.status())
+        {
+          case reactor::http::StatusCode::OK:
+            break;
+          default:
+            throw infinit::state::InvalidGhostCode();
+        }
+      }
+
       static
       std::pair<std::string, User>
       email_and_user(boost::any const& json_)
@@ -879,11 +895,13 @@ namespace infinit
         elle::serialization::Serializer& s)
       {
         s.serialize("aws_credentials", this->_aws_credentials);
+        s.serialize("ghost_code", this->_ghost_code);
+        s.serialize("ghost_profile", this->_ghost_profile_url);
       }
 
       CreatePeerTransactionResponse
       Client::create_transaction(
-        std::string const& recipient_id_or_email,
+        std::string const& recipient_identifier,
         std::list<std::string> const& files,
         uint64_t count,
         uint64_t size,
@@ -897,7 +915,7 @@ namespace infinit
         ELLE_TRACE_SCOPE(
           "%s: create peer transaction to %s%s",
           *this,
-          recipient_id_or_email,
+          recipient_identifier,
           recipient_device_id
           ? elle::sprintf(" on device %s", recipient_device_id.get()) : "");
         std::string const url = transaction_id ?
@@ -910,8 +928,8 @@ namespace infinit
           [&] (reactor::http::Request& r)
           {
             elle::serialization::json::SerializerOut query(r, false);
-            query.serialize("id_or_email",
-                            const_cast<std::string&>(recipient_id_or_email));
+            query.serialize("recipient_identifier",
+                            const_cast<std::string&>(recipient_identifier));
             query.serialize("files",
                             const_cast<std::list<std::string>&>(files));
             int64_t count_integral = static_cast<int64_t>(count);
@@ -939,7 +957,7 @@ namespace infinit
         return created_transaction_id;
       }
       std::string
-      Client::create_transaction(std::string const& recipient_id_or_email,
+      Client::create_transaction(std::string const& recipient_identifier,
                                  std::list<std::string> const& files,
                                  uint64_t count,
                                  std::string const& message) const
@@ -947,7 +965,7 @@ namespace infinit
         ELLE_TRACE_SCOPE(
           "%s: create barebones peer transaction to %s",
           *this,
-          recipient_id_or_email);
+          recipient_identifier);
         std::string const url = "/transactions";
         auto method = Method::POST;
         auto request = this->_request(
@@ -956,8 +974,8 @@ namespace infinit
           [&] (reactor::http::Request& r)
           {
             elle::serialization::json::SerializerOut query(r, false);
-            query.serialize("id_or_email",
-                            const_cast<std::string&>(recipient_id_or_email));
+            query.serialize("recipient_identifier",
+                            const_cast<std::string&>(recipient_identifier));
             query.serialize("files",
                             const_cast<std::list<std::string>&>(files));
             int64_t count_integral = static_cast<int64_t>(count);

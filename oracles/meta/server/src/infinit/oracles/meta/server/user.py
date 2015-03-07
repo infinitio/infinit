@@ -15,7 +15,7 @@ import papier
 from .plugins.response import response, Response
 from .utils import api, require_logged_in, require_logged_in_fields, require_admin, require_logged_in_or_admin, hash_password, json_value, require_key, key
 from . import utils
-from . import error, notifier, regexp, conf, invitation, mail
+from . import error, notifier, regexp, conf, invitation, mail, transaction_status
 
 import pymongo
 import pymongo.errors
@@ -24,6 +24,10 @@ import os
 import string
 import time
 import unicodedata
+
+
+code_alphabet = '123467890abcdefghilklmnopqrstuvwxyz'
+code_length = 5
 
 #
 # Users
@@ -187,6 +191,8 @@ class Mixin:
     res = user.get('email')
     if res is None:
       res = user.get('facebook_id')
+    if res is None:
+      res = user.get('fullname')
     assert len(res)
     return res
 
@@ -437,7 +443,7 @@ class Mixin:
       })
     fields = self.__user_self_fields + ['unconfirmed_email_deadline']
     if with_email:
-      email = email.replace(' ', '')
+      email = email.lower().strip()
       with elle.log.trace("%s: web login" % email):
         user = self._login(email, password = password, fields = fields)
     elif with_facebook:
@@ -675,14 +681,17 @@ class Mixin:
         if user['register_status'] == 'ghost':
           for field in ['swaggers', 'features']:
             user_content[field] = user[field]
+          update = {
+            '$set': user_content,
+          }
+          if 'ghost_code' in user:
+            update['$unset'] = {'ghost_code': 1}
           user = self.database.users.find_and_modify(
             query = {
               'accounts.id': email,
               'register_status': 'ghost',
             },
-            update = {
-              '$set': user_content,
-            },
+            update = update,
             new = True,
             upsert = False,
           )
@@ -872,6 +881,135 @@ class Mixin:
     except error.Error as e:
       self.fail(*e.args)
 
+  ## ----- ##
+  ## Ghost ##
+  ## ----- ##
+  def generate_random_sequence(self, alphabet = code_alphabet, length = code_length):
+    """
+    Return a pseudo-random string.
+
+    alphabet -- A list of characters.
+    length -- The size of the wanted random sequence.
+    """
+    import random
+    random.seed()
+    return ''.join(random.choice(alphabet) for _ in range(length))
+
+  def __register_ghost(self,
+                       extra_fields):
+    features = self._roll_features(True)
+    ghost_code = self.generate_random_sequence()
+    request = {
+      'register_status': 'ghost',
+      'notifications': [],
+      'networks': [],
+      'devices': [],
+      'swaggers': {},
+      'features': features,
+      # Ghost code is used for merging mechanism.
+      'ghost_code': ghost_code,
+      'ghost_code_expiration': self.now + datetime.timedelta(days=14),
+    }
+    request.update(extra_fields)
+    user_id = self._register(**request)
+    self.database.users.update(
+      {
+        "_id": user_id
+      },
+      {
+        '$set': {
+          'shorten_ghost_profile_url': self.shorten(
+            self.__ghost_profile_url({'_id': user_id, 'ghost_code': ghost_code}))
+        }
+      })
+    return user_id
+
+  def __ghost_profile_url(self, ghost):
+    """
+    Return the url of the user ghost profile on the website.
+    We have to specify the full url because this url will be shorten by another
+    service (e.g. bitly).
+
+    ghost -- The ghost.
+    """
+    ghost_id = ghost['_id']
+    code = ghost['ghost_code']
+    url = '/ghost/%s' % str(ghost_id)
+    ghost_profile_url = "https://www.infinit.io/" \
+                        "invitation/%(ghost_id)s?key=%(key)s&code=%(code)s" % {
+      'ghost_id': str(ghost_id),
+      'key': key(url),
+      'code': code,
+    }
+    return ghost_profile_url
+
+  @api('/ghost/<code>/merge', method = 'POST')
+  @require_logged_in
+  def merge_ghost(self,
+                  code : str):
+    """
+    Merge a ghost to an existing user account.
+    The code is given (via email, sms) to the recipient.
+
+    code -- The code.
+    """
+    with elle.log.trace("merge ghost with code %s" % code):
+      if len(code) == 0:
+        return self.bad_request({
+          'reason': 'code cannot be empty',
+        })
+      # Because we delete 'ghost_code' from the user, we are not be able to
+      # return a clean 'gone' http status.
+      account = self.database.users.find_one({'ghost_code': code})
+      if account is None:
+        return self.not_found({
+          'reason': 'unknown code : %s' % code,
+          'code': code,
+        })
+      if account['ghost_code_expiration'] < self.now or \
+         account['register_status'] != 'ghost':
+        return self.gone({
+          'reason': 'this user is not accessible anymore',
+          'code': code,
+        })
+      elle.log.debug('account found: %s' % account)
+      self.user_delete(account, merge_with = self.user)
+      return {}
+
+  @api('/ghost/<user_id>', method = 'GET')
+  @require_key
+  def ghost_profile(self,
+                    user_id : bson.ObjectId):
+    """
+    Return the ghost data.
+
+    user_id -- The ghost id.
+    """
+    with elle.log.trace("get ghost page %s" % user_id):
+      account = self.__user_fetch(
+        {'_id': user_id},
+        fields = self.__user_view_fields + ['ghost_code_expiration'])
+      if account is None:
+        return self.not_found({
+          'reason': 'User not found',
+          'id': str(user_id),
+        })
+      if account['register_status'] in ['deleted', 'merged', 'ok']:
+        return self.gone({
+          'reason': 'This user doesn\'t exist anymore',
+          'id': str(user_id),
+        })
+      transactions = list(self.database.transactions.find(
+        {
+          'involved': account['_id'],
+          'status': {'$nin': transaction_status.final + [transaction_status.CREATED] }
+        },
+        fields = self.__transaction_hash_fields
+      ))
+      return {
+        'transactions': transactions
+      }
+
   @api('/user/accounts')
   @require_logged_in
   def accounts(self):
@@ -925,7 +1063,7 @@ class Mixin:
           }
         }
       }
-      user = self.user_by_id_or_email(user, fields = ['_id'])
+      user = self.user_by_id_or_email(user, fields = ['_id', 'accounts'])
       while True:
         try:
           self.database.users.update(
@@ -952,24 +1090,6 @@ class Mixin:
               'email': name,
             })
           if status in ['ghost', 'deleted']:
-            swaggers = previous.get('swaggers', {})
-            # Increase swaggers swag for self
-            update.update({
-              '$inc':
-              {
-                'swaggers.%s' % id: swaggers[id] for id in swaggers
-              }
-            })
-            # Increase self swag for swaggers
-            for swagger, amount in swaggers.items():
-              self.database.users.update(
-                {'_id': swagger},
-                {'$inc': {'swaggers.%s' % user['_id']: amount}})
-              self.notifier.notify_some(
-                notifier.NEW_SWAGGER,
-                message = {'user_id': swagger},
-                recipient_ids = {user['_id']},
-              )
             self.user_delete(previous, merge_with = user)
             continue
       return {}
@@ -1271,9 +1391,24 @@ class Mixin:
        - Remove user as a favourite for other users.
        - Remove user from mailing lists.
 
+       ==============
+       = merge_with =
+       merge_with argument makes the process transfer elements from the account
+       to delete to the 'merge_with' user, including:
+       - transactions
+       - accounts
+       - swaggers (and update swaggers swagger to add merge_with).
+       Note that merge with only works with ghost because they have no public
+       key, can't be transaction sender and hence the transactions in which
+       they are involved can be modified with no risks.
+
        Considerations:
        - Keep the process as atomic at the DB level as possible.
     """
+    if merge_with and user['register_status'] not in ['ghost', 'deleted']:
+      self.bad_request({
+        'reason': 'Only ghost accounts can be merged'
+      })
     # Invalidate credentials.
     self.remove_session(user)
     # Kick them out of the app.
@@ -1316,19 +1451,56 @@ class Mixin:
     if merge_with is not None:
       cleared_user['register_status'] = 'merged'
       cleared_user['merged_with'] = merge_with['_id']
+      deleted_user_swaggers = user.get('swaggers', {})
+      # XXX: Obvious race condition here.
+      # Accounts fields are unique. If we want to copy user['accounts'] to
+      # merge_with, we need to copy and delete them first, and the add them
+      # to merge_with.
+      # The problem is that during that time lap, someone could send to the
+      # user to be deleted email address, creating a new ghost with accounts
+      # that can conflit in the database.
+      deleted_user_accounts = user.get('accounts', [])
     else:
       cleared_user['register_status'] = 'deleted'
     deleted_user = self.database.users.find_and_modify(
       {'_id': user['_id']},
       {
         '$set': cleared_user,
-        '$unset':
-        {
+        '$unset': {
           'avatar': '',
-          'small_avatar': ''
+          'small_avatar': '',
+          'ghost_code': '',
+          'ghost_code_expiration': '',
+          'shorten_ghost_profile_url': '',
         }
       },
       new = True)
+    if merge_with is not None:
+      # Increase swaggers swag for self
+      update = {
+        '$inc': {
+          'swaggers.%s' % id: deleted_user_swaggers[id] for id in deleted_user_swaggers
+        },
+        '$addToSet': {
+          'accounts': {
+            '$each': deleted_user_accounts,
+          }
+        }
+      }
+      self.database.users.update({'_id': merge_with['_id']}, update)
+      # Increase self swag for swaggers
+      for swagger, amount in deleted_user_swaggers.items():
+        self.database.users.update(
+          {'_id': swagger},
+          {'$inc': {'swaggers.%s' % merge_with['_id']: amount}})
+        self.notifier.notify_some(
+          notifier.NEW_SWAGGER,
+          message = {'user_id': swagger},
+          recipient_ids = {merge_with['_id']},
+        )
+      self.change_transactions_recipient(
+        current_owner = user, new_owner = merge_with)
+      # self.change_links_ownership(user, merge_with)
     self.notifier.notify_some(notifier.DELETED_SWAGGER,
                               recipient_ids = swaggers,
                               message = {'user_id': user['_id']})
@@ -1855,6 +2027,8 @@ class Mixin:
           email: {
             'sendername': user['fullname'],
             'user_id': str(user['_id']),
+            'sender_avatar': 'https://%s/user/%s/avatar' %
+              (bottle.request.urlparts[1], user['_id']),
           }}
       )
       return self.success()

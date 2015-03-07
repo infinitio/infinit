@@ -11,7 +11,9 @@ namespace surface
                std::string const& meta_id_,
                bool swagger_,
                bool deleted_,
-               bool ghost_)
+               bool ghost_,
+               boost::optional<std::string> ghost_code_,
+               boost::optional<std::string> ghost_invitation_url_)
       : id(id_)
       , status(status_)
       , fullname(fullname_)
@@ -20,6 +22,9 @@ namespace surface
       , swagger(swagger_)
       , deleted(deleted_)
       , ghost(ghost_)
+      , ghost_code(ghost_code_ ? ghost_code_.get() : "")
+      , ghost_invitation_url(ghost_invitation_url_ ? ghost_invitation_url_.get()
+                                                   : "")
     {}
 
     User::~User() noexcept(true)

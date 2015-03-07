@@ -777,7 +777,7 @@ namespace tests
     elle::IOStream stream(content.istreambuf());
     elle::serialization::json::SerializerIn input(stream, false);
     std::string recipient_email_or_id;
-    input.serialize("id_or_email", recipient_email_or_id);
+    input.serialize("recipient_identifier", recipient_email_or_id);
     ELLE_LOG("%s: recipient: %s", *this, recipient_email_or_id);
     std::list<std::string> files;
     input.serialize("files", files);

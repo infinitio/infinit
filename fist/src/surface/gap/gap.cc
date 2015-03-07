@@ -261,6 +261,29 @@ gap_register(gap_State* state,
 }
 
 gap_Status
+gap_use_ghost_code(gap_State* state,
+                  std::string const& code)
+{
+  assert(state != nullptr);
+  if (code.empty())
+    return gap_unknown_user;
+  return run<gap_Status>(state,
+                         "use ghost code",
+                         [&] (surface::gap::State& state) -> gap_Status
+    {
+      try
+      {
+        state.meta().use_ghost_code(code);
+      }
+      catch (elle::Error const&)
+      {
+        return gap_unknown_user;
+      }
+      return gap_ok;
+    });
+}
+
+gap_Status
 gap_poll(gap_State* state)
 {
   ELLE_ASSERT(state != nullptr);
@@ -779,10 +802,8 @@ gap_is_favorite(gap_State* state, uint32_t id)
     });
 }
 
-// - Trophonius ----------------------------------------------------------------
-
 gap_Status
-gap_new_swagger_callback(
+gap_update_user_callback(
   gap_State* state,
   std::function<void (surface::gap::User const&)> const& callback)
 {

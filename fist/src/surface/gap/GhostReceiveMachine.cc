@@ -151,6 +151,13 @@ namespace surface
     GhostReceiveMachine::_accept()
     {
       ELLE_TRACE("%s accepting", *this);
+
+      this->state().meta().update_transaction(
+        this->transaction_id(),
+        TransactionStatus::accepted,
+        this->state().device().id,
+        this->state().device().name);
+
       ReceiveMachine::_accept();
     }
 

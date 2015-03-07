@@ -176,9 +176,8 @@ _send_files_by_email(gap_State* state,
   {
     list.push_back(boost::python::extract<std::string>(files[i]));
   }
-  auto id = gap_send_files_by_email(state,
-                                    recipient,
-                                    list, "Sent by command line");
+  auto id = gap_send_files(state, recipient,
+                           list, "Sent by command line");
   return id;
 }
 
