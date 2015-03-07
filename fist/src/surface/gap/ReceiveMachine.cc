@@ -166,11 +166,15 @@ namespace surface
       this->_accepted.open();
     }
 
-    void
+    infinit::oracles::meta::UpdatePeerTransactionResponse
     ReceiveMachine::_accept()
     {
       ELLE_TRACE_SCOPE("%s: accepted %s", *this, this->transaction_id());
-      this->gap_status(gap_transaction_waiting_accept);
+      return this->state().meta().update_transaction(
+        this->transaction_id(),
+        TransactionStatus::accepted,
+        this->state().device().id,
+        this->state().device().name);
     }
 
     void

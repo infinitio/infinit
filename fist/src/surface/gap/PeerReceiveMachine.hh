@@ -65,7 +65,7 @@ namespace surface
 
     private:
       virtual
-      void
+      infinit::oracles::meta::UpdatePeerTransactionResponse
       _accept() override;
       void
       _transfer_operation(frete::RPCFrete& frete) override;

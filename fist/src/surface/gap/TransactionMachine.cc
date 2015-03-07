@@ -463,14 +463,8 @@ namespace surface
         }
         catch (infinit::oracles::meta::Exception const& e)
         {
-          using infinit::oracles::meta::Error;
-          if (e.err == Error::transaction_already_finalized)
-            ELLE_TRACE("%s: transaction already finalized", *this);
-          else if (e.err == Error::transaction_already_has_this_status)
-            ELLE_TRACE("%s: transaction already in this state", *this);
-          else
-            ELLE_ERR("%s: unable to finalize the transaction %s: %s",
-                     *this, this->transaction_id(), elle::exception_string());
+          ELLE_ERR("%s: unable to finalize the transaction %s: %s",
+                   *this, this->transaction_id(), elle::exception_string());
         }
         catch (elle::Error const&)
         {

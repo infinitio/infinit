@@ -32,7 +32,7 @@ namespace surface
       accept(boost::optional<std::string const&> output_dir = {}) override;
 
       virtual
-      void
+      infinit::oracles::meta::UpdatePeerTransactionResponse
       _accept() override;
       virtual
       void

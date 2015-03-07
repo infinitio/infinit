@@ -21,13 +21,10 @@ errors = {
 
   # Transaction
   'file_name_empty': (-40000, "The name is null."),
-  'transaction_already_finalized': (-50006, "This operation has already been finalized"),
-  'transaction_already_has_this_status': (-50007, "This operation has already been done."),
   'transaction_cant_be_accepted': (-50004, "You can't accept this transaction."),
   'transaction_doesnt_belong_to_you': (-50002, "This transaction doesn't belong to you."),
   'transaction_doesnt_exist': (-50001, "This transaction doesn't exists."),
   'transaction_id_not_valid': (-219, "This transaction id is not valid."),
-  'transaction_operation_not_permitted': (-50003, "This operation is not permited with this transaction."),
 
   # User
   'already_logged_in': (-102, "You are already logged in."),
