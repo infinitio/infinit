@@ -1009,45 +1009,31 @@ namespace surface
             ELLE_TRACE("%s: not logged in, aborting", *this);
             return;
           }
-
-          try
+          // Link with tropho might have changed.
+          if (!first_connection)
           {
-            // Link with tropho might have changed.
-            if (!first_connection)
-            {
-              ELLE_TRACE("reset transactions")
-                for (auto& t: this->_transactions)
-                {
-                  if (!t.second->final())
-                    t.second->reset();
-                  else
-                    ELLE_DEBUG("ignore finalized transaction %s", t.second);
-                }
-             this->_synchronize_response.reset(
-               new infinit::oracles::meta::SynchronizeResponse{this->meta().synchronize(false)});
-            }
+            ELLE_TRACE("reset transactions")
+              for (auto& t: this->_transactions)
+              {
+                if (!t.second->final())
+                  t.second->reset();
+                else
+                  ELLE_DEBUG("ignore finalized transaction %s", t.second);
+              }
+           this->_synchronize_response.reset(
+             new infinit::oracles::meta::SynchronizeResponse{this->meta().synchronize(false)});
+          }
 
-            this->_user_resync(this->_synchronize_response->swaggers);
-            this->_peer_transaction_resync(
-              this->_synchronize_response->transactions, first_connection);
-            this->_link_transaction_resync(
-              this->_synchronize_response->links, first_connection);
+          this->_user_resync(this->_synchronize_response->swaggers);
+          this->_peer_transaction_resync(
+            this->_synchronize_response->transactions, first_connection);
+          this->_link_transaction_resync(
+            this->_synchronize_response->links, first_connection);
 
-            resynched = true;
-            ELLE_TRACE("Opening logged_in barrier");
-            this->_logged_in.open();
-            this->_synchronized.signal();
-          }
-          catch (reactor::Terminate const&)
-          {
-            throw;
-          }
-          catch (elle::Exception const&)
-          {
-            ELLE_WARN("%s: failed at resynching (%s). Retrying...",
-                      *this, elle::exception_string());
-            reactor::sleep(1_sec);
-          }
+          resynched = true;
+          ELLE_TRACE("Opening logged_in barrier");
+          this->_logged_in.open();
+          this->_synchronized.signal();
         }
         while (!resynched);
       }

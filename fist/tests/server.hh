@@ -103,10 +103,10 @@ namespace tests
     bmi::const_mem_fun<Transaction, std::string const&, &Transaction::id_getter>
     TransactionId;
     typedef boost::multi_index_container<
-      std::unique_ptr<Transaction>,
+      std::shared_ptr<Transaction>,
       bmi::indexed_by<bmi::hashed_unique<TransactionId>>
       > Transactions;
-    ELLE_ATTRIBUTE_R(Transactions, transactions);
+    ELLE_ATTRIBUTE_RX(Transactions, transactions);
     ELLE_ATTRIBUTE_R(bool, cloud_buffered);
   };
 }

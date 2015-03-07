@@ -634,6 +634,7 @@ def configure(cxx_toolkit = None,
   gap_tests_cxx_config.lib_path_runtime('../../lib')
   for name in ('state',
                'cloud-buffer',
+               'ghost-download',
                'ghost-invite',
                'resynchronization',
                'snapshot-resume',

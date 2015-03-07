@@ -166,7 +166,7 @@ namespace surface
         url = peer_data->download_link.get();
       else
       {
-        ELLE_WARN("%s: empty url, re-fetching transaction from meta");
+        ELLE_WARN("%s: empty url, re-fetching transaction from meta", *this);
         State& state = transaction().state();
         infinit::oracles::PeerTransaction pt =
           state.meta().transaction(transaction().data()->id);
