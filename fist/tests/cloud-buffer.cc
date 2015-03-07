@@ -3,7 +3,7 @@
 #include <elle/test.hh>
 
 #include <surface/gap/Exception.hh>
-#include <surface/gap/state.hh>
+#include <surface/gap/State.hh>
 
 #include "server.hh"
 
@@ -19,7 +19,7 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
 
   std::string const recipient_email = "recipient@infinit.io";
   server.register_user("recipient@infinit.io", password);
-  tests::State state(server, random_uuid());
+  tests::State state(server, elle::UUID::random());
   elle::filesystem::TemporaryFile transfered("cloud-buffered");
   {
     boost::filesystem::ofstream f(transfered.path());

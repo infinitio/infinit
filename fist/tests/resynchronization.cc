@@ -3,7 +3,7 @@
 #include <elle/test.hh>
 
 #include <surface/gap/Exception.hh>
-#include <surface/gap/state.hh>
+#include <surface/gap/State.hh>
 
 #include "server.hh"
 
@@ -69,7 +69,7 @@ ELLE_TEST_SCHEDULED(links_another_device)
 
   infinit::oracles::LinkTransaction t;
   t.click_count = 3;
-  t.id = boost::lexical_cast<std::string>(random_uuid());
+  t.id = boost::lexical_cast<std::string>(elle::UUID::random());
   t.ctime = 2173213;
   t.sender_id = boost::lexical_cast<std::string>(sender.user.id());
   t.sender_device_id = boost::lexical_cast<std::string>(sender.device_id) + "other";
@@ -134,8 +134,8 @@ ELLE_TEST_SCHEDULED(swaggers)
   // when playing with real states. I'll use some random device ids to check
   // behaviours.
   bob.user.connected_devices.clear();
-  bob.user.connected_devices.insert(random_uuid());
-  bob.user.connected_devices.insert(random_uuid());
+  bob.user.connected_devices.insert(elle::UUID::random());
+  bob.user.connected_devices.insert(elle::UUID::random());
 
   int step2 = 0;
   alice.state->attach_callback<surface::gap::State::UserStatusNotification>([&] (surface::gap::State::UserStatusNotification notif)

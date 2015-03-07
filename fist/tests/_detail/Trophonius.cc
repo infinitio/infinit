@@ -81,8 +81,8 @@ namespace tests
       }
       if (json.find("user_id") == json.end())
         continue;
-      auto device_id = boost::uuids::string_generator()(boost::any_cast<std::string>(json["device_id"]));
-      auto user_id = boost::uuids::string_generator()(boost::any_cast<std::string>(json["user_id"]));
+      auto device_id = elle::UUID(boost::any_cast<std::string>(json["device_id"]));
+      auto user_id = elle::UUID(boost::any_cast<std::string>(json["user_id"]));
       key = elle::sprintf("%s+%s", user_id, device_id);
     }
     ELLE_LOG("Trophonius, new connection: %s", key);
@@ -99,22 +99,22 @@ namespace tests
   }
 
   std::vector<reactor::network::SSLSocket*>
-  Trophonius::clients(boost::uuids::uuid const& user_id)
+  Trophonius::clients(elle::UUID const& user_id)
   {
     std::vector<reactor::network::SSLSocket*> sockets;
     for (auto& socket: this->_clients)
     {
       std::vector<std::string> strs;
       boost::split(strs, socket.first, boost::is_any_of("+"));
-      if (boost::uuids::string_generator()(strs[0]) == user_id)
+      if (elle::UUID(strs[0]) == user_id)
         sockets.push_back(socket.second.get());
     }
     return sockets;
   }
 
   reactor::network::SSLSocket*
-  Trophonius::socket(boost::uuids::uuid const& user_id,
-                     boost::uuids::uuid const& device_id)
+  Trophonius::socket(elle::UUID const& user_id,
+                     elle::UUID const& device_id)
   {
     auto key = elle::sprintf("%s+%s", user_id, device_id);
     for (auto& socket: this->_clients)

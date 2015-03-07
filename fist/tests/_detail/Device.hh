@@ -5,17 +5,17 @@
 
 # include <papier/Passport.hh>
 
-# include <fist/tests/_detail/uuids.hh>
+# include <elle/UUID.hh>
 
 namespace tests
 {
   class Device
   {
   public:
-    typedef boost::uuids::uuid Id;
+    typedef elle::UUID Id;
   public:
     Device(cryptography::PublicKey const& key,
-           boost::optional<boost::uuids::uuid> device);
+           boost::optional<elle::UUID> device);
   private:
     ELLE_ATTRIBUTE_R(Id, id);
     ELLE_ATTRIBUTE_R(papier::Passport, passport);

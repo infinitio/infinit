@@ -25,7 +25,7 @@ ELLE_TEST_SCHEDULED(normal)
         ELLE_TRACE_SCOPE("user status notification: %s", notif);
       });
   };
-  tests::State recipient(server, random_uuid());
+  tests::State recipient(server, elle::UUID::random());
   connect(recipient);
   recipient->facebook_connect("code");
   reactor::wait(recipient->logged_in());
@@ -35,7 +35,7 @@ ELLE_TEST_SCHEDULED(normal)
   reactor::wait(recipient->logged_in());
   ELLE_ASSERT_EQ(server.users().size(), 1);
 
-  tests::State sender(server, random_uuid());
+  tests::State sender(server, elle::UUID::random());
   connect(sender);
   sender->facebook_connect("code_2");
   reactor::wait(sender->logged_in());
