@@ -45,10 +45,12 @@ with Meta(enable_emails = True,
     # Check if the recipient always have the same ghost code & id.
     _, res0 = alice.sendfile(email, initialize = True)
     _, res1 = bob.sendfile(email, initialize = True)
-    _, res2 = bob.sendfile(email,    initialize = True)
+    _, res2 = bob.sendfile(bob.swaggers[0], initialize = True)
 
-    assert res0['recipient']['ghost_profile'] == res1['recipient']['ghost_profile'] == res2['recipient']['ghost_profile']
-    assert res0['recipient']['ghost_code'] == res1['recipient']['ghost_code'] == res2['recipient']['ghost_code']
+    assert 'ghost_profile' not in res0['recipient']
+    assert 'ghost_profile' not in res1['recipient']
+    assert 'ghost_profile' not in res2['recipient']
+
     recipient = res0['recipient']
     t0 = res0['created_transaction_id']
     t1 = res1['created_transaction_id']
@@ -57,15 +59,16 @@ with Meta(enable_emails = True,
     bob.transaction_update(t1, GHOST_UPLOADED)
     bob.transaction_update(t2, GHOST_UPLOADED)
 
+    db_recipient = meta.database.users.find_one({"_id": ObjectId(bob.swaggers[0])})
     # Check if the 3 emails have been delivered and contain ghost_code and url.
     assert len(meta.mailer.messages['send-file-url']) == 3
+    ghost_profile = None
     for message in meta.mailer.messages['send-file-url']:
-      print(message['ghost_code'], recipient['ghost_code'])
-      assert message['ghost_code'] == recipient['ghost_code']
-      assert message['ghost_profile'] == recipient['ghost_profile']
+      assert message['ghost_code'] == db_recipient['ghost_code']
+      ghost_profile = message['ghost_profile']
 
     ghost = meta.database.users.find_one({"register_status": "ghost"})
-    assert ghost['ghost_code'] == recipient['ghost_code']
+    assert ghost['ghost_code'] == db_recipient['ghost_code']
     url = 'ghost/%s' % ghost['_id']
     def clear_url(url):
       url = url.replace('https://www.infinit.io/invitation', 'ghost')
@@ -73,7 +76,7 @@ with Meta(enable_emails = True,
       url = url[0:url.find('&')]
       return url
     # Check the ghost profile 'page'.
-    url = clear_url(recipient['ghost_profile'])
+    url = clear_url(ghost_profile)
     res = meta.get(url)
     transactions = res['transactions']
     assert len(transactions) == 3
@@ -91,7 +94,7 @@ with Meta(enable_emails = True,
     assert len(eve.transactions) == 3
 
     # Check if the page is gone.
-    url = clear_url(recipient['ghost_profile'])
+    url = clear_url(ghost_profile)
     try:
       res = meta.get(url)
       assert False
@@ -105,12 +108,15 @@ with Meta(enable_emails = True,
       assert e.status == 410
 
 # Automaticaly consume ghost codes.
-with Meta() as meta:
+with Meta(enable_emails = True) as meta:
   alice_email = "alice@infinit.io"
   bob = User(meta, "bob@infinit.io")
   bob.login()
+  meta.mailer = MailService()
   transaction, res = bob.sendfile(recipient = alice_email, initialize = True)
-  ghost_code = res['recipient']['ghost_code']
+  bob.transaction_update(res['created_transaction_id'], GHOST_UPLOADED)
+  message = meta.mailer.messages['send-file-url'][0]
+  ghost_code = message['ghost_code']
   alice = User(meta, alice_email)
   alice.login()
   assert len(alice.transactions) == 1
@@ -121,12 +127,16 @@ with Meta() as meta:
     assert e.status == 410
 
 # Consume ghost code and Consumed ghost codes.
-with Meta() as meta:
+with Meta(enable_emails = True) as meta:
   alice_email = "alice@infinit.io"
   bob = User(meta, "bob@infinit.io")
   bob.login()
+  meta.mailer = MailService()
   transaction, res = bob.sendfile(recipient = alice_email, initialize = True)
-  ghost_code = res['recipient']['ghost_code']
+  bob.transaction_update(res['created_transaction_id'], GHOST_UPLOADED)
+  assert 'ghost_code' not in res['recipient']
+  message = meta.mailer.messages['send-file-url'][0]
+  ghost_code = message['ghost_code']
   eve = User(meta, "eve@infinit.io")
   eve.login()
   assert len(eve.transactions) == 0

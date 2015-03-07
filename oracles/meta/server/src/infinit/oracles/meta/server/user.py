@@ -59,6 +59,14 @@ class Mixin:
       user['public_key'] = ''
     if 'handle' not in user:
       user['handle'] = ''
+    if user['register_status'] == 'ghost':
+      if 'phone_number' not in user:
+        del user['ghost_code']
+        del user['shorten_ghost_profile_url']
+      else:
+        user['ghost_profile'] = user.get(
+          'shorten_ghost_profile_url',
+          self.__ghost_profile_url(user))
     return user
 
   def __user_self(self, user):
@@ -85,6 +93,9 @@ class Mixin:
       'public_key',
       'register_status',
       'facebook_id',
+      'phone_number',
+      'ghost_code',
+      'shorten_ghost_profile_url',
     ]
     if self.admin:
       res += [
@@ -686,14 +697,17 @@ class Mixin:
             '$set': user_content,
           }
           if 'ghost_code' in user:
-            update['$unset'] = {
+            update.setdefault('$unset', {}).update({
               'ghost_code': 1,
               'shorten_ghost_profile_url': 1,
               'ghost_code_expiration': 1,
-            }
+            })
             update.setdefault('$addToSet', {}).update({
               'consumed_ghost_codes': user['ghost_code']
             })
+          if 'phone_number' in user:
+            update.setdefault('$unset', {}).update({
+              'phone_number': 1})
           user = self.database.users.find_and_modify(
             query = {
               'accounts.id': email,
@@ -940,7 +954,8 @@ class Mixin:
 
     ghost -- The ghost.
     """
-    ghost_id = ghost['_id']
+    ghost_id = ghost.get('_id', ghost.get('id'))
+    assert ghost_id is not None
     code = ghost['ghost_code']
     url = '/ghost/%s' % str(ghost_id)
     ghost_profile_url = "https://www.infinit.io/" \
@@ -1483,6 +1498,7 @@ class Mixin:
         '$unset': {
           'avatar': '',
           'small_avatar': '',
+          'phone_number': '',
           'ghost_code': '',
           'ghost_code_expiration': '',
           'shorten_ghost_profile_url': '',

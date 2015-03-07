@@ -70,6 +70,7 @@ namespace infinit
         std::string public_key;
         boost::optional<std::string> ghost_code;
         boost::optional<std::string> ghost_profile_url;
+        boost::optional<std::string> phone_number;
         User() = default;
 
         User(std::string const& id,
@@ -78,22 +79,6 @@ namespace infinit
              std::string const& register_status,
              Devices const& connected_devices = {},
              std::string const& public_key = "");
-
-        User&
-        operator =(User const& user)
-        {
-          this->id = user.id;
-          this->fullname = user.fullname;
-          this->handle = user.handle;
-          this->register_status = user.register_status;
-          this->connected_devices = user.connected_devices;
-          this->public_key = user.public_key;
-          if (user.ghost_code)
-            this->ghost_code = user.ghost_code;
-          if (user.ghost_profile_url)
-            this->ghost_profile_url = user.ghost_profile_url;
-          return *this;
-        }
 
         bool
         online() const
