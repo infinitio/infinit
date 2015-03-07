@@ -143,6 +143,13 @@ namespace infinit
     public:
       inline InvalidGhostCode();
     };
+
+    class GhostCodeAlreadyUsed
+      : public Error
+    {
+    public:
+      inline GhostCodeAlreadyUsed();
+    };
   }
 }
 

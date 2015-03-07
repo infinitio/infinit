@@ -85,5 +85,9 @@ namespace infinit
     InvalidGhostCode::InvalidGhostCode()
       : Error("code is invalid")
     {}
+
+    GhostCodeAlreadyUsed::GhostCodeAlreadyUsed()
+      : Error("ghost code already used")
+    {}
   }
 }

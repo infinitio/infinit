@@ -71,10 +71,12 @@ with Meta() as meta:
   alice = User(meta, "alice@infinit.io")
   alice.login()
 
-  ti1 = alice.sendfile(recipient = '+33600000000', use_identifier = True)[1]['created_transaction_id']
+  _, res0 = alice.sendfile(recipient = '+33600000000', use_identifier = True, initialize = True)
   assert meta.database.users.count() == 2
-  ti2 = alice.sendfile(recipient = '0600000000', use_identifier = True)[1]['created_transaction_id']
+  _, res1 = alice.sendfile(recipient = '0600000000', use_identifier = True, initialize = True)
   assert meta.database.users.count() == 3
+  ti0 = res0['created_transaction_id']
+  ti1 = res1['created_transaction_id']
   assert meta.database.users.find_one(
     {'accounts.id': '+33600000000'})
   assert meta.database.users.find_one(
@@ -83,9 +85,26 @@ with Meta() as meta:
     {'accounts.id': '+33600000000'})
   recipient = meta.database.users.find_one(
     {'accounts.id': '0600000000'})
+  extra_transactions = 2
+  for _ in range(extra_transactions):
+    alice.sendfile(recipient = '0600000000', use_identifier = True, initialize = True)
   assert recipient['_id'] != recipientplus['_id']
   assert recipient['ghost_code'] != recipientplus['ghost_code']
+  alice.transaction_update(ti0, transaction_status.INITIALIZED)
   alice.transaction_update(ti1, transaction_status.INITIALIZED)
-  alice.transaction_update(ti2, transaction_status.INITIALIZED)
+  alice.transaction_update(ti0, transaction_status.GHOST_UPLOADED)
   alice.transaction_update(ti1, transaction_status.GHOST_UPLOADED)
-  alice.transaction_update(ti2, transaction_status.GHOST_UPLOADED)
+
+  ghost_code0 = res0['recipient']['ghost_code']
+  ghost_code1 = res1['recipient']['ghost_code']
+  eve = User(meta, "eve@infinit.io")
+  eve.login()
+  eve.post('ghost/%s/merge' % ghost_code0)
+  eve.post('ghost/%s/merge' % ghost_code1)
+
+  assert len(eve.transactions) == 2 + extra_transactions
+  eve.transaction_update(ti0, transaction_status.ACCEPTED)
+  eve.transaction_update(ti0, transaction_status.FINISHED)
+
+  eve.transaction_update(ti1, transaction_status.ACCEPTED)
+  eve.transaction_update(ti1, transaction_status.FINISHED)

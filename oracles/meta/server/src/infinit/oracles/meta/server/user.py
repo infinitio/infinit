@@ -108,6 +108,7 @@ class Mixin:
       'features',
       'identity',
       'swaggers',
+      'consumed_ghost_codes',
     ]
     return res
 
@@ -685,7 +686,14 @@ class Mixin:
             '$set': user_content,
           }
           if 'ghost_code' in user:
-            update['$unset'] = {'ghost_code': 1}
+            update['$unset'] = {
+              'ghost_code': 1,
+              'shorten_ghost_profile_url': 1,
+              'ghost_code_expiration': 1,
+            }
+            update.setdefault('$addToSet', {}).update({
+              'consumed_ghost_codes': user['ghost_code']
+            })
           user = self.database.users.find_and_modify(
             query = {
               'accounts.id': email,
@@ -958,6 +966,13 @@ class Mixin:
         return self.bad_request({
           'reason': 'code cannot be empty',
         })
+      user = self.user
+      gone = {
+        'reason': 'this user is not accessible anymore',
+        'code': code,
+      }
+      if code in user.get('consumed_ghost_codes', []):
+        return self.gone(gone)
       # Because we delete 'ghost_code' from the user, we are not be able to
       # return a clean 'gone' http status.
       account = self.database.users.find_one({'ghost_code': code})
@@ -968,12 +983,9 @@ class Mixin:
         })
       if account['ghost_code_expiration'] < self.now or \
          account['register_status'] != 'ghost':
-        return self.gone({
-          'reason': 'this user is not accessible anymore',
-          'code': code,
-        })
+        return self.gone(gone)
       elle.log.debug('account found: %s' % account)
-      self.user_delete(account, merge_with = self.user)
+      self.user_delete(account, merge_with = user)
       return {}
 
   @api('/ghost/<user_id>', method = 'GET')
@@ -1054,7 +1066,7 @@ class Mixin:
     with elle.log.trace('validate email %s for user %s' %
                         (name, user)):
       update = {
-        '$push':
+        '$addToSet':
         {
           'accounts':
           {
@@ -1284,8 +1296,7 @@ class Mixin:
           'new_main_email': '',
           'new_main_email_hash': '',
         },
-        '$addToSet':
-        {
+        '$addToSet': {
           'accounts': {'type': 'email', 'id': new_email}
         },
       })
@@ -1449,6 +1460,9 @@ class Mixin:
       'swaggers': {},
     }
     if merge_with is not None:
+      ghost_code = None
+      if 'ghost_code' in user:
+        ghost_code = user['ghost_code']
       cleared_user['register_status'] = 'merged'
       cleared_user['merged_with'] = merge_with['_id']
       deleted_user_swaggers = user.get('swaggers', {})
@@ -1484,9 +1498,11 @@ class Mixin:
         '$addToSet': {
           'accounts': {
             '$each': deleted_user_accounts,
-          }
+          },
         }
       }
+      if ghost_code is not None:
+        update['$addToSet']['consumed_ghost_codes'] = ghost_code
       self.database.users.update({'_id': merge_with['_id']}, update)
       # Increase self swag for swaggers
       for swagger, amount in deleted_user_swaggers.items():

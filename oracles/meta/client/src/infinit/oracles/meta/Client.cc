@@ -648,11 +648,15 @@ namespace infinit
       Client::use_ghost_code(std::string const& code) const
       {
         std::string url = elle::sprintf("/ghost/%s/merge", code);
-        auto request = this->_request(url, Method::POST);
+        auto request = this->_request(url,
+                                      Method::POST,
+                                      false);
         switch (request.status())
         {
           case reactor::http::StatusCode::OK:
             break;
+          case reactor::http::StatusCode::Gone:
+            throw infinit::state::GhostCodeAlreadyUsed();
           default:
             throw infinit::state::InvalidGhostCode();
         }

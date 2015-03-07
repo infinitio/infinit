@@ -109,8 +109,8 @@ gap_register(gap_State* state,
 
 /// @brief Use a ghost code to merge ghost account account.
 gap_Status
-gap_use_ghot_code(gap_State* state,
-                  std::string const& code);
+gap_use_ghost_code(gap_State* state,
+                   std::string const& code);
 
 //- Swaggers ----------------------------------------------------------------
 

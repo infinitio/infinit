@@ -1,6 +1,7 @@
 #include <surface/gap/gap.hh>
 #include <surface/gap/gap_bridge.hh>
 #include <surface/gap/State.hh>
+#include <surface/gap/Error.hh>
 #include <surface/gap/Transaction.hh>
 #include <surface/gap/onboarding/Transaction.hh>
 
@@ -312,7 +313,7 @@ gap_register(gap_State* state,
 }
 
 gap_Status
-gap_use_ghot_code(gap_State* state,
+gap_use_ghost_code(gap_State* state,
                   std::string const& code)
 {
   assert(state != nullptr);
@@ -325,6 +326,10 @@ gap_use_ghot_code(gap_State* state,
       try
       {
         state.meta().use_ghost_code(code);
+      }
+      catch (infinit::state::GhostCodeAlreadyUsed const&)
+      {
+        return gap_ghost_code_already_used;
       }
       catch (elle::Error const&)
       {
