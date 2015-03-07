@@ -31,7 +31,7 @@ namespace surface
       void
       accept() override;
       virtual
-      void
+      infinit::oracles::meta::UpdatePeerTransactionResponse
       _accept() override;
       virtual
       void

@@ -146,18 +146,11 @@ namespace surface
       ReceiveMachine::accept();
     }
 
-    void
+    infinit::oracles::meta::UpdatePeerTransactionResponse
     GhostReceiveMachine::_accept()
     {
-      ELLE_TRACE("%s accepting", *this);
-
-      this->state().meta().update_transaction(
-        this->transaction_id(),
-        TransactionStatus::accepted,
-        this->state().device().id,
-        this->state().device().name);
-
-      ReceiveMachine::_accept();
+      ELLE_TRACE_SCOPE("%s: accept", *this);
+      return ReceiveMachine::_accept();
     }
 
     void
