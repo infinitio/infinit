@@ -99,15 +99,12 @@ int main(int argc, char** argv)
         common::infinit::Configuration config(production);
         surface::gap::State state(config);
         uint32_t id = surface::gap::null_id;
-
-        state.attach_callback<surface::gap::Transaction::Notification>(
-          [&] (surface::gap::Transaction::Notification const& notif)
+        state.attach_callback<surface::gap::LinkTransaction>(
+          [&] (surface::gap::LinkTransaction const& t)
           {
-            if (id == surface::gap::null_id)
+            if (id == surface::gap::null_id || t.id != id)
               return;
-            if (notif.id != id)
-              return;
-            if (notif.status == gap_transaction_finished)
+            if (t.status == gap_transaction_finished)
             {
               state.transactions().at(id)->join();
               stop = true;
