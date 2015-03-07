@@ -100,5 +100,48 @@ with Meta(enable_emails = True,
 
     try:
       eve.post('ghost/%s/merge' % ghost['ghost_code'])
+      assert False
     except HTTPException as e:
-      assert e.status == 404
+      assert e.status == 410
+
+# Automaticaly consume ghost codes.
+with Meta() as meta:
+  alice_email = "alice@infinit.io"
+  bob = User(meta, "bob@infinit.io")
+  bob.login()
+  transaction, res = bob.sendfile(recipient = alice_email, initialize = True)
+  ghost_code = res['recipient']['ghost_code']
+  alice = User(meta, alice_email)
+  alice.login()
+  assert len(alice.transactions) == 1
+  try:
+    alice.post('ghost/%s/merge' % ghost_code)
+    assert False
+  except HTTPException as e:
+    assert e.status == 410
+
+# Consume ghost code and Consumed ghost codes.
+with Meta() as meta:
+  alice_email = "alice@infinit.io"
+  bob = User(meta, "bob@infinit.io")
+  bob.login()
+  transaction, res = bob.sendfile(recipient = alice_email, initialize = True)
+  ghost_code = res['recipient']['ghost_code']
+  eve = User(meta, "eve@infinit.io")
+  eve.login()
+  assert len(eve.transactions) == 0
+  eve.post('ghost/%s/merge' % ghost_code)
+  # Second time should do nothing.
+  try:
+    eve.post('ghost/%s/merge' % ghost_code)
+    assert False
+  except HTTPException as e:
+    assert e.status == 410
+  dimrok = User(meta, 'dimrok@infinit.io')
+  dimrok.login()
+  try:
+    # Other people should get a 404.
+    dimrok.post('ghost/%s/merge' % ghost_code)
+    assert False
+  except HTTPException as e:
+    assert e.status == 404

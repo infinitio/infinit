@@ -93,7 +93,7 @@ gap_register(gap_State* state,
 
 gap_Status
 gap_use_ghost_code(gap_State* state,
-                  std::string const& code);
+                   std::string const& code);
 
 gap_Status
 gap_update_user_callback(

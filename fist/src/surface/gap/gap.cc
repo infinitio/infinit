@@ -27,6 +27,7 @@
 
 #include <infinit/oracles/meta/Client.hh>
 
+#include <surface/gap/Error.hh>
 #include <surface/gap/gap_bridge.hh>
 #include <surface/gap/onboarding/Transaction.hh>
 #include <surface/gap/State.hh>
@@ -275,6 +276,10 @@ gap_use_ghost_code(gap_State* state,
       try
       {
         state.meta().use_ghost_code(code);
+      }
+      catch (infinit::state::GhostCodeAlreadyUsed const&)
+      {
+        return gap_ghost_code_already_used;
       }
       catch (elle::Error const&)
       {
