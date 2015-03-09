@@ -265,6 +265,12 @@ struct user_notification_to_dict
                          PyUnicode_FromString(user.meta_id.c_str()));
     PyDict_SetItemString(dict, "deleted", PyBool_FromLong(user.deleted));
     PyDict_SetItemString(dict, "ghost", PyBool_FromLong(user.ghost));
+    PyDict_SetItemString(dict, "phone_number",
+                         PyUnicode_FromString(user.phone_number.c_str()));
+    PyDict_SetItemString(dict, "ghost_code",
+                         PyUnicode_FromString(user.ghost_code.c_str()));
+    PyDict_SetItemString(dict, "ghost_invitation_url",
+                         PyUnicode_FromString(user.ghost_invitation_url.c_str()));
     return dict;
   }
 };
