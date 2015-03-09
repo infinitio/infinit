@@ -322,7 +322,8 @@ class Mixin:
       device = self._create_device(
         id = device_id,
         owner = user,
-        device_push_token = device_push_token)
+        device_push_token = device_push_token,
+        country_code = country_code)
     else:
       device = list(filter(lambda x: x['id'] == str(device_id), usr['devices']))[0]
     # Remove potential leaked previous session.
