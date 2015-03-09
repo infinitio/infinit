@@ -110,6 +110,7 @@ namespace surface
         this->is_swagger(id),
         user.deleted(),
         user.ghost(),
+        user.phone_number,
         user.ghost_code,
         user.ghost_profile_url);
       this->enqueue(notification);
@@ -355,7 +356,10 @@ namespace surface
           user.id,
           this->is_swagger(numeric_id),
           user.deleted(),
-          user.ghost());
+          user.ghost(),
+          user.phone_number,
+          user.ghost_code,
+          user.ghost_profile_url);
         res.push_back(ret_user);
       }
       return res;
@@ -381,7 +385,10 @@ namespace surface
           user.id,
           this->is_swagger(numeric_id),
           user.deleted(),
-          user.ghost());
+          user.ghost(),
+          user.phone_number,
+          user.ghost_code,
+          user.ghost_profile_url);
         item.second = ret_user;
         res.insert(item);
       }
@@ -521,7 +528,10 @@ namespace surface
         user.id,
         this->is_swagger(id),
         user.deleted(),
-        user.ghost());
+        user.ghost(),
+        user.phone_number,
+        user.ghost_code,
+        user.ghost_profile_url);
       this->enqueue(res);
     }
 
