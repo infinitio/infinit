@@ -534,7 +534,10 @@ gap_user_by_id(gap_State* state, uint32_t id, surface::gap::User& res)
         user.id,
         state.is_swagger(id),
         user.deleted(),
-        user.ghost());
+        user.ghost(),
+        user.phone_number,
+        user.ghost_code,
+        user.ghost_profile_url);
       return gap_ok;
     });
 }
@@ -561,7 +564,10 @@ gap_user_by_meta_id(gap_State* state,
         user.id,
         state.is_swagger(state_id),
         user.deleted(),
-        user.ghost());
+        user.ghost(),
+        user.phone_number,
+        user.ghost_code,
+        user.ghost_profile_url);
       return gap_ok;
     });
 }
@@ -632,7 +638,10 @@ gap_user_by_email(gap_State* state,
         user.id,
         state.is_swagger(numeric_id),
         user.deleted(),
-        user.ghost());
+        user.ghost(),
+        user.phone_number,
+        user.ghost_code,
+        user.ghost_profile_url);
       return gap_ok;
     });
 }
@@ -658,7 +667,10 @@ gap_user_by_handle(gap_State* state,
         user.id,
         state.is_swagger(numeric_id),
         user.deleted(),
-        user.ghost());
+        user.ghost(),
+        user.phone_number,
+        user.ghost_code,
+        user.ghost_profile_url);
       return gap_ok;
     });
 }
@@ -730,7 +742,10 @@ gap_swaggers(gap_State* state, std::vector<surface::gap::User>& res)
           user.id,
           state.is_swagger(user_id),
           user.deleted(),
-          user.ghost());
+          user.ghost(),
+          user.phone_number,
+          user.ghost_code,
+          user.ghost_profile_url);
         res.push_back(ret_user);
       }
       return gap_ok;
