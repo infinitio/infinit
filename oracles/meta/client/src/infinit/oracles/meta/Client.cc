@@ -450,6 +450,7 @@ namespace infinit
       Client::login(std::string const& email,
                     std::string const& password,
                     boost::uuids::uuid const& device_uuid)
+                    boost::optional<std::string> country_code)
       {
         ELLE_TRACE_SCOPE("%s: login as %s on device %s",
                          *this, email, device_uuid);
@@ -468,7 +469,9 @@ namespace infinit
                 "password", const_cast<std::string&>(old_password));
               parameters.serialize(
                 "password_hash", const_cast<std::string&>(new_password));
-            }, device_uuid);
+            },
+            device_uuid,
+            country_code);
         }
         catch (...)
         {
@@ -481,7 +484,9 @@ namespace infinit
       Client::facebook_connect(
         std::string const& long_lived_access_token,
         boost::uuids::uuid const& device_uuid,
-        boost::optional<std::string> preferred_email)
+        boost::optional<std::string> preferred_email,
+        boost::optional<std::string> country_code
+        )
       {
         ELLE_TRACE_SCOPE("%s: login using facebook on device %s",
                          *this, device_uuid);
@@ -497,12 +502,13 @@ namespace infinit
               parameters.serialize(
                 "preferred_email", preferred_email_str);
             }
-          }, device_uuid);
+          }, device_uuid, country_code);
       }
 
       LoginResponse
       Client::_login(ParametersUpdater parameters_updater,
-                     boost::uuids::uuid const& device_uuid)
+                     boost::uuids::uuid const& device_uuid,
+                     boost::optional<std::string> country_code)
       {
         std::string struuid = boost::lexical_cast<std::string>(device_uuid);
         auto url = "/login";
@@ -512,6 +518,13 @@ namespace infinit
           [&] (reactor::http::Request& r)
           {
             elle::serialization::json::SerializerOut output(r, false);
+            if (device_push_token && !device_push_token.get().empty())
+            {
+              output.serialize(
+                "device_push_token",
+                const_cast<std::string&>(device_push_token.get()));
+            }
+            output.serialize("country_code", country_code);
             parameters_updater(output);
             std::string struuid = boost::lexical_cast<std::string>(device_uuid);
             output.serialize("device_id", struuid);

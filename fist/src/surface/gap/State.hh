@@ -197,23 +197,30 @@ namespace surface
       typedef std::unique_ptr<infinit::oracles::trophonius::Client>
       TrophoniusClientPtr;
 
-      /// Keeps trying, returns on success or throw on definitive failure.
-      void
-      login(std::string const& email,
-            std::string const& password);
-      /// Keeps trying, returns on success or throw on definitive failure.
+      /// Keep trying, returns on success or throw on definitive failure.
       void
       login(std::string const& email,
             std::string const& password,
-            reactor::DurationOpt timeout);
+            boost::optional<std::string> country_code = {}
+        );
+
+      /// Keep trying, returns on success or throw on definitive failure.
+      void
+      login(std::string const& email,
+            std::string const& password,
+            reactor::DurationOpt timeout,
+            boost::optional<std::string> device_push_token = {},
+            boost::optional<std::string> country_code = {}
+        );
+
       /// Login to meta.
       void
       login(
         std::string const& email,
         std::string const& password,
         TrophoniusClientPtr trophonius,
-        reactor::DurationOpt timeout = reactor::DurationOpt()
-        );
+        boost::optional<std::string> country_code = {},
+        reactor::DurationOpt timeout = reactor::DurationOpt());
 
       /// Logout from meta.
       void
@@ -261,7 +268,9 @@ namespace surface
       void
       _login(std::string const& email,
              std::string const& password,
-             elle::utility::Move<TrophoniusClientPtr> trophonius);
+             elle::utility::Move<TrophoniusClientPtr> trophonius,
+             boost::optional<std::string> country_code = {}
+        );
 
       // This function wrap all the retry mechanism.
       typedef std::function<
