@@ -366,6 +366,7 @@ namespace surface
     {
       this->login(email,
                   password,
+                  std::unique_ptr<infinit::oracles::trophonius::Client>(),
                   reactor::DurationOpt(),
                   device_push_token,
                   country_code);
@@ -863,7 +864,8 @@ namespace surface
     State::register_(std::string const& fullname,
                      std::string const& email,
                      std::string const& password,
-                     boost::optional<std::string> device_push_token)
+                     boost::optional<std::string> device_push_token,
+                     boost::optional<std::string> country_code)
     {
       // !WARNING! Do not log the password.
       ELLE_TRACE_SCOPE("%s: register as %s: email %s",
@@ -903,7 +905,7 @@ namespace surface
         throw;
       }
       this->_metrics_reporter->user_register(true, "");
-      this->login(lower_email, password, device_push_token);
+      this->login(lower_email, password, device_push_token, country_code);
     }
 
     void
@@ -912,6 +914,7 @@ namespace surface
       std::unique_ptr<infinit::oracles::trophonius::Client> trophonius,
       boost::optional<std::string> preferred_email,
       boost::optional<std::string> device_push_token,
+      boost::optional<std::string> country_code,
       reactor::DurationOpt timeout)
     {
       this->_login_with_timeout(
@@ -921,7 +924,8 @@ namespace surface
           return this->_meta.facebook_connect(facebook_token,
                                               this->device_uuid(),
                                               preferred_email,
-                                              device_push_token);
+                                              device_push_token,
+                                              country_code);
           },
           tropho,
           // Password.
@@ -937,13 +941,14 @@ namespace surface
     }
 
     void
-    State::facebook_connect(
-      std::string const& token,
-      boost::optional<std::string> preferred_email,
-      boost::optional<std::string> device_push_token)
+    State::facebook_connect(std::string const& token,
+                            boost::optional<std::string> preferred_email,
+                            boost::optional<std::string> device_push_token,
+                            boost::optional<std::string> country_code)
     {
       return this->facebook_connect(
-        token, TrophoniusClientPtr{}, preferred_email, device_push_token);
+        token, TrophoniusClientPtr{},
+        preferred_email, device_push_token, country_code);
     }
 
     Self const&

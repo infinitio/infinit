@@ -496,15 +496,9 @@ namespace infinit
         return this->_login(
           [&] (elle::serialization::json::SerializerOut& parameters)
           {
-            parameters.serialize(
-              "long_lived_access_token",
-              const_cast<std::string&>(facebook_token));
-            if (preferred_email)
-            {
-              std::string preferred_email_str = preferred_email.get();
-              parameters.serialize(
-                "preferred_email", preferred_email_str);
-            }
+            parameters.serialize("long_lived_access_token",
+                                 const_cast<std::string&>(facebook_token));
+            parameters.serialize("preferred_email", preferred_email);
           }, device_uuid, device_push_token, country_code);
       }
 
@@ -514,7 +508,6 @@ namespace infinit
                      boost::optional<std::string> device_push_token,
                      boost::optional<std::string> country_code)
       {
-        std::string struuid = boost::lexical_cast<std::string>(device_uuid);
         auto url = "/login";
         auto request = this->_request(
           url,
@@ -522,6 +515,7 @@ namespace infinit
           [&] (reactor::http::Request& r)
           {
             elle::serialization::json::SerializerOut output(r, false);
+            output.serialize("device_push_token", device_push_token);
             output.serialize("country_code", country_code);
             parameters_updater(output);
             std::string struuid = boost::lexical_cast<std::string>(device_uuid);
