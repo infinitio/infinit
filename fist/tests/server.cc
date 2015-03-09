@@ -100,6 +100,7 @@ namespace tests
           "{"
           " \"self\": %s,"
           " \"device\": %s,"
+          " \"devices\": [],"
           " \"features\": [],"
           " \"trophonius\" : %s"
           "}",
@@ -157,7 +158,8 @@ namespace tests
           "  \"swaggers\": %s,"
           "  \"running_transactions\": %s,"
           "  \"final_transactions\": %s,"
-          "  \"links\": %s"
+          "  \"links\": %s,"
+          "  \"devices\": []"
           "}",
           user.swaggers_json(),
           json(runnings),

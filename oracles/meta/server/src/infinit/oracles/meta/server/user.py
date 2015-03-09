@@ -417,7 +417,9 @@ class Mixin:
             preferred_email: str = None,
             password_hash: str = None,
             OS: str = None,
-            pick_trophonius: bool = True,
+            device_push_token = None,
+            country_code = None,
+            pick_trophonius: bool = True):
     # Xor facebook_token or email / password.
     with_email = bool(email is not None and password is not None)
     with_facebook = bool(long_lived_access_token is not None or
@@ -1866,9 +1868,8 @@ class Mixin:
     Get user's public information by identifier.
     recipient_identifier -- Something to identify the user (email, user_id or phone number).
     """
-    device = self.current_device
-    if device and country_code is None:
-      country_code = device.get('country_code', None)
+    if country_code is None and self.current_device is not None:
+      country_code = self.current_device.get('country_code', None)
     phone_number = clean_up_phone_number(recipient_identifier, country_code)
     args = {
       'fields': self.__user_view_fields,

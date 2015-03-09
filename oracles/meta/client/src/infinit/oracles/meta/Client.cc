@@ -522,12 +522,6 @@ namespace infinit
           [&] (reactor::http::Request& r)
           {
             elle::serialization::json::SerializerOut output(r, false);
-            if (device_push_token && !device_push_token.get().empty())
-            {
-              output.serialize(
-                "device_push_token",
-                const_cast<std::string&>(device_push_token.get()));
-            }
             output.serialize("country_code", country_code);
             parameters_updater(output);
             std::string struuid = boost::lexical_cast<std::string>(device_uuid);
