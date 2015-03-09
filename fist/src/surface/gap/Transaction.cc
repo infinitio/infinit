@@ -361,6 +361,9 @@ namespace surface
         }
         else if (me == recipient)
         {
+          // Because we are not sure we are going to receive the new swagger
+          // notification first, let's ensure sure we have it our model.
+          this->state().user(peer_data->sender_id);
           if (this->_data->is_ghost)
           {
             this->_machine.reset(

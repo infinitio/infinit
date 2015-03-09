@@ -388,6 +388,7 @@ namespace infinit
         s.serialize("public_key", this->public_key);
         s.serialize("ghost_code", this->ghost_code);
         s.serialize("ghost_profile", this->ghost_profile_url);
+        s.serialize("phone_number", this->phone_number);
       }
 
       LoginResponse::LoginResponse(

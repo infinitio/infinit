@@ -564,7 +564,7 @@ class User(Client):
   def full_swaggers(self):
     swaggers = self.get('user/swaggers')['swaggers']
     for swagger in swaggers:
-      assertIn(swagger['register_status'], ['ok', 'deleted'])
+      assertIn(swagger['register_status'], ['ok', 'deleted', 'ghost'])
     return swaggers
 
   @property

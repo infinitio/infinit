@@ -287,8 +287,11 @@ class Mixin:
                     files,
                     files_count):
     recipient_identifier = recipient_identifier.strip().lower()
+    # Remove white spaces. ObjectId and email aren't impacted.
+    # For phone numbers: +33 6 XX XX XX XX -> +336XXXXXXXX.
+    recipient_identifier.replace(' ', '')
     with elle.log.trace("create transaction (recipient %s)" % recipient_identifier):
-      recipient = recipient_identifier.strip().lower()
+      recipient = recipient_identifier
       new_user = False
       is_ghost = False
       invitee = 0
@@ -456,6 +459,9 @@ class Mixin:
         'reason': 'you must provide id_or_email or recipient_identifier'
       })
     recipient_identifier = recipient_identifier or id_or_email
+    # Remove white spaces. ObjectId and email aren't impacted.
+    # For phone numbers: +33 6 XX XX XX XX -> +336XXXXXXXX.
+    recipient_identifier.replace(' ', '')
     with elle.log.trace("create transaction (recipient %s)" % recipient_identifier):
       recipient = recipient_identifier.strip().lower()
       new_user = False
@@ -641,13 +647,6 @@ class Mixin:
             )
 
       self._increase_swag(sender['_id'], recipient['_id'])
-      # Old ghost don't have the 'ghost_code' field therefor no ghost_profile.
-      if 'ghost_code' in recipient:
-        recipient['ghost_profile'] = recipient.get(
-          'shorten_ghost_profile_url',
-          self.__ghost_profile_url(recipient))
-        if 'shorten_ghost_profile_url' in recipient:
-          del recipient['shorten_ghost_profile_url']
       recipient_view = self.__user_view(recipient)
       return self.success({
           'created_transaction_id': transaction_id,
