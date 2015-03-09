@@ -398,6 +398,14 @@ public:
              std::string const& password)
   {
     this->login(email, password);
+    reactor::wait(this->logged_in());
+  }
+
+  void
+  wrap_logout()
+  {
+    this->logout();
+    reactor::wait(this->logged_out());
   }
 
   std::vector<unsigned int>
@@ -506,7 +514,7 @@ BOOST_PYTHON_MODULE(state)
                          std::string const&>())
     .def("logged_in", &State::logged_in_to_meta)
     .def("login", &PythonState::wrap_login)
-    .def("logout", &State::logout)
+    .def("logout", &PythonState::wrap_logout)
     .def("poll", &State::poll)
     .def("users", &State::users, by_const_ref())
     .def("transaction", &PythonState::transaction)

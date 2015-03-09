@@ -321,7 +321,6 @@ class TestBasicTransfer(unittest.TestCase):
                   files_data) as transfer:
       transfer.recipient.login()
       transfer.sender.login()
-      wait_helper(3, lambda: False, False)
       transfer.recipient.set_rules(accept_rules)
       transfer.start()
       transfer.wait_transaction_final(30)
@@ -461,7 +460,6 @@ class TestSequencer:
     with Transfer(credentials or test_credentials, files,
                   files_data, timeout=timeout, message=message) as transfer:
       transfer.sender.login()
-      wait_helper(3, lambda: False, False) #FIXME reduce/remove this
       transfer.recipient.set_rules(accept_rules)
       for e in sequence:
         elle.log.trace('Executing %s(%s)' % (e[0], e[1]))
@@ -647,7 +645,6 @@ class TestMultiDeviceTransfer(unittest.TestCase):
       transfer.recipient.login(device = 1)
       transfer.sender.login(device = 0)
       transfer.sender.login(device = 1)
-      wait_helper(3, lambda: False, False)
       transfer.recipient.set_rules(accept_rules, device = 0)
       transfer.start(device = 0)
       transfer.wait_transaction_final(30)
@@ -670,7 +667,6 @@ class TestMultiDeviceTransfer(unittest.TestCase):
     with Transfer(credentials, files, files_data) as transfer:
       transfer.recipient.login()
       transfer.sender.login()
-      wait_helper(3, lambda: False, False)
       transfer.recipient.set_rules(accept_rules)
       transfer.start()
       transfer.wait_transaction_final(30)
