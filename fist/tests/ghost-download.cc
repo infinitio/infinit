@@ -55,8 +55,7 @@ ELLE_TEST_SCHEDULED(ghost_download)
           BOOST_CHECK(!accepted);
           BOOST_CHECK(!transferring);
           BOOST_CHECK(!finished);
-          auto transaction = state->transactions().at(transaction.id);
-          transaction->accept();
+          state->transactions().at(transaction.id)->accept();
           accepted.open();
           break;
         case gap_transaction_transferring:
