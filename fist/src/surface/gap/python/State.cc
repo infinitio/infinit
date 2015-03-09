@@ -392,6 +392,14 @@ public:
         cb(odict);
       });
   }
+
+  void
+  wrap_login(std::string const& email,
+             std::string const& password)
+  {
+    this->login(email, password);
+  }
+
   std::vector<unsigned int>
   wrap_swaggers()
   {
@@ -497,7 +505,7 @@ BOOST_PYTHON_MODULE(state)
                          std::string const&,
                          std::string const&>())
     .def("logged_in", &State::logged_in_to_meta)
-    .def("login", (void (State::*)(std::string const&, std::string const&)) &State::login)
+    .def("login", &PythonState::wrap_login)
     .def("logout", &State::logout)
     .def("poll", &State::poll)
     .def("users", &State::users, by_const_ref())

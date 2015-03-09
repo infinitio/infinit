@@ -450,7 +450,7 @@ namespace infinit
       LoginResponse
       Client::login(std::string const& email,
                     std::string const& password,
-                    boost::uuids::uuid const& device_uuid)
+                    boost::uuids::uuid const& device_uuid,
                     boost::optional<std::string> country_code)
       {
         ELLE_TRACE_SCOPE("%s: login as %s on device %s",
@@ -519,12 +519,6 @@ namespace infinit
           [&] (reactor::http::Request& r)
           {
             elle::serialization::json::SerializerOut output(r, false);
-            if (device_push_token && !device_push_token.get().empty())
-            {
-              output.serialize(
-                "device_push_token",
-                const_cast<std::string&>(device_push_token.get()));
-            }
             output.serialize("country_code", country_code);
             parameters_updater(output);
             std::string struuid = boost::lexical_cast<std::string>(device_uuid);

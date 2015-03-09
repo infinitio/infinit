@@ -351,7 +351,7 @@ namespace surface
     void
     State::login(std::string const& email,
                  std::string const& password,
-                 boost::optional<std::string> country_code
+                 boost::optional<std::string> country_code)
     {
       this->login(email,
                   password,
@@ -430,6 +430,7 @@ namespace surface
     State::login(
       std::string const& email,
       std::string const& password,
+      TrophoniusClientPtr trophonius,
       boost::optional<std::string> country_code,
       reactor::DurationOpt timeout)
     {

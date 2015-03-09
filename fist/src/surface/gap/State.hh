@@ -201,17 +201,14 @@ namespace surface
       void
       login(std::string const& email,
             std::string const& password,
-            boost::optional<std::string> country_code = {}
-        );
+            boost::optional<std::string> country_code = {});
 
       /// Keep trying, returns on success or throw on definitive failure.
       void
       login(std::string const& email,
             std::string const& password,
             reactor::DurationOpt timeout,
-            boost::optional<std::string> device_push_token = {},
-            boost::optional<std::string> country_code = {}
-        );
+            boost::optional<std::string> country_code = {});
 
       /// Login to meta.
       void
