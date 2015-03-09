@@ -1868,17 +1868,23 @@ class Mixin:
     Get user's public information by identifier.
     recipient_identifier -- Something to identify the user (email, user_id or phone number).
     """
-    if country_code is None and self.current_device is not None:
-      country_code = self.current_device.get('country_code', None)
-    phone_number = clean_up_phone_number(recipient_identifier, country_code)
+    recipient_identifier = recipient_identifier.strip().lower()
     args = {
       'fields': self.__user_view_fields,
       'ensure_existence': False,
     }
-    if phone_number:
-      user = self.user_by_phone_number(phone_number, **args)
-    else:
-      user = self.user_by_id_or_email(recipient_identifier, **args)
+    recipient_id = None
+    try:
+      recipient_id = bson.ObjectId(recipient_identifier)
+      user = self._user_by_id(recipient_id, **args)
+    except bson.errors.InvalidId:
+      if country_code is None and self.current_device is not None:
+        country_code = self.current_device.get('country_code', None)
+      phone_number = clean_up_phone_number(recipient_identifier, country_code)
+      if phone_number:
+        user = self.user_by_phone_number(phone_number, **args)
+      else:
+        user = self.user_by_email(recipient_identifier, **args)
     if user is None:
       self.not_found({
         'reason': 'user %s not found' % recipient_identifier,
