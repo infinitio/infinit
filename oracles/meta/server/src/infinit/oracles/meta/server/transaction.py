@@ -12,7 +12,7 @@ import json
 
 import elle.log
 from .utils import \
-  api, require_logged_in, require_logged_in_or_admin, require_key, key
+  api, require_logged_in, require_logged_in_or_admin, require_key, key, clean_up_phone_number
 from . import regexp, error, transaction_status, notifier, invitation, cloud_buffer_token, cloud_buffer_token_gcs, mail
 import uuid
 import re
@@ -286,12 +286,8 @@ class Mixin:
                     message,
                     files,
                     files_count):
-    recipient_identifier = recipient_identifier.strip().lower()
-    # Remove white spaces. ObjectId and email aren't impacted.
-    # For phone numbers: +33 6 XX XX XX XX -> +336XXXXXXXX.
-    recipient_identifier.replace(' ', '')
     with elle.log.trace("create transaction (recipient %s)" % recipient_identifier):
-      recipient = recipient_identifier
+      recipient_identifier = recipient_identifier.strip().lower()
       new_user = False
       is_ghost = False
       invitee = 0
@@ -303,20 +299,22 @@ class Mixin:
         'shorten_ghost_profile_url',
       ]
       peer_email = None
+      device = self.current_device
+      phone_number = clean_up_phone_number(recipient_identifier,
+                                           device.get('country_code', None))
       is_an_email = re.match(regexp.Email, recipient_identifier)
-      is_a_phone_number = re.match(regexp.PhoneNumber, recipient_identifier)
+      is_a_phone_number = phone_number is not None
       if is_an_email or is_a_phone_number:
         if is_an_email:
           elle.log.debug("%s is an email" % recipient_identifier)
           peer_email = recipient_identifier.lower().strip()
           # XXX: search email in each accounts.
           recipient = self.__user_fetch(
-            {'accounts.id': peer_email},
+            {'accounts.id': peer_email, 'accounts.type': 'email'},
             fields = recipient_fields)
           # if the user doesn't exist, create a ghost and invite.
         if is_a_phone_number:
-          elle.log.debug("%s is an phone" % recipient_identifier)
-          phone_number = recipient_identifier
+          elle.log.debug("%s is an phone" % phone_number)
           recipient = self.__user_fetch(
             {'accounts.id': phone_number, 'accounts.type': 'phone'},
             fields = recipient_fields)
@@ -459,11 +457,8 @@ class Mixin:
         'reason': 'you must provide id_or_email or recipient_identifier'
       })
     recipient_identifier = recipient_identifier or id_or_email
-    # Remove white spaces. ObjectId and email aren't impacted.
-    # For phone numbers: +33 6 XX XX XX XX -> +336XXXXXXXX.
-    recipient_identifier.replace(' ', '')
+    recipient_identifier = recipient_identifier.lower().strip()
     with elle.log.trace("create transaction (recipient %s)" % recipient_identifier):
-      recipient = recipient_identifier.strip().lower()
       new_user = False
       is_ghost = False
       invitee = 0
@@ -475,8 +470,11 @@ class Mixin:
         'shorten_ghost_profile_url',
       ]
       peer_email = None
+      device = self.current_device
+      phone_number = clean_up_phone_number(
+        recipient_identifier, device.get('country_code', None))
       is_an_email = re.match(regexp.Email, recipient_identifier)
-      is_a_phone_number = re.match(regexp.PhoneNumber, recipient_identifier)
+      is_a_phone_number = phone_number is not None
       if is_an_email or is_a_phone_number:
         if is_an_email:
           elle.log.debug("%s is an email" % recipient_identifier)
@@ -488,7 +486,6 @@ class Mixin:
           # if the user doesn't exist, create a ghost and invite.
         if is_a_phone_number:
           elle.log.debug("%s is an phone" % recipient_identifier)
-          phone_number = recipient_identifier
           recipient = self.__user_fetch(
             {'accounts.id': phone_number, 'accounts.type': 'phone'},
             fields = recipient_fields)

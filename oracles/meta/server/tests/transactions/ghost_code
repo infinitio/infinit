@@ -7,7 +7,8 @@ with Meta() as meta:
   bob = User(meta, "bob@infinit.io")
   bob.login()
   bob.sendfile("eve@infinit.io")
-  transaction, res = bob.sendfile(recipient = "0666000666", initialize = True)
+  transaction, res = bob.sendfile(recipient = "+33666000666",
+                                  initialize = True)
   assert 'ghost_code' in res['recipient']
 
   eve = User(meta, "eve@infinit.io")
@@ -23,7 +24,9 @@ with Meta() as meta:
 with Meta() as meta:
   bob = User(meta, "bob@infinit.io")
   bob.login()
-  transaction, res = bob.sendfile(recipient = "0666000666", initialize = True)
+  transaction, res = bob.sendfile(recipient = "+33666000666",
+                                  initialize = True)
+
   phone_recipient = res['recipient']
   assert 'ghost_code' in phone_recipient
 
