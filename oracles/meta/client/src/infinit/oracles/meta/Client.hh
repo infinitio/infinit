@@ -400,8 +400,7 @@ namespace infinit
         _login(ParametersUpdater parameters_updater,
                boost::uuids::uuid const& device_uuid,
                boost::optional<std::string> device_push_token = {},
-               boost::optional<std::string> country_code = {}
-          );
+               boost::optional<std::string> country_code = {});
       public:
         LoginResponse
         login(
@@ -409,8 +408,7 @@ namespace infinit
           std::string const& password,
           boost::uuids::uuid const& device_uuid,
           boost::optional<std::string> device_push_token = {},
-          boost::optional<std::string> country_code = {}
-          );
+          boost::optional<std::string> country_code = {});
 
         LoginResponse
         facebook_connect(
@@ -418,8 +416,7 @@ namespace infinit
           boost::uuids::uuid const& device_uuid,
           boost::optional<std::string> preferred_email = {},
           boost::optional<std::string> device_push_token = {},
-          boost::optional<std::string> country_code = {}
-          );
+          boost::optional<std::string> country_code = {});
 
         void
         logout();

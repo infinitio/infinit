@@ -362,8 +362,7 @@ namespace surface
       std::string const& email,
       std::string const& password,
       boost::optional<std::string> device_push_token,
-      boost::optional<std::string> country_code
-      )
+      boost::optional<std::string> country_code)
     {
       this->login(email,
                   password,
@@ -378,15 +377,14 @@ namespace surface
       std::string const& password,
       reactor::DurationOpt timeout,
       boost::optional<std::string> device_push_token,
-      boost::optional<std::string> country_code
-      )
+      boost::optional<std::string> country_code)
     {
       this->login(
         email, password,
         std::unique_ptr<infinit::oracles::trophonius::Client>(),
+        timeout,
         device_push_token,
-        country_code,
-        timeout);
+        country_code);
     }
 
     void
@@ -446,9 +444,9 @@ namespace surface
       std::string const& email,
       std::string const& password,
       TrophoniusClientPtr trophonius,
+      reactor::DurationOpt timeout,
       boost::optional<std::string> device_push_token,
-      boost::optional<std::string> country_code,
-      reactor::DurationOpt timeout)
+      boost::optional<std::string> country_code)
     {
       auto tropho = elle::utility::move_on_copy(std::move(trophonius));
       return this->_login_with_timeout(
@@ -467,8 +465,7 @@ namespace surface
       std::string const& password,
       elle::utility::Move<TrophoniusClientPtr> trophonius,
       boost::optional<std::string> device_push_token,
-      boost::optional<std::string> country_code
-      )
+      boost::optional<std::string> country_code)
     {
       ELLE_TRACE_SCOPE("%s: attempt to login as %s", *this, email);
       this->_email = email;

@@ -488,8 +488,7 @@ namespace infinit
         boost::uuids::uuid const& device_uuid,
         boost::optional<std::string> preferred_email,
         boost::optional<std::string> device_push_token,
-        boost::optional<std::string> country_code
-        )
+        boost::optional<std::string> country_code)
       {
         ELLE_TRACE_SCOPE("%s: login using facebook on device %s",
                          *this, device_uuid);

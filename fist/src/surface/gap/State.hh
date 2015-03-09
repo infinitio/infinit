@@ -217,9 +217,9 @@ namespace surface
         std::string const& email,
         std::string const& password,
         TrophoniusClientPtr trophonius,
+        reactor::DurationOpt timeout = reactor::DurationOpt(),
         boost::optional<std::string> device_push_token = {},
-        boost::optional<std::string> country_code = {},
-        reactor::DurationOpt timeout = reactor::DurationOpt());
+        boost::optional<std::string> country_code = {});
 
       /// Logout from meta.
       void
@@ -272,8 +272,7 @@ namespace surface
              std::string const& password,
              elle::utility::Move<TrophoniusClientPtr> trophonius,
              boost::optional<std::string> device_push_token = {},
-             boost::optional<std::string> country_code = {}
-        );
+             boost::optional<std::string> country_code = {});
 
       // This function wrap all the retry mechanism.
       typedef std::function<
