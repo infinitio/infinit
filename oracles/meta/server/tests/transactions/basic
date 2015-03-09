@@ -26,7 +26,7 @@ with Meta() as meta:
 
   bob.login()
 
-  transaction, res = bob.sendfile(recipient_id = alice.id)
+  transaction, res = bob.sendfile(recipient = alice.id, use_identifier = False)
   assert res['success']
 
   transaction_id = res['created_transaction_id']

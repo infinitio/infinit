@@ -245,29 +245,14 @@ namespace surface
       ReceiveMachine::accept(relative_output_dir);
     }
 
-    void
+    infinit::oracles::meta::UpdatePeerTransactionResponse
     PeerReceiveMachine::_accept()
     {
-      ReceiveMachine::_accept();
-      try
-      {
-        auto res = this->state().meta().update_transaction(
-          this->transaction_id(),
-          TransactionStatus::accepted,
-          this->state().device().id,
-          this->state().device().name);
-        if (!res.aws_credentials())
-          this->_nothing_in_the_cloud = true;
-      }
-      catch (infinit::oracles::meta::Exception const& e)
-      {
-        if (e.err == infinit::oracles::meta::Error::transaction_already_has_this_status)
-          ELLE_TRACE("%s: transaction already accepted: %s", *this, e.what());
-        else if (e.err == infinit::oracles::meta::Error::transaction_operation_not_permitted)
-          ELLE_TRACE("%s: transaction can't be accepted: %s", *this, e.what());
-        else
-          throw;
-      }
+      ELLE_TRACE_SCOPE("%s: accept", *this);
+      auto res = ReceiveMachine::_accept();
+      if (!res.aws_credentials())
+        this->_nothing_in_the_cloud = true;
+      return res;
     }
 
     void

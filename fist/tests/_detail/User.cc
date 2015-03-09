@@ -6,13 +6,12 @@
 #include <elle/serialization/json.hh>
 
 #include <fist/tests/server.hh>
-#include <fist/tests/_detail/uuids.hh>
 
 ELLE_LOG_COMPONENT("fist.tests");
 
 namespace tests
 {
-  User::User(boost::uuids::uuid id,
+  User::User(elle::UUID id,
              std::string email,
              boost::optional<cryptography::KeyPair> keys,
              std::unique_ptr<papier::Identity> identity)
@@ -20,7 +19,7 @@ namespace tests
     , _email(std::move(email))
     , _keys(keys)
     , _identity(std::move(identity))
-    , _facebook_id(boost::lexical_cast<std::string>(random_uuid()))
+    , _facebook_id(boost::lexical_cast<std::string>(elle::UUID::random()))
   {}
 
   std::string
@@ -136,7 +135,7 @@ namespace tests
                  User const& user,
                  boost::filesystem::path const& home_path)
     : _server(server)
-    , device_id(random_uuid())
+    , device_id(elle::UUID::random())
     , user(const_cast<User&>(user))
     , state(server, device_id, home_path)
   {

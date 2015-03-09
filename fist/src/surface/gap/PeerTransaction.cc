@@ -21,9 +21,11 @@ namespace surface
         : id(id_)
         , status(status_)
         , sender_id(sender_id_)
-        , sender_device_id(sender_device_id_.repr())
+        , sender_device_id(
+            sender_device_id_.is_nil() ? "" : sender_device_id_.repr())
         , recipient_id(recipient_id_)
-        , recipient_device_id(recipient_device_id_.repr())
+        , recipient_device_id(
+            recipient_device_id_.is_nil() ? "" : recipient_device_id_.repr())
         , mtime(mtime_)
         , file_names(file_names_)
         , total_size(total_size_)

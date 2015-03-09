@@ -564,7 +564,7 @@ class User(Client):
   def full_swaggers(self):
     swaggers = self.get('user/swaggers')['swaggers']
     for swagger in swaggers:
-      assertIn(swagger['register_status'], ['ok', 'deleted'])
+      assertIn(swagger['register_status'], ['ok', 'deleted', 'ghost'])
     return swaggers
 
   @property
@@ -583,11 +583,11 @@ class User(Client):
 
   @property
   def _id(self):
-    return bson.ObjectId(self.data['_id'])
+    return bson.ObjectId(self.data['id'])
 
   @property
   def devices(self):
-    return self.get('devices')['devices']
+    return self.get('user/devices')['devices']
 
   @property
   def avatar(self):
@@ -632,7 +632,7 @@ class User(Client):
 
 
   def sendfile(self,
-               recipient_id,
+               recipient,
                files = ['50% off books.pdf',
                         'a file with strange encoding: é.file',
                         'another file with no extension'],
@@ -641,38 +641,40 @@ class User(Client):
                is_directory = False,
                device_id = None,
                initialize = False,
+               use_identifier = False,
                ):
     if device_id is None:
       device_id = self.device_id
 
     transaction = {
-      'id_or_email': recipient_id,
       'files': files,
       'files_count': len(files),
       'total_size': total_size,
       'message': message,
       'is_directory': is_directory,
       'device_id': str(device_id),
+      use_identifier and 'recipient_identifier' or 'id_or_email': recipient,
     }
-
-    res = self.post('transaction/create', transaction)
-    ghost = res['recipient_is_ghost']
+    if not initialize:
+      res = self.post('transaction/create', transaction)
+      ghost = res['recipient_is_ghost']
+    else:
+      id = self.post('transaction/create_empty')['created_transaction_id']
+      res = self.put('transaction/%s' % id, transaction)
+      ghost = res['recipient_is_ghost']
     if ghost:
       self.get('transaction/%s/cloud_buffer' % res['created_transaction_id'])
-    if initialize:
-      self.transaction_update(res['created_transaction_id'],
-                              transaction_status.INITIALIZED)
     transaction.update({'_id': res['created_transaction_id']})
     return transaction, res
 
   def transaction_update(self, transaction, status):
-    self.post('transaction/update',
-              {
-                'transaction_id': transaction,
-                'status': status,
-                'device_id': str(self.device_id),
-                'device_name': self.device_name,
-              })
+    return self.post('transaction/update',
+                     {
+                       'transaction_id': transaction,
+                       'status': status,
+                       'device_id': str(self.device_id),
+                       'device_name': self.device_name,
+                     })
 
   # FIXME: remove when link & peer transactions are merged
   def getalink(self,

@@ -35,7 +35,7 @@ namespace surface
 
       auto res = this->_meta.update_device(this->_device->id, name);
       this->_device.reset(new Device(res));
-      auto passport_string = res.passport;
+      auto passport_string = res.passport.get();
 
       if (this->_passport != nullptr)
         ELLE_WARN("%s: a passport was already present: %s",
@@ -48,7 +48,7 @@ namespace surface
       this->_passport->store(elle::io::Path(passport_path));
     }
 
-    Device const&
+    State::Device const&
     State::device() const
     {
       ELLE_ASSERT(this->_device != nullptr);

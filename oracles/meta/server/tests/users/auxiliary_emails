@@ -50,7 +50,7 @@ with Meta(enable_emails = True) as meta:
   random.shuffle(emails)
   i = 0
   for email in emails:
-    user.post('users/%s/accounts/%s/confirm' % (user.email, email),
+    user.post('users/%s/accounts/%s/confirm' % (user.id, email),
               {'key': meta.mailer.keys[email]})
     i += 1
     res = user.post('user/search_emails', {'emails': [email]})
@@ -110,7 +110,7 @@ with Meta(enable_emails = True) as meta:
   meta.mailer = MailService()
   email = 'endive@infinit.io'
   user.put('user/accounts/%s' % email)
-  user.post('users/%s/accounts/%s/confirm' % (user.email, email),
+  user.post('users/%s/accounts/%s/confirm' % (user.id, email),
             {'key': meta.mailer.keys[email]})
   meta.mailer.keys.clear()
   res = user.post('user/search_emails', {'emails': [email]})
@@ -150,7 +150,7 @@ with Meta(enable_emails = True) as meta:
   eve.login()
 
   try:
-    bob.post('users/%s/accounts/%s/confirm' % (bob.email, eve_email),
+    bob.post('users/%s/accounts/%s/confirm' % (bob.id, eve_email),
              {'key': meta.mailer.keys[eve_email]})
     assert False
   except HTTPException:
@@ -175,11 +175,11 @@ with Meta(enable_emails = True) as meta:
   alice.hash = meta.mailer.keys[email]
 
   bob.post(
-    'users/%s/accounts/%s/confirm' % (bob.email, email),
+    'users/%s/accounts/%s/confirm' % (bob.id, email),
     {'key': bob.hash})
   throws(lambda:
          alice.post(
-           'users/%s/accounts/%s/confirm' % (alice.email, email),
+           'users/%s/accounts/%s/confirm' % (alice.id, email),
            {'key': alice.hash}))
 
 # Swap primary email address.
@@ -189,7 +189,7 @@ with Meta(enable_emails = True) as meta:
   new_email = 'endive@infinit.io'
   meta.mailer = MailService()
   user.put('user/accounts/%s' % new_email,)
-  user.post('users/%s/accounts/%s/confirm' % (user.email, email),
+  user.post('users/%s/accounts/%s/confirm' % (user.id, email),
             {'key': meta.mailer.keys[email]})
   user.logout()
   try:

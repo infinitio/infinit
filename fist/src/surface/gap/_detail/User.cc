@@ -97,11 +97,26 @@ namespace surface
         // data by the new fetched one.
         id = this->_user_indexes.at(user.id);
         ELLE_ASSERT_NEQ(id, 0u);
-        this->_users.at(id) = std::move(user);
+        this->_users.at(id) = user;
       }
+      auto const& synced_user = this->_users.at(id);
+
+      surface::gap::User notification(
+        id,
+        user.online(),
+        user.fullname,
+        user.handle,
+        user.id,
+        this->is_swagger(id),
+        user.deleted(),
+        user.ghost(),
+        user.phone_number,
+        user.ghost_code,
+        user.ghost_profile_url);
+      this->enqueue(notification);
 
       ELLE_ASSERT_NEQ(id, 0u);
-      return this->_users.at(id);
+      return synced_user;
     }
 
     State::User const&
@@ -341,7 +356,10 @@ namespace surface
           user.id,
           this->is_swagger(numeric_id),
           user.deleted(),
-          user.ghost());
+          user.ghost(),
+          user.phone_number,
+          user.ghost_code,
+          user.ghost_profile_url);
         res.push_back(ret_user);
       }
       return res;
@@ -367,7 +385,10 @@ namespace surface
           user.id,
           this->is_swagger(numeric_id),
           user.deleted(),
-          user.ghost());
+          user.ghost(),
+          user.phone_number,
+          user.ghost_code,
+          user.ghost_profile_url);
         item.second = ret_user;
         res.insert(item);
       }
@@ -507,7 +528,10 @@ namespace surface
         user.id,
         this->is_swagger(id),
         user.deleted(),
-        user.ghost());
+        user.ghost(),
+        user.phone_number,
+        user.ghost_code,
+        user.ghost_profile_url);
       this->enqueue(res);
     }
 

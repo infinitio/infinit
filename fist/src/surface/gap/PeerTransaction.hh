@@ -6,7 +6,6 @@
 # include <string>
 
 # include <elle/UUID.hh>
-# include <elle/Printable.hh>
 
 # include <infinit/oracles/PeerTransaction.hh>
 
@@ -21,8 +20,7 @@ namespace surface
     /// the GUI.
     typedef infinit::oracles::TransactionCanceler TransactionCanceler;
     class PeerTransaction
-      : public elle::Printable
-      , public surface::gap::Notification
+      : public surface::gap::Notification
     {
     public:
       PeerTransaction() = default;

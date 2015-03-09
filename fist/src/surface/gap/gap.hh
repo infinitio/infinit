@@ -8,8 +8,7 @@
 /// Used by the iOS application.
 # include <infinit/oracles/TransactionStatuses.hh>
 
-# include <reactor/duration.hh>
-
+# include <surface/gap/Device.hh>
 # include <surface/gap/enums.hh>
 # include <surface/gap/LinkTransaction.hh>
 # include <surface/gap/PeerTransaction.hh>
@@ -93,7 +92,11 @@ gap_register(gap_State* state,
              boost::optional<std::string> device_push_token = {});
 
 gap_Status
-gap_new_swagger_callback(
+gap_use_ghost_code(gap_State* state,
+                   std::string const& code);
+
+gap_Status
+gap_update_user_callback(
   gap_State* state,
   std::function<void (surface::gap::User const&)> const& callback);
 
@@ -156,6 +159,10 @@ gap_transaction_concern_device(gap_State* state,
 /// Poll
 gap_Status
 gap_poll(gap_State* state);
+
+/// Fetch a list of user's devices.
+gap_Status
+gap_devices(gap_State* state, std::vector<surface::gap::Device>& devices);
 
 /// Returns the local device status.
 gap_Status
@@ -310,13 +317,11 @@ gap_send_files(gap_State* state,
                std::string const& message,
                boost::optional<std::string> device_id = {});
 
-/// C++ version for send_files_by_email.
-/// If the return value is 0, the operation failed.
 uint32_t
-gap_send_files_by_email(gap_State* state,
-                        std::string const& email,
-                        std::vector<std::string> const& files,
-                        std::string const& message);
+gap_send_files(gap_State* state,
+               std::string const& email,
+               std::vector<std::string> const& files,
+               std::string const& message);
 
 /// Pause transaction.
 /// If the return value is 0, the operation failed.

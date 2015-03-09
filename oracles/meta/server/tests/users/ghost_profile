@@ -1,0 +1,157 @@
+#!/usr/bin/env python3
+
+from utils import Meta, Trophonius, User, NoOpMailer, HTTPException
+from utils import throws
+from pprint import pprint
+
+from bson.objectid import ObjectId
+from infinit.oracles.meta import error
+from infinit.oracles.meta.server.transaction_status import CANCELED
+
+from infinit.oracles.notification import notifications
+for name, value in notifications.items():
+  globals()[name.upper()] = value
+
+from infinit.oracles.meta.server.transaction_status import INITIALIZED, ACCEPTED, FINISHED, GHOST_UPLOADED
+
+import requests
+
+class MailService(NoOpMailer):
+
+  def __init__(self):
+    super().__init__(True)
+    self.messages = {}
+  def template_message(self, template_message, message):
+    merges = {}
+    for entry in message['merge_vars'][0]['vars']:
+      merges[entry['name']] = entry['content']
+    self.messages.setdefault(template_message, [])
+    self.messages[template_message].append(merges)
+    print(merges)
+
+with Meta(enable_emails = True,
+          shorten_ghost_profile_url = False) as meta:
+  with Trophonius(meta) as trophonius:
+    alice = User(meta, 'alice@infinit.io')
+    alice.login(trophonius = trophonius)
+    bob = User(meta, 'bob@infinit.io')
+    bob.login(trophonius = trophonius)
+
+    trophonius.connect_user(alice)
+    trophonius.connect_user(bob)
+
+    meta.mailer = MailService()
+    email = 'navet@infinit.io'
+    # Check if the recipient always have the same ghost code & id.
+    _, res0 = alice.sendfile(email, initialize = True)
+    _, res1 = bob.sendfile(email, initialize = True)
+    _, res2 = bob.sendfile(bob.swaggers[0], initialize = True)
+
+    assert 'ghost_profile' not in res0['recipient']
+    assert 'ghost_profile' not in res1['recipient']
+    assert 'ghost_profile' not in res2['recipient']
+
+    recipient = res0['recipient']
+    t0 = res0['created_transaction_id']
+    t1 = res1['created_transaction_id']
+    t2 = res2['created_transaction_id']
+    alice.transaction_update(t0, GHOST_UPLOADED)
+    bob.transaction_update(t1, GHOST_UPLOADED)
+    bob.transaction_update(t2, GHOST_UPLOADED)
+
+    db_recipient = meta.database.users.find_one({"_id": ObjectId(bob.swaggers[0])})
+    # Check if the 3 emails have been delivered and contain ghost_code and url.
+    assert len(meta.mailer.messages['send-file-url']) == 3
+    ghost_profile = None
+    for message in meta.mailer.messages['send-file-url']:
+      assert message['ghost_code'] == db_recipient['ghost_code']
+      ghost_profile = message['ghost_profile']
+
+    ghost = meta.database.users.find_one({"register_status": "ghost"})
+    assert ghost['ghost_code'] == db_recipient['ghost_code']
+    url = 'ghost/%s' % ghost['_id']
+    def clear_url(url):
+      url = url.replace('https://www.infinit.io/invitation', 'ghost')
+      assert '&code=' in url
+      url = url[0:url.find('&')]
+      return url
+    # Check the ghost profile 'page'.
+    url = clear_url(ghost_profile)
+    res = meta.get(url)
+    transactions = res['transactions']
+    assert len(transactions) == 3
+    recipients = set([transaction['recipient_id'] for transaction in transactions])
+    assert len(recipients) == 1
+    id = recipients.pop()
+    assert id == str(ghost['_id'])
+
+    # Merge ghost into eve.
+    eve = User(meta, 'eve@infinit.io')
+    eve.login()
+    eve.post('ghost/%s/merge' % ghost['ghost_code'])
+
+    # Check transactions.
+    assert len(eve.transactions) == 3
+
+    # Check if the page is gone.
+    url = clear_url(ghost_profile)
+    try:
+      res = meta.get(url)
+      assert False
+    except HTTPException as e:
+      assert e.status == 410
+
+    try:
+      eve.post('ghost/%s/merge' % ghost['ghost_code'])
+      assert False
+    except HTTPException as e:
+      assert e.status == 410
+
+# Automaticaly consume ghost codes.
+with Meta(enable_emails = True) as meta:
+  alice_email = "alice@infinit.io"
+  bob = User(meta, "bob@infinit.io")
+  bob.login()
+  meta.mailer = MailService()
+  transaction, res = bob.sendfile(recipient = alice_email, initialize = True)
+  bob.transaction_update(res['created_transaction_id'], GHOST_UPLOADED)
+  message = meta.mailer.messages['send-file-url'][0]
+  ghost_code = message['ghost_code']
+  alice = User(meta, alice_email)
+  alice.login()
+  assert len(alice.transactions) == 1
+  try:
+    alice.post('ghost/%s/merge' % ghost_code)
+    assert False
+  except HTTPException as e:
+    assert e.status == 410
+
+# Consume ghost code and Consumed ghost codes.
+with Meta(enable_emails = True) as meta:
+  alice_email = "alice@infinit.io"
+  bob = User(meta, "bob@infinit.io")
+  bob.login()
+  meta.mailer = MailService()
+  transaction, res = bob.sendfile(recipient = alice_email, initialize = True)
+  bob.transaction_update(res['created_transaction_id'], GHOST_UPLOADED)
+  assert 'ghost_code' not in res['recipient']
+  message = meta.mailer.messages['send-file-url'][0]
+  ghost_code = message['ghost_code']
+  eve = User(meta, "eve@infinit.io")
+  eve.login()
+  assert len(eve.transactions) == 0
+  eve.post('ghost/%s/merge' % ghost_code)
+  # Second time should do nothing.
+  try:
+    eve.post('ghost/%s/merge' % ghost_code)
+    assert False
+  except HTTPException as e:
+    assert e.status == 410
+  dimrok = User(meta, 'dimrok@infinit.io')
+  dimrok.login()
+  try:
+    # Other people should get a 404.
+    dimrok.post('ghost/%s/merge' % ghost_code)
+    assert False
+  except HTTPException as e:
+    assert e.status == 404

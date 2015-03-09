@@ -4,8 +4,8 @@
 # include <surface/gap/State.hh>
 
 # include <elle/filesystem/TemporaryDirectory.hh>
+# include <elle/UUID.hh>
 
-# include <fist/tests/_detail/uuids.hh>
 
 namespace tests
 {
@@ -17,7 +17,7 @@ namespace tests
     // XXX Dirty hack.
     surface::gap::State* operator ->() { return &this->_state; };
     State(Server& server,
-          boost::uuids::uuid device_id,
+          elle::UUID device_id,
           boost::filesystem::path const& home = boost::filesystem::path());
 
     ELLE_ATTRIBUTE(elle::filesystem::TemporaryDirectory, temporary_dir);

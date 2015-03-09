@@ -11,12 +11,12 @@ class CreateEmptyServer
 {
 protected:
   virtual
-  boost::uuids::uuid
+  elle::UUID
   _create_empty() override
   {
     this->_created.open();
     reactor::sleep();
-    return boost::uuids::uuid();
+    return elle::UUID();
   }
   ELLE_ATTRIBUTE_RX(reactor::Barrier, created);
 };
@@ -58,7 +58,7 @@ public:
   typedef tests::Server Super;
 
 protected:
-  boost::uuids::uuid
+  elle::UUID
   _create_empty() override
   {
     BOOST_CHECK(!this->_created);
@@ -72,7 +72,7 @@ protected:
                    Server::Cookies const& cookies,
                    Server::Parameters const& params,
                    elle::Buffer const& content,
-                   boost::uuids::uuid const& id) override
+                   elle::UUID const& id) override
   {
 
     BOOST_CHECK_EQUAL(id, this->_id);
@@ -82,7 +82,7 @@ protected:
     return "unused";
   }
 
-  ELLE_ATTRIBUTE_RX(boost::uuids::uuid, id);
+  ELLE_ATTRIBUTE_RX(elle::UUID, id);
   ELLE_ATTRIBUTE_RX(reactor::Barrier, created);
   ELLE_ATTRIBUTE_RX(reactor::Barrier, initialized);
 };

@@ -157,7 +157,9 @@ namespace infinit
       Device::serialize(elle::serialization::Serializer& s)
       {
         s.serialize("id", this->id);
+        s.serialize("last_sync", this->last_sync);
         s.serialize("name", this->name);
+        s.serialize("os", this->os);
         s.serialize("passport", this->passport);
       }
 
@@ -384,6 +386,9 @@ namespace infinit
         s.serialize("register_status", this->register_status);
         s.serialize("connected_devices", this->connected_devices);
         s.serialize("public_key", this->public_key);
+        s.serialize("ghost_code", this->ghost_code);
+        s.serialize("ghost_profile", this->ghost_profile_url);
+        s.serialize("phone_number", this->phone_number);
       }
 
       LoginResponse::LoginResponse(
@@ -649,6 +654,24 @@ namespace infinit
         return SynchronizeResponse{input};
       }
 
+      void
+      Client::use_ghost_code(std::string const& code) const
+      {
+        std::string url = elle::sprintf("/ghost/%s/merge", code);
+        auto request = this->_request(url,
+                                      Method::POST,
+                                      false);
+        switch (request.status())
+        {
+          case reactor::http::StatusCode::OK:
+            break;
+          case reactor::http::StatusCode::Gone:
+            throw infinit::state::GhostCodeAlreadyUsed();
+          default:
+            throw infinit::state::InvalidGhostCode();
+        }
+      }
+
       static
       std::pair<std::string, User>
       email_and_user(boost::any const& json_)
@@ -813,7 +836,7 @@ namespace infinit
       std::vector<Device>
       Client::devices() const
       {
-        std::string url = "/devices";
+        std::string url = "/user/devices";
         auto request = this->_request(url, Method::GET);
         SerializerIn input(url, request);
         std::vector<Device> res;
@@ -825,15 +848,13 @@ namespace infinit
       Client::update_device(boost::uuids::uuid const& device_uuid,
                             std::string const& name) const
       {
-        std::string struuid = boost::lexical_cast<std::string>(device_uuid);
-        std::string url = "/device/update";
+        std::string url = elle::sprintf("/devices/%s", device_uuid);
         auto request = this->_request(
           url,
           Method::POST,
           [&] (reactor::http::Request& request)
           {
             elle::serialization::json::SerializerOut query(request, false);
-            query.serialize("id", struuid);
             query.serialize("name", const_cast<std::string&>(name));
           });
         SerializerIn input(url, request);
@@ -843,8 +864,7 @@ namespace infinit
       Device
       Client::device(boost::uuids::uuid const& device_id) const
       {
-        std::string const url = elle::sprintf("/device/%s/view", device_id);
-
+        std::string const url = elle::sprintf("/devices/%s", device_id);
         auto request = this->_request(url, Method::GET);
         SerializerIn input(url, request);
         return Device(input);
@@ -880,11 +900,13 @@ namespace infinit
         elle::serialization::Serializer& s)
       {
         s.serialize("aws_credentials", this->_aws_credentials);
+        s.serialize("ghost_code", this->_ghost_code);
+        s.serialize("ghost_profile", this->_ghost_profile_url);
       }
 
       CreatePeerTransactionResponse
       Client::create_transaction(
-        std::string const& recipient_id_or_email,
+        std::string const& recipient_identifier,
         std::list<std::string> const& files,
         uint64_t count,
         uint64_t size,
@@ -898,7 +920,7 @@ namespace infinit
         ELLE_TRACE_SCOPE(
           "%s: create peer transaction to %s%s",
           *this,
-          recipient_id_or_email,
+          recipient_identifier,
           recipient_device_id
           ? elle::sprintf(" on device %s", recipient_device_id.get()) : "");
         std::string const url = transaction_id ?
@@ -911,8 +933,8 @@ namespace infinit
           [&] (reactor::http::Request& r)
           {
             elle::serialization::json::SerializerOut query(r, false);
-            query.serialize("id_or_email",
-                            const_cast<std::string&>(recipient_id_or_email));
+            query.serialize("recipient_identifier",
+                            const_cast<std::string&>(recipient_identifier));
             query.serialize("files",
                             const_cast<std::list<std::string>&>(files));
             int64_t count_integral = static_cast<int64_t>(count);
@@ -934,6 +956,37 @@ namespace infinit
         ELLE_TRACE("%s: create empty transaction", *this);
         std::string const url = "/transaction/create_empty";
         auto request = this->_request( url, Method::POST);
+        SerializerIn input(url, request);
+        std::string created_transaction_id;
+        input.serialize("created_transaction_id", created_transaction_id);
+        return created_transaction_id;
+      }
+      std::string
+      Client::create_transaction(std::string const& recipient_identifier,
+                                 std::list<std::string> const& files,
+                                 uint64_t count,
+                                 std::string const& message) const
+      {
+        ELLE_TRACE_SCOPE(
+          "%s: create barebones peer transaction to %s",
+          *this,
+          recipient_identifier);
+        std::string const url = "/transactions";
+        auto method = Method::POST;
+        auto request = this->_request(
+          url,
+          method,
+          [&] (reactor::http::Request& r)
+          {
+            elle::serialization::json::SerializerOut query(r, false);
+            query.serialize("recipient_identifier",
+                            const_cast<std::string&>(recipient_identifier));
+            query.serialize("files",
+                            const_cast<std::list<std::string>&>(files));
+            int64_t count_integral = static_cast<int64_t>(count);
+            query.serialize("files_count", count_integral);
+            query.serialize("message", const_cast<std::string&>(message));
+          });
         SerializerIn input(url, request);
         std::string created_transaction_id;
         input.serialize("created_transaction_id", created_transaction_id);

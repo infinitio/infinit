@@ -62,7 +62,7 @@ namespace surface
         std::unique_ptr<frete::RPCFrete>
         rpcs(infinit::protocol::ChanneledStream& socket) override;
         virtual
-        void
+        infinit::oracles::meta::UpdatePeerTransactionResponse
         _accept() override;
         // Don't talk to meta
         virtual

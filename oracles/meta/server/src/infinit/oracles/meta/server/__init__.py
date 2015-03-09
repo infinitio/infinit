@@ -93,13 +93,14 @@ class Meta(bottle.Bottle,
       unconfirmed_email_leeway = 604800, # in sec, 7 days.
       daily_summary_hour = 18, #in sec.
       email_confirmation_cooldown = datetime.timedelta(weeks = 1),
+      shorten_ghost_profile_url = True,
       aws_region = None,
       aws_buffer_bucket = None,
       aws_link_bucket = None,
       gcs_region = None,
       gcs_buffer_bucket = None,
       gcs_link_bucket = None,
-      force_admin = False,
+      force_admin = None,
       debug = False,
       zone = None,
       production = False,
@@ -172,6 +173,7 @@ class Meta(bottle.Bottle,
     self.unconfirmed_email_leeway = int(unconfirmed_email_leeway)
     self.daily_summary_hour = int(daily_summary_hour)
     self.email_confirmation_cooldown = email_confirmation_cooldown
+    self.shorten_ghost_profile_url = shorten_ghost_profile_url
     if aws_region is None:
       aws_region = cloud_buffer_token.aws_default_region
     self.aws_region = aws_region
@@ -226,6 +228,10 @@ class Meta(bottle.Bottle,
                                        unique = False)
     self.__database.users.ensure_index([('devices.id', 1)],
                                        unique = False)
+    # - Ghost code.
+    self.__database.users.ensure_index([('ghost_code', 1)], unique = True, sparse = True)
+
+    # - Push token.
     self.__database.users.ensure_index(
       [('devices.push_token', 1)],
       unique = True,
@@ -351,7 +357,8 @@ class Meta(bottle.Bottle,
   @property
   def admin(self):
     source = bottle.request.environ.get('REMOTE_ADDR')
-    force = self.__force_admin or source == '127.0.0.1'
+    force = self.__force_admin or \
+      (self.__force_admin is not False and source == '127.0.0.1')
     return force or bottle.request.certificate in [
       'antony.mechin@infinit.io',
       'baptiste.fradin@infinit.io',

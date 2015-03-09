@@ -6,7 +6,7 @@ with Meta() as meta:
   alice = User(meta, "alice@infinit.io")
   bob = User(meta, "bob@infinit.io")
   bob.login()
-  transaction, res = bob.sendfile(recipient_id = alice.id)
+  transaction, res = bob.sendfile(recipient = alice.id)
   transaction_id = res['created_transaction_id']
   bob.get('transaction/%s/cloud_buffer' % transaction_id)
   bob.logout()

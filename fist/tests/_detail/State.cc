@@ -10,7 +10,7 @@ extern const std::vector<unsigned char> fingerprint;
 namespace tests
 {
   State::State(Server& server,
-               boost::uuids::uuid device_id,
+               elle::UUID device_id,
                boost::filesystem::path const& home)
     : _temporary_dir()
     , _state(

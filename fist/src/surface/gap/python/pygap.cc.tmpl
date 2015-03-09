@@ -84,6 +84,12 @@ struct user_to_dict
                          PyUnicode_FromString(user.meta_id.c_str()));
     PyDict_SetItemString(dict, "deleted", PyBool_FromLong(user.deleted));
     PyDict_SetItemString(dict, "ghost", PyBool_FromLong(user.ghost));
+    PyDict_SetItemString(dict, "phone_number",
+                         PyUnicode_FromString(user.phone_number.c_str()));
+    PyDict_SetItemString(dict, "ghost_code",
+                         PyUnicode_FromString(user.ghost_code.c_str()));
+    PyDict_SetItemString(dict, "ghost_invitation_url",
+                         PyUnicode_FromString(user.ghost_invitation_url.c_str()));
     return dict;
   }
 };
@@ -176,9 +182,8 @@ _send_files_by_email(gap_State* state,
   {
     list.push_back(boost::python::extract<std::string>(files[i]));
   }
-  auto id = gap_send_files_by_email(state,
-                                    recipient,
-                                    list, "Sent by command line");
+  auto id = gap_send_files(state, recipient,
+                           list, "Sent by command line");
   return id;
 }
 

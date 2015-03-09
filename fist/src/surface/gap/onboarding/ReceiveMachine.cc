@@ -106,9 +106,11 @@ namespace surface
         surface::gap::ReceiveMachine::reject();
       }
 
-      void
+      infinit::oracles::meta::UpdatePeerTransactionResponse
       ReceiveMachine::_accept()
-      {}
+      {
+        return infinit::oracles::meta::UpdatePeerTransactionResponse();
+      }
 
       void
       ReceiveMachine::_transfer_operation(frete::RPCFrete& frete)

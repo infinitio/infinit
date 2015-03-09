@@ -1,26 +1,4 @@
 #include <surface/gap/gap.hh>
-#include <surface/gap/gap_bridge.hh>
-#include <surface/gap/State.hh>
-#include <surface/gap/Transaction.hh>
-#include <surface/gap/onboarding/Transaction.hh>
-
-#include <infinit/oracles/meta/Client.hh>
-
-#include <common/common.hh>
-
-#include <elle/log.hh>
-#include <elle/elle.hh>
-#include <elle/assert.hh>
-#include <elle/finally.hh>
-#include <elle/HttpClient.hh>
-#include <elle/container/list.hh>
-#include <CrashReporter.hh>
-
-#include <reactor/scheduler.hh>
-#include <reactor/thread.hh>
-#include <reactor/network/proxy.hh>
-
-#include <boost/range/join.hpp>
 
 #include <algorithm>
 #include <cassert>
@@ -30,6 +8,30 @@
 #include <memory>
 #include <string.h>
 #include <unordered_set>
+
+#include <boost/range/join.hpp>
+
+#include <common/common.hh>
+
+#include <CrashReporter.hh>
+#include <elle/assert.hh>
+#include <elle/container/list.hh>
+#include <elle/elle.hh>
+#include <elle/finally.hh>
+#include <elle/HttpClient.hh>
+#include <elle/log.hh>
+
+#include <reactor/network/proxy.hh>
+#include <reactor/scheduler.hh>
+#include <reactor/thread.hh>
+
+#include <infinit/oracles/meta/Client.hh>
+
+#include <surface/gap/Error.hh>
+#include <surface/gap/gap_bridge.hh>
+#include <surface/gap/onboarding/Transaction.hh>
+#include <surface/gap/State.hh>
+#include <surface/gap/Transaction.hh>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap");
 
@@ -261,6 +263,33 @@ gap_register(gap_State* state,
 }
 
 gap_Status
+gap_use_ghost_code(gap_State* state,
+                  std::string const& code)
+{
+  assert(state != nullptr);
+  if (code.empty())
+    return gap_unknown_user;
+  return run<gap_Status>(state,
+                         "use ghost code",
+                         [&] (surface::gap::State& state) -> gap_Status
+    {
+      try
+      {
+        state.meta().use_ghost_code(code);
+      }
+      catch (infinit::state::GhostCodeAlreadyUsed const&)
+      {
+        return gap_ghost_code_already_used;
+      }
+      catch (elle::Error const&)
+      {
+        return gap_unknown_user;
+      }
+      return gap_ok;
+    });
+}
+
+gap_Status
 gap_poll(gap_State* state)
 {
   ELLE_ASSERT(state != nullptr);
@@ -298,6 +327,25 @@ gap_poll(gap_State* state)
 }
 
 /// - Device --------------------------------------------------------------
+
+gap_Status
+gap_devices(gap_State* state, std::vector<surface::gap::Device>& devices)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "devices",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      for (auto const& device_: state.devices())
+      {
+        devices.push_back(
+          surface::gap::Device(device_.id, device_.name, device_.os));
+      }
+      return gap_ok;
+    });
+}
+
 gap_Status
 gap_device_status(gap_State* state)
 {
@@ -486,7 +534,10 @@ gap_user_by_id(gap_State* state, uint32_t id, surface::gap::User& res)
         user.id,
         state.is_swagger(id),
         user.deleted(),
-        user.ghost());
+        user.ghost(),
+        user.phone_number,
+        user.ghost_code,
+        user.ghost_profile_url);
       return gap_ok;
     });
 }
@@ -513,7 +564,10 @@ gap_user_by_meta_id(gap_State* state,
         user.id,
         state.is_swagger(state_id),
         user.deleted(),
-        user.ghost());
+        user.ghost(),
+        user.phone_number,
+        user.ghost_code,
+        user.ghost_profile_url);
       return gap_ok;
     });
 }
@@ -584,7 +638,10 @@ gap_user_by_email(gap_State* state,
         user.id,
         state.is_swagger(numeric_id),
         user.deleted(),
-        user.ghost());
+        user.ghost(),
+        user.phone_number,
+        user.ghost_code,
+        user.ghost_profile_url);
       return gap_ok;
     });
 }
@@ -610,7 +667,10 @@ gap_user_by_handle(gap_State* state,
         user.id,
         state.is_swagger(numeric_id),
         user.deleted(),
-        user.ghost());
+        user.ghost(),
+        user.phone_number,
+        user.ghost_code,
+        user.ghost_profile_url);
       return gap_ok;
     });
 }
@@ -682,7 +742,10 @@ gap_swaggers(gap_State* state, std::vector<surface::gap::User>& res)
           user.id,
           state.is_swagger(user_id),
           user.deleted(),
-          user.ghost());
+          user.ghost(),
+          user.phone_number,
+          user.ghost_code,
+          user.ghost_profile_url);
         res.push_back(ret_user);
       }
       return gap_ok;
@@ -779,10 +842,8 @@ gap_is_favorite(gap_State* state, uint32_t id)
     });
 }
 
-// - Trophonius ----------------------------------------------------------------
-
 gap_Status
-gap_new_swagger_callback(
+gap_update_user_callback(
   gap_State* state,
   std::function<void (surface::gap::User const&)> const& callback)
 {
@@ -1220,25 +1281,6 @@ gap_peer_transactions(gap_State* state,
 }
 
 uint32_t
-gap_send_files_by_email(gap_State* state,
-                        std::string const& email,
-                        std::vector<std::string> const& files,
-                        std::string const& message)
-{
-  ELLE_ASSERT(email.length() > 0);
-  ELLE_ASSERT(state != nullptr);
-  return run<uint32_t>(
-    state,
-    "send files",
-    [&] (surface::gap::State& state) -> uint32_t
-    {
-      return state.transaction_peer_create(email,
-                                           std::move(files),
-                                           message).id();
-    });
-}
-
-uint32_t
 gap_send_files(gap_State* state,
                uint32_t id,
                std::vector<std::string> const& files,
@@ -1265,6 +1307,25 @@ gap_send_files(gap_State* state,
                                              std::move(files),
                                              message).id();
       }
+    });
+}
+
+uint32_t
+gap_send_files(gap_State* state,
+               std::string const& email,
+               std::vector<std::string> const& files,
+               std::string const& message)
+{
+  ELLE_ASSERT(state != nullptr);
+  ELLE_ASSERT(email.length() > 0);
+  return run<uint32_t>(
+    state,
+    "send files",
+    [&] (surface::gap::State& state) -> uint32_t
+    {
+      return state.transaction_peer_create(email,
+                                           std::move(files),
+                                           message).id();
     });
 }
 
