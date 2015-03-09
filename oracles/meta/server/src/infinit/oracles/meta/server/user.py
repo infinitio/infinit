@@ -8,12 +8,13 @@ import json
 import bson.code
 import random
 import uuid
+import re
 
 import elle.log
 import papier
 
 from .plugins.response import response, Response
-from .utils import api, require_logged_in, require_logged_in_fields, require_admin, require_logged_in_or_admin, hash_password, json_value, require_key, key
+from .utils import api, require_logged_in, require_logged_in_fields, require_admin, require_logged_in_or_admin, hash_password, json_value, require_key, key, clean_up_phone_number
 from . import utils
 from . import error, notifier, regexp, conf, invitation, mail, transaction_status
 
@@ -1112,7 +1113,7 @@ class Mixin:
           previous = self.user_by_id_or_email(
             name,
             fields = ['email', 'register_status', 'swaggers'],
-            ensure = False)
+            ensure_existence = False)
           if previous is None:
             elle.log.warn('email confirmation duplicate disappeared')
             continue
@@ -1613,7 +1614,8 @@ class Mixin:
 
   def user_by_email_query(self, email):
     email = email.lower().strip()
-    return {'accounts.id': email}
+    return {'accounts.id': email,
+            'accounts.type': 'email'}
 
   def user_by_email(self,
                     email,
@@ -1633,6 +1635,31 @@ class Mixin:
     if ensure_existence:
       self.__ensure_user_existence(user)
     return user
+
+  def user_by_phone_number_query(self, phone_number):
+    phone_number = phone_number.replace(' ', '')
+    return {'accounts.id': phone_number,
+            'accounts.type': 'phone'}
+
+  def user_by_phone_number(self,
+                           phone_number,
+                           fields = None,
+                           ensure_existence = True):
+    """Get a user with given phone number.
+
+    phone_number -- the email of the user.
+    ensure_existence -- if set, raise if user is invald.
+    """
+    if fields is None:
+      fields = self.__user_view_fields
+    user = self.__user_fetch(
+      self.user_by_phone_number_query(phone_number),
+      fields = fields,
+    )
+    if ensure_existence:
+      self.__ensure_user_existence(user)
+    return user
+
 
   def user_by_email_password(self,
                              email,
@@ -1695,18 +1722,18 @@ class Mixin:
     return user
 
   def user_by_id_or_email(self, id_or_email, fields,
-                          ensure = False):
+                          ensure_existence = False):
     id_or_email = id_or_email.lower()
     if '@' in id_or_email:
       return self.user_by_email(id_or_email,
                                 fields = fields,
-                                ensure_existence = ensure)
+                                ensure_existence = ensure_existence)
     else:
       try:
         id = bson.ObjectId(id_or_email)
         return self._user_by_id(id,
                                 fields = fields,
-                                ensure_existence = ensure)
+                                ensure_existence = ensure_existence)
       except bson.errors.InvalidId:
         self.bad_request('invalid user id: %r' % id_or_email)
 
@@ -1825,17 +1852,30 @@ class Mixin:
                                  offset : int = 0):
     return self.__users_by_emails_search(emails, limit, offset)
 
-  @api('/users/<id_or_email>')
-  def view_user(self, id_or_email):
+  @api('/users/<recipient_identifier>')
+  def view_user(self,
+                recipient_identifier,
+                country_code = None):
     """
-    Get user's public information by user_id or email.
+    Get user's public information by identifier.
+    recipient_identifier -- Something to identify the user (email, user_id or phone number).
     """
-    user = self.user_by_id_or_email(id_or_email,
-                                    fields = self.__user_view_fields)
+    device = self.current_device
+    if device and country_code is None:
+      country_code = device.get('country_code', None)
+    phone_number = clean_up_phone_number(recipient_identifier, country_code)
+    args = {
+      'fields': self.__user_view_fields,
+      'ensure_existence': False,
+    }
+    if phone_number:
+      user = self.user_by_phone_number(phone_number, **args)
+    else:
+      user = self.user_by_id_or_email(recipient_identifier, **args)
     if user is None:
       self.not_found({
-        'reason': 'user %s not found' % id_or_email,
-        'id': id_or_email,
+        'reason': 'user %s not found' % recipient_identifier,
+        'id': recipient_identifier,
       })
     else:
       return self.__user_view(user)

@@ -641,8 +641,7 @@ class User(Client):
                is_directory = False,
                device_id = None,
                initialize = False,
-               use_identifier = False,
-               ):
+               use_identifier = False):
     if device_id is None:
       device_id = self.device_id
 

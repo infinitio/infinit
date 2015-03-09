@@ -24,6 +24,7 @@
 
 #include <reactor/scheduler.hh>
 #include <reactor/http/exceptions.hh>
+#include <reactor/http/EscapedString.hh>
 
 #include <infinit/oracles/meta/Client.hh>
 #include <infinit/oracles/meta/Error.hh>
@@ -762,16 +763,17 @@ namespace infinit
       }
 
       User
-      Client::user(std::string const& id_or_email) const
+      Client::user(std::string const& recipient_identifier) const
       {
-        if (id_or_email.size() == 0)
+        if (recipient_identifier.size() == 0)
           throw elle::Exception("Invalid id or email");
-        std::string url = elle::sprintf("/users/%s", id_or_email);
+        reactor::http::EscapedString identifier(recipient_identifier);
+        std::string url = elle::sprintf("/users/%s", identifier);
         auto request = this->_request(url, Method::GET, false);
         switch (request.status())
         {
           case reactor::http::StatusCode::Not_Found:
-            throw infinit::state::UserNotFoundError(id_or_email);
+            throw infinit::state::UserNotFoundError(recipient_identifier);
           default:
             this->_handle_errors(request);
         }
