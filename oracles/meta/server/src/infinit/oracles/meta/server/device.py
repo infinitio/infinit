@@ -125,7 +125,8 @@ class Mixin:
                      owner,
                      name = None,
                      id = None,
-                     device_push_token = None):
+                     device_push_token = None,
+                     country_code = None):
     """Create a device.
     """
     with elle.log.trace('create device %s with owner %s' %
@@ -155,6 +156,8 @@ class Mixin:
       }
       if device_push_token is not None:
         device['push_token'] = device_push_token
+      if country_code is not None:
+        device['country_code'] = country_code
       res = None
       def create():
         if has_id:
