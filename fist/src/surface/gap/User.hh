@@ -30,6 +30,7 @@ namespace surface
            bool swagger,
            bool deleted,
            bool ghost,
+           boost::optional<std::string> phone_number = {},
            boost::optional<std::string> ghost_code = {},
            boost::optional<std::string> ghost_invitation_url = {});
       ~User() noexcept(true);
@@ -42,6 +43,7 @@ namespace surface
       bool swagger;
       bool deleted;
       bool ghost;
+      std::string phone_number;
       std::string ghost_code;
       std::string ghost_invitation_url;
 
