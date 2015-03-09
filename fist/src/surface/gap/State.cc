@@ -693,6 +693,7 @@ namespace surface
       RETHROW(state::UnconfirmedEmailError)
       RETHROW(state::VersionRejected)
       RETHROW(state::AlreadyLoggedIn)
+      RETHROW(state::MissingEmail)
       #undef RETHROW
       catch(elle::Exception const& e)
       { // Assume temporary failure and retry

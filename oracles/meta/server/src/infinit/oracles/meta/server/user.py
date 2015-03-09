@@ -60,13 +60,16 @@ class Mixin:
     if 'handle' not in user:
       user['handle'] = ''
     if user['register_status'] == 'ghost':
-      if 'phone_number' not in user:
-        del user['ghost_code']
-        del user['shorten_ghost_profile_url']
-      else:
-        user['ghost_profile'] = user.get(
-          'shorten_ghost_profile_url',
-          self.__ghost_profile_url(user))
+      # Only the user with a ghost code are concerned (>= 0.9.31).
+      if 'ghost_code' in user:
+        if 'phone_number' not in user:
+          del user['ghost_code']
+        else:
+          user['ghost_profile'] = user.get(
+            'shorten_ghost_profile_url',
+            self.__ghost_profile_url(user))
+        if 'shorten_ghost_profile_url' in user:
+          del user['shorten_ghost_profile_url']
     return user
 
   def __user_self(self, user):
@@ -570,7 +573,8 @@ class Mixin:
     email = preferred_email or email
     if email is None:
       return self.bad_request({
-        'reason': 'you must provide an email'
+        'reason': 'you must provide an email',
+        'code': error.EMAIL_NOT_VALID[0]
       })
     name = facebook_user.data['name']
     extra_fields = {
@@ -2519,4 +2523,5 @@ class Mixin:
     res.update(self._user_transactions(modification_time = mtime['date']))
     # Include deleted links only during updates. At start up, ignore them.
     res.update(self.links_list(mtime = mtime['date'], include_deleted = (not init)))
+    res.update(self.devices_users_api(user['email']))
     return self.success(res)

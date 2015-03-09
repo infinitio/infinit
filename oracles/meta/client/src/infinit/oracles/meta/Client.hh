@@ -212,6 +212,7 @@ namespace infinit
         std::vector<User> swaggers;
         std::unordered_map<std::string, PeerTransaction> transactions;
         std::vector<LinkTransaction> links;
+        std::vector<Device> devices;
 
         SynchronizeResponse() = default;
         SynchronizeResponse(elle::serialization::SerializerIn& s);

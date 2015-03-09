@@ -443,6 +443,7 @@ namespace infinit
           this->transactions[tr.id] = tr;
         s.serialize("links", this->links);
         s.serialize("swaggers", this->swaggers);
+        s.serialize("devices", this->devices);
       }
 
       LoginResponse
@@ -527,7 +528,8 @@ namespace infinit
             output.serialize("OS", os);
           },
           false);
-        if (request.status() == reactor::http::StatusCode::Forbidden)
+        if (request.status() == reactor::http::StatusCode::Forbidden ||
+            request.status() == reactor::http::StatusCode::Bad_Request)
         {
           SerializerIn input(url, request);
           int error_code;
@@ -543,6 +545,8 @@ namespace infinit
               throw infinit::state::AlreadyLoggedIn();
             case Error::deprecated:
               throw infinit::state::VersionRejected();
+            case Error::email_not_valid:
+              throw infinit::state::MissingEmail();
             default:
               throw infinit::state::LoginError(
                 elle::sprintf("%s: Unknown, good luck!", error_code));
