@@ -361,9 +361,15 @@ namespace surface
     State::login(
       std::string const& email,
       std::string const& password,
-      boost::optional<std::string> device_push_token)
+      boost::optional<std::string> device_push_token,
+      boost::optional<std::string> country_code
+      )
     {
-      this->login(email, password, reactor::DurationOpt(), device_push_token);
+      this->login(email,
+                  password,
+                  reactor::DurationOpt(),
+                  device_push_token,
+                  country_code);
     }
 
     void
@@ -371,12 +377,16 @@ namespace surface
       std::string const& email,
       std::string const& password,
       reactor::DurationOpt timeout,
-      boost::optional<std::string> device_push_token)
+      boost::optional<std::string> device_push_token,
+      boost::optional<std::string> country_code
+      )
     {
       this->login(
         email, password,
         std::unique_ptr<infinit::oracles::trophonius::Client>(),
-        device_push_token,timeout);
+        device_push_token,
+        country_code,
+        timeout);
     }
 
     void
@@ -437,13 +447,15 @@ namespace surface
       std::string const& password,
       TrophoniusClientPtr trophonius,
       boost::optional<std::string> device_push_token,
+      boost::optional<std::string> country_code,
       reactor::DurationOpt timeout)
     {
       auto tropho = elle::utility::move_on_copy(std::move(trophonius));
       return this->_login_with_timeout(
         [&]
         {
-          this->_login(email, password, tropho, device_push_token);
+          this->_login(
+            email, password, tropho, device_push_token, country_code);
         }, timeout);
     }
 
@@ -454,7 +466,9 @@ namespace surface
       std::string const& email,
       std::string const& password,
       elle::utility::Move<TrophoniusClientPtr> trophonius,
-      boost::optional<std::string> device_push_token)
+      boost::optional<std::string> device_push_token,
+      boost::optional<std::string> country_code
+      )
     {
       ELLE_TRACE_SCOPE("%s: attempt to login as %s", *this, email);
       this->_email = email;
@@ -470,7 +484,11 @@ namespace surface
       infinit::metrics::Reporter::metric_sender_id(lower_email);
       this->_login(
         [&] {
-          return this->_meta.login(lower_email, password, this->_device_uuid, device_push_token);
+          return this->_meta.login(lower_email,
+                                   password,
+                                   this->_device_uuid,
+                                   device_push_token,
+                                   country_code);
         },
         trophonius,
         [=] { return hashed_password; },

@@ -88,6 +88,7 @@ class Mixin:
       # Fetch devices so __user_fill can compute connectivity
       'devices.id',
       'devices.trophonius',
+      'devices.country_code',
       'fullname',
       'handle',
       'public_key',
@@ -284,7 +285,8 @@ class Mixin:
                     password,
                     OS = None,
                     pick_trophonius = None,
-                    device_push_token: str = None):
+                    device_push_token: str = None,
+                    country_code = None):
     # If creation process was interrupted, generate identity now.
     if 'public_key' not in user:
       user = self.__generate_identity(user, password)
@@ -302,6 +304,7 @@ class Mixin:
         '$set':
         {
           'devices.$.push_token': device_push_token,
+          'country_code': country_code,
         }
       }
     def login():
@@ -406,7 +409,8 @@ class Mixin:
             password_hash: str = None,
             OS: str = None,
             pick_trophonius: bool = True,
-            device_push_token: str = None):
+            device_push_token: str = None,
+            country_code: str = None):
     # Xor facebook_token or email / passwor.
     with_email = bool(email and (password or password_hash))
     with_facebook = bool(long_lived_access_token or short_lived_access_token)
@@ -438,7 +442,8 @@ class Mixin:
                                 device_id = device_id,
                                 OS = OS,
                                 pick_trophonius = pick_trophonius,
-                                device_push_token = device_push_token)
+                                device_push_token = device_push_token,
+                                country_code = country_code)
 
   @api('/web-login', method = 'POST')
   def web_login(self,
