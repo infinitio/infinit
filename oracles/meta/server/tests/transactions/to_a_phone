@@ -103,3 +103,17 @@ with Meta() as meta:
 
   eve.transaction_update(ti1, transaction_status.ACCEPTED)
   eve.transaction_update(ti1, transaction_status.FINISHED)
+
+# Ghost code, one with country code, the other with no country code.
+with Meta() as meta:
+  alice = User(meta, "alice@infinit.io")
+  # Device push token is needed because
+  alice.login(country_code = None,
+              device_push_token = "31")
+  _, res0 = alice.sendfile(recipient = '+33600000000', use_identifier = True, initialize = True)
+  assert meta.database.users.count() == 2
+  try:
+    _, res1 = alice.sendfile(recipient = '0600000000', use_identifier = True, initialize = True)
+    assert False
+  except HTTPException as e:
+    assert e.status == 400

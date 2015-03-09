@@ -299,6 +299,11 @@ class Mixin:
     ]
     # Determine the nature of the recipient identifier.
     recipient_id = None
+    recipient = None
+    is_a_phone_number = False
+    is_an_email = False
+    peer_email = None
+    phone_number = None
     try:
       recipient_id = bson.ObjectId(recipient_identifier)
       # recipient_identifier is an ObjectId.
@@ -332,7 +337,7 @@ class Mixin:
       return self.bad_request({
         'reason': 'recipient_identifier was ill-formed'
       })
-    if not recipient:
+    if recipient is None:
       elle.log.trace("recipient unknown, create a ghost")
       new_user = True
       if is_an_email:
@@ -347,6 +352,10 @@ class Mixin:
           'fullname': phone_number, # Same comment.
           'accounts': [{'type':'phone', 'id': phone_number}],
         })
+      if recipient_id is None:
+        return self.bad_request({
+          'reason': 'recipient_identifier was ill-formed'
+      })
       recipient = self.__user_fetch(
         {"_id": recipient_id},
         fields = recipient_fields)
