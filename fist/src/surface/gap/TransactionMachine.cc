@@ -598,10 +598,13 @@ namespace surface
       infinit::oracles::Transaction::Status status,
       std::string reason)
     {
+      auto transaction_id = (!this->data()->id.empty())
+        ? this->transaction_id()
+        : std::string{"unknown"};
       bool onboarding = false;
       if (this->state().metrics_reporter())
         this->state().metrics_reporter()->transaction_ended(
-          this->transaction_id(),
+          transaction_id,
           status,
           reason,
           onboarding,
