@@ -443,6 +443,7 @@ namespace infinit
           this->transactions[tr.id] = tr;
         s.serialize("links", this->links);
         s.serialize("swaggers", this->swaggers);
+        s.serialize("devices", this->devices);
       }
 
       LoginResponse
