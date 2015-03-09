@@ -640,7 +640,7 @@ class Mixin:
         'devices': [],
         'notifications': [],
         'old_notifications': [],
-        'accounts': [{'type': 'email', 'id': email}],
+        'accounts': [collections.OrderedDict((('id', email), ('type', 'email')))],
         'creation_time': self.now,
       }
       if email_is_already_confirmed:
@@ -916,13 +916,9 @@ class Mixin:
     with elle.log.trace('validate email %s for user %s' %
                         (name, user)):
       update = {
-        '$push':
+        '$addToSet':
         {
-          'accounts':
-          {
-            'id': name,
-            'type': 'email',
-          }
+          'accounts': collections.OrderedDict((('id', name), ('type', 'email')))
         }
       }
       user = self.user_by_id_or_email(user, fields = ['_id'])
@@ -990,7 +986,7 @@ class Mixin:
         'email': {'$ne': email} # Not the primary email.
       },
       {
-        '$pull': {'accounts': {'type': 'email', 'id': email}}
+        '$pull': {'accounts': collections.OrderedDict((('id', email), ('type', 'email')))}
       })
     if res['n'] == 0:
       return self.not_found({
