@@ -60,13 +60,16 @@ class Mixin:
     if 'handle' not in user:
       user['handle'] = ''
     if user['register_status'] == 'ghost':
-      if 'phone_number' not in user:
-        del user['ghost_code']
-        del user['shorten_ghost_profile_url']
-      else:
-        user['ghost_profile'] = user.get(
-          'shorten_ghost_profile_url',
-          self.__ghost_profile_url(user))
+      # Only the user with a ghost code are concerned (>= 0.9.31).
+      if 'ghost_code' in user:
+        if 'phone_number' not in user:
+          del user['ghost_code']
+        else:
+          user['ghost_profile'] = user.get(
+            'shorten_ghost_profile_url',
+            self.__ghost_profile_url(user))
+        if 'shorten_ghost_profile_url' in user:
+          del user['shorten_ghost_profile_url']
     return user
 
   def __user_self(self, user):
