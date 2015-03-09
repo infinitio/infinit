@@ -339,8 +339,7 @@ public class State
 
   /// A critical error occurred
   public void onCritical() {}
-  /// User added to swagger list
-  public void onNewSwagger(User user) {}
+  public void onUpdateUser(User user) {}
   /// User removed from swagger list
   public void onDeletedSwagger(int id) {}
   /// User removed from favorites

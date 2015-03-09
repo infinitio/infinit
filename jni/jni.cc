@@ -323,13 +323,13 @@ static void on_critical(jobject thiz)
   jmethodID m = env->GetMethodID(clazz, "onCritical", "()V");
   env->CallVoidMethod(thiz, m);
 }
-static void on_new_swagger(jobject thiz, surface::gap::User const& u)
+
+static void on_update_user(jobject thiz, surface::gap::User const& user)
 {
   JNIEnv* env = get_env();
   jclass clazz = env->GetObjectClass(thiz);
-  jmethodID m = env->GetMethodID(clazz, "onNewSwagger", "(Lio/infinit/User;)V");
-  jobject ju = to_user(env, u);
-  env->CallVoidMethod(thiz, m, ju);
+  jmethodID m = env->GetMethodID(clazz, "onUpdateUser", "(Lio/infinit/User;)V");
+  env->CallVoidMethod(thiz, m, to_user(env, user));
 }
 
 static void on_deleted_swagger(jobject thiz, int id)
@@ -469,7 +469,7 @@ extern "C" jlong Java_io_infinit_State_gapInitialize(JNIEnv* env,
     max_mirroring_size);
   //using namespace std::placeholders;
   gap_critical_callback(state, boost::bind(on_critical, thiz));
-  gap_new_swagger_callback(state, boost::bind(on_new_swagger, thiz, _1));
+  gap_update_user_callback(state, boost::bind(on_update_user, thiz, _1));
   gap_deleted_swagger_callback(state, boost::bind(on_deleted_swagger, thiz, _1));
   gap_deleted_favorite_callback(state, boost::bind(on_deleted_favorite, thiz, _1));
   gap_user_status_callback(state, boost::bind(on_user_status, thiz, _1, _2));
@@ -873,7 +873,7 @@ extern "C" jint Java_io_infinit_State_gapSendFilesByEmail(
   jstring id, jobjectArray jfiles, jstring message)
 {
   std::vector<std::string> files = from_array<std::string>(env, jfiles, to_string);
-  return gap_send_files_by_email((gap_State*)handle, to_string(env, id), files, to_string(env, message));
+  return gap_send_files((gap_State*)handle, to_string(env, id), files, to_string(env, message));
 }
 
 extern "C" jint Java_io_infinit_State_gapPauseTransaction(
