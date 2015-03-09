@@ -308,7 +308,7 @@ class Mixin:
         '$set':
         {
           'devices.$.push_token': device_push_token,
-          'country_code': country_code,
+          'devices.$.country_code': country_code,
         }
       }
     def login():
@@ -1645,7 +1645,6 @@ class Mixin:
     return user
 
   def user_by_phone_number_query(self, phone_number):
-    phone_number = phone_number.replace(' ', '')
     return {'accounts.id': phone_number,
             'accounts.type': 'phone'}
 
@@ -1874,6 +1873,7 @@ class Mixin:
       'ensure_existence': False,
     }
     recipient_id = None
+    user = None
     try:
       recipient_id = bson.ObjectId(recipient_identifier)
       user = self._user_by_id(recipient_id, **args)

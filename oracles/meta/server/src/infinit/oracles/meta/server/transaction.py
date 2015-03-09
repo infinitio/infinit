@@ -315,7 +315,6 @@ class Mixin:
     except bson.errors.InvalidId:
       pass
     is_an_email = re.match(regexp.Email, recipient_identifier)
-    is_a_phone_number = None
     if is_an_email is not None:
       elle.log.debug("%s is an email" % recipient_identifier)
       peer_email = recipient_identifier.lower().strip()
