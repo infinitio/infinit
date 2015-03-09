@@ -335,6 +335,12 @@ public class State
     _check("facebook connect", res);
   }
 
+  public void useGhostCode(String code)
+  {
+    long res = gapUseGhostCode(handle, code);
+    _check("ghost code", res);
+  }
+
   /// Callbacks
 
   /// A critical error occurred
@@ -453,6 +459,7 @@ public class State
   private native long gapFacebookConnect(long handle, String facebook_token,
                                          String preferred_email,
                                          String device_push_token);
+  private native long gapUseGhostCode(long handle, String code);
   public native void setenv(String key, String value);
   public native String getenv(String key);
   /* this is used to load the 'hello-jni' library on application
