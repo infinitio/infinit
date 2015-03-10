@@ -68,7 +68,7 @@ class Mixin:
         else:
           user['ghost_profile'] = user.get(
             'shorten_ghost_profile_url',
-            self.__ghost_profile_url(user))
+            self.__ghost_profile_url(user, type = 'phone'))
         if 'shorten_ghost_profile_url' in user:
           del user['shorten_ghost_profile_url']
     return user
@@ -938,6 +938,7 @@ class Mixin:
 
   def __register_ghost(self,
                        extra_fields):
+    assert 'accounts' in extra_fields
     features = self._roll_features(True)
     ghost_code = self.generate_random_sequence()
     request = {
@@ -960,12 +961,18 @@ class Mixin:
       {
         '$set': {
           'shorten_ghost_profile_url': self.shorten(
-            self.__ghost_profile_url({'_id': user_id, 'ghost_code': ghost_code}))
+            self.__ghost_profile_url(
+              {
+                '_id': user_id,
+                'ghost_code': ghost_code,
+              },
+              type = extra_fields['accounts'][0]["type"],
+            ))
         }
       })
     return user_id
 
-  def __ghost_profile_url(self, ghost):
+  def __ghost_profile_url(self, ghost, type):
     """
     Return the url of the user ghost profile on the website.
     We have to specify the full url because this url will be shorten by another
@@ -978,11 +985,13 @@ class Mixin:
     code = ghost['ghost_code']
     url = '/ghost/%s' % str(ghost_id)
     ghost_profile_url = "https://www.infinit.io/" \
-                        "invitation/%(ghost_id)s?key=%(key)s&code=%(code)s" % {
-      'ghost_id': str(ghost_id),
-      'key': key(url),
-      'code': code,
-    }
+                        "invitation/%(ghost_id)s?key=%(key)s&code=%(code)s" \
+                        "&utm_source=%(type)s&utm_medium=invitation" % {
+                          'ghost_id': str(ghost_id),
+                          'key': key(url),
+                          'code': code,
+                          'type': type
+                        }
     return ghost_profile_url
 
   @api('/ghost/<code>/merge', method = 'POST')

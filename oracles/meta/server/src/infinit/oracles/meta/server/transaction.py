@@ -801,8 +801,9 @@ class Mixin:
         if 'ghost_code' in recipient:
           merges.update({
             'ghost_code': recipient['ghost_code'],
-            'ghost_profile': recipient.get('shorten_ghost_profile_url',
-                                           self.__ghost_profile_url(recipient)),
+            'ghost_profile': recipient.get(
+              'shorten_ghost_profile_url',
+              self.__ghost_profile_url(recipient, type = "email")),
           })
         source = (user['fullname'], self.user_identifier(user))
         invitation.invite_user(
