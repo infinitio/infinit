@@ -3,7 +3,7 @@
 from utils import Meta, User
 from infinit.oracles.meta import error
 from uuid import uuid4
-from copy import copy
+from copy import deepcopy
 
 def fill_os_and_version(user, os, version):
   user.os = os
@@ -63,10 +63,10 @@ class Tropho:
 with Meta() as meta:
 
   alice_device1 = User(meta, 'alice@infinit.io')
-  alice_device2 = copy(alice_device1)
+  alice_device2 = deepcopy(alice_device1)
   alice_device2.device_id = uuid4()
   bob_device1 = User(meta, 'bob@infinit.io')
-  bob_device2 = copy(bob_device1)
+  bob_device2 = deepcopy(bob_device1)
   bob_device2.device_id = uuid4()
   fill_os_and_version(alice_device1, 'Windows', '0.9.14')
   fill_os_and_version(alice_device2, 'OS X', '0.9.15')

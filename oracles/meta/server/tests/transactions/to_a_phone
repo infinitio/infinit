@@ -103,3 +103,34 @@ with Meta() as meta:
 
   eve.transaction_update(ti1, transaction_status.ACCEPTED)
   eve.transaction_update(ti1, transaction_status.FINISHED)
+
+# Ghost code, one with country code, the other with no country code without and
+# with sending county_code at login.
+with Meta() as meta:
+  alice = User(meta, "alice@infinit.io")
+  for _ in range(2):
+    # Device push token is needed because
+    alice.login(country_code = None,
+                device_push_token = "31")
+    _, res0 = alice.sendfile(recipient = '+33600000000', use_identifier = True, initialize = True)
+    assert meta.database.users.count() == 2
+    try:
+      _, res1 = alice.sendfile(recipient = '0600000000', use_identifier = True, initialize = True)
+      assert False
+    except HTTPException as e:
+      assert e.status == 400
+    print(list(meta.database.users.find({}, {'accounts': 1})))
+    assert 'id' in alice.get('users/+33600000000')
+    try:
+      alice.get('users/0600000000')
+      assert False
+    except HTTPException as e:
+      assert e.status == 404
+    alice.logout()
+    print("+" * 64)
+    alice.login(country_code = "FR", device_push_token = "32")
+    alice.sendfile(recipient = '+33600000000', use_identifier = True, initialize = True)
+    alice.sendfile(recipient = '0600000000', use_identifier = True, initialize = True)
+    assert meta.database.users.count() == 2
+    assert 'id' in alice.get('users/+33600000000')
+    assert 'id' in alice.get('users/0600000000')

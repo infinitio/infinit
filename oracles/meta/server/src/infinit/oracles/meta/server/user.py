@@ -308,7 +308,7 @@ class Mixin:
         '$set':
         {
           'devices.$.push_token': device_push_token,
-          'country_code': country_code,
+          'devices.$.country_code': country_code,
         }
       }
     def login():
@@ -1645,7 +1645,6 @@ class Mixin:
     return user
 
   def user_by_phone_number_query(self, phone_number):
-    phone_number = phone_number.replace(' ', '')
     return {'accounts.id': phone_number,
             'accounts.type': 'phone'}
 
@@ -1731,8 +1730,8 @@ class Mixin:
 
   def user_by_id_or_email(self, id_or_email, fields,
                           ensure_existence = False):
-    id_or_email = id_or_email.lower()
-    if '@' in id_or_email:
+    if not isinstance(id_or_email, bson.ObjectId) and '@' in id_or_email:
+      id_or_email = id_or_email.lower()
       return self.user_by_email(id_or_email,
                                 fields = fields,
                                 ensure_existence = ensure_existence)
@@ -1746,8 +1745,8 @@ class Mixin:
         self.bad_request('invalid user id: %r' % id_or_email)
 
   def user_by_id_or_email_query(self, id_or_email):
-    id_or_email = id_or_email.lower()
-    if '@' in id_or_email:
+    if not isinstance(id_or_email, bson.ObjectId) and '@' in id_or_email:
+      id_or_email = id_or_email.lower()
       return self.user_by_email_query(id_or_email)
     else:
       try:
@@ -1874,6 +1873,7 @@ class Mixin:
       'ensure_existence': False,
     }
     recipient_id = None
+    user = None
     try:
       recipient_id = bson.ObjectId(recipient_identifier)
       user = self._user_by_id(recipient_id, **args)
@@ -2570,7 +2570,7 @@ class Mixin:
           }
         }})
     device = list(filter(lambda x: x['id'] == device['id'], user2['devices']))[0]
-    last_sync = device.get('last_sync', {'timestamp': 1, 'date': datetime.date.fromtimestamp(1)})
+    last_sync = device.get('last_sync', {'timestamp': 1, 'date': datetime.datetime.fromtimestamp(1)})
     # If it's the initialization, pull history, if not, only the one modified
     # since last synchronization!
     res = {
@@ -2582,5 +2582,5 @@ class Mixin:
     res.update(self._user_transactions(modification_time = mtime['date']))
     # Include deleted links only during updates. At start up, ignore them.
     res.update(self.links_list(mtime = mtime['date'], include_deleted = (not init)))
-    res.update(self.devices_users_api(user['email']))
+    res.update(self.devices_users_api(user['_id']))
     return self.success(res)

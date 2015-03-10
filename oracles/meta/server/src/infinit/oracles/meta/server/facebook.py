@@ -70,7 +70,6 @@ class FacebookGraph:
     @property
     def long_lived_access_token(self):
       if self.__long_lived_access_token is None:
-        print("turn short lived to  long lived")
         url = '%(domain)s/oauth/access_token' \
               '?grant_type=fb_exchange_token' \
               '&client_id=%(app_id)s' \

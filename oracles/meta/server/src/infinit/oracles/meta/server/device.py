@@ -47,11 +47,21 @@ class Mixin:
 
   @property
   def current_device(self):
+    if hasattr(bottle.request, 'device'):
+      return bottle.request.device
     device = bottle.request.session.get('device')
     if device is None:
       return None
     else:
-      return list(filter(lambda x: x['id'] == device, self.user['devices']))[0]
+      user = self._user_by_id(self.user['_id'], fields = ['devices'])
+      device = list(filter(lambda x: x['id'] == device, user['devices']))[0]
+      bottle.request.device = device
+      return device
+
+  @api('/user/current_device')
+  @require_logged_in
+  def current_device_view(self):
+    return self.device_view(self.current_device)
 
   def device_view(self, device):
     res = {
@@ -68,12 +78,16 @@ class Mixin:
   @api('/user/devices')
   @require_logged_in_fields(['devices'])
   def devices_user_api(self):
-    return self.devices(self.user)
+    return self.devices_users_api(self.user['_id'])
 
   @api('/users/<user>/devices')
   @require_logged_in_or_admin
   def devices_users_api(self, user):
-    user = self.user_by_id_or_email(user, fields = ['devices'])
+    fields = ['devices']
+    if isinstance(user, bson.ObjectId):
+      user = self._user_by_id(user, fields = fields)
+    else:
+      user = self.user_by_id_or_email(user, fields = fields)
     if not self.admin and user['_id'] != self.user['_id']:
       self.forbidden({
         'reason': 'not your devices',
@@ -82,8 +96,7 @@ class Mixin:
 
   def devices(self, user):
     return {
-      'devices':
-      [self.device_view(d) for d in user.get('devices', [])],
+      'devices': [self.device_view(d) for d in user.get('devices', [])],
     }
 
   @api('/devices/<id>')

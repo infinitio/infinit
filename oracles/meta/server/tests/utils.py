@@ -469,15 +469,7 @@ class User(Client):
     res = self.get('user/self')
     return res
 
-  def login(self, device_id = None, trophonius = None, **kw):
-    if device_id is not None:
-      self.device_id = device_id
-    self.trophonius = trophonius
-    params = self.login_parameters
-    params.update(kw)
-    params.update({'pick_trophonius': False})
-    res = self.post('login', params)
-    assert res['success']
+  def _login(self, res):
     assert 'self' in res
     assert 'device' in res
     self.compare_self_response(res['self'])
@@ -490,6 +482,18 @@ class User(Client):
     assert res['swaggers'] == self.full_swaggers
     if self.trophonius is not None:
       self.trophonius.connect_user(self)
+    return res
+
+  def login(self, device_id = None, trophonius = None, **kw):
+    if device_id is not None:
+      self.device_id = device_id
+    self.trophonius = trophonius
+    params = self.login_parameters
+    params.update(kw)
+    params.update({'pick_trophonius': False})
+    res = self.post('login', params)
+    assert res['success']
+    self._login(res)
     return res
 
   def facebook_connect(self,
@@ -508,10 +512,12 @@ class User(Client):
       })
     if 'device_id' in args:
       res = self.post('login', args)
+      self._login(res)
     else:
       res = self.post('web-login', args)
     if 'success' in res:
       assert res['success']
+    return res
 
 
   def __hash__(self):
