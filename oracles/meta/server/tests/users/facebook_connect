@@ -119,6 +119,7 @@ with Meta(enable_emails = False) as meta:
       bob.logout()
     assert meta.database.users.count() == 1
     bob.facebook_connect("bite")
+    bob.get('user/synchronize?init=0')
 
 # Multiple users.
 with Meta(enable_emails = False) as meta:
@@ -160,14 +161,16 @@ with Meta(enable_emails = False) as meta:
     give_a_different_access_token(meta)
     bob_device_1.facebook_connect("TokenToken")
 
+    bob_device_1.get('user/synchronize?init=0')
+    bob_device_0.get('user/synchronize?init=0')
     assert meta.database.sessions.count() == 2
     bob_device_0.logout()
     assert meta.database.sessions.count() == 1
     try:
       bob_device_0.me
       assert False
-    except HTTPException:
-      pass
+    except HTTPException as e:
+      assert e.status == 403
     bob_device_1.me
 
     bob_web_0 = copy.deepcopy(bob)
@@ -188,14 +191,14 @@ with Meta(enable_emails = False) as meta:
       bob_web_1.me
       assert False
     except HTTPException as e:
-      pass
+      assert e.status == 403
     assert meta.database.sessions.count() == 2
     bob_web_0.logout()
     try:
       bob_web_0.me
       assert False
     except HTTPException as e:
-      pass
+      assert e.status == 403
     assert meta.database.sessions.count() == 1
     bob_device_1.logout()
     assert meta.database.sessions.count() == 0
@@ -203,7 +206,7 @@ with Meta(enable_emails = False) as meta:
       bob_device_1.me
       assert False
     except HTTPException as e:
-      pass
+      assert e.status == 403
 
 # Send.
 with Meta(enable_emails = True) as meta:
