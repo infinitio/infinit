@@ -1698,36 +1698,40 @@ gap_send_last_crash_logs(gap_State* state,
                          std::string const& user_name,
                          std::string const& crash_report,
                          std::string const& state_log,
-                         std::string const& additional_info)
+                         std::string const& additional_info,
+                         bool synchronous)
 {
   ELLE_ASSERT(state != nullptr);
+  auto action = [=] ()
+  {
+    std::vector<std::string> files;
+    files.push_back(crash_report);
+    files.push_back(state_log);
+
+    auto& _state = state->state();
+    _state.metrics_reporter()->user_crashed();
+    elle::crash::existing_report(_state.meta(false).protocol(),
+      _state.meta(false).host(),
+      _state.meta(false).port(),
+      files,
+      user_name,
+      additional_info);
+    return gap_ok;
+  };
   // In order to avoid blocking the GUI, let's create a disposable thread and
   // let it go.
   // XXX: The gap_Status inside catch_to_gap_status is useless.
   bool disposable = true;
-  new reactor::Thread(
-    state->scheduler(),
-    "send last crash report",
-    [=] ()
-    {
-      catch_to_gap_status<gap_Status>(
-        [=] ()
-        {
-          std::vector<std::string> files;
-          files.push_back(crash_report);
-          files.push_back(state_log);
-
-          auto& _state = state->state();
-          _state.metrics_reporter()->user_crashed();
-          elle::crash::existing_report(_state.meta(false).protocol(),
-                                       _state.meta(false).host(),
-                                       _state.meta(false).port(),
-                                       files,
-                                       user_name,
-                                       additional_info);
-          return gap_ok;
-        }, "send last crash report");
-    }, disposable);
+  if (!synchronous)
+    new reactor::Thread(
+      state->scheduler(),
+      "send last crash report",
+      [=] ()
+      {
+        catch_to_gap_status<gap_Status>(action, "send last crash report");
+      }, disposable);
+  else
+    return run<gap_Status>(state, "crash report", [=](surface::gap::State&) -> gap_Status {return action();});
   return gap_ok;
 }
 
