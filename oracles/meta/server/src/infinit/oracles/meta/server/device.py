@@ -69,7 +69,7 @@ class Mixin:
       'name': device['name'],
       'passport': device['passport'],
     }
-    if 'os' in device:
+    if 'os' in device and device['os'] != None:
       res['os'] = device['os']
     if 'last_sync' in device:
       res['last_sync'] = device['last_sync']['date'].isoformat()
