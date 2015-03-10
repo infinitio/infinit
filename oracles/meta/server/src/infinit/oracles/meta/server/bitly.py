@@ -42,18 +42,17 @@ class bitly:
   """bitly wrapper, adapted to our needs from bitly_api python2 package.
   """
   def __init__(self,
-               login = conf.BITLY_LOGIN,
-               api_key = conf.BITLY_API_KEY,
+               access_token = conf.BITLY_ACCESS_TOKEN,
                secret = conf.BITLY_SECRET):
     self.host = 'api.bit.ly'
     self.ssl_host = 'api-ssl.bit.ly'
     (major, minor, micro, releaselevel, serial) = sys.version_info
     parts = (major, minor, micro, '?')
     self.user_agent = "Python/%d.%d.%d bitly_api/%s" % parts
-    self.login = login
-    self.api_key = api_key
+    self.access_token = access_token
     self.secret = secret
-    self.access_token = None
+    self.login = None
+    self.api_key = None
 
   @classmethod
   def _generateSignature(self, params, secret):
@@ -80,7 +79,7 @@ class bitly:
     signature = md5(hash_string.encode()).hexdigest()[:10]
     return signature
 
-  def shorten(self, uri, preferred_domain=None):
+  def shorten(self, uri, preferred_domain = conf.BITLY_PREFERRED_DOMAIN):
     """
     Create a bitly link for a given long url
 
@@ -90,19 +89,19 @@ class bitly:
     params = dict(uri=uri)
     if preferred_domain:
       params['domain'] = preferred_domain
-    data = self._call(self.host, 'v3/shorten', params, self.secret)
+    data = self._call_oauth2(params)
     return data['data']
 
-  def _call_oauth2(self, endpoint, params):
+  def _call_oauth2(self, params):
     assert self.access_token
-    return self._call(self.ssl_host, endpoint, params)["data"]
+    return self._call(self.ssl_host, 'v3/shorten', params, self.secret)
 
   def _call(self, host, method, params, secret=None, timeout=5000):
     """
     Perform the http(s) to bitly's api.
 
     host -- The host.
-    method -- The http method.
+    method -- The method (shorten).
     params -- The call parameters.
     secret -- (Optional) The app secret to sign the request.
     timeout -- The http timeout (default: 5000ms).
@@ -114,6 +113,8 @@ class bitly:
       params['access_token'] = self.access_token
       host = self.ssl_host
     else:
+      assert self.login
+      assert self.api_key
       scheme = 'http'
       params['login'] = self.login
       params['apiKey'] = self.api_key
