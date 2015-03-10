@@ -976,7 +976,7 @@ extern "C" jlong Java_io_infinit_State_gapSendLastCrashLogs(
 {
   return gap_send_last_crash_logs((gap_State*)handle, to_string(env, a),
                               to_string(env, b), to_string(env, c),
-                              to_string(env, d));
+                              to_string(env, d), true);
 }
 
 extern "C" void Java_io_infinit_State_setenv(
