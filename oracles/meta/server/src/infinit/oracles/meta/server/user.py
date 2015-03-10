@@ -2582,5 +2582,5 @@ class Mixin:
     res.update(self._user_transactions(modification_time = mtime['date']))
     # Include deleted links only during updates. At start up, ignore them.
     res.update(self.links_list(mtime = mtime['date'], include_deleted = (not init)))
-    res.update(self.devices_users_api(user['email']))
+    res.update(self.devices_users_api(user['_id']))
     return self.success(res)
