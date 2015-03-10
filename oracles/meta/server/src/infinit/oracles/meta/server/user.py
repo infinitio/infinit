@@ -1730,8 +1730,8 @@ class Mixin:
 
   def user_by_id_or_email(self, id_or_email, fields,
                           ensure_existence = False):
-    id_or_email = id_or_email.lower()
-    if '@' in id_or_email:
+    if not isinstance(id_or_email, bson.ObjectId) and '@' in id_or_email:
+      id_or_email = id_or_email.lower()
       return self.user_by_email(id_or_email,
                                 fields = fields,
                                 ensure_existence = ensure_existence)
@@ -1745,8 +1745,8 @@ class Mixin:
         self.bad_request('invalid user id: %r' % id_or_email)
 
   def user_by_id_or_email_query(self, id_or_email):
-    id_or_email = id_or_email.lower()
-    if '@' in id_or_email:
+    if not isinstance(id_or_email, bson.ObjectId) and '@' in id_or_email:
+      id_or_email = id_or_email.lower()
       return self.user_by_email_query(id_or_email)
     else:
       try:
