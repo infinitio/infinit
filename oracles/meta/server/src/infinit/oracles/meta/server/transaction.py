@@ -750,7 +750,7 @@ class Mixin:
     elle.log.log('Peer status: %s' % recipient['register_status'])
     elle.log.log('transaction: %s' % transaction.keys())
     peer_email = recipient.get('email', '')
-    if transaction.get('is_ghost', False) and peer_email:
+    if transaction.get('is_ghost', False):
       transaction_id = transaction['_id']
       elle.log.trace("send invitation to new user %s for transaction %s" % (
         peer_email, transaction_id))
@@ -780,37 +780,38 @@ class Mixin:
       # Generate hash for transaction and store it in the transaction
       # collection.
       transaction_hash = self._hash_transaction(transaction)
-      mail_template = 'send-file-url'
-      if 'features' in recipient and 'send_file_url_template' in recipient['features']:
-        mail_template = recipient['features']['send_file_url_template']
-      merges = {
-        'filename': transaction['files'][0],
-        'recipient_email': peer_email,
-        'recipient_name': recipient['fullname'],
-        'sendername': user['fullname'],
-        'sender_email': user['email'],
-        'sender_avatar': 'https://%s/user/%s/avatar' %
-        (bottle.request.urlparts[1], user['_id']),
-        'note': transaction['message'],
-        'transaction_hash': transaction_hash,
-        'transaction_id': str(transaction['_id']),
-        'number_of_other_files': len(transaction['files']) - 1,
-        # Ghost created pre 0.9.30 has no ghost code.
-      }
-      if 'ghost_code' in recipient:
-        merges.update({
-          'ghost_code': recipient['ghost_code'],
-          'ghost_profile': recipient.get('shorten_ghost_profile_url',
-                                         self.__ghost_profile_url(recipient)),
-        })
-      source = (user['fullname'], self.user_identifier(user))
-      invitation.invite_user(
-        peer_email,
-        mailer = self.mailer,
-        mail_template = mail_template,
-        source = source,
-        database = self.database,
-        merge_vars = {peer_email: merges})
+      if peer_email:
+        mail_template = 'send-file-url'
+        if 'features' in recipient and 'send_file_url_template' in recipient['features']:
+          mail_template = recipient['features']['send_file_url_template']
+        merges = {
+          'filename': transaction['files'][0],
+          'recipient_email': peer_email,
+          'recipient_name': recipient['fullname'],
+          'sendername': user['fullname'],
+          'sender_email': user['email'],
+          'sender_avatar': 'https://%s/user/%s/avatar' %
+          (bottle.request.urlparts[1], user['_id']),
+          'note': transaction['message'],
+          'transaction_hash': transaction_hash,
+          'transaction_id': str(transaction['_id']),
+          'number_of_other_files': len(transaction['files']) - 1,
+          # Ghost created pre 0.9.30 has no ghost code.
+        }
+        if 'ghost_code' in recipient:
+          merges.update({
+            'ghost_code': recipient['ghost_code'],
+            'ghost_profile': recipient.get('shorten_ghost_profile_url',
+                                           self.__ghost_profile_url(recipient)),
+          })
+        source = (user['fullname'], self.user_identifier(user))
+        invitation.invite_user(
+          peer_email,
+          mailer = self.mailer,
+          mail_template = mail_template,
+          source = source,
+          database = self.database,
+          merge_vars = {peer_email: merges})
       return {
         'transaction_hash': transaction_hash,
         'download_link': ghost_get_url,
