@@ -2570,7 +2570,7 @@ class Mixin:
           }
         }})
     device = list(filter(lambda x: x['id'] == device['id'], user2['devices']))[0]
-    last_sync = device.get('last_sync', {'timestamp': 1, 'date': datetime.date.fromtimestamp(1)})
+    last_sync = device.get('last_sync', {'timestamp': 1, 'date': datetime.datetime.fromtimestamp(1)})
     # If it's the initialization, pull history, if not, only the one modified
     # since last synchronization!
     res = {
