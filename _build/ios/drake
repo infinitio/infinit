@@ -20,7 +20,7 @@ os.environ['CROSS_TOP'] = '%s/Platforms/iPhoneOS.platform/Developer' % os.enviro
 os.environ['CROSS_SDK'] = 'iPhoneOS.sdk'
 os.environ['SDKROOT'] = '%s/SDKs/%s' % (os.environ['CROSS_TOP'], os.environ['CROSS_SDK'])
 os.environ['TOOLCHAINS'] = ''
-os.environ['IOS_DEPLOYMENT_TARGET'] = '7.0'
+os.environ['IOS_DEPLOYMENT_TARGET'] = '7.1'
 
 with drake.Drake('../..') as d:
   cxx_compiler = os.getenv('CXX', 'clang++')
@@ -40,7 +40,7 @@ with drake.Drake('../..') as d:
     cxx_config.flag('%s' % arch)
   cxx_config.flag('-ftemplate-depth=512')
   cxx_config.flag('-stdlib=libc++')
-  cxx_config.flag('-miphoneos-version-min=7.0')
+  cxx_config.flag('-miphoneos-version-min=7.1')
   cxx_config.flag('--sysroot=%s' % os.environ['SDKROOT'])
 
   d.run(cxx_toolkit,
