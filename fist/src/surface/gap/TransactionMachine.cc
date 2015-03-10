@@ -213,8 +213,8 @@ namespace surface
         .action_exception(
           [this] (std::exception_ptr e)
           {
-            ELLE_WARN("%s: fatal error: %s",
-                      *this, elle::exception_string(e));
+            ELLE_ERR("%s: fatal error: %s",
+                     *this, elle::exception_string(e));
             this->transaction().failure_reason(elle::exception_string(e));
           });
     }
