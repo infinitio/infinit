@@ -362,11 +362,11 @@ namespace surface
       std::string const& email,
       std::string const& password,
       boost::optional<std::string> device_push_token,
-      boost::optional<std::string> country_code
-      )
+      boost::optional<std::string> country_code)
     {
       this->login(email,
                   password,
+                  std::unique_ptr<infinit::oracles::trophonius::Client>(),
                   reactor::DurationOpt(),
                   device_push_token,
                   country_code);
@@ -378,15 +378,14 @@ namespace surface
       std::string const& password,
       reactor::DurationOpt timeout,
       boost::optional<std::string> device_push_token,
-      boost::optional<std::string> country_code
-      )
+      boost::optional<std::string> country_code)
     {
       this->login(
         email, password,
         std::unique_ptr<infinit::oracles::trophonius::Client>(),
+        timeout,
         device_push_token,
-        country_code,
-        timeout);
+        country_code);
     }
 
     void
@@ -446,9 +445,9 @@ namespace surface
       std::string const& email,
       std::string const& password,
       TrophoniusClientPtr trophonius,
+      reactor::DurationOpt timeout,
       boost::optional<std::string> device_push_token,
-      boost::optional<std::string> country_code,
-      reactor::DurationOpt timeout)
+      boost::optional<std::string> country_code)
     {
       auto tropho = elle::utility::move_on_copy(std::move(trophonius));
       return this->_login_with_timeout(
@@ -467,8 +466,7 @@ namespace surface
       std::string const& password,
       elle::utility::Move<TrophoniusClientPtr> trophonius,
       boost::optional<std::string> device_push_token,
-      boost::optional<std::string> country_code
-      )
+      boost::optional<std::string> country_code)
     {
       ELLE_TRACE_SCOPE("%s: attempt to login as %s", *this, email);
       this->_email = email;
@@ -480,7 +478,7 @@ namespace surface
                      lower_email.begin(),
                      ::tolower);
       auto hashed_password = infinit::oracles::meta::old_password_hash(
-              lower_email, password);
+        lower_email, password);
       infinit::metrics::Reporter::metric_sender_id(lower_email);
       this->_login(
         [&] {
@@ -712,6 +710,7 @@ namespace surface
       RETHROW(state::VersionRejected)
       RETHROW(state::AlreadyLoggedIn)
       RETHROW(state::MissingEmail)
+      RETHROW(state::EmailAlreadyRegistered)
       #undef RETHROW
       catch(elle::Exception const& e)
       { // Assume temporary failure and retry
@@ -865,7 +864,8 @@ namespace surface
     State::register_(std::string const& fullname,
                      std::string const& email,
                      std::string const& password,
-                     boost::optional<std::string> device_push_token)
+                     boost::optional<std::string> device_push_token,
+                     boost::optional<std::string> country_code)
     {
       // !WARNING! Do not log the password.
       ELLE_TRACE_SCOPE("%s: register as %s: email %s",
@@ -905,7 +905,7 @@ namespace surface
         throw;
       }
       this->_metrics_reporter->user_register(true, "");
-      this->login(lower_email, password, device_push_token);
+      this->login(lower_email, password, device_push_token, country_code);
     }
 
     void
@@ -914,6 +914,7 @@ namespace surface
       std::unique_ptr<infinit::oracles::trophonius::Client> trophonius,
       boost::optional<std::string> preferred_email,
       boost::optional<std::string> device_push_token,
+      boost::optional<std::string> country_code,
       reactor::DurationOpt timeout)
     {
       this->_login_with_timeout(
@@ -923,7 +924,8 @@ namespace surface
           return this->_meta.facebook_connect(facebook_token,
                                               this->device_uuid(),
                                               preferred_email,
-                                              device_push_token);
+                                              device_push_token,
+                                              country_code);
           },
           tropho,
           // Password.
@@ -939,13 +941,14 @@ namespace surface
     }
 
     void
-    State::facebook_connect(
-      std::string const& token,
-      boost::optional<std::string> preferred_email,
-      boost::optional<std::string> device_push_token)
+    State::facebook_connect(std::string const& token,
+                            boost::optional<std::string> preferred_email,
+                            boost::optional<std::string> device_push_token,
+                            boost::optional<std::string> country_code)
     {
       return this->facebook_connect(
-        token, TrophoniusClientPtr{}, preferred_email, device_push_token);
+        token, TrophoniusClientPtr{},
+        preferred_email, device_push_token, country_code);
     }
 
     Self const&
@@ -1208,7 +1211,7 @@ namespace surface
     std::vector<State::Device>
     State::devices() const
     {
-      return this->meta().devices();
+      return this->_synchronize_response->devices;
     }
 
     /*--------------.

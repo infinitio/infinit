@@ -170,7 +170,12 @@ namespace surface
         State& state = transaction().state();
         infinit::oracles::PeerTransaction pt =
           state.meta().transaction(transaction().data()->id);
-        url = pt.download_link.get();
+        if (pt.download_link)
+          url = pt.download_link.get();
+        else
+          throw elle::Error{
+            elle::sprintf("download url for transaction %s is missing",
+                          this->transaction_id())};
       }
       ELLE_TRACE("%s accepting on url '%s'", *this, url);
       if (boost::filesystem::exists(snapshot_path()))

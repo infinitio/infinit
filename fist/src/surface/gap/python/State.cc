@@ -486,7 +486,9 @@ public:
   wrap_login(std::string const& email, std::string const& password)
   {
     boost::optional<std::string> push_token = {};
-    return login(email, password, push_token);
+    boost::optional<std::string> country_code = {};
+    this->login(email, password, push_token, country_code);
+    reactor::wait(this->logged_in());
   }
 
   void
@@ -495,7 +497,15 @@ public:
                  std::string const& password)
   {
     boost::optional<std::string> push_token = {};
-    return register_(fullname, email, password, push_token);
+    boost::optional<std::string> country_code = {};
+    this->register_(fullname, email, password, push_token, country_code);
+  }
+
+  void
+  wrap_logout()
+  {
+    this->logout();
+    reactor::wait(this->logged_out());
   }
 
   std::vector<unsigned int>
@@ -600,7 +610,7 @@ BOOST_PYTHON_MODULE(state)
                          uint16_t>())
     .def("logged_in", &PythonState::wrap_logged_in)
     .def("login", &PythonState::wrap_login)
-    .def("logout", &State::logout)
+    .def("logout", &PythonState::wrap_logout)
     .def("poll", &State::poll)
     .def("users", &State::users, by_const_ref())
     .def("transaction", &PythonState::transaction)

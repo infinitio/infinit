@@ -24,6 +24,7 @@
 
 #include <reactor/scheduler.hh>
 #include <reactor/http/exceptions.hh>
+#include <reactor/http/EscapedString.hh>
 
 #include <infinit/oracles/meta/Client.hh>
 #include <infinit/oracles/meta/Error.hh>
@@ -488,23 +489,16 @@ namespace infinit
         boost::uuids::uuid const& device_uuid,
         boost::optional<std::string> preferred_email,
         boost::optional<std::string> device_push_token,
-        boost::optional<std::string> country_code
-        )
+        boost::optional<std::string> country_code)
       {
         ELLE_TRACE_SCOPE("%s: login using facebook on device %s",
                          *this, device_uuid);
         return this->_login(
           [&] (elle::serialization::json::SerializerOut& parameters)
           {
-            parameters.serialize(
-              "long_lived_access_token",
-              const_cast<std::string&>(facebook_token));
-            if (preferred_email)
-            {
-              std::string preferred_email_str = preferred_email.get();
-              parameters.serialize(
-                "preferred_email", preferred_email_str);
-            }
+            parameters.serialize("long_lived_access_token",
+                                 const_cast<std::string&>(facebook_token));
+            parameters.serialize("preferred_email", preferred_email);
           }, device_uuid, device_push_token, country_code);
       }
 
@@ -514,7 +508,6 @@ namespace infinit
                      boost::optional<std::string> device_push_token,
                      boost::optional<std::string> country_code)
       {
-        std::string struuid = boost::lexical_cast<std::string>(device_uuid);
         auto url = "/login";
         auto request = this->_request(
           url,
@@ -522,12 +515,7 @@ namespace infinit
           [&] (reactor::http::Request& r)
           {
             elle::serialization::json::SerializerOut output(r, false);
-            if (device_push_token && !device_push_token.get().empty())
-            {
-              output.serialize(
-                "device_push_token",
-                const_cast<std::string&>(device_push_token.get()));
-            }
+            output.serialize("device_push_token", device_push_token);
             output.serialize("country_code", country_code);
             parameters_updater(output);
             std::string struuid = boost::lexical_cast<std::string>(device_uuid);
@@ -555,6 +543,8 @@ namespace infinit
               throw infinit::state::VersionRejected();
             case Error::email_not_valid:
               throw infinit::state::MissingEmail();
+            case Error::email_already_registered:
+              throw infinit::state::EmailAlreadyRegistered();
             default:
               throw infinit::state::LoginError(
                 elle::sprintf("%s: Unknown, good luck!", error_code));
@@ -763,16 +753,17 @@ namespace infinit
       }
 
       User
-      Client::user(std::string const& id_or_email) const
+      Client::user(std::string const& recipient_identifier) const
       {
-        if (id_or_email.size() == 0)
+        if (recipient_identifier.size() == 0)
           throw elle::Exception("Invalid id or email");
-        std::string url = elle::sprintf("/users/%s", id_or_email);
+        reactor::http::EscapedString identifier(recipient_identifier);
+        std::string url = elle::sprintf("/users/%s", identifier);
         auto request = this->_request(url, Method::GET, false);
         switch (request.status())
         {
           case reactor::http::StatusCode::Not_Found:
-            throw infinit::state::UserNotFoundError(id_or_email);
+            throw infinit::state::UserNotFoundError(recipient_identifier);
           default:
             this->_handle_errors(request);
         }

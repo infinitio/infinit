@@ -612,9 +612,13 @@ namespace surface
 
       // It is possible for files to be copied without write permissions, as
       // attribute are preserved by bfs::copy.
+#ifndef INFINIT_IOS
       elle::os::path::force_write_permissions(base / "mirror_files");
+#endif
       boost::filesystem::remove_all(base / "mirror_files");
+#ifndef INFINIT_IOS
       elle::os::path::force_write_permissions(base / "archive");
+#endif
       boost::filesystem::remove_all(base / "archive");
     }
 

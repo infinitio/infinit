@@ -204,7 +204,8 @@ public:
           "  \"swaggers\": [],"
           "  \"running_transactions\": [],"
           "  \"final_transactions\": [],"
-          "  \"links\": []"
+          "  \"links\": [],"
+          "  \"devices\": []"
           "}";
       });
 

@@ -14,4 +14,4 @@ with Meta() as meta:
   try:
     meta.get('users/invalid-id')
   except HTTPException as e:
-    assert e.status == 400
+    assert e.status == 404

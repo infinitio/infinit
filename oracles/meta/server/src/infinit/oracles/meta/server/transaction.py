@@ -12,7 +12,7 @@ import json
 
 import elle.log
 from .utils import \
-  api, require_logged_in, require_logged_in_or_admin, require_key, key
+  api, require_logged_in, require_logged_in_or_admin, require_key, key, clean_up_phone_number
 from . import regexp, error, transaction_status, notifier, invitation, cloud_buffer_token, cloud_buffer_token_gcs, mail
 import uuid
 import re
@@ -280,91 +280,115 @@ class Mixin:
                               files,
                               files_count)
 
+  def __recipient_from_identifier(self,
+                                  recipient_identifier,
+                                  sender):
+    """Get the recipient from identifier. If it doesn't exist, create a ghost.
+    recipient_identifier -- The user identifier (can be an email, ObjectId or
+                            a phone number)
+    sender -- The transaction sender.
+
+    Return ghost, new_user tuple.
+    """
+    recipient_fields = self.__user_view_fields + [
+      'email',
+      'devices.id',
+      'features',
+      'ghost_code',
+      'shorten_ghost_profile_url',
+    ]
+    # Determine the nature of the recipient identifier.
+    recipient_id = None
+    recipient = None
+    is_a_phone_number = False
+    is_an_email = False
+    peer_email = None
+    phone_number = None
+    try:
+      recipient_id = bson.ObjectId(recipient_identifier)
+      # recipient_identifier is an ObjectId.
+      recipient = self.__user_fetch(
+        {'_id': recipient_id},
+        fields = recipient_fields)
+      if recipient is not None:
+        return recipient, False
+    except bson.errors.InvalidId:
+      pass
+    is_an_email = re.match(regexp.Email, recipient_identifier)
+    if is_an_email is not None:
+      elle.log.debug("%s is an email" % recipient_identifier)
+      peer_email = recipient_identifier.lower().strip()
+      # XXX: search email in each accounts.
+      recipient = self.__user_fetch(
+        {'accounts.id': peer_email, 'accounts.type': 'email'},
+        fields = recipient_fields)
+    else:
+      device = self.current_device
+      phone_number = clean_up_phone_number(
+        recipient_identifier, device.get('country_code', None))
+      is_a_phone_number = phone_number is not None
+      if is_a_phone_number:
+        elle.log.debug("%s is an phone" % phone_number)
+        recipient = self.__user_fetch(
+          {'accounts.id': phone_number, 'accounts.type': 'phone'},
+          fields = recipient_fields)
+    if is_a_phone_number is None and is_an_email is None:
+      return self.bad_request({
+        'reason': 'recipient_identifier was ill-formed'
+      })
+    if recipient is None:
+      elle.log.trace("recipient unknown, create a ghost")
+      new_user = True
+      if is_an_email:
+        recipient_id = self.__register_ghost({
+          'email': peer_email,
+          'fullname': peer_email, # This is safe as long as we don't allow searching for ghost users.
+          'accounts': [{'type':'email', 'id': peer_email}],
+        })
+      if is_a_phone_number:
+        recipient_id = self.__register_ghost({
+          'phone_number': phone_number,
+          'fullname': phone_number, # Same comment.
+          'accounts': [{'type':'phone', 'id': phone_number}],
+        })
+      if recipient_id is None:
+        return self.bad_request({
+          'reason': 'recipient_identifier was ill-formed'
+      })
+      recipient = self.__user_fetch(
+        {"_id": recipient_id},
+        fields = recipient_fields)
+      # Post new_ghost event to metrics
+      url = 'http://metrics.9.0.api.production.infinit.io/collections/users'
+      metrics = {
+        'event': 'new_ghost',
+        'user': str(recipient['_id']),
+        'features': recipient['features'],
+        'sender': str(sender['_id']),
+        'timestamp': time.time(),
+      }
+      res = requests.post(
+        url,
+        headers = {'content-type': 'application/json'},
+        data = json.dumps(metrics),
+      )
+      elle.log.debug('metrics answer: %s' % res)
+      return recipient, True
+    else:
+      return recipient, False
+
   def _transactions(self,
                     sender,
                     recipient_identifier,
                     message,
                     files,
                     files_count):
-    recipient_identifier = recipient_identifier.strip().lower()
-    # Remove white spaces. ObjectId and email aren't impacted.
-    # For phone numbers: +33 6 XX XX XX XX -> +336XXXXXXXX.
-    recipient_identifier.replace(' ', '')
     with elle.log.trace("create transaction (recipient %s)" % recipient_identifier):
-      recipient = recipient_identifier
-      new_user = False
-      is_ghost = False
-      invitee = 0
-      recipient_fields = self.__user_view_fields + [
-        'email',
-        'devices.id',
-        'features',
-        'ghost_code',
-        'shorten_ghost_profile_url',
-      ]
-      peer_email = None
-      is_an_email = re.match(regexp.Email, recipient_identifier)
-      is_a_phone_number = re.match(regexp.PhoneNumber, recipient_identifier)
-      if is_an_email or is_a_phone_number:
-        if is_an_email:
-          elle.log.debug("%s is an email" % recipient_identifier)
-          peer_email = recipient_identifier.lower().strip()
-          # XXX: search email in each accounts.
-          recipient = self.__user_fetch(
-            {'accounts.id': peer_email},
-            fields = recipient_fields)
-          # if the user doesn't exist, create a ghost and invite.
-        if is_a_phone_number:
-          elle.log.debug("%s is an phone" % recipient_identifier)
-          phone_number = recipient_identifier
-          recipient = self.__user_fetch(
-            {'accounts.id': phone_number, 'accounts.type': 'phone'},
-            fields = recipient_fields)
-        if not recipient:
-          elle.log.trace("recipient unknown, create a ghost")
-          new_user = True
-          if is_an_email:
-            recipient_id = self.__register_ghost({
-              'email': peer_email,
-              'fullname': peer_email, # This is safe as long as we don't allow searching for ghost users.
-              'accounts': [{'type':'email', 'id': peer_email}],
-            })
-          if is_a_phone_number:
-            recipient_id = self.__register_ghost({
-              'phone_number': phone_number,
-              'fullname': phone_number, # Same comment.
-              'accounts': [{'type':'phone', 'id': phone_number}],
-            })
-          recipient = self.__user_fetch(
-            {"_id": recipient_id},
-            fields = recipient_fields)
-          # Post new_ghost event to metrics
-          url = 'http://metrics.9.0.api.production.infinit.io/collections/users'
-          metrics = {
-            'event': 'new_ghost',
-            'user': str(recipient['_id']),
-            'features': recipient['features'],
-            'sender': str(sender['_id']),
-            'timestamp': time.time(),
-          }
-          res = requests.post(
-            url,
-            headers = {'content-type': 'application/json'},
-            data = json.dumps(metrics),
-          )
-          elle.log.debug('metrics answer: %s' % res)
-      else:
-        try:
-          recipient_id = bson.ObjectId(recipient_identifier)
-        except Exception as e:
-          return self.bad_request({
-            'reason': 'recipient_identifier was ill-formed'
-          })
-        recipient = self.__user_fetch(
-          {'_id': recipient_id},
-          fields = recipient_fields)
-      if recipient is None:
-        return self.fail(error.USER_ID_NOT_VALID)
+      recipient_identifier = recipient_identifier.strip().lower()
+      recipient, new_user = self.__recipient_from_identifier(
+        recipient_identifier,
+        sender)
+      is_ghost = recipient['register_status'] == "ghost"
       transaction = {
         'sender_id': '',
         'sender_fullname': '',
@@ -459,93 +483,11 @@ class Mixin:
         'reason': 'you must provide id_or_email or recipient_identifier'
       })
     recipient_identifier = recipient_identifier or id_or_email
-    # Remove white spaces. ObjectId and email aren't impacted.
-    # For phone numbers: +33 6 XX XX XX XX -> +336XXXXXXXX.
-    recipient_identifier.replace(' ', '')
     with elle.log.trace("create transaction (recipient %s)" % recipient_identifier):
-      recipient = recipient_identifier.strip().lower()
-      new_user = False
-      is_ghost = False
-      invitee = 0
-      recipient_fields = self.__user_view_fields + [
-        'email',
-        'devices.id',
-        'features',
-        'ghost_code',
-        'shorten_ghost_profile_url',
-      ]
-      peer_email = None
-      is_an_email = re.match(regexp.Email, recipient_identifier)
-      is_a_phone_number = re.match(regexp.PhoneNumber, recipient_identifier)
-      if is_an_email or is_a_phone_number:
-        if is_an_email:
-          elle.log.debug("%s is an email" % recipient_identifier)
-          peer_email = recipient_identifier.lower().strip()
-          # XXX: search email in each accounts.
-          recipient = self.__user_fetch(
-            {'accounts.id': peer_email},
-            fields = recipient_fields)
-          # if the user doesn't exist, create a ghost and invite.
-        if is_a_phone_number:
-          elle.log.debug("%s is an phone" % recipient_identifier)
-          phone_number = recipient_identifier
-          recipient = self.__user_fetch(
-            {'accounts.id': phone_number, 'accounts.type': 'phone'},
-            fields = recipient_fields)
-        if not recipient:
-          elle.log.trace("recipient unknown, create a ghost")
-          new_user = True
-          if is_an_email:
-            recipient_id = self.__register_ghost({
-              'email': peer_email,
-              'fullname': peer_email, # This is safe as long as we don't allow searching for ghost users.
-              'accounts': [{'type':'email', 'id': peer_email}],
-            })
-          if is_a_phone_number:
-            recipient_id = self.__register_ghost({
-              'phone_number': phone_number,
-              'fullname': phone_number, # Same comment.
-              'accounts': [{'type':'phone', 'id': phone_number}],
-            })
-          recipient = self.__user_fetch(
-            {"_id": recipient_id},
-            fields = recipient_fields)
-          # Post new_ghost event to metrics
-          url = 'http://metrics.9.0.api.production.infinit.io/collections/users'
-          metrics = {
-            'event': 'new_ghost',
-            'user': str(recipient['_id']),
-            'features': recipient['features'],
-            'sender': str(sender['_id']),
-            'timestamp': time.time(),
-          }
-          res = requests.post(
-            url,
-            headers = {'content-type': 'application/json'},
-            data = json.dumps(metrics),
-          )
-          elle.log.debug('metrics answer: %s' % res)
-      else:
-        try:
-          recipient_id = bson.ObjectId(recipient_identifier)
-        except Exception as e:
-          return self.bad_request({
-            'reason': 'recipient_identifier was ill-formed'
-          })
-        recipient = self.__user_fetch(
-          {'_id': recipient_id},
-          fields = recipient_fields)
-      if recipient is None:
-        return self.fail(error.USER_ID_NOT_VALID)
-      if recipient['register_status'] == 'merged':
-        assert isinstance(recipient['merged_with'], bson.ObjectId)
-        recipient = self.__user_fetch({
-            '_id': recipient['merged_with']
-          },
-          fields = recipient_fields
-        )
-        if recipient is None:
-          return self.fail(error.USER_ID_NOT_VALID)
+      recipient_identifier = recipient_identifier.strip().lower()
+      recipient, new_user = self.__recipient_from_identifier(recipient_identifier,
+                                                             sender)
+      is_ghost = recipient['register_status'] == "ghost"
       if recipient['register_status'] == 'deleted':
         self.gone({
           'reason': 'user %s is deleted' % recipient['_id'],
@@ -623,9 +565,7 @@ class Mixin:
         pending = transaction,
         time = True)
 
-      if not peer_email:
-        peer_email = recipient.get('email', None)
-
+      peer_email = recipient.get('email', None)
       if peer_email is not None:
         recipient_offline = all(d.get('trophonius') is None
                                 for d in recipient.get('devices', []))
@@ -810,7 +750,7 @@ class Mixin:
     elle.log.log('Peer status: %s' % recipient['register_status'])
     elle.log.log('transaction: %s' % transaction.keys())
     peer_email = recipient.get('email', '')
-    if transaction.get('is_ghost', False) and peer_email:
+    if transaction.get('is_ghost', False):
       transaction_id = transaction['_id']
       elle.log.trace("send invitation to new user %s for transaction %s" % (
         peer_email, transaction_id))
@@ -840,37 +780,39 @@ class Mixin:
       # Generate hash for transaction and store it in the transaction
       # collection.
       transaction_hash = self._hash_transaction(transaction)
-      mail_template = 'send-file-url'
-      if 'features' in recipient and 'send_file_url_template' in recipient['features']:
-        mail_template = recipient['features']['send_file_url_template']
-      merges = {
-        'filename': transaction['files'][0],
-        'recipient_email': peer_email,
-        'recipient_name': recipient['fullname'],
-        'sendername': user['fullname'],
-        'sender_email': user['email'],
-        'sender_avatar': 'https://%s/user/%s/avatar' %
-        (bottle.request.urlparts[1], user['_id']),
-        'note': transaction['message'],
-        'transaction_hash': transaction_hash,
-        'transaction_id': str(transaction['_id']),
-        'number_of_other_files': len(transaction['files']) - 1,
-        # Ghost created pre 0.9.30 has no ghost code.
-      }
-      if 'ghost_code' in recipient:
-        merges.update({
-          'ghost_code': recipient['ghost_code'],
-          'ghost_profile': recipient.get('shorten_ghost_profile_url',
-                                         self.__ghost_profile_url(recipient)),
-        })
-      source = (user['fullname'], self.user_identifier(user))
-      invitation.invite_user(
-        peer_email,
-        mailer = self.mailer,
-        mail_template = mail_template,
-        source = source,
-        database = self.database,
-        merge_vars = {peer_email: merges})
+      if peer_email:
+        mail_template = 'send-file-url'
+        if 'features' in recipient and 'send_file_url_template' in recipient['features']:
+          mail_template = recipient['features']['send_file_url_template']
+        merges = {
+          'filename': transaction['files'][0],
+          'recipient_email': peer_email,
+          'recipient_name': recipient['fullname'],
+          'sendername': user['fullname'],
+          'sender_email': user['email'],
+          'sender_avatar': 'https://%s/user/%s/avatar' %
+          (bottle.request.urlparts[1], user['_id']),
+          'note': transaction['message'],
+          'transaction_hash': transaction_hash,
+          'transaction_id': str(transaction['_id']),
+          'number_of_other_files': len(transaction['files']) - 1,
+          # Ghost created pre 0.9.30 has no ghost code.
+        }
+        if 'ghost_code' in recipient:
+          merges.update({
+            'ghost_code': recipient['ghost_code'],
+            'ghost_profile': recipient.get(
+              'shorten_ghost_profile_url',
+              self.__ghost_profile_url(recipient, type = "email")),
+          })
+        source = (user['fullname'], self.user_identifier(user))
+        invitation.invite_user(
+          peer_email,
+          mailer = self.mailer,
+          mail_template = mail_template,
+          source = source,
+          database = self.database,
+          merge_vars = {peer_email: merges})
       return {
         'transaction_hash': transaction_hash,
         'download_link': ghost_get_url,

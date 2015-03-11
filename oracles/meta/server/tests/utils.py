@@ -53,6 +53,7 @@ class HTTPException(Exception):
     self.content = content
     super().__init__('status %s with %s on /%s with body %s: %s' % \
                      (status, method, url, body, content))
+    assert status != 500
 
 class Client:
 
@@ -468,15 +469,7 @@ class User(Client):
     res = self.get('user/self')
     return res
 
-  def login(self, device_id = None, trophonius = None, **kw):
-    if device_id is not None:
-      self.device_id = device_id
-    self.trophonius = trophonius
-    params = self.login_parameters
-    params.update(kw)
-    params.update({'pick_trophonius': False})
-    res = self.post('login', params)
-    assert res['success']
+  def _login(self, res):
     assert 'self' in res
     assert 'device' in res
     self.compare_self_response(res['self'])
@@ -491,23 +484,41 @@ class User(Client):
       self.trophonius.connect_user(self)
     return res
 
+  def login(self, device_id = None, trophonius = None, **kw):
+    if device_id is not None:
+      self.device_id = device_id
+    self.trophonius = trophonius
+    params = self.login_parameters
+    params.update(kw)
+    params.update({'pick_trophonius': False})
+    res = self.post('login', params)
+    assert res['success']
+    self._login(res)
+    return res
+
   def facebook_connect(self,
                        long_lived_access_token,
-                       preferred_email = None):
+                       preferred_email = None,
+                       no_device = False):
     args = {
       'long_lived_access_token': long_lived_access_token
     }
     if preferred_email:
       args.update({
         'preferred_email': preferred_email})
-    if self.device_id is not None:
+    if self.device_id is not None and not no_device:
       args.update({
         'device_id': str(self.device_id)
       })
     if 'device_id' in args:
-      self.post('login', args)
+      res = self.post('login', args)
+      self._login(res)
     else:
-      self.post('web-login', args)
+      res = self.post('web-login', args)
+    if 'success' in res:
+      assert res['success']
+    return res
+
 
   def __hash__(self):
     return str(self.id).__hash__()
@@ -641,8 +652,7 @@ class User(Client):
                is_directory = False,
                device_id = None,
                initialize = False,
-               use_identifier = False,
-               ):
+               use_identifier = False):
     if device_id is None:
       device_id = self.device_id
 

@@ -213,8 +213,8 @@ namespace surface
         .action_exception(
           [this] (std::exception_ptr e)
           {
-            ELLE_WARN("%s: fatal error: %s",
-                      *this, elle::exception_string(e));
+            ELLE_ERR("%s: fatal error: %s",
+                     *this, elle::exception_string(e));
             this->transaction().failure_reason(elle::exception_string(e));
           });
     }
@@ -570,10 +570,13 @@ namespace surface
       infinit::oracles::Transaction::Status status,
       std::string reason)
     {
+      auto transaction_id = (!this->data()->id.empty())
+        ? this->transaction_id()
+        : std::string{"unknown"};
       bool onboarding = false;
       if (this->state().metrics_reporter())
         this->state().metrics_reporter()->transaction_ended(
-          this->transaction_id(),
+          transaction_id,
           status,
           reason,
           onboarding,

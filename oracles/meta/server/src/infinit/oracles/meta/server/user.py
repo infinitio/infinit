@@ -8,12 +8,13 @@ import json
 import bson.code
 import random
 import uuid
+import re
 
 import elle.log
 import papier
 
 from .plugins.response import response, Response
-from .utils import api, require_logged_in, require_logged_in_fields, require_admin, require_logged_in_or_admin, hash_password, json_value, require_key, key
+from .utils import api, require_logged_in, require_logged_in_fields, require_admin, require_logged_in_or_admin, hash_password, json_value, require_key, key, clean_up_phone_number
 from . import utils
 from . import error, notifier, regexp, conf, invitation, mail, transaction_status
 
@@ -67,7 +68,7 @@ class Mixin:
         else:
           user['ghost_profile'] = user.get(
             'shorten_ghost_profile_url',
-            self.__ghost_profile_url(user))
+            self.__ghost_profile_url(user, type = 'phone'))
         if 'shorten_ghost_profile_url' in user:
           del user['shorten_ghost_profile_url']
     return user
@@ -307,7 +308,7 @@ class Mixin:
         '$set':
         {
           'devices.$.push_token': device_push_token,
-          'country_code': country_code,
+          'devices.$.country_code': country_code,
         }
       }
     def login():
@@ -322,7 +323,8 @@ class Mixin:
       device = self._create_device(
         id = device_id,
         owner = user,
-        device_push_token = device_push_token)
+        device_push_token = device_push_token,
+        country_code = country_code)
     else:
       device = list(filter(lambda x: x['id'] == str(device_id), usr['devices']))[0]
     # Remove potential leaked previous session.
@@ -398,6 +400,10 @@ class Mixin:
           elle.log.warn('unable to get facebook avatar: %s' % e)
           pass
       return user
+    except Response as r:
+      raise r
+    except Exception as e:
+      self._forbidden_with_error(e.args[0])
     except error.Error as e:
       self._forbidden_with_error(e.args[0])
 
@@ -411,12 +417,13 @@ class Mixin:
             preferred_email: str = None,
             password_hash: str = None,
             OS: str = None,
-            pick_trophonius: bool = True,
-            device_push_token: str = None,
-            country_code: str = None):
-    # Xor facebook_token or email / passwor.
-    with_email = bool(email and (password or password_hash))
-    with_facebook = bool(long_lived_access_token or short_lived_access_token)
+            device_push_token = None,
+            country_code = None,
+            pick_trophonius: bool = True):
+    # Xor facebook_token or email / password.
+    with_email = bool(email is not None and password is not None)
+    with_facebook = bool(long_lived_access_token is not None or
+                         short_lived_access_token is not None)
     if with_email == with_facebook:
       return self.bad_request({
         'reason': 'you must provide facebook_token or (email, password)'
@@ -452,11 +459,13 @@ class Mixin:
   def web_login(self,
                 email = None,
                 password = None,
+                preferred_email = None,
                 short_lived_access_token = None,
                 long_lived_access_token = None):
-    # Xor facebook_token or email / passwor.
-    with_email = bool(email and password)
-    with_facebook = bool(long_lived_access_token or short_lived_access_token)
+    # Xor facebook_token or email / password.
+    with_email = bool(email is not None and password is not None)
+    with_facebook = bool(long_lived_access_token is not None or
+                         short_lived_access_token is not None)
     if with_email == with_facebook:
       return self.bad_request({
         'reason': 'you must provide facebook_token or (email, password)'
@@ -470,6 +479,7 @@ class Mixin:
       user = self.__facebook_connect(
         short_lived_access_token = short_lived_access_token,
         long_lived_access_token = long_lived_access_token,
+        preferred_email = preferred_email,
         fields = fields)
     return self._web_login(user)
 
@@ -928,6 +938,7 @@ class Mixin:
 
   def __register_ghost(self,
                        extra_fields):
+    assert 'accounts' in extra_fields
     features = self._roll_features(True)
     ghost_code = self.generate_random_sequence()
     request = {
@@ -950,12 +961,18 @@ class Mixin:
       {
         '$set': {
           'shorten_ghost_profile_url': self.shorten(
-            self.__ghost_profile_url({'_id': user_id, 'ghost_code': ghost_code}))
+            self.__ghost_profile_url(
+              {
+                '_id': user_id,
+                'ghost_code': ghost_code,
+              },
+              type = extra_fields['accounts'][0]["type"],
+            ))
         }
       })
     return user_id
 
-  def __ghost_profile_url(self, ghost):
+  def __ghost_profile_url(self, ghost, type):
     """
     Return the url of the user ghost profile on the website.
     We have to specify the full url because this url will be shorten by another
@@ -968,11 +985,13 @@ class Mixin:
     code = ghost['ghost_code']
     url = '/ghost/%s' % str(ghost_id)
     ghost_profile_url = "https://www.infinit.io/" \
-                        "invitation/%(ghost_id)s?key=%(key)s&code=%(code)s" % {
-      'ghost_id': str(ghost_id),
-      'key': key(url),
-      'code': code,
-    }
+                        "invitation/%(ghost_id)s?key=%(key)s&code=%(code)s" \
+                        "&utm_source=%(type)s&utm_medium=invitation" % {
+                          'ghost_id': str(ghost_id),
+                          'key': key(url),
+                          'code': code,
+                          'type': type
+                        }
     return ghost_profile_url
 
   @api('/ghost/<code>/merge', method = 'POST')
@@ -1111,7 +1130,7 @@ class Mixin:
           previous = self.user_by_id_or_email(
             name,
             fields = ['email', 'register_status', 'swaggers'],
-            ensure = False)
+            ensure_existence = False)
           if previous is None:
             elle.log.warn('email confirmation duplicate disappeared')
             continue
@@ -1612,7 +1631,8 @@ class Mixin:
 
   def user_by_email_query(self, email):
     email = email.lower().strip()
-    return {'accounts.id': email}
+    return {'accounts.id': email,
+            'accounts.type': 'email'}
 
   def user_by_email(self,
                     email,
@@ -1632,6 +1652,30 @@ class Mixin:
     if ensure_existence:
       self.__ensure_user_existence(user)
     return user
+
+  def user_by_phone_number_query(self, phone_number):
+    return {'accounts.id': phone_number,
+            'accounts.type': 'phone'}
+
+  def user_by_phone_number(self,
+                           phone_number,
+                           fields = None,
+                           ensure_existence = True):
+    """Get a user with given phone number.
+
+    phone_number -- the email of the user.
+    ensure_existence -- if set, raise if user is invald.
+    """
+    if fields is None:
+      fields = self.__user_view_fields
+    user = self.__user_fetch(
+      self.user_by_phone_number_query(phone_number),
+      fields = fields,
+    )
+    if ensure_existence:
+      self.__ensure_user_existence(user)
+    return user
+
 
   def user_by_email_password(self,
                              email,
@@ -1694,24 +1738,24 @@ class Mixin:
     return user
 
   def user_by_id_or_email(self, id_or_email, fields,
-                          ensure = False):
-    id_or_email = id_or_email.lower()
-    if '@' in id_or_email:
+                          ensure_existence = False):
+    if not isinstance(id_or_email, bson.ObjectId) and '@' in id_or_email:
+      id_or_email = id_or_email.lower()
       return self.user_by_email(id_or_email,
                                 fields = fields,
-                                ensure_existence = ensure)
+                                ensure_existence = ensure_existence)
     else:
       try:
         id = bson.ObjectId(id_or_email)
         return self._user_by_id(id,
                                 fields = fields,
-                                ensure_existence = ensure)
+                                ensure_existence = ensure_existence)
       except bson.errors.InvalidId:
         self.bad_request('invalid user id: %r' % id_or_email)
 
   def user_by_id_or_email_query(self, id_or_email):
-    id_or_email = id_or_email.lower()
-    if '@' in id_or_email:
+    if not isinstance(id_or_email, bson.ObjectId) and '@' in id_or_email:
+      id_or_email = id_or_email.lower()
       return self.user_by_email_query(id_or_email)
     else:
       try:
@@ -1824,17 +1868,36 @@ class Mixin:
                                  offset : int = 0):
     return self.__users_by_emails_search(emails, limit, offset)
 
-  @api('/users/<id_or_email>')
-  def view_user(self, id_or_email):
+  @api('/users/<recipient_identifier>')
+  def view_user(self,
+                recipient_identifier,
+                country_code = None):
     """
-    Get user's public information by user_id or email.
+    Get user's public information by identifier.
+    recipient_identifier -- Something to identify the user (email, user_id or phone number).
     """
-    user = self.user_by_id_or_email(id_or_email,
-                                    fields = self.__user_view_fields)
+    recipient_identifier = recipient_identifier.strip().lower()
+    args = {
+      'fields': self.__user_view_fields,
+      'ensure_existence': False,
+    }
+    recipient_id = None
+    user = None
+    try:
+      recipient_id = bson.ObjectId(recipient_identifier)
+      user = self._user_by_id(recipient_id, **args)
+    except bson.errors.InvalidId:
+      if country_code is None and self.current_device is not None:
+        country_code = self.current_device.get('country_code', None)
+      phone_number = clean_up_phone_number(recipient_identifier, country_code)
+      if phone_number:
+        user = self.user_by_phone_number(phone_number, **args)
+      else:
+        user = self.user_by_email(recipient_identifier, **args)
     if user is None:
       self.not_found({
-        'reason': 'user %s not found' % id_or_email,
-        'id': id_or_email,
+        'reason': 'user %s not found' % recipient_identifier,
+        'id': recipient_identifier,
       })
     else:
       return self.__user_view(user)
@@ -2516,7 +2579,7 @@ class Mixin:
           }
         }})
     device = list(filter(lambda x: x['id'] == device['id'], user2['devices']))[0]
-    last_sync = device.get('last_sync', {'timestamp': 1, 'date': datetime.date.fromtimestamp(1)})
+    last_sync = device.get('last_sync', {'timestamp': 1, 'date': datetime.datetime.fromtimestamp(1)})
     # If it's the initialization, pull history, if not, only the one modified
     # since last synchronization!
     res = {
@@ -2528,5 +2591,5 @@ class Mixin:
     res.update(self._user_transactions(modification_time = mtime['date']))
     # Include deleted links only during updates. At start up, ignore them.
     res.update(self.links_list(mtime = mtime['date'], include_deleted = (not init)))
-    res.update(self.devices_users_api(user['email']))
+    res.update(self.devices_users_api(user['_id']))
     return self.success(res)

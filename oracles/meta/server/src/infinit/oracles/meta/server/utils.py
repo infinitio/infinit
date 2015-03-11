@@ -2,6 +2,7 @@ import bottle
 import decorator
 import inspect
 import pymongo
+import phonenumbers
 
 from itertools import chain
 
@@ -95,3 +96,23 @@ def password_hash(password):
   seasoned = password + conf.SALT
   seasoned = seasoned.encode('utf-8')
   return hashlib.sha256(seasoned).hexdigest()
+
+def clean_up_phone_number(phone_number, country_code):
+  """Turn an input into a international phone number.
+  If the input cannot be interpreted as a phone number, returns None.
+
+  phone_number -- The potential phone number.
+  country_code -- The country code associated. If the number already begins
+                  with +, country_code is ignored.
+  """
+  try:
+    # Check if the phone number is valid.
+    cleaned_phone_number = phonenumbers.parse(phone_number, country_code)
+    # Turn it into to its standard international version
+    # (e.g. +33 1 92 39 12 48).
+    res = phonenumbers.format_number(
+      cleaned_phone_number,
+      phonenumbers.PhoneNumberFormat.INTERNATIONAL)
+    return res
+  except phonenumbers.NumberParseException:
+    return None

@@ -66,7 +66,7 @@ with Meta() as meta:
     bob1 = User(meta, email = email, fullname = fullname)
     bob1.login()
 
-    bob2 = copy.copy(bob1)
+    bob2 = copy.deepcopy(bob1)
     bob2.device_id = uuid4()
     bob2.login()
 
