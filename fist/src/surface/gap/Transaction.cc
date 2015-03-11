@@ -702,7 +702,7 @@ namespace surface
           if (peer->recipient_id != previous_recipient_id)
           {
             ELLE_TRACE_SCOPE("recipient id changed: %s -> %s",
-                             peer->recipient_id != previous_recipient_id);
+                             peer->recipient_id, previous_recipient_id);
             // Merge recipient if the new one is not in your list.
             // XXX: Because we should always receive a new_swagger notification
             // this code is just a security.
