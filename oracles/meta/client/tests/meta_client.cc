@@ -572,6 +572,21 @@ ELLE_TEST_SCHEDULED(merge_ghost)
   c.use_ghost_code("foo");
 }
 
+ELLE_TEST_SCHEDULED(url_encoded_merge_ghost)
+{
+  HTTPServer s;
+  s.register_route("/ghost/foo%20/merge", reactor::http::Method::POST,
+                   [] (HTTPServer::Headers const&,
+                       HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
+                       elle::Buffer const& body) -> std::string
+                   {
+                     return "{}";
+                   });
+  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+  c.use_ghost_code("foo ");
+}
+
 ELLE_TEST_SCHEDULED(merge_ghost_failure)
 {
   HTTPServer s;
@@ -700,6 +715,36 @@ namespace facebook
     c.facebook_connect("foobar", boost::uuids::nil_uuid());
   }
 
+  ELLE_TEST_SCHEDULED(already_registered)
+  {
+    HTTPServer s;
+    s.register_route("/users/yes", reactor::http::Method::GET,
+                     [] (HTTPServer::Headers const&,
+                         HTTPServer::Cookies const&,
+                         HTTPServer::Parameters const& parameters,
+                         elle::Buffer const&) -> std::string
+                     {
+                       ELLE_ASSERT(contains(parameters, "account_type"));
+                       return "{}";
+                     });
+    s.register_route("/users/no", reactor::http::Method::GET,
+                     [] (HTTPServer::Headers const&,
+                         HTTPServer::Cookies const&,
+                         HTTPServer::Parameters const& parameters,
+                         elle::Buffer const&) -> std::string
+                     {
+                       ELLE_ASSERT(contains(parameters, "account_type"));
+                       throw HTTPServer::Exception(
+                         "/users/facebook/no",
+                         reactor::http::StatusCode::Not_Found,
+                         "{"
+                         "}");
+                     });
+    infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+    ELLE_ASSERT(c.facebook_id_already_registered("yes"));
+    ELLE_ASSERT(!c.facebook_id_already_registered("no"));
+  }
+
   ELLE_TEST_SCHEDULED(connect_failure)
   {
     HTTPServer s;
@@ -799,6 +844,7 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(transaction_create));
   suite.add(BOOST_TEST_CASE(change_email));
   suite.add(BOOST_TEST_CASE(merge_ghost));
+  suite.add(BOOST_TEST_CASE(url_encoded_merge_ghost));
   suite.add(BOOST_TEST_CASE(merge_ghost_failure));
   suite.add(BOOST_TEST_CASE(normal_user));
   suite.add(BOOST_TEST_CASE(ghost_user_email));
@@ -807,6 +853,7 @@ ELLE_TEST_SUITE()
     boost::unit_test::test_suite* s = BOOST_TEST_SUITE("facebook");
     suite.add(s);
     s->add(BOOST_TEST_CASE(facebook::connect_success));
+    s->add(BOOST_TEST_CASE(facebook::already_registered));
     s->add(BOOST_TEST_CASE(facebook::connect_failure));
   }
   {

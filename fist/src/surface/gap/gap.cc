@@ -1749,6 +1749,31 @@ gap_facebook_app_id()
 }
 
 gap_Status
+gap_facebook_already_registered(gap_State* state,
+                                std::string const& facebook_id,
+                                bool& registered)
+{
+  return run<gap_Status>(
+    state,
+    "start reception onboarding",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      gap_Status status = gap_error;
+      try
+      {
+        registered =
+          state.meta(false).facebook_id_already_registered(facebook_id);
+        status = gap_ok;
+      }
+      catch (elle::Error const&)
+      {
+        registered = false;
+      }
+      return status;
+    });
+}
+
+gap_Status
 gap_facebook_connect(gap_State* state,
                      std::string const& facebook_token,
                      boost::optional<std::string> preferred_email,
