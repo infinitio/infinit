@@ -213,11 +213,12 @@ class Mixin:
       return self.device(id = str(device_id),
                          owner =  user_id).get('trophonius') is not None
     else:
-      return self.database.users.find(
-        {
-          "_id": user_id,
-          "devices.trophonius": {"$ne": None},
-        }).count() > 0
+      user = self.database.users.find_one(
+        {"_id": user_id},
+        fields = ['devices.trophonius'],
+      )
+      return any(d.get('trophonius', None) is not None
+                 for d in user['devices'])
 
   ## ------------------- ##
   ## Backward pre-0.9.31 ##
