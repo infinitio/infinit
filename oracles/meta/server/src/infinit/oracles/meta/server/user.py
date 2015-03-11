@@ -1164,8 +1164,9 @@ class Mixin:
       })
     res = self.database.users.update(
       {
-        'accounts.id': email,
-        'accounts.type': 'email',
+        'accounts': {
+          '$elemMatch': {'id': email, 'type': 'email'}
+        },
         '_id': user['_id'],
         'email': {'$ne': email} # Not the primary email.
       },
@@ -1636,9 +1637,11 @@ class Mixin:
 
   def user_by_email_query(self, email):
     email = email.lower().strip()
-    return {'accounts.id': email,
-            'accounts.type': 'email'}
-
+    return {
+      'accounts': {
+        '$elemMatch': {'id': email, 'type': 'email'}
+      }
+    }
   def user_by_email(self,
                     email,
                     fields = None,
@@ -1685,8 +1688,11 @@ class Mixin:
     return user
 
   def user_by_phone_number_query(self, phone_number):
-    return {'accounts.id': phone_number,
-            'accounts.type': 'phone'}
+    return {
+      'accounts': {
+        '$elemMatch': {'id': phone_number, 'type': 'phone'}
+      }
+    }
 
   def user_by_phone_number(self,
                            phone_number,
