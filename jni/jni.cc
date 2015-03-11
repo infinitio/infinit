@@ -33,6 +33,13 @@
 
 ELLE_LOG_COMPONENT("jni");
 
+class JavaException: public std::runtime_error
+{
+public:
+  JavaException()
+  : std::runtime_error("java exception") {}
+};
+
 static jobject global_state_instance = nullptr;
 static int request_map = 0;
 static sem_t semaphore;
@@ -322,6 +329,8 @@ static void on_critical(jobject thiz)
   jclass clazz = env->GetObjectClass(thiz);
   jmethodID m = env->GetMethodID(clazz, "onCritical", "()V");
   env->CallVoidMethod(thiz, m);
+  if (env->ExceptionCheck() == JNI_TRUE)
+    throw JavaException();
 }
 
 static void on_update_user(jobject thiz, surface::gap::User const& user)
@@ -330,6 +339,8 @@ static void on_update_user(jobject thiz, surface::gap::User const& user)
   jclass clazz = env->GetObjectClass(thiz);
   jmethodID m = env->GetMethodID(clazz, "onUpdateUser", "(Lio/infinit/User;)V");
   env->CallVoidMethod(thiz, m, to_user(env, user));
+  if (env->ExceptionCheck() == JNI_TRUE)
+    throw JavaException();
 }
 
 static void on_deleted_swagger(jobject thiz, int id)
@@ -338,6 +349,8 @@ static void on_deleted_swagger(jobject thiz, int id)
   jclass clazz = env->GetObjectClass(thiz);
   jmethodID m = env->GetMethodID(clazz, "onDeleteSwagger", "(I)V");
   env->CallVoidMethod(thiz, m, (jint)id);
+  if (env->ExceptionCheck() == JNI_TRUE)
+    throw JavaException();
 }
 
 static void on_deleted_favorite(jobject thiz, int id)
@@ -346,6 +359,8 @@ static void on_deleted_favorite(jobject thiz, int id)
   jclass clazz = env->GetObjectClass(thiz);
   jmethodID m = env->GetMethodID(clazz, "onDeletedFavorite", "(I)V");
   env->CallVoidMethod(thiz, m, (jint)id);
+  if (env->ExceptionCheck() == JNI_TRUE)
+    throw JavaException();
 }
 
 static void on_user_status(jobject thiz, int id, bool s)
@@ -354,6 +369,8 @@ static void on_user_status(jobject thiz, int id, bool s)
   jclass clazz = env->GetObjectClass(thiz);
   jmethodID m = env->GetMethodID(clazz, "onUserStatus", "(IZ)V");
   env->CallVoidMethod(thiz, m, (jint)id, (jboolean)s);
+  if (env->ExceptionCheck() == JNI_TRUE)
+    throw JavaException();
 }
 
 static void on_avatar_available(jobject thiz, int id)
@@ -362,6 +379,8 @@ static void on_avatar_available(jobject thiz, int id)
   jclass clazz = env->GetObjectClass(thiz);
   jmethodID m = env->GetMethodID(clazz, "onAvatarAvailable", "(I)V");
   env->CallVoidMethod(thiz, m, (jint)id);
+  if (env->ExceptionCheck() == JNI_TRUE)
+    throw JavaException();
 }
 
 static void on_connection(jobject thiz, bool status, bool still_trying,
@@ -372,6 +391,8 @@ static void on_connection(jobject thiz, bool status, bool still_trying,
   jmethodID m = env->GetMethodID(clazz, "onConnection", "(ZZLjava/lang/String;)V");
   env->CallVoidMethod(thiz, m, (jboolean)status, (jboolean)still_trying,
                       env->NewStringUTF(last_error.c_str()));
+  if (env->ExceptionCheck() == JNI_TRUE)
+    throw JavaException();
 }
 
 static void on_peer_transaction(jobject thiz,
@@ -382,6 +403,8 @@ static void on_peer_transaction(jobject thiz,
   jmethodID m = env->GetMethodID(clazz, "onPeerTransaction",
                                  "(Lio/infinit/PeerTransaction;)V");
   env->CallVoidMethod(thiz, m, to_peertransaction(env, t));
+  if (env->ExceptionCheck() == JNI_TRUE)
+    throw JavaException();
 }
 
 static void on_link(jobject thiz,
@@ -392,6 +415,8 @@ static void on_link(jobject thiz,
   jmethodID m = env->GetMethodID(clazz, "onLink",
                                  "(Lio/infinit/LinkTransaction;)V");
   env->CallVoidMethod(thiz, m, to_linktransaction(env, t));
+  if (env->ExceptionCheck() == JNI_TRUE)
+    throw JavaException();
 }
 
 #ifdef INFINIT_ANDROID
@@ -623,7 +648,14 @@ extern "C" jlong Java_io_infinit_State_gapPoll(
     }
     while (--request_map);
   }
-  return gap_poll((gap_State*)handle);
+  try {
+    return gap_poll((gap_State*)handle);
+  }
+  catch (JavaException const& e)
+  {
+    ELLE_TRACE("Java exception thrown from poll handler");
+  }
+  return 1;
 }
 
 extern "C" jlong Java_io_infinit_State_gapDeviceStatus(
