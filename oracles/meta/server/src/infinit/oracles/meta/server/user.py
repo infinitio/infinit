@@ -371,10 +371,9 @@ class Mixin:
 
   @api('/users/facebook/<facebook_id>')
   def is_registered_with_facebook(self, facebook_id):
-    user = self.__user_fetch({
-        'accounts.id': facebook_id,
-        'accounts.type': 'facebook'
-    })
+    user = self.user_by_facebook_id(facebook_id,
+                                    fields = [], # Only the id.
+                                    ensure_existence = False)
     if user is not None:
       return {}
     else:
@@ -396,11 +395,9 @@ class Mixin:
       facebook_user = self.facebook.user(
         short_lived_access_token = short_lived_access_token,
         long_lived_access_token = long_lived_access_token)
-      user = self.__user_fetch({
-        'accounts.id': facebook_user.facebook_id,
-        'accounts.type': 'facebook'
-        },
-        fields = fields)
+      user = self.user_by_facebook_id(facebook_user.facebook_id,
+                                      fields = fields,
+                                      ensure_existence = False)
       if user is None: # Register the user.
         user = self.facebook_register(
           facebook_user = facebook_user,
@@ -625,13 +622,8 @@ class Mixin:
       email_is_already_confirmed = already_confirmed,
       extra_fields = extra_fields,
       activation_code = None)
-    user = self.__user_fetch(
-      {
-        'accounts.id': facebook_user.facebook_id,
-        'accounts.type': 'facebook'
-      },
-      fields = fields)
-    return user
+    return self.user_by_facebook_id(
+      facebook_user.facebook_id, fields = fields)
 
   def __email_confirmation_fields(self, email):
     email = email.strip().lower()
@@ -1660,6 +1652,32 @@ class Mixin:
       fields = self.__user_view_fields
     user = self.__user_fetch(
       self.user_by_email_query(email),
+      fields = fields,
+    )
+    if ensure_existence:
+      self.__ensure_user_existence(user)
+    return user
+
+  def user_by_facebook_id_query(self, facebook_id):
+    return {
+      'accounts': {
+        '$elemMatch': {'id': facebook_id, 'type': 'facebook'}
+      }
+    }
+
+  def user_by_facebook_id(self,
+                          facebook_id,
+                          fields = None,
+                          ensure_existence = True):
+    """Get a user with given phone number.
+
+    facebook_id -- the facebook id.
+    ensure_existence -- if set, raise if user is invald.
+    """
+    if fields is None:
+      fields = self.__user_view_fields
+    user = self.__user_fetch(
+      self.user_by_facebook_id_query(facebook_id),
       fields = fields,
     )
     if ensure_existence:
