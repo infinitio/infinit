@@ -1211,7 +1211,7 @@ namespace surface
     std::vector<State::Device>
     State::devices() const
     {
-      return this->meta().devices();
+      return this->_synchronize_response->devices;
     }
 
     /*--------------.
