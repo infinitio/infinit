@@ -5,6 +5,7 @@ from infinit.oracles.meta.server.mail import Mailer
 from infinit.oracles.meta.server.invitation import Invitation
 from infinit.oracles.meta.server import transaction_status
 from infinit.oracles.meta import version
+from random import uniform
 
 import socket
 import http.cookies
@@ -705,6 +706,86 @@ class User(Client):
                 'progress': 1,
                 'status': status,
               })
+
+# Fake facebook.
+class Facebook:
+
+  def __init__(self,
+               broken_at = False):
+    self.broken_at = broken_at
+    self.__next_client_data = None
+
+  @property
+  def app_access_token(self):
+    if self.broken_at == 'app_access_token':
+      raise error.Error(error.EMAIL_PASSWORD_DONT_MATCH)
+    return self.__app_access_token
+
+  @property
+  def next_client_data(self):
+    if self.__next_client_data is None:
+      self.__next_client_data = {
+        'id': int(uniform(1000000000000000, 1500000000000000)),
+        'email': None,
+      }
+    return self.__next_client_data
+
+  def set_next_client_data(self, data):
+    self.__next_client_data = data
+
+  class Client:
+    def __init__(self,
+                 server,
+                 long_lived_access_token,
+                 id,
+                 email):
+      self.__server = server
+      self.__long_lived_access_token = long_lived_access_token
+      self.__data = None
+      self.__data = {
+        'name': 'Joseph Total',
+        'first_name': 'Joseph',
+        'last_name': 'Total',
+        'id': str(id)
+      }
+      if email:
+        self.__data.update({
+          'email': email
+        })
+
+    @property
+    def long_lived_access_token(self):
+      if self.__server.broken_at == 'client_access_token':
+        raise error.Error(error.EMAIL_PASSWORD_DONT_MATCH)
+      if self.__access_token is None:
+        self.__access_token = self.__server.client_access_token
+      return self.__access_token
+
+    @property
+    def data(self):
+      if self.__server.broken_at == 'client_data':
+        raise error.Error(error.EMAIL_PASSWORD_DONT_MATCH)
+      return self.__data
+
+    @property
+    def facebook_id(self):
+      return str(self.data['id'])
+
+    @property
+    def permissions(self):
+      pass
+
+  def user(self,
+           code = None,
+           short_lived_access_token = None,
+           long_lived_access_token = None):
+    data = self.next_client_data
+    return Facebook.Client(
+      server = self,
+      long_lived_access_token = long_lived_access_token,
+      id = data['id'],
+      email = data['email'],
+    )
 
 def assertEq(a, b):
   if a != b:
