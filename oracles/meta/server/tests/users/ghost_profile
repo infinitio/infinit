@@ -151,7 +151,6 @@ with Meta(enable_emails = True,
     bob.transaction_update(t2, GHOST_UPLOADED)
 
     db_recipient = meta.database.users.find_one({"_id": ObjectId(bob.swaggers[0])})
-    # Check if the 3 emails have been delivered and contain ghost_code and url.
     assert 'send-file-url' not in meta.mailer.messages
     ghost_profile = recipient['ghost_profile']
     check_merge(meta, db_recipient, ghost_profile, 'phone')

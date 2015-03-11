@@ -29,3 +29,6 @@ class APNSUnregister(Boulder):
           }
         }
       )
+
+  def status(self):
+    return {}

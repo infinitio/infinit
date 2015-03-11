@@ -502,6 +502,17 @@ namespace infinit
           }, device_uuid, device_push_token, country_code);
       }
 
+      bool
+      Client::facebook_id_already_registered(
+        std::string const& facebook_id_) const
+      {
+        reactor::http::EscapedString facebook_id{facebook_id_};
+        auto url =
+          elle::sprintf("/users/%s?account_type=facebook", facebook_id);
+        auto request = this->_request(url, Method::GET, false);
+        return request.status() == reactor::http::StatusCode::OK;
+      }
+
       LoginResponse
       Client::_login(ParametersUpdater parameters_updater,
                      boost::uuids::uuid const& device_uuid,
@@ -657,8 +668,9 @@ namespace infinit
       }
 
       void
-      Client::use_ghost_code(std::string const& code) const
+      Client::use_ghost_code(std::string const& code_) const
       {
+        reactor::http::EscapedString code{code_};
         std::string url = elle::sprintf("/ghost/%s/merge", code);
         auto request = this->_request(url,
                                       Method::POST,

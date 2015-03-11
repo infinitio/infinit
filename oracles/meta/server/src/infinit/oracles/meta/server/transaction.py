@@ -319,9 +319,9 @@ class Mixin:
       elle.log.debug("%s is an email" % recipient_identifier)
       peer_email = recipient_identifier.lower().strip()
       # XXX: search email in each accounts.
-      recipient = self.__user_fetch(
-        {'accounts.id': peer_email, 'accounts.type': 'email'},
-        fields = recipient_fields)
+      recipient = self.user_by_email(peer_email,
+                                     fields = recipient_fields,
+                                     ensure_existence = False)
     else:
       device = self.current_device
       phone_number = clean_up_phone_number(
@@ -329,10 +329,10 @@ class Mixin:
       is_a_phone_number = phone_number is not None
       if is_a_phone_number:
         elle.log.debug("%s is an phone" % phone_number)
-        recipient = self.__user_fetch(
-          {'accounts.id': phone_number, 'accounts.type': 'phone'},
-          fields = recipient_fields)
-    if is_a_phone_number is None and is_an_email is None:
+        recipient = self.user_by_phone_number(phone_number,
+                                              fields = recipient_fields,
+                                              ensure_existence = False)
+    if is_a_phone_number is False and is_an_email is False:
       return self.bad_request({
         'reason': 'recipient_identifier was ill-formed'
       })

@@ -424,6 +424,11 @@ std::string
 gap_facebook_app_id();
 
 gap_Status
+gap_facebook_already_registered(gap_State* state,
+                                std::string const& facebook_id,
+                                bool& registered);
+
+gap_Status
 gap_facebook_connect(gap_State* state,
                      std::string const& facebook_token,
                      boost::optional<std::string> preferred_email = {},
