@@ -671,8 +671,9 @@ namespace infinit
       }
 
       void
-      Client::use_ghost_code(std::string const& code) const
+      Client::use_ghost_code(std::string const& code_) const
       {
+        reactor::http::EscapedString code{code_};
         std::string url = elle::sprintf("/ghost/%s/merge", code);
         auto request = this->_request(url,
                                       Method::POST,
