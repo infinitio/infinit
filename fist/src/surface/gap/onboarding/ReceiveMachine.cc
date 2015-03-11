@@ -127,7 +127,6 @@ namespace surface
         machine->interrupt();
       }
 
-      void
       infinit::oracles::meta::UpdatePeerTransactionResponse
       ReceiveMachine::_accept()
       {
