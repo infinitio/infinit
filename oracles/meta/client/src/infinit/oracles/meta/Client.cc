@@ -507,9 +507,12 @@ namespace infinit
       }
 
       bool
-      Client::facebook_id_already_registered(std::string const& facebook_id) const
+      Client::facebook_id_already_registered(
+        std::string const& facebook_id_) const
       {
-        auto url = elle::sprintf("/users/facebook/%s", facebook_id);
+        reactor::http::EscapedString facebook_id{facebook_id_};
+        auto url =
+          elle::sprintf("/users/%s?account_type=facebook", facebook_id);
         auto request = this->_request(url, Method::GET, false);
         return request.status() == reactor::http::StatusCode::OK;
       }

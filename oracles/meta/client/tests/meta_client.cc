@@ -703,20 +703,22 @@ namespace facebook
   ELLE_TEST_SCHEDULED(already_registered)
   {
     HTTPServer s;
-    s.register_route("/users/facebook/yes", reactor::http::Method::GET,
+    s.register_route("/users/yes", reactor::http::Method::GET,
                      [] (HTTPServer::Headers const&,
                          HTTPServer::Cookies const&,
-                         HTTPServer::Parameters const&,
-                         elle::Buffer const& body) -> std::string
+                         HTTPServer::Parameters const& parameters,
+                         elle::Buffer const&) -> std::string
                      {
+                       ELLE_ASSERT(contains(parameters, "account_type"));
                        return "{}";
                      });
-    s.register_route("/users/facebook/no", reactor::http::Method::GET,
+    s.register_route("/users/no", reactor::http::Method::GET,
                      [] (HTTPServer::Headers const&,
                          HTTPServer::Cookies const&,
-                         HTTPServer::Parameters const&,
-                         elle::Buffer const& body) -> std::string
+                         HTTPServer::Parameters const& parameters,
+                         elle::Buffer const&) -> std::string
                      {
+                       ELLE_ASSERT(contains(parameters, "account_type"));
                        throw HTTPServer::Exception(
                          "/users/facebook/no",
                          reactor::http::StatusCode::Not_Found,

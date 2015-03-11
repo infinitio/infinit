@@ -1902,7 +1902,8 @@ class Mixin:
   @api('/users/<recipient_identifier>')
   def view_user(self,
                 recipient_identifier,
-                country_code = None):
+                country_code = None,
+                account_type = None):
     """
     Get user's public information by identifier.
     recipient_identifier -- Something to identify the user (email, user_id or phone number).
@@ -1912,19 +1913,29 @@ class Mixin:
       'fields': self.__user_view_fields,
       'ensure_existence': False,
     }
-    recipient_id = None
     user = None
     try:
+      if account_type is not None and account_type != "ObjectId":
+        raise bson.errors.InvalidId("")
       recipient_id = bson.ObjectId(recipient_identifier)
       user = self._user_by_id(recipient_id, **args)
     except bson.errors.InvalidId:
-      if country_code is None and self.current_device is not None:
-        country_code = self.current_device.get('country_code', None)
-      phone_number = clean_up_phone_number(recipient_identifier, country_code)
-      if phone_number:
-        user = self.user_by_phone_number(phone_number, **args)
-      else:
+      if ('@' in recipient_identifier and account_type is None) or \
+         account_type == "email":
         user = self.user_by_email(recipient_identifier, **args)
+      else:
+        if account_type == "facebook":
+          user = self.user_by_facebook_id(recipient_identifier,
+                                          **args)
+        else:
+          if account_type is None or account_type == "phone":
+            if country_code is None and self.current_device is not None:
+              country_code = self.current_device.get('country_code', None)
+            phone_number = clean_up_phone_number(
+              recipient_identifier, country_code)
+            if phone_number:
+              user = self.user_by_phone_number(phone_number, **args)
+
     if user is None:
       self.not_found({
         'reason': 'user %s not found' % recipient_identifier,
