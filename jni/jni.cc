@@ -1084,7 +1084,7 @@ namespace elle
     {
       ++request_map;
       ELLE_TRACE("Requesting interface map, waiting...");
-      while (sem_wait(&semaphore) == EAGAIN)
+      while (sem_trywait(&semaphore) == -1)
         reactor::sleep(100_ms);
       ELLE_TRACE("...done, got %s results", interface_map.size());
       return interface_map;
