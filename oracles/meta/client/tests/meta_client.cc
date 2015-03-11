@@ -700,6 +700,34 @@ namespace facebook
     c.facebook_connect("foobar", boost::uuids::nil_uuid());
   }
 
+  ELLE_TEST_SCHEDULED(already_registered)
+  {
+    HTTPServer s;
+    s.register_route("/users/facebook/yes", reactor::http::Method::GET,
+                     [] (HTTPServer::Headers const&,
+                         HTTPServer::Cookies const&,
+                         HTTPServer::Parameters const&,
+                         elle::Buffer const& body) -> std::string
+                     {
+                       return "{}";
+                     });
+    s.register_route("/users/facebook/no", reactor::http::Method::GET,
+                     [] (HTTPServer::Headers const&,
+                         HTTPServer::Cookies const&,
+                         HTTPServer::Parameters const&,
+                         elle::Buffer const& body) -> std::string
+                     {
+                       throw HTTPServer::Exception(
+                         "/users/facebook/no",
+                         reactor::http::StatusCode::Not_Found,
+                         "{"
+                         "}");
+                     });
+    infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+    ELLE_ASSERT(c.facebook_id_already_registered("yes"));
+    ELLE_ASSERT(!c.facebook_id_already_registered("no"));
+  }
+
   ELLE_TEST_SCHEDULED(connect_failure)
   {
     HTTPServer s;
@@ -807,6 +835,7 @@ ELLE_TEST_SUITE()
     boost::unit_test::test_suite* s = BOOST_TEST_SUITE("facebook");
     suite.add(s);
     s->add(BOOST_TEST_CASE(facebook::connect_success));
+    s->add(BOOST_TEST_CASE(facebook::already_registered));
     s->add(BOOST_TEST_CASE(facebook::connect_failure));
   }
   {

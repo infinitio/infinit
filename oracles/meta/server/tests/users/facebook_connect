@@ -103,9 +103,16 @@ with Meta(enable_emails = False) as meta:
       'id': id,
       'email': '%s@infinit.io' % id,
     })
+    try:
+      meta.get('users/facebook/%s' % id)
+      assert False
+    except HTTPException as e:
+      assert e.status == 404
+
     for _ in range(2):
       bob.facebook_connect("token")
       facebook_id = bob.facebook_id
+      meta.get('users/facebook/%s' % facebook_id)
       bob.logout()
       try:
         print(bob.me)

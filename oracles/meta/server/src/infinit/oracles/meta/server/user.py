@@ -369,6 +369,19 @@ class Mixin:
     response['device'] = self.device_view(device)
     return response
 
+  @api('/users/facebook/<facebook_id>')
+  def is_registered_with_facebook(self, facebook_id):
+    user = self.__user_fetch({
+        'accounts.id': facebook_id,
+        'accounts.type': 'facebook'
+    })
+    if user is not None:
+      return {}
+    else:
+      return self.not_found({
+        'reason': 'unknown facebook id %s' % facebook_id
+      })
+
   def __facebook_connect(self,
                          fields,
                          short_lived_access_token = None,

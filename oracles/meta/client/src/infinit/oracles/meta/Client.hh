@@ -418,6 +418,9 @@ namespace infinit
           boost::optional<std::string> country_code = {}
           );
 
+        bool
+        facebook_id_already_registered(std::string const& facebook_id) const;
+
         void
         logout();
 

@@ -506,6 +506,14 @@ namespace infinit
           }, device_uuid, country_code);
       }
 
+      bool
+      Client::facebook_id_already_registered(std::string const& facebook_id) const
+      {
+        auto url = elle::sprintf("/users/facebook/%s", facebook_id);
+        auto request = this->_request(url, Method::GET, false);
+        return request.status() == reactor::http::StatusCode::OK;
+      }
+
       LoginResponse
       Client::_login(ParametersUpdater parameters_updater,
                      boost::uuids::uuid const& device_uuid,

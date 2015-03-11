@@ -608,6 +608,10 @@ gap_send_last_crash_logs(gap_State* state,
 std::string
 gap_facebook_app_id();
 
+bool
+gap_facebook_already_registered(gap_State* state,
+                                std::string const& facebook_id);
+
 gap_Status
 gap_facebook_connect(gap_State* state,
                      std::string const& token,

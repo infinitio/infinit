@@ -1952,6 +1952,27 @@ gap_facebook_app_id()
   return "839001662829159";
 }
 
+bool
+gap_facebook_already_registered(gap_State* state,
+                                std::string const& facebook_id)
+{
+  return run<bool>(
+    state,
+    "start reception onboarding",
+    [&] (surface::gap::State& state) -> uint32_t
+    {
+      try
+      {
+        return state.meta(false).facebook_id_already_registered(
+          facebook_id);
+      }
+      catch (elle::Error const&)
+      {
+        return false;
+      }
+    });
+}
+
 gap_Status
 gap_facebook_connect(gap_State* state,
                      std::string const& token,
