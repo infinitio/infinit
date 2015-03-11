@@ -329,10 +329,21 @@ public class State
   }
 
   public void facebookConnect(String facebook_token, String preferred_email,
-                              String device_push_token)
+                              String device_push_token, String country_code)
   {
-    long res = gapFacebookConnect(handle, token, preferred_email, device_push_token);
+    long res = gapFacebookConnect(handle, token, preferred_email, device_push_token, country_code);
     _check("facebook connect", res);
+  }
+
+  public boolean facebookAlreadyRegistered(String facebook_id)
+  {
+    long res = gapFacebookAlreadyRegistered(handle, facebook_id);
+    if (res == 0)
+      return false;
+    else if (res == 1)
+      return true;
+    else
+      _check("facebook registered", res);
   }
 
   public void useGhostCode(String code)
@@ -458,7 +469,9 @@ public class State
   private native String gapFacebookAppId(long handle);
   private native long gapFacebookConnect(long handle, String facebook_token,
                                          String preferred_email,
-                                         String device_push_token);
+                                         String device_push_token,
+                                         String country_code);
+  private native long gapFacebookAlreadyRegistered(long handle, String facebook_id);
   private native long gapUseGhostCode(long handle, String code);
   public native void setenv(String key, String value);
   public native String getenv(String key);

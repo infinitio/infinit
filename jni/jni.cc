@@ -1032,16 +1032,32 @@ extern "C" jstring Java_io_infinit_State_gapFacebookAppId(JNIEnv* env, jobject t
 extern "C" jlong Java_io_infinit_State_gapFacebookConnect(
   JNIEnv* env, jobject thiz, jlong handle,
   jstring facebook_token, jstring preferred_email,
-  jstring device_push_token)
+  jstring device_push_token,
+  jstring country_code)
 {
-  boost::optional<std::string> mail, token;
+  boost::optional<std::string> mail, token, country;
   if (preferred_email != nullptr)
     mail = to_string(env, preferred_email);
   if (device_push_token != nullptr)
     token = to_string(env, device_push_token);
+  if (country_code != nullptr)
+    country = to_string(env, country_code);
   return gap_facebook_connect((gap_State*)handle, to_string(env, facebook_token),
-                              mail, token);
+                              mail, token, country);
 }
+
+extern "C" jlong Java_io_infinit_State_gapFacebookAlreadyRegistered(
+  JNIEnv* env, jobject thiz, jlong handle, jstring facebook_id)
+{
+  bool res;
+  gap_Status s = gap_facebook_already_registered((gap_State*)handle,
+                                                 to_string(env, facebook_id),
+                                                 res);
+  if (s != 1)
+    return s;
+  return res? 1:0;
+}
+
 
 std::map<std::string, elle::network::Interface> interface_get_map()
 {
