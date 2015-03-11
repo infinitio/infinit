@@ -20,7 +20,9 @@
 #include <elle/finally.hh>
 #include <elle/HttpClient.hh>
 #include <elle/log.hh>
+#include <elle/Plugin.hh>
 
+#include <reactor/logger.hh>
 #include <reactor/network/proxy.hh>
 #include <reactor/scheduler.hh>
 #include <reactor/thread.hh>
@@ -47,6 +49,9 @@ gap_new(bool production,
 {
   try
   {
+    elle::PluginLoad load_reactor_logger_plugins(
+      reactor::plugins::logger_indentation,
+      reactor::plugins::logger_tags);
     gap_State* state = new gap_State(production,
                                      download_dir,
                                      persistent_config_dir,
@@ -268,27 +273,30 @@ gap_Status
 gap_use_ghost_code(gap_State* state,
                   std::string const& code)
 {
-  assert(state != nullptr);
+  ELLE_ASSERT(state != nullptr);
   if (code.empty())
     return gap_unknown_user;
-  return run<gap_Status>(state,
+  gap_Status res = gap_error;
+  run<gap_Status>(state,
                          "use ghost code",
                          [&] (surface::gap::State& state) -> gap_Status
     {
       try
       {
         state.meta().use_ghost_code(code);
+        res = gap_ok;
       }
       catch (infinit::state::GhostCodeAlreadyUsed const&)
       {
-        return gap_ghost_code_already_used;
+        res = gap_ghost_code_already_used;
       }
       catch (elle::Error const&)
       {
-        return gap_unknown_user;
+        res = gap_unknown_user;
       }
       return gap_ok;
     });
+  return res;
 }
 
 gap_Status
