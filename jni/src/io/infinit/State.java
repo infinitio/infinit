@@ -22,9 +22,9 @@ public class State
     handle = gapInitialize(production, download_dir, persistent_config_dir,
       non_persistent_config_dir, enable_mirroring, max_mirroring_size);
   }
-  public void login(String email, String hashed_password, String device_push_token)
+  public void login(String email, String hashed_password, String device_push_token, String country_code)
   {
-    long res = gapLogin(handle, email, hashed_password, device_push_token);
+    long res = gapLogin(handle, email, hashed_password, device_push_token, country_code);
     _check("login", res);
   }
   /// Register a new user.
@@ -344,6 +344,7 @@ public class State
       return true;
     else
       _check("facebook registered", res);
+    return false;
   }
 
   public void useGhostCode(String code)
@@ -400,7 +401,7 @@ public class State
     boolean enable_mirroring,
     long max_mirroring_size);
   private native long gapFinalize(long handle);
-  private native long gapLogin(long handle, String email, String hashed_password, String device_push_token);
+  private native long gapLogin(long handle, String email, String hashed_password, String device_push_token, String country_code);
   private native long gapRegister(long handle, String fullname, String email, String hashed_password);
   private native long gapSetProxy(long handle, int type, String host, int port, String username, String password);
   private native long gapUnsetProxy(long handle, int type);
