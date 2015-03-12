@@ -703,6 +703,10 @@ namespace surface
       start_onboarding(std::string const& file_path,
                        reactor::Duration const& transfer_duration = 5_sec);
 
+      /// Catches user unknown exceptions and sets return to null.
+      uint32_t
+      user_id_or_null(std::string const& id);
+
     private:
       template <typename ... T>
       Transaction&

@@ -26,7 +26,7 @@ namespace surface
 
     State::UserNotFoundException::UserNotFoundException(std::string const& id):
       Exception{gap_unknown_user, elle::sprintf("unknown user %s", id)}
-   {}
+    {}
 
     State::NotASwaggerException::NotASwaggerException(uint32_t id):
       Exception{gap_unknown_user, elle::sprintf("unknown swagger %s", id)}
@@ -79,12 +79,25 @@ namespace surface
       return ++id;
     }
 
+    uint32_t
+    State::user_id_or_null(std::string const& id)
+    {
+      try
+      {
+        return this->user_id(id);
+      }
+      catch (State::UserNotFoundException const&)
+      {
+        return null_id;
+      }
+    }
+
     State::User const&
     State::user_sync(State::User const& user) const
     {
       ELLE_DEBUG_SCOPE("%s: user response: %s", *this, user);
 
-      uint32_t id = 0;
+      uint32_t id = null_id;
       if (this->_user_indexes.find(user.id) == this->_user_indexes.end())
       {
         id = generate_id();
