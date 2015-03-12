@@ -1,0 +1,120 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User, Trophonius
+from uuid import uuid4
+from copy import deepcopy
+import bson
+
+from infinit.oracles.notification import notifications
+for name, value in notifications.items():
+  globals()[name.upper()] = value
+
+def connect_user(trophonius, user):
+  user.trophonius = trophonius
+  trophonius.connect_user(user)
+
+def check_user_status_notif(notif,
+                            user):
+  assert notif.type == USER_STATUS
+  assert notif.status == user.get('users/%s' % user.id)['status']
+  assert notif.device_id == str(user.device_id)
+  connected_devices = user.get('users/%s' % user.id)['connected_devices']
+  assert notif.device_status == (str(user.device_id) in connected_devices)
+
+def device(meta, bob):
+  user = meta.database.users.find_one({"_id": bson.ObjectId(bob.id)},
+                                      {'devices': 1})
+  for d in user['devices']:
+    if d['id'] == str(bob.device_id):
+      return d
+  return None
+
+def initialize(meta):
+  bob = User(meta, "user@infinit.io")
+  alice = User(meta, "alice@infinit.io")
+  alice.login()
+  assert device(meta, alice) is not None
+  # Make alice & bob swaggers.
+  alice.sendfile("user@infinit.io")
+  bob.login()
+  assert device(meta, bob) is not None
+  bob_other_device = deepcopy(bob)
+  bob_other_device.device_id = uuid4()
+  bob_other_device.login()
+  assert device(meta, bob_other_device) is not None
+  return bob, bob_other_device, alice
+
+# 1 Trophonius.
+with Meta(enable_emails = False) as meta:
+  with Trophonius(meta) as t:
+    bob, bob_other_device, alice = initialize(meta)
+    connect_user(t, alice)
+    connect_user(t, bob)
+    connect_user(t, bob_other_device)
+
+    assert bob.get('users/%s' % bob.id)['connected_devices'].sort() == [
+      bob.device_id, bob_other_device.device_id].sort()
+
+    # Check if both notifs are good.
+    check_user_status_notif(alice.next_notification, bob)
+    check_user_status_notif(alice.next_notification, bob_other_device)
+
+    t.disconnect_user(bob_other_device)
+    check_user_status_notif(alice.next_notification, bob_other_device)
+
+    t.connect_user(bob_other_device)
+    check_user_status_notif(alice.next_notification, bob_other_device)
+
+    t.disconnect_user(bob)
+    check_user_status_notif(alice.next_notification, bob)
+
+    t.disconnect_user(bob_other_device)
+    check_user_status_notif(alice.next_notification, bob_other_device)
+
+# 2 Trophonius.
+with Meta(enable_emails = False) as meta:
+  with Trophonius(meta) as t1, Trophonius(meta) as t2:
+
+    bob, bob_other_device, alice = initialize(meta)
+    connect_user(t1, alice)
+    connect_user(t2, bob)
+    connect_user(t1, bob_other_device)
+
+    assert bob.get('users/%s' % bob.id)['connected_devices'].sort() == [
+      bob.device_id, bob_other_device.device_id].sort()
+
+    # Check if both notifs are good.
+    check_user_status_notif(alice.next_notification, bob)
+    check_user_status_notif(alice.next_notification, bob_other_device)
+
+    t1.disconnect_user(bob_other_device)
+    check_user_status_notif(alice.next_notification, bob_other_device)
+
+    t2.connect_user(bob_other_device)
+    check_user_status_notif(alice.next_notification, bob_other_device)
+
+    t2.disconnect_user(bob)
+    check_user_status_notif(alice.next_notification, bob)
+
+    t2.disconnect_user(bob_other_device)
+    check_user_status_notif(alice.next_notification, bob_other_device)
+
+    t2.connect_user(bob)
+    check_user_status_notif(alice.next_notification, bob)
+
+    # Bob (connected to t2) reconnects to t2. Connection time should be updated.
+    t2.connect_user(bob)
+    check_user_status_notif(alice.next_notification, bob)
+
+    # Bob (currently connected to t2), loose connection to t2 and connect t1.
+    # t2 realize afterward that the connection has been lost.
+    t1.connect_user(bob)
+    check_user_status_notif(alice.next_notification, bob)
+
+    # No notification should be sent to the user.
+    t2.disconnect_user(bob)
+    try:
+      alice.next_notification
+      assert False
+    except IndexError:
+      pass

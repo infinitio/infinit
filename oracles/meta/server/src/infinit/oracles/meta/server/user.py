@@ -2334,6 +2334,9 @@ class Mixin:
         action,
         multi = False,
       )
+      # If no documents were edited, nothing to do.
+      if res['updatedExisting'] == False:
+        return
       # XXX:
       # This should not be in user.py, but it's the only place
       # we know the device has been disconnected.
