@@ -12,10 +12,10 @@
 
 #include <infinit/oracles/trophonius/Client.hh>
 
+#include <surface/gap/Exception.hh>
+#include <surface/gap/onboarding/Transaction.hh>
 #include <surface/gap/State.hh>
 #include <surface/gap/Transaction.hh>
-#include <surface/gap/onboarding/Transaction.hh>
-#include <surface/gap/Exception.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.State.Transaction");
 
@@ -361,7 +361,7 @@ namespace surface
               transaction->status(),
               this->user_id(peer_data->sender_id),
               peer_data->sender_device_id,
-              this->user_id(peer_data->recipient_id),
+              this->user_id_or_null(peer_data->recipient_id),
               peer_data->recipient_device_id,
               peer_data->mtime,
               peer_data->files,
