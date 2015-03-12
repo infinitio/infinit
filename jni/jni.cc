@@ -1000,6 +1000,7 @@ extern "C" jlong Java_io_infinit_State_gapSendUserReport(
 {
   std::vector<std::string> files;
   files.push_back(to_string(env, f));
+  files.push_back(getenv("INFINIT_LOG_FILE"));
   return gap_send_user_report((gap_State*)handle, to_string(env, un),
                               to_string(env, m), files);
 }
