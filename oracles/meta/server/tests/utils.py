@@ -289,6 +289,8 @@ class Meta:
     self.__force_admin = force_admin
     self.__meta = None
     self.__meta_args = kw
+    if 'shorten_ghost_profile_url' not in self.__meta_args:
+      self.__meta_args['shorten_ghost_profile_url'] = False
 
   @property
   def domain(self):
