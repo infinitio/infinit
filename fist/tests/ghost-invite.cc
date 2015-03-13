@@ -16,7 +16,7 @@ ELLE_TEST_SCHEDULED(send_ghost)
   auto const email = "em@il.com";
   auto const password = "secret";
   server.register_user(email, password);
-  tests::State state(server, random_uuid());
+  tests::State state(server, elle::UUID::random());
 
   elle::filesystem::TemporaryFile transfered("cloud-buffered");
   {
@@ -32,11 +32,11 @@ ELLE_TEST_SCHEDULED(send_ghost)
   // Callbacks
   reactor::Barrier transferring;
   reactor::Barrier finished;
-  state.attach_callback<surface::gap::Transaction::Notification>(
-    [&] (surface::gap::Transaction::Notification const& notif)
+  state->attach_callback<surface::gap::PeerTransaction>(
+    [&] (surface::gap::PeerTransaction const& transaction)
     {
       // Check the GUI goes created -> transferring -> finished.
-      auto status = notif.status;
+      auto status = transaction.status;
       ELLE_LOG("new transaction status: %s", status);
       switch (status)
       {
@@ -54,9 +54,9 @@ ELLE_TEST_SCHEDULED(send_ghost)
           BOOST_ERROR(elle::sprintf("unexpected GAP status: %s", status));
       }
     });
-  state.login(email, password);
+  state->login(email, password);
   std::string const ghost_email = "ghost@infinit.io";
-  auto& state_transaction = state.transaction_peer_create(
+  auto& state_transaction = state->transaction_peer_create(
     ghost_email,
     std::vector<std::string>{transfered.path().string().c_str()},
     "message");
@@ -64,7 +64,7 @@ ELLE_TEST_SCHEDULED(send_ghost)
          infinit::oracles::Transaction::Status::created)
   {
     reactor::sleep(10_ms);
-    state.poll();
+    state->poll();
   }
   BOOST_CHECK_EQUAL(state_transaction.data()->status,
                     infinit::oracles::Transaction::Status::initialized);
@@ -73,7 +73,7 @@ ELLE_TEST_SCHEDULED(send_ghost)
   while (!finished)
   {
     reactor::sleep(100_ms);
-    state.poll();
+    state->poll();
   }
 }
 

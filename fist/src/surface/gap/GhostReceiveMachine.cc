@@ -133,7 +133,8 @@ namespace surface
     }
 
     void
-    GhostReceiveMachine::accept()
+    GhostReceiveMachine::accept(
+      boost::optional<std::string const&> relative_output_dir)
     {
       if (!this->_accepted.opened())
       {
@@ -143,7 +144,7 @@ namespace surface
             this->transaction_id(),
             onboarding);
       }
-      ReceiveMachine::accept();
+      ReceiveMachine::accept(relative_output_dir);
     }
 
     infinit::oracles::meta::UpdatePeerTransactionResponse
@@ -184,7 +185,18 @@ namespace surface
         {
           elle::serialization::json::SerializerIn input(read.stream(), false);
           std::string target_file;
-          input.serialize("target_file", target_file);
+          if (this->_relative_output_dir.empty())
+          {
+            input.serialize("target_file", target_file);
+          }
+          else
+          {
+            std::string relative_target_file;
+            input.serialize("relative_target_file", relative_target_file);
+            target_file = elle::sprintf("%s/%s",
+                                        transaction().state().output_dir(),
+                                        relative_target_file);
+          }
           _path = target_file;
         };
       }
@@ -196,10 +208,15 @@ namespace surface
         size_t begin = url.substr(0, end).find_last_of('/');
         std::string filename = url.substr(begin+1, end - begin - 1);
         ELLE_TRACE("%s: extracted file name of '%s' from '%s'", *this, filename, url);
-        _path = boost::filesystem::path(transaction().state().output_dir())
-          / filename;
+        std::string output_dir = transaction().state().output_dir();
+        if (!this->_relative_output_dir.empty())
+        {
+          output_dir =
+            elle::sprintf("%s/%s", output_dir, this->_relative_output_dir);
+        }
+        _path = boost::filesystem::path(output_dir) / filename;
         std::map<boost::filesystem::path, boost::filesystem::path> unused;
-        _path = eligible_name(transaction().state().output_dir(),
+        _path = eligible_name(output_dir,
                               filename,
                               " (%s)",
                               unused);
@@ -212,7 +229,16 @@ namespace surface
           elle::serialization::json::SerializerOut output
             (write.stream(), false);
           std::string target_file = _path.string();
-          output.serialize("target_file", target_file);
+          if (this->_relative_output_dir.empty())
+          {
+            output.serialize("target_file", target_file);
+          }
+          else
+          {
+            std::string relative_target_file =
+              elle::sprintf("%s/%s", this->_relative_output_dir, filename);
+            output.serialize("relative_target_file", relative_target_file);
+          }
         };
       }
 

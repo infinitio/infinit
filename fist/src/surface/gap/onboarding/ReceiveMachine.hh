@@ -53,18 +53,14 @@ namespace surface
         cleanup() override;
         virtual
         void
-        accept() override;
-        bool
-        pause() override;
+        accept(
+          boost::optional<std::string const&> relative_output_dir = {}) override;
         virtual
         void
         reject() override;
         virtual
         std::unique_ptr<frete::RPCFrete>
         rpcs(infinit::protocol::ChanneledStream& socket) override;
-        virtual
-        void
-        interrupt() override;
         virtual
         infinit::oracles::meta::UpdatePeerTransactionResponse
         _accept() override;

@@ -1,0 +1,20 @@
+#ifndef INFINIT_ORACLES_TRANSACTION_STATUSES_HH
+# define INFINIT_ORACLES_TRANSACTION_STATUSES_HH
+
+<%!
+from infinit.oracles.transaction import statuses
+%>
+namespace infinit
+{
+  namespace oracles
+  {
+    enum class TransactionStatus: int
+    {
+      %for name, value in statuses.items():
+        ${name} = ${value},
+      %endfor
+    };
+  }
+}
+
+#endif

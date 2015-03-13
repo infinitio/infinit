@@ -11,6 +11,7 @@
 #include <common/common.hh>
 
 #include <surface/gap/gap.hh>
+#include <surface/gap/PeerTransaction.hh>
 #include <surface/gap/State.hh>
 
 #include <version.hh>
@@ -111,45 +112,31 @@ int main(int argc, char** argv)
       [&]
       {
         common::infinit::Configuration config(production);
-        surface::gap::State state(config.meta_protocol(),
-                                  config.meta_host(),
-                                  config.meta_port(),
-                                  config.device_id(),
-                                  config.trophonius_fingerprint(),
-                                  config.download_dir(),
-                                  config.home(),
-                                  common::metrics(config));
-        state.login(user, password);
+        surface::gap::State state(config);
         std::vector<std::string> files;
         boost::algorithm::split(files, file, boost::is_any_of(","));
-        auto& transaction = [&] () -> surface::gap::Transaction&
+        uint32_t id;
+        state.attach_callback<surface::gap::PeerTransaction>(
+          [&] (surface::gap::PeerTransaction const& notif)
           {
-            if (recipient_device_id)
-              return state.transaction_peer_create(
-                to, recipient_device_id.get(), std::move(files), "");
-            else
-              return state.transaction_peer_create(to, std::move(files), "");
-          }();
-        state.attach_callback<surface::gap::Transaction::Notification>(
-          [&] (surface::gap::Transaction::Notification const& notif)
-          {
-            if (notif.id != transaction.id())
+            if (notif.id != id)
             {
               ELLE_DEBUG("received notification for another transaction: %s",
                          notif);
               return;
             }
             ELLE_TRACE_SCOPE("received notification: %s", notif);
+            auto& txn = state.transactions().at(id);
             if (contains(surface::gap::Transaction::sender_final_statuses,
-                         transaction.data()->status))
+                         txn->data()->status))
             {
-              transaction.join();
               ELLE_TRACE_SCOPE("transaction is finished");
               stop = true;
             }
           });
+        state.login(user, password);
+        id = state.send_files(to, std::move(files), "");
         static const int width = 70;
-        std::cout << std::endl;
         float previous_progress = 0.0;
         do
         {
@@ -159,7 +146,7 @@ int main(int argc, char** argv)
           if (stop)
             progress = 1.0;
           else
-            progress = state.transactions().at(transaction.id())->progress();
+            progress = state.transactions().at(id)->progress();
           if (progress != previous_progress)
           {
             previous_progress = progress;

@@ -99,18 +99,6 @@ namespace surface
       void
       cancel(std::string const& reason);
 
-      /// Pause the transfer.
-      /// XXX: Not implemented yet.
-      virtual
-      bool
-      pause();
-
-      /// For the transfer to roll back to the connection state.
-      /// XXX: Not implemented yet.
-      virtual
-      void
-      interrupt();
-
       /// Join the machine thread.
       /// The machine must be in his way to a final state, otherwise the caller
       /// will deadlock.

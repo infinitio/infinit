@@ -6,7 +6,6 @@
 #include <elle/Error.hh>
 #include <elle/serialization/json.hh>
 
-#include <common/common.hh>
 #include <surface/gap/enums.hh>
 #include <surface/gap/Exception.hh>
 #include <surface/gap/GhostReceiveMachine.hh>
@@ -22,31 +21,6 @@ namespace surface
 {
   namespace gap
   {
-    Notification::Type
-    Transaction::Notification::type =
-      NotificationType_TransactionUpdate;
-    Transaction::Notification::Notification(uint32_t id,
-                                            gap_TransactionStatus status):
-      id(id),
-      status(status)
-    {}
-
-    void
-    Transaction::Notification::print(std::ostream& output) const
-    {
-      elle::fprintf(output, "surface::gap::Transaction::Notification(%s, %s)",
-                    this->id, this->status);
-    }
-
-    Notification::Type Transaction::RecipientChangedNotification::type =
-      NotificationType_TransactionRecipientChanged;
-    Transaction::RecipientChangedNotification::RecipientChangedNotification(
-      uint32_t id,
-      uint32_t recipient_id):
-      id(id),
-      recipient_id(recipient_id)
-    {}
-
     std::set<infinit::oracles::Transaction::Status>
     Transaction::recipient_final_statuses({
       infinit::oracles::Transaction::Status::rejected,
@@ -164,8 +138,8 @@ namespace surface
       // FIXME: ensure better uniqueness.
       : _snapshots_directory(
         boost::filesystem::path(
-          common::infinit::user_directory(state.home(), state.me().id))
-        / "transactions" / boost::filesystem::unique_path())
+          state.local_configuration().transactions_directory(state.me().id))
+          / boost::filesystem::unique_path())
       , _snapshot_path(this->_snapshots_directory / "transaction.snapshot")
       , _state(state)
       , _files(std::move(files))
@@ -207,8 +181,8 @@ namespace surface
       // FIXME: ensure better uniqueness.
       : _snapshots_directory(
         boost::filesystem::path(
-          common::infinit::user_directory(state.home(), state.me().id))
-        / "transactions" / boost::filesystem::unique_path())
+          state.local_configuration().transactions_directory(state.me().id))
+          / boost::filesystem::unique_path())
       , _snapshot_path(this->_snapshots_directory / "transaction.snapshot")
       , _state(state)
       , _files(std::move(files))
@@ -237,7 +211,10 @@ namespace surface
                                             data->mtime,
                                             data->share_link,
                                             data->click_count,
-                                            this->status()));
+                                            this->status(),
+                                            data->sender_device_id,
+                                            data->message,
+                                            data->id));
       this->_snapshot_save();
     }
 
@@ -279,8 +256,8 @@ namespace surface
                              bool login)
       : _snapshots_directory(
         boost::filesystem::path(
-          common::infinit::user_directory(state.home(), state.me().id))
-        / "transactions" / boost::filesystem::unique_path())
+          state.local_configuration().transactions_directory(state.me().id))
+          / boost::filesystem::unique_path())
       , _snapshot_path(this->_snapshots_directory / "transaction.snapshot")
       , _state(state)
       , _files()
@@ -307,8 +284,21 @@ namespace surface
               std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
                 this->_data))
           {
-            this->state().enqueue(Transaction::Notification(this->id(),
-                                                            this->status()));
+            surface::gap::PeerTransaction notification(
+              this->id(),
+              this->status(),
+              this->state().user_id(peer_data->sender_id),
+              peer_data->sender_device_id,
+              this->state().user_id_or_null(peer_data->recipient_id),
+              peer_data->recipient_device_id,
+              peer_data->mtime,
+              peer_data->files,
+              peer_data->total_size,
+              peer_data->is_directory,
+              peer_data->message,
+              peer_data->canceler,
+              peer_data->id);
+            this->state().enqueue(notification);
           }
           else if (auto link_data =
                    std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
@@ -319,7 +309,10 @@ namespace surface
                                                   link_data->mtime,
                                                   link_data->share_link,
                                                   link_data->click_count,
-                                                  this->status()));
+                                                  this->status(),
+                                                  link_data->sender_device_id,
+                                                  link_data->message,
+                                                  link_data->id));
           }
         }
         return;
@@ -411,7 +404,10 @@ namespace surface
                                                 link_data->mtime,
                                                 link_data->share_link,
                                                 link_data->click_count,
-                                                this->status()));
+                                                this->status(),
+                                                link_data->sender_device_id,
+                                                link_data->message,
+                                                link_data->id));
           this->_snapshot_save();
         }
       }
@@ -531,7 +527,7 @@ namespace surface
     }
 
     void
-    Transaction::accept()
+    Transaction::accept(boost::optional<std::string const&> relative_output_dir)
     {
       ELLE_TRACE_SCOPE("%s: accepting transaction", *this);
       if (this->_machine == nullptr)
@@ -542,7 +538,7 @@ namespace surface
       }
       // FIXME
       if (auto machine = dynamic_cast<ReceiveMachine*>(this->_machine.get()))
-        machine->accept();
+        machine->accept(relative_output_dir);
       else
       {
         ELLE_ERR("%s: accepting on a send machine", *this);
@@ -605,7 +601,10 @@ namespace surface
                           data->mtime,
                           data->share_link,
                           data->click_count,
-                          gap_transaction_deleted));
+                          gap_transaction_deleted,
+                          data->sender_device_id,
+                          data->message,
+                          data->id));
         this->state().metrics_reporter()->transaction_deleted(data->id);
       }
       else
@@ -635,7 +634,42 @@ namespace surface
       {
         ELLE_TRACE_SCOPE("%s: change GAP status to %s", *this, status);
         this->_status = status;
-        this->state().enqueue(Transaction::Notification(this->id(), status));
+        if (auto peer_data =
+          std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
+            this->_data))
+        {
+          surface::gap::PeerTransaction notification(
+            this->id(),
+            status,
+            this->state().user_id(peer_data->sender_id),
+            peer_data->sender_device_id,
+            this->state().user_id_or_null(peer_data->recipient_id),
+            peer_data->recipient_device_id,
+            peer_data->mtime,
+            peer_data->files,
+            peer_data->total_size,
+            peer_data->is_directory,
+            peer_data->message,
+            peer_data->canceler,
+            peer_data->id);
+          this->state().enqueue(notification);
+        }
+        else if (auto link_data =
+          std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
+            this->_data))
+        {
+          surface::gap::LinkTransaction notification(
+            this->id(),
+            link_data->name,
+            link_data->mtime,
+            link_data->share_link,
+            link_data->click_count,
+            status,
+            link_data->sender_device_id,
+            link_data->message,
+            link_data->id);
+          this->state().enqueue(notification);
+        }
         this->_status_changed(status);
       }
     }
@@ -651,20 +685,6 @@ namespace surface
         throw BadOperation(BadOperation::Type::progress);
       }
       return this->_machine->progress();
-    }
-
-    bool
-    Transaction::pause()
-    {
-      ELLE_WARN("%s: pause not implemented yet", *this);
-      throw BadOperation(BadOperation::Type::pause);
-    }
-
-    void
-    Transaction::interrupt()
-    {
-      ELLE_WARN("%s: interruption not implemented yet", *this);
-      throw BadOperation(BadOperation::Type::interrupt);
     }
 
     void
@@ -706,13 +726,21 @@ namespace surface
             // Merge recipient if the new one is not in your list.
             // XXX: Because we should always receive a new_swagger notification
             // this code is just a security.
-            auto& recipient = this->state().user(peer->recipient_id);
-            // XXX: Waiting for Chris' TransactionNotification.
-            // For the moment, inform the frontend that something changed on the
-            // notification and let it check if hte recipient is different.
-            this->state().enqueue(
-              RecipientChangedNotification(
-                this->id(), this->state().user_indexes().at(recipient.id)));
+            surface::gap::PeerTransaction notification(
+              this->id(),
+              this->status(),
+              this->state().user_id(peer->sender_id),
+              peer->sender_device_id,
+              this->state().user_id_or_null(peer->recipient_id),
+              peer->recipient_device_id,
+              peer->mtime,
+              peer->files,
+              peer->total_size,
+              peer->is_directory,
+              peer->message,
+              peer->canceler,
+              peer->id);
+            this->state().enqueue(notification);
           }
         }
         else
@@ -739,7 +767,10 @@ namespace surface
                                               link_data->mtime,
                                               link_data->share_link,
                                               link_data->click_count,
-                                              this->status()));
+                                              this->status(),
+                                              link_data->sender_device_id,
+                                              link_data->message,
+                                              link_data->id));
       }
     }
 

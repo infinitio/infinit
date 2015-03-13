@@ -31,6 +31,8 @@ namespace surface
     | Construction |
     `-------------*/
 
+    /// Constructor when sending from another device or if you have no
+    /// snapshot as sender. In that case, run_to_fail is set to true.
     PeerSendMachine::PeerSendMachine(Transaction& transaction,
                                      uint32_t id,
                                      std::shared_ptr<Data> data,
@@ -884,7 +886,9 @@ namespace surface
         this->_frete = elle::make_unique<frete::Frete>(
           this->transaction_id(),
           this->state().identity().pair(),
-          this->transaction().snapshots_directory() / "frete.snapshot");
+          this->transaction().snapshots_directory() / "frete.snapshot",
+          this->transaction().snapshots_directory() / "mirror_files",
+          this->files_mirrored());
          _fetch_peer_key(false);
         if (this->_frete->count())
         {

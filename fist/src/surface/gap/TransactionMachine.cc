@@ -327,13 +327,7 @@ namespace surface
       try
       {
         // Send report for failed transfer
-        auto transaction_dir =
-          common::infinit::transactions_directory(this->state().home(),
-                                                  this->state().me().id);
-        elle::crash::transfer_failed_report(this->state().meta().protocol(),
-                                            this->state().meta().host(),
-                                            this->state().meta().port(),
-                                            transaction_dir,
+        elle::crash::transfer_failed_report(this->state().local_configuration(),
                                             this->state().me().identifier(),
                                             transaction_id,
                                             this->transaction().failure_reason());
@@ -410,22 +404,6 @@ namespace surface
         this->_metrics_ended(infinit::oracles::Transaction::Status::canceled,
                              reason);
       this->_canceled.open();
-    }
-
-    bool
-    TransactionMachine::pause()
-    {
-      ELLE_TRACE_SCOPE("%s: pause transaction %s", *this, this->data()->id);
-      throw elle::Exception(
-        elle::sprintf("%s: pause not implemented yet", *this));
-    }
-
-    void
-    TransactionMachine::interrupt()
-    {
-      ELLE_TRACE_SCOPE("%s: interrupt transaction %s", *this, this->data()->id);
-      throw elle::Exception(
-        elle::sprintf("%s: interruption not implemented yet", *this));
     }
 
     bool

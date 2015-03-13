@@ -10,23 +10,19 @@ extern const std::vector<unsigned char> fingerprint;
 namespace tests
 {
   State::State(Server& server,
-               boost::uuids::uuid device_id,
+               elle::UUID device_id,
                boost::filesystem::path const& home)
-    : surface::gap::State(
+    : _temporary_dir()
+    , _state(
       "http", "127.0.0.1", server.port(),
-      std::move(device_id), fingerprint,
-      elle::os::path::join(elle::system::home_directory().string(), "Downloads"),
-      home)
+      fingerprint,
+      device_id,
+      this->_temporary_dir.path().string(),
+      !home.empty() ? home.string() : this->_temporary_dir.path().string())
   {
-    this->s3_hostname(aws::URL{"http://",
-          elle::sprintf("localhost:%s", server.port()),
-          "/s3"});
-  }
-
-  void
-  State::synchronize()
-  {
-    this->_synchronize();
+    this->_state.s3_hostname(aws::URL{"http://",
+                             elle::sprintf("localhost:%s", server.port()),
+                             "/s3"});
   }
 }
 

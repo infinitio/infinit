@@ -42,6 +42,26 @@ namespace surface
 {
   namespace gap
   {
+    static
+    boost::filesystem::path
+    _file_full_path(std::string const& output_dir,
+                    frete::TransferSnapshot const& snapshot,
+                    frete::TransferSnapshot::File const& file)
+    {
+      boost::filesystem::path res;
+      if (snapshot.relative_folder().empty())
+      {
+        res = file.full_path();
+      }
+      else
+      {
+        auto folder = boost::filesystem::path(output_dir)
+                    / snapshot.relative_folder();
+        res = folder / file.path();
+      }
+      return res;
+    }
+
     struct PeerReceiveMachine::TransferData
     {
       TransferData(
@@ -211,7 +231,8 @@ namespace surface
     }
 
     void
-    PeerReceiveMachine::accept()
+    PeerReceiveMachine::accept(
+      boost::optional<std::string const&> relative_output_dir)
     {
       if (!this->_accepted.opened())
       {
@@ -221,7 +242,7 @@ namespace surface
             this->transaction_id(),
             onboarding);
       }
-      ReceiveMachine::accept();
+      ReceiveMachine::accept(relative_output_dir);
     }
 
     infinit::oracles::meta::UpdatePeerTransactionResponse
@@ -589,7 +610,8 @@ namespace surface
       }
       else
       {
-        this->_snapshot.reset(new frete::TransferSnapshot(count, total_size));
+        this->_snapshot.reset(new frete::TransferSnapshot(
+          count, total_size, this->_relative_output_dir));
       }
 
       static const std::streamsize chunk_size = rpc_chunk_size();
@@ -715,7 +737,8 @@ namespace surface
       if (this->_snapshot->has(index))
       {
         auto const& file = this->_snapshot->file(index);
-        fullpath = file.full_path();
+        fullpath = _file_full_path(this->state().output_dir(),
+                                   *this->_snapshot, file);
 
         if (file_size != file.size())
         {
@@ -726,6 +749,11 @@ namespace surface
       }
       else
       {
+        if (!this->_relative_output_dir.empty())
+        {
+          output_path = boost::filesystem::path(this->state().output_dir())
+                      / this->_relative_output_dir;
+        }
         auto relative_path = boost::filesystem::path(file_path);
         fullpath = ReceiveMachine::eligible_name(
           output_path, relative_path, name_policy,
@@ -945,7 +973,8 @@ namespace surface
       {
         frete::TransferSnapshot::File& f = _snapshot->file(_store_expected_file);
         current_file_full_size = f.size();
-        current_file_full_path = f.full_path();
+        current_file_full_path = _file_full_path(this->state().output_dir(),
+                                                 *this->_snapshot, f);
         current_file_handle = elle::system::FileHandle(current_file_full_path,
                                                        elle::system::FileHandle::APPEND);
       }
@@ -1020,7 +1049,8 @@ namespace surface
             frete::TransferSnapshot::File& f = _snapshot->file(_store_expected_file);
             _store_expected_position = f.progress();
             current_file_full_size = f.size();
-            current_file_full_path = f.full_path();
+            current_file_full_path = _file_full_path(this->state().output_dir(),
+                                                     *this->_snapshot, f);
             current_file_handle = elle::system::FileHandle(current_file_full_path,
                                                            elle::system::FileHandle::APPEND);
             if (_store_expected_position != current_file_full_size)

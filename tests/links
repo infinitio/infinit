@@ -32,7 +32,7 @@ class TestLinks(unittest.TestCase):
         for i in range(100):
           s.poll()
           reactor.sleep(datetime.timedelta(milliseconds = 100))
-          if  s.transaction_status(id) == "transaction_finished":
+          if s.transaction_status(id) == "transaction_finished":
             break
         self.assertEqual(s.transaction_status(id) ,"transaction_finished")
         tr = s.transaction(id)
@@ -67,7 +67,7 @@ class TestLinks(unittest.TestCase):
         s.configuration_set_max_mirror_size(1)
         s.login('mefyl@infinit.io', 'mefyl')
         id = s.create_link([tmp.full_path], "foo")
-        for i in range(100):
+        for i in range(500):
           s.poll()
           reactor.sleep(datetime.timedelta(milliseconds = 10))
         os.remove(tmp.full_path)

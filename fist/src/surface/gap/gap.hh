@@ -5,58 +5,41 @@
 # include <unordered_map>
 # include <vector>
 
+/// Used by the iOS application.
+# include <infinit/oracles/TransactionStatuses.hh>
+
+# include <surface/gap/Device.hh>
 # include <surface/gap/enums.hh>
 # include <surface/gap/LinkTransaction.hh>
-
-typedef int gap_Bool;
+# include <surface/gap/PeerTransaction.hh>
+# include <surface/gap/User.hh>
 
 /// gap_State is an opaque structure used in every calls.
 struct gap_State;
 typedef struct gap_State gap_State;
 
-// - gap ctor & dtor --------------------------------------------------------
-
 /// Create a new state.
 /// Returns NULL on failure.
-gap_State* gap_new(bool production,
-                   std::string const& home_dir = "",
-                   std::string const& download_dir = "");
+gap_State*
+gap_new(bool production,
+        std::string const& download_dir = "",
+        std::string const& persistent_config_dir = "",
+        std::string const& non_persistent_config_dir = "",
+        bool enable_mirroring = true,
+        uint64_t max_mirroring_size = 0);
 
 /// Release a state.
-void gap_free(gap_State* state);
+void
+gap_free(gap_State* state);
 
 /// Callback to be executed if an exception escape from the scheduler.
-typedef void (*gap_critical_callback_t)(char const*);
-
 gap_Status
-gap_critical_callback(gap_State* state,
-                      gap_critical_callback_t cb);
+gap_critical_callback(gap_State* state, std::function<void ()> const& callback);
 
 
 /// The 'error' value of ids.
 uint32_t
 gap_null();
-
-void
-gap_test(gap_State* state, char* string);
-
-/// Enable debug messages.
-void gap_enable_debug(gap_State* state);
-
-/// Debug func.
-gap_Status gap_debug(gap_State* state);
-
-// - Services status --------------------------------------------------------
-
-/// Check if meta is alive.
-gap_Status gap_meta_status(gap_State* state);
-
-//- Authentication & registration -------------------------------------------
-
-/// Fetch Meta message.
-/// In some cases when Meta is down, it will have an associated message.
-char const*
-gap_meta_down_message(gap_State*);
 
 /// Set connection status
 gap_Status
@@ -81,15 +64,17 @@ gap_clean_state(gap_State* state);
 /// Login to meta.
 gap_Status
 gap_login(gap_State* state,
-          char const* email,
-          char const* hash_password);
+          std::string const& email,
+          std::string const& password,
+          boost::optional<std::string> device_push_token = {},
+          boost::optional<std::string> country_conde = {}); // ISO 3611-1 alpha-2
 
 /// Fetch features.
 std::unordered_map<std::string, std::string>
 gap_fetch_features(gap_State* state);
 
 /// Check is user is already logged.
-gap_Bool
+bool
 gap_logged_in(gap_State* state);
 
 /// Logout from meta.
@@ -99,70 +84,56 @@ gap_logout(gap_State* state);
 /// @brief Register to meta.
 ///
 /// If the device name is not NULL, it will also create
-/// the local device with specified name. The password hash is obtained via
-/// gap_hash_password() function.
+/// the local device with specified name.
 gap_Status
 gap_register(gap_State* state,
              std::string const& fullname,
              std::string const& email,
-             std::string const& hashed_password);
+             std::string const& password,
+             boost::optional<std::string> device_push_token = {},
+             boost::optional<std::string> country_conde = {}); // ISO 3611-1 alpha-2
 
-/// @brief Use a ghost code to merge ghost account account.
 gap_Status
 gap_use_ghost_code(gap_State* state,
                    std::string const& code);
 
-//- Swaggers ----------------------------------------------------------------
-
-typedef void (*gap_new_swagger_callback_t)(uint32_t id);
+gap_Status
+gap_update_user_callback(
+  gap_State* state,
+  std::function<void (surface::gap::User const&)> const& callback);
 
 gap_Status
-gap_new_swagger_callback(gap_State* state,
-                         gap_new_swagger_callback_t cb);
-
-typedef void (*gap_deleted_swagger_callback_t)(uint32_t id);
-gap_Status
-gap_deleted_swagger_callback(gap_State* state,
-                             gap_deleted_swagger_callback_t cb);
-
-typedef void (*gap_deleted_favorite_callback_t)(uint32_t id);
-gap_Status
-gap_deleted_favorite_callback(gap_State* state,
-                             gap_deleted_favorite_callback_t cb);
-
-typedef void (*gap_user_status_callback_t)(uint32_t id,
-                                           gap_UserStatus const);
-gap_Status
-gap_user_status_callback(gap_State* state,
-                         gap_user_status_callback_t cb);
-
-typedef void (*gap_avatar_available_callback_t)(uint32_t id);
-gap_Status
-gap_avatar_available_callback(gap_State* state,
-                              gap_avatar_available_callback_t cb);
-
-// Own connection status changed.
-typedef void (*gap_connection_callback_t)(bool, bool, std::string const&);
+gap_deleted_swagger_callback(
+  gap_State* state,
+  std::function<void (uint32_t id)> const& callback);
 
 gap_Status
-gap_connection_callback(gap_State* state,
-                        gap_connection_callback_t cb);
-
-/// Trophonius unavailable callback.
-/// Triggered when you can connect to Meta but not to Trophonius.
-typedef void (*gap_trophonius_unavailable_callback_t)();
+gap_deleted_favorite_callback(
+  gap_State* state,
+  std::function<void (uint32_t id)> const& callback);
 
 gap_Status
-gap_trophonius_unavailable_callback(gap_State* state,
-                                    gap_trophonius_unavailable_callback_t cb);
-
-/// New transaction callback.
-typedef void (*gap_transaction_callback_t)(uint32_t id,
-                                           gap_TransactionStatus status);
+gap_user_status_callback(
+  gap_State* state,
+  std::function<void (uint32_t id, bool status)> const& callback);
 
 gap_Status
-gap_transaction_callback(gap_State* state,
-                         gap_transaction_callback_t cb);
+gap_avatar_available_callback(
+  gap_State* state,
+  std::function<void (uint32_t id)> const& callback);
+
+gap_Status
+gap_connection_callback(
+  gap_State* state,
+  std::function<void (bool status,
+                      bool still_retrying,
+                      std::string const& last_error)> const& callback);
+
+/// Peer transaction callback.
+gap_Status
+gap_peer_transaction_callback(
+  gap_State* state,
+  std::function<void (surface::gap::PeerTransaction const&)> const& callback);
 
 /// Link updated callback.
 gap_Status
@@ -170,125 +141,44 @@ gap_link_callback(
   gap_State* state,
   std::function<void (surface::gap::LinkTransaction const&)> const& callback);
 
-/// New transaction callback.
-typedef void (*gap_recipient_changed_callback_t)(uint32_t transaction_id,
-                                                 uint32_t recipient_id);
-
-/// Recipient changeh callback.
-gap_Status
-gap_transaction_recipient_changed_callback(
-  gap_State* state,
-  gap_recipient_changed_callback_t callback);
-
 /// Transaction getters.
-uint32_t
-gap_transaction_sender_id(gap_State*,
-                          uint32_t);
-
-char const*
-gap_transaction_sender_fullname(gap_State*,
-                                uint32_t);
-
-std::string
-gap_transaction_sender_device_id(gap_State*,
-                                 uint32_t);
-
-uint32_t
-gap_transaction_recipient_id(gap_State*,
-                             uint32_t);
-
-char const*
-gap_transaction_recipient_fullname(gap_State*,
-                                   uint32_t);
-
-std::string
-gap_transaction_recipient_device_id(gap_State*,
-                                    uint32_t);
-
-char const*
-gap_transaction_network_id(gap_State*,
-                           uint32_t);
-
-char**
-gap_transaction_files(gap_State* state,
-                      uint32_t const transaction_id);
-
-int64_t
-gap_transaction_files_count(gap_State*,
-                            uint32_t);
-
-int64_t
-gap_transaction_total_size(gap_State*,
-                           uint32_t);
-
-double
-gap_transaction_ctime(gap_State* state,
-                      uint32_t);
-
-double
-gap_transaction_mtime(gap_State* state,
-                      uint32_t);
-
-gap_Bool
-gap_transaction_is_directory(gap_State*,
-                             uint32_t);
-
-gap_TransactionStatus
-gap_transaction_status(gap_State* state,
-                       uint32_t const);
-
-char const*
-gap_transaction_message(gap_State*,
-                        uint32_t);
+gap_Status
+gap_peer_transaction_by_id(gap_State* state,
+                           uint32_t id,
+                           surface::gap::PeerTransaction& res);
 
 float
-gap_transaction_progress(gap_State* state,
-                         uint32_t);
+gap_transaction_progress(gap_State* state, uint32_t id);
 
 bool
-gap_transaction_is_final(gap_State* state,
-                         uint32_t const transaction_id);
+gap_transaction_is_final(gap_State* state, uint32_t id);
 
 bool
 gap_transaction_concern_device(gap_State* state,
                                uint32_t const transaction_id,
                                bool true_if_empty_recipient = true);
 
-uint32_t
-gap_transaction_canceler_id(gap_State* state, uint32_t id);
-
-
-/* /// Force transaction to be fetched again from server. */
-/* gap_Status */
-/* gap_transaction_sync(gap_State* state, */
-/*                      char const* transaction_id); */
-
-/// - Message ---------------------------------------------------------------
-
-typedef void (*gap_message_callback_t)(char const* sender_id, char const* message);
-gap_Status
-gap_message_callback(gap_State* state,
-                     gap_message_callback_t cb);
-
 /// Poll
 gap_Status
 gap_poll(gap_State* state);
 
-/// - Device ----------------------------------------------------------------
+/// Fetch a list of user's devices.
+gap_Status
+gap_devices(gap_State* state, std::vector<surface::gap::Device>& devices);
 
 /// Returns the local device status.
-gap_Status gap_device_status(gap_State* state);
+gap_Status
+gap_device_status(gap_State* state);
 
 /// Update the local device name.
-gap_Status gap_set_device_name(gap_State* state,
-                               char const* name);
+gap_Status
+gap_set_device_name(gap_State* state, std::string const& name);
 
-/// - Self ------------------------------------------------------------------
 /// Get current user email.
 std::string
 gap_self_email(gap_State* state);
 
-// Set current user email.
+/// Set current user email.
 gap_Status
 gap_set_self_email(gap_State* state,
                    std::string const& email,
@@ -318,128 +208,75 @@ gap_change_password(gap_State* state,
 uint32_t
 gap_self_id(gap_State* state);
 
-/// Get current user remaining invitations.
-int
-gap_self_remaining_invitations(gap_State* state);
-
-uint32_t*
-gap_self_favorites(gap_State* state);
-
 /// Publish avatar to meta.
 gap_Status
-gap_update_avatar(gap_State* state,
-                  void const* data,
-                  size_t size);
-
-/// - User ------------------------------------------------------------------
-
-/// Retrieve user fullname.
-char const*
-gap_user_fullname(gap_State* state,
-                  uint32_t id);
-
-/// Retrieve user handle.
-char const*
-gap_user_handle(gap_State* state,
-                uint32_t id);
-
-gap_Bool
-gap_user_ghost(gap_State* state, uint32_t id);
-
-std::string
-gap_user_ghost_code(gap_State* state,
-                    uint32_t id);
-
-std::string
-gap_user_ghost_profile_url(gap_State* state,
-                           uint32_t id);
-
-gap_Bool
-gap_user_deleted(gap_State* state, uint32_t id);
-
-char const*
-gap_user_realid(gap_State* state,
-                uint32_t id);
+gap_update_avatar(gap_State* state, void const* data, size_t size);
 
 std::string
 gap_self_device_id(gap_State* state);
 
 /// Get user icon data.
 gap_Status
-gap_avatar(gap_State* state,
-           uint32_t user_id,
-           void** data,
-           size_t* size);
+gap_avatar(gap_State* state, uint32_t id, void** data, size_t* size);
 
 /// Refresh user's icon.
-void
-gap_refresh_avatar(gap_State* state, uint32_t user_id);
+gap_Status
+gap_refresh_avatar(gap_State* state, uint32_t id);
+
+gap_Status
+gap_user_by_id(gap_State* state, uint32_t id, surface::gap::User& res);
+
+gap_Status
+gap_user_by_meta_id(gap_State* state,
+                    std::string const& meta_id,
+                    surface::gap::User& res);
 
 /// Retrieve user with its email.
-uint32_t
+gap_Status
 gap_user_by_email(gap_State* state,
-                  char const* email);
+                  std::string const& email,
+                  surface::gap::User& res);
 
 /// Retrieve user with their handle.
-uint32_t
+gap_Status
 gap_user_by_handle(gap_State* state,
-                   char const* handle);
-
-// The user directory
-char const*
-gap_user_directory(gap_State* state, char const** directory);
+                   std::string const& handle,
+                   surface::gap::User& res);
 
 /// Retrieve user status.
 gap_UserStatus
 gap_user_status(gap_State* state, uint32_t id);
 
 /// Search users.
-std::vector<uint32_t>
-gap_users_search(gap_State* state, std::string const& text);
+gap_Status
+gap_users_search(gap_State* state,
+                 std::string const& text,
+                 std::vector<surface::gap::User>& res);
 
-std::unordered_map<std::string, uint32_t>
-gap_users_by_emails(gap_State* state, std::vector<std::string> emails);
-
-/// Free the search users result.
-void
-gap_search_users_free(uint32_t* users);
-
-/// - Swaggers --------------------------------------------------------------
+gap_Status
+gap_users_by_emails(gap_State* state,
+                    std::vector<std::string> const& emails,
+                    std::unordered_map<std::string, surface::gap::User>& res);
 
 /// Get the list of user's swaggers.
-uint32_t*
-gap_swaggers(gap_State* state);
+gap_Status
+gap_swaggers(gap_State* state, std::vector<surface::gap::User>& res);
 
-/// Free swagger list.
-void
-gap_swaggers_free(uint32_t* swaggers);
+/// Get the list of user's favorites.
+gap_Status
+gap_favorites(gap_State* state, std::vector<uint32_t>& res);
 
 /// Mark a user as favorite.
 gap_Status
-gap_favorite(gap_State* state,
-             uint32_t const user_id);
+gap_favorite(gap_State* state, uint32_t id);
 
 /// Unmark a user as favorite.
 gap_Status
-gap_unfavorite(gap_State* state,
-               uint32_t const user_id);
+gap_unfavorite(gap_State* state, uint32_t id);
 
 /// Check if a user is a favorite.
-gap_Bool
-gap_is_favorite(gap_State* state,
-                uint32_t const user_id);
-
-/// - Permissions ---------------------------------------------------------
-
-typedef enum gap_Permission
-{
-  gap_none  = 0,
-  gap_read  = 1,
-  gap_write = 2,
-  gap_exec  = 4,
-  // WARNING: negative values are reserved for errors, no value of this
-  // enum should have a negative value.
-} gap_Permission;
+bool
+gap_is_favorite(gap_State* state, uint32_t id);
 
 /// Check if a transaction is a link transaction.
 bool
@@ -456,99 +293,75 @@ gap_create_link_transaction(gap_State* state,
                             std::string const& message);
 
 /// Fetch a transaction by id.
-surface::gap::LinkTransaction
+gap_Status
 gap_link_transaction_by_id(gap_State* state,
-                           uint32_t id);
+                           uint32_t id,
+                           surface::gap::LinkTransaction& res);
 
 /// Fetch list of link transactions.
-std::vector<surface::gap::LinkTransaction>
-gap_link_transactions(gap_State* state);
+gap_Status
+gap_link_transactions(gap_State* state,
+                      std::vector<surface::gap::LinkTransaction>& res);
 
 /// Get the list of transaction ids involving the user.
-uint32_t*
-gap_transactions(gap_State* state);
-
-/// Free transaction list.
-void
-gap_transactions_free(uint32_t* transactions);
-
-/// Error callback type. The arguments are respectively error code, reason
-/// and optionally a transaction id.
-typedef void (*gap_on_error_callback_t)(gap_Status status,
-                                        char const* reason,
-                                        char const* transaction_id);
-
-/// Register an error callback.
 gap_Status
-gap_on_error_callback(gap_State* state,
-                      gap_on_error_callback_t cb);
+gap_peer_transactions(gap_State* state,
+                      std::vector<surface::gap::PeerTransaction>& res);
 
-/// Send files to a specific user.
+/// C++ version of gap_send_files.
 /// If the return value is 0, the operation failed.
-uint32_t
-gap_send_files(gap_State* state,
-               uint32_t id,
-               char const* const* files,
-               char const* message);
-
-/// Cpp version of gap_send_files.
-/// If the return value is 0, the operation failed.
+/// A user can send an auto-accepted transaction to their own device by
+/// specifying a device ID.
 uint32_t
 gap_send_files(gap_State* state,
                uint32_t id,
                std::vector<std::string> const& files,
+               std::string const& message,
+               boost::optional<std::string> device_id = {});
+
+uint32_t
+gap_send_files(gap_State* state,
+               std::string const& email,
+               std::vector<std::string> const& files,
                std::string const& message);
 
-/// Send files along with a message.
+/// Pause transaction.
 /// If the return value is 0, the operation failed.
-uint32_t
-gap_send_files_by_email(gap_State* state,
-                        char const* recipient_id,
-                        char const* const* files,
-                        char const* message);
+gap_Status
+gap_pause_transaction(gap_State* state, uint32_t id);
 
-/// Cpp version gor send_files_by_email.
+/// Resume transaction.
 /// If the return value is 0, the operation failed.
-uint32_t
-gap_send_files_by_email(gap_State* state,
-                        std::string const& email,
-                        std::vector<std::string> const& files,
-                        std::string const& message);
+gap_Status
+gap_resume_transaction(gap_State* state, uint32_t id);
 
 /// Cancel transaction.
 /// If the return value is 0, the operation failed.
-uint32_t
-gap_cancel_transaction(gap_State* state,
-                       uint32_t id);
+gap_Status
+gap_cancel_transaction(gap_State* state, uint32_t id);
 
 /// Delete transaction.
 /// This operation can only be performed on LinkTransactions.
 /// If the return value is 0, the operation failed.
-uint32_t
+gap_Status
 gap_delete_transaction(gap_State* state, uint32_t id);
 
 /// Reject transaction.
 /// This function can only be used by the recipient of the transaction, if
 /// not already rejected or accepted.
 /// If the return value is 0, the operation failed.
-uint32_t
-gap_reject_transaction(gap_State* state,
-                       uint32_t id);
+gap_Status
+gap_reject_transaction(gap_State* state, uint32_t id);
 
 /// Accept a transaction.
 /// This function can only be used by the recipient of the transaction, if
 /// not already accepted or rejected.
 /// If the return value is 0, the operation failed.
-uint32_t
+gap_Status
 gap_accept_transaction(gap_State* state,
-                       uint32_t id);
-
-/// Join a transaction.
-/// This function will block as long as the transaction is not terminated
-/// and cleaned.
-uint32_t
-gap_join_transaction(gap_State* state,
-                     uint32_t id);
+                       uint32_t id,
+                       boost::optional<std::string const&>
+                        relative_output_dir = {});
 
 /// Return the id of an onboarding received transaction.
 uint32_t
@@ -559,19 +372,14 @@ gap_onboarding_receive_transaction(gap_State* state,
 /// Change the peer connection status.
 gap_Status
 gap_onboarding_set_peer_status(gap_State* state,
-                               uint32_t transaction_id,
+                               uint32_t id,
                                bool status);
 
 /// Change the peer availability status.
 gap_Status
 gap_onboarding_set_peer_availability(gap_State* state,
-                                     uint32_t transaction_id,
+                                     uint32_t id,
                                      bool status);
-
-/// Force transfer deconnection.
-gap_Status
-gap_onboarding_interrupt_transfer(gap_State* state,
-                                  uint32_t transaction_id);
 
 // Set output directory.
 gap_Status
@@ -590,12 +398,18 @@ gap_send_metric(gap_State* state,
                 UIMetricsType metric,
                 Additionals additional = Additionals{});
 
+gap_Status
+gap_send_generic_metric(gap_State* state,
+                        std::string const& key,
+                        std::string const& method,
+                        Additionals additional = Additionals{});
+
 /// Send user report
 gap_Status
 gap_send_user_report(gap_State* state,
                      std::string const& user_name,
                      std::string const& message,
-                     std::string const& file);
+                     std::vector<std::string> files);
 
 /// Send existing crash log to the server
 gap_Status
@@ -608,13 +422,16 @@ gap_send_last_crash_logs(gap_State* state,
 std::string
 gap_facebook_app_id();
 
-bool
+gap_Status
 gap_facebook_already_registered(gap_State* state,
-                                std::string const& facebook_id);
+                                std::string const& facebook_id,
+                                bool& registered);
 
 gap_Status
 gap_facebook_connect(gap_State* state,
-                     std::string const& token,
-                     boost::optional<std::string> preferred_email = boost::none);
+                     std::string const& facebook_token,
+                     boost::optional<std::string> preferred_email = {},
+                     boost::optional<std::string> device_push_token = {},
+                     boost::optional<std::string> country_conde = {}); // ISO 3611-1 alpha-2
 
 #endif

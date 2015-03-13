@@ -36,11 +36,11 @@ namespace frete
   class Frete::Impl
   {
   public:
-    Impl(std::string const& password):
-      _old_key(infinit::cryptography::cipher::Algorithm::aes256, password),
-      _key(new infinit::cryptography::SecretKey(
-        infinit::cryptography::SecretKey::generate(
-             infinit::cryptography::cipher::Algorithm::aes256, 2048)))
+    Impl(std::string const& password)
+      : _old_key(infinit::cryptography::cipher::Algorithm::aes256, password)
+      , _key(new infinit::cryptography::SecretKey(
+          infinit::cryptography::SecretKey::generate(
+            infinit::cryptography::cipher::Algorithm::aes256, 2048)))
     {
       ELLE_DEBUG("frete impl initialized");
     }
@@ -53,8 +53,11 @@ namespace frete
 
   Frete::Frete(std::string const& password,
                infinit::cryptography::KeyPair const& self_key,
-               boost::filesystem::path const& snapshot_destination)
+               boost::filesystem::path const& snapshot_destination,
+               boost::filesystem::path const& mirror_root,
+               bool files_mirrored)
     : _impl(new Impl(password))
+    , _mirror_root(mirror_root)
     , _finished()
     , _progress_changed("progress changed signal")
     , _transfer_snapshot()
@@ -101,7 +104,7 @@ namespace frete
     }
     if (this->_transfer_snapshot == nullptr)
     {
-      this->_transfer_snapshot.reset(new TransferSnapshot());
+      this->_transfer_snapshot.reset(new TransferSnapshot(files_mirrored));
       // Write encrypted session key to the snapshot
       this->_transfer_snapshot->set_key_code(
         self_key.K().encrypt(*_impl->_key));
@@ -256,7 +259,15 @@ namespace frete
   boost::filesystem::path
   Frete::_local_path(FileID file_id)
   {
-    return this->_transfer_snapshot->file(file_id).full_path();
+    if (this->_transfer_snapshot->mirrored())
+    {
+      auto file_path = this->_transfer_snapshot->file(file_id).path();
+      return (this->_mirror_root / file_path);
+    }
+    else
+    {
+      return this->_transfer_snapshot->file(file_id).full_path();
+    }
   }
 
   /*----.

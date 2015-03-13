@@ -38,7 +38,8 @@ class TestLogin(unittest.TestCase):
   def test_login_abort(self):
     import state
     import reactor
-    s = state.State('http', '127.0.0.1', 42, '/', '')
+    del os.environ['INFINIT_DOWNLOAD_DIR']
+    s = state.State('http', '127.0.0.1', 42)
     rresult = []
     def login():
       try:

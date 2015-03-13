@@ -2,12 +2,12 @@
 #include <elle/log.hh>
 #include <elle/test.hh>
 
+#include <infinit/oracles/trophonius/Client.hh>
 #include <surface/gap/Exception.hh>
 #include <surface/gap/State.hh>
-
 #include "server.hh"
 
-ELLE_LOG_COMPONENT("surface.gap.State.test");
+ELLE_LOG_COMPONENT("surface.gap.state->test");
 
 // Cloud buffered peer transaction.
 ELLE_TEST_SCHEDULED(cloud_buffer)
@@ -15,11 +15,11 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
   tests::Server server;
   auto const email = "sender@infinit.io";
   auto const password = "secret";
-  server.register_user(email, password);
+  auto& sender = server.register_user(email, password);
 
   std::string const recipient_email = "recipient@infinit.io";
   server.register_user("recipient@infinit.io", password);
-  tests::State state(server, random_uuid());
+  tests::State state(server, elle::UUID::random());
   elle::filesystem::TemporaryFile transfered("cloud-buffered");
   {
     boost::filesystem::ofstream f(transfered.path());
@@ -30,8 +30,8 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
       f.write(&c, 1);
     }
   }
-  state.login(email, password);
-  auto& state_transaction = state.transaction_peer_create(
+  state->login(email, password);
+  auto& state_transaction = state->transaction_peer_create(
     recipient_email,
     std::vector<std::string>{transfered.path().string().c_str()},
     "message");
@@ -71,6 +71,26 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
       }
     });
   reactor::wait(cloud_buffered);
+  // This triggers acceptation and connection of the peer, failing the test
+  // because the GUI goes in "transferring" mode even though it's already cloud
+  // buffered. Uncomment and complete when it's fixed.
+  // ELLE_LOG("accept transaction")
+  // {
+  //   state_transaction.data()->status =
+  //     infinit::oracles::Transaction::Status::accepted;
+  //   state_transaction.on_transaction_update(state_transaction.data());
+  // }
+  // ELLE_LOG("make recipient online")
+  // {
+  //   auto notif =
+  //     elle::make_unique<infinit::oracles::trophonius::UserStatusNotification>();
+  //   notif->user_id = sender.id().repr();
+  //   notif->device_id = state_transaction.data()->sender_device_id;
+  //   notif->user_status = true;
+  //   notif->device_status = true;
+  //   state->handle_notification(std::move(notif));
+  // }
+  reactor::sleep();
 }
 
 ELLE_TEST_SUITE()

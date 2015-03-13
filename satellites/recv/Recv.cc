@@ -123,17 +123,13 @@ int main(int argc, char** argv)
       "recv",
       [&] () -> int
       {
+        // Don't need to mirror when receiving.
+        bool enable_mirroring = false;
         common::infinit::Configuration config(production,
-                                              boost::filesystem::path(),
+                                              enable_mirroring,
+                                              0,
                                               download_dir);
-        surface::gap::State state(config.meta_protocol(),
-                                  config.meta_host(),
-                                  config.meta_port(),
-                                  config.device_id(),
-                                  config.trophonius_fingerprint(),
-                                  config.download_dir(),
-                                  config.home(),
-                                  common::metrics(config));
+        surface::gap::State state(config);
 
         state.attach_callback<surface::gap::State::ConnectionStatus>(
           [&] (surface::gap::State::ConnectionStatus const& notif)
@@ -150,12 +146,12 @@ int main(int argc, char** argv)
             ELLE_TRACE("user status notification: %s", notif);
           });
 
-        state.attach_callback<surface::gap::Transaction::Notification>(
-          [&] (surface::gap::Transaction::Notification const& notif)
+        state.attach_callback<surface::gap::PeerTransaction>(
+          [&] (surface::gap::PeerTransaction const& notif)
           {
             try
             {
-              ELLE_TRACE_SCOPE("transaction notification: %s", notif);
+              ELLE_TRACE_SCOPE("peer transaction notification: %s", notif);
               if (notif.status == gap_transaction_waiting_accept)
               {
                 ELLE_LOG("accept transaction %s", notif.id);

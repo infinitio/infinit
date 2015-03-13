@@ -1,10 +1,5 @@
 #include "server.hh"
 
-#include <boost/uuid/random_generator.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/uuid/string_generator.hpp>
-#include <boost/uuid/uuid_io.hpp>
-
 #include <elle/Buffer.hh>
 #include <elle/UUID.hh>
 #include <elle/log.hh>
@@ -20,7 +15,6 @@
 #include <fist/tests/_detail/Authority.hh>
 
 ELLE_LOG_COMPONENT("fist.tests");
-
 
 std::unique_ptr<papier::Identity>
 generate_identity(cryptography::KeyPair const& keypair,
@@ -45,7 +39,7 @@ json(C& container)
 namespace tests
 {
   Server::Server()
-    : _session_id(random_uuid())
+    : _session_id(elle::UUID::random())
     , trophonius()
     , _cloud_buffered(false)
   {
@@ -97,7 +91,7 @@ namespace tests
           }();
         std::string device_id_str;
         input.serialize("device_id", device_id_str);
-        auto device_id = boost::uuids::string_generator()(device_id_str);
+        auto device_id = elle::UUID(device_id_str);
         this->headers()["Set-Cookie"] = elle::sprintf("session-id=%s+%s", user.id(), device_id_str);
         if (this->_devices.find(device_id) == this->_devices.end())
           this->register_device(user, device_id);
@@ -238,7 +232,7 @@ namespace tests
       {
         User const& user = this->user(cookies);
         infinit::oracles::LinkTransaction t;
-        t.id = boost::lexical_cast<std::string>(random_uuid());
+        t.id = boost::lexical_cast<std::string>(elle::UUID::random());
         auto id = t.id;
         struct InsertLink
         {
@@ -387,7 +381,7 @@ namespace tests
                   Server::Parameters const& parameters,
                   elle::Buffer const&)
           {
-            this->headers()["ETag"] = boost::lexical_cast<std::string>(random_uuid());
+            this->headers()["ETag"] = boost::lexical_cast<std::string>(elle::UUID::random());
             return elle::sprintf(
               "<CompleteMultipartUploadResult>"
               "<Location></Location>"
@@ -450,7 +444,6 @@ namespace tests
         return elle::sprintf(
           "{\"created_transaction_id\":\"%s\"}", this->_create_empty());
       });
-
 
     this->register_route(
       "/s3/folder/cloud-buffered",
@@ -526,6 +519,62 @@ namespace tests
         this->_cloud_buffered = true;
         return "";
       });
+
+    this->register_route(
+      "/transaction/update",
+      reactor::http::Method::POST,
+      [this] (Server::Headers const&,
+              Server::Cookies const& cookies,
+              Server::Parameters const&,
+              elle::Buffer const& content)
+      {
+        elle::IOStream stream(content.istreambuf());
+        elle::serialization::json::SerializerIn input(stream, false);
+        std::string id;
+        int status;
+        input.serialize("transaction_id", id);
+        input.serialize("status", status);
+        ELLE_LOG_SCOPE("%s: update transaction \"%s\" to status %s",
+                       *this, id, status);
+        auto it = this->_transactions.find(id);
+        if (it == this->_transactions.end())
+        {
+          ELLE_LOG("%s: transaction \"%s\" not found", *this, id)
+          throw reactor::http::tests::Server::Exception(
+            "/transaction/update",
+            reactor::http::StatusCode::Not_Found,
+            "transaction not found");
+        }
+        auto& t = **it;
+        t.status = infinit::oracles::Transaction::Status(status);
+        t.status_changed()(t.status);
+        if (t.status == infinit::oracles::Transaction::Status::accepted)
+        {
+          this->headers()["ETag"] = boost::lexical_cast<std::string>(elle::UUID::random());
+          auto const& user = this->user(cookies);
+          auto const& device = this->device(cookies);
+          t.recipient_id = boost::lexical_cast<std::string>(user.id());
+          t.recipient_device_id = boost::lexical_cast<std::string>(device.id());
+        }
+        auto& tr = **this->_transactions.find(id);
+        std::string transaction_notification = tr.json();
+        transaction_notification.insert(1, "\"notification_type\":7,");
+        for (auto& socket: this->trophonius.clients(elle::UUID(tr.sender_id)))
+          socket->write(transaction_notification);
+        for (auto& socket: this->trophonius.clients(elle::UUID(tr.recipient_id)))
+          socket->write(transaction_notification);
+        auto res = elle::sprintf(
+          "{"
+          "%s"
+          "  \"updated_transaction_id\": \"%s\""
+          "}",
+          t.status == infinit::oracles::Transaction::Status::accepted
+          ? elle::sprintf("  \"recipent_device_id\": \"%s\", \"recipient_device_name\": \"bite\", ", tr.recipient_device_id)
+          : std::string{},
+          tr.id
+          );
+        return res;
+      });
   }
 
   User const&
@@ -567,7 +616,8 @@ namespace tests
         "user not found");
     return *it;
   }
-  boost::uuids::uuid
+
+  elle::UUID
   Server::_create_empty()
   {
     auto t = elle::make_unique<Transaction>();
@@ -584,7 +634,7 @@ namespace tests
                 std::placeholders::_2,
                 std::placeholders::_3,
                 std::placeholders::_4,
-                boost::uuids::string_generator()(id)));
+                elle::UUID(id)));
 
     this->register_route(
       elle::sprintf("/transaction/%s", id),
@@ -648,9 +698,8 @@ namespace tests
             first_time[id],
             tr.sender_device_id,
             tr.recipient_device_id);
-          auto generator = boost::uuids::string_generator();
-          auto* to_sender = this->trophonius.socket(generator(tr.sender_id), tr.sender_device_id);
-          auto* to_recipient = this->trophonius.socket(generator(tr.recipient_id), tr.recipient_device_id);
+          auto* to_sender = this->trophonius.socket(elle::UUID(tr.sender_id), tr.sender_device_id);
+          auto* to_recipient = this->trophonius.socket(elle::UUID(tr.recipient_id), tr.recipient_device_id);
           if (to_sender)
           {
             to_sender->write(sender ? our_notif : other_notif);
@@ -661,57 +710,6 @@ namespace tests
           }
         }
         return "{}";
-      });
-
-    this->register_route(
-      "/transaction/update",
-      reactor::http::Method::POST,
-      [&] (Server::Headers const&,
-           Server::Cookies const& cookies,
-           Server::Parameters const&,
-           elle::Buffer const& content)
-      {
-        elle::IOStream stream(content.istreambuf());
-        elle::serialization::json::SerializerIn input(stream, false);
-        std::string id;
-        int status;
-        input.serialize("transaction_id", id);
-        input.serialize("status", status);
-        auto it = this->_transactions.find(id);
-        if (it == this->_transactions.end())
-          throw reactor::http::tests::Server::Exception(
-            "/transaction/update",
-            reactor::http::StatusCode::Not_Found,
-            "transaction not found");
-        auto& t = **it;
-        t.status = infinit::oracles::Transaction::Status(status);
-        t.status_changed()(t.status);
-        if (t.status == infinit::oracles::Transaction::Status::accepted)
-        {
-          this->headers()["ETag"] = boost::lexical_cast<std::string>(boost::uuids::random_generator()());
-          auto const& user = this->user(cookies);
-          auto const& device = this->device(cookies);
-          t.recipient_id = boost::lexical_cast<std::string>(user.id());
-          t.recipient_device_id = boost::lexical_cast<std::string>(device.id());
-        }
-        auto& tr = **this->_transactions.find(id);
-        std::string transaction_notification = tr.json();
-        transaction_notification.insert(1, "\"notification_type\":7,");
-        for (auto& socket: this->trophonius.clients(boost::uuids::string_generator()(tr.sender_id)))
-          socket->write(transaction_notification);
-        for (auto& socket: this->trophonius.clients(boost::uuids::string_generator()(tr.recipient_id)))
-          socket->write(transaction_notification);
-        auto res = elle::sprintf(
-          "{"
-          "%s"
-          "  \"updated_transaction_id\": \"%s\""
-          "}",
-          t.status == infinit::oracles::Transaction::Status::accepted
-          ? elle::sprintf("  \"recipent_device_id\": \"%s\", \"recipient_device_name\": \"bite\", ", tr.recipient_device_id)
-          : std::string{},
-          tr.id
-          );
-        return res;
       });
 
     this->register_route(
@@ -765,7 +763,7 @@ namespace tests
           boost::posix_time::to_iso_extended_string(tomorrow),
           boost::posix_time::to_iso_extended_string(now));
       });
-    return boost::uuids::string_generator()(id);
+    return elle::UUID(id);
   }
 
   std::string
@@ -773,7 +771,7 @@ namespace tests
                            Server::Cookies const& cookies,
                            Server::Parameters const&,
                            elle::Buffer const& content,
-                           boost::uuids::uuid const& id)
+                           elle::UUID const& id)
   {
     User const& user = this->user(cookies);
     auto const& device = this->device(cookies);
@@ -799,7 +797,7 @@ namespace tests
       {
         auto id = recipient_email_or_id;
         auto& users = this->_users.get<0>();
-        return *users.find(boost::uuids::string_generator()(id));
+        return *users.find(elle::UUID(id));
       }}();
 
     // BMI shouldn't be used like that...
@@ -849,7 +847,7 @@ namespace tests
         std::vector<std::string> strs;
         boost::split(strs, session_id, boost::is_any_of("+"));
         auto& users = this->_users.get<0>();
-        auto it = users.find(boost::uuids::string_generator()(strs[0]));
+        auto it = users.find(elle::UUID(strs[0]));
         if (it != users.end())
         {
           return *it;
@@ -875,7 +873,7 @@ namespace tests
         std::string session_id = cookies.at("session-id");
         std::vector<std::string> strs;
         boost::split(strs, session_id, boost::is_any_of("+"));
-        auto it = devices.find(boost::uuids::string_generator()(strs[1]));
+        auto it = devices.find(elle::UUID(strs[1]));
         if (it != devices.end())
         {
           return it->second;
@@ -896,7 +894,7 @@ namespace tests
       cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                       papier::Identity::keypair_length);
     auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
-    boost::uuids::uuid id = random_uuid();
+    elle::UUID id = elle::UUID::random();
     ELLE_TRACE_SCOPE("%s: generate user %s", *this, id);
     auto identity =
       generate_identity(keys, boost::lexical_cast<std::string>(id), "my identity", password_hash);
@@ -935,7 +933,7 @@ namespace tests
   Server::generate_ghost_user(std::string const& email)
   {
     ELLE_ASSERT(this->_users.get<1>().find(email) == this->_users.get<1>().end());
-    auto id = random_uuid();
+    auto id = elle::UUID::random();
 
     auto response =
       [this, id, email]
@@ -976,7 +974,7 @@ namespace tests
 
   void
   Server::register_device(User const& user,
-                          boost::optional<boost::uuids::uuid> device_id)
+                          boost::optional<elle::UUID> device_id)
   {
     Device device{ user.identity()->pair().K(), device_id };
 
@@ -1032,11 +1030,10 @@ namespace tests
   }
 
   void
-  Server::session_id(boost::uuids::uuid id)
+  Server::session_id(elle::UUID id)
   {
     this->_session_id = std::move(id);
   }
-
 }
 
 std::unique_ptr<papier::Identity>

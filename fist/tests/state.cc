@@ -1,11 +1,11 @@
 #include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
+#include <elle/filesystem/TemporaryDirectory.hh>
 #include <elle/log.hh>
 #include <elle/memory.hh>
 #include <elle/os/path.hh>
 #include <elle/reactor/tests/http_server.hh>
-#include <elle/system/home_directory.hh>
 #include <elle/test.hh>
 #include <elle/utility/Move.hh>
 
@@ -399,14 +399,13 @@ ELLE_TEST_SCHEDULED(login)
     keys, boost::lexical_cast<std::string>(user_id), "my identity", password_hash);
   auto device_id = random_uuid();
   Server<> server(identity, device_id);
-  std::string download_dir =
-    elle::os::path::join(elle::system::home_directory().string(), "Downloads");
+  auto temp_dir = elle::filesystem::TemporaryDirectory();
   surface::gap::State state("http",
                             "127.0.0.1",
                             server.port(),
-                            device_id,
                             fingerprint,
-                            download_dir);
+                            device_id,
+                            temp_dir.path().string());
   ELLE_LOG("Logging in");
   state.login(email, password);
   ELLE_LOG("Done");
@@ -426,22 +425,21 @@ ELLE_TEST_SCHEDULED(login_failure)
     keys, boost::lexical_cast<std::string>(user_id), "my identity", password_hash);
   auto device_id = random_uuid();
   Server<> server(identity, device_id);
-  std::string download_dir =
-    elle::os::path::join(elle::system::home_directory().string(), "Downloads");
+  auto temp_dir = elle::filesystem::TemporaryDirectory();
   surface::gap::State state("http",
                             "127.0.0.1",
                             server.port(),
-                            device_id,
                             fingerprint,
-                            download_dir);
-  using Error = infinit::oracles::meta::Error;
-  server.login_result((int)Error::email_not_confirmed);
+                            device_id,
+                            temp_dir.path().string());
+  using ErrorCode = ::infinit::oracles::meta::Error;
+  server.login_result((int)ErrorCode::email_not_confirmed);
   BOOST_CHECK_THROW(state.login(email, password), std::exception);
-  server.login_result((int)Error::email_password_dont_match);
+  server.login_result((int)ErrorCode::email_password_dont_match);
   BOOST_CHECK_THROW(state.login(email, password), std::exception);
-  server.login_result((int)Error::deprecated);
+  server.login_result((int)ErrorCode::deprecated);
   BOOST_CHECK_THROW(state.login(email, password), std::exception);
-  server.login_result((int)Error::already_logged_in);
+  server.login_result((int)ErrorCode::already_logged_in);
   BOOST_CHECK_THROW(state.login(email, password), std::exception);
   server.login_result(0);
   BOOST_CHECK_NO_THROW(state.login(email, password));
@@ -508,14 +506,13 @@ ELLE_TEST_SCHEDULED(trophonius_forbidden)
     keys, boost::lexical_cast<std::string>(user_id), "my identity", password_hash);
   auto device_id = random_uuid();
   ForbiddenTrophoniusMeta server(identity, device_id);
-  std::string download_dir =
-    elle::os::path::join(elle::system::home_directory().string(), "Downloads");
+  auto temp_dir = elle::filesystem::TemporaryDirectory();
   surface::gap::State state("http",
                             "127.0.0.1",
                             server.port(),
-                            device_id,
                             fingerprint,
-                            download_dir);
+                            device_id,
+                            temp_dir.path().string());
   reactor::Signal reconnected;
   auto tropho = elle::make_unique<infinit::oracles::trophonius::Client>(
     [&] (infinit::oracles::trophonius::ConnectionState connected)
@@ -593,14 +590,13 @@ ELLE_TEST_SCHEDULED(trophonius_timeout)
     keys, boost::lexical_cast<std::string>(user_id), "my identity", password_hash);
   auto device_id = random_uuid();
   TimeoutTrophoniusMeta server(identity, device_id);
-  std::string download_dir =
-    elle::os::path::join(elle::system::home_directory().string(), "Downloads");
+  auto temp_dir = elle::filesystem::TemporaryDirectory();
   surface::gap::State state("http",
                             "127.0.0.1",
                             server.port(),
-                            device_id,
                             fingerprint,
-                            download_dir);
+                            device_id,
+                            temp_dir.path().string());
   auto tropho = elle::make_unique<infinit::oracles::trophonius::Client>(
     [&] (infinit::oracles::trophonius::ConnectionState connected) {},
     std::bind(&surface::gap::State::on_reconnection_failed, &state),

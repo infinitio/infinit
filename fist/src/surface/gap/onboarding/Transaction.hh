@@ -37,11 +37,7 @@ namespace surface
       `---------------*/
       public:
         void
-        accept() override;
-        bool
-        pause() override;
-        void
-        interrupt() override;
+        accept(boost::optional<std::string const&> output_dir = {}) override;
         void
         reset() override;
         surface::gap::onboarding::ReceiveMachine&

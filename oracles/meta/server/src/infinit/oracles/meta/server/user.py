@@ -2238,7 +2238,7 @@ class Mixin:
     small_image = user.get('small_avatar')
     if small_image:
       from bottle import response
-      response.content_type = 'image/png'
+      response.content_type = 'image/jpeg'
       return bytes(small_image)
     else:
       if no_place_holder:

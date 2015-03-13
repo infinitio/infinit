@@ -7,11 +7,11 @@
 
 #include <cryptography/KeyPair.hh>
 
+#include <elle/UUID.hh>
 #include <elle/reactor/tests/http_server.hh>
 
 #include <papier/Passport.hh>
 
-#include <fist/tests/_detail/uuids.hh>
 #include <fist/tests/_detail/User.hh>
 #include <fist/tests/_detail/Device.hh>
 #include <fist/tests/_detail/Transaction.hh>
@@ -38,7 +38,7 @@ namespace tests
 
     void
     register_device(User const& user,
-                    boost::optional<boost::uuids::uuid> device);
+                    boost::optional<elle::UUID> device);
 
     Client
     client(std::string const& email,
@@ -48,7 +48,7 @@ namespace tests
     generate_ghost_user(std::string const& email);
 
     void
-    session_id(boost::uuids::uuid id);
+    session_id(elle::UUID id);
     Transaction&
     transaction(std::string const& id);
 
@@ -60,7 +60,7 @@ namespace tests
 
   protected:
     virtual
-    boost::uuids::uuid
+    elle::UUID
     _create_empty();
 
     virtual
@@ -69,7 +69,7 @@ namespace tests
                      Cookies const&,
                      Parameters const&,
                      elle::Buffer const&,
-                     boost::uuids::uuid const&);
+                     elle::UUID const&);
 
     std::string
     _get_trophonius(Headers const&,
@@ -77,14 +77,14 @@ namespace tests
                     Parameters const&,
                     elle::Buffer const&) const;
 
-    ELLE_ATTRIBUTE_R(boost::uuids::uuid, session_id)
+    ELLE_ATTRIBUTE_R(elle::UUID, session_id)
     Trophonius trophonius;
     // Device.
-    typedef std::unordered_map<boost::uuids::uuid, Device> Devices;
+    typedef std::unordered_map<elle::UUID, Device> Devices;
     ELLE_ATTRIBUTE_R(Devices, devices);
     // Users.
     typedef
-    bmi::const_mem_fun<User, boost::uuids::uuid const&, &User::id>
+    bmi::const_mem_fun<User, elle::UUID const&, &User::id>
     UserId;
     typedef
     bmi::const_mem_fun<User, std::string const&, &User::email>
@@ -103,10 +103,10 @@ namespace tests
     bmi::const_mem_fun<Transaction, std::string const&, &Transaction::id_getter>
     TransactionId;
     typedef boost::multi_index_container<
-      std::unique_ptr<Transaction>,
+      std::shared_ptr<Transaction>,
       bmi::indexed_by<bmi::hashed_unique<TransactionId>>
       > Transactions;
-    ELLE_ATTRIBUTE_R(Transactions, transactions);
+    ELLE_ATTRIBUTE_RX(Transactions, transactions);
     ELLE_ATTRIBUTE_R(bool, cloud_buffered);
   };
 }

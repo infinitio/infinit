@@ -392,6 +392,7 @@ class Mixin:
         'name',
         'progress',
         'sender_id',
+        'sender_device_id',
         'status',
     ))
     if link.get('link', None) is not None:

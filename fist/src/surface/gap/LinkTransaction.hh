@@ -6,6 +6,7 @@
 
 # include <boost/optional.hpp>
 
+# include <elle/UUID.hh>
 # include <elle/Printable.hh>
 
 # include <surface/gap/enums.hh>
@@ -27,7 +28,10 @@ namespace surface
                       double mtime,
                       boost::optional<std::string> link,
                       uint32_t click_count,
-                      gap_TransactionStatus status);
+                      gap_TransactionStatus status,
+                      elle::UUID const& sender_device_id,
+                      std::string const& message,
+                      std::string const& meta_id);
       ~LinkTransaction() noexcept(true);
 
       uint32_t id;
@@ -36,6 +40,9 @@ namespace surface
       boost::optional<std::string> link;
       uint32_t click_count;
       gap_TransactionStatus status;
+      std::string sender_device_id;
+      std::string message;
+      std::string meta_id;
 
       static Notification::Type type;
 

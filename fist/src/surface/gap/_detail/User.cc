@@ -9,9 +9,10 @@
 
 #include <infinit/oracles/trophonius/Client.hh>
 
-#include <surface/gap/State.hh>
 #include <surface/gap/Error.hh>
 #include <surface/gap/Exception.hh>
+#include <surface/gap/State.hh>
+#include <surface/gap/User.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.State.User");
 
@@ -25,7 +26,7 @@ namespace surface
 
     State::UserNotFoundException::UserNotFoundException(std::string const& id):
       Exception{gap_unknown_user, elle::sprintf("unknown user %s", id)}
-   {}
+    {}
 
     State::NotASwaggerException::NotASwaggerException(uint32_t id):
       Exception{gap_unknown_user, elle::sprintf("unknown swagger %s", id)}
@@ -52,8 +53,9 @@ namespace surface
       status(status)
     {}
 
-    State::NewSwaggerNotification::NewSwaggerNotification(uint32_t id):
-      id(id)
+    State::NewSwaggerNotification::NewSwaggerNotification(
+      surface::gap::User const& user):
+        user(user)
     {}
 
     State::DeletedSwaggerNotification::DeletedSwaggerNotification(uint32_t id):
@@ -77,12 +79,25 @@ namespace surface
       return ++id;
     }
 
+    uint32_t
+    State::user_id_or_null(std::string const& id)
+    {
+      try
+      {
+        return this->user_id(id);
+      }
+      catch (State::UserNotFoundException const&)
+      {
+        return null_id;
+      }
+    }
+
     State::User const&
-    State::user_sync(State::User const& user) const
+    State::user_sync(State::User const& user, bool login) const
     {
       ELLE_DEBUG_SCOPE("%s: user response: %s", *this, user);
 
-      uint32_t id = 0;
+      uint32_t id = null_id;
       if (this->_user_indexes.find(user.id) == this->_user_indexes.end())
       {
         id = generate_id();
@@ -97,9 +112,29 @@ namespace surface
         ELLE_ASSERT_NEQ(id, 0u);
         this->_users.at(id) = user;
       }
+      auto const& synced_user = this->_users.at(id);
+      // When logging in, we do not want to alert the UI to changes. If we do
+      // the model will be overwritten with incomplete information.
+      // i.e.: swagger will be false when called by State::_user_resync
+      if (!login)
+      {
+        surface::gap::User notification(
+          id,
+          user.online(),
+          user.fullname,
+          user.handle,
+          user.id,
+          this->is_swagger(id),
+          user.deleted(),
+          user.ghost(),
+          user.phone_number,
+          user.ghost_code,
+          user.ghost_profile_url);
+        this->enqueue(notification);
+      }
 
       ELLE_ASSERT_NEQ(id, 0u);
-      return this->_users.at(id);
+      return synced_user;
     }
 
     State::User const&
@@ -206,6 +241,12 @@ namespace surface
       }
     }
 
+    uint32_t
+    State::user_id(std::string const& user_meta_id) const
+    {
+      return this->user_indexes().at(this->user(user_meta_id).id);
+    }
+
     /// Return 2 vectors:
     /// - One containing the newly connected devices.
     /// - One containing the disconnected devices.
@@ -248,7 +289,7 @@ namespace surface
     }
 
     void
-    State::_user_resync(std::vector<User> const& users)
+    State::_user_resync(std::vector<User> const& users, bool login)
     {
       using namespace infinit::oracles;
       ELLE_TRACE_SCOPE("%s: resync user", *this);
@@ -258,7 +299,7 @@ namespace surface
         bool init = false;
         if (this->_user_indexes.find(swagger.id) == this->_user_indexes.end())
         {
-          auto user = this->user_sync(swagger);
+          auto user = this->user_sync(swagger, login);
           init = true;
         }
 
@@ -315,31 +356,58 @@ namespace surface
         this->user(user_id);
     }
 
-    std::vector<uint32_t>
+    std::vector<surface::gap::User>
     State::users_search(std::string const& text) const
     {
       ELLE_TRACE_METHOD(text);
       auto users = this->meta().users_search(text);
-      std::vector<uint32_t> res;
+      std::vector<surface::gap::User> res;
       for (auto const& user: users)
       {
         this->user_sync(user);
-        res.push_back(this->_user_indexes.at(user.id));
+        uint32_t numeric_id = this->_user_indexes.at(user.id);
+        surface::gap::User ret_user(
+          numeric_id,
+          user.online(),
+          user.fullname,
+          user.handle,
+          user.id,
+          this->is_swagger(numeric_id),
+          user.deleted(),
+          user.ghost(),
+          user.phone_number,
+          user.ghost_code,
+          user.ghost_profile_url);
+        res.push_back(ret_user);
       }
       return res;
     }
 
-    std::unordered_map<std::string, uint32_t>
+    std::unordered_map<std::string, surface::gap::User>
     State::users_by_emails(std::vector<std::string> const& emails) const
     {
-      auto users = this->meta().search_users_by_emails(emails);
-      std::unordered_map<std::string, uint32_t> res;
-      for (auto const& user: users)
+      auto result_list = this->meta().search_users_by_emails(emails);
+      std::unordered_map<std::string, surface::gap::User> res;
+      for (auto const& result: result_list)
       {
-        this->user_sync(user.second);
-        std::pair<std::string, uint32_t> item;
-        item.first = user.first;
-        item.second = this->_user_indexes.at(user.second.id);
+        this->user_sync(result.second);
+        auto const& user = result.second;
+        std::pair<std::string, surface::gap::User> item;
+        item.first = result.first;
+        uint32_t numeric_id = this->_user_indexes.at(user.id);
+        surface::gap::User ret_user(
+          numeric_id,
+          user.online(),
+          user.fullname,
+          user.handle,
+          user.id,
+          this->is_swagger(numeric_id),
+          user.deleted(),
+          user.ghost(),
+          user.phone_number,
+          user.ghost_code,
+          user.ghost_profile_url);
+        item.second = ret_user;
         res.insert(item);
       }
       return res;
@@ -419,6 +487,15 @@ namespace surface
       return this->_swagger_indexes;
     }
 
+    bool
+    State::is_swagger(uint32_t id) const
+    {
+      auto res = std::find(std::begin(this->swagger_indexes()),
+                           std::end(this->swagger_indexes()),
+                           id);
+      return res != std::end(this->swagger_indexes());
+    }
+
     State::User
     State::swagger(std::string const& user_id)
     {
@@ -460,7 +537,8 @@ namespace surface
         reactor::Lock lock(this->_swagger_mutex);
         this->_swagger_indexes.insert(id);
       }
-      this->enqueue<NewSwaggerNotification>(NewSwaggerNotification(id));
+      // We do not need to notify the UI of this as it's model is kept up to
+      // date by user_sync.
     }
 
     void

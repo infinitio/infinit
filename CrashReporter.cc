@@ -17,6 +17,7 @@
 #include <elle/log.hh>
 #include <elle/os/environ.hh>
 #include <elle/os/path.hh>
+#include <elle/system/home_directory.hh>
 #include <elle/system/platform.hh>
 #ifndef INFINIT_WINDOWS
 # include <elle/system/Process.hh>
@@ -25,8 +26,6 @@
 #include <reactor/http/Request.hh>
 #include <reactor/scheduler.hh>
 #include <reactor/exception.hh>
-
-#include <common/common.hh>
 
 #include <CrashReporter.hh>
 #include <version.hh>
@@ -354,24 +353,6 @@ namespace elle
         || std::find(p.begin(), p.end(), "archive") != p.end();
     }
 
-    // Copy the file to the specified destination. If the copy failed, the
-    // destination is set to the source and the cleanup function is aborted.
-    static
-    void
-    copy_file(boost::filesystem::path const& source,
-              boost::filesystem::path& dest,
-              elle::SafeFinally& cleaner)
-    {
-      boost::system::error_code erc;
-      boost::filesystem::copy(source, dest , erc);
-      if (erc)
-      {
-        ELLE_TRACE("error while copying %s: %s", dest, erc);
-        dest = source;
-        cleaner.abort();
-      }
-    }
-
     void
     existing_report(std::string const& meta_protocol,
                     std::string const& meta_host,
@@ -409,74 +390,42 @@ namespace elle
     }
 
     void
-    transfer_failed_report(std::string const& meta_protocol,
-                           std::string const& meta_host,
-                           uint16_t meta_port,
-                           boost::filesystem::path const& attachment,
+    transfer_failed_report(common::infinit::Configuration const& config,
                            std::string const& user_name,
                            std::string const& transaction_id,
                            std::string const& reason)
     {
-      ELLE_TRACE("transaction failed report, attaching %s", attachment);
+      ELLE_TRACE_SCOPE("sending transaction failed report");
       std::string url = elle::sprintf("%s://%s:%s/debug/report/transaction",
-                                      meta_protocol,
-                                      meta_host,
-                                      meta_port);
+                                      config.meta_protocol(),
+                                      config.meta_host(),
+                                      config.meta_port());
       elle::filesystem::TemporaryDirectory tmp;
       boost::filesystem::path destination(tmp.path() / "report.tar.bz2");
-
-      if (elle::os::inenv("INFINIT_LOG_FILE"))
-      {
-        std::string log_path = elle::os::getenv("INFINIT_LOG_FILE", "");
-        boost::filesystem::path home(attachment);
-        boost::filesystem::path copied_log = home / "current_state.log";
-        elle::SafeFinally cleanup{
-          [&] {
-            boost::system::error_code erc;
-            boost::filesystem::remove(copied_log, erc);
-            if (erc)
-              ELLE_WARN("removing copied file %s failed: %s", copied_log, erc);
-          }};
-        copy_file(log_path, copied_log, cleanup);
-        elle::archive::archive(elle::archive::Format::tar_gzip,
-                               {copied_log, attachment},
-                               destination,
-                               elle::archive::Renamer(),
-                               temp_file_excluder,
-                               true);
-      }
-      else
-      {
-        elle::archive::archive(elle::archive::Format::tar_gzip,
-                               {attachment},
-                               destination,
-                               elle::archive::Renamer(),
-                               temp_file_excluder,
-                               true);
-      }
+      boost::filesystem::path logs(config.non_persistent_config_dir());
+      elle::archive::archive(elle::archive::Format::tar_gzip,
+                             {logs},
+                             destination,
+                             elle::archive::Renamer(),
+                             temp_file_excluder,
+                             true);
       _send_report(url, user_name, reason, _to_base64(destination),
                   {{"transaction_id", transaction_id}});
     }
 
     void
-    user_report(std::string const& meta_protocol,
-                std::string const& meta_host,
-                uint16_t meta_port,
-                boost::filesystem::path const& attachment,
+    user_report(common::infinit::Configuration const& config,
+                std::vector<std::string> const& attachments_,
                 std::string const& user_name,
-                std::string const& message,
-                std::string const& user_file)
+                std::string const& message)
     {
+      ELLE_TRACE_SCOPE("sending user report");
       std::string url = elle::sprintf("%s://%s:%s/debug/report/user",
-                                      meta_protocol,
-                                      meta_host,
-                                      meta_port);
-      ELLE_TRACE_SCOPE("report (%s) from %s message %s, attachments {%s, %s}",
-                       url, user_name, message, attachment, user_file);
+                                      config.meta_protocol(),
+                                      config.meta_host(),
+                                      config.meta_port());
       elle::filesystem::TemporaryDirectory tmp;
       boost::filesystem::path destination(tmp.path() / "report.tar.bz2");
-      std::vector<boost::filesystem::path> attachements;
-      attachements.push_back(attachment);
 #ifdef INFINIT_WINDOWS
       // On windows, libarchive behaves differently regarding of sharing a fd.
       // We need to create a copy of the log before archiving it.
@@ -496,13 +445,18 @@ namespace elle
           if (erc)
             ELLE_WARN("removing copied file %s failed: %s", copied_log, erc);
         }};
-      attachements.push_back(copied_log);
+      attachments_.push_back(copied_log);
 #endif
-      if (!user_file.empty())
-        attachements.push_back(user_file);
-      ELLE_LOG(">> %s", attachements);
+      std::vector<boost::filesystem::path> attachments;
+      boost::filesystem::path logs_dir(config.non_persistent_config_dir());
+      attachments.push_back(logs_dir);
+      for (auto const& attachment: attachments_)
+      {
+        boost::filesystem::path path(attachment);
+        attachments.push_back(path);
+      }
       elle::archive::archive(elle::archive::Format::tar_gzip,
-                             attachements,
+                             attachments,
                              destination,
                              elle::archive::Renamer(),
                              temp_file_excluder,

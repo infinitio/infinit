@@ -95,9 +95,12 @@ namespace surface
       * Must be called *before* the first frete creation/snapshoting (where
       * _files is expanded to yield the definitive file list).
       */
-      void try_mirroring_files(uint64_t total_size);
+      void
+      try_mirroring_files(uint64_t total_size);
       virtual
-      void cleanup () override;
+      void
+      cleanup () override;
+      ELLE_ATTRIBUTE_R(bool, files_mirrored);
 
       virtual
       bool
