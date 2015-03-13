@@ -27,7 +27,7 @@ with Meta(force_admin = True) as meta:
   assert meta.database.sessions.count() == 3
 
   # Make a transaction.
-  txn, res = u1.sendfile(recipient_id = u2.id)
+  txn, res = u1.sendfile(recipient = u2.id)
   assert res['success']
   txn_id = res['created_transaction_id']
 

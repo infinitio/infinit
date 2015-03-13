@@ -27,13 +27,6 @@ bool stop = false;
 
 static
 void
-interrupt(int)
-{
-  stop = true;
-}
-
-static
-void
 mandatory(boost::program_options::variables_map const& options,
           std::string const& option)
 {
@@ -90,9 +83,6 @@ int main(int argc, char** argv)
 #ifdef __linux__
   signal(SIGPIPE, SIG_IGN);
 #endif
-
-  elle::signal::ScopedGuard p({SIGINT}, interrupt);
-
   try
   {
     auto options = parse_options(argc, argv);
@@ -119,6 +109,13 @@ int main(int argc, char** argv)
     }
 
     reactor::Scheduler sched;
+      sched.signal_handle(
+    SIGINT,
+    [&sched]
+    {
+      sched.terminate();
+    });
+
 
     reactor::VThread<int> t
     {
@@ -126,7 +123,9 @@ int main(int argc, char** argv)
       "recv",
       [&] () -> int
       {
-        common::infinit::Configuration config(production, download_dir);
+        common::infinit::Configuration config(production,
+                                              boost::filesystem::path(),
+                                              download_dir);
         surface::gap::State state(config.meta_protocol(),
                                   config.meta_host(),
                                   config.meta_port(),

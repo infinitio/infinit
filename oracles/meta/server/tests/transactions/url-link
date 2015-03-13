@@ -39,7 +39,7 @@ with Meta() as meta:
   current_sent = meta.mailer.sent
   # Send something to a ghost user from a cloud-capable sender.
   alice_email = 'alice@infinit.io'
-  transaction, res = bob.sendfile(recipient_id = alice_email,
+  transaction, res = bob.sendfile(recipient = alice_email,
                                   initialize = True)
   assert res['success']
   assert meta.mailer.sent == current_sent
@@ -75,7 +75,7 @@ with Meta() as meta:
 
   # Now, the recipient is registered as ghost, does ghost mail still works?
   current_sent = meta.mailer.sent
-  transaction, res = bob.sendfile(recipient_id = alice_email,
+  transaction, res = bob.sendfile(recipient = alice_email,
                                   initialize = True)
   assert res['success']
   assert meta.mailer.sent == current_sent

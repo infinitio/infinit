@@ -17,6 +17,7 @@
 #include <papier/Identity.hh>
 #include <surface/gap/FilesystemTransferBufferer.hh>
 #include <surface/gap/S3TransferBufferer.hh>
+#include <surface/gap/State.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.PeerSendMachine")
 
@@ -207,7 +208,7 @@ namespace surface
           this->_run(this->_finish_state);
         else if (snapshot.current_state() == "reject")
           this->_run(this->_reject_state);
-        else if (snapshot.current_state() == "transfer core")
+        else if (snapshot.current_state() == "transfer")
           this->_run(this->_transfer_state);
         else if (snapshot.current_state() == "wait for accept")
           this->_run(this->_wait_for_accept_state);
@@ -354,15 +355,26 @@ namespace surface
     void
     PeerSendMachine::_create_transaction()
     {
-        // TODO: Chewie
-        ELLE_TRACE("%s: create transaction", *this);
-        this->transaction_id(this->state().meta().create_transaction());
+      ELLE_TRACE("%s: create transaction", *this);
+      std::list<std::string> file_list{this->files().size()};
+      std::transform(
+        this->files().begin(),
+        this->files().end(),
+        file_list.begin(),
+        [] (std::string const& el) {
+          return boost::filesystem::path(el).filename().string();
+        });
+      this->transaction_id(this->state().meta().create_transaction(
+        this->data()->recipient_id,
+        file_list,
+        file_list.size(),
+        this->_message));
+      this->transaction()._snapshot_save();
     }
 
     void
     PeerSendMachine::_initialize_transaction()
     {
-        // TODO: Chewie
       this->gap_status(gap_transaction_new);
       ELLE_TRACE_SCOPE("%s: initialize transaction", *this);
       int64_t size = 0;
@@ -403,6 +415,9 @@ namespace surface
                  boost::filesystem::is_directory(first_file));
       {
         auto lock = this->state().transaction_update_lock.lock();
+        boost::optional<elle::UUID> recipient_device_id;
+        if (!this->data()->recipient_device_id.is_nil())
+          recipient_device_id = this->data()->recipient_device_id;
         auto transaction_response =
           this->state().meta().create_transaction(
             this->data()->recipient_id,
@@ -412,14 +427,15 @@ namespace surface
             boost::filesystem::is_directory(first_file),
             this->state().device().id,
             this->_message,
-            this->transaction_id()
+            this->transaction_id(),
+            recipient_device_id
             );
         auto const& peer = this->state().user_sync(
           transaction_response.recipient());
         this->data()->is_ghost = peer.ghost();
         this->data()->recipient_id = peer.id;
-        // This will automatically save the snapshot.
         this->transaction_id(transaction_response.created_transaction_id());
+        this->transaction()._snapshot_save();
       }
       ELLE_TRACE("%s: initialized transaction %s", *this, this->transaction_id());
       // Populate the frete.
@@ -438,8 +454,6 @@ namespace surface
           this->data()->is_ghost,
           onboarding);
       }
-      this->state().meta().update_transaction(this->transaction_id(),
-                                              TransactionStatus::initialized);
       this->transaction().data()->status = TransactionStatus::initialized;
     }
 
@@ -922,12 +936,12 @@ namespace surface
     PeerSendMachine::notify_user_connection_status(
       std::string const& user_id,
       bool user_status,
-      std::string const& device_id,
+      elle::UUID const& device_id,
       bool device_status)
     {
       auto const& txn = this->data();
       // User hasn't accepted yet.
-      if (user_id == txn->recipient_id && txn->recipient_device_id.empty())
+      if (user_id == txn->recipient_id && txn->recipient_device_id.is_nil())
       {
         this->_peer_connection_changed(user_status);
       }

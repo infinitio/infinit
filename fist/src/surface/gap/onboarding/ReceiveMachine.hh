@@ -66,7 +66,7 @@ namespace surface
         void
         interrupt() override;
         virtual
-        void
+        infinit::oracles::meta::UpdatePeerTransactionResponse
         _accept() override;
         // Don't talk to meta
         virtual

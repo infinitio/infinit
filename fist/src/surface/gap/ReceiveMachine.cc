@@ -1,5 +1,8 @@
 #include <surface/gap/ReceiveMachine.hh>
 
+#include <surface/gap/State.hh>
+#include <surface/gap/Transaction.hh>
+
 ELLE_LOG_COMPONENT("surface.gap.ReceiveMachine");
 
 namespace surface
@@ -21,7 +24,7 @@ namespace surface
                                          this)))
       , _accept_state(
         this->_machine.state_make(
-          "accept", std::bind(&ReceiveMachine::_accept, this)))
+          "accept", [this] { this->_accept(); }))
       , _accepted("accepted")
       , _accepted_elsewhere("accepted elsewhere")
     {
@@ -42,8 +45,8 @@ namespace surface
                                     this->_reject_state,
                                     reactor::Waitables{&this->rejected()});
       // Cancel.
-      this->_machine.transition_add(_wait_for_decision_state,
-                                    _cancel_state,
+      this->_machine.transition_add(this->_wait_for_decision_state,
+                                    this->_cancel_state,
                                     reactor::Waitables{&this->canceled()},
                                     true);
 
@@ -158,11 +161,15 @@ namespace surface
       this->_accepted.open();
     }
 
-    void
+    infinit::oracles::meta::UpdatePeerTransactionResponse
     ReceiveMachine::_accept()
     {
       ELLE_TRACE_SCOPE("%s: accepted %s", *this, this->transaction_id());
-      this->gap_status(gap_transaction_waiting_accept);
+      return this->state().meta().update_transaction(
+        this->transaction_id(),
+        TransactionStatus::accepted,
+        this->state().device().id,
+        this->state().device().name);
     }
 
     void

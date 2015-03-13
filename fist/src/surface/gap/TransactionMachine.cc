@@ -142,16 +142,7 @@ namespace surface
         this->_fail_state,
         reactor::Waitables{&this->failed()},
         true);
-      this->_machine.transition_add_catch(
-        this->_transfer_state,
-        this->_fail_state)
-        .action_exception(
-          [this] (std::exception_ptr e)
-          {
-            ELLE_WARN("%s: error while transferring: %s",
-                      *this, elle::exception_string(e));
-            this->transaction().failure_reason(elle::exception_string(e));
-          });
+      this->_fail_on_exception(this->_transfer_state);
       // Another device endings.
       this->_machine.transition_add(
         this->_another_device_state,
@@ -193,14 +184,12 @@ namespace surface
             this->transaction().failure_reason(elle::exception_string(e));
             this->_failed.open();
           });
-
       this->_machine.transition_triggered().connect(
         [this] (reactor::fsm::Transition& transition)
         {
           ELLE_LOG_COMPONENT("surface.gap.TransactionMachine.Transition");
           ELLE_TRACE("%s: %s triggered", *this, transition);
         });
-
       this->_machine.state_changed().connect(
         [this] (reactor::fsm::State const& state)
         {
@@ -213,6 +202,21 @@ namespace surface
     TransactionMachine::~TransactionMachine()
     {
       ELLE_TRACE_SCOPE("%s: destroying transaction machine", *this);
+    }
+
+    void
+    TransactionMachine::_fail_on_exception(reactor::fsm::State& state)
+    {
+      this->_machine.transition_add_catch(
+        state,
+        this->_fail_state)
+        .action_exception(
+          [this] (std::exception_ptr e)
+          {
+            ELLE_ERR("%s: fatal error: %s",
+                     *this, elle::exception_string(e));
+            this->transaction().failure_reason(elle::exception_string(e));
+          });
     }
 
     void
@@ -261,13 +265,15 @@ namespace surface
         case infinit::oracles::Transaction::Status::failed:
           this->gap_status(gap_transaction_failed);
           break;
-        case infinit::oracles::Transaction::Status::none:
-        case infinit::oracles::Transaction::Status::initialized:
         case infinit::oracles::Transaction::Status::accepted:
-        case infinit::oracles::Transaction::Status::deleted:
         case infinit::oracles::Transaction::Status::cloud_buffered:
+        case infinit::oracles::Transaction::Status::created:
+        case infinit::oracles::Transaction::Status::deleted:
+        case infinit::oracles::Transaction::Status::initialized:
+        case infinit::oracles::Transaction::Status::none:
         case infinit::oracles::Transaction::Status::started:
-          ELLE_ABORT("%s: impossible final status: %s", *this, status);
+          ELLE_ERR("%s: impossible final status: %s", *this, status);
+          this->gap_status(gap_transaction_failed);
           break;
       }
       this->_transaction._over = true;
@@ -321,10 +327,14 @@ namespace surface
       try
       {
         // Send report for failed transfer
+        auto transaction_dir =
+          common::infinit::transactions_directory(this->state().home(),
+                                                  this->state().me().id);
         elle::crash::transfer_failed_report(this->state().meta().protocol(),
                                             this->state().meta().host(),
                                             this->state().meta().port(),
-                                            this->state().me().email,
+                                            transaction_dir,
+                                            this->state().me().identifier(),
                                             transaction_id,
                                             this->transaction().failure_reason());
       }
@@ -351,12 +361,11 @@ namespace surface
               this->_machine.run(initial_state);
               ELLE_TRACE("%s: machine finished properly", *this);
             }
-            catch (reactor::Terminate const& e)
+            catch (elle::Error const&)
             {
-              throw;
-            }
-            catch (...)
-            {
+              // FIXME: this should be a hard failure. Exception should never
+              // escape the machine, cancelling the transaction is not enough:
+              // the snapshots, mirrors, etc. won't be cleaned.
               ELLE_WARN("%s: Exception escaped fsm run: %s",
                         *this, elle::exception_string());
               // Pretend this did not happen if state is final, or cancel.
@@ -366,9 +375,10 @@ namespace surface
                 {
                   _transaction.cancel();
                 }
-                catch(...)
+                catch (elle::Error const&)
                 {
-                  // transaction can be in a non-cancelleable state (not initialized)
+                  // transaction can be in a non-cancelleable state (not
+                  // initialized)
                 }
               }
             }
@@ -388,7 +398,7 @@ namespace surface
     void
     TransactionMachine::notify_user_connection_status(std::string const&,
                                                       bool,
-                                                      std::string const&,
+                                                      elle::UUID const&,
                                                       bool)
     {}
 
@@ -475,14 +485,8 @@ namespace surface
         }
         catch (infinit::oracles::meta::Exception const& e)
         {
-          using infinit::oracles::meta::Error;
-          if (e.err == Error::transaction_already_finalized)
-            ELLE_TRACE("%s: transaction already finalized", *this);
-          else if (e.err == Error::transaction_already_has_this_status)
-            ELLE_TRACE("%s: transaction already in this state", *this);
-          else
-            ELLE_ERR("%s: unable to finalize the transaction %s: %s",
-                     *this, this->transaction_id(), elle::exception_string());
+          ELLE_ERR("%s: unable to finalize the transaction %s: %s",
+                   *this, this->transaction_id(), elle::exception_string());
         }
         catch (elle::Error const&)
         {
@@ -500,8 +504,7 @@ namespace surface
     TransactionMachine::transaction_id() const
     {
       if (this->_data->id.empty())
-        throw elle::Exception(
-          elle::sprintf("%s: Transaction machine is not ready", *this));
+        throw elle::Error(elle::sprintf("%s: not ready", *this));
       return this->_data->id;
     }
 
@@ -589,10 +592,13 @@ namespace surface
       infinit::oracles::Transaction::Status status,
       std::string reason)
     {
+      auto transaction_id = (!this->data()->id.empty())
+        ? this->transaction_id()
+        : std::string{"unknown"};
       bool onboarding = false;
       if (this->state().metrics_reporter())
         this->state().metrics_reporter()->transaction_ended(
-          this->transaction_id(),
+          transaction_id,
           status,
           reason,
           onboarding,

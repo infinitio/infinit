@@ -57,15 +57,15 @@ with Meta() as meta:
   assert me['quota']['total_link_size'] == 1e9
 
   # Referral program
-  transaction, res = bob.sendfile(recipient_id = "candy@infinit.io")
-  transaction, res = bob.sendfile(recipient_id = "daniel@infinit.io")
+  transaction, res = bob.sendfile(recipient = "candy@infinit.io")
+  transaction, res = bob.sendfile(recipient = "daniel@infinit.io")
   candy = User(meta, 'candy@infinit.io')
   candy.login()
   c = candy.me
   assert c['quota']['total_link_size'] == 15e8
   b = bob.me
   assert b['quota']['total_link_size'] == 2e9
-  candy.sendfile(recipient_id = "daniel@infinit.io")
+  candy.sendfile(recipient = "daniel@infinit.io")
   daniel = User(meta, 'daniel@infinit.io')
   daniel.login()
   c = candy.me

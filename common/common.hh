@@ -2,7 +2,6 @@
 # define COMMON_COMMON_HH
 
 # include <memory>
-# include <stdint.h>
 # include <string>
 
 # include <boost/filesystem/path.hpp>
@@ -33,7 +32,7 @@ namespace common
       Configuration(bool production,
                     boost::filesystem::path home = boost::filesystem::path(),
                     boost::optional<std::string> download_dir =
-                    boost::optional<std::string>{});
+                      boost::optional<std::string>{});
       ELLE_ATTRIBUTE_R(boost::filesystem::path, home);
       ELLE_ATTRIBUTE_R(bool, production);
       /// Meta configuration

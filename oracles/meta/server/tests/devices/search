@@ -3,6 +3,7 @@
 from utils import Meta, User
 from infinit.oracles.meta import error
 import uuid
+import copy
 
 with Meta() as meta:
   email = 'bob@infinit.io'
@@ -24,12 +25,10 @@ with Meta() as meta:
   assert barfoo['success']
   assert barfoo['name'] == "barfoo"
 
-  res = bob.get('devices')
-
-  assert res['success']
+  res = bob.get('user/devices')
   assert len(res['devices']) == 3
 
-  assert set(res['devices']) == set([
+  assert set(d['id'] for d in res['devices']) == set([
       foobar['id'],
       barfoo['id'],
       str(bob.device_id),
@@ -37,3 +36,47 @@ with Meta() as meta:
 
   res = bob.get('device/%s/view' % uuid.uuid4()) # Not a valid id.
   assert res['error_code'] == error.DEVICE_NOT_FOUND[0]
+
+
+with Meta() as meta:
+  email = "email@infinit.io"
+  user_0 = User(meta, email)
+  user_1 = copy.deepcopy(user_0)
+  user_1.device_id = uuid.uuid4()
+  user_0.login()
+  user_1.login()
+  assert len(user_0.get('user/devices')["devices"]) == 2
+  assert len(user_1.get('user/devices')["devices"]) == 2
+  assert len(user_0.get('users/%s/devices' % user_0.id)["devices"]) == 2
+  assert len(user_1.get('users/%s/devices' % user_0.id)["devices"]) == 2
+
+with Meta() as meta:
+  email = "email@infinit.io"
+  number_of_user = 20
+  user = User(meta, email)
+  user.login()
+  users = [user]
+  for _ in range(number_of_user - 1):
+    _user = copy.deepcopy(user)
+    _user.device_id = uuid.uuid4()
+    _user.login()
+    print("%s logged in" % _user.device_id)
+    users.append(_user)
+  assert len(user.get('user/devices')["devices"]) == number_of_user
+  for i in range(number_of_user):
+    user = users[i]
+    print(user.device_id)
+    user.logout()
+  for i in range(number_of_user):
+    user = users[i]
+    user.login()
+  assert len(user.get('user/devices')["devices"]) == number_of_user
+  for i in range(number_of_user):
+    user = users[i]
+    assert user.get('user/current_device')["id"] == str(user.device_id)
+  for i in range(number_of_user - 1):
+    user = users[i]
+    user.logout()
+  # Last one logged in is number_of_user - 1
+  user = users[number_of_user - 1]
+  assert user.get('user/current_device')["id"] == str(user.device_id)

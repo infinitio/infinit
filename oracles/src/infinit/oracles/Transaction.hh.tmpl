@@ -2,10 +2,10 @@
 # define INFINIT_ORACLES_TRANSACTION_HH
 
 # include <iosfwd>
-# include <list>
 # include <string>
 
 # include <elle/Printable.hh>
+# include <elle/UUID.hh>
 # include <elle/serialization/Serializer.hh>
 
 <%!
@@ -34,7 +34,7 @@ namespace infinit
     public:
       Transaction();
       Transaction(std::string const& sender_id,
-                  std::string const& sender_device_id);
+                  elle::UUID sender_device_id);
       virtual
       ~Transaction() = default;
 
@@ -44,7 +44,7 @@ namespace infinit
     public:
       std::string id;
       std::string sender_id;
-      std::string sender_device_id;
+      elle::UUID sender_device_id;
       Status status;
       double ctime;
       double mtime;

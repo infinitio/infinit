@@ -1,6 +1,7 @@
 #include <surface/gap/gap.hh>
 #include <surface/gap/gap_bridge.hh>
 #include <surface/gap/State.hh>
+#include <surface/gap/Error.hh>
 #include <surface/gap/Transaction.hh>
 #include <surface/gap/onboarding/Transaction.hh>
 
@@ -76,11 +77,13 @@ _cpp_stringlist_to_c_stringlist(std::list<std::string> const& list)
 
 /// - gap ctor & dtor -----------------------------------------------------
 
-gap_State* gap_new(bool production, std::string const& download_dir)
+gap_State* gap_new(bool production,
+                   std::string const& home_dir,
+                   std::string const& download_dir)
 {
   try
   {
-    gap_State* state = new gap_State(production, download_dir);
+    gap_State* state = new gap_State(production, home_dir, download_dir);
     return state;
   }
   catch (std::exception const& err)
@@ -276,7 +279,7 @@ gap_logged_in(gap_State* state)
                        "logged",
                        [&] (surface::gap::State& state) -> gap_Bool
                        {
-                         return state.logged_in();
+                         return state.meta().logged_in();
                        });
 }
 
@@ -307,6 +310,33 @@ gap_register(gap_State* state,
      return gap_ok;
     });
   return ret;
+}
+
+gap_Status
+gap_use_ghost_code(gap_State* state,
+                  std::string const& code)
+{
+  assert(state != nullptr);
+  if (code.empty())
+    return gap_unknown_user;
+  return run<gap_Status>(state,
+                         "use ghost code",
+                         [&] (surface::gap::State& state) -> gap_Status
+    {
+      try
+      {
+        state.meta().use_ghost_code(code);
+      }
+      catch (infinit::state::GhostCodeAlreadyUsed const&)
+      {
+        return gap_ghost_code_already_used;
+      }
+      catch (elle::Error const&)
+      {
+        return gap_unknown_user;
+      }
+      return gap_ok;
+    });
 }
 
 gap_Status
@@ -382,7 +412,9 @@ gap_self_email(gap_State* state)
                           "self email",
                           [&] (surface::gap::State& state) -> std::string
                           {
-                            return state.me().email;
+                            if (state.me().email)
+                              return state.me().email.get();
+                            return "";
                           });
 }
 
@@ -593,6 +625,50 @@ gap_user_ghost(gap_State* state, uint32_t id)
   return false;
 }
 
+std::string
+gap_user_ghost_code(gap_State* state,
+                    uint32_t id)
+{
+  assert(state != nullptr);
+  assert(id != surface::gap::null_id);
+
+  return run<std::string>(
+    state,
+    "user ghost code",
+    [&] (surface::gap::State& state) -> std::string
+    {
+      auto const& user = state.user(id);
+      if (user.ghost())
+      {
+        if (user.ghost_code)
+          return user.ghost_code.get();
+      }
+      return std::string{};
+    });
+}
+
+std::string
+gap_user_ghost_profile_url(gap_State* state,
+                           uint32_t id)
+{
+  assert(state != nullptr);
+  assert(id != surface::gap::null_id);
+
+  return run<std::string>(
+    state,
+    "user ghost profile url",
+    [&] (surface::gap::State& state) -> std::string
+    {
+      auto const& user = state.user(id);
+      if (user.ghost())
+      {
+        if (user.ghost_profile_url)
+          return user.ghost_profile_url.get();
+      }
+      return std::string{};
+    });
+}
+
 gap_Bool
 gap_user_deleted(gap_State* state, uint32_t id)
 {
@@ -624,12 +700,13 @@ gap_user_realid(gap_State* state,
 std::string
 gap_self_device_id(gap_State* state)
 {
-  return run<std::string>(state,
-                          "self device id",
-                          [&] (surface::gap::State& state) -> std::string
-                          {
-                            return state.device().id;
-                          });
+  return run<std::string>(
+    state,
+    "self device id",
+    [&] (surface::gap::State& state) -> std::string
+    {
+      return boost::lexical_cast<std::string>(state.device().id);
+    });
 }
 
 gap_Status
@@ -1100,30 +1177,33 @@ gap_transaction_ ## _field_(gap_State* state,                                 \
 
 #define NO_TRANSFORM
 #define GET_CSTR(_expr_) (_expr_).c_str()
+#define GET_UUID(Expr) boost::lexical_cast<std::string>(Expr)
 #define GET_USER_ID(_expr_) (state.user_indexes().at(_expr_))
 
-#define DEFINE_TRANSACTION_GETTER_STR(_field_)                                \
-DEFINE_TRANSACTION_GETTER(char const*, _field_, GET_CSTR)                   \
-/**/
-#define DEFINE_TRANSACTION_GETTER_INT(_field_)                                \
-DEFINE_TRANSACTION_GETTER(int, _field_, NO_TRANSFORM)                       \
-/**/
-#define DEFINE_TRANSACTION_GETTER_INT(_field_)                                \
-DEFINE_TRANSACTION_GETTER(int, _field_, NO_TRANSFORM)                       \
-/**/
-#define DEFINE_TRANSACTION_GETTER_DOUBLE(_field_)                             \
-DEFINE_TRANSACTION_GETTER(double, _field_, NO_TRANSFORM)                    \
-/**/
-#define DEFINE_TRANSACTION_GETTER_BOOL(_field_)                               \
-DEFINE_TRANSACTION_GETTER(gap_Bool, _field_, NO_TRANSFORM)                  \
-/**/
+#define DEFINE_TRANSACTION_GETTER_STR(_field_)                          \
+  DEFINE_TRANSACTION_GETTER(char const*, _field_, GET_CSTR)             \
+
+#define DEFINE_TRANSACTION_GETTER_UUID(_field_)                         \
+  DEFINE_TRANSACTION_GETTER(std::string, _field_, GET_UUID)             \
+
+#define DEFINE_TRANSACTION_GETTER_INT(_field_)                          \
+  DEFINE_TRANSACTION_GETTER(int, _field_, NO_TRANSFORM)                 \
+
+#define DEFINE_TRANSACTION_GETTER_INT(_field_)                          \
+  DEFINE_TRANSACTION_GETTER(int, _field_, NO_TRANSFORM)                 \
+
+#define DEFINE_TRANSACTION_GETTER_DOUBLE(_field_)                       \
+  DEFINE_TRANSACTION_GETTER(double, _field_, NO_TRANSFORM)              \
+
+#define DEFINE_TRANSACTION_GETTER_BOOL(_field_)                         \
+  DEFINE_TRANSACTION_GETTER(gap_Bool, _field_, NO_TRANSFORM)            \
 
 DEFINE_TRANSACTION_GETTER(uint32_t, sender_id, GET_USER_ID)
 DEFINE_TRANSACTION_GETTER_STR(sender_fullname)
-DEFINE_TRANSACTION_GETTER_STR(sender_device_id)
+DEFINE_TRANSACTION_GETTER_UUID(sender_device_id)
 DEFINE_TRANSACTION_GETTER(uint32_t, recipient_id, GET_USER_ID)
 DEFINE_TRANSACTION_GETTER_STR(recipient_fullname)
-DEFINE_TRANSACTION_GETTER_STR(recipient_device_id)
+DEFINE_TRANSACTION_GETTER_UUID(recipient_device_id)
 DEFINE_TRANSACTION_GETTER_STR(message)
 DEFINE_TRANSACTION_GETTER(int64_t, files_count, NO_TRANSFORM)
 DEFINE_TRANSACTION_GETTER(int64_t, total_size, NO_TRANSFORM)
@@ -1185,7 +1265,7 @@ gap_transaction_concern_device(gap_State* state,
       {
         return
           (data->recipient_id == state.me().id &&
-           ((true_if_empty_recipient && data->recipient_device_id.empty()) ||
+           ((true_if_empty_recipient && data->recipient_device_id.is_nil()) ||
             data->recipient_device_id == state.device().id)) ||
           (data->sender_id == state.me().id &&
            data->sender_device_id == state.device().id);
@@ -1818,6 +1898,7 @@ gap_send_user_report(gap_State* state,
           elle::crash::user_report(_state.meta(false).protocol(),
                                    _state.meta(false).host(),
                                    _state.meta(false).port(),
+                                   _state.home(),
                                    user_name,
                                    message,
                                    file);
@@ -1862,4 +1943,49 @@ gap_send_last_crash_logs(gap_State* state,
         }, "send last crash report");
     }, disposable);
   return gap_ok;
+}
+
+std::string
+gap_facebook_app_id()
+{
+  // We could even ask meta for the id.
+  return "839001662829159";
+}
+
+bool
+gap_facebook_already_registered(gap_State* state,
+                                std::string const& facebook_id)
+{
+  return run<bool>(
+    state,
+    "start reception onboarding",
+    [&] (surface::gap::State& state) -> uint32_t
+    {
+      try
+      {
+        return state.meta(false).facebook_id_already_registered(
+          facebook_id);
+      }
+      catch (elle::Error const&)
+      {
+        return false;
+      }
+    });
+}
+
+gap_Status
+gap_facebook_connect(gap_State* state,
+                     std::string const& token,
+                     boost::optional<std::string> preferred_email)
+{
+  return run<gap_Status>(
+    state,
+    "facebook connect",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.facebook_connect(
+        token,
+        preferred_email);
+      return gap_ok;
+    });
 }

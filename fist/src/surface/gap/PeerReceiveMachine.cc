@@ -31,6 +31,7 @@
 #include <surface/gap/FilesystemTransferBufferer.hh>
 #include <surface/gap/S3TransferBufferer.hh>
 #include <surface/gap/PeerReceiveMachine.hh>
+#include <surface/gap/State.hh>
 
 #include <version.hh>
 
@@ -146,7 +147,7 @@ namespace surface
             this->_run(this->_finish_state);
           else if (snapshot.current_state() == "reject")
             this->_run(this->_reject_state);
-          else if (snapshot.current_state() == "transfer core")
+          else if (snapshot.current_state() == "transfer")
             this->_run(this->_transfer_state);
           else if (snapshot.current_state() == "wait for decision")
             this->_run(this->_wait_for_decision_state);
@@ -223,29 +224,14 @@ namespace surface
       ReceiveMachine::accept();
     }
 
-    void
+    infinit::oracles::meta::UpdatePeerTransactionResponse
     PeerReceiveMachine::_accept()
     {
-      ReceiveMachine::_accept();
-      try
-      {
-        auto res = this->state().meta().update_transaction(
-          this->transaction_id(),
-          TransactionStatus::accepted,
-          this->state().device().id,
-          this->state().device().name);
-        if (!res.aws_credentials())
-          this->_nothing_in_the_cloud = true;
-      }
-      catch (infinit::oracles::meta::Exception const& e)
-      {
-        if (e.err == infinit::oracles::meta::Error::transaction_already_has_this_status)
-          ELLE_TRACE("%s: transaction already accepted: %s", *this, e.what());
-        else if (e.err == infinit::oracles::meta::Error::transaction_operation_not_permitted)
-          ELLE_TRACE("%s: transaction can't be accepted: %s", *this, e.what());
-        else
-          throw;
-      }
+      ELLE_TRACE_SCOPE("%s: accept", *this);
+      auto res = ReceiveMachine::_accept();
+      if (!res.aws_credentials())
+        this->_nothing_in_the_cloud = true;
+      return res;
     }
 
     void
@@ -291,6 +277,7 @@ namespace surface
       }
       if (this->_nothing_in_the_cloud)
       {
+        ELLE_TRACE("nothing was in the cloud");
         this->_nothing_in_the_cloud = false;
         return;
       }
@@ -1089,10 +1076,35 @@ namespace surface
     }
 
     void
+    PeerReceiveMachine::_wait_for_decision()
+    {
+      ELLE_TRACE_SCOPE("%s: waiting for decision", *this);
+      this->gap_status(gap_transaction_waiting_accept);
+      if (this->data()->sender_id == this->state().me().id &&
+          !this->data()->recipient_device_id.is_nil())
+      {
+        if (this->data()->recipient_device_id == this->state().device_uuid())
+        {
+          ELLE_TRACE("%s: auto accept transaction specifically for this device",
+                     *this);
+          this->transaction().accept();
+        }
+        else
+        {
+          ELLE_TRACE("%s: transaction is specifically for another device",
+                     *this);
+          // FIXME: not really accepted elsewhere, just only acceptable
+          // elsewhere. Change when acceptance gets reworked.
+          this->_accepted_elsewhere.open();
+        }
+      }
+    }
+
+    void
     PeerReceiveMachine::notify_user_connection_status(
       std::string const& user_id,
       bool user_status,
-      std::string const& device_id,
+      elle::UUID const& device_id,
       bool device_status)
     {
       if (user_id == this->data()->sender_id

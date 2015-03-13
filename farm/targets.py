@@ -7,7 +7,7 @@ def targets(action):
   yield '//frete/%s' % action
   yield '//station/%s' % action
   yield '//papier/%s' % action
-  if osyst.startswith('linux'):
+  if osyst.startswith('linux') or osyst.startswith('osx'):
     yield '//oracles/%s' % action
   else:
     yield '//oracles/meta/client/%s' % action

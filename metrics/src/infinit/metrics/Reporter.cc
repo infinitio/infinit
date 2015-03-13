@@ -269,6 +269,16 @@ namespace infinit
     }
 
     void
+    Reporter::facebook_connect(bool success, std::string const& info)
+    {
+      ELLE_DUMP("%s: got facebook_connect metric", *this);
+      this->_push(std::bind(&Reporter::_facebook_connect,
+                                         this,
+                                         success,
+                                         info));
+    }
+
+    void
     Reporter::user_logout(bool success, std::string const& info)
     {
       this->_push(std::bind(&Reporter::_user_logout,
@@ -491,6 +501,11 @@ namespace infinit
     {}
 
     void
+    Reporter::_facebook_connect(bool success,
+                                std::string const& info)
+    {}
+
+    void
     Reporter::_user_logout(bool success,
                            std::string const& info)
     {}
@@ -527,14 +542,17 @@ namespace infinit
     /*--------------------------.
     | Default UI Implementation |
     `--------------------------*/
+
     void
     Reporter::_ui(std::string const& event,
                   std::string const& from,
                   Additional const&)
     {}
+
     /*----------.
     | Printable |
     `----------*/
+
     void
     Reporter::print(std::ostream& stream) const
     {

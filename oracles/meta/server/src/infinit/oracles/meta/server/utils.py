@@ -2,6 +2,7 @@ import bottle
 import decorator
 import inspect
 import pymongo
+import phonenumbers
 
 from itertools import chain
 
@@ -14,8 +15,13 @@ def require_logged_in_fields(fields):
       raise Exception(
         'require_logged_in for %r wraps the API' % method.__name__)
     def wrapper(wrapped, self, *args, **kwargs):
+      # Fuck you, just fuck you MongoDB
+      self_fields = [
+        f for f in self._Mixin__user_self_fields
+        if not any(f.startswith(x) for x in fields)
+      ]
       user = self._user_from_session(
-        fields = self._Mixin__user_self_fields + fields)
+        fields = self_fields + fields)
       if self.user is None:
         self.forbidden()
       return wrapped(self, *args, **kwargs)
@@ -34,15 +40,23 @@ def require_admin(method):
     return wrapped(self, *args, **kwargs)
   return decorator.decorator(wrapper, method)
 
-def require_logged_in_or_admin(method):
-  if hasattr(method, '__api__'):
-    raise Exception(
-      'require_logged_in_or_admin for %r wraps the API' % method.__name__)
-  def wrapper(wrapped, self, *args, **kwargs):
-    if not self.logged_in and not self.admin:
-      self.forbidden()
-    return wrapped(self, *args, **kwargs)
-  return decorator.decorator(wrapper, method)
+def require_logged_in_or_admin_fields(fields):
+  def require_logged_in_or_admin(method):
+    if hasattr(method, '__api__'):
+      raise Exception(
+        'require_logged_in_or_admin for %r wraps the API' % method.__name__)
+    def wrapper(wrapped, self, *args, **kwargs):
+      user = self._user_from_session(
+        fields = self._Mixin__user_self_fields + fields)
+      if self.user is None and not self.admin:
+        self.forbidden({
+          'reason': 'not logged in',
+        })
+      return wrapped(self, *args, **kwargs)
+    return decorator.decorator(wrapper, method)
+  return require_logged_in_or_admin
+
+require_logged_in_or_admin = require_logged_in_or_admin_fields([])
 
 def require_key(method):
   if hasattr(method, '__api__'):
@@ -70,6 +84,8 @@ def require_key(method):
   return require_key
 
 def hash_password(password):
+  if password is None:
+    return None
   import hashlib
   seasoned = password + conf.SALT
   seasoned = seasoned.encode('utf-8')
@@ -80,3 +96,23 @@ def password_hash(password):
   seasoned = password + conf.SALT
   seasoned = seasoned.encode('utf-8')
   return hashlib.sha256(seasoned).hexdigest()
+
+def clean_up_phone_number(phone_number, country_code):
+  """Turn an input into a international phone number.
+  If the input cannot be interpreted as a phone number, returns None.
+
+  phone_number -- The potential phone number.
+  country_code -- The country code associated. If the number already begins
+                  with +, country_code is ignored.
+  """
+  try:
+    # Check if the phone number is valid.
+    cleaned_phone_number = phonenumbers.parse(phone_number, country_code)
+    # Turn it into to its standard international version
+    # (e.g. +33 1 92 39 12 48).
+    res = phonenumbers.format_number(
+      cleaned_phone_number,
+      phonenumbers.PhoneNumberFormat.INTERNATIONAL)
+    return res
+  except phonenumbers.NumberParseException:
+    return None

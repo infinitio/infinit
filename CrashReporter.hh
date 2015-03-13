@@ -1,8 +1,6 @@
 #ifndef ELLE_CRASHREPORTER_HH
 # define ELLE_CRASHREPORTER_HH
 
-# include <cstring>
-
 # include <boost/noncopyable.hpp>
 # include <boost/filesystem/path.hpp>
 
@@ -68,8 +66,8 @@ namespace elle
                     std::string const& meta_host,
                     uint16_t meta_port,
                     std::vector<std::string> const& files,
-                    std::string const& user_name = "",
-                    std::string const& info = "");
+                    std::string const& user_name,
+                    std::string const& info);
 
     /// Function for sending a report when a transfer fails.
     void
@@ -77,9 +75,9 @@ namespace elle
                            std::string const& meta_host,
                            uint16_t meta_port,
                            boost::filesystem::path const& attachment,
-                           std::string const& user_name="",
-                           std::string const& transaction_id="",
-                           std::string const& reason="");
+                           std::string const& user_name,
+                           std::string const& transaction_id,
+                           std::string const& reason);
 
     /// Function for sending user reports.
     void
@@ -87,9 +85,9 @@ namespace elle
                 std::string const& meta_host,
                 uint16_t meta_port,
                 boost::filesystem::path const& attachment,
-                std::string const& user_name = "",
-                std::string const& message = "",
-                std::string const& user_file = "");
+                std::string const& user_name,
+                std::string const& message,
+                std::string const& user_file);
 
   }
 }

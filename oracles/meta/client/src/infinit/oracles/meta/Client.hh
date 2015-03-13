@@ -16,10 +16,12 @@
 # include <elle/Buffer.hh>
 # include <elle/Exception.hh>
 # include <elle/HttpClient.hh> // XXX: Remove that. Only for exception.
+# include <elle/UUID.hh>
 # include <elle/format/json/fwd.hh>
 # include <elle/json/json.hh>
 # include <elle/log.hh>
 # include <elle/serialization/fwd.hh>
+# include <elle/serialization/json.hh>
 # include <elle/serialization/Serializer.hh>
 
 # include <aws/Credentials.hh>
@@ -59,14 +61,16 @@ namespace infinit
       struct User:
          public elle::Printable
       {
-        typedef std::vector<std::string> Devices;
+        typedef std::vector<elle::UUID> Devices;
         std::string id;
         std::string fullname;
         std::string handle;
         std::string register_status;
         Devices connected_devices;
         std::string public_key;
-
+        boost::optional<std::string> ghost_code;
+        boost::optional<std::string> ghost_profile_url;
+        boost::optional<std::string> phone_number;
         User() = default;
 
         User(std::string const& id,
@@ -83,7 +87,7 @@ namespace infinit
         }
 
         bool
-        online(std::string const& device_id) const
+        online(elle::UUID const& device_id) const
         {
           return std::find(std::begin(this->connected_devices),
                            std::end(this->connected_devices),
@@ -96,7 +100,7 @@ namespace infinit
         // A simpler function could be used (such as len(devices) < 2) but
         // this would only make sense for ourself.
         bool
-        online_excluding_device(std::string const& device_id) const
+        online_excluding_device(elle::UUID const& device_id) const
         {
           bool res = false;
           for (auto const& device: this->connected_devices)
@@ -122,7 +126,7 @@ namespace infinit
         bool
         deleted() const
         {
-          if (register_status == "deleted")
+          if (register_status == "deleted" || register_status == "merged")
             return true;
           else
             return false;
@@ -150,12 +154,16 @@ namespace infinit
         void
         serialize(elle::serialization::Serializer& s);
         std::string identity;
-        std::string email;
+        boost::optional<std::string> email;
+        boost::optional<std::string> facebook_id;
         int remaining_invitations;
         std::string token_generation_key;
         // std::list<boost::uuids::uuid> devices;
         std::list<std::string> devices;
         std::list<std::string> favorites;
+
+        std::string
+        identifier() const;
       };
 
       struct Device
@@ -164,9 +172,11 @@ namespace infinit
       public:
         Device() = default;
         Device(elle::serialization::SerializerIn& s);
-        std::string id; // boost::uuids::uuid
+        elle::UUID id;
         std::string name;
-        std::string passport;
+        boost::optional<std::string> os;
+        boost::optional<std::string> passport;
+        boost::optional<boost::posix_time::ptime> last_sync;
         void
         serialize(elle::serialization::Serializer& s);
         virtual
@@ -202,6 +212,7 @@ namespace infinit
         std::vector<User> swaggers;
         std::unordered_map<std::string, PeerTransaction> transactions;
         std::vector<LinkTransaction> links;
+        std::vector<Device> devices;
 
         SynchronizeResponse() = default;
         SynchronizeResponse(elle::serialization::SerializerIn& s);
@@ -253,6 +264,10 @@ namespace infinit
       public:
         UpdatePeerTransactionResponse() = default;
         ELLE_ATTRIBUTE_R(boost::optional<aws::Credentials>, aws_credentials);
+        // The ghost invitation code.
+        ELLE_ATTRIBUTE_R(boost::optional<std::string>, ghost_code);
+        // The ghost profile url.
+        ELLE_ATTRIBUTE_R(boost::optional<std::string>, ghost_profile_url);
 
         UpdatePeerTransactionResponse(elle::serialization::SerializerIn& s);
         void
@@ -376,10 +391,35 @@ namespace infinit
         boost::random::mt19937 mutable _rng;
 
       public:
+        typedef std::pair<std::string, std::string> EmailPasswordPair;
+        typedef std::string FacebookToken;
+      private:
+        typedef std::function<void (elle::serialization::json::SerializerOut&)>
+          ParametersUpdater;
         LoginResponse
-        login(std::string const& email,
-              std::string const& password,
-              boost::uuids::uuid const& device_uuid);
+        _login(ParametersUpdater parameters_updater,
+               boost::uuids::uuid const& device_uuid,
+               boost::optional<std::string> country_code = {}
+          );
+      public:
+        LoginResponse
+        login(
+          std::string const& email,
+          std::string const& password,
+          boost::uuids::uuid const& device_uuid,
+          boost::optional<std::string> country_code = {}
+          );
+
+        LoginResponse
+        facebook_connect(
+          std::string const& facebok_token,
+          boost::uuids::uuid const& device_uuid,
+          boost::optional<std::string> preferred_email = {},
+          boost::optional<std::string> country_code = {}
+          );
+
+        bool
+        facebook_id_already_registered(std::string const& facebook_id) const;
 
         void
         logout();
@@ -402,6 +442,9 @@ namespace infinit
 
         Self
         self() const;
+
+        void
+        use_ghost_code(std::string const& code) const;
 
         User
         user_from_handle(std::string const& handle) const;
@@ -427,6 +470,9 @@ namespace infinit
 
         // SwaggerResponse
         // get_swagger(std::string const& id) const;
+
+        std::vector<Device>
+        devices() const;
 
         Device
         update_device(boost::uuids::uuid const& device_uuid,
@@ -455,18 +501,20 @@ namespace infinit
                      int count = 0) const;
 
         CreatePeerTransactionResponse
-        create_transaction(std::string const& recipient_id_or_email,
-                           std::list<std::string> const& files,
-                           uint64_t count,
-                           uint64_t size,
-                           bool is_dir,
-                           // boost::uuids::uuid const& device_uuid,
-                           std::string const& device_uuid,
-                           std::string const& message = "",
-                           boost::optional<std::string const&> transaction_id =
-                           boost::none) const;
+        create_transaction(
+          std::string const& recipient_id_or_email,
+          std::list<std::string> const& files,
+          uint64_t count,
+          uint64_t size,
+          bool is_dir,
+          elle::UUID const& device_uuid,
+          std::string const& message = "",
+          boost::optional<std::string const&> transaction_id = boost::none,
+          boost::optional<elle::UUID> recipient_device_id = {}
+          ) const;
 
         /// Create an empty transaction
+        /// Deprecated by barebones overload
         /// @return: the transaction_id
         std::string
         create_transaction() const;
@@ -474,8 +522,14 @@ namespace infinit
         UpdatePeerTransactionResponse
         update_transaction(std::string const& transaction_id,
                            Transaction::Status status,
-                           std::string const& device_id = "",
+                           elle::UUID const& device_id = elle::UUID(),
                            std::string const& device_name = "") const;
+
+        std::string
+        create_transaction(std::string const& recipient_id_or_email,
+                           std::list<std::string> const& files,
+                           uint64_t count,
+                           std::string const& message = "") const;
 
       private:
         typedef std::vector<std::pair<std::string, uint16_t>> adapter_type;
@@ -483,7 +537,7 @@ namespace infinit
       public:
         void
         transaction_endpoints_put(std::string const& transaction_id,
-                                  std::string const& device_id,
+                                  elle::UUID const& device_id,
                                   adapter_type const& local_endpoints,
                                   adapter_type const& public_endpoints) const;
 

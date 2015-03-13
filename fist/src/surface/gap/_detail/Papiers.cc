@@ -36,11 +36,9 @@ namespace surface
 
       ELLE_ASSERT(this->_device != nullptr);
 
-      auto res = this->_meta.update_device(
-        boost::uuids::string_generator()(this->_device->id),
-        name);
+      auto res = this->_meta.update_device(this->_device->id, name);
       this->_device.reset(new Device(res));
-      auto passport_string = res.passport;
+      auto passport_string = res.passport.get();
 
       if (this->_passport != nullptr)
         ELLE_WARN("%s: a passport was already present: %s",

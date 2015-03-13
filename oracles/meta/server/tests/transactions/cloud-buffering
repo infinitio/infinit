@@ -9,7 +9,7 @@ with Meta() as meta:
   sender.login()
 
   # Cloud buffer before acceptance
-  transaction, res = sender.sendfile(recipient_id = recipient.email,
+  transaction, res = sender.sendfile(recipient = recipient.email,
                                      initialize = True)
   transaction_id = res['created_transaction_id']
   sender.transaction_update(
@@ -19,7 +19,7 @@ with Meta() as meta:
   recipient.transaction_update(transaction_id, statuses['finished'])
 
   # Cloud buffer after acceptance
-  transaction, res = sender.sendfile(recipient_id = recipient.email,
+  transaction, res = sender.sendfile(recipient = recipient.email,
                                      initialize = True)
   transaction_id = res['created_transaction_id']
   recipient.login()
@@ -27,6 +27,6 @@ with Meta() as meta:
   sender.transaction_update(
     transaction_id, statuses['cloud_buffered'])
   # Check cloud-buffered does not override accepted
-  meta_transaction = meta.get('transaction/%s' % transaction_id)
+  meta_transaction = sender.get('transaction/%s' % transaction_id)
   assert meta_transaction['status'] == statuses['accepted']
   recipient.transaction_update(transaction_id, statuses['finished'])

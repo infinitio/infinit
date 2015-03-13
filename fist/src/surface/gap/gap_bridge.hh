@@ -54,7 +54,9 @@ public:
   }
 
 public:
-  gap_State(bool production, std::string const& download_dir);
+  gap_State(bool production,
+            std::string const& home_dir,
+            std::string const& download_dir);
 
   ~gap_State()
   {
@@ -192,6 +194,11 @@ catch_to_gap_status(std::function<Type ()> const& func,
   {
     ELLE_ERR("%s: error: %s", name, elle::exception_string());
     ret = gap_email_not_confirmed;
+  }
+  catch (infinit::state::MissingEmail const&)
+  {
+    ELLE_ERR("%s: error: %s", name, elle::exception_string());
+    ret = gap_email_not_valid;
   }
   catch (infinit::state::VersionRejected const&)
   {

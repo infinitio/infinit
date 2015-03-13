@@ -64,7 +64,7 @@ namespace surface
 
     private:
       virtual
-      void
+      infinit::oracles::meta::UpdatePeerTransactionResponse
       _accept() override;
       void
       _transfer_operation(frete::RPCFrete& frete) override;
@@ -72,6 +72,9 @@ namespace surface
       _cloud_operation() override;
       void
       _cloud_synchronize() override;
+      virtual
+      void
+      _wait_for_decision() override;
 
     /*-----------------------.
     | Machine implementation |
@@ -81,7 +84,7 @@ namespace surface
       void
       notify_user_connection_status(std::string const& user_id,
                                     bool user_status,
-                                    std::string const& device_id,
+                                    elle::UUID const& device_id,
                                     bool device_status) override;
     /*-----------------.
     | Transaction data |

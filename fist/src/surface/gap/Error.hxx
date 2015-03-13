@@ -45,6 +45,10 @@ namespace infinit
       : LoginError("version rejected")
     {}
 
+    MissingEmail::MissingEmail()
+      : LoginError("you need an email")
+    {}
+
     /*-----------------.
     | Self User Errors |
     `-----------------*/
@@ -77,6 +81,17 @@ namespace infinit
     `-------------------*/
     TransactionFinalized::TransactionFinalized()
       : Error("transaction is already finalized")
+    {}
+
+    /*--------------.
+    | Merge account |
+    `--------------*/
+    InvalidGhostCode::InvalidGhostCode()
+      : Error("code is invalid")
+    {}
+
+    GhostCodeAlreadyUsed::GhostCodeAlreadyUsed()
+      : Error("ghost code already used")
     {}
   }
 }

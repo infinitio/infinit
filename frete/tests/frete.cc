@@ -23,11 +23,8 @@
 
 ELLE_LOG_COMPONENT("frete.tests");
 
-#ifdef INFINIT_WINDOWS
-# define SEPARATOR "\\"
-#else
+// Frete path are normalized.
 # define SEPARATOR "/"
-#endif
 
 static
 bool

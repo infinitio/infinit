@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-from utils import Meta, User, HTTPException
+from utils import Meta, Trophonius, User, HTTPException, Facebook
+from random import uniform
 
 with Meta() as meta:
   u1 = User(meta, 'foobar@infinit.io')
@@ -14,4 +15,58 @@ with Meta() as meta:
   try:
     meta.get('users/invalid-id')
   except HTTPException as e:
-    assert e.status == 400
+    assert e.status == 404
+
+with Meta() as meta:
+  with Trophonius(meta):
+    phone = '+33600000000'
+    email = 'foobar@infinit.io'
+    u1 = User(meta, email)
+    u1.login()
+    u1.sendfile(recipient = phone, use_identifier = True)
+    meta.inner.facebook = Facebook()
+    u2 = User(meta, facebook = True)
+    meta.inner.facebook.set_next_client_data({
+      'id': '329178128123213',
+      'email': 'bitebite@infinit.io',
+    })
+    u2.facebook_connect("osef")
+    facebook_id = u2.facebook_id
+
+    def expect_404(meta, route):
+      try:
+        meta.get(route)
+        assert False
+      except HTTPException as e:
+        assert e.status == 404
+    print(facebook_id)
+    print(phone)
+    print(email)
+
+    # Phone.
+    meta.get('users/%s' % u1.id)
+    meta.get('users/%s?account_type=ObjectId' % u1.id)
+    expect_404(meta, 'users/%s?account_type=phone' % u1.id)
+    expect_404(meta, 'users/%s?account_type=email' % u1.id)
+    expect_404(meta, 'users/%s?account_type=facebook' % u1.id)
+
+    # Phone.
+    meta.get('users/%s' % phone)
+    meta.get('users/%s?account_type=phone' % phone)
+    expect_404(meta, 'users/%s?account_type=ObjectId' % phone)
+    expect_404(meta, 'users/%s?account_type=email' % phone)
+    expect_404(meta, 'users/%s?account_type=facebook' % phone)
+
+    # Facebook.
+    expect_404(meta, 'users/%s' % facebook_id)
+    meta.get('users/%s?account_type=facebook' % facebook_id)
+    expect_404(meta, 'users/%s?account_type=ObjectId' % facebook_id)
+    expect_404(meta, 'users/%s?account_type=email' % facebook_id)
+    expect_404(meta, 'users/%s?account_type=phone' % facebook_id)
+
+    # Email.
+    meta.get('users/%s' % email)
+    meta.get('users/%s?account_type=email' % email)
+    expect_404(meta, 'users/%s?account_type=ObjectId' % email)
+    expect_404(meta, 'users/%s?account_type=facebook' % email)
+    expect_404(meta, 'users/%s?account_type=phone' % email)

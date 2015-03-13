@@ -1,9 +1,3 @@
-#include <sys/types.h>
-#include <unistd.h>
-
-#include <stdexcept>
-#include <unordered_map>
-
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/preprocessor/cat.hpp>

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import Meta, User
+from utils import *
 from infinit.oracles.meta import error
 import uuid
 
@@ -13,24 +13,24 @@ with Meta() as meta:
   bob.login()
 
   foobar = bob.post('device/create', {"name": "foobar"})
+  print('LOLILOL', list(meta.database.users.find()), file = sys.stderr)
+
 
   assert foobar['success']
-  devices = bob.get('devices')['devices']
+  devices = bob.get('user/devices')['devices']
 
-  assert len(devices) == 2
-  assert devices[1] == foobar['id']
+  assertEq(len(devices), 2)
+  assertEq(devices[1]['id'], foobar['id'])
 
-  device_id = devices[1]
+  device_id = devices[1]['id']
 
-  foobar = bob.get('device/%s/view' % device_id)
-  assert foobar['success']
+  foobar = bob.get('devices/%s' % device_id)
 
   alice = User(meta, email = 'alice@infinit.io')
   alice.login()
 
-  res = alice.get('device/%s/view' % device_id)
-  print(res)
-  assert res['error_code'] == error.DEVICE_NOT_FOUND[0]
+  # FIXME: should be a 403
+  throws(lambda: alice.get('devices/%s' % device_id), 404)
 
   res = alice.post('device/delete', {'id': device_id})
   print(res)
@@ -40,8 +40,7 @@ with Meta() as meta:
   assert res['success']
   assert res['id'] == device_id
 
-  devices = bob.get('devices')['devices']
+  devices = bob.get('user/devices')['devices']
   assert len(devices) == 1
 
-  res = bob.get('device/%s/view' % device_id)
-  assert res['error_code'] == error.DEVICE_NOT_FOUND[0]
+  throws(lambda: bob.get('devices/%s' % device_id), 404)

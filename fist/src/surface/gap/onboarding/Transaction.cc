@@ -26,10 +26,10 @@ namespace surface
         data->id = "TransactionID";
         data->sender_id = sender.id;
         data->sender_fullname = sender.fullname;
-        data->sender_device_id = "Infinit device id";
+        data->sender_device_id = elle::UUID::random();
         data->recipient_id = you.id;
         data->recipient_fullname = you.fullname;
-        data->recipient_device_id = "";
+        data->recipient_device_id = elle::UUID();
         data->recipient_device_name = "Your device";
         data->message = "Welcome to Infinit! Here's your first file.";
         data->ctime = ::time(nullptr);

@@ -108,6 +108,9 @@ namespace infinit
       _user_login(bool success, std::string const& info) override;
 
       void
+      _facebook_connect(bool success, std::string const& info) override;
+
+      void
       _user_logout(bool success, std::string const& info) override;
 
       void

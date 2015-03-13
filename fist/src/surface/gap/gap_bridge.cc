@@ -5,8 +5,9 @@
 ELLE_LOG_COMPONENT("surface.gap.gap_State")
 
 gap_State::gap_State(bool production,
+                     std::string const& home_dir,
                      std::string const& download_dir):
-  _configuration(production, download_dir),
+  _configuration(production, home_dir, download_dir),
   _scheduler{},
   _keep_alive{this->_scheduler, "State keep alive",
       [this]

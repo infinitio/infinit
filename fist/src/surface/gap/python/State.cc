@@ -1,5 +1,4 @@
 #include <boost/python.hpp>
-#include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 #include <boost/uuid/string_generator.hpp>
 
 #include <elle/assert.hh>
@@ -59,11 +58,11 @@ struct user_from_python_dict
     user->public_key =
       PyUnicode_AS_DATA(PyDict_GetItemString(pydict, "public_key"));
     auto device_list = PyDict_GetItemString(pydict, "connected_devices");
-    std::vector<std::string> connected_devices;
+    std::vector<elle::UUID> connected_devices;
     for (int i = 0; i < PyList_Size(device_list); i++)
     {
-      connected_devices.push_back(PyUnicode_AS_DATA(
-                                  PyList_GetItem(device_list, i)));
+      connected_devices.push_back(
+        elle::UUID(PyUnicode_AS_DATA(PyList_GetItem(device_list, i))));
     }
     user->connected_devices = connected_devices;
     data->convertible = storage;
@@ -85,9 +84,11 @@ struct user_to_python_dict
     PyDict_SetItemString(dict, "public_key",
                          PyUnicode_FromString(user.public_key.data()));
     auto device_list = PyList_New(0);
-    for (std::string const& device: user.connected_devices)
+    for (auto const& device: user.connected_devices)
     {
-      PyList_Append(device_list, PyUnicode_FromString(device.data()));
+      PyList_Append(
+        device_list,
+        PyUnicode_FromString(boost::lexical_cast<std::string>(device).data()));
     }
     PyDict_SetItemString(dict, "connected_devices", device_list);
     return dict;
@@ -162,7 +163,8 @@ struct transaction_to_python_dict
       PyUnicode_FromString(data->sender_id.data()));
     PyDict_SetItemString(
       dict, "sender_device_id",
-      PyUnicode_FromString(data->sender_device_id.data()));
+      PyUnicode_FromString(
+        boost::lexical_cast<std::string>(data->sender_device_id).data()));
     PyDict_SetItemString(
       dict, "is_ghost",
       PyBool_FromLong(data->is_ghost));
@@ -197,7 +199,7 @@ struct transaction_to_python_dict
       PyDict_SetItemString(dict, "recipient_fullname",
         PyUnicode_FromString(peer_data->recipient_fullname.data()));
       PyDict_SetItemString(dict, "recipient_device_id",
-        PyUnicode_FromString(peer_data->recipient_device_id.data()));
+        PyUnicode_FromString(boost::lexical_cast<std::string>(peer_data->recipient_device_id).data()));
       PyDict_SetItemString(dict, "recipient_device_name",
         PyUnicode_FromString(peer_data->recipient_device_name.data()));
       PyDict_SetItemString(dict, "sender_fullname",
@@ -389,6 +391,22 @@ public:
         cb(odict);
       });
   }
+
+  void
+  wrap_login(std::string const& email,
+             std::string const& password)
+  {
+    this->login(email, password);
+    reactor::wait(this->logged_in());
+  }
+
+  void
+  wrap_logout()
+  {
+    this->logout();
+    reactor::wait(this->logged_out());
+  }
+
   std::vector<unsigned int>
   wrap_swaggers()
   {
@@ -493,9 +511,9 @@ BOOST_PYTHON_MODULE(state)
                          uint16_t,
                          std::string const&,
                          std::string const&>())
-    .def("logged_in", &State::logged_in)
-    .def("login", (void (State::*)(std::string const&, std::string const&)) &State::login)
-    .def("logout", &State::logout)
+    .def("logged_in", &State::logged_in_to_meta)
+    .def("login", &PythonState::wrap_login)
+    .def("logout", &PythonState::wrap_logout)
     .def("poll", &State::poll)
     .def("users", &State::users, by_const_ref())
     .def("transaction", &PythonState::transaction)

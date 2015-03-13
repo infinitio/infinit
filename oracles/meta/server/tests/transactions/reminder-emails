@@ -38,7 +38,7 @@ with Meta(enable_emails = True) as meta, Trophonius(meta) as trophonius:
 
   meta.mailer = MailService("", bob, alice)
 
-  transaction, res = bob.sendfile(recipient_id = alice.id)
+  transaction, res = bob.sendfile(recipient = alice.id)
   assert res['success']
 
   assert meta.mailer.sent == False
@@ -54,7 +54,7 @@ with Meta(enable_emails = True) as meta, Trophonius(meta) as trophonius:
 
   meta.mailer = MailService("accept-file-only-offline", bob, alice)
 
-  transaction, res = bob.sendfile(recipient_id = alice.id,
+  transaction, res = bob.sendfile(recipient = alice.id,
                                   message = 'message')
   assert res['success']
 

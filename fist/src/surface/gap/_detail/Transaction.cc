@@ -69,11 +69,27 @@ namespace surface
                                    std::vector<std::string> files,
                                    std::string const& message)
     {
+      return this->_transaction_peer_create(peer_id, files, message);
+    }
+
+    Transaction&
+    State::transaction_peer_create(std::string const& peer_id,
+                                   elle::UUID const& peer_device_id,
+                                   std::vector<std::string> files,
+                                   std::string const& message)
+    {
+      return this->_transaction_peer_create(
+        peer_id, peer_device_id, files, message);
+    }
+
+    template <typename ... T>
+    Transaction&
+    State::_transaction_peer_create(std::string const& peer_id, T&& ... args)
+    {
       ELLE_TRACE_SCOPE("%s: send files to %s", *this, peer_id);
       auto id = generate_id();
-      auto transaction =
-        elle::make_unique<Transaction>(*this, id, peer_id,
-                                       std::move(files), message);
+      auto transaction = elle::make_unique<Transaction>(
+          *this, id, peer_id, std::forward<T>(args)...);
       auto& res = *transaction;
       this->_transactions.emplace(id, std::move(transaction));
       return res;
@@ -104,7 +120,7 @@ namespace surface
                             "Infinit Team",
                             "Infinit",
                             "ok",
-                            {"Infinit"});
+                            {elle::UUID::random()});
 
       auto onboarder_id = this->user_indexes().at(
         this->user_sync(onboarder).id);
@@ -163,7 +179,7 @@ namespace surface
             }();
             auto const& data = *snapshot.data();
             if (data.id.empty())
-              ELLE_LOG("%s: No transaction id in snapshot, will start from scratch.", *this);
+              ELLE_TRACE("%s: no transaction id in snapshot", *this);
             else
             {
               auto it = std::find_if(
@@ -358,18 +374,7 @@ namespace surface
                 0.0f,
                 infinit::oracles::Transaction::Status::failed);
           }
-          catch (infinit::oracles::meta::Exception const& e)
-          {
-            using infinit::oracles::meta::Error;
-            if (e.err != Error::transaction_operation_not_permitted &&
-                e.err != Error::transaction_already_finalized)
-            {
-              ELLE_ERR("%s: unable to fail transaction: %s",
-                       *this, elle::exception_string());
-              throw;
-            }
-          }
-          catch (...)
+          catch (elle::Error&)
           {
             ELLE_ERR("%s: unable to fail transaction: %s",
                      *this, elle::exception_string());

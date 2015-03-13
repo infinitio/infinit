@@ -59,10 +59,12 @@ as meta:
 
   for sub in subscriptions.keys():
     res = bob.delete('user/email_subscription/%s' % sub)
+    print(">>", res)
 
   res = bob.get('user/email_subscriptions')
   assert res['success']
   subscriptions = res['subscriptions']
+  print(subscriptions.values())
   assert list(map(lambda x: x['status'], subscriptions.values())).count(True) == 0
 
   res = bob.post('user/email_subscriptions?subscriptions=%s' % subscription_names[0])
