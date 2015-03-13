@@ -93,7 +93,7 @@ namespace surface
     }
 
     State::User const&
-    State::user_sync(State::User const& user) const
+    State::user_sync(State::User const& user, bool login) const
     {
       ELLE_DEBUG_SCOPE("%s: user response: %s", *this, user);
 
@@ -113,20 +113,25 @@ namespace surface
         this->_users.at(id) = user;
       }
       auto const& synced_user = this->_users.at(id);
-
-      surface::gap::User notification(
-        id,
-        user.online(),
-        user.fullname,
-        user.handle,
-        user.id,
-        this->is_swagger(id),
-        user.deleted(),
-        user.ghost(),
-        user.phone_number,
-        user.ghost_code,
-        user.ghost_profile_url);
-      this->enqueue(notification);
+      // When logging in, we do not want to alert the UI to changes. If we do
+      // the model will be overwritten with incomplete information.
+      // i.e.: swagger will be false when called by State::_user_resync
+      if (!login)
+      {
+        surface::gap::User notification(
+          id,
+          user.online(),
+          user.fullname,
+          user.handle,
+          user.id,
+          this->is_swagger(id),
+          user.deleted(),
+          user.ghost(),
+          user.phone_number,
+          user.ghost_code,
+          user.ghost_profile_url);
+        this->enqueue(notification);
+      }
 
       ELLE_ASSERT_NEQ(id, 0u);
       return synced_user;
@@ -284,7 +289,7 @@ namespace surface
     }
 
     void
-    State::_user_resync(std::vector<User> const& users)
+    State::_user_resync(std::vector<User> const& users, bool login)
     {
       using namespace infinit::oracles;
       ELLE_TRACE_SCOPE("%s: resync user", *this);
@@ -294,7 +299,7 @@ namespace surface
         bool init = false;
         if (this->_user_indexes.find(swagger.id) == this->_user_indexes.end())
         {
-          auto user = this->user_sync(swagger);
+          auto user = this->user_sync(swagger, login);
           init = true;
         }
 
@@ -532,20 +537,8 @@ namespace surface
         reactor::Lock lock(this->_swagger_mutex);
         this->_swagger_indexes.insert(id);
       }
-      auto user = this->user(id);
-      surface::gap::User res(
-        id,
-        user.online(),
-        user.fullname,
-        user.handle,
-        user.id,
-        this->is_swagger(id),
-        user.deleted(),
-        user.ghost(),
-        user.phone_number,
-        user.ghost_code,
-        user.ghost_profile_url);
-      this->enqueue(res);
+      // We do not need to notify the UI of this as it's model is kept up to
+      // date by user_sync.
     }
 
     void

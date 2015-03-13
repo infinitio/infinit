@@ -656,7 +656,9 @@ namespace surface
                 }
               }});
 
-          this->_user_resync(this->_synchronize_response->swaggers);
+          // Users need to be resynchronized (cached) before we initialize the
+          // transactions to ensure that users aren't fetched one by one.
+          this->_user_resync(this->_synchronize_response->swaggers, true);
           ELLE_TRACE("initialize transaction")
             this->_transactions_init();
           ELLE_TRACE("connection")
@@ -1045,8 +1047,9 @@ namespace surface
            this->_synchronize_response.reset(
              new infinit::oracles::meta::SynchronizeResponse{this->meta().synchronize(false)});
           }
-
-          this->_user_resync(this->_synchronize_response->swaggers);
+          // This is never the first call to _user_resync as the function is
+          // called in login.
+          this->_user_resync(this->_synchronize_response->swaggers, false);
           this->_peer_transaction_resync(
             this->_synchronize_response->transactions, first_connection);
           this->_link_transaction_resync(

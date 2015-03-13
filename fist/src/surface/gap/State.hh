@@ -516,7 +516,7 @@ namespace surface
 
     public:
       User const&
-      user_sync(User const& user) const;
+      user_sync(User const& user, bool login = false) const;
 
       User const&
       user_sync(std::string const& id) const;
@@ -538,7 +538,7 @@ namespace surface
       user_id(std::string const& user_meta_id) const;
 
       void
-      _user_resync(std::vector<User> const& users);
+      _user_resync(std::vector<User> const& users, bool login = false);
 
       void
       _queue_user_icon(std::string const& user_id) const;
