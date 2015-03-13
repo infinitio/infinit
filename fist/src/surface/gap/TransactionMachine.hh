@@ -1,8 +1,6 @@
 #ifndef SURFACE_GAP_TRANSACTION_MACHINE_HH
 # define SURFACE_GAP_TRANSACTION_MACHINE_HH
 
-# include <unordered_set>
-
 # include <boost/filesystem.hpp>
 # include <boost/signals2/signal.hpp>
 

@@ -1,5 +1,3 @@
-#include <functional>
-
 #include <elle/log.hh>
 #include <elle/os/environ.hh>
 #include <elle/container/map.hh>
