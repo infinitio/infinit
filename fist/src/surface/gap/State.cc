@@ -350,20 +350,28 @@ namespace surface
 
     void
     State::login(std::string const& email,
-                 std::string const& password)
+                 std::string const& password,
+                 boost::optional<std::string> country_code)
     {
-      this->login(email, password, reactor::DurationOpt{});
+      this->login(email,
+                  password,
+                  reactor::DurationOpt(),
+                  country_code);
     }
 
     void
     State::login(
       std::string const& email,
       std::string const& password,
-      reactor::DurationOpt timeout)
+      reactor::DurationOpt timeout,
+      boost::optional<std::string> country_code
+      )
     {
       this->login(
         email, password,
-        std::unique_ptr<infinit::oracles::trophonius::Client>(), timeout);
+        std::unique_ptr<infinit::oracles::trophonius::Client>(),
+        country_code,
+        timeout);
     }
 
     void
@@ -422,12 +430,16 @@ namespace surface
     State::login(
       std::string const& email,
       std::string const& password,
-      std::unique_ptr<infinit::oracles::trophonius::Client> trophonius,
+      TrophoniusClientPtr trophonius,
+      boost::optional<std::string> country_code,
       reactor::DurationOpt timeout)
     {
       auto tropho = elle::utility::move_on_copy(std::move(trophonius));
-      return this->_login_with_timeout([&] { this->_login(email, password, tropho); },
-                               timeout);
+      return this->_login_with_timeout(
+        [&]
+        {
+          this->_login(email, password, tropho, country_code);
+        }, timeout);
     }
 
     typedef infinit::oracles::trophonius::Client TrophoniusClient;
@@ -436,7 +448,9 @@ namespace surface
     State::_login(
       std::string const& email,
       std::string const& password,
-      elle::utility::Move<std::unique_ptr<TrophoniusClient>> trophonius)
+      elle::utility::Move<TrophoniusClientPtr> trophonius,
+      boost::optional<std::string> country_code
+      )
     {
       ELLE_TRACE_SCOPE("%s: attempt to login as %s", *this, email);
       this->_email = email;
@@ -448,11 +462,14 @@ namespace surface
                      lower_email.begin(),
                      ::tolower);
       auto hashed_password = infinit::oracles::meta::old_password_hash(
-              lower_email, password);
+        lower_email, password);
       infinit::metrics::Reporter::metric_sender_id(lower_email);
       this->_login(
         [&] {
-          return this->_meta.login(lower_email, password, this->_device_uuid);
+          return this->_meta.login(lower_email,
+                                   password,
+                                   this->_device_uuid,
+                                   country_code);
         },
         trophonius,
         [=] { return hashed_password; },
@@ -581,7 +598,8 @@ namespace surface
           auto passport_path =
             common::infinit::passport_path(this->home(), this->me().id);
           this->_passport.reset(new papier::Passport());
-          if (this->_passport->Restore(this->_device->passport) == elle::Status::Error)
+          if (this->_passport->Restore(this->_device->passport.get()) ==
+              elle::Status::Error)
             throw Exception(gap_wrong_passport, "Cannot load the passport");
           this->_passport->store(elle::io::Path(passport_path.string()));
 
@@ -689,6 +707,8 @@ namespace surface
       RETHROW(state::UnconfirmedEmailError)
       RETHROW(state::VersionRejected)
       RETHROW(state::AlreadyLoggedIn)
+      RETHROW(state::MissingEmail)
+      RETHROW(state::EmailAlreadyRegistered)
       #undef RETHROW
       catch(elle::Exception const& e)
       { // Assume temporary failure and retry

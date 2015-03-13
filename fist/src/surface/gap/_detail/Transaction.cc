@@ -374,18 +374,7 @@ namespace surface
                 0.0f,
                 infinit::oracles::Transaction::Status::failed);
           }
-          catch (infinit::oracles::meta::Exception const& e)
-          {
-            using infinit::oracles::meta::Error;
-            if (e.err != Error::transaction_operation_not_permitted &&
-                e.err != Error::transaction_already_finalized)
-            {
-              ELLE_ERR("%s: unable to fail transaction: %s",
-                       *this, elle::exception_string());
-              throw;
-            }
-          }
-          catch (...)
+          catch (elle::Error&)
           {
             ELLE_ERR("%s: unable to fail transaction: %s",
                      *this, elle::exception_string());

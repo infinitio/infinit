@@ -54,7 +54,7 @@ with mongobox.MongoBox() as mongo:
     email = 'user@infinit.io'
     sender = user_register(meta, email)
     sender_device = meta._create_device(sender)
-    transaction_create(meta, sender, 'ghost@infinit.io')
+    transaction_create(meta, sender, recipient_identifier = 'ghost@infinit.io')
 
     # Check nothing is sent to a fresh user
     sisy.boulders_run()

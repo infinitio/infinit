@@ -213,8 +213,8 @@ namespace surface
         .action_exception(
           [this] (std::exception_ptr e)
           {
-            ELLE_WARN("%s: fatal error: %s",
-                      *this, elle::exception_string(e));
+            ELLE_ERR("%s: fatal error: %s",
+                     *this, elle::exception_string(e));
             this->transaction().failure_reason(elle::exception_string(e));
           });
     }
@@ -485,14 +485,8 @@ namespace surface
         }
         catch (infinit::oracles::meta::Exception const& e)
         {
-          using infinit::oracles::meta::Error;
-          if (e.err == Error::transaction_already_finalized)
-            ELLE_TRACE("%s: transaction already finalized", *this);
-          else if (e.err == Error::transaction_already_has_this_status)
-            ELLE_TRACE("%s: transaction already in this state", *this);
-          else
-            ELLE_ERR("%s: unable to finalize the transaction %s: %s",
-                     *this, this->transaction_id(), elle::exception_string());
+          ELLE_ERR("%s: unable to finalize the transaction %s: %s",
+                   *this, this->transaction_id(), elle::exception_string());
         }
         catch (elle::Error const&)
         {
@@ -598,10 +592,13 @@ namespace surface
       infinit::oracles::Transaction::Status status,
       std::string reason)
     {
+      auto transaction_id = (!this->data()->id.empty())
+        ? this->transaction_id()
+        : std::string{"unknown"};
       bool onboarding = false;
       if (this->state().metrics_reporter())
         this->state().metrics_reporter()->transaction_ended(
-          this->transaction_id(),
+          transaction_id,
           status,
           reason,
           onboarding,

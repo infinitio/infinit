@@ -368,6 +368,9 @@ namespace surface
         }
         else if (me == recipient)
         {
+          // Because we are not sure we are going to receive the new swagger
+          // notification first, let's ensure sure we have it our model.
+          this->state().user(peer_data->sender_id);
           if (this->_data->is_ghost)
           {
             this->_machine.reset(
@@ -699,7 +702,7 @@ namespace surface
           if (peer->recipient_id != previous_recipient_id)
           {
             ELLE_TRACE_SCOPE("recipient id changed: %s -> %s",
-                             peer->recipient_id != previous_recipient_id);
+                             peer->recipient_id, previous_recipient_id);
             // Merge recipient if the new one is not in your list.
             // XXX: Because we should always receive a new_swagger notification
             // this code is just a security.

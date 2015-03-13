@@ -8,14 +8,15 @@ import json
 import bson.code
 import random
 import uuid
+import re
 
 import elle.log
 import papier
 
 from .plugins.response import response, Response
-from .utils import api, require_logged_in, require_logged_in_fields, require_admin, require_logged_in_or_admin, hash_password, json_value, require_key, key
+from .utils import api, require_logged_in, require_logged_in_fields, require_admin, require_logged_in_or_admin, hash_password, json_value, require_key, key, clean_up_phone_number
 from . import utils
-from . import error, notifier, regexp, conf, invitation, mail
+from . import error, notifier, regexp, conf, invitation, mail, transaction_status
 
 import pymongo
 import pymongo.errors
@@ -24,6 +25,10 @@ import os
 import string
 import time
 import unicodedata
+
+
+code_alphabet = '2346789abcdefghilkmnpqrstuvwxyz'
+code_length = 5
 
 #
 # Users
@@ -55,6 +60,17 @@ class Mixin:
       user['public_key'] = ''
     if 'handle' not in user:
       user['handle'] = ''
+    if user['register_status'] == 'ghost':
+      # Only the user with a ghost code are concerned (>= 0.9.31).
+      if 'ghost_code' in user:
+        if 'phone_number' not in user:
+          del user['ghost_code']
+        else:
+          user['ghost_profile'] = user.get(
+            'shorten_ghost_profile_url',
+            self.__ghost_profile_url(user, type = 'phone'))
+        if 'shorten_ghost_profile_url' in user:
+          del user['shorten_ghost_profile_url']
     return user
 
   def __user_self(self, user):
@@ -76,11 +92,15 @@ class Mixin:
       # Fetch devices so __user_fill can compute connectivity
       'devices.id',
       'devices.trophonius',
+      'devices.country_code',
       'fullname',
       'handle',
       'public_key',
       'register_status',
       'facebook_id',
+      'phone_number',
+      'ghost_code',
+      'shorten_ghost_profile_url',
     ]
     if self.admin:
       res += [
@@ -104,6 +124,7 @@ class Mixin:
       'features',
       'identity',
       'swaggers',
+      'consumed_ghost_codes',
     ]
     return res
 
@@ -187,6 +208,8 @@ class Mixin:
     res = user.get('email')
     if res is None:
       res = user.get('facebook_id')
+    if res is None:
+      res = user.get('fullname')
     assert len(res)
     return res
 
@@ -266,7 +289,8 @@ class Mixin:
                     password,
                     OS = None,
                     pick_trophonius = None,
-                    device_push_token: str = None):
+                    device_push_token: str = None,
+                    country_code = None):
     # If creation process was interrupted, generate identity now.
     if 'public_key' not in user:
       user = self.__generate_identity(user, password)
@@ -284,6 +308,7 @@ class Mixin:
         '$set':
         {
           'devices.$.push_token': device_push_token,
+          'devices.$.country_code': country_code,
         }
       }
     def login():
@@ -298,7 +323,8 @@ class Mixin:
       device = self._create_device(
         id = device_id,
         owner = user,
-        device_push_token = device_push_token)
+        device_push_token = device_push_token,
+        country_code = country_code)
     else:
       device = list(filter(lambda x: x['id'] == str(device_id), usr['devices']))[0]
     # Remove potential leaked previous session.
@@ -340,8 +366,20 @@ class Mixin:
         {'_id': user['_id']},
         {'$set': { 'features': features}})
     response['features'] = list(features.items())
-    response['device'] = device
+    response['device'] = self.device_view(device)
     return response
+
+  @api('/users/facebook/<facebook_id>')
+  def is_registered_with_facebook(self, facebook_id):
+    user = self.user_by_facebook_id(facebook_id,
+                                    fields = [], # Only the id.
+                                    ensure_existence = False)
+    if user is not None:
+      return {}
+    else:
+      return self.not_found({
+        'reason': 'unknown facebook id %s' % facebook_id
+      })
 
   def __facebook_connect(self,
                          fields,
@@ -357,11 +395,9 @@ class Mixin:
       facebook_user = self.facebook.user(
         short_lived_access_token = short_lived_access_token,
         long_lived_access_token = long_lived_access_token)
-      user = self.__user_fetch({
-        'accounts.id': facebook_user.facebook_id,
-        'accounts.type': 'facebook'
-        },
-        fields = fields)
+      user = self.user_by_facebook_id(facebook_user.facebook_id,
+                                      fields = fields,
+                                      ensure_existence = False)
       if user is None: # Register the user.
         user = self.facebook_register(
           facebook_user = facebook_user,
@@ -374,6 +410,10 @@ class Mixin:
           elle.log.warn('unable to get facebook avatar: %s' % e)
           pass
       return user
+    except Response as r:
+      raise r
+    except Exception as e:
+      self._forbidden_with_error(e.args[0])
     except error.Error as e:
       self._forbidden_with_error(e.args[0])
 
@@ -387,11 +427,13 @@ class Mixin:
             preferred_email: str = None,
             password_hash: str = None,
             OS: str = None,
-            pick_trophonius: bool = True,
-            device_push_token: str = None):
-    # Xor facebook_token or email / passwor.
-    with_email = bool(email and (password or password_hash))
-    with_facebook = bool(long_lived_access_token or short_lived_access_token)
+            device_push_token = None,
+            country_code = None,
+            pick_trophonius: bool = True):
+    # Xor facebook_token or email / password.
+    with_email = bool(email is not None and password is not None)
+    with_facebook = bool(long_lived_access_token is not None or
+                         short_lived_access_token is not None)
     if with_email == with_facebook:
       return self.bad_request({
         'reason': 'you must provide facebook_token or (email, password)'
@@ -420,30 +462,34 @@ class Mixin:
                                 device_id = device_id,
                                 OS = OS,
                                 pick_trophonius = pick_trophonius,
-                                device_push_token = device_push_token)
+                                device_push_token = device_push_token,
+                                country_code = country_code)
 
   @api('/web-login', method = 'POST')
   def web_login(self,
                 email = None,
                 password = None,
+                preferred_email = None,
                 short_lived_access_token = None,
                 long_lived_access_token = None):
-    # Xor facebook_token or email / passwor.
-    with_email = bool(email and password)
-    with_facebook = bool(long_lived_access_token or short_lived_access_token)
+    # Xor facebook_token or email / password.
+    with_email = bool(email is not None and password is not None)
+    with_facebook = bool(long_lived_access_token is not None or
+                         short_lived_access_token is not None)
     if with_email == with_facebook:
       return self.bad_request({
         'reason': 'you must provide facebook_token or (email, password)'
       })
     fields = self.__user_self_fields + ['unconfirmed_email_deadline']
     if with_email:
-      email = email.replace(' ', '')
+      email = email.lower().strip()
       with elle.log.trace("%s: web login" % email):
         user = self._login(email, password = password, fields = fields)
     elif with_facebook:
       user = self.__facebook_connect(
         short_lived_access_token = short_lived_access_token,
         long_lived_access_token = long_lived_access_token,
+        preferred_email = preferred_email,
         fields = fields)
     return self._web_login(user)
 
@@ -552,7 +598,8 @@ class Mixin:
     email = preferred_email or email
     if email is None:
       return self.bad_request({
-        'reason': 'you must provide an email'
+        'reason': 'you must provide an email',
+        'code': error.EMAIL_NOT_VALID[0]
       })
     name = facebook_user.data['name']
     extra_fields = {
@@ -575,13 +622,8 @@ class Mixin:
       email_is_already_confirmed = already_confirmed,
       extra_fields = extra_fields,
       activation_code = None)
-    user = self.__user_fetch(
-      {
-        'accounts.id': facebook_user.facebook_id,
-        'accounts.type': 'facebook'
-      },
-      fields = fields)
-    return user
+    return self.user_by_facebook_id(
+      facebook_user.facebook_id, fields = fields)
 
   def __email_confirmation_fields(self, email):
     email = email.strip().lower()
@@ -675,14 +717,27 @@ class Mixin:
         if user['register_status'] == 'ghost':
           for field in ['swaggers', 'features']:
             user_content[field] = user[field]
+          update = {
+            '$set': user_content,
+          }
+          if 'ghost_code' in user:
+            update.setdefault('$unset', {}).update({
+              'ghost_code': 1,
+              'shorten_ghost_profile_url': 1,
+              'ghost_code_expiration': 1,
+            })
+            update.setdefault('$addToSet', {}).update({
+              'consumed_ghost_codes': user['ghost_code']
+            })
+          if 'phone_number' in user:
+            update.setdefault('$unset', {}).update({
+              'phone_number': 1})
           user = self.database.users.find_and_modify(
             query = {
               'accounts.id': email,
               'register_status': 'ghost',
             },
-            update = {
-              '$set': user_content,
-            },
+            update = update,
             new = True,
             upsert = False,
           )
@@ -872,6 +927,149 @@ class Mixin:
     except error.Error as e:
       self.fail(*e.args)
 
+  ## ----- ##
+  ## Ghost ##
+  ## ----- ##
+  def generate_random_sequence(self, alphabet = code_alphabet, length = code_length):
+    """
+    Return a pseudo-random string.
+
+    alphabet -- A list of characters.
+    length -- The size of the wanted random sequence.
+    """
+    import random
+    random.seed()
+    return ''.join(random.choice(alphabet) for _ in range(length))
+
+  def __register_ghost(self,
+                       extra_fields):
+    assert 'accounts' in extra_fields
+    features = self._roll_features(True)
+    ghost_code = self.generate_random_sequence()
+    request = {
+      'register_status': 'ghost',
+      'notifications': [],
+      'networks': [],
+      'devices': [],
+      'swaggers': {},
+      'features': features,
+      # Ghost code is used for merging mechanism.
+      'ghost_code': ghost_code,
+      'ghost_code_expiration': self.now + datetime.timedelta(days=14),
+    }
+    request.update(extra_fields)
+    user_id = self._register(**request)
+    self.database.users.update(
+      {
+        "_id": user_id
+      },
+      {
+        '$set': {
+          'shorten_ghost_profile_url': self.shorten(
+            self.__ghost_profile_url(
+              {
+                '_id': user_id,
+                'ghost_code': ghost_code,
+              },
+              type = extra_fields['accounts'][0]["type"],
+            ))
+        }
+      })
+    return user_id
+
+  def __ghost_profile_url(self, ghost, type):
+    """
+    Return the url of the user ghost profile on the website.
+    We have to specify the full url because this url will be shorten by another
+    service (e.g. bitly).
+
+    ghost -- The ghost.
+    """
+    ghost_id = ghost.get('_id', ghost.get('id'))
+    assert ghost_id is not None
+    code = ghost['ghost_code']
+    url = '/ghost/%s' % str(ghost_id)
+    ghost_profile_url = "https://www.infinit.io/" \
+                        "invitation/%(ghost_id)s?key=%(key)s&code=%(code)s" \
+                        "&utm_source=%(type)s&utm_medium=invitation" % {
+                          'ghost_id': str(ghost_id),
+                          'key': key(url),
+                          'code': code,
+                          'type': type
+                        }
+    return ghost_profile_url
+
+  @api('/ghost/<code>/merge', method = 'POST')
+  @require_logged_in
+  def merge_ghost(self,
+                  code : str):
+    """
+    Merge a ghost to an existing user account.
+    The code is given (via email, sms) to the recipient.
+
+    code -- The code.
+    """
+    with elle.log.trace("merge ghost with code %s" % code):
+      if len(code) == 0:
+        return self.bad_request({
+          'reason': 'code cannot be empty',
+        })
+      user = self.user
+      gone = {
+        'reason': 'this user is not accessible anymore',
+        'code': code,
+      }
+      if code in user.get('consumed_ghost_codes', []):
+        return self.gone(gone)
+      # Because we delete 'ghost_code' from the user, we are not be able to
+      # return a clean 'gone' http status.
+      account = self.database.users.find_one({'ghost_code': code})
+      if account is None:
+        return self.not_found({
+          'reason': 'unknown code : %s' % code,
+          'code': code,
+        })
+      if account['ghost_code_expiration'] < self.now or \
+         account['register_status'] != 'ghost':
+        return self.gone(gone)
+      elle.log.debug('account found: %s' % account)
+      self.user_delete(account, merge_with = user)
+      return {}
+
+  @api('/ghost/<user_id>', method = 'GET')
+  @require_key
+  def ghost_profile(self,
+                    user_id : bson.ObjectId):
+    """
+    Return the ghost data.
+
+    user_id -- The ghost id.
+    """
+    with elle.log.trace("get ghost page %s" % user_id):
+      account = self.__user_fetch(
+        {'_id': user_id},
+        fields = self.__user_view_fields + ['ghost_code_expiration'])
+      if account is None:
+        return self.not_found({
+          'reason': 'User not found',
+          'id': str(user_id),
+        })
+      if account['register_status'] in ['deleted', 'merged', 'ok']:
+        return self.gone({
+          'reason': 'This user doesn\'t exist anymore',
+          'id': str(user_id),
+        })
+      transactions = list(self.database.transactions.find(
+        {
+          'involved': account['_id'],
+          'status': {'$nin': transaction_status.final + [transaction_status.CREATED] }
+        },
+        fields = self.__transaction_hash_fields
+      ))
+      return {
+        'transactions': transactions
+      }
+
   @api('/user/accounts')
   @require_logged_in
   def accounts(self):
@@ -921,7 +1119,7 @@ class Mixin:
           'accounts': collections.OrderedDict((('id', name), ('type', 'email')))
         }
       }
-      user = self.user_by_id_or_email(user, fields = ['_id'])
+      user = self.user_by_id_or_email(user, fields = ['_id', 'accounts'])
       while True:
         try:
           self.database.users.update(
@@ -933,7 +1131,7 @@ class Mixin:
           previous = self.user_by_id_or_email(
             name,
             fields = ['email', 'register_status', 'swaggers'],
-            ensure = False)
+            ensure_existence = False)
           if previous is None:
             elle.log.warn('email confirmation duplicate disappeared')
             continue
@@ -948,24 +1146,6 @@ class Mixin:
               'email': name,
             })
           if status in ['ghost', 'deleted']:
-            swaggers = previous.get('swaggers', {})
-            # Increase swaggers swag for self
-            update.update({
-              '$inc':
-              {
-                'swaggers.%s' % id: swaggers[id] for id in swaggers
-              }
-            })
-            # Increase self swag for swaggers
-            for swagger, amount in swaggers.items():
-              self.database.users.update(
-                {'_id': swagger},
-                {'$inc': {'swaggers.%s' % user['_id']: amount}})
-              self.notifier.notify_some(
-                notifier.NEW_SWAGGER,
-                message = {'user_id': swagger},
-                recipient_ids = {user['_id']},
-              )
             self.user_delete(previous, merge_with = user)
             continue
       return {}
@@ -980,8 +1160,9 @@ class Mixin:
       })
     res = self.database.users.update(
       {
-        'accounts.id': email,
-        'accounts.type': 'email',
+        'accounts': {
+          '$elemMatch': {'id': email, 'type': 'email'}
+        },
         '_id': user['_id'],
         'email': {'$ne': email} # Not the primary email.
       },
@@ -1160,8 +1341,7 @@ class Mixin:
           'new_main_email': '',
           'new_main_email_hash': '',
         },
-        '$addToSet':
-        {
+        '$addToSet': {
           'accounts': {'type': 'email', 'id': new_email}
         },
       })
@@ -1267,9 +1447,24 @@ class Mixin:
        - Remove user as a favourite for other users.
        - Remove user from mailing lists.
 
+       ==============
+       = merge_with =
+       merge_with argument makes the process transfer elements from the account
+       to delete to the 'merge_with' user, including:
+       - transactions
+       - accounts
+       - swaggers (and update swaggers swagger to add merge_with).
+       Note that merge with only works with ghost because they have no public
+       key, can't be transaction sender and hence the transactions in which
+       they are involved can be modified with no risks.
+
        Considerations:
        - Keep the process as atomic at the DB level as possible.
     """
+    if merge_with and user['register_status'] not in ['ghost', 'deleted']:
+      self.bad_request({
+        'reason': 'Only ghost accounts can be merged'
+      })
     # Invalidate credentials.
     self.remove_session(user)
     # Kick them out of the app.
@@ -1310,21 +1505,64 @@ class Mixin:
       'swaggers': {},
     }
     if merge_with is not None:
+      ghost_code = None
+      if 'ghost_code' in user:
+        ghost_code = user['ghost_code']
       cleared_user['register_status'] = 'merged'
       cleared_user['merged_with'] = merge_with['_id']
+      deleted_user_swaggers = user.get('swaggers', {})
+      # XXX: Obvious race condition here.
+      # Accounts fields are unique. If we want to copy user['accounts'] to
+      # merge_with, we need to copy and delete them first, and the add them
+      # to merge_with.
+      # The problem is that during that time lap, someone could send to the
+      # user to be deleted email address, creating a new ghost with accounts
+      # that can conflit in the database.
+      deleted_user_accounts = user.get('accounts', [])
     else:
       cleared_user['register_status'] = 'deleted'
     deleted_user = self.database.users.find_and_modify(
       {'_id': user['_id']},
       {
         '$set': cleared_user,
-        '$unset':
-        {
+        '$unset': {
           'avatar': '',
-          'small_avatar': ''
+          'small_avatar': '',
+          'phone_number': '',
+          'ghost_code': '',
+          'ghost_code_expiration': '',
+          'shorten_ghost_profile_url': '',
         }
       },
       new = True)
+    if merge_with is not None:
+      # Increase swaggers swag for self
+      update = {
+        '$inc': {
+          'swaggers.%s' % id: deleted_user_swaggers[id] for id in deleted_user_swaggers
+        },
+        '$addToSet': {
+          'accounts': {
+            '$each': deleted_user_accounts,
+          },
+        }
+      }
+      if ghost_code is not None:
+        update['$addToSet']['consumed_ghost_codes'] = ghost_code
+      self.database.users.update({'_id': merge_with['_id']}, update)
+      # Increase self swag for swaggers
+      for swagger, amount in deleted_user_swaggers.items():
+        self.database.users.update(
+          {'_id': swagger},
+          {'$inc': {'swaggers.%s' % merge_with['_id']: amount}})
+        self.notifier.notify_some(
+          notifier.NEW_SWAGGER,
+          message = {'user_id': swagger},
+          recipient_ids = {merge_with['_id']},
+        )
+      self.change_transactions_recipient(
+        current_owner = user, new_owner = merge_with)
+      # self.change_links_ownership(user, merge_with)
     self.notifier.notify_some(notifier.DELETED_SWAGGER,
                               recipient_ids = swaggers,
                               message = {'user_id': user['_id']})
@@ -1395,8 +1633,11 @@ class Mixin:
 
   def user_by_email_query(self, email):
     email = email.lower().strip()
-    return {'accounts.id': email}
-
+    return {
+      'accounts': {
+        '$elemMatch': {'id': email, 'type': 'email'}
+      }
+    }
   def user_by_email(self,
                     email,
                     fields = None,
@@ -1415,6 +1656,59 @@ class Mixin:
     if ensure_existence:
       self.__ensure_user_existence(user)
     return user
+
+  def user_by_facebook_id_query(self, facebook_id):
+    return {
+      'accounts': {
+        '$elemMatch': {'id': facebook_id, 'type': 'facebook'}
+      }
+    }
+
+  def user_by_facebook_id(self,
+                          facebook_id,
+                          fields = None,
+                          ensure_existence = True):
+    """Get a user with given phone number.
+
+    facebook_id -- the facebook id.
+    ensure_existence -- if set, raise if user is invald.
+    """
+    if fields is None:
+      fields = self.__user_view_fields
+    user = self.__user_fetch(
+      self.user_by_facebook_id_query(facebook_id),
+      fields = fields,
+    )
+    if ensure_existence:
+      self.__ensure_user_existence(user)
+    return user
+
+  def user_by_phone_number_query(self, phone_number):
+    return {
+      'accounts': {
+        '$elemMatch': {'id': phone_number, 'type': 'phone'}
+      }
+    }
+
+  def user_by_phone_number(self,
+                           phone_number,
+                           fields = None,
+                           ensure_existence = True):
+    """Get a user with given phone number.
+
+    phone_number -- the email of the user.
+    ensure_existence -- if set, raise if user is invald.
+    """
+    if fields is None:
+      fields = self.__user_view_fields
+    user = self.__user_fetch(
+      self.user_by_phone_number_query(phone_number),
+      fields = fields,
+    )
+    if ensure_existence:
+      self.__ensure_user_existence(user)
+    return user
+
 
   def user_by_email_password(self,
                              email,
@@ -1477,24 +1771,24 @@ class Mixin:
     return user
 
   def user_by_id_or_email(self, id_or_email, fields,
-                          ensure = False):
-    id_or_email = id_or_email.lower()
-    if '@' in id_or_email:
+                          ensure_existence = False):
+    if not isinstance(id_or_email, bson.ObjectId) and '@' in id_or_email:
+      id_or_email = id_or_email.lower()
       return self.user_by_email(id_or_email,
                                 fields = fields,
-                                ensure_existence = ensure)
+                                ensure_existence = ensure_existence)
     else:
       try:
         id = bson.ObjectId(id_or_email)
         return self._user_by_id(id,
                                 fields = fields,
-                                ensure_existence = ensure)
+                                ensure_existence = ensure_existence)
       except bson.errors.InvalidId:
         self.bad_request('invalid user id: %r' % id_or_email)
 
   def user_by_id_or_email_query(self, id_or_email):
-    id_or_email = id_or_email.lower()
-    if '@' in id_or_email:
+    if not isinstance(id_or_email, bson.ObjectId) and '@' in id_or_email:
+      id_or_email = id_or_email.lower()
       return self.user_by_email_query(id_or_email)
     else:
       try:
@@ -1607,17 +1901,47 @@ class Mixin:
                                  offset : int = 0):
     return self.__users_by_emails_search(emails, limit, offset)
 
-  @api('/users/<id_or_email>')
-  def view_user(self, id_or_email):
+  @api('/users/<recipient_identifier>')
+  def view_user(self,
+                recipient_identifier,
+                country_code = None,
+                account_type = None):
     """
-    Get user's public information by user_id or email.
+    Get user's public information by identifier.
+    recipient_identifier -- Something to identify the user (email, user_id or phone number).
     """
-    user = self.user_by_id_or_email(id_or_email,
-                                    fields = self.__user_view_fields)
+    recipient_identifier = recipient_identifier.strip().lower()
+    args = {
+      'fields': self.__user_view_fields,
+      'ensure_existence': False,
+    }
+    user = None
+    try:
+      if account_type is not None and account_type != "ObjectId":
+        raise bson.errors.InvalidId("")
+      recipient_id = bson.ObjectId(recipient_identifier)
+      user = self._user_by_id(recipient_id, **args)
+    except bson.errors.InvalidId:
+      if ('@' in recipient_identifier and account_type is None) or \
+         account_type == "email":
+        user = self.user_by_email(recipient_identifier, **args)
+      else:
+        if account_type == "facebook":
+          user = self.user_by_facebook_id(recipient_identifier,
+                                          **args)
+        else:
+          if account_type is None or account_type == "phone":
+            if country_code is None and self.current_device is not None:
+              country_code = self.current_device.get('country_code', None)
+            phone_number = clean_up_phone_number(
+              recipient_identifier, country_code)
+            if phone_number:
+              user = self.user_by_phone_number(phone_number, **args)
+
     if user is None:
       self.not_found({
-        'reason': 'user %s not found' % id_or_email,
-        'id': id_or_email,
+        'reason': 'user %s not found' % recipient_identifier,
+        'id': recipient_identifier,
       })
     else:
       return self.__user_view(user)
@@ -1851,6 +2175,8 @@ class Mixin:
           email: {
             'sendername': user['fullname'],
             'user_id': str(user['_id']),
+            'sender_avatar': 'https://%s/user/%s/avatar' %
+              (bottle.request.urlparts[1], user['_id']),
           }}
       )
       return self.success()
@@ -2297,7 +2623,7 @@ class Mixin:
           }
         }})
     device = list(filter(lambda x: x['id'] == device['id'], user2['devices']))[0]
-    last_sync = device.get('last_sync', {'timestamp': 1, 'date': datetime.date.fromtimestamp(1)})
+    last_sync = device.get('last_sync', {'timestamp': 1, 'date': datetime.datetime.fromtimestamp(1)})
     # If it's the initialization, pull history, if not, only the one modified
     # since last synchronization!
     res = {
@@ -2309,4 +2635,5 @@ class Mixin:
     res.update(self._user_transactions(modification_time = mtime['date']))
     # Include deleted links only during updates. At start up, ignore them.
     res.update(self.links_list(mtime = mtime['date'], include_deleted = (not init)))
+    res.update(self.devices_users_api(user['_id']))
     return self.success(res)

@@ -106,6 +106,7 @@ namespace tests
           "{"
           " \"self\": %s,"
           " \"device\": %s,"
+          " \"devices\": [],"
           " \"features\": [],"
           " \"trophonius\" : %s"
           "}",
@@ -163,7 +164,8 @@ namespace tests
           "  \"swaggers\": %s,"
           "  \"running_transactions\": %s,"
           "  \"final_transactions\": %s,"
-          "  \"links\": %s"
+          "  \"links\": %s,"
+          "  \"devices\": []"
           "}",
           user.swaggers_json(),
           json(runnings),
@@ -436,6 +438,19 @@ namespace tests
         return elle::sprintf(
           "{\"created_transaction_id\":\"%s\"}", this->_create_empty());
       });
+
+    this->register_route(
+      "/transactions",
+      reactor::http::Method::POST,
+      [&] (Server::Headers const&,
+           Server::Cookies const&,
+           Server::Parameters const&,
+           elle::Buffer const&)
+      {
+        return elle::sprintf(
+          "{\"created_transaction_id\":\"%s\"}", this->_create_empty());
+      });
+
 
     this->register_route(
       "/s3/folder/cloud-buffered",
@@ -765,7 +780,7 @@ namespace tests
     elle::IOStream stream(content.istreambuf());
     elle::serialization::json::SerializerIn input(stream, false);
     std::string recipient_email_or_id;
-    input.serialize("id_or_email", recipient_email_or_id);
+    input.serialize("recipient_identifier", recipient_email_or_id);
     ELLE_LOG("%s: recipient: %s", *this, recipient_email_or_id);
     std::list<std::string> files;
     input.serialize("files", files);

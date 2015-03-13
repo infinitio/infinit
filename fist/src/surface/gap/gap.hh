@@ -107,6 +107,11 @@ gap_register(gap_State* state,
              std::string const& email,
              std::string const& hashed_password);
 
+/// @brief Use a ghost code to merge ghost account account.
+gap_Status
+gap_use_ghost_code(gap_State* state,
+                   std::string const& code);
+
 //- Swaggers ----------------------------------------------------------------
 
 typedef void (*gap_new_swagger_callback_t)(uint32_t id);
@@ -340,6 +345,14 @@ gap_user_handle(gap_State* state,
 
 gap_Bool
 gap_user_ghost(gap_State* state, uint32_t id);
+
+std::string
+gap_user_ghost_code(gap_State* state,
+                    uint32_t id);
+
+std::string
+gap_user_ghost_profile_url(gap_State* state,
+                           uint32_t id);
 
 gap_Bool
 gap_user_deleted(gap_State* state, uint32_t id);
@@ -594,6 +607,10 @@ gap_send_last_crash_logs(gap_State* state,
 
 std::string
 gap_facebook_app_id();
+
+bool
+gap_facebook_already_registered(gap_State* state,
+                                std::string const& facebook_id);
 
 gap_Status
 gap_facebook_connect(gap_State* state,

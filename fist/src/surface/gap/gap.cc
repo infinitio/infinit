@@ -1,6 +1,7 @@
 #include <surface/gap/gap.hh>
 #include <surface/gap/gap_bridge.hh>
 #include <surface/gap/State.hh>
+#include <surface/gap/Error.hh>
 #include <surface/gap/Transaction.hh>
 #include <surface/gap/onboarding/Transaction.hh>
 
@@ -312,6 +313,33 @@ gap_register(gap_State* state,
 }
 
 gap_Status
+gap_use_ghost_code(gap_State* state,
+                  std::string const& code)
+{
+  assert(state != nullptr);
+  if (code.empty())
+    return gap_unknown_user;
+  return run<gap_Status>(state,
+                         "use ghost code",
+                         [&] (surface::gap::State& state) -> gap_Status
+    {
+      try
+      {
+        state.meta().use_ghost_code(code);
+      }
+      catch (infinit::state::GhostCodeAlreadyUsed const&)
+      {
+        return gap_ghost_code_already_used;
+      }
+      catch (elle::Error const&)
+      {
+        return gap_unknown_user;
+      }
+      return gap_ok;
+    });
+}
+
+gap_Status
 gap_poll(gap_State* state)
 {
   gap_Status ret = gap_ok;
@@ -595,6 +623,50 @@ gap_user_ghost(gap_State* state, uint32_t id)
                         return user.ghost();
                        });
   return false;
+}
+
+std::string
+gap_user_ghost_code(gap_State* state,
+                    uint32_t id)
+{
+  assert(state != nullptr);
+  assert(id != surface::gap::null_id);
+
+  return run<std::string>(
+    state,
+    "user ghost code",
+    [&] (surface::gap::State& state) -> std::string
+    {
+      auto const& user = state.user(id);
+      if (user.ghost())
+      {
+        if (user.ghost_code)
+          return user.ghost_code.get();
+      }
+      return std::string{};
+    });
+}
+
+std::string
+gap_user_ghost_profile_url(gap_State* state,
+                           uint32_t id)
+{
+  assert(state != nullptr);
+  assert(id != surface::gap::null_id);
+
+  return run<std::string>(
+    state,
+    "user ghost profile url",
+    [&] (surface::gap::State& state) -> std::string
+    {
+      auto const& user = state.user(id);
+      if (user.ghost())
+      {
+        if (user.ghost_profile_url)
+          return user.ghost_profile_url.get();
+      }
+      return std::string{};
+    });
 }
 
 gap_Bool
@@ -1878,6 +1950,27 @@ gap_facebook_app_id()
 {
   // We could even ask meta for the id.
   return "839001662829159";
+}
+
+bool
+gap_facebook_already_registered(gap_State* state,
+                                std::string const& facebook_id)
+{
+  return run<bool>(
+    state,
+    "start reception onboarding",
+    [&] (surface::gap::State& state) -> uint32_t
+    {
+      try
+      {
+        return state.meta(false).facebook_id_already_registered(
+          facebook_id);
+      }
+      catch (elle::Error const&)
+      {
+        return false;
+      }
+    });
 }
 
 gap_Status

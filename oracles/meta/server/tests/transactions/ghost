@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 
 from utils import Meta, User
+from infinit.oracles.meta.server import transaction_status
 
 with Meta() as meta:
   bob = User(meta, "bob@infinit.io")
-
   bob.login()
-
-  transaction, res = bob.sendfile(recipient_id = "alice@infinit.io")
+  transaction, res = bob.sendfile(recipient = "alice@infinit.io", use_identifier = False)
   assert res['success']
 
   transaction_id = res['created_transaction_id']
@@ -22,3 +21,29 @@ with Meta() as meta:
       continue
     assert res[key] == transaction[key]
   res['recipient_id'] == transaction['id_or_email']
+
+# Check if download_link is sent.
+with Meta() as meta:
+  bob = User(meta, "bob@infinit.io")
+  bob.login()
+  transaction, res = bob.sendfile(recipient = "alice@infinit.io", initialize = True)
+  tid = res['created_transaction_id']
+  res = bob.transaction_update(tid, transaction_status.GHOST_UPLOADED)
+  assert 'download_link' in res
+  assert 'transaction_hash' in res
+  res = bob.get('transaction/%s' % tid)
+  assert 'download_link' in res
+  assert 'transaction_hash' in res
+  res = bob.get('transaction/by_hash/%s' % res['transaction_hash'])
+  assert 'download_link' in res
+
+  transaction, res = bob.sendfile(recipient = "+336000000", initialize = True)
+  tid = res['created_transaction_id']
+  res = bob.transaction_update(tid, transaction_status.GHOST_UPLOADED)
+  assert 'download_link' in res
+  assert 'transaction_hash' in res
+  res = bob.get('transaction/%s' % tid)
+  assert 'download_link' in res
+  assert 'transaction_hash' in res
+  res = bob.get('transaction/by_hash/%s' % res['transaction_hash'])
+  assert 'download_link' in res

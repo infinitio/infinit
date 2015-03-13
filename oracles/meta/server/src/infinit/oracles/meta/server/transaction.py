@@ -12,7 +12,7 @@ import json
 
 import elle.log
 from .utils import \
-  api, require_logged_in, require_logged_in_or_admin, require_key
+  api, require_logged_in, require_logged_in_or_admin, require_key, key, clean_up_phone_number
 from . import regexp, error, transaction_status, notifier, invitation, cloud_buffer_token, cloud_buffer_token_gcs, mail
 import uuid
 import re
@@ -59,8 +59,18 @@ class Mixin:
     return transaction
 
   def change_transactions_recipient(self, current_owner, new_owner):
-    # We can't do that as a batch because update won't give us the list
-    # of updated transactions.
+    # XXX:
+    # 1: We can't do that as a batch because update won't give us the list
+    # of updated transactions to send notifications.
+    # 2: Also, involved will contain both new and old recipient id.
+    #
+    # 1: could be achived by doing a 'resynch' notification, forcing the user
+    # to resynch in model.
+    # 2: could be done in two steps, in order to get the sender id and reforge
+    # a complete 'involved' field.
+    #
+    # Let's consider that most of the ghosts don't have that many
+    # transactions...
     while True:
       transaction = self.database.transactions.find_and_modify(
         {
@@ -71,6 +81,14 @@ class Mixin:
             'recipient_id': new_owner['_id'],
             'modification_time': self.now,
             'mtime': time.time(),
+          },
+          # Cannot pull the old one and add the new one at the same time.
+          # (read 2.).
+          # '$pull': {
+          #   'involved': current_owner['_id']
+          # },
+          '$addToSet': {
+            'involved': new_owner['_id']
           }
         },
         new = True)
@@ -105,6 +123,20 @@ class Mixin:
                       str(transaction['_id']))
         continue
 
+  @property
+  def __transaction_hash_fields(self):
+    res = {
+      '_id': False,
+      'download_link': True,
+      'files': True,
+      'message': True,
+      'recipient_id': True,
+      'sender_fullname': True,
+      'sender_id': True,
+      'total_size': True,
+    }
+    return res
+
   @api('/transaction/by_hash/<transaction_hash>')
   def transaction_by_hash(self, transaction_hash):
     """
@@ -115,16 +147,8 @@ class Mixin:
     with elle.log.debug('fetch transaction with hash: %s' % transaction_hash):
       transaction = self.database.transactions.find_one(
         {'transaction_hash': transaction_hash},
-        fields = {
-          '_id': False,
-          'download_link': True,
-          'files': True,
-          'message': True,
-          'recipient_id': True,
-          'sender_fullname': True,
-          'sender_id': True,
-          'total_size': True,
-        })
+        fields = self.__transaction_hash_fields
+      )
       if transaction is None:
         return self.not_found()
       else:
@@ -200,6 +224,7 @@ class Mixin:
     Create an empty transaction, to be filled in a separate API call.
     This allows for the client finer snapshot granularity, along with easier
     cleanup of unfulfilled transactions.
+    Deprecated by /transactions POST.
 
     Return: the newly created transaction id.
     """
@@ -216,49 +241,221 @@ class Mixin:
   @require_logged_in
   def transaction_fill(self,
                        t_id: bson.ObjectId,
-                       id_or_email,
                        files,
                        files_count,
                        total_size,
                        is_directory,
                        device_id, # Can be determine by session.
                        recipient_device_id = None,
+                       id_or_email = None,
+                       recipient_identifier = None,
                        message = ""):
     return self.transaction_create(
-      self.user,
-      id_or_email,
-      files, files_count, total_size, is_directory,
-      device_id,
-      message,
-      t_id,
-      recipient_device_id = recipient_device_id)
+      sender = self.user,
+      files = files,
+      files_count = files_count,
+      total_size = total_size,
+      is_directory = is_directory,
+      device_id = device_id,
+      transaction_id = t_id,
+      id_or_email = id_or_email,
+      recipient_device_id = recipient_device_id,
+      recipient_identifier = recipient_identifier,
+      message = message)
 
+  @api('/transactions', method = 'POST')
+  @require_logged_in
+  def transaction_post(self,
+                       recipient_identifier,
+                       files,
+                       files_count,
+                       message):
+    """
+    Create a bare transaction, with minimal information and placeholder values.
+    Deprecates /transactions/create_empty POST.
+    """
+    return self._transactions(self.user,
+                              recipient_identifier,
+                              message,
+                              files,
+                              files_count)
+
+  def __recipient_from_identifier(self,
+                                  recipient_identifier,
+                                  sender):
+    """Get the recipient from identifier. If it doesn't exist, create a ghost.
+    recipient_identifier -- The user identifier (can be an email, ObjectId or
+                            a phone number)
+    sender -- The transaction sender.
+
+    Return ghost, new_user tuple.
+    """
+    recipient_fields = self.__user_view_fields + [
+      'email',
+      'devices.id',
+      'features',
+      'ghost_code',
+      'shorten_ghost_profile_url',
+    ]
+    # Determine the nature of the recipient identifier.
+    recipient_id = None
+    recipient = None
+    is_a_phone_number = False
+    is_an_email = False
+    peer_email = None
+    phone_number = None
+    try:
+      recipient_id = bson.ObjectId(recipient_identifier)
+      # recipient_identifier is an ObjectId.
+      recipient = self.__user_fetch(
+        {'_id': recipient_id},
+        fields = recipient_fields)
+      if recipient is not None:
+        return recipient, False
+    except bson.errors.InvalidId:
+      pass
+    is_an_email = re.match(regexp.Email, recipient_identifier)
+    if is_an_email is not None:
+      elle.log.debug("%s is an email" % recipient_identifier)
+      peer_email = recipient_identifier.lower().strip()
+      # XXX: search email in each accounts.
+      recipient = self.user_by_email(peer_email,
+                                     fields = recipient_fields,
+                                     ensure_existence = False)
+    else:
+      device = self.current_device
+      phone_number = clean_up_phone_number(
+        recipient_identifier, device.get('country_code', None))
+      is_a_phone_number = phone_number is not None
+      if is_a_phone_number:
+        elle.log.debug("%s is an phone" % phone_number)
+        recipient = self.user_by_phone_number(phone_number,
+                                              fields = recipient_fields,
+                                              ensure_existence = False)
+    if is_a_phone_number is False and is_an_email is False:
+      return self.bad_request({
+        'reason': 'recipient_identifier was ill-formed'
+      })
+    if recipient is None:
+      elle.log.trace("recipient unknown, create a ghost")
+      new_user = True
+      if is_an_email:
+        recipient_id = self.__register_ghost({
+          'email': peer_email,
+          'fullname': peer_email, # This is safe as long as we don't allow searching for ghost users.
+          'accounts': [{'type':'email', 'id': peer_email}],
+        })
+      if is_a_phone_number:
+        recipient_id = self.__register_ghost({
+          'phone_number': phone_number,
+          'fullname': phone_number, # Same comment.
+          'accounts': [{'type':'phone', 'id': phone_number}],
+        })
+      if recipient_id is None:
+        return self.bad_request({
+          'reason': 'recipient_identifier was ill-formed'
+      })
+      recipient = self.__user_fetch(
+        {"_id": recipient_id},
+        fields = recipient_fields)
+      # Post new_ghost event to metrics
+      url = 'http://metrics.9.0.api.production.infinit.io/collections/users'
+      metrics = {
+        'event': 'new_ghost',
+        'user': str(recipient['_id']),
+        'features': recipient['features'],
+        'sender': str(sender['_id']),
+        'timestamp': time.time(),
+      }
+      res = requests.post(
+        url,
+        headers = {'content-type': 'application/json'},
+        data = json.dumps(metrics),
+      )
+      elle.log.debug('metrics answer: %s' % res)
+      return recipient, True
+    else:
+      return recipient, False
+
+  def _transactions(self,
+                    sender,
+                    recipient_identifier,
+                    message,
+                    files,
+                    files_count):
+    with elle.log.trace("create transaction (recipient %s)" % recipient_identifier):
+      recipient_identifier = recipient_identifier.strip().lower()
+      recipient, new_user = self.__recipient_from_identifier(
+        recipient_identifier,
+        sender)
+      is_ghost = recipient['register_status'] == "ghost"
+      transaction = {
+        'sender_id': '',
+        'sender_fullname': '',
+        'sender_device_id': '',
+
+        'recipient_id': bson.ObjectId(recipient['_id']),
+        'recipient_fullname': '',
+        'recipient_device_id': '',
+        'involved': ['', recipient['_id']],
+        # Empty until accepted.
+        'recipient_device_name': '',
+
+        'message': message,
+
+        'files': files,
+        'files_count': files_count,
+        'total_size': 0,
+        'is_directory': False,
+
+        'creation_time': self.now,
+        'modification_time': self.now,
+        'ctime': time.time(),
+        'mtime': time.time(),
+        'status': transaction_status.CREATED,
+        'fallback_host': None,
+        'fallback_port_ssl': None,
+        'fallback_port_tcp': None,
+        'aws_credentials': None,
+        'is_ghost': False,
+        'strings': ''
+        }
+      transaction_id = self.database.transactions.insert(transaction)
+      return {
+        'created_transaction_id': transaction_id,
+      }
 
   @api('/transaction/create', method = 'POST')
   @require_logged_in
   def transaction_create_api(self,
-                             id_or_email,
                              files,
                              files_count,
                              total_size,
                              is_directory,
                              device_id, # Can be determine by session.
-                             message = ""):
+                             message = "",
+                             recipient_identifier = None,
+                             id_or_email = None):
     return self.transaction_create(
-      self.user,
-      id_or_email,
-      files, files_count, total_size, is_directory,
-      device_id,
-      message)
+      sender = self.user,
+      files = files,
+      files_count = files_count,
+      total_size = total_size,
+      is_directory = is_directory,
+      id_or_email = id_or_email,
+      recipient_identifier = recipient_identifier,
+      device_id = device_id,
+      message = message)
 
   def transaction_create(self,
                          sender,
-                         id_or_email,
                          files,
                          files_count,
                          total_size,
                          is_directory,
                          device_id, # Can be determine by session.
+                         id_or_email = None,
+                         recipient_identifier = None,
                          message = "",
                          transaction_id = None,
                          recipient_device_id = None):
@@ -267,12 +464,13 @@ class Mixin:
     If you pass an email and the user is not registered in infinit,
     create a 'ghost' in the database, waiting for him to register.
 
-    id_or_email -- the recipient id or email.
     files -- the list of files names.
     files_count -- the number of files.
     total_size -- the total size.
     is_directory -- if the sent file is a directory.
     device_id -- the emiter device id.
+    id_or_email -- the recipient id or email.
+    recipient -- a more generic id_or_email.
     message -- an optional message.
     transaction_id -- id if the transaction was previously created with
     create_empty.
@@ -280,80 +478,16 @@ class Mixin:
     Errors:
     Using an id that doesn't exist.
     """
-    with elle.log.trace("create transaction (recipient %s)" % id_or_email):
-      id_or_email = id_or_email.strip().lower()
-
-      new_user = False
-      is_ghost = False
-      invitee = 0
-      peer_email = ""
-
-      recipient_fields = self.__user_view_fields + [
-        'email',
-        'devices.id',
-      ]
-      if re.match(regexp.Email, id_or_email): # email.
-        elle.log.debug("%s is an email" % id_or_email)
-        peer_email = id_or_email.lower().strip()
-        # XXX: search email in each accounts.
-        recipient = self.__user_fetch(
-          {'accounts.id': peer_email},
-          fields = recipient_fields)
-        # if the user doesn't exist, create a ghost and invite.
-
-        if not recipient:
-          elle.log.trace("recipient unknown, create a ghost")
-          new_user = True
-          features = self._roll_features(True)
-          recipient_id = self._register(
-            email = peer_email,
-            fullname = peer_email, # This is safe as long as we don't allow searching for ghost users.
-            register_status = 'ghost',
-            notifications = [],
-            networks = [],
-            devices = [],
-            swaggers = {},
-            accounts = [{'type':'email', 'id':peer_email}],
-            features = features
-          )
-          recipient = self.__user_fetch(
-            recipient_id,
-            fields = recipient_fields)
-          # Post new_ghost event to metrics
-          url = 'http://metrics.9.0.api.production.infinit.io/collections/users'
-          metrics = {
-            'event': 'new_ghost',
-            'user': str(recipient['_id']),
-            'features': features,
-            'sender': str(sender['_id']),
-            'timestamp': time.time(),
-          }
-          res = requests.post(
-            url,
-            headers = {'content-type': 'application/json'},
-            data = json.dumps(metrics),
-          )
-          elle.log.debug('metrics answer: %s' % res)
-      else:
-        try:
-          recipient_id = bson.ObjectId(id_or_email)
-        except Exception as e:
-          return self.fail(error.USER_ID_NOT_VALID)
-        recipient = self.__user_fetch(
-          recipient_id,
-          fields = recipient_fields)
-      if recipient is None:
-        return self.fail(error.USER_ID_NOT_VALID)
-      if recipient['register_status'] == 'merged':
-        assert isinstance(recipient['merged_with'], bson.ObjectId)
-        recipient = self.__user_fetch(
-          {
-            '_id': recipient['merged_with']
-          },
-          fields = self.__user_view_field
-        )
-        if recipient is None:
-          return self.fail(error.USER_ID_NOT_VALID)
+    if id_or_email is None and recipient_identifier is None:
+      self.bad_request({
+        'reason': 'you must provide id_or_email or recipient_identifier'
+      })
+    recipient_identifier = recipient_identifier or id_or_email
+    with elle.log.trace("create transaction (recipient %s)" % recipient_identifier):
+      recipient_identifier = recipient_identifier.strip().lower()
+      recipient, new_user = self.__recipient_from_identifier(recipient_identifier,
+                                                             sender)
+      is_ghost = recipient['register_status'] == "ghost"
       if recipient['register_status'] == 'deleted':
         self.gone({
           'reason': 'user %s is deleted' % recipient['_id'],
@@ -369,7 +503,6 @@ class Mixin:
       is_ghost = recipient['register_status'] == 'ghost'
       elle.log.debug("transaction recipient has id %s" % recipient['_id'])
       _id = sender['_id']
-
       elle.log.debug('Sender agent %s, version %s, peer_new %s peer_ghost %s'
                      % (self.user_agent, self.user_version, new_user,  is_ghost))
       transaction = {
@@ -377,10 +510,9 @@ class Mixin:
         'sender_fullname': sender['fullname'],
         'sender_device_id': device_id, # bson.ObjectId(device_id),
 
-        'recipient_id': recipient['_id'],
+        'recipient_id': recipient['_id'], #X
         'recipient_fullname': recipient['fullname'],
-        'recipient_device_id':
-        recipient_device_id if recipient_device_id else '',
+        'recipient_device_id': recipient_device_id if recipient_device_id else '',
         'involved': [_id, recipient['_id']],
         # Empty until accepted.
         'recipient_device_name': '',
@@ -433,9 +565,7 @@ class Mixin:
         pending = transaction,
         time = True)
 
-      if not peer_email:
-        peer_email = recipient.get('email', None)
-
+      peer_email = recipient.get('email', None)
       if peer_email is not None:
         recipient_offline = all(d.get('trophonius') is None
                                 for d in recipient.get('devices', []))
@@ -457,12 +587,12 @@ class Mixin:
             )
 
       self._increase_swag(sender['_id'], recipient['_id'])
-
+      recipient_view = self.__user_view(recipient)
       return self.success({
           'created_transaction_id': transaction_id,
           'remaining_invitations': sender.get('remaining_invitations', 0),
           'recipient_is_ghost': is_ghost,
-          'recipient': self.__user_view(recipient),
+          'recipient': recipient_view,
         })
 
   def __update_transaction_stats(self,
@@ -540,80 +670,18 @@ class Mixin:
       # /FIXME
       return self.success({'transactions': res})
 
-  # Previous (shitty) transactions fetching API that only returns ids.
-  # This is for backwards compatability < 0.9.1.
-  @api('/transactions', method = 'POST')
-  @require_logged_in
-  def transaction_post(self,
-                       filter = transaction_status.final + [transaction_status.CREATED],
-                       type = False,
-                       peer_id = None,
-                       count = 100,
-                       offset = 0):
-    return self._transactions(filter = filter,
-                              peer_id = peer_id,
-                              type = type,
-                              count = count,
-                              offset = offset)
-
-  def _transactions(self,
-                    filter,
-                    type,
-                    peer_id,
-                    count,
-                    offset):
-    """
-    Get all transaction involving user (as sender or recipient) which fit parameters.
-
-    filter -- a list of transaction status.
-    type -- make request inclusiv or exclusiv.
-    count -- the number of transactions to get.
-    offset -- the number of transactions to skip.
-    _with -- The peer id if specified.
-    """
-    inclusive = type
-    user_id = self.user['_id']
-
-    if peer_id is not None:
-      peer_id = bson.ObjectId(peer_id)
-      query = {
-        '$or':
-        [
-          { 'recipient_id': user_id, 'sender_id': peer_id, },
-          { 'sender_id': user_id, 'recipient_id': peer_id, },
-        ]}
-    else:
-      query = {
-        '$or':
-          [
-            { 'sender_id': user_id },
-            { 'recipient_id': user_id },
-          ]
-        }
-
-    query['status'] = {'$%s' % (inclusive and 'in' or 'nin'): filter}
-
-    from pymongo import ASCENDING, DESCENDING
-    find_params = {
-      'spec': query,
-      'limit': count,
-      'skip': offset,
-      'fields': ['_id'],
-      'sort': [
-        ('mtime', DESCENDING),
-        ],
-      }
-
-    return self.success(
-      {
-        "transactions": [ t['_id'] for t in self.database.transactions.find(**find_params)
-                        ]
-      }
-    )
-
   def cloud_cleanup_transaction(self, transaction):
     # cloud_buffer_token.delete_directory(transaction.id)
     return {}
+
+  # Shorten url.
+  def shorten(self, url):
+    if self.shorten_ghost_profile_url:
+      from .bitly import bitly
+      b = bitly()
+      url = b.shorten(url)['url']
+      return url
+    return url
 
   def on_accept(self, transaction, user, device_id, device_name):
     with elle.log.trace("accept transaction as %s" % device_id):
@@ -671,8 +739,9 @@ class Mixin:
   def on_ghost_uploaded(self, transaction, device_id, device_name, user):
     elle.log.log('Transaction finished');
     # Guess if this was a ghost cloud upload or not
-    recipient = self.__user_fetch(transaction['recipient_id'],
-                                  fields = self.__user_view_fields + ['email'])
+    recipient = self.__user_fetch(
+      transaction['recipient_id'],
+      fields = self.__user_view_fields + ['email', 'ghost_code', 'shorten_ghost_profile_url'])
     if recipient['register_status'] == 'deleted':
       self.gone({
         'reason': 'user %s is deleted' % recipient['_id'],
@@ -680,8 +749,8 @@ class Mixin:
       })
     elle.log.log('Peer status: %s' % recipient['register_status'])
     elle.log.log('transaction: %s' % transaction.keys())
+    peer_email = recipient.get('email', '')
     if transaction.get('is_ghost', False):
-      peer_email = recipient['email']
       transaction_id = transaction['_id']
       elle.log.trace("send invitation to new user %s for transaction %s" % (
         peer_email, transaction_id))
@@ -711,32 +780,39 @@ class Mixin:
       # Generate hash for transaction and store it in the transaction
       # collection.
       transaction_hash = self._hash_transaction(transaction)
-      mail_template = 'send-file-url'
-      if 'features' in recipient and 'send_file_url_template' in recipient['features']:
-        mail_template = recipient['features']['send_file_url_template']
-
-      source = (user['fullname'], self.user_identifier(user))
-      invitation.invite_user(
-        peer_email,
-        mailer = self.mailer,
-        mail_template = mail_template,
-        source = source,
-        database = self.database,
-        merge_vars = {
-          peer_email: {
-            'filename': transaction['files'][0],
-            'recipient_email': recipient['email'],
-            'recipient_name': recipient['fullname'],
-            'sendername': user['fullname'],
-            'sender_email': user.get('email', ''),
-            'sender_avatar': 'https://%s/user/%s/avatar' %
-              (bottle.request.urlparts[1], user['_id']),
-            'note': transaction['message'],
-            'transaction_hash': transaction_hash,
-            'transaction_id': str(transaction['_id']),
-            'number_of_other_files': len(transaction['files']) - 1,
-          }}
-      )
+      if peer_email:
+        mail_template = 'send-file-url'
+        if 'features' in recipient and 'send_file_url_template' in recipient['features']:
+          mail_template = recipient['features']['send_file_url_template']
+        merges = {
+          'filename': transaction['files'][0],
+          'recipient_email': peer_email,
+          'recipient_name': recipient['fullname'],
+          'sendername': user['fullname'],
+          'sender_email': user['email'],
+          'sender_avatar': 'https://%s/user/%s/avatar' %
+          (bottle.request.urlparts[1], user['_id']),
+          'note': transaction['message'],
+          'transaction_hash': transaction_hash,
+          'transaction_id': str(transaction['_id']),
+          'number_of_other_files': len(transaction['files']) - 1,
+          # Ghost created pre 0.9.30 has no ghost code.
+        }
+        if 'ghost_code' in recipient:
+          merges.update({
+            'ghost_code': recipient['ghost_code'],
+            'ghost_profile': recipient.get(
+              'shorten_ghost_profile_url',
+              self.__ghost_profile_url(recipient, type = "email")),
+          })
+        source = (user['fullname'], self.user_identifier(user))
+        invitation.invite_user(
+          peer_email,
+          mailer = self.mailer,
+          mail_template = mail_template,
+          source = source,
+          database = self.database,
+          merge_vars = {peer_email: merges})
       return {
         'transaction_hash': transaction_hash,
         'download_link': ghost_get_url,

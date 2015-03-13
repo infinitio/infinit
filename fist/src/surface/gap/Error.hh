@@ -79,6 +79,13 @@ namespace infinit
       inline VersionRejected();
     };
 
+    class MissingEmail
+      : public LoginError
+    {
+    public:
+      inline MissingEmail();
+    };
+
     /*-----------------.
     | Self User Errors |
     `-----------------*/
@@ -132,6 +139,23 @@ namespace infinit
     {
     public:
       inline TransactionFinalized();
+    };
+
+    /*--------------.
+    | Merge account |
+    `--------------*/
+    class InvalidGhostCode
+      : public Error
+    {
+    public:
+      inline InvalidGhostCode();
+    };
+
+    class GhostCodeAlreadyUsed
+      : public Error
+    {
+    public:
+      inline GhostCodeAlreadyUsed();
     };
   }
 }

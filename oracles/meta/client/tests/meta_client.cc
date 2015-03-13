@@ -1,3 +1,4 @@
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/uuid/nil_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/uuid/uuid.hpp>
@@ -10,6 +11,7 @@
 #include <elle/serialization/json/MissingKey.hh>
 
 #include <reactor/scheduler.hh>
+#include <reactor/http/exceptions.hh>
 
 #include <infinit/oracles/meta/Admin.hh>
 #include <infinit/oracles/meta/Client.hh>
@@ -51,6 +53,40 @@ protected:
   }
 };
 
+static
+std::string
+login_success_response(elle::UUID id = elle::UUID("00000000-0000-0000-0000-000000000001"))
+{
+  return elle::sprintf("{"
+                       "  \"device\": {\"id\": \"%s\", \"name\": \"johny\", \"passport\": \"passport\"},"
+                       "  \"trophonius\": {\"host\": \"192.168.1.1\", \"port\": 4923, \"port_ssl\": 4233},"
+                       "  \"features\": [],"
+                       "  \"self\": {"
+                       "    \"_id\": \"0\","
+                       "    \"id\": \"0\","
+                       "    \"fullname\": \"jean\","
+                       "    \"email\": \"jean@infinit.io\","
+                       "    \"handle\": \"jean\","
+                       "    \"register_status\": \"ok\","
+                       "    \"identity\": \"identity\","
+                       "    \"passport\": \"passport\","
+                       "    \"devices\": [\"%s\"],"
+                       "    \"networks\": [],"
+                       "    \"public_key\": \"public_key\","
+                       "    \"name\": \"FUUUUUUUUUUCK\","
+                       "    \"accounts\": [],"
+                       "    \"remaining_invitations\": 0,"
+                       "    \"token_generation_key\": \"token_generation_key\","
+                       "    \"favorites\": [],"
+                       "    \"connected_devices\": [\"%s\"],"
+                       "    \"status\": 1,"
+                       "    \"creation_time\": 1420565249,"
+                       "    \"last_connection\": 1420565249"
+                       "    }"
+                       " }",
+                       id, id, id);
+}
+
 ELLE_TEST_SCHEDULED(connection_refused)
 {
   infinit::oracles::meta::Client c("http", "127.0.0.1", 21232);
@@ -67,35 +103,7 @@ ELLE_TEST_SCHEDULED(login_success)
         HTTPServer::Parameters const&,
         elle::Buffer const& body) -> std::string
     {
-      auto id = elle::UUID("00000000-0000-0000-0000-000000000001");
-      return elle::sprintf("{"
-                           " \"device\": {\"id\": \"%s\", \"name\": \"johny\", \"passport\": \"passport\"},"
-                           " \"trophonius\": {\"host\": \"192.168.1.1\", \"port\": 4923, \"port_ssl\": 4233},"
-                           " \"features\": [],"
-                           " \"self\": {"
-                           "   \"_id\": \"0\","
-                           "   \"id\": \"0\","
-                           "   \"fullname\": \"jean\","
-                           "   \"email\": \"jean@infinit.io\","
-                           "   \"handle\": \"jean\","
-                           "   \"register_status\": \"ok\","
-                           "   \"identity\": \"identity\","
-                           "   \"passport\": \"passport\","
-                           "   \"devices\": [\"%s\"],"
-                           "   \"networks\": [],"
-                           "   \"public_key\": \"public_key\","
-                           "   \"name\": \"FUUUUUUUUUUCK\","
-                           "   \"accounts\": [],"
-                           "   \"remaining_invitations\": 0,"
-                           "   \"token_generation_key\": \"token_generation_key\","
-                           "   \"favorites\": [],"
-                           "   \"connected_devices\": [\"%s\"],"
-                           "   \"status\": 1,"
-                           "   \"creation_time\": 1420565249,"
-                           "   \"last_connection\": 1420565249"
-                           "   }"
-                           " }",
-                           id, id, id);
+      return login_success_response();
     });
   s.register_route("/logout", reactor::http::Method::POST,
                    [] (HTTPServer::Headers const&,
@@ -535,36 +543,7 @@ ELLE_TEST_SCHEDULED(change_email)
                                     " \"message\": \"email password dont match\""
                                     "}");
       }
-      auto id = elle::UUID("00000000-0000-0000-0000-000000000001");
-      return elle::sprintf(
-        "{"
-        " \"device\": {\"id\": \"%s\", \"name\": \"johny\", \"passport\": \"passport\"},"
-        " \"trophonius\": {\"host\": \"192.168.1.1\", \"port\": 4923, \"port_ssl\": 4233},"
-        " \"features\": [],"
-        " \"self\": {"
-        "   \"_id\": \"0\","
-        "   \"id\": \"0\","
-        "   \"fullname\": \"jean\","
-        "   \"email\": \"jean@infinit.io\","
-        "   \"handle\": \"jean\","
-        "   \"register_status\": \"ok\","
-        "   \"identity\": \"identity\","
-        "   \"passport\": \"passport\","
-        "   \"devices\": [\"%s\"],"
-        "   \"networks\": [],"
-        "   \"public_key\": \"public_key\","
-        "   \"name\": \"FUUUUUUUUUUCK\","
-        "   \"accounts\": [],"
-        "   \"remaining_invitations\": 0,"
-        "   \"token_generation_key\": \"token_generation_key\","
-        "   \"favorites\": [],"
-        "   \"connected_devices\": [\"%s\"],"
-        "   \"status\": 1,"
-        "   \"creation_time\": 1420565249,"
-        "   \"last_connection\": 1420565249"
-        "   }"
-        " }",
-        id, id, id);
+      return login_success_response();
     });
   infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
 
@@ -578,155 +557,270 @@ ELLE_TEST_SCHEDULED(change_email)
   c.login("bob2@bob.com", "pass", boost::uuids::nil_uuid());
 }
 
-
-ELLE_TEST_SCHEDULED(facebook_connect_success)
+ELLE_TEST_SCHEDULED(merge_ghost)
 {
   HTTPServer s;
-  s.register_route("/login", reactor::http::Method::POST,
+  s.register_route("/ghost/foo/merge", reactor::http::Method::POST,
                    [] (HTTPServer::Headers const&,
                        HTTPServer::Cookies const&,
                        HTTPServer::Parameters const&,
                        elle::Buffer const& body) -> std::string
                    {
-                     auto id = elle::UUID("00000000-0000-0000-0000-000000000001");
-                     return elle::sprintf("{"
-                       " \"device\": {\"id\": \"%s\", \"name\": \"johny\", \"passport\": \"passport\"},"
-                       " \"trophonius\": {\"host\": \"192.168.1.1\", \"port\": 4923, \"port_ssl\": 4233},"
-                       " \"features\": [],"
-                       " \"self\": {"
-                       "   \"_id\": \"0\","
-                       "   \"id\": \"0\","
-                       "   \"fullname\": \"jean\","
-                       "   \"email\": \"jean@infinit.io\","
-                       "   \"handle\": \"jean\","
-                       "   \"register_status\": \"ok\","
-                       "   \"identity\": \"identity\","
-                       "   \"passport\": \"passport\","
-                       "   \"devices\": [\"%s\"],"
-                       "   \"networks\": [],"
-                       "   \"public_key\": \"public_key\","
-                       "   \"name\": \"FUUUUUUUUUUCK\","
-                       "   \"accounts\": [],"
-                       "   \"remaining_invitations\": 0,"
-                       "   \"token_generation_key\": \"token_generation_key\","
-                       "   \"favorites\": [],"
-                       "   \"connected_devices\": [\"%s\"],"
-                       "   \"status\": 1,"
-                       "   \"creation_time\": 1420565249,"
-                       "   \"last_connection\": 1420565249"
-                       "   }"
-                       " }",
-                      id, id, id);
+                     return "{}";
                    });
   infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
-  c.facebook_connect("foobar", boost::uuids::nil_uuid());
+  c.use_ghost_code("foo");
 }
 
-ELLE_TEST_SCHEDULED(facebook_connect_success_no_email)
+ELLE_TEST_SCHEDULED(url_encoded_merge_ghost)
 {
   HTTPServer s;
-  s.register_route("/login", reactor::http::Method::POST,
+  s.register_route("/ghost/foo%20/merge", reactor::http::Method::POST,
                    [] (HTTPServer::Headers const&,
                        HTTPServer::Cookies const&,
                        HTTPServer::Parameters const&,
                        elle::Buffer const& body) -> std::string
                    {
-                     auto id = elle::UUID("00000000-0000-0000-0000-000000000001");
-                     return elle::sprintf("{"
-                       " \"device\": {\"id\": \"%s\", \"name\": \"johny\", \"passport\": \"passport\"},"
-                       " \"trophonius\": {\"host\": \"192.168.1.1\", \"port\": 4923, \"port_ssl\": 4233},"
-                       " \"features\": [],"
-                       " \"self\": {"
-                       "   \"_id\": \"0\","
-                       "   \"id\": \"0\","
-                       "   \"fullname\": \"jean\","
-                       "   \"handle\": \"jean\","
-                       "   \"facebook_id\": \"12491274912789412984\","
-                       "   \"register_status\": \"ok\","
-                       "   \"identity\": \"identity\","
-                       "   \"passport\": \"passport\","
-                       "   \"devices\": [\"%s\"],"
-                       "   \"networks\": [],"
-                       "   \"public_key\": \"public_key\","
-                       "   \"name\": \"FUUUUUUUUUUCK\","
-                       "   \"accounts\": [],"
-                       "   \"remaining_invitations\": 0,"
-                       "   \"token_generation_key\": \"token_generation_key\","
-                       "   \"favorites\": [],"
-                       "   \"connected_devices\": [\"%s\"],"
-                       "   \"status\": 1,"
-                       "   \"creation_time\": 1420565249,"
-                       "   \"last_connection\": 1420565249"
-                       "   }"
-                       " }",
-                       id, id, id);
+                     return "{}";
                    });
   infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
-  c.facebook_connect("foobar", boost::uuids::nil_uuid());
+  c.use_ghost_code("foo ");
 }
 
-ELLE_TEST_SCHEDULED(facebook_connect_success_nor_facebook_id_nor_email)
+ELLE_TEST_SCHEDULED(merge_ghost_failure)
 {
   HTTPServer s;
-  s.register_route("/login", reactor::http::Method::POST,
-                   [] (HTTPServer::Headers const&,
-                       HTTPServer::Cookies const&,
-                       HTTPServer::Parameters const&,
-                       elle::Buffer const& body) -> std::string
-                   {
-                     auto id = elle::UUID("00000000-0000-0000-0000-000000000001");
-                     return elle::sprintf("{"
-                       " \"device\": {\"id\": \"%s\", \"name\": \"johny\", \"passport\": \"passport\"},"
-                       " \"trophonius\": {\"host\": \"192.168.1.1\", \"port\": 4923, \"port_ssl\": 4233},"
-                       " \"features\": [],"
-                       " \"self\": {"
-                       "   \"_id\": \"0\","
-                       "   \"id\": \"0\","
-                       "   \"fullname\": \"jean\","
-                       "   \"handle\": \"jean\","
-                       "   \"register_status\": \"ok\","
-                       "   \"identity\": \"identity\","
-                       "   \"passport\": \"passport\","
-                       "   \"devices\": [\"%s\"],"
-                       "   \"networks\": [],"
-                       "   \"public_key\": \"public_key\","
-                       "   \"name\": \"FUUUUUUUUUUCK\","
-                       "   \"accounts\": [],"
-                       "   \"remaining_invitations\": 0,"
-                       "   \"token_generation_key\": \"token_generation_key\","
-                       "   \"favorites\": [],"
-                       "   \"connected_devices\": [\"%s\"],"
-                       "   \"status\": 1,"
-                       "   \"creation_time\": 1420565249,"
-                       "   \"last_connection\": 1420565249"
-                       "   }"
-                       " }",
-                       id, id, id);
-                   });
-  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
-  c.facebook_connect("foobar", boost::uuids::nil_uuid());
-}
-
-
-ELLE_TEST_SCHEDULED(facebook_connect_failure)
-{
-  HTTPServer s;
-  s.register_route("/login", reactor::http::Method::POST,
+  s.register_route("/ghost/bar/merge", reactor::http::Method::POST,
                    [] (HTTPServer::Headers const&,
                        HTTPServer::Cookies const&,
                        HTTPServer::Parameters const&,
                        elle::Buffer const& body) -> std::string
                    {
                      throw HTTPServer::Exception("",
-                                                 reactor::http::StatusCode::Forbidden,
+                                                 reactor::http::StatusCode::Not_Found,
                                                  "{"
-                                                 " \"code\": -10101,"
-                                                 " \"message\": \"email password dont match\""
                                                  "}");
+
                    });
   infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
-  BOOST_CHECK_THROW(c.facebook_connect("foobar", boost::uuids::nil_uuid()),
-                    infinit::state::CredentialError);
+  // This should check for reactor::http::RequestError but it doesn't work.
+  BOOST_CHECK_THROW(c.use_ghost_code("foo"), elle::Exception);
+}
+
+ELLE_TEST_SCHEDULED(ghost_user_email)
+{
+  HTTPServer s;
+  s.register_route("/users/id", reactor::http::Method::GET,
+                   [] (HTTPServer::Headers const&,
+                       HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
+                       elle::Buffer const& body) -> std::string
+                   {
+                     return "{"
+                       "  \"id\": \"0\","
+                       "  \"fullname\": \"jean\","
+                       "  \"handle\": \"jean\","
+                       "  \"register_status\": \"ghost\","
+                       "  \"devices\": [],"
+                       "  \"public_key\": \"public_key\","
+                       "  \"connected_devices\": []"
+                       "}";
+                   });
+  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+  auto user = c.user("id");
+  ELLE_ASSERT(!user.ghost_code);
+  ELLE_ASSERT_EQ(user.register_status, "ghost");
+  ELLE_ASSERT(!user.online());
+  ELLE_ASSERT(user.ghost());
+  ELLE_ASSERT(!user.deleted());
+}
+
+ELLE_TEST_SCHEDULED(ghost_user_phone)
+{
+  HTTPServer s;
+  s.register_route("/users/id", reactor::http::Method::GET,
+                   [] (HTTPServer::Headers const&,
+                       HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
+                       elle::Buffer const& body) -> std::string
+                   {
+                     return "{"
+                       "  \"id\": \"0\","
+                       "  \"fullname\": \"jean\","
+                       "  \"handle\": \"jean\","
+                       "  \"register_status\": \"ghost\","
+                       "  \"devices\": [],"
+                       "  \"public_key\": \"public_key\","
+                       "  \"connected_devices\": [],"
+                       "  \"phone_number\": \"+33666000666\","
+                       "  \"ghost_code\": \"l32dz\","
+                       "  \"ghost_profile\": \"http://www.bit.ly/cul\""
+                       "}";
+                   });
+  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+  auto user = c.user("id");
+  ELLE_ASSERT_EQ(user.ghost_code.get(), "l32dz");
+  ELLE_ASSERT_EQ(user.phone_number.get(), "+33666000666");
+  ELLE_ASSERT_EQ(user.ghost_profile_url.get(), "http://www.bit.ly/cul");
+  ELLE_ASSERT_EQ(user.register_status, "ghost");
+  ELLE_ASSERT(!user.online());
+  ELLE_ASSERT(user.ghost());
+  ELLE_ASSERT(!user.deleted());
+}
+
+ELLE_TEST_SCHEDULED(normal_user)
+{
+  HTTPServer s;
+  auto id = elle::UUID("00000000-0000-0000-0000-000000000001");
+  s.register_route("/users/id", reactor::http::Method::GET,
+                   [&] (HTTPServer::Headers const&,
+                       HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
+                       elle::Buffer const& body) -> std::string
+                   {
+                     return elle::sprintf("{"
+                       "  \"id\": \"1\","
+                       "  \"fullname\": \"jean\","
+                       "  \"handle\": \"jean\","
+                       "  \"register_status\": \"ok\","
+                       "  \"devices\": [\"%s\"],"
+                       "  \"public_key\": \"public_key\","
+                       "  \"connected_devices\": [\"%s\"]"
+                       "}", id, id);
+
+                   });
+  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+  auto user = c.user("id");
+  ELLE_ASSERT(user.online());
+  ELLE_ASSERT(!user.ghost());
+  ELLE_ASSERT(!user.deleted());
+  ELLE_ASSERT(!user.online_excluding_device(id));
+  ELLE_ASSERT(user.online());
+}
+
+namespace facebook
+{
+  ELLE_TEST_SCHEDULED(connect_success)
+  {
+    HTTPServer s;
+    s.register_route("/login", reactor::http::Method::POST,
+                     [] (HTTPServer::Headers const&,
+                         HTTPServer::Cookies const&,
+                         HTTPServer::Parameters const&,
+                         elle::Buffer const& body) -> std::string
+                     {
+                       return login_success_response();
+                     });
+    infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+    c.facebook_connect("foobar", boost::uuids::nil_uuid());
+  }
+
+  ELLE_TEST_SCHEDULED(already_registered)
+  {
+    HTTPServer s;
+    s.register_route("/users/yes", reactor::http::Method::GET,
+                     [] (HTTPServer::Headers const&,
+                         HTTPServer::Cookies const&,
+                         HTTPServer::Parameters const& parameters,
+                         elle::Buffer const&) -> std::string
+                     {
+                       ELLE_ASSERT(contains(parameters, "account_type"));
+                       return "{}";
+                     });
+    s.register_route("/users/no", reactor::http::Method::GET,
+                     [] (HTTPServer::Headers const&,
+                         HTTPServer::Cookies const&,
+                         HTTPServer::Parameters const& parameters,
+                         elle::Buffer const&) -> std::string
+                     {
+                       ELLE_ASSERT(contains(parameters, "account_type"));
+                       throw HTTPServer::Exception(
+                         "/users/facebook/no",
+                         reactor::http::StatusCode::Not_Found,
+                         "{"
+                         "}");
+                     });
+    infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+    ELLE_ASSERT(c.facebook_id_already_registered("yes"));
+    ELLE_ASSERT(!c.facebook_id_already_registered("no"));
+  }
+
+  ELLE_TEST_SCHEDULED(connect_failure)
+  {
+    HTTPServer s;
+    s.register_route("/login", reactor::http::Method::POST,
+                     [] (HTTPServer::Headers const&,
+                         HTTPServer::Cookies const&,
+                         HTTPServer::Parameters const&,
+                         elle::Buffer const& body) -> std::string
+                     {
+                       throw HTTPServer::Exception("",
+                                                   reactor::http::StatusCode::Forbidden,
+                                                   "{"
+                                                   " \"code\": -10101,"
+                                                   " \"message\": \"email password dont match\""
+                                                   "}");
+                     });
+    infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+    BOOST_CHECK_THROW(c.facebook_connect("foobar", boost::uuids::nil_uuid()),
+                      infinit::state::CredentialError);
+  }
+}
+
+namespace devices
+{
+  ELLE_TEST_SCHEDULED(devices)
+  {
+    auto uuid1 = elle::UUID("00000000-0000-0000-0000-000000000001");
+    auto uuid2 = elle::UUID("00000000-0000-0000-0000-000000000002");
+    using namespace boost::posix_time;
+    HTTPServer s;
+    s.register_route("/user/devices",
+                     reactor::http::Method::GET,
+                     [uuid1, uuid2] (
+                       HTTPServer::Headers const&,
+                       HTTPServer::Cookies const&,
+                       HTTPServer::Parameters const&,
+                       elle::Buffer const& body
+                     ) -> std::string
+                     {
+                       return elle::sprintf(R"JSON({
+                         "devices": [
+                           {
+                             "id": "%s",
+                             "name": "device-name-1",
+                             "passport": "device-passport",
+                             "os": "gnu-linux",
+                             "last_sync": "2015-03-06T01:02:03Z"
+                           },
+                           {
+                             "id": "%s",
+                             "name": "device-name-2"
+                           }
+                         ]
+                       })JSON", uuid1, uuid2);
+                     });
+    infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+    auto devices = c.devices();
+    BOOST_CHECK_EQUAL(devices.size(), 2);
+    {
+      auto device = devices[0];
+      BOOST_CHECK_EQUAL(device.id, uuid1);
+      BOOST_CHECK_EQUAL(device.name, "device-name-1");
+      BOOST_CHECK_EQUAL(device.passport.get(), "device-passport");
+      BOOST_CHECK_EQUAL(device.os.get(), "gnu-linux");
+      BOOST_CHECK_EQUAL(device.last_sync.get(),
+                        time_from_string("2015-03-06 01:02:03.000"));
+    }
+    {
+      auto device = devices[1];
+      BOOST_CHECK_EQUAL(device.id, uuid2);
+      BOOST_CHECK_EQUAL(device.name, "device-name-2");
+      BOOST_CHECK(!device.passport);
+      BOOST_CHECK(!device.os);
+      BOOST_CHECK(!device.last_sync);
+    }
+  }
 }
 
 ELLE_TEST_SUITE()
@@ -749,8 +843,23 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(link_credentials));
   suite.add(BOOST_TEST_CASE(transaction_create));
   suite.add(BOOST_TEST_CASE(change_email));
-  suite.add(BOOST_TEST_CASE(facebook_connect_success));
-  suite.add(BOOST_TEST_CASE(facebook_connect_success_no_email));
-  suite.add(BOOST_TEST_CASE(facebook_connect_success_nor_facebook_id_nor_email));
-  suite.add(BOOST_TEST_CASE(facebook_connect_failure));
+  suite.add(BOOST_TEST_CASE(merge_ghost));
+  suite.add(BOOST_TEST_CASE(url_encoded_merge_ghost));
+  suite.add(BOOST_TEST_CASE(merge_ghost_failure));
+  suite.add(BOOST_TEST_CASE(normal_user));
+  suite.add(BOOST_TEST_CASE(ghost_user_email));
+  suite.add(BOOST_TEST_CASE(ghost_user_phone));
+  {
+    boost::unit_test::test_suite* s = BOOST_TEST_SUITE("facebook");
+    suite.add(s);
+    s->add(BOOST_TEST_CASE(facebook::connect_success));
+    s->add(BOOST_TEST_CASE(facebook::already_registered));
+    s->add(BOOST_TEST_CASE(facebook::connect_failure));
+  }
+  {
+    boost::unit_test::test_suite* s = BOOST_TEST_SUITE("devices");
+    suite.add(s);
+    auto devices = &devices::devices;
+    s->add(BOOST_TEST_CASE(devices));
+  }
 }

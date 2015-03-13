@@ -5,90 +5,12 @@ import copy
 from infinit.oracles.meta.server.facebook import FacebookGraph
 from infinit.oracles.utils import api
 from infinit.oracles.meta import error
-from utils import Meta, HTTPException
+from utils import Meta, HTTPException, Facebook
 from bottle import route, run, template
 from random import uniform
 from uuid import uuid4
 import random
 
-class Facebook:
-
-  def __init__(self,
-               broken_at = False):
-    self.broken_at = broken_at
-    self.__next_client_data = None
-
-  @property
-  def app_access_token(self):
-    if self.broken_at == 'app_access_token':
-      raise error.Error(error.EMAIL_PASSWORD_DONT_MATCH)
-    return self.__app_access_token
-
-  @property
-  def next_client_data(self):
-    if self.__next_client_data is None:
-      self.__next_client_data = {
-        'id': int(uniform(1000000000000000, 1500000000000000)),
-        'email': None,
-      }
-    return self.__next_client_data
-
-  def set_next_client_data(self, data):
-    self.__next_client_data = data
-
-  class Client:
-    def __init__(self,
-                 server,
-                 long_lived_access_token,
-                 id,
-                 email):
-      self.__server = server
-      self.__long_lived_access_token = long_lived_access_token
-      self.__data = None
-      self.__data = {
-        'name': 'Joseph Total',
-        'first_name': 'Joseph',
-        'last_name': 'Total',
-        'id': str(id)
-      }
-      if email:
-        self.__data.update({
-          'email': email
-        })
-
-    @property
-    def long_lived_access_token(self):
-      if self.__server.broken_at == 'client_access_token':
-        raise error.Error(error.EMAIL_PASSWORD_DONT_MATCH)
-      if self.__access_token is None:
-        self.__access_token = self.__server.client_access_token
-      return self.__access_token
-
-    @property
-    def data(self):
-      if self.__server.broken_at == 'client_data':
-        raise error.Error(error.EMAIL_PASSWORD_DONT_MATCH)
-      return self.__data
-
-    @property
-    def facebook_id(self):
-      return str(self.data['id'])
-
-    @property
-    def permissions(self):
-      pass
-
-  def user(self,
-           code = None,
-           short_lived_access_token = None,
-           long_lived_access_token = None):
-    data = self.next_client_data
-    return Facebook.Client(
-      server = self,
-      long_lived_access_token = long_lived_access_token,
-      id = data['id'],
-      email = data['email'],
-    )
 
 ############################################################
 # Fake
@@ -103,9 +25,16 @@ with Meta(enable_emails = False) as meta:
       'id': id,
       'email': '%s@infinit.io' % id,
     })
+    try:
+      meta.get('users/facebook/%s' % id)
+      assert False
+    except HTTPException as e:
+      assert e.status == 404
+
     for _ in range(2):
       bob.facebook_connect("token")
       facebook_id = bob.facebook_id
+      meta.get('users/facebook/%s' % facebook_id)
       bob.logout()
       try:
         print(bob.me)
@@ -119,6 +48,7 @@ with Meta(enable_emails = False) as meta:
       bob.logout()
     assert meta.database.users.count() == 1
     bob.facebook_connect("bite")
+    bob.get('user/synchronize?init=0')
 
 # Multiple users.
 with Meta(enable_emails = False) as meta:
@@ -160,14 +90,16 @@ with Meta(enable_emails = False) as meta:
     give_a_different_access_token(meta)
     bob_device_1.facebook_connect("TokenToken")
 
+    bob_device_1.get('user/synchronize?init=0')
+    bob_device_0.get('user/synchronize?init=0')
     assert meta.database.sessions.count() == 2
     bob_device_0.logout()
     assert meta.database.sessions.count() == 1
     try:
       bob_device_0.me
       assert False
-    except HTTPException:
-      pass
+    except HTTPException as e:
+      assert e.status == 403
     bob_device_1.me
 
     bob_web_0 = copy.deepcopy(bob)
@@ -188,14 +120,14 @@ with Meta(enable_emails = False) as meta:
       bob_web_1.me
       assert False
     except HTTPException as e:
-      pass
+      assert e.status == 403
     assert meta.database.sessions.count() == 2
     bob_web_0.logout()
     try:
       bob_web_0.me
       assert False
     except HTTPException as e:
-      pass
+      assert e.status == 403
     assert meta.database.sessions.count() == 1
     bob_device_1.logout()
     assert meta.database.sessions.count() == 0
@@ -203,7 +135,7 @@ with Meta(enable_emails = False) as meta:
       bob_device_1.me
       assert False
     except HTTPException as e:
-      pass
+      assert e.status == 403
 
 # Send.
 with Meta(enable_emails = True) as meta:
@@ -251,21 +183,6 @@ with Meta(enable_emails = True) as meta:
     alice.facebook_connect("foo")
     assert len(alice.transactions) == 2
 
-# No email.
-with Meta(enable_emails = True) as meta:
-  with Trophonius(meta):
-    meta.inner.facebook = Facebook()
-    meta.inner.facebook.set_next_client_data({
-      'id': int(uniform(1000000000000000, 1500000000000000)),
-      'email': None,
-    })
-    bob = User(meta, facebook = True)
-    try:
-      bob.facebook_connect("bite")
-      assert False
-    except HTTPException as e:
-      pass
-
 # Prefered email.
 with Meta(enable_emails = True) as meta:
   with Trophonius(meta):
@@ -288,37 +205,6 @@ with Meta(enable_emails = True) as meta:
     alice.facebook_connect("foo")
     assert len(alice.transactions) == 2
 
-# Main email taken.
-with Meta(enable_emails = True) as meta:
-  with Trophonius(meta):
-    user = User(meta, 'foobar@infinit.io')
-    meta.inner.facebook = Facebook()
-    meta.inner.facebook.set_next_client_data({
-      'id': int(uniform(1000000000000000, 1500000000000000)),
-      'email': 'foobar@infinit.io'
-    })
-    bob = User(meta, facebook = True)
-    try:
-      bob.facebook_connect("bite")
-      assert False
-    except HTTPException as e:
-      pass
-
-# Preferred email taken.
-with Meta(enable_emails = True) as meta:
-  with Trophonius(meta):
-    user = User(meta, 'alice@infinit.io')
-    meta.inner.facebook = Facebook()
-    meta.inner.facebook.set_next_client_data({
-      'id': int(uniform(1000000000000000, 1500000000000000)),
-      'email': 'foobar@infinit.io'
-    })
-    bob = User(meta, facebook = True)
-    try:
-      bob.facebook_connect("bite", preferred_email = "alice@infinit.io")
-      assert False
-    except HTTPException as e:
-      pass
 
 # Facebook connect on a ghost account.
 with Meta(enable_emails = True) as meta:
@@ -365,36 +251,85 @@ with Meta(enable_emails = True) as meta:
     bob.facebook_connect("bite", preferred_email = '      bob@infinit.io')
     assert len(bob.transactions) == 1
 
-# Ill formed prefered email.
-with Meta(enable_emails = True) as meta:
-  with Trophonius(meta):
-    meta.inner.facebook = Facebook()
-    meta.inner.facebook.set_next_client_data({
-      'id': int(uniform(1000000000000000, 1500000000000000)),
-      'email': 'serge@infinit.io'
-    })
-    bob = User(meta, facebook = True)
-    try:
-      bob.facebook_connect("bite", preferred_email = 'infinit.io')
-      assert False
-    except HTTPException as e:
+for no_device in [True, False]:
+  # No email.
+  with Meta(enable_emails = True) as meta:
+    with Trophonius(meta):
+      meta.inner.facebook = Facebook()
+      meta.inner.facebook.set_next_client_data({
+        'id': int(uniform(1000000000000000, 1500000000000000)),
+        'email': None,
+      })
+      bob = User(meta, facebook = True)
+      try:
+        bob.facebook_connect("bite", no_device = no_device)
+        assert False
+      except HTTPException as e:
+        assert e.status == 400
 
-      pass
+  # Main email taken.
+  with Meta(enable_emails = True) as meta:
+    with Trophonius(meta):
+      email = 'foobar@infinit.io'
+      user = User(meta, email)
+      meta.inner.facebook = Facebook()
+      meta.inner.facebook.set_next_client_data({
+        'id': int(uniform(1000000000000000, 1500000000000000)),
+        'email': email,
+      })
+      bob = User(meta, facebook = True)
+      try:
+        bob.facebook_connect("bite", no_device = no_device)
+        assert False
+      except HTTPException as e:
+        assert e.status == 403
 
-# No email.
-with Meta(enable_emails = True) as meta:
-  with Trophonius(meta):
-    meta.inner.facebook = Facebook()
-    meta.inner.facebook.set_next_client_data({
-      'id': int(uniform(1000000000000000, 1500000000000000)),
-      'email': None,
-    })
-    bob = User(meta, facebook = True)
-    try:
-      bob.facebook_connect("bite")
-      assert False
-    except HTTPException as e:
-      pass
+  # Preferred email taken.
+  with Meta(enable_emails = True) as meta:
+    with Trophonius(meta):
+      user = User(meta, 'alice@infinit.io')
+      meta.inner.facebook = Facebook()
+      meta.inner.facebook.set_next_client_data({
+        'id': int(uniform(1000000000000000, 1500000000000000)),
+        'email': 'foobar@infinit.io'
+      })
+      bob = User(meta, facebook = True)
+      try:
+        bob.facebook_connect("bite", no_device = no_device, preferred_email = "alice@infinit.io")
+        assert False
+      except HTTPException as e:
+        assert e.status == 403
+
+  # Ill formed prefered email.
+  with Meta(enable_emails = True) as meta:
+    with Trophonius(meta):
+      meta.inner.facebook = Facebook()
+      meta.inner.facebook.set_next_client_data({
+        'id': int(uniform(1000000000000000, 1500000000000000)),
+        'email': 'serge@infinit.io'
+      })
+      bob = User(meta, facebook = True)
+      try:
+        bob.facebook_connect("bite", no_device = no_device, preferred_email = 'infinit.io')
+        assert False
+      except HTTPException as e:
+        assert e.status == 403
+
+  # No email.
+  with Meta(enable_emails = True) as meta:
+    with Trophonius(meta):
+      meta.inner.facebook = Facebook()
+      meta.inner.facebook.set_next_client_data({
+        'id': int(uniform(1000000000000000, 1500000000000000)),
+        'email': None,
+      })
+      bob = User(meta, facebook = True)
+      try:
+        bob.facebook_connect("bite", no_device = no_device)
+        assert False
+      except HTTPException as e:
+        assert e.status == 400
+
 
 ############################################################
 # Real.

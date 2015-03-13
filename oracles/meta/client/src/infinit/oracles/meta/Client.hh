@@ -68,7 +68,9 @@ namespace infinit
         std::string register_status;
         Devices connected_devices;
         std::string public_key;
-
+        boost::optional<std::string> ghost_code;
+        boost::optional<std::string> ghost_profile_url;
+        boost::optional<std::string> phone_number;
         User() = default;
 
         User(std::string const& id,
@@ -124,7 +126,7 @@ namespace infinit
         bool
         deleted() const
         {
-          if (register_status == "deleted")
+          if (register_status == "deleted" || register_status == "merged")
             return true;
           else
             return false;
@@ -172,7 +174,9 @@ namespace infinit
         Device(elle::serialization::SerializerIn& s);
         elle::UUID id;
         std::string name;
-        std::string passport;
+        boost::optional<std::string> os;
+        boost::optional<std::string> passport;
+        boost::optional<boost::posix_time::ptime> last_sync;
         void
         serialize(elle::serialization::Serializer& s);
         virtual
@@ -208,6 +212,7 @@ namespace infinit
         std::vector<User> swaggers;
         std::unordered_map<std::string, PeerTransaction> transactions;
         std::vector<LinkTransaction> links;
+        std::vector<Device> devices;
 
         SynchronizeResponse() = default;
         SynchronizeResponse(elle::serialization::SerializerIn& s);
@@ -259,6 +264,10 @@ namespace infinit
       public:
         UpdatePeerTransactionResponse() = default;
         ELLE_ATTRIBUTE_R(boost::optional<aws::Credentials>, aws_credentials);
+        // The ghost invitation code.
+        ELLE_ATTRIBUTE_R(boost::optional<std::string>, ghost_code);
+        // The ghost profile url.
+        ELLE_ATTRIBUTE_R(boost::optional<std::string>, ghost_profile_url);
 
         UpdatePeerTransactionResponse(elle::serialization::SerializerIn& s);
         void
@@ -389,17 +398,28 @@ namespace infinit
           ParametersUpdater;
         LoginResponse
         _login(ParametersUpdater parameters_updater,
-               boost::uuids::uuid const& device_uuid);
+               boost::uuids::uuid const& device_uuid,
+               boost::optional<std::string> country_code = {}
+          );
       public:
         LoginResponse
-        login(std::string const& email,
-              std::string const& password,
-              boost::uuids::uuid const& device_uuid);
+        login(
+          std::string const& email,
+          std::string const& password,
+          boost::uuids::uuid const& device_uuid,
+          boost::optional<std::string> country_code = {}
+          );
 
         LoginResponse
-        facebook_connect(std::string const& token,
-                         boost::uuids::uuid const& device_uuid,
-                         boost::optional<std::string> preferred_email = boost::none);
+        facebook_connect(
+          std::string const& facebok_token,
+          boost::uuids::uuid const& device_uuid,
+          boost::optional<std::string> preferred_email = {},
+          boost::optional<std::string> country_code = {}
+          );
+
+        bool
+        facebook_id_already_registered(std::string const& facebook_id) const;
 
         void
         logout();
@@ -422,6 +442,9 @@ namespace infinit
 
         Self
         self() const;
+
+        void
+        use_ghost_code(std::string const& code) const;
 
         User
         user_from_handle(std::string const& handle) const;
@@ -491,6 +514,7 @@ namespace infinit
           ) const;
 
         /// Create an empty transaction
+        /// Deprecated by barebones overload
         /// @return: the transaction_id
         std::string
         create_transaction() const;
@@ -500,6 +524,12 @@ namespace infinit
                            Transaction::Status status,
                            elle::UUID const& device_id = elle::UUID(),
                            std::string const& device_name = "") const;
+
+        std::string
+        create_transaction(std::string const& recipient_id_or_email,
+                           std::list<std::string> const& files,
+                           uint64_t count,
+                           std::string const& message = "") const;
 
       private:
         typedef std::vector<std::pair<std::string, uint16_t>> adapter_type;

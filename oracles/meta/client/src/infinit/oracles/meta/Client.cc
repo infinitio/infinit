@@ -24,6 +24,7 @@
 
 #include <reactor/scheduler.hh>
 #include <reactor/http/exceptions.hh>
+#include <reactor/http/EscapedString.hh>
 
 #include <infinit/oracles/meta/Client.hh>
 #include <infinit/oracles/meta/Error.hh>
@@ -157,7 +158,9 @@ namespace infinit
       Device::serialize(elle::serialization::Serializer& s)
       {
         s.serialize("id", this->id);
+        s.serialize("last_sync", this->last_sync);
         s.serialize("name", this->name);
+        s.serialize("os", this->os);
         s.serialize("passport", this->passport);
       }
 
@@ -384,6 +387,9 @@ namespace infinit
         s.serialize("register_status", this->register_status);
         s.serialize("connected_devices", this->connected_devices);
         s.serialize("public_key", this->public_key);
+        s.serialize("ghost_code", this->ghost_code);
+        s.serialize("ghost_profile", this->ghost_profile_url);
+        s.serialize("phone_number", this->phone_number);
       }
 
       LoginResponse::LoginResponse(
@@ -438,12 +444,14 @@ namespace infinit
           this->transactions[tr.id] = tr;
         s.serialize("links", this->links);
         s.serialize("swaggers", this->swaggers);
+        s.serialize("devices", this->devices);
       }
 
       LoginResponse
       Client::login(std::string const& email,
                     std::string const& password,
-                    boost::uuids::uuid const& device_uuid)
+                    boost::uuids::uuid const& device_uuid,
+                    boost::optional<std::string> country_code)
       {
         ELLE_TRACE_SCOPE("%s: login as %s on device %s",
                          *this, email, device_uuid);
@@ -462,7 +470,9 @@ namespace infinit
                 "password", const_cast<std::string&>(old_password));
               parameters.serialize(
                 "password_hash", const_cast<std::string&>(new_password));
-            }, device_uuid);
+            },
+            device_uuid,
+            country_code);
         }
         catch (...)
         {
@@ -475,7 +485,9 @@ namespace infinit
       Client::facebook_connect(
         std::string const& long_lived_access_token,
         boost::uuids::uuid const& device_uuid,
-        boost::optional<std::string> preferred_email)
+        boost::optional<std::string> preferred_email,
+        boost::optional<std::string> country_code
+        )
       {
         ELLE_TRACE_SCOPE("%s: login using facebook on device %s",
                          *this, device_uuid);
@@ -491,12 +503,24 @@ namespace infinit
               parameters.serialize(
                 "preferred_email", preferred_email_str);
             }
-          }, device_uuid);
+          }, device_uuid, country_code);
+      }
+
+      bool
+      Client::facebook_id_already_registered(
+        std::string const& facebook_id_) const
+      {
+        reactor::http::EscapedString facebook_id{facebook_id_};
+        auto url =
+          elle::sprintf("/users/%s?account_type=facebook", facebook_id);
+        auto request = this->_request(url, Method::GET, false);
+        return request.status() == reactor::http::StatusCode::OK;
       }
 
       LoginResponse
       Client::_login(ParametersUpdater parameters_updater,
-                     boost::uuids::uuid const& device_uuid)
+                     boost::uuids::uuid const& device_uuid,
+                     boost::optional<std::string> country_code)
       {
         std::string struuid = boost::lexical_cast<std::string>(device_uuid);
         auto url = "/login";
@@ -506,6 +530,7 @@ namespace infinit
           [&] (reactor::http::Request& r)
           {
             elle::serialization::json::SerializerOut output(r, false);
+            output.serialize("country_code", country_code);
             parameters_updater(output);
             std::string struuid = boost::lexical_cast<std::string>(device_uuid);
             output.serialize("device_id", struuid);
@@ -513,7 +538,8 @@ namespace infinit
             output.serialize("OS", os);
           },
           false);
-        if (request.status() == reactor::http::StatusCode::Forbidden)
+        if (request.status() == reactor::http::StatusCode::Forbidden ||
+            request.status() == reactor::http::StatusCode::Bad_Request)
         {
           SerializerIn input(url, request);
           int error_code;
@@ -529,6 +555,10 @@ namespace infinit
               throw infinit::state::AlreadyLoggedIn();
             case Error::deprecated:
               throw infinit::state::VersionRejected();
+            case Error::email_not_valid:
+              throw infinit::state::MissingEmail();
+            case Error::email_already_registered:
+              throw infinit::state::EmailAlreadyRegistered();
             default:
               throw infinit::state::LoginError(
                 elle::sprintf("%s: Unknown, good luck!", error_code));
@@ -640,6 +670,25 @@ namespace infinit
         return SynchronizeResponse{input};
       }
 
+      void
+      Client::use_ghost_code(std::string const& code_) const
+      {
+        reactor::http::EscapedString code{code_};
+        std::string url = elle::sprintf("/ghost/%s/merge", code);
+        auto request = this->_request(url,
+                                      Method::POST,
+                                      false);
+        switch (request.status())
+        {
+          case reactor::http::StatusCode::OK:
+            break;
+          case reactor::http::StatusCode::Gone:
+            throw infinit::state::GhostCodeAlreadyUsed();
+          default:
+            throw infinit::state::InvalidGhostCode();
+        }
+      }
+
       static
       std::pair<std::string, User>
       email_and_user(boost::any const& json_)
@@ -719,16 +768,17 @@ namespace infinit
       }
 
       User
-      Client::user(std::string const& id_or_email) const
+      Client::user(std::string const& recipient_identifier) const
       {
-        if (id_or_email.size() == 0)
+        if (recipient_identifier.size() == 0)
           throw elle::Exception("Invalid id or email");
-        std::string url = elle::sprintf("/users/%s", id_or_email);
+        reactor::http::EscapedString identifier(recipient_identifier);
+        std::string url = elle::sprintf("/users/%s", identifier);
         auto request = this->_request(url, Method::GET, false);
         switch (request.status())
         {
           case reactor::http::StatusCode::Not_Found:
-            throw infinit::state::UserNotFoundError(id_or_email);
+            throw infinit::state::UserNotFoundError(recipient_identifier);
           default:
             this->_handle_errors(request);
         }
@@ -804,7 +854,7 @@ namespace infinit
       std::vector<Device>
       Client::devices() const
       {
-        std::string url = "/devices";
+        std::string url = "/user/devices";
         auto request = this->_request(url, Method::GET);
         SerializerIn input(url, request);
         std::vector<Device> res;
@@ -816,15 +866,13 @@ namespace infinit
       Client::update_device(boost::uuids::uuid const& device_uuid,
                             std::string const& name) const
       {
-        std::string struuid = boost::lexical_cast<std::string>(device_uuid);
-        std::string url = "/device/update";
+        std::string url = elle::sprintf("/devices/%s", device_uuid);
         auto request = this->_request(
           url,
           Method::POST,
           [&] (reactor::http::Request& request)
           {
             elle::serialization::json::SerializerOut query(request, false);
-            query.serialize("id", struuid);
             query.serialize("name", const_cast<std::string&>(name));
           });
         SerializerIn input(url, request);
@@ -834,8 +882,7 @@ namespace infinit
       Device
       Client::device(boost::uuids::uuid const& device_id) const
       {
-        std::string const url = elle::sprintf("/device/%s/view", device_id);
-
+        std::string const url = elle::sprintf("/devices/%s", device_id);
         auto request = this->_request(url, Method::GET);
         SerializerIn input(url, request);
         return Device(input);
@@ -871,11 +918,13 @@ namespace infinit
         elle::serialization::Serializer& s)
       {
         s.serialize("aws_credentials", this->_aws_credentials);
+        s.serialize("ghost_code", this->_ghost_code);
+        s.serialize("ghost_profile", this->_ghost_profile_url);
       }
 
       CreatePeerTransactionResponse
       Client::create_transaction(
-        std::string const& recipient_id_or_email,
+        std::string const& recipient_identifier,
         std::list<std::string> const& files,
         uint64_t count,
         uint64_t size,
@@ -889,7 +938,7 @@ namespace infinit
         ELLE_TRACE_SCOPE(
           "%s: create peer transaction to %s%s",
           *this,
-          recipient_id_or_email,
+          recipient_identifier,
           recipient_device_id
           ? elle::sprintf(" on device %s", recipient_device_id.get()) : "");
         std::string const url = transaction_id ?
@@ -902,8 +951,8 @@ namespace infinit
           [&] (reactor::http::Request& r)
           {
             elle::serialization::json::SerializerOut query(r, false);
-            query.serialize("id_or_email",
-                            const_cast<std::string&>(recipient_id_or_email));
+            query.serialize("recipient_identifier",
+                            const_cast<std::string&>(recipient_identifier));
             query.serialize("files",
                             const_cast<std::list<std::string>&>(files));
             int64_t count_integral = static_cast<int64_t>(count);
@@ -925,6 +974,37 @@ namespace infinit
         ELLE_TRACE("%s: create empty transaction", *this);
         std::string const url = "/transaction/create_empty";
         auto request = this->_request( url, Method::POST);
+        SerializerIn input(url, request);
+        std::string created_transaction_id;
+        input.serialize("created_transaction_id", created_transaction_id);
+        return created_transaction_id;
+      }
+      std::string
+      Client::create_transaction(std::string const& recipient_identifier,
+                                 std::list<std::string> const& files,
+                                 uint64_t count,
+                                 std::string const& message) const
+      {
+        ELLE_TRACE_SCOPE(
+          "%s: create barebones peer transaction to %s",
+          *this,
+          recipient_identifier);
+        std::string const url = "/transactions";
+        auto method = Method::POST;
+        auto request = this->_request(
+          url,
+          method,
+          [&] (reactor::http::Request& r)
+          {
+            elle::serialization::json::SerializerOut query(r, false);
+            query.serialize("recipient_identifier",
+                            const_cast<std::string&>(recipient_identifier));
+            query.serialize("files",
+                            const_cast<std::list<std::string>&>(files));
+            int64_t count_integral = static_cast<int64_t>(count);
+            query.serialize("files_count", count_integral);
+            query.serialize("message", const_cast<std::string&>(message));
+          });
         SerializerIn input(url, request);
         std::string created_transaction_id;
         input.serialize("created_transaction_id", created_transaction_id);

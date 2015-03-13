@@ -5,6 +5,7 @@ from infinit.oracles.meta.server.mail import Mailer
 from infinit.oracles.meta.server.invitation import Invitation
 from infinit.oracles.meta.server import transaction_status
 from infinit.oracles.meta import version
+from random import uniform
 
 import socket
 import http.cookies
@@ -53,6 +54,7 @@ class HTTPException(Exception):
     self.content = content
     super().__init__('status %s with %s on /%s with body %s: %s' % \
                      (status, method, url, body, content))
+    assert status != 500
 
 class Client:
 
@@ -468,15 +470,7 @@ class User(Client):
     res = self.get('user/self')
     return res
 
-  def login(self, device_id = None, trophonius = None, **kw):
-    if device_id is not None:
-      self.device_id = device_id
-    self.trophonius = trophonius
-    params = self.login_parameters
-    params.update(kw)
-    params.update({'pick_trophonius': False})
-    res = self.post('login', params)
-    assert res['success']
+  def _login(self, res):
     assert 'self' in res
     assert 'device' in res
     self.compare_self_response(res['self'])
@@ -491,23 +485,41 @@ class User(Client):
       self.trophonius.connect_user(self)
     return res
 
+  def login(self, device_id = None, trophonius = None, **kw):
+    if device_id is not None:
+      self.device_id = device_id
+    self.trophonius = trophonius
+    params = self.login_parameters
+    params.update(kw)
+    params.update({'pick_trophonius': False})
+    res = self.post('login', params)
+    assert res['success']
+    self._login(res)
+    return res
+
   def facebook_connect(self,
                        long_lived_access_token,
-                       preferred_email = None):
+                       preferred_email = None,
+                       no_device = False):
     args = {
       'long_lived_access_token': long_lived_access_token
     }
     if preferred_email:
       args.update({
         'preferred_email': preferred_email})
-    if self.device_id is not None:
+    if self.device_id is not None and not no_device:
       args.update({
         'device_id': str(self.device_id)
       })
     if 'device_id' in args:
-      self.post('login', args)
+      res = self.post('login', args)
+      self._login(res)
     else:
-      self.post('web-login', args)
+      res = self.post('web-login', args)
+    if 'success' in res:
+      assert res['success']
+    return res
+
 
   def __hash__(self):
     return str(self.id).__hash__()
@@ -564,7 +576,7 @@ class User(Client):
   def full_swaggers(self):
     swaggers = self.get('user/swaggers')['swaggers']
     for swagger in swaggers:
-      assertIn(swagger['register_status'], ['ok', 'deleted'])
+      assertIn(swagger['register_status'], ['ok', 'deleted', 'ghost'])
     return swaggers
 
   @property
@@ -583,11 +595,11 @@ class User(Client):
 
   @property
   def _id(self):
-    return bson.ObjectId(self.data['_id'])
+    return bson.ObjectId(self.data['id'])
 
   @property
   def devices(self):
-    return self.get('devices')['devices']
+    return self.get('user/devices')['devices']
 
   @property
   def avatar(self):
@@ -632,7 +644,7 @@ class User(Client):
 
 
   def sendfile(self,
-               recipient_id,
+               recipient,
                files = ['50% off books.pdf',
                         'a file with strange encoding: é.file',
                         'another file with no extension'],
@@ -641,38 +653,39 @@ class User(Client):
                is_directory = False,
                device_id = None,
                initialize = False,
-               ):
+               use_identifier = False):
     if device_id is None:
       device_id = self.device_id
 
     transaction = {
-      'id_or_email': recipient_id,
       'files': files,
       'files_count': len(files),
       'total_size': total_size,
       'message': message,
       'is_directory': is_directory,
       'device_id': str(device_id),
+      use_identifier and 'recipient_identifier' or 'id_or_email': recipient,
     }
-
-    res = self.post('transaction/create', transaction)
-    ghost = res['recipient_is_ghost']
+    if not initialize:
+      res = self.post('transaction/create', transaction)
+      ghost = res['recipient_is_ghost']
+    else:
+      id = self.post('transaction/create_empty')['created_transaction_id']
+      res = self.put('transaction/%s' % id, transaction)
+      ghost = res['recipient_is_ghost']
     if ghost:
       self.get('transaction/%s/cloud_buffer' % res['created_transaction_id'])
-    if initialize:
-      self.transaction_update(res['created_transaction_id'],
-                              transaction_status.INITIALIZED)
     transaction.update({'_id': res['created_transaction_id']})
     return transaction, res
 
   def transaction_update(self, transaction, status):
-    self.post('transaction/update',
-              {
-                'transaction_id': transaction,
-                'status': status,
-                'device_id': str(self.device_id),
-                'device_name': self.device_name,
-              })
+    return self.post('transaction/update',
+                     {
+                       'transaction_id': transaction,
+                       'status': status,
+                       'device_id': str(self.device_id),
+                       'device_name': self.device_name,
+                     })
 
   # FIXME: remove when link & peer transactions are merged
   def getalink(self,
@@ -693,6 +706,86 @@ class User(Client):
                 'progress': 1,
                 'status': status,
               })
+
+# Fake facebook.
+class Facebook:
+
+  def __init__(self,
+               broken_at = False):
+    self.broken_at = broken_at
+    self.__next_client_data = None
+
+  @property
+  def app_access_token(self):
+    if self.broken_at == 'app_access_token':
+      raise error.Error(error.EMAIL_PASSWORD_DONT_MATCH)
+    return self.__app_access_token
+
+  @property
+  def next_client_data(self):
+    if self.__next_client_data is None:
+      self.__next_client_data = {
+        'id': int(uniform(1000000000000000, 1500000000000000)),
+        'email': None,
+      }
+    return self.__next_client_data
+
+  def set_next_client_data(self, data):
+    self.__next_client_data = data
+
+  class Client:
+    def __init__(self,
+                 server,
+                 long_lived_access_token,
+                 id,
+                 email):
+      self.__server = server
+      self.__long_lived_access_token = long_lived_access_token
+      self.__data = None
+      self.__data = {
+        'name': 'Joseph Total',
+        'first_name': 'Joseph',
+        'last_name': 'Total',
+        'id': str(id)
+      }
+      if email:
+        self.__data.update({
+          'email': email
+        })
+
+    @property
+    def long_lived_access_token(self):
+      if self.__server.broken_at == 'client_access_token':
+        raise error.Error(error.EMAIL_PASSWORD_DONT_MATCH)
+      if self.__access_token is None:
+        self.__access_token = self.__server.client_access_token
+      return self.__access_token
+
+    @property
+    def data(self):
+      if self.__server.broken_at == 'client_data':
+        raise error.Error(error.EMAIL_PASSWORD_DONT_MATCH)
+      return self.__data
+
+    @property
+    def facebook_id(self):
+      return str(self.data['id'])
+
+    @property
+    def permissions(self):
+      pass
+
+  def user(self,
+           code = None,
+           short_lived_access_token = None,
+           long_lived_access_token = None):
+    data = self.next_client_data
+    return Facebook.Client(
+      server = self,
+      long_lived_access_token = long_lived_access_token,
+      id = data['id'],
+      email = data['email'],
+    )
 
 def assertEq(a, b):
   if a != b:

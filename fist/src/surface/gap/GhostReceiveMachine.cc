@@ -146,11 +146,11 @@ namespace surface
       ReceiveMachine::accept();
     }
 
-    void
+    infinit::oracles::meta::UpdatePeerTransactionResponse
     GhostReceiveMachine::_accept()
     {
-      ELLE_TRACE("%s accepting", *this);
-      ReceiveMachine::_accept();
+      ELLE_TRACE_SCOPE("%s: accept", *this);
+      return ReceiveMachine::_accept();
     }
 
     void
@@ -165,11 +165,16 @@ namespace surface
         url = peer_data->download_link.get();
       else
       {
-        ELLE_WARN("%s: empty url, re-fetching transaction from meta");
+        ELLE_WARN("%s: empty url, re-fetching transaction from meta", *this);
         State& state = transaction().state();
         infinit::oracles::PeerTransaction pt =
           state.meta().transaction(transaction().data()->id);
-        url = pt.download_link.get();
+        if (pt.download_link)
+          url = pt.download_link.get();
+        else
+          throw elle::Error{
+            elle::sprintf("download url for transaction %s is missing",
+                          this->transaction_id())};
       }
       ELLE_TRACE("%s accepting on url '%s'", *this, url);
       if (boost::filesystem::exists(snapshot_path()))

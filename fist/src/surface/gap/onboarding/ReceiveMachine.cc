@@ -127,9 +127,11 @@ namespace surface
         machine->interrupt();
       }
 
-      void
+      infinit::oracles::meta::UpdatePeerTransactionResponse
       ReceiveMachine::_accept()
-      {}
+      {
+        return infinit::oracles::meta::UpdatePeerTransactionResponse();
+      }
 
       void
       ReceiveMachine::_transfer_operation(frete::RPCFrete& frete)

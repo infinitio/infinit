@@ -55,7 +55,7 @@ namespace surface
 
     protected:
       virtual
-      void
+      infinit::oracles::meta::UpdatePeerTransactionResponse
       _accept();
 
     // Transaction status signals.
