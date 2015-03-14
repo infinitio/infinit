@@ -493,6 +493,7 @@ def configure(cxx_toolkit = None,
       oracles.trophonius.client.lib, 'lib', strip_prefix = True)
     meta_client_lib = drake.copy(
       oracles.meta.client.lib, 'lib', strip_prefix = True)
+  cxx_config += oracles.config
 
   # oracles_enabled = cxx_toolkit.os != drake.os.windows
 
