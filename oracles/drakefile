@@ -65,7 +65,6 @@ def configure(production_build,
       'src/infinit/oracles/PeerTransaction.hh',
       'src/infinit/oracles/LinkTransaction.cc',
       'src/infinit/oracles/LinkTransaction.hh',
-      'src/infinit/oracles/PeerTransaction.hh',
     )
 
   elle_lib = drake.copy(elle.elle.lib_dynamic, 'lib', strip_prefix = True)
