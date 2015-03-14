@@ -24,6 +24,9 @@ namespace common
   /// All infinit related generic variables
   namespace infinit
   {
+    std::string
+    default_home();
+
     /// Create configuration.
     class Configuration
     {

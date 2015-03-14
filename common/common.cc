@@ -96,6 +96,12 @@ namespace common
 {
   namespace infinit
   {
+    std::string
+    default_home()
+    {
+      return path::join(elle::system::home_directory().string(), ".infinit");
+    }
+
     Configuration::Configuration(
       bool production,
       bool enable_mirroring,
@@ -150,14 +156,14 @@ namespace common
         _set_path_with_optional(
           this->_persistent_config_dir,
           elle::os::getenv("INFINIT_PERSISTENT_DIR", ""),
-          path::join(elle::system::home_directory().string(), ".infinit"),
+          default_home(),
           persistent_config_dir);
 
         // Non-persistent config directory.
         _set_path_with_optional(
           this->_non_persistent_config_dir,
           elle::os::getenv("INFINIT_NON_PERSISTENT_DIR", ""),
-          path::join(elle::system::home_directory().string(), ".infinit"),
+          default_home(),
           non_persistent_config_dir);
       }
 
