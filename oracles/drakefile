@@ -5,6 +5,7 @@ import drake.templating
 meta = None
 trophonius = None
 apertus = None
+config = None
 
 build = None
 check = None
@@ -26,7 +27,7 @@ def configure(production_build,
               valgrind = None,
               valgrind_tests = False
 ):
-
+  global config
   global transaction_lib
   global meta, trophonius, apertus, oracles
   global build, check, install
