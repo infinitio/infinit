@@ -242,7 +242,7 @@ namespace surface
 
     protected:
       void
-      _fail_on_exception(reactor::fsm::State& state);
+      _setup_end_state(reactor::fsm::State& state);
       void
       transaction_id(std::string const& id);
       ELLE_ATTRIBUTE_RX(
