@@ -9,9 +9,8 @@ ELLE_LOG_COMPONENT("fist.tests.uuids");
 boost::uuids::uuid
 random_uuid()
 {
-  typedef boost::uuids::basic_random_generator<boost::mt19937> Generator;
-  Generator generator{};
-  auto res = generator();
+  boost::mt19937 ran;
+  auto res = boost::uuids::random_generator(ran)();
   ELLE_LOG("generated %s", res);
   return res;
 }
