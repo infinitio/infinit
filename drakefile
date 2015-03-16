@@ -630,6 +630,7 @@ def configure(cxx_toolkit = None,
                'ghost-invite',
                'resynchronization',
                'snapshot-resume',
+               'transition-to-finish',
                'facebook_connect'):
     sources = drake.nodes('fist/tests/%s.cc' % name)
     if name != 'state':
