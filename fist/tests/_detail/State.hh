@@ -1,9 +1,9 @@
 #ifndef FIST_SURFACE_GAP_TESTS_STATE_HH
 # define FIST_SURFACE_GAP_TESTS_STATE_HH
 
-# include <surface/gap/State.hh>
+# include <elle/UUID.hh>
 
-# include <fist/tests/_detail/uuids.hh>
+# include <surface/gap/State.hh>
 
 namespace tests
 {
@@ -14,7 +14,7 @@ namespace tests
   {
   public:
     State(Server& server,
-          boost::uuids::uuid device_id,
+          elle::UUID device_id,
           boost::filesystem::path const& path = boost::filesystem::path());
 
     void

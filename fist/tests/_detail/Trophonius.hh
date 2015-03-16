@@ -5,12 +5,11 @@
 # include <unordered_map>
 # include <vector>
 
+# include <elle/UUID.hh>
 # include <elle/attribute.hh>
 
 # include <reactor/network/ssl-server.hh>
 # include <reactor/thread.hh>
-
-# include <fist/tests/_detail/uuids.hh>
 
 namespace tests
 {
@@ -45,11 +44,11 @@ namespace tests
 
   public:
     std::vector<reactor::network::SSLSocket*>
-    clients(boost::uuids::uuid const& user);
+    clients(elle::UUID const& user);
 
     reactor::network::SSLSocket*
-    socket(boost::uuids::uuid const& user,
-           boost::uuids::uuid const& device);
+    socket(elle::UUID const& user,
+           elle::UUID const& device);
 
   };
 }

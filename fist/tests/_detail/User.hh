@@ -19,20 +19,20 @@ namespace tests
     link_representation(infinit::oracles::LinkTransaction const& link);
 
   public:
-    User(boost::uuids::uuid id,
+    User(elle::UUID id,
          std::string email,
          boost::optional<cryptography::KeyPair> keys,
          std::unique_ptr<papier::Identity> identity);
     User(User const&) = default;
 
-    ELLE_ATTRIBUTE_R(boost::uuids::uuid, id);
+    ELLE_ATTRIBUTE_R(elle::UUID, id);
     ELLE_ATTRIBUTE_R(std::string, email);
     ELLE_ATTRIBUTE_R(boost::optional<cryptography::KeyPair>, keys);
     ELLE_ATTRIBUTE_RX(std::unique_ptr<papier::Identity>, identity);
     ELLE_ATTRIBUTE_R(std::string, facebook_id);
     typedef std::unordered_set<User*> Swaggers;
     Swaggers swaggers;
-    typedef std::unordered_set<Device::Id> Devices;
+    typedef std::unordered_set<elle::UUID> Devices;
     Devices devices;
     Devices connected_devices;
     typedef std::unordered_map<std::string, infinit::oracles::LinkTransaction> Links;
@@ -87,7 +87,7 @@ namespace tests
     Server& _server;
 
   public:
-    boost::uuids::uuid device_id;
+    elle::UUID device_id;
     User& user;
     State state;
   };
