@@ -77,10 +77,13 @@ static jobject throw_exception(JNIEnv* env, gap_Status st)
   static jmethodID e_init;
   if (!e_class)
   {
-    e_class = env->FindClass("io/infinit/StateException");
-    e_init = env->GetMethodID(e_class, "<init>", "(I)V");
+    e_class = env->FindClass("io/infinit/State$StateException");
+    ELLE_WARN("class: %s", e_class);
+    e_class = (jclass)env->NewGlobalRef(e_class);
+    e_init = env->GetMethodID(e_class, "<init>", "(Lio/infinit/State;I)V");
+    ELLE_WARN("method: %s", e_init);
   }
-  jobject obj = env->NewObject(e_class, e_init, (int)st);
+  jobject obj = env->NewObject(e_class, e_init, global_state_instance, (int)st);
   env->Throw((jthrowable)obj);
   return {};
 }
@@ -338,7 +341,10 @@ static void on_update_user(jobject thiz, surface::gap::User const& user)
   JNIEnv* env = get_env();
   jclass clazz = env->GetObjectClass(thiz);
   jmethodID m = env->GetMethodID(clazz, "onUpdateUser", "(Lio/infinit/User;)V");
-  env->CallVoidMethod(thiz, m, to_user(env, user));
+  jobject u = to_user(env, user);
+  env->CallVoidMethod(thiz, m, u);
+  env->DeleteLocalRef(u);
+  env->DeleteLocalRef(clazz);
   if (env->ExceptionCheck() == JNI_TRUE)
     throw JavaException();
 }
@@ -349,6 +355,7 @@ static void on_deleted_swagger(jobject thiz, int id)
   jclass clazz = env->GetObjectClass(thiz);
   jmethodID m = env->GetMethodID(clazz, "onDeleteSwagger", "(I)V");
   env->CallVoidMethod(thiz, m, (jint)id);
+  env->DeleteLocalRef(clazz);
   if (env->ExceptionCheck() == JNI_TRUE)
     throw JavaException();
 }
@@ -359,6 +366,7 @@ static void on_deleted_favorite(jobject thiz, int id)
   jclass clazz = env->GetObjectClass(thiz);
   jmethodID m = env->GetMethodID(clazz, "onDeletedFavorite", "(I)V");
   env->CallVoidMethod(thiz, m, (jint)id);
+  env->DeleteLocalRef(clazz);
   if (env->ExceptionCheck() == JNI_TRUE)
     throw JavaException();
 }
@@ -369,6 +377,7 @@ static void on_user_status(jobject thiz, int id, bool s)
   jclass clazz = env->GetObjectClass(thiz);
   jmethodID m = env->GetMethodID(clazz, "onUserStatus", "(IZ)V");
   env->CallVoidMethod(thiz, m, (jint)id, (jboolean)s);
+  env->DeleteLocalRef(clazz);
   if (env->ExceptionCheck() == JNI_TRUE)
     throw JavaException();
 }
@@ -379,6 +388,7 @@ static void on_avatar_available(jobject thiz, int id)
   jclass clazz = env->GetObjectClass(thiz);
   jmethodID m = env->GetMethodID(clazz, "onAvatarAvailable", "(I)V");
   env->CallVoidMethod(thiz, m, (jint)id);
+  env->DeleteLocalRef(clazz);
   if (env->ExceptionCheck() == JNI_TRUE)
     throw JavaException();
 }
@@ -402,19 +412,25 @@ static void on_peer_transaction(jobject thiz,
   jclass clazz = env->GetObjectClass(thiz);
   jmethodID m = env->GetMethodID(clazz, "onPeerTransaction",
                                  "(Lio/infinit/PeerTransaction;)V");
-  env->CallVoidMethod(thiz, m, to_peertransaction(env, t));
+  jobject pt = to_peertransaction(env, t);
+  env->CallVoidMethod(thiz, m, pt);
+  env->DeleteLocalRef(pt);
+  env->DeleteLocalRef(clazz);
   if (env->ExceptionCheck() == JNI_TRUE)
     throw JavaException();
 }
 
 static void on_link(jobject thiz,
-                                surface::gap::LinkTransaction const& t)
+                    surface::gap::LinkTransaction const& t)
 {
   JNIEnv* env = get_env();
   jclass clazz = env->GetObjectClass(thiz);
   jmethodID m = env->GetMethodID(clazz, "onLink",
                                  "(Lio/infinit/LinkTransaction;)V");
-  env->CallVoidMethod(thiz, m, to_linktransaction(env, t));
+  jobject lt = to_linktransaction(env, t);
+  env->CallVoidMethod(thiz, m, lt);
+  env->DeleteLocalRef(lt);
+  env->DeleteLocalRef(clazz);
   if (env->ExceptionCheck() == JNI_TRUE)
     throw JavaException();
 }
@@ -764,7 +780,10 @@ extern "C" jobject Java_io_infinit_State_gapUserById(
   if (s == gap_ok)
     return to_user(env, res);
   else
+  {
+    ELLE_WARN("gap_user_by_id(%s): %s", id, s);
     return throw_exception(env, s);
+  }
 }
 
 extern "C" jobject Java_io_infinit_State_gapUserByEmail(
@@ -999,7 +1018,12 @@ extern "C" jlong Java_io_infinit_State_gapSendUserReport(
   JNIEnv* env, jobject thiz, jlong handle, jstring un, jstring m, jstring f)
 {
   std::vector<std::string> files;
-  files.push_back(to_string(env, f));
+  if (f)
+  {
+    std::string file = to_string(env, f);
+    if (!file.empty())
+      files.push_back(file);
+  }
   files.push_back(getenv("INFINIT_LOG_FILE"));
   return gap_send_user_report((gap_State*)handle, to_string(env, un),
                               to_string(env, m), files);
