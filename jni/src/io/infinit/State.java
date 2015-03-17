@@ -217,7 +217,14 @@ public class State
   /// Send files to registere user
   public int sendFiles(int userId, String[] files, String message)
   {
-    int res = gapSendFiles(handle, userId, files, message);
+    int res = gapSendFiles(handle, userId, files, message, null);
+    _checkNZ("send files", res);
+    return res;
+  }
+  /// Send files to registere user on a specific device
+  public int sendFiles(int userId, String[] files, String message, String device_id)
+  {
+    int res = gapSendFiles(handle, userId, files, message, device_id);
     _checkNZ("send files", res);
     return res;
   }
@@ -446,7 +453,7 @@ public class State
   private native LinkTransaction gapLinkTransactionById(long handle, int id);
   private native LinkTransaction[] gapLinkTransactions(long handle);
   private native PeerTransaction[] gapPeerTransactions(long handle);
-  private native int gapSendFiles(long handle, int recipientId, String[] files, String message);
+  private native int gapSendFiles(long handle, int recipientId, String[] files, String message, String device_id);
   private native int gapSendFilesByEmail(long handle, String email, String[] files, String message);
   private native int gapPauseTransaction(long handle, int id);
   private native int gapResumeTransaction(long handle, int id);

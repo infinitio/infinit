@@ -940,10 +940,13 @@ extern "C" jint Java_io_infinit_State_gapSendFiles(
 
 extern "C" jint Java_io_infinit_State_gapSendFilesByEmail(
   JNIEnv* env, jobject thiz, jlong handle,
-  jstring id, jobjectArray jfiles, jstring message)
+  jstring id, jobjectArray jfiles, jstring message, jstring sdevice_id)
 {
+  boost::optional<std::string> device_id;
+  if (sdevice_id)
+    device_id = to_string(env, sdevice_id);
   std::vector<std::string> files = from_array<std::string>(env, jfiles, to_string);
-  return gap_send_files((gap_State*)handle, to_string(env, id), files, to_string(env, message));
+  return gap_send_files((gap_State*)handle, to_string(env, id), files, to_string(env, message), device_id);
 }
 
 extern "C" jint Java_io_infinit_State_gapPauseTransaction(
