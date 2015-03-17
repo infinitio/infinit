@@ -1042,12 +1042,21 @@ gap_peer_transaction_by_id(gap_State* state,
           state.transactions().at(id)->data());
       ELLE_ASSERT(peer_data != nullptr);
       auto status = state.transactions().at(id)->status();
+      int recipient = -1;
+      try
+      {
+        recipient = state.user_id(peer_data->recipient_id);
+      }
+      catch(std::exception const& e)
+      {
+        ELLE_ERR("Exception while getting recipient id: %s", e.what());
+      }
       res = surface::gap::PeerTransaction(
         id,
         status,
         state.user_id(peer_data->sender_id),
         peer_data->sender_device_id,
-        state.user_id(peer_data->recipient_id),
+        recipient,
         peer_data->recipient_device_id,
         peer_data->mtime,
         peer_data->files,
