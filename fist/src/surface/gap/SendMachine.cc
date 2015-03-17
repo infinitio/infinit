@@ -52,15 +52,10 @@ namespace surface
           std::bind(&SendMachine::_initialize_transaction, this)))
       , _files_mirrored(false)
     {
-      this->_machine.transition_add(
-        this->_create_transaction_state,
-        this->_initialize_transaction_state);
-      this->_machine.transition_add(
-        this->_create_transaction_state,
-        this->_cancel_state,
-        reactor::Waitables{&this->canceled()}, true);
-      this->_fail_on_exception(this->_create_transaction_state);
-      this->_fail_on_exception(this->_initialize_transaction_state);
+      this->_machine.transition_add(this->_create_transaction_state,
+                                    this->_initialize_transaction_state);
+      this->_setup_end_state(this->_create_transaction_state);
+      this->_setup_end_state(this->_initialize_transaction_state);
     }
 
     // Constructor for sender device.

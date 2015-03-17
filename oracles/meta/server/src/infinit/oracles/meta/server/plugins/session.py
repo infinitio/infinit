@@ -45,7 +45,7 @@ class Plugin(object):
       if session != previous:
         if sid is None:
           if len(session):
-            sid = collection.save(session)
+            sid = collection.insert(session)
             bottle.response.set_cookie(Plugin.key,
                                        sid,
                                        secret = Plugin.secret,

@@ -1,5 +1,6 @@
 #include "Transaction.hh"
 
+#include <elle/UUID.hh>
 #include <elle/serialization/json.hh>
 
 namespace tests

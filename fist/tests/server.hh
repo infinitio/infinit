@@ -9,6 +9,7 @@
 
 #include <elle/UUID.hh>
 #include <elle/reactor/tests/http_server.hh>
+#include <elle/UUID.hh>
 
 #include <papier/Passport.hh>
 

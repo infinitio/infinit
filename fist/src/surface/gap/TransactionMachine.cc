@@ -126,23 +126,8 @@ namespace surface
       , _data(std::move(data))
     {
       ELLE_TRACE_SCOPE("%s: create transaction machine", *this);
-      // Transfer end.
-      this->_machine.transition_add(
-        this->_transfer_state,
-        this->_end_state,
-        reactor::Waitables{&this->finished()},
-        true);
-      this->_machine.transition_add(
-        this->_transfer_state,
-        this->_cancel_state,
-        reactor::Waitables{&this->canceled()},
-        true);
-      this->_machine.transition_add(
-        this->_transfer_state,
-        this->_fail_state,
-        reactor::Waitables{&this->failed()},
-        true);
-      this->_fail_on_exception(this->_transfer_state);
+      this->_setup_end_state(this->_transfer_state);
+      this->_setup_end_state(this->_another_device_state);
       // Another device endings.
       this->_machine.transition_add(
         this->_another_device_state,
@@ -205,8 +190,23 @@ namespace surface
     }
 
     void
-    TransactionMachine::_fail_on_exception(reactor::fsm::State& state)
+    TransactionMachine::_setup_end_state(reactor::fsm::State& state)
     {
+      this->_machine.transition_add(
+        state,
+        this->_end_state,
+        reactor::Waitables{&this->finished()},
+        true);
+      this->_machine.transition_add(
+        state,
+        this->_cancel_state,
+        reactor::Waitables{&this->canceled()},
+        true);
+      this->_machine.transition_add(
+        state,
+        this->_fail_state,
+        reactor::Waitables{&this->failed()},
+        true);
       this->_machine.transition_add_catch(
         state,
         this->_fail_state)

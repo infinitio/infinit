@@ -6,11 +6,10 @@
 # include <vector>
 
 # include <elle/attribute.hh>
+# include <elle/UUID.hh>
 
 # include <reactor/network/ssl-server.hh>
 # include <reactor/thread.hh>
-
-# include <elle/UUID.hh>
 
 namespace tests
 {

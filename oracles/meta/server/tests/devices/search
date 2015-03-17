@@ -54,14 +54,14 @@ with Meta() as meta:
   email = "email@infinit.io"
   number_of_user = 20
   user = User(meta, email)
-  user.login()
   users = [user]
   for _ in range(number_of_user - 1):
     _user = copy.deepcopy(user)
     _user.device_id = uuid.uuid4()
-    _user.login()
-    print("%s logged in" % _user.device_id)
     users.append(_user)
+  for user in users:
+    print('login %s' % user.device_id)
+    user.login()
   assert len(user.get('user/devices')["devices"]) == number_of_user
   for i in range(number_of_user):
     user = users[i]

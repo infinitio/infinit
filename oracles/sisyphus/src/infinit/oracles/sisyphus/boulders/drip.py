@@ -218,6 +218,7 @@ class Drip(Emailing):
                  variations = None):
     with elle.log.trace('%s: send %s to %s users' %
                         (self.campaign, template, len(users))):
+      elle.log.dump('users: %s' % (users,))
       if len(users) == 0:
         return []
       if variations is not None:
@@ -246,8 +247,10 @@ class Drip(Emailing):
               'sender': self.sender(vars),
             }
             for user, elt, vars in
-            map(lambda e: (e[0], e[1], self.__vars(e[1], e[0])), users)
+            ((e[0], e[1], self.__vars(e[1], e[0])) for e in users
+             if 'email' in e[0])
           ]
+          elle.log.dump('recipients: %s' % (recipients,))
           if self.sisyphus.emailer is not None:
             res = self.sisyphus.emailer.send_template(
               template,
@@ -266,7 +269,8 @@ class Drip(Emailing):
             }
             for user, elt in users
           ])
-        return [user['email'] for user, elt in users]
+        return [user['email'] for user, elt in users
+                if 'email' in user]
 
   def _user(self, elt):
     return elt
