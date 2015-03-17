@@ -11,4 +11,7 @@ public class User
   public boolean swagger;
   public boolean deleted;
   public boolean ghost;
+  public String phoneNumber;
+  public String ghostCode;
+  public String ghostInvitationUrl;
 }

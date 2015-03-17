@@ -160,6 +160,18 @@ static jobject to_user(JNIEnv* env, surface::gap::User const& u)
   env->SetBooleanField(res, f, u.deleted);
   f = env->GetFieldID(u_class, "ghost", "Z");
   env->SetBooleanField(res, f, u.ghost);
+  f = env->GetFieldID(u_class, "phoneNumber", "Ljava/lang/String;");
+  tmp = env->NewStringUTF(u.phone_number.c_str());
+  env->SetObjectField(res, f, tmp);
+  env->DeleteLocalRef(tmp);
+  f = env->GetFieldID(u_class, "ghostCode", "Ljava/lang/String;");
+  tmp = env->NewStringUTF(u.ghost_code.c_str());
+  env->SetObjectField(res, f, tmp);
+  env->DeleteLocalRef(tmp);
+  f = env->GetFieldID(u_class, "ghostInvitationUrl", "Ljava/lang/String;");
+  tmp = env->NewStringUTF(u.ghost_invitation_url.c_str());
+  env->SetObjectField(res, f, tmp);
+  env->DeleteLocalRef(tmp);
   return res;
 }
 
