@@ -28,7 +28,9 @@ def configure(cxx_toolkit = None,
               enable_debug = True,
       	      qt = None,
               valgrind = None,
-              valgrind_tests = False):
+              valgrind_tests = False,
+              cxx_toolkit_host = None,
+):
 
   ## ----- ##
   ## Rules ##
@@ -659,6 +661,7 @@ def configure(cxx_toolkit = None,
                'ghost-invite',
                'resynchronization',
                'snapshot-resume',
+               'transition-to-finish',
                'facebook_connect'):
     sources = drake.nodes('fist/tests/%s.cc' % name)
     if name != 'state':

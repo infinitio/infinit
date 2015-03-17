@@ -34,7 +34,7 @@ namespace tests
     ELLE_ATTRIBUTE_R(std::string, facebook_id);
     typedef std::unordered_set<User*> Swaggers;
     Swaggers swaggers;
-    typedef std::unordered_set<Device::Id> Devices;
+    typedef std::unordered_set<elle::UUID> Devices;
     Devices devices;
     Devices connected_devices;
     typedef std::unordered_map<std::string, infinit::oracles::LinkTransaction> Links;

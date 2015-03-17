@@ -1,8 +1,6 @@
 #ifndef ELLE_CRASHREPORTER_HH
 # define ELLE_CRASHREPORTER_HH
 
-# include <cstring>
-
 # include <boost/noncopyable.hpp>
 # include <boost/filesystem/path.hpp>
 

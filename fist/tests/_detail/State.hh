@@ -1,11 +1,12 @@
 #ifndef FIST_SURFACE_GAP_TESTS_STATE_HH
 # define FIST_SURFACE_GAP_TESTS_STATE_HH
 
-# include <surface/gap/State.hh>
+# include <elle/UUID.hh>
 
 # include <elle/filesystem/TemporaryDirectory.hh>
 # include <elle/UUID.hh>
 
+# include <surface/gap/State.hh>
 
 namespace tests
 {

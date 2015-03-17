@@ -479,7 +479,6 @@ namespace surface
                      ::tolower);
       auto hashed_password = infinit::oracles::meta::old_password_hash(
         lower_email, password);
-      infinit::metrics::Reporter::metric_sender_id(lower_email);
       this->_login(
         [&] {
           return this->_meta.login(lower_email,
@@ -491,6 +490,7 @@ namespace surface
         trophonius,
         [=] { return hashed_password; },
         [&] (bool success, std::string const& failure_reason) {
+          infinit::metrics::Reporter::metric_sender_id(lower_email);
           this->_metrics_reporter->user_login(success, failure_reason);
         });
         this->_metrics_reporter->user_login(true, "");

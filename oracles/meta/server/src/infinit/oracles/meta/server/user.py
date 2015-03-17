@@ -524,24 +524,28 @@ class Mixin:
     return self._user_from_session(fields = self.__user_self_fields)
 
   def _user_from_session(self, fields):
-    elle.log.trace("get user from session")
     if hasattr(bottle.request, 'user'):
+      elle.log.trace('get user from session: cached')
       return bottle.request.user
     if not hasattr(bottle.request, 'session'):
+      elle.log.trace('get user from session: no session')
       return None
     # For a smoother transition, sessions registered as
     # email are still available.
     methods = {'identifier': self._user_by_id, 'email': self.user_by_email}
-    for key in methods:
-      identifier = bottle.request.session.get(key, None)
-      if identifier is not None:
-        user = methods[key](identifier,
-                            ensure_existence = False,
-                            fields = fields)
-        if user is not None:
-          bottle.request.user = user
-          return user
-    elle.log.trace("session not found")
+    with elle.log.trace('get user from session'):
+      elle.log.dump('session: %s' % bottle.request.session)
+      for key in methods:
+        identifier = bottle.request.session.get(key, None)
+        if identifier is not None:
+          elle.log.debug('get user from session by %s: %s' % (key, identifier))
+          user = methods[key](identifier,
+                              ensure_existence = False,
+                              fields = fields)
+          if user is not None:
+            bottle.request.user = user
+            return user
+      elle.log.trace('session not found')
 
   ## -------- ##
   ## Register ##
@@ -682,7 +686,7 @@ class Mixin:
         'devices': [],
         'notifications': [],
         'old_notifications': [],
-        'accounts': [{'type': 'email', 'id': email}],
+        'accounts': [collections.OrderedDict((('id', email), ('type', 'email')))],
         'creation_time': self.now,
       }
       if email_is_already_confirmed:
@@ -1116,11 +1120,7 @@ class Mixin:
       update = {
         '$addToSet':
         {
-          'accounts':
-          {
-            'id': name,
-            'type': 'email',
-          }
+          'accounts': collections.OrderedDict((('id', name), ('type', 'email')))
         }
       }
       user = self.user_by_id_or_email(user, fields = ['_id', 'accounts'])
@@ -1171,7 +1171,7 @@ class Mixin:
         'email': {'$ne': email} # Not the primary email.
       },
       {
-        '$pull': {'accounts': {'type': 'email', 'id': email}}
+        '$pull': {'accounts': collections.OrderedDict((('id', email), ('type', 'email')))}
       })
     if res['n'] == 0:
       return self.not_found({

@@ -705,7 +705,7 @@ class Mixin:
       credentials = transaction.get('aws_credentials', None)
       if credentials:
         res.update({
-          'credentials': credentials
+          'aws_credentials': credentials
         })
       return res
 

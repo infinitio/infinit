@@ -819,6 +819,57 @@ namespace tests
       });
 
     this->register_route(
+      "/transaction/update",
+      reactor::http::Method::POST,
+      [&] (Server::Headers const&,
+           Server::Cookies const& cookies,
+           Server::Parameters const&,
+           elle::Buffer const& content)
+      {
+        elle::IOStream stream(content.istreambuf());
+        elle::serialization::json::SerializerIn input(stream, false);
+        std::string id;
+        int status;
+        input.serialize("transaction_id", id);
+        input.serialize("status", status);
+        auto it = this->_transactions.find(id);
+        if (it == this->_transactions.end())
+          throw reactor::http::tests::Server::Exception(
+            "/transaction/update",
+            reactor::http::StatusCode::Not_Found,
+            "transaction not found");
+        auto& t = **it;
+        t.status = infinit::oracles::Transaction::Status(status);
+        t.status_changed()(t.status);
+        if (t.status == infinit::oracles::Transaction::Status::accepted)
+        {
+          this->headers()["ETag"] = boost::lexical_cast<std::string>(elle::UUID::random());
+          auto const& user = this->user(cookies);
+          auto const& device = this->device(cookies);
+          t.recipient_id = boost::lexical_cast<std::string>(user.id());
+          t.recipient_device_id = boost::lexical_cast<std::string>(device.id());
+        }
+        auto& tr = **this->_transactions.find(id);
+        std::string transaction_notification = tr.json();
+        transaction_notification.insert(1, "\"notification_type\":7,");
+        for (auto& socket: this->trophonius.clients(elle::UUID(tr.sender_id)))
+          socket->write(transaction_notification);
+        for (auto& socket: this->trophonius.clients(elle::UUID(tr.recipient_id)))
+          socket->write(transaction_notification);
+        auto res = elle::sprintf(
+          "{"
+          "%s"
+          "  \"updated_transaction_id\": \"%s\""
+          "}",
+          t.status == infinit::oracles::Transaction::Status::accepted
+          ? elle::sprintf("  \"recipent_device_id\": \"%s\", \"recipient_device_name\": \"bite\", ", tr.recipient_device_id)
+          : std::string{},
+          tr.id
+          );
+        return res;
+      });
+
+    this->register_route(
       elle::sprintf("/transaction/%s/cloud_buffer", id),
       reactor::http::Method::GET,
       [&, id] (Server::Headers const&,
@@ -1083,22 +1134,9 @@ namespace tests
                           boost::optional<elle::UUID> device_id)
   {
     Device device{ user.identity()->pair().K(), device_id };
-
-    struct AddDevice
-    {
-      AddDevice(Device::Id const& id)
-        : id(id)
-      {}
-
-      void
-      operator()(User& user)
-      {
-        user.devices.insert(this->id);
-      }
-
-      Device::Id id;
-    };
-    this->_users.modify(this->_users.get<0>().find(user.id()), AddDevice(device.id()));
+    auto id = user.id();
+    this->_users.modify(this->_users.get<0>().find(user.id()),
+                        [id] (User& user) { user.devices.insert(id); });
     this->_devices.emplace(device.id(), device);
     this->register_route(
       elle::sprintf("/device/%s/view", device.id()),

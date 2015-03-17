@@ -1,9 +1,9 @@
 #include "Device.hh"
 
+#include <elle/UUID.hh>
+#include <elle/log.hh>
+
 #include <fist/tests/_detail/Authority.hh>
-
-
-# include <elle/log.hh>
 
 namespace tests
 {

@@ -5,6 +5,7 @@
 # include <unordered_map>
 # include <vector>
 
+# include <elle/UUID.hh>
 # include <elle/attribute.hh>
 
 # include <reactor/network/ssl-server.hh>
