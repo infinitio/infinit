@@ -144,6 +144,7 @@ namespace surface
             this->transaction_id(),
             onboarding);
       }
+      ELLE_TRACE("%s: accepting to %s", *this, relative_output_dir);
       ReceiveMachine::accept(relative_output_dir);
     }
 
@@ -283,6 +284,7 @@ namespace surface
             if (erc)
               _previous_progress = 0;
             ELLE_TRACE("%s: resuming at %s", *this, _previous_progress);
+            boost::filesystem::create_directories(_path.parent_path());
             elle::system::FileHandle file(_path, elle::system::FileHandle::APPEND);
             using namespace reactor::http;
             Request::Configuration config
