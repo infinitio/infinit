@@ -164,6 +164,10 @@ public class State
   {
     return gapUserByHandle(handle, h);
   }
+  public User userByMetaId(String h)
+	{
+		return gapUserByMetaId(handle, h);
+	}
   /// Returns true if user is online.
   public boolean userStatus(int userId)
   {
@@ -438,6 +442,7 @@ public class State
   private native User gapUserById(long handle, int id);
   private native User gapUserByEmail(long handle, String email);
   private native User gapUserByHandle(long handle, String email);
+  private native User gapUserByMetaId(long handle, String email);
   private native long gapUserStatus(long handle, int id);
   private native User[] gapUsersSearch(long handle, String query);
   /// Users we exchanged files with

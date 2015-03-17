@@ -820,6 +820,17 @@ extern "C" jobject Java_io_infinit_State_gapUserByHandle(
     return throw_exception(env, s);
 }
 
+extern "C" jobject Java_io_infinit_State_gapUserByMetaId(
+  JNIEnv* env, jobject thiz, jlong handle, jstring metaid)
+{
+  surface::gap::User res;
+  gap_Status s = gap_user_by_meta_id((gap_State*)handle, to_string(env, metaid), res);
+  if (s == gap_ok)
+    return to_user(env, res);
+  else
+    return throw_exception(env, s);
+}
+
 extern "C" jlong Java_io_infinit_State_gapUserStatus(
   JNIEnv* env, jobject thiz, jlong handle, jint id)
 {
