@@ -1047,7 +1047,7 @@ gap_peer_transaction_by_id(gap_State* state,
       {
         recipient = state.user_id(peer_data->recipient_id);
       }
-      catch(std::exception const& e)
+      catch(surface::gap::Exception const& e)
       {
         ELLE_ERR("Exception while getting recipient id: %s", e.what());
       }
