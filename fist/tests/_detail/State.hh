@@ -4,6 +4,8 @@
 # include <elle/filesystem/TemporaryDirectory.hh>
 # include <elle/UUID.hh>
 
+# include <surface/gap/State.hh>
+
 namespace tests
 {
   class Server;
