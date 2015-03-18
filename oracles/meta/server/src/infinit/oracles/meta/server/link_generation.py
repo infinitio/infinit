@@ -336,7 +336,7 @@ class Mixin:
           self.forbidden('cannot change status from %s to %s' %
                          (link['status'], status))
       if status in transaction_status.final:
-        self.__complete_transaction_stats(user, link)
+        self.__complete_transaction_pending_stats(user, link)
       link = self.database.links.find_and_modify(
         {'_id': id},
         {
