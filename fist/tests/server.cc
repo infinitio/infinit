@@ -691,6 +691,10 @@ namespace tests
           t.recipient_id = boost::lexical_cast<std::string>(user.id());
           t.recipient_device_id = boost::lexical_cast<std::string>(device.id());
         }
+        if (t.status == infinit::oracles::Transaction::Status::cloud_buffered)
+        {
+          t.cloud_buffered = true;
+        }
         auto& tr = **this->_transactions.find(id);
         std::string transaction_notification = tr.json();
         transaction_notification.insert(1, "\"notification_type\":7,");

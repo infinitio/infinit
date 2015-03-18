@@ -76,22 +76,22 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
     sender.logout();
   }
   auto& server_transaction = server.transaction(t_id);
-  ELLE_WARN("SERVER STATUS IS: %s", server_transaction.status);
   server_transaction.status = infinit::oracles::Transaction::Status::accepted;
   {
     tests::Client sender(server, sender_user, sender_home.path());
     sender.login();
     sender.state.synchronize();
-    ELLE_WARN("COUILLE: %s", sender.state.transactions().size());
     for (auto& transaction : sender.state.transactions())
     {
-      ELLE_WARN("transaction status on new sender: %s", transaction.second->status());
-      BOOST_CHECK(transaction.second->status() != gap_transaction_transferring);
+      ELLE_LOG("transaction status on new sender: %s", transaction.second->status());
+      auto data = transaction.second->data().get();
+      auto peer_data = dynamic_cast<infinit::oracles::PeerTransaction*>(data);
+      BOOST_CHECK(peer_data->cloud_buffered);
       transaction.second->status_changed().connect(
       [&] (gap_TransactionStatus status)
       {
-        ELLE_WARN("transaction status changed: %s", status);
-        BOOST_CHECK(status != gap_transaction_transferring);
+        ELLE_LOG("transaction status changed: %s", status);
+        BOOST_CHECK(peer_data->cloud_buffered);
       });
     }
   }
