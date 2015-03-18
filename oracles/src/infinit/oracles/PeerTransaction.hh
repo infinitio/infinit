@@ -59,6 +59,7 @@ namespace infinit
       boost::optional<std::string> download_link;
       int64_t total_size;
       TransactionCanceler canceler;
+      bool cloud_buffered;
 
     /*--------------.
     | Serialization |

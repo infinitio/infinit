@@ -48,6 +48,7 @@ namespace infinit
       , sender_fullname()
       , total_size()
       , canceler()
+      , cloud_buffered(false)
     {}
 
     PeerTransaction::PeerTransaction(std::string sender_id,
@@ -66,6 +67,7 @@ namespace infinit
       , sender_fullname(std::move(sender_fullname))
       , total_size()
       , canceler()
+      , cloud_buffered(false)
     {}
 
     PeerTransaction::~PeerTransaction() noexcept(true)
@@ -122,6 +124,14 @@ namespace infinit
         this->canceler.device_id = elle::UUID();
       }
       s.serialize("status", this->status, elle::serialization::as<int>());
+      try
+      {
+        s.serialize("cloud_buffered", this->cloud_buffered);
+      }
+      catch (elle::serialization::Error const&)
+      {
+        this->cloud_buffered = false;
+      }
     }
 
     using elle::serialization::Hierarchy;
