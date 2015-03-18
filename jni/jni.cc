@@ -343,6 +343,7 @@ static void on_critical(jobject thiz)
   JNIEnv* env = get_env();
   jclass clazz = env->GetObjectClass(thiz);
   jmethodID m = env->GetMethodID(clazz, "onCritical", "()V");
+  ELLE_TRACE("Invoking onCritical at %s", m);
   env->CallVoidMethod(thiz, m);
   if (env->ExceptionCheck() == JNI_TRUE)
     throw JavaException();
@@ -354,6 +355,7 @@ static void on_update_user(jobject thiz, surface::gap::User const& user)
   jclass clazz = env->GetObjectClass(thiz);
   jmethodID m = env->GetMethodID(clazz, "onUpdateUser", "(Lio/infinit/User;)V");
   jobject u = to_user(env, user);
+  ELLE_TRACE("Invoking onUpdateUser at %s", m);
   env->CallVoidMethod(thiz, m, u);
   env->DeleteLocalRef(u);
   env->DeleteLocalRef(clazz);
@@ -366,6 +368,7 @@ static void on_deleted_swagger(jobject thiz, int id)
   JNIEnv* env = get_env();
   jclass clazz = env->GetObjectClass(thiz);
   jmethodID m = env->GetMethodID(clazz, "onDeleteSwagger", "(I)V");
+  ELLE_TRACE("Invoking onDeleteSwagger at %s", m);
   env->CallVoidMethod(thiz, m, (jint)id);
   env->DeleteLocalRef(clazz);
   if (env->ExceptionCheck() == JNI_TRUE)
@@ -377,6 +380,7 @@ static void on_deleted_favorite(jobject thiz, int id)
   JNIEnv* env = get_env();
   jclass clazz = env->GetObjectClass(thiz);
   jmethodID m = env->GetMethodID(clazz, "onDeletedFavorite", "(I)V");
+  ELLE_TRACE("Invoking onDeletedFavorite at %s",m);
   env->CallVoidMethod(thiz, m, (jint)id);
   env->DeleteLocalRef(clazz);
   if (env->ExceptionCheck() == JNI_TRUE)
@@ -388,6 +392,7 @@ static void on_user_status(jobject thiz, int id, bool s)
   JNIEnv* env = get_env();
   jclass clazz = env->GetObjectClass(thiz);
   jmethodID m = env->GetMethodID(clazz, "onUserStatus", "(IZ)V");
+  ELLE_TRACE("Invoking onUserStatus at %s", m);
   env->CallVoidMethod(thiz, m, (jint)id, (jboolean)s);
   env->DeleteLocalRef(clazz);
   if (env->ExceptionCheck() == JNI_TRUE)
@@ -399,6 +404,7 @@ static void on_avatar_available(jobject thiz, int id)
   JNIEnv* env = get_env();
   jclass clazz = env->GetObjectClass(thiz);
   jmethodID m = env->GetMethodID(clazz, "onAvatarAvailable", "(I)V");
+  ELLE_TRACE("Invoking onAvatarAvailable at %s", m);
   env->CallVoidMethod(thiz, m, (jint)id);
   env->DeleteLocalRef(clazz);
   if (env->ExceptionCheck() == JNI_TRUE)
@@ -411,6 +417,7 @@ static void on_connection(jobject thiz, bool status, bool still_trying,
   JNIEnv* env = get_env();
   jclass clazz = env->GetObjectClass(thiz);
   jmethodID m = env->GetMethodID(clazz, "onConnection", "(ZZLjava/lang/String;)V");
+  ELLE_TRACE("Invoking onConnection at %s", m);
   env->CallVoidMethod(thiz, m, (jboolean)status, (jboolean)still_trying,
                       env->NewStringUTF(last_error.c_str()));
   if (env->ExceptionCheck() == JNI_TRUE)
@@ -425,6 +432,7 @@ static void on_peer_transaction(jobject thiz,
   jmethodID m = env->GetMethodID(clazz, "onPeerTransaction",
                                  "(Lio/infinit/PeerTransaction;)V");
   jobject pt = to_peertransaction(env, t);
+  ELLE_TRACE("Invoking onPeerTransaction at %s", m);
   env->CallVoidMethod(thiz, m, pt);
   env->DeleteLocalRef(pt);
   env->DeleteLocalRef(clazz);
@@ -440,6 +448,7 @@ static void on_link(jobject thiz,
   jmethodID m = env->GetMethodID(clazz, "onLink",
                                  "(Lio/infinit/LinkTransaction;)V");
   jobject lt = to_linktransaction(env, t);
+  ELLE_TRACE("Invoking onLink at %s", m);
   env->CallVoidMethod(thiz, m, lt);
   env->DeleteLocalRef(lt);
   env->DeleteLocalRef(clazz);
