@@ -134,7 +134,7 @@ namespace surface
 
     void
     GhostReceiveMachine::accept(
-      boost::optional<std::string const&> relative_output_dir)
+      boost::optional<std::string> relative_output_dir)
     {
       if (!this->_accepted.opened())
       {

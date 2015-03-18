@@ -43,7 +43,7 @@ namespace surface
     public:
       virtual
       void
-      accept(boost::optional<std::string const&> relative_output_dir = {});
+      accept(boost::optional<std::string> relative_output_dir = {});
       virtual
       void
       reject();

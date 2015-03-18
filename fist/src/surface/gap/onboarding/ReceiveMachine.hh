@@ -53,8 +53,7 @@ namespace surface
         cleanup() override;
         virtual
         void
-        accept(
-          boost::optional<std::string const&> relative_output_dir = {}) override;
+        accept(boost::optional<std::string> relative_output_dir = {}) override;
         virtual
         void
         reject() override;

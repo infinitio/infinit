@@ -527,7 +527,7 @@ namespace surface
     }
 
     void
-    Transaction::accept(boost::optional<std::string const&> relative_output_dir)
+    Transaction::accept(boost::optional<std::string> relative_output_dir)
     {
       ELLE_TRACE_SCOPE("%s: accepting transaction", *this);
       if (this->_machine == nullptr)

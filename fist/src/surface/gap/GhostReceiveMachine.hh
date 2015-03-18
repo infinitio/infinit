@@ -29,7 +29,7 @@ namespace surface
       progress() const override;
       virtual
       void
-      accept(boost::optional<std::string const&> output_dir = {}) override;
+      accept(boost::optional<std::string> output_dir = {}) override;
 
       virtual
       infinit::oracles::meta::UpdatePeerTransactionResponse

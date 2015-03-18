@@ -1419,7 +1419,7 @@ gap_reject_transaction(gap_State* state, uint32_t id)
 gap_Status
 gap_accept_transaction(gap_State* state,
                        uint32_t id,
-                       boost::optional<std::string const&> relative_output_dir)
+                       boost::optional<std::string> relative_output_dir)
 {
   ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);

@@ -75,8 +75,7 @@ namespace surface
       {}
 
       void
-      ReceiveMachine::accept(
-        boost::optional<std::string const&> relative_output_dir)
+      ReceiveMachine::accept(boost::optional<std::string> relative_output_dir)
       {
         if (!this->_accepted.opened())
         {

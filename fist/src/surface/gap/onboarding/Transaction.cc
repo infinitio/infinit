@@ -96,7 +96,7 @@ namespace surface
       }
 
       void
-      Transaction::accept(boost::optional<std::string const&> output_dir)
+      Transaction::accept(boost::optional<std::string> output_dir)
       {
         if (!dynamic_cast<surface::gap::onboarding::ReceiveMachine*>(
         this->_machine.get()))
