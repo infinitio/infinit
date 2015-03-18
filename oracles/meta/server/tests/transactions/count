@@ -101,6 +101,7 @@ with Meta(force_admin = True) as meta:
   assert transactions['pending_has']
   assertEq(transactions['unaccepted'], [tid_unaccepted])
   assert transactions['unaccepted_has']
+  assert transactions['activity_has']
   # Flush transactions
   alice.link_update(link1['transaction'], finished)
   transactions = stats()
@@ -127,10 +128,15 @@ with Meta(force_admin = True) as meta:
   transactions = stats()
   assertEq(len(transactions['pending']), 0)
   assert not transactions['pending_has']
+  assert transactions['activity_has']
   alice.transaction_update(tid_unaccepted, accepted)
   transactions = stats()
   assertEq(transactions['unaccepted'], [])
   assert not transactions['unaccepted_has']
+  assert transactions['activity_has']
+  alice.transaction_update(tid_unaccepted, finished)
+  transactions = stats()
+  assert not transactions['activity_has']
   # Check ghost counters
   carol = meta.database.users.find_one({'email': 'carol@infinit.io'})
   transactions = carol['transactions']

@@ -622,6 +622,7 @@ class Mixin:
         update.setdefault('$push', {})
         update['$push']['transactions.%s' % f] = t['_id']
         update['$set']['transactions.%s_has' % f] = True
+        update['$set']['transactions.activity_has'] = True
     self.database.users.update({'_id': user}, update)
 
   def __complete_transaction_pending_stats(self, user, transaction):
@@ -643,6 +644,18 @@ class Mixin:
         {'_id': user, 'transactions.%s' % f: []},
         {'$set': {'transactions.%s_has' % f: False}},
       )
+      self.database.users.update(
+        {
+          '_id': user,
+          'transactions.pending_has': False,
+          'transactions.unaccepted_has': False,
+        },
+        {
+          '$set':
+          {
+            'transactions.activity_has': False,
+          }
+        })
 
   @api('/transactions')
   @require_logged_in
