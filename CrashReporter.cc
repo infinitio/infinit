@@ -402,9 +402,13 @@ namespace elle
                                       config.meta_port());
       elle::filesystem::TemporaryDirectory tmp;
       boost::filesystem::path destination(tmp.path() / "report.tar.bz2");
-      boost::filesystem::path logs(config.non_persistent_config_dir());
+      std::vector<boost::filesystem::path> files;
+      files.push_back(config.non_persistent_config_dir());
+#ifdef __ANDROID__
+      files.push_back(elle::os::getenv("INFINIT_LOG_FILE"));
+#endif
       elle::archive::archive(elle::archive::Format::tar_gzip,
-                             {logs},
+                             files,
                              destination,
                              elle::archive::Renamer(),
                              temp_file_excluder,
