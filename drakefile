@@ -27,7 +27,9 @@ def configure(cxx_toolkit = None,
               enable_debug = True,
       	      qt = None,
               valgrind = None,
-              valgrind_tests = False):
+              valgrind_tests = False,
+              cxx_toolkit_host = None,
+):
 
   ## ----- ##
   ## Rules ##
@@ -174,6 +176,7 @@ def configure(cxx_toolkit = None,
   elle = drake.include('elle',
                        archs = archs,
                        cxx_toolkit = cxx_toolkit,
+                       cxx_toolkit_host = cxx_toolkit_host,
                        cxx_config = drake.cxx.Config(cxx_config),
                        python3 = python3,
                        python_version = python_version,
