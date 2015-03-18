@@ -511,21 +511,17 @@ class Mixin:
         'sender_id': _id,
         'sender_fullname': sender['fullname'],
         'sender_device_id': device_id, # bson.ObjectId(device_id),
-
         'recipient_id': recipient['_id'], #X
         'recipient_fullname': recipient['fullname'],
         'recipient_device_id': recipient_device_id if recipient_device_id else '',
         'involved': [_id, recipient['_id']],
         # Empty until accepted.
         'recipient_device_name': '',
-
         'message': message,
-
         'files': files,
         'files_count': files_count,
         'total_size': total_size,
         'is_directory': is_directory,
-
         'creation_time': self.now,
         'modification_time': self.now,
         'ctime': time.time(),
@@ -546,7 +542,6 @@ class Mixin:
               message,
               ] + files)
         }
-
       if transaction_id is not None:
         transaction['status'] = transaction_status.INITIALIZED
         self.database.transactions.update(
@@ -570,28 +565,6 @@ class Mixin:
         recipient,
         unaccepted = transaction,
         time = False)
-
-      peer_email = recipient.get('email', None)
-      if peer_email is not None:
-        recipient_offline = all(d.get('trophonius') is None
-                                for d in recipient.get('devices', []))
-        if not new_user and recipient_offline and not is_ghost:
-          elle.log.debug("recipient is disconnected")
-          template_id = 'accept-file-only-offline'
-
-          self.mailer.send_template(
-            to = peer_email,
-            template_name = template_id,
-            reply_to = "%s <%s>" % (sender['fullname'], self.user_identifier(sender)),
-            merge_vars = {
-              peer_email: {
-                'filename': files[0],
-                'note': message,
-                'sendername': sender['fullname'],
-                'avatar': self.user_avatar_route(recipient['_id']),
-              }}
-            )
-
       self._increase_swag(sender['_id'], recipient['_id'])
       recipient_view = self.__user_view(recipient)
       return self.success({
