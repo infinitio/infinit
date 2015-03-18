@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 
-from utils import Meta, User
+from utils import *
 
 import bson
 
@@ -63,6 +63,10 @@ with Meta(force_admin = True) as meta:
                                   initialize = True)
   tid7 = res['created_transaction_id']
   alice.transaction_update(tid7, accepted)
+  # Leave an unaccepted transaction
+  transaction, res = bob.sendfile(recipient = 'alice@infinit.io',
+                                  initialize = True)
+  tid_unaccepted = bson.ObjectId(res['created_transaction_id'])
   # Create a link
   link1 = alice.post('link',
                    {
@@ -83,46 +87,52 @@ with Meta(force_admin = True) as meta:
   def stats():
     return meta.database.users.find_one({'_id': i})['transactions']
   transactions = stats()
-  assert transactions['accepted'] == 2
-  assert transactions['accepted_peer'] == 2
-  assert transactions['reached'] == 3
-  assert transactions['reached_link'] == 1
-  assert transactions['reached_peer'] == 2
-  assert transactions['received'] == 1
-  assert transactions['received_peer'] == 1
-  assert transactions['sent'] == 8
-  assert transactions['sent_link'] == 2
-  assert transactions['sent_peer'] == 6
-  assert len(transactions['pending']) == 5
+  assertEq(transactions['accepted'], 2)
+  assertEq(transactions['accepted_peer'], 2)
+  assertEq(transactions['reached'], 3)
+  assertEq(transactions['reached_link'], 1)
+  assertEq(transactions['reached_peer'], 2)
+  assertEq(transactions['received'], 1)
+  assertEq(transactions['received_peer'], 1)
+  assertEq(transactions['sent'], 8)
+  assertEq(transactions['sent_link'], 2)
+  assertEq(transactions['sent_peer'], 6)
+  assertEq(len(transactions['pending']), 5)
   assert transactions['pending_has']
+  assertEq(transactions['unaccepted'], [tid_unaccepted])
+  assert transactions['unaccepted_has']
   # Flush transactions
   alice.link_update(link1['transaction'], finished)
   transactions = stats()
-  assert len(transactions['pending']) == 4
+  assertEq(len(transactions['pending']), 4)
   assert transactions['pending_has']
   bob.transaction_update(tid1, accepted)
   bob.transaction_update(tid1, finished)
   transactions = stats()
-  assert len(transactions['pending']) == 3
+  assertEq(len(transactions['pending']), 3)
   assert transactions['pending_has']
   bob.transaction_update(tid2, finished)
   transactions = stats()
-  assert len(transactions['pending']) == 2
+  assertEq(len(transactions['pending']), 2)
   assert transactions['pending_has']
   bob.transaction_update(tid3bis, finished)
   transactions = stats()
-  assert len(transactions['pending']) == 2
+  assertEq(len(transactions['pending']), 2)
   assert transactions['pending_has']
   alice.transaction_update(tid4, ghost_uploaded)
   transactions = stats()
-  assert len(transactions['pending']) == 1
+  assertEq(len(transactions['pending']), 1)
   assert transactions['pending_has']
   alice.transaction_update(tid7, finished)
   transactions = stats()
-  assert len(transactions['pending']) == 0
+  assertEq(len(transactions['pending']), 0)
   assert not transactions['pending_has']
+  alice.transaction_update(tid_unaccepted, accepted)
+  transactions = stats()
+  assertEq(transactions['unaccepted'], [])
+  assert not transactions['unaccepted_has']
   # Check ghost counters
   carol = meta.database.users.find_one({'email': 'carol@infinit.io'})
   transactions = carol['transactions']
-  assert transactions['received'] == 1
-  assert transactions['received_ghost'] == 1
+  assertEq(transactions['received'], 1)
+  assertEq(transactions['received_ghost'], 1)
