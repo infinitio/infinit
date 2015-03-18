@@ -1228,6 +1228,174 @@ class PendingReminder(Drip):
       (None, [u for u in users if u[0]['features']['drip_pending-reminder_template'] == 'control']),
     ]
 
+class ActivityReminder(Drip):
+
+  def __init__(self, sisyphus, pretend = False):
+    super().__init__(sisyphus, 'activity-reminder', 'users', pretend)
+    self.sisyphus.mongo.meta.users.ensure_index(
+      [
+        # Find initialized users
+        ('emailing.activity-reminder.state', pymongo.ASCENDING),
+        # Fully registered
+        ('register_status', pymongo.ASCENDING),
+        # Disconnected
+        ('online', pymongo.ASCENDING),
+        # With pending transfers
+        ('transactions.activity_has', pymongo.ASCENDING),
+        # By disconnection time
+        ('emailing.activity-reminder.remind-time', pymongo.ASCENDING),
+      ],
+      name = 'emailing.activity-reminder')
+
+  def run(self):
+    response = {}
+    # -> clean
+    transited = self.transition(
+      None,
+      'clean',
+      {
+        # Fully registered
+        'register_status': 'ok',
+        # Connected
+        'online': True,
+      },
+      template = False,
+    )
+    response.update(transited)
+    # clean -> stuck
+    transited = self.transition(
+      'clean',
+      'stuck',
+      {
+        # Fully registered
+        'register_status': 'ok',
+        # Disconnected
+        'online': False,
+        # With activity
+        'transactions.activity_has': True,
+      },
+      template = False,
+      update = {
+        'emailing.activity-reminder.remind-time':
+        self.now + self.delay,
+      },
+    )
+    response.update(transited)
+    # stuck -> clean when user gets back online
+    transited = self.transition(
+      'stuck',
+      'clean',
+      {
+        # Fully registered
+        'register_status': 'ok',
+        # Connected
+        'online': True,
+      },
+      template = False,
+    )
+    response.update(transited)
+    # stuck -> clean if user finished is activity, even if we missed
+    # the online transition juste above.
+    transited = self.transition(
+      'stuck',
+      'clean',
+      {
+        # Fully registered
+        'register_status': 'ok',
+        # Disconnected
+        'online': False,
+        # Without activity
+        'transactions.activity_has': False,
+      },
+      template = False,
+    )
+    response.update(transited)
+    # stuck -> stuck
+    import sys
+    print('CONDITION', {
+        # Fully registered
+        'register_status': 'ok',
+        # Disconnected
+        'online': False,
+        # Has activity
+        'transactions.activity_has': True,
+        # Reminder is due
+        'emailing.activity-reminder.remind-time':
+        {
+          '$lt': self.now,
+        },
+      }, file = sys.stderr)
+    print('USERS', list(self.sisyphus.mongo.meta.users.find()), file = sys.stderr)
+    print('FIND', list(self.sisyphus.mongo.meta.users.find({
+        # Fully registered
+        'register_status': 'ok',
+        # Disconnected
+        'online': False,
+        # Has activity
+        'transactions.activity_has': True,
+        # Reminder is due
+        'emailing.activity-reminder.remind-time':
+        {
+          '$lt': self.now,
+        },
+      })), file = sys.stderr)
+    transited = self.transition(
+      'stuck',
+      'stuck',
+      {
+        # Fully registered
+        'register_status': 'ok',
+        # Disconnected
+        'online': False,
+        # Has activity
+        'transactions.activity_has': True,
+        # Reminder is due
+        'emailing.activity-reminder.remind-time':
+        {
+          '$lt': self.now,
+        },
+      },
+      update = {
+        'emailing.activity-reminder.remind-time':
+        self.now + self.delay,
+      },
+    )
+    response.update(transited)
+    return response
+
+  def _vars(self, element, user):
+    return {
+      'transactions': [
+        self.transaction_vars(t, user) for t in
+        self.sisyphus.mongo.meta.transactions.find(
+          {
+            '_id':
+            {
+              '$in': list(chain(
+                user['transactions'].get('pending', []),
+                user['transactions'].get('unaccepted', []))),
+            }
+          })
+      ]
+    }
+
+  @property
+  def delay(self):
+    return datetime.timedelta(days = 2)
+
+  @property
+  def user_fields(self):
+    res = super().user_fields
+    res.append('transactions.unaccepted')
+    res.append('transactions.pending')
+    return res
+
+  def _pick_template(self, template, users):
+    return [
+      (template, [u for u in users if u[0]['features']['drip_pending-reminder_template'] == 'a']),
+      (None, [u for u in users if u[0]['features']['drip_pending-reminder_template'] == 'control']),
+    ]
+
 
 class Retention(Drip):
 

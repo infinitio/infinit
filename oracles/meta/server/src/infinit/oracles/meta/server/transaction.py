@@ -649,8 +649,8 @@ class Mixin:
       self.database.users.update(
         {
           '_id': user,
-          'transactions.pending_has': False,
-          'transactions.unaccepted_has': False,
+          'transactions.pending_has': {'$ne': True},
+          'transactions.unaccepted_has':  {'$ne': True},
         },
         {
           '$set':
