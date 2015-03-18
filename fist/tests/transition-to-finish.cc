@@ -24,7 +24,7 @@ ELLE_TEST_SCHEDULED(wait_to_finish)
   {
     tests::Client sender_client(server, sender, sender_home.path());
     sender_client.login();
-    auto& transaction = sender_client.state.transaction_peer_create(
+    auto& transaction = sender_client.state->transaction_peer_create(
       recipient.email(),
       std::vector<std::string>{transfered.path().string()},
       "message");
@@ -48,9 +48,9 @@ ELLE_TEST_SCHEDULED(wait_to_finish)
   {
     tests::Client sender_client(server, sender, sender_home.path());
     sender_client.login();
-    sender_client.state.synchronize();
+    sender_client.state->synchronize();
     reactor::Barrier finished("finished");
-    for (auto& transaction : sender_client.state.transactions())
+    for (auto& transaction : sender_client.state->transactions())
     {
       ELLE_WARN("transaction status on new sender: %s", *transaction.second);
       if (transaction.second->status() == gap_transaction_finished)
