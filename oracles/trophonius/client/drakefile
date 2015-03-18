@@ -33,7 +33,7 @@ def configure(elle,
   cxx_toolkit = cxx_toolkit or drake.cxx.Toolkit()
   cxx_config = cxx_config or drake.cxx.Config()
 
-  if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
+  if cxx_toolkit.os in [drake.os.windows, drake.os.ios, drake.os.android]:
     boost_filesystem = drake.cxx.Config(boost.config_filesystem(static = True))
     boost_system = drake.cxx.Config(boost.config_system(static = True))
     boost_test = drake.cxx.Config(boost.config_test(static = True))
@@ -72,7 +72,7 @@ def configure(elle,
       'src/infinit/oracles/trophonius/fwd.hh',
     )
 
-  if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
+  if cxx_toolkit.os in [drake.os.windows, drake.os.ios, drake.os.android]:
     Library = drake.cxx.StaticLib
     elle_lib = elle.elle.lib_static
     reactor_lib = elle.reactor.lib_static
@@ -130,6 +130,9 @@ def configure(elle,
     cxx_config_tests.lib('ws2_32')
     cxx_config_tests.lib('gdi32')
     cxx_config_tests.lib('mswsock')
+  if cxx_toolkit.os is drake.os.android:
+    cxx_config_tests.lib('stdc++')
+    cxx_config_tests.lib('atomic')
   if valgrind is not None:
     cxx_config_tests.define('VALGRIND')
   for name in ['trophonius']:

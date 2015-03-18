@@ -95,7 +95,7 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
 
 ELLE_TEST_SUITE()
 {
-  auto timeout = RUNNING_ON_VALGRIND ? 60 : 15;
+  auto timeout = valgrind(15);
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(cloud_buffer), 0, timeout);
 }
