@@ -418,7 +418,9 @@ class Mixin:
         'fallback_port_tcp': None,
         'aws_credentials': None,
         'is_ghost': False,
-        'strings': ''
+        'strings': '',
+
+        'cloud_buffered': False
         }
       transaction_id = self.database.transactions.insert(transaction)
       return {
@@ -938,6 +940,11 @@ class Mixin:
       if status == transaction_status.CLOUD_BUFFERED and \
          transaction['status'] == transaction_status.ACCEPTED:
         diff.update({'status': transaction_status.ACCEPTED})
+      elif status == transaction_status.CLOUD_BUFFERED:
+        diff.update({
+          'status': status,
+          'cloud_buffered': True
+        })
       else:
         diff.update({'status': status})
       diff.update({

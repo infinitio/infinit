@@ -32,7 +32,7 @@ ELLE_TEST_SCHEDULED(wait_to_finish)
     auto conn = transaction.status_changed().connect(
       [&] (gap_TransactionStatus status)
       {
-        ELLE_WARN("transaction status changed: %s", status);
+        ELLE_LOG("transaction status changed: %s", status);
         t_id = transaction.data()->id;
         id = transaction.id();
         auto& server_t = server.transaction(transaction.data()->id);
@@ -52,13 +52,13 @@ ELLE_TEST_SCHEDULED(wait_to_finish)
     reactor::Barrier finished("finished");
     for (auto& transaction : sender_client.state->transactions())
     {
-      ELLE_WARN("transaction status on new sender: %s", *transaction.second);
+      ELLE_LOG("transaction status on new sender: %s", *transaction.second);
       if (transaction.second->status() == gap_transaction_finished)
         finished.open();
       transaction.second->status_changed().connect(
       [&] (gap_TransactionStatus status)
       {
-        ELLE_WARN("transaction status changed: %s", status);
+        ELLE_LOG("transaction status changed: %s", status);
         if (status == gap_transaction_finished)
           finished.open();
       });
