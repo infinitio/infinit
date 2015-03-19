@@ -5,6 +5,7 @@ import drake.templating
 meta = None
 trophonius = None
 apertus = None
+config = None
 
 build = None
 check = None
@@ -26,7 +27,7 @@ def configure(production_build,
               valgrind = None,
               valgrind_tests = False
 ):
-
+  global config
   global transaction_lib
   global meta, trophonius, apertus, oracles
   global build, check, install
@@ -58,12 +59,12 @@ def configure(production_build,
     sources = drake.nodes(
       'src/infinit/oracles/Transaction.cc.tmpl',
       'src/infinit/oracles/Transaction.hh.tmpl',
+      'src/infinit/oracles/TransactionStatuses.hh.tmpl',
       'src/infinit/oracles/PeerTransaction.hxx',
       'src/infinit/oracles/PeerTransaction.cc',
       'src/infinit/oracles/PeerTransaction.hh',
       'src/infinit/oracles/LinkTransaction.cc',
       'src/infinit/oracles/LinkTransaction.hh',
-      'src/infinit/oracles/PeerTransaction.hh',
     )
 
   elle_lib = drake.copy(elle.elle.lib_dynamic, 'lib', strip_prefix = True)

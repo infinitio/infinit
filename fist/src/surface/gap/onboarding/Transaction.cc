@@ -96,12 +96,12 @@ namespace surface
       }
 
       void
-      Transaction::accept()
+      Transaction::accept(boost::optional<std::string> output_dir)
       {
         if (!dynamic_cast<surface::gap::onboarding::ReceiveMachine*>(
         this->_machine.get()))
         {
-          surface::gap::Transaction::accept();
+          surface::gap::Transaction::accept(output_dir);
         }
         else
         {
@@ -114,19 +114,6 @@ namespace surface
             true);
           this->notify_peer_reachable({}, {});
         }
-      }
-
-      bool
-      Transaction::pause()
-      {
-        return this->_machine->pause();
-      }
-
-      void
-      Transaction::interrupt()
-      {
-        this->notify_peer_unreachable();
-        this->_machine->interrupt();
       }
 
       void

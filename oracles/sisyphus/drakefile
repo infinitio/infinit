@@ -71,6 +71,7 @@ def configure(
       drake.path_build(build_python_path / 'infinit/oracles')
     for name in (
         'boulders/drip/accept-reminder',
+        'boulders/drip/activity-reminder',
         'boulders/drip/confirm-signup',
         'boulders/drip/delight-ghost',
         'boulders/drip/delight-recipient',

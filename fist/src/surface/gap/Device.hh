@@ -1,13 +1,36 @@
 #ifndef SURFACE_GAP_DEVICE_HH
 # define SURFACE_GAP_DEVICE_HH
 
-# include <infinit/oracles/meta/Client.hh>
+# include <string>
+
+# include <elle/UUID.hh>
+
+# include <surface/gap/Notification.hh>
 
 namespace surface
 {
   namespace gap
   {
-    typedef infinit::oracles::meta::Device Device;
+    /// This class translates transactions so that headers aren't leaked into
+    /// the GUI.
+    class Device
+      : public surface::gap::Notification
+    {
+    public:
+      Device() = default;
+      Device(elle::UUID const& id,
+             std::string const& name,
+             boost::optional<std::string> os);
+      ~Device() noexcept(true);
+
+      std::string id;
+      std::string name;
+      std::string os;
+
+    private:
+      void
+      print(std::ostream& stream) const override;
+    };
   }
 }
 

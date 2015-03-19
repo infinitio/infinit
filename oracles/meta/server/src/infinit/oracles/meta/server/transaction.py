@@ -418,7 +418,9 @@ class Mixin:
         'fallback_port_tcp': None,
         'aws_credentials': None,
         'is_ghost': False,
-        'strings': ''
+        'strings': '',
+
+        'cloud_buffered': False
         }
       transaction_id = self.database.transactions.insert(transaction)
       return {
@@ -518,21 +520,17 @@ class Mixin:
         'sender_id': _id,
         'sender_fullname': sender['fullname'],
         'sender_device_id': device_id, # bson.ObjectId(device_id),
-
         'recipient_id': recipient['_id'], #X
         'recipient_fullname': recipient['fullname'],
         'recipient_device_id': recipient_device_id if recipient_device_id else '',
         'involved': [_id, recipient['_id']],
         # Empty until accepted.
         'recipient_device_name': '',
-
         'message': message,
-
         'files': files,
         'files_count': files_count,
         'total_size': total_size,
         'is_directory': is_directory,
-
         'creation_time': self.now,
         'modification_time': self.now,
         'ctime': time.time(),
@@ -553,7 +551,6 @@ class Mixin:
               message,
               ] + files)
         }
-
       if transaction_id is not None:
         transaction['status'] = transaction_status.INITIALIZED
         self.database.transactions.update(
@@ -573,28 +570,10 @@ class Mixin:
         counts = ['sent_peer', 'sent'],
         pending = transaction,
         time = True)
-
-      peer_email = recipient.get('email', None)
-      if peer_email is not None:
-        recipient_offline = all(d.get('trophonius') is None
-                                for d in recipient.get('devices', []))
-        if not new_user and recipient_offline and not is_ghost:
-          elle.log.debug("recipient is disconnected")
-          template_id = 'accept-file-only-offline'
-
-          self.mailer.send_template(
-            to = peer_email,
-            template_name = template_id,
-            reply_to = "%s <%s>" % (sender['fullname'], self.user_identifier(sender)),
-            merge_vars = {
-              peer_email: {
-                'filename': files[0],
-                'note': message,
-                'sendername': sender['fullname'],
-                'avatar': self.user_avatar_route(recipient['_id']),
-              }}
-            )
-
+      self.__update_transaction_stats(
+        recipient,
+        unaccepted = transaction,
+        time = False)
       self._increase_swag(sender['_id'], recipient['_id'])
       recipient_view = self.__user_view(recipient)
       return self.success({
@@ -608,7 +587,8 @@ class Mixin:
                                  user,
                                  time = True,
                                  counts = None,
-                                 pending = None):
+                                 pending = None,
+                                 unaccepted = None):
     if isinstance(user, dict):
       user = user['_id']
     update = {}
@@ -620,25 +600,46 @@ class Mixin:
       update.setdefault('$inc', {})
       update['$inc'].update(
         dict(('transactions.%s' % field, 1) for field in counts))
-    if pending is not None:
-      update.setdefault('$set', {})
-      update.setdefault('$push', {})
-      update['$push']['transactions.pending'] = pending['_id']
-      update['$set']['transactions.pending_has'] = True
+    for t, f in [(pending, 'pending'), (unaccepted, 'unaccepted')]:
+      if t is not None:
+        update.setdefault('$set', {})
+        update.setdefault('$push', {})
+        update['$push']['transactions.%s' % f] = t['_id']
+        update['$set']['transactions.%s_has' % f] = True
+        update['$set']['transactions.activity_has'] = True
     self.database.users.update({'_id': user}, update)
 
-  def __complete_transaction_stats(self, user, transaction):
+  def __complete_transaction_pending_stats(self, user, transaction):
+    self.__complete_transaction_stats(user, transaction, 'pending')
+
+
+  def __complete_transaction_unaccepted_stats(self, user, transaction):
+    self.__complete_transaction_stats(user, transaction, 'unaccepted')
+
+  def __complete_transaction_stats(self, user, transaction, f):
     if isinstance(user, dict):
       user = user['_id']
     res = self.database.users.update(
       {'_id': user},
-      {'$pull': {'transactions.pending': transaction['_id']}},
+      {'$pull': {'transactions.%s' % f: transaction['_id']}},
     )
     if res['n']:
       self.database.users.update(
-        {'_id': user, 'transactions.pending': []},
-        {'$set': {'transactions.pending_has': False}},
+        {'_id': user, 'transactions.%s' % f: []},
+        {'$set': {'transactions.%s_has' % f: False}},
       )
+      self.database.users.update(
+        {
+          '_id': user,
+          'transactions.pending_has': {'$ne': True},
+          'transactions.unaccepted_has':  {'$ne': True},
+        },
+        {
+          '$set':
+          {
+            'transactions.activity_has': False,
+          }
+        })
 
   @api('/transactions')
   @require_logged_in
@@ -704,6 +705,7 @@ class Mixin:
         counts = ['accepted_peer', 'accepted'],
         pending = transaction,
         time = True)
+      self.__complete_transaction_unaccepted_stats(user, transaction)
       res = {
         'recipient_fullname': user['fullname'],
         'recipient_device_name' : device_name,
@@ -920,6 +922,11 @@ class Mixin:
       if status == transaction_status.CLOUD_BUFFERED and \
          transaction['status'] == transaction_status.ACCEPTED:
         diff.update({'status': transaction_status.ACCEPTED})
+      elif status == transaction_status.CLOUD_BUFFERED:
+        diff.update({
+          'status': status,
+          'cloud_buffered': True
+        })
       else:
         diff.update({'status': status})
       diff.update({
@@ -932,12 +939,12 @@ class Mixin:
         operation["$set"] = diff
         if status in transaction_status.final:
           for i in ['recipient_id', 'sender_id']:
-            self.__complete_transaction_stats(transaction[i],
-                                              transaction)
+            self.__complete_transaction_pending_stats(
+              transaction[i], transaction)
         elif status in [transaction_status.statuses['ghost_uploaded'],
                         transaction_status.statuses['cloud_buffered']]:
-          self.__complete_transaction_stats(transaction['sender_id'],
-                                            transaction)
+          self.__complete_transaction_pending_stats(
+            transaction['sender_id'], transaction)
         transaction = self.database.transactions.find_and_modify(
           {'_id': transaction['_id']},
           operation,

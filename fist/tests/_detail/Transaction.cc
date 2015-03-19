@@ -1,14 +1,13 @@
 #include "Transaction.hh"
 
+#include <elle/UUID.hh>
 #include <elle/serialization/json.hh>
-
-#include <fist/tests/_detail/uuids.hh>
 
 namespace tests
 {
   Transaction::Transaction()
   {
-    this->id = boost::lexical_cast<std::string>(random_uuid());
+    this->id = boost::lexical_cast<std::string>(elle::UUID::random());
   }
 
   Transaction::~Transaction() noexcept(true)

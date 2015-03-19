@@ -4,19 +4,19 @@
 
 #include "server.hh"
 
-ELLE_LOG_COMPONENT("surface.gap.State.test");
+ELLE_LOG_COMPONENT("surface.gap.state.test");
 
 class CreateEmptyServer
   : public tests::Server
 {
 protected:
   virtual
-  boost::uuids::uuid
+  elle::UUID
   _create_empty() override
   {
     this->_created.open();
     reactor::sleep();
-    return boost::uuids::uuid();
+    return elle::UUID();
   }
   ELLE_ATTRIBUTE_RX(reactor::Barrier, created);
 };
@@ -34,7 +34,7 @@ ELLE_TEST_SCHEDULED(create_transaction)
     tests::Client sender_client(server, sender, home.path());
     sender_client.login();
     ELLE_LOG("create transaction")
-      sender_client.state.transaction_peer_create(
+      sender_client.state->transaction_peer_create(
         recipient.email(),
         std::vector<std::string>{transfered.path().string()},
         "message");
@@ -58,7 +58,7 @@ public:
   typedef tests::Server Super;
 
 protected:
-  boost::uuids::uuid
+  elle::UUID
   _create_empty() override
   {
     BOOST_CHECK(!this->_created);
@@ -72,7 +72,7 @@ protected:
                    Server::Cookies const& cookies,
                    Server::Parameters const& params,
                    elle::Buffer const& content,
-                   boost::uuids::uuid const& id) override
+                   elle::UUID const& id) override
   {
 
     BOOST_CHECK_EQUAL(id, this->_id);
@@ -82,7 +82,7 @@ protected:
     return "unused";
   }
 
-  ELLE_ATTRIBUTE_RX(boost::uuids::uuid, id);
+  ELLE_ATTRIBUTE_RX(elle::UUID, id);
   ELLE_ATTRIBUTE_RX(reactor::Barrier, created);
   ELLE_ATTRIBUTE_RX(reactor::Barrier, initialized);
 };
@@ -100,7 +100,7 @@ ELLE_TEST_SCHEDULED(initialize_transaction)
     tests::Client sender_client(server, sender, home.path());
     sender_client.login();
     ELLE_LOG("create transaction")
-      sender_client.state.transaction_peer_create(
+      sender_client.state->transaction_peer_create(
         recipient.email(),
         std::vector<std::string>{transfered.path().string()},
         "message");

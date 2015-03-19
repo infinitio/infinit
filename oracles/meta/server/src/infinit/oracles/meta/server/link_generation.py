@@ -351,7 +351,7 @@ class Mixin:
           self.forbidden('cannot change status from %s to %s' %
                          (link['status'], status))
       if status in transaction_status.final + [transaction_status.DELETED]:
-        self.__complete_transaction_stats(user, link)
+        self.__complete_transaction_pending_stats(user, link)
         if status != transaction_status.FINISHED:
           # erase data
           deleter = self._generate_op_url(link, 'DELETE')
@@ -435,6 +435,7 @@ class Mixin:
         'name',
         'progress',
         'sender_id',
+        'sender_device_id',
         'status',
     ))
     if link.get('link', None) is not None:

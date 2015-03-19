@@ -1,17 +1,15 @@
 #include "Device.hh"
 
+#include <elle/UUID.hh>
+#include <elle/log.hh>
+
 #include <fist/tests/_detail/Authority.hh>
-
-
-# include <elle/log.hh>
-
-ELLE_LOG_COMPONENT("fist.tests");
 
 namespace tests
 {
   Device::Device(cryptography::PublicKey const& key,
-                   boost::optional<boost::uuids::uuid> device)
-    : _id(device ? device.get() : random_uuid())
+                   boost::optional<elle::UUID> device)
+    : _id(device ? device.get() : elle::UUID::random())
     , _passport(boost::lexical_cast<std::string>(this->_id), "osef", key, authority)
   {
   }

@@ -9,6 +9,9 @@
 #include <common/common.hh>
 
 #include <surface/gap/State.hh>
+#include <surface/gap/LinkTransaction.hh>
+#include <surface/gap/PeerTransaction.hh>
+#include <surface/gap/User.hh>
 
 #include <infinit/oracles/meta/Client.hh>
 #include <infinit/oracles/Transaction.hh>
@@ -18,9 +21,9 @@ extern "C"
   PyObject* PyInit_state();
 }
 
-struct user_from_python_dict
+struct meta_user_from_python_dict
 {
-  user_from_python_dict()
+  meta_user_from_python_dict()
   {
     boost::python::converter::registry::push_back(
       &convertible,
@@ -69,20 +72,20 @@ struct user_from_python_dict
   }
 };
 
-struct user_to_python_dict
+struct meta_user_to_python_dict
 {
   static
   PyObject*
   convert(infinit::oracles::meta::User const& user)
   {
     auto dict = PyDict_New();
-    PyDict_SetItemString(dict, "id", PyUnicode_FromString(user.id.data()));
+    PyDict_SetItemString(dict, "id", PyUnicode_FromString(user.id.c_str()));
     PyDict_SetItemString(dict, "fullname",
-                         PyUnicode_FromString(user.fullname.data()));
+                         PyUnicode_FromString(user.fullname.c_str()));
     PyDict_SetItemString(dict, "handle",
-                         PyUnicode_FromString(user.handle.data()));
+                         PyUnicode_FromString(user.handle.c_str()));
     PyDict_SetItemString(dict, "public_key",
-                         PyUnicode_FromString(user.public_key.data()));
+                         PyUnicode_FromString(user.public_key.c_str()));
     auto device_list = PyList_New(0);
     for (auto const& device: user.connected_devices)
     {
@@ -95,7 +98,7 @@ struct user_to_python_dict
   }
 };
 
-struct user_map_to_python_dict
+struct meta_user_map_to_python_dict
 {
   static
   PyObject*
@@ -106,7 +109,7 @@ struct user_map_to_python_dict
     for (auto const& obj: user_map)
     {
       PyDict_SetItem(dict, PyLong_FromLong(obj.first),
-                     user_to_python_dict::convert(obj.second));
+                     meta_user_to_python_dict::convert(obj.second));
     }
     return dict;
   }
@@ -147,108 +150,6 @@ transaction_status_string(infinit::oracles::Transaction::Status status)
   elle::unreachable();
 }
 
-struct transaction_to_python_dict
-{
-  static
-  PyObject*
-  convert(surface::gap::Transaction const& transaction)
-  {
-    infinit::oracles::Transaction const* data = transaction.data().get();
-    auto dict = PyDict_New();
-    PyDict_SetItemString(
-      dict, "id",
-      PyUnicode_FromString(data->id.data()));
-    PyDict_SetItemString(
-      dict, "sender_id",
-      PyUnicode_FromString(data->sender_id.data()));
-    PyDict_SetItemString(
-      dict, "sender_device_id",
-      PyUnicode_FromString(
-        boost::lexical_cast<std::string>(data->sender_device_id).data()));
-    PyDict_SetItemString(
-      dict, "is_ghost",
-      PyBool_FromLong(data->is_ghost));
-    PyDict_SetItemString(
-      dict, "status",
-      PyUnicode_FromString(
-        transaction_status_string(data->status).data()));
-    PyDict_SetItemString(
-      dict, "ctime",
-      PyFloat_FromDouble(data->ctime));
-    PyDict_SetItemString(
-      dict, "mtime",
-      PyFloat_FromDouble(data->mtime));
-    infinit::oracles::PeerTransaction const* peer_data
-      = dynamic_cast<infinit::oracles::PeerTransaction const*>(data);
-    if (peer_data)
-    {
-      auto file_list = PyList_New(0);
-      for (std::string const& file: peer_data->files)
-      {
-        PyList_Append(file_list, PyUnicode_FromString(file.data()));
-      }
-      PyDict_SetItemString(dict, "files", file_list);
-      PyDict_SetItemString(dict, "is_directory",
-        PyBool_FromLong(peer_data->is_directory));
-      PyDict_SetItemString(dict, "files_count",
-        PyLong_FromLongLong(peer_data->files_count));
-      PyDict_SetItemString(dict, "message",
-        PyUnicode_FromString(peer_data->message.data()));
-      PyDict_SetItemString(dict, "recipient_id",
-        PyUnicode_FromString(peer_data->recipient_id.data()));
-      PyDict_SetItemString(dict, "recipient_fullname",
-        PyUnicode_FromString(peer_data->recipient_fullname.data()));
-      PyDict_SetItemString(dict, "recipient_device_id",
-        PyUnicode_FromString(boost::lexical_cast<std::string>(peer_data->recipient_device_id).data()));
-      PyDict_SetItemString(dict, "recipient_device_name",
-        PyUnicode_FromString(peer_data->recipient_device_name.data()));
-      PyDict_SetItemString(dict, "sender_fullname",
-        PyUnicode_FromString(peer_data->sender_fullname.data()));
-      PyDict_SetItemString(dict, "total_size",
-        PyLong_FromLongLong(peer_data->total_size));
-    }
-    infinit::oracles::LinkTransaction const* link_data
-      = dynamic_cast<infinit::oracles::LinkTransaction const*>(data);
-    if (link_data)
-    {
-      PyDict_SetItemString(dict, "click_count",
-        PyLong_FromLongLong(link_data->click_count));
-      auto file_list = PyList_New(0);
-      for (auto const& file: link_data->file_list)
-      {
-        auto entry =  PyList_New(0);
-        PyList_Append(entry, PyUnicode_FromString(file.first.data()));
-        PyList_Append(entry, PyLong_FromLongLong(file.second));
-        PyList_Append(file_list, entry);
-      }
-      PyDict_SetItemString(dict, "files", file_list);
-      PyDict_SetItemString(dict, "mtime", PyFloat_FromDouble(link_data->mtime));
-      PyDict_SetItemString(dict, "name",
-        PyUnicode_FromString(link_data->name.data()));
-      PyDict_SetItemString(dict, "share_link",
-        PyUnicode_FromString(link_data->share_link.data()));
-    }
-    return dict;
-  }
-};
-
-struct transaction_map_to_python_dict
-{
-  static
-  PyObject*
-  convert(std::unordered_map<unsigned int, surface::gap::Transaction> const&
-    transaction_map)
-  {
-    auto dict = PyDict_New();
-    for (auto const& obj: transaction_map)
-    {
-      PyDict_SetItem(dict, PyLong_FromLong(obj.first),
-                     transaction_to_python_dict::convert(obj.second));
-    }
-    return dict;
-  }
-};
-
 static
 std::string
 gap_transaction_status_string(gap_TransactionStatus status)
@@ -279,22 +180,200 @@ gap_transaction_status_string(gap_TransactionStatus status)
       return "transaction_rejected";
     case gap_transaction_deleted:
       return "transaction_deleted";
+    case gap_transaction_paused:
+      return "transaction_paused";
+    default:
+      elle::unreachable();
   }
-  elle::unreachable();
 }
 
-struct transaction_notification_to_python_dict
+struct peer_transaction_notification_to_dict
 {
   static
   PyObject*
-  convert(surface::gap::Transaction::Notification const& notification)
+  convert(surface::gap::PeerTransaction const& txn)
   {
     auto dict = PyDict_New();
-    PyDict_SetItemString(dict, "transaction_id",
-                         PyLong_FromLong(notification.id));
-    PyDict_SetItemString(dict, "status", PyUnicode_FromString(
-      gap_transaction_status_string(notification.status).data()));
+    PyDict_SetItemString(dict, "id", PyLong_FromLong(txn.id));
+    PyDict_SetItemString(dict, "status",
+      PyUnicode_FromString(gap_transaction_status_string(txn.status).c_str()));
+    PyDict_SetItemString(dict, "sender_id", PyLong_FromLong(txn.sender_id));
+    PyDict_SetItemString(dict, "sender_device_id",
+                         PyUnicode_FromString(txn.sender_device_id.c_str()));
+    PyDict_SetItemString(dict, "recipient_id",
+                         PyLong_FromLongLong(txn.recipient_id));
+    PyDict_SetItemString(dict, "recipient_device_id",
+                         PyUnicode_FromString(txn.recipient_device_id.c_str()));
+    PyDict_SetItemString(dict, "mtime", PyFloat_FromDouble(txn.mtime));
+    auto file_list = PyList_New(0);
+    for (auto const& file: txn.file_names)
+    {
+      PyList_Append(file_list, PyUnicode_FromString(file.c_str()));
+    }
+    PyDict_SetItemString(dict, "files", file_list);
+    PyDict_SetItemString(dict, "total_size",
+                         PyLong_FromLongLong(txn.total_size));
+    PyDict_SetItemString(dict, "is_directory",
+                         PyBool_FromLong(txn.is_directory));
+    PyDict_SetItemString(dict, "message",
+                         PyUnicode_FromString(txn.message.c_str()));
+    PyDict_SetItemString(dict, "cancel_user",
+                         PyUnicode_FromString(txn.canceler.user_id.c_str()));
+    return dict;
+  }
+};
 
+struct link_transaction_notification_to_dict
+{
+  static
+  PyObject*
+  convert(surface::gap::LinkTransaction const& txn)
+  {
+    auto dict = PyDict_New();
+    PyDict_SetItemString(dict, "id", PyLong_FromLong(txn.id));
+    PyDict_SetItemString(dict, "name", PyUnicode_FromString(txn.name.c_str()));
+    PyDict_SetItemString(dict, "mtime", PyFloat_FromDouble(txn.mtime));
+    if (txn.link)
+    {
+      PyDict_SetItemString(dict, "link",
+                           PyUnicode_FromString(txn.link.get().c_str()));
+    }
+    PyDict_SetItemString(dict, "click_count", PyLong_FromLong(txn.click_count));
+    PyDict_SetItemString(dict, "status",
+      PyUnicode_FromString(gap_transaction_status_string(txn.status).c_str()));
+    PyDict_SetItemString(dict, "sender_device_id",
+                         PyUnicode_FromString(txn.sender_device_id.c_str()));
+    return dict;
+  }
+};
+
+struct user_notification_to_dict
+{
+  static
+  PyObject*
+  convert(surface::gap::User const& user)
+  {
+    auto dict = PyDict_New();
+    PyDict_SetItemString(dict, "id", PyLong_FromLongLong(user.id));
+    PyDict_SetItemString(dict, "status", PyBool_FromLong(user.status));
+    PyDict_SetItemString(dict, "fulname",
+                         PyUnicode_FromString(user.fullname.c_str()));
+    PyDict_SetItemString(dict, "handle",
+                         PyUnicode_FromString(user.handle.c_str()));
+    PyDict_SetItemString(dict, "meta_id",
+                         PyUnicode_FromString(user.meta_id.c_str()));
+    PyDict_SetItemString(dict, "deleted", PyBool_FromLong(user.deleted));
+    PyDict_SetItemString(dict, "ghost", PyBool_FromLong(user.ghost));
+    PyDict_SetItemString(dict, "phone_number",
+                         PyUnicode_FromString(user.phone_number.c_str()));
+    PyDict_SetItemString(dict, "ghost_code",
+                         PyUnicode_FromString(user.ghost_code.c_str()));
+    PyDict_SetItemString(dict, "ghost_invitation_url",
+                         PyUnicode_FromString(user.ghost_invitation_url.c_str()));
+    return dict;
+  }
+};
+
+struct transaction_to_python_dict
+{
+  static
+  PyObject*
+  convert(surface::gap::Transaction const& transaction)
+  {
+    infinit::oracles::Transaction const* data = transaction.data().get();
+    auto dict = PyDict_New();
+    PyDict_SetItemString(
+      dict, "id",
+      PyUnicode_FromString(data->id.c_str()));
+    PyDict_SetItemString(
+      dict, "sender_id",
+      PyUnicode_FromString(data->sender_id.c_str()));
+    PyDict_SetItemString(
+      dict, "sender_device_id",
+      PyUnicode_FromString(
+        boost::lexical_cast<std::string>(data->sender_device_id).data()));
+    PyDict_SetItemString(
+      dict, "is_ghost",
+      PyBool_FromLong(data->is_ghost));
+    PyDict_SetItemString(
+      dict, "status",
+      PyUnicode_FromString(
+        transaction_status_string(data->status).c_str()));
+    PyDict_SetItemString(
+      dict, "ctime",
+      PyFloat_FromDouble(data->ctime));
+    PyDict_SetItemString(
+      dict, "mtime",
+      PyFloat_FromDouble(data->mtime));
+    infinit::oracles::PeerTransaction const* peer_data
+      = dynamic_cast<infinit::oracles::PeerTransaction const*>(data);
+    if (peer_data)
+    {
+      auto file_list = PyList_New(0);
+      for (std::string const& file: peer_data->files)
+      {
+        PyList_Append(file_list, PyUnicode_FromString(file.c_str()));
+      }
+      PyDict_SetItemString(dict, "files", file_list);
+      PyDict_SetItemString(dict, "is_directory",
+        PyBool_FromLong(peer_data->is_directory));
+      PyDict_SetItemString(dict, "files_count",
+        PyLong_FromLongLong(peer_data->files_count));
+      PyDict_SetItemString(dict, "message",
+        PyUnicode_FromString(peer_data->message.c_str()));
+      PyDict_SetItemString(dict, "recipient_id",
+        PyUnicode_FromString(peer_data->recipient_id.c_str()));
+      PyDict_SetItemString(dict, "recipient_fullname",
+        PyUnicode_FromString(peer_data->recipient_fullname.c_str()));
+      PyDict_SetItemString(dict, "recipient_device_id",
+        PyUnicode_FromString(peer_data->recipient_device_id.repr().c_str()));
+      PyDict_SetItemString(dict, "recipient_device_name",
+        PyUnicode_FromString(peer_data->recipient_device_name.c_str()));
+      PyDict_SetItemString(dict, "sender_fullname",
+        PyUnicode_FromString(peer_data->sender_fullname.c_str()));
+      PyDict_SetItemString(dict, "total_size",
+        PyLong_FromLongLong(peer_data->total_size));
+    }
+    infinit::oracles::LinkTransaction const* link_data
+      = dynamic_cast<infinit::oracles::LinkTransaction const*>(data);
+    if (link_data)
+    {
+      PyDict_SetItemString(dict, "click_count",
+        PyLong_FromLongLong(link_data->click_count));
+      auto file_list = PyList_New(0);
+      for (auto const& file: link_data->file_list)
+      {
+        auto entry =  PyList_New(0);
+        PyList_Append(entry, PyUnicode_FromString(file.first.c_str()));
+        PyList_Append(entry, PyLong_FromLongLong(file.second));
+        PyList_Append(file_list, entry);
+      }
+      PyDict_SetItemString(dict, "files", file_list);
+      PyDict_SetItemString(dict, "mtime", PyFloat_FromDouble(link_data->mtime));
+      PyDict_SetItemString(dict, "name",
+        PyUnicode_FromString(link_data->name.c_str()));
+      PyDict_SetItemString(dict, "share_link",
+        PyUnicode_FromString(link_data->share_link.c_str()));
+      PyDict_SetItemString(dict, "sender_device_id",
+        PyUnicode_FromString(link_data->sender_device_id.repr().c_str()));
+    }
+    return dict;
+  }
+};
+
+struct transaction_map_to_python_dict
+{
+  static
+  PyObject*
+  convert(std::unordered_map<unsigned int, surface::gap::Transaction> const&
+    transaction_map)
+  {
+    auto dict = PyDict_New();
+    for (auto const& obj: transaction_map)
+    {
+      PyDict_SetItem(dict, PyLong_FromLong(obj.first),
+                     transaction_to_python_dict::convert(obj.second));
+    }
     return dict;
   }
 };
@@ -317,14 +396,15 @@ static
 void
 bind_conversions()
 {
-  // Users.
+  // Meta Users.
   using infinit::oracles::meta::User;
-  user_from_python_dict();
+  meta_user_from_python_dict();
   boost::python::to_python_converter<const User,
-                                     user_to_python_dict>();
+                                     meta_user_to_python_dict>();
 
   boost::python::to_python_converter<
-    const std::unordered_map<unsigned int, User>, user_map_to_python_dict>();
+    const std::unordered_map<unsigned int, User>,
+                             meta_user_map_to_python_dict>();
 
   // Transactions.
   using surface::gap::Transaction;
@@ -334,10 +414,17 @@ bind_conversions()
     const std::unordered_map<unsigned int, Transaction>,
     transaction_map_to_python_dict>();
 
-  // Transaction Notification.
-  using surface::gap::Transaction;
-  boost::python::to_python_converter<const Transaction::Notification,
-                                     transaction_notification_to_python_dict>();
+  // Peer Transaction Notification.
+  boost::python::to_python_converter<const surface::gap::PeerTransaction,
+                                     peer_transaction_notification_to_dict>();
+
+  // Link Transaction Notification.
+  boost::python::to_python_converter<const surface::gap::LinkTransaction,
+                                     link_transaction_notification_to_dict>();
+
+  // User Notification.
+  boost::python::to_python_converter<const surface::gap::User,
+                                     user_notification_to_dict>();
 
   boost::python::to_python_converter<std::unordered_map<std::string, std::string>,
                                      cxx_map_to_python_dict>();
@@ -351,16 +438,12 @@ public:
   typedef surface::gap::State Super;
   PythonState(std::string const& meta_protocol,
               std::string const& meta_host,
-              uint16_t meta_port,
-              std::string const& download_dir,
-              std::string const& did)
+              uint16_t meta_port)
   : common::infinit::Configuration(false)
   , Super(meta_protocol,
           meta_host,
           meta_port,
-          did.empty()?device_id() : boost::uuids::string_generator()(did),
-          trophonius_fingerprint(),
-          download_dir)
+          trophonius_fingerprint())
   {}
 
   template <typename T>
@@ -371,7 +454,7 @@ public:
       [cb] (T const& notification)
       {
         boost::python::handle<> handle(
-          transaction_notification_to_python_dict::convert(notification));
+          peer_transaction_notification_to_dict::convert(notification));
         boost::python::object dict(handle);
         cb(dict);
       });
@@ -392,12 +475,29 @@ public:
       });
   }
 
-  void
-  wrap_login(std::string const& email,
-             std::string const& password)
+  bool
+  wrap_logged_in()
   {
-    this->login(email, password);
+    return logged_in().opened();
+  }
+
+  void
+  wrap_login(std::string const& email, std::string const& password)
+  {
+    boost::optional<std::string> push_token = {};
+    boost::optional<std::string> country_code = {};
+    this->login(email, password, push_token, country_code);
     reactor::wait(this->logged_in());
+  }
+
+  void
+  wrap_register_(std::string const& fullname,
+                 std::string const& email,
+                 std::string const& password)
+  {
+    boost::optional<std::string> push_token = {};
+    boost::optional<std::string> country_code = {};
+    this->register_(fullname, email, password, push_token, country_code);
   }
 
   void
@@ -476,8 +576,6 @@ public:
   TOP(cancel, void)
   TOP(join, void)
   TOP(progress, float)
-  TOP(pause, bool)
-  TOP(interrupt, void)
   TOP(reset, void)
   TOP(final, bool)
   #undef TOP
@@ -508,10 +606,8 @@ BOOST_PYTHON_MODULE(state)
     ("State",
      boost::python::init<std::string const&,
                          std::string const&,
-                         uint16_t,
-                         std::string const&,
-                         std::string const&>())
-    .def("logged_in", &State::logged_in_to_meta)
+                         uint16_t>())
+    .def("logged_in", &PythonState::wrap_logged_in)
     .def("login", &PythonState::wrap_login)
     .def("logout", &PythonState::wrap_logout)
     .def("poll", &State::poll)
@@ -522,8 +618,6 @@ BOOST_PYTHON_MODULE(state)
     .def("transaction_join", &PythonState::transaction_join)
     .def("transaction_cancel", &PythonState::transaction_cancel)
     .def("transaction_progress", &PythonState::transaction_progress)
-    .def("transaction_pause", &PythonState::transaction_pause)
-    .def("transaction_interrupt", &PythonState::transaction_interrupt)
     .def("transaction_reset", &PythonState::transaction_reset)
     .def("transaction_final", &PythonState::transaction_final)
     .def("transaction_status", &PythonState::wrap_transaction_status)
@@ -538,13 +632,13 @@ BOOST_PYTHON_MODULE(state)
     .def("transactions", static_cast<
       State::Transactions const& (State::*)() const>(&State::transactions),
          by_const_ref())
-    .def("attach_transaction_callback",
-         &PythonState::attach_callback<surface::gap::Transaction::Notification>)
+    .def("attach_peer_transaction_callback",
+         &PythonState::attach_callback<surface::gap::PeerTransaction>)
     .def("attach_connection_callback", &PythonState::attach_connection_callback)
     .def("configuration_set_max_mirror_size",
          &PythonState::configuration_set_max_mirror_size)
     .def("features", &PythonState::features)
-    .def("register", &State::register_)
+    .def("register", &PythonState::wrap_register_)
     .def("reconnection_cooldown",
       static_cast<void(State::*)(boost::posix_time::time_duration const&)>
       (&State::reconnection_cooldown))

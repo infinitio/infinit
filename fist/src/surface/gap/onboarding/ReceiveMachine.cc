@@ -75,7 +75,7 @@ namespace surface
       {}
 
       void
-      ReceiveMachine::accept()
+      ReceiveMachine::accept(boost::optional<std::string> relative_output_dir)
       {
         if (!this->_accepted.opened())
         {
@@ -86,7 +86,7 @@ namespace surface
               onboarding);
         }
         this->data()->recipient_device_id = this->state().device().id;
-        surface::gap::ReceiveMachine::accept();
+        surface::gap::ReceiveMachine::accept(relative_output_dir);
       }
 
       void
@@ -103,28 +103,6 @@ namespace surface
               onboarding);
         }
         surface::gap::ReceiveMachine::reject();
-      }
-
-      bool
-      ReceiveMachine::pause()
-      {
-        auto* machine = static_cast<TransferMachine*>(
-          this->_transfer_machine.get());
-        ELLE_TRACE_SCOPE("%s: machine %spaused",
-                         *this, (machine->running().opened() ? "" : "un"));
-        if (machine->running().opened())
-          machine->running().close();
-        else
-          machine->running().open();
-        return machine->running().opened();
-      }
-
-      void
-      ReceiveMachine::interrupt()
-      {
-        auto* machine = static_cast<TransferMachine*>(
-          this->_transfer_machine.get());
-        machine->interrupt();
       }
 
       infinit::oracles::meta::UpdatePeerTransactionResponse

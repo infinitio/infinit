@@ -12,12 +12,10 @@
 
 #include <infinit/oracles/trophonius/Client.hh>
 
+#include <surface/gap/Exception.hh>
+#include <surface/gap/onboarding/Transaction.hh>
 #include <surface/gap/State.hh>
 #include <surface/gap/Transaction.hh>
-#include <surface/gap/onboarding/Transaction.hh>
-#include <surface/gap/Exception.hh>
-
-#include <common/common.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.State.Transaction");
 
@@ -150,8 +148,7 @@ namespace surface
     {
       ELLE_ASSERT(this->_transactions.empty());
       boost::filesystem::path snapshots_path(
-        common::infinit::user_directory(this->_home, this->me().id));
-      snapshots_path /= "transactions";
+        this->local_configuration().transactions_directory(this->me().id));
       ELLE_TRACE("%s: load transactions from snapshots at %s",
                  *this, snapshots_path)
       {
@@ -356,7 +353,40 @@ namespace surface
           auto id = generate_id();
           auto transaction = elle::make_unique<Transaction>(*this, id, notif);
           // Notify GAP a transaction was created.
-          this->enqueue(Transaction::Notification(id, transaction->status()));
+          if (auto peer_data =
+            std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(notif))
+          {
+            surface::gap::PeerTransaction notification(
+              id,
+              transaction->status(),
+              this->user_id(peer_data->sender_id),
+              peer_data->sender_device_id,
+              this->user_id_or_null(peer_data->recipient_id),
+              peer_data->recipient_device_id,
+              peer_data->mtime,
+              peer_data->files,
+              peer_data->total_size,
+              peer_data->is_directory,
+              peer_data->message,
+              peer_data->canceler,
+              peer_data->id);
+            this->enqueue(notification);
+          }
+          else if (auto link_data =
+            std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(notif))
+          {
+            surface::gap::LinkTransaction notification(
+              id,
+              link_data->name,
+              link_data->mtime,
+              link_data->share_link,
+              link_data->click_count,
+              transaction->status(),
+              link_data->sender_device_id,
+              link_data->message,
+              link_data->id);
+            this->enqueue(notification);
+          }
           this->_transactions.emplace(id, std::move(transaction));
         }
         catch (elle::Error const& e)

@@ -31,6 +31,8 @@ namespace surface
     | Construction |
     `-------------*/
 
+    /// Constructor when sending from another device or if you have no
+    /// snapshot as sender. In that case, run_to_fail is set to true.
     PeerSendMachine::PeerSendMachine(Transaction& transaction,
                                      uint32_t id,
                                      std::shared_ptr<Data> data,
@@ -83,6 +85,7 @@ namespace surface
           std::bind(&PeerSendMachine::_wait_for_accept, this)))
     {
       ELLE_TRACE_SCOPE("%s: generic peer send machine", *this);
+      this->_setup_end_state(this->_wait_for_accept_state);
       this->_machine.transition_add(
         this->_initialize_transaction_state,
         this->_wait_for_accept_state);
@@ -100,21 +103,6 @@ namespace surface
         this->_wait_for_accept_state,
         this->_reject_state,
         reactor::Waitables{&this->rejected()});
-      this->_machine.transition_add(this->_wait_for_accept_state,
-                                    this->_cancel_state,
-                                    reactor::Waitables{&this->canceled()}, true);
-      this->_machine.transition_add(this->_wait_for_accept_state,
-                                    this->_fail_state,
-                                    reactor::Waitables{&this->failed()}, true);
-      this->_machine.transition_add_catch(
-        this->_wait_for_accept_state, this->_fail_state)
-        .action_exception(
-          [this] (std::exception_ptr e)
-          {
-            ELLE_WARN("%s: error while waiting for accept: %s",
-                      *this, elle::exception_string(e));
-            this->transaction().failure_reason(elle::exception_string(e));
-          });
       this->transaction_status_update(data->status);
     }
 
@@ -896,7 +884,9 @@ namespace surface
         this->_frete = elle::make_unique<frete::Frete>(
           this->transaction_id(),
           this->state().identity().pair(),
-          this->transaction().snapshots_directory() / "frete.snapshot");
+          this->transaction().snapshots_directory() / "frete.snapshot",
+          this->transaction().snapshots_directory() / "mirror_files",
+          this->files_mirrored());
          _fetch_peer_key(false);
         if (this->_frete->count())
         {

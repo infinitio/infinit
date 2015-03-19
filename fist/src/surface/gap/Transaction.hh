@@ -37,7 +37,7 @@ namespace surface
           delete_,
           progress,
           pause,
-          interrupt,
+          resume,
        };
 
         BadOperation(Type type);
@@ -172,7 +172,7 @@ namespace surface
     public:
       virtual
       void
-      accept();
+      accept(boost::optional<std::string> output_dir = {});
 
       virtual
       void
@@ -194,14 +194,6 @@ namespace surface
       virtual
       float
       progress() const;
-
-      virtual
-      bool
-      pause();
-
-      virtual
-      void
-      interrupt();
 
     public:
       void

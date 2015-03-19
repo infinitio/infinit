@@ -536,24 +536,28 @@ class Mixin:
     return self._user_from_session(fields = self.__user_self_fields)
 
   def _user_from_session(self, fields):
-    elle.log.trace("get user from session")
     if hasattr(bottle.request, 'user'):
+      elle.log.trace('get user from session: cached')
       return bottle.request.user
     if not hasattr(bottle.request, 'session'):
+      elle.log.trace('get user from session: no session')
       return None
     # For a smoother transition, sessions registered as
     # email are still available.
     methods = {'identifier': self._user_by_id, 'email': self.user_by_email}
-    for key in methods:
-      identifier = bottle.request.session.get(key, None)
-      if identifier is not None:
-        user = methods[key](identifier,
-                            ensure_existence = False,
-                            fields = fields)
-        if user is not None:
-          bottle.request.user = user
-          return user
-    elle.log.trace("session not found")
+    with elle.log.trace('get user from session'):
+      elle.log.dump('session: %s' % bottle.request.session)
+      for key in methods:
+        identifier = bottle.request.session.get(key, None)
+        if identifier is not None:
+          elle.log.debug('get user from session by %s: %s' % (key, identifier))
+          user = methods[key](identifier,
+                              ensure_existence = False,
+                              fields = fields)
+          if user is not None:
+            bottle.request.user = user
+            return user
+      elle.log.trace('session not found')
 
   ## -------- ##
   ## Register ##
@@ -2261,7 +2265,7 @@ class Mixin:
     small_image = user.get('small_avatar')
     if small_image:
       from bottle import response
-      response.content_type = 'image/png'
+      response.content_type = 'image/jpeg'
       return bytes(small_image)
     else:
       if no_place_holder:

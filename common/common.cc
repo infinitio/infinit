@@ -23,121 +23,7 @@
 
 ELLE_LOG_COMPONENT("common")
 
-#define COMMON_DEFAULT_INFINIT_HOME ".infinit"
-
-#define COMMON_PRODUCTION_INFINIT_HOME ".infinit"
-
-#ifdef INFINIT_PRODUCTION_BUILD
-# define VAR_PREFIX COMMON_PRODUCTION
-#else
-# define VAR_PREFIX COMMON_DEFAULT
-#endif
-
-# define COMMON_INFINIT_HOME \
-  BOOST_PP_CAT(VAR_PREFIX, _INFINIT_HOME) \
-/**/
-
 namespace path = elle::os::path;
-
-namespace
-{
-  std::string
-  _home_directory()
-  {
-    return elle::system::home_directory().string();
-  }
-}
-
-namespace common
-{
-
-  namespace infinit
-  {
-    boost::filesystem::path
-    passport_path(boost::filesystem::path const& home,
-                  std::string const& user)
-    {
-      return infinit::user_directory(home, user) / (user + ".ppt");
-    }
-
-    /// Returns the path of the file containing the computer device uuid.
-    boost::filesystem::path
-    device_id_path(boost::filesystem::path const& home)
-    {
-      return home / "device.uuid";
-    }
-
-    boost::filesystem::path
-    configuration_path(boost::filesystem::path const& home)
-    {
-      return home / "configuration";
-    }
-
-    boost::filesystem::path
-    first_launch_path(boost::filesystem::path const& home)
-    {
-      return home / "first_launch";
-    }
-
-    boost::filesystem::path
-    user_directory(boost::filesystem::path const& home,
-                   std::string const& user_id)
-    {
-      return home / "users" / user_id;
-    }
-
-    boost::filesystem::path
-    transactions_directory(boost::filesystem::path const& home,
-                           std::string const& user_id)
-    {
-      return user_directory(home, user_id) / "transaction";
-    }
-
-    boost::filesystem::path
-    transaction_snapshots_directory(boost::filesystem::path const& home,
-                                    std::string const& user_id)
-    {
-      return transactions_directory(home, user_id) / ".snapshot";
-    }
-
-    boost::filesystem::path
-    frete_snapshot_path(boost::filesystem::path const& home,
-                        std::string const& user_id,
-                        std::string const& transaction_id)
-    {
-      return
-        transactions_directory(home, user_id) / (transaction_id + ".frete");
-    }
-
-    boost::filesystem::path
-    identity_path(boost::filesystem::path const& home,
-                  std::string const& user_id)
-    {
-      return infinit::user_directory(home, user_id) / "identity";
-    }
-  }
-
-
-  namespace system
-  {
-    std::string const&
-    home_directory()
-    {
-      static std::string home_dir = _home_directory();
-      static bool no_cache = !elle::os::getenv("INFINIT_NO_DIR_CACHE", "").empty();
-      if (no_cache)
-        home_dir = _home_directory();
-      return home_dir;
-    }
-
-    unsigned int
-    architecture()
-    {
-      return sizeof(void*) * 8;
-    }
-
-  } //!system
-}
 
 namespace
 {
@@ -161,6 +47,43 @@ namespace
     }
     return res;
   }
+
+  static
+  void
+  _set_path_with_optional(std::string& path_to_set,
+                          std::string const& env_option,
+                          std::string const& fallback,
+                          boost::optional<std::string> optional = {})
+  {
+    std::string res;
+    if (!env_option.empty())
+    {
+      res = env_option;
+      if (!boost::filesystem::exists(res))
+      {
+        ELLE_ABORT("unable to set path with env variable (%s): "
+                   "path does not exist", res);
+      }
+      else if (!boost::filesystem::is_directory(res))
+      {
+        ELLE_ABORT("unable to set path with env variable (%s): "
+                   "path is not directory", res);
+      }
+    }
+    else
+    {
+      res = (!optional || optional.get().empty())
+        ? fallback
+        : optional.get();
+      if (res.empty() ||
+          !boost::filesystem::exists(res) ||
+          !boost::filesystem::is_directory(res))
+      {
+        ELLE_ABORT("unable to set path (%s) or fallback (%s)", res, fallback);
+      }
+    }
+    path_to_set = res;
+  }
 }
 
 static const std::vector<unsigned char> default_trophonius_fingerprint =
@@ -174,36 +97,80 @@ namespace common
   namespace infinit
   {
     std::string
-    infinit_default_home()
+    default_home()
     {
-      static bool first = true;
-      static std::string res;
-      static bool no_cache =
-        !elle::os::getenv("INFINIT_NO_DIR_CACHE", "").empty();
-      if (first || no_cache)
-      {
-        first = false;
-        res = elle::os::getenv(
-          "INFINIT_HOME",
-          common::system::home_directory() + "/.infinit"
-          );
-      }
-      return res;
+      return path::join(elle::system::home_directory().string(), ".infinit");
     }
 
-    common::infinit::Configuration::Configuration(
+    Configuration::Configuration(
       bool production,
-      boost::filesystem::path home,
-      boost::optional<std::string> download_dir)
-      : _home(std::move(home))
+      bool enable_mirroring,
+      uint64_t max_mirror_size,
+      boost::optional<std::string> download_dir,
+      boost::optional<std::string> persistent_config_dir,
+      boost::optional<std::string> non_persistent_config_dir)
+        : _max_mirror_size(max_mirror_size)
     {
-      if (this->_home.empty())
-        this->_home = infinit_default_home();
-      std::string download_directory = (!download_dir || download_dir.get().empty())
-        ? path::join(elle::system::home_directory().string(), "Downloads")
-        : download_dir.get();
-      bool env_production = !::elle::os::getenv("INFINIT_PRODUCTION", "").empty();
-      bool env_development = !::elle::os::getenv("INFINIT_DEVELOPMENT", "").empty();
+      // File mirroring.
+      bool mirror_enable =
+        !::elle::os::getenv("INFINIT_ENABLE_MIRRORING", "").empty();
+      bool mirror_disable =
+        !::elle::os::getenv("INFINIT_DISABLE_MIRRORING", "").empty();
+      if (mirror_enable && mirror_disable)
+      {
+        ELLE_ABORT("define only one of INFINIT_ENABLE_MIRRORING and "\
+                   "INFINIT_DISABLE_MIRRORING");
+      }
+      if (mirror_enable)
+        _enable_mirroring = true;
+      else if (mirror_disable)
+        _enable_mirroring = false;
+      else
+        _enable_mirroring = enable_mirroring;
+      // Download directory.
+      _set_path_with_optional(
+        this->_download_dir,
+        elle::os::getenv("INFINIT_DOWNLOAD_DIR", ""),
+        path::join(elle::system::home_directory().string(), "Downloads"),
+        download_dir);
+
+      if (!elle::os::getenv("INFINIT_HOME", "").empty())
+      {
+        boost::filesystem::path default_path(
+          elle::os::getenv("INFINIT_HOME", ""));
+        if (!boost::filesystem::exists(default_path))
+        {
+          boost::filesystem::create_directories(default_path);
+        }
+        else if (!boost::filesystem::is_directory(default_path))
+        {
+          ELLE_ABORT("unable to set path using INFINIT_HOME (%s) "\
+                     "file exists and is not directory", default_path);
+        }
+        this->_persistent_config_dir = default_path.string();
+        this->_non_persistent_config_dir = default_path.string();
+      }
+      else
+      {
+        // Persistent config directory.
+        _set_path_with_optional(
+          this->_persistent_config_dir,
+          elle::os::getenv("INFINIT_PERSISTENT_DIR", ""),
+          default_home(),
+          persistent_config_dir);
+
+        // Non-persistent config directory.
+        _set_path_with_optional(
+          this->_non_persistent_config_dir,
+          elle::os::getenv("INFINIT_NON_PERSISTENT_DIR", ""),
+          default_home(),
+          non_persistent_config_dir);
+      }
+
+      bool env_production =
+        !::elle::os::getenv("INFINIT_PRODUCTION", "").empty();
+      bool env_development =
+        !::elle::os::getenv("INFINIT_DEVELOPMENT", "").empty();
       if (env_production && env_development)
       {
         ELLE_ABORT("define one and only one of "
@@ -220,12 +187,14 @@ namespace common
       {
         env_production = false;
       }
+
       // Meta
       this->_meta_protocol = elle::os::getenv("INFINIT_META_PROTOCOL", "https");
       this->_meta_host = elle::os::getenv(
         "INFINIT_META_HOST", _server_host_name("meta", env_production));
       this->_meta_port = boost::lexical_cast<int>(
         elle::os::getenv("INFINIT_META_PORT", "443"));
+
       // Metrics
       this->_metrics_infinit_enabled = boost::lexical_cast<bool>(
         elle::os::getenv("INFINIT_METRICS_INFINIT", env_production ? "1" : "0"));
@@ -235,15 +204,89 @@ namespace common
       this->_metrics_infinit_port = boost::lexical_cast<int>(
         elle::os::getenv(
           "INFINIT_METRICS_INFINIT_PORT", "80"));
+
       // Device
-      auto device_id_path = common::infinit::device_id_path(this->_home);
+      this->_device_id = this->_get_device_id();
+
+      // Trophonius
+      this->_trophonius_fingerprint = default_trophonius_fingerprint;
+    }
+
+    Configuration::Configuration(
+      std::string const& meta_protocol,
+      std::string const& meta_host,
+      uint16_t meta_port,
+      std::vector<unsigned char> trophonius_fingerprint,
+      boost::optional<boost::uuids::uuid const&> device_id,
+      boost::optional<std::string> download_dir,
+      boost::optional<std::string> home_dir)
+        : _enable_mirroring(true)
+        , _max_mirror_size(0)
+        , _meta_protocol(meta_protocol)
+        , _meta_host(meta_host)
+        , _meta_port(meta_port)
+        , _trophonius_fingerprint(trophonius_fingerprint)
+        , _metrics_infinit_enabled(false)
+        , _metrics_infinit_host()
+        , _metrics_infinit_port()
+        , _persistent_config_dir()
+        , _non_persistent_config_dir()
+        , _download_dir()
+    {
+      // Download directory.
+      _set_path_with_optional(
+        this->_download_dir,
+        elle::os::getenv("INFINIT_DOWNLOAD_DIR", ""),
+        path::join(elle::system::home_directory().string(), "Downloads"),
+        download_dir);
+
+      if (!elle::os::getenv("INFINIT_HOME", "").empty() || home_dir)
+      {
+        boost::filesystem::path default_path(
+          elle::os::getenv("INFINIT_HOME", home_dir ? home_dir.get() : ""));
+        if (!boost::filesystem::exists(default_path))
+        {
+          boost::filesystem::create_directories(default_path);
+        }
+        else if (!boost::filesystem::is_directory(default_path))
+        {
+          ELLE_ABORT("unable to set path using INFINIT_HOME (%s) "\
+                     "file exists and is not directory", default_path);
+        }
+        this->_persistent_config_dir = default_path.string();
+        this->_non_persistent_config_dir = default_path.string();
+      }
+      else
+      {
+        // Persistent config directory.
+        _set_path_with_optional(
+          this->_persistent_config_dir,
+          elle::os::getenv("INFINIT_PERSISTENT_DIR", ""),
+          path::join(elle::system::home_directory().string(), ".infinit"));
+
+        // Non-persistent config directory.
+        _set_path_with_optional(
+          this->_non_persistent_config_dir,
+          elle::os::getenv("INFINIT_NON_PERSISTENT_DIR", ""),
+          path::join(elle::system::home_directory().string(), ".infinit"));
+      }
+      if (device_id)
+        this->_device_id = device_id.get();
+      else
+        this->_device_id = this->_get_device_id();
+    }
+
+    boost::uuids::uuid
+    Configuration::_get_device_id()
+    {
       auto device_uuid = boost::uuids::nil_generator()();
       bool force_regenerate
         = !elle::os::getenv("INFINIT_FORCE_NEW_DEVICE_ID", "").empty();
-      if (!force_regenerate && boost::filesystem::exists(device_id_path))
+      if (!force_regenerate
+          && boost::filesystem::exists(this->device_id_path()))
       {
         ELLE_TRACE("%s: get device uuid from file", *this);
-        boost::filesystem::ifstream file(device_id_path);
+        boost::filesystem::ifstream file(this->device_id_path());
         std::string struuid;
         file >> struuid;
         device_uuid = boost::uuids::string_generator()(struuid);
@@ -252,43 +295,81 @@ namespace common
       {
         ELLE_TRACE("%s: create device uuid", *this);
         boost::filesystem::create_directories(
-          boost::filesystem::path(device_id_path).parent_path());
+          boost::filesystem::path(this->device_id_path())
+          .parent_path());
         device_uuid = boost::uuids::random_generator()();
-        boost::filesystem::ofstream file(device_id_path);
+        std::ofstream file(this->device_id_path());
         if (!file.good())
-          ELLE_ERR("%s: Failed to create device uuid file at %s",
-                   *this, device_id_path);
+          ELLE_ERR("%s: Failed to create device uuid file at %s", *this,
+                   this->device_id_path());
         file << device_uuid << std::endl;
       }
-      this->_device_id = device_uuid;
-      // Trophonius
-      this->_trophonius_fingerprint = default_trophonius_fingerprint;
-      // Download directory
-      this->_download_dir = elle::os::getenv("INFINIT_DOWNLOAD_DIR",
-                                             download_directory);
-      if (this->download_dir().length() > 0 &&
-          boost::filesystem::exists(this->download_dir()) &&
-          boost::filesystem::is_directory(this->download_dir()))
-      {
-        ELLE_TRACE("%s: set download directory: %s", *this, this->download_dir());
-      }
-      else
-      {
-        ELLE_ERR("%s: failed to set download directory: %s",
-                 *this, this->download_dir());
-      }
+      return device_uuid;
+    }
+
+    std::string
+    Configuration::passport_path() const
+    {
+      return path::join(this->persistent_config_dir(), "passport");
+    }
+
+    std::string
+    Configuration::device_id_path() const
+    {
+      return path::join(this->persistent_config_dir(), "device.uuid");
+    }
+
+    std::string
+    Configuration::configuration_path() const
+    {
+      return path::join(this->non_persistent_config_dir(), "configuration");
+    }
+
+    std::string
+    Configuration::first_launch_path() const
+    {
+      return path::join(this->persistent_config_dir(), "first_launch");
+    }
+
+    std::string
+    Configuration::persistent_user_directory(std::string const& user_id) const
+    {
+      auto users_path = path::join(this->persistent_config_dir(), "users");
+      return path::join(users_path, user_id);
+    }
+
+    std::string
+    Configuration::non_persistent_user_directory(std::string const& user_id) const
+    {
+      auto users_path = path::join(this->non_persistent_config_dir(), "users");
+      return path::join(users_path, user_id);
+    }
+
+    std::string
+    Configuration::transactions_directory(std::string const& user_id) const
+    {
+      return path::join(this->non_persistent_user_directory(user_id),
+                        "transactions");
+    }
+
+    std::string
+    Configuration::identity_path(std::string const& user_id) const
+    {
+      return path::join(this->persistent_user_directory(user_id),
+                        "identity");
+    }
+
+    std::unique_ptr< ::infinit::metrics::Reporter>
+    Configuration::metrics() const
+    {
+      using namespace ::infinit::metrics;
+      auto res = elle::make_unique<CompositeReporter>();
+      if (this->metrics_infinit_enabled())
+        res->add_reporter(elle::make_unique<InfinitReporter>(
+                            this->metrics_infinit_host(),
+                            this->metrics_infinit_port()));
+      return std::unique_ptr<Reporter>(
+        std::move(res));
     }
   }
-}
-
-std::unique_ptr< ::infinit::metrics::Reporter>
-common::metrics(common::infinit::Configuration const& config)
-{
-  auto res = elle::make_unique< ::infinit::metrics::CompositeReporter>();
-  if (config.metrics_infinit_enabled())
-    res->add_reporter(elle::make_unique< ::infinit::metrics::InfinitReporter>(
-                        config.metrics_infinit_host(),
-                        config.metrics_infinit_port()));
-  return std::unique_ptr< ::infinit::metrics::Reporter>(
-    std::move(res));
 }

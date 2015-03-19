@@ -1,7 +1,5 @@
 #include <surface/gap/State.hh>
 
-#include <common/common.hh>
-
 #include <elle/os/path.hh>
 
 #include <papier/Passport.hh>
@@ -31,8 +29,7 @@ namespace surface
       ELLE_TRACE_METHOD(name);
 
       ELLE_DEBUG("update device name to %s", name);
-      std::string passport_path =
-        common::infinit::passport_path(this->home(), this->me().id).string();
+      std::string passport_path = this->local_configuration().passport_path();
 
       ELLE_ASSERT(this->_device != nullptr);
 
@@ -51,7 +48,7 @@ namespace surface
       this->_passport->store(elle::io::Path(passport_path));
     }
 
-    Device const&
+    State::Device const&
     State::device() const
     {
       ELLE_ASSERT(this->_device != nullptr);

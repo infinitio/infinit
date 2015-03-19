@@ -126,23 +126,8 @@ namespace surface
       , _data(std::move(data))
     {
       ELLE_TRACE_SCOPE("%s: create transaction machine", *this);
-      // Transfer end.
-      this->_machine.transition_add(
-        this->_transfer_state,
-        this->_end_state,
-        reactor::Waitables{&this->finished()},
-        true);
-      this->_machine.transition_add(
-        this->_transfer_state,
-        this->_cancel_state,
-        reactor::Waitables{&this->canceled()},
-        true);
-      this->_machine.transition_add(
-        this->_transfer_state,
-        this->_fail_state,
-        reactor::Waitables{&this->failed()},
-        true);
-      this->_fail_on_exception(this->_transfer_state);
+      this->_setup_end_state(this->_transfer_state);
+      this->_setup_end_state(this->_another_device_state);
       // Another device endings.
       this->_machine.transition_add(
         this->_another_device_state,
@@ -205,8 +190,23 @@ namespace surface
     }
 
     void
-    TransactionMachine::_fail_on_exception(reactor::fsm::State& state)
+    TransactionMachine::_setup_end_state(reactor::fsm::State& state)
     {
+      this->_machine.transition_add(
+        state,
+        this->_end_state,
+        reactor::Waitables{&this->finished()},
+        true);
+      this->_machine.transition_add(
+        state,
+        this->_cancel_state,
+        reactor::Waitables{&this->canceled()},
+        true);
+      this->_machine.transition_add(
+        state,
+        this->_fail_state,
+        reactor::Waitables{&this->failed()},
+        true);
       this->_machine.transition_add_catch(
         state,
         this->_fail_state)
@@ -327,13 +327,7 @@ namespace surface
       try
       {
         // Send report for failed transfer
-        auto transaction_dir =
-          common::infinit::transactions_directory(this->state().home(),
-                                                  this->state().me().id);
-        elle::crash::transfer_failed_report(this->state().meta().protocol(),
-                                            this->state().meta().host(),
-                                            this->state().meta().port(),
-                                            transaction_dir,
+        elle::crash::transfer_failed_report(this->state().local_configuration(),
                                             this->state().me().identifier(),
                                             transaction_id,
                                             this->transaction().failure_reason());
@@ -410,22 +404,6 @@ namespace surface
         this->_metrics_ended(infinit::oracles::Transaction::Status::canceled,
                              reason);
       this->_canceled.open();
-    }
-
-    bool
-    TransactionMachine::pause()
-    {
-      ELLE_TRACE_SCOPE("%s: pause transaction %s", *this, this->data()->id);
-      throw elle::Exception(
-        elle::sprintf("%s: pause not implemented yet", *this));
-    }
-
-    void
-    TransactionMachine::interrupt()
-    {
-      ELLE_TRACE_SCOPE("%s: interrupt transaction %s", *this, this->data()->id);
-      throw elle::Exception(
-        elle::sprintf("%s: interruption not implemented yet", *this));
     }
 
     bool

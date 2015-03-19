@@ -32,6 +32,8 @@ extern "C"
     gap_transaction_rejected = 10,
     // Deleted.
     gap_transaction_deleted = 11,
+    // Paused.
+    gap_transaction_paused = 12,
   } gap_TransactionStatus;
 
   typedef enum
@@ -50,8 +52,7 @@ extern "C"
 
   typedef enum
   {
-    NotificationType_NewTransaction,
-    NotificationType_TransactionUpdate,
+    NotificationType_PeerTransactionUpdate,
     NotificationType_UserStatusUpdate,
     NotificationType_NewSwagger,
     NotificationType_DeletedSwagger,
@@ -59,7 +60,7 @@ extern "C"
     NotificationType_ConnectionStatus,
     NotificationType_AvatarAvailable,
     NotificationType_TrophoniusUnavailable,
-    NotificationType_LinkUpdate,
+    NotificationType_LinkTransactionUpdate,
     NotificationType_TransactionRecipientChanged,
   } NotificationType;
 

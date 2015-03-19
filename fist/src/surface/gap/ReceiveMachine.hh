@@ -43,7 +43,7 @@ namespace surface
     public:
       virtual
       void
-      accept();
+      accept(boost::optional<std::string> relative_output_dir = {});
       virtual
       void
       reject();
@@ -62,6 +62,7 @@ namespace surface
     protected:
       reactor::Barrier _accepted;
       reactor::Barrier _accepted_elsewhere;
+      std::string _relative_output_dir;
     /*-----------------.
     | Transaction data |
     `-----------------*/

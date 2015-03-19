@@ -1,0 +1,139 @@
+#!/usr/bin/env python3
+
+# utils first, beware of system OpenSSL.
+import utils
+from utils import *
+
+import elle.log
+
+from infinit.oracles.transaction import statuses
+
+import sisyphus
+import sisyphus.boulders.drip
+
+ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.boulders.drip'
+
+class ActivityReminder(sisyphus.boulders.drip.ActivityReminder):
+
+  def __init__(self, sisyphus):
+    super().__init__(sisyphus)
+    self.__now = datetime.datetime.utcnow()
+
+  @property
+  def now(self):
+    return self.__now
+
+  @now.setter
+  def now(self, value):
+    self.__now = value
+
+  def _pick_template(self, template, users):
+    return sisyphus.boulders.drip.Drip._pick_template(
+      self, template, users)
+
+def check_mail(emails, email, template):
+  utils.check_mail(emails, email, template)
+  assertEq(len(emails[0][1]['transactions']), 1)
+
+with mongobox.MongoBox() as mongo:
+  with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
+    emailer = DummyEmailer()
+    sisy = sisyphus.Sisyphus(mongo_port = mongo.port,
+                             emailer = emailer)
+    # gestapo(sisy.mongo)
+    reminder = ActivityReminder(sisy)
+
+    def forward(duration):
+      reminder.now += duration
+      meta.now = reminder.now
+
+    # Check nothing is sent with no users
+    sisy.boulders_run()
+    assert not emailer.emails
+
+    # Create an activated user
+    device = 'device'
+    email = 'user@infinit.io'
+    sender = user_register(meta, email)
+    sender_device = meta._create_device(sender)
+    sender_device['id'] = uuid.UUID(sender_device['id'])
+    meta.set_connection_status(
+      sender['_id'], sender_device['id'], True, 'tropho-id')
+    tid = transaction_create(meta, sender,
+                             recipient_identifier ='ghost@infinit.io')
+    meta._cloud_buffer(tid, sender)
+    meta._transaction_update(tid, statuses['ghost_uploaded'],
+                             device, None, sender)
+    sisy.boulders_run()
+    assert not emailer.emails
+    meta.set_connection_status(
+      sender['_id'], sender_device['id'], False, 'tropho-id')
+    forward(reminder.delay * 1.1)
+
+    # Check nothing is sent for a finished transaction
+    sisy.boulders_run()
+    assert not emailer.emails
+
+    # Check nothing is sent too early
+    meta.set_connection_status(
+      sender['_id'], sender_device['id'], True, 'tropho-id')
+    tid = transaction_create(meta, sender, recipient_identifier = 'ghost@infinit.io')
+    meta.set_connection_status(
+      sender['_id'], sender_device['id'], False, 'tropho-id')
+    forward(reminder.delay * 0.5)
+    sisy.boulders_run()
+    assert not emailer.emails
+    import sys
+    print('BEFORE', list(sisy.mongo.meta.users.find()), file = sys.stderr)
+
+    # Check first reminder
+    import sys
+    print(reminder.now, file = sys.stderr)
+    forward(reminder.delay * 1.1)
+    print(reminder.now, file = sys.stderr)
+    sisy.boulders_run()
+    check_mail(emailer.emails, email, 'drip_activity-reminder_stuck')
+
+    # Check coming online resets
+    forward(reminder.delay * 2)
+    meta.set_connection_status(
+      sender['_id'], sender_device['id'], True, 'tropho-id')
+    sisy.boulders_run()
+    assert not emailer.emails
+    meta.set_connection_status(
+      sender['_id'], sender_device['id'], False, 'tropho-id')
+    forward(reminder.delay * 1.1)
+    sisy.boulders_run()
+    forward(reminder.delay * 0.6)
+    sisy.boulders_run()
+    assert not emailer.emails
+    forward(reminder.delay * 0.6)
+    sisy.boulders_run()
+    check_mail(emailer.emails, email, 'drip_activity-reminder_stuck')
+    forward(reminder.delay * 0.6)
+    sisy.boulders_run()
+    assert not emailer.emails
+    forward(reminder.delay * 0.6)
+    sisy.boulders_run()
+    check_mail(emailer.emails, email, 'drip_activity-reminder_stuck')
+
+    # Accept and check emails stop
+    meta._cloud_buffer(tid, sender)
+    meta._transaction_update(tid, statuses['ghost_uploaded'],
+                             device, None, sender)
+    forward(reminder.delay * 1.1)
+    sisy.boulders_run()
+    assert not emailer.emails
+    forward(reminder.delay * 1.1)
+    sisy.boulders_run()
+    assert not emailer.emails
+
+    # Check unaccepted transfers trigger too
+    other = user_register(meta, 'other@infinit.io')
+    tid = transaction_create(meta, other,
+                             recipient_identifier = email)
+    sisy.boulders_run()
+    assert not emailer.emails
+    forward(reminder.delay * 1.1)
+    sisy.boulders_run()
+    check_mail(emailer.emails, email, 'drip_activity-reminder_stuck')

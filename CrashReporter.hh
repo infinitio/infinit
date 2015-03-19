@@ -4,6 +4,8 @@
 # include <boost/noncopyable.hpp>
 # include <boost/filesystem/path.hpp>
 
+# include <common/common.hh>
+
 # include <elle/Backtrace.hh>
 
 # include <reactor/fwd.hh>
@@ -71,23 +73,17 @@ namespace elle
 
     /// Function for sending a report when a transfer fails.
     void
-    transfer_failed_report(std::string const& meta_protocol,
-                           std::string const& meta_host,
-                           uint16_t meta_port,
-                           boost::filesystem::path const& attachment,
+    transfer_failed_report(common::infinit::Configuration const& config,
                            std::string const& user_name,
                            std::string const& transaction_id,
                            std::string const& reason);
 
     /// Function for sending user reports.
     void
-    user_report(std::string const& meta_protocol,
-                std::string const& meta_host,
-                uint16_t meta_port,
-                boost::filesystem::path const& attachment,
+    user_report(common::infinit::Configuration const& config,
+                std::vector<std::string> const& attachments,
                 std::string const& user_name,
-                std::string const& message,
-                std::string const& user_file);
+                std::string const& message);
 
   }
 }

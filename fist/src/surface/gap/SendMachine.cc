@@ -50,16 +50,12 @@ namespace surface
         this->_machine.state_make(
           "initialize transaction",
           std::bind(&SendMachine::_initialize_transaction, this)))
+      , _files_mirrored(false)
     {
-      this->_machine.transition_add(
-        this->_create_transaction_state,
-        this->_initialize_transaction_state);
-      this->_machine.transition_add(
-        this->_create_transaction_state,
-        this->_cancel_state,
-        reactor::Waitables{&this->canceled()}, true);
-      this->_fail_on_exception(this->_create_transaction_state);
-      this->_fail_on_exception(this->_initialize_transaction_state);
+      this->_machine.transition_add(this->_create_transaction_state,
+                                    this->_initialize_transaction_state);
+      this->_setup_end_state(this->_create_transaction_state);
+      this->_setup_end_state(this->_initialize_transaction_state);
     }
 
     // Constructor for sender device.
@@ -611,9 +607,13 @@ namespace surface
 
       // It is possible for files to be copied without write permissions, as
       // attribute are preserved by bfs::copy.
+#ifndef INFINIT_IOS
       elle::os::path::force_write_permissions(base / "mirror_files");
+#endif
       boost::filesystem::remove_all(base / "mirror_files");
+#ifndef INFINIT_IOS
       elle::os::path::force_write_permissions(base / "archive");
+#endif
       boost::filesystem::remove_all(base / "archive");
     }
 
@@ -761,6 +761,7 @@ namespace surface
       validate = true;
       this->_files = moved_files;
       ELLE_TRACE("%s: Mirroring successful", *this);
+      this->_files_mirrored = true;
     }
   }
 }
