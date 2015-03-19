@@ -59,6 +59,8 @@ namespace
     if (!env_option.empty())
     {
       res = env_option;
+      boost::system::error_code erc;
+      boost::filesystem::create_directories(res, erc);
       if (!boost::filesystem::exists(res))
       {
         ELLE_ABORT("unable to set path with env variable (%s): "
@@ -75,6 +77,8 @@ namespace
       res = (!optional || optional.get().empty())
         ? fallback
         : optional.get();
+      boost::system::error_code erc;
+      boost::filesystem::create_directories(res, erc);
       if (res.empty() ||
           !boost::filesystem::exists(res) ||
           !boost::filesystem::is_directory(res))
