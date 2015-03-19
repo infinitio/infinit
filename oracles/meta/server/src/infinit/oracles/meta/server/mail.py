@@ -208,15 +208,15 @@ class Mailer():
   def __send(self, message):
     import mandrill
     messenger = mandrill.Messages(self.__mandrill)
-    res = messenger.send(message)
+    return messenger.send(message)
 
 
   def __send_template(self, template_name, message):
     import mandrill
     messenger = mandrill.Messages(self.__mandrill)
-    res = messenger.send_template(template_name = template_name,
-                                  template_content = [],
-                                  message = message)
+    return messenger.send_template(template_name = template_name,
+                                   template_content = [],
+                                   message = message)
 
 
 report_templates = dict()
