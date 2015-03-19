@@ -430,6 +430,7 @@ namespace elle
                                       config.meta_port());
       elle::filesystem::TemporaryDirectory tmp;
       boost::filesystem::path destination(tmp.path() / "report.tar.bz2");
+      std::vector<boost::filesystem::path> attachments;
 #ifdef INFINIT_WINDOWS
       // On windows, libarchive behaves differently regarding of sharing a fd.
       // We need to create a copy of the log before archiving it.
@@ -449,9 +450,8 @@ namespace elle
           if (erc)
             ELLE_WARN("removing copied file %s failed: %s", copied_log, erc);
         }};
-      attachments_.push_back(copied_log);
+      attachments.push_back(copied_log);
 #endif
-      std::vector<boost::filesystem::path> attachments;
       boost::filesystem::path logs_dir(config.non_persistent_config_dir());
       attachments.push_back(logs_dir);
       for (auto const& attachment: attachments_)
