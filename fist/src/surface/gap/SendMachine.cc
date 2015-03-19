@@ -207,10 +207,10 @@ namespace surface
             conf.stall_timeout(30_sec);
             conf.timeout(reactor::DurationOpt());
             conf.header_add("Content-Length",
-                            boost::lexical_cast<std::string>(end - position));
+                            std::to_string(end - position));
             std::string endSize = "*";
             if (last)
-              endSize = boost::lexical_cast<std::string>(file_size);
+              endSize = std::to_string(file_size);
             conf.header_add("Content-Range",
                             elle::sprintf("bytes %s-%s/%s", position, end-1, endSize));
             auto buffer = file.read(position, end - position);
@@ -329,7 +329,7 @@ namespace surface
                     std::string sequence = p.substr(pos_beg + 1, pos_end-pos_beg-1);
                     unsigned int v = boost::lexical_cast<unsigned int>(sequence);
                     std::string result = p.substr(0, pos_beg+1)
-                      + boost::lexical_cast<std::string>(v+1)
+                      + std::to_string(v+1)
                       + p.substr(pos_end);
                     return result;
                   }
