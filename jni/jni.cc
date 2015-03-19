@@ -367,8 +367,8 @@ static void on_deleted_swagger(jobject thiz, int id)
 {
   JNIEnv* env = get_env();
   jclass clazz = env->GetObjectClass(thiz);
-  jmethodID m = env->GetMethodID(clazz, "onDeleteSwagger", "(I)V");
-  ELLE_TRACE("Invoking onDeleteSwagger at %s", m);
+  jmethodID m = env->GetMethodID(clazz, "onDeletedSwagger", "(I)V");
+  ELLE_TRACE("Invoking onDeletedSwagger at %s", m);
   env->CallVoidMethod(thiz, m, (jint)id);
   env->DeleteLocalRef(clazz);
   if (env->ExceptionCheck() == JNI_TRUE)
