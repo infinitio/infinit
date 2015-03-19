@@ -79,7 +79,7 @@ ELLE_TEST_SCHEDULED(send_ghost)
 
 ELLE_TEST_SUITE()
 {
-  auto timeout = RUNNING_ON_VALGRIND ? 60 : 15;
+  auto timeout = valgrind(15);
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(send_ghost), 0, timeout);
 }

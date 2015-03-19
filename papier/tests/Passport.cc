@@ -71,6 +71,6 @@ ordering()
 ELLE_TEST_SUITE()
 {
   auto& suite = boost::unit_test::framework::master_test_suite();
-  suite.add(BOOST_TEST_CASE(hash), 0, 3);
-  suite.add(BOOST_TEST_CASE(ordering), 0, 3);
+  suite.add(BOOST_TEST_CASE(hash), 0, 10);
+  suite.add(BOOST_TEST_CASE(ordering), 0, 10);
 }

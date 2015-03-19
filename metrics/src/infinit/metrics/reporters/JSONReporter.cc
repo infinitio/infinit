@@ -357,6 +357,8 @@ namespace infinit
         "iOS"
 #elif defined(INFINIT_WINDOWS)
         "Windows"
+#elif defined(INFINIT_ANDROID)
+      "Android"
 #else
 # error "machine not supported"
 #endif
