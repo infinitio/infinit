@@ -204,10 +204,22 @@ class NoOpMailer(Mailer):
   def _Mailer__send(self, message):
     self.__sent += 1
     self.view_message(message)
+    return [{
+      'reject_reason': None,
+      '_id': 'b10ce335eb5545a4a8c9381917020f92',
+      'status': 'sent',
+      'email': 'web@infinit.io',
+    }]
 
   def _Mailer__send_template(self, template_name, message):
     self.__sent += 1
     self.template_message(template_name, message)
+    return [{
+      'reject_reason': None,
+      '_id': 'b10ce335eb5545a4a8c9381917020f92',
+      'status': 'sent',
+      'email': 'web@infinit.io',
+    }]
 
   def template_message(self, template_name, message):
     self.view_message(message)

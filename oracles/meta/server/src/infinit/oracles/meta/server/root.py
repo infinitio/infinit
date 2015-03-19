@@ -338,8 +338,9 @@ class Mixin:
           body = template['content'] % template_dict,
           attachment = attachment,
         )
-        if res['reject_reason'] is not None:
-          self.bad_request({'reason': res['reject_reason']})
+        for r in res:
+          if r['reject_reason'] is not None:
+            self.bad_request({'reason': r['reject_reason']})
       else:
         print('Would send:\nTO: %s\nRCPT TO: %s\nSUBJECT: %s\nBODY:\n%s\n.\n' %
           (email, user_email, subject, template['content'] % template_dict))
