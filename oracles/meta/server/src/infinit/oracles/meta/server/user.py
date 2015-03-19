@@ -687,7 +687,10 @@ class Mixin:
       handle = self.unique_handle(fullname)
       plan = self.database.plans.find_one({'name': 'basic'})
       features = self._roll_features(True)
-      features.update(plan.get('features', {}))
+      quota = {}
+      if plan is not None:
+        features.update(plan.get('features', {}))
+        quota = plan.get('quota', {})
       user_content = {
         'features': features,
         'register_status': 'ok',
@@ -704,7 +707,7 @@ class Mixin:
         'accounts': [collections.OrderedDict((('id', email), ('type', 'email')))],
         'creation_time': self.now,
         'plan': 'basic',
-        'quota': plan.get('quota', {}),
+        'quota': quota,
         'plan_expiration_date': None,
       }
       if email_is_already_confirmed:
@@ -968,7 +971,10 @@ class Mixin:
     assert 'accounts' in extra_fields
     plan = self.database.plans.find_one({'name': 'basic'})
     features = self._roll_features(True)
-    features.update(plan.get('features', {}))
+    quota = {}
+    if plan is not None:
+      features.update(plan.get('features', {}))
+      quota =  plan.get('quota', {})
     ghost_code = self.generate_random_sequence()
     request = {
       'register_status': 'ghost',
@@ -980,7 +986,7 @@ class Mixin:
       # Ghost code is used for merging mechanism.
       'ghost_code': ghost_code,
       'ghost_code_expiration': self.now + datetime.timedelta(days=14),
-      'quota': plan.get('quota', {}),
+      'quota': quota,
       'plan_expiration_date': None,
       'plan': 'basic',
     }
