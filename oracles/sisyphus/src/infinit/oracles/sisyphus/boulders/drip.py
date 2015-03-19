@@ -1311,34 +1311,6 @@ class ActivityReminder(Drip):
     )
     response.update(transited)
     # stuck -> stuck
-    import sys
-    print('CONDITION', {
-        # Fully registered
-        'register_status': 'ok',
-        # Disconnected
-        'online': False,
-        # Has activity
-        'transactions.activity_has': True,
-        # Reminder is due
-        'emailing.activity-reminder.remind-time':
-        {
-          '$lt': self.now,
-        },
-      }, file = sys.stderr)
-    print('USERS', list(self.sisyphus.mongo.meta.users.find()), file = sys.stderr)
-    print('FIND', list(self.sisyphus.mongo.meta.users.find({
-        # Fully registered
-        'register_status': 'ok',
-        # Disconnected
-        'online': False,
-        # Has activity
-        'transactions.activity_has': True,
-        # Reminder is due
-        'emailing.activity-reminder.remind-time':
-        {
-          '$lt': self.now,
-        },
-      })), file = sys.stderr)
     transited = self.transition(
       'stuck',
       'stuck',
