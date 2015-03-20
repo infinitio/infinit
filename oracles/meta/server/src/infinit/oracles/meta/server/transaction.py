@@ -783,9 +783,6 @@ class Mixin:
       # collection.
       transaction_hash = self._hash_transaction(transaction)
       if peer_email:
-        mail_template = 'send-file-url'
-        if 'features' in recipient and 'send_file_url_template' in recipient['features']:
-          mail_template = recipient['features']['send_file_url_template']
         merges = {
           'filename': transaction['files'][0],
           'recipient_email': peer_email,
@@ -811,7 +808,7 @@ class Mixin:
         invitation.invite_user(
           peer_email,
           mailer = self.mailer,
-          mail_template = mail_template,
+          mail_template = 'send-file-url',
           source = source,
           database = self.database,
           merge_vars = {peer_email: merges})
