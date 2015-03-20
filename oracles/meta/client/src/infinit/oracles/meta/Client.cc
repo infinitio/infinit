@@ -536,7 +536,8 @@ namespace infinit
           },
           false);
         if (request.status() == reactor::http::StatusCode::Forbidden ||
-            request.status() == reactor::http::StatusCode::Bad_Request)
+            request.status() == reactor::http::StatusCode::Bad_Request ||
+            request.status() == reactor::http::StatusCode::Service_Unavailable)
         {
           SerializerIn input(url, request);
           int error_code;
@@ -556,6 +557,8 @@ namespace infinit
               throw infinit::state::MissingEmail();
             case Error::email_already_registered:
               throw infinit::state::EmailAlreadyRegistered();
+            case Error::maintenance_mode:
+              throw infinit::state::MaintenanceMode();
             default:
               throw infinit::state::LoginError(
                 elle::sprintf("%s: Unknown, good luck!", error_code));
