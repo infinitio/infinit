@@ -206,15 +206,9 @@ namespace surface
         new LinkSendMachine(
           *this, this->_id, this->_files.get(), message, data));
       // Update UI.
-      this->state().enqueue(LinkTransaction(this->id(),
-                                            data->name,
-                                            data->mtime,
-                                            data->share_link,
-                                            data->click_count,
-                                            this->status(),
-                                            data->sender_device_id,
-                                            data->message,
-                                            data->id));
+      this->state().enqueue(
+        this->state().link_to_gap_link(
+          this->id(), *data, this->status()));
       this->_snapshot_save();
     }
 
@@ -284,35 +278,17 @@ namespace surface
               std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
                 this->_data))
           {
-            surface::gap::PeerTransaction notification(
-              this->id(),
-              this->status(),
-              this->state().user_id(peer_data->sender_id),
-              peer_data->sender_device_id,
-              this->state().user_id_or_null(peer_data->recipient_id),
-              peer_data->recipient_device_id,
-              peer_data->mtime,
-              peer_data->files,
-              peer_data->total_size,
-              peer_data->is_directory,
-              peer_data->message,
-              peer_data->canceler,
-              peer_data->id);
-            this->state().enqueue(notification);
+            this->state().enqueue(
+              this->state().transaction_to_gap_transaction(
+                this->id(), *peer_data, this->status()));
           }
           else if (auto link_data =
                    std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
                      this->_data))
           {
-            this->state().enqueue(LinkTransaction(this->id(),
-                                                  link_data->name,
-                                                  link_data->mtime,
-                                                  link_data->share_link,
-                                                  link_data->click_count,
-                                                  this->status(),
-                                                  link_data->sender_device_id,
-                                                  link_data->message,
-                                                  link_data->id));
+            this->state().enqueue(
+              this->state().link_to_gap_link(
+                this->id(), *link_data, this->status()));
           }
         }
         return;
@@ -399,15 +375,9 @@ namespace surface
         {
           this->_machine.reset(
             new LinkSendMachine(*this, this->_id, link_data));
-          this->state().enqueue(LinkTransaction(this->id(),
-                                                link_data->name,
-                                                link_data->mtime,
-                                                link_data->share_link,
-                                                link_data->click_count,
-                                                this->status(),
-                                                link_data->sender_device_id,
-                                                link_data->message,
-                                                link_data->id));
+          this->state().enqueue(
+            this->state().link_to_gap_link(
+              this->id(), *link_data, this->status()));
           this->_snapshot_save();
         }
       }
@@ -596,15 +566,8 @@ namespace surface
         this->state().meta().update_link(data->id, 0.f, this->_data->status);
         // Update UI.
         this->state().enqueue(
-          LinkTransaction(this->id(),
-                          data->name,
-                          data->mtime,
-                          data->share_link,
-                          data->click_count,
-                          gap_transaction_deleted,
-                          data->sender_device_id,
-                          data->message,
-                          data->id));
+          this->state().link_to_gap_link(
+            this->id(), *data, this->status()));
         this->state().metrics_reporter()->transaction_deleted(data->id);
       }
       else
@@ -638,37 +601,16 @@ namespace surface
           std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
             this->_data))
         {
-          surface::gap::PeerTransaction notification(
-            this->id(),
-            status,
-            this->state().user_id(peer_data->sender_id),
-            peer_data->sender_device_id,
-            this->state().user_id_or_null(peer_data->recipient_id),
-            peer_data->recipient_device_id,
-            peer_data->mtime,
-            peer_data->files,
-            peer_data->total_size,
-            peer_data->is_directory,
-            peer_data->message,
-            peer_data->canceler,
-            peer_data->id);
-          this->state().enqueue(notification);
+          this->state().enqueue(
+            this->state().transaction_to_gap_transaction(
+              this->id(), *peer_data, this->status()));
         }
         else if (auto link_data =
           std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
             this->_data))
         {
-          surface::gap::LinkTransaction notification(
-            this->id(),
-            link_data->name,
-            link_data->mtime,
-            link_data->share_link,
-            link_data->click_count,
-            status,
-            link_data->sender_device_id,
-            link_data->message,
-            link_data->id);
-          this->state().enqueue(notification);
+          this->state().enqueue(
+            this->state().link_to_gap_link(this->id(), *link_data, status));
         }
         this->_status_changed(status);
       }
@@ -726,21 +668,9 @@ namespace surface
             // Merge recipient if the new one is not in your list.
             // XXX: Because we should always receive a new_swagger notification
             // this code is just a security.
-            surface::gap::PeerTransaction notification(
-              this->id(),
-              this->status(),
-              this->state().user_id(peer->sender_id),
-              peer->sender_device_id,
-              this->state().user_id_or_null(peer->recipient_id),
-              peer->recipient_device_id,
-              peer->mtime,
-              peer->files,
-              peer->total_size,
-              peer->is_directory,
-              peer->message,
-              peer->canceler,
-              peer->id);
-            this->state().enqueue(notification);
+            this->state().enqueue(
+              this->state().transaction_to_gap_transaction(
+                this->id(), *peer, this->status()));
           }
         }
         else
@@ -762,15 +692,8 @@ namespace surface
         // this session. We need to handle this case explicitly.
         if (this->_machine && link_data->status == Status::deleted)
           this->status(gap_transaction_deleted);
-        this->state().enqueue(LinkTransaction(this->id(),
-                                              link_data->name,
-                                              link_data->mtime,
-                                              link_data->share_link,
-                                              link_data->click_count,
-                                              this->status(),
-                                              link_data->sender_device_id,
-                                              link_data->message,
-                                              link_data->id));
+        this->state().enqueue(
+          this->state().link_to_gap_link(this->id(), *link_data, this->status()));
       }
     }
 

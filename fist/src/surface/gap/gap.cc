@@ -536,18 +536,7 @@ gap_user_by_id(gap_State* state, uint32_t id, surface::gap::User& res)
     [&] (surface::gap::State& state) -> gap_Status
     {
       auto const& user = state.user(id);
-      res = surface::gap::User(
-        state.user_indexes().at(user.id),
-        user.online(),
-        user.fullname,
-        user.handle,
-        user.id,
-        state.is_swagger(id),
-        user.deleted(),
-        user.ghost(),
-        user.phone_number,
-        user.ghost_code,
-        user.ghost_profile_url);
+      res = state.user_to_gap_user(id, user);
       return gap_ok;
     });
 }
@@ -566,18 +555,7 @@ gap_user_by_meta_id(gap_State* state,
     {
       auto const& user = state.user(meta_id);
       uint32_t state_id = state.user_indexes().at(user.id);
-      res = surface::gap::User(
-        state_id,
-        user.online(),
-        user.fullname,
-        user.handle,
-        user.id,
-        state.is_swagger(state_id),
-        user.deleted(),
-        user.ghost(),
-        user.phone_number,
-        user.ghost_code,
-        user.ghost_profile_url);
+      res = state.user_to_gap_user(state_id, user);
       return gap_ok;
     });
 }
@@ -638,20 +616,9 @@ gap_user_by_email(gap_State* state,
     "user by email",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      auto user = state.user(email, true);
+      auto const& user = state.user(email, true);
       uint32_t numeric_id = state.user_indexes().at(user.id);
-      res = surface::gap::User(
-        numeric_id,
-        user.online(),
-        user.fullname,
-        user.handle,
-        user.id,
-        state.is_swagger(numeric_id),
-        user.deleted(),
-        user.ghost(),
-        user.phone_number,
-        user.ghost_code,
-        user.ghost_profile_url);
+      res = state.user_to_gap_user(numeric_id, user);
       return gap_ok;
     });
 }
@@ -667,20 +634,9 @@ gap_user_by_handle(gap_State* state,
     "user by handle",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      auto user = state.user_from_handle(handle);
+      auto const& user = state.user_from_handle(handle);
       uint32_t numeric_id = state.user_indexes().at(user.id);
-      res = surface::gap::User(
-        numeric_id,
-        user.online(),
-        user.fullname,
-        user.handle,
-        user.id,
-        state.is_swagger(numeric_id),
-        user.deleted(),
-        user.ghost(),
-        user.phone_number,
-        user.ghost_code,
-        user.ghost_profile_url);
+      res = state.user_to_gap_user(numeric_id, user);
       return gap_ok;
     });
 }
@@ -743,20 +699,8 @@ gap_swaggers(gap_State* state, std::vector<surface::gap::User>& res)
     {
       for (uint32_t user_id: state.swaggers())
       {
-        auto user = state.user(user_id);
-        surface::gap::User ret_user(
-          user_id,
-          user.online(),
-          user.fullname,
-          user.handle,
-          user.id,
-          state.is_swagger(user_id),
-          user.deleted(),
-          user.ghost(),
-          user.phone_number,
-          user.ghost_code,
-          user.ghost_profile_url);
-        res.push_back(ret_user);
+        auto const& user = state.user(user_id);
+        res.push_back(state.user_to_gap_user(user_id, user));
       }
       return gap_ok;
     });
@@ -1042,20 +986,7 @@ gap_peer_transaction_by_id(gap_State* state,
           state.transactions().at(id)->data());
       ELLE_ASSERT(peer_data != nullptr);
       auto status = state.transactions().at(id)->status();
-      res = surface::gap::PeerTransaction(
-        id,
-        status,
-        state.user_id(peer_data->sender_id),
-        peer_data->sender_device_id,
-        state.user_id_or_null(peer_data->recipient_id),
-        peer_data->recipient_device_id,
-        peer_data->mtime,
-        peer_data->files,
-        peer_data->total_size,
-        peer_data->is_directory,
-        peer_data->message,
-        peer_data->canceler,
-        peer_data->id);
+      res = state.transaction_to_gap_transaction(id, *peer_data, status);
       return gap_ok;
     });
 }
@@ -1200,15 +1131,7 @@ gap_link_transaction_by_id(gap_State* state,
           state.transactions().at(id)->data());
       ELLE_ASSERT(data != nullptr);
       auto status = state.transactions().at(id)->status();
-      res = surface::gap::LinkTransaction(id,
-                                          data->name,
-                                          data->mtime,
-                                          data->share_link,
-                                          data->click_count,
-                                          status,
-                                          data->sender_device_id,
-                                          data->message,
-                                          data->id);
+      res = state.link_to_gap_link(id, *data, status);
       return gap_ok;
     });
 }
@@ -1233,16 +1156,7 @@ gap_link_transactions(gap_State* state,
         if (link_data != nullptr)
         {
           auto status = state.transactions().at(it->first)->status();
-          auto txn = surface::gap::LinkTransaction(it->first,
-                                                   link_data->name,
-                                                   link_data->mtime,
-                                                   link_data->share_link,
-                                                   link_data->click_count,
-                                                   status,
-                                                   link_data->sender_device_id,
-                                                   link_data->message,
-                                                   link_data->id);
-          res.push_back(txn);
+          res.push_back(state.link_to_gap_link(it->first, *link_data, status));
         }
       }
       return gap_ok;
@@ -1269,21 +1183,9 @@ gap_peer_transactions(gap_State* state,
         if (peer_data != nullptr)
         {
           auto status = state.transactions().at(it->first)->status();
-          surface::gap::PeerTransaction txn(
-            it->first,
-            status,
-            state.user_id(peer_data->sender_id),
-            peer_data->sender_device_id,
-            state.user_id_or_null(peer_data->recipient_id),
-            peer_data->recipient_device_id,
-            peer_data->mtime,
-            peer_data->files,
-            peer_data->total_size,
-            peer_data->is_directory,
-            peer_data->message,
-            peer_data->canceler,
-            peer_data->id);
-          res.push_back(txn);
+          res.push_back(
+            state.transaction_to_gap_transaction(
+              it->first, *peer_data, status));
         }
       }
       return gap_ok;

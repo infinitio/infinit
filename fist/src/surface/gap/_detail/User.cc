@@ -80,7 +80,7 @@ namespace surface
     }
 
     uint32_t
-    State::user_id_or_null(std::string const& id)
+    State::user_id_or_null(std::string const& id) const
     {
       try
       {
@@ -90,6 +90,24 @@ namespace surface
       {
         return null_id;
       }
+    }
+
+    surface::gap::User
+    State::user_to_gap_user(uint32_t id,
+                            State::User const& user) const
+    {
+      return surface::gap::User{
+        id,
+        user.online(),
+        user.fullname,
+        user.handle,
+        user.id,
+        this->is_swagger(id),
+        user.deleted(),
+        user.ghost(),
+        user.phone_number,
+        user.ghost_code,
+        user.ghost_profile_url};
     }
 
     State::User const&
@@ -117,21 +135,7 @@ namespace surface
       // the model will be overwritten with incomplete information.
       // i.e.: swagger will be false when called by State::_user_resync
       if (!login)
-      {
-        surface::gap::User notification(
-          id,
-          user.online(),
-          user.fullname,
-          user.handle,
-          user.id,
-          this->is_swagger(id),
-          user.deleted(),
-          user.ghost(),
-          user.phone_number,
-          user.ghost_code,
-          user.ghost_profile_url);
-        this->enqueue(notification);
-      }
+        this->enqueue(this->user_to_gap_user(id, user));
 
       ELLE_ASSERT_NEQ(id, 0u);
       return synced_user;
@@ -366,19 +370,7 @@ namespace surface
       {
         this->user_sync(user);
         uint32_t numeric_id = this->_user_indexes.at(user.id);
-        surface::gap::User ret_user(
-          numeric_id,
-          user.online(),
-          user.fullname,
-          user.handle,
-          user.id,
-          this->is_swagger(numeric_id),
-          user.deleted(),
-          user.ghost(),
-          user.phone_number,
-          user.ghost_code,
-          user.ghost_profile_url);
-        res.push_back(ret_user);
+        res.push_back(this->user_to_gap_user(numeric_id, user));
       }
       return res;
     }
@@ -395,19 +387,7 @@ namespace surface
         std::pair<std::string, surface::gap::User> item;
         item.first = result.first;
         uint32_t numeric_id = this->_user_indexes.at(user.id);
-        surface::gap::User ret_user(
-          numeric_id,
-          user.online(),
-          user.fullname,
-          user.handle,
-          user.id,
-          this->is_swagger(numeric_id),
-          user.deleted(),
-          user.ghost(),
-          user.phone_number,
-          user.ghost_code,
-          user.ghost_profile_url);
-        item.second = ret_user;
+        item.second = this->user_to_gap_user(numeric_id, user);
         res.insert(item);
       }
       return res;

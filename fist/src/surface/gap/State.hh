@@ -519,7 +519,7 @@ namespace surface
       user_sync(User const& user, bool login = false) const;
 
       User const&
-      user_sync(std::string const& id) const;
+      user_sync(std::string const& id, bool login = false) const;
 
       User const&
       user(std::string const& user_id,
@@ -558,6 +558,11 @@ namespace surface
       bool
       device_status(std::string const& user_id,
                     elle::UUID const& device_id) const;
+
+    public:
+      surface::gap::User
+      user_to_gap_user(uint32_t id,
+                        State::User const& user) const;
 
       ///- Swaggers --------------------------------------------------------------
       UserIndexes
@@ -678,6 +683,16 @@ namespace surface
       create_link(std::vector<std::string> const& files,
                   std::string const& message);
 
+      surface::gap::LinkTransaction
+      link_to_gap_link(uint32_t id,
+                       infinit::oracles::LinkTransaction const& transaction,
+                       gap_TransactionStatus status) const;
+
+      surface::gap::PeerTransaction
+      transaction_to_gap_transaction(
+        uint32_t id,
+        infinit::oracles::PeerTransaction const& transaction,
+        gap_TransactionStatus status) const;
       /*------------------.
       | Peer Transactions |
       `------------------*/
@@ -705,7 +720,7 @@ namespace surface
 
       /// Catches user unknown exceptions and sets return to null.
       uint32_t
-      user_id_or_null(std::string const& id);
+      user_id_or_null(std::string const& id) const;
 
     private:
       template <typename ... T>
