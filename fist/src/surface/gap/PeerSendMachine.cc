@@ -419,8 +419,10 @@ namespace surface
             this->transaction_id(),
             recipient_device_id
             );
+        static bool send_notification = true;
+        static bool is_swagger = true;
         auto const& peer = this->state().user_sync(
-          transaction_response.recipient());
+          transaction_response.recipient(), send_notification, is_swagger);
         this->data()->is_ghost = peer.ghost();
         this->data()->recipient_id = peer.id;
         this->transaction_id(transaction_response.created_transaction_id());

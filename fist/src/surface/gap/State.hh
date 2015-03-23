@@ -506,7 +506,7 @@ namespace surface
       ELLE_ATTRIBUTE_RP(UserMap, users, mutable);
       ELLE_ATTRIBUTE_RP(UserIndexMap, user_indexes, mutable);
       ELLE_ATTRIBUTE_RP(UserIndexes, swagger_indexes, mutable);
-      ELLE_ATTRIBUTE(reactor::Mutex, swagger_mutex);
+      ELLE_ATTRIBUTE_P(reactor::Mutex, swagger_mutex, mutable);
       ELLE_ATTRIBUTE_RP(UserAvatars, avatars, mutable);
       ELLE_ATTRIBUTE_RP(AvatarToFetch, avatar_to_fetch, mutable);
 
@@ -515,12 +515,21 @@ namespace surface
       ELLE_ATTRIBUTE_P(reactor::Barrier, avatar_fetching_barrier, mutable);
 
     public:
-      User const&
-      user_sync(User const& user, bool login = false) const;
 
+      /// Force the update of the model.
       User const&
-      user_sync(std::string const& id, bool login = false) const;
+      user_sync(User const& user,
+                bool send_notification = true,
+                bool is_swagger = false) const;
 
+      /// Fetch the user from meta and update its model.
+      User const&
+      user_sync(std::string const& id,
+                bool send_notification = true,
+                bool is_swagger = false) const;
+
+      /// Get a user by user_id. If it's not in the model and merge is set to
+      /// true, merge it from meta, otherwise throw.
       User const&
       user(std::string const& user_id,
            bool merge = true) const;
