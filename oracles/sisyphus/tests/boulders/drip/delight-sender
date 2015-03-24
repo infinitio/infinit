@@ -46,10 +46,6 @@ with mongobox.MongoBox() as mongo:
     for i in range(reminder.threshold_first):
       send(del2, ghost_email)
     meta.user_delete(del2)
-    del3 = user_register(meta, 'del3@infinit.io')
-    for i in range(reminder.threshold_second):
-      send(del3, ghost_email)
-    meta.user_delete(del3)
 
     # Create senders
     device = 'device'
@@ -64,24 +60,6 @@ with mongobox.MongoBox() as mongo:
     sisy.boulders_run()
     check_mail(emailer.emails,
                'sender1@infinit.io', 'drip_delight-sender_1')
-
-    for i in range(reminder.threshold_first,
-                   reminder.threshold_second):
-      sisy.boulders_run()
-      assert not emailer.emails
-      send(sender1, ghost_email)
-    sisy.boulders_run()
-    check_mail(emailer.emails,
-               'sender1@infinit.io', 'drip_delight-sender_2')
-
-    for i in range(reminder.threshold_second,
-                   reminder.threshold_third):
-      sisy.boulders_run()
-      assert not emailer.emails
-      send(sender1, ghost_email)
-    sisy.boulders_run()
-    check_mail(emailer.emails,
-               'sender1@infinit.io', 'drip_delight-sender_3')
 
     send(sender1, ghost_email)
     sisy.boulders_run()

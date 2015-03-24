@@ -506,39 +506,11 @@ class DelightSender(Drip):
       },
     )
     response.update(transited)
-    # 1 -> 2
-    transited = self.transition(
-      '1',
-      '2',
-      {
-        'register_status': 'ok',
-        'transactions.reached': {'$gte': self.threshold_second},
-      },
-    )
-    response.update(transited)
-    # 2 -> 3
-    transited = self.transition(
-      '2',
-      '3',
-      {
-        'register_status': 'ok',
-        'transactions.reached': {'$gte': self.threshold_third},
-      },
-    )
-    response.update(transited)
     return response
 
   @property
   def threshold_first(self):
     return 1
-
-  @property
-  def threshold_second(self):
-    return 5
-
-  @property
-  def threshold_third(self):
-    return 10
 
 #
 # -> 1
