@@ -334,6 +334,9 @@ class Meta(bottle.Bottle,
   def conflict(self, message = None):
     response(409, message)
 
+  def unavailable(self, message = None):
+    response(503, message)
+
   @api('/js/<filename:path>')
   def static_javascript(self, filename):
     return self.__static('js/%s' % filename)

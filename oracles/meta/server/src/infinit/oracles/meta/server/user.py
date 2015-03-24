@@ -430,6 +430,16 @@ class Mixin:
             device_push_token = None,
             country_code = None,
             pick_trophonius: bool = True):
+    # Check for service availability
+    # XXX TODO: Fetch maintenance mode bool from somewhere
+    maintenance_mode = False
+
+    if maintenance_mode:
+      return self.unavailable({
+        'reason': 'Server is down for maintenance.',
+        'code': error.MAINTENANCE_MODE
+        })
+
     # Xor facebook_token or email / password.
     with_email = bool(email is not None and password is not None)
     with_facebook = bool(long_lived_access_token is not None or
