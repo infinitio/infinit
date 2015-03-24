@@ -46,15 +46,9 @@ with mongobox.MongoBox() as mongo:
     sisy.boulders_run()
     check_no_mail(emailer.emails)
 
-    # Create an unactivated user for queries complexity check
-    sender = user_register(meta, 'slacker@infinit.io')
-
-    # Create an activated user
-    device = 'device'
+    # Create user
     email = 'user@infinit.io'
     sender = user_register(meta, email)
-    sender_device = meta._create_device(sender)
-    transaction_create(meta, sender, recipient_identifier = 'ghost@infinit.io')
 
     # Check nothing is sent to a fresh user
     sisy.boulders_run()

@@ -960,7 +960,6 @@ class Retention(Drip):
       [
         ('emailing.retention.state', pymongo.ASCENDING),
         ('register_status', pymongo.ASCENDING),
-        ('activated', pymongo.ASCENDING),
         ('emailing.retention.activation_time', pymongo.ASCENDING),
       ])
 
@@ -979,8 +978,6 @@ class Retention(Drip):
       {
         # Fully registered
         'register_status': 'ok',
-        # Activated
-        'activated': True,
       },
       template = False,
       update = {
@@ -996,8 +993,6 @@ class Retention(Drip):
         {
           # Fully registered
           'register_status': 'ok',
-          # Activated
-          'activated': True,
           # For long enough
           'emailing.retention.activation_time': {
             '$lt': self.now - self.delay_nth_reminder(i),
