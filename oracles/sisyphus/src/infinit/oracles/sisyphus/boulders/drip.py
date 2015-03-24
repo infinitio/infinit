@@ -1031,9 +1031,3 @@ class Retention(Drip):
   def delay_nth_reminder(self, nth):
     # Starts after two weeks
     return datetime.timedelta(weeks = nth + 2)
-
-  def _pick_template(self, template, users):
-    return [
-      (template, [u for u in users if u[0]['features']['drip_retention_template'] == 'a']),
-      (None, [u for u in users if u[0]['features']['drip_retention_template'] == 'control']),
-    ]
