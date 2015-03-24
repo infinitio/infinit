@@ -391,7 +391,7 @@ class Onboarding(Drip):
 
   @property
   def delay_first_reminder(self):
-    return datetime.timedelta(days = 1)
+    return datetime.timedelta(days = 3)
 
 
 class GhostReminder(Drip):
