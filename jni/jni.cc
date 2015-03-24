@@ -649,6 +649,11 @@ extern "C" jlong Java_io_infinit_State_gapInternetConnection(
 extern "C" jobject Java_io_infinit_State_gapPeerTransactionById(
   JNIEnv* env, jobject thiz, jlong handle, jint id)
 {
+  if (id == 0)
+  {
+    throw_exception(env, gap_user_id_not_valid);
+    return nullptr;
+  }
   surface::gap::PeerTransaction t;
   gap_Status s = gap_peer_transaction_by_id((gap_State*)handle, id, t);
   if (s == gap_ok)
@@ -660,18 +665,33 @@ extern "C" jobject Java_io_infinit_State_gapPeerTransactionById(
 extern "C" jfloat Java_io_infinit_State_gapTransactionProgress(
   JNIEnv* env, jobject thiz, jlong handle, jint id)
 {
+  if (id == 0)
+  {
+    throw_exception(env, gap_user_id_not_valid);
+    return 0;
+  }
   return gap_transaction_progress((gap_State*)handle, id);
 }
 
 extern "C" jboolean Java_io_infinit_State_gapTransactionIsFinal(
   JNIEnv* env, jobject thiz, jlong handle, jint id)
 {
+  if (id == 0)
+  {
+    throw_exception(env, gap_user_id_not_valid);
+    return 0;
+  }
   return gap_transaction_is_final((gap_State*)handle, id);
 }
 
 extern "C" jboolean Java_io_infinit_State_gapTransactionConcernDevice(
   JNIEnv* env, jobject thiz, jlong handle, jint id, jboolean true_empty_recipient)
 {
+  if (id == 0)
+  {
+    throw_exception(env, gap_user_id_not_valid);
+    return 0;
+  }
   return gap_transaction_concern_device((gap_State*)handle, id, true_empty_recipient);
 }
 
@@ -781,6 +801,11 @@ extern "C" jbyteArray Java_io_infinit_State_gapAvatar(
 { // FIXME: find way to report error
   void* data = 0;
   size_t len = 0;
+  if (id == 0)
+  {
+    throw_exception(env, gap_user_id_not_valid);
+    return nullptr;
+  }
   gap_avatar((gap_State*)handle, id, &data, &len);
   jbyteArray res = env->NewByteArray(len);
   env->SetByteArrayRegion(res, 0, len, (jbyte*)data);
@@ -796,6 +821,11 @@ extern "C" void Java_io_infinit_State_gapRefreshAvatar(
 extern "C" jobject Java_io_infinit_State_gapUserById(
   JNIEnv* env, jobject thiz, jlong handle, jint id)
 {
+  if (id == 0)
+  {
+    throw_exception(env, gap_user_id_not_valid);
+    return nullptr;
+  }
   surface::gap::User res;
   gap_Status s = gap_user_by_id((gap_State*)handle, id, res);
   if (s == gap_ok)
@@ -847,6 +877,11 @@ extern "C" jobject Java_io_infinit_State_gapUserByMetaId(
 extern "C" jlong Java_io_infinit_State_gapUserStatus(
   JNIEnv* env, jobject thiz, jlong handle, jint id)
 {
+  if (id == 0)
+  {
+    throw_exception(env, gap_user_id_not_valid);
+    return 0;
+  }
   return (jlong)gap_user_status((gap_State*)handle, id);
 }
 
@@ -890,24 +925,44 @@ extern "C" jobject Java_io_infinit_State_gapFavorites(
 extern "C" jlong Java_io_infinit_State_gapFavorite(
   JNIEnv* env, jobject thiz, jlong handle, jint id)
 {
+  if (id == 0)
+  {
+    throw_exception(env, gap_user_id_not_valid);
+    return 0;
+  }
   return gap_favorite((gap_State*)handle, id);
 }
 
 extern "C" jlong Java_io_infinit_State_gapUnfavorite(
   JNIEnv* env, jobject thiz, jlong handle, jint id)
 {
+  if (id == 0)
+  {
+    throw_exception(env, gap_user_id_not_valid);
+    return 0;
+  }
   return gap_unfavorite((gap_State*)handle, id);
 }
 
 extern "C" jboolean Java_io_infinit_State_gapIsFavorite(
   JNIEnv* env, jobject thiz, jlong handle, jint id)
 {
+  if (id == 0)
+  {
+    throw_exception(env, gap_user_id_not_valid);
+    return 0;
+  }
   return gap_is_favorite((gap_State*)handle, id);
 }
 
 extern "C" jboolean Java_io_infinit_State_gapIsLinkTransaction(
   JNIEnv* env, jobject thiz, jlong handle, jint id)
 {
+  if (id == 0)
+  {
+    throw_exception(env, gap_user_id_not_valid);
+    return 0;
+  }
   return gap_is_link_transaction((gap_State*)handle, id);
 }
 
@@ -923,6 +978,11 @@ extern "C" int Java_io_infinit_State_gapCreateLinkTransaction(
 extern "C" jobject Java_io_infinit_State_gapLinkTransactionById(
   JNIEnv* env, jobject thiz, jlong handle, jint id)
 {
+  if (id == 0)
+  {
+    throw_exception(env, gap_user_id_not_valid);
+    return nullptr;
+  }
   surface::gap::LinkTransaction res;
   gap_Status s = gap_link_transaction_by_id((gap_State*)handle, id, res);
   if (s == gap_ok)
@@ -957,6 +1017,11 @@ extern "C" jint Java_io_infinit_State_gapSendFiles(
   JNIEnv* env, jobject thiz, jlong handle,
   jint id, jobjectArray jfiles, jstring message, jstring sdevice_id)
 {
+  if (id == 0)
+  {
+    throw_exception(env, gap_user_id_not_valid);
+    return 0;
+  }
   boost::optional<std::string> device_id;
   if (sdevice_id)
     device_id = to_string(env, sdevice_id);
@@ -969,43 +1034,84 @@ extern "C" jint Java_io_infinit_State_gapSendFilesByEmail(
   JNIEnv* env, jobject thiz, jlong handle,
   jstring id, jobjectArray jfiles, jstring message)
 {
+  std::string email = to_string(env, id);
+  if (email.empty())
+  {
+    throw_exception(env, gap_email_not_valid);
+    return 0;
+  }
   std::vector<std::string> files = from_array<std::string>(env, jfiles, to_string);
-  return gap_send_files((gap_State*)handle, to_string(env, id), files, to_string(env, message));
+  return gap_send_files((gap_State*)handle, email, files, to_string(env, message));
 }
 
 extern "C" jint Java_io_infinit_State_gapPauseTransaction(
   JNIEnv* env, jobject thiz, jlong handle, jint id)
 {
+  if (id == 0)
+  {
+    throw_exception(env, gap_transaction_id_not_valid);
+    return 0;
+  }
   return gap_pause_transaction((gap_State*)handle, id);
 }
 extern "C" jint Java_io_infinit_State_gapResumeTransaction(
   JNIEnv* env, jobject thiz, jlong handle, jint id)
 {
+  if (id == 0)
+  {
+    throw_exception(env, gap_transaction_id_not_valid);
+    return 0;
+  }
   return gap_resume_transaction((gap_State*)handle, id);
 }
 extern "C" jint Java_io_infinit_State_gapCancelTransaction(
   JNIEnv* env, jobject thiz, jlong handle, jint id)
 {
+  if (id == 0)
+  {
+    throw_exception(env, gap_transaction_id_not_valid);
+    return 0;
+  }
   return gap_cancel_transaction((gap_State*)handle, id);
 }
 extern "C" jint Java_io_infinit_State_gapDeleteTransaction(
   JNIEnv* env, jobject thiz, jlong handle, jint id)
 {
+  if (id == 0)
+  {
+    throw_exception(env, gap_transaction_id_not_valid);
+    return 0;
+  }
   return gap_delete_transaction((gap_State*)handle, id);
 }
 extern "C" jint Java_io_infinit_State_gapRejectTransaction(
   JNIEnv* env, jobject thiz, jlong handle, jint id)
 {
+  if (id == 0)
+  {
+    throw_exception(env, gap_transaction_id_not_valid);
+    return 0;
+  }
   return gap_reject_transaction((gap_State*)handle, id);
 }
 extern "C" jint Java_io_infinit_State_gapAcceptTransaction(
   JNIEnv* env, jobject thiz, jlong handle, jint id)
 {
+  if (id == 0)
+  {
+    throw_exception(env, gap_transaction_id_not_valid);
+    return 0;
+  }
   return gap_accept_transaction((gap_State*)handle, id);
 }
 extern "C" jint Java_io_infinit_State_gapAcceptTransactionTo(
   JNIEnv* env, jobject thiz, jlong handle, jint id, jstring path)
 {
+  if (id == 0)
+  {
+    throw_exception(env, gap_transaction_id_not_valid);
+    return 0;
+  }
   std::string rel_path(to_string(env, path));
   return gap_accept_transaction((gap_State*)handle, id, rel_path);
 }
