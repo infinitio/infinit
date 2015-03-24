@@ -54,7 +54,7 @@ with mongobox.MongoBox() as mongo:
       assert not emailer.emails
 
     # Check unactivated 1 is sent to an aging user
-    diff = (onboarding.delay_second_reminder + onboarding.delay_first_reminder) / 2
+    diff = onboarding.delay_first_reminder * 1.5
     onboarding.now += diff
     meta.now += diff
     # Add unrelevant users to check they are not scanned by our mongo

@@ -387,89 +387,11 @@ class Onboarding(Drip):
       },
     )
     response.update(transited)
-    # unactivated-1 -> activated
-    transited = self.transition(
-      'unactivated-1',
-      'activated',
-      {
-        # Fully registered
-        'register_status': 'ok',
-        # Registered more than 2 days ago.
-        'creation_time':
-        {
-          '$lt': self.now - self.delay_second_reminder,
-        },
-        # Did a transaction
-        'last_transaction.time': {'$exists': True},
-      },
-      template = False,
-     )
-    response.update(transited)
-    # unactivated-1 -> unactivated-2
-    transited = self.transition(
-      'unactivated-1',
-      'unactivated-2',
-      {
-        # Fully registered
-        'register_status': 'ok',
-        # Registered more than 2 days ago.
-        'creation_time':
-        {
-          '$lt': self.now - self.delay_second_reminder,
-        },
-        # Never did a transaction
-        'last_transaction.time': {'$exists': False},
-      },
-    )
-    response.update(transited)
-    # unactivated-2 -> activated
-    transited = self.transition(
-      'unactivated-2',
-      'activated',
-      {
-        # Fully registered
-        'register_status': 'ok',
-        # Registered more than 2 days ago.
-        'creation_time':
-        {
-          '$lt': self.now - self.delay_third_reminder,
-        },
-        # Did a transaction
-        'last_transaction.time': {'$exists': True},
-      },
-      template = False,
-     )
-    response.update(transited)
-    # unactivated-2 -> unactivated-3
-    transited = self.transition(
-      'unactivated-2',
-      'unactivated-3',
-      {
-        # Fully registered
-        'register_status': 'ok',
-        # Registered more than 3 days ago.
-        'creation_time':
-        {
-          '$lt': self.now - self.delay_third_reminder,
-        },
-        # Never did a transaction
-        'last_transaction.time': {'$exists': False},
-      },
-    )
-    response.update(transited)
     return response
 
   @property
   def delay_first_reminder(self):
     return datetime.timedelta(days = 1)
-
-  @property
-  def delay_second_reminder(self):
-    return datetime.timedelta(days = 3)
-
-  @property
-  def delay_third_reminder(self):
-    return datetime.timedelta(days = 5)
 
 
 class GhostReminder(Drip):
