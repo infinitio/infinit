@@ -63,6 +63,10 @@ with mongobox.MongoBox() as mongo:
     sisy.boulders_run()
     check_mail(emailer.emails, email, 'drip_retention_1')
 
+    # Create ghost, for complexity checks
+    transaction_create(meta, sender,
+                       recipient_identifier = 'ghost@infinit.io')
+
     for i in range(2, 7):
       forward(retention.delay_nth_reminder(i - 1) -
               retention.delay_nth_reminder(i - 2))
