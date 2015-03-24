@@ -109,6 +109,7 @@ class Mixin:
         'email_confirmed',
         'features',
         'os',
+        'plan',
       ]
     return res
 
