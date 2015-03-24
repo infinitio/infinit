@@ -101,7 +101,7 @@ namespace surface
         true);
       this->_machine.transition_add(
         this->_wait_for_accept_state,
-        this->_reject_state,
+        this->_end_state,
         reactor::Waitables{&this->rejected()},
         true);
       this->transaction_status_update(data->status);
