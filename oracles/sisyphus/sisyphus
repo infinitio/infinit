@@ -66,7 +66,6 @@ app = infinit.oracles.sisyphus.Sisyphus(**args)
 pretend = False
 infinit.oracles.sisyphus.boulders.drip.ActivityReminder(app, pretend = pretend)
 infinit.oracles.sisyphus.boulders.drip.ConfirmSignup(app, pretend = pretend)
-infinit.oracles.sisyphus.boulders.drip.DelightGhost(app, pretend = pretend)
 infinit.oracles.sisyphus.boulders.drip.DelightRecipient(app, pretend = pretend)
 infinit.oracles.sisyphus.boulders.drip.DelightSender(app, pretend = pretend)
 infinit.oracles.sisyphus.boulders.drip.GhostReminder(app, pretend = pretend)
