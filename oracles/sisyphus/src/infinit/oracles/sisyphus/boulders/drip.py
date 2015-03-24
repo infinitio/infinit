@@ -818,32 +818,11 @@ class ConfirmSignup(Drip):
       },
     )
     response.update(transited)
-    # 1 -> 2
-    transited = self.transition(
-      '1',
-      '2',
-      {
-        # Fully registered
-        'register_status': 'ok',
-        # Unconfirmed email
-        'email_confirmed': False,
-        # Registered more than 7 day ago.
-        'creation_time':
-        {
-          '$lt': self.now - self.delay_second_reminder,
-        },
-      },
-    )
-    response.update(transited)
     return response
 
   @property
   def delay_first_reminder(self):
-    return datetime.timedelta(days = 3)
-
-  @property
-  def delay_second_reminder(self):
-    return datetime.timedelta(days = 7)
+    return datetime.timedelta(days = 5)
 
   def _vars(self, elt, user):
     return {

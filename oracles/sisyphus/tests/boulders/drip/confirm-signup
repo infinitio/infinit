@@ -49,8 +49,6 @@ with mongobox.MongoBox() as mongo:
     def forward(duration):
       confirm.now += duration
       meta.now = confirm.now
-    delay_diff = \
-      confirm.delay_second_reminder - confirm.delay_first_reminder
 
     # Check nothing is sent with no users
     sisy.boulders_run()
@@ -68,16 +66,9 @@ with mongobox.MongoBox() as mongo:
                'sender@infinit.io', 'drip_confirm-signup_1')
     sisy.boulders_run()
     check_no_mail(emailer.emails)
-    # Check second mail is sent
-    forward(delay_diff)
-    sisy.boulders_run()
-    check_mail(emailer.emails,
-               'sender@infinit.io', 'drip_confirm-signup_2')
-    sisy.boulders_run()
-    check_no_mail(emailer.emails)
     # Check no mail is sent to ghosts
     transaction_create(meta, sender, recipient_identifier = 'ghost@infinit.io')
-    forward(confirm.delay_second_reminder * 2)
+    forward(confirm.delay_first_reminder * 2)
     sisy.boulders_run()
     check_no_mail(emailer.emails)
     # Check leeway starts on ghost registration
