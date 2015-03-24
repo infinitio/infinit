@@ -472,12 +472,6 @@ class GhostReminder(Drip):
   def sender(self, v):
     return ({'fullname': '%s via Infinit' % v['sender']['fullname']})
 
-  def _pick_template(self, template, users):
-    return [
-      (template, [u for u in users if u[0]['features']['drip_ghost-reminder_template'] == 'a']),
-      (None, [u for u in users if u[0]['features']['drip_ghost-reminder_template'] == 'control']),
-    ]
-
 
 #
 #    -> 1 -> 2 -> 3
@@ -534,12 +528,6 @@ class DelightSender(Drip):
     response.update(transited)
     return response
 
-  def _pick_template(self, template, users):
-    return [
-      (template, [u for u in users if u[0]['features']['drip_delight-sender_template'] == 'a']),
-      (None, [u for u in users if u[0]['features']['drip_delight-sender_template'] == 'control']),
-    ]
-
   @property
   def threshold_first(self):
     return 1
@@ -584,12 +572,6 @@ class DelightRecipient(Drip):
     )
     response.update(transited)
     return response
-
-  def _pick_template(self, template, users):
-    return [
-      (template, [u for u in users if u[0]['features']['drip_delight-recipient_template'] == 'a']),
-      (None, [u for u in users if u[0]['features']['drip_delight-recipient_template'] == 'control']),
-    ]
 
   @property
   def threshold_first(self):
@@ -834,12 +816,6 @@ class WeeklyReport(Drip):
     })
     return res
 
-  def _pick_template(self, template, users):
-    return [
-      (template, [u for u in users if u[0]['features']['drip_weekly-report_template'] == 'a']),
-      (None, [u for u in users if u[0]['features']['drip_weekly-report_template'] == 'control']),
-    ]
-
 
 class ActivityReminder(Drip):
 
@@ -974,12 +950,6 @@ class ActivityReminder(Drip):
     res.append('transactions.unaccepted')
     res.append('transactions.pending')
     return res
-
-  def _pick_template(self, template, users):
-    return [
-      (template, [u for u in users if u[0]['features']['drip_pending-reminder_template'] == 'a']),
-      (None, [u for u in users if u[0]['features']['drip_pending-reminder_template'] == 'control']),
-    ]
 
 
 class Retention(Drip):
