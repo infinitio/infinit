@@ -225,7 +225,7 @@ class Drip(Emailing):
         distribution = self.__distribute(len(users), len(variations))
         res = {}
         for n in range(len(variations)):
-          slug = '%s-%s' % (template, variations[n])
+          slug = '%s_%s' % (template, variations[n])
           targets = users[distribution[n]:distribution[n + 1]]
           if len(targets) > 0:
             res[slug] = self.send_email(bucket, slug, targets)
@@ -385,6 +385,7 @@ class Onboarding(Drip):
         # Never did a transaction
         'last_transaction.time': {'$exists': False},
       },
+      variations = ('A', 'B'),
     )
     response.update(transited)
     return response

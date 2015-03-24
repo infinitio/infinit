@@ -66,10 +66,9 @@ with mongobox.MongoBox() as mongo:
     # to check last_transaction.time, hence the one miss.
     with MongoExpectation(object_miss = 1):
       sisy.boulders_run()
-      emails = emailer.emails
-      print(emails)
-      assert len(emails) == 1
-      assert emails[0][0] == 'user1@infinit.io'
+      check_mail(emailer.emails, 'user1@infinit.io',
+                 ('drip_onboarding_unactivated-1_A',
+                  'drip_onboarding_unactivated-1_B'))
       # Check it's not sent twice
       sisy.boulders_run()
       assert not emailer.emails
