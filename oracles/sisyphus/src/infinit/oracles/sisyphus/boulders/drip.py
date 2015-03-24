@@ -503,6 +503,7 @@ class DelightSender(Drip):
       {
         'register_status': 'ok',
         'transactions.reached': {'$gte': self.threshold_first},
+        'emailing.delight-recipient.state': {'$ne': '1'},
       },
     )
     response.update(transited)
@@ -540,6 +541,7 @@ class DelightRecipient(Drip):
       '1',
       {
         'transactions.received_peer': {'$gte': self.threshold_first},
+        'emailing.delight-sender.state': {'$ne': '1'},
       },
     )
     response.update(transited)
