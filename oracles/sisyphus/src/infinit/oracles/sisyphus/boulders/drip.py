@@ -495,11 +495,7 @@ class GhostReminder(Drip):
 
   @property
   def delay_first_reminder(self):
-    return datetime.timedelta(days = 1)
-
-  @property
-  def delay_second_reminder(self):
-    return datetime.timedelta(days = 3)
+    return datetime.timedelta(days = 4)
 
   def run(self):
     response = {}
@@ -516,23 +512,6 @@ class GhostReminder(Drip):
         'modification_time':
         {
           '$lt': self.now - self.delay_first_reminder,
-        },
-      },
-    )
-    response.update(transited)
-    # reminded-1 -> reminded-2
-    transited = self.transition(
-      'reminded-1',
-      'reminded-2',
-      {
-        # Fully registered
-        'is_ghost': True,
-        # Ghost uploaded
-        'status': statuses['ghost_uploaded'],
-        # Ghost uploaded more than 24h ago
-        'modification_time':
-        {
-          '$lt': self.now - self.delay_second_reminder,
         },
       },
     )
