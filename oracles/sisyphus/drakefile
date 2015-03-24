@@ -77,7 +77,6 @@ def configure(
         'boulders/drip/delight-sender',
         'boulders/drip/ghost-reminder',
         'boulders/drip/onboarding',
-        'boulders/drip/pending-reminder',
         'boulders/drip/retention',
         'boulders/drip/weekly-report',
     ):

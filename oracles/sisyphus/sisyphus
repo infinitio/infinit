@@ -71,7 +71,6 @@ infinit.oracles.sisyphus.boulders.drip.DelightRecipient(app, pretend = pretend)
 infinit.oracles.sisyphus.boulders.drip.DelightSender(app, pretend = pretend)
 infinit.oracles.sisyphus.boulders.drip.GhostReminder(app, pretend = pretend)
 infinit.oracles.sisyphus.boulders.drip.Onboarding(app, pretend = pretend)
-# infinit.oracles.sisyphus.boulders.drip.PendingReminder(app, pretend = pretend)
 infinit.oracles.sisyphus.boulders.drip.Retention(app, pretend = pretend)
 infinit.oracles.sisyphus.boulders.drip.WeeklyReport(app, pretend = pretend)
 
