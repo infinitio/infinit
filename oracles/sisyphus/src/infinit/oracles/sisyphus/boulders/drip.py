@@ -684,9 +684,12 @@ class WeeklyReport(Drip):
         ('register_status', pymongo.ASCENDING),
         # Did a transfer
         ('activated', pymongo.ASCENDING),
+        # Retention emails are over
+        ('emailing.retention.state', pymongo.ASCENDING),
         # With due report
         ('emailing.weekly-report.next', pymongo.ASCENDING),
-      ])
+      ],
+      name = 'emailing.weekly-report')
     for role in ('sender', 'recipient'):
       self.sisyphus.mongo.meta.transactions.ensure_index(
         [
@@ -724,6 +727,8 @@ class WeeklyReport(Drip):
         'register_status': 'ok',
         # Did a transaction
         'activated': True,
+        # Retention is over
+        'emailing.retention.state': str(Retention.count),
       },
       template = False,
       update = {
@@ -741,6 +746,8 @@ class WeeklyReport(Drip):
         'register_status': 'ok',
         # Did a transaction
         'activated': True,
+        # Retention is over
+        'emailing.retention.state': str(Retention.count),
         # Report is due
         'emailing.weekly-report.next':
         {
@@ -987,6 +994,8 @@ class Retention(Drip):
         ('emailing.retention.activation_time', pymongo.ASCENDING),
       ])
 
+  count = 7
+
   @property
   def now(self):
     return datetime.datetime.utcnow()
@@ -1009,7 +1018,7 @@ class Retention(Drip):
       }
     )
     response.update(transited)
-    for i in range(6):
+    for i in range(Retention.count):
       # 1 -> 2
       transited = self.transition(
         str(i) if i > 0 else 'activated',
@@ -1030,4 +1039,4 @@ class Retention(Drip):
 
   def delay_nth_reminder(self, nth):
     # Starts after two weeks
-    return datetime.timedelta(weeks = nth + 2)
+    return datetime.timedelta(weeks = nth + 1)

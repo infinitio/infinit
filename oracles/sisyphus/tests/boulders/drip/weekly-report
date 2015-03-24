@@ -59,7 +59,6 @@ with mongobox.MongoBox() as mongo:
     emailer = DummyEmailer()
     sisy = sisyphus.Sisyphus(mongo_port = mongo.port,
                              emailer = emailer)
-    gestapo(sisy.mongo)
     report = WeeklyReport(sisy)
     # This is a Monday
     report.now = datetime.datetime(2014, 12, 15, 10, 58, 11)
@@ -75,6 +74,17 @@ with mongobox.MongoBox() as mongo:
     device = 'device'
     email = 'user@infinit.io'
     sender = user_register(meta, email)
+    sisy.mongo.meta.users.update(
+      {},
+      {
+        '$set':
+        {
+          'emailing.retention.state':
+          str(sisyphus.boulders.drip.Retention.count),
+        }
+      },
+    )
+    gestapo(sisy.mongo)
     sender_device = meta._create_device(sender)
     transaction_create(meta, sender, 'ghost@infinit.io')
 
