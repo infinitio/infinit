@@ -369,6 +369,9 @@ class Mixin:
       self.database.users.update(
         {'_id': user['_id']},
         {'$set': { 'features': features}})
+    # Force immediate buffering on mobile devices.
+    if 'os' in device and device['os'] in ('iOS', 'Android'):
+      features['preemptive_buffering_delay'] = '0'
     response['features'] = list(features.items())
     response['device'] = self.device_view(device)
     return response
