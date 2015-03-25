@@ -109,6 +109,7 @@ class Mixin:
         'email_confirmed',
         'features',
         'os',
+        'plan',
       ]
     return res
 
@@ -2651,3 +2652,19 @@ class Mixin:
     res.update(self.links_list(mtime = mtime['date'], include_deleted = (not init)))
     res.update(self.devices_users_api(user['_id']))
     return self.success(res)
+
+  @api('/users/<user>', method='PUT')
+  @require_admin
+  def user_update(self,
+                  user: str,
+                  plan: str):
+    with elle.log.trace('Update user:  %s' % user):
+      if '@' in user:
+        query = {'email': user}
+      else:
+        query = {'_id': bson.ObjectId(user)}
+      res = self.database.users.update(
+        query,
+        {
+          '$set': {'plan': plan}
+        })

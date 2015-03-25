@@ -1,0 +1,11 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User
+
+with Meta(force_admin=True) as meta:
+    user = User(meta, "foobar@infinit.io")
+
+    plan = 'freemium'
+    meta.put('users/%s' % user.id, {'plan': plan})
+    res = meta.get('users/%s' % user.id)
+    assert res['plan'] == plan
