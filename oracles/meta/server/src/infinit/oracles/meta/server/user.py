@@ -2659,12 +2659,13 @@ class Mixin:
                   user: str,
                   plan: str):
     with elle.log.trace('Update user:  %s' % user):
-      if '@' in user:
-        query = {'email': user}
-      else:
-        query = {'_id': bson.ObjectId(user)}
-      res = self.database.users.update(
+      user = self.view_user(user)
+      query = {'_id': user['id']}
+      res = self.__user_fetch_and_modify(
         query,
         {
           '$set': {'plan': plan}
-        })
+        },
+        new = True,
+        fields = ['plan'])
+      return res
