@@ -11,6 +11,7 @@ from email.mime.text import MIMEText
 from email.utils import parseaddr, formataddr
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
+from .plugins.jsongo import jsonify
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Mailer'
 
@@ -214,6 +215,8 @@ class Mailer():
   def __send_template(self, template_name, message):
     import mandrill
     messenger = mandrill.Messages(self.__mandrill)
+    if 'merge_vars' in message:
+      message['merge_vars'] = jsonify(message['merge_vars'])
     return messenger.send_template(template_name = template_name,
                                    template_content = [],
                                    message = message)
