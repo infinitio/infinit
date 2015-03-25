@@ -341,6 +341,15 @@ namespace surface
     }
     static std::streamsize const chunk_size = 1 << 18;
 
+
+    void
+    PeerSendMachine::cleanup()
+    {
+      ELLE_TRACE_SCOPE("%s: cleanup", *this);
+      this->_frete.reset();
+      SendMachine::cleanup();
+    }
+
     void
     PeerSendMachine::_create_transaction()
     {
