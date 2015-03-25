@@ -974,6 +974,7 @@ namespace surface
         current_file_full_size = f.size();
         current_file_full_path = _file_full_path(this->state().output_dir(),
                                                  *this->_snapshot, f);
+        ELLE_TRACE("%s will write to %s", *this, current_file_full_path);
         current_file_handle = elle::system::FileHandle(current_file_full_path,
                                                        elle::system::FileHandle::APPEND);
       }
@@ -1055,6 +1056,7 @@ namespace surface
             if (_store_expected_position != current_file_full_size)
             {
               // We need blocks for that one.
+              ELLE_TRACE("%s will write to %s", *this, current_file_full_path);
               break;
             }
           }
