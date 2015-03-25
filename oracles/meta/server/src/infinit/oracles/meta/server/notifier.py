@@ -222,7 +222,8 @@ class Notifier:
       files = 'files'
     if status is transaction_status.INITIALIZED: # Only sent to recipient
       if to_self:
-        alert = "Accept transfer from another device"
+        if message['recipient_device_id'] in [device, '']:
+          alert = "Accept transfer from another device"
       else:
         alert = "Accept transfer from %s" % message['sender_fullname']
     elif status is transaction_status.REJECTED: # Only sent to sender
