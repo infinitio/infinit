@@ -8,7 +8,9 @@ with Meta() as meta:
   fullname = 'bob'
 
   bob = User(meta, email = email, fullname = fullname)
+  bob.login(OS = 'KittenOS')
 
   res = bob.get('devices/%s' % bob.device_id)
   assertEq(res['name'], str(bob.device_id))
   assertEq(res['id'], str(bob.device_id))
+  assertEq(res['os'], 'KittenOS')

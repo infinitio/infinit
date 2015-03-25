@@ -325,6 +325,7 @@ class Mixin:
         id = device_id,
         owner = user,
         device_push_token = device_push_token,
+        OS = OS,
         country_code = country_code)
     else:
       device = list(filter(lambda x: x['id'] == str(device_id), usr['devices']))[0]
@@ -340,6 +341,8 @@ class Mixin:
       {'$set': {'last_connection': time.time(),}})
     elle.log.trace("successfully connected as %s on device %s" %
                    (user['_id'], device['id']))
+    if OS is not None:
+      OS = OS.strip().lower()
     if 'email' in user:
       email = user['email']
       if OS is not None and OS in invitation.os_lists.keys() and ('os' not in user or OS not in user['os']):
@@ -449,8 +452,6 @@ class Mixin:
       return self.bad_request({
         'reason': 'you must provide facebook_token or (email, password)'
       })
-    if OS is not None:
-      OS = OS.strip().lower()
     # FIXME: 0.0.0.0 is the website.
     if self.user_version < (0, 9, 0) and self.user_version != (0, 0, 0):
       return self.fail(error.DEPRECATED)
