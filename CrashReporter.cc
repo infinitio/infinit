@@ -292,6 +292,12 @@ namespace elle
         json_dict["send"] = true;
 # else
         json_dict["send"] = !crash_dest.empty();
+        if (crash_dest.empty())
+        {
+          ELLE_WARN("CrashReporter not sending report: INFINIT_PRODUCTION_BUILD "
+                    "not defined and INFINIT_CRASH_DEST environment variable "
+                    "empty");
+        }
 # endif
       }
       reactor::http::Request::Configuration conf{
