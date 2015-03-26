@@ -17,6 +17,7 @@ with open(str(drake.path_source('../../../elle/drake-utils.py')), 'r') as f:
 def configure(production_build,
               elle,
               python3,
+              sendwithus,
               apns,
               apns_cert,
               apns_cert_prod,
@@ -145,6 +146,7 @@ def configure(production_build,
     [apns_cert, apns_cert_prod],
     build_python_path / 'infinit/oracles/meta/server',
     strip_prefix = True)
+
   if python3 is not None:
     for source in sources_built:
       source.dependencies_add(elle_python)
@@ -156,6 +158,8 @@ def configure(production_build,
   python += drake.copy(python_common, '.', '../..')
   python += drake.copy(apns.nodes, build_python_path,
                        drake.Path('../..') / apns.root)
+  python += drake.copy(sendwithus.nodes, build_python_path,
+                       drake.Path('../..') / sendwithus.root)
   meta = drake.python.Package('python', build_python_path, python)
   build << python
   build_binary = drake.copy(drake.node('meta'), 'bin')
