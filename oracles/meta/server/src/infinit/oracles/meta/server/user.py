@@ -129,6 +129,8 @@ class Mixin:
       'identity',
       'swaggers',
       'consumed_ghost_codes',
+      'stripe_id',
+      'plan',
     ]
     return res
 
@@ -2657,38 +2659,35 @@ class Mixin:
     return self.success(res)
 
   @api('/users/<user>', method='PUT')
-  @require_admin
+  @require_logged_in
   def user_update(self,
                   user,
                   plan = None,
-                  stripeToken = None):
-    with elle.log.trace('Update user:  %s' % user):
-      user = self.view_user(user)
-      query = {'_id': user['id']}
+                  token = None):
+      user = self.user
       customer = self.__fetch_or_create_stripe_customer(user)
-
       # Subscribing to a paying plan without source raises an error
       try:
-      # Update user's payment source, represented by a stripeToken
-        if stripeToken is not None:
-            customer.source = stripeToken
-            customer.save()
+      # Update user's payment source, represented by a token
+        if token is not None:
+          customer.source = token
+          customer.save()
 
         if plan is not None:
-            # We do not want multiple plans to be active at the same time, so a
-            # customer can only have at most one subscription (ideally, exactly one
-            # subscription, which would be 'basic' for non paying customers)
-            if customer.subscriptions.total_count == 0:
-              customer.subscriptions.create(plan=plan)
-            else:
-              sub = customer.subscriptions.data[0]
-              sub.plan = plan
-              sub.save
-            self.database.users.update(
-              query,
-              {'$set': {'plan': plan}})
+          # We do not want multiple plans to be active at the same time, so a
+          # customer can only have at most one subscription (ideally, exactly one
+          # subscription, which would be 'basic' for non paying customers)
+          if customer.subscriptions.total_count == 0:
+            customer.subscriptions.create(plan=plan)
+          else:
+            sub = customer.subscriptions.data[0]
+            sub.plan = plan
+            sub.save()
+          self.database.users.update(
+            {'_id': user['_id']},
+            {'$set': {'plan': plan}})
       except stripe.error.InvalidRequestError as e:
-        elle.log('cannot update customer {0} plan: {1}'.format(user['id'],
+        elle.log.warn('cannot update customer {0} plan: {1}'.format(user['_id'],
                                                                  e.args[0]))
         return self.fail(e.args)
       return self.success()
@@ -2700,6 +2699,6 @@ class Mixin:
     else:
       customer = stripe.Customer.create( email = user['email'])
       self.database.users.update(
-        {'_id': user['id']},
+        {'_id': user['_id']},
         {'$set': {'stripe_id': customer.id}})
       return customer
