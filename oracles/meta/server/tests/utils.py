@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import infinit.oracles.emailer
 import infinit.oracles.meta.server
 from infinit.oracles.meta.server.mail import Mailer
 from infinit.oracles.meta.server.invitation import Invitation
@@ -286,12 +287,49 @@ class NoOpInvitation(Invitation):
     # XXX: Reset lists to secure the tests.
     # self.lists = {}
 
+
+class Email:
+  pass
+
+class TestEmailer(infinit.oracles.emailer.Emailer):
+
+  def __init__(self):
+    self.__emails = []
+
+  def send_one(self,
+               template,
+               recipient_email,
+               recipient_name,
+               sender_email = None,
+               sender_name = None,
+               variables = None,
+             ):
+    o = Email()
+    o.template = template
+    o.recipient = Email()
+    o.recipient.email = recipient_email
+    o.recipient.name = recipient_name
+    o.sender = Email()
+    o.sender.email = sender_email
+    o.sender.name = sender_name
+    o.variables = variables
+    self.__emails.append(o)
+
+  @property
+  def emails(self):
+    res = self.__emails
+    self.__emails = []
+    return res
+
+
 class Meta:
 
   def __init__(self,
                enable_emails = False,
                enable_invitations = False,
-               force_admin = False, **kw):
+               force_admin = False,
+               emailer = None,
+               **kw):
     self.__mongo = mongobox.MongoBox()
     self.__server = bottle.WSGIRefServer(port = 0)
     self.__database = None
@@ -303,6 +341,11 @@ class Meta:
     self.__meta_args = kw
     if 'shorten_ghost_profile_url' not in self.__meta_args:
       self.__meta_args['shorten_ghost_profile_url'] = False
+    self.__emailer = emailer or TestEmailer()
+
+  @property
+  def emailer(self):
+    return self.__emailer
 
   @property
   def domain(self):
@@ -319,6 +362,7 @@ class Meta:
           enable_emails = self.__enable_emails,
           enable_invitations = self.__enable_invitations,
           force_admin = self.__force_admin,
+          emailer = self.__emailer,
           **self.__meta_args)
         self.__meta.mailer = NoOpMailer()
         self.__meta.invitation = NoOpInvitation()
