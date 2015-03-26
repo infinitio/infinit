@@ -15,7 +15,6 @@ from infinit.oracles.meta.server.transaction_status import CANCELED
 class MailService(NoOpMailer):
 
   def __init__(self):
-    self.keys = {}
     self.change_email = {}
     super().__init__(True)
 
@@ -23,16 +22,18 @@ class MailService(NoOpMailer):
     merges = {}
     for entry in message['merge_vars'][0]['vars']:
       merges[entry['name']] = entry['content']
-    if template_message == 'account-add-email':
-      self.keys.update(
-        {
-          merges['email']: merges['key']
-        })
     if template_message == 'change-email-address':
        self.change_email.update(
          {
            merges['new_email_address']: merges['hash']
          })
+
+def get_keys(emails, size):
+  assertEq(len(emails), size)
+  keys = {}
+  for email in emails:
+    keys[email.variables['email']] = email.variables['key']
+  return keys
 
 # Normal.
 with Meta(enable_emails = True) as meta:
@@ -44,14 +45,13 @@ with Meta(enable_emails = True) as meta:
   emails = ['babar@infinit.io', 'foufou@infinit.io', 'beetroot@infinit.io', 'fesse@infinit.io']
   for email in emails:
     user.put('user/accounts/%s' % email)
-
-  assert len(meta.mailer.keys) == len(emails)
+  keys = get_keys(meta.emailer.emails, len(emails))
   import random
   random.shuffle(emails)
   i = 0
   for email in emails:
     user.post('users/%s/accounts/%s/confirm' % (user.id, email),
-              {'key': meta.mailer.keys[email]})
+              {'key': keys[email]})
     i += 1
     res = user.post('user/search_emails', {'emails': [email]})
     assert len(res['users']) == 1
@@ -110,9 +110,9 @@ with Meta(enable_emails = True) as meta:
   meta.mailer = MailService()
   email = 'endive@infinit.io'
   user.put('user/accounts/%s' % email)
+  keys = get_keys(meta.emailer.emails, 1)
   user.post('users/%s/accounts/%s/confirm' % (user.id, email),
-            {'key': meta.mailer.keys[email]})
-  meta.mailer.keys.clear()
+            {'key': keys[email]})
   res = user.post('user/search_emails', {'emails': [email]})
   assert len(res['users']) == 1
   user.delete('user/accounts/%s' % email)
@@ -144,14 +144,13 @@ with Meta(enable_emails = True) as meta:
   eve_email = 'eve@infinit.io'
   meta.mailer = MailService()
   bob.put('user/accounts/%s' % eve_email)
-  assert len(meta.mailer.keys) == 1
-
+  keys = get_keys(meta.emailer.emails, 1)
   eve = User(meta, eve_email)
   eve.login()
 
   try:
     bob.post('users/%s/accounts/%s/confirm' % (bob.id, eve_email),
-             {'key': meta.mailer.keys[eve_email]})
+             {'key': keys[eve_email]})
     assert False
   except HTTPException:
     pass
@@ -168,11 +167,13 @@ with Meta(enable_emails = True) as meta:
   email = 'endive@infinit.io'
   meta.mailer = MailService()
   bob.put('user/accounts/%s' % email)
-  bob.hash = meta.mailer.keys[email]
+  keys = get_keys(meta.emailer.emails, 1)
+  bob.hash = keys[email]
 
   meta.mailer = MailService()
   alice.put('user/accounts/%s' % email)
-  alice.hash = meta.mailer.keys[email]
+  keys = get_keys(meta.emailer.emails, 1)
+  alice.hash = keys[email]
 
   bob.post(
     'users/%s/accounts/%s/confirm' % (bob.id, email),
@@ -189,8 +190,9 @@ with Meta(enable_emails = True) as meta:
   new_email = 'endive@infinit.io'
   meta.mailer = MailService()
   user.put('user/accounts/%s' % new_email,)
+  keys = get_keys(meta.emailer.emails, 1)
   user.post('users/%s/accounts/%s/confirm' % (user.id, email),
-            {'key': meta.mailer.keys[email]})
+            {'key': keys[email]})
   user.logout()
   try:
     user.login(email = new_email)

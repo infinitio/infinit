@@ -1114,17 +1114,18 @@ class Mixin:
           'reason': 'email already registered',
           'email': email,
         })
-    k = key('/users/%s/accounts/%s/confirm' % (self.user['_id'], email))
-    self.mailer.send_template(
-      email,
-      'account-add-email',
-      merge_vars = {
-        email : {
-          'email': email,
-          'user': self.__user_view(self.user),
-          'key': k,
-        }
-      })
+    url ='/users/%s/accounts/%s/confirm' % (self.user['_id'], email)
+    k = key(url)
+    variables = {
+      'email': email,
+      'user': self.__user_view(self.user),
+      'url': url,
+      'key': key(url),
+    }
+    self.emailer.send_one('account-add-email',
+                          email,
+                          self.user['fullname'],
+                          variables = variables)
     return {}
 
   @api('/users/<user>/accounts/<name>/confirm', method = 'POST')
