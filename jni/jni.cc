@@ -432,7 +432,7 @@ static void on_peer_transaction(jobject thiz,
   jmethodID m = env->GetMethodID(clazz, "onPeerTransaction",
                                  "(Lio/infinit/PeerTransaction;)V");
   jobject pt = to_peertransaction(env, t);
-  ELLE_TRACE("Invoking onPeerTransaction at %s", m);
+  ELLE_TRACE("Invoking onPeerTransaction %s at %s", t, m);
   env->CallVoidMethod(thiz, m, pt);
   env->DeleteLocalRef(pt);
   env->DeleteLocalRef(clazz);
@@ -775,7 +775,9 @@ extern "C" jlong Java_io_infinit_State_gapChangePassword(
 extern "C" jlong Java_io_infinit_State_gapSelfId(
    JNIEnv* env, jobject thiz, jlong handle)
 {
-  return gap_self_id((gap_State*)handle);
+  jlong res = gap_self_id((gap_State*)handle);
+  ELLE_TRACE("selfId: %s", res);
+  return res;
 }
 
 
