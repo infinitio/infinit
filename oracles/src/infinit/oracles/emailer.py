@@ -4,34 +4,33 @@ import json
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.emailer'
 
-import sendwithus.encoder
-class JSONEncoder(sendwithus.encoder.SendwithusJSONEncoder):
-
-  def default(self, obj):
-    import bson
-    import datetime
-    if isinstance(obj, datetime.datetime):
-      return {
-        'year': obj.year,
-        'month': obj.month,
-        'day': obj.day,
-        'hour': obj.hour,
-        'minute': obj.minute,
-        'second': obj.second,
-        'weekday': obj.weekday(),
-      }
-    if isinstance(obj, bson.ObjectId):
-      return str(obj)
-    return super().default(obj)
-
 
 class SendWithUsEmailer:
 
   def __init__(self, api_key):
     import sendwithus
+    import sendwithus.encoder
+    class JSONEncoder(sendwithus.encoder.SendwithusJSONEncoder):
+      def default(self, obj):
+        import bson
+        import datetime
+        if isinstance(obj, datetime.datetime):
+          return {
+            'year': obj.year,
+            'month': obj.month,
+            'day': obj.day,
+            'hour': obj.hour,
+            'minute': obj.minute,
+            'second': obj.second,
+            'weekday': obj.weekday(),
+          }
+        if isinstance(obj, bson.ObjectId):
+          return str(obj)
+        return super().default(obj)
+    self.__json_encoder = JSONEncoder
     self.__swu = sendwithus.api(
       api_key = api_key,
-      json_encoder = JSONEncoder)
+      json_encoder = self.__json_encoder)
     self.__load_templates()
 
   def __load_templates(self):
@@ -107,7 +106,7 @@ class SendWithUsEmailer:
       email = recipient['email']
       with trace('%s: send %s to %s' % (self, template, email)):
         dump('variables: %s' % json.dumps(recipient['vars'],
-                                          cls = JSONEncoder))
+                                          cls = self.__json_encoder))
         sender_name = None
         sender_email = None
         if 'sender' in recipient and recipient['sender'] is not None:
