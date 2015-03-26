@@ -20,8 +20,8 @@ import infinit.oracles.sisyphus
 import infinit.oracles.sisyphus.boulders
 import infinit.oracles.sisyphus.boulders.apns
 import infinit.oracles.sisyphus.boulders.drip
-import infinit.oracles.sisyphus.emailer
 import infinit.oracles.sisyphus.metrics
+import infinit.oracles.emailer
 import bottle
 import elle.log
 
@@ -57,7 +57,7 @@ swu_key = 'live_7e775f6f0e1404802a5fbbc0fcfa9c238b065c49'
 # Send to mefyl@infinit.io
 # swu_key = 'test_8a19af75d006192a3e51dcab310fa1ed428e53ba'
 
-args['emailer'] = infinit.oracles.sisyphus.emailer.SendWithUsEmailer(
+args['emailer'] = infinit.oracles.emailer.SendWithUsEmailer(
   api_key = swu_key)
 args['metrics'] = infinit.oracles.sisyphus.metrics.Metrics()
 
