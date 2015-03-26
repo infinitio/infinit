@@ -48,6 +48,13 @@ class Mixin:
       user['connected'] = bool(connected)
     return user
 
+  def __user_email_view(self, user):
+    return {
+      'fullname': user['fullname'],
+      'email': user['email'],
+      'id': user['_id'],
+    }
+
   def __user_view(self, user):
     '''Layout user to be returned to clients'''
     user = self.__user_self(user)
@@ -1118,8 +1125,8 @@ class Mixin:
     k = key(url)
     variables = {
       'email': email,
-      'user': self.__user_view(self.user),
-      'url': url,
+      'user': self.__user_email_view(self.user),
+      'url': self.url_absolute(url),
       'key': key(url),
     }
     self.emailer.send_one('account-add-email',

@@ -456,3 +456,8 @@ Session: %(session)s
   def check_key(self, k):
     if k is None or k != key(bottle.request.path):
       self.forbidden()
+
+  def url_absolute(self, url):
+    if not url.startswith('/'):
+      url = '/' + url
+    return 'https://meta.api.production.infinit.io' + url
