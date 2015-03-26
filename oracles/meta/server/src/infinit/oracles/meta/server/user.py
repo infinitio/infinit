@@ -9,6 +9,7 @@ import bson.code
 import random
 import uuid
 import re
+import stripe
 
 import elle.log
 import papier
@@ -25,6 +26,8 @@ import os
 import string
 import time
 import unicodedata
+
+stripe.api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI'
 
 
 code_alphabet = '2346789abcdefghilkmnpqrstuvwxyz'
@@ -2656,16 +2659,47 @@ class Mixin:
   @api('/users/<user>', method='PUT')
   @require_admin
   def user_update(self,
-                  user: str,
-                  plan: str):
+                  user,
+                  plan = None,
+                  stripeToken = None):
     with elle.log.trace('Update user:  %s' % user):
       user = self.view_user(user)
       query = {'_id': user['id']}
-      res = self.__user_fetch_and_modify(
-        query,
-        {
-          '$set': {'plan': plan}
-        },
-        new = True,
-        fields = ['plan'])
-      return res
+      customer = self.__fetch_or_create_stripe_customer(user)
+
+      # Subscribing to a paying plan without source raises an error
+      try:
+      # Update user's payment source, represented by a stripeToken
+        if stripeToken is not None:
+            customer.source = stripeToken
+            customer.save()
+
+        if plan is not None:
+            # We do not want multiple plans to be active at the same time, so a
+            # customer can only have at most one subscription (ideally, exactly one
+            # subscription, which would be 'basic' for non paying customers)
+            if customer.subscriptions.total_count == 0:
+              customer.subscriptions.create(plan=plan)
+            else:
+              sub = customer.subscriptions.data[0]
+              sub.plan = plan
+              sub.save
+            self.database.users.update(
+              query,
+              {'$set': {'plan': plan}})
+      except stripe.error.InvalidRequestError as e:
+        elle.log('cannot update customer {0} plan: {1}'.format(user['id'],
+                                                                 e.args[0]))
+        return self.fail(e.args)
+      return self.success()
+
+  def __fetch_or_create_stripe_customer(self,
+                                        user):
+    if 'stripe_id' in user:
+      return stripe.Customer.retrieve(user['stripe_id'])
+    else:
+      customer = stripe.Customer.create( email = user['email'])
+      self.database.users.update(
+        {'_id': user['id']},
+        {'$set': {'stripe_id': customer.id}})
+      return customer
