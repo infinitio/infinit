@@ -5,7 +5,12 @@ import json
 ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.emailer'
 
 
-class NoopEmailer:
+class Emailer:
+
+  pass
+
+
+class NoopEmailer(Emailer):
 
   def send_one(self,
                template,
@@ -18,7 +23,7 @@ class NoopEmailer:
     pass
 
 
-class SendWithUsEmailer:
+class SendWithUsEmailer(Emailer):
 
   def __init__(self, api_key):
     import sendwithus
@@ -139,7 +144,7 @@ class SendWithUsEmailer:
       self.__execute(swu)
 
 
-class MandrillEmailer:
+class MandrillEmailer(Emailer):
 
   def __init__(self, mandrill):
     self.__mandrill = mandrill
