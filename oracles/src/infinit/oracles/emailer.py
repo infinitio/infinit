@@ -1,4 +1,4 @@
-import elle.log
+from elle.log import log, warn, err, trace, debug, dump
 
 import json
 
@@ -40,47 +40,87 @@ class SendWithUsEmailer:
       for t in json.loads(self.__swu.templates().content.decode()))
 
   def __execute(self, batch):
-    elle.log.trace('%s: execute batch' % self)
+    trace('%s: execute batch' % self)
     r = batch.execute()
     if r.status_code != 200:
-      with elle.log.err('%s: send with us status code: %s' % (self, r.status_code)):
+      with err('%s: send with us status code: %s' % (self, r.status_code)):
         try:
-          elle.log.err('%s: send with us status code: %s' % (self, r.json()))
+          err('%s: send with us status code: %s' % (self, r.json()))
         except Exception as e:
-          elle.log.err('%s: non-JSON response (%s): %s' % (self, e, r.text))
+          err('%s: non-JSON response (%s): %s' % (self, e, r.text))
       raise Exception('%s: request failed' % self)
 
-  def send_template(self, template, recipients):
-    if template not in self.__templates:
+  def __template(self, name):
+    if name not in self.__templates:
       self.__load_templates()
-    template = self.__templates[template]['id']
+    return self.__templates[name]['id']
 
+  def send_one(self,
+               template,
+               recipient_email,
+               recipient_name,
+               sender_email = None,
+               sender_name = None,
+               variables = None,
+               ):
+    return self.__send_one(self.__template(template),
+                           recipient_email,
+                           recipient_name,
+                           sender_email,
+                           sender_name,
+                           variables,
+                           self.__swu,
+                         )
+
+  def __send_one(self,
+                 template,
+                 recipient_email,
+                 recipient_name,
+                 sender_email,
+                 sender_name,
+                 variables,
+                 swu,
+               ):
+    if sender_email is not None:
+      sender = {}
+      sender['address'] = sender_email
+      if sender_name is not None:
+        sender['fullname'] = sender_name
+      recipient['sender'] = sender
+    else:
+      assert sender_name is None
+      sender = None
+    swu.send(
+      email_id = template,
+      recipient = {
+        'address': recipient_email,
+        'name': recipient_name,
+      },
+      sender = sender,
+      email_data = variables,
+    )
+
+  def send_template(self, template, recipients):
+    template = self.__template(template)
     swu = self.__swu.start_batch()
     for recipient in recipients:
       email = recipient['email']
-      if recipient['sender'] is not None:
-        sender = {}
-        if 'fullname' in recipient['sender']:
-          sender['name'] = recipient['sender']['fullname']
-        if 'email' in recipient['sender']:
-          sender['address'] = recipient['sender']['email']
-      else:
-        sender = None
-      with elle.log.trace(
-          '%s: send %s to %s%s' % (
-            self, template, email,
-            ' %s' % sender if sender is not None else '')):
-        elle.log.dump('variables: %s' % json.dumps(recipient['vars'],
-                                                   cls = JSONEncoder))
-        r = swu.send(
-          email_id = template,
-          recipient = {
-            'address': email,
-            'name': recipient['name']
-          },
-          sender = sender,
-          email_data = recipient['vars'],
-        )
+      with trace('%s: send %s to %s' % (self, template, email)):
+        dump('variables: %s' % json.dumps(recipient['vars'],
+                                          cls = JSONEncoder))
+        sender_name = None
+        sender_email = None
+        if 'sender' in recipient and recipient['sender'] is not None:
+          sender_name = recipient['sender'].get('fullname', None)
+          sender_email = recipient['sender'].get('email', None)
+        self.__send_one(
+          template,
+          email,
+          recipient['name'],
+          sender_name,
+          sender_email,
+          recipient['vars'],
+          swu)
       if swu.command_length() >= 100:
         self.__execute(swu)
     if swu.command_length() > 0:
