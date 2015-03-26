@@ -1104,17 +1104,7 @@ extern "C" jint Java_io_infinit_State_gapAcceptTransaction(
   }
   return gap_accept_transaction((gap_State*)handle, id);
 }
-extern "C" jint Java_io_infinit_State_gapAcceptTransactionTo(
-  JNIEnv* env, jobject thiz, jlong handle, jint id, jstring path)
-{
-  if (id == 0)
-  {
-    throw_exception(env, gap_transaction_id_not_valid);
-    return 0;
-  }
-  std::string rel_path(to_string(env, path));
-  return gap_accept_transaction((gap_State*)handle, id, rel_path);
-}
+
 extern "C" jint Java_io_infinit_State_gapOnboardingReceiveTransaction(
   JNIEnv* env, jobject thiz, jlong handle, jstring path, int tt)
 {
