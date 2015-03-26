@@ -5,6 +5,19 @@ import json
 ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.emailer'
 
 
+class NoopEmailer:
+
+  def send_one(self,
+               template,
+               recipient_email,
+               recipient_name,
+               sender_email = None,
+               sender_name = None,
+               variables = None,
+             ):
+    pass
+
+
 class SendWithUsEmailer:
 
   def __init__(self, api_key):
