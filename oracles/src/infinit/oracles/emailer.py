@@ -109,7 +109,7 @@ class SendWithUsEmailer(Emailer):
       sender = None
     recipient = {
       'address': recipient_email,
-    },
+    }
     if recipient_name is not None:
       recipient['name'] = recipient_name
     swu.send(
