@@ -2686,9 +2686,21 @@ class Mixin:
           self.database.users.update(
             {'_id': user['_id']},
             {'$set': {'plan': plan}})
+      except stripe.error.CardError as e:
+        elle.log.warn('Stripe error: customer {0} card'
+                      'has been declined'.format(user['_id'],
+                      e.args[0]))
+        return self.fail(e.args)
       except stripe.error.InvalidRequestError as e:
-        elle.log.warn('cannot update customer {0} plan: {1}'.format(user['_id'],
-                                                                 e.args[0]))
+        elle.log.warn('Invalid stripe request, cannot update customer'
+                      '{0} plan: {1}'.format(user['_id'],
+                      e.args[0]))
+        return self.fail(e.args)
+      except stripe.error.AuthentificationError as e:
+        elle.log.warn('Stripe auth failure: {1}'.format(e.args[0]))
+        return self.fail(e.args)
+      except stripe.error.APIConnectionError as e:
+        elle.log.warn('Connection to Stripe failed: {1}'.format(e.args[0]))
         return self.fail(e.args)
       return self.success()
 
