@@ -55,7 +55,8 @@ namespace infinit
           boost::posix_time::time_duration const& meta_ping_period,
           boost::posix_time::time_duration const& user_auth_max_time,
           bool meta_fatal,
-          boost::optional<std::string> zone)
+          boost::optional<std::string> zone,
+          boost::optional<std::string> hostname)
           : Waitable("trophonius")
           , _certificate(nullptr)
           , _server_ssl(nullptr)
@@ -94,12 +95,17 @@ namespace infinit
           , _user_auth_max_time(user_auth_max_time)
           , _remove_lock()
           , _zone(zone)
+          , _hostname()
         {
  #ifndef INFINIT_WINDOWS
           if (!elle::os::getenv("TROPHONIUS_LISTEN_SIGNALS","").empty())
             reactor::scheduler().signal_handle(SIGUSR1,
               std::bind(&Trophonius::disconnect_all_users, this));
  #endif
+          if (hostname)
+            this->_hostname = hostname.get();
+          else
+            this->_hostname = elle::network::hostname();
           elle::SafeFinally kill_accepters{
             [&]
             {
@@ -185,7 +191,7 @@ namespace infinit
             this->_uuid, this->port_notifications(),
             this->port_tcp(),
             this->port_ssl(),
-            elle::network::hostname(),
+            this->_hostname,
             this->_users.size(),
             this->_terminating,
             this->_zone);
