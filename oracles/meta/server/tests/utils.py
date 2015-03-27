@@ -289,7 +289,13 @@ class NoOpInvitation(Invitation):
 
 
 class Email:
-  pass
+
+  def __str__(self):
+    return repr(self)
+
+  def __repr__(self):
+    return 'Email(%r, %r, %r)' % \
+      (self.template, self.sender.email, self.recipient.email)
 
 class TestEmailer(infinit.oracles.emailer.Emailer):
 
@@ -299,7 +305,7 @@ class TestEmailer(infinit.oracles.emailer.Emailer):
   def send_one(self,
                template,
                recipient_email,
-               recipient_name,
+               recipient_name = None,
                sender_email = None,
                sender_name = None,
                variables = None,

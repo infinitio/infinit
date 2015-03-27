@@ -40,7 +40,6 @@ with Meta(enable_emails = True,
   alice.sendfile(eve)
   bob.login()
   assert bob.get('users/%s' % eve)['register_status'] == 'ghost'
-  meta.mailer = MailService()
   bob.put('user/accounts/%s' % eve)
   emails = meta.emailer.emails
   assertEq(len(emails), 1)
@@ -71,15 +70,18 @@ with Meta(enable_emails = True) as meta:
 
   eve = 'eve@infinit.io'
   alice.sendfile(eve)
-  meta.mailer = MailService()
   bob.login()
   bob.put('user/accounts/%s' % eve)
   # But eve registers...
   eve = User(meta, eve)
+  emails = meta.emailer.emails
+  assertEq(len(emails), 1)
+  key = emails[0].variables['key']
   throws(lambda:
          bob.post(
            'users/%s/accounts/%s/confirm' % (bob.id, eve.email),
-           {'key':meta.mailer.keys[eve.email]}))
+           {'key': key}),
+         HTTPException)
 
 # Notifications.
 with Meta(enable_emails = True) as meta:
@@ -186,10 +188,15 @@ with Meta(enable_emails = True) as meta:
   bob.login()
   assert bob.get('users/%s' % eve)['register_status'] == 'ghost'
   eve_id = bob.get('users/%s' % eve)['id']
-  assert len(meta.mailer.codes)
-  assert len(meta.mailer.codes) == 2
-  assert meta.mailer.codes[alice.fullname] == meta.mailer.codes[luc.fullname]
-  code = meta.mailer.codes[alice.fullname]
+  emails = meta.emailer.emails
+  codes = {}
+  for email in emails:
+    assertEq(email.template, 'send-invitation-ghost')
+    codes[email.variables['sender']['fullname']] = \
+      email.variables['ghost_code']
+  assertEq(len(codes), 2)
+  assertEq(codes[alice.fullname], codes[luc.fullname])
+  code = codes[alice.fullname]
   assert len(bob.transactions) == 0
   bob.post('ghost/%s/merge' % code, {})
   assert bob.get('users/%s' % eve_id)['register_status'] == 'merged'

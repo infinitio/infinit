@@ -457,7 +457,16 @@ Session: %(session)s
     if k is None or k != key(bottle.request.path):
       self.forbidden()
 
-  def url_absolute(self, url):
+  def url_absolute(self, url = ''):
     if not url.startswith('/'):
       url = '/' + url
-    return 'https://meta.api.production.infinit.io' + url
+    meta = '%s://%s' % bottle.request.urlparts[0:2]
+    return meta + url
+
+  def email_user_vars(self, user):
+    return infinit.oracles.emailer.user_vars(
+      user, self.url_absolute())
+
+  def email_transaction_vars(self, transaction, user):
+    return infinit.oracles.emailer.transaction_vars(
+      transaction, user, self.url_absolute())
