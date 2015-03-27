@@ -114,7 +114,7 @@ with Meta(enable_emails = True,
     assertEq(len(emails), 3)
     ghost_profile = None
     for email in emails:
-      assertEq(email.template, 'send-invitation-ghost')
+      assertEq(email.template, 'ghost-invitation')
       assertEq(email.variables['ghost_code'],
                db_recipient['ghost_code'])
       if ghost_profile is None:
@@ -188,7 +188,7 @@ with Meta(enable_emails = True) as meta:
   assert 'ghost_code' not in res['recipient']
   emails = meta.emailer.emails
   assertEq(len(emails), 1)
-  assertEq(emails[0].template, 'send-invitation-ghost')
+  assertEq(emails[0].template, 'ghost-invitation')
   ghost_code = emails[0].variables['ghost_code']
   eve = User(meta, "eve@infinit.io")
   eve.login()

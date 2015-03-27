@@ -19,7 +19,7 @@ def check_email(emails, recipient):
   import sys
   print('EMAILS', emails, file = sys.stderr)
   assertEq(len(emails), 1)
-  assertEq(emails[0].template, 'send-invitation-ghost')
+  assertEq(emails[0].template, 'ghost-invitation')
   assertEq(emails[0].recipient.email, recipient)
 
 with Meta() as meta:

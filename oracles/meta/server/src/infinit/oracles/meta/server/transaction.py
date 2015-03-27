@@ -804,7 +804,7 @@ class Mixin:
               self.__ghost_profile_url(recipient, type = "email")),
           })
         self.emailer.send_one(
-          'send-invitation-ghost',
+          'ghost-invitation',
           recipient_email = peer_email,
           sender_email = user['email'],
           sender_name = user['fullname'],
