@@ -138,6 +138,7 @@ class Mixin:
                      owner,
                      name = None,
                      id = None,
+                     OS = None,
                      device_push_token = None,
                      country_code = None):
     """Create a device.
@@ -167,6 +168,8 @@ class Mixin:
           conf.INFINIT_AUTHORITY_PASSWORD
         ),
       }
+      if OS is not None:
+        device['os'] = OS
       if device_push_token is not None:
         device['push_token'] = device_push_token
       if country_code is not None:

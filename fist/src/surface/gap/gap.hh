@@ -359,8 +359,7 @@ gap_reject_transaction(gap_State* state, uint32_t id);
 /// If the return value is 0, the operation failed.
 gap_Status
 gap_accept_transaction(gap_State* state,
-                       uint32_t id,
-                       boost::optional<std::string> relative_output_dir = {});
+                       uint32_t id);
 
 /// Return the id of an onboarding received transaction.
 uint32_t

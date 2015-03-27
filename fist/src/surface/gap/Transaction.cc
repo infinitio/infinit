@@ -497,8 +497,15 @@ namespace surface
     }
 
     void
-    Transaction::accept(boost::optional<std::string> relative_output_dir)
+    Transaction::accept()
     {
+      boost::optional<std::string> relative_output_dir;
+#if defined(INFINIT_IOS)
+      relative_output_dir = this->_data->id;
+#elif defined(INFINIT_ANDROID)
+      relative_output_dir =
+        elle::sprintf("%s/%s", this->state().me().id, this->_data->id);
+#endif
       ELLE_TRACE_SCOPE("%s: accepting transaction", *this);
       if (this->_machine == nullptr)
       {

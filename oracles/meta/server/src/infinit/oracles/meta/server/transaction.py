@@ -20,6 +20,7 @@ from pymongo import ASCENDING, DESCENDING
 from .plugins.response import response
 
 from infinit.oracles.meta.server.utils import json_value
+import infinit.oracles.emailer
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Transaction'
 
@@ -738,6 +739,11 @@ class Mixin:
     elle.log.debug('transaction (%s) hash: %s' % (transaction['_id'], txn_hash))
     return txn_hash
 
+  def __view_transaction_email(self, transaction):
+    return {
+
+    }
+
   def on_ghost_uploaded(self, transaction, device_id, device_name, user):
     elle.log.log('Transaction finished');
     # Guess if this was a ghost cloud upload or not
@@ -783,35 +789,27 @@ class Mixin:
       # collection.
       transaction_hash = self._hash_transaction(transaction)
       if peer_email:
-        merges = {
-          'filename': transaction['files'][0],
-          'recipient_email': peer_email,
-          'recipient_name': recipient['fullname'],
-          'sendername': user['fullname'],
-          'sender_email': user['email'],
-          'sender_avatar': 'https://%s/user/%s/avatar' %
-          (bottle.request.urlparts[1], user['_id']),
-          'note': transaction['message'],
-          'transaction_hash': transaction_hash,
-          'transaction_id': str(transaction['_id']),
-          'number_of_other_files': len(transaction['files']) - 1,
-          # Ghost created pre 0.9.30 has no ghost code.
+        variables = {
+          'sender': self.email_user_vars(user),
+          'ghost_email': peer_email,
+          'transaction':
+          self.email_transaction_vars(transaction, recipient),
         }
+        # Ghost created pre 0.9.30 has no ghost code.
         if 'ghost_code' in recipient:
-          merges.update({
+          variables.update({
             'ghost_code': recipient['ghost_code'],
             'ghost_profile': recipient.get(
               'shorten_ghost_profile_url',
               self.__ghost_profile_url(recipient, type = "email")),
           })
-        source = (user['fullname'], self.user_identifier(user))
-        invitation.invite_user(
-          peer_email,
-          mailer = self.mailer,
-          mail_template = 'send-file-url',
-          source = source,
-          database = self.database,
-          merge_vars = {peer_email: merges})
+        self.emailer.send_one(
+          'ghost-invitation',
+          recipient_email = peer_email,
+          sender_email = user['email'],
+          sender_name = user['fullname'],
+          variables = variables,
+        )
       return {
         'transaction_hash': transaction_hash,
         'download_link': ghost_get_url,

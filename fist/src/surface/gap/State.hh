@@ -284,7 +284,7 @@ namespace surface
       // This function wrap all the retry mechanism.
       typedef std::function<
         void (bool success, std::string const& failure_reason)> LoginMetric;
-      void
+      bool
       _login(
         std::function <infinit::oracles::meta::LoginResponse ()> login_function,
         elle::utility::Move<TrophoniusClientPtr> trophonius,

@@ -12,9 +12,11 @@ from .. import Boulder
 from .. import version
 from infinit.oracles.utils import key
 from infinit.oracles.transaction import statuses
+import infinit.oracles.emailer
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.boulders.drip'
 
+meta = 'https://meta.api.production.infinit.io'
 
 class Emailing(Boulder):
 
@@ -44,11 +46,6 @@ class Emailing(Boulder):
   @property
   def now(self):
     return datetime.datetime.utcnow()
-
-
-def avatar(i):
-  meta = 'https://meta.api.production.infinit.io'
-  return '%s/user/%s/avatar' % (meta, i)
 
 def merge_result(a, b):
   for key, value in b.items():
@@ -283,32 +280,14 @@ class Drip(Emailing):
     return {}
 
   def user_vars(self, user):
-    return {
-      'avatar': avatar(user['_id']),
-      'email': user['email'],
-      'fullname': user['fullname'],
-      'id': str(user['_id']),
-      'os': user['os'] if 'os' in user else [],
-    }
+    return infinit.oracles.emailer.user_vars(user, meta)
 
   def transaction_vars(self, transaction, user):
-    sender = transaction['sender_id'] == user['_id']
-    verb = 'to' if sender else 'from'
-    peer = 'recipient' if sender else 'sender'
-    return {
-      'id': str(transaction['_id']),
-      'files': transaction['files'],
-      'key': key('/transactions/%s' % transaction['_id']),
-      'message': transaction['message'],
-      'peer':
-      {
-        'fullname': transaction['%s_fullname' % peer],
-        'id': transaction['%s_id' % peer],
-        'avatar': avatar(transaction['%s_id' % peer]),
-      },
-      'size': transaction['total_size'],
-      'verb': verb,
-    }
+    return infinit.oracles.emailer.transaction_vars(
+      transaction, user, meta)
+
+  def avatar(self, user_id):
+    return infinit.oracles.emailer.avatar(user_id, meta)
 
   def status(self):
     res = {}
@@ -740,13 +719,13 @@ class WeeklyReport(Drip):
         {
           'id': str(t['recipient_id']),
           'fullname': t['recipient_fullname'],
-          'avatar': avatar(t['recipient_id']),
+          'avatar': self.avatar(t['recipient_id']),
         }
         if sender else
         {
           'id': str(t['sender_id']),
           'fullname': t['sender_fullname'],
-          'avatar': avatar(t['sender_id']),
+          'avatar': self.avatar(t['sender_id']),
         },
         'verb': 'to' if sender else 'from',
       } for t, sender in map(

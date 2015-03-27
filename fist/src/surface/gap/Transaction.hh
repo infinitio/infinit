@@ -172,7 +172,7 @@ namespace surface
     public:
       virtual
       void
-      accept(boost::optional<std::string> output_dir = {});
+      accept();
 
       virtual
       void

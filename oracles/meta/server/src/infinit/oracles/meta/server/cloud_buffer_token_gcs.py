@@ -6,7 +6,7 @@ import os
 import sys
 import base64
 import urllib
-
+import urllib.parse
 import elle.log
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.CloudBufferTokenGCS'
@@ -118,7 +118,8 @@ def generate_get_url(region,
                      valid_days = 3650):
     expiration = datetime.datetime.now() + datetime.timedelta(days=valid_days)
     expiration = int(time.mktime(expiration.timetuple()))
-    resource = '/%s/%s/%s' % (bucket_name, transaction_id, file_path)
+    encoded_file_path = urllib.parse.quote(file_path)
+    resource = '/%s/%s/%s' % (bucket_name, transaction_id, encoded_file_path)
     signature_string='%s\n%s\n%s\n%s\n%s' % ('GET', '', '', expiration, resource)
     shahash = SHA256.new(signature_string.encode('utf-8'))
     private_key = RSA.importKey(CloudBufferTokenGCS.private_key, passphrase='notasecret')
@@ -132,5 +133,5 @@ def generate_get_url(region,
     }
     params = urllib.parse.urlencode(params)
     url = 'https://%s.%s/%s/%s?%s' % (bucket_name, CloudBufferTokenGCS.host,
-      transaction_id, file_path, params)
+      transaction_id, encoded_file_path, params)
     return url

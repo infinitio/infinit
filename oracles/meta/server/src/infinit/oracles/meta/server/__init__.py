@@ -18,6 +18,8 @@ import pymongo.database
 import pymongo.errors
 import re
 
+import infinit.oracles.emailer
+
 from .plugins.certification import Plugin as CertificationPlugin
 from .plugins.failure import Plugin as FailurePlugin
 from .plugins.fatal_emails import Plugin as FatalPlugin
@@ -105,6 +107,7 @@ class Meta(bottle.Bottle,
       zone = None,
       production = False,
       facebook_domain = "https://graph.facebook.com",
+      emailer = None,
   ):
     self.__production = production
     import os
@@ -196,6 +199,12 @@ class Meta(bottle.Bottle,
     self.__zone = zone
     # Facebook.
     self.facebook = facebook.FacebookGraph(facebook_domain)
+    # Emailing
+    self.__emailer = emailer or infinit.oracles.emailer.NoopEmailer()
+
+  @property
+  def emailer(self):
+    return self.__emailer
 
   @property
   def production(self):
@@ -447,3 +456,17 @@ Session: %(session)s
   def check_key(self, k):
     if k is None or k != key(bottle.request.path):
       self.forbidden()
+
+  def url_absolute(self, url = ''):
+    if not url.startswith('/'):
+      url = '/' + url
+    meta = '%s://%s' % bottle.request.urlparts[0:2]
+    return meta + url
+
+  def email_user_vars(self, user):
+    return infinit.oracles.emailer.user_vars(
+      user, self.url_absolute())
+
+  def email_transaction_vars(self, transaction, user):
+    return infinit.oracles.emailer.transaction_vars(
+      transaction, user, self.url_absolute())

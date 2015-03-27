@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import Meta, User, NoOpMailer, HTTPException
+from utils import *
 
 from infinit.oracles.meta.server.transaction_status import GHOST_UPLOADED, FINISHED
 from bson.objectid import ObjectId
@@ -15,23 +15,12 @@ def throws(f, status):
       assert isinstance(e.status, int)
       assert e.status == status
 
-class MailService(NoOpMailer):
-
-  def __init__(self, expected_template, recipient_email):
-    super().__init__(True)
-    self.__expected_template = expected_template
-    self.__recipient_email = recipient_email
-
-  def template_message(self, template_name, message):
-    merges = {}
-    print(template_name, message)
-    for entry in message['merge_vars'][0]['vars']:
-      merges[entry['name']] = entry['content']
-    assert 'filename' in merges.keys()
-    assert 'sendername' in merges.keys()
-    assert 'note' in merges.keys()
-    assert 'transaction_hash' in merges.keys()
-    assert message['to'][0]['email'] == self.__recipient_email
+def check_email(emails, recipient):
+  import sys
+  print('EMAILS', emails, file = sys.stderr)
+  assertEq(len(emails), 1)
+  assertEq(emails[0].template, 'ghost-invitation')
+  assertEq(emails[0].recipient.email, recipient)
 
 with Meta() as meta:
   bob = User(meta, "bob@infinit.io")
@@ -44,10 +33,7 @@ with Meta() as meta:
   assert res['success']
   assert meta.mailer.sent == current_sent
   transaction_id = res['created_transaction_id']
-
-  meta.mailer = MailService("send-file-url",
-                            recipient_email = alice_email)
-  assert meta.mailer.sent == 0 #We replaced the mailer
+  assertEq(len(meta.emailer.emails), 0)
 
   # Finish transaction.
   res = bob.post('transaction/update', {"transaction_id": transaction_id,
@@ -55,7 +41,7 @@ with Meta() as meta:
                                         "device_id": str(bob.device_id),
                                         "device_name": bob.device_name})
   assert res['success']
-  assert meta.mailer.sent > 0
+  check_email(meta.emailer.emails, alice_email)
 
   # Check that sending a hash that's not real gives a 404.
   throws(lambda: meta.get('transaction/by_hash/%s' % ('0' * 64)), 404)
@@ -73,7 +59,7 @@ with Meta() as meta:
   assert len(res['files']) == 3
 
 
-  # Now, the recipient is registered as ghost, does ghost mail still works?
+  # Check the emails still works when the ghost already exists.
   current_sent = meta.mailer.sent
   transaction, res = bob.sendfile(recipient = alice_email,
                                   initialize = True)
@@ -85,4 +71,4 @@ with Meta() as meta:
                                         "device_id": str(bob.device_id),
                                         "device_name": bob.device_name})
   assert res['success']
-  assert meta.mailer.sent == current_sent + 1
+  check_email(meta.emailer.emails, alice_email)

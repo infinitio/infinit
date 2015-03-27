@@ -100,6 +100,11 @@ if options.mongo_replica_set:
 email_confirmation_cooldown = int(options.email_confirmation_cooldown)
 email_confirmation_cooldown = \
   datetime.timedelta(seconds = email_confirmation_cooldown)
+if options.enable_emails:
+  swu_key = 'test_26008542af128a451ffd05a954c971066219b090'
+  args['emailer'] = infinit.oracles.emailer.SendWithUsEmailer(
+    api_key = swu_key)
+
 app = infinit.oracles.meta.server.Meta(
   debug = options.debug,
   force_admin = options.force_admin,

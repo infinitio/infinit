@@ -479,7 +479,7 @@ namespace surface
                      ::tolower);
       auto hashed_password = infinit::oracles::meta::old_password_hash(
         lower_email, password);
-      this->_login(
+      bool res = this->_login(
         [&] {
           return this->_meta.login(lower_email,
                                    password,
@@ -493,10 +493,11 @@ namespace surface
           infinit::metrics::Reporter::metric_sender_id(lower_email);
           this->_metrics_reporter->user_login(success, failure_reason);
         });
+      if (res)
         this->_metrics_reporter->user_login(true, "");
     }
 
-    void
+    bool
     State::_login(
       std::function<infinit::oracles::meta::LoginResponse ()> login_function,
       elle::utility::Move<std::unique_ptr<TrophoniusClient>> trophonius,
@@ -529,7 +530,8 @@ namespace surface
           auto login_response = login_function();
           ELLE_TRACE("%s: logged in to meta", *this);
           this->_me.reset(new Self(login_response.self));
-          this->user_sync(this->me());
+          // Don't send notification for me user here.
+          this->user_sync(this->me(), false);
           this->_configuration.features = login_response.features;
           metrics::Reporter::metric_features(this->_configuration.features);
           // Trophonius.
@@ -695,7 +697,7 @@ namespace surface
         };
         ELLE_TRACE("%s: logged in", *this);
         this->_logged_in.open();
-        return;
+        return true;
       }
       #define RETHROW(ExceptionType)                               \
       catch(ExceptionType const& e)                                \
@@ -705,7 +707,7 @@ namespace surface
         this->_logged_out.open();                                  \
         if (_login_watcher_thread)                                 \
           _login_watcher_thread->raise(std::make_exception_ptr(e));\
-        return;                                                    \
+        return false;                                                    \
       }
       RETHROW(state::CredentialError)
       RETHROW(state::UnconfirmedEmailError)

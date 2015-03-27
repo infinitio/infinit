@@ -27,6 +27,7 @@ parse_options(int argc, char** argv)
   options_description options("Allowed options");
   options.add_options()
     ("help,h", "display this help and exit")
+    ("hostname", value<std::string>(), "hostname to send to meta")
     ("ping-period,i", value<int>(),
      "specify the ping period in seconds (default 30)")
     ("auth-max-time", value<int>(),
@@ -94,6 +95,7 @@ int main(int argc, char** argv)
     int notifications_port = 0;
     int ping = 30;
     int auth_max_time = 10;
+    boost::optional<std::string> hostname;
     if (options.count("port-ssl"))
       port_ssl = options["port-ssl"].as<int>();
     if (options.count("port-tcp"))
@@ -107,6 +109,8 @@ int main(int argc, char** argv)
     boost::optional<std::string> zone;
     if (options.count("zone"))
       zone = options["zone"].as<std::string>();
+    if (options.count("hostname"))
+      hostname = options["hostname"].as<std::string>();
     reactor::Scheduler s;
     std::unique_ptr<Trophonius> trophonius;
     reactor::Thread main(
@@ -123,7 +127,8 @@ int main(int argc, char** argv)
             boost::posix_time::seconds(60),
             boost::posix_time::seconds(auth_max_time),
             meta_fatal,
-            zone));
+            zone,
+            hostname));
         // Wait for trophonius to be asked to finish.
         reactor::wait(*trophonius);
         trophonius.reset();

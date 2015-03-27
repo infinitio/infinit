@@ -47,10 +47,11 @@ def configure(production_build,
   python = drake.nodes(
     'src/infinit/__init__.py',
     'src/infinit/oracles/__init__.py',
-    'src/infinit/oracles/utils.py',
+    'src/infinit/oracles/emailer.py',
     'src/infinit/oracles/notification.py',
     'src/infinit/oracles/servers.py',
     'src/infinit/oracles/transaction.py',
+    'src/infinit/oracles/utils.py',
   )
   python_built = drake.copy(python, 'lib/python', 'src')
 
@@ -124,6 +125,7 @@ def configure(production_build,
                        papier_python = papier_python,
                        python_common = python_built,
                        mongobox = mongobox,
+                       sendwithus = sendwithus,
                        transaction_lib = transaction_lib,
                        transaction_config = config,
                        python3 = python3,

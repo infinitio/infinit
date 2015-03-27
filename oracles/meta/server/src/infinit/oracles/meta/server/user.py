@@ -12,6 +12,7 @@ import re
 
 import elle.log
 import papier
+import infinit.oracles.emailer
 
 from .plugins.response import response, Response
 from .utils import api, require_logged_in, require_logged_in_fields, require_admin, require_logged_in_or_admin, hash_password, json_value, require_key, key, clean_up_phone_number
@@ -325,6 +326,7 @@ class Mixin:
         id = device_id,
         owner = user,
         device_push_token = device_push_token,
+        OS = OS,
         country_code = country_code)
     else:
       device = list(filter(lambda x: x['id'] == str(device_id), usr['devices']))[0]
@@ -340,6 +342,8 @@ class Mixin:
       {'$set': {'last_connection': time.time(),}})
     elle.log.trace("successfully connected as %s on device %s" %
                    (user['_id'], device['id']))
+    if OS is not None:
+      OS = OS.strip().lower()
     if 'email' in user:
       email = user['email']
       if OS is not None and OS in invitation.os_lists.keys() and ('os' not in user or OS not in user['os']):
@@ -366,6 +370,9 @@ class Mixin:
       self.database.users.update(
         {'_id': user['_id']},
         {'$set': { 'features': features}})
+    # Force immediate buffering on mobile devices.
+    if 'os' in device and device['os'] in ('iOS', 'Android'):
+      features['preemptive_buffering_delay'] = '0'
     response['features'] = list(features.items())
     response['device'] = self.device_view(device)
     return response
@@ -449,8 +456,6 @@ class Mixin:
       return self.bad_request({
         'reason': 'you must provide facebook_token or (email, password)'
       })
-    if OS is not None:
-      OS = OS.strip().lower()
     # FIXME: 0.0.0.0 is the website.
     if self.user_version < (0, 9, 0) and self.user_version != (0, 0, 0):
       return self.fail(error.DEPRECATED)
@@ -1110,17 +1115,18 @@ class Mixin:
           'reason': 'email already registered',
           'email': email,
         })
-    k = key('/users/%s/accounts/%s/confirm' % (self.user['_id'], email))
-    self.mailer.send_template(
-      email,
-      'account-add-email',
-      merge_vars = {
-        email : {
-          'email': email,
-          'user': self.__user_view(self.user),
-          'key': k,
-        }
-      })
+    url ='/users/%s/accounts/%s/confirm' % (self.user['_id'], email)
+    k = key(url)
+    variables = {
+      'email': email,
+      'user': self.email_user_vars(self.user),
+      'url': self.url_absolute(url),
+      'key': key(url),
+    }
+    self.emailer.send_one('account-add-email',
+                          email,
+                          self.user['fullname'],
+                          variables = variables)
     return {}
 
   @api('/users/<user>/accounts/<name>/confirm', method = 'POST')
@@ -2164,37 +2170,6 @@ class Mixin:
       {'_id': user['_id']},
       update)
     return self.success()
-
-  @api('/user/invite', method = 'POST')
-  @require_logged_in
-  def invite(self, email):
-    """Invite a user to infinit.
-    This function is reserved for admins.
-
-    email -- the email of the user to invite.
-    admin_token -- the admin token.
-    """
-    user = self.user
-    with elle.log.trace("%s: invite %s" % (user['_id'], email)):
-      if regexp.EmailValidator(email) != 0:
-        return self.fail(error.EMAIL_NOT_VALID)
-      if self.__users_count({"email": email}) > 0:
-        self.fail(error.USER_ALREADY_INVITED)
-      invitation.invite_user(
-        email = email,
-        send_email = True,
-        mailer = self.mailer,
-        source = (user['fullname'], self.user_identifier(self.user)),
-        database = self.database,
-        merge_vars = {
-          email: {
-            'sendername': user['fullname'],
-            'user_id': str(user['_id']),
-            'sender_avatar': 'https://%s/user/%s/avatar' %
-              (bottle.request.urlparts[1], user['_id']),
-          }}
-      )
-      return self.success()
 
   @api('/user/invited')
   @require_logged_in
