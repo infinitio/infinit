@@ -530,7 +530,8 @@ namespace surface
           auto login_response = login_function();
           ELLE_TRACE("%s: logged in to meta", *this);
           this->_me.reset(new Self(login_response.self));
-          this->user_sync(this->me());
+          // Don't send notification for me user here.
+          this->user_sync(this->me(), false);
           this->_configuration.features = login_response.features;
           metrics::Reporter::metric_features(this->_configuration.features);
           // Trophonius.
