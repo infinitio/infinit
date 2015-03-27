@@ -1,8 +1,9 @@
 from elle.log import log, warn, err, trace, debug, dump
+from infinit.oracles.utils import key
 
 import json
 
-ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.emailer'
+ELLE_LOG_COMPONENT = 'infinit.oracles.emailer'
 
 
 class Emailer:
@@ -15,7 +16,7 @@ class NoopEmailer(Emailer):
   def send_one(self,
                template,
                recipient_email,
-               recipient_name,
+               recipient_name = None,
                sender_email = None,
                sender_name = None,
                variables = None,
@@ -75,7 +76,7 @@ class SendWithUsEmailer(Emailer):
   def send_one(self,
                template,
                recipient_email,
-               recipient_name,
+               recipient_name = None,
                sender_email = None,
                sender_name = None,
                variables = None,
@@ -102,17 +103,18 @@ class SendWithUsEmailer(Emailer):
       sender = {}
       sender['address'] = sender_email
       if sender_name is not None:
-        sender['fullname'] = sender_name
-      recipient['sender'] = sender
+        sender['name'] = sender_name
     else:
       assert sender_name is None
       sender = None
+    recipient = {
+      'address': recipient_email,
+    },
+    if recipient_name is not None:
+      recipient['name'] = recipient_name
     swu.send(
       email_id = template,
-      recipient = {
-        'address': recipient_email,
-        'name': recipient_name,
-      },
+      recipient = recipient,
       sender = sender,
       email_data = variables,
     )
@@ -194,3 +196,35 @@ class MandrillEmailer(Emailer):
     if leftover:
       res += self.send_template(template, leftover)
     return res
+
+
+def avatar(meta, i):
+  return '%s/user/%s/avatar' % (meta, i)
+
+def user_vars(user, meta):
+  return {
+    'avatar': avatar(user['_id'], meta),
+    'email': user['email'],
+    'fullname': user['fullname'],
+    'id': str(user['_id']),
+    'os': user['os'] if 'os' in user else [],
+  }
+
+def transaction_vars(transaction, user, meta):
+  sender = transaction['sender_id'] == user['_id']
+  verb = 'to' if sender else 'from'
+  peer = 'recipient' if sender else 'sender'
+  return {
+    'id': str(transaction['_id']),
+    'files': transaction['files'],
+    'key': key('/transactions/%s' % transaction['_id']),
+    'message': transaction['message'],
+    'peer':
+    {
+      'fullname': transaction['%s_fullname' % peer],
+      'id': transaction['%s_id' % peer],
+      'avatar': avatar(transaction['%s_id' % peer], meta),
+    },
+    'size': transaction['total_size'],
+    'verb': verb,
+  }
