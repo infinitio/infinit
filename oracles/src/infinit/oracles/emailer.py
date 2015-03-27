@@ -198,7 +198,7 @@ class MandrillEmailer(Emailer):
     return res
 
 
-def avatar(meta, i):
+def avatar(i, meta):
   return '%s/user/%s/avatar' % (meta, i)
 
 def user_vars(user, meta):
