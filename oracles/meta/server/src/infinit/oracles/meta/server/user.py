@@ -9,6 +9,7 @@ import bson.code
 import random
 import uuid
 import re
+import stripe
 
 import elle.log
 import papier
@@ -26,6 +27,8 @@ import os
 import string
 import time
 import unicodedata
+
+stripe.api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI'
 
 
 code_alphabet = '2346789abcdefghilkmnpqrstuvwxyz'
@@ -127,6 +130,8 @@ class Mixin:
       'identity',
       'swaggers',
       'consumed_ghost_codes',
+      'stripe_id',
+      'plan',
     ]
     return res
 
@@ -2629,17 +2634,58 @@ class Mixin:
     return self.success(res)
 
   @api('/users/<user>', method='PUT')
-  @require_admin
+  @require_logged_in
   def user_update(self,
-                  user: str,
-                  plan: str):
-    with elle.log.trace('Update user:  %s' % user):
-      if '@' in user:
-        query = {'email': user}
-      else:
-        query = {'_id': bson.ObjectId(user)}
-      res = self.database.users.update(
-        query,
-        {
-          '$set': {'plan': plan}
-        })
+                  user,
+                  plan = None,
+                  token = None):
+      user = self.user
+      customer = self.__fetch_or_create_stripe_customer(user)
+      # Subscribing to a paying plan without source raises an error
+      try:
+      # Update user's payment source, represented by a token
+        if token is not None:
+          customer.source = token
+          customer.save()
+
+        if plan is not None:
+          # We do not want multiple plans to be active at the same time, so a
+          # customer can only have at most one subscription (ideally, exactly one
+          # subscription, which would be 'basic' for non paying customers)
+          if customer.subscriptions.total_count == 0:
+            customer.subscriptions.create(plan=plan)
+          else:
+            sub = customer.subscriptions.data[0]
+            sub.plan = plan
+            sub.save()
+          self.database.users.update(
+            {'_id': user['_id']},
+            {'$set': {'plan': plan}})
+      except stripe.error.CardError as e:
+        elle.log.warn('Stripe error: customer {0} card'
+                      'has been declined'.format(user['_id'],
+                      e.args[0]))
+        return self.fail(e.args)
+      except stripe.error.InvalidRequestError as e:
+        elle.log.warn('Invalid stripe request, cannot update customer'
+                      '{0} plan: {1}'.format(user['_id'],
+                      e.args[0]))
+        return self.fail(e.args)
+      except stripe.error.AuthentificationError as e:
+        elle.log.warn('Stripe auth failure: {1}'.format(e.args[0]))
+        return self.fail(e.args)
+      except stripe.error.APIConnectionError as e:
+        elle.log.warn('Connection to Stripe failed: {1}'.format(e.args[0]))
+        return self.fail(e.args)
+      return self.success()
+
+  def __fetch_or_create_stripe_customer(self,
+                                        user):
+    if 'stripe_id' in user:
+      return stripe.Customer.retrieve(user['stripe_id'])
+    else:
+      customer = stripe.Customer.create( email = user['email'])
+      self.database.users.update(
+        {'_id': user['_id']},
+        {'$set': {'stripe_id': customer.id}})
+      return customer

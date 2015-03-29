@@ -2,10 +2,10 @@
 
 from utils import Meta, User
 
-with Meta(force_admin=True) as meta:
+with Meta() as meta:
     user = User(meta, "foobar@infinit.io")
-
-    plan = 'freemium'
-    meta.put('users/%s' % user.id, {'plan': plan})
-    res = meta.get('users/%s' % user.id)
+    user.login()
+    plan = 'basic'
+    user.put('users/%s' % user.id, {'plan': plan})
+    res = user.data
     assert res['plan'] == plan
