@@ -2638,16 +2638,15 @@ class Mixin:
   def user_update(self,
                   user,
                   plan = None,
-                  token = None):
+                  stripe_token = None):
       user = self.user
       customer = self.__fetch_or_create_stripe_customer(user)
       # Subscribing to a paying plan without source raises an error
       try:
       # Update user's payment source, represented by a token
-        if token is not None:
-          customer.source = token
+        if stripe_token is not None:
+          customer.source = stripe_token
           customer.save()
-
         if plan is not None:
           # We do not want multiple plans to be active at the same time, so a
           # customer can only have at most one subscription (ideally, exactly one
