@@ -278,21 +278,24 @@ gap_use_ghost_code(gap_State* state,
     return gap_unknown_user;
   gap_Status res = gap_error;
   run<gap_Status>(state,
-                         "use ghost code",
-                         [&] (surface::gap::State& state) -> gap_Status
+                  "use ghost code",
+                  [&] (surface::gap::State& state) -> gap_Status
     {
       try
       {
         state.meta().use_ghost_code(code);
         res = gap_ok;
+        state.metrics_reporter()->user_used_ghost_code(true, "");
       }
       catch (infinit::state::GhostCodeAlreadyUsed const&)
       {
         res = gap_ghost_code_already_used;
+        state.metrics_reporter()->user_used_ghost_code(false, "already used");
       }
       catch (elle::Error const&)
       {
         res = gap_unknown_user;
+        state.metrics_reporter()->user_used_ghost_code(false, "invalid code");
       }
       return gap_ok;
     });
