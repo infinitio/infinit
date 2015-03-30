@@ -1499,6 +1499,45 @@ class Mixin:
       self.bad_request({
         'reason': 'Only ghost accounts can be merged'
       })
+
+    # Fail early if stripe customer could not be deleted
+    try:
+      if 'stripe_id' in user:
+        cus = stripe.Customer.retrieve(user['stripe_id'])
+        cus.delete()
+    # Handle each exception case separately, even though the behaviour is the
+    # same for now. Explicit is better than implicit.
+    except stripe.error.InvalidRequestError as e:
+      # Invalid parameters were supplied to Stripe's API
+      elle.log.warn('Unable to delete Stripe customer for user {0}:'
+              '{1}'.format(user['email'], e.args))
+      return self.unavailable({
+        'reason': e.args[0]
+      })
+    except stripe.error.AuthenticationError as e:
+      # Authentication with Stripe's API failed
+      # (maybe you changed API keys recently)
+      elle.log.warn('Unable to delete Stripe customer for user {0}:'
+              '{1}'.format(user['email'], e.args))
+      return self.unavailable({
+        'reason': e.args[0]
+      })
+    except stripe.error.APIConnectionError as e:
+      # Network communication with Stripe failed
+      elle.log.warn('Unable to delete Stripe customer for user {0}:'
+              '{1}'.format(user['email'], e.args))
+      return self.unavailable({
+        'reason': e.args[0]
+      })
+    except stripe.error.StripeError as e:
+      # Display a very generic error to the user, and maybe send
+      # yourself an email
+      elle.log.warn('Unable to delete Stripe customer for user {0}:'
+              '{1}'.format(user['email'], e.args))
+      return self.unavailable({
+        'reason': e.args[0]
+      })
+
     # Invalidate credentials.
     self.remove_session(user)
     # Kick them out of the app.
