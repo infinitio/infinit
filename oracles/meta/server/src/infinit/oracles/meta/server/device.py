@@ -221,7 +221,7 @@ class Mixin:
         fields = ['devices.trophonius'],
       )
       if user is None:
-        response(404, 'user not found')
+        self.not_found('User not found')
       return any(d.get('trophonius', None) is not None
                  for d in user['devices'])
 
