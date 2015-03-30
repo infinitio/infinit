@@ -2,7 +2,8 @@
 
 from utils import Meta, User
 
-with Meta() as meta:
+stripe_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI'
+with Meta(stripe_api_key = stripe_key) as meta:
     user = User(meta, "foobar@infinit.io")
     user.login()
     plan = 'basic'
