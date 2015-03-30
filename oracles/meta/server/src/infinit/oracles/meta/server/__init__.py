@@ -125,7 +125,7 @@ class Meta(bottle.Bottle,
           pymongo.MongoReplicaSetClient(
             ','.join(mongo_replica_set),
             replicaSet = 'fist-meta',
-            socketTimeoutMS = 1000,
+            socketTimeoutMS = 3000,
             connectTimeoutMS = 1000,
           )
     else:
