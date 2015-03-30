@@ -339,11 +339,8 @@ class Mixin:
           attachment = attachment,
         )
         for r in res:
-          try:
-            if r['reject_reason'] is not None:
-              self.bad_request({'reason': r['reject_reason']})
-          except KeyError:
-            raise Exception('strange mandrill response: %r' % r)
+          if 'reject_reason' in r and r['reject_reason'] is not None:
+            self.bad_request({'reason': r['reject_reason']})
       else:
         print('Would send:\nTO: %s\nRCPT TO: %s\nSUBJECT: %s\nBODY:\n%s\n.\n' %
           (email, user_email, subject, template['content'] % template_dict))
