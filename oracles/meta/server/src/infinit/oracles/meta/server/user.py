@@ -87,6 +87,11 @@ class Mixin:
     user['devices'] = [d['id'] for d in user['devices']]
     if 'favorites' not in user:
       user['favorites'] = []
+    if 'stripe_id' in user:
+      cus = stripe.Customer.retrieve(user['stripe_id'],
+      expand=['subscriptions'])
+      if cus.subscriptions.total_count > 0:
+          user['subscription_data'] = cus.subscriptions.data[0]
     return user
 
   @property
@@ -2681,7 +2686,8 @@ class Mixin:
   def __fetch_or_create_stripe_customer(self,
                                         user):
     if 'stripe_id' in user:
-      return stripe.Customer.retrieve(user['stripe_id'])
+      return stripe.Customer.retrieve(user['stripe_id'],
+      expand=['subscriptions'])
     else:
       customer = stripe.Customer.create( email = user['email'])
       self.database.users.update(
