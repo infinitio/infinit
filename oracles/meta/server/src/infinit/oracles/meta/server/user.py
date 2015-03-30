@@ -302,7 +302,9 @@ class Mixin:
                     OS = None,
                     pick_trophonius = None,
                     device_push_token: str = None,
-                    country_code = None):
+                    country_code = None,
+                    device_name = None,
+  ):
     # If creation process was interrupted, generate identity now.
     if 'public_key' not in user:
       user = self.__generate_identity(user, password)
@@ -334,6 +336,7 @@ class Mixin:
       elle.log.trace("user logged with an unknown device")
       device = self._create_device(
         id = device_id,
+        name = device_name,
         owner = user,
         device_push_token = device_push_token,
         OS = OS,
