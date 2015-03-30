@@ -427,6 +427,7 @@ class Meta(bottle.Bottle,
         'hostname': hostname,
         'route': route,
         'session': bottle.request.session,
+        'url': bottle.request.url,
         'user': self.user,
       }
       self.mailer.send(to = 'infrastructure@infinit.io',
@@ -435,6 +436,7 @@ class Meta(bottle.Bottle,
                        body = '''\
 Error while querying %(route)s:
 
+URL: %(url)s
 User: %(user)s
 Session: %(session)s
 
