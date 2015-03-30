@@ -1011,7 +1011,7 @@ class Mixin:
     """
     Return the url of the user ghost profile on the website.
     We have to specify the full url because this url will be shorten by another
-    service (e.g. bitly).
+    service.
 
     ghost -- The ghost.
     """

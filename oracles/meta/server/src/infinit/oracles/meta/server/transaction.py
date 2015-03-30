@@ -676,15 +676,6 @@ class Mixin:
     # cloud_buffer_token.delete_directory(transaction.id)
     return {}
 
-  # Shorten url.
-  def shorten(self, url):
-    if self.shorten_ghost_profile_url:
-      from .bitly import bitly
-      b = bitly()
-      url = b.shorten(url)['url']
-      return url
-    return url
-
   def on_accept(self, transaction, user, device_id, device_name):
     with elle.log.trace("accept transaction as %s" % device_id):
       if device_id is None or device_name is None:

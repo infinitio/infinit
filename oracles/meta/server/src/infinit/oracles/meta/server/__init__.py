@@ -472,3 +472,11 @@ Session: %(session)s
   def email_transaction_vars(self, transaction, user):
     return infinit.oracles.emailer.transaction_vars(
       transaction, user, self.url_absolute())
+
+  # Shorten url.
+  def shorten(self, url):
+    if self.shorten_ghost_profile_url:
+      from .shortener import ShortSwitch
+      b = ShortSwitch()
+      return b.shorten(url)
+    return url
