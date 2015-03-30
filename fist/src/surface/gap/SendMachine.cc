@@ -646,8 +646,13 @@ namespace surface
     void
     SendMachine::try_mirroring_files(uint64_t total_size)
     {
+      if (!this->transaction().state().configuration().enable_file_mirroring)
+      {
+        ELLE_TRACE("%s: Not mirroring, disabled by configuration", *this);
+        return;
+      }
       uint64_t max_mirror_size
-        = transaction().state().configuration().max_mirror_size;
+        = this->transaction().state().configuration().max_mirror_size;
       if (!max_mirror_size)
         max_mirror_size = 100 * 1000 * 1000; // 2s copy on 50Mb/s hard drive
       if (total_size >= max_mirror_size)
