@@ -9,6 +9,7 @@ import bson.code
 import random
 import uuid
 import re
+import stripe
 
 import elle.log
 import papier
@@ -26,7 +27,6 @@ import os
 import string
 import time
 import unicodedata
-
 
 code_alphabet = '2346789abcdefghilkmnpqrstuvwxyz'
 code_length = 5
@@ -84,6 +84,14 @@ class Mixin:
     user['devices'] = [d['id'] for d in user['devices']]
     if 'favorites' not in user:
       user['favorites'] = []
+    if self.stripe_api_key is not None and 'stripe_id' in user:
+      cus = stripe.Customer.retrieve(
+        user['stripe_id'],
+        expand = ['subscriptions'],
+        api_key = self.stripe_api_key,
+      )
+      if cus.subscriptions.total_count > 0:
+          user['subscription_data'] = cus.subscriptions.data[0]
     return user
 
   @property
@@ -127,6 +135,8 @@ class Mixin:
       'identity',
       'swaggers',
       'consumed_ghost_codes',
+      'stripe_id',
+      'plan',
     ]
     return res
 
@@ -292,7 +302,9 @@ class Mixin:
                     OS = None,
                     pick_trophonius = None,
                     device_push_token: str = None,
-                    country_code = None):
+                    country_code = None,
+                    device_name = None,
+  ):
     # If creation process was interrupted, generate identity now.
     if 'public_key' not in user:
       user = self.__generate_identity(user, password)
@@ -324,6 +336,7 @@ class Mixin:
       elle.log.trace("user logged with an unknown device")
       device = self._create_device(
         id = device_id,
+        name = device_name,
         owner = user,
         device_push_token = device_push_token,
         OS = OS,
@@ -1001,7 +1014,7 @@ class Mixin:
     """
     Return the url of the user ghost profile on the website.
     We have to specify the full url because this url will be shorten by another
-    service (e.g. bitly).
+    service.
 
     ghost -- The ghost.
     """
@@ -1486,6 +1499,45 @@ class Mixin:
       self.bad_request({
         'reason': 'Only ghost accounts can be merged'
       })
+
+    # Fail early if stripe customer could not be deleted
+    try:
+      if 'stripe_id' in user:
+        cus = stripe.Customer.retrieve(user['stripe_id'])
+        cus.delete()
+    # Handle each exception case separately, even though the behaviour is the
+    # same for now. Explicit is better than implicit.
+    except stripe.error.InvalidRequestError as e:
+      # Invalid parameters were supplied to Stripe's API
+      elle.log.warn('Unable to delete Stripe customer for user {0}:'
+              '{1}'.format(user['email'], e.args))
+      return self.unavailable({
+        'reason': e.args[0]
+      })
+    except stripe.error.AuthenticationError as e:
+      # Authentication with Stripe's API failed
+      # (maybe you changed API keys recently)
+      elle.log.warn('Unable to delete Stripe customer for user {0}:'
+              '{1}'.format(user['email'], e.args))
+      return self.unavailable({
+        'reason': e.args[0]
+      })
+    except stripe.error.APIConnectionError as e:
+      # Network communication with Stripe failed
+      elle.log.warn('Unable to delete Stripe customer for user {0}:'
+              '{1}'.format(user['email'], e.args))
+      return self.unavailable({
+        'reason': e.args[0]
+      })
+    except stripe.error.StripeError as e:
+      # Display a very generic error to the user, and maybe send
+      # yourself an email
+      elle.log.warn('Unable to delete Stripe customer for user {0}:'
+              '{1}'.format(user['email'], e.args))
+      return self.unavailable({
+        'reason': e.args[0]
+      })
+
     # Invalidate credentials.
     self.remove_session(user)
     # Kick them out of the app.
@@ -2625,21 +2677,73 @@ class Mixin:
     res.update(self._user_transactions(modification_time = mtime['date']))
     # Include deleted links only during updates. At start up, ignore them.
     res.update(self.links_list(mtime = mtime['date'], include_deleted = (not init)))
-    res.update(self.devices_users_api(user['_id']))
+    # XXX.
+    # Return the correct list when iOS 0.9.34* is ready. This workarounds the
+    # issue of auto receiving on specific iOS device.
+    # res.update(self.devices_users_api(user['_id']))
+    res.update({'devices': [self.device_view(device)]})
     return self.success(res)
 
   @api('/users/<user>', method='PUT')
-  @require_admin
+  @require_logged_in
   def user_update(self,
-                  user: str,
-                  plan: str):
-    with elle.log.trace('Update user:  %s' % user):
-      if '@' in user:
-        query = {'email': user}
-      else:
-        query = {'_id': bson.ObjectId(user)}
-      res = self.database.users.update(
-        query,
-        {
-          '$set': {'plan': plan}
-        })
+                  user,
+                  plan = None,
+                  stripe_token = None):
+      user = self.user
+      customer = self.__fetch_or_create_stripe_customer(user)
+      # Subscribing to a paying plan without source raises an error
+      try:
+      # Update user's payment source, represented by a token
+        if stripe_token is not None:
+          customer.source = stripe_token
+          customer.save()
+        if plan is not None:
+          # We do not want multiple plans to be active at the same time, so a
+          # customer can only have at most one subscription (ideally, exactly one
+          # subscription, which would be 'basic' for non paying customers)
+          if customer.subscriptions.total_count == 0:
+            customer.subscriptions.create(plan=plan)
+          else:
+            sub = customer.subscriptions.data[0]
+            sub.plan = plan
+            sub.save()
+          self.database.users.update(
+            {'_id': user['_id']},
+            {'$set': {'plan': plan}})
+      except stripe.error.CardError as e:
+        elle.log.warn('Stripe error: customer {0} card'
+                      'has been declined'.format(user['_id'],
+                      e.args[0]))
+        return self.fail(e.args)
+      except stripe.error.InvalidRequestError as e:
+        elle.log.warn('Invalid stripe request, cannot update customer'
+                      '{0} plan: {1}'.format(user['_id'],
+                      e.args[0]))
+        return self.fail(e.args)
+      except stripe.error.AuthentificationError as e:
+        elle.log.warn('Stripe auth failure: {1}'.format(e.args[0]))
+        return self.fail(e.args)
+      except stripe.error.APIConnectionError as e:
+        elle.log.warn('Connection to Stripe failed: {1}'.format(e.args[0]))
+        return self.fail(e.args)
+      return self.success()
+
+  def __fetch_or_create_stripe_customer(self, user):
+    if self.stripe_api_key is None:
+      return None
+    if 'stripe_id' in user:
+      return stripe.Customer.retrieve(
+        user['stripe_id'],
+        expand = ['subscriptions'],
+        api_key = self.stripe_api_key,
+      )
+    else:
+      customer = stripe.Customer.create(
+        email = user['email'],
+        api_key = self.stripe_api_key,
+      )
+      self.database.users.update(
+        {'_id': user['_id']},
+        {'$set': {'stripe_id': customer.id}})
+      return customer

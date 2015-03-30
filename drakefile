@@ -26,7 +26,7 @@ def configure(cxx_toolkit = None,
               php = None,
               production_build = False,
               enable_debug = True,
-      	      qt = None,
+              qt = False,
               valgrind = None,
               valgrind_tests = False,
 ):
@@ -186,7 +186,8 @@ def configure(cxx_toolkit = None,
                        boost = boost,
                        fuse = fuse,
                        valgrind = valgrind,
-                       valgrind_tests = valgrind_tests)
+                       valgrind_tests = valgrind_tests,
+                       build_openssl_eay = qt)
   boost = elle.boost
   python3 = elle.python3
   valgrind = elle.valgrind
@@ -226,6 +227,9 @@ def configure(cxx_toolkit = None,
 
 
   elle_lib = copy_lib(elle.elle.library)
+  openssl_libs_eay = [copy_lib(lib) for lib in elle.openssl_libs_eay]
+  openssl_libs = [copy_lib(lib) for lib in [elle.openssl_lib_crypto, elle.openssl_lib_ssl]]
+  openssl_config = elle.openssl_config
   cryptography_lib = copy_lib(elle.cryptography.library)
   reactor_lib = copy_lib(elle.reactor.library)
   if python3 is not None:
@@ -949,22 +953,27 @@ def configure(cxx_toolkit = None,
       check << runner.status
       functional_check << runner.status
 
-  if qt is not None:
+  ## ------ ##
+  ## Qt GUI ##
+  ## ------ ##
+  if qt:
     fist_cxx_config = drake.cxx.Config(cxx_config)
-    fist_gui_qt_libraries = [gap_lib, oracles.transaction_lib]
+    fist_libraries = [gap_lib]
+    fist_openssl_libs = openssl_libs_eay
     if cxx_toolkit.os != drake.os.windows:
-      fist_gui_qt_libraries += [elle_lib, cryptography_lib, crash_lib]
-    fist_cxx_config += boost_filesystem
-    fist_cxx_config += boost_system
-    application = drake.include('fist-gui-qt',
-                                cxx_toolkit = cxx_toolkit,
-                                cxx_config = fist_cxx_config,
-                                fist_production_build = production_build,
-                                boost = boost,
-                                qt = qt,
-                                prefix = prefix,
-                                libraries = fist_gui_qt_libraries,
-                                boost_test = boost_test)
+      fist_libraries += [elle_lib, cryptography_lib, crash_lib, oracles.transaction_lib]
+      fist_openssl_libs += openssl_libs
+    application = drake.include(
+      'fist-gui-qt',
+      cxx_toolkit = cxx_toolkit,
+      cxx_config = fist_cxx_config,
+      fist_production_build = production_build,
+      boost = boost,
+      prefix = prefix,
+      openssl_include_dir = drake.path_build(
+        openssl_config.local_include_path[0], absolute = True),
+      openssl_libraries = fist_openssl_libs,
+      libraries = fist_libraries)
     build << application.build
 
   ## ------- ##

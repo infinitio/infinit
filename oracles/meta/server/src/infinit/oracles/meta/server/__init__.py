@@ -108,6 +108,7 @@ class Meta(bottle.Bottle,
       production = False,
       facebook_domain = "https://graph.facebook.com",
       emailer = None,
+      stripe_api_key = None,
   ):
     self.__production = production
     import os
@@ -125,7 +126,7 @@ class Meta(bottle.Bottle,
           pymongo.MongoReplicaSetClient(
             ','.join(mongo_replica_set),
             replicaSet = 'fist-meta',
-            socketTimeoutMS = 1000,
+            socketTimeoutMS = 3000,
             connectTimeoutMS = 1000,
           )
     else:
@@ -201,6 +202,7 @@ class Meta(bottle.Bottle,
     self.facebook = facebook.FacebookGraph(facebook_domain)
     # Emailing
     self.__emailer = emailer or infinit.oracles.emailer.NoopEmailer()
+    self.__stripe_api_key = stripe_api_key
 
   @property
   def emailer(self):
@@ -209,6 +211,10 @@ class Meta(bottle.Bottle,
   @property
   def production(self):
     return self.__production
+
+  @property
+  def stripe_api_key(self):
+    return self.__stripe_api_key
 
   def __set_constraints(self):
     #---------------------------------------------------------------------------
@@ -245,6 +251,11 @@ class Meta(bottle.Bottle,
       [('devices.push_token', 1)],
       unique = True,
       sparse = True)
+
+    # - Login.
+    self.__database.users.ensure_index([('email', 1)],
+                                       unique = False)
+
     #---------------------------------------------------------------------------
     # Transactions
     #---------------------------------------------------------------------------
@@ -427,6 +438,7 @@ class Meta(bottle.Bottle,
         'hostname': hostname,
         'route': route,
         'session': bottle.request.session,
+        'url': bottle.request.url,
         'user': self.user,
       }
       self.mailer.send(to = 'infrastructure@infinit.io',
@@ -435,6 +447,7 @@ class Meta(bottle.Bottle,
                        body = '''\
 Error while querying %(route)s:
 
+URL: %(url)s
 User: %(user)s
 Session: %(session)s
 
@@ -470,3 +483,11 @@ Session: %(session)s
   def email_transaction_vars(self, transaction, user):
     return infinit.oracles.emailer.transaction_vars(
       transaction, user, self.url_absolute())
+
+  # Shorten url.
+  def shorten(self, url):
+    if self.shorten_ghost_profile_url:
+      from .shortener import ShortSwitch
+      b = ShortSwitch()
+      return b.shorten(url)
+    return url

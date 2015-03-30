@@ -908,6 +908,55 @@ ELLE_TEST_SCHEDULED(terminate)
   };
 }
 
+class MetaNoSuchUser: public Meta
+{
+  void
+  _unregister(reactor::network::Socket& socket,
+              std::string const& id,
+              std::string const& user,
+              std::string const& device) override
+  {
+    ELLE_LOG_SCOPE("%s: unregister user %s:%s on %s", *this, user, device, id);
+    Client c(user, device);
+    auto& trophonius = this->trophonius(id);
+    BOOST_CHECK(trophonius.clients.find(c) != trophonius.clients.end());
+    trophonius.clients.erase(c);
+    this->_response_failure(socket, "404 No such user");
+  }
+};
+
+ELLE_TEST_SCHEDULED(no_such_user)
+{
+  MetaNoSuchUser meta;
+  infinit::oracles::trophonius::server::Trophonius trophonius(
+    0,
+    0,
+    elle::sprintf("http://localhost:%s", meta.port()),
+    0,
+    60_sec,
+    300_sec);
+  static auto const uuid  = "00000000-0000-0000-0000-000000000001";
+  static auto const id = std::make_pair(uuid, uuid);
+  auto& t = meta.trophonius(trophonius);
+  {
+    std::unique_ptr<reactor::network::Socket> client1(
+      connect_socket(false, trophonius)
+      );
+    authentify(*client1, 1, 1);
+    check_authentication_success(*client1);
+  }
+  reactor::sleep(valgrind(100_ms, 20));
+  BOOST_CHECK(t.clients.find(id) == t.clients.end());
+  // Check tropho was not broken by the failure
+  {
+    std::unique_ptr<reactor::network::Socket> socket(
+        connect_socket(false, trophonius));
+    authentify(*socket, 1, 1);
+    check_authentication_success(*socket);
+    BOOST_CHECK(t.clients.find(id) != t.clients.end());
+  }
+}
+
 /*------.
 | Suite |
 `------*/
@@ -962,4 +1011,6 @@ ELLE_TEST_SUITE()
 
   suite.add(BOOST_TEST_CASE(bad_ssl_handshake), 0, timeout);
   suite.add(BOOST_TEST_CASE(terminate), 0, timeout);
+
+  suite.add(BOOST_TEST_CASE(no_such_user), 0, timeout);
 }

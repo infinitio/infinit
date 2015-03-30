@@ -129,11 +129,9 @@ namespace surface
           break;
         case TransactionStatus::accepted:
           if (!this->concerns_this_device())
-          {
             ELLE_DEBUG("%s: accepted on another device", *this)
               this->_accepted_elsewhere.open();
-            break;
-          }
+          break;
         case TransactionStatus::rejected:
           ELLE_DEBUG("%s: rejected on another device", *this)
             this->rejected().open();
