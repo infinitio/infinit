@@ -2677,7 +2677,11 @@ class Mixin:
     res.update(self._user_transactions(modification_time = mtime['date']))
     # Include deleted links only during updates. At start up, ignore them.
     res.update(self.links_list(mtime = mtime['date'], include_deleted = (not init)))
-    res.update(self.devices_users_api(user['_id']))
+    # XXX.
+    # Return the correct list when iOS 0.9.34* is ready. This workarounds the
+    # issue of auto receiving on specific iOS device.
+    # res.update(self.devices_users_api(user['_id']))
+    res.update({'devices': [self.device_view(device)]})
     return self.success(res)
 
   @api('/users/<user>', method='PUT')
