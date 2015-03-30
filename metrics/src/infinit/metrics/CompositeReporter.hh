@@ -134,6 +134,10 @@ namespace infinit
       void
       _user_changed_download_dir(bool fallback) override;
 
+      void
+      _user_used_ghost_code(bool success,
+                            std::string const& fail_reason) override;
+
       /// UI metrics:
       void
       _ui(std::string const& event,

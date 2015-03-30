@@ -264,6 +264,9 @@ namespace infinit
       void
       user_changed_download_dir(bool fallback);
 
+      void
+      user_used_ghost_code(bool success, std::string const& fail_reason);
+
     /// User metrics implementation.
     protected:
       virtual
@@ -313,6 +316,10 @@ namespace infinit
       virtual
       void
       _user_changed_download_dir(bool fallback);
+
+      virtual
+      void
+      _user_used_ghost_code(bool success, std::string const& fail_reason);
 
       /// UI metrics.
     public:

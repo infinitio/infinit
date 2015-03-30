@@ -316,6 +316,17 @@ namespace infinit
     }
 
     void
+    JSONReporter::_user_used_ghost_code(bool success,
+                                        std::string const& fail_reason)
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] = std::string("app/use_ghost_code");
+      data[this->_key_str(JSONKey::fail_reason)] = fail_reason;
+      data[this->_key_str(JSONKey::status)] = this->_status_string(success);
+      this->_send(this->_user_dest, data);
+    }
+
+    void
     JSONReporter::_ui(std::string const& event,
                       std::string const& from,
                       Additional const& additional)
