@@ -28,9 +28,6 @@ import string
 import time
 import unicodedata
 
-stripe.api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI'
-
-
 code_alphabet = '2346789abcdefghilkmnpqrstuvwxyz'
 code_length = 5
 
@@ -87,9 +84,12 @@ class Mixin:
     user['devices'] = [d['id'] for d in user['devices']]
     if 'favorites' not in user:
       user['favorites'] = []
-    if 'stripe_id' in user:
-      cus = stripe.Customer.retrieve(user['stripe_id'],
-      expand=['subscriptions'])
+    if self.stripe_api_key is not None and 'stripe_id' in user:
+      cus = stripe.Customer.retrieve(
+        user['stripe_id'],
+        expand = ['subscriptions'],
+        api_key = self.stripe_api_key,
+      )
       if cus.subscriptions.total_count > 0:
           user['subscription_data'] = cus.subscriptions.data[0]
     return user
@@ -2686,13 +2686,20 @@ class Mixin:
         return self.fail(e.args)
       return self.success()
 
-  def __fetch_or_create_stripe_customer(self,
-                                        user):
+  def __fetch_or_create_stripe_customer(self, user):
+    if self.stripe_api_key is None:
+      return None
     if 'stripe_id' in user:
-      return stripe.Customer.retrieve(user['stripe_id'],
-      expand=['subscriptions'])
+      return stripe.Customer.retrieve(
+        user['stripe_id'],
+        expand = ['subscriptions'],
+        api_key = self.stripe_api_key,
+      )
     else:
-      customer = stripe.Customer.create( email = user['email'])
+      customer = stripe.Customer.create(
+        email = user['email'],
+        api_key = self.stripe_api_key,
+      )
       self.database.users.update(
         {'_id': user['_id']},
         {'$set': {'stripe_id': customer.id}})

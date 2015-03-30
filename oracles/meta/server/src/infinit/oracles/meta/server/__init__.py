@@ -108,6 +108,7 @@ class Meta(bottle.Bottle,
       production = False,
       facebook_domain = "https://graph.facebook.com",
       emailer = None,
+      stripe_api_key = None,
   ):
     self.__production = production
     import os
@@ -201,6 +202,7 @@ class Meta(bottle.Bottle,
     self.facebook = facebook.FacebookGraph(facebook_domain)
     # Emailing
     self.__emailer = emailer or infinit.oracles.emailer.NoopEmailer()
+    self.__stripe_api_key = stripe_api_key
 
   @property
   def emailer(self):
@@ -209,6 +211,10 @@ class Meta(bottle.Bottle,
   @property
   def production(self):
     return self.__production
+
+  @property
+  def stripe_api_key(self):
+    return self.__stripe_api_key
 
   def __set_constraints(self):
     #---------------------------------------------------------------------------
