@@ -245,6 +245,11 @@ class Meta(bottle.Bottle,
       [('devices.push_token', 1)],
       unique = True,
       sparse = True)
+
+    # - Login.
+    self.__database.users.ensure_index([('email', 1)],
+                                       unique = False)
+
     #---------------------------------------------------------------------------
     # Transactions
     #---------------------------------------------------------------------------
