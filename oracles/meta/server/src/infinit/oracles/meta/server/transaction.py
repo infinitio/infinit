@@ -315,10 +315,11 @@ class Mixin:
         return recipient, False
     except bson.errors.InvalidId:
       pass
-    is_an_email = re.match(regexp.Email, recipient_identifier)
-    if is_an_email is not None:
+    recipient_identifier = recipient_identifier.lower().strip()
+    is_an_email = re.match(regexp.Email, recipient_identifier) is not None
+    if is_an_email:
       elle.log.debug("%s is an email" % recipient_identifier)
-      peer_email = recipient_identifier.lower().strip()
+      peer_email = recipient_identifier
       # XXX: search email in each accounts.
       recipient = self.user_by_email(peer_email,
                                      fields = recipient_fields,
@@ -333,9 +334,13 @@ class Mixin:
         recipient = self.user_by_phone_number(phone_number,
                                               fields = recipient_fields,
                                               ensure_existence = False)
+    assert isinstance(is_a_phone_number, bool)
+    assert isinstance(is_an_email, bool)
     if is_a_phone_number is False and is_an_email is False:
       return self.bad_request({
-        'reason': 'recipient_identifier was ill-formed'
+        'reason': 'identifier %s was ill-formed' % recipient_identifier,
+        'detail': 'neither a phone number nor an email address ' \
+                  '(country code: %s)' % device.get('country_code', None)
       })
     if recipient is None:
       elle.log.trace("recipient unknown, create a ghost")
@@ -354,7 +359,10 @@ class Mixin:
         })
       if recipient_id is None:
         return self.bad_request({
-          'reason': 'recipient_identifier was ill-formed'
+          'reason': 'couldn`t get the ghost recipient_id from ' \
+                    'recipient_identifier %s' % recipient_identifier,
+          'detail': 'neither a phone number nor an email address ' \
+                    '(country code: %s)' % device.get('country_code', None)
       })
       recipient = self.__user_fetch(
         {"_id": recipient_id},
