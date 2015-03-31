@@ -384,7 +384,7 @@ class Mixin:
         {'_id': user['_id']},
         {'$set': { 'features': features}})
     # Force immediate buffering on mobile devices.
-    if 'os' in device and device['os'] in ('iOS', 'Android'):
+    if self.device_mobile:
       features['preemptive_buffering_delay'] = '0'
     response['features'] = list(features.items())
     response['device'] = self.device_view(device)

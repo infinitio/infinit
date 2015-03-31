@@ -423,7 +423,16 @@ class Meta(bottle.Bottle,
   def user_gcs_enabled(self):
     if self.user_version < (0, 9, 26):
       return False
+    if self.device_mobile:
+      return True
     return self.user['features'].get('gcs_enabled', False)
+
+  @property
+  def device_mobile(self):
+    device = self.current_device
+    if device is None or 'os' not in device:
+      return None
+    return device['os'] in ('iOS', 'Android')
 
   def report_fatal_error(self, route, exception):
     import traceback
