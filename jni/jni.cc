@@ -17,6 +17,9 @@
 #include <string.h>
 #include <fstream>
 #include <semaphore.h>
+
+#include <boost/locale.hpp>
+
 #include <jni.h>
 #include <elle/os/environ.hh>
 #include <surface/gap/gap.hh>
@@ -66,9 +69,17 @@ static std::string to_string(JNIEnv* env, jobject jso)
   jboolean isCopy;
   const jchar * jc = env->GetStringChars(js, &isCopy);
   jsize len = env->GetStringLength(js);
-  std::string str(jc, jc + len);
+  std::string result = boost::locale::conv::utf_to_utf<char, short>(
+    (const short*)jc, (const short*)jc+len);
   env->ReleaseStringChars(js, jc);
-  return str;
+  return result;
+}
+
+static jstring from_string(JNIEnv* env, std::string const& str)
+{
+  auto ws = boost::locale::conv::utf_to_utf<short, char>(
+    str.data(), str.data() + str.length());
+  return env->NewString((const jchar*)ws.data(), ws.length());
 }
 
 static jobject throw_exception(JNIEnv* env, gap_Status st)
@@ -143,11 +154,11 @@ static jobject to_user(JNIEnv* env, surface::gap::User const& u)
   f = env->GetFieldID(u_class, "status", "Z");
   env->SetBooleanField(res, f, u.status);
   f = env->GetFieldID(u_class, "fullname", "Ljava/lang/String;");
-  tmp = env->NewStringUTF(u.fullname.c_str());
+  tmp = from_string(env, u.fullname);
   env->SetObjectField(res, f, tmp);
   env->DeleteLocalRef(tmp);
   f = env->GetFieldID(u_class, "handle", "Ljava/lang/String;");
-  tmp = env->NewStringUTF(u.handle.c_str());
+  tmp = from_string(env, u.handle);
   env->SetObjectField(res, f, tmp);
   env->DeleteLocalRef(tmp);
   f = env->GetFieldID(u_class, "metaId", "Ljava/lang/String;");
@@ -197,7 +208,7 @@ static jobject to_linktransaction(JNIEnv* env, surface::gap::LinkTransaction con
   f = env->GetFieldID(lt_class, "id", "I");
   env->SetIntField(res, f, t.id);
   f = env->GetFieldID(lt_class, "name", "Ljava/lang/String;");
-  tmp = env->NewStringUTF(t.name.c_str());
+  tmp = from_string(env, t.name);
   env->SetObjectField(res, f, tmp);
   env->DeleteLocalRef(tmp);
   f = env->GetFieldID(lt_class, "mtime", "D");
@@ -285,7 +296,7 @@ static jobject to_peertransaction(JNIEnv* env, surface::gap::PeerTransaction con
   f = env->GetFieldID(pt_class, "isDirectory", "Z");
   env->SetBooleanField(res, f, t.is_directory);
   f = env->GetFieldID(pt_class, "message", "Ljava/lang/String;");
-  tmp = env->NewStringUTF(t.message.c_str());
+  tmp = from_string(env, t.message);
   env->SetObjectField(res, f, tmp);
   env->DeleteLocalRef(tmp);
   f = env->GetFieldID(pt_class, "metaId", "Ljava/lang/String;");
@@ -311,8 +322,8 @@ static jobject to_hash(JNIEnv* env, std::unordered_map<std::string, std::string>
   jobject hashMap = env->NewObject(hash_class, init, map.size());
   for (auto const& e: map)
   {
-    jstring key = env->NewStringUTF(e.first.c_str());
-    jstring value = env->NewStringUTF(e.second.c_str());
+    jstring key = from_string(env, e.first);
+    jstring value = from_string(env, e.second);
     jobject res = env->CallObjectMethod(hashMap, put, key, value);
     env->DeleteLocalRef(res);
     env->DeleteLocalRef(key);
@@ -744,7 +755,7 @@ extern "C" jlong Java_io_infinit_State_gapSetSelfEmail(
 extern "C" jstring Java_io_infinit_State_gapSelfFullname(
   JNIEnv* env, jobject thiz, jlong handle)
 {
-  return env->NewStringUTF(gap_self_fullname((gap_State*)handle).c_str());
+  return from_string(env, gap_self_fullname((gap_State*)handle));
 }
 
 extern "C" jlong Java_io_infinit_State_gapSetSelfFullname(
@@ -756,7 +767,7 @@ extern "C" jlong Java_io_infinit_State_gapSetSelfFullname(
 extern "C" jstring Java_io_infinit_State_gapSelfHandle(
   JNIEnv* env, jobject thiz, jlong handle)
 {
-  return env->NewStringUTF(gap_self_handle((gap_State*)handle).c_str());
+  return from_string(env, gap_self_handle((gap_State*)handle));
 }
 
 extern "C" jlong Java_io_infinit_State_gapSetSelfHandle(
