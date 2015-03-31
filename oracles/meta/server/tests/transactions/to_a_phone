@@ -134,3 +134,14 @@ with Meta() as meta:
     assert meta.database.users.count() == 2
     assert 'id' in alice.get('users/+33600000000')
     assert 'id' in alice.get('users/0600000000')
+
+# Faulty numbers.
+with Meta() as meta:
+  alice = User(meta, "alice@infinit.io")
+  def send(alice, country_code, phone):
+    alice.login(country_code = country_code, device_push_token = "31")
+    _, res0 = alice.sendfile(recipient = phone)
+    alice.logout()
+  send(alice, 'US', '4074610254')
+  send(alice, 'US', '(231) 510-5912')
+  send(alice, 'PT', '916197821')
