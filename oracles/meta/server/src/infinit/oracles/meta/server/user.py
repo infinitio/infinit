@@ -1213,6 +1213,11 @@ class Mixin:
   @api('/user/accounts/<email>/make_primary', method = 'POST')
   @require_logged_in_fields(['password'])
   def swap_primary_account(self, email, password):
+    if regexp.EmailValidator(email) != 0:
+      self.bad_request({
+        'reason': 'invalid email',
+        'email': email,
+      })
     user = self.user
     if not any(a['id'] == email for a in user['accounts']):
       self.not_found({

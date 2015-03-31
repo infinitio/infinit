@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from utils import Meta, User
-
+import urllib
 #!/usr/bin/env python3
 
 # Import utils first for papier and OpenSSL
@@ -237,3 +237,39 @@ with Meta(enable_emails = True) as meta:
     assert False
   except HTTPException:
     pass
+
+# Try to swap to a phone number account.
+with Meta(enable_emails = True) as meta:
+  alice_phone = '+33 6 12 34 56 78'
+  alice = 'alice@infinit.io'
+  bob = 'bob@infinit.io'
+  bob = User(meta, bob)
+  bob.login()
+
+  bob.sendfile(recipient = alice_phone, use_identifier = True)
+  alice = User(meta, alice)
+  alice.login()
+  ghost = meta.database.users.find_one({'register_status': 'ghost'})
+  ghost_code = ghost['ghost_code']
+  alice.post('ghost/%s/merge' % ghost_code)
+
+  accounts = alice.get('user/accounts')['accounts']
+  assert set(['email', 'phone']) == set([acc['type'] for acc in accounts])
+  phone_account = None
+  for account in accounts:
+    phone_account = account if account['type'] == 'phone' else None
+    if phone_account is not None:
+      break
+  assert phone_account is not None
+  phone_number = urllib.parse.quote(phone_account['id'], '')
+  assert phone_number == '%2B33%206%2012%2034%2056%2078'
+  assert alice.get('users/%s' % phone_number)['id'] == alice.id
+  try:
+    alice.post('user/accounts/%s/make_primary' %
+               phone_number,
+               {
+                 'password': alice.password
+               })
+    assert False
+  except HTTPException as e:
+    assert e.status == 400
