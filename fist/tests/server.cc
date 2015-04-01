@@ -10,8 +10,8 @@
 #include <elle/serialization/json/SerializerIn.hh>
 #include <elle/serialization/json.hh>
 
+#include <infinit/oracles/meta/Client.hh>
 #include <papier/Authority.hh>
-
 #include <version.hh>
 
 #include <fist/tests/_detail/Authority.hh>
@@ -780,47 +780,18 @@ namespace tests
       {
         auto now = boost::posix_time::second_clock::universal_time();
         auto tomorrow = now + boost::posix_time::hours(24);
-        return elle::sprintf(
-          "{"
-          "  \"protocol\": \"aws\","
-          "  \"access_key_id\": \"\","
-          "  \"secret_access_key\": \"\","
-          "  \"session_token\": \"\","
-          "  \"region\": \"region\","
-          "  \"bucket\": \"bucket\","
-          "  \"folder\": \"folder\","
-          "  \"expiration\": \"%s\","
-          "  \"current_time\": \"%s\""
-          "}",
-          boost::posix_time::to_iso_extended_string(tomorrow),
-          boost::posix_time::to_iso_extended_string(now));
+        std::unique_ptr<infinit::oracles::meta::CloudCredentials> creds(
+          new infinit::oracles::meta::CloudCredentialsAws(
+            "", "", "", "region", "bucket", "folder", tomorrow, now));
+        std::stringstream res;
+        {
+          elle::serialization::json::SerializerOut output(res);
+          output.serialize_forward(creds);
+        }
+        (*this->_transactions.find(id))->cloud_credentials() = std::move(creds);
+        return res.str();
       });
 
-    this->register_route(
-      elle::sprintf("/transaction/%s/cloud_buffer", id),
-      reactor::http::Method::GET,
-      [&] (Server::Headers const&,
-           Server::Cookies const&,
-           Server::Parameters const&,
-           elle::Buffer const&)
-      {
-        auto now = boost::posix_time::second_clock::universal_time();
-        auto tomorrow = now + boost::posix_time::hours(24);
-        return elle::sprintf(
-          "{"
-          "  \"protocol\": \"aws\","
-          "  \"access_key_id\": \"\","
-          "  \"secret_access_key\": \"\","
-          "  \"session_token\": \"\","
-          "  \"region\": \"region\","
-          "  \"bucket\": \"bucket\","
-          "  \"folder\": \"folder\","
-          "  \"expiration\": \"%s\","
-          "  \"current_time\": \"%s\""
-          "}",
-          boost::posix_time::to_iso_extended_string(tomorrow),
-          boost::posix_time::to_iso_extended_string(now));
-      });
     return elle::UUID(id);
   }
 

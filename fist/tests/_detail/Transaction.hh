@@ -14,6 +14,8 @@ namespace tests
     ELLE_ATTRIBUTE_RX(
       boost::signals2::signal<void (infinit::oracles::Transaction::Status)>,
       status_changed);
+    ELLE_ATTRIBUTE_RX(std::unique_ptr<infinit::oracles::meta::CloudCredentials>,
+                      cloud_credentials);
     friend class Server;
 
     std::string const&
