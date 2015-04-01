@@ -556,15 +556,18 @@ namespace surface
           }
           else if (!this->_trophonius)
           {
-            this->_trophonius.reset(new infinit::oracles::trophonius::Client(
-            [this] (infinit::oracles::trophonius::ConnectionState const& status)
-            {
-              this->on_connection_changed(status);
-            },
-            std::bind(&State::on_reconnection_failed, this),
-            this->_trophonius_fingerprint,
-            this->_reconnection_cooldown
-            ));
+            this->_trophonius.reset(
+              new infinit::oracles::trophonius::Client(
+                [this]
+                (infinit::oracles::trophonius::ConnectionState const& status)
+                {
+                  this->on_connection_changed(status);
+                },
+                std::bind(&State::on_reconnection_failed, this),
+                this->_trophonius_fingerprint,
+                this->_reconnection_cooldown
+                )
+              );
           }
           std::string trophonius_host = login_response.trophonius.host;
           int trophonius_port = login_response.trophonius.port_ssl;
