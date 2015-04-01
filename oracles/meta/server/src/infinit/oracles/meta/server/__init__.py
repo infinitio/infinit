@@ -421,6 +421,8 @@ class Meta(bottle.Bottle,
 
   @property
   def user_gcs_enabled(self):
+    # XXX: Force gcs desactivation on 0.9.33
+    return False
     if self.user_version < (0, 9, 26):
       return False
     if self.device_mobile:
