@@ -1508,7 +1508,8 @@ class Mixin:
     # Fail early if stripe customer could not be deleted
     try:
       if 'stripe_id' in user:
-        cus = stripe.Customer.retrieve(user['stripe_id'])
+        cus = stripe.Customer.retrieve(user['stripe_id'],
+                api_key = self.stripe_api_key)
         cus.delete()
     # Handle each exception case separately, even though the behaviour is the
     # same for now. Explicit is better than implicit.
