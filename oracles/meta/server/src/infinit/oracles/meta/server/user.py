@@ -453,7 +453,8 @@ class Mixin:
             device_push_token = None,
             country_code = None,
             pick_trophonius: bool = True,
-            device_model : str = None):
+            device_model : str = None,
+            device_name : str = None):
     # Check for service availability
     # XXX TODO: Fetch maintenance mode bool from somewhere
     maintenance_mode = False
@@ -496,7 +497,8 @@ class Mixin:
                                 pick_trophonius = pick_trophonius,
                                 device_push_token = device_push_token,
                                 country_code = country_code,
-                                device_model = device_model)
+                                device_model = device_model,
+                                device_name = device_name)
 
   @api('/web-login', method = 'POST')
   def web_login(self,

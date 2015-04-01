@@ -401,7 +401,8 @@ namespace infinit
                boost::uuids::uuid const& device_uuid,
                boost::optional<std::string> device_push_token = {},
                boost::optional<std::string> country_code = {},
-               boost::optional<std::string> device_model = boost::none);
+               boost::optional<std::string> device_model = boost::none,
+               boost::optional<std::string> device_name = boost::none);
       public:
         LoginResponse
         login(
@@ -410,7 +411,8 @@ namespace infinit
           boost::uuids::uuid const& device_uuid,
           boost::optional<std::string> device_push_token = {},
           boost::optional<std::string> country_code = {},
-          boost::optional<std::string> device_model = boost::none);
+          boost::optional<std::string> device_model = boost::none,
+          boost::optional<std::string> device_name = boost::none);
 
         LoginResponse
         facebook_connect(
@@ -419,7 +421,8 @@ namespace infinit
           boost::optional<std::string> preferred_email = {},
           boost::optional<std::string> device_push_token = {},
           boost::optional<std::string> country_code = {},
-          boost::optional<std::string> device_model = boost::none);
+          boost::optional<std::string> device_model = boost::none,
+          boost::optional<std::string> device_name = boost::none);
 
         bool
         facebook_id_already_registered(std::string const& facebook_id) const;
