@@ -250,7 +250,12 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: accept", *this);
       auto res = ReceiveMachine::_accept();
       if (!res.cloud_credentials())
+      {
+        ELLE_DEBUG("%s: no data in the cloud", *this);
         this->_nothing_in_the_cloud = true;
+      }
+      else
+        ELLE_DEBUG("%s: got cloud credentials", *this);
       return res;
     }
 
@@ -522,7 +527,6 @@ namespace surface
           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
         else // normal termination: snapshot was removed
           total_bytes_transfered = this->transfer_info(frete).full_size();
-
         exit_reason = metrics::TransferExitReasonFinished;
         return this->get<frete::RPCFrete>(
           frete,
