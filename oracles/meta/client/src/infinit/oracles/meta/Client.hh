@@ -279,9 +279,12 @@ namespace infinit
         ELLE_ATTRIBUTE_R(boost::posix_time::ptime, expiry);
       };
 
-      class CloudCredentialsAws: public CloudCredentials, public aws::Credentials
+      class CloudCredentialsAws
+        : public CloudCredentials
+        , public aws::Credentials
       {
       public:
+        using aws::Credentials::Credentials;
         CloudCredentialsAws(elle::serialization::SerializerIn& s);
         void
         serialize(elle::serialization::Serializer& s);
