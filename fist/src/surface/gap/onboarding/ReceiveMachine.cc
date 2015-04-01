@@ -150,7 +150,7 @@ namespace surface
         if (this->state().metrics_reporter())
           this->state().metrics_reporter()->transaction_ended(
             this->transaction_id(),
-            infinit::oracles::Transaction::Status::canceled,
+            status,
             reason,
             onboarding,
             this->transaction().canceled_by_user());
