@@ -175,6 +175,8 @@ class Mixin:
         device['push_token'] = device_push_token
       if country_code is not None:
         device['country_code'] = country_code
+      if device_model is not None:
+          device['model'] = device_model
       res = None
       def create():
         if has_id:
@@ -188,8 +190,6 @@ class Mixin:
             {'$push': {'devices': device}},
           )
       self.device_override_push_token(device_push_token, create)
-      if device_model:
-          device['model'] = device_model
       return device
 
   def device_override_push_token(self, token, action):
