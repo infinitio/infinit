@@ -140,7 +140,8 @@ class Mixin:
                      id = None,
                      OS = None,
                      device_push_token = None,
-                     country_code = None):
+                     country_code = None,
+                     device_model = None):
     """Create a device.
     """
     with elle.log.trace('create device %s with owner %s' %
@@ -187,6 +188,8 @@ class Mixin:
             {'$push': {'devices': device}},
           )
       self.device_override_push_token(device_push_token, create)
+      if device_model:
+          device['model'] = device_model
       return device
 
   def device_override_push_token(self, token, action):

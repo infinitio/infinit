@@ -304,6 +304,7 @@ class Mixin:
                     device_push_token: str = None,
                     country_code = None,
                     device_name = None,
+                    device_model = None,
   ):
     # If creation process was interrupted, generate identity now.
     if 'public_key' not in user:
@@ -340,7 +341,8 @@ class Mixin:
         owner = user,
         device_push_token = device_push_token,
         OS = OS,
-        country_code = country_code)
+        country_code = country_code,
+        device_model = device_model)
     else:
       device = list(filter(lambda x: x['id'] == str(device_id), usr['devices']))[0]
     # Remove potential leaked previous session.
@@ -450,7 +452,8 @@ class Mixin:
             OS: str = None,
             device_push_token = None,
             country_code = None,
-            pick_trophonius: bool = True):
+            pick_trophonius: bool = True,
+            device_model : str = None):
     # Check for service availability
     # XXX TODO: Fetch maintenance mode bool from somewhere
     maintenance_mode = False
@@ -492,7 +495,8 @@ class Mixin:
                                 OS = OS,
                                 pick_trophonius = pick_trophonius,
                                 device_push_token = device_push_token,
-                                country_code = country_code)
+                                country_code = country_code,
+                                device_model = device_model)
 
   @api('/web-login', method = 'POST')
   def web_login(self,
@@ -1508,7 +1512,8 @@ class Mixin:
     # Fail early if stripe customer could not be deleted
     try:
       if 'stripe_id' in user:
-        cus = stripe.Customer.retrieve(user['stripe_id'])
+        cus = stripe.Customer.retrieve(user['stripe_id'],
+                api_key = self.stripe_api_key)
         cus.delete()
     # Handle each exception case separately, even though the behaviour is the
     # same for now. Explicit is better than implicit.

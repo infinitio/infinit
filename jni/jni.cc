@@ -44,6 +44,7 @@ public:
 };
 
 static jobject global_state_instance = nullptr;
+static gap_State* global_cstate_instance = nullptr;
 static int request_map = 0;
 static sem_t semaphore;
 static std::map<std::string, elle::network::Interface> interface_map;
@@ -531,6 +532,22 @@ extern "C" jlong Java_io_infinit_State_gapInitialize(JNIEnv* env,
   jboolean enable_mirroring,
   jlong max_mirroring_size)
 {
+  if (global_cstate_instance)
+  {
+    ELLE_ERR("gapInitialize called again");
+    global_state_instance = thiz;
+    gap_State* state = global_cstate_instance;
+    gap_critical_callback(state, boost::bind(on_critical, thiz));
+    gap_update_user_callback(state, boost::bind(on_update_user, thiz, _1));
+    gap_deleted_swagger_callback(state, boost::bind(on_deleted_swagger, thiz, _1));
+    gap_deleted_favorite_callback(state, boost::bind(on_deleted_favorite, thiz, _1));
+    gap_user_status_callback(state, boost::bind(on_user_status, thiz, _1, _2));
+    gap_avatar_available_callback(state, boost::bind(on_avatar_available, thiz, _1));
+    gap_connection_callback(state, boost::bind(on_connection, thiz, _1, _2, _3));
+    gap_peer_transaction_callback(state, boost::bind(on_peer_transaction, thiz, _1));
+    gap_link_callback(state, boost::bind(on_link, thiz, _1));
+    return (jlong)global_cstate_instance;
+  }
   sem_init(&semaphore, 0, 0);
   thiz = env->NewGlobalRef(thiz);
   global_state_instance = thiz;
@@ -540,6 +557,7 @@ extern "C" jlong Java_io_infinit_State_gapInitialize(JNIEnv* env,
     to_string(env, non_persistent_config_dir),
     enable_mirroring,
     max_mirroring_size);
+  global_cstate_instance = state;
   //using namespace std::placeholders;
   gap_critical_callback(state, boost::bind(on_critical, thiz));
   gap_update_user_callback(state, boost::bind(on_update_user, thiz, _1));

@@ -452,7 +452,8 @@ namespace infinit
                     std::string const& password,
                     boost::uuids::uuid const& device_uuid,
                     boost::optional<std::string> device_push_token,
-                    boost::optional<std::string> country_code)
+                    boost::optional<std::string> country_code,
+                    boost::optional<std::string> device_model)
       {
         ELLE_TRACE_SCOPE("%s: login as %s on device %s",
                          *this, email, device_uuid);
@@ -474,7 +475,8 @@ namespace infinit
             },
             device_uuid,
             device_push_token,
-            country_code);
+            country_code,
+            device_model);
         }
         catch (...)
         {
@@ -489,7 +491,8 @@ namespace infinit
         boost::uuids::uuid const& device_uuid,
         boost::optional<std::string> preferred_email,
         boost::optional<std::string> device_push_token,
-        boost::optional<std::string> country_code)
+        boost::optional<std::string> country_code,
+        boost::optional<std::string> device_model)
       {
         ELLE_TRACE_SCOPE("%s: login using facebook on device %s",
                          *this, device_uuid);
@@ -499,7 +502,7 @@ namespace infinit
             parameters.serialize("long_lived_access_token",
                                  const_cast<std::string&>(facebook_token));
             parameters.serialize("preferred_email", preferred_email);
-          }, device_uuid, device_push_token, country_code);
+          }, device_uuid, device_push_token, country_code, device_model);
       }
 
       bool
@@ -517,7 +520,8 @@ namespace infinit
       Client::_login(ParametersUpdater parameters_updater,
                      boost::uuids::uuid const& device_uuid,
                      boost::optional<std::string> device_push_token,
-                     boost::optional<std::string> country_code)
+                     boost::optional<std::string> country_code,
+                     boost::optional<std::string> device_model)
       {
         auto url = "/login";
         auto request = this->_request(
@@ -533,6 +537,7 @@ namespace infinit
             output.serialize("device_id", struuid);
             auto os = elle::system::platform::os_name();
             output.serialize("OS", os);
+            output.serialize("device_model", device_model);
           },
           false);
         if (request.status() == reactor::http::StatusCode::Forbidden ||
@@ -917,7 +922,7 @@ namespace infinit
       UpdatePeerTransactionResponse::serialize(
         elle::serialization::Serializer& s)
       {
-        s.serialize("aws_credentials", this->_aws_credentials);
+        s.serialize("aws_credentials", this->_cloud_credentials);
         s.serialize("ghost_code", this->_ghost_code);
         s.serialize("ghost_profile", this->_ghost_profile_url);
       }
