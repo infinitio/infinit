@@ -565,17 +565,18 @@ namespace tests
           socket->write(transaction_notification);
         for (auto& socket: this->trophonius.clients(elle::UUID(tr.recipient_id)))
           socket->write(transaction_notification);
-        auto res = elle::sprintf(
-          "{"
-          "%s"
-          "  \"updated_transaction_id\": \"%s\""
-          "}",
-          t.status == infinit::oracles::Transaction::Status::accepted
-          ? elle::sprintf("  \"recipent_device_id\": \"%s\", \"recipient_device_name\": \"bite\", ", tr.recipient_device_id)
-          : std::string{},
-          tr.id
-          );
-        return res;
+        std::stringstream res;
+        {
+          elle::serialization::json::SerializerOut output(res);
+          output.serialize("updated_transaction_id", tr.id);
+          if (t.status == infinit::oracles::Transaction::Status::accepted)
+          {
+            output.serialize("recipent_device_id", tr.recipient_device_id);
+            std::string name = "bite";
+            output.serialize("recipient_device_name", name);
+          }
+        }
+        return res.str();
       });
   }
 
