@@ -259,21 +259,6 @@ namespace infinit
         serialize(elle::serialization::Serializer& s);
       };
 
-      class UpdatePeerTransactionResponse
-      {
-      public:
-        UpdatePeerTransactionResponse() = default;
-        ELLE_ATTRIBUTE_R(boost::optional<aws::Credentials>, aws_credentials);
-        // The ghost invitation code.
-        ELLE_ATTRIBUTE_R(boost::optional<std::string>, ghost_code);
-        // The ghost profile url.
-        ELLE_ATTRIBUTE_R(boost::optional<std::string>, ghost_profile_url);
-
-        UpdatePeerTransactionResponse(elle::serialization::SerializerIn& s);
-        void
-        serialize(elle::serialization::Serializer& s);
-      };
-
       class CloudCredentials: public elle::serialization::VirtuallySerializable
       {
       public:
@@ -302,6 +287,21 @@ namespace infinit
         serialize(elle::serialization::Serializer& s);
         CloudCredentials*
         clone() const override;
+      };
+
+      class UpdatePeerTransactionResponse
+      {
+      public:
+        UpdatePeerTransactionResponse() = default;
+        ELLE_ATTRIBUTE_R(std::unique_ptr<CloudCredentials>, cloud_credentials);
+        // The ghost invitation code.
+        ELLE_ATTRIBUTE_R(boost::optional<std::string>, ghost_code);
+        // The ghost profile url.
+        ELLE_ATTRIBUTE_R(boost::optional<std::string>, ghost_profile_url);
+
+        UpdatePeerTransactionResponse(elle::serialization::SerializerIn& s);
+        void
+        serialize(elle::serialization::Serializer& s);
       };
 
       class CreateLinkTransactionResponse

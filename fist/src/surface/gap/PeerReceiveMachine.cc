@@ -249,7 +249,7 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: accept", *this);
       auto res = ReceiveMachine::_accept();
-      if (!res.aws_credentials())
+      if (!res.cloud_credentials())
         this->_nothing_in_the_cloud = true;
       return res;
     }

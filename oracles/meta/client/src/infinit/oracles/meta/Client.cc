@@ -917,7 +917,7 @@ namespace infinit
       UpdatePeerTransactionResponse::serialize(
         elle::serialization::Serializer& s)
       {
-        s.serialize("aws_credentials", this->_aws_credentials);
+        s.serialize("aws_credentials", this->_cloud_credentials);
         s.serialize("ghost_code", this->_ghost_code);
         s.serialize("ghost_profile", this->_ghost_profile_url);
       }
