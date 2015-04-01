@@ -88,6 +88,11 @@ namespace surface
         );
       this->_fsm.transition_add(
         cloud_synchronize_state,
+        stopped_state,
+        [this] { return this->_owner.completed(); }
+        );
+      this->_fsm.transition_add(
+        cloud_synchronize_state,
         publish_interfaces_state);
       // Publish and wait for connection.
       this->_fsm.transition_add(
