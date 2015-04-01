@@ -109,6 +109,8 @@ namespace tests
       > Transactions;
     ELLE_ATTRIBUTE_RX(Transactions, transactions);
     ELLE_ATTRIBUTE_R(bool, cloud_buffered);
+    ELLE_ATTRIBUTE(boost::optional<std::string>, s3_meta_data)
+    ELLE_ATTRIBUTE(boost::optional<std::string>, s3_data)
   };
 }
 
