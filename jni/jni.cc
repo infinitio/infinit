@@ -591,6 +591,7 @@ extern "C" jlong Java_io_infinit_State_gapInitialize(JNIEnv* env,
   std::unique_ptr<elle::log::Logger> logger
     = elle::make_unique<AndroidLogger>(log_level, *output);
   elle::log::logger(std::move(logger));
+  ELLE_LOG("gapInitialize finished: %s", state);
 #endif
   return (jlong)state;
 }
@@ -805,7 +806,8 @@ extern "C" jlong Java_io_infinit_State_gapSelfId(
    JNIEnv* env, jobject thiz, jlong handle)
 {
   jlong res = gap_self_id((gap_State*)handle);
-  ELLE_TRACE("selfId: %s", res);
+  if (!res)
+    ELLE_ERR("selfId: %s", res);
   return res;
 }
 
