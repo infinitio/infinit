@@ -67,7 +67,9 @@ gap_login(gap_State* state,
           std::string const& email,
           std::string const& password,
           boost::optional<std::string> device_push_token = {},
-          boost::optional<std::string> country_conde = {}); // ISO 3611-1 alpha-2
+          boost::optional<std::string> country_conde = {},
+          boost::optional<std::string> device_model = {},
+          boost::optional<std::string> device_name = {}); // ISO 3611-1 alpha-2
 
 /// Fetch features.
 std::unordered_map<std::string, std::string>
@@ -91,7 +93,9 @@ gap_register(gap_State* state,
              std::string const& email,
              std::string const& password,
              boost::optional<std::string> device_push_token = {},
-             boost::optional<std::string> country_conde = {}); // ISO 3611-1 alpha-2
+             boost::optional<std::string> country_conde = {},
+             boost::optional<std::string> device_model = {},
+             boost::optional<std::string> device_name = {}); // ISO 3611-1 alpha-2
 
 gap_Status
 gap_use_ghost_code(gap_State* state,
@@ -431,6 +435,8 @@ gap_facebook_connect(gap_State* state,
                      std::string const& facebook_token,
                      boost::optional<std::string> preferred_email = {},
                      boost::optional<std::string> device_push_token = {},
-                     boost::optional<std::string> country_conde = {}); // ISO 3611-1 alpha-2
+                     boost::optional<std::string> country_conde = {},
+                     boost::optional<std::string> device_model = {},
+                     boost::optional<std::string> device_name = {}); // ISO 3611-1 alpha-2
 
 #endif

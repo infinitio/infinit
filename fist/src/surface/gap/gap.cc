@@ -196,7 +196,9 @@ gap_login(gap_State* state,
           std::string const& email,
           std::string const& password,
           boost::optional<std::string> device_push_token,
-          boost::optional<std::string> country_code)
+          boost::optional<std::string> country_code,
+          boost::optional<std::string> device_model,
+          boost::optional<std::string> device_name)
 {
   ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
@@ -204,7 +206,12 @@ gap_login(gap_State* state,
     "login",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      state.login(email, password, device_push_token, country_code);
+      state.login(email,
+                  password,
+                  device_push_token,
+                  country_code,
+                  device_model,
+                  device_name);
       return gap_ok;
     });
 }
@@ -256,7 +263,9 @@ gap_register(gap_State* state,
              std::string const& email,
              std::string const& password,
              boost::optional<std::string> device_push_token,
-             boost::optional<std::string> country_code)
+             boost::optional<std::string> country_code,
+             boost::optional<std::string> device_model,
+             boost::optional<std::string> device_name)
 {
   ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
@@ -264,7 +273,13 @@ gap_register(gap_State* state,
     "register",
     [&] (surface::gap::State& state) -> gap_Status
     {
-     state.register_(fullname, email, password, device_push_token, country_code);
+     state.register_(fullname,
+                     email,
+                     password,
+                     device_push_token,
+                     country_code,
+                     device_model,
+                     device_name);
      return gap_ok;
     });
 }
@@ -1686,7 +1701,9 @@ gap_facebook_connect(gap_State* state,
                      std::string const& facebook_token,
                      boost::optional<std::string> preferred_email,
                      boost::optional<std::string> device_push_token,
-                     boost::optional<std::string> country_code)
+                     boost::optional<std::string> country_code,
+                     boost::optional<std::string> device_model,
+                     boost::optional<std::string> device_name)
 {
   return run<gap_Status>(
     state,
@@ -1697,7 +1714,9 @@ gap_facebook_connect(gap_State* state,
         facebook_token,
         preferred_email,
         device_push_token,
-        country_code);
+        country_code,
+        device_model,
+        device_name);
       return gap_ok;
     });
 }
