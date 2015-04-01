@@ -310,16 +310,19 @@ class Mixin:
     if 'public_key' not in user:
       user = self.__generate_identity(user, password)
     query = {'id': str(device_id), 'owner': user['_id']}
-
     if device_push_token is None:
-      push_token_update = {
+      login_update = {
         '$unset':
         {
           'devices.$.push_token': True,
+        },
+        '$set':
+        {
+          'devices.$.country_code': country_code,
         }
       }
     else:
-      push_token_update = {
+      login_update = {
         '$set':
         {
           'devices.$.push_token': device_push_token,
@@ -329,7 +332,7 @@ class Mixin:
     def login():
       return self.database.users.find_and_modify(
         {'_id': user['_id'], 'devices.id': str(device_id)},
-        push_token_update,
+        login_update,
         fields = ['devices']
       )
     usr = self.device_override_push_token(device_push_token, login)

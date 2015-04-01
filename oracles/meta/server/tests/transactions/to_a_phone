@@ -38,7 +38,7 @@ with Meta() as meta:
 
 with Meta() as meta:
   alice = User(meta, "alice@infinit.io")
-  alice.login(country_code = "FR", device_push_token = "31")
+  alice.login(country_code = "FR")
   ti1 = alice.sendfile(recipient = '+33600000000', use_identifier = True)[1]['created_transaction_id']
   assert meta.database.users.count() == 2
   ti2 = alice.sendfile(recipient = '0600000000', use_identifier = True)[1]['created_transaction_id']
@@ -128,7 +128,7 @@ with Meta() as meta:
       assert e.status == 404
     alice.logout()
     print("+" * 64)
-    alice.login(country_code = "FR", device_push_token = "32")
+    alice.login(country_code = "FR")
     alice.sendfile(recipient = '+33600000000', use_identifier = True, initialize = True)
     alice.sendfile(recipient = '0600000000', use_identifier = True, initialize = True)
     assert meta.database.users.count() == 2
