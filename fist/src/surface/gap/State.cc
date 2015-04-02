@@ -153,7 +153,11 @@ namespace surface
       ELLE_LOG("%s: device uuid: %s", *this, this->device_uuid());
       // Fill configuration.
       auto& config = this->_configuration;
-      config.s3.multipart_upload.parallelism = 1;
+#if defined(INFINIT_ANDROID) || defined(INFINIT_IOS)
+      config.s3.multipart_upload.parallelism = 2;
+#else
+      config.s3.multipart_upload.parallelism = 8;
+#endif
       config.s3.multipart_upload.chunk_size = 0;
       config.enable_file_mirroring =
         this->local_configuration().enable_mirroring();

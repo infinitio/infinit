@@ -784,8 +784,10 @@ namespace surface
     public:
       struct Configuration
       {
+        // This is actualy used for both S3 and GCS. Rename.
         struct S3
         {
+          // This is actually also used for peer buffering. Rename.
           struct MultipartUpload
           {
             int chunk_size;
