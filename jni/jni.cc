@@ -1234,17 +1234,23 @@ extern "C" jlong Java_io_infinit_State_gapFacebookConnect(
   JNIEnv* env, jobject thiz, jlong handle,
   jstring facebook_token, jstring preferred_email,
   jstring device_push_token,
-  jstring country_code)
+  jstring country_code,
+  jstring device_model,
+  jstring device_name)
 {
-  boost::optional<std::string> mail, token, country;
+  boost::optional<std::string> mail, token, country, model, name;
   if (preferred_email != nullptr)
     mail = to_string(env, preferred_email);
   if (device_push_token != nullptr)
     token = to_string(env, device_push_token);
   if (country_code != nullptr)
     country = to_string(env, country_code);
+  if (device_model != nullptr)
+    model = to_string(env, device_model);
+  if (device_name != nullptr)
+    name = to_string(env, device_name)
   return gap_facebook_connect((gap_State*)handle, to_string(env, facebook_token),
-                              mail, token, country);
+                              mail, token, country, device_model, device_name);
 }
 
 extern "C" jlong Java_io_infinit_State_gapFacebookAlreadyRegistered(
