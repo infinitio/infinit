@@ -134,7 +134,9 @@ namespace surface
       bool
       ReceiveMachine::completed() const
       {
-        return true;
+        if (this->_transfer_machine)
+          return this->_transfer_machine->finished();
+        return false;
       }
 
       /*--------.
