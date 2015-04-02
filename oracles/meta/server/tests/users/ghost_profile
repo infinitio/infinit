@@ -17,19 +17,6 @@ from infinit.oracles.meta.server.transaction_status import INITIALIZED, ACCEPTED
 import requests
 from urllib.parse import urlparse, parse_qs
 
-class MailService(NoOpMailer):
-
-  def __init__(self):
-    super().__init__(True)
-    self.messages = {}
-  def template_message(self, template_message, message):
-    merges = {}
-    for entry in message['merge_vars'][0]['vars']:
-      merges[entry['name']] = entry['content']
-    self.messages.setdefault(template_message, [])
-    self.messages[template_message].append(merges)
-    print(merges)
-
 def clear_url(url, _type = None):
   url = url.replace('https://www.infinit.io/invitation', 'ghost')
   assert '&code=' in url
@@ -208,3 +195,37 @@ with Meta(enable_emails = True) as meta:
     assert False
   except HTTPException as e:
     assert e.status == 404
+
+# Old ghost without ghost_code.
+with Meta(enable_emails = True) as meta:
+  alice_email = "alice@infinit.io"
+  bob = User(meta, "bob@infinit.io")
+  bob.login()
+  transaction, res = bob.sendfile(recipient = alice_email, initialize = True)
+  bob.transaction_update(res['created_transaction_id'], GHOST_UPLOADED)
+  assert 'ghost_code' not in res['recipient']
+  meta.database.users.find_and_modify(
+    {
+      'register_status': 'ghost'
+    },
+    {
+      '$unset': {
+        'ghost_code': 1,
+        'shorten_ghost_profile_url': 1
+      }
+    })
+  emails = meta.emailer.emails
+  assertEq(len(emails), 1)
+  # Email are consummed when the getter is called.
+  assertEq(len(meta.emailer.emails), 0)
+  assertEq(emails[0].template, 'ghost-invitation')
+  assert 'ghost_code' in emails[0].variables
+  assert 'ghost_profile' in emails[0].variables
+  transaction, res = bob.sendfile(recipient = alice_email, initialize = True)
+  bob.transaction_update(res['created_transaction_id'], GHOST_UPLOADED)
+  assert 'ghost_code' not in res['recipient']
+  emails = meta.emailer.emails
+  assertEq(len(emails), 1)
+  assertEq(emails[0].template, 'ghost-invitation')
+  assert 'ghost_code' not in emails[0].variables
+  assert 'ghost_profile' in emails[0].variables

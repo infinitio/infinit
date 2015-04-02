@@ -793,15 +793,16 @@ class Mixin:
           'ghost_email': peer_email,
           'transaction':
           self.email_transaction_vars(transaction, recipient),
+          'ghost_profile': recipient.get(
+            'shorten_ghost_profile_url',
+              self.__ghost_profile_url(recipient, type = "email")),
         }
         # Ghost created pre 0.9.30 has no ghost code.
         if 'ghost_code' in recipient:
           variables.update({
             'ghost_code': recipient['ghost_code'],
-            'ghost_profile': recipient.get(
-              'shorten_ghost_profile_url',
-              self.__ghost_profile_url(recipient, type = "email")),
           })
+
         self.emailer.send_one(
           'ghost-invitation',
           recipient_email = peer_email,
