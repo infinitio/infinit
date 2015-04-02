@@ -1248,9 +1248,9 @@ extern "C" jlong Java_io_infinit_State_gapFacebookConnect(
   if (device_model != nullptr)
     model = to_string(env, device_model);
   if (device_name != nullptr)
-    name = to_string(env, device_name)
+    name = to_string(env, device_name);
   return gap_facebook_connect((gap_State*)handle, to_string(env, facebook_token),
-                              mail, token, country, device_model, device_name);
+                              mail, token, country, model, name);
 }
 
 extern "C" jlong Java_io_infinit_State_gapFacebookAlreadyRegistered(
