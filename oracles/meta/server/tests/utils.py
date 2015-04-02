@@ -302,6 +302,10 @@ class TestEmailer(infinit.oracles.emailer.Emailer):
   def __init__(self):
     self.__emails = []
 
+  def __check (self, o):
+    if o.template == 'ghost-invitation':
+      assert 'ghost_profile' in o.variables
+
   def send_one(self,
                template,
                recipient_email,
@@ -319,6 +323,7 @@ class TestEmailer(infinit.oracles.emailer.Emailer):
     o.sender.email = sender_email
     o.sender.name = sender_name
     o.variables = variables
+    self.__check(o)
     self.__emails.append(o)
 
   @property

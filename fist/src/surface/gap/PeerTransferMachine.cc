@@ -105,17 +105,25 @@ namespace surface
       }
       else
       {
-        auto interfaces = elle::network::Interface::get_map(
-          elle::network::Interface::Filter::only_up |
-          elle::network::Interface::Filter::no_loopback |
-          elle::network::Interface::Filter::no_autoip
-          );
-        for (auto const& pair: interfaces)
-          if (pair.second.ipv4_address.size() > 0)
-          {
-            auto const& ipv4 = pair.second.ipv4_address;
-            addresses.emplace_back(ipv4, this->_station.port());
-          }
+        try
+        {
+          auto interfaces = elle::network::Interface::get_map(
+            elle::network::Interface::Filter::only_up |
+            elle::network::Interface::Filter::no_loopback |
+            elle::network::Interface::Filter::no_autoip
+            );
+          for (auto const& pair: interfaces)
+            if (pair.second.ipv4_address.size() > 0)
+            {
+              auto const& ipv4 = pair.second.ipv4_address;
+              addresses.emplace_back(ipv4, this->_station.port());
+            }
+        }
+        catch (elle::Exception const& e)
+        {
+          ELLE_ERR("%s: unable to get user interfaces: %s", *this, e);
+          // XXX: Add a metric.
+        }
       }
       AddressContainer public_addresses;
       if (elle::os::getenv("INFINIT_UPNP_ADDRESS", "").length() > 0)

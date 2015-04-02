@@ -58,6 +58,8 @@ gap_new(bool production,
                                      non_persistent_config_dir,
                                      enable_mirroring,
                                      max_mirroring_size);
+    if (state == nullptr)
+      ELLE_ERR("Unable to create state");
     return state;
   }
   catch (std::exception const& err)

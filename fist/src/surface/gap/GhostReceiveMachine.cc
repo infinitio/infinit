@@ -9,6 +9,7 @@
 
 #include <reactor/exception.hh>
 #include <reactor/http/Request.hh>
+#include <reactor/http/url.hh>
 #include <reactor/http/exceptions.hh>
 #include <reactor/network/exception.hh>
 
@@ -208,6 +209,7 @@ namespace surface
         size_t end = url.find_first_of('?');
         size_t begin = url.substr(0, end).find_last_of('/');
         std::string filename = url.substr(begin+1, end - begin - 1);
+        filename = reactor::http::url_decode(filename);
         ELLE_TRACE("%s: extracted file name of '%s' from '%s'", *this, filename, url);
         std::string output_dir = transaction().state().output_dir();
         if (!this->_relative_output_dir.empty())

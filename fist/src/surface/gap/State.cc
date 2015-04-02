@@ -71,7 +71,7 @@ namespace surface
           "reactor.fsm.*:TRACE,"
           "reactor.network.upnp:DEBUG,"
           "station.Station:DEBUG,"
-          "surface.gap.*:TRACE,"
+          "*surface.gap.*:TRACE,"
           "surface.gap.*Machine:DEBUG,"
           "*trophonius*:DEBUG";
         bool display_type = true;
@@ -153,31 +153,38 @@ namespace surface
       ELLE_LOG("%s: device uuid: %s", *this, this->device_uuid());
       // Fill configuration.
       auto& config = this->_configuration;
-      config.s3.multipart_upload.parallelism = 1;
+#if defined(INFINIT_ANDROID) || defined(INFINIT_IOS)
+      config.s3.multipart_upload.parallelism = 2;
+#else
+      config.s3.multipart_upload.parallelism = 8;
+#endif
       config.s3.multipart_upload.chunk_size = 0;
       config.enable_file_mirroring =
         this->local_configuration().enable_mirroring();
       config.max_mirror_size = this->local_configuration().max_mirror_size();
       config.max_compress_size = 0;
       config.disable_upnp = false;
-      std::ifstream fconfig(this->local_configuration().configuration_path());
-      if (fconfig.good())
+      ELLE_TRACE("read local config")
       {
-        try
+        std::ifstream fconfig(this->local_configuration().configuration_path());
+        if (fconfig.good())
         {
+          try
+          {
             elle::json::Object obj = boost::any_cast<elle::json::Object>(
               elle::json::read(fconfig));
-            _apply_configuration(obj);
-        }
-        catch(std::exception const& e)
-        {
-          ELLE_ERR("%s: while reading configuration: %s", *this, e.what());
-          std::stringstream str;
-          {
-            elle::serialization::json::SerializerOut output(str, false);
-            this->_configuration.serialize(output);
+            this->_apply_configuration(obj);
           }
-          ELLE_TRACE("%s: current config: %s", *this, str.str());
+          catch(std::exception const& e)
+          {
+            ELLE_ERR("%s: while reading configuration: %s", *this, e.what());
+            std::stringstream str;
+            {
+              elle::serialization::json::SerializerOut output(str, false);
+              this->_configuration.serialize(output);
+            }
+            ELLE_TRACE("%s: current config: %s", *this, str.str());
+          }
         }
       }
       this->_check_first_launch();
@@ -335,22 +342,31 @@ namespace surface
     void
     State::_check_first_launch()
     {
+      ELLE_TRACE_SCOPE("%s: check if first launch", *this);
       namespace filesystem = boost::filesystem;
-      if (filesystem::exists(this->local_configuration().first_launch_path()))
-        return;
-
-      filesystem::path first_launch(this->local_configuration().first_launch_path());
-
-      if (!filesystem::exists(first_launch.parent_path()))
+      filesystem::path first_launch_witness(
+        this->local_configuration().first_launch_path());
+      if (filesystem::exists(first_launch_witness))
       {
-        filesystem::create_directories(first_launch.parent_path());
+        ELLE_DEBUG("first launch witness found");
+        return;
       }
-      elle::AtomicFile f(this->local_configuration().first_launch_path());
-      f.write() << [] (elle::AtomicFile::Write& write)
+      ELLE_TRACE("no first launch witness at %s", first_launch_witness);
+      if (!filesystem::exists(first_launch_witness.parent_path()))
+      {
+        ELLE_TRACE("create directories %s", first_launch_witness.parent_path())
+          filesystem::create_directories(first_launch_witness.parent_path());
+      }
+      ELLE_LOG("write first launch witness at %s", first_launch_witness);
+      {
+        elle::AtomicFile f(first_launch_witness);
+        f.write() << [] (elle::AtomicFile::Write& write)
         {
           write.stream() << "0\n";
         };
-      this->_metrics_reporter->user_first_launch();
+      }
+      ELLE_TRACE("report first launch metric")
+        this->_metrics_reporter->user_first_launch();
     }
 
     /*----------------------.

@@ -1029,7 +1029,8 @@ class Mixin:
     """
     ghost_id = ghost.get('_id', ghost.get('id'))
     assert ghost_id is not None
-    code = ghost['ghost_code']
+    # Old ghosts don't have any ghost_code.
+    code = ghost.get('ghost_code', '')
     url = '/ghost/%s' % str(ghost_id)
     ghost_profile_url = "https://www.infinit.io/" \
                         "invitation/%(ghost_id)s?key=%(key)s&code=%(code)s" \

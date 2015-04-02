@@ -731,11 +731,8 @@ namespace surface
         }
         /* Pipelined cloud upload with periodic local snapshot update
         */
-        int num_threads = 8;
-        std::string snum_threads =
-          elle::os::getenv("INFINIT_NUM_CLOUD_UPLOAD_THREAD", "");
-        if (!snum_threads.empty())
-          num_threads = boost::lexical_cast<int>(snum_threads);
+        auto const& config = this->transaction().state().configuration();
+        int num_threads = config.s3.multipart_upload.parallelism;;
         typedef frete::Frete::FileSize FileSize;
         typedef frete::Frete::FileID FileID;
         FileSize transfer_since_snapshot = 0;

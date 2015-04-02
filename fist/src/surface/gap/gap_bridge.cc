@@ -51,6 +51,9 @@ gap_State::gap_State(bool production,
     "creating state",
     [&]
     {
-      this->_state.reset(new surface::gap::State(this->_configuration));
+      ELLE_TRACE("creating state from configuration %s", this->_configuration)
+        this->_state.reset(new surface::gap::State(this->_configuration));
+      if (this->_state == nullptr)
+        ELLE_ERR("state wasn't created successfully");
     });
 }
