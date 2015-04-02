@@ -604,14 +604,21 @@ extern "C" void Java_io_infinit_State_gapFinalize(
 
 extern "C" jlong Java_io_infinit_State_gapLogin(
   JNIEnv* env, jobject thiz, jlong handle,
-  jstring mail, jstring hash_password, jstring device_push_token, jstring country_code)
+  jstring mail, jstring hash_password, jstring device_push_token,
+  jstring country_code, jstring device_model, jstring device_name)
 {
-  boost::optional<std::string> token_opt, country_code_opt;
+  boost::optional<std::string> token_opt, country_code_opt, device_model_opt, device_name_opt;
   if (device_push_token)
     token_opt = to_string(env, device_push_token);
   if (country_code)
     country_code_opt = to_string(env, country_code);
-  gap_Status s = gap_login((gap_State*)handle, to_string(env, mail), to_string(env, hash_password), token_opt, country_code_opt);
+  if (device_model)
+    device_model_opt = to_string(env, device_model);
+  if (device_name)
+    device_name_opt = to_string(env, device_name);
+  gap_Status s = gap_login((gap_State*)handle, to_string(env, mail),
+    to_string(env, hash_password), token_opt, country_code_opt,
+    device_model_opt, device_name_opt);
   return s;
 }
 
