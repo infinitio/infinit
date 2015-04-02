@@ -65,7 +65,7 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
           }
           default:
           {
-            BOOST_FAIL(
+            BOOST_ERROR(
               elle::sprintf("unexpected transaction status: %s", status));
             break;
           }
@@ -157,7 +157,7 @@ ELLE_TEST_SCHEDULED(recipient_states)
           }
           default:
           {
-            BOOST_FAIL(
+            BOOST_ERROR(
               elle::sprintf("unexpected transaction status: %s", status));
             break;
           }
