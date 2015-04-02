@@ -732,7 +732,7 @@ namespace surface
         /* Pipelined cloud upload with periodic local snapshot update
         */
         auto const& config = this->transaction().state().configuration();
-        int num_threads = config.s3.multipart_upload.parralelism;;
+        int num_threads = config.s3.multipart_upload.parallelism;;
         typedef frete::Frete::FileSize FileSize;
         typedef frete::Frete::FileID FileID;
         FileSize transfer_since_snapshot = 0;
