@@ -535,7 +535,7 @@ extern "C" jlong Java_io_infinit_State_gapInitialize(JNIEnv* env,
   if (global_cstate_instance)
   {
     ELLE_ERR("gapInitialize called again");
-    global_state_instance = thiz;
+    global_state_instance = env->NewGlobalRef(thiz);
     gap_State* state = global_cstate_instance;
     gap_critical_callback(state, boost::bind(on_critical, thiz));
     gap_update_user_callback(state, boost::bind(on_update_user, thiz, _1));
@@ -552,22 +552,7 @@ extern "C" jlong Java_io_infinit_State_gapInitialize(JNIEnv* env,
   thiz = env->NewGlobalRef(thiz);
   global_state_instance = thiz;
   std::string persistent_config_dir_str = to_string(env, persistent_config_dir);
-  gap_State* state = gap_new(production,
-    to_string(env, download_dir), persistent_config_dir_str,
-    to_string(env, non_persistent_config_dir),
-    enable_mirroring,
-    max_mirroring_size);
-  global_cstate_instance = state;
-  //using namespace std::placeholders;
-  gap_critical_callback(state, boost::bind(on_critical, thiz));
-  gap_update_user_callback(state, boost::bind(on_update_user, thiz, _1));
-  gap_deleted_swagger_callback(state, boost::bind(on_deleted_swagger, thiz, _1));
-  gap_deleted_favorite_callback(state, boost::bind(on_deleted_favorite, thiz, _1));
-  gap_user_status_callback(state, boost::bind(on_user_status, thiz, _1, _2));
-  gap_avatar_available_callback(state, boost::bind(on_avatar_available, thiz, _1));
-  gap_connection_callback(state, boost::bind(on_connection, thiz, _1, _2, _3));
-  gap_peer_transaction_callback(state, boost::bind(on_peer_transaction, thiz, _1));
-  gap_link_callback(state, boost::bind(on_link, thiz, _1));
+
 #ifdef INFINIT_ANDROID
   std::string log_file = persistent_config_dir_str + "/state.log";
   std::string log_level =
@@ -591,8 +576,25 @@ extern "C" jlong Java_io_infinit_State_gapInitialize(JNIEnv* env,
   std::unique_ptr<elle::log::Logger> logger
     = elle::make_unique<AndroidLogger>(log_level, *output);
   elle::log::logger(std::move(logger));
-  ELLE_LOG("gapInitialize finished: %s", state);
+  ELLE_LOG("gapInitialize");
 #endif
+
+  gap_State* state = gap_new(production,
+    to_string(env, download_dir), persistent_config_dir_str,
+    to_string(env, non_persistent_config_dir),
+    enable_mirroring,
+    max_mirroring_size);
+  global_cstate_instance = state;
+  //using namespace std::placeholders;
+  gap_critical_callback(state, boost::bind(on_critical, thiz));
+  gap_update_user_callback(state, boost::bind(on_update_user, thiz, _1));
+  gap_deleted_swagger_callback(state, boost::bind(on_deleted_swagger, thiz, _1));
+  gap_deleted_favorite_callback(state, boost::bind(on_deleted_favorite, thiz, _1));
+  gap_user_status_callback(state, boost::bind(on_user_status, thiz, _1, _2));
+  gap_avatar_available_callback(state, boost::bind(on_avatar_available, thiz, _1));
+  gap_connection_callback(state, boost::bind(on_connection, thiz, _1, _2, _3));
+  gap_peer_transaction_callback(state, boost::bind(on_peer_transaction, thiz, _1));
+  gap_link_callback(state, boost::bind(on_link, thiz, _1));
   return (jlong)state;
 }
 
@@ -616,6 +618,7 @@ extern "C" jlong Java_io_infinit_State_gapLogin(
     device_model_opt = to_string(env, device_model);
   if (device_name)
     device_name_opt = to_string(env, device_name);
+  ELLE_LOG("Invoking login(cc=%s, dev=%s)", country_code_opt, device_name_opt);
   gap_Status s = gap_login((gap_State*)handle, to_string(env, mail),
     to_string(env, hash_password), token_opt, country_code_opt,
     device_model_opt, device_name_opt);
