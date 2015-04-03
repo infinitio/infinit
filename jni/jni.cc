@@ -618,7 +618,8 @@ extern "C" jlong Java_io_infinit_State_gapLogin(
     device_model_opt = to_string(env, device_model);
   if (device_name)
     device_name_opt = to_string(env, device_name);
-  ELLE_LOG("Invoking login(cc=%s, dev=%s)", country_code_opt, device_name_opt);
+  ELLE_LOG("Invoking login(cc=%s, dev=%s)", country_code_opt? *country_code_opt:"none",
+           device_model_opt?*device_model_opt : "none");
   gap_Status s = gap_login((gap_State*)handle, to_string(env, mail),
     to_string(env, hash_password), token_opt, country_code_opt,
     device_model_opt, device_name_opt);
