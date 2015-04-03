@@ -151,11 +151,10 @@ namespace surface
       ++_attempt;
       ELLE_TRACE_SCOPE("%s: connect to peer", *this);
       std::vector<std::unique_ptr<Round>> rounds;
-      rounds.emplace_back(new AddressRound("local", this->peer_local_endpoints()));
       auto all_endpoints = this->peer_local_endpoints();
       for (auto const& ep: this->peer_public_endpoints())
         all_endpoints.push_back(ep);
-      rounds.emplace_back(new AddressRound("upnp", all_endpoints));
+      rounds.emplace_back(new AddressRound("direct", all_endpoints));
       rounds.emplace_back(new FallbackRound("fallback",
                                             this->_owner.state().meta(),
                                             this->_owner.data()->id));
