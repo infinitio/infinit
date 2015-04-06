@@ -19,15 +19,16 @@ namespace infinit
     {
       Accepter::Accepter(Apertus& apertus,
                          std::unique_ptr<reactor::network::Socket>&& client,
-                         reactor::Duration timeout):
-        _apertus(apertus),
-        _client(std::move(client)),
-        _accepter(reactor::Thread::make_tracked(
+                         reactor::Duration timeout)
+        : _apertus(apertus)
+        , _client(std::move(client))
+        , _accepter(reactor::Thread::make_tracked(
           *reactor::Scheduler::scheduler(),
           elle::sprintf("accept-%s", this),
           [this] { this->_handle(); }
-          )),
-        _timeout(elle::sprintf("timeout-%s", this),
+          ))
+        , _timeout(
+          elle::sprintf("%s: timeout", *this),
           timeout,
           [this]
           {
@@ -50,12 +51,9 @@ namespace infinit
       void
       Accepter::_handle()
       {
-        /* Warning, 'this' survives termination of _handle() in one case.
-        */
         ELLE_TRACE_SCOPE("%s: start handling client", *this);
-
         ELLE_ASSERT(this->_client != nullptr);
-
+        auto self = this->_apertus._take_from_accepters(this);
         try
         {
           // Retrieve version
@@ -98,7 +96,6 @@ namespace infinit
           if (peer_iterator == this->_apertus._clients.end())
           {
             ELLE_TRACE("%s: first user for TID %s", *this, tid);
-            auto self = this->_apertus._take_from_accepters(this);
             this->_apertus._clients[tid] = std::move(self);
           }
           // Second client, establishing connection.
@@ -110,11 +107,11 @@ namespace infinit
             auto peer_acceptor = std::move(peer_iterator->second);
             this->_apertus._clients.erase(peer_iterator);
             auto peer_socket = std::move(peer_acceptor->_client);
-            ELLE_DEBUG("%s: send sync bit to %s", *this, *this->_client)
-              if (this->_sync_bit)
+            if (this->_sync_bit)
+              ELLE_DEBUG("%s: send sync bit to %s", *this, *this->_client)
                 this->_client->write("\x42");
-            ELLE_DEBUG("%s: send sync bit to %s", *this, *peer_socket)
-              if (peer_acceptor->_sync_bit)
+            if (peer_acceptor->_sync_bit)
+              ELLE_DEBUG("%s: send sync bit to %s", *this, *peer_socket)
                 peer_socket->write("\x42");
             // Stop timers.
             peer_acceptor->_timeout.terminate_now();
