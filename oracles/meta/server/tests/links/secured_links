@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+
+import datetime
+from time import sleep
+
+from utils import Meta, User, HTTPException
+from bson.objectid import ObjectId
+import infinit.oracles.meta.server.transaction_status as transaction_status
+
+with Meta() as meta:
+  jean = User(meta, 'jeantest@infinit.io')
+  jean.login()
+
+  # Create a link.
+  file_list = [
+    ['file1', 42],
+    ['file2', 43],
+    ['file3', 44],
+  ]
+  res = jean.post('link',
+    {'files': file_list, 'name': 'some files.zip', 'message': 'osef', 'password': 'foobar'})
+
+  link = res['transaction']
+  print(link)
+  def except_unauthorized(call):
+    try:
+      call()
+      assert False
+    except HTTPException as e:
+      assert e.status == 401
+
+  # Get as an non logged in user.
+  except_unauthorized(lambda: meta.get('link/%s' % link['hash']))
+  except_unauthorized(lambda: jean.get('link/%s' % link['hash']))
+  except_unauthorized(lambda: meta.get('link/%s' % link['hash'],
+                                       {'password': 'wrong password'}))
+  meta.get('link/%s' % link['hash'], {'password': 'foobar'})
+  jean.get('link/%s' % link['hash'], {'password': 'foobar'})

@@ -11,6 +11,9 @@ SESSION_COOKIE_NAME = 'SESSIONID'
 SESSION_TOKEN_NAME = 'token'
 SESSION_HEADER_NAME = 'Authorization'
 
+# Link.
+LINK_SALT='1nf1n17_L1nk_S4l7'
+
 # Name of the mongo collection.
 COLLECTION_NAME = os.environ.get("META_COLLECTION_NAME", 'meta')
 MONGO_HOST = 'localhost'

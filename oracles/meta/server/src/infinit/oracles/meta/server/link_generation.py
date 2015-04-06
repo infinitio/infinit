@@ -22,6 +22,18 @@ encoded_hash_length = 7
 link_lifetime_days = 1 # Days that each S3 request link is valid.
 link_update_window_hours = 2 # Minimum number of hours an S3 link will be valid.
 
+def link_password_hash(password):
+  """
+  Hash a given password.
+
+  password -- The password to hash.
+  Returns the sha256 hash of the password seasoned with conf.LINK_SALT.
+  """
+  import hashlib
+  seasoned = password + conf.LINK_SALT
+  seasoned = seasoned.encode('utf-8')
+  return hashlib.sha256(seasoned).hexdigest()
+
 class Mixin:
 
   def _basex_encode(self, hex_num, alphabet = default_alphabet):
@@ -161,12 +173,14 @@ class Mixin:
 
   @api('/link', method = 'POST')
   @require_logged_in
-  def link_generate_api(self, files, name, message):
+  def link_generate_api(self, files, name, message, password = None):
     return self.link_generate(files, name, message,
                               user = self.user,
-                              device = self.current_device)
+                              device = self.current_device,
+                              password = password)
 
-  def link_generate(self, files, name, message, user, device, link_id = None):
+  def link_generate(self, files, name, message, user, device, link_id = None,
+                    password = None):
     """
     Generate a link from a list of files and a message.
 
@@ -206,7 +220,8 @@ class Mixin:
         'sender_id': user['_id'],
         'status': transaction_status.CREATED, # Use same enum as transactions.
       }
-
+      if password is not None:
+        link['password'] = link_password_hash(password)
       if link_id is not None:
         self.database.links.update(
             {'_id': link_id},
@@ -301,7 +316,10 @@ class Mixin:
                   id: bson.ObjectId,
                   progress: float,
                   status: int):
-    return self.link_update(id, progress, status, self.user)
+    return self.link_update(id = id,
+                            progress = progress,
+                            status = status,
+                            user = self.user)
 
   def link_update(self,
                   id,
@@ -325,6 +343,9 @@ class Mixin:
         })
       if link['sender_id'] != user['_id']:
         self.forbidden()
+      update = {
+        'mtime': self.now,
+      }
       if progress < 0.0 or progress > 1.0:
         self.bad_request('invalid progress')
       if status not in transaction_status.statuses.values():
@@ -332,20 +353,20 @@ class Mixin:
       if status is link['status']:
         return self.success()
       elif link['status'] in transaction_status.final and \
-        status is not transaction_status.DELETED:
-          self.forbidden('cannot change status from %s to %s' %
-                         (link['status'], status))
+           status is not transaction_status.DELETED:
+        self.forbidden('cannot change status from %s to %s' %
+                       (link['status'], status))
       if status in transaction_status.final:
         self.__complete_transaction_pending_stats(user, link)
+      update.update({
+        'progress': progress,
+        'status': status,
+      })
+
       link = self.database.links.find_and_modify(
         {'_id': id},
         {
-          '$set':
-          {
-            'mtime': self.now,
-            'progress': progress,
-            'status': status,
-          }
+          '$set': update
         },
         new = True,
       )
@@ -400,7 +421,7 @@ class Mixin:
     return ret_link
 
   @api('/link/<hash>')
-  def link_by_hash(self, hash, no_count: bool = False):
+  def link_by_hash(self, hash, no_count: bool = False, password = None):
     """
     Find and return the link related to the given hash for a web client.
     """
@@ -413,6 +434,17 @@ class Mixin:
       elif (link['expiry_time'] is not None and
             self.now > link['expiry_time']):
               self.not_found('link expired')
+      elif link.get('password') is not None:
+        if password is None:
+          self.unauthorized(
+            {
+              'reason': 'This link is password protected',
+            })
+        elif link_password_hash(password) != link['password']:
+          self.unauthorized(
+            {
+              'reason': 'Invalid password'
+            })
       time_now = self.now
       set_dict = dict()
       set_dict['last_accessed'] = time_now
