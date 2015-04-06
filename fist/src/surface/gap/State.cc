@@ -1121,6 +1121,7 @@ namespace surface
     void
     State::on_reconnection_failed()
     {
+      ELLE_TRACE_SCOPE("%s: reconnection failed, refetching trophonius", *this);
       try
       {
         auto tropho = this->_meta.trophonius();
