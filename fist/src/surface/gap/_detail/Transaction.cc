@@ -354,7 +354,6 @@ namespace surface
     void
     State::_transactions_clear()
     {
-      ELLE_TRACE_SCOPE("%s: clear transactions", *this);
       // We assume that Transaction destructor doesn't throw.
       this->_transactions.clear();
     }

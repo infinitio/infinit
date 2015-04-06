@@ -883,8 +883,6 @@ namespace surface
 
           ELLE_DEBUG("clear identity (%s)", this->_identity.get())
             this->_identity.reset();
-
-          ELLE_TRACE("everything has been cleaned");
         });
 
       /// First step must be to disconnect from trophonius.
