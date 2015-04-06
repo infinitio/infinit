@@ -67,13 +67,12 @@ int main(int argc, char** argv)
   {
     auto options = parse_options(argc, argv);
 
-    if (!options.count("meta"))
-      throw std::runtime_error("meta argument is mandatory");
 
     std::string meta_protocol = "http";
     std::string meta_host = "";
     int meta_port = 80;
 
+    if (options.count("meta"))
     {
       std::string meta = options["meta"].as<std::string>();
       std::vector<std::string> result;
@@ -93,9 +92,6 @@ int main(int argc, char** argv)
       {
         meta_host = meta;
       }
-
-      if (meta_host.empty())
-        throw std::runtime_error("meta host is empty");
     }
 
     int port_ssl = 0;

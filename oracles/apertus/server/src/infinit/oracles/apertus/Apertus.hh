@@ -76,6 +76,7 @@ namespace infinit
 
       private:
         typedef std::unique_ptr<Accepter> AccepterPtr;
+        ELLE_ATTRIBUTE(bool, meta_enabled);
         ELLE_ATTRIBUTE(infinit::oracles::meta::Admin, meta);
         ELLE_ATTRIBUTE(boost::uuids::uuid, uuid);
         typedef std::unordered_map<Accepter*, AccepterPtr> Accepters;
