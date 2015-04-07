@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import Meta, User
+from utils import *
 import bson
 from infinit.oracles.notification import notifications
 
@@ -62,43 +62,27 @@ with Meta() as meta:
   alice_locals = {'ip': '127.0.0.1', 'port': 123}
   bob_locals = {'ip': '127.0.0.1', 'port': 234}
 
-  alice.post('transaction/connect_device',
-             {
-               '_id': transaction_id,
-               'device_id': str(alice.device_id),
-               'locals': [alice_locals],
-               'externals': [{'ip': '127.0.2.1', 'port': 123}, {'ip': '22.23.24.25', 'port': 123}],
-             })
+  endpoints = alice.put(
+    'transaction/%s/endpoints' % transaction_id,
+    {
+      'device': str(alice.device_id),
+      'locals': [alice_locals],
+      'externals': [{'ip': '127.0.2.1', 'port': 123}, {'ip': '22.23.24.25', 'port': 123}],
+    })
+  assertEq(len(endpoints), 1)
 
-  endpoints = alice.post('transaction/%s/endpoints' % transaction_id,
-                         {
-                           'device_id': str(bob.device_id),
-                           'self_device_id': str(alice.device_id),
-                         })
-  assert endpoints['error_code'] == -20003 #error.DEVICE_NOT_FOUND
 
-  bob.post('transaction/connect_device',
-           {
-             '_id': transaction_id,
-             'device_id': str(bob.device_id),
-             'locals': [bob_locals],
-             'externals': [{'ip': '127.2.0.1', 'port': 1233}, {'ip': '22.23.24.25', 'port': 1233}],
-           })
-
-  endpoints = alice.post('transaction/%s/endpoints' % transaction_id,
-                         {
-                           'device_id': str(bob.device_id),
-                           'self_device_id': str(alice.device_id),
-                         })
-  assert endpoints['locals'] == ["%s:%s" % (bob_locals['ip'], bob_locals['port'])]
-
-  endpoints = bob.post('transaction/%s/endpoints' % transaction_id,
-                         {
-                           'device_id': str(alice.device_id),
-                           'self_device_id': str(bob.device_id),
-                         })
-
-  assert endpoints['locals'] == ["%s:%s" % (alice_locals['ip'], alice_locals['port'])]
+  endpoints = bob.put(
+    'transaction/%s/endpoints' % transaction_id,
+    {
+      'device': str(bob.device_id),
+      'locals': [bob_locals],
+      'externals': [{'ip': '127.2.0.1', 'port': 1233}, {'ip': '22.23.24.25', 'port': 1233}],
+    })
+  assertEq(len(endpoints), 2)
+  print(endpoints)
+  assertEq(endpoints['%s-%s' % (alice.id, alice.device_id)]['locals'], [{'ip': alice_locals['ip'], 'port': alice_locals['port']}])
+  assertEq(endpoints['%s-%s' % (bob.id, bob.device_id)]['locals'], [{'ip': bob_locals['ip'], 'port': bob_locals['port']}])
 
   assert meta.notifier.invoked_sender == 1
   assert meta.notifier.invoked_recipient == 1

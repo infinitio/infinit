@@ -1066,7 +1066,7 @@ class Mixin:
         new = True,
       )
     self.__notify_reachability(transaction)
-    return self.success()
+    return transaction['nodes']
 
   def __notify_reachability(self, transaction):
     with elle.log.trace("notify reachability for transaction %s" % transaction['_id']):
@@ -1098,114 +1098,6 @@ class Mixin:
         notify(transaction, 'recipient', 'sender')
       else:
         elle.log.trace("only one node connected: %s" % transaction['nodes'])
-
-  @api('/transaction/connect_device', method = "POST")
-  @require_logged_in
-  def connect_device(self,
-                     _id: bson.ObjectId,
-                     device_id: uuid.UUID, # Can be determined by session.
-                     locals = [],
-                     externals = []):
-    """
-    Connect the device to a transaction (setting ip and port).
-    _id -- the id of the transaction.
-    device_id -- the id of the device to link with.
-    locals -- a set of local ip address and port.
-    externals -- a set of externals ip address and port.
-    """
-    # XXX: We should check the state of the transaction.
-
-    #regexp.Validator(regexp.ID, error.TRANSACTION_ID_NOT_VALID)
-    #regexp.Validator(regexp.DeviceID, error.DEVICE_ID_NOT_VALID)
-    user = self.user
-    assert isinstance(_id, bson.ObjectId)
-    assert isinstance(device_id, uuid.UUID)
-
-    transaction = self.transaction(_id, owner_id = user['_id'])
-    device = self.device(id = str(device_id),
-                         owner =  user['_id'])
-    if str(device_id) not in [transaction['sender_device_id'],
-                              transaction['recipient_device_id']]:
-      return self.fail(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
-
-    node = dict()
-
-    if locals is not None:
-      # Generate a list of dictionary ip:port.
-      # We can not take the local_addresses content directly:
-      # it's not checked before this point. Therefor, it's insecure.
-      node['locals'] = [
-        {"ip" : v["ip"], "port" : v["port"]}
-        for v in locals if v["ip"] != "0.0.0.0"
-        ]
-    else:
-      node['locals'] = []
-
-    if externals is not None:
-      node['externals'] = [
-        {"ip" : v["ip"], "port" : v["port"]}
-        for v in externals if v["ip"] != "0.0.0.0"
-        ]
-    else:
-      node['externals'] = []
-
-    transaction = self.update_node(transaction_id = transaction['_id'],
-                                   user_id = user['_id'],
-                                   device_id = device_id,
-                                   node = node)
-
-    elle.log.trace("device %s connected to transaction %s as %s" % (device_id, _id, node))
-    self.__notify_reachability(transaction)
-    return self.success()
-
-  @api('/transaction/<transaction_id>/endpoints', method = "POST")
-  @require_logged_in
-  def endpoints(self,
-                transaction_id: bson.ObjectId,
-                device_id: uuid.UUID, # Can be determined by session.
-                self_device_id: uuid.UUID # Can be determined by session.
-                ):
-    """
-    Return ip port for a selected node.
-    device_id -- the id of the device to get ips.
-    self_device_id -- the id of your device.
-    """
-    user = self.user
-
-    transaction = self.transaction(transaction_id, owner_id = user['_id'])
-    is_sender = self.is_sender(transaction, user['_id'], str(self.current_device['id']))
-
-    # XXX: Ugly.
-    if is_sender:
-      self_key = self.__user_key(transaction['sender_id'], self_device_id)
-      peer_key = self.__user_key(transaction['recipient_id'], device_id)
-    else:
-      self_key = self.__user_key(transaction['recipient_id'], self_device_id)
-      peer_key = self.__user_key(transaction['sender_id'], device_id)
-
-    if (not self_key in transaction['nodes'].keys()) or (not transaction['nodes'][self_key]):
-      return self.fail(error.DEVICE_NOT_FOUND, "you are not not connected to this transaction")
-
-    if (not peer_key in transaction['nodes'].keys()) or (not transaction['nodes'][peer_key]):
-      return self.fail(error.DEVICE_NOT_FOUND, "This user is not connected to this transaction")
-
-    res = dict();
-
-    addrs = {'locals': list(), 'externals': list()}
-    peer_node = transaction['nodes'][peer_key]
-
-    for addr_kind in ['locals', 'externals']:
-      for a in peer_node[addr_kind]:
-        if a and a["ip"] and a["port"]:
-          addrs[addr_kind].append(
-            (a["ip"], str(a["port"])))
-
-    res['externals'] = ["{}:{}".format(*a) for a in addrs['externals']]
-    res['locals'] =  ["{}:{}".format(*a) for a in addrs['locals']]
-    # XXX: Remove when apertus is ready.
-    res['fallback'] = ["88.190.48.55:9899"]
-
-    return self.success(res)
 
   def _upload_file_name(self, transaction):
     """
