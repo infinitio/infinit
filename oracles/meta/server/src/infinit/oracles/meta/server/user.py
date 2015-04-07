@@ -2152,16 +2152,18 @@ class Mixin:
                if logged in source is the user)
     """
     assert isinstance(user_id, bson.ObjectId)
-    # FIXME: surely that user is already fetched
+    # FIXME: surely that user is already fetched. It's probably self
+    # anyway ...
     user = self._user_by_id(user_id, fields = ['swaggers'])
     swaggers = set(map(bson.ObjectId, user['swaggers'].keys()))
     d = {"user_id" : user_id}
     d.update(data)
-    self.notifier.notify_some(
-      notification_id,
-      recipient_ids = swaggers,
-      message = d,
-    )
+    if swaggers:
+      self.notifier.notify_some(
+        notification_id,
+        recipient_ids = swaggers,
+        message = d,
+      )
 
   ## ---------- ##
   ## Favortites ##
@@ -2355,8 +2357,12 @@ class Mixin:
     user_id -- the device owner id
     status -- the new device status
     """
-    with elle.log.trace("%s: %sconnected on device %s" %
-                        (user_id, not status and "dis" or "", device_id)):
+    fmt = {
+      'action': 'connected' if status else 'disconnected',
+      'device': 'device %s' % device_id,
+      'user': 'user %s' % user_id,
+    }
+    with elle.log.trace('%(user)s %(action)s on %(device)s' % fmt):
       assert isinstance(user_id, bson.ObjectId)
       assert isinstance(device_id, uuid.UUID)
       update_action = status and '$addToSet' or '$pull'
@@ -2383,50 +2389,59 @@ class Mixin:
           'devices.$.trophonius': None,
           'devices.$.online': False,
         }
-      res = self.database.users.update(
+      previous = self.database.users.find_and_modify(
         match,
         action,
-        multi = False,
+        fields = {'devices.$': True},
+        new = False,
       )
-      # XXX:
-      # This should not be in user.py, but it's the only place
-      # we know the device has been disconnected.
-      if status is False:
-        self.database.users.update({
-          '_id': user_id,
-          'devices.online': {'$ne': True},
-        },
-        {
-          '$set': {'online': False,}
-        })
-        with elle.log.trace("%s: disconnect nodes" % user_id):
-          transactions = self.find_nodes(user_id = user_id,
-                                         device_id = device_id)
-          with elle.log.debug("%s: concerned transactions:" % user_id):
-            for transaction in transactions:
-              elle.log.debug("%s" % transaction)
-              self.update_node(transaction_id = transaction['_id'],
-                               user_id = user_id,
-                               device_id = device_id,
-                               node = None)
-              self.notifier.notify_some(
-                notifier.PEER_CONNECTION_UPDATE,
-                recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
-                message = {
-                  "transaction_id": str(transaction['_id']),
-                  "devices": [transaction['sender_device_id'], transaction['recipient_device_id']],
-                  "status": False
-                }
-              )
-      self._notify_swaggers(
-        notifier.USER_STATUS,
-        {
-          'status': self._is_connected(user_id),
-          'device_id': str(device_id),
-          'device_status': status,
-        },
-        user_id = user_id,
-      )
+      if status:
+        status_changed = \
+          previous['devices'][0].get('trophonius', None) == None
+      else:
+        status_changed = previous is not None
+      if status_changed:
+        if not status:
+          self.database.users.update(
+            {
+              '_id': user_id,
+              'devices.online': {'$ne': True},
+            },
+            {
+              '$set': {'online': False,}
+            },
+          )
+          with elle.log.trace("%s: disconnect nodes" % user_id):
+            transactions = self.find_nodes(user_id = user_id,
+                                           device_id = device_id)
+            with elle.log.debug("%s: concerned transactions:" % user_id):
+              for transaction in transactions:
+                elle.log.debug("%s" % transaction)
+                self.update_node(transaction_id = transaction['_id'],
+                                 user_id = user_id,
+                                 device_id = device_id,
+                                 node = None)
+                self.notifier.notify_some(
+                  notifier.PEER_CONNECTION_UPDATE,
+                  recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
+                  message = {
+                    "transaction_id": str(transaction['_id']),
+                    "devices": [transaction['sender_device_id'], transaction['recipient_device_id']],
+                    "status": False
+                  }
+                )
+        self._notify_swaggers(
+          notifier.USER_STATUS,
+          {
+            'status': self._is_connected(user_id),
+            'device_id': str(device_id),
+            'device_status': status,
+          },
+          user_id = user_id,
+        )
+      else:
+        elle.log.trace('drop duplicate trophonius status change')
+
 
   # Email subscription.
   # XXX: Make it a decorator.
