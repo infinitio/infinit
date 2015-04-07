@@ -2411,25 +2411,7 @@ class Mixin:
               '$set': {'online': False,}
             },
           )
-          with elle.log.trace("%s: disconnect nodes" % user_id):
-            transactions = self.find_nodes(user_id = user_id,
-                                           device_id = device_id)
-            with elle.log.debug("%s: concerned transactions:" % user_id):
-              for transaction in transactions:
-                elle.log.debug("%s" % transaction)
-                self.update_node(transaction_id = transaction['_id'],
-                                 user_id = user_id,
-                                 device_id = device_id,
-                                 node = None)
-                self.notifier.notify_some(
-                  notifier.PEER_CONNECTION_UPDATE,
-                  recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
-                  message = {
-                    "transaction_id": str(transaction['_id']),
-                    "devices": [transaction['sender_device_id'], transaction['recipient_device_id']],
-                    "status": False
-                  }
-                )
+          self.__disconnect_endpoint(user_id, device_id)
         self._notify_swaggers(
           notifier.USER_STATUS,
           {
@@ -2440,8 +2422,49 @@ class Mixin:
           user_id = user_id,
         )
       else:
-        elle.log.trace('drop duplicate trophonius status change')
+        if status:
+          with elle.log.trace('user reconnected'):
+            self.__disconnect_endpoint(user_id, device_id)
+            # Simulate a disconnection and a reconnection
+            connected = self._is_connected(user_id)
+            for status in [False, True]:
+              self._notify_swaggers(
+                notifier.USER_STATUS,
+                {
+                  'status': connected,
+                  'device_id': str(device_id),
+                  'device_status': status,
+                },
+                user_id = user_id,
+              )
+        else:
+          elle.log.trace('drop obsolete trophonius disconnection')
 
+  def __disconnect_endpoint(self, user, device):
+    with elle.log.trace('disconnect user %s device %s '
+                        'from transactions' % (user, device)):
+      transactions = self.find_nodes(user_id = user,
+                                     device_id = device)
+      for transaction in transactions:
+        tid = transaction['_id']
+        elle.log.debug('disconnect from transaction %s' % tid)
+        self.update_node(transaction_id = tid,
+                         user_id = user,
+                         device_id = device,
+                         node = None)
+        # sender = transaction['sender_id']
+        # recipient = transaction['recipient_id']
+        # peer =
+        self.notifier.notify_some(
+          notifier.PEER_CONNECTION_UPDATE,
+          recipient_ids = {transaction['sender_id'],
+                           transaction['recipient_id']},
+          message = {
+            "transaction_id": str(transaction['_id']),
+            "devices": [transaction['sender_device_id'], transaction['recipient_device_id']],
+            "status": False
+          }
+        )
 
   # Email subscription.
   # XXX: Make it a decorator.
