@@ -18,7 +18,9 @@
 #include <reactor/signal.hh>
 #include <reactor/thread.hh>
 
+#define private public
 #include <infinit/oracles/apertus/Apertus.hh>
+#undef private
 
 ELLE_LOG_COMPONENT("infinit.oracles.apertus.server.test")
 
@@ -702,6 +704,36 @@ ELLE_TEST_SCHEDULED(concurrency_bug)
     socket3.write(header);
 }
 
+ELLE_TEST_SCHEDULED(first_client_left)
+{
+  infinit::oracles::apertus::Apertus
+    apertus("", "", 0, "localhost", 0, 0, 1_sec);
+  elle::ConstWeakBuffer header("\x00\x01-", 3);
+  reactor::network::FingerprintedSocket socket1(
+    "127.0.0.1",
+    boost::lexical_cast<std::string>(apertus.port_ssl()),
+    fingerprint);
+  socket1.shutdown_asynchronous(true);
+  ELLE_LOG("%s: send header 1", socket1)
+    socket1.write(header);
+  while (apertus._clients.empty())
+    reactor::sleep(10_ms);
+  auto const& accepters = apertus._clients;
+  BOOST_CHECK_EQUAL(accepters.size(), 1u);
+  accepters.begin()->second->_client->close();
+  reactor::network::FingerprintedSocket socket2(
+    "127.0.0.1",
+    boost::lexical_cast<std::string>(apertus.port_ssl()),
+    fingerprint);
+  socket2.shutdown_asynchronous(true);
+  ELLE_LOG("%s: send header 2", socket2)
+    socket2.write(header);
+  // Sync bit.
+  socket2.read(1, 1_sec);
+  // Socket must have been closed.
+  BOOST_CHECK_THROW(socket2.read(1, 1_sec), reactor::network::ConnectionClosed);
+}
+
 ELLE_TEST_SUITE()
 {
   std::string s = elle::os::getenv("RANDOM_SEED", "");
@@ -721,4 +753,5 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(many_clients), 0, timeout * 4);
   suite.add(BOOST_TEST_CASE(sync_bit), 0, timeout);
   suite.add(BOOST_TEST_CASE(concurrency_bug), 0, timeout);
+  suite.add(BOOST_TEST_CASE(first_client_left), 0, timeout);
 }
