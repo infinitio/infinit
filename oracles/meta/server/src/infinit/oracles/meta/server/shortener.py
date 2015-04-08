@@ -57,6 +57,9 @@ class ShortSwitch:
     parts = (major, minor, micro, '?')
     self.user_agent = "Python/%d.%d.%d shortswitch_api/%s" % parts
 
+  def __str__(self):
+    return "ShortSwitch"
+
   def shorten(self, uri):
     """
     Create a shorten url for a given long url
