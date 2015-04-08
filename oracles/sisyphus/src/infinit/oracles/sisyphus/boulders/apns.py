@@ -1,5 +1,6 @@
 import apns
 import elle
+import datetime
 
 from .. import Boulder
 
@@ -33,13 +34,14 @@ class APNSUnregister(Boulder):
         }
       )
       if self.sisyphus.metrics is not None:
-        res = self.sisyphus.metrics.send(
+        res = self.sisyphus.metrics.send([
           {
             'event': 'push token invalidated',
-            'timestamp': time.time(),
+            'timestamp': datetime.datetime.utcnow(),
             'fail_time': fail_time,
             'user': str(user['_id']),
-          })
+          }
+        ])
 
   def status(self):
     return {}
