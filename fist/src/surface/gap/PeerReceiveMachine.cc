@@ -792,7 +792,6 @@ namespace surface
       catch (...)
       {
         throw;
-        ELLE_ERR("this one: %s", fullpath);
       }
       if (tr.complete())
       {
