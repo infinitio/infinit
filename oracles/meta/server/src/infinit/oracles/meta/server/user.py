@@ -2392,12 +2392,18 @@ class Mixin:
       previous = self.database.users.find_and_modify(
         match,
         action,
-        fields = {'devices.$': True},
+        fields = ['devices.id', 'devices.trophonius'],
         new = False,
       )
       if status:
-        status_changed = \
-          previous['devices'][0].get('trophonius', None) == None
+        try:
+          device = next(d for d in previous['devices']
+                        if d['id'] == str(device_id))
+          status_changed = device.get('trophonius', None) == None
+        except StopIteration:
+          elle.log.warn(
+            'could not find device %s in user' % device_id)
+          status_changed = True
       else:
         status_changed = previous is not None
       if status_changed:
