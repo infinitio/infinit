@@ -7,15 +7,15 @@ import elle.log
 
 from infinit.oracles.transaction import statuses
 
-import sisyphus
-import sisyphus.boulders.drip
+import oracles.sisyphus
+import oracles.sisyphus.boulders.drip
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.boulders.drip'
 
-class DelightSender(sisyphus.boulders.drip.DelightSender):
+class DelightSender(oracles.sisyphus.boulders.drip.DelightSender):
 
   def _pick_template(self, template, users):
-    return sisyphus.boulders.drip.Drip._pick_template(
+    return oracles.sisyphus.boulders.drip.Drip._pick_template(
       self, template, users)
 
 def send(sender, recipient, files = ['foobar']):
@@ -29,8 +29,8 @@ def send(sender, recipient, files = ['foobar']):
 with mongobox.MongoBox() as mongo:
   with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
     emailer = DummyEmailer()
-    sisy = sisyphus.Sisyphus(mongo_port = mongo.port,
-                             emailer = emailer)
+    sisy = oracles.sisyphus.Sisyphus(mongo_port = mongo.port,
+                                     emailer = emailer)
     gestapo(sisy._Sisyphus__mongo)
     reminder = DelightSender(sisy)
     ghost_email = 'ghost@infinit.io'

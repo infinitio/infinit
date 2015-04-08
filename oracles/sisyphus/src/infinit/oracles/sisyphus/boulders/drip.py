@@ -815,6 +815,8 @@ class ActivityReminder(Drip):
         'online': False,
         # With activity
         'transactions.activity_has': True,
+        # From infinit
+        'email': {'$regex': '@infinit.io$'},
       },
       template = False,
       update = {
@@ -868,6 +870,8 @@ class ActivityReminder(Drip):
         {
           '$lt': self.now,
         },
+        # From infinit
+        'email': {'$regex': '@infinit.io$'},
       },
       update = {
         'emailing.activity-reminder.remind-time':

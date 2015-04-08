@@ -8,12 +8,12 @@ import elle.log
 
 from infinit.oracles.transaction import statuses
 
-import sisyphus
-import sisyphus.boulders.drip
+import oracles.sisyphus
+import oracles.sisyphus.boulders.drip
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.boulders.drip'
 
-class ActivityReminder(sisyphus.boulders.drip.ActivityReminder):
+class ActivityReminder(oracles.sisyphus.boulders.drip.ActivityReminder):
 
   def __init__(self, sisyphus):
     super().__init__(sisyphus)
@@ -28,7 +28,7 @@ class ActivityReminder(sisyphus.boulders.drip.ActivityReminder):
     self.__now = value
 
   def _pick_template(self, template, users):
-    return sisyphus.boulders.drip.Drip._pick_template(
+    return oracles.sisyphus.boulders.drip.Drip._pick_template(
       self, template, users)
 
 def check_mail(emails, email, template):
@@ -38,8 +38,8 @@ def check_mail(emails, email, template):
 with mongobox.MongoBox() as mongo:
   with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
     emailer = DummyEmailer()
-    sisy = sisyphus.Sisyphus(mongo_port = mongo.port,
-                             emailer = emailer)
+    sisy = oracles.sisyphus.Sisyphus(mongo_port = mongo.port,
+                                     emailer = emailer)
     # gestapo(sisy.mongo)
     reminder = ActivityReminder(sisy)
 

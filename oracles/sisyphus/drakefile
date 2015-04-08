@@ -67,7 +67,7 @@ def configure(
 
     check = drake.Rule('check')
     pythonpath = \
-      drake.path_build(build_python_path / 'infinit/oracles')
+      drake.path_build(build_python_path / 'infinit')
     for name in (
         'boulders/drip/activity-reminder',
         'boulders/drip/confirm-signup',

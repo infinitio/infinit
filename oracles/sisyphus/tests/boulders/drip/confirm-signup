@@ -9,12 +9,12 @@ import elle.log
 from infinit.oracles.transaction import statuses
 from infinit.oracles.utils import key
 
-import sisyphus
-import sisyphus.boulders.drip
+import oracles.sisyphus
+import oracles.sisyphus.boulders.drip
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.boulders.drip'
 
-class ConfirmSignup(sisyphus.boulders.drip.ConfirmSignup):
+class ConfirmSignup(oracles.sisyphus.boulders.drip.ConfirmSignup):
 
   def __init__(self, sisyphus):
     super().__init__(sisyphus)
@@ -29,7 +29,7 @@ class ConfirmSignup(sisyphus.boulders.drip.ConfirmSignup):
     self.__now = value
 
   def _pick_template(self, template, users):
-    return sisyphus.boulders.drip.Drip._pick_template(
+    return oracles.sisyphus.boulders.drip.Drip._pick_template(
       self, template, users)
 
 
@@ -41,8 +41,8 @@ def check_mail(mails, recipient, template):
 with mongobox.MongoBox() as mongo:
   with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
     emailer = DummyEmailer()
-    sisy = sisyphus.Sisyphus(mongo_port = mongo.port,
-                                 emailer = emailer)
+    sisy = oracles.sisyphus.Sisyphus(mongo_port = mongo.port,
+                                     emailer = emailer)
     gestapo(sisy._Sisyphus__mongo)
     confirm = ConfirmSignup(sisy)
 
