@@ -1107,8 +1107,10 @@ class Mixin:
           'involved': account['_id'],
           'status': {'$nin': transaction_status.final + [transaction_status.CREATED] }
         },
-        fields = self.__transaction_hash_fields
+        fields = self.__transaction_hash_fields(include_id = True)
       ))
+      # Add the key 'id' (== '_id')
+      transactions = [dict(i, id = i['_id']) for i in transactions]
       return {
         'transactions': transactions
       }
