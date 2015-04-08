@@ -67,21 +67,32 @@ class ShortSwitch:
     uri -- The long url to shorten.
     """
     params = dict(longUrl = uri)
-    data = self._call('shorten', params)
-    if data['statusCode'] == 'OK':
-      return data['results'][uri]['shortUrl']
-    raise ShortenerException(uri, data)
-
-  def _call(self, method, params, timeout=5000):
+    try:
+      data = self._call('shorten', params)
+      if data['statusCode'] == 'OK':
+        return data['results'][uri]['shortUrl']
+      raise ShortenerException(uri, data)
+    except (requests.exceptions.HTTPError,
+            requests.exceptions.Timeout,
+            requests.exceptions.ConnectionError,
+            requests.exceptions.URLRequired,
+            requests.exceptions.TooManyRedirects,
+            requests.exceptions.RequestException) as e:
+      raise ShortenerException(
+        uri,
+        {
+          'statusCode': 'ERROR',
+          'errorMessage': str(e)
+        })
+  def _call(self, method, params, timeout = 2.5):
     """
     Perform the http request.
 
     method -- The method (shorten).
     params -- The call parameters.
-    timeout -- The http timeout (default: 5000ms).
+    timeout -- The http timeout (default: 2.5s).
     """
     assert self.api_key is not None
-
     params['format'] = params.get('format', 'json')
     params['apiKey'] = self.api_key
     params = _utf8_params(params)
@@ -94,6 +105,6 @@ class ShortSwitch:
     headers = {
       'User-agent': self.user_agent + ' requests.py'
     }
-    res = requests.get(request, headers = headers)
+    res = requests.get(request, headers = headers, timeout = timeout)
     res.raise_for_status()
     return res.json()

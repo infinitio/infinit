@@ -46,6 +46,7 @@ from . import trophonius
 from . import user
 from . import waterfall
 from . import facebook
+from . import shortener
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.Meta'
 
@@ -178,6 +179,7 @@ class Meta(bottle.Bottle,
     self.daily_summary_hour = int(daily_summary_hour)
     self.email_confirmation_cooldown = email_confirmation_cooldown
     self.shorten_ghost_profile_url = shorten_ghost_profile_url
+    self.shortener = shortener.ShortSwitch()
     if aws_region is None:
       aws_region = cloud_buffer_token.aws_default_region
     self.aws_region = aws_region
@@ -498,7 +500,12 @@ Session: %(session)s
   # Shorten url.
   def shorten(self, url):
     if self.shorten_ghost_profile_url:
-      from .shortener import ShortSwitch
-      b = ShortSwitch()
-      return b.shorten(url)
+      try:
+        return self.shortener.shorten(url)
+      except shortener.ShortenerException as e:
+        self.mailer.send(
+          to = 'infrastructure@infinit.io',
+          fr = 'infrastructure@infinit.io',
+          subject = ('Meta: Unable to shorten using %s' % self.shortener),
+          body = 'Exception: %s' % e)
     return url
