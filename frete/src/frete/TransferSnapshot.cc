@@ -142,7 +142,7 @@ namespace frete
     elle::fprintf(stream, "Snapshot(%s files, %s bytes, %.2f%%)",
                   this->_count,
                   this->_total_size,
-                  this->_progress / (float)this->_total_size);
+                  100 * this->_progress / (float)this->_total_size);
   }
 
   /*---------.
