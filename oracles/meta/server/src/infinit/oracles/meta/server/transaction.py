@@ -282,6 +282,8 @@ class Mixin:
                               files,
                               files_count)
 
+  # FIXME: Nuke this ! Use the user fetching routines from user.py and
+  # don't hardcode the list of fields. Stop ADDING code !
   def __recipient_from_identifier(self,
                                   recipient_identifier,
                                   sender):
@@ -298,6 +300,7 @@ class Mixin:
       'features',
       'ghost_code',
       'shorten_ghost_profile_url',
+      'emailing.send-to-self',
     ]
     # Determine the nature of the recipient identifier.
     recipient_id = None
@@ -576,6 +579,20 @@ class Mixin:
         unaccepted = transaction,
         time = False)
       self._increase_swag(sender['_id'], recipient['_id'])
+      if  recipient_device_id is None and recipient['_id'] == sender['_id']:
+        if 'send-to-self' not in recipient.get('emailing', {}):
+          self.database.users.update(
+            {'_id': recipient['_id']},
+            {'$set': {'emailing.send-to-self.state':  'sent'}},
+          )
+          self.emailer.send_one(
+            'send-self-first',
+            recipient['email'],
+            recipient['fullname'],
+            recipient['email'],
+            recipient['fullname'],
+            self.email_transaction_vars(transaction, recipient),
+          )
       recipient_view = self.__user_view(recipient)
       return self.success({
           'created_transaction_id': transaction_id,
