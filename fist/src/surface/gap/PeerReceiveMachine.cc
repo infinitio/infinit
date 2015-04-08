@@ -401,6 +401,20 @@ namespace surface
            total_bytes_transfered = this->_snapshot->progress() - initial_progress;
         throw;
       }
+      catch (elle::AssertError const& e)
+      {
+        if (this->_snapshot)
+        {
+          ELLE_ERR("snapshot: %s", *this->_snapshot);
+          ELLE_ERR("files: %s", this->_snapshot->files());
+          ELLE_ERR("current file index: %s", this->_fetch_current_file_index);
+        }
+        else
+        {
+          ELLE_ERR("no snapshot");
+        }
+        throw;
+      }
       catch (std::exception const& e)
       {
         // We don't ever retry cloud DL, but the idea is that for
