@@ -379,6 +379,7 @@ class Mixin:
         'features': recipient['features'],
         'sender': str(sender['_id']),
         'timestamp': time.time(),
+        'is_email': is_an_email,
       }
       res = requests.post(
         url,
