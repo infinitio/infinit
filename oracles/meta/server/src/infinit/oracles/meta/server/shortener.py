@@ -84,13 +84,13 @@ class ShortSwitch:
           'statusCode': 'ERROR',
           'errorMessage': str(e)
         })
-  def _call(self, method, params, timeout = 2.5):
+  def _call(self, method, params, timeout = 4.0):
     """
     Perform the http request.
 
     method -- The method (shorten).
     params -- The call parameters.
-    timeout -- The http timeout (default: 2.5s).
+    timeout -- The http timeout (default: 4.0s).
     """
     assert self.api_key is not None
     params['format'] = params.get('format', 'json')
