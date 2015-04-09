@@ -591,7 +591,11 @@ class Mixin:
             recipient['fullname'],
             recipient['email'],
             recipient['fullname'],
-            self.email_transaction_vars(transaction, recipient),
+            {
+              'user': self.email_user_vars(sender),
+              'transaction':
+                self.email_transaction_vars(transaction, recipient),
+            },
           )
       recipient_view = self.__user_view(recipient)
       return self.success({
