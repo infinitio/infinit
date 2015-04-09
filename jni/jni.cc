@@ -628,9 +628,24 @@ extern "C" jlong Java_io_infinit_State_gapLogin(
 
 extern "C" jlong Java_io_infinit_State_gapRegister(
   JNIEnv* env, jobject thiz, jlong handle,
-  jstring fullname, jstring mail, jstring hash_password)
+  jstring fullname, jstring mail, jstring hash_password,
+  jstring device_push_token, jstring country_code,
+  jstring device_model, jstring device_name)
 {
-  gap_Status s = gap_register((gap_State*)handle, to_string(env, fullname), to_string(env, mail), to_string(env, hash_password));
+  boost::optional<std::string> token_opt, country_code_opt, device_model_opt, device_name_opt;
+  if (device_push_token)
+    token_opt = to_string(env, device_push_token);
+  if (country_code)
+    country_code_opt = to_string(env, country_code);
+  if (device_model)
+    device_model_opt = to_string(env, device_model);
+  if (device_name)
+    device_name_opt = to_string(env, device_name);
+
+  gap_Status s = gap_register((gap_State*)handle, to_string(env, fullname),
+                              to_string(env, mail), to_string(env, hash_password),
+                              token_opt, country_code_opt, device_model_opt,
+                              device_name_opt);
   return s;
 }
 
@@ -1070,7 +1085,7 @@ extern "C" jint Java_io_infinit_State_gapSendFiles(
   if (sdevice_id)
     device_id = to_string(env, sdevice_id);
   std::vector<std::string> files = from_array<std::string>(env, jfiles, to_string);
-  
+
   return gap_send_files((gap_State*)handle, id, files, to_string(env, message), device_id);
 }
 
