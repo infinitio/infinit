@@ -393,6 +393,12 @@ namespace infinit
         _handle_errors(reactor::http::Request& request) const;
         boost::random::mt19937 mutable _rng;
 
+        void
+        _log_device(boost::optional<std::string> push_token,
+                    boost::optional<std::string> country,
+                    boost::optional<std::string> model,
+                    boost::optional<std::string> name);
+
       public:
         typedef std::pair<std::string, std::string> EmailPasswordPair;
         typedef std::string FacebookToken;

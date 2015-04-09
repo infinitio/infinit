@@ -458,6 +458,8 @@ namespace infinit
       {
         ELLE_TRACE_SCOPE("%s: login as %s on device %s",
                          *this, email, device_uuid);
+        this->_log_device(device_push_token, country_code,
+                          device_model, device_name);
         elle::SafeFinally set_email([&] { this->_email = email; });
         try
         {
@@ -499,6 +501,8 @@ namespace infinit
       {
         ELLE_TRACE_SCOPE("%s: login using facebook on device %s",
                          *this, device_uuid);
+        this->_log_device(device_push_token, country_code,
+                          device_model, device_name);
         return this->_login(
           [&] (elle::serialization::json::SerializerOut& parameters)
           {
@@ -1647,6 +1651,23 @@ namespace infinit
             elle::sprintf("error %s while posting on %s",
                           response, request.url()));
         }
+      }
+
+      void
+      Client::_log_device(boost::optional<std::string> push_token,
+                          boost::optional<std::string> country,
+                          boost::optional<std::string> model,
+                          boost::optional<std::string> name)
+      {
+        auto opt_to_str = [] (boost::optional<std::string>& opt) -> std::string
+          {
+            if (opt)
+              return opt.get();
+            return "<none>";
+          };
+        ELLE_TRACE("%s: device: country(%s) push_token(%s) model(%s) name(%s)",
+                   *this, opt_to_str(country), opt_to_str(push_token),
+                   opt_to_str(model), opt_to_str(name));
       }
 
       void
