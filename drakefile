@@ -610,6 +610,7 @@ def configure(cxx_toolkit = None,
   install << gap_install
 
   gap_cxx_config = drake.cxx.Config(cxx_config_libs)
+  gap_cxx_config += elle.das.config
   gap_cxx_config.add_local_include_path('fist/src')
   gap_cxx_config.add_local_include_path('metrics/src')
   gap_cxx_config.add_local_include_path('oracles/src')

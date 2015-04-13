@@ -5,6 +5,8 @@
 
 # include <elle/UUID.hh>
 
+# include <das/Variable.hh>
+
 # include <surface/gap/Notification.hh>
 
 namespace surface
@@ -23,8 +25,8 @@ namespace surface
              boost::optional<std::string> os);
       ~Device() noexcept(true);
 
-      std::string id;
-      std::string name;
+      elle::UUID id;
+      das::Variable<std::string> name;
       std::string os;
 
     private:

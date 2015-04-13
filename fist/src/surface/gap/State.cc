@@ -4,6 +4,7 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include <elle/AtomicFile.hh>
+#include <elle/cast.hh>
 #include <elle/format/gzip.hh>
 #include <elle/log.hh>
 #include <elle/log/TextLogger.hh>
@@ -1219,6 +1220,16 @@ namespace surface
         case infinit::oracles::trophonius::NotificationType::invalid_credentials:
           this->_on_invalid_trophonius_credentials();
           break;
+        case infinit::oracles::trophonius::NotificationType::model_update:
+        {
+          auto n =
+            elle::cast<infinit::oracles::trophonius::ModelUpdateNotification>::
+            runtime(notif);
+          ELLE_ASSERT(n.get());
+          elle::serialization::json::SerializerIn input(n->json);
+
+          break;
+        }
         case infinit::oracles::trophonius::NotificationType::none:
         case infinit::oracles::trophonius::NotificationType::network_update:
         case infinit::oracles::trophonius::NotificationType::message:
@@ -1256,10 +1267,11 @@ namespace surface
     /*--------.
     | Devices |
     `--------*/
-    std::vector<State::Device>
+
+    std::vector<Device> const&
     State::devices() const
     {
-      return this->_synchronize_response->devices;
+      return this->_model.devices;
     }
 
     /*--------------.

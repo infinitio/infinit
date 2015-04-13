@@ -189,6 +189,12 @@ namespace infinit
         : Notification(NotificationType::peer_connection_update)
       {}
 
+      ModelUpdateNotification::ModelUpdateNotification(elle::json::Json json)
+        : Notification(NotificationType::model_update)
+        , json(std::move(json))
+      {}
+
+
       static
       std::unique_ptr<Notification>
       notification_from_dict(elle::json::Object const& json)
@@ -250,6 +256,10 @@ namespace infinit
           {
             elle::serialization::json::SerializerIn input(json);
             return elle::make_unique<UserStatusNotification>(input);
+          }
+          case NotificationType::model_update:
+          {
+            return elle::make_unique<ModelUpdateNotification>(json);
           }
           default:
             ; // Nothing.
