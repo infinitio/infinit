@@ -1183,7 +1183,15 @@ namespace infinit
       {
         ELLE_TRACE("%s: create empty link", *this);
         std::string const url = "/link_empty";
-        auto request = this->_request(url, Method::POST);
+        auto request = this->_request(url, Method::POST, false);
+        request.finalize();
+        if (request.status() == reactor::http::StatusCode::Forbidden)
+        {
+          ELLE_ERR("Link creation failure: quota reached.");
+          throw Exception(Error::quota_reached, request.response().string());
+        }
+        else
+          this->_handle_errors(request);
         SerializerIn input(url, request);
         std::string created_link_id;
         input.serialize("created_link_id", created_link_id);
