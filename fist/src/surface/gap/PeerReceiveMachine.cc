@@ -892,7 +892,7 @@ namespace surface
     {
       while (true)
       {
-        if (_fetch_current_file_index == -1)
+        if (_fetch_current_file_index == -1u)
         {
           ELLE_DEBUG("Thread %s has nothing to do, exiting", id);
           break; // some other thread figured out this was over
