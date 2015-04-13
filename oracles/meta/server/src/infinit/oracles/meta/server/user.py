@@ -119,6 +119,7 @@ class Mixin:
         'features',
         'os',
         'plan',
+        'quota',
       ]
     return res
 
@@ -138,7 +139,6 @@ class Mixin:
       'quota',
       'consumed_ghost_codes',
       'stripe_id',
-      'plan',
     ]
     return res
 
