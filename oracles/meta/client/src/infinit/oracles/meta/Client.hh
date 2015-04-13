@@ -31,6 +31,7 @@
 
 # include <infinit/oracles/LinkTransaction.hh>
 # include <infinit/oracles/PeerTransaction.hh>
+# include <infinit/oracles/meta/Device.hh>
 # include <infinit/oracles/meta/Error.hh>
 
 namespace infinit
@@ -164,24 +165,6 @@ namespace infinit
 
         std::string
         identifier() const;
-      };
-
-      struct Device
-        : public elle::Printable
-      {
-      public:
-        Device() = default;
-        Device(elle::serialization::SerializerIn& s);
-        elle::UUID id;
-        std::string name;
-        boost::optional<std::string> os;
-        boost::optional<std::string> passport;
-        boost::optional<boost::posix_time::ptime> last_sync;
-        void
-        serialize(elle::serialization::Serializer& s);
-        virtual
-        void
-        print(std::ostream& stream) const override;
       };
 
       struct LoginResponse
