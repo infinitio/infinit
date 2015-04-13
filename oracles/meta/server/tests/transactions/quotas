@@ -7,7 +7,7 @@ import infinit.oracles.meta.server.transaction_status as transaction_status
 
 import bson
 
-with Meta() as meta:
+with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   alice = User(meta, "alice@infinit.io")
   alice.login()
   # Send to ghost size limit
@@ -42,14 +42,13 @@ with Meta() as meta:
   assert me['features'].get('turbo') is None
   assert me['quota']['total_link_size'] == 1e9
   print(me['id'])
-  meta.meta.change_plan(bson.ObjectId(me['id']), 'premium',
-                        datetime.datetime.now() + datetime.timedelta(0, 0, 10))
+  meta.meta.change_plan(bson.ObjectId(me['id']), 'premium')
   me = bob.me
   assert me['plan'] == 'premium'
   assert me['features'].get('nag') is None
   assert me['features'].get('turbo')
   assert me['quota']['total_link_size'] == 5e10
-  meta.meta.batch_check_plan_validity()
+  bob.put('users/%s' % bob.id, {'plan': 'basic'})
   me = bob.me
   assert me['plan'] == 'basic'
   assert me['features']['nag']

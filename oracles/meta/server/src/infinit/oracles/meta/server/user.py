@@ -746,7 +746,6 @@ class Mixin:
         'creation_time': self.now,
         'plan': 'basic',
         'quota': quota,
-        'plan_expiration_date': None,
       }
       if email_is_already_confirmed:
         user_content.update({'email_confirmed': True})
@@ -1025,7 +1024,6 @@ class Mixin:
       'ghost_code': ghost_code,
       'ghost_code_expiration': self.now + datetime.timedelta(days=14),
       'quota': quota,
-      'plan_expiration_date': None,
       'plan': 'basic',
     }
     request.update(extra_fields)
@@ -2775,12 +2773,12 @@ class Mixin:
     res.update({'devices': [self.device_view(device)]})
     return self.success(res)
 
-  def change_plan(self, uid, new_plan, expires_at = None):
+  def change_plan(self, uid, new_plan):
     return self._change_plan(self._user_by_id(uid, self.__user_self_fields),
-                             new_plan, expires_at)
+                             new_plan)
 
-  def _change_plan(self, user, new_plan_name, expires_at):
-    current_plan = self.database.plans.find_one({'name': user['plan']})
+  def _change_plan(self, user, new_plan_name):
+    current_plan = self.database.plans.find_one({'name': user.get('plan', 'basic')})
     new_plan = self.database.plans.find_one({'name': new_plan_name})
     fset = dict()
     funset = dict()
@@ -2799,23 +2797,10 @@ class Mixin:
     fset.update(qset)
     funset.update(qunset)
     fset.update({'plan': new_plan_name})
-    fset.update({'plan_expiration_date': expires_at})
     update = {'$set': fset}
     if len(funset):
       update.update({'$unset': funset})
     self.database.users.update({'_id': user['_id']}, update)
-
-  def batch_check_plan_validity(self):
-    res = self.database.users.find(
-      {
-        'plan': {'$ne': 'basic'},
-        'plan_expiration_date': {'$lt': datetime.datetime.now()}
-      },
-      fields = ['plan']
-    )
-    for u in res:
-      #FIXME send a mail or something
-      self._change_plan(u, 'basic', None)
 
   def process_referrals(self, new_user, referrals):
     """ Called once per new_user upon first login.
@@ -2827,7 +2812,7 @@ class Mixin:
     self.database.users.update(
       {
         '_id': {'$in': referrals},
-        'plan': 'basic',
+        '$or': [{'plan': 'basic'}, {'plan': {'$exists': False}}],
         'quota.total_link_size': {'$lt': 1e10}
       },
       {
@@ -2838,7 +2823,7 @@ class Mixin:
     self.database.users.update(
       {
         '_id': new_user['_id'],
-        'plan': 'basic',
+        '$or': [{'plan': 'basic'}, {'plan': {'$exists': False}}],
         'quota.total_link_size': {'$lt': 1e10}
       },
       {
@@ -2869,9 +2854,11 @@ class Mixin:
             sub = customer.subscriptions.data[0]
             sub.plan = plan
             sub.save()
-          self.database.users.update(
-            {'_id': user['_id']},
-            {'$set': {'plan': plan}})
+          if user.get('plan', 'basic') != plan:
+            self.database.users.update(
+              {'_id': user['_id']},
+              {'$set': {'plan': plan}})
+            self._change_plan(user, plan)
       except stripe.error.CardError as e:
         elle.log.warn('Stripe error: customer {0} card'
                       'has been declined'.format(user['_id'],
