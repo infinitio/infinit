@@ -15,6 +15,7 @@
 # include <surface/gap/Notification.hh>
 # include <surface/gap/enums.hh>
 # include <surface/gap/fwd.hh>
+# include <papier/fwd.hh>
 
 namespace surface
 {
@@ -134,31 +135,36 @@ namespace surface
       Transaction(State& state,
                   uint32_t id,
                   std::shared_ptr<Data> data,
+                  papier::Authority const& authority,
                   bool history = false,
                   bool login = false);
       /// Construct from snapshot.
       Transaction(State& state,
                   uint32_t id,
                   Snapshot snapshot,
-                  boost::filesystem::path snapshot_path);
+                  boost::filesystem::path snapshot_path,
+                  papier::Authority const& authority);
       /// Construct as new for file sending.
       Transaction(surface::gap::State& state,
                   uint32_t id,
                   std::string const& peer_id,
                   std::vector<std::string> files,
-                  std::string const& message);
+                  std::string const& message,
+                  papier::Authority const& authority);
       /// Construct as new for file sending.
       Transaction(surface::gap::State& state,
                   uint32_t id,
                   std::string const& peer_id,
                   elle::UUID const& peer_device_id,
                   std::vector<std::string> files,
-                  std::string const& message);
+                  std::string const& message,
+                  papier::Authority const& authority);
       /// Construct as new for link generation.
       Transaction(surface::gap::State& state,
                   uint32_t id,
                   std::vector<std::string> files,
-                  std::string const& message);
+                  std::string const& message,
+                  papier::Authority const& authority);
       /// Move.
       Transaction(Transaction&&) = default;
       /// Destruct.
@@ -226,6 +232,7 @@ namespace surface
       ELLE_ATTRIBUTE_R(uint32_t, sender);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
       ELLE_ATTRIBUTE_R(bool, canceled_by_user);
+      ELLE_ATTRIBUTE_R(papier::Authority const&, authority);
     protected:
       std::unique_ptr<TransactionMachine> _machine;
 

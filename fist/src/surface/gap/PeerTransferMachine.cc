@@ -27,7 +27,7 @@ namespace surface
     PeerTransferMachine::PeerTransferMachine(PeerMachine& owner)
       : Transferer(owner)
       , _owner(owner)
-      , _station(papier::authority(),
+      , _station(this->_owner.authority(),
                  this->_owner.state().passport(),
                  elle::sprintf("Station(id=%s)", this->_owner.id()))
       , _upnp(reactor::network::UPNP::make())

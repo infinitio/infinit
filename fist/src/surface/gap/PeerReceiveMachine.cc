@@ -105,7 +105,7 @@ namespace surface
       std::shared_ptr<Data> data)
       : TransactionMachine(transaction, id, data)
       , ReceiveMachine(transaction, id, data)
-      , PeerMachine(transaction, id, std::move(data))
+      , PeerMachine(transaction, id, std::move(data), transaction.authority())
       , _frete_snapshot_path(this->transaction().snapshots_directory()
                              / "frete.snapshot")
       , _snapshot(nullptr)

@@ -18,6 +18,8 @@
 #include <infinit/metrics/reporters/InfinitReporter.hh>
 #include <infinit/metrics/Reporter.hh>
 
+#include <papier/Authority.hh>
+
 #include <common/common.hh>
 #include <version.hh>
 
@@ -113,7 +115,8 @@ namespace common
       boost::optional<std::string> download_dir,
       boost::optional<std::string> persistent_config_dir,
       boost::optional<std::string> non_persistent_config_dir)
-        : _max_mirror_size(max_mirror_size)
+        : _max_mirror_size(max_mirror_size),
+        _authority(papier::authority())
     {
       // File mirroring.
       bool mirror_enable =
@@ -223,7 +226,8 @@ namespace common
       std::vector<unsigned char> trophonius_fingerprint,
       boost::optional<boost::uuids::uuid const&> device_id,
       boost::optional<std::string> download_dir,
-      boost::optional<std::string> home_dir)
+      boost::optional<std::string> home_dir,
+      boost::optional<papier::Authority const&> authority)
         : _enable_mirroring(true)
         , _max_mirror_size(0)
         , _meta_protocol(meta_protocol)
@@ -236,6 +240,7 @@ namespace common
         , _persistent_config_dir()
         , _non_persistent_config_dir()
         , _download_dir()
+        , _authority{authority ? *authority : papier::authority()}
     {
       // Download directory.
       _set_path_with_optional(

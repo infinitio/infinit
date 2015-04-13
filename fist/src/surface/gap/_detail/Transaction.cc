@@ -58,7 +58,8 @@ namespace surface
       auto id = generate_id();
       this->_transactions.emplace(
         id,
-        elle::make_unique<Transaction>(*this, id, std::move(files), message));
+        elle::make_unique<Transaction>(*this, id, std::move(files), message,
+                                       this->_authority));
       return id;
     }
 
@@ -67,7 +68,7 @@ namespace surface
                                    std::vector<std::string> files,
                                    std::string const& message)
     {
-      return this->_transaction_peer_create(peer_id, files, message);
+      return this->_transaction_peer_create(peer_id, files, message, this->_authority);
     }
 
     Transaction&
@@ -77,7 +78,7 @@ namespace surface
                                    std::string const& message)
     {
       return this->_transaction_peer_create(
-        peer_id, peer_device_id, files, message);
+        peer_id, peer_device_id, files, message, this->_authority);
     }
 
     template <typename ... T>
@@ -235,7 +236,7 @@ namespace surface
             this->_transactions.emplace(
               _id,
               elle::make_unique<Transaction>(
-                *this, _id, std::move(snapshot), snapshot_path));
+                *this, _id, std::move(snapshot), snapshot_path, this->_authority));
           }
           catch (elle::Exception const& ) // FIXME: should be elle::Error
           {
@@ -299,6 +300,7 @@ namespace surface
               elle::make_unique<Transaction>(
                 *this, _id,
                 std::make_shared<infinit::oracles::PeerTransaction>(transaction),
+                this->_authority,
                 history,
                 login));
         }
@@ -345,6 +347,7 @@ namespace surface
               elle::make_unique<Transaction>(
                 *this, _id,
                 std::make_shared<infinit::oracles::LinkTransaction>(transaction),
+                this->_authority,
                 history /* history */,
                 login));
           }
@@ -390,7 +393,8 @@ namespace surface
         try
         {
           auto id = generate_id();
-          auto transaction = elle::make_unique<Transaction>(*this, id, notif);
+          auto transaction = elle::make_unique<Transaction>(*this, id, notif,
+                                                            this->_authority);
           // Notify GAP a transaction was created.
           if (auto peer_data =
             std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(notif))

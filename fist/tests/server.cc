@@ -11,7 +11,6 @@
 #include <elle/serialization/json.hh>
 
 #include <infinit/oracles/meta/Client.hh>
-#include <papier/Authority.hh>
 #include <version.hh>
 
 #include <fist/tests/_detail/Authority.hh>
@@ -1078,12 +1077,10 @@ namespace tests
   void
   Server::_maybe_sleep()
   {
-    ELLE_WARN("NO SLEEP FOR YOU");
   }
 
   void SleepyServer::_maybe_sleep()
   {
-    ELLE_WARN("IMMA SLEEP");
     reactor::sleep(boost::posix_time::minutes(2));
   }
 }
@@ -1099,7 +1096,7 @@ generate_identity(cryptography::KeyPair const& keypair,
     throw std::runtime_error("unable to create the identity");
   if (identity->Encrypt(password) == elle::Status::Error)
     throw std::runtime_error("unable to encrypt the identity");
-  if (identity->Seal(tests::authority) == elle::Status::Error)
+  if (identity->Seal(tests::authoritylol) == elle::Status::Error)
     throw std::runtime_error("unable to seal the identity");
   return identity;
 }

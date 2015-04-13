@@ -1,6 +1,8 @@
 #include <elle/log.hh>
 #include <elle/os/file.hh>
 
+#include <papier/Authority.hh>
+
 #include <surface/gap/onboarding/Transaction.hh>
 #include <surface/gap/onboarding/ReceiveMachine.hh>
 
@@ -65,7 +67,8 @@ namespace surface
         : surface::gap::Transaction(state,
                                     id,
                                     transaction_data(
-                                      state.me(), peer, file_path), true)
+                                      state.me(), peer, file_path),
+                                      state.authority(), true)
         , _data(std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
                   this->data()))
       {
@@ -74,6 +77,7 @@ namespace surface
           id,
           this->_data,
           file_path,
+          state.authority(),
           transfer_duration));
 
         ELLE_DEBUG_SCOPE("%s: creation", *this);

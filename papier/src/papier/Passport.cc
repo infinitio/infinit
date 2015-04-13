@@ -1,3 +1,4 @@
+#include <elle/log.hh>
 #include <elle/serialize/TupleSerializer.hxx>
 
 #include <cryptography/PrivateKey.hh>
@@ -6,6 +7,8 @@
 #include <papier/Authority.hh>
 #include <boost/functional/hash.hpp>
 #include <papier/Passport.hh>
+
+ELLE_LOG_COMPONENT("infinit.papier.Passport")
 
 namespace papier
 {
@@ -24,6 +27,7 @@ namespace papier
     , _owner_K{owner_K}
     , _signature{authority.k().sign(elle::serialize::make_tuple(id, owner_K))}
   {
+    ELLE_WARN("PASSPORT AUTH IN CTOR: %s", authority);
     ELLE_ASSERT(id.size() > 0);
     ELLE_ASSERT(name.size() > 0);
     ELLE_ASSERT(this->validate(authority));
@@ -36,6 +40,7 @@ namespace papier
   bool
   Passport::validate(papier::Authority const& authority) const
   {
+    ELLE_WARN("PASSPORT AUTH IN VALID: %s", authority);
     return (authority.K().verify(this->_signature,
                                  elle::serialize::make_tuple(_id, _owner_K)));
   }

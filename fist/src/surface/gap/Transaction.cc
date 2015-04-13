@@ -14,6 +14,7 @@
 #include <surface/gap/PeerSendMachine.hh>
 #include <surface/gap/ReceiveMachine.hh>
 #include <surface/gap/TransactionMachine.hh>
+#include <papier/Authority.hh>
 
 ELLE_LOG_COMPONENT("surface.gap.Transaction");
 
@@ -124,8 +125,9 @@ namespace surface
                              uint32_t id,
                              std::string const& peer_id,
                              std::vector<std::string> files,
-                             std::string const& message)
-      : Transaction(state, id, peer_id, elle::UUID(), std::move(files), message)
+                             std::string const& message,
+                             papier::Authority const& authority)
+      : Transaction(state, id, peer_id, elle::UUID(), std::move(files), message, std::move(authority))
     {}
 
     // Construct to send files to a specific device.
@@ -134,7 +136,8 @@ namespace surface
                              std::string const& peer_id,
                              elle::UUID const& peer_device_id,
                              std::vector<std::string> files,
-                             std::string const& message)
+                             std::string const& message,
+                             papier::Authority const& authority)
       // FIXME: ensure better uniqueness.
       : _snapshots_directory(
         boost::filesystem::path(
@@ -150,6 +153,7 @@ namespace surface
       , _sender(true)
       , _data(nullptr)
       , _canceled_by_user(false)
+      , _authority(authority)
       , _machine(nullptr)
       , _over(false)
     {
@@ -162,7 +166,8 @@ namespace surface
       this->_data = data;
       this->_machine.reset(
         new PeerSendMachine(*this, this->_id, peer_id,
-                            this->_files.get(), message, data));
+                            this->_files.get(), message, data,
+                            this->_authority));
       ELLE_TRACE_SCOPE(\
         "%s: construct to send %s files to %s%s",
         *this,
@@ -177,7 +182,8 @@ namespace surface
     Transaction::Transaction(State& state,
                              uint32_t id,
                              std::vector<std::string> files,
-                             std::string const& message)
+                             std::string const& message,
+                             papier::Authority const& authority)
       // FIXME: ensure better uniqueness.
       : _snapshots_directory(
         boost::filesystem::path(
@@ -193,6 +199,7 @@ namespace surface
       , _sender(true)
       , _data(nullptr)
       , _canceled_by_user(false)
+      , _authority(authority)
       , _machine(nullptr)
       , _over(false)
     {
@@ -246,6 +253,7 @@ namespace surface
     Transaction::Transaction(State& state,
                              uint32_t id,
                              std::shared_ptr<Data> data,
+                             papier::Authority const& authority,
                              bool history,
                              bool login)
       : _snapshots_directory(
@@ -263,6 +271,7 @@ namespace surface
                 state.device().id == data->sender_device_id)
       , _data(data)
       , _canceled_by_user(false)
+      , _authority(authority)
       , _machine()
       , _over(history)
     {
@@ -326,13 +335,14 @@ namespace surface
             this->failure_reason(
               "sender device missing peer transaction snapshot");
             this->_machine.reset(
-              new PeerSendMachine(*this, this->_id, peer_data, run_to_fail));
+              new PeerSendMachine(*this, this->_id, peer_data,
+                                  this->_authority, run_to_fail));
           }
           else
           { // The sender is an other device
             ELLE_DEBUG("%s: start send machine", *this);
             this->_machine.reset(
-              new PeerSendMachine(*this, this->_id, peer_data));
+              new PeerSendMachine(*this, this->_id, peer_data, this->_authority));
           }
         }
         else if (me == recipient)
@@ -391,7 +401,8 @@ namespace surface
     Transaction::Transaction(State& state,
                              uint32_t id,
                              Snapshot snapshot,
-                             boost::filesystem::path snapshots_directory)
+                             boost::filesystem::path snapshots_directory,
+                             papier::Authority const& authority)
       : _snapshots_directory(std::move(snapshots_directory))
       , _snapshot_path(this->_snapshots_directory / "transaction.snapshot")
       , _state(state)
@@ -404,6 +415,7 @@ namespace surface
       , _sender(snapshot.sender())
       , _data(snapshot.data())
       , _canceled_by_user(false)
+      , _authority(authority)
       , _machine()
       , _over(false)
     {
@@ -439,7 +451,8 @@ namespace surface
           ELLE_TRACE("%s: create peer send machine (this device)", *this)
             this->_machine.reset(
               new PeerSendMachine(*this, this->_id, this->_files.get(),
-                                  this->_message.get(), peer_data));
+                                  this->_message.get(), peer_data,
+                                  this->_authority));
         }
         // Only create a send machine if the transaction is not to self.
         else if (peer_data->sender_id == this->state().me().id &&
@@ -447,7 +460,8 @@ namespace surface
         {
           ELLE_TRACE("%s: create peer send machine (another device)", *this)
             this->_machine.reset(
-              new PeerSendMachine(*this, this->_id, peer_data));
+              new PeerSendMachine(*this, this->_id, peer_data,
+                                  this->_authority));
         }
         // Otherwise we're the recipient.
         else

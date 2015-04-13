@@ -2,6 +2,7 @@
 # define SURFACE_GAP_ONBOARDING_RECEIVEMACHINE_HH
 
 # include <aws/Credentials.hh>
+# include <papier/Authority.hh>
 
 # include <elle/attribute.hh>
 
@@ -27,6 +28,7 @@ namespace surface
                        uint32_t id,
                        std::shared_ptr<Data> data,
                        std::string const& file_path,
+                       papier::Authority const& authority,
                        reactor::Duration duration = 5_sec);
         ~ReceiveMachine();
         virtual

@@ -1,6 +1,7 @@
 #include <elle/log.hh>
 
 #include <frete/RPCFrete.hh>
+#include <papier/Authority.hh>
 
 #include <surface/gap/onboarding/ReceiveMachine.hh>
 #include <surface/gap/onboarding/Transaction.hh>
@@ -19,10 +20,11 @@ namespace surface
                                      uint32_t id,
                                      std::shared_ptr<Data> data,
                                      std::string const& file_path,
+                                     papier::Authority const& authority,
                                      reactor::Duration duration)
         : surface::gap::TransactionMachine(transaction, id, data)
         , surface::gap::ReceiveMachine(transaction, id, data)
-        , surface::gap::PeerMachine(transaction, id, std::move(data))
+        , surface::gap::PeerMachine(transaction, id, std::move(data), authority)
         , _file_path(file_path)
       {
         ELLE_TRACE_SCOPE("%s: construction", *this);
