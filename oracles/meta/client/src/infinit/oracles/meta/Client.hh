@@ -259,21 +259,6 @@ namespace infinit
         serialize(elle::serialization::Serializer& s);
       };
 
-      class UpdatePeerTransactionResponse
-      {
-      public:
-        UpdatePeerTransactionResponse() = default;
-        ELLE_ATTRIBUTE_R(boost::optional<aws::Credentials>, aws_credentials);
-        // The ghost invitation code.
-        ELLE_ATTRIBUTE_R(boost::optional<std::string>, ghost_code);
-        // The ghost profile url.
-        ELLE_ATTRIBUTE_R(boost::optional<std::string>, ghost_profile_url);
-
-        UpdatePeerTransactionResponse(elle::serialization::SerializerIn& s);
-        void
-        serialize(elle::serialization::Serializer& s);
-      };
-
       class CloudCredentials: public elle::serialization::VirtuallySerializable
       {
       public:
@@ -294,14 +279,32 @@ namespace infinit
         ELLE_ATTRIBUTE_R(boost::posix_time::ptime, expiry);
       };
 
-      class CloudCredentialsAws: public CloudCredentials, public aws::Credentials
+      class CloudCredentialsAws
+        : public CloudCredentials
+        , public aws::Credentials
       {
       public:
+        using aws::Credentials::Credentials;
         CloudCredentialsAws(elle::serialization::SerializerIn& s);
         void
         serialize(elle::serialization::Serializer& s);
         CloudCredentials*
         clone() const override;
+      };
+
+      class UpdatePeerTransactionResponse
+      {
+      public:
+        UpdatePeerTransactionResponse() = default;
+        ELLE_ATTRIBUTE_R(std::unique_ptr<CloudCredentials>, cloud_credentials);
+        // The ghost invitation code.
+        ELLE_ATTRIBUTE_R(boost::optional<std::string>, ghost_code);
+        // The ghost profile url.
+        ELLE_ATTRIBUTE_R(boost::optional<std::string>, ghost_profile_url);
+
+        UpdatePeerTransactionResponse(elle::serialization::SerializerIn& s);
+        void
+        serialize(elle::serialization::Serializer& s);
       };
 
       class CreateLinkTransactionResponse
@@ -390,6 +393,12 @@ namespace infinit
         _handle_errors(reactor::http::Request& request) const;
         boost::random::mt19937 mutable _rng;
 
+        void
+        _log_device(boost::optional<std::string> push_token,
+                    boost::optional<std::string> country,
+                    boost::optional<std::string> model,
+                    boost::optional<std::string> name);
+
       public:
         typedef std::pair<std::string, std::string> EmailPasswordPair;
         typedef std::string FacebookToken;
@@ -400,7 +409,9 @@ namespace infinit
         _login(ParametersUpdater parameters_updater,
                boost::uuids::uuid const& device_uuid,
                boost::optional<std::string> device_push_token = {},
-               boost::optional<std::string> country_code = {});
+               boost::optional<std::string> country_code = {},
+               boost::optional<std::string> device_model = boost::none,
+               boost::optional<std::string> device_name = boost::none);
       public:
         LoginResponse
         login(
@@ -408,7 +419,9 @@ namespace infinit
           std::string const& password,
           boost::uuids::uuid const& device_uuid,
           boost::optional<std::string> device_push_token = {},
-          boost::optional<std::string> country_code = {});
+          boost::optional<std::string> country_code = {},
+          boost::optional<std::string> device_model = boost::none,
+          boost::optional<std::string> device_name = boost::none);
 
         LoginResponse
         facebook_connect(
@@ -416,7 +429,9 @@ namespace infinit
           boost::uuids::uuid const& device_uuid,
           boost::optional<std::string> preferred_email = {},
           boost::optional<std::string> device_push_token = {},
-          boost::optional<std::string> country_code = {});
+          boost::optional<std::string> country_code = {},
+          boost::optional<std::string> device_model = boost::none,
+          boost::optional<std::string> device_name = boost::none);
 
         bool
         facebook_id_already_registered(std::string const& facebook_id) const;

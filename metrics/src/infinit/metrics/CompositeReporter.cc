@@ -320,6 +320,14 @@ namespace infinit
     }
 
     void
+    CompositeReporter::_user_used_ghost_code(bool success,
+                                             std::string const& fail_reason)
+    {
+      this->_dispatch(std::bind(&Reporter::_user_used_ghost_code,
+                      std::placeholders::_1, success, fail_reason));
+    }
+
+    void
     CompositeReporter::_ui(std::string const& event,
                            std::string const& from,
                            Additional const& additional)

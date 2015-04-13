@@ -71,7 +71,7 @@ namespace surface
           "reactor.fsm.*:TRACE,"
           "reactor.network.upnp:DEBUG,"
           "station.Station:DEBUG,"
-          "surface.gap.*:TRACE,"
+          "*surface.gap.*:TRACE,"
           "surface.gap.*Machine:DEBUG,"
           "*trophonius*:DEBUG";
         bool display_type = true;
@@ -153,7 +153,11 @@ namespace surface
       ELLE_LOG("%s: device uuid: %s", *this, this->device_uuid());
       // Fill configuration.
       auto& config = this->_configuration;
-      config.s3.multipart_upload.parallelism = 1;
+#if defined(INFINIT_ANDROID) || defined(INFINIT_IOS)
+      config.s3.multipart_upload.parallelism = 2;
+#else
+      config.s3.multipart_upload.parallelism = 8;
+#endif
       config.s3.multipart_upload.chunk_size = 0;
       config.enable_file_mirroring =
         this->local_configuration().enable_mirroring();
@@ -161,24 +165,27 @@ namespace surface
       config.max_compress_size = 0;
       config.max_cloud_buffer_size = 0;
       config.disable_upnp = false;
-      std::ifstream fconfig(this->local_configuration().configuration_path());
-      if (fconfig.good())
+      ELLE_TRACE("read local config")
       {
-        try
+        std::ifstream fconfig(this->local_configuration().configuration_path());
+        if (fconfig.good())
         {
+          try
+          {
             elle::json::Object obj = boost::any_cast<elle::json::Object>(
               elle::json::read(fconfig));
-            _apply_configuration(obj);
-        }
-        catch(std::exception const& e)
-        {
-          ELLE_ERR("%s: while reading configuration: %s", *this, e.what());
-          std::stringstream str;
-          {
-            elle::serialization::json::SerializerOut output(str, false);
-            this->_configuration.serialize(output);
+            this->_apply_configuration(obj);
           }
-          ELLE_TRACE("%s: current config: %s", *this, str.str());
+          catch(std::exception const& e)
+          {
+            ELLE_ERR("%s: while reading configuration: %s", *this, e.what());
+            std::stringstream str;
+            {
+              elle::serialization::json::SerializerOut output(str, false);
+              this->_configuration.serialize(output);
+            }
+            ELLE_TRACE("%s: current config: %s", *this, str.str());
+          }
         }
       }
       this->_check_first_launch();
@@ -336,22 +343,31 @@ namespace surface
     void
     State::_check_first_launch()
     {
+      ELLE_TRACE_SCOPE("%s: check if first launch", *this);
       namespace filesystem = boost::filesystem;
-      if (filesystem::exists(this->local_configuration().first_launch_path()))
-        return;
-
-      filesystem::path first_launch(this->local_configuration().first_launch_path());
-
-      if (!filesystem::exists(first_launch.parent_path()))
+      filesystem::path first_launch_witness(
+        this->local_configuration().first_launch_path());
+      if (filesystem::exists(first_launch_witness))
       {
-        filesystem::create_directories(first_launch.parent_path());
+        ELLE_DEBUG("first launch witness found");
+        return;
       }
-      elle::AtomicFile f(this->local_configuration().first_launch_path());
-      f.write() << [] (elle::AtomicFile::Write& write)
+      ELLE_TRACE("no first launch witness at %s", first_launch_witness);
+      if (!filesystem::exists(first_launch_witness.parent_path()))
+      {
+        ELLE_TRACE("create directories %s", first_launch_witness.parent_path())
+          filesystem::create_directories(first_launch_witness.parent_path());
+      }
+      ELLE_LOG("write first launch witness at %s", first_launch_witness);
+      {
+        elle::AtomicFile f(first_launch_witness);
+        f.write() << [] (elle::AtomicFile::Write& write)
         {
           write.stream() << "0\n";
         };
-      this->_metrics_reporter->user_first_launch();
+      }
+      ELLE_TRACE("report first launch metric")
+        this->_metrics_reporter->user_first_launch();
     }
 
     /*----------------------.
@@ -363,14 +379,18 @@ namespace surface
       std::string const& email,
       std::string const& password,
       boost::optional<std::string> device_push_token,
-      boost::optional<std::string> country_code)
+      boost::optional<std::string> country_code,
+      boost::optional<std::string> device_model,
+      boost::optional<std::string> device_name)
     {
       this->login(email,
                   password,
                   std::unique_ptr<infinit::oracles::trophonius::Client>(),
                   reactor::DurationOpt(),
                   device_push_token,
-                  country_code);
+                  country_code,
+                  device_model,
+                  device_name);
     }
 
     void
@@ -379,14 +399,18 @@ namespace surface
       std::string const& password,
       reactor::DurationOpt timeout,
       boost::optional<std::string> device_push_token,
-      boost::optional<std::string> country_code)
+      boost::optional<std::string> country_code,
+      boost::optional<std::string> device_model,
+      boost::optional<std::string> device_name)
     {
       this->login(
         email, password,
         std::unique_ptr<infinit::oracles::trophonius::Client>(),
         timeout,
         device_push_token,
-        country_code);
+        country_code,
+        device_model,
+        device_name);
     }
 
     void
@@ -448,14 +472,17 @@ namespace surface
       TrophoniusClientPtr trophonius,
       reactor::DurationOpt timeout,
       boost::optional<std::string> device_push_token,
-      boost::optional<std::string> country_code)
+      boost::optional<std::string> country_code,
+      boost::optional<std::string> device_model,
+      boost::optional<std::string> device_name)
     {
       auto tropho = elle::utility::move_on_copy(std::move(trophonius));
       return this->_login_with_timeout(
         [&]
         {
           this->_login(
-            email, password, tropho, device_push_token, country_code);
+            email, password, tropho, device_push_token, country_code,
+            device_model, device_name);
         }, timeout);
     }
 
@@ -467,7 +494,9 @@ namespace surface
       std::string const& password,
       elle::utility::Move<TrophoniusClientPtr> trophonius,
       boost::optional<std::string> device_push_token,
-      boost::optional<std::string> country_code)
+      boost::optional<std::string> country_code,
+      boost::optional<std::string> device_model,
+      boost::optional<std::string> device_name)
     {
       ELLE_TRACE_SCOPE("%s: attempt to login as %s", *this, email);
       this->_email = email;
@@ -480,13 +509,15 @@ namespace surface
                      ::tolower);
       auto hashed_password = infinit::oracles::meta::old_password_hash(
         lower_email, password);
-      this->_login(
+      bool res = this->_login(
         [&] {
           return this->_meta.login(lower_email,
                                    password,
                                    this->_device_uuid,
                                    device_push_token,
-                                   country_code);
+                                   country_code,
+                                   device_model,
+                                   device_name);
         },
         trophonius,
         [=] { return hashed_password; },
@@ -494,10 +525,11 @@ namespace surface
           infinit::metrics::Reporter::metric_sender_id(lower_email);
           this->_metrics_reporter->user_login(success, failure_reason);
         });
+      if (res)
         this->_metrics_reporter->user_login(true, "");
     }
 
-    void
+    bool
     State::_login(
       std::function<infinit::oracles::meta::LoginResponse ()> login_function,
       elle::utility::Move<std::unique_ptr<TrophoniusClient>> trophonius,
@@ -530,7 +562,8 @@ namespace surface
           auto login_response = login_function();
           ELLE_TRACE("%s: logged in to meta", *this);
           this->_me.reset(new Self(login_response.self));
-          this->user_sync(this->me());
+          // Don't send notification for me user here.
+          this->user_sync(this->me(), false);
           this->_configuration.features = login_response.features;
           metrics::Reporter::metric_features(this->_configuration.features);
           // Trophonius.
@@ -540,15 +573,18 @@ namespace surface
           }
           else if (!this->_trophonius)
           {
-            this->_trophonius.reset(new infinit::oracles::trophonius::Client(
-            [this] (infinit::oracles::trophonius::ConnectionState const& status)
-            {
-              this->on_connection_changed(status);
-            },
-            std::bind(&State::on_reconnection_failed, this),
-            this->_trophonius_fingerprint,
-            this->_reconnection_cooldown
-            ));
+            this->_trophonius.reset(
+              new infinit::oracles::trophonius::Client(
+                [this]
+                (infinit::oracles::trophonius::ConnectionState const& status)
+                {
+                  this->on_connection_changed(status);
+                },
+                std::bind(&State::on_reconnection_failed, this),
+                this->_trophonius_fingerprint,
+                this->_reconnection_cooldown
+                )
+              );
           }
           std::string trophonius_host = login_response.trophonius.host;
           int trophonius_port = login_response.trophonius.port_ssl;
@@ -696,7 +732,7 @@ namespace surface
         };
         ELLE_TRACE("%s: logged in", *this);
         this->_logged_in.open();
-        return;
+        return true;
       }
       #define RETHROW(ExceptionType)                               \
       catch(ExceptionType const& e)                                \
@@ -706,7 +742,7 @@ namespace surface
         this->_logged_out.open();                                  \
         if (_login_watcher_thread)                                 \
           _login_watcher_thread->raise(std::make_exception_ptr(e));\
-        return;                                                    \
+        return false;                                                    \
       }
       RETHROW(state::CredentialError)
       RETHROW(state::UnconfirmedEmailError)
@@ -848,8 +884,6 @@ namespace surface
 
           ELLE_DEBUG("clear identity (%s)", this->_identity.get())
             this->_identity.reset();
-
-          ELLE_TRACE("everything has been cleaned");
         });
 
       /// First step must be to disconnect from trophonius.
@@ -868,7 +902,9 @@ namespace surface
                      std::string const& email,
                      std::string const& password,
                      boost::optional<std::string> device_push_token,
-                     boost::optional<std::string> country_code)
+                     boost::optional<std::string> country_code,
+                     boost::optional<std::string> device_model,
+                     boost::optional<std::string> device_name)
     {
       // !WARNING! Do not log the password.
       ELLE_TRACE_SCOPE("%s: register as %s: email %s",
@@ -908,7 +944,8 @@ namespace surface
         throw;
       }
       this->_metrics_reporter->user_register(true, "");
-      this->login(lower_email, password, device_push_token, country_code);
+      this->login(lower_email, password, device_push_token, country_code,
+                  device_model, device_name);
     }
 
     void
@@ -918,6 +955,8 @@ namespace surface
       boost::optional<std::string> preferred_email,
       boost::optional<std::string> device_push_token,
       boost::optional<std::string> country_code,
+      boost::optional<std::string> device_model,
+      boost::optional<std::string> device_name,
       reactor::DurationOpt timeout)
     {
       this->_login_with_timeout(
@@ -928,7 +967,9 @@ namespace surface
                                               this->device_uuid(),
                                               preferred_email,
                                               device_push_token,
-                                              country_code);
+                                              country_code,
+                                              device_model,
+                                              device_name);
           },
           tropho,
           // Password.
@@ -947,11 +988,14 @@ namespace surface
     State::facebook_connect(std::string const& token,
                             boost::optional<std::string> preferred_email,
                             boost::optional<std::string> device_push_token,
-                            boost::optional<std::string> country_code)
+                            boost::optional<std::string> country_code,
+                            boost::optional<std::string> device_model,
+                            boost::optional<std::string> device_name)
     {
       return this->facebook_connect(
         token, TrophoniusClientPtr{},
-        preferred_email, device_push_token, country_code);
+        preferred_email, device_push_token, country_code,
+        device_model, device_name);
     }
 
     Self const&
@@ -1078,6 +1122,7 @@ namespace surface
     void
     State::on_reconnection_failed()
     {
+      ELLE_TRACE_SCOPE("%s: reconnection failed, refetching trophonius", *this);
       try
       {
         auto tropho = this->_meta.trophonius();

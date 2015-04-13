@@ -9,6 +9,7 @@
 
 #include <reactor/exception.hh>
 #include <reactor/http/Request.hh>
+#include <reactor/http/url.hh>
 #include <reactor/http/exceptions.hh>
 #include <reactor/network/exception.hh>
 
@@ -144,6 +145,7 @@ namespace surface
             this->transaction_id(),
             onboarding);
       }
+      ELLE_TRACE("%s: accepting to %s", *this, relative_output_dir);
       ReceiveMachine::accept(relative_output_dir);
     }
 
@@ -207,6 +209,7 @@ namespace surface
         size_t end = url.find_first_of('?');
         size_t begin = url.substr(0, end).find_last_of('/');
         std::string filename = url.substr(begin+1, end - begin - 1);
+        filename = reactor::http::url_decode(filename);
         ELLE_TRACE("%s: extracted file name of '%s' from '%s'", *this, filename, url);
         std::string output_dir = transaction().state().output_dir();
         if (!this->_relative_output_dir.empty())
@@ -283,6 +286,7 @@ namespace surface
             if (erc)
               _previous_progress = 0;
             ELLE_TRACE("%s: resuming at %s", *this, _previous_progress);
+            boost::filesystem::create_directories(_path.parent_path());
             elle::system::FileHandle file(_path, elle::system::FileHandle::APPEND);
             using namespace reactor::http;
             Request::Configuration config

@@ -86,6 +86,13 @@ namespace infinit
       inline MissingEmail();
     };
 
+    class MaintenanceMode
+      : public LoginError
+    {
+    public:
+      inline MaintenanceMode();
+    };
+
     /*-----------------.
     | Self User Errors |
     `-----------------*/

@@ -134,7 +134,9 @@ namespace surface
       bool
       ReceiveMachine::completed() const
       {
-        return true;
+        if (this->_transfer_machine)
+          return this->_transfer_machine->finished();
+        return false;
       }
 
       /*--------.
@@ -150,7 +152,7 @@ namespace surface
         if (this->state().metrics_reporter())
           this->state().metrics_reporter()->transaction_ended(
             this->transaction_id(),
-            infinit::oracles::Transaction::Status::canceled,
+            status,
             reason,
             onboarding,
             this->transaction().canceled_by_user());

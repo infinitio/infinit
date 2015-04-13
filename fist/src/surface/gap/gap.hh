@@ -67,7 +67,9 @@ gap_login(gap_State* state,
           std::string const& email,
           std::string const& password,
           boost::optional<std::string> device_push_token = {},
-          boost::optional<std::string> country_conde = {}); // ISO 3611-1 alpha-2
+          boost::optional<std::string> country_conde = {},
+          boost::optional<std::string> device_model = {},
+          boost::optional<std::string> device_name = {}); // ISO 3611-1 alpha-2
 
 /// Fetch features.
 std::unordered_map<std::string, std::string>
@@ -91,7 +93,9 @@ gap_register(gap_State* state,
              std::string const& email,
              std::string const& password,
              boost::optional<std::string> device_push_token = {},
-             boost::optional<std::string> country_conde = {}); // ISO 3611-1 alpha-2
+             boost::optional<std::string> country_conde = {},
+             boost::optional<std::string> device_model = {},
+             boost::optional<std::string> device_name = {}); // ISO 3611-1 alpha-2
 
 gap_Status
 gap_use_ghost_code(gap_State* state,
@@ -359,8 +363,7 @@ gap_reject_transaction(gap_State* state, uint32_t id);
 /// If the return value is 0, the operation failed.
 gap_Status
 gap_accept_transaction(gap_State* state,
-                       uint32_t id,
-                       boost::optional<std::string> relative_output_dir = {});
+                       uint32_t id);
 
 /// Return the id of an onboarding received transaction.
 uint32_t
@@ -416,7 +419,8 @@ gap_send_last_crash_logs(gap_State* state,
                          std::string const& user_name,
                          std::string const& crash_report,
                          std::string const& state_log,
-                         std::string const& additional_info);
+                         std::string const& additional_info,
+                         bool synchronous = false);
 
 std::string
 gap_facebook_app_id();
@@ -431,6 +435,8 @@ gap_facebook_connect(gap_State* state,
                      std::string const& facebook_token,
                      boost::optional<std::string> preferred_email = {},
                      boost::optional<std::string> device_push_token = {},
-                     boost::optional<std::string> country_conde = {}); // ISO 3611-1 alpha-2
+                     boost::optional<std::string> country_conde = {},
+                     boost::optional<std::string> device_model = {},
+                     boost::optional<std::string> device_name = {}); // ISO 3611-1 alpha-2
 
 #endif

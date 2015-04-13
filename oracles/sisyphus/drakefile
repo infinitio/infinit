@@ -38,7 +38,6 @@ def configure(
       'src/infinit/oracles/sisyphus/boulders/__init__.py',
       'src/infinit/oracles/sisyphus/boulders/apns.py',
       'src/infinit/oracles/sisyphus/boulders/drip.py',
-      'src/infinit/oracles/sisyphus/emailer.py',
       'src/infinit/oracles/sisyphus/metrics.py',
     )
 
@@ -68,17 +67,14 @@ def configure(
 
     check = drake.Rule('check')
     pythonpath = \
-      drake.path_build(build_python_path / 'infinit/oracles')
+      drake.path_build(build_python_path / 'infinit')
     for name in (
-        'boulders/drip/accept-reminder',
         'boulders/drip/activity-reminder',
         'boulders/drip/confirm-signup',
-        'boulders/drip/delight-ghost',
         'boulders/drip/delight-recipient',
         'boulders/drip/delight-sender',
         'boulders/drip/ghost-reminder',
         'boulders/drip/onboarding',
-        'boulders/drip/pending-reminder',
         'boulders/drip/retention',
         'boulders/drip/weekly-report',
     ):

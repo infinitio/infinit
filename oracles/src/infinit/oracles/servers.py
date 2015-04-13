@@ -50,6 +50,7 @@ class MetaWrapperProcess:
       args += ['--port', str(force_port)]
     else:
       args += ['--port', '0']
+    elle.log.log('Starting meta with %s' % (args))
     self.process = subprocess.Popen(args, stdout = sys.stdout, stderr = sys.stderr)
     while not os.path.getsize(port_file):
       time.sleep(0.1)
@@ -75,7 +76,8 @@ class Oracles:
                force_meta_port = None,
                force_trophonius_port = None,
                setup_client = True,
-               with_apertus = True):
+               with_apertus = True,
+               mongo_port = None):
     self.__force_admin = force_admin
     self.__mongo_dump = mongo_dump
     self.__force_meta_port = force_meta_port
@@ -86,6 +88,7 @@ class Oracles:
     self.__with_apertus = with_apertus
     self._trophonius = None
     self._apertus = None
+    self._mongo_port = mongo_port
     self._mongo = None
     self._meta = None
     self._use_productionn = os.environ.get('TEST_USE_PRODUCTION', None) is not None
@@ -96,10 +99,12 @@ class Oracles:
       self.meta = ('https', 'meta.9.0.api.production.infinit.io', 443)
     else:
       elle.log.trace('starting mongobox')
-      self._mongo = mongobox.MongoBox(dump_file = self.__mongo_dump)
-      self._mongo.__enter__()
+      if self._mongo_port is None:
+        self._mongo = mongobox.MongoBox(dump_file = self.__mongo_dump)
+        self._mongo.__enter__()
+        self._mongo_port = self._mongo.port
       elle.log.trace('starting meta')
-      self._meta = MetaWrapperProcess(self.__force_admin, self._mongo.port, self.__force_meta_port)
+      self._meta = MetaWrapperProcess(self.__force_admin, self._mongo_port, self.__force_meta_port)
       self._meta.start()
       self.trophonius_start()
       if self.__with_apertus:

@@ -40,6 +40,11 @@ parser.add_option('--trophonius-port',
                   help = 'Force trophonius port to use',
                   default = None,
                   type = 'int')
+parser.add_option('--mongo-port',
+                  action = 'store',
+                  help = 'Use a running mongo on specified port',
+                  default = None,
+                  type = 'int')
 
 options, args = parser.parse_args()
 
@@ -47,7 +52,7 @@ exit_request = False
 
 def main():
   global exit_request
-  with Oracles(mongo_dump = options.mongorestore, force_meta_port = options.meta_port, force_trophonius_port = options.trophonius_port) as oracles:
+  with Oracles(mongo_dump = options.mongorestore, force_meta_port = options.meta_port, force_trophonius_port = options.trophonius_port, mongo_port = options.mongo_port) as oracles:
     meta_proto, meta_host, meta_port = oracles.meta
     environ = {}
     environ['INFINIT_META_PROTOCOL'] = meta_proto

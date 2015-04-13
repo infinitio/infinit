@@ -52,7 +52,9 @@ parse_options(int argc, char** argv)
     ("fullname,f", value<std::string>(), "full user name")
     ("register,g", value<bool>(), "Register new account")
     ("production,r", value<bool>(), "send metrics to production")
-    ("check", value<bool>(), "run a self test diagnostic");
+    ("new-password,n", value<std::string>(), "Update password")
+    ("check", value<bool>(), "run a self test diagnostic")
+    ("code", value<std::string>(), "enter received file code");
 
   variables_map vm;
   try
@@ -106,6 +108,9 @@ int main(int argc, char** argv)
     if (options.count("register") != 0)
       register_ = options["register"].as<bool>();
 
+    std::string code;
+    if (options.count("code") != 0)
+      code = options["code"].as<std::string>();
     reactor::Scheduler sched;
 
     reactor::VThread<int> t
@@ -123,6 +128,10 @@ int main(int argc, char** argv)
             ELLE_TRACE_SCOPE("connection status notification: %s", notif);
             if (!notif.status && !notif.still_trying)
               stop = true;
+            if (notif.status && options.count("new-password"))
+              state.change_password(password, options["new-password"].as<std::string>());
+            if (notif.status && !code.empty())
+              state.meta().use_ghost_code(code);
           }
         );
 

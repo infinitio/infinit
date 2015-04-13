@@ -2,11 +2,11 @@
 
 from utils import *
 
-import sisyphus
-import sisyphus.boulders.drip
+import oracles.sisyphus
+import oracles.sisyphus.boulders.drip
 
 
-class Onboarding(sisyphus.boulders.drip.Onboarding):
+class Onboarding(oracles.sisyphus.boulders.drip.Onboarding):
 
   def __init__(self, sisyphus):
     super().__init__(sisyphus)
@@ -21,15 +21,15 @@ class Onboarding(sisyphus.boulders.drip.Onboarding):
     self.__now = value
 
   def _pick_template(self, template, users):
-    return sisyphus.boulders.drip.Drip._pick_template(
+    return oracles.sisyphus.boulders.drip.Drip._pick_template(
       self, template, users)
 
 
 with mongobox.MongoBox() as mongo:
   with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
     emailer = DummyEmailer()
-    sisy = sisyphus.Sisyphus(mongo_port = mongo.port,
-                                 emailer = emailer)
+    sisy = oracles.sisyphus.Sisyphus(mongo_port = mongo.port,
+                                     emailer = emailer)
     gestapo(sisy._Sisyphus__mongo)
     onboarding = Onboarding(sisy)
     # Check nothing is sent with no users
@@ -54,7 +54,7 @@ with mongobox.MongoBox() as mongo:
       assert not emailer.emails
 
     # Check unactivated 1 is sent to an aging user
-    diff = (onboarding.delay_second_reminder + onboarding.delay_first_reminder) / 2
+    diff = onboarding.delay_first_reminder * 1.5
     onboarding.now += diff
     meta.now += diff
     # Add unrelevant users to check they are not scanned by our mongo
@@ -66,10 +66,9 @@ with mongobox.MongoBox() as mongo:
     # to check last_transaction.time, hence the one miss.
     with MongoExpectation(object_miss = 1):
       sisy.boulders_run()
-      emails = emailer.emails
-      print(emails)
-      assert len(emails) == 1
-      assert emails[0][0] == 'user1@infinit.io'
+      check_mail(emailer.emails, 'user1@infinit.io',
+                 ('drip_onboarding_unactivated-1_A',
+                  'drip_onboarding_unactivated-1_B'))
       # Check it's not sent twice
       sisy.boulders_run()
       assert not emailer.emails

@@ -331,17 +331,20 @@ class Mixin:
         attachment = None
       subject = template['subject'] % template_dict
       if send:
-        self.mailer.send(
+        res = self.mailer.send(
           to = email,
           fr = user_email,
           subject = subject,
           body = template['content'] % template_dict,
           attachment = attachment,
         )
+        for r in res:
+          if 'reject_reason' in r and r['reject_reason'] is not None:
+            self.bad_request({'reason': r['reject_reason']})
       else:
         print('Would send:\nTO: %s\nRCPT TO: %s\nSUBJECT: %s\nBODY:\n%s\n.\n' %
           (email, user_email, subject, template['content'] % template_dict))
-      return self.success()
+      return {}
 
   @api('/genocide', method = 'POST')
   @require_admin

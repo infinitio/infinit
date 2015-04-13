@@ -101,8 +101,9 @@ namespace surface
         true);
       this->_machine.transition_add(
         this->_wait_for_accept_state,
-        this->_reject_state,
-        reactor::Waitables{&this->rejected()});
+        this->_end_state,
+        reactor::Waitables{&this->rejected()},
+        true);
       this->transaction_status_update(data->status);
     }
 
@@ -340,6 +341,15 @@ namespace surface
     }
     static std::streamsize const chunk_size = 1 << 18;
 
+
+    void
+    PeerSendMachine::cleanup()
+    {
+      ELLE_TRACE_SCOPE("%s: cleanup", *this);
+      this->_frete.reset();
+      SendMachine::cleanup();
+    }
+
     void
     PeerSendMachine::_create_transaction()
     {
@@ -418,8 +428,10 @@ namespace surface
             this->transaction_id(),
             recipient_device_id
             );
+        static bool send_notification = true;
+        static bool is_swagger = true;
         auto const& peer = this->state().user_sync(
-          transaction_response.recipient());
+          transaction_response.recipient(), send_notification, is_swagger);
         this->data()->is_ghost = peer.ghost();
         this->data()->recipient_id = peer.id;
         this->transaction_id(transaction_response.created_transaction_id());
@@ -731,11 +743,8 @@ namespace surface
         }
         /* Pipelined cloud upload with periodic local snapshot update
         */
-        int num_threads = 8;
-        std::string snum_threads =
-          elle::os::getenv("INFINIT_NUM_CLOUD_UPLOAD_THREAD", "");
-        if (!snum_threads.empty())
-          num_threads = boost::lexical_cast<int>(snum_threads);
+        auto const& config = this->transaction().state().configuration();
+        int num_threads = config.s3.multipart_upload.parallelism;;
         typedef frete::Frete::FileSize FileSize;
         typedef frete::Frete::FileID FileID;
         FileSize transfer_since_snapshot = 0;

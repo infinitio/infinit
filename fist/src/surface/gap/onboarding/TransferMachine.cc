@@ -93,7 +93,7 @@ namespace surface
         catch (boost::filesystem::filesystem_error const& e)
         {
           ELLE_WARN("%s: error copying file: %s", *this, e.what());
-          elle::Error("error while copying onboarding file");
+          throw elle::Error("error while copying onboarding file");
         }
       }
 

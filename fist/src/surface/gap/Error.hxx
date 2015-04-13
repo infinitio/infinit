@@ -49,6 +49,10 @@ namespace infinit
       : LoginError("you need an email")
     {}
 
+    MaintenanceMode::MaintenanceMode()
+      : LoginError("Server is down for maintenance")
+    {}
+
     /*-----------------.
     | Self User Errors |
     `-----------------*/

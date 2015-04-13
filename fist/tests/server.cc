@@ -10,8 +10,8 @@
 #include <elle/serialization/json/SerializerIn.hh>
 #include <elle/serialization/json.hh>
 
+#include <infinit/oracles/meta/Client.hh>
 #include <papier/Authority.hh>
-
 #include <version.hh>
 
 #include <fist/tests/_detail/Authority.hh>
@@ -478,26 +478,30 @@ namespace tests
     this->register_route(
       "/s3/folder/meta_data",
       reactor::http::Method::PUT,
-      [] (Server::Headers const&,
-          Server::Cookies const&,
-          Server::Parameters const&,
-          elle::Buffer const&)
+      [this] (Server::Headers const&,
+              Server::Cookies const&,
+              Server::Parameters const&,
+              elle::Buffer const& body)
       {
+        ELLE_LOG("%s: store S3 metadata: %s", *this, body)
+        this->_s3_meta_data = body.string();
         return "";
       });
     this->register_route(
       "/s3/folder/meta_data",
       reactor::http::Method::GET,
-      [] (Server::Headers const&,
-          Server::Cookies const&,
-          Server::Parameters const&,
-          elle::Buffer const&)
+      [this] (Server::Headers const&,
+              Server::Cookies const&,
+              Server::Parameters const&,
+              elle::Buffer const&)
       {
-        throw reactor::http::tests::Server::Exception(
-          "/s3/folder/meta_data",
-          reactor::http::StatusCode::Not_Found,
-          "no meta data");
-        return "{}";
+        if (!this->_s3_meta_data)
+          throw reactor::http::tests::Server::Exception(
+            "/s3/folder/meta_data",
+            reactor::http::StatusCode::Not_Found,
+            "no meta data");
+        else
+          return this->_s3_meta_data.get();
       });
     this->register_route(
       "/s3/folder/000000000000_0000",
@@ -505,9 +509,10 @@ namespace tests
       [this] (Server::Headers const&,
               Server::Cookies const&,
               Server::Parameters const&,
-              elle::Buffer const&)
+              elle::Buffer const& body)
       {
         this->_cloud_buffered = true;
+        this->_s3_data = body.string();
         return "";
       });
     this->register_route(
@@ -518,8 +523,13 @@ namespace tests
               Server::Parameters const&,
               elle::Buffer const&)
       {
-        this->_cloud_buffered = true;
-        return "";
+        if (!this->_s3_data)
+          throw reactor::http::tests::Server::Exception(
+            "/s3/folder/000000000000_0000",
+            reactor::http::StatusCode::Not_Found,
+            "no data");
+        else
+          return this->_s3_data.get();
       });
 
     this->register_route(
@@ -565,17 +575,18 @@ namespace tests
           socket->write(transaction_notification);
         for (auto& socket: this->trophonius.clients(elle::UUID(tr.recipient_id)))
           socket->write(transaction_notification);
-        auto res = elle::sprintf(
-          "{"
-          "%s"
-          "  \"updated_transaction_id\": \"%s\""
-          "}",
-          t.status == infinit::oracles::Transaction::Status::accepted
-          ? elle::sprintf("  \"recipent_device_id\": \"%s\", \"recipient_device_name\": \"bite\", ", tr.recipient_device_id)
-          : std::string{},
-          tr.id
-          );
-        return res;
+        std::stringstream res;
+        {
+          elle::serialization::json::SerializerOut output(res);
+          output.serialize("updated_transaction_id", tr.id);
+          if (t.status == infinit::oracles::Transaction::Status::accepted)
+          {
+            output.serialize("recipent_device_id", tr.recipient_device_id);
+            std::string name = "bite";
+            output.serialize("recipient_device_name", name);
+          }
+        }
+        return res.str();
       });
   }
 
@@ -717,10 +728,10 @@ namespace tests
     this->register_route(
       "/transaction/update",
       reactor::http::Method::POST,
-      [&] (Server::Headers const&,
-           Server::Cookies const& cookies,
-           Server::Parameters const&,
-           elle::Buffer const& content)
+      [this] (Server::Headers const&,
+              Server::Cookies const& cookies,
+              Server::Parameters const&,
+              elle::Buffer const& content)
       {
         elle::IOStream stream(content.istreambuf());
         elle::serialization::json::SerializerIn input(stream, false);
@@ -728,12 +739,17 @@ namespace tests
         int status;
         input.serialize("transaction_id", id);
         input.serialize("status", status);
+        ELLE_LOG_SCOPE("%s: update transaction \"%s\" to status %s",
+                       *this, id, status);
         auto it = this->_transactions.find(id);
         if (it == this->_transactions.end())
+        {
+          ELLE_LOG("%s: transaction \"%s\" not found", *this, id)
           throw reactor::http::tests::Server::Exception(
             "/transaction/update",
             reactor::http::StatusCode::Not_Found,
             "transaction not found");
+        }
         auto& t = **it;
         t.status = infinit::oracles::Transaction::Status(status);
         t.status_changed()(t.status);
@@ -756,17 +772,22 @@ namespace tests
           socket->write(transaction_notification);
         for (auto& socket: this->trophonius.clients(elle::UUID(tr.recipient_id)))
           socket->write(transaction_notification);
-        auto res = elle::sprintf(
-          "{"
-          "%s"
-          "  \"updated_transaction_id\": \"%s\""
-          "}",
-          t.status == infinit::oracles::Transaction::Status::accepted
-          ? elle::sprintf("  \"recipent_device_id\": \"%s\", \"recipient_device_name\": \"bite\", ", tr.recipient_device_id)
-          : std::string{},
-          tr.id
-          );
-        return res;
+        std::stringstream res;
+        {
+          elle::serialization::json::SerializerOut output(res);
+          output.serialize("updated_transaction_id", tr.id);
+          if (t.status == infinit::oracles::Transaction::Status::accepted)
+          {
+            output.serialize("recipent_device_id", tr.recipient_device_id);
+            std::string name = "bite";
+            output.serialize("recipient_device_name", name);
+          }
+          if (t.cloud_credentials())
+          {
+            output.serialize("aws_credentials", t.cloud_credentials());
+          }
+        }
+        return res.str();
       });
 
     this->register_route(
@@ -779,47 +800,18 @@ namespace tests
       {
         auto now = boost::posix_time::second_clock::universal_time();
         auto tomorrow = now + boost::posix_time::hours(24);
-        return elle::sprintf(
-          "{"
-          "  \"protocol\": \"aws\","
-          "  \"access_key_id\": \"\","
-          "  \"secret_access_key\": \"\","
-          "  \"session_token\": \"\","
-          "  \"region\": \"region\","
-          "  \"bucket\": \"bucket\","
-          "  \"folder\": \"folder\","
-          "  \"expiration\": \"%s\","
-          "  \"current_time\": \"%s\""
-          "}",
-          boost::posix_time::to_iso_extended_string(tomorrow),
-          boost::posix_time::to_iso_extended_string(now));
+        std::unique_ptr<infinit::oracles::meta::CloudCredentials> creds(
+          new infinit::oracles::meta::CloudCredentialsAws(
+            "", "", "", "region", "bucket", "folder", tomorrow, now));
+        std::stringstream res;
+        {
+          elle::serialization::json::SerializerOut output(res);
+          output.serialize_forward(creds);
+        }
+        (*this->_transactions.find(id))->cloud_credentials() = std::move(creds);
+        return res.str();
       });
 
-    this->register_route(
-      elle::sprintf("/transaction/%s/cloud_buffer", id),
-      reactor::http::Method::GET,
-      [&] (Server::Headers const&,
-           Server::Cookies const&,
-           Server::Parameters const&,
-           elle::Buffer const&)
-      {
-        auto now = boost::posix_time::second_clock::universal_time();
-        auto tomorrow = now + boost::posix_time::hours(24);
-        return elle::sprintf(
-          "{"
-          "  \"protocol\": \"aws\","
-          "  \"access_key_id\": \"\","
-          "  \"secret_access_key\": \"\","
-          "  \"session_token\": \"\","
-          "  \"region\": \"region\","
-          "  \"bucket\": \"bucket\","
-          "  \"folder\": \"folder\","
-          "  \"expiration\": \"%s\","
-          "  \"current_time\": \"%s\""
-          "}",
-          boost::posix_time::to_iso_extended_string(tomorrow),
-          boost::posix_time::to_iso_extended_string(now));
-      });
     return elle::UUID(id);
   }
 
@@ -830,6 +822,7 @@ namespace tests
                            elle::Buffer const& content,
                            elle::UUID const& id)
   {
+    // FIXME: WTF ??? Just deserialize a transactions FFS ...
     User const& user = this->user(cookies);
     auto const& device = this->device(cookies);
     elle::IOStream stream(content.istreambuf());
@@ -865,6 +858,9 @@ namespace tests
     tr.files = files;
     tr.recipient_id = boost::lexical_cast<std::string>(rec.id());
     tr.is_ghost = ghost;
+    int total_size;
+    input.serialize("total_size", total_size);
+    tr.total_size = total_size;
 
     struct UpdateSwag
     {

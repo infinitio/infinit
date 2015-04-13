@@ -105,17 +105,25 @@ namespace surface
       }
       else
       {
-        auto interfaces = elle::network::Interface::get_map(
-          elle::network::Interface::Filter::only_up |
-          elle::network::Interface::Filter::no_loopback |
-          elle::network::Interface::Filter::no_autoip
-          );
-        for (auto const& pair: interfaces)
-          if (pair.second.ipv4_address.size() > 0)
-          {
-            auto const& ipv4 = pair.second.ipv4_address;
-            addresses.emplace_back(ipv4, this->_station.port());
-          }
+        try
+        {
+          auto interfaces = elle::network::Interface::get_map(
+            elle::network::Interface::Filter::only_up |
+            elle::network::Interface::Filter::no_loopback |
+            elle::network::Interface::Filter::no_autoip
+            );
+          for (auto const& pair: interfaces)
+            if (pair.second.ipv4_address.size() > 0)
+            {
+              auto const& ipv4 = pair.second.ipv4_address;
+              addresses.emplace_back(ipv4, this->_station.port());
+            }
+        }
+        catch (elle::Exception const& e)
+        {
+          ELLE_ERR("%s: unable to get user interfaces: %s", *this, e);
+          // XXX: Add a metric.
+        }
       }
       AddressContainer public_addresses;
       if (elle::os::getenv("INFINIT_UPNP_ADDRESS", "").length() > 0)
@@ -143,11 +151,10 @@ namespace surface
       ++_attempt;
       ELLE_TRACE_SCOPE("%s: connect to peer", *this);
       std::vector<std::unique_ptr<Round>> rounds;
-      rounds.emplace_back(new AddressRound("local", this->peer_local_endpoints()));
       auto all_endpoints = this->peer_local_endpoints();
       for (auto const& ep: this->peer_public_endpoints())
         all_endpoints.push_back(ep);
-      rounds.emplace_back(new AddressRound("upnp", all_endpoints));
+      rounds.emplace_back(new AddressRound("direct", all_endpoints));
       rounds.emplace_back(new FallbackRound("fallback",
                                             this->_owner.state().meta(),
                                             this->_owner.data()->id));

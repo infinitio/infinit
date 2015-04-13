@@ -3,7 +3,6 @@ import datetime
 import elle
 
 from infinit.oracles.utils import api, mongo_connection
-from . import emailer
 from . import version
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.Sisyphus'

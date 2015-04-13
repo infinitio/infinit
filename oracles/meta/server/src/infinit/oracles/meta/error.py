@@ -18,6 +18,7 @@ errors = {
 
   # Server
   'no_apertus': (-50008, "No apertus available."),
+  'maintenance_mode': (-503, "Server is in maintenance mode."),
 
   # Transaction
   'file_name_empty': (-40000, "The name is null."),

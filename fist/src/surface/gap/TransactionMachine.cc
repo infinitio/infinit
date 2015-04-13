@@ -317,6 +317,7 @@ namespace surface
     TransactionMachine::_fail()
     {
       ELLE_TRACE_SCOPE("%s: fail", *this);
+      ELLE_ERR("transfer failed: %s", transaction().failure_reason());
       this->_metrics_ended(infinit::oracles::Transaction::Status::failed,
                            transaction().failure_reason());
       std::string transaction_id;
@@ -399,7 +400,7 @@ namespace surface
     void
     TransactionMachine::cancel(std::string const& reason)
     {
-      ELLE_TRACE_SCOPE("%s: cancel transaction %s", *this, this->data()->id);
+      ELLE_TRACE_SCOPE("%s: cancel transaction %s: %s", *this, this->data()->id, reason);
       if (!this->canceled().opened())
         this->_metrics_ended(infinit::oracles::Transaction::Status::canceled,
                              reason);

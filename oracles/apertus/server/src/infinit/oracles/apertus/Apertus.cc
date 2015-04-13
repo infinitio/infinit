@@ -46,25 +46,26 @@ namespace infinit
                        int meta_port,
                        std::string const& host, int port_ssl, int port_tcp,
                        boost::posix_time::time_duration const& tick_rate,
-                       boost::posix_time::time_duration const& timeout):
-        Waitable("apertus"),
-        _unregistered(false),
-        _accepter_ssl(nullptr),
-        _accepter_tcp(nullptr),
-        _meta(meta_protocol, meta_host, meta_port),
-        _uuid(generate_uuid()),
-        _host(host),
-        _port_ssl(port_ssl),
-        _port_tcp(port_tcp),
-        _certificate(nullptr),
-        _server_ssl(nullptr),
-        _server_tcp(nullptr),
-        _bandwidth(0),
-        _tick_rate(tick_rate),
-        _timeout(timeout),
-        _monitor(*reactor::Scheduler::scheduler(),
-                 "apertus_monitor",
-                 std::bind(&Apertus::_run_monitor, std::ref(*this)))
+                       boost::posix_time::time_duration const& timeout)
+        : Waitable("apertus")
+        , _unregistered(false)
+        , _accepter_ssl(nullptr)
+        , _accepter_tcp(nullptr)
+        , _meta_enabled(meta_host != "")
+        , _meta(meta_protocol, meta_host, meta_port)
+        , _uuid(generate_uuid())
+        , _host(host)
+        , _port_ssl(port_ssl)
+        , _port_tcp(port_tcp)
+        , _certificate(nullptr)
+        , _server_ssl(nullptr)
+        , _server_tcp(nullptr)
+        , _bandwidth(0)
+        , _tick_rate(tick_rate)
+        , _timeout(timeout)
+        , _monitor(*reactor::Scheduler::scheduler(),
+                   "apertus_monitor",
+                   std::bind(&Apertus::_run_monitor, std::ref(*this)))
       {
         try
         {
@@ -136,10 +137,11 @@ namespace infinit
       void
       Apertus::_register()
       {
-        this->_meta.register_apertus(this->_uuid,
-                                     elle::network::hostname(),
-                                     this->_port_ssl,
-                                     this->_port_tcp);
+        if (this->_meta_enabled)
+          this->_meta.register_apertus(this->_uuid,
+                                       elle::network::hostname(),
+                                       this->_port_ssl,
+                                       this->_port_tcp);
       }
 
       void
@@ -148,7 +150,8 @@ namespace infinit
         if (!this->_unregistered)
         {
           this->_unregistered = true;
-          this->_meta.unregister_apertus(this->_uuid);
+          if (this->_meta_enabled)
+            this->_meta.unregister_apertus(this->_uuid);
         }
         else
         {
@@ -264,21 +267,22 @@ namespace infinit
           ELLE_TRACE("%s: bandwidth is currently estimated at %sB/s",
             *this, bdwps);
 
-          try
-          {
-            this->_meta.apertus_update_bandwidth(_uuid, bdwps, _workers.size());
-          }
-          catch (reactor::http::RequestError const&)
-          {
-            ELLE_WARN("%s: unable to update bandwidth on meta: %s",
-                      *this, elle::exception_string());
-          }
-          catch (elle::http::Exception const&)
-          {
-            ELLE_WARN("%s: unable to update bandwidth on meta: %s",
-                      *this, elle::exception_string());
-          }
-
+          if (this->_meta_enabled)
+            try
+            {
+              this->_meta.apertus_update_bandwidth(
+                this->_uuid, bdwps, this->_workers.size());
+            }
+            catch (reactor::http::RequestError const&)
+            {
+              ELLE_WARN("%s: unable to update bandwidth on meta: %s",
+                        *this, elle::exception_string());
+            }
+            catch (elle::http::Exception const&)
+            {
+              ELLE_WARN("%s: unable to update bandwidth on meta: %s",
+                        *this, elle::exception_string());
+            }
           _bandwidth = 0;
         }
       }

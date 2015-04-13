@@ -330,7 +330,7 @@ ELLE_TEST_SCHEDULED(invalid_snapshot)
 
 ELLE_TEST_SUITE()
 {
-  auto timeout = RUNNING_ON_VALGRIND ? 15 : 3;
+  auto timeout = valgrind(20);
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(connection), 0, timeout);
   suite.add(BOOST_TEST_CASE(invalid_snapshot), 0, timeout);

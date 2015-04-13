@@ -8,24 +8,15 @@ sys.path.insert(0, drake)
 
 import drake
 import drake.cxx
-import drake.cxx.qt
 
 cxx_config = drake.cxx.Config()
 cxx_config.enable_debug_symbols()
 cxx_config.enable_optimization(False)
 cxx_config.flag('-pthread')
 
-try:
-  qt = drake.cxx.qt.Qt(
-     prefix = os.getenv('QT_PREFIX', '/usr')
-  )
-except drake.Exception as e:
-  print("Qt not found, all targets releated will be ignored")
-  qt = None
-
 with drake.Drake('../..') as d:
   d.run(
     cxx_config = cxx_config,
     python3 = None,
-    qt = qt,
+    qt = True,
   )

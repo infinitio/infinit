@@ -258,7 +258,10 @@ def check_mail(mails, user, template):
   assertEq(len(mails), 1)
   mail = mails[0]
   assertEq(mail[0], user)
-  assertEq(mail[2], template)
+  if isinstance(template, tuple):
+    assertIn(mail[2], template)
+  else:
+    assertEq(mail[2], template)
   content = mail[1]
   assertEq(content['user']['email'], user)
 
@@ -284,3 +287,7 @@ def check_no_mail(mails):
 def assertEq(a, b):
   if a != b:
     raise AssertionError('%r != %r' % (a, b))
+
+def assertIn(e, c):
+  if e not in c:
+    raise AssertionError('%r not in %r' % (e, c))

@@ -14,6 +14,7 @@ with open(str(drake.path_source('elle/drake-utils.py')), 'r') as f:
   exec(f.read(), globals(), globals())
 
 def configure(cxx_toolkit = None,
+              cxx_toolkit_host = None,
               cxx_config = None,
               archs = [],
               fuse = None,
@@ -25,10 +26,9 @@ def configure(cxx_toolkit = None,
               php = None,
               production_build = False,
               enable_debug = True,
-      	      qt = None,
+              qt = False,
               valgrind = None,
               valgrind_tests = False,
-              cxx_toolkit_host = None,
 ):
 
   ## ----- ##
@@ -54,7 +54,7 @@ def configure(cxx_toolkit = None,
   if cxx_toolkit.os in [drake.os.macos]:
     cxx_config.use_local_libcxx = True
 
-  prefer_static = cxx_toolkit.os in [drake.os.windows, drake.os.ios]
+  prefer_static = cxx_toolkit.os in [drake.os.windows, drake.os.ios, drake.os.android]
   def library(*args, **kwargs):
     lib_dyn, lib_static = (
       Library(*args, **kwargs)
@@ -90,6 +90,8 @@ def configure(cxx_toolkit = None,
     platform_defines = ("INFINIT_MACOSX", "HAVE_STATFS")
   elif cxx_toolkit.os is drake.os.ios:
     platform_defines = ("INFINIT_IOS",)
+  elif cxx_toolkit.os is drake.os.android:
+    platform_defines = ("INFINIT_ANDROID",)
   else:
     raise Exception("platform %s not supported" % sys.platform)
   for define in platform_defines:
@@ -184,25 +186,27 @@ def configure(cxx_toolkit = None,
                        boost = boost,
                        fuse = fuse,
                        valgrind = valgrind,
-                       valgrind_tests = valgrind_tests)
+                       valgrind_tests = valgrind_tests,
+                       build_openssl_eay = qt)
   boost = elle.boost
   python3 = elle.python3
   valgrind = elle.valgrind
   cxx_config += boost.config()
-  if cxx_toolkit.os in (drake.os.macos, drake.os.windows, drake.os.ios):
+  if cxx_toolkit.os in (drake.os.macos, drake.os.windows, drake.os.ios, drake.os.android):
     boost_filesystem = drake.cxx.Config(boost.config_filesystem(static = True))
   else:
     boost_filesystem = drake.cxx.Config(boost.config_filesystem(link = False))
     boost_filesystem.library_add(copy_lib(boost.filesystem_dynamic))
-  if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
+  if cxx_toolkit.os in [drake.os.windows, drake.os.ios, drake.os.android]:
     boost_date_time = drake.cxx.Config(boost.config_date_time(static = True))
     boost_program_options = drake.cxx.Config(boost.config_program_options(static = True))
-    if cxx_toolkit.os is not drake.os.ios:
+    if cxx_toolkit.os not in [drake.os.ios, drake.os.android]:
       boost_python = drake.cxx.Config(boost.config_python(static = True))
     boost_signals = drake.cxx.Config(boost.config_signals(static = True))
     boost_system = drake.cxx.Config(boost.config_system(static = True))
     boost_test = drake.cxx.Config(boost.config_test(static = True))
     boost_thread = drake.cxx.Config(boost.config_thread(static = True))
+    boost_regex = drake.cxx.Config(boost.config_regex(static = True))
   else:
     boost_date_time = drake.cxx.Config(boost.config_date_time(link = False))
     boost_date_time.library_add(copy_lib(boost.date_time_dynamic))
@@ -218,8 +222,14 @@ def configure(cxx_toolkit = None,
     boost_test.library_add(copy_lib(boost.test_dynamic))
     boost_thread = drake.cxx.Config(boost.config_thread(link = False))
     boost_thread.library_add(copy_lib(boost.thread_dynamic))
+    boost_regex = drake.cxx.Config(boost.config_regex(link = False))
+    boost_regex.library_add(copy_lib(boost.regex_dynamic))
+
 
   elle_lib = copy_lib(elle.elle.library)
+  openssl_libs_eay = [copy_lib(lib) for lib in elle.openssl_libs_eay]
+  openssl_libs = [copy_lib(lib) for lib in [elle.openssl_lib_crypto, elle.openssl_lib_ssl]]
+  openssl_config = elle.openssl_config
   cryptography_lib = copy_lib(elle.cryptography.library)
   reactor_lib = copy_lib(elle.reactor.library)
   if python3 is not None:
@@ -248,7 +258,7 @@ def configure(cxx_toolkit = None,
     cxx_config = cxx_config,
   )
 
-  if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
+  if cxx_toolkit.os in [drake.os.windows, drake.os.ios, drake.os.android]:
     metrics_lib = metrics.lib
   else:
     metrics_lib = drake.copy(
@@ -311,6 +321,9 @@ def configure(cxx_toolkit = None,
   papier_tests = drake.Rule('papier/tests')
   papier_check = drake.TestSuite('papier/check')
   papier_cxx_config_tests = drake.cxx.Config(papier_cxx_config)
+  if cxx_toolkit.os == drake.os.android:
+    papier_cxx_config_tests.lib('stdc++')
+    papier_cxx_config_tests.lib('atomic')
   papier_cxx_config_tests += boost_system
   papier_cxx_config_tests += boost_test
   papier_cxx_config_tests.lib_path_runtime('../../lib')
@@ -368,6 +381,9 @@ def configure(cxx_toolkit = None,
   station_check = drake.Rule('station/check')
   station_install = drake.Rule('station/install')
   station_cxx_config_tests = drake.cxx.Config(station_cxx_config)
+  if cxx_toolkit.os == drake.os.android:
+    station_cxx_config_tests.lib('stdc++')
+    station_cxx_config_tests.lib('atomic')
   station_cxx_config_tests += boost_test
   station_cxx_config_tests += boost_system
   station_cxx_config_tests.lib_path_runtime('../../lib')
@@ -417,6 +433,9 @@ def configure(cxx_toolkit = None,
   frete_check = drake.Rule('frete/check')
   frete_install = drake.Rule('frete/install')
   frete_cxx_config_tests = drake.cxx.Config(frete_cxx_config)
+  if cxx_toolkit.os == drake.os.android:
+    frete_cxx_config_tests.lib('stdc++')
+    frete_cxx_config_tests.lib('atomic')
   frete_cxx_config_tests += boost_filesystem
   frete_cxx_config_tests += boost_system
   frete_cxx_config_tests += boost_test
@@ -488,7 +507,7 @@ def configure(cxx_toolkit = None,
     valgrind_tests = valgrind_tests,
   )
 
-  if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
+  if cxx_toolkit.os in [drake.os.windows, drake.os.ios, drake.os.android]:
     trophonius_client_lib = oracles.trophonius.client.lib
     meta_client_lib = oracles.meta.client.lib
   else:
@@ -602,6 +621,7 @@ def configure(cxx_toolkit = None,
   gap_cxx_config_libs += boost_signals
   gap_cxx_config_libs += boost_system
   gap_cxx_config_libs += boost_thread
+  gap_cxx_config_libs += boost_regex
   if cxx_toolkit.os == drake.os.windows:
     gap_cxx_config_libs.lib('shlwapi')
     gap_cxx_config_libs.lib('ws2_32')
@@ -632,6 +652,9 @@ def configure(cxx_toolkit = None,
   gap_build << gap_lib
 
   gap_tests_cxx_config = drake.cxx.Config(gap_cxx_config)
+  if cxx_toolkit.os == drake.os.android:
+    gap_tests_cxx_config.lib('stdc++')
+    gap_tests_cxx_config.lib('atomic')
   gap_tests_cxx_config += boost_test
   gap_tests_cxx_config += boost_system
   gap_tests_cxx_config += boost_date_time
@@ -640,6 +663,7 @@ def configure(cxx_toolkit = None,
                'cloud-buffer',
                'ghost-download',
                'ghost-invite',
+               'peer-reject',
                'resynchronization',
                'snapshot-resume',
                'transition-to-finish',
@@ -672,12 +696,17 @@ def configure(cxx_toolkit = None,
         meta_client_lib,
         elle.openssl_lib_crypto,
         elle.openssl_lib_ssl,
+        elle.aws.lib_dynamic,
         trophonius_client_lib,
         oracles.transaction_lib,
       ],
       cxx_toolkit, gap_tests_cxx_config)
     gap_tests << test
-    runner = drake.Runner(exe = test)
+    env = dict()
+    if cxx_toolkit.os == drake.os.android:
+      env['INFINIT_NON_PERSISTENT_DIR'] = '/tmp'
+      env['INFINIT_PERSISTENT_DIR'] = '/tmp'
+    runner = drake.Runner(exe = test, env=env)
     runner.reporting = drake.Runner.Reporting.on_failure
     gap_check << runner.status
 
@@ -697,6 +726,9 @@ def configure(cxx_toolkit = None,
   cli_cxx_config += boost_system
   cli_cxx_config += boost_filesystem
 
+  if cxx_toolkit.os is drake.os.android:
+    cli_cxx_config.lib('stdc++')
+    cli_cxx_config.lib('atomic')
   def cli_add_bin(b):
     cli_build << b
     cli_install << drake.install(b, prefix)
@@ -757,7 +789,7 @@ def configure(cxx_toolkit = None,
   )
   cli_online_bin = drake.cxx.Executable(
     'bin/8online',
-    cli_online_sources + [gap_lib, elle_lib, reactor_lib, crash_lib],
+    cli_online_sources + [gap_lib, elle_lib, reactor_lib, crash_lib, meta_client_lib],
     cxx_toolkit,
     cli_cxx_config
   )
@@ -922,22 +954,27 @@ def configure(cxx_toolkit = None,
       check << runner.status
       functional_check << runner.status
 
-  if qt is not None:
+  ## ------ ##
+  ## Qt GUI ##
+  ## ------ ##
+  if qt:
     fist_cxx_config = drake.cxx.Config(cxx_config)
-    fist_gui_qt_libraries = [gap_lib, oracles.transaction_lib]
+    fist_libraries = [gap_lib]
+    fist_openssl_libs = openssl_libs_eay
     if cxx_toolkit.os != drake.os.windows:
-      fist_gui_qt_libraries += [elle_lib, cryptography_lib, crash_lib]
-    fist_cxx_config += boost_filesystem
-    fist_cxx_config += boost_system
-    application = drake.include('fist-gui-qt',
-                                cxx_toolkit = cxx_toolkit,
-                                cxx_config = fist_cxx_config,
-                                fist_production_build = production_build,
-                                boost = boost,
-                                qt = qt,
-                                prefix = prefix,
-                                libraries = fist_gui_qt_libraries,
-                                boost_test = boost_test)
+      fist_libraries += [elle_lib, cryptography_lib, crash_lib, oracles.transaction_lib]
+      fist_openssl_libs += openssl_libs
+    application = drake.include(
+      'fist-gui-qt',
+      cxx_toolkit = cxx_toolkit,
+      cxx_config = fist_cxx_config,
+      fist_production_build = production_build,
+      boost = boost,
+      prefix = prefix,
+      openssl_include_dir = drake.path_build(
+        openssl_config.local_include_path[0], absolute = True),
+      openssl_libraries = fist_openssl_libs,
+      libraries = fist_libraries)
     build << application.build
 
   ## ------- ##
@@ -948,3 +985,27 @@ def configure(cxx_toolkit = None,
   osx_build << mac_app.build
 
   drake.cxx.CompilationDatabase('compile_commands.json')
+
+
+  if cxx_toolkit.os == drake.os.android:
+    jni = drake.Rule('jni')
+    jni_cxx_config = drake.cxx.Config(cxx_config)
+    jni_cxx_config.add_local_include_path('metrics/src')
+    jni_cxx_config.add_local_include_path('oracles/src')
+    jni_cxx_config.add_local_include_path('oracles/meta/client/src')
+    jni_cxx_config.add_local_include_path('oracles/trophonius/client/src')
+    if cxx_toolkit.os != drake.os.android:
+      # JNI headers are in the android toolchain
+      jni_cxx_config.add_local_include_path(os.environ['JAVA_HOME'] + '/include')
+    else:
+      jni_cxx_config.lib('log')
+      jni_cxx_config.lib('stdc++')
+      jni_cxx_config.lib('atomic')
+    jni_cxx_config.warnings.missing_declarations = False
+    jni_infinit = drake.cxx.DynLib(
+      'lib/jniinfinit',
+      drake.nodes('jni/jni.cc') + [gap_lib, elle_lib, cryptography_lib, crash_lib],
+      cxx_toolkit,
+      jni_cxx_config
+    )
+    jni << jni_infinit

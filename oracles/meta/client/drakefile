@@ -50,7 +50,7 @@ def configure(elle,
 
   def boost_config(name):
     config = getattr(boost, 'config_%s' % name)
-    if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
+    if cxx_toolkit.os in [drake.os.windows, drake.os.ios, drake.os.android]:
       return drake.cxx.Config(config(static = True))
     else:
       res = drake.cxx.Config(config(link = False))
@@ -74,7 +74,7 @@ def configure(elle,
       'src/infinit/oracles/meta/Admin.hh',
     )
 
-  if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
+  if cxx_toolkit.os in [drake.os.windows, drake.os.ios, drake.os.android]:
     Library = drake.cxx.StaticLib
     elle_lib = elle.elle.lib_static
     reactor_lib = elle.reactor.lib_static
@@ -115,7 +115,7 @@ def configure(elle,
   ## Python ##
   ## ------ ##
 
-  if python3 is not None and cxx_toolkit.os not in [drake.os.windows, drake.os.ios]:
+  if python3 is not None and cxx_toolkit.os not in [drake.os.windows, drake.os.ios, drake.os.android]:
     with template_context:
       python_sources = drake.nodes(
         'src/infinit/oracles/meta/python.cc.tmpl',
@@ -151,6 +151,10 @@ def configure(elle,
   tests_cxx_config += boost_config('date_time')
   tests_cxx_config += boost_config('system')
   tests_cxx_config += boost_config('test')
+  if cxx_toolkit.os is drake.os.android:
+    tests_cxx_config.lib('stdc++')
+    tests_cxx_config.lib('atomic')
+
   if cxx_toolkit.os is drake.os.windows:
     tests_cxx_config.lib('shlwapi')
     tests_cxx_config.lib('ws2_32')

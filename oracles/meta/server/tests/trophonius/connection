@@ -1,41 +1,89 @@
 #!/usr/bin/env python3
 
-from utils import Meta, User
+from utils import *
 from infinit.oracles.meta import error
 from uuid import uuid4
+from infinit.oracles.notification import notifications
 
+tropho_params = {
+  'port': 23456,
+  'port_client': 0,
+  'port_client_ssl': 0,
+}
+
+# with Meta() as meta:
+#   bob = User(meta, 'bob@infinit.io')
+#   alice = User(meta, 'alice@infinit.io')
+#   bob.login()
+#   alice.login()
+
+#   tropho = uuid4()
+#   assert not bob.connected
+#   assert len(meta.get('trophoniuses')['trophoniuses']) == 0
+#   meta.put('trophonius/%s' % tropho, tropho_params)
+#   assert len(meta.get('trophoniuses')['trophoniuses']) == 1
+#   meta.delete('trophonius/%s' % tropho)
+#   assert len(meta.get('trophoniuses')['trophoniuses']) == 0
+
+#   meta.put('trophonius/%s' % tropho, tropho_params)
+
+#   res = bob.put('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, str(bob.device_id)))
+#   assert res['success']
+
+#   res = bob.get('user/self')
+#   assert len(res['connected_devices']) == 1
+#   assert str(bob.device_id) in res['connected_devices']
+
+#   res = bob.delete('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, str(bob.device_id)))
+#   assert res['success']
+
+#   res = bob.get('user/self')
+#   assert len(res['connected_devices']) == 0
+
+class Notifier():
+
+  def __init__(self):
+    self.users = {}
+
+  def notify_some(self,
+                  notification_type,
+                  recipient_ids = None,
+                  device_ids = None,
+                  message = None):
+    if notification_type == notifications['user_status']:
+      user_id = str(message['user_id'])
+      device_id = str(message['device_id'])
+      self.users.setdefault(user_id, {})
+      self.users[user_id].setdefault(device_id, [])
+      self.users[user_id][device_id].append(message['device_status'])
 
 with Meta() as meta:
-  bob = User(meta, 'bob@infinit.io')
+  meta.notifier = Notifier()
+  tropho1 = uuid4()
+  tropho2 = uuid4()
+  meta.put('trophonius/%s' % tropho1, tropho_params)
+  meta.put('trophonius/%s' % tropho2, tropho_params)
+  assert len(meta.get('trophoniuses')['trophoniuses']) == 2
   alice = User(meta, 'alice@infinit.io')
-  bob.login()
   alice.login()
+  # Create a swagger so we get notifications
+  bob = User(meta, 'bob@infinit.io')
+  alice.sendfile('bob@infinit.io')
 
-  tropho = uuid4()
-  assert not bob.connected
-
-  tropho_params = {
-    'port': 23456,
-    'port_client': 0,
-    'port_client_ssl': 0,
-  }
-  assert len(meta.get('trophoniuses')['trophoniuses']) == 0
-  meta.put('trophonius/%s' % tropho, tropho_params)
-  assert len(meta.get('trophoniuses')['trophoniuses']) == 1
-  meta.delete('trophonius/%s' % tropho)
-  assert len(meta.get('trophoniuses')['trophoniuses']) == 0
-
-  meta.put('trophonius/%s' % tropho, tropho_params)
-
-  res = bob.put('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, str(bob.device_id)))
-  assert res['success']
-
-  res = bob.get('user/self')
-  assert len(res['connected_devices']) == 1
-  assert str(bob.device_id) in res['connected_devices']
-
-  res = bob.delete('trophonius/%s/users/%s/%s' % (str(tropho), bob.id, str(bob.device_id)))
-  assert res['success']
-
-  res = bob.get('user/self')
-  assert len(res['connected_devices']) == 0
+  assert alice.id not in meta.notifier.users
+  alice.put('trophonius/%s/users/%s/%s' %
+            (tropho1, alice.id, alice.device_id))
+  assertEq(meta.notifier.users[alice.id][str(alice.device_id)],
+           [True])
+  alice.put('trophonius/%s/users/%s/%s' %
+            (tropho2, alice.id, alice.device_id))
+  assertEq(meta.notifier.users[alice.id][str(alice.device_id)],
+           [True, False, True])
+  alice.delete('trophonius/%s/users/%s/%s' %
+               (tropho1, alice.id, alice.device_id))
+  assertEq(meta.notifier.users[alice.id][str(alice.device_id)],
+           [True, False, True])
+  alice.delete('trophonius/%s/users/%s/%s' %
+               (tropho2, alice.id, alice.device_id))
+  assertEq(meta.notifier.users[alice.id][str(alice.device_id)],
+           [True, False, True, False])

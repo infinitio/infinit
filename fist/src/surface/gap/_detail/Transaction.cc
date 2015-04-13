@@ -101,6 +101,46 @@ namespace surface
       return this->transaction_peer_create(peer_id, files, message).id();
     }
 
+    surface::gap::PeerTransaction
+    State::transaction_to_gap_transaction(
+      uint32_t id,
+      infinit::oracles::PeerTransaction const& transaction,
+      gap_TransactionStatus status) const
+    {
+      return surface::gap::PeerTransaction(
+        id,
+        status,
+        this->user_id(transaction.sender_id),
+        transaction.sender_device_id,
+        this->user_id_or_null(transaction.recipient_id),
+        transaction.recipient_device_id,
+        transaction.mtime,
+        transaction.files,
+        transaction.total_size,
+        transaction.is_directory,
+        transaction.message,
+        transaction.canceler,
+        transaction.id);
+    }
+
+    surface::gap::LinkTransaction
+    State::link_to_gap_link(
+      uint32_t id,
+      infinit::oracles::LinkTransaction const& link,
+      gap_TransactionStatus status) const
+    {
+      return surface::gap::LinkTransaction(
+        id,
+        link.name,
+        link.mtime,
+        link.share_link,
+        link.click_count,
+        status,
+        link.sender_device_id,
+        link.message,
+        link.id);
+    }
+
     uint32_t
     State::start_onboarding(std::string const& file_path,
                             reactor::Duration const& transfer_duration)
@@ -314,7 +354,6 @@ namespace surface
     void
     State::_transactions_clear()
     {
-      ELLE_TRACE_SCOPE("%s: clear transactions", *this);
       // We assume that Transaction destructor doesn't throw.
       this->_transactions.clear();
     }
@@ -356,36 +395,16 @@ namespace surface
           if (auto peer_data =
             std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(notif))
           {
-            surface::gap::PeerTransaction notification(
-              id,
-              transaction->status(),
-              this->user_id(peer_data->sender_id),
-              peer_data->sender_device_id,
-              this->user_id_or_null(peer_data->recipient_id),
-              peer_data->recipient_device_id,
-              peer_data->mtime,
-              peer_data->files,
-              peer_data->total_size,
-              peer_data->is_directory,
-              peer_data->message,
-              peer_data->canceler,
-              peer_data->id);
-            this->enqueue(notification);
+            this->enqueue(
+              this->transaction_to_gap_transaction(
+                id, *peer_data, transaction->status()));
+
           }
           else if (auto link_data =
             std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(notif))
           {
-            surface::gap::LinkTransaction notification(
-              id,
-              link_data->name,
-              link_data->mtime,
-              link_data->share_link,
-              link_data->click_count,
-              transaction->status(),
-              link_data->sender_device_id,
-              link_data->message,
-              link_data->id);
-            this->enqueue(notification);
+            this->enqueue(
+              this->link_to_gap_link(id, *link_data, transaction->status()));
           }
           this->_transactions.emplace(id, std::move(transaction));
         }

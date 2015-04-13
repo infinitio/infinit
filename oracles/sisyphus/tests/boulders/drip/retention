@@ -7,12 +7,12 @@ import elle.log
 
 from infinit.oracles.transaction import statuses
 
-import sisyphus
-import sisyphus.boulders.drip
+import oracles.sisyphus
+import oracles.sisyphus.boulders.drip
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.boulders.drip'
 
-class Retention(sisyphus.boulders.drip.Retention):
+class Retention(oracles.sisyphus.boulders.drip.Retention):
 
   def __init__(self, sisyphus):
     super().__init__(sisyphus)
@@ -27,14 +27,14 @@ class Retention(sisyphus.boulders.drip.Retention):
     self.__now = value
 
   def _pick_template(self, template, users):
-    return sisyphus.boulders.drip.Drip._pick_template(
+    return oracles.sisyphus.boulders.drip.Drip._pick_template(
       self, template, users)
 
 with mongobox.MongoBox() as mongo:
   with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
     emailer = DummyEmailer()
-    sisy = sisyphus.Sisyphus(mongo_port = mongo.port,
-                             emailer = emailer)
+    sisy = oracles.sisyphus.Sisyphus(mongo_port = mongo.port,
+                                     emailer = emailer)
     gestapo(sisy.mongo)
     retention = Retention(sisy)
 
@@ -46,15 +46,9 @@ with mongobox.MongoBox() as mongo:
     sisy.boulders_run()
     check_no_mail(emailer.emails)
 
-    # Create an unactivated user for queries complexity check
-    sender = user_register(meta, 'slacker@infinit.io')
-
-    # Create an activated user
-    device = 'device'
+    # Create user
     email = 'user@infinit.io'
     sender = user_register(meta, email)
-    sender_device = meta._create_device(sender)
-    transaction_create(meta, sender, recipient_identifier = 'ghost@infinit.io')
 
     # Check nothing is sent to a fresh user
     sisy.boulders_run()
@@ -68,6 +62,10 @@ with mongobox.MongoBox() as mongo:
     forward(retention.delay_nth_reminder(0))
     sisy.boulders_run()
     check_mail(emailer.emails, email, 'drip_retention_1')
+
+    # Create ghost, for complexity checks
+    transaction_create(meta, sender,
+                       recipient_identifier = 'ghost@infinit.io')
 
     for i in range(2, 7):
       forward(retention.delay_nth_reminder(i - 1) -

@@ -17,6 +17,7 @@ with open(str(drake.path_source('../../../elle/drake-utils.py')), 'r') as f:
 def configure(production_build,
               elle,
               python3,
+              sendwithus,
               apns,
               apns_cert,
               apns_cert_prod,
@@ -58,7 +59,7 @@ def configure(production_build,
     'src/infinit/oracles/meta/error.py',
     'src/infinit/oracles/meta/server/__init__.py',
     'src/infinit/oracles/meta/server/apertus.py',
-    'src/infinit/oracles/meta/server/bitly.py',
+    'src/infinit/oracles/meta/server/shortener.py',
     'src/infinit/oracles/meta/server/cloud_buffer_token.py',
     'src/infinit/oracles/meta/server/cloud_buffer_token_gcs.py',
     'src/infinit/oracles/meta/server/conf.py',
@@ -145,6 +146,7 @@ def configure(production_build,
     [apns_cert, apns_cert_prod],
     build_python_path / 'infinit/oracles/meta/server',
     strip_prefix = True)
+
   if python3 is not None:
     for source in sources_built:
       source.dependencies_add(elle_python)
@@ -156,6 +158,8 @@ def configure(production_build,
   python += drake.copy(python_common, '.', '../..')
   python += drake.copy(apns.nodes, build_python_path,
                        drake.Path('../..') / apns.root)
+  python += drake.copy(sendwithus.nodes, build_python_path,
+                       drake.Path('../..') / sendwithus.root)
   meta = drake.python.Package('python', build_python_path, python)
   build << python
   build_binary = drake.copy(drake.node('meta'), 'bin')
@@ -239,6 +243,7 @@ def configure(production_build,
     'root/reset-password-unknown-email',
     'root/user-report',
     'routes',
+    'shortener',
     'status',
     'transactions/two_steps',
     'transactions/basic',
@@ -250,6 +255,8 @@ def configure(production_build,
     'transactions/ghost_code',
     'transactions/peer_reachability',
     'transactions/quotas',
+    'transactions/recipient_illformed',
+    'transactions/self',
     'transactions/to_a_phone',
     'transactions/transaction',
     'transactions/transaction_search',
@@ -271,7 +278,6 @@ def configure(production_build,
     'users/facebook_connect',
     'users/favorite-unfavorite',
     'users/get_avatar',
-    'users/invite_as_user',
     'users/login-failure',
     'users/login-logout',
     'users/login-success',
@@ -290,8 +296,8 @@ def configure(production_build,
     'users/user-search',
     'users/view',
     'users/web-session',
+    'users/update-plan',
     'web/edit',
-    'web/invitation',
     'web/login',
     'web/register',
     ):

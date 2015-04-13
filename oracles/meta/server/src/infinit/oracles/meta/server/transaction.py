@@ -20,6 +20,7 @@ from pymongo import ASCENDING, DESCENDING
 from .plugins.response import response
 
 from infinit.oracles.meta.server.utils import json_value
+import infinit.oracles.emailer
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Transaction'
 
@@ -123,8 +124,7 @@ class Mixin:
                       str(transaction['_id']))
         continue
 
-  @property
-  def __transaction_hash_fields(self):
+  def __transaction_hash_fields(self, include_id = False):
     res = {
       '_id': False,
       'download_link': True,
@@ -135,6 +135,8 @@ class Mixin:
       'sender_id': True,
       'total_size': True,
     }
+    if include_id:
+      res['_id'] = True
     return res
 
   @api('/transaction/by_hash/<transaction_hash>')
@@ -147,7 +149,7 @@ class Mixin:
     with elle.log.debug('fetch transaction with hash: %s' % transaction_hash):
       transaction = self.database.transactions.find_one(
         {'transaction_hash': transaction_hash},
-        fields = self.__transaction_hash_fields
+        fields = self.__transaction_hash_fields()
       )
       if transaction is None:
         return self.not_found()
@@ -280,6 +282,8 @@ class Mixin:
                               files,
                               files_count)
 
+  # FIXME: Nuke this ! Use the user fetching routines from user.py and
+  # don't hardcode the list of fields. Stop ADDING code !
   def __recipient_from_identifier(self,
                                   recipient_identifier,
                                   sender):
@@ -296,6 +300,7 @@ class Mixin:
       'features',
       'ghost_code',
       'shorten_ghost_profile_url',
+      'emailing.send-to-self',
     ]
     # Determine the nature of the recipient identifier.
     recipient_id = None
@@ -314,10 +319,11 @@ class Mixin:
         return recipient, False
     except bson.errors.InvalidId:
       pass
-    is_an_email = re.match(regexp.Email, recipient_identifier)
-    if is_an_email is not None:
+    recipient_identifier = recipient_identifier.lower().strip()
+    is_an_email = re.match(regexp.Email, recipient_identifier) is not None
+    if is_an_email:
       elle.log.debug("%s is an email" % recipient_identifier)
-      peer_email = recipient_identifier.lower().strip()
+      peer_email = recipient_identifier
       # XXX: search email in each accounts.
       recipient = self.user_by_email(peer_email,
                                      fields = recipient_fields,
@@ -332,9 +338,13 @@ class Mixin:
         recipient = self.user_by_phone_number(phone_number,
                                               fields = recipient_fields,
                                               ensure_existence = False)
+    assert isinstance(is_a_phone_number, bool)
+    assert isinstance(is_an_email, bool)
     if is_a_phone_number is False and is_an_email is False:
       return self.bad_request({
-        'reason': 'recipient_identifier was ill-formed'
+        'reason': 'identifier %s was ill-formed' % recipient_identifier,
+        'detail': 'neither a phone number nor an email address ' \
+                  '(country code: %s)' % device.get('country_code', None)
       })
     if recipient is None:
       elle.log.trace("recipient unknown, create a ghost")
@@ -353,7 +363,10 @@ class Mixin:
         })
       if recipient_id is None:
         return self.bad_request({
-          'reason': 'recipient_identifier was ill-formed'
+          'reason': 'couldn`t get the ghost recipient_id from ' \
+                    'recipient_identifier %s' % recipient_identifier,
+          'detail': 'neither a phone number nor an email address ' \
+                    '(country code: %s)' % device.get('country_code', None)
       })
       recipient = self.__user_fetch(
         {"_id": recipient_id},
@@ -366,6 +379,7 @@ class Mixin:
         'features': recipient['features'],
         'sender': str(sender['_id']),
         'timestamp': time.time(),
+        'is_email': is_an_email,
       }
       res = requests.post(
         url,
@@ -575,6 +589,24 @@ class Mixin:
         unaccepted = transaction,
         time = False)
       self._increase_swag(sender['_id'], recipient['_id'])
+      if  recipient_device_id is None and recipient['_id'] == sender['_id']:
+        if 'send-to-self' not in recipient.get('emailing', {}):
+          self.database.users.update(
+            {'_id': recipient['_id']},
+            {'$set': {'emailing.send-to-self.state':  'sent'}},
+          )
+          self.emailer.send_one(
+            'send-self-first',
+            recipient['email'],
+            recipient['fullname'],
+            recipient['email'],
+            recipient['fullname'],
+            {
+              'user': self.email_user_vars(sender),
+              'transaction':
+                self.email_transaction_vars(transaction, recipient),
+            },
+          )
       recipient_view = self.__user_view(recipient)
       return self.success({
           'created_transaction_id': transaction_id,
@@ -684,15 +716,6 @@ class Mixin:
     # cloud_buffer_token.delete_directory(transaction.id)
     return {}
 
-  # Shorten url.
-  def shorten(self, url):
-    if self.shorten_ghost_profile_url:
-      from .bitly import bitly
-      b = bitly()
-      url = b.shorten(url)['url']
-      return url
-    return url
-
   def on_accept(self, transaction, user, device_id, device_name):
     with elle.log.trace("accept transaction as %s" % device_id):
       if device_id is None or device_name is None:
@@ -747,6 +770,11 @@ class Mixin:
     elle.log.debug('transaction (%s) hash: %s' % (transaction['_id'], txn_hash))
     return txn_hash
 
+  def __view_transaction_email(self, transaction):
+    return {
+
+    }
+
   def on_ghost_uploaded(self, transaction, device_id, device_name, user):
     elle.log.log('Transaction finished');
     # Guess if this was a ghost cloud upload or not
@@ -792,38 +820,28 @@ class Mixin:
       # collection.
       transaction_hash = self._hash_transaction(transaction)
       if peer_email:
-        mail_template = 'send-file-url'
-        if 'features' in recipient and 'send_file_url_template' in recipient['features']:
-          mail_template = recipient['features']['send_file_url_template']
-        merges = {
-          'filename': transaction['files'][0],
-          'recipient_email': peer_email,
-          'recipient_name': recipient['fullname'],
-          'sendername': user['fullname'],
-          'sender_email': user['email'],
-          'sender_avatar': 'https://%s/user/%s/avatar' %
-          (bottle.request.urlparts[1], user['_id']),
-          'note': transaction['message'],
-          'transaction_hash': transaction_hash,
-          'transaction_id': str(transaction['_id']),
-          'number_of_other_files': len(transaction['files']) - 1,
-          # Ghost created pre 0.9.30 has no ghost code.
-        }
-        if 'ghost_code' in recipient:
-          merges.update({
-            'ghost_code': recipient['ghost_code'],
-            'ghost_profile': recipient.get(
-              'shorten_ghost_profile_url',
+        variables = {
+          'sender': self.email_user_vars(user),
+          'ghost_email': peer_email,
+          'transaction':
+          self.email_transaction_vars(transaction, recipient),
+          'ghost_profile': recipient.get(
+            'shorten_ghost_profile_url',
               self.__ghost_profile_url(recipient, type = "email")),
+        }
+        # Ghost created pre 0.9.30 has no ghost code.
+        if 'ghost_code' in recipient:
+          variables.update({
+            'ghost_code': recipient['ghost_code'],
           })
-        source = (user['fullname'], self.user_identifier(user))
-        invitation.invite_user(
-          peer_email,
-          mailer = self.mailer,
-          mail_template = mail_template,
-          source = source,
-          database = self.database,
-          merge_vars = {peer_email: merges})
+
+        self.emailer.send_one(
+          'ghost-invitation',
+          recipient_email = peer_email,
+          sender_email = user['email'],
+          sender_name = user['fullname'],
+          variables = variables,
+        )
       return {
         'transaction_hash': transaction_hash,
         'download_link': ghost_get_url,
@@ -1080,7 +1098,7 @@ class Mixin:
         new = True,
       )
     self.__notify_reachability(transaction)
-    return self.success()
+    return transaction['nodes']
 
   def __notify_reachability(self, transaction):
     with elle.log.trace("notify reachability for transaction %s" % transaction['_id']):
@@ -1112,114 +1130,6 @@ class Mixin:
         notify(transaction, 'recipient', 'sender')
       else:
         elle.log.trace("only one node connected: %s" % transaction['nodes'])
-
-  @api('/transaction/connect_device', method = "POST")
-  @require_logged_in
-  def connect_device(self,
-                     _id: bson.ObjectId,
-                     device_id: uuid.UUID, # Can be determined by session.
-                     locals = [],
-                     externals = []):
-    """
-    Connect the device to a transaction (setting ip and port).
-    _id -- the id of the transaction.
-    device_id -- the id of the device to link with.
-    locals -- a set of local ip address and port.
-    externals -- a set of externals ip address and port.
-    """
-    # XXX: We should check the state of the transaction.
-
-    #regexp.Validator(regexp.ID, error.TRANSACTION_ID_NOT_VALID)
-    #regexp.Validator(regexp.DeviceID, error.DEVICE_ID_NOT_VALID)
-    user = self.user
-    assert isinstance(_id, bson.ObjectId)
-    assert isinstance(device_id, uuid.UUID)
-
-    transaction = self.transaction(_id, owner_id = user['_id'])
-    device = self.device(id = str(device_id),
-                         owner =  user['_id'])
-    if str(device_id) not in [transaction['sender_device_id'],
-                              transaction['recipient_device_id']]:
-      return self.fail(error.TRANSACTION_DOESNT_BELONG_TO_YOU)
-
-    node = dict()
-
-    if locals is not None:
-      # Generate a list of dictionary ip:port.
-      # We can not take the local_addresses content directly:
-      # it's not checked before this point. Therefor, it's insecure.
-      node['locals'] = [
-        {"ip" : v["ip"], "port" : v["port"]}
-        for v in locals if v["ip"] != "0.0.0.0"
-        ]
-    else:
-      node['locals'] = []
-
-    if externals is not None:
-      node['externals'] = [
-        {"ip" : v["ip"], "port" : v["port"]}
-        for v in externals if v["ip"] != "0.0.0.0"
-        ]
-    else:
-      node['externals'] = []
-
-    transaction = self.update_node(transaction_id = transaction['_id'],
-                                   user_id = user['_id'],
-                                   device_id = device_id,
-                                   node = node)
-
-    elle.log.trace("device %s connected to transaction %s as %s" % (device_id, _id, node))
-    self.__notify_reachability(transaction)
-    return self.success()
-
-  @api('/transaction/<transaction_id>/endpoints', method = "POST")
-  @require_logged_in
-  def endpoints(self,
-                transaction_id: bson.ObjectId,
-                device_id: uuid.UUID, # Can be determined by session.
-                self_device_id: uuid.UUID # Can be determined by session.
-                ):
-    """
-    Return ip port for a selected node.
-    device_id -- the id of the device to get ips.
-    self_device_id -- the id of your device.
-    """
-    user = self.user
-
-    transaction = self.transaction(transaction_id, owner_id = user['_id'])
-    is_sender = self.is_sender(transaction, user['_id'], str(self.current_device['id']))
-
-    # XXX: Ugly.
-    if is_sender:
-      self_key = self.__user_key(transaction['sender_id'], self_device_id)
-      peer_key = self.__user_key(transaction['recipient_id'], device_id)
-    else:
-      self_key = self.__user_key(transaction['recipient_id'], self_device_id)
-      peer_key = self.__user_key(transaction['sender_id'], device_id)
-
-    if (not self_key in transaction['nodes'].keys()) or (not transaction['nodes'][self_key]):
-      return self.fail(error.DEVICE_NOT_FOUND, "you are not not connected to this transaction")
-
-    if (not peer_key in transaction['nodes'].keys()) or (not transaction['nodes'][peer_key]):
-      return self.fail(error.DEVICE_NOT_FOUND, "This user is not connected to this transaction")
-
-    res = dict();
-
-    addrs = {'locals': list(), 'externals': list()}
-    peer_node = transaction['nodes'][peer_key]
-
-    for addr_kind in ['locals', 'externals']:
-      for a in peer_node[addr_kind]:
-        if a and a["ip"] and a["port"]:
-          addrs[addr_kind].append(
-            (a["ip"], str(a["port"])))
-
-    res['externals'] = ["{}:{}".format(*a) for a in addrs['externals']]
-    res['locals'] =  ["{}:{}".format(*a) for a in addrs['locals']]
-    # XXX: Remove when apertus is ready.
-    res['fallback'] = ["88.190.48.55:9899"]
-
-    return self.success(res)
 
   def _upload_file_name(self, transaction):
     """

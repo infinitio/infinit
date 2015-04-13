@@ -17,6 +17,7 @@ from infinit.oracles.notification import notifications
 from . import conf, transaction_status
 
 from .plugins.jsongo import jsonify
+import random
 
 for name, value in notifications.items():
   globals()[name.upper()] = value
@@ -172,13 +173,24 @@ class Notifier:
 
   def push_notification(self, recipient_id, token, payload, os):
     if os == 'iOS':
+      cert = conf.INFINIT_APS_CERT_PATH_PRODUCTION \
+             if self.__production else conf.INFINIT_APS_CERT_PATH
       if self.__apns is None:
-        cert = conf.INFINIT_APS_CERT_PATH_PRODUCTION \
-               if self.__production else conf.INFINIT_APS_CERT_PATH
         self.__apns = apns.APNs(
           use_sandbox = not self.__production,
-          cert_file = cert)
-      self.__apns.gateway_server.send_notification(token, payload)
+          cert_file = cert,
+          enhanced=True)
+      def apns_error_listener(error_response):
+        elle.log.warn('APNS error: %s' % str(error_response))
+        self.__apns.gateway_server.force_close()
+        self.__apns = apns.APNs(
+          use_sandbox = not self.__production,
+          cert_file = cert,
+          enhanced=True)
+        self.__apns.gateway_server.register_response_listener(apns_error_listener)
+      self.__apns.gateway_server.register_response_listener(apns_error_listener)
+      identifier = random.getrandbits(32)
+      self.__apns.gateway_server.send_notification(token, payload, identifier = identifier)
     elif os == 'Android':
       headers = {
           'Authorization' : 'key=%s' % API_KEY,
@@ -222,7 +234,8 @@ class Notifier:
       files = 'files'
     if status is transaction_status.INITIALIZED: # Only sent to recipient
       if to_self:
-        alert = "Accept transfer from another device"
+        if message['recipient_device_id'] in [device, '']:
+          alert = "Accept transfer from another device"
       else:
         alert = "Accept transfer from %s" % message['sender_fullname']
     elif status is transaction_status.REJECTED: # Only sent to sender

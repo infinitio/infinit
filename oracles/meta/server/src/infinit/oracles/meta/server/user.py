@@ -9,9 +9,11 @@ import bson.code
 import random
 import uuid
 import re
+import stripe
 
 import elle.log
 import papier
+import infinit.oracles.emailer
 
 from .plugins.response import response, Response
 from .utils import api, require_logged_in, require_logged_in_fields, require_admin, require_logged_in_or_admin, hash_password, json_value, require_key, key, clean_up_phone_number
@@ -25,7 +27,6 @@ import os
 import string
 import time
 import unicodedata
-
 
 code_alphabet = '2346789abcdefghilkmnpqrstuvwxyz'
 code_length = 5
@@ -83,6 +84,14 @@ class Mixin:
     user['devices'] = [d['id'] for d in user['devices']]
     if 'favorites' not in user:
       user['favorites'] = []
+    if self.stripe_api_key is not None and 'stripe_id' in user:
+      cus = stripe.Customer.retrieve(
+        user['stripe_id'],
+        expand = ['subscriptions'],
+        api_key = self.stripe_api_key,
+      )
+      if cus.subscriptions.total_count > 0:
+          user['subscription_data'] = cus.subscriptions.data[0]
     return user
 
   @property
@@ -109,6 +118,7 @@ class Mixin:
         'email_confirmed',
         'features',
         'os',
+        'plan',
       ]
     return res
 
@@ -127,6 +137,8 @@ class Mixin:
       'plan',
       'quota',
       'consumed_ghost_codes',
+      'stripe_id',
+      'plan',
     ]
     return res
 
@@ -292,21 +304,27 @@ class Mixin:
                     OS = None,
                     pick_trophonius = None,
                     device_push_token: str = None,
-                    country_code = None):
+                    country_code = None,
+                    device_name = None,
+                    device_model = None,
+  ):
     # If creation process was interrupted, generate identity now.
     if 'public_key' not in user:
       user = self.__generate_identity(user, password)
     query = {'id': str(device_id), 'owner': user['_id']}
-
     if device_push_token is None:
-      push_token_update = {
+      login_update = {
         '$unset':
         {
           'devices.$.push_token': True,
+        },
+        '$set':
+        {
+          'devices.$.country_code': country_code,
         }
       }
     else:
-      push_token_update = {
+      login_update = {
         '$set':
         {
           'devices.$.push_token': device_push_token,
@@ -316,7 +334,7 @@ class Mixin:
     def login():
       return self.database.users.find_and_modify(
         {'_id': user['_id'], 'devices.id': str(device_id)},
-        push_token_update,
+        login_update,
         fields = ['devices']
       )
     usr = self.device_override_push_token(device_push_token, login)
@@ -324,9 +342,12 @@ class Mixin:
       elle.log.trace("user logged with an unknown device")
       device = self._create_device(
         id = device_id,
+        name = device_name,
         owner = user,
         device_push_token = device_push_token,
-        country_code = country_code)
+        OS = OS,
+        country_code = country_code,
+        device_model = device_model)
     else:
       device = list(filter(lambda x: x['id'] == str(device_id), usr['devices']))[0]
     # Remove potential leaked previous session.
@@ -351,6 +372,8 @@ class Mixin:
       {'$set': {'last_connection': time.time(),}})
     elle.log.trace("successfully connected as %s on device %s" %
                    (user['_id'], device['id']))
+    if OS is not None:
+      OS = OS.strip().lower()
     if 'email' in user:
       email = user['email']
       if OS is not None and OS in invitation.os_lists.keys() and ('os' not in user or OS not in user['os']):
@@ -377,6 +400,9 @@ class Mixin:
       self.database.users.update(
         {'_id': user['_id']},
         {'$set': { 'features': features}})
+    # Force immediate buffering on mobile devices.
+    if self.device_mobile:
+      features['preemptive_buffering_delay'] = '0'
     response['features'] = list(features.items())
     response['device'] = self.device_view(device)
     return response
@@ -441,7 +467,19 @@ class Mixin:
             OS: str = None,
             device_push_token = None,
             country_code = None,
-            pick_trophonius: bool = True):
+            pick_trophonius: bool = True,
+            device_model : str = None,
+            device_name : str = None):
+    # Check for service availability
+    # XXX TODO: Fetch maintenance mode bool from somewhere
+    maintenance_mode = False
+
+    if maintenance_mode:
+      return self.unavailable({
+        'reason': 'Server is down for maintenance.',
+        'code': error.MAINTENANCE_MODE
+        })
+
     # Xor facebook_token or email / password.
     with_email = bool(email is not None and password is not None)
     with_facebook = bool(long_lived_access_token is not None or
@@ -450,8 +488,6 @@ class Mixin:
       return self.bad_request({
         'reason': 'you must provide facebook_token or (email, password)'
       })
-    if OS is not None:
-      OS = OS.strip().lower()
     # FIXME: 0.0.0.0 is the website.
     if self.user_version < (0, 9, 0) and self.user_version != (0, 0, 0):
       return self.fail(error.DEPRECATED)
@@ -475,7 +511,9 @@ class Mixin:
                                 OS = OS,
                                 pick_trophonius = pick_trophonius,
                                 device_push_token = device_push_token,
-                                country_code = country_code)
+                                country_code = country_code,
+                                device_model = device_model,
+                                device_name = device_name)
 
   @api('/web-login', method = 'POST')
   def web_login(self,
@@ -1014,13 +1052,14 @@ class Mixin:
     """
     Return the url of the user ghost profile on the website.
     We have to specify the full url because this url will be shorten by another
-    service (e.g. bitly).
+    service.
 
     ghost -- The ghost.
     """
     ghost_id = ghost.get('_id', ghost.get('id'))
     assert ghost_id is not None
-    code = ghost['ghost_code']
+    # Old ghosts don't have any ghost_code.
+    code = ghost.get('ghost_code', '')
     url = '/ghost/%s' % str(ghost_id)
     ghost_profile_url = "https://www.infinit.io/" \
                         "invitation/%(ghost_id)s?key=%(key)s&code=%(code)s" \
@@ -1097,8 +1136,10 @@ class Mixin:
           'involved': account['_id'],
           'status': {'$nin': transaction_status.final + [transaction_status.CREATED] }
         },
-        fields = self.__transaction_hash_fields
+        fields = self.__transaction_hash_fields(include_id = True)
       ))
+      # Add the key 'id' (== '_id')
+      transactions = [dict(i, id = i['_id']) for i in transactions]
       return {
         'transactions': transactions
       }
@@ -1128,17 +1169,18 @@ class Mixin:
           'reason': 'email already registered',
           'email': email,
         })
-    k = key('/users/%s/accounts/%s/confirm' % (self.user['_id'], email))
-    self.mailer.send_template(
-      email,
-      'account-add-email',
-      merge_vars = {
-        email : {
-          'email': email,
-          'user': self.__user_view(self.user),
-          'key': k,
-        }
-      })
+    url ='/users/%s/accounts/%s/confirm' % (self.user['_id'], email)
+    k = key(url)
+    variables = {
+      'email': email,
+      'user': self.email_user_vars(self.user),
+      'url': self.url_absolute(url),
+      'key': key(url),
+    }
+    self.emailer.send_one('account-add-email',
+                          email,
+                          self.user['fullname'],
+                          variables = variables)
     return {}
 
   @api('/users/<user>/accounts/<name>/confirm', method = 'POST')
@@ -1212,6 +1254,11 @@ class Mixin:
   @api('/user/accounts/<email>/make_primary', method = 'POST')
   @require_logged_in_fields(['password'])
   def swap_primary_account(self, email, password):
+    if regexp.EmailValidator(email) != 0:
+      self.bad_request({
+        'reason': 'invalid email',
+        'email': email,
+      })
     user = self.user
     if not any(a['id'] == email for a in user['accounts']):
       self.not_found({
@@ -1498,6 +1545,46 @@ class Mixin:
       self.bad_request({
         'reason': 'Only ghost accounts can be merged'
       })
+
+    # Fail early if stripe customer could not be deleted
+    try:
+      if 'stripe_id' in user:
+        cus = stripe.Customer.retrieve(user['stripe_id'],
+                api_key = self.stripe_api_key)
+        cus.delete()
+    # Handle each exception case separately, even though the behaviour is the
+    # same for now. Explicit is better than implicit.
+    except stripe.error.InvalidRequestError as e:
+      # Invalid parameters were supplied to Stripe's API
+      elle.log.warn('Unable to delete Stripe customer for user {0}:'
+              '{1}'.format(user['email'], e.args))
+      return self.unavailable({
+        'reason': e.args[0]
+      })
+    except stripe.error.AuthenticationError as e:
+      # Authentication with Stripe's API failed
+      # (maybe you changed API keys recently)
+      elle.log.warn('Unable to delete Stripe customer for user {0}:'
+              '{1}'.format(user['email'], e.args))
+      return self.unavailable({
+        'reason': e.args[0]
+      })
+    except stripe.error.APIConnectionError as e:
+      # Network communication with Stripe failed
+      elle.log.warn('Unable to delete Stripe customer for user {0}:'
+              '{1}'.format(user['email'], e.args))
+      return self.unavailable({
+        'reason': e.args[0]
+      })
+    except stripe.error.StripeError as e:
+      # Display a very generic error to the user, and maybe send
+      # yourself an email
+      elle.log.warn('Unable to delete Stripe customer for user {0}:'
+              '{1}'.format(user['email'], e.args))
+      return self.unavailable({
+        'reason': e.args[0]
+      })
+
     # Invalidate credentials.
     self.remove_session(user)
     # Kick them out of the app.
@@ -2096,16 +2183,18 @@ class Mixin:
                if logged in source is the user)
     """
     assert isinstance(user_id, bson.ObjectId)
-    # FIXME: surely that user is already fetched
+    # FIXME: surely that user is already fetched. It's probably self
+    # anyway ...
     user = self._user_by_id(user_id, fields = ['swaggers'])
     swaggers = set(map(bson.ObjectId, user['swaggers'].keys()))
     d = {"user_id" : user_id}
     d.update(data)
-    self.notifier.notify_some(
-      notification_id,
-      recipient_ids = swaggers,
-      message = d,
-    )
+    if swaggers:
+      self.notifier.notify_some(
+        notification_id,
+        recipient_ids = swaggers,
+        message = d,
+      )
 
   ## ---------- ##
   ## Favortites ##
@@ -2182,37 +2271,6 @@ class Mixin:
       {'_id': user['_id']},
       update)
     return self.success()
-
-  @api('/user/invite', method = 'POST')
-  @require_logged_in
-  def invite(self, email):
-    """Invite a user to infinit.
-    This function is reserved for admins.
-
-    email -- the email of the user to invite.
-    admin_token -- the admin token.
-    """
-    user = self.user
-    with elle.log.trace("%s: invite %s" % (user['_id'], email)):
-      if regexp.EmailValidator(email) != 0:
-        return self.fail(error.EMAIL_NOT_VALID)
-      if self.__users_count({"email": email}) > 0:
-        self.fail(error.USER_ALREADY_INVITED)
-      invitation.invite_user(
-        email = email,
-        send_email = True,
-        mailer = self.mailer,
-        source = (user['fullname'], self.user_identifier(self.user)),
-        database = self.database,
-        merge_vars = {
-          email: {
-            'sendername': user['fullname'],
-            'user_id': str(user['_id']),
-            'sender_avatar': 'https://%s/user/%s/avatar' %
-              (bottle.request.urlparts[1], user['_id']),
-          }}
-      )
-      return self.success()
 
   @api('/user/invited')
   @require_logged_in
@@ -2330,8 +2388,12 @@ class Mixin:
     user_id -- the device owner id
     status -- the new device status
     """
-    with elle.log.trace("%s: %sconnected on device %s" %
-                        (user_id, not status and "dis" or "", device_id)):
+    fmt = {
+      'action': 'connected' if status else 'disconnected',
+      'device': 'device %s' % device_id,
+      'user': 'user %s' % user_id,
+    }
+    with elle.log.trace('%(user)s %(action)s on %(device)s' % fmt):
       assert isinstance(user_id, bson.ObjectId)
       assert isinstance(device_id, uuid.UUID)
       update_action = status and '$addToSet' or '$pull'
@@ -2358,50 +2420,88 @@ class Mixin:
           'devices.$.trophonius': None,
           'devices.$.online': False,
         }
-      res = self.database.users.update(
+      previous = self.database.users.find_and_modify(
         match,
         action,
-        multi = False,
+        fields = ['devices.id', 'devices.trophonius'],
+        new = False,
       )
-      # XXX:
-      # This should not be in user.py, but it's the only place
-      # we know the device has been disconnected.
-      if status is False:
-        self.database.users.update({
-          '_id': user_id,
-          'devices.online': {'$ne': True},
-        },
-        {
-          '$set': {'online': False,}
-        })
-        with elle.log.trace("%s: disconnect nodes" % user_id):
-          transactions = self.find_nodes(user_id = user_id,
-                                         device_id = device_id)
-          with elle.log.debug("%s: concerned transactions:" % user_id):
-            for transaction in transactions:
-              elle.log.debug("%s" % transaction)
-              self.update_node(transaction_id = transaction['_id'],
-                               user_id = user_id,
-                               device_id = device_id,
-                               node = None)
-              self.notifier.notify_some(
-                notifier.PEER_CONNECTION_UPDATE,
-                recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
-                message = {
-                  "transaction_id": str(transaction['_id']),
-                  "devices": [transaction['sender_device_id'], transaction['recipient_device_id']],
-                  "status": False
-                }
+      if status:
+        try:
+          device = next(d for d in previous['devices']
+                        if d['id'] == str(device_id))
+          status_changed = device.get('trophonius', None) == None
+        except StopIteration:
+          elle.log.warn(
+            'could not find device %s in user' % device_id)
+          status_changed = True
+      else:
+        status_changed = previous is not None
+      if status_changed:
+        if not status:
+          self.database.users.update(
+            {
+              '_id': user_id,
+              'devices.online': {'$ne': True},
+            },
+            {
+              '$set': {'online': False,}
+            },
+          )
+          self.__disconnect_endpoint(user_id, device_id)
+        self._notify_swaggers(
+          notifier.USER_STATUS,
+          {
+            'status': self._is_connected(user_id),
+            'device_id': str(device_id),
+            'device_status': status,
+          },
+          user_id = user_id,
+        )
+      else:
+        if status:
+          with elle.log.trace('user reconnected'):
+            self.__disconnect_endpoint(user_id, device_id)
+            # Simulate a disconnection and a reconnection
+            connected = self._is_connected(user_id)
+            for status in [False, True]:
+              self._notify_swaggers(
+                notifier.USER_STATUS,
+                {
+                  'status': connected,
+                  'device_id': str(device_id),
+                  'device_status': status,
+                },
+                user_id = user_id,
               )
-      self._notify_swaggers(
-        notifier.USER_STATUS,
-        {
-          'status': self._is_connected(user_id),
-          'device_id': str(device_id),
-          'device_status': status,
-        },
-        user_id = user_id,
-      )
+        else:
+          elle.log.trace('drop obsolete trophonius disconnection')
+
+  def __disconnect_endpoint(self, user, device):
+    with elle.log.trace('disconnect user %s device %s '
+                        'from transactions' % (user, device)):
+      transactions = self.find_nodes(user_id = user,
+                                     device_id = device)
+      for transaction in transactions:
+        tid = transaction['_id']
+        elle.log.debug('disconnect from transaction %s' % tid)
+        self.update_node(transaction_id = tid,
+                         user_id = user,
+                         device_id = device,
+                         node = None)
+        # sender = transaction['sender_id']
+        # recipient = transaction['recipient_id']
+        # peer =
+        self.notifier.notify_some(
+          notifier.PEER_CONNECTION_UPDATE,
+          recipient_ids = {transaction['sender_id'],
+                           transaction['recipient_id']},
+          message = {
+            "transaction_id": str(transaction['_id']),
+            "devices": [transaction['sender_device_id'], transaction['recipient_device_id']],
+            "status": False
+          }
+        )
 
   # Email subscription.
   # XXX: Make it a decorator.
@@ -2668,7 +2768,11 @@ class Mixin:
     res.update(self._user_transactions(modification_time = mtime['date']))
     # Include deleted links only during updates. At start up, ignore them.
     res.update(self.links_list(mtime = mtime['date'], include_deleted = (not init)))
-    res.update(self.devices_users_api(user['_id']))
+    # XXX.
+    # Return the correct list when iOS 0.9.34* is ready. This workarounds the
+    # issue of auto receiving on specific iOS device.
+    # res.update(self.devices_users_api(user['_id']))
+    res.update({'devices': [self.device_view(device)]})
     return self.success(res)
 
   def change_plan(self, uid, new_plan, expires_at = None):
@@ -2741,3 +2845,75 @@ class Mixin:
         '$inc': { 'quota.total_link_size': 5e8}
       },
     )
+  @api('/users/<user>', method='PUT')
+  @require_logged_in
+  def user_update(self,
+                  user,
+                  plan = None,
+                  stripe_token = None):
+      user = self.user
+      customer = self.__fetch_or_create_stripe_customer(user)
+      # Subscribing to a paying plan without source raises an error
+      try:
+      # Update user's payment source, represented by a token
+        if stripe_token is not None:
+          customer.source = stripe_token
+          customer.save()
+        if plan is not None:
+          # We do not want multiple plans to be active at the same time, so a
+          # customer can only have at most one subscription (ideally, exactly one
+          # subscription, which would be 'basic' for non paying customers)
+          if customer.subscriptions.total_count == 0:
+            customer.subscriptions.create(plan=plan)
+          else:
+            sub = customer.subscriptions.data[0]
+            sub.plan = plan
+            sub.save()
+          self.database.users.update(
+            {'_id': user['_id']},
+            {'$set': {'plan': plan}})
+      except stripe.error.CardError as e:
+        elle.log.warn('Stripe error: customer {0} card'
+                      'has been declined'.format(user['_id'],
+                      e.args[0]))
+        return self.bad_request({
+                'reason': (e.args),
+                'plan': plan
+                })
+      except stripe.error.InvalidRequestError as e:
+        elle.log.warn('Invalid stripe request, cannot update customer'
+                      '{0} plan: {1}'.format(user['_id'],
+                      e.args[0]))
+        return self.bad_request({
+                'reason': (e.args),
+                'plan': plan
+                })
+      except stripe.error.AuthentificationError as e:
+        elle.log.warn('Stripe auth failure: {1}'.format(e.args[0]))
+        return self.bad_request({
+                'reason': (e.args),
+                'plan': plan
+                })
+      except stripe.error.APIConnectionError as e:
+        elle.log.warn('Connection to Stripe failed: {1}'.format(e.args[0]))
+        return self.unavailable()
+      return self.success()
+
+  def __fetch_or_create_stripe_customer(self, user):
+    if self.stripe_api_key is None:
+      return None
+    if 'stripe_id' in user:
+      return stripe.Customer.retrieve(
+        user['stripe_id'],
+        expand = ['subscriptions'],
+        api_key = self.stripe_api_key,
+      )
+    else:
+      customer = stripe.Customer.create(
+        email = user['email'],
+        api_key = self.stripe_api_key,
+      )
+      self.database.users.update(
+        {'_id': user['_id']},
+        {'$set': {'stripe_id': customer.id}})
+      return customer

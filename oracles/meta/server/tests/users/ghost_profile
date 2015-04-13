@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import Meta, Trophonius, User, NoOpMailer, HTTPException
+from utils import *
 from utils import throws
 from pprint import pprint
 
@@ -16,19 +16,6 @@ from infinit.oracles.meta.server.transaction_status import INITIALIZED, ACCEPTED
 
 import requests
 from urllib.parse import urlparse, parse_qs
-
-class MailService(NoOpMailer):
-
-  def __init__(self):
-    super().__init__(True)
-    self.messages = {}
-  def template_message(self, template_message, message):
-    merges = {}
-    for entry in message['merge_vars'][0]['vars']:
-      merges[entry['name']] = entry['content']
-    self.messages.setdefault(template_message, [])
-    self.messages[template_message].append(merges)
-    print(merges)
 
 def clear_url(url, _type = None):
   url = url.replace('https://www.infinit.io/invitation', 'ghost')
@@ -90,7 +77,6 @@ with Meta(enable_emails = True,
     trophonius.connect_user(alice)
     trophonius.connect_user(bob)
 
-    meta.mailer = MailService()
     email = 'navet@infinit.io'
     # Check if the recipient always have the same ghost code & id.
     _, res0 = alice.sendfile(email, initialize = True)
@@ -111,11 +97,17 @@ with Meta(enable_emails = True,
 
     db_recipient = meta.database.users.find_one({"_id": ObjectId(bob.swaggers[0])})
     # Check if the 3 emails have been delivered and contain ghost_code and url.
-    assert len(meta.mailer.messages['send-file-url']) == 3
+    emails = meta.emailer.emails
+    assertEq(len(emails), 3)
     ghost_profile = None
-    for message in meta.mailer.messages['send-file-url']:
-      assert message['ghost_code'] == db_recipient['ghost_code']
-      ghost_profile = message['ghost_profile']
+    for email in emails:
+      assertEq(email.template, 'ghost-invitation')
+      assertEq(email.variables['ghost_code'],
+               db_recipient['ghost_code'])
+      if ghost_profile is None:
+        ghost_profile = email.variables['ghost_profile']
+      else:
+        assertEq(email.variables['ghost_profile'], ghost_profile)
     check_merge(meta, db_recipient, ghost_profile, 'email')
 
 # With phone numbers.
@@ -131,7 +123,6 @@ with Meta(enable_emails = True,
     trophonius.connect_user(alice)
     trophonius.connect_user(bob)
 
-    meta.mailer = MailService()
     phone = "+336400000"
     # Check if the recipient always have the same ghost code & id.
     _, res0 = alice.sendfile(phone, initialize = True)
@@ -151,7 +142,7 @@ with Meta(enable_emails = True,
     bob.transaction_update(t2, GHOST_UPLOADED)
 
     db_recipient = meta.database.users.find_one({"_id": ObjectId(bob.swaggers[0])})
-    assert 'send-file-url' not in meta.mailer.messages
+    assertEq(len(meta.emailer.emails), 0)
     ghost_profile = recipient['ghost_profile']
     check_merge(meta, db_recipient, ghost_profile, 'phone')
 
@@ -160,11 +151,11 @@ with Meta(enable_emails = True) as meta:
   alice_email = "alice@infinit.io"
   bob = User(meta, "bob@infinit.io")
   bob.login()
-  meta.mailer = MailService()
   transaction, res = bob.sendfile(recipient = alice_email, initialize = True)
   bob.transaction_update(res['created_transaction_id'], GHOST_UPLOADED)
-  message = meta.mailer.messages['send-file-url'][0]
-  ghost_code = message['ghost_code']
+  emails = meta.emailer.emails
+  assertEq(len(emails), 1)
+  ghost_code = emails[0].variables['ghost_code']
   alice = User(meta, alice_email)
   alice.login()
   assert len(alice.transactions) == 1
@@ -179,12 +170,13 @@ with Meta(enable_emails = True) as meta:
   alice_email = "alice@infinit.io"
   bob = User(meta, "bob@infinit.io")
   bob.login()
-  meta.mailer = MailService()
   transaction, res = bob.sendfile(recipient = alice_email, initialize = True)
   bob.transaction_update(res['created_transaction_id'], GHOST_UPLOADED)
   assert 'ghost_code' not in res['recipient']
-  message = meta.mailer.messages['send-file-url'][0]
-  ghost_code = message['ghost_code']
+  emails = meta.emailer.emails
+  assertEq(len(emails), 1)
+  assertEq(emails[0].template, 'ghost-invitation')
+  ghost_code = emails[0].variables['ghost_code']
   eve = User(meta, "eve@infinit.io")
   eve.login()
   assert len(eve.transactions) == 0
@@ -203,3 +195,37 @@ with Meta(enable_emails = True) as meta:
     assert False
   except HTTPException as e:
     assert e.status == 404
+
+# Old ghost without ghost_code.
+with Meta(enable_emails = True) as meta:
+  alice_email = "alice@infinit.io"
+  bob = User(meta, "bob@infinit.io")
+  bob.login()
+  transaction, res = bob.sendfile(recipient = alice_email, initialize = True)
+  bob.transaction_update(res['created_transaction_id'], GHOST_UPLOADED)
+  assert 'ghost_code' not in res['recipient']
+  meta.database.users.find_and_modify(
+    {
+      'register_status': 'ghost'
+    },
+    {
+      '$unset': {
+        'ghost_code': 1,
+        'shorten_ghost_profile_url': 1
+      }
+    })
+  emails = meta.emailer.emails
+  assertEq(len(emails), 1)
+  # Email are consummed when the getter is called.
+  assertEq(len(meta.emailer.emails), 0)
+  assertEq(emails[0].template, 'ghost-invitation')
+  assert 'ghost_code' in emails[0].variables
+  assert 'ghost_profile' in emails[0].variables
+  transaction, res = bob.sendfile(recipient = alice_email, initialize = True)
+  bob.transaction_update(res['created_transaction_id'], GHOST_UPLOADED)
+  assert 'ghost_code' not in res['recipient']
+  emails = meta.emailer.emails
+  assertEq(len(emails), 1)
+  assertEq(emails[0].template, 'ghost-invitation')
+  assert 'ghost_code' not in emails[0].variables
+  assert 'ghost_profile' in emails[0].variables

@@ -292,6 +292,12 @@ namespace elle
         json_dict["send"] = true;
 # else
         json_dict["send"] = !crash_dest.empty();
+        if (crash_dest.empty())
+        {
+          ELLE_WARN("CrashReporter not sending report: INFINIT_PRODUCTION_BUILD "
+                    "not defined and INFINIT_CRASH_DEST environment variable "
+                    "empty");
+        }
 # endif
       }
       reactor::http::Request::Configuration conf{
@@ -402,9 +408,13 @@ namespace elle
                                       config.meta_port());
       elle::filesystem::TemporaryDirectory tmp;
       boost::filesystem::path destination(tmp.path() / "report.tar.bz2");
-      boost::filesystem::path logs(config.non_persistent_config_dir());
+      std::vector<boost::filesystem::path> files;
+      files.push_back(config.non_persistent_config_dir());
+#ifdef __ANDROID__
+      files.push_back(elle::os::getenv("INFINIT_LOG_FILE"));
+#endif
       elle::archive::archive(elle::archive::Format::tar_gzip,
-                             {logs},
+                             files,
                              destination,
                              elle::archive::Renamer(),
                              temp_file_excluder,
@@ -426,6 +436,7 @@ namespace elle
                                       config.meta_port());
       elle::filesystem::TemporaryDirectory tmp;
       boost::filesystem::path destination(tmp.path() / "report.tar.bz2");
+      std::vector<boost::filesystem::path> attachments;
 #ifdef INFINIT_WINDOWS
       // On windows, libarchive behaves differently regarding of sharing a fd.
       // We need to create a copy of the log before archiving it.
@@ -445,9 +456,8 @@ namespace elle
           if (erc)
             ELLE_WARN("removing copied file %s failed: %s", copied_log, erc);
         }};
-      attachments_.push_back(copied_log);
+      attachments.push_back(copied_log);
 #endif
-      std::vector<boost::filesystem::path> attachments;
       boost::filesystem::path logs_dir(config.non_persistent_config_dir());
       attachments.push_back(logs_dir);
       for (auto const& attachment: attachments_)

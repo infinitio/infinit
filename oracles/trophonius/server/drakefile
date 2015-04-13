@@ -29,7 +29,7 @@ def configure(elle,
   cxx_config = cxx_config or drake.cxx.Config()
 
   local_cxx_config = drake.cxx.Config(cxx_config)
-  if cxx_toolkit.os in [drake.os.windows, drake.os.ios]:
+  if cxx_toolkit.os in [drake.os.windows, drake.os.ios, drake.os.android]:
     if cxx_toolkit.os is not drake.os.ios:
       boost_program_options = drake.cxx.Config(boost.config_program_options(static = True))
     if python3 is not None:

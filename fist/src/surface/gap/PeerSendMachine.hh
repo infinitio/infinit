@@ -101,6 +101,8 @@ namespace surface
       frete::Frete&
       frete();
     protected:
+      void
+      cleanup () override;
       virtual
       void
       _create_transaction() override;

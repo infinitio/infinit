@@ -18,6 +18,8 @@ import pymongo.database
 import pymongo.errors
 import re
 
+import infinit.oracles.emailer
+
 from .plugins.certification import Plugin as CertificationPlugin
 from .plugins.failure import Plugin as FailurePlugin
 from .plugins.fatal_emails import Plugin as FatalPlugin
@@ -44,6 +46,7 @@ from . import trophonius
 from . import user
 from . import waterfall
 from . import facebook
+from . import shortener
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.Meta'
 
@@ -105,6 +108,8 @@ class Meta(bottle.Bottle,
       zone = None,
       production = False,
       facebook_domain = "https://graph.facebook.com",
+      emailer = None,
+      stripe_api_key = None,
   ):
     self.__production = production
     import os
@@ -122,7 +127,7 @@ class Meta(bottle.Bottle,
           pymongo.MongoReplicaSetClient(
             ','.join(mongo_replica_set),
             replicaSet = 'fist-meta',
-            socketTimeoutMS = 1000,
+            socketTimeoutMS = 3000,
             connectTimeoutMS = 1000,
           )
     else:
@@ -174,6 +179,7 @@ class Meta(bottle.Bottle,
     self.daily_summary_hour = int(daily_summary_hour)
     self.email_confirmation_cooldown = email_confirmation_cooldown
     self.shorten_ghost_profile_url = shorten_ghost_profile_url
+    self.shortener = shortener.ShortSwitch()
     if aws_region is None:
       aws_region = cloud_buffer_token.aws_default_region
     self.aws_region = aws_region
@@ -196,10 +202,21 @@ class Meta(bottle.Bottle,
     self.__zone = zone
     # Facebook.
     self.facebook = facebook.FacebookGraph(facebook_domain)
+    # Emailing
+    self.__emailer = emailer or infinit.oracles.emailer.NoopEmailer()
+    self.__stripe_api_key = stripe_api_key
+
+  @property
+  def emailer(self):
+    return self.__emailer
 
   @property
   def production(self):
     return self.__production
+
+  @property
+  def stripe_api_key(self):
+    return self.__stripe_api_key
 
   def __set_constraints(self):
     #---------------------------------------------------------------------------
@@ -236,6 +253,11 @@ class Meta(bottle.Bottle,
       [('devices.push_token', 1)],
       unique = True,
       sparse = True)
+
+    # - Login.
+    self.__database.users.ensure_index([('email', 1)],
+                                       unique = False)
+
     #---------------------------------------------------------------------------
     # Transactions
     #---------------------------------------------------------------------------
@@ -334,6 +356,9 @@ class Meta(bottle.Bottle,
   def conflict(self, message = None):
     response(409, message)
 
+  def unavailable(self, message = None):
+    response(503, message)
+
   @api('/js/<filename:path>')
   def static_javascript(self, filename):
     return self.__static('js/%s' % filename)
@@ -398,9 +423,20 @@ class Meta(bottle.Bottle,
 
   @property
   def user_gcs_enabled(self):
+    # XXX: Force gcs desactivation on 0.9.33
+    return False
     if self.user_version < (0, 9, 26):
       return False
+    if self.device_mobile:
+      return True
     return self.user['features'].get('gcs_enabled', False)
+
+  @property
+  def device_mobile(self):
+    device = self.current_device
+    if device is None or 'os' not in device:
+      return None
+    return device['os'] in ('iOS', 'Android')
 
   def report_fatal_error(self, route, exception):
     import traceback
@@ -415,6 +451,7 @@ class Meta(bottle.Bottle,
         'hostname': hostname,
         'route': route,
         'session': bottle.request.session,
+        'url': bottle.request.url,
         'user': self.user,
       }
       self.mailer.send(to = 'infrastructure@infinit.io',
@@ -423,6 +460,7 @@ class Meta(bottle.Bottle,
                        body = '''\
 Error while querying %(route)s:
 
+URL: %(url)s
 User: %(user)s
 Session: %(session)s
 
@@ -444,3 +482,30 @@ Session: %(session)s
   def check_key(self, k):
     if k is None or k != key(bottle.request.path):
       self.forbidden()
+
+  def url_absolute(self, url = ''):
+    if not url.startswith('/'):
+      url = '/' + url
+    meta = '%s://%s' % bottle.request.urlparts[0:2]
+    return meta + url
+
+  def email_user_vars(self, user):
+    return infinit.oracles.emailer.user_vars(
+      user, self.url_absolute())
+
+  def email_transaction_vars(self, transaction, user):
+    return infinit.oracles.emailer.transaction_vars(
+      transaction, user, self.url_absolute())
+
+  # Shorten url.
+  def shorten(self, url):
+    if self.shorten_ghost_profile_url:
+      try:
+        return self.shortener.shorten(url)
+      except shortener.ShortenerException as e:
+        self.mailer.send(
+          to = 'infrastructure@infinit.io',
+          fr = 'infrastructure@infinit.io',
+          subject = ('Meta: Unable to shorten using %s' % self.shortener),
+          body = 'Exception: %s' % e)
+    return url

@@ -138,8 +138,10 @@ class Mixin:
                      owner,
                      name = None,
                      id = None,
+                     OS = None,
                      device_push_token = None,
-                     country_code = None):
+                     country_code = None,
+                     device_model = None):
     """Create a device.
     """
     with elle.log.trace('create device %s with owner %s' %
@@ -167,10 +169,14 @@ class Mixin:
           conf.INFINIT_AUTHORITY_PASSWORD
         ),
       }
+      if OS is not None:
+        device['os'] = OS
       if device_push_token is not None:
         device['push_token'] = device_push_token
       if country_code is not None:
         device['country_code'] = country_code
+      if device_model is not None:
+          device['model'] = device_model
       res = None
       def create():
         if has_id:
@@ -217,6 +223,8 @@ class Mixin:
         {"_id": user_id},
         fields = ['devices.trophonius'],
       )
+      if user is None:
+        self.not_found('User not found')
       return any(d.get('trophonius', None) is not None
                  for d in user['devices'])
 

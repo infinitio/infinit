@@ -7,12 +7,12 @@ import elle.log
 
 from infinit.oracles.transaction import statuses
 
-import sisyphus
-import sisyphus.boulders.drip
+import oracles.sisyphus
+import oracles.sisyphus.boulders.drip
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.boulders.drip'
 
-class WeeklyReport(sisyphus.boulders.drip.WeeklyReport):
+class WeeklyReport(oracles.sisyphus.boulders.drip.WeeklyReport):
 
   def __init__(self, sisyphus):
     super().__init__(sisyphus)
@@ -31,7 +31,7 @@ class WeeklyReport(sisyphus.boulders.drip.WeeklyReport):
       return super()._vars(element, user)
 
   def _pick_template(self, template, users):
-    return sisyphus.boulders.drip.Drip._pick_template(
+    return oracles.sisyphus.boulders.drip.Drip._pick_template(
       self, template, users)
 
 def check_mail(mails, recipient, count_peers, count_links):
@@ -57,9 +57,8 @@ def check_mail(mails, recipient, count_peers, count_links):
 with mongobox.MongoBox() as mongo:
   with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
     emailer = DummyEmailer()
-    sisy = sisyphus.Sisyphus(mongo_port = mongo.port,
-                             emailer = emailer)
-    gestapo(sisy.mongo)
+    sisy = oracles.sisyphus.Sisyphus(mongo_port = mongo.port,
+                                     emailer = emailer)
     report = WeeklyReport(sisy)
     # This is a Monday
     report.now = datetime.datetime(2014, 12, 15, 10, 58, 11)
@@ -75,6 +74,17 @@ with mongobox.MongoBox() as mongo:
     device = 'device'
     email = 'user@infinit.io'
     sender = user_register(meta, email)
+    sisy.mongo.meta.users.update(
+      {},
+      {
+        '$set':
+        {
+          'emailing.retention.state':
+          str(oracles.sisyphus.boulders.drip.Retention.count),
+        }
+      },
+    )
+    gestapo(sisy.mongo)
     sender_device = meta._create_device(sender)
     transaction_create(meta, sender, 'ghost@infinit.io')
 

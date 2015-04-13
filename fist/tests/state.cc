@@ -127,7 +127,7 @@ protected:
       {
         auto socket = elle::utility::move_on_copy(this->_server.accept());
         scope.run_background(
-          elle::sprintf("serve %s", *socket),
+          *socket ? elle::sprintf("serve %s", **socket) : elle::sprintf("serve %s", *socket),
           [socket, this]
           {
             this->_serve(std::move(*socket));
@@ -615,11 +615,12 @@ ELLE_TEST_SCHEDULED(trophonius_timeout)
 
 ELLE_TEST_SUITE()
 {
+  auto timeout = valgrind(15);
   auto& suite = boost::unit_test::framework::master_test_suite();
-  suite.add(BOOST_TEST_CASE(login), 0, 20);
-  suite.add(BOOST_TEST_CASE(login_failure), 0, 20);
-  suite.add(BOOST_TEST_CASE(trophonius_forbidden), 0, 20);
-  suite.add(BOOST_TEST_CASE(trophonius_timeout), 0, 10);
+  suite.add(BOOST_TEST_CASE(login), 0, timeout);
+  suite.add(BOOST_TEST_CASE(login_failure), 0, timeout);
+  suite.add(BOOST_TEST_CASE(trophonius_forbidden), 0, timeout);
+  suite.add(BOOST_TEST_CASE(trophonius_timeout), 0, timeout);
 }
 
 const std::vector<unsigned char> fingerprint =

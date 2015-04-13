@@ -31,7 +31,6 @@ with Meta() as meta:
     {
       'send': False,
     })
-  assert res['success']
   assert response == {}
 
   res = meta.post(
@@ -39,7 +38,6 @@ with Meta() as meta:
     {
       'send': True,
     })
-  assert res['success']
   assert response['email'] == 'crash@infinit.io'
 
   res = meta.post(
@@ -48,7 +46,6 @@ with Meta() as meta:
       'send': True,
       'client_os': 'Kanard',
     })
-  assert res['success']
   assert 'Kanard' in response['content']
   assert response['email'] == 'crash@infinit.io'
 
@@ -63,7 +60,6 @@ with Meta() as meta:
     })
   assert 'Kanard' in response['content']
   assert 'Duck' in response['content']
-  assert res['success']
 
   res = meta.post(
     'debug/report/user',
@@ -72,6 +68,4 @@ with Meta() as meta:
       'client_os': 'Kanard',
       'file': 'content'
     })
-
-  assert res['success']
   assert 'content' in response['attachment']

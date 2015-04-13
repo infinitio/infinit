@@ -249,8 +249,13 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: accept", *this);
       auto res = ReceiveMachine::_accept();
-      if (!res.aws_credentials())
+      if (!res.cloud_credentials())
+      {
+        ELLE_DEBUG("%s: no data in the cloud", *this);
         this->_nothing_in_the_cloud = true;
+      }
+      else
+        ELLE_DEBUG("%s: got cloud credentials", *this);
       return res;
     }
 
@@ -396,6 +401,20 @@ namespace surface
            total_bytes_transfered = this->_snapshot->progress() - initial_progress;
         throw;
       }
+      catch (elle::AssertError const& e)
+      {
+        if (this->_snapshot)
+        {
+          ELLE_ERR("snapshot: %s", *this->_snapshot);
+          ELLE_ERR("files: %s", this->_snapshot->files());
+          ELLE_ERR("current file index: %s", this->_fetch_current_file_index);
+        }
+        else
+        {
+          ELLE_ERR("no snapshot");
+        }
+        throw;
+      }
       catch (std::exception const& e)
       {
         // We don't ever retry cloud DL, but the idea is that for
@@ -522,7 +541,6 @@ namespace surface
           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
         else // normal termination: snapshot was removed
           total_bytes_transfered = this->transfer_info(frete).full_size();
-
         exit_reason = metrics::TransferExitReasonFinished;
         return this->get<frete::RPCFrete>(
           frete,
@@ -774,7 +792,6 @@ namespace surface
       catch (...)
       {
         throw;
-        ELLE_ERR("this one: %s", fullpath);
       }
       if (tr.complete())
       {
@@ -974,6 +991,7 @@ namespace surface
         current_file_full_size = f.size();
         current_file_full_path = _file_full_path(this->state().output_dir(),
                                                  *this->_snapshot, f);
+        ELLE_TRACE("%s will write to %s", *this, current_file_full_path);
         current_file_handle = elle::system::FileHandle(current_file_full_path,
                                                        elle::system::FileHandle::APPEND);
       }
@@ -1055,6 +1073,7 @@ namespace surface
             if (_store_expected_position != current_file_full_size)
             {
               // We need blocks for that one.
+              ELLE_TRACE("%s will write to %s", *this, current_file_full_path);
               break;
             }
           }

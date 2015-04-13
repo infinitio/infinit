@@ -80,7 +80,7 @@ namespace surface
     }
 
     uint32_t
-    State::user_id_or_null(std::string const& id)
+    State::user_id_or_null(std::string const& id) const
     {
       try
       {
@@ -92,8 +92,28 @@ namespace surface
       }
     }
 
+    surface::gap::User
+    State::user_to_gap_user(uint32_t id,
+                            State::User const& user) const
+    {
+      return surface::gap::User{
+        id,
+        user.online(),
+        user.fullname,
+        user.handle,
+        user.id,
+        this->is_swagger(id),
+        user.deleted(),
+        user.ghost(),
+        user.phone_number,
+        user.ghost_code,
+        user.ghost_profile_url};
+    }
+
     State::User const&
-    State::user_sync(State::User const& user, bool login) const
+    State::user_sync(State::User const& user,
+                     bool send_notification,
+                     bool swagger) const
     {
       ELLE_DEBUG_SCOPE("%s: user response: %s", *this, user);
 
@@ -112,38 +132,32 @@ namespace surface
         ELLE_ASSERT_NEQ(id, 0u);
         this->_users.at(id) = user;
       }
+      if (swagger)
+      {
+        reactor::Lock lock(this->_swagger_mutex);
+        this->_swagger_indexes.insert(id);
+      }
       auto const& synced_user = this->_users.at(id);
       // When logging in, we do not want to alert the UI to changes. If we do
       // the model will be overwritten with incomplete information.
       // i.e.: swagger will be false when called by State::_user_resync
-      if (!login)
-      {
-        surface::gap::User notification(
-          id,
-          user.online(),
-          user.fullname,
-          user.handle,
-          user.id,
-          this->is_swagger(id),
-          user.deleted(),
-          user.ghost(),
-          user.phone_number,
-          user.ghost_code,
-          user.ghost_profile_url);
-        this->enqueue(notification);
-      }
+      if (send_notification)
+        this->enqueue(this->user_to_gap_user(id, synced_user));
 
       ELLE_ASSERT_NEQ(id, 0u);
       return synced_user;
     }
 
     State::User const&
-    State::user_sync(std::string const& id) const
+    State::user_sync(std::string const& id,
+                     bool send_notification,
+                     bool swagger) const
     {
       ELLE_DEBUG_SCOPE("%s: sync user from object id or email: %s", *this, id);
       try
       {
-        return this->user_sync(this->meta().user(id));
+        return this->user_sync(
+          this->meta().user(id), send_notification, swagger);
       }
       catch (infinit::state::UserNotFoundError const& e)
       {
@@ -294,19 +308,20 @@ namespace surface
       using namespace infinit::oracles;
       ELLE_TRACE_SCOPE("%s: resync user", *this);
       this->_swagger_indexes.clear();
+      bool is_swagger = true;
+      bool send_notification = !login;
       for (auto const& swagger: users)
       {
         bool init = false;
         if (this->_user_indexes.find(swagger.id) == this->_user_indexes.end())
         {
-          auto user = this->user_sync(swagger, login);
+          auto user = this->user_sync(swagger, send_notification, is_swagger);
           init = true;
         }
-
         // Compare the cached user with the remote one, and calculate the
         // diff.
         auto old_user = this->user(swagger.id);
-        auto user = this->user_sync(swagger);
+        auto user = this->user_sync(swagger, send_notification, is_swagger);
         ELLE_DEBUG("old: %s (on devices %s)",
                    old_user, old_user.connected_devices);
         ELLE_DEBUG("new: %s (on devices %s)", user, user.connected_devices);
@@ -349,7 +364,6 @@ namespace surface
             notif->device_status = false;
             this->handle_notification(std::move(notif));
           }
-        this->_swagger_indexes.insert(this->_user_indexes.at(user.id));
       }
 
       for (std::string const& user_id: this->me().favorites)
@@ -364,21 +378,9 @@ namespace surface
       std::vector<surface::gap::User> res;
       for (auto const& user: users)
       {
-        this->user_sync(user);
+        this->user_sync(user, false);
         uint32_t numeric_id = this->_user_indexes.at(user.id);
-        surface::gap::User ret_user(
-          numeric_id,
-          user.online(),
-          user.fullname,
-          user.handle,
-          user.id,
-          this->is_swagger(numeric_id),
-          user.deleted(),
-          user.ghost(),
-          user.phone_number,
-          user.ghost_code,
-          user.ghost_profile_url);
-        res.push_back(ret_user);
+        res.push_back(this->user_to_gap_user(numeric_id, user));
       }
       return res;
     }
@@ -390,24 +392,12 @@ namespace surface
       std::unordered_map<std::string, surface::gap::User> res;
       for (auto const& result: result_list)
       {
-        this->user_sync(result.second);
+        this->user_sync(result.second, false);
         auto const& user = result.second;
         std::pair<std::string, surface::gap::User> item;
         item.first = result.first;
         uint32_t numeric_id = this->_user_indexes.at(user.id);
-        surface::gap::User ret_user(
-          numeric_id,
-          user.online(),
-          user.fullname,
-          user.handle,
-          user.id,
-          this->is_swagger(numeric_id),
-          user.deleted(),
-          user.ghost(),
-          user.phone_number,
-          user.ghost_code,
-          user.ghost_profile_url);
-        item.second = ret_user;
+        item.second = this->user_to_gap_user(numeric_id, user);
         res.insert(item);
       }
       return res;
@@ -532,13 +522,9 @@ namespace surface
       infinit::oracles::trophonius::NewSwaggerNotification const& notif)
     {
       ELLE_TRACE_SCOPE("%s: new swagger notification %s", *this, notif);
-      uint32_t id = this->_user_indexes.at(this->user_sync(notif.user_id).id);
-      {
-        reactor::Lock lock(this->_swagger_mutex);
-        this->_swagger_indexes.insert(id);
-      }
-      // We do not need to notify the UI of this as it's model is kept up to
-      // date by user_sync.
+      bool send_notification = true;
+      bool swagger = true;
+      this->user_sync(notif.user_id, send_notification, swagger);
     }
 
     void
@@ -572,12 +558,8 @@ namespace surface
       State::User swagger = this->user(notif.user_id);
       if (swagger.ghost() && notif.user_status == gap_user_status_online)
       {
-        swagger = this->user_sync(notif.user_id);
+        swagger = this->user_sync(notif.user_id, true, true);
         ELLE_ASSERT(!swagger.ghost());
-      }
-      {
-        reactor::Lock lock(this->_swagger_mutex);
-        this->_swagger_indexes.insert(this->_user_indexes.at(swagger.id));
       }
       ELLE_DEBUG("%s's (id: %s) status changed to %s",
                  swagger.fullname, swagger.id, notif.user_status);
