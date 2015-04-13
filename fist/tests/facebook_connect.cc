@@ -33,7 +33,7 @@ ELLE_TEST_SCHEDULED(normal)
   recipient->logout();
   recipient->facebook_connect("code");
   reactor::wait(recipient->logged_in());
-  ELLE_ASSERT_EQ(server.users().size(), 1);
+  ELLE_ASSERT_EQ(server.users().size(), 1u);
 
   tests::State sender(server, elle::UUID::random());
   connect(sender);
@@ -44,7 +44,7 @@ ELLE_TEST_SCHEDULED(normal)
   sender->facebook_connect("code_2");
   reactor::wait(sender->logged_in());
   ELLE_ASSERT_NEQ(sender->passport(), recipient->passport());
-  ELLE_ASSERT_EQ(server.users().size(), 2);
+  ELLE_ASSERT_EQ(server.users().size(), 2u);
   ELLE_ASSERT_NEQ(sender->me().id, recipient_id);
 }
 

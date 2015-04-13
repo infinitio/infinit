@@ -14,7 +14,7 @@ ELLE_TEST_SCHEDULED(links)
   tests::Server server;
   tests::Client sender(server, "sender@infinit.io");
   sender.login();
-  ELLE_ASSERT_EQ(sender.state->transactions().size(), 0);
+  ELLE_ASSERT_EQ(sender.state->transactions().size(), 0u);
   elle::filesystem::TemporaryFile transfered("filename");
   {
     boost::filesystem::ofstream f(transfered.path());
@@ -28,7 +28,7 @@ ELLE_TEST_SCHEDULED(links)
   sender.state->create_link(
     std::vector<std::string>{transfered.path().string().c_str()}, "message");
   // Because our trophonius is a brick, we will not receive the notification.
-  ELLE_ASSERT_EQ(sender.state->transactions().size(), 1);
+  ELLE_ASSERT_EQ(sender.state->transactions().size(), 1u);
   // At the stage, status is new.
   ELLE_ASSERT_EQ(sender.state->transactions().begin()->second->data()->status,
                  infinit::oracles::Transaction::Status::created);
@@ -102,7 +102,7 @@ ELLE_TEST_SCHEDULED(swaggers)
 
   alice.login();
   bob.login();
-  ELLE_ASSERT_EQ(bob.state->swaggers().size(), 1);
+  ELLE_ASSERT_EQ(bob.state->swaggers().size(), 1u);
 
   eve.user.swaggers.insert(&bob.user);
   bob.user.swaggers.insert(&eve.user);
@@ -122,13 +122,13 @@ ELLE_TEST_SCHEDULED(swaggers)
   bob.state->poll();
   ELLE_ASSERT(step0); // Nothing should have changed.
   ELLE_ASSERT(!step1); // Eve is a swagger but not online.
-  ELLE_ASSERT_EQ(bob.state->swaggers().size(), 2);
+  ELLE_ASSERT_EQ(bob.state->swaggers().size(), 2u);
   eve.login();
   bob.state->synchronize();
   bob.state->poll();
   ELLE_ASSERT(!step0); // It should be valid now.
   ELLE_ASSERT(step1); // It should be valid now.
-  ELLE_ASSERT_EQ(bob.state->swaggers().size(), 2);
+  ELLE_ASSERT_EQ(bob.state->swaggers().size(), 2u);
 
   // Disclaimer: It's really hard to play with multi device on a single device
   // when playing with real states. I'll use some random device ids to check
