@@ -660,6 +660,7 @@ def configure(cxx_toolkit = None,
   gap_tests_cxx_config.lib_path_runtime('../../lib')
   for name in ('state',
                'cloud-buffer',
+               'kickout',
                'ghost-download',
                'ghost-invite',
                'peer-reject',

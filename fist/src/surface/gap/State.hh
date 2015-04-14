@@ -319,6 +319,20 @@ namespace surface
       void
       _cleanup();
 
+    private:
+      ELLE_ATTRIBUTE_R(reactor::Barrier, kick_out_barrier);
+      ELLE_ATTRIBUTE_R(std::unique_ptr<reactor::Thread>, kicker);
+    private:
+      void
+      _kick_out();
+
+      void
+      _kick_out(bool retry,
+               std::string const& message);
+      // Launch the kicker thread.
+      void
+      _initialize_kicker();
+
       /*-------------------.
       | External Callbacks |
       `-------------------*/
