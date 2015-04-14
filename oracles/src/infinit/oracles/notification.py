@@ -12,6 +12,7 @@ notifications = {
   'network_update': 128,
   'message': 217,
   'ping': 208,
+  'devices_update': 210,
   'connection_enabled': -666,
   'suicide': 666,
 }

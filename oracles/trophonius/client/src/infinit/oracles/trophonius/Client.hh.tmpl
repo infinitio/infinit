@@ -12,6 +12,7 @@
 
 # include <reactor/Barrier.hh>
 
+# include <infinit/oracles/Device.hh>
 # include <infinit/oracles/PeerTransaction.hh>
 # include <infinit/oracles/LinkTransaction.hh>
 
@@ -158,6 +159,16 @@ namespace infinit
       {
       public:
         PeerTransactionNotification(elle::serialization::SerializerIn& input);
+      };
+
+      class DevicesUpdateNotification
+        : public Notification
+      {
+      public:
+        DevicesUpdateNotification(elle::serialization::SerializerIn& input);
+
+        std::string operation;
+        Device device;
       };
 
       struct PeerReachabilityNotification:

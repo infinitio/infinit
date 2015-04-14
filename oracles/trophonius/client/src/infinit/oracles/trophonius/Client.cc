@@ -189,6 +189,14 @@ namespace infinit
         : Notification(NotificationType::peer_connection_update)
       {}
 
+      DevicesUpdateNotification::DevicesUpdateNotification(
+        elle::serialization::SerializerIn& input)
+        : Notification(NotificationType::devices_update)
+      {
+        input.serialize("operation", this->operation);
+        input.serialize("device", this->device);
+      }
+
       static
       std::unique_ptr<Notification>
       notification_from_dict(elle::json::Object const& json)
@@ -250,6 +258,11 @@ namespace infinit
           {
             elle::serialization::json::SerializerIn input(json);
             return elle::make_unique<UserStatusNotification>(input);
+          }
+          case NotificationType::devices_update:
+          {
+            elle::serialization::json::SerializerIn input(json);
+            return elle::make_unique<DevicesUpdateNotification>(input);
           }
           default:
             ; // Nothing.
