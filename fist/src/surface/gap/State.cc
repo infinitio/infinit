@@ -135,6 +135,7 @@ namespace surface
       , _forced_trophonius_host()
       , _forced_trophonius_port(0)
       , _metrics_reporter(std::move(local_config.metrics()))
+      , _local_configuration(local_config)
       , _me()
       , _output_dir(local_config.download_dir())
       , _reconnection_cooldown(10_sec)
@@ -142,7 +143,6 @@ namespace surface
       , _device()
       , _login_watcher_thread(nullptr)
       , _authority(local_config.authority())
-      , _local_configuration(local_config)
     {
       this->_logged_out.open();
       ELLE_TRACE_SCOPE("%s: create state", *this);
