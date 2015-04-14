@@ -40,6 +40,25 @@ json(C& container)
 
 namespace tests
 {
+  void
+  Server::register_route(std::string const& route,
+                         reactor::http::Method method,
+                         Super::Function const& function)
+  {
+    Super::register_route(route, method,
+                          [this, function] (Super::Headers const& headers,
+                                            Super::Cookies const& cookies,
+                                            Super::Parameters const& parameters,
+                                            elle::Buffer const& body)
+                          {
+                            auto it = this->headers().find("Set-Cookie");
+                            if (it != this->headers().end())
+                              this->headers().erase(it);
+                            return function(headers, cookies, parameters, body);
+                          });
+
+  }
+
   Server::Server()
     : _session_id(elle::UUID::random())
     , trophonius()
@@ -140,6 +159,7 @@ namespace tests
            elle::Buffer const&)
       {
         User const& user = this->user(cookies);
+        auto const& device = this->device(cookies);
         std::vector<Transaction*> runnings;
         std::vector<Transaction*> finals;
         for (auto& transaction: this->_transactions)
@@ -161,12 +181,13 @@ namespace tests
           "  \"running_transactions\": %s,"
           "  \"final_transactions\": %s,"
           "  \"links\": %s,"
-          "  \"devices\": []"
+          "  \"devices\": [%s]"
           "}",
           user.swaggers_json(),
           json(runnings),
           json(finals),
-          user.links_json());
+          user.links_json(),
+          device.json());
         return res;
       });
 
