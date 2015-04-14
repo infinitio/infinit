@@ -346,7 +346,7 @@ class Mixin:
         'detail': 'neither a phone number nor an email address ' \
                   '(country code: %s)' % device.get('country_code', None)
       })
-    if recipient is None:
+    if recipient is None or recipient['register_status'] == 'contact':
       elle.log.trace("recipient unknown, create a ghost")
       new_user = True
       if is_an_email:
@@ -354,13 +354,13 @@ class Mixin:
           'email': peer_email,
           'fullname': peer_email, # This is safe as long as we don't allow searching for ghost users.
           'accounts': [{'type':'email', 'id': peer_email}],
-        })
+        }, recipient)
       if is_a_phone_number:
         recipient_id = self.__register_ghost({
           'phone_number': phone_number,
           'fullname': phone_number, # Same comment.
           'accounts': [{'type':'phone', 'id': phone_number}],
-        })
+        }, recipient)
       if recipient_id is None:
         return self.bad_request({
           'reason': 'couldn`t get the ghost recipient_id from ' \

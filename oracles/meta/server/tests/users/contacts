@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User, throws
+import infinit.oracles.meta.server.transaction_status as transaction_status
+
+import bson
+
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  alice.put('users/%s/contacts' % (alice.id),
+    {'contacts': [{'emails':['bob@infinit.io']}]})
+  assert alice.swaggers == []
+  bob = User(meta, 'bob@infinit.io')
+  assert [str(bob.id)] == alice.swaggers
+  alice.put('users/%s/contacts' % (alice.id),
+    {'contacts': [{'emails':['bob@infinit.io']}]})
+  assert [str(bob.id)] == alice.swaggers
+
+  conrad = User(meta, 'conrad@infinit.io')
+  conrad.login()
+  conrad.put('users/%s/contacts' % (conrad.id),
+    {'contacts': [{'emails':['bob@infinit.io']}]})
+  assert [str(bob.id)] == conrad.swaggers
+
+  # Test contact-ing a ghost
+  bob.login()
+  transaction, res = bob.sendfile(recipient = 'daniel@infinit.io', use_identifier = False)
+  assert res['success']
+  conrad.put('users/%s/contacts' % (conrad.id),
+    {'contacts': [{'emails':['daniel@infinit.io']}]})
+  assert [str(bob.id)] == conrad.swaggers
+  daniel = User(meta, 'daniel@infinit.io')
+  assert sorted([str(bob.id), str(daniel.id)]) == sorted(conrad.swaggers)
+
+# Check contact interaction with merge-account
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  alice.put('users/%s/contacts' % (alice.id),
+    {'contacts': [{'emails':['marc@infinit.io']}]})
+  bob = User(meta, 'bob@infinit.io')
+  bob.login()
+  carl = User(meta, 'carl@infinit.io')
+  carl.login()
+
+  transaction, res = bob.sendfile(recipient = 'marc@infinit.io', use_identifier = False)
+  #Cheat to get the ghost code
+  marc_data = meta.database.users.find_one({'accounts.id': 'marc@infinit.io'})
+  code = marc_data['ghost_code']
+  carl.post('ghost/%s/merge' % (code)) # carl is marc!
+  assert [str(carl.id)] == alice.swaggers
+
+
+# check using phone numbers
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login(country_code = 'FR')
+  alice.put('users/%s/contacts' % (alice.id),
+    {'contacts': [{'emails':['marc@infinit.io'], 'phones': ['1234555678']}]})
+  bob = User(meta, 'bob@infinit.io')
+  bob.login(country_code = 'FR')
+  carl = User(meta, 'carl@infinit.io')
+  carl.login()
+
+  transaction, res = bob.sendfile(recipient = '1234555678', use_identifier = False)
+  #Cheat to get the ghost code
+  marc_data = meta.database.users.find_one({'accounts.id': 'marc@infinit.io'})
+  print(marc_data)
+  d = meta.database.users.find({}, ['accounts', 'register_status'])
+  for e in d:
+    print(e)
+  code = marc_data['ghost_code']
+  carl.post('ghost/%s/merge' % (code)) # carl is marc!
+  assert [str(carl.id)] == alice.swaggers

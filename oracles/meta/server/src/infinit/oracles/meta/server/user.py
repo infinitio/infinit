@@ -756,7 +756,7 @@ class Mixin:
       )
       user = res['value']
       if res['lastErrorObject']['updatedExisting']:
-        if user['register_status'] == 'ghost':
+        if user['register_status'] in ['ghost', 'contact']:
           for field in ['swaggers', 'features']:
             user_content[field] = user[field]
           update = {
@@ -777,7 +777,7 @@ class Mixin:
           user = self.database.users.find_and_modify(
             query = {
               'accounts.id': email,
-              'register_status': 'ghost',
+              'register_status': {'$in': ['ghost', 'contact']},
             },
             update = update,
             new = True,
@@ -787,6 +787,16 @@ class Mixin:
             # The ghost was already transformed - prevent the race
             # condition.
             raise Exception(error.EMAIL_ALREADY_REGISTERED)
+          # notify users that have us in contacts
+          for c in user['contact_of']:
+            self.database.users.update({'_id': c},
+              {'$inc': {'swaggers.' + str(user['_id']): 0}
+              })
+            self.notifier.notify_some(
+              notifier.NEW_SWAGGER,
+              message = {'user_id': str(user['_id'])},
+              recipient_ids = {c},
+              )
         else:
           # The user existed.
           raise Exception(error.EMAIL_ALREADY_REGISTERED)
@@ -984,7 +994,8 @@ class Mixin:
     return ''.join(random.choice(alphabet) for _ in range(length))
 
   def __register_ghost(self,
-                       extra_fields):
+                       extra_fields,
+                       recipient = None):
     assert 'accounts' in extra_fields
     features = self._roll_features(True)
     ghost_code = self.generate_random_sequence()
@@ -999,8 +1010,15 @@ class Mixin:
       'ghost_code': ghost_code,
       'ghost_code_expiration': self.now + datetime.timedelta(days=14),
     }
-    request.update(extra_fields)
-    user_id = self._register(**request)
+    if recipient is not None:
+      user_id = recipient['_id']
+      request.update(extra_fields)
+      del request['accounts']
+      self.database.users.update( {'_id': user_id},
+        { '$set': request})
+    else:
+      request.update(extra_fields)
+      user_id = self._register(**request)
     self.database.users.update(
       {
         "_id": user_id
@@ -1602,6 +1620,7 @@ class Mixin:
       cleared_user['register_status'] = 'merged'
       cleared_user['merged_with'] = merge_with['_id']
       deleted_user_swaggers = user.get('swaggers', {})
+      deleted_user_contact_of = user.get('contact_of', [])
       # XXX: Obvious race condition here.
       # Accounts fields are unique. If we want to copy user['accounts'] to
       # merge_with, we need to copy and delete them first, and the add them
@@ -1654,6 +1673,16 @@ class Mixin:
       self.change_transactions_recipient(
         current_owner = user, new_owner = merge_with)
       # self.change_links_ownership(user, merge_with)
+      new_id = deleted_user['merged_with']
+      for c in deleted_user_contact_of:
+        self.database.users.update({'_id': c},
+          {'$inc': {'swaggers.' + str(new_id): 0}
+          })
+        self.notifier.notify_some(
+          notifier.NEW_SWAGGER,
+          message = {'user_id': str(new_id)},
+          recipient_ids = {c},
+          )
     self.notifier.notify_some(notifier.DELETED_SWAGGER,
                               recipient_ids = swaggers,
                               message = {'user_id': user['_id']})
@@ -2818,3 +2847,52 @@ class Mixin:
         {'_id': user['_id']},
         {'$set': {'stripe_id': customer.id}})
       return customer
+
+
+  @api('/users/<user>/contacts', method='PUT')
+  @require_logged_in
+  def user_update_contacts(self,
+                           user,
+                           contacts):
+    """ Update with user address book informations.
+        {contacts: [contact...]}
+        contact: {phones:[phone], emails:[email]}
+    """
+    user = self.user
+    new_swaggers = dict()
+    for c in contacts:
+      phones = c.get('phones', [])
+      country_code = self.current_device.get('country_code', None)
+      phones = list(map(lambda x: clean_up_phone_number(x, country_code), phones))
+
+      hit = self.database.users.find_one({
+          'accounts.id': {'$in': phones + c.get('emails',[])}
+      }, fields=['swaggers', 'accounts', 'register_status', 'contact_of'])
+      if hit is not None:
+        strid = str(hit['_id'])
+        if strid not in user['swaggers'] and hit['register_status'] == 'ok':
+          new_swaggers['swaggers.' + strid] = 0
+        if hit['register_status'] in ['contact','ghost'] and user['_id'] not in hit.get('contact_of', []):
+          self.database.users.update({'_id': hit['_id']}, {'$addToSet': {'contact_of': user['_id']}})
+      else:
+        # Create the new contact
+        accounts_mails = map(lambda x: {'type': 'email', 'id': x}, c.get('emails', []))
+        accounts_phone = map(lambda x: {'type': 'phone', 'id': x}, phones)
+        contact_data = {
+          'register_status': 'contact',
+          'accounts': list(accounts_mails) + list(accounts_phone),
+          'notifications': [],
+          'networks': [],
+          'devices': [],
+          'swaggers': {},
+          'features': self._roll_features(True),
+          'contact_of': [user['_id']]
+        }
+        self.database.users.insert(contact_data)
+    self.database.users.update({'_id': user['_id']}, {'$set': new_swaggers})
+    for s in new_swaggers.keys():
+      self.notifier.notify_some(
+          notifier.NEW_SWAGGER,
+          message = {'user_id': s.split('.')[1]},
+          recipient_ids = {user['_id']},
+        )
