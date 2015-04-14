@@ -133,7 +133,6 @@ ELLE_TEST_SCHEDULED(swaggers)
   // Disclaimer: It's really hard to play with multi device on a single device
   // when playing with real states. I'll use some random device ids to check
   // behaviours.
-  bob.user.connected_devices.clear();
   bob.user.connected_devices.insert(elle::UUID::random());
   bob.user.connected_devices.insert(elle::UUID::random());
 
@@ -148,7 +147,7 @@ ELLE_TEST_SCHEDULED(swaggers)
   });
   alice.state->synchronize();
   alice.state->poll();
-  ELLE_ASSERT_EQ(step2, 2);
+  ELLE_ASSERT_EQ(step2, 3);
 
   bob.user.connected_devices.clear();
   bob.logout();

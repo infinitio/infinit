@@ -8,7 +8,6 @@
 
 # include <elle/Printable.hh>
 
-# include <surface/gap/enums.hh>
 # include <surface/gap/Notification.hh>
 
 namespace surface

@@ -29,4 +29,10 @@ namespace tests
       this->id(),
       passport_string);
   }
+
+  void
+  Device::print(std::ostream& out) const
+  {
+    out << "Device(" << this->id() << ")";
+  }
 }

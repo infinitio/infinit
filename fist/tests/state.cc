@@ -162,12 +162,16 @@ class Server
 public:
   Server(papier::Identity identity,
          boost::uuids::uuid device_id)
-    : _device_id(device_id)
+    : _identity(std::move(identity))
     , _session_id(random_uuid())
-    , _identity(std::move(identity))
+    , _device()
     , _trophonius()
     , _login_result(0)
   {
+    this->_device.id = device_id;
+    this->_device.name = "DEVICE";
+    this->_device.passport = generate_passport(
+      this->_device.id, "DEVICE", this->_identity.pair().K());
     this->headers()["X-Fist-Meta-Version"] = INFINIT_VERSION;
     this->headers()["Set-Cookie"] =
       elle::sprintf("session-id=%s", this->_session_id);
@@ -195,18 +199,22 @@ public:
     this->register_route(
       "/user/synchronize",
       reactor::http::Method::GET,
-      [] (Server::Headers const&,
-          Server::Cookies const&,
-          Server::Parameters const&,
-          elle::Buffer const&)
+      [this] (Server::Headers const& headers,
+          Server::Cookies const& cookies,
+          Server::Parameters const& parameters,
+          elle::Buffer const& body)
       {
-        return "{"
+        return elle::sprintf(
+          "{"
           "  \"swaggers\": [],"
           "  \"running_transactions\": [],"
           "  \"final_transactions\": [],"
           "  \"links\": [],"
-          "  \"devices\": []"
-          "}";
+          "  \"devices\": [%s]"
+          "}",
+          this->routes()[
+            elle::sprintf("/device/%s/view", this->_device.id)][
+              reactor::http::Method::GET](headers, cookies, parameters, body));
       });
 
     this->register_route(
@@ -218,8 +226,9 @@ public:
                 std::placeholders::_2,
                 std::placeholders::_3,
                 std::placeholders::_4));
+
     this->register_route(
-      elle::sprintf("/device/%s/view", this->_device_id),
+      elle::sprintf("/device/%s/view", this->_device.id),
       reactor::http::Method::GET,
       [&] (Server::Headers const&,
            Server::Cookies const&,
@@ -233,9 +242,8 @@ public:
           "  \"passport\": \"%s\","
           "  \"success\": true"
           "}",
-          this->_device_id,
-          generate_passport(this->_device_id, "DEVICE",
-                            this->_identity.pair().K()));
+          this->_device.id,
+          this->_device.passport.get());
       });
     this->register_route(
       "/logout",
@@ -310,10 +318,10 @@ public:
   }
 
   std::string
-  _post_login(Headers const&,
-              Cookies const&,
-              Parameters const&,
-              elle::Buffer const&)
+  _post_login(Headers const& headers,
+              Cookies const& cookies,
+              Parameters const& parameters,
+              elle::Buffer const& body)
   {
     if (_login_result == 0)
     {
@@ -334,12 +342,7 @@ public:
          "    \"favorites\": [],"
          "    \"success\": true"
          "  },"
-         "  \"device\": {"
-         "    \"id\" : \"%s\","
-         "    \"name\": \"device\","
-         "    \"passport\": \"%s\","
-         "    \"success\": true"
-         "  },"
+         "  \"device\": %s,"
          "  \"features\": [],"
          "  \"trophonius\" : {"
          "    \"host\": \"127.0.0.1\","
@@ -348,9 +351,9 @@ public:
          "  }"
          "}",
          identity_serialized,
-         this->_device_id,
-         generate_passport(this->_device_id, "DEVICE",
-                           this->_identity.pair().K()),
+          this->routes()[
+            elle::sprintf("/device/%s/view", this->_device.id)][
+              reactor::http::Method::GET](headers, cookies, parameters, body),
          this->_trophonius.port());
      }
      throw Exception("/login", reactor::http::StatusCode::Forbidden,
@@ -379,11 +382,12 @@ public:
     this->_session_id = std::move(id);
   }
 
-  ELLE_ATTRIBUTE_R(boost::uuids::uuid, device_id)
-  ELLE_ATTRIBUTE_R(boost::uuids::uuid, session_id)
   ELLE_ATTRIBUTE_R(papier::Identity, identity)
+  ELLE_ATTRIBUTE_R(boost::uuids::uuid, session_id)
+  ELLE_ATTRIBUTE_R(surface::gap::State::Device, device)
   ELLE_ATTRIBUTE_R(Trophonius, trophonius);
   ELLE_ATTRIBUTE_RW(int, login_result);
+
 };
 
 ELLE_TEST_SCHEDULED(login)
@@ -610,7 +614,7 @@ ELLE_TEST_SCHEDULED(trophonius_timeout)
       trophoPtr->connect_timeout(1_min);
     });
   BOOST_CHECK_NO_THROW(state.login(email, password, std::move(tropho)));
-  BOOST_CHECK_EQUAL(state.logged_in(), true);
+  BOOST_CHECK_EQUAL(state.logged_in_to_meta(), true);
 }
 
 ELLE_TEST_SUITE()

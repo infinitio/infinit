@@ -1,4 +1,5 @@
 #include <surface/gap/Device.hh>
+#include <surface/gap/enums.hh>
 
 namespace surface
 {
@@ -6,10 +7,12 @@ namespace surface
   {
     Device::Device(elle::UUID const& id_,
                    std::string const& name_,
-                   boost::optional<std::string> os_)
+                   boost::optional<std::string> os_,
+                   bool deleted)
       : id(id_.repr())
       , name(name_)
       , os(os_ ? os_.get() : "")
+      , deleted(deleted)
     {}
 
     Device::~Device() noexcept(true)
@@ -23,5 +26,7 @@ namespace surface
              << "name: " << this->name << ", "
              << "os: " << this->os << ")";
     }
+
+    Notification::Type Device::type = NotificationType_DeviceUpdated;
   }
 }

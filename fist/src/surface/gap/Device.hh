@@ -20,12 +20,16 @@ namespace surface
       Device() = default;
       Device(elle::UUID const& id,
              std::string const& name,
-             boost::optional<std::string> os);
+             boost::optional<std::string> os,
+             bool deleted = false);
       ~Device() noexcept(true);
 
       std::string id;
       std::string name;
       std::string os;
+      bool deleted;
+
+      static Notification::Type type;
 
     private:
       void

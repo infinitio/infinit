@@ -1,4 +1,5 @@
 #include <surface/gap/User.hh>
+#include <surface/gap/enums.hh>
 
 namespace surface
 {

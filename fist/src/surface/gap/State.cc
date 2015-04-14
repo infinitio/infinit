@@ -133,6 +133,7 @@ namespace surface
       , _trophonius(nullptr)
       , _forced_trophonius_host()
       , _forced_trophonius_port(0)
+      , _synchronize_response(nullptr)
       , _metrics_reporter(std::move(local_config.metrics()))
       , _me()
       , _output_dir(local_config.download_dir())
@@ -140,7 +141,6 @@ namespace surface
       , _kick_out_barrier()
       , _kicker(nullptr)
       , _device_uuid(std::move(local_config.device_id()))
-      , _device()
       , _login_watcher_thread(nullptr)
     {
       this->_local_configuration = local_config;
@@ -671,12 +671,12 @@ namespace surface
           }
 
           // Device.
-          this->_device.reset(new Device(login_response.device));
-          ELLE_ASSERT_EQ(this->_device_uuid, this->_device->id);
+          this->_update_device(login_response.device, false);
+          ELLE_ASSERT_EQ(this->_device_uuid, this->device().id);
           std::string passport_path =
             this->local_configuration().passport_path();
           this->_passport.reset(new papier::Passport());
-          if (this->_passport->Restore(this->_device->passport.get()) ==
+          if (this->_passport->Restore(this->device().passport.get()) ==
               elle::Status::Error)
             throw Exception(gap_wrong_passport, "Cannot load the passport");
           this->_passport->store(elle::io::Path(passport_path));
@@ -911,11 +911,10 @@ namespace surface
             this->_avatars.clear();
           }
 
-          ELLE_DEBUG("clear device (%s)", this->_device.get())
-            this->_device.reset();
-
           ELLE_DEBUG("clear me (%s)", this->_me.get())
             this->_me.reset();
+          ELLE_DEBUG("clear devices: %s", this->_devices)
+            this->_devices.clear();
 
           ELLE_DEBUG("clear passport (%s)", this->_passport.get())
             this->_passport.reset();
@@ -1137,6 +1136,9 @@ namespace surface
            this->_synchronize_response.reset(
              new infinit::oracles::meta::SynchronizeResponse{this->meta().synchronize(false)});
           }
+          ELLE_DEBUG("synchronize devices")
+            this->_synchronize_devices(
+              this->_synchronize_response->devices, first_connection);
           // This is never the first call to _user_resync as the function is
           // called in login.
           this->_user_resync(this->_synchronize_response->swaggers, false);
@@ -1190,6 +1192,17 @@ namespace surface
     {
       ELLE_WARN("%s: invalid trophonius credentials", *this);
       this->_kick_out(false, "Invalid trophonius credentials");
+    }
+
+    void
+    State::_on_devices_updated(infinit::oracles::trophonius::DevicesUpdateNotification const& notif)
+    {
+      ELLE_LOG("device update: %s %s", notif.operation, notif.device);
+      auto operation = notif.operation;
+      if (operation == "deleted")
+        this->_remove_device(notif.device);
+      else if (operation == "created" || operation == "updated")
+        this->_update_device(notif.device);
     }
 
     void
@@ -1263,6 +1276,11 @@ namespace surface
         case infinit::oracles::trophonius::NotificationType::invalid_credentials:
           this->_on_invalid_trophonius_credentials();
           break;
+        case infinit::oracles::trophonius::NotificationType::devices_update:
+          this->_on_devices_updated(
+            *static_cast<infinit::oracles::trophonius::DevicesUpdateNotification const*>(
+              notif.release()));
+          break;
         case infinit::oracles::trophonius::NotificationType::none:
         case infinit::oracles::trophonius::NotificationType::network_update:
         case infinit::oracles::trophonius::NotificationType::message:
@@ -1282,28 +1300,21 @@ namespace surface
     void
     State::poll() const
     {
-      ELLE_DEBUG_SCOPE("poll %s notification(s)", this->_runners.size());
+      ELLE_DEBUG_SCOPE("%s: poll %s notification(s)",
+                       *this, this->_runners.size());
       std::unique_ptr<_Runner> runner = nullptr;
       while (true)
       {
         {
           std::lock_guard<std::mutex> lock{this->_poll_lock};
           if (this->_runners.empty())
-            return;
+              return;
           std::swap(runner, this->_runners.front());
           this->_runners.pop();
         }
+        ELLE_ASSERT(runner != nullptr);
         (*runner)();
       }
-    }
-
-    /*--------.
-    | Devices |
-    `--------*/
-    std::vector<State::Device>
-    State::devices() const
-    {
-      return this->_synchronize_response->devices;
     }
 
     /*--------------.
@@ -1395,6 +1406,8 @@ namespace surface
           return out << "Link Update";
         case NotificationType_TransactionRecipientChanged:
           return out << "Transaction Recipient Changed";
+        case NotificationType_DeviceUpdated:
+          return out << "DeviceUpdated";
       }
 
       return out;

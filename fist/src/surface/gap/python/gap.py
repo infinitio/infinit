@@ -72,13 +72,6 @@ class _State:
         except Exception as e:
             return False
 
-    @property
-    def has_device(self):
-        try:
-            return self.__call('device_status') == self.Status.ok
-        except:
-            return False
-
     def __call(self, method, *args):
         assert(self.__state != None)
         res = getattr(_gap, method)(self.__state, *args)

@@ -2,6 +2,7 @@
 # define FIST_SURFACE_GAP_TESTS_DEVICE_HH
 
 # include <elle/UUID.hh>
+# include <elle/Printable.hh>
 
 # include <cryptography/KeyPair.hh>
 
@@ -10,6 +11,7 @@
 namespace tests
 {
   class Device
+    : public elle::Printable
   {
   public:
     Device(cryptography::PublicKey const& key,
@@ -21,6 +23,10 @@ namespace tests
   public:
     std::string
     json() const;
+
+  public:
+    void
+    print(std::ostream& out) const override;
   };
 }
 

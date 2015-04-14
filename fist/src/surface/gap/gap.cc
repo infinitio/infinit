@@ -367,41 +367,12 @@ gap_devices(gap_State* state, std::vector<surface::gap::Device>& devices)
     "devices",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      for (auto const& device_: state.devices())
+      for (auto const& pair: state.devices())
       {
+        auto const& device = pair.second;
         devices.push_back(
-          surface::gap::Device(device_.id, device_.name, device_.os));
+          surface::gap::Device(device.id, device.name, device.os));
       }
-      return gap_ok;
-    });
-}
-
-gap_Status
-gap_device_status(gap_State* state)
-{
-  ELLE_ASSERT(state != nullptr);
-  return run<gap_Status>(
-    state,
-    "device status",
-    [&] (surface::gap::State& state) -> gap_Status
-    {
-      if (state.has_device())
-        return gap_ok;
-      else
-        return gap_no_device_error;
-    });
-}
-
-gap_Status
-gap_set_device_name(gap_State* state, std::string const& name)
-{
-  ELLE_ASSERT(state != nullptr);
-  return run<gap_Status>(
-    state,
-    "set device name",
-    [&] (surface::gap::State& state) -> gap_Status
-    {
-      state.update_device(name);
       return gap_ok;
     });
 }

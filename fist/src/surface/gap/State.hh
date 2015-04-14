@@ -5,6 +5,7 @@
 # include <map>
 # include <mutex>
 # include <string>
+# include <unordered_map>
 # include <unordered_set>
 
 # include <common/common.hh>
@@ -26,6 +27,7 @@
 
 # include <infinit/metrics/CompositeReporter.hh>
 # include <infinit/oracles/meta/Client.hh>
+# include <infinit/oracles/Device.hh>
 # include <infinit/oracles/Transaction.hh>
 # include <infinit/oracles/trophonius/fwd.hh>
 
@@ -314,6 +316,11 @@ namespace surface
 
       void
       _on_invalid_trophonius_credentials();
+
+      void
+      _on_devices_updated(
+        infinit::oracles::trophonius::DevicesUpdateNotification const&);
+
       void
       _cleanup();
 
@@ -406,20 +413,16 @@ namespace surface
       | Papiers |
       `--------*/
     public:
-      typedef infinit::oracles::meta::Device Device;
+      typedef infinit::oracles::Device Device;
       /// Get the remote device informations.
       Device const&
       device() const;
 
     private:
       ELLE_ATTRIBUTE_R(boost::uuids::uuid, device_uuid);
-      ELLE_ATTRIBUTE_P(std::unique_ptr<Device>, device, mutable);
-      ELLE_ATTRIBUTE_P(reactor::Mutex, device_mutex, mutable);
-
+    private:
       ELLE_ATTRIBUTE_P(std::unique_ptr<papier::Passport>, passport, mutable);
-      ELLE_ATTRIBUTE_P(reactor::Mutex, passport_mutex, mutable);
       ELLE_ATTRIBUTE_P(std::unique_ptr<papier::Identity>, identity, mutable);
-      ELLE_ATTRIBUTE_P(reactor::Mutex, identity_mutex, mutable);
     public:
       /// Get the local passport of the logged user.
       papier::Passport const&
@@ -431,13 +434,6 @@ namespace surface
 
     public:
       /// Check if the local device has been created.
-      bool
-      has_device() const;
-
-      /// Update the local device name.
-      void
-      update_device(std::string const& name) const;
-
       void
       change_password(std::string const& old_password,
                       std::string const& new_password);
@@ -445,10 +441,25 @@ namespace surface
       /*--------.
       | Devices |
       `--------*/
-    public:
-      std::vector<Device>
-      devices() const;
+      typedef std::unordered_map<Device::Id, Device> Devices;
+      ELLE_ATTRIBUTE_R(Devices, devices);
 
+    private:
+      void
+      _update_device(infinit::oracles::Device const& device,
+                    bool notify = true);
+      void
+      _remove_device(infinit::oracles::Device const& device, bool notify = true);
+      void
+      _synchronize_devices(std::vector<Device> const& devices,
+                           bool init = false);
+
+    public:
+      surface::gap::Device
+      device_to_gap_device(infinit::oracles::Device const& device,
+                           bool deleted = false) const;
+
+    public:
       // Could be factorized.
       /*------.
       | Users |
