@@ -788,7 +788,7 @@ class Mixin:
             # condition.
             raise Exception(error.EMAIL_ALREADY_REGISTERED)
           # notify users that have us in contacts
-          for c in user['contact_of']:
+          for c in user.get('contact_of', []):
             self.database.users.update({'_id': c},
               {'$inc': {'swaggers.' + str(user['_id']): 0}
               })
