@@ -3,12 +3,14 @@
 
 # include <das/model.hh>
 
-# include <surface/gap/Device.hh>
+# include <infinit/oracles/meta/Device.hh>
 
 namespace surface
 {
   namespace gap
   {
+    typedef infinit::oracles::meta::Device Device;
+
     class Model
     {
     public:
@@ -19,10 +21,6 @@ namespace surface
 
 DAS_MODEL_FIELD(surface::gap::Model, devices);
 
-DAS_MODEL_FIELD(surface::gap::Device, id);
-DAS_MODEL_FIELD(surface::gap::Device, name);
-DAS_MODEL_FIELD(surface::gap::Device, os);
-
 namespace surface
 {
   namespace gap
@@ -31,7 +29,7 @@ namespace surface
       Device,
       das::Field<Device, elle::UUID, &Device::id>,
       das::Field<Device, das::Variable<std::string>, &Device::name>,
-      das::Field<Device, std::string, &Device::os>
+      das::Field<Device, boost::optional<std::string>, &Device::os>
       > DasDevice;
     typedef das::Collection<
       Device,

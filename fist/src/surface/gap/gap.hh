@@ -8,11 +8,11 @@
 /// Used by the iOS application.
 # include <infinit/oracles/TransactionStatuses.hh>
 
-# include <surface/gap/Device.hh>
-# include <surface/gap/enums.hh>
 # include <surface/gap/LinkTransaction.hh>
+# include <surface/gap/Model.hh>
 # include <surface/gap/PeerTransaction.hh>
 # include <surface/gap/User.hh>
+# include <surface/gap/enums.hh>
 
 /// gap_State is an opaque structure used in every calls.
 struct gap_State;
