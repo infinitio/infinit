@@ -1641,6 +1641,13 @@ namespace infinit
       Client::_handle_errors(reactor::http::Request& request) const
       {
         auto response = request.status();
+        elle::With<elle::Finally> finally([&]
+          {
+            if (this->_error_handlers.find(response) != this->_error_handlers.end())
+            {
+              this->_error_handlers.at(response)();
+            }
+          });
         if (response != reactor::http::StatusCode::OK)
         {
           ELLE_ERR("%s: error while posting: %s.\n%s",
