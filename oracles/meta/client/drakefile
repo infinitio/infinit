@@ -162,7 +162,7 @@ def configure(elle,
     tests_cxx_config.lib('mswsock')
   test_bin = drake.cxx.Executable(
     'tests/meta_client',
-    test_sources + [lib, reactor_lib, elle_lib, aws_lib],
+    test_sources + [lib, reactor_lib, elle_lib, aws_lib, transaction_lib],
     cxx_toolkit,
     tests_cxx_config)
   if valgrind_tests:
