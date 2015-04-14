@@ -29,7 +29,6 @@ namespace station
                    elle::sprintf("%s server thread", *this),
                    [this] { this->_serve(); })
   {
-    ELLE_WARN("AUTHORITY IN STATION: %s", _authority);
     this->_server.listen();
   }
 
@@ -218,7 +217,6 @@ namespace station
       }
 
       // Check peer passport.
-      ELLE_WARN("AUTHORITY FOUND IS :%s", this->authority().K());
       if (!remote.validate(this->authority()))
       {
         ELLE_TRACE("%s: peer has an invalid passport, reject", *this);

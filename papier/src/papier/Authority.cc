@@ -35,7 +35,6 @@ namespace papier
     _k(new cryptography::PrivateKey{pair.k()}),
     _code(nullptr)
   {
-    ELLE_WARN("AUTH FROM PAIR IS: %s", pair);
   }
 
   Authority::Authority(cryptography::PublicKey const& K):
@@ -44,14 +43,12 @@ namespace papier
     _k(nullptr),
     _code(nullptr)
   {
-    ELLE_WARN("AUTH FROM PK IS: %s", K);
   }
 
   Authority::Authority(elle::io::Path const& path):
     _k(nullptr),
     _code(nullptr)
   {
-    ELLE_WARN("AUTH FROM PATH IS: %s", path);
     if (!papier::Authority::exists(path))
       throw elle::Exception
         (elle::sprintf("unable to locate the authority file %s", path));
