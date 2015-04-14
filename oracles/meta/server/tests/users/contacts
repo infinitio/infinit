@@ -39,6 +39,10 @@ with Meta() as meta:
   alice.login()
   alice.put('users/%s/contacts' % (alice.id),
     {'contacts': [{'emails':['marc@infinit.io']}]})
+  alice2 = User(meta, 'alice2@infinit.io')
+  alice2.login()
+  alice2.put('users/%s/contacts' % (alice.id),
+    {'contacts': [{'emails':['marc@infinit.io']}]})
   bob = User(meta, 'bob@infinit.io')
   bob.login()
   carl = User(meta, 'carl@infinit.io')
@@ -50,6 +54,7 @@ with Meta() as meta:
   code = marc_data['ghost_code']
   carl.post('ghost/%s/merge' % (code)) # carl is marc!
   assert [str(carl.id)] == alice.swaggers
+  assert [str(carl.id)] == alice2.swaggers
 
 
 # check using phone numbers

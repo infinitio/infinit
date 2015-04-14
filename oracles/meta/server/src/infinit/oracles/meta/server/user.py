@@ -788,10 +788,12 @@ class Mixin:
             # condition.
             raise Exception(error.EMAIL_ALREADY_REGISTERED)
           # notify users that have us in contacts
-          for c in user.get('contact_of', []):
-            self.database.users.update({'_id': c},
+          contact_of = user.get('contact_of', [])
+          if len(contact_of):
+            self.database.users.update({'_id': {'$in': contact_of}},
               {'$inc': {'swaggers.' + str(user['_id']): 0}
-              })
+              }, multi = True)
+          for c in contact_of:
             self.notifier.notify_some(
               notifier.NEW_SWAGGER,
               message = {'user_id': str(user['_id'])},
@@ -1674,10 +1676,11 @@ class Mixin:
         current_owner = user, new_owner = merge_with)
       # self.change_links_ownership(user, merge_with)
       new_id = deleted_user['merged_with']
-      for c in deleted_user_contact_of:
-        self.database.users.update({'_id': c},
+      if len(deleted_user_contact_of):
+        self.database.users.update({'_id': {'$in': deleted_user_contact_of}},
           {'$inc': {'swaggers.' + str(new_id): 0}
-          })
+          }, multi = True)
+      for c in deleted_user_contact_of:
         self.notifier.notify_some(
           notifier.NEW_SWAGGER,
           message = {'user_id': str(new_id)},
