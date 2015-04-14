@@ -59,6 +59,8 @@ def configure(production_build,
   with drake.templating.Context(sources = python_built,
                                 pythonpath = ('lib/python',)):
     sources = drake.nodes(
+      'src/infinit/oracles/Device.cc',
+      'src/infinit/oracles/Device.hh',
       'src/infinit/oracles/Transaction.cc.tmpl',
       'src/infinit/oracles/Transaction.hh.tmpl',
       'src/infinit/oracles/TransactionStatuses.hh.tmpl',
