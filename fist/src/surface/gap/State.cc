@@ -1227,7 +1227,8 @@ namespace surface
             runtime(notif);
           ELLE_ASSERT(n.get());
           elle::serialization::json::SerializerIn input(n->json);
-
+          DasModel::Update u(input);
+          u.apply(this->_model);
           break;
         }
         case infinit::oracles::trophonius::NotificationType::none:
