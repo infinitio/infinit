@@ -658,6 +658,7 @@ namespace surface
             new infinit::oracles::meta::SynchronizeResponse{
               this->meta().synchronize(true)});
           ELLE_TRACE("got synchronisation response");
+          this->_model.devices = this->_synchronize_response->devices;
           this->_avatar_fetcher_thread.reset(
             new reactor::Thread{
               scheduler,
