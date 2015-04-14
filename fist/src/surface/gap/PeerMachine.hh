@@ -5,6 +5,8 @@
 
 # include <frete/Frete.hh>
 
+# include <papier/Authority.hh>
+
 namespace surface
 {
   namespace gap
@@ -29,7 +31,7 @@ namespace surface
                   std::shared_ptr<Data> data,
                   papier::Authority const& authority);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
-      ELLE_ATTRIBUTE_R(papier::Authority const&, authority);
+      ELLE_ATTRIBUTE_R(papier::Authority, authority);
 
     /*---------.
     | Transfer |

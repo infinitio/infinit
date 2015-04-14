@@ -227,7 +227,7 @@ namespace common
       boost::optional<boost::uuids::uuid const&> device_id,
       boost::optional<std::string> download_dir,
       boost::optional<std::string> home_dir,
-      boost::optional<papier::Authority const&> authority)
+      boost::optional<papier::Authority> authority)
         : _enable_mirroring(true)
         , _max_mirror_size(0)
         , _meta_protocol(meta_protocol)

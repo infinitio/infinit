@@ -23,7 +23,7 @@ namespace tests
 
   static
   papier::Authority
-  authoritylol{authority_keys};
+  authority{authority_keys};
 }
 
 #endif

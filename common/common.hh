@@ -48,7 +48,7 @@ namespace common
         boost::optional<boost::uuids::uuid const&> device_id = {},
         boost::optional<std::string> download_dir = {},
         boost::optional<std::string> home_dir = {},
-        boost::optional<papier::Authority const&> authority = {});
+        boost::optional<papier::Authority> authority = {});
       Configuration() = default;
 
       ELLE_ATTRIBUTE_R(bool, production);

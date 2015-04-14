@@ -18,7 +18,9 @@ namespace tests
       fingerprint,
       device_id,
       this->_temporary_dir.path().string(),
-      !home.empty() ? home.string() : this->_temporary_dir.path().string())
+      !home.empty() ? home.string() : this->_temporary_dir.path().string(),
+      authority
+      )
   {
     this->_state.s3_hostname(aws::URL{"http://",
                              elle::sprintf("localhost:%s", server.port()),

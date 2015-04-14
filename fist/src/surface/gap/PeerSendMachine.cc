@@ -123,7 +123,7 @@ namespace surface
                         std::move(files),
                         std::move(message),
                         std::move(data),
-                        std::move(authority),
+                        authority,
                         true)
     {
       ELLE_TRACE_SCOPE("%s: construct to send %s to %s",
@@ -157,7 +157,7 @@ namespace surface
                         std::move(files),
                         std::move(message),
                         data,
-                        std::move(authority),
+                        authority,
                         true)
     {
       ELLE_TRACE_SCOPE("%s: construct from snapshot", *this);

@@ -142,8 +142,8 @@ namespace surface
       , _device()
       , _login_watcher_thread(nullptr)
       , _authority(local_config.authority())
+      , _local_configuration(local_config)
     {
-      this->_local_configuration = std::move(local_config);
       this->_logged_out.open();
       ELLE_TRACE_SCOPE("%s: create state", *this);
       if (!this->_metrics_reporter)
@@ -200,7 +200,7 @@ namespace surface
                  boost::optional<boost::uuids::uuid const&> device_id,
                  boost::optional<std::string> download_dir,
                  boost::optional<std::string> home_dir,
-                 boost::optional<papier::Authority const&> authority)
+                 boost::optional<papier::Authority> authority)
       : State(common::infinit::Configuration(
                 meta_protocol, meta_host, meta_port,
                 trophonius_fingerprint,

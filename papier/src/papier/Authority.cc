@@ -59,7 +59,7 @@ namespace papier
   }
 
   Authority::Authority()
-    : Authority{authority()}
+    : Authority(authority())
   {
   }
 

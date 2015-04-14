@@ -15,7 +15,7 @@
 # include <surface/gap/Notification.hh>
 # include <surface/gap/enums.hh>
 # include <surface/gap/fwd.hh>
-# include <papier/fwd.hh>
+# include <papier/Authority.hh>
 
 namespace surface
 {
@@ -232,7 +232,7 @@ namespace surface
       ELLE_ATTRIBUTE_R(uint32_t, sender);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
       ELLE_ATTRIBUTE_R(bool, canceled_by_user);
-      ELLE_ATTRIBUTE_R(papier::Authority const&, authority);
+      ELLE_ATTRIBUTE_R(papier::Authority, authority);
     protected:
       std::unique_ptr<TransactionMachine> _machine;
 

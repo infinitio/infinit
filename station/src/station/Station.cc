@@ -221,7 +221,6 @@ namespace station
       ELLE_WARN("AUTHORITY FOUND IS :%s", this->authority().K());
       if (!remote.validate(this->authority()))
       {
-        ELLE_WARN("BITE");
         ELLE_TRACE("%s: peer has an invalid passport, reject", *this);
         output << NegotiationStatus::invalid;
         socket->flush();

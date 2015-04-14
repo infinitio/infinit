@@ -127,7 +127,7 @@ namespace surface
                              std::vector<std::string> files,
                              std::string const& message,
                              papier::Authority const& authority)
-      : Transaction(state, id, peer_id, elle::UUID(), std::move(files), message, std::move(authority))
+      : Transaction(state, id, peer_id, elle::UUID(), std::move(files), message, authority)
     {}
 
     // Construct to send files to a specific device.

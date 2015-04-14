@@ -160,7 +160,7 @@ namespace surface
             boost::optional<boost::uuids::uuid const&> device_id = {},
             boost::optional<std::string> download_dir = {},
             boost::optional<std::string> home_dir = {},
-            boost::optional<papier::Authority const&> authority = {});
+            boost::optional<papier::Authority> authority = {});
       ~State();
       ELLE_ATTRIBUTE_R(boost::filesystem::path, home);
 
@@ -828,7 +828,7 @@ namespace surface
       `----------*/
       ELLE_ATTRIBUTE_RX(reactor::Signal, synchronized);
 
-      ELLE_ATTRIBUTE_R(papier::Authority const&, authority);
+      ELLE_ATTRIBUTE_R(papier::Authority, authority);
     };
 
     std::ostream&
