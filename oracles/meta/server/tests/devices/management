@@ -1,0 +1,227 @@
+#!/usr/bin/env python3
+
+import copy
+from utils import *
+from pprint import pprint
+
+from bson.objectid import ObjectId
+from infinit.oracles.meta import error
+from infinit.oracles.meta.server.transaction_status import CANCELED, ACCEPTED, CLOUD_BUFFERED
+
+from infinit.oracles.notification import notifications
+from uuid import uuid4, UUID
+
+for name, value in notifications.items():
+  globals()[name.upper()] = value
+
+def create_user():
+  password = meta.create_user('foo@bar.baz')
+  return {
+    'email': 'foo@bar.baz',
+    'password': password,
+    'pick_trophonius': False,
+  }
+
+def user_on_new_device(meta, data, trophonius = None):
+  user = copy.deepcopy(data)
+  user['device_id'] = str(uuid4())
+  client = Client(meta)
+  p = client.post('login', user)
+  for key in user:
+    setattr(client, key, user[key])
+  setattr(client, 'id', client.get('user/self')['id'])
+  res = client.get('user/current_device')
+  setattr(client, 'device_id', UUID(res['id']))
+  setattr(client, 'device_name', res['name'])
+  if trophonius is not None:
+    setattr(client, 'trophonius', trophonius)
+    trophonius.connect_user(client)
+  return client
+
+number_of_devices = 5
+
+# Device creation.
+with Meta() as meta, Trophonius(meta) as t:
+  user = create_user()
+  users = [user_on_new_device(meta, user, t) for _ in range(number_of_devices)]
+  for i in range(number_of_devices):
+    number_of_new_devices = number_of_devices - 1 - i
+    assertEq(len(users[i].notifications), number_of_new_devices)
+    for n in users[i].notifications:
+      notif = n['device']
+      assertIn('name', notif)
+      assertIn('id', notif)
+      assertNeq('id', notif['id'])
+
+# Normal.
+with Meta() as meta, Trophonius(meta) as t:
+  user = create_user()
+  users = [user_on_new_device(meta, user, t) for _ in range(number_of_devices)]
+  expected_devices = set([str(u.device_id) for u in users])
+  for u in users:
+    assert expected_devices == set(u.get('user/self')['devices'])
+    u.notifications.clear()
+  # Rename all of them as 'my mac'.
+  new_name = 'my mac'
+  for i in range(number_of_devices):
+    users[0].put('devices/%s' % users[i].device_id, {'name': new_name})
+    for _ in range(number_of_devices):
+      t.poll()
+    # Check if each receive a notification for each change.
+    for j in range(number_of_devices):
+      assertEq(len(users[j].notifications), i + 1)
+  # Check that's all 'devices_update' notifications.
+  for i in range(number_of_devices):
+    notifications = users[i].notifications
+    assertEq(len(notifications), number_of_devices)
+    assertEq(len(set([n['notification_type'] for n in notifications])), 1)
+    assertEq(len(set([n['device']['name'] for n in notifications])), 1)
+    assertEq(set([n['device']['id'] for n in  notifications]), expected_devices)
+  devices = users[0].get('user/devices')['devices']
+  assert len(devices) == number_of_devices
+  assert set([device['name'] for device in devices]) == set([new_name])
+
+# Suppression.
+with Meta() as meta, Trophonius(meta) as t:
+  user = create_user()
+  users = [user_on_new_device(meta, user, t) for _ in range(number_of_devices)]
+  all_devices = set([str(u.device_id) for u in users])
+  for u in users:
+    # Clear creation notification.
+    u.notifications.clear()
+  for i in range(1, number_of_devices):
+    users[0].delete('devices/%s' % users[i].device_id)
+    for _ in range(number_of_devices - i):
+      t.poll()
+    devices = users[0].get('user/devices')['devices']
+    assertEq(len(devices), (number_of_devices - i))
+    assertEq(len(users[i].notifications), i)
+    # The device should get:
+    # > The notification for the previous deleted devices and the his
+    # own.
+    notification_types = set([
+      n['notification_type'] for n in users[i].notifications])
+    if i == 1:
+      assertEq(notification_types, {INVALID_CREDENTIALS})
+    else:
+      assertEq(notification_types, {INVALID_CREDENTIALS, DEVICES_UPDATE})
+  assert len(users[0].get('user/devices')['devices']) == 1
+  assertEq(len(users[0].notifications), (number_of_devices - 1))
+  expected_devices = copy.copy(all_devices)
+  expected_devices.remove(str(users[0].device_id))
+  deleted_devices = []
+  for _ in range(number_of_devices - 1):
+    notification = users[0].next_notification()
+    assertEq(notification['notification_type'], 210)
+    assertIn('$deleted', notification['device'])
+    assertEq(notification['device']['$deleted'], True)
+    deleted_devices.append(notification['device']['id'])
+  assertEq(set(deleted_devices), set(expected_devices))
+  for _ in range(1, number_of_devices):
+    try:
+      users[i].get('user/self')
+      assert False
+    except HTTPException as e:
+      assert e.status == 403
+
+# Delete an unknown device.
+with Meta() as meta, Trophonius(meta) as t:
+  user = create_user()
+  users = [user_on_new_device(meta, user, t) for _ in range(number_of_devices)]
+  try:
+    users[0].delete('devices/%s' % uuid4())
+    assert False
+  except HTTPException as e:
+    assert e.status == 404
+
+# Invalid name.
+with Meta() as meta, Trophonius(meta) as t:
+  user = user_on_new_device(meta, create_user(), t)
+  for size in [0, 100]:
+    try:
+      user.put('devices/%s' % user.device_id, {'name': 'o' * size})
+      assert False
+    except HTTPException as e:
+      assert e.status == 400
+
+import time
+beg = time.time()
+def tprint(*args, **kw):
+  print(time.time() - beg, *args, **kw)
+
+# Delete while transfering.
+with Meta() as meta, Trophonius(meta) as t:
+  tprint("create users")
+  bob = create_user()
+  bob1, bob2 = [user_on_new_device(meta, bob, t), user_on_new_device(meta, bob, t)]
+  alice = User(meta, 'alice@infinit.io')
+  tprint("logged in as alice")
+  alice.login()
+  t.connect_user(alice)
+  trs = []
+  for i in range(6):
+    tprint("create transaction %s" % i)
+    transaction, res = alice.sendfile(recipient = bob1.email, initialize = True)
+    transaction_id = res['created_transaction_id']
+    trs.append(transaction_id)
+  canceled_transactions_expected = []
+  tprint("# First transaction", trs[0])
+  # Alice finished cloud buffering.
+  tprint("# Alice finished cloud buffering", trs[1])
+  alice.transaction_update(trs[1], CLOUD_BUFFERED)
+  # Just accepted.
+  tprint("# Just accepted", trs[2])
+  User.transaction_update(bob1, trs[2], ACCEPTED)
+  canceled_transactions_expected.append(trs[2])
+  # Interfaces uploaded.
+  tprint("# Interfaces uploaded", trs[3])
+  User.transaction_update(bob1, trs[3], ACCEPTED)
+  bob1.put('transaction/%s/endpoints' % trs[3],
+          {
+            'device': str(bob1.device_id),
+            'locals': [{'ip':'192.168.0.13', 'port': 3124}],
+            'externals': [{'ip':'12.168.0.13', 'port': 3124}],
+          })
+  canceled_transactions_expected.append(trs[3])
+  # Both interfaces uploaded
+  tprint("# Both interfaces uploaded", trs[4])
+  User.transaction_update(bob1, trs[4], ACCEPTED)
+  bob1.put('transaction/%s/endpoints' % trs[4],
+          {
+            'device': str(bob1.device_id),
+            'locals': [{'ip':'192.168.0.13', 'port': 3124}],
+            'externals': [{'ip':'12.168.0.13', 'port': 3124}],
+          })
+  alice.put('transaction/%s/endpoints' % trs[4],
+          {
+            'device': str(alice.device_id),
+            'locals': [{'ip':'192.168.0.13', 'port': 312}],
+            'externals': [{'ip':'12.168.0.13', 'port': 312}],
+          })
+  canceled_transactions_expected.append(trs[4])
+  # Accept as bob2 and make sure the transfer is not canceled.
+  tprint("# Accept as bob2 and make sure the transfer is not canceled", trs[5])
+  User.transaction_update(bob2, trs[5], ACCEPTED)
+  # Send from bob1.
+  _, res = User.sendfile(bob1, recipient = alice.email, initialize = True)
+  tr = res['created_transaction_id']
+  tprint("# Send from bob1", tr)
+  alice.transaction_update(tr, ACCEPTED)
+  canceled_transactions_expected.append(tr)
+  # Send from bob2.
+  _, res = User.sendfile(bob2, recipient = alice.email, initialize = True)
+  tr = res['created_transaction_id']
+  tprint("# Send from bob2", tr)
+  alice.transaction_update(tr, ACCEPTED)
+  bob2.delete('devices/%s' % bob1.device_id)
+  tprint("poll")
+  t.poll(0.5)
+  tprint(alice.notifications)
+  alice_canceled = [
+    n['_id'] for n in alice.notifications if
+    n['notification_type'] == PEER_TRANSACTION and n['status'] == CANCELED]
+  bob2_canceled = [
+    n['_id'] for n in bob2.notifications if
+    n['notification_type'] == PEER_TRANSACTION and n['status'] == CANCELED]
+  assertEq(set(alice_canceled), set(canceled_transactions_expected))
+  assertEq(set(bob2_canceled), set(canceled_transactions_expected))
