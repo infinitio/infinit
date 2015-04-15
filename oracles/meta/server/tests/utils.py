@@ -5,7 +5,7 @@ import infinit.oracles.meta.server
 from infinit.oracles.meta.server.mail import Mailer
 from infinit.oracles.meta.server.invitation import Invitation
 from infinit.oracles.meta.server import transaction_status
-from infinit.oracles.meta import version
+from infinit.oracles.meta import version as Version
 from random import uniform
 
 import socket
@@ -68,7 +68,7 @@ class Client:
   def __init__(self, meta):
     self.__cookies = None
     self.__meta_port = meta.port
-    self.user_agent = 'MetaClient/' + version.version
+    self.user_agent = 'MetaClient/' + Version.version
 
   def __get_cookies(self, headers):
     cookies = headers.get('set-cookie', None)
@@ -172,6 +172,7 @@ class Trophonius(Client):
     super().__init__(meta)
     self.__uuid = str(uuid4())
     self.__users = {}
+    self.__meta = meta
     self.users_on_device = {}
     self.meta_accepter = Trophonius.Accepter(self)
     self.client_accepter = Trophonius.Accepter(self)
@@ -198,7 +199,15 @@ class Trophonius(Client):
     user_id = str(user.id)
     url = 'trophonius/%s/users/%s/%s' % \
           (self.__uuid, user_id, str(user.device_id))
-    res = user.put(url)
+    v = user.version
+    body = {}
+    if v is not None:
+      body['version'] = {
+        'major': v[0],
+        'minor': v[1],
+        'subminor': v[2],
+      }
+    res = user.put(url, body)
     assert res['success']
     self.__users.setdefault(user_id, [])
     self.__users[user_id].append(user.device_id)
@@ -371,10 +380,15 @@ class Meta:
     if 'shorten_ghost_profile_url' not in self.__meta_args:
       self.__meta_args['shorten_ghost_profile_url'] = False
     self.__emailer = emailer or TestEmailer()
+    self.__version = infinit.oracles.meta.server.Meta.extract_version(Version.version, '')
 
   @property
   def emailer(self):
     return self.__emailer
+
+  @property
+  def version(self):
+    return self.__version
 
   @property
   def domain(self):
@@ -521,6 +535,7 @@ class User(Client):
                email = None,
                device_name = 'device',
                facebook = False,
+               version = None,
                **kwargs):
     super().__init__(meta)
 
@@ -532,6 +547,23 @@ class User(Client):
       self.__id = None
     self.device_id = uuid4()
     self.trophonius = None
+    self.__version = version or \
+                     infinit.oracles.meta.server.Meta.extract_version(
+                       Version.version, '')
+
+  def on_other_device(self):
+    from copy import copy
+    user_on_device = copy(self)
+    user_on_device.device_id = uuid4()
+    return user_on_device
+
+  @property
+  def version(self):
+    return self.__version
+
+  @version.setter
+  def version(self, version):
+    self.__version = version
 
   @property
   def id(self):

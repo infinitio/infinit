@@ -58,7 +58,7 @@ class Mixin:
       bottle.request.device = device
       return device
 
-  @api('/user/current_device')
+  @api('/user/device')
   @require_logged_in
   def current_device_view(self):
     return self.device_view(self.current_device)
@@ -73,6 +73,8 @@ class Mixin:
       res['os'] = device['os']
     if 'last_sync' in device:
       res['last_sync'] = device['last_sync']['date'].isoformat()
+    if 'version' in device:
+      res['version'] = device['version']
     return res
 
   @api('/user/devices')
@@ -108,7 +110,8 @@ class Mixin:
           'name': name,
         }
       },
-      recipient_ids = {user['_id']})
+      recipient_ids = {user['_id']},
+      version = (0, 9, 35))
     return self.device_view(device)
 
   fields = {
@@ -153,7 +156,8 @@ class Mixin:
               '$deleted': True,
             }
           },
-          recipient_ids = {user['_id']})
+          recipient_ids = {user['_id']},
+          version = (0, 9, 35))
         # Kickout device.
         self.remove_session(user, device = {'id': id})
         target = self.notifier.build_target(user, devices[0])
@@ -269,7 +273,8 @@ class Mixin:
         message = {
           'device': self.device_view(device)
         },
-        recipient_ids = {owner['_id']})
+        recipient_ids = {owner['_id']},
+        version = (0, 9, 35))
       return device
 
   def device_override_push_token(self, token, action):

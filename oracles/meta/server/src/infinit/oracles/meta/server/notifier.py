@@ -40,6 +40,7 @@ class Notifier:
     'devices.trophonius': True,
     'devices.push_token': True,
     'devices.os' : True,
+    'devices.version' : True,
   }
 
   def __init__(self, database, production):
@@ -63,6 +64,22 @@ class Notifier:
     message['timestamp'] = time.time() #timestamp in s.
     return message
 
+  def filter_by_version(devices, version, equal = False):
+    with elle.log.trace('filter devices %s per version' % devices):
+      if version is None:
+        return devices
+      _devices = []
+      for device in devices:
+        device_version = device.get('version')
+        if device_version is None:
+          continue
+        device_version = (device_version['major'],
+                          device_version['minor'],
+                          device_version['subminor'])
+        if device_version == version if equal else device_version >= version:
+          _devices.append(device)
+      return _devices
+
   def build_target(self, user, device):
     """Create a target from a user and a device.
 
@@ -84,7 +101,9 @@ class Notifier:
                   notification_type,
                   recipient_ids = None,
                   device_ids = None,
-                  message = None):
+                  message = None,
+                  version = None,
+                ):
     '''Send notification to clients.
 
     notification_type -- Notification id to send.
@@ -121,6 +140,8 @@ class Notifier:
         if 'devices' not in user:
           continue
         devices = user['devices']
+        if version:
+          devices = Notifier.filter_by_version(devices, version)
         if device_ids is not None:
           devices = [d for d in devices if d['id'] in device_ids]
         for device in devices:

@@ -404,6 +404,17 @@ class Meta(bottle.Bottle,
     from bottle import request
     return request.environ.get('HTTP_USER_AGENT')
 
+  def extract_version(text, prefix = 'MetaClient/'):
+      pattern = re.compile('^%s(\\d+)\\.(\\d+)\\.(\\d+)' % prefix)
+      match = pattern.search(text)
+      if match is None:
+        elle.log.debug('can\'t extract version from user agent %s' %
+                       text)
+        # Website.
+        return (0, 0, 0)
+      else:
+        return tuple(map(int, match.groups()))
+
   @property
   def user_version(self):
     with elle.log.debug('%s: get user version' % self):
@@ -411,15 +422,7 @@ class Meta(bottle.Bottle,
       # Before 0.8.11, user agent was empty.
       if self.user_agent is None or len(self.user_agent) == 0:
         return (0, 8, 10)
-      pattern = re.compile('^MetaClient/(\\d+)\\.(\\d+)\\.(\\d+)')
-      match = pattern.search(self.user_agent)
-      if match is None:
-        elle.log.debug('can\'t extract version from user agent %s' %
-                       self.user_agent)
-        # Website.
-        return (0, 0, 0)
-      else:
-        return tuple(map(int, match.groups()))
+      return Meta.extract_version(self.user_agent)
 
   @property
   def user_gcs_enabled(self):
