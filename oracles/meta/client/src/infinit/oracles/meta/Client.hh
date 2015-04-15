@@ -618,6 +618,9 @@ namespace infinit
         void
         icon(elle::ConstWeakBuffer const& icon) const;
 
+        void
+        upload_address_book(std::string const& json) const;
+
       /*----------.
       | Printable |
       `----------*/

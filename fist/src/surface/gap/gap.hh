@@ -439,4 +439,7 @@ gap_facebook_connect(gap_State* state,
                      boost::optional<std::string> device_model = {},
                      boost::optional<std::string> device_name = {}); // ISO 3611-1 alpha-2
 
+gap_Status
+gap_upload_address_book(gap_State* state,
+                        std::string const& json);
 #endif

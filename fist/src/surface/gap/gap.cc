@@ -1722,3 +1722,17 @@ gap_facebook_connect(gap_State* state,
       return gap_ok;
     });
 }
+
+gap_Status
+gap_upload_address_book(gap_State* state,
+                        std::string const& json)
+{
+    return run<gap_Status>(
+    state,
+    "upload address book",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.meta().upload_address_book(json);
+      return gap_ok;
+    });
+}
