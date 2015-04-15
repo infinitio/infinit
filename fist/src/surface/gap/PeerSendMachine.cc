@@ -171,6 +171,8 @@ namespace surface
 
     PeerSendMachine::~PeerSendMachine()
     {
+      if (_cloud_operation_thread)
+        _cloud_operation_thread->terminate_now();
       this->_stop();
     }
 
@@ -480,7 +482,14 @@ namespace surface
           this->gap_status(gap_transaction_cloud_buffered);
         }
         else if (!peer.ghost() && !peer_online)
-          this->_cloud_operation();
+        {
+          if (_cloud_operation_thread)
+            _cloud_operation_thread->terminate_now();
+          this->_cloud_operation_thread = elle::make_unique<reactor::Thread>(
+            "cloud_operations",
+            [this] { this->_cloud_operation();}
+            );
+        }
         else if (!peer.ghost())
         {
           // Peer is online. Wait for a grace period, and then
@@ -498,7 +507,12 @@ namespace surface
               ELLE_TRACE("%s: buffering in %s seconds", *this, delay);
               reactor::sleep(boost::posix_time::seconds(delay));
               ELLE_TRACE("%s: buffering now", *this);
-              this->_cloud_operation();
+              if (_cloud_operation_thread)
+                _cloud_operation_thread->terminate_now();
+              this->_cloud_operation_thread = elle::make_unique<reactor::Thread>(
+                "cloud_operations",
+                [this] { this->_cloud_operation();}
+                );
             }
           }
           else
@@ -532,6 +546,8 @@ namespace surface
     void
     PeerSendMachine::_transfer_operation(frete::RPCFrete& frete)
     {
+      if (this->_cloud_operation_thread)
+        this->_cloud_operation_thread->terminate();
       auto start_time = boost::posix_time::microsec_clock::universal_time();
       _fetch_peer_key(true);
       // save snapshot to get correct filepaths

@@ -227,6 +227,8 @@ namespace surface
 
     PeerReceiveMachine::~PeerReceiveMachine()
     {
+      if (_cloud_operation_thread)
+        _cloud_operation_thread->terminate_now();
       this->_stop();
     }
 
@@ -278,6 +280,13 @@ namespace surface
     void
     PeerReceiveMachine::_transfer_operation(frete::RPCFrete& frete)
     {
+      if (_cloud_operation_thread
+        && _cloud_operation_thread.get() != reactor::scheduler().current())
+      {
+        ELLE_TRACE_SCOPE("%s: waiting for cloud operation to finish", *this);
+        reactor::wait(*_cloud_operation_thread);
+        _cloud_operation_thread.reset(nullptr);
+      }
       ELLE_TRACE_SCOPE("%s: transfer operation", *this);
       elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
       {
@@ -293,6 +302,16 @@ namespace surface
 
     void
     PeerReceiveMachine::_cloud_operation()
+    {
+      if (_cloud_operation_thread)
+        _cloud_operation_thread->terminate_now();
+      _cloud_operation_thread = elle::make_unique<reactor::Thread>(
+        "cloud operation",
+        [this] { this->_cloud_operation_impl();});
+    }
+
+    void
+    PeerReceiveMachine::_cloud_operation_impl()
     {
       if (!elle::os::getenv("INFINIT_NO_CLOUD_BUFFERING", "").empty())
       {
@@ -375,6 +394,11 @@ namespace surface
         exit_reason = metrics::TransferExitReasonFinished;
         ELLE_ASSERT_NEQ(this->_snapshot, nullptr);
         total_bytes_transfered = this->_snapshot->progress() - initial_progress;
+        // We are outside the FSM
+        this->_update_meta_status(infinit::oracles::Transaction::Status::finished);
+        this->gap_status(gap_transaction_finished);
+        this->finished().open();
+        this->_completed = true;
       }
       catch (boost::filesystem::filesystem_error const& e)
       {

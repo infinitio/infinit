@@ -76,6 +76,8 @@ namespace surface
       void
       _wait_for_decision() override;
 
+      void
+      _cloud_operation_impl();
     /*-----------------------.
     | Machine implementation |
     `-----------------------*/
@@ -196,6 +198,7 @@ namespace surface
                            FilesInfo const& infos
                            );
 
+      std::unique_ptr<reactor::Thread> _cloud_operation_thread;
       // Transfer bufferer for cloud operations
        std::unique_ptr<TransferBufferer> _bufferer;
     };

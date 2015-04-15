@@ -125,6 +125,7 @@ namespace surface
                                     bool user_status,
                                     elle::UUID const& device_id,
                                     bool device_status) override;
+      ELLE_ATTRIBUTE(std::unique_ptr<reactor::Thread>, cloud_operation_thread);
     };
   }
 }
