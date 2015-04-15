@@ -1081,6 +1081,7 @@ namespace tests
 
   void SleepyServer::_maybe_sleep()
   {
+    this->started_blocking.open();
     reactor::sleep(boost::posix_time::minutes(2));
   }
 }

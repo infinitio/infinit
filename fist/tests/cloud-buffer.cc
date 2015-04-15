@@ -242,7 +242,7 @@ ELLE_TEST_SCHEDULED(cloud_to_p2p)
     recipient_user.email(),
     std::vector<std::string>{transfered.path().string().c_str()},
     "message");
-  reactor::Barrier transferring, cloud_buffered;
+  reactor::Barrier cloud_buffered, sender_finished;
   auto conn = state_transaction.status_changed().connect(
     [&] (gap_TransactionStatus status)
     {
@@ -255,12 +255,16 @@ ELLE_TEST_SCHEDULED(cloud_to_p2p)
       {
         case gap_transaction_transferring:
         {
-          transferring.open();
           break;
         }
         case gap_transaction_cloud_buffered:
         {
           BOOST_ERROR("cloud_to_p2p test should not finish cloud buffering!");
+          break;
+        }
+        case gap_transaction_finished:
+        {
+          sender_finished.open();
           break;
         }
         default:
@@ -271,14 +275,14 @@ ELLE_TEST_SCHEDULED(cloud_to_p2p)
         }
       }
     });
-  reactor::wait(transferring);
+  reactor::wait(server.started_blocking);
 
   // Check the recipient goes through the right state (partially cloud buffered).
   tests::Client recipient(server, recipient_user, recipient_home.path());
   recipient.login();
   BOOST_CHECK_EQUAL(recipient.state->transactions().size(), 1);
   auto& state_transaction_recipient = *recipient.state->transactions().begin()->second;
-  reactor::Barrier finished;
+  reactor::Barrier recipient_finished;
   state_transaction_recipient.status_changed().connect(
     [&] (gap_TransactionStatus status)
     {
@@ -287,14 +291,19 @@ ELLE_TEST_SCHEDULED(cloud_to_p2p)
       {
         case gap_transaction_finished:
         {
-          finished.open();
+          recipient_finished.open();
           break;
         }
       }
     });
+  sender.state->_on_swagger_status_update(recipient.user.id().repr(),
+                                          true,
+                                          recipient.device_id,
+                                          true);
   ELLE_LOG("accept")
     state_transaction_recipient.accept();
-  reactor::wait(finished);
+  reactor::wait(recipient_finished);
+  reactor::wait(sender_finished);
 }
 
 ELLE_TEST_SUITE()

@@ -619,6 +619,12 @@ namespace surface
       _on_swagger_status_update(
         infinit::oracles::trophonius::UserStatusNotification const& notif);
 
+      void
+      _on_swagger_status_update(std::string const& user_id,
+                                bool user_status,
+                                elle::UUID const& device_id,
+                                bool device_status);
+
       /*---------.
       | Networks |
       `---------*/
