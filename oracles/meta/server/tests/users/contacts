@@ -8,18 +8,18 @@ import bson
 with Meta() as meta:
   alice = User(meta, 'alice@infinit.io')
   alice.login()
-  alice.put('users/%s/contacts' % (alice.id),
+  alice.put('user/contacts',
     {'contacts': [{'emails':['bob@infinit.io']}]})
   assert alice.swaggers == []
   bob = User(meta, 'bob@infinit.io')
   assert [str(bob.id)] == alice.swaggers
-  alice.put('users/%s/contacts' % (alice.id),
+  alice.put('user/contacts',
     {'contacts': [{'emails':['bob@infinit.io']}]})
   assert [str(bob.id)] == alice.swaggers
 
   conrad = User(meta, 'conrad@infinit.io')
   conrad.login()
-  conrad.put('users/%s/contacts' % (conrad.id),
+  conrad.put('user/contacts',
     {'contacts': [{'emails':['bob@infinit.io']}]})
   assert [str(bob.id)] == conrad.swaggers
 
@@ -27,7 +27,7 @@ with Meta() as meta:
   bob.login()
   transaction, res = bob.sendfile(recipient = 'daniel@infinit.io', use_identifier = False)
   assert res['success']
-  conrad.put('users/%s/contacts' % (conrad.id),
+  conrad.put('user/contacts',
     {'contacts': [{'emails':['daniel@infinit.io']}]})
   assert [str(bob.id)] == conrad.swaggers
   daniel = User(meta, 'daniel@infinit.io')
@@ -37,11 +37,11 @@ with Meta() as meta:
 with Meta() as meta:
   alice = User(meta, 'alice@infinit.io')
   alice.login()
-  alice.put('users/%s/contacts' % (alice.id),
+  alice.put('user/contacts' ,
     {'contacts': [{'emails':['marc@infinit.io']}]})
   alice2 = User(meta, 'alice2@infinit.io')
   alice2.login()
-  alice2.put('users/%s/contacts' % (alice.id),
+  alice2.put('user/contacts',
     {'contacts': [{'emails':['marc@infinit.io']}]})
   bob = User(meta, 'bob@infinit.io')
   bob.login()
@@ -61,7 +61,7 @@ with Meta() as meta:
 with Meta() as meta:
   alice = User(meta, 'alice@infinit.io')
   alice.login(country_code = 'FR')
-  alice.put('users/%s/contacts' % (alice.id),
+  alice.put('user/contacts',
     {'contacts': [{'emails':['marc@infinit.io'], 'phones': ['1234555678']}]})
   bob = User(meta, 'bob@infinit.io')
   bob.login(country_code = 'FR')

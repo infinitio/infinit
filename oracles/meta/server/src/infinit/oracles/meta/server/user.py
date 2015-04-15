@@ -2852,10 +2852,9 @@ class Mixin:
       return customer
 
 
-  @api('/users/<user>/contacts', method='PUT')
+  @api('/user/contacts', method='PUT')
   @require_logged_in
   def user_update_contacts(self,
-                           user,
                            contacts):
     """ Update with user address book informations.
         {contacts: [contact...]}
@@ -2892,7 +2891,8 @@ class Mixin:
           'contact_of': [user['_id']]
         }
         self.database.users.insert(contact_data)
-    self.database.users.update({'_id': user['_id']}, {'$set': new_swaggers})
+    if len(new_swaggers):
+      self.database.users.update({'_id': user['_id']}, {'$set': new_swaggers})
     for s in new_swaggers.keys():
       self.notifier.notify_some(
           notifier.NEW_SWAGGER,
