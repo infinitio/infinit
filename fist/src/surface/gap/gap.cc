@@ -359,7 +359,7 @@ gap_poll(gap_State* state)
 /// - Device --------------------------------------------------------------
 
 gap_Status
-gap_devices(gap_State* state, std::vector<surface::gap::Device>& devices)
+gap_devices(gap_State* state, std::vector<surface::gap::Device const*>& devices)
 {
   ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(

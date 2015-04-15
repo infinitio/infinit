@@ -168,7 +168,8 @@ gap_poll(gap_State* state);
 
 /// Fetch a list of user's devices.
 gap_Status
-gap_devices(gap_State* state, std::vector<surface::gap::Device>& devices);
+gap_devices(gap_State* state,
+            std::vector<surface::gap::Device const*>& devices);
 
 /// Returns the local device status.
 gap_Status

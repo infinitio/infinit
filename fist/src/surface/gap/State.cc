@@ -658,7 +658,7 @@ namespace surface
             new infinit::oracles::meta::SynchronizeResponse{
               this->meta().synchronize(true)});
           ELLE_TRACE("got synchronisation response");
-          this->_model.devices = this->_synchronize_response->devices;
+          this->_model.devices.reset(this->_synchronize_response->devices);
           this->_avatar_fetcher_thread.reset(
             new reactor::Thread{
               scheduler,
@@ -1270,10 +1270,14 @@ namespace surface
     | Devices |
     `--------*/
 
-    std::vector<Device> const&
+    std::vector<Device const*>
     State::devices() const
     {
-      return this->_model.devices;
+      std::vector<Device const*> res;
+      res.reserve(this->_model.devices.size());
+      for (auto const& device: this->_model.devices)
+        res.push_back(&device);
+      return res;
     }
 
     /*--------------.

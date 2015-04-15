@@ -433,7 +433,7 @@ namespace surface
       | Devices |
       `--------*/
     public:
-      std::vector<gap::Device> const&
+      std::vector<gap::Device const*>
       devices() const;
 
       // Could be factorized.

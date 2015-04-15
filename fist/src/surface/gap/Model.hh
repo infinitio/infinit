@@ -14,7 +14,7 @@ namespace surface
     class Model
     {
     public:
-      std::vector<Device> devices;
+      das::IndexList<Device, elle::UUID, &Device::id> devices;
     };
   }
 }
@@ -39,7 +39,10 @@ namespace surface
       > DasDevices;
     typedef das::Object<
       Model,
-      das::Field<Model, std::vector<Device>, &Model::devices, DasDevices>
+      das::Field<Model,
+                 das::IndexList<Device, elle::UUID, &Device::id>,
+                 &Model::devices,
+                 DasDevices>
       > DasModel;
   }
 }
