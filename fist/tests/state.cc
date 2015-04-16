@@ -41,6 +41,20 @@ random_uuid()
   return generator();
 }
 
+class KeyPair:
+  public infinit::cryptography::KeyPair
+{
+public:
+  KeyPair()
+    : infinit::cryptography::KeyPair(
+      infinit::cryptography::KeyPair::generate(
+        infinit::cryptography::Cryptosystem::rsa, 1024))
+  {}
+};
+
+KeyPair authority_keys;
+papier::Authority authority(authority_keys);
+
 static
 papier::Identity
 generate_identity(cryptography::KeyPair const& keypair,
@@ -53,7 +67,7 @@ generate_identity(cryptography::KeyPair const& keypair,
     throw std::runtime_error("unable to create the identity");
   if (identity.Encrypt(password) == elle::Status::Error)
     throw std::runtime_error("unable to encrypt the identity");
-  if (identity.Seal(papier::authority()) == elle::Status::Error)
+  if (identity.Seal(authority) == elle::Status::Error)
     throw std::runtime_error("unable to seal the identity");
   return identity;
 }
@@ -65,7 +79,7 @@ generate_passport(boost::uuids::uuid const& id,
                   cryptography::PublicKey const& key)
 {
   papier::Passport passport(boost::lexical_cast<std::string>(id),
-                            name, key, papier::authority());
+                            name, key, authority);
   std::string passport_string;
   if (passport.Save(passport_string) == elle::Status::Error)
     throw std::runtime_error("unabled to save the passport");
