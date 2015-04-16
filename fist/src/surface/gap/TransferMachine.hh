@@ -71,10 +71,14 @@ namespace surface
       virtual
       bool
       finished() const;
+    protected:
+      void
+      _delay_status_change();
 
     /*-------.
     | States |
     `-------*/
+    public:
       void
       _publish_interfaces_wrapper();
       void

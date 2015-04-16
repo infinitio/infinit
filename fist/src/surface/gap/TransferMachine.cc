@@ -456,18 +456,7 @@ namespace surface
       if (this->progress() == 1)
         this->_owner.gap_status(gap_transaction_cloud_buffered);
       else
-        if (this->_owner.gap_status() == gap_transaction_transferring)
-        {
-          ELLE_LOG("%s: delaying gap status transition to connecting", *this);
-          this->_gap_connecting_delay = elle::make_unique<reactor::Timer>(
-            "delay to connecting", boost::posix_time::seconds(5),
-            [this]()
-            {
-              this->_owner.gap_status(gap_transaction_connecting);
-            });
-        }
-        else
-          this->_owner.gap_status(gap_transaction_connecting);
+        this->_delay_status_change();
       this->_publish_interfaces();
     }
 
@@ -475,18 +464,7 @@ namespace surface
     Transferer::_connection_wrapper()
     {
       ELLE_TRACE_SCOPE("%s: connect to peer", *this);
-        if (this->_owner.gap_status() == gap_transaction_transferring)
-        {
-          ELLE_LOG("%s: delaying gap status transition to connecting", *this);
-          this->_gap_connecting_delay = elle::make_unique<reactor::Timer>(
-            "delay to connecting", boost::posix_time::seconds(5),
-            [this]()
-            {
-              this->_owner.gap_status(gap_transaction_connecting);
-            });
-        }
-        else
-          this->_owner.gap_status(gap_transaction_connecting);
+      this->_delay_status_change();
       this->_connection();
     }
 
@@ -497,18 +475,7 @@ namespace surface
       if (this->progress() == 1)
         this->_owner.gap_status(gap_transaction_cloud_buffered);
       else
-        if (this->_owner.gap_status() == gap_transaction_transferring)
-        {
-          ELLE_LOG("%s: delaying gap status transition to connecting", *this);
-          this->_gap_connecting_delay = elle::make_unique<reactor::Timer>(
-            "delay to connecting", boost::posix_time::seconds(5),
-            [this]()
-            {
-              this->_owner.gap_status(gap_transaction_connecting);
-            });
-        }
-        else
-          this->_owner.gap_status(gap_transaction_connecting);
+      this->_delay_status_change();
       this->_wait_for_peer();
     }
 
@@ -526,20 +493,7 @@ namespace surface
       if (this->progress() == 1)
         this->_owner.gap_status(gap_transaction_cloud_buffered);
       else
-      {
-        if (this->_owner.gap_status() == gap_transaction_transferring)
-        {
-          ELLE_LOG("%s: delaying gap status transition to connecting", *this);
-          this->_gap_connecting_delay = elle::make_unique<reactor::Timer>(
-            "delay to connecting", boost::posix_time::seconds(5),
-            [this]()
-            {
-              this->_owner.gap_status(gap_transaction_connecting);
-            });
-        }
-        else
-          this->_owner.gap_status(gap_transaction_connecting);
-      }
+        this->_delay_status_change();
       this->_cloud_synchronize();
     }
 
@@ -567,6 +521,23 @@ namespace surface
     Transferer::print(std::ostream& stream) const
     {
       stream << "Transferer(" << this->_owner.id() << ")";
+    }
+
+    void
+    Transferer::_delay_status_change()
+    {
+      if (this->_owner.gap_status() == gap_transaction_transferring)
+      {
+        ELLE_TRACE("%s: delaying gap status transition to connecting", *this);
+        this->_gap_connecting_delay = elle::make_unique<reactor::Timer>(
+          "delay to connecting", boost::posix_time::seconds(5),
+          [this]()
+          {
+            this->_owner.gap_status(gap_transaction_connecting);
+          });
+      }
+      else
+        this->_owner.gap_status(gap_transaction_connecting);
     }
   }
 }
