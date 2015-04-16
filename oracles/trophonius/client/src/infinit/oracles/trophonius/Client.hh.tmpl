@@ -181,6 +181,15 @@ namespace infinit
                                  Notification)
         {}
       };
+
+      struct ModelUpdateNotification
+        : public Notification
+      {
+        ModelUpdateNotification(elle::json::Json json);
+        elle::json::Json json;
+      };
+
+
       struct ConnectionState
       {
         bool connected;

@@ -30,11 +30,12 @@
 # include <infinit/oracles/trophonius/fwd.hh>
 
 # include <surface/gap/Exception.hh>
-# include <surface/gap/gap.hh>
+# include <surface/gap/Model.hh>
 # include <surface/gap/Notification.hh>
 # include <surface/gap/Self.hh>
 # include <surface/gap/Transaction.hh>
 # include <surface/gap/User.hh>
+# include <surface/gap/gap.hh>
 
 namespace surface
 {
@@ -433,7 +434,7 @@ namespace surface
       | Devices |
       `--------*/
     public:
-      std::vector<Device>
+      std::vector<gap::Device const*>
       devices() const;
 
       // Could be factorized.
@@ -820,6 +821,12 @@ namespace surface
     private:
       void
       _apply_configuration(elle::json::Object json);
+
+    /*------.
+    | Model |
+    `------*/
+    public:
+      ELLE_ATTRIBUTE_R(Model, model);
 
     /*----------.
     | Printable |

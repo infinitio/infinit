@@ -6,6 +6,7 @@ notifications = {
   'new_swagger': 9,
   'deleted_swagger': 10,
   'peer_connection_update': 11,
+  'model_update': 42, # YOLO
   'invalid_credentials': 12,
   'deleted_favorite': 13,
   'configuration': 14,

@@ -529,8 +529,6 @@ def configure(cxx_toolkit = None,
   )
 
   raw_gap_sources = [
-    'fist/src/surface/gap/Device.cc',
-    'fist/src/surface/gap/Device.hh',
     'fist/src/surface/gap/Exception.hh',
     'fist/src/surface/gap/Error.hh',
     'fist/src/surface/gap/Error.hxx',
@@ -610,6 +608,7 @@ def configure(cxx_toolkit = None,
   install << gap_install
 
   gap_cxx_config = drake.cxx.Config(cxx_config_libs)
+  gap_cxx_config += elle.das.config
   gap_cxx_config.add_local_include_path('fist/src')
   gap_cxx_config.add_local_include_path('metrics/src')
   gap_cxx_config.add_local_include_path('oracles/src')
@@ -718,7 +717,7 @@ def configure(cxx_toolkit = None,
 
   cli_build = drake.Rule('cli/build')
   cli_install = drake.Rule('cli/install')
-  cli_cxx_config = drake.cxx.Config(cxx_config)
+  cli_cxx_config = drake.cxx.Config(gap_cxx_config)
   cli_cxx_config.lib_path_runtime('../lib')
   cli_cxx_config.add_local_include_path('metrics/src')
   cli_cxx_config.add_local_include_path('oracles/src')

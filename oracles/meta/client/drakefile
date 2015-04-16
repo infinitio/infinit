@@ -37,6 +37,7 @@ def configure(elle,
   config = drake.cxx.Config()
   config += elle.elle.config
   config += elle.reactor.config
+  config += elle.das.config
   config += transaction_config
   config.add_local_include_path('src')
   local_cxx_config = cxx_config + config
@@ -70,6 +71,8 @@ def configure(elle,
       'src/infinit/oracles/meta/Client.cc',
       'src/infinit/oracles/meta/Client.hh',
       'src/infinit/oracles/meta/Client.hxx',
+      'src/infinit/oracles/meta/Device.cc',
+      'src/infinit/oracles/meta/Device.hh',
       'src/infinit/oracles/meta/Admin.cc',
       'src/infinit/oracles/meta/Admin.hh',
     )
