@@ -103,16 +103,22 @@ class Mixin:
           message = transaction,
         )
 
-  def cancel_transactions(self, user):
+  def cancel_transactions(self, user, device_id = None):
+    query = {
+      'status': {'$nin': transaction_status.final},
+      '$or': [
+        {'sender_id': user['_id']},
+        {'recipient_id': user['_id']}
+      ]
+    }
+    if device_id is not None:
+      assert 'sender_id' in query['$or'][0]
+      assert 'recipient_id' in query['$or'][1]
+      query['$or'][0].update({'sender_device_id': device_id})
+      query['$or'][1].update({'recipient_device_id': device_id})
     for transaction in self.database.transactions.find(
-      {
-        '$or': [
-          {'sender_id': user['_id']},
-          {'recipient_id': user['_id']}
-        ],
-        'status': {'$nin': transaction_status.final}
-      },
-      fields = ['_id']):
+        query,
+        fields = ['_id']):
       try:
         # FIXME: _transaction_update will re-perform a mongo search on
         # the transaction id ...

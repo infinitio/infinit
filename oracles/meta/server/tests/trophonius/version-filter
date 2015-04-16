@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+
+from utils import *
+from uuid import uuid4
+from infinit.oracles.meta.server.notifier import Notifier
+
+filter_by_version = Notifier.filter_by_version
+
+def has_expected_version(user):
+  d = user.get('user/current_device')
+  assertEq(d['version']['major'], user.version[0])
+  assertEq(d['version']['minor'], user.version[1])
+  assertEq(d['version']['subminor'], user.version[2])
+
+def version_to_dict(version):
+  return {
+    'major': version[0],
+    'minor': version[1],
+    'subminor': version[2],
+  }
+
+devices = [
+  {},
+  {'version': None},
+  {'version': version_to_dict((0, 9, 35))},
+  {'version': version_to_dict((0, 9, 36))},
+  {'version': version_to_dict((0, 9, 37))},
+  {'version': version_to_dict((0, 10, 0))},
+  {'version': version_to_dict((1, 0, 0))},
+]
+
+assertEq(len(filter_by_version(devices, (0, 9, 35))), 5)
+assertEq(len(filter_by_version(devices, (0, 9, 37))), 3)
+assertEq(len(filter_by_version(devices, None)), len(devices))
+assertEq(len(filter_by_version(devices, (0, 9, 36), equal = True)), 1)
+assertEq(len(filter_by_version(devices, (0, 9, 0), equal = True)), 0)
+
+with Meta() as meta, Trophonius(meta) as t:
+  bob = User(meta, 'bob@infinit.io')
+  bob_device2 = bob.on_other_device()
+  assertEq(bob.version, meta.version)
+  bob.login(trophonius = t)
+  has_expected_version(bob)
+  bob_device2.version = (0, 9, 32)
+  bob_device2.login(trophonius = t)
+  has_expected_version(bob_device2)
+
+with Meta() as meta, Trophonius(meta) as t:
+  bob = User(meta, 'bob@infinit.io')
+  bob.version = (0, 9, 35)
+  bob_device2 = bob.on_other_device()
+  bob_device3 = bob.on_other_device()
+  bob_device4 = bob.on_other_device()
+
+  bob.login(trophonius = t)
+  bob_device2.version = (0, 9, 33)
+  bob_device2.login(trophonius = t)
+
+  bob_device3.version = None
+  bob_device3.login(trophonius = t)
+
+  del bob.notifications[:]
+  del bob_device2.notifications[:]
+  del bob_device3.notifications[:]
+
+  bob_device4.login(trophonius = t)
+  assertEq(len(bob.notifications), 1)
+  assertEq(len(bob_device2.notifications), 0)
+  assertEq(len(bob_device3.notifications), 0)

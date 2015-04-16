@@ -16,7 +16,8 @@ class Notifier():
                   notification_type,
                   recipient_ids = None,
                   device_ids = None,
-                  message = None):
+                  message = None,
+                  **kwargs):
     if notification_type == notifications['peer_connection_update']:
       assert recipient_ids is None
       assert device_ids is not None

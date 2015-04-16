@@ -49,7 +49,8 @@ class Notifier():
                   notification_type,
                   recipient_ids = None,
                   device_ids = None,
-                  message = None):
+                  message = None,
+                  **kwargs):
     if notification_type == notifications['user_status']:
       user_id = str(message['user_id'])
       device_id = str(message['device_id'])

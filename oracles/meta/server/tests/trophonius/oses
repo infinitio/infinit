@@ -9,7 +9,7 @@ def fill_os_and_version(user, os, version):
   user.os = os
   def version_to_dict(version):
     ma, mi, su = version.split('.')
-    return {"major": ma, "minor": mi, "subminor": su}
+    return {"major": int(ma), "minor": int(mi), "subminor": int(su)}
   user.version = version_to_dict(version)
 
 def login(user, tropho, send_os = True):
