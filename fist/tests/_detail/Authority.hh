@@ -18,12 +18,9 @@ namespace tests
     {}
   };
 
-  static
-  KeyPair authority_keys;
+  extern KeyPair authority_keys;
 
-  static
-  papier::Authority
-  authority{authority_keys};
+  extern papier::Authority authority;
 }
 
 #endif

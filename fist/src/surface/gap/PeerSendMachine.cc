@@ -36,10 +36,11 @@ namespace surface
     PeerSendMachine::PeerSendMachine(Transaction& transaction,
                                      uint32_t id,
                                      std::shared_ptr<Data> data,
+                                     papier::Authority const& authority,
                                      bool run_to_fail)
       : TransactionMachine(transaction, id, data)
       , SendMachine(transaction, id, data)
-      , PeerMachine(transaction, id, data)
+      , PeerMachine(transaction, id, data, authority)
       , _message(data->message)
       , _wait_for_accept_state(
         this->_machine.state_make(
@@ -69,10 +70,11 @@ namespace surface
                                      std::vector<std::string> files,
                                      std::string message,
                                      std::shared_ptr<Data> data,
+                                     papier::Authority const& authority,
                                      bool)
       : TransactionMachine(transaction, id, data)
       , SendMachine(transaction, id, std::move(files), data)
-      , PeerMachine(transaction, id, data)
+      , PeerMachine(transaction, id, data, authority)
       , _message(std::move(message))
       , _recipient(std::move(recipient))
       , _accepted("accepted")
@@ -113,13 +115,15 @@ namespace surface
                                      std::string recipient,
                                      std::vector<std::string> files,
                                      std::string message,
-                                     std::shared_ptr<Data> data)
+                                     std::shared_ptr<Data> data,
+                                     papier::Authority const& authority)
       : PeerSendMachine(transaction,
                         id,
                         std::move(recipient),
                         std::move(files),
                         std::move(message),
                         std::move(data),
+                        authority,
                         true)
     {
       ELLE_TRACE_SCOPE("%s: construct to send %s to %s",
@@ -145,13 +149,15 @@ namespace surface
                                      uint32_t id,
                                      std::vector<std::string> files,
                                      std::string message,
-                                     std::shared_ptr<Data> data)
+                                     std::shared_ptr<Data> data,
+                                     papier::Authority const& authority)
       : PeerSendMachine(transaction,
                         id,
                         data->recipient_id,
                         std::move(files),
                         std::move(message),
                         data,
+                        authority,
                         true)
     {
       ELLE_TRACE_SCOPE("%s: construct from snapshot", *this);

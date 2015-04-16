@@ -65,6 +65,10 @@ namespace tests
     _create_empty();
 
     virtual
+    void
+    _maybe_sleep();
+
+    virtual
     std::string
     _transaction_put(Headers const&,
                      Cookies const&,
@@ -112,6 +116,15 @@ namespace tests
     ELLE_ATTRIBUTE(boost::optional<std::string>, s3_meta_data)
     ELLE_ATTRIBUTE(boost::optional<std::string>, s3_data)
   };
+
+class SleepyServer : public Server
+  {
+    virtual void _maybe_sleep() override;
+  public:
+    reactor::Barrier started_blocking;
+  };
 }
+
+
 
 #endif

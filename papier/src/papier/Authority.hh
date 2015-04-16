@@ -47,8 +47,12 @@ namespace papier
     Authority(Authority const& from);
     /// Deserialize an Authority.
     Authority(elle::io::Path const& path);
+    /// Create an authority using the Inifnit public key
+    Authority();
     /// Dispose of an Authority.
     ~Authority();
+
+    Authority& operator=(Authority&&) = default;
 
     //
     // methods

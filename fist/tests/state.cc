@@ -17,9 +17,9 @@
 
 #include <infinit/oracles/trophonius/Client.hh>
 
-#include <papier/Authority.hh>
 #include <papier/Identity.hh>
 #include <papier/Passport.hh>
+#include <papier/Authority.hh>
 
 #include <surface/gap/Exception.hh>
 #include <surface/gap/State.hh>

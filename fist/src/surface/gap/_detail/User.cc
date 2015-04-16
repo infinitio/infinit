@@ -555,40 +555,52 @@ namespace surface
       infinit::oracles::trophonius::UserStatusNotification const& notif)
     {
       ELLE_TRACE_SCOPE("%s: user status notification %s", *this, notif);
-      State::User swagger = this->user(notif.user_id);
-      if (swagger.ghost() && notif.user_status == gap_user_status_online)
+      this->_on_swagger_status_update(notif.user_id,
+                                      notif.user_status,
+                                      notif.device_id,
+                                      notif.device_status);
+    }
+
+    void
+    State::_on_swagger_status_update(std::string const& user_id,
+                                     bool user_status,
+                                     elle::UUID const& device_id,
+                                     bool device_status)
+    {
+      State::User swagger = this->user(user_id);
+      if (swagger.ghost() && user_status == gap_user_status_online)
       {
-        swagger = this->user_sync(notif.user_id, true, true);
+        swagger = this->user_sync(user_id, true, true);
         ELLE_ASSERT(!swagger.ghost());
       }
       ELLE_DEBUG("%s's (id: %s) status changed to %s",
-                 swagger.fullname, swagger.id, notif.user_status);
-      ELLE_ASSERT(notif.user_status == gap_user_status_online ||
-                  notif.user_status == gap_user_status_offline);
+                 swagger.fullname, swagger.id, user_status);
+      ELLE_ASSERT(user_status == gap_user_status_online ||
+                  user_status == gap_user_status_offline);
       State::User& user = this->_users.at(this->_user_indexes.at(swagger.id));
       ELLE_DEBUG("%s: device %s status is %s",
-                 *this, notif.device_id, notif.device_status);
-      if (notif.device_status)
+                 *this, device_id, device_status);
+      if (device_status)
       {
         auto it = std::find(std::begin(user.connected_devices),
                             std::end(user.connected_devices),
-                            notif.device_id);
+                            device_id);
         if (it == std::end(user.connected_devices))
         {
           ELLE_DEBUG("add device to connected device list");
-          user.connected_devices.push_back(notif.device_id);
+          user.connected_devices.push_back(device_id);
         }
         else
         {
           ELLE_DEBUG("%s: device %s was already in connected devices",
-                     *this, notif.device_id);
+                     *this, device_id);
         }
       }
       else
       {
         auto it = std::find(std::begin(user.connected_devices),
                             std::end(user.connected_devices),
-                            notif.device_id);
+                            device_id);
         if (it != std::end(user.connected_devices))
         {
           ELLE_DEBUG("remove device from connected device list");
@@ -597,7 +609,7 @@ namespace surface
         else
         {
           ELLE_DEBUG("%s: device %s status wasn't in connected_devices",
-                     *this, notif.device_id);
+                     *this, device_id);
         }
       }
       ELLE_DUMP("%s connected devices: %s", user, user.connected_devices);
@@ -605,13 +617,13 @@ namespace surface
         for (auto& transaction: this->transactions())
         {
           transaction.second->notify_user_connection_status(
-            notif.user_id, notif.user_status,
-            notif.device_id, notif.device_status);
+            user_id, user_status,
+            device_id, device_status);
         }
       ELLE_DEBUG("enqueue notification for UI")
         this->enqueue<UserStatusNotification>(
           UserStatusNotification(
-            this->_user_indexes.at(swagger.id), notif.user_status));
+            this->_user_indexes.at(swagger.id), user_status));
     }
   }
 }

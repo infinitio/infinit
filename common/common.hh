@@ -11,6 +11,8 @@
 
 # include <elle/attribute.hh>
 
+# include <papier/Authority.hh>
+
 namespace infinit
 {
   namespace metrics
@@ -45,7 +47,8 @@ namespace common
         std::vector<unsigned char> trophonius_fingerprint,
         boost::optional<boost::uuids::uuid const&> device_id = {},
         boost::optional<std::string> download_dir = {},
-        boost::optional<std::string> home_dir = {});
+        boost::optional<std::string> home_dir = {},
+        boost::optional<papier::Authority> authority = {});
       Configuration() = default;
 
       ELLE_ATTRIBUTE_R(bool, production);
@@ -77,6 +80,9 @@ namespace common
       ELLE_ATTRIBUTE_R(std::string, non_persistent_config_dir);
       /// The download directory is where files will be downloaded for the user.
       ELLE_ATTRIBUTE_R(std::string, download_dir);
+
+      /// Authority used to validate passports
+      ELLE_ATTRIBUTE_R(papier::Authority, authority);
 
       /// Returns passport path.
       std::string

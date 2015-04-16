@@ -7,7 +7,7 @@
 #include <surface/gap/State.hh>
 #include "server.hh"
 
-ELLE_LOG_COMPONENT("surface.gap.state->test");
+ELLE_LOG_COMPONENT("surface.gap.state.test");
 
 // Cloud buffered peer transaction.
 ELLE_TEST_SCHEDULED(cloud_buffer)
@@ -211,10 +211,105 @@ ELLE_TEST_SCHEDULED(recipient_states)
   }
 }
 
+// Test switching from cloud to p2p mid transaction
+ELLE_TEST_SCHEDULED(cloud_to_p2p)
+{
+  tests::SleepyServer server;
+  elle::filesystem::TemporaryDirectory sender_home(
+    "cloud-buffer_sender_home_p2p");
+  auto const& sender_user =
+    server.register_user("sender@infinit.io", "password");
+  elle::filesystem::TemporaryDirectory recipient_home(
+    "cloud-buffer_recipient_home_p2p");
+  auto const& recipient_user =
+    server.register_user("recipient@infinit.io", "password");
+  std::string t_id;
+  elle::filesystem::TemporaryFile transfered("cloud-buffered");
+  {
+    boost::filesystem::ofstream f(transfered.path());
+    BOOST_CHECK(f.good());
+    for (int i = 0; i < 2048; ++i)
+    {
+      char c = i % 256;
+      f.write(&c, 1);
+    }
+  }
+
+
+  tests::Client sender(server, sender_user, sender_home.path());
+  sender.login();
+  auto& state_transaction = sender.state->transaction_peer_create(
+    recipient_user.email(),
+    std::vector<std::string>{transfered.path().string().c_str()},
+    "message");
+  reactor::Barrier cloud_buffered, sender_finished;
+  auto conn = state_transaction.status_changed().connect(
+    [&] (gap_TransactionStatus status)
+    {
+    t_id = state_transaction.data()->id;
+      ELLE_LOG("new sender transaction status: %s", status);
+      auto& server_transaction =
+        server.transaction(state_transaction.data()->id);
+      switch (status)
+      {
+        case gap_transaction_transferring:
+        {
+          break;
+        }
+        case gap_transaction_cloud_buffered:
+        {
+          BOOST_ERROR("cloud_to_p2p test should not finish cloud buffering!");
+          break;
+        }
+        case gap_transaction_finished:
+        {
+          sender_finished.open();
+          break;
+        }
+        default:
+        {
+          //BOOST_ERROR(
+            //elle::sprintf("unexpected transaction status: %s", status));
+          break;
+        }
+      }
+    });
+  reactor::wait(server.started_blocking);
+
+  // Check the recipient goes through the right state (partially cloud buffered).
+  tests::Client recipient(server, recipient_user, recipient_home.path());
+  recipient.login();
+  BOOST_CHECK_EQUAL(recipient.state->transactions().size(), 1);
+  auto& state_transaction_recipient = *recipient.state->transactions().begin()->second;
+  reactor::Barrier recipient_finished;
+  state_transaction_recipient.status_changed().connect(
+    [&] (gap_TransactionStatus status)
+    {
+      ELLE_LOG("new recipient transaction status: %s", status);
+      switch (status)
+      {
+        case gap_transaction_finished:
+        {
+          recipient_finished.open();
+          break;
+        }
+      }
+    });
+  sender.state->_on_swagger_status_update(recipient.user.id().repr(),
+                                          true,
+                                          recipient.device_id,
+                                          true);
+  ELLE_LOG("accept")
+    state_transaction_recipient.accept();
+  reactor::wait(recipient_finished);
+  reactor::wait(sender_finished);
+}
+
 ELLE_TEST_SUITE()
 {
   auto timeout = valgrind(15);
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(cloud_buffer), 0, timeout);
   suite.add(BOOST_TEST_CASE(recipient_states), 0, timeout);
+  suite.add(BOOST_TEST_CASE(cloud_to_p2p), 0, timeout);
 }

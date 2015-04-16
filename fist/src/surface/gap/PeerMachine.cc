@@ -15,9 +15,11 @@ namespace surface
   {
     PeerMachine::PeerMachine(Transaction& transaction,
                              uint32_t id,
-                             std::shared_ptr<Data> data)
+                             std::shared_ptr<Data> data,
+                             papier::Authority const& authority)
       : Super(transaction, id, data)
       , _data(data)
+      , _authority(authority)
       , _transfer_machine(new PeerTransferMachine(*this))
     {
       this->_machine.transition_add(

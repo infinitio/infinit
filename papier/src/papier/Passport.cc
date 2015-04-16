@@ -1,3 +1,4 @@
+#include <elle/log.hh>
 #include <elle/serialize/TupleSerializer.hxx>
 
 #include <cryptography/PrivateKey.hh>

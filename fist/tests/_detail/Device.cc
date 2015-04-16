@@ -5,12 +5,14 @@
 
 #include <fist/tests/_detail/Authority.hh>
 
+ELLE_LOG_COMPONENT("fist.tests")
+
 namespace tests
 {
   Device::Device(cryptography::PublicKey const& key,
                    boost::optional<elle::UUID> device)
     : _id(device ? device.get() : elle::UUID::random())
-    , _passport(boost::lexical_cast<std::string>(this->_id), "osef", key, authority)
+    , _passport(boost::lexical_cast<std::string>(this->_id), "osef", key, tests::authority)
   {
   }
 

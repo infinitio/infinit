@@ -32,18 +32,21 @@ namespace surface
                       std::string recipient,
                       std::vector<std::string> files,
                       std::string message,
-                      std::shared_ptr<Data> data);
+                      std::shared_ptr<Data> data,
+                      papier::Authority const& authority);
       /// Construct from snapshot.
       PeerSendMachine(Transaction& transaction,
                       uint32_t id,
                       std::vector<std::string> files,
                       std::string message,
-                      std::shared_ptr<Data> data);
+                      std::shared_ptr<Data> data,
+                      papier::Authority const& authority);
       /// Constructor when sending from another device or if you have no
       /// snapshot as sender. In that case, run_to_fail is set to true.
       PeerSendMachine(Transaction& transaction,
                       uint32_t id,
                       std::shared_ptr<Data> data,
+                      papier::Authority const& authority,
                       bool run_to_fail = false);
       virtual
       ~PeerSendMachine();
@@ -57,6 +60,7 @@ namespace surface
                       std::vector<std::string> files,
                       std::string message,
                       std::shared_ptr<Data> data,
+                      papier::Authority const& authority,
                       bool);
       void
       _run_from_snapshot();

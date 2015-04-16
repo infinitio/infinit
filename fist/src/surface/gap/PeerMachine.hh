@@ -5,6 +5,8 @@
 
 # include <frete/Frete.hh>
 
+# include <papier/Authority.hh>
+
 namespace surface
 {
   namespace gap
@@ -26,8 +28,10 @@ namespace surface
     public:
       PeerMachine(Transaction& transaction,
                   uint32_t id,
-                  std::shared_ptr<Data> data);
+                  std::shared_ptr<Data> data,
+                  papier::Authority const& authority);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
+      ELLE_ATTRIBUTE_R(papier::Authority, authority);
 
     /*---------.
     | Transfer |

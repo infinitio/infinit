@@ -34,14 +34,16 @@ namespace papier
     _K(pair.K()),
     _k(new cryptography::PrivateKey{pair.k()}),
     _code(nullptr)
-  {}
+  {
+  }
 
   Authority::Authority(cryptography::PublicKey const& K):
     type(Authority::TypePublic),
     _K(K),
     _k(nullptr),
     _code(nullptr)
-  {}
+  {
+  }
 
   Authority::Authority(elle::io::Path const& path):
     _k(nullptr),
@@ -51,6 +53,11 @@ namespace papier
       throw elle::Exception
         (elle::sprintf("unable to locate the authority file %s", path));
     this->load(path);
+  }
+
+  Authority::Authority()
+    : Authority(authority())
+  {
   }
 
   Authority::~Authority()

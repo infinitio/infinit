@@ -152,14 +152,15 @@ namespace surface
       };
 
     public:
-      State(common::infinit::Configuration const& local_config);
+      State(common::infinit::Configuration local_config);
       State(std::string const& meta_protocol,
             std::string const& meta_host,
             uint16_t meta_port,
             std::vector<unsigned char> trophonius_fingerprint,
             boost::optional<boost::uuids::uuid const&> device_id = {},
             boost::optional<std::string> download_dir = {},
-            boost::optional<std::string> home_dir = {});
+            boost::optional<std::string> home_dir = {},
+            boost::optional<papier::Authority> authority = {});
       ~State();
       ELLE_ATTRIBUTE_R(boost::filesystem::path, home);
 
@@ -618,6 +619,12 @@ namespace surface
       _on_swagger_status_update(
         infinit::oracles::trophonius::UserStatusNotification const& notif);
 
+      void
+      _on_swagger_status_update(std::string const& user_id,
+                                bool user_status,
+                                elle::UUID const& device_id,
+                                bool device_status);
+
       /*---------.
       | Networks |
       `---------*/
@@ -826,6 +833,8 @@ namespace surface
       | Debugging |
       `----------*/
       ELLE_ATTRIBUTE_RX(reactor::Signal, synchronized);
+
+      ELLE_ATTRIBUTE_R(papier::Authority, authority);
     };
 
     std::ostream&

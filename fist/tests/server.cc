@@ -11,7 +11,6 @@
 #include <elle/serialization/json.hh>
 
 #include <infinit/oracles/meta/Client.hh>
-#include <papier/Authority.hh>
 #include <version.hh>
 
 #include <fist/tests/_detail/Authority.hh>
@@ -511,6 +510,7 @@ namespace tests
               Server::Parameters const&,
               elle::Buffer const& body)
       {
+        this->_maybe_sleep();
         this->_cloud_buffered = true;
         this->_s3_data = body.string();
         return "";
@@ -671,13 +671,12 @@ namespace tests
       {
         auto const& device = this->device(cookies);
         User const& user = this->user(cookies);
-        // typedef std::vector<std::pair<std::string, int>> Locals;
-        // Locals locals;
 
-        // XXX: Doesn't work.
         elle::IOStream stream(content.istreambuf());
-        elle::serialization::json::SerializerIn input(stream, false);
-        int port;
+        auto json = boost::any_cast<elle::json::Object>(elle::json::read(stream));
+        auto locals = boost::any_cast<elle::json::Array>(json.at("locals"));
+        auto sub_json = boost::any_cast<elle::json::Object>(locals[0]);
+        auto port = boost::any_cast<int64_t>(sub_json.at("port"));
 
         static std::unordered_map<std::string, uint16_t> first_time;
         if (first_time.find(id) == first_time.end())
@@ -1073,6 +1072,17 @@ namespace tests
   Server::session_id(elle::UUID id)
   {
     this->_session_id = std::move(id);
+  }
+
+  void
+  Server::_maybe_sleep()
+  {
+  }
+
+  void SleepyServer::_maybe_sleep()
+  {
+    this->started_blocking.open();
+    reactor::sleep(boost::posix_time::minutes(2));
   }
 }
 
