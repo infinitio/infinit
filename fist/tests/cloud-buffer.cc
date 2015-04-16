@@ -247,8 +247,7 @@ ELLE_TEST_SCHEDULED(cloud_to_p2p)
     [&] (gap_TransactionStatus status)
     {
     t_id = state_transaction.data()->id;
-      //ELLE_LOG("new local transaction status: %s", status);
-      ELLE_WARN("TRANSACTION STATUS ON SENDER IS: %s", status);
+      ELLE_LOG("new sender transaction status: %s", status);
       auto& server_transaction =
         server.transaction(state_transaction.data()->id);
       switch (status)
@@ -286,7 +285,7 @@ ELLE_TEST_SCHEDULED(cloud_to_p2p)
   state_transaction_recipient.status_changed().connect(
     [&] (gap_TransactionStatus status)
     {
-      ELLE_WARN("TRANSACTION STATUS ON RECIPIENT IS: %s", status);
+      ELLE_LOG("new recipient transaction status: %s", status);
       switch (status)
       {
         case gap_transaction_finished:
@@ -310,7 +309,7 @@ ELLE_TEST_SUITE()
 {
   auto timeout = valgrind(15);
   auto& suite = boost::unit_test::framework::master_test_suite();
-  //suite.add(BOOST_TEST_CASE(cloud_buffer), 0, timeout);
-  //suite.add(BOOST_TEST_CASE(recipient_states), 0, timeout);
+  suite.add(BOOST_TEST_CASE(cloud_buffer), 0, timeout);
+  suite.add(BOOST_TEST_CASE(recipient_states), 0, timeout);
   suite.add(BOOST_TEST_CASE(cloud_to_p2p), 0, timeout);
 }
