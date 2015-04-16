@@ -238,6 +238,12 @@ namespace surface
       this->_transaction.status(v);
     }
 
+    gap_TransactionStatus
+    TransactionMachine::gap_status()
+    {
+      return this->_transaction.status();
+    }
+
     void
     TransactionMachine::_another_device()
     {

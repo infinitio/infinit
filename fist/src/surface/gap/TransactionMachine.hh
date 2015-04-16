@@ -253,6 +253,9 @@ namespace surface
       void
       gap_status(gap_TransactionStatus);
 
+      gap_TransactionStatus
+      gap_status();
+
     /*--------.
     | Metrics |
     `--------*/
