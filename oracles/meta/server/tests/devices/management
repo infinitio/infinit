@@ -32,6 +32,8 @@ def user_on_new_device(meta, data, trophonius = None):
   setattr(client, 'id', client.get('user/self')['id'])
   res = client.get('user/current_device')
   setattr(client, 'device_id', UUID(res['id']))
+  # XXX: Update when server version is updated to 0.9.35.
+  setattr(client, 'version', (0, 9, 35))
   setattr(client, 'device_name', res['name'])
   if trophonius is not None:
     setattr(client, 'trophonius', trophonius)

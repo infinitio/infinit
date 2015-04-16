@@ -58,7 +58,7 @@ class Mixin:
       bottle.request.device = device
       return device
 
-  @api('/user/device')
+  @api('/user/current_device')
   @require_logged_in
   def current_device_view(self):
     return self.device_view(self.current_device)

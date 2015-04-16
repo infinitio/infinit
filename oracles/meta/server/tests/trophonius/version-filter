@@ -7,7 +7,7 @@ from infinit.oracles.meta.server.notifier import Notifier
 filter_by_version = Notifier.filter_by_version
 
 def has_expected_version(user):
-  d = user.get('user/device')
+  d = user.get('user/current_device')
   assertEq(d['version']['major'], user.version[0])
   assertEq(d['version']['minor'], user.version[1])
   assertEq(d['version']['subminor'], user.version[2])

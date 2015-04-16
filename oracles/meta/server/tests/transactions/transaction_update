@@ -114,7 +114,8 @@ class Notifier():
                   notification_type,
                   recipient_ids = None,
                   device_ids = None,
-                  message = None):
+                  message = None,
+                  **kwargs):
     import infinit.oracles.notification
     if notification_type != infinit.oracles.notification.notifications['peer_transaction']:
       return

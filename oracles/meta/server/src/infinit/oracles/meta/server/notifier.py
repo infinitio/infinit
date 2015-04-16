@@ -68,14 +68,16 @@ class Notifier:
     with elle.log.trace('filter devices %s per version' % devices):
       if version is None:
         return devices
+      assert isinstance(version, tuple)
+      assert len(version) == 3
       _devices = []
       for device in devices:
         device_version = device.get('version')
         if device_version is None:
           continue
-        device_version = (device_version['major'],
-                          device_version['minor'],
-                          device_version['subminor'])
+        device_version = (int(device_version['major']),
+                          int(device_version['minor']),
+                          int(device_version['subminor']))
         if device_version == version if equal else device_version >= version:
           _devices.append(device)
       return _devices
