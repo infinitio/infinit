@@ -248,8 +248,6 @@ ELLE_TEST_SCHEDULED(cloud_to_p2p)
     {
     t_id = state_transaction.data()->id;
       ELLE_LOG("new sender transaction status: %s", status);
-      auto& server_transaction =
-        server.transaction(state_transaction.data()->id);
       switch (status)
       {
         case gap_transaction_transferring:
@@ -261,6 +259,11 @@ ELLE_TEST_SCHEDULED(cloud_to_p2p)
           BOOST_ERROR("cloud_to_p2p test should not finish cloud buffering!");
           break;
         }
+        case gap_transaction_connecting:
+        {
+          BOOST_ERROR("cloud_to_p2p sender should not pass through connecting state!");
+          break;
+        }
         case gap_transaction_finished:
         {
           sender_finished.open();
@@ -268,8 +271,8 @@ ELLE_TEST_SCHEDULED(cloud_to_p2p)
         }
         default:
         {
-          //BOOST_ERROR(
-            //elle::sprintf("unexpected transaction status: %s", status));
+          BOOST_ERROR(
+            elle::sprintf("unexpected transaction status: %s", status));
           break;
         }
       }
@@ -291,6 +294,10 @@ ELLE_TEST_SCHEDULED(cloud_to_p2p)
         case gap_transaction_finished:
         {
           recipient_finished.open();
+          break;
+        }
+        default:
+        {
           break;
         }
       }

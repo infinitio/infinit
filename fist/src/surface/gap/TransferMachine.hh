@@ -3,6 +3,7 @@
 
 # include <reactor/Barrier.hh>
 # include <reactor/fsm.hh>
+# include <reactor/timer.hh>
 
 # include <surface/gap/fwd.hh>
 
@@ -57,7 +58,8 @@ namespace surface
       ELLE_ATTRIBUTE_R(Endpoints, peer_public_endpoints);
       // Number of connection attempts so far
       ELLE_ATTRIBUTE_RP(int, attempt, protected:);
-
+      // Timer for delayed gap transaction transitionning to connecting
+      ELLE_ATTRIBUTE_R(std::unique_ptr<reactor::Timer>, gap_connecting_delay);
     /*-------.
     | Status |
     `-------*/
