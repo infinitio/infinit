@@ -48,7 +48,7 @@ namespace surface
       this->_passport->store(elle::io::Path(passport_path));
     }
 
-    State::Device const&
+    Device const&
     State::device() const
     {
       ELLE_ASSERT(this->_device != nullptr);

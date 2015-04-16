@@ -103,7 +103,7 @@ class Mixin:
         })
     device = list(filter(lambda x: x['id'] == str(id), res['devices']))[0]
     self.notifier.notify_some(
-      notifier.DEVICES_UPDATE,
+      notifier.MODEL_UPDATE,
       message = {
         'device': {
           'id': device['id'],
@@ -149,7 +149,7 @@ class Mixin:
       if len(devices) == 1:
         self.cancel_transactions(user, id)
         self.notifier.notify_some(
-          notifier.DEVICES_UPDATE,
+          notifier.MODEL_UPDATE,
           message = {
             'device': {
               'id': devices[0]['id'],
@@ -269,7 +269,7 @@ class Mixin:
           )
       self.device_override_push_token(device_push_token, create)
       self.notifier.notify_some(
-        notifier.DEVICES_UPDATE,
+        notifier.MODEL_UPDATE,
         message = {
           'device': self.device_view(device)
         },

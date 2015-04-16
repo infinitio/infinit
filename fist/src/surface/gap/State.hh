@@ -394,7 +394,6 @@ namespace surface
       | Papiers |
       `--------*/
     public:
-      typedef infinit::oracles::meta::Device Device;
       /// Get the remote device informations.
       Device const&
       device() const;
