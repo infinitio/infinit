@@ -27,13 +27,13 @@ namespace tests
   {
     typedef reactor::http::tests::Server Super;
   public:
-    void
-    register_route(std::string const& route,
-                   reactor::http::Method method,
-                   Server::Function const& function) override;
-  public:
     Server();
     Server(Server const&) = default;
+
+   void
+   register_route(std::string const& route,
+                  reactor::http::Method method,
+                  Super::Function const& function) override;
 
     User const&
     register_user(std::string const& email,

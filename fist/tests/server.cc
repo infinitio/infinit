@@ -120,11 +120,12 @@ namespace tests
           "{"
           " \"self\": %s,"
           " \"device\": %s,"
-          " \"devices\": [],"
+          " \"devices\": [%s],"
           " \"features\": [],"
           " \"trophonius\" : %s"
           "}",
           user.self_json(),
+          device.json(),
           device.json(),
           this->trophonius.json());
       });
