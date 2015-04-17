@@ -1685,6 +1685,20 @@ namespace infinit
         stream << "meta::Client(" << this->_host << ":" << this->_port << " @" << this->_email << ")";
       }
 
+      CloudCredentialsAws::CloudCredentialsAws(
+        std::string const& access_key_id,
+        std::string const& secret_access_key,
+        std::string const& session_token,
+        std::string const& region,
+        std::string const& bucket,
+        std::string const& folder,
+        boost::posix_time::ptime expiration,
+        boost::posix_time::ptime server_time)
+        : aws::Credentials(access_key_id, secret_access_key, session_token,
+                           region, bucket, folder, expiration, server_time)
+      {}
+
+
       CloudCredentialsAws::CloudCredentialsAws(elle::serialization::SerializerIn& s)
       : aws::Credentials(s)
       {}

@@ -284,7 +284,14 @@ namespace infinit
         , public aws::Credentials
       {
       public:
-        using aws::Credentials::Credentials;
+        CloudCredentialsAws(std::string const& access_key_id,
+                            std::string const& secret_access_key,
+                            std::string const& session_token,
+                            std::string const& region,
+                            std::string const& bucket,
+                            std::string const& folder,
+                            boost::posix_time::ptime expiration,
+                            boost::posix_time::ptime server_time);
         CloudCredentialsAws(elle::serialization::SerializerIn& s);
         void
         serialize(elle::serialization::Serializer& s);
