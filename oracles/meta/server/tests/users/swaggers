@@ -25,3 +25,22 @@ with Meta(force_admin = True) as meta:
 
   assert len(u1.get('user/full_swaggers')['swaggers']) == 1
   assert len(u2.get('user/full_swaggers')['swaggers']) == 1
+
+#Swaggers and ghost users
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login(country_code = 'FR')
+  transaction, res = alice.sendfile(recipient = 'bob@infinit.io', use_identifier = False)
+  swags = alice.swaggers
+  assert len(swags) == 1
+  bob2 = User(meta, 'bob2@infinit.io')
+  bob2.login()
+  bob_data = meta.database.users.find_one({'accounts.id': 'bob@infinit.io'})
+  code = bob_data['ghost_code']
+  bob2.post('ghost/%s/merge' % (code))
+  # bypass user.swagger check, we make our own
+  swags2 = alice.get('user/swaggers')['swaggers']
+  swags2 = [s['id'] for s in swags2]
+  print('%s VS %s' % (swags, swags2))
+  assert len(swags2) == 1
+  assert swags != swags2
