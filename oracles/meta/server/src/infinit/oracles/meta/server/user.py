@@ -1644,8 +1644,10 @@ class Mixin:
       # Increase self swag for swaggers
       for swagger, amount in deleted_user_swaggers.items():
         self.database.users.update(
-          {'_id': swagger},
-          {'$inc': {'swaggers.%s' % merge_with['_id']: amount}})
+          {'_id': bson.ObjectId(swagger)},
+          {'$inc': {'swaggers.%s' % merge_with['_id']: amount},
+          '$unset': {'swaggers.%s' % user['_id']: 1},
+          })
         self.notifier.notify_some(
           notifier.NEW_SWAGGER,
           message = {'user_id': swagger},
