@@ -1677,7 +1677,7 @@ class Mixin:
       self.change_transactions_recipient(
         current_owner = user, new_owner = merge_with)
       # self.change_links_ownership(user, merge_with)
-      new_id = deleted_user['merged_with']
+      new_id = merge_with['_id']
       if len(deleted_user_contact_of):
         self.database.users.update({'_id': {'$in': deleted_user_contact_of}},
           {'$inc': {'swaggers.' + str(new_id): 0}
@@ -2864,25 +2864,60 @@ class Mixin:
     """
     user = self.user
     new_swaggers = dict()
+    country_code = self.current_device.get('country_code', None)
+    # Normalize phone numbers
     for c in contacts:
+      c['phones'] = list(map(lambda x: clean_up_phone_number(x, country_code), c.get('phones', [])))
+    mails = [val for sublist in contacts for val in sublist.get('emails', [])]
+    phones = [val for sublist in contacts for val in sublist.get('phones', [])]
+    ids = mails + phones
+    existing = self.database.users.find(
+      {'accounts.id': {'$in': ids}},
+      fields = ['accounts', 'register_status', 'contact_of']
+      )
+    existing = list(existing)
+    ghosts_to_update = []
+    for hit in existing:
+      strid = str(hit['_id'])
+      if strid not in user['swaggers'] and hit['register_status'] == 'ok':
+        new_swaggers['swaggers.' + strid] = 0
+      if hit['register_status'] in ['contact','ghost'] and user['_id'] not in hit.get('contact_of', []):
+        ghosts_to_update.append(hit['_id'])
+    # update contact-of for ghosts and contacts
+    self.database.users.update(
+      {
+      '_id': {'$in': ghosts_to_update},
+      'register_status': {'$in': ['ghost', 'contact']}
+      },
+      {'$addToSet': {'contact_of': user['_id']}},
+      multi = True
+      )
+    # update swaggers
+    if len(new_swaggers):
+      self.database.users.update({'_id': user['_id']}, {'$inc': new_swaggers})
+    for s in new_swaggers.keys():
+      self.notifier.notify_some(
+          notifier.NEW_SWAGGER,
+          message = {'user_id': s.split('.')[1]},
+          recipient_ids = {user['_id']},
+        )
+    # filter contacts not present in db
+    in_db = list()
+    unmatched = list()
+    for hit in existing:
+      for a in hit['accounts']:
+        in_db.append(a['id'])
+    print('in_db %s' % in_db)
+    for c in contacts:
+      if not any([p in in_db for p in c.get('emails',[]) + c.get('phones', [])]):
+        unmatched.append(c)
+    # create them in db
+    insert = list()
+    for c in unmatched:
       phones = c.get('phones', [])
-      country_code = self.current_device.get('country_code', None)
-      phones = list(map(lambda x: clean_up_phone_number(x, country_code), phones))
-
-      hit = self.database.users.find_one({
-          'accounts.id': {'$in': phones + c.get('emails',[])}
-      }, fields=['swaggers', 'accounts', 'register_status', 'contact_of'])
-      if hit is not None:
-        strid = str(hit['_id'])
-        if strid not in user['swaggers'] and hit['register_status'] == 'ok':
-          new_swaggers['swaggers.' + strid] = 0
-        if hit['register_status'] in ['contact','ghost'] and user['_id'] not in hit.get('contact_of', []):
-          self.database.users.update({'_id': hit['_id']}, {'$addToSet': {'contact_of': user['_id']}})
-      else:
-        # Create the new contact
-        accounts_mails = map(lambda x: {'type': 'email', 'id': x}, c.get('emails', []))
-        accounts_phone = map(lambda x: {'type': 'phone', 'id': x}, phones)
-        contact_data = {
+      accounts_mails = map(lambda x: {'type': 'email', 'id': x}, c.get('emails', []))
+      accounts_phone = map(lambda x: {'type': 'phone', 'id': x}, c.get('phones', []))
+      contact_data = {
           'register_status': 'contact',
           'accounts': list(accounts_mails) + list(accounts_phone),
           'notifications': [],
@@ -2891,13 +2926,8 @@ class Mixin:
           'swaggers': {},
           'features': self._roll_features(True),
           'contact_of': [user['_id']]
-        }
-        self.database.users.insert(contact_data)
-    if len(new_swaggers):
-      self.database.users.update({'_id': user['_id']}, {'$set': new_swaggers})
-    for s in new_swaggers.keys():
-      self.notifier.notify_some(
-          notifier.NEW_SWAGGER,
-          message = {'user_id': s.split('.')[1]},
-          recipient_ids = {user['_id']},
-        )
+      }
+      insert.append(contact_data)
+    if len(insert):
+      self.database.users.insert(insert, ordered = False)
+
