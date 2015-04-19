@@ -450,6 +450,12 @@ namespace surface
       std::vector<gap::Device const*>
       devices() const;
 
+      void
+      _on_devices_changed();
+
+      void
+      _devices(std::vector<Device> const& devices);
+
       // Could be factorized.
       /*------.
       | Users |

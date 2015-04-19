@@ -704,7 +704,8 @@ namespace surface
             new infinit::oracles::meta::SynchronizeResponse{
               this->meta().synchronize(true)});
           ELLE_TRACE("got synchronisation response");
-          this->_model.devices.reset(this->_synchronize_response->devices);
+          this->_devices(this->_synchronize_response->devices);
+          this->_model.devices.changed().connect([this] { ELLE_LOG("CHANGED") this->_on_devices_changed(); });
           this->_avatar_fetcher_thread.reset(
             new reactor::Thread{
               scheduler,
@@ -1144,6 +1145,7 @@ namespace surface
               }
            this->_synchronize_response.reset(
              new infinit::oracles::meta::SynchronizeResponse{this->meta().synchronize(false)});
+           this->_devices(this->_synchronize_response->devices);
           }
           // This is never the first call to _user_resync as the function is
           // called in login.
@@ -1328,6 +1330,43 @@ namespace surface
       for (auto const& device: this->_model.devices)
         res.push_back(&device);
       return res;
+    }
+
+    void
+    State::_on_devices_changed()
+    {
+      // If the device current device is not present in the list anymore, kick
+      // the user out.
+      if (this->_model.devices.empty() ||
+        std::find_if(this->_model.devices.begin(),
+                     this->_model.devices.end(),
+                     [&] (Device const& device)
+                     {
+                       return device.id == this->_device->id;
+                     }) == this->_model.devices.end())
+        ELLE_LOG("kick out")
+          this->_kick_out(false, "Your device has been deleted");
+    }
+
+    void
+    State::_devices(std::vector<Device> const& devices)
+    {
+      this->_model.devices.reset(devices);
+      auto it = std::find_if(this->_model.devices.begin(),
+                             this->_model.devices.end(),
+                             [&] (Device const& device)
+                             {
+                               return device.id == this->_device->id;
+                             });
+      if (it != this->_model.devices.end())
+      {
+        it->second.name.changed().connect([&] (std::string const& name)
+        {
+          this->_device->name = name;
+        });
+        // Activate the changed method to update the local device.
+        it->second.name.changed()(it->second.name);
+      }
     }
 
     /*--------------.
