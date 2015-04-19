@@ -248,8 +248,7 @@ ELLE_TEST_SCHEDULED(cloud_to_p2p)
     {
     t_id = state_transaction.data()->id;
       ELLE_LOG("new sender transaction status: %s", status);
-      auto& server_transaction =
-        server.transaction(state_transaction.data()->id);
+      server.transaction(state_transaction.data()->id);
       switch (status)
       {
         case gap_transaction_transferring:
@@ -293,6 +292,8 @@ ELLE_TEST_SCHEDULED(cloud_to_p2p)
           recipient_finished.open();
           break;
         }
+        default:
+          break;
       }
     });
   sender.state->_on_swagger_status_update(recipient.user.id().repr(),

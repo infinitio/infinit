@@ -35,7 +35,7 @@ ELLE_TEST_SCHEDULED(wait_to_finish)
         ELLE_LOG("transaction status changed: %s", status);
         t_id = transaction.data()->id;
         id = transaction.id();
-        auto& server_t = server.transaction(transaction.data()->id);
+        server.transaction(transaction.data()->id);
         if (status == gap_transaction_cloud_buffered)
           cloud_buffered.open();
       });
