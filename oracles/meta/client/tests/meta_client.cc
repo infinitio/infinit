@@ -806,7 +806,7 @@ namespace devices
     {
       auto device = devices[0];
       BOOST_CHECK_EQUAL(device.id, uuid1);
-      BOOST_CHECK_EQUAL(device.name, "device-name-1");
+      BOOST_CHECK_EQUAL((std::string) device.name, "device-name-1");
       BOOST_CHECK_EQUAL(device.passport.get(), "device-passport");
       BOOST_CHECK_EQUAL(device.os.get(), "gnu-linux");
       BOOST_CHECK_EQUAL(device.last_sync.get(),
@@ -815,7 +815,7 @@ namespace devices
     {
       auto device = devices[1];
       BOOST_CHECK_EQUAL(device.id, uuid2);
-      BOOST_CHECK_EQUAL(device.name, "device-name-2");
+      BOOST_CHECK_EQUAL((std::string) device.name, "device-name-2");
       BOOST_CHECK(!device.passport);
       BOOST_CHECK(!device.os);
       BOOST_CHECK(!device.last_sync);
