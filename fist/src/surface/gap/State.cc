@@ -206,8 +206,7 @@ namespace surface
     State::_kick_out(bool retry,
                     std::string const& message)
     {
-      this->_meta.error_handlers()[
-        reactor::http::StatusCode::Forbidden] = {};
+      this->_meta.error_handlers().erase(reactor::http::StatusCode::Forbidden);
       this->logout();
       this->enqueue(ConnectionStatus(false, retry, message));
     }
@@ -221,7 +220,10 @@ namespace surface
       // delegate that part to a thread inside state to avoid cyclic
       // dependencies in the termination graph.
       this->_meta.error_handlers()[reactor::http::StatusCode::Forbidden] =
-        [this] { this->_kick_out(); };
+        [this]
+        {
+          this->_kick_out();
+        };
       this->_kicker.reset(new reactor::Thread{
           *reactor::Scheduler::scheduler(),
             "kick_out",
