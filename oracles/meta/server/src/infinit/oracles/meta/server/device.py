@@ -105,10 +105,10 @@ class Mixin:
     self.notifier.notify_some(
       notifier.MODEL_UPDATE,
       message = {
-        'device': {
+        'devices': [{
           'id': device['id'],
           'name': name,
-        }
+        }]
       },
       recipient_ids = {user['_id']},
       version = (0, 9, 35))
@@ -151,10 +151,10 @@ class Mixin:
         self.notifier.notify_some(
           notifier.MODEL_UPDATE,
           message = {
-            'device': {
+            'devices': [{
               'id': devices[0]['id'],
-              '$deleted': True,
-            }
+              '$remove': True,
+            }]
           },
           recipient_ids = {user['_id']},
           version = (0, 9, 35))
@@ -271,7 +271,7 @@ class Mixin:
       self.notifier.notify_some(
         notifier.MODEL_UPDATE,
         message = {
-          'device': self.device_view(device)
+          'devices': [self.device_view(device)]
         },
         recipient_ids = {owner['_id']},
         version = (0, 9, 35))

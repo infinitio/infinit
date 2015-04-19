@@ -50,7 +50,7 @@ with Meta() as meta, Trophonius(meta) as t:
     number_of_new_devices = number_of_devices - 1 - i
     assertEq(len(users[i].notifications), number_of_new_devices)
     for n in users[i].notifications:
-      notif = n['device']
+      notif = n['devices'][0]
       assertIn('name', notif)
       assertIn('id', notif)
       assertNeq('id', notif['id'])
@@ -77,8 +77,9 @@ with Meta() as meta, Trophonius(meta) as t:
     notifications = users[i].notifications
     assertEq(len(notifications), number_of_devices)
     assertEq(len(set([n['notification_type'] for n in notifications])), 1)
-    assertEq(len(set([n['device']['name'] for n in notifications])), 1)
-    assertEq(set([n['device']['id'] for n in  notifications]), expected_devices)
+    device = n['devices'][0]
+    assertEq(len(set([device['name'] for n in notifications])), 1)
+    assertEq(set([n['devices'][0]['id'] for n in  notifications]), expected_devices)
   devices = users[0].get('user/devices')['devices']
   assert len(devices) == number_of_devices
   assert set([device['name'] for device in devices]) == set([new_name])
@@ -106,7 +107,7 @@ with Meta() as meta, Trophonius(meta) as t:
     if i == 1:
       assertEq(notification_types, {INVALID_CREDENTIALS})
     else:
-      assertEq(notification_types, {INVALID_CREDENTIALS, DEVICES_UPDATE})
+      assertEq(notification_types, {INVALID_CREDENTIALS, MODEL_UPDATE})
   assert len(users[0].get('user/devices')['devices']) == 1
   assertEq(len(users[0].notifications), (number_of_devices - 1))
   expected_devices = copy.copy(all_devices)
@@ -114,10 +115,11 @@ with Meta() as meta, Trophonius(meta) as t:
   deleted_devices = []
   for _ in range(number_of_devices - 1):
     notification = users[0].next_notification()
-    assertEq(notification['notification_type'], 210)
-    assertIn('$deleted', notification['device'])
-    assertEq(notification['device']['$deleted'], True)
-    deleted_devices.append(notification['device']['id'])
+    assertEq(notification['notification_type'], MODEL_UPDATE)
+    device = notification['devices'][0]
+    assertIn('$remove', device)
+    assertEq(device['$remove'], True)
+    deleted_devices.append(device['id'])
   assertEq(set(deleted_devices), set(expected_devices))
   for _ in range(1, number_of_devices):
     try:
