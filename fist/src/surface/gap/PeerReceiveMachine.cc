@@ -635,10 +635,6 @@ namespace surface
 
       ELLE_DEBUG("transfer snapshot: %s", *this->_snapshot);
 
-      FileID last_index = this->_snapshot->file_count();
-      if (last_index > 0)
-        --last_index;
-
       FilesInfo files_info = source.files_info();
       ELLE_ASSERT_GTE(files_info.size(), this->_snapshot->count());
       // reconstruct directory name mapping data so that files in transfer
@@ -674,9 +670,9 @@ namespace surface
           break;
       }
 
-      _fetch_current_file_index = last_index;
-      // Snapshot only has info on files for which transfer started,
-      // and we transfer in order, so we know all files in snapshot except
+      // Due to parallel fetcher threads, we might have empty files
+      // in there. We still validate block in order, so there is no 'hole'.
+      _fetch_current_file_index = 0;
       bool things_to_do = _fetch_next_file(name_policy, files_info);
       if (!things_to_do)
         ELLE_TRACE("Nothing to do");
@@ -897,7 +893,9 @@ namespace surface
           ELLE_DEBUG("Thread %s has nothing to do, exiting", id);
           break; // some other thread figured out this was over
         }
-        ELLE_DEBUG("Reading buffer at %s in mode %s", _fetch_current_position,
+        ELLE_DEBUG("Reading buffer at %s/%s in mode %s",
+          _fetch_current_file_index,
+          _fetch_current_position,
           explicit_ack? std::string("read_encrypt_ack") :
            boost::lexical_cast<std::string>(encryption)
           );
