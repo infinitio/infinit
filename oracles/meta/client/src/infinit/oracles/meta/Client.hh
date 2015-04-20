@@ -58,6 +58,15 @@ namespace infinit
         bool operator !=(Error const& error) const;
       };
 
+      class QuotaExceeded
+        : public elle::Error
+      {
+      public:
+        QuotaExceeded(std::string const& e)
+        : elle::Error(e)
+        {}
+      };
+
       struct User:
          public elle::Printable
       {

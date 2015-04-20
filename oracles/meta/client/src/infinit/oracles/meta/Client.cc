@@ -1188,7 +1188,7 @@ namespace infinit
         if (request.status() == reactor::http::StatusCode::Forbidden)
         {
           ELLE_ERR("Link creation failure: quota reached.");
-          throw Exception(Error::quota_reached, request.response().string());
+          throw QuotaExceeded(request.response().string());
         }
         else
           this->_handle_errors(request);

@@ -359,6 +359,9 @@ class Meta(bottle.Bottle,
   def unavailable(self, message = None):
     response(503, message)
 
+  def quota_exceeded(self, message = None):
+    response(402, message)
+
   @api('/js/<filename:path>')
   def static_javascript(self, filename):
     return self.__static('js/%s' % filename)

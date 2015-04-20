@@ -154,7 +154,7 @@ class Mixin:
       usage = user.get('total_link_size',0)
       elle.log.trace('usage: %s quota: %s' %(usage, quota))
       if quota >= 0 and quota < usage:
-        self.forbidden('Link size quota of %s reached.' % (quota))
+        self.quota_exceeded('Link size quota of %s reached.' % (quota))
 
   @api('/link_empty', method = 'POST')
   @require_logged_in_fields(['quota', 'total_link_size'])

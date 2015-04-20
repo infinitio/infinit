@@ -13,7 +13,7 @@ with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   # Send to ghost size limit
   throws(lambda:
       alice.sendfile("bob@infinit.io", total_size = 5000000000),
-      403)
+      402)
   # Link quotas
   meta.database.users.update({'accounts.id': 'alice@infinit.io'},
     {'$set': { 'quota.total_link_size': 1000}})
@@ -27,7 +27,7 @@ with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
     {'$set': {'file_size': 1100}})
   throws(
     lambda: alice.getalink(),
-    403)
+    402)
   # user erases one, below quota now
   alice.link_update(link, transaction_status.DELETED)
   link = alice.getalink()
