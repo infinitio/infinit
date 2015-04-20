@@ -55,6 +55,8 @@ namespace surface
       _update_meta_status(infinit::oracles::Transaction::Status) override;
       void
       cleanup() override;
+      virtual
+      void _finish() override;
 
     private:
       void

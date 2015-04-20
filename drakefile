@@ -658,6 +658,7 @@ def configure(cxx_toolkit = None,
   gap_tests_cxx_config += boost_test
   gap_tests_cxx_config += boost_system
   gap_tests_cxx_config += boost_date_time
+  gap_tests_cxx_config += boost_filesystem
   gap_tests_cxx_config.lib_path_runtime('../../lib')
   for name in ('state',
                'cloud-buffer',

@@ -6,6 +6,7 @@
 #include <elle/serialization/json/SerializerIn.hh>
 #include <elle/serialization/json/SerializerOut.hh>
 #include <elle/system/system.hh>
+#include <elle/archive/archive.hh>
 
 #include <reactor/exception.hh>
 #include <reactor/http/Request.hh>
@@ -377,6 +378,17 @@ namespace surface
     GhostReceiveMachine::_cloud_credentials(bool regenerate)
     {
       throw elle::Error("Not implemented");
+    }
+
+    void
+    GhostReceiveMachine::_finish()
+    {
+      TransactionMachine::_finish();
+      auto peer_data =
+        std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
+          transaction().data());
+      if (peer_data->files_count > 1)
+        elle::archive::extract(_path);
     }
 
     void
