@@ -107,3 +107,42 @@ with Meta() as meta:
   assert [str(marc.id)] == alice.swaggers
   assert [str(marc.id)] == bob.swaggers
   assert [str(marc.id)] == carl.swaggers
+
+# Check no country code
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  alice.put('user/contacts',
+    {'contacts': [{'phones': ['0122334455', '33199887766','+48123456789']}]})
+
+# Check random nastynesses in address book
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login(country_code = 'FR')
+  alice.put('user/contacts',
+    {'contacts':
+        [{'phones': [x]} for x in ['', '4', 'ET telephone maison', '012345', '0122334455','0122334455']]
+        + [{'phones': ['0133445566', '0133445566']}]
+        + [{'emails': [x]} for x in ['bob', '12', 'bob@bob.com', 'bob@bob.com']]
+        + [{'emails': ['john@doe.com', 'john@doe.com']}]
+    })
+  bob = User(meta, 'bob@bob.com')
+  bob.login(country_code = 'FR')
+  print('-----')
+  d = meta.database.users.find({}, ['accounts', 'register_status'])
+  for e in d:
+    del e['_id']
+    print(e)
+  print('+++++')
+  assert [str(bob.id)] == alice.swaggers
+  john = User(meta, 'john@doe.com')
+  john.login()
+  assert str(john.id) in alice.swaggers
+  marc = User(meta, 'marc@infinit.io')
+  transaction, res = bob.sendfile(recipient = '0122334455', use_identifier = False)
+
+  marc_data = meta.database.users.find_one({'accounts.id': '+33 1 22 33 44 55'})
+  code = marc_data['ghost_code']
+  marc.login()
+  marc.post('ghost/%s/merge' % (code))
+  assert str(marc.id) in alice.swaggers

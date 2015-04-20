@@ -2868,6 +2868,7 @@ class Mixin:
     # Normalize phone numbers
     for c in contacts:
       c['phones'] = list(map(lambda x: clean_up_phone_number(x, country_code), c.get('phones', [])))
+      c['phones'] = list(filter(lambda x: x is not None, c['phones']))
     mails = [val for sublist in contacts for val in sublist.get('emails', [])]
     phones = [val for sublist in contacts for val in sublist.get('phones', [])]
     ids = mails + phones
@@ -2907,7 +2908,6 @@ class Mixin:
     for hit in existing:
       for a in hit['accounts']:
         in_db.append(a['id'])
-    print('in_db %s' % in_db)
     for c in contacts:
       if not any([p in in_db for p in c.get('emails',[]) + c.get('phones', [])]):
         unmatched.append(c)
@@ -2915,11 +2915,13 @@ class Mixin:
     insert = list()
     for c in unmatched:
       phones = c.get('phones', [])
-      accounts_mails = map(lambda x: {'type': 'email', 'id': x}, c.get('emails', []))
-      accounts_phone = map(lambda x: {'type': 'phone', 'id': x}, c.get('phones', []))
+      accounts_mails = list(map(lambda x: {'type': 'email', 'id': x}, c.get('emails', [])))
+      accounts_phone = list(map(lambda x: {'type': 'phone', 'id': x}, c.get('phones', [])))
+      if len(accounts_mails) == 0 and len(accounts_phone) == 0:
+        continue
       contact_data = {
           'register_status': 'contact',
-          'accounts': list(accounts_mails) + list(accounts_phone),
+          'accounts': accounts_mails + accounts_phone,
           'notifications': [],
           'networks': [],
           'devices': [],
@@ -2929,5 +2931,9 @@ class Mixin:
       }
       insert.append(contact_data)
     if len(insert):
-      self.database.users.insert(insert, ordered = False)
-
+      # We did not weed out duplicates from within the user address book
+      try:
+        self.database.users.insert(insert, ordered = False, continue_on_error = True)
+      except Exception as e:
+        elle.log.log('Exception while inserting contacts: %s' % e)
+    return self.success()
