@@ -592,7 +592,10 @@ namespace infinit
             ELLE_DUMP("%s: authentication response: %s", *this, *notif);
             if (notif->notification_type !=
                 NotificationType::connection_enabled)
+            {
+              ELLE_ERR("%s: incorrect first notification: %s", *this, *notif);
               throw elle::Error("wrong first notification");
+            }
             auto notification =
               elle::cast<ConnectionEnabledNotification>::runtime(notif);
             ELLE_ASSERT(notification.get());
