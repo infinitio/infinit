@@ -318,5 +318,5 @@ ELLE_TEST_SUITE()
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(cloud_buffer), 0, timeout);
   suite.add(BOOST_TEST_CASE(recipient_states), 0, timeout);
-  suite.add(BOOST_TEST_CASE(cloud_to_p2p), 0, timeout);
+  suite.add(BOOST_TEST_CASE(cloud_to_p2p), 0, valgrind(30));
 }
