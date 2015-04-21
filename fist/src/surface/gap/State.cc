@@ -1174,7 +1174,7 @@ namespace surface
               notif.get()) != nullptr);
           this->_on_swagger_status_update(
             *static_cast<infinit::oracles::trophonius::UserStatusNotification const*>(
-              notif.release()));
+              notif.get()));
           break;
         case infinit::oracles::trophonius::NotificationType::link_transaction:
           ELLE_ASSERT(
@@ -1194,7 +1194,7 @@ namespace surface
               notif.get()) != nullptr);
           this->_on_new_swagger(
             *static_cast<infinit::oracles::trophonius::NewSwaggerNotification const*>(
-              notif.release()));
+              notif.get()));
           break;
         case infinit::oracles::trophonius::NotificationType::deleted_swagger:
           ELLE_ASSERT(
@@ -1202,7 +1202,7 @@ namespace surface
               notif.get()) != nullptr);
           this->_on_deleted_swagger(
             *static_cast<infinit::oracles::trophonius::DeletedSwaggerNotification const*>(
-              notif.release()));
+              notif.get()));
         break;
         case infinit::oracles::trophonius::NotificationType::deleted_favorite:
           ELLE_ASSERT(
@@ -1210,7 +1210,7 @@ namespace surface
               notif.get()) != nullptr);
           this->_on_deleted_favorite(
             *static_cast<infinit::oracles::trophonius::DeletedFavoriteNotification const*>(
-              notif.release()));
+              notif.get()));
         break;
         case infinit::oracles::trophonius::NotificationType::peer_connection_update:
           ELLE_ASSERT(
@@ -1218,7 +1218,7 @@ namespace surface
               notif.get()) != nullptr);
           this->_on_peer_reachability_updated(
             *static_cast<infinit::oracles::trophonius::PeerReachabilityNotification const*>(
-              notif.release()));
+              notif.get()));
           break;
         case infinit::oracles::trophonius::NotificationType::invalid_credentials:
           this->_on_invalid_trophonius_credentials();
