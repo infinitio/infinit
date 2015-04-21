@@ -60,6 +60,29 @@ namespace surface
         this->_run(this->_create_transaction_state);
       else
         this->_run_from_snapshot();
+
+      typedef infinit::oracles::meta::QuotaExceeded QuotaExceeded;
+      auto quota_exceeded_e = [this] (std::exception_ptr e)
+      {
+        try
+        {
+          std::rethrow_exception(e);
+        }
+        catch(QuotaExceeded const& e)
+        {
+          ELLE_LOG("quota exceeded: %s", e);
+          this->gap_status(gap_transaction_payment_required);
+          return;
+        }
+        elle::unreachable();
+      };
+
+      this->_machine.transition_add_catch_specific<QuotaExceeded>(
+        this->_create_transaction_state, this->_end_state, true).action_exception(
+          quota_exceeded_e);
+      this->_machine.transition_add_catch_specific<QuotaExceeded>(
+        this->_initialize_transaction_state, this->_end_state, true).action_exception(
+          quota_exceeded_e);
     }
 
     void

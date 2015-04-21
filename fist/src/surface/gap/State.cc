@@ -1413,6 +1413,9 @@ operator <<(std::ostream& out,
     case gap_transaction_paused:
       out << "paused";
       break;
+    case gap_transaction_payment_required:
+      out << "payment required";
+      break;
   }
   return out;
 }
