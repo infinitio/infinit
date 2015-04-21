@@ -62,9 +62,16 @@ namespace infinit
         : public elle::Error
       {
       public:
-        QuotaExceeded(std::string const& e)
-        : elle::Error(e)
+        QuotaExceeded(std::string const& reason,
+                      uint64_t quota,
+                      uint64_t usage)
+          : elle::Error(reason)
+          , _quota(quota)
+          , _usage(usage)
         {}
+
+        ELLE_ATTRIBUTE_R(uint64_t, quota);
+        ELLE_ATTRIBUTE_R(uint64_t, usage);
       };
 
       struct User:
