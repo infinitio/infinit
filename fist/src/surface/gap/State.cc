@@ -1243,9 +1243,9 @@ namespace surface
     State::poll() const
     {
       ELLE_DEBUG_SCOPE("poll %s notification(s)", this->_runners.size());
-      std::unique_ptr<_Runner> runner = nullptr;
       while (true)
       {
+        std::unique_ptr<_Runner> runner;
         {
           std::lock_guard<std::mutex> lock{this->_poll_lock};
           if (this->_runners.empty())
