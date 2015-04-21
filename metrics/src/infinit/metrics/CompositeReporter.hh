@@ -99,6 +99,9 @@ namespace infinit
                  std::string const& aws_error_code,
                  std::string const& message) override;
 
+      virtual
+      void
+      _quota_exceeded(uint64_t size, uint64_t current, uint64_t total) override;
     /// User metrics.
     private:
       void

@@ -228,6 +228,15 @@ namespace infinit
                                  http_status, aws_error_code, message));
     }
 
+    void
+    CompositeReporter::_quota_exceeded(uint64_t size,
+                                       uint64_t current,
+                                       uint64_t total)
+    {
+      this->_dispatch(std::bind(&Reporter::_quota_exceeded,
+                                std::placeholders::_1, size, current, total));
+    }
+
     /*-------------.
     | User Metrics |
     `-------------*/
