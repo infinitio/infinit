@@ -147,14 +147,19 @@ class Mixin:
         return link['aws_credentials']
 
   def _link_check_quota(self):
-    elle.log.trace('Checking link quota')
+    elle.log.trace('checking link quota')
     user = self.user
     if 'quota' in user and 'total_link_size' in user['quota']:
       quota = user['quota']['total_link_size']
-      usage = user.get('total_link_size',0)
+      usage = user.get('total_link_size', 0)
       elle.log.trace('usage: %s quota: %s' %(usage, quota))
       if quota >= 0 and quota < usage:
-        self.quota_exceeded('Link size quota of %s reached.' % (quota))
+        self.quota_exceeded(
+          {
+            'reason': 'link size quota of %s reached' % quota,
+            'quota': quota,
+            'usage': usage,
+          })
 
   @api('/link_empty', method = 'POST')
   @require_logged_in_fields(['quota', 'total_link_size'])
@@ -162,20 +167,20 @@ class Mixin:
     self._link_check_quota()
     link_id = self.database.links.insert({})
     return self.success({
-      'created_link_id': link_id,
+        'created_link_id': link_id,
       })
 
   @api('/link/<link_id>', method = 'PUT')
   @require_logged_in_fields(['quota', 'total_link_size'])
   def link_initialize(self, link_id: bson.ObjectId, files, name, message):
-    self._link_check_quota()
-    return self.link_generate(files, name, message, self.user,
-                              self.current_device, link_id)
+    return self.link_generate(files, name, message,
+                              user = self.user,
+                              device = self.current_device,
+                              link_id = link_id)
 
   @api('/link', method = 'POST')
   @require_logged_in_fields(['quota', 'total_link_size'])
   def link_generate_api(self, files, name, message):
-    self._link_check_quota()
     return self.link_generate(files, name, message,
                               user = self.user,
                               device = self.current_device)
@@ -197,9 +202,8 @@ class Mixin:
         self.bad_request('no file dictionary')
       if len(name) == 0:
         self.bad_request('no name')
-
+      self._link_check_quota()
       creation_time = self.now
-
       # Maintain a list of all elements in document here.
       # Do not add a None hash as this causes problems with concurrency.
       link = {

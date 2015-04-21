@@ -23,7 +23,11 @@ ELLE_TEST_SCHEDULED(early_402)
       throw reactor::http::tests::Server::Exception(
         "/link_empty",
         reactor::http::StatusCode::Payment_Required,
-        "Quota exhausted");
+        "{"
+        "  \"reason\":\"Quota exhausted\","
+        "  \"quota\":100000,"
+        "  \"usage\":30000"
+        "}");
       return "{}";
     });
   reactor::Barrier finished, failed;
@@ -86,7 +90,11 @@ ELLE_TEST_SCHEDULED(other_402)
       throw reactor::http::tests::Server::Exception(
         "/link/de305d54-75b4-431b-adb2-eb6b9e546014",
         reactor::http::StatusCode::Payment_Required,
-        "Quota exhausted");
+        "{"
+        "  \"reason\":\"Quota exhausted\","
+        "  \"quota\":100000,"
+        "  \"usage\":30000"
+        "}");
       return "{}";
     });
 
