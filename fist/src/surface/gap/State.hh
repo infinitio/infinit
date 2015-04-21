@@ -326,7 +326,7 @@ namespace surface
       {
       public:
         virtual
-        ~_Runner() = default;
+        ~_Runner() noexcept (true) = default;
         virtual
         void
         operator () () const = 0;
@@ -341,7 +341,7 @@ namespace surface
 
         Runner(Callback cb, T notif);
         virtual
-        ~Runner() = default;
+        ~Runner() noexcept (true) = default;
 
         void
         operator () () const override;
