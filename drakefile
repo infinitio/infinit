@@ -747,6 +747,7 @@ def configure(cxx_toolkit = None,
       reactor_lib,
       crash_lib,
       oracles.transaction_lib,
+      papier_lib,
     ],
     cxx_toolkit,
     cli_cxx_config
@@ -764,6 +765,7 @@ def configure(cxx_toolkit = None,
       reactor_lib,
       crash_lib,
       oracles.transaction_lib,
+      papier_lib,
     ],
     cxx_toolkit,
     cli_cxx_config
@@ -781,6 +783,7 @@ def configure(cxx_toolkit = None,
       reactor_lib,
       crash_lib,
       oracles.transaction_lib,
+      papier_lib,
     ],
     cxx_toolkit,
     cli_cxx_config
@@ -792,7 +795,14 @@ def configure(cxx_toolkit = None,
   )
   cli_online_bin = drake.cxx.Executable(
     'bin/8online',
-    cli_online_sources + [gap_lib, elle_lib, reactor_lib, crash_lib, meta_client_lib],
+    cli_online_sources + [
+      gap_lib,
+      elle_lib,
+      reactor_lib,
+      crash_lib,
+      meta_client_lib,
+      papier_lib,
+      ],
     cxx_toolkit,
     cli_cxx_config
   )
