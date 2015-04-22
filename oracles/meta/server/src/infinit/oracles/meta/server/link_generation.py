@@ -301,6 +301,7 @@ class Mixin:
         'ctime',
         'expiry_time',    # Needed until 0.9.9.
         'hash',           # Needed until 0.9.9.
+        'files',
         'message',
         'mtime',
         'name',

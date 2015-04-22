@@ -42,6 +42,9 @@ namespace infinit
       std::string name;
       std::string share_link;
 
+    public:
+      uint64_t
+      size() const;
     /*--------------.
     | Serialization |
     `--------------*/
