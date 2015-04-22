@@ -39,9 +39,10 @@ json(C& container)
 
 namespace tests
 {
-  Server::Server()
+  Server::Server(std::unique_ptr<Trophonius> trophonius)
     : _session_id(elle::UUID::random())
-    , trophonius()
+    , trophonius(trophonius ?
+                 std::move(trophonius) : elle::make_unique<Trophonius>())
     , _cloud_buffered(false)
   {
     this->headers()["X-Fist-Meta-Version"] = INFINIT_VERSION;
@@ -107,7 +108,7 @@ namespace tests
           "}",
           user.self_json(),
           device.json(),
-          this->trophonius.json());
+          this->trophonius->json());
       });
 
     // this->register_route(
@@ -571,9 +572,9 @@ namespace tests
         auto& tr = **this->_transactions.find(id);
         std::string transaction_notification = tr.json();
         transaction_notification.insert(1, "\"notification_type\":7,");
-        for (auto& socket: this->trophonius.clients(elle::UUID(tr.sender_id)))
+        for (auto& socket: this->trophonius->clients(elle::UUID(tr.sender_id)))
           socket->write(transaction_notification);
-        for (auto& socket: this->trophonius.clients(elle::UUID(tr.recipient_id)))
+        for (auto& socket: this->trophonius->clients(elle::UUID(tr.recipient_id)))
           socket->write(transaction_notification);
         std::stringstream res;
         {
@@ -710,8 +711,8 @@ namespace tests
             first_time[id],
             tr.sender_device_id,
             tr.recipient_device_id);
-          auto* to_sender = this->trophonius.socket(elle::UUID(tr.sender_id), tr.sender_device_id);
-          auto* to_recipient = this->trophonius.socket(elle::UUID(tr.recipient_id), tr.recipient_device_id);
+          auto* to_sender = this->trophonius->socket(elle::UUID(tr.sender_id), tr.sender_device_id);
+          auto* to_recipient = this->trophonius->socket(elle::UUID(tr.recipient_id), tr.recipient_device_id);
           if (to_sender)
           {
             to_sender->write(sender ? our_notif : other_notif);
@@ -767,9 +768,9 @@ namespace tests
         auto& tr = **this->_transactions.find(id);
         std::string transaction_notification = tr.json();
         transaction_notification.insert(1, "\"notification_type\":7,");
-        for (auto& socket: this->trophonius.clients(elle::UUID(tr.sender_id)))
+        for (auto& socket: this->trophonius->clients(elle::UUID(tr.sender_id)))
           socket->write(transaction_notification);
-        for (auto& socket: this->trophonius.clients(elle::UUID(tr.recipient_id)))
+        for (auto& socket: this->trophonius->clients(elle::UUID(tr.recipient_id)))
           socket->write(transaction_notification);
         std::stringstream res;
         {
@@ -1057,7 +1058,7 @@ namespace tests
       "  \"port\": 0,"
       "  \"port_ssl\": %s"
       "}",
-      this->trophonius.port());
+      this->trophonius->port());
   }
 
   Transaction&

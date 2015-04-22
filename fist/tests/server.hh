@@ -28,8 +28,8 @@ namespace tests
   public:
 
   public:
-    Server();
-    Server(Server const&) = default;
+    Server(std::unique_ptr<Trophonius> trophonius = nullptr);
+    Server(Server const&) = delete;
 
     User const&
     register_user(std::string const& email,
@@ -83,7 +83,7 @@ namespace tests
                     elle::Buffer const&) const;
 
     ELLE_ATTRIBUTE_R(elle::UUID, session_id)
-    Trophonius trophonius;
+    std::unique_ptr<Trophonius> trophonius;
     // Device.
     typedef std::unordered_map<elle::UUID, Device> Devices;
     ELLE_ATTRIBUTE_R(Devices, devices);

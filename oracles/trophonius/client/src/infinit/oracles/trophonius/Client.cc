@@ -531,6 +531,11 @@ namespace infinit
               throw Unreachable(
                 this->server, this->port, "invalid poke reply");
             }
+            catch (std::out_of_range const&)
+            {
+              throw Unreachable(
+                this->server, this->port, "invalid poke reply");
+            }
           }
           return socket;
         }
@@ -590,11 +595,20 @@ namespace infinit
             ELLE_DEBUG("%s: read authentication response", *this);
             auto notif = read(connection_timeout, socket);
             ELLE_DUMP("%s: authentication response: %s", *this, *notif);
-            if (notif->notification_type !=
-                NotificationType::connection_enabled)
+            auto type = notif->notification_type;
+            if (type == NotificationType::invalid_credentials)
+            {
+              throw ConnectionError(
+                this->server, this->port, "invalid credentials", true);
+            }
+            if (type != NotificationType::connection_enabled)
             {
               ELLE_ERR("%s: incorrect first notification: %s", *this, *notif);
-              throw elle::Error("wrong first notification");
+              throw ConnectionError(
+                this->server,
+                this->port,
+                elle::sprintf("invalid first notification: %s", type),
+                true);
             }
             auto notification =
               elle::cast<ConnectionEnabledNotification>::runtime(notif);
@@ -606,6 +620,10 @@ namespace infinit
             this->_socket->shutdown_asynchronous(false);
             this->_threads_setup();
             this->_connected.open();
+          }
+          catch (ConnectionError const&)
+          {
+            throw;
           }
           catch (reactor::network::TimeOut const& e)
           {
@@ -620,12 +638,13 @@ namespace infinit
               this->server, this->port,
               elle::sprintf("network error during authentication: %s", e));
           }
-          catch (elle::Exception const& e)
+          catch (elle::Error const& e)
           {
             ELLE_ERR("%s: unexpected authentication exception: %s", *this, e);
             throw ConnectionError(
               this->server, this->port,
-              elle::sprintf("error during authentication: %s", e));
+              elle::sprintf("unexpected error during authentication: %s", e),
+              true);
           }
         }
 
@@ -695,9 +714,16 @@ namespace infinit
             }
             catch (ConnectionError const& e)
             {
-              ELLE_WARN("%s: unable to reconnect(transient): %s",
+              ELLE_WARN("%s: unable to reconnect (%s): %s",
+                        e.fatal() ? "fatal" : "transient",
                         *this, elle::exception_string());
-              this->connect_callback(ConnectionState{false, e, true});
+              this->connect_callback(ConnectionState{false, e, !e.fatal()});
+              if (e.fatal())
+              {
+                // AFAICT all threads were already disconnected, all we need to
+                // do is suicide.
+                reactor::scheduler().current()->terminate();
+              }
             }
             catch (reactor::Terminate const&)
             {
@@ -707,15 +733,14 @@ namespace infinit
             {
               ELLE_WARN("%s: unable to reconnect(fatal): %s",
                         *this, elle::exception_string());
-              this->connect_callback(ConnectionState{false, e, true});
-              throw e;
+              this->connect_callback(ConnectionState{false, e, false});
             }
             catch (...)
             {
               ELLE_WARN("%s: unable to reconnect(fatal): %s",
                         *this, elle::exception_string());
               this->connect_callback(ConnectionState{false,
-                elle::Error(elle::exception_string()), true});
+                elle::Error(elle::exception_string()), false});
             }
             try
             {
@@ -1011,11 +1036,12 @@ namespace infinit
       `-----------*/
 
       ConnectionError::ConnectionError(
-        std::string host, int port, std::string message)
+        std::string host, int port, std::string message, bool fatal)
         : Super(elle::sprintf("unable connect to trophonius on %s:%s: %s",
                               host, port, message))
         , _host(std::move(host))
         , _port(std::move(port))
+        , _fatal(fatal)
       {}
 
       Unreachable::Unreachable(std::string host, int port, std::string message)
