@@ -135,6 +135,7 @@ namespace surface
         link.mtime,
         link.share_link,
         link.click_count,
+        link.size(),
         status,
         link.sender_device_id,
         link.message,
