@@ -311,6 +311,7 @@ class Mixin:
     ))
     if link['expiry_time'] is None: # Needed until 0.9.9.
       link['expiry_time'] = 0
+    link['files'] = [(f['name'], f['size']) for f in link['files']]
     return link
 
   @api('/link/<id>', method = 'POST')
