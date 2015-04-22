@@ -1,3 +1,6 @@
+import bson
+import uuid
+
 def jsonify_value(value):
   if isinstance(value, (bson.ObjectId, uuid.UUID)):
     return str(value)
