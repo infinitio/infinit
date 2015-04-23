@@ -375,6 +375,7 @@ class Mixin:
       url = 'http://metrics.9.0.api.production.infinit.io/collections/users'
       metrics = {
         'event': 'new_ghost',
+        'ghost_code': recipient['ghost_code'],
         'user': str(recipient['_id']),
         'features': recipient['features'],
         'sender': str(sender['_id']),
