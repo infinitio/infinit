@@ -435,6 +435,19 @@ class Mixin:
         except BaseException as e:
           elle.log.warn('unable to get facebook avatar: %s' % e)
           pass
+      # Set a 0 swaggers with us to our facebook friends
+      f = facebook_user.friends
+      friend_ids = [friend['id'] for friend in f['data']]
+      self.database.users.update(
+        {
+          'accounts.id' : {'$in': friend_ids},
+          'swaggers.' + str(user['_id']) : {'$exists': False}
+        },
+        {
+         '$inc': {'swaggers.' + str(user['_id']) : 0}
+        },
+        multi = True
+        )
       return user
     except Response as r:
       raise r
