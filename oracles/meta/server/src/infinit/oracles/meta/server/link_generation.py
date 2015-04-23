@@ -146,10 +146,9 @@ class Mixin:
       else:
         return link['aws_credentials']
 
-  def _link_check_quota(self):
+  def _link_check_quota(self, user):
     elle.log.trace('checking link quota')
-    user = self.user
-    if 'quota' in user and 'total_link_size' in user['quota']:
+    if 'quota' in user and 'total_link_size' in user.get('quota', {}):
       quota = user['quota']['total_link_size']
       usage = user.get('total_link_size', 0)
       elle.log.trace('usage: %s quota: %s' %(usage, quota))
@@ -164,7 +163,8 @@ class Mixin:
   @api('/link_empty', method = 'POST')
   @require_logged_in_fields(['quota', 'total_link_size'])
   def link_create_empty(self):
-    self._link_check_quota()
+    user = self.user
+    self._link_check_quota(user)
     link_id = self.database.links.insert({})
     return self.success({
         'created_link_id': link_id,
@@ -202,7 +202,7 @@ class Mixin:
         self.bad_request('no file dictionary')
       if len(name) == 0:
         self.bad_request('no name')
-      self._link_check_quota()
+      self._link_check_quota(user)
       creation_time = self.now
       # Maintain a list of all elements in document here.
       # Do not add a None hash as this causes problems with concurrency.
