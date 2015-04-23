@@ -134,6 +134,7 @@ namespace surface
       // sender didn't push anything in the cloud.
       ELLE_ATTRIBUTE_R(bool, nothing_in_the_cloud);
       ELLE_ATTRIBUTE(boost::optional<elle::Version>, peer_version);
+      ELLE_ATTRIBUTE(std::streamsize const, chunk_size);
       template <typename Source>
       elle::Version const&
       peer_version(Source& source);
