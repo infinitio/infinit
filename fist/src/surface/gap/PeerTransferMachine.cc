@@ -242,7 +242,7 @@ namespace surface
           this->_serializer.reset();
           this->_host.reset();
         }};
-      ELLE_ASSERT(this->_rpcs);
+      ELLE_ASSERT(this->_rpcs.get());
       this->_owner._transfer_operation(*this->_rpcs);
       ELLE_TRACE_SCOPE("%s: end of transfer operation", *this);
     }
