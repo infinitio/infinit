@@ -302,17 +302,21 @@ gap_use_ghost_code(gap_State* state,
       {
         state.meta().use_ghost_code(code);
         res = gap_ok;
-        state.metrics_reporter()->user_used_ghost_code(true, "");
+        state.metrics_reporter()->user_used_ghost_code(true, code, "");
       }
       catch (infinit::state::GhostCodeAlreadyUsed const&)
       {
         res = gap_ghost_code_already_used;
-        state.metrics_reporter()->user_used_ghost_code(false, "already used");
+        state.metrics_reporter()->user_used_ghost_code(false,
+                                                       code,
+                                                       "already used");
       }
       catch (elle::Error const&)
       {
         res = gap_unknown_user;
-        state.metrics_reporter()->user_used_ghost_code(false, "invalid code");
+        state.metrics_reporter()->user_used_ghost_code(false,
+                                                       code,
+                                                       "invalid code");
       }
       return gap_ok;
     });
@@ -1590,6 +1594,24 @@ gap_send_generic_metric(gap_State* state,
     [&] (surface::gap::State& state)
     {
       state.metrics_reporter()->ui(key, method, additional);
+      return gap_ok;
+    });
+}
+
+gap_Status
+gap_send_sms_ghost_code_metric(gap_State* state,
+                               bool success,
+                               std::string const& code,
+                               std::string const& fail_reason)
+{
+  return run<gap_Status>(
+    state,
+    "gap send sms ghost metric",
+    [&] (surface::gap::State& state)
+    {
+      state.metrics_reporter()->user_sent_sms_ghost_code(success,
+                                                         code,
+                                                         fail_reason);
       return gap_ok;
     });
 }
