@@ -321,10 +321,23 @@ namespace infinit
 
     void
     CompositeReporter::_user_used_ghost_code(bool success,
+                                             std::string const& code,
                                              std::string const& fail_reason)
     {
       this->_dispatch(std::bind(&Reporter::_user_used_ghost_code,
-                      std::placeholders::_1, success, fail_reason));
+                      std::placeholders::_1, success, code, fail_reason));
+    }
+
+    void
+    CompositeReporter::_user_sent_sms_ghost_code(bool success,
+                                                 std::string const& code,
+                                                 std::string const& fail_reason)
+    {
+      this->_dispatch(std::bind(&Reporter::_user_sent_sms_ghost_code,
+                                std::placeholders::_1,
+                                success,
+                                code,
+                                fail_reason));
     }
 
     void

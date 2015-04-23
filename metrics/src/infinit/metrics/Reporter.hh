@@ -265,7 +265,14 @@ namespace infinit
       user_changed_download_dir(bool fallback);
 
       void
-      user_used_ghost_code(bool success, std::string const& fail_reason);
+      user_sent_sms_ghost_code(bool success,
+                               std::string const& code,
+                               std::string const& fail_reason);
+
+      void
+      user_used_ghost_code(bool success,
+                           std::string const& code,
+                           std::string const& fail_reason);
 
     /// User metrics implementation.
     protected:
@@ -319,7 +326,15 @@ namespace infinit
 
       virtual
       void
-      _user_used_ghost_code(bool success, std::string const& fail_reason);
+      _user_used_ghost_code(bool success,
+                            std::string const& code,
+                            std::string const& fail_reason);
+
+      virtual
+      void
+      _user_sent_sms_ghost_code(bool success,
+                                std::string const& code,
+                                std::string const& fail_reason);
 
       /// UI metrics.
     public:
