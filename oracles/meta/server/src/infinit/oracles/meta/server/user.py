@@ -637,11 +637,15 @@ class Mixin:
                                 source = source,
                                 activation_code = activation_code,
                                 password_hash = password_hash)
-      return self.success({
+      res = {
         'registered_user_id': user['id'],
         'invitation_source': '',
         'unconfirmed_email_leeway': self.unconfirmed_email_leeway,
-      })
+      }
+      ghost_codes = user.get('consumed_ghost_codes', [])
+      if len(ghost_codes):
+        res.update({'ghost_code': ghost_codes[0]})
+      return self.success(res)
     except Exception as e:
       return self.fail(e.args[0])
 
