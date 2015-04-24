@@ -134,6 +134,7 @@ class Mixin:
       'sender_fullname': True,
       'sender_id': True,
       'total_size': True,
+      'paused': True,
     }
     if include_id:
       res['_id'] = True
@@ -212,6 +213,7 @@ class Mixin:
           'sender_fullname': True,
           'sender_id': True,
           'total_size': True,
+          'paused': True,
         })
       # handle both negative search and empty transaction
       if not transaction:
@@ -251,7 +253,8 @@ class Mixin:
                        recipient_device_id = None,
                        id_or_email = None,
                        recipient_identifier = None,
-                       message = ""):
+                       message = "",
+                       paused = None):
     return self.transaction_create(
       sender = self.user,
       files = files,
@@ -263,7 +266,8 @@ class Mixin:
       id_or_email = id_or_email,
       recipient_device_id = recipient_device_id,
       recipient_identifier = recipient_identifier,
-      message = message)
+      message = message,
+      paused = paused)
 
   @api('/transactions', method = 'POST')
   @require_logged_in
@@ -475,7 +479,8 @@ class Mixin:
                          recipient_identifier = None,
                          message = "",
                          transaction_id = None,
-                         recipient_device_id = None):
+                         recipient_device_id = None,
+                         paused = None):
     """
     Send a file to a specific user.
     If you pass an email and the user is not registered in infinit,
@@ -491,6 +496,7 @@ class Mixin:
     message -- an optional message.
     transaction_id -- id if the transaction was previously created with
     create_empty.
+    paused -- change transaction status to paused or not
 
     Errors:
     Using an id that doesn't exist.
@@ -547,6 +553,7 @@ class Mixin:
         'fallback_port_tcp': None,
         'aws_credentials': None,
         'is_ghost': is_ghost,
+        'paused': paused,
         'strings': ' '.join([
               sender['fullname'],
               sender['handle'],

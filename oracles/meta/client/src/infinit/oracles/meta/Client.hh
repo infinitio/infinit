@@ -546,7 +546,8 @@ namespace infinit
         update_transaction(std::string const& transaction_id,
                            Transaction::Status status,
                            elle::UUID const& device_id = elle::UUID(),
-                           std::string const& device_name = "") const;
+                           std::string const& device_name = "",
+                           boost::optional<bool> paused = boost::none) const;
 
         std::string
         create_transaction(std::string const& recipient_id_or_email,

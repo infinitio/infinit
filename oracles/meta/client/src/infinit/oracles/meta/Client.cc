@@ -1031,12 +1031,18 @@ namespace infinit
       Client::update_transaction(std::string const& transaction_id,
                                  Transaction::Status status,
                                  elle::UUID const& device_id,
-                                 std::string const& device_name) const
+                                 std::string const& device_name,
+                                 boost::optional<bool> paused) const
       {
         ELLE_TRACE("%s: update %s transaction with new status %s",
                    *this,
                    transaction_id,
                    status);
+        if (paused)
+          ELLE_TRACE("%s: change transaction %s paused status to %s",
+                     *this,
+                     transaction_id,
+                     *paused);
         auto url = "/transaction/update";
         auto request = this->_request(
           url,
@@ -1059,6 +1065,8 @@ namespace infinit
                               const_cast<elle::UUID&>(device_id));
               query.serialize("device_name",
                               const_cast<std::string&>(device_name));
+              query.serialize("paused",
+                              paused);
             }
           });
         SerializerIn input(url, request);
