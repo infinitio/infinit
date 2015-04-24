@@ -305,6 +305,7 @@ class Mixin:
                     country_code = None,
                     device_name = None,
                     device_model = None,
+                    registered = False
   ):
     # If creation process was interrupted, generate identity now.
     if 'public_key' not in user:
@@ -393,6 +394,7 @@ class Mixin:
       features['preemptive_buffering_delay'] = '0'
     response['features'] = list(features.items())
     response['device'] = self.device_view(device)
+    response['account_registered'] = registered
     return response
 
   @api('/users/facebook/<facebook_id>')
@@ -413,6 +415,7 @@ class Mixin:
                          long_lived_access_token = None,
                          preferred_email = None,
                          source = None):
+    registered = False
     if bool(short_lived_access_token) == bool(long_lived_access_token):
       return self.bad_request({
         'reason': 'you must provide short or long lived token'
@@ -430,12 +433,13 @@ class Mixin:
           preferred_email = preferred_email,
           source = source,
           fields = fields)
+        registered = True
         try:
           self._set_avatar(user, facebook_user.avatar)
         except BaseException as e:
           elle.log.warn('unable to get facebook avatar: %s' % e)
           pass
-      return user
+      return user, registered
     except Response as r:
       raise r
     except Exception as e:
@@ -487,8 +491,9 @@ class Mixin:
                            fields = fields,
                            password = password,
                            password_hash = password_hash)
+        registered = False
       elif with_facebook:
-        user = self.__facebook_connect(
+        user,registered = self.__facebook_connect(
           short_lived_access_token = short_lived_access_token,
           long_lived_access_token = long_lived_access_token,
           preferred_email = preferred_email,
@@ -501,7 +506,8 @@ class Mixin:
                                 device_push_token = device_push_token,
                                 country_code = country_code,
                                 device_model = device_model,
-                                device_name = device_name)
+                                device_name = device_name,
+                                registered = registered)
 
   @api('/web-login', method = 'POST')
   def web_login(self,
@@ -524,7 +530,7 @@ class Mixin:
       with elle.log.trace("%s: web login" % email):
         user = self._login(email, password = password, fields = fields)
     elif with_facebook:
-      user = self.__facebook_connect(
+      user,register = self.__facebook_connect(
         short_lived_access_token = short_lived_access_token,
         long_lived_access_token = long_lived_access_token,
         preferred_email = preferred_email,

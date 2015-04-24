@@ -61,6 +61,7 @@ login_success_response(elle::UUID id = elle::UUID("00000000-0000-0000-0000-00000
                        "  \"device\": {\"id\": \"%s\", \"name\": \"johny\", \"passport\": \"passport\"},"
                        "  \"trophonius\": {\"host\": \"192.168.1.1\", \"port\": 4923, \"port_ssl\": 4233},"
                        "  \"features\": [],"
+                       "  \"account_registered\": false,"
                        "  \"self\": {"
                        "    \"_id\": \"0\","
                        "    \"id\": \"0\","

@@ -411,6 +411,7 @@ namespace infinit
         s.serialize("device", this->device);
         s.serialize("trophonius", this->trophonius);
         s.serialize("features", this->features);
+        s.serialize("account_registered", this->account_registered);
       }
 
       void

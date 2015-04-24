@@ -104,7 +104,8 @@ namespace tests
           " \"device\": %s,"
           " \"devices\": [],"
           " \"features\": [],"
-          " \"trophonius\" : %s"
+          " \"trophonius\" : %s,"
+          " \"account_registered\" : false"
           "}",
           user.self_json(),
           device.json(),

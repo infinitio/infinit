@@ -246,10 +246,10 @@ namespace infinit
     }
 
     void
-    JSONReporter::_user_register(bool success, std::string const& info)
+    JSONReporter::_user_register(bool success, std::string const& info, bool with_facebook)
     {
       elle::json::Object data;
-      data[this->_key_str(JSONKey::event)] = std::string("app/register");
+      data[this->_key_str(JSONKey::event)] = std::string(with_facebook? "app/register_facebook" : "app/register");
       data[this->_key_str(JSONKey::status)] = this->_status_string(success);
       if (!success)
         data[this->_key_str(JSONKey::fail_reason)] = info;

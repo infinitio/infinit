@@ -244,7 +244,8 @@ namespace infinit
 
       void
       user_register(bool success,
-                    std::string const& info);
+                    std::string const& info,
+                    bool with_facebook = false);
 
       void
       user_unfavorite(std::string const& user_id);
@@ -298,7 +299,8 @@ namespace infinit
       virtual
       void
       _user_register(bool success,
-                     std::string const& info);
+                     std::string const& info,
+                     bool with_facebook);
 
       virtual
       void

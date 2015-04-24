@@ -844,6 +844,10 @@ class Facebook:
     def permissions(self):
       pass
 
+    @property
+    def friends(self):
+      return {'data': []}
+
   def user(self,
            code = None,
            short_lived_access_token = None,

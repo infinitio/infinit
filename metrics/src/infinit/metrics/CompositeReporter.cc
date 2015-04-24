@@ -267,12 +267,13 @@ namespace infinit
     }
 
     void
-    CompositeReporter::_user_register(bool success, std::string const& info)
+    CompositeReporter::_user_register(bool success, std::string const& info, bool facebook)
     {
       this->_dispatch(std::bind(&Reporter::_user_register,
                                 std::placeholders::_1,
                                 success,
-                                info));
+                                info,
+                                facebook));
     }
 
     void

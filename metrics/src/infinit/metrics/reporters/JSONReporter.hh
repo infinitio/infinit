@@ -156,7 +156,7 @@ namespace infinit
       _user_logout(bool success, std::string const& info) override;
 
       void
-      _user_register(bool success, std::string const& info) override;
+      _user_register(bool success, std::string const& info, bool facebook) override;
 
       void
       _user_unfavorite(std::string const& user_id) override;

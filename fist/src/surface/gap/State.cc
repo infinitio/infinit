@@ -966,13 +966,16 @@ namespace surface
       [&] {
         auto tropho = elle::utility::move_on_copy(std::move(trophonius));
         this->_login([&] {
-          return this->_meta.facebook_connect(facebook_token,
+          auto response =  this->_meta.facebook_connect(facebook_token,
                                               this->device_uuid(),
                                               preferred_email,
                                               device_push_token,
                                               country_code,
                                               device_model,
                                               device_name);
+          if (response.account_registered && this->_metrics_reporter)
+            this->_metrics_reporter->user_register(true, "", true);
+          return response;
           },
           tropho,
           // Password.

@@ -341,6 +341,7 @@ public:
          "    \"success\": true"
          "  },"
          "  \"features\": [],"
+         "  \"account_registered\": false,"
          "  \"trophonius\" : {"
          "    \"host\": \"127.0.0.1\","
          "    \"port\": 0,"
