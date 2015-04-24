@@ -2711,7 +2711,8 @@ class Mixin:
   @api('/user/synchronize')
   @require_logged_in
   def synchronize(self,
-                  init : int = 1):
+                  init : int = 1,
+                  history = 20):
     init = bool(init)
     device = self.current_device
     if device is None:
@@ -2738,7 +2739,11 @@ class Mixin:
     mtime = {'timestamp': None, 'date': None}
     if not init:
       mtime = last_sync
-    res.update(self._user_transactions(modification_time = mtime['date']))
+    res.update(
+      self._user_transactions(
+        modification_time = mtime['date'],
+        limit = history,
+      ))
     # Include deleted links only during updates. At start up, ignore them.
     res.update(self.links_list(mtime = mtime['date'], include_deleted = (not init)))
     # XXX.
