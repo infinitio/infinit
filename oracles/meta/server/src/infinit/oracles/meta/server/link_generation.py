@@ -472,7 +472,9 @@ class Mixin:
                  offset: int = 0,
                  count: int = 500,
                  include_deleted: bool = False,
-                 include_expired: bool = False):
+                 include_canceled: bool = False,
+                 include_expired: bool = False,
+  ):
     """
     Returns a list of the user's links.
     offset -- offset of results.
@@ -496,8 +498,13 @@ class Mixin:
           {'expiry_time': None},
           {'expiry_time': {'$gt': self.now}},
         ]
+      nin = []
       if not include_deleted:
-        query['status'] = {'$ne': transaction_status.DELETED}
+        nin.append(transaction_status.DELETED)
+      if not include_canceled:
+        nin.append(transaction_status.CANCELED)
+      if nin:
+        query['status'] = {'$nin': nin}
       res = list()
       for link in self.database.links.aggregate([
         {'$match': query},
