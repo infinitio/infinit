@@ -1291,6 +1291,13 @@ extern "C" jlong Java_io_infinit_State_gapUploadAddressBook(
   return gap_upload_address_book((gap_State*)handle, json);
 }
 
+extern "C" jlong Java_io_infinit_State_gapSendSmsGhostCodeMetric(
+  JNIEnv* env, jobject thiz, jlong handle, jboolean success, jstring code, jstring fail_reason)
+{
+  return gap_send_sms_ghost_code_metric((gap_State*)handle, success,
+    to_string(env, code), to_string(env, fail_reason));
+}
+
 std::map<std::string, elle::network::Interface> interface_get_map()
 {
   std::map<std::string, elle::network::Interface> result;
