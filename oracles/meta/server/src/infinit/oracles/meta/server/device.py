@@ -53,10 +53,15 @@ class Mixin:
     if device is None:
       return None
     else:
+      if self.user is None:
+        return None
       user = self._user_by_id(self.user['_id'], fields = ['devices'])
-      device = list(filter(lambda x: x['id'] == device, user['devices']))[0]
-      bottle.request.device = device
-      return device
+      devices = list(filter(lambda x: x['id'] == device, user['devices']))
+      if len(devices):
+        device = devices[0]
+        bottle.request.device = device
+        return device
+      return None
 
   @api('/user/current_device')
   @require_logged_in
