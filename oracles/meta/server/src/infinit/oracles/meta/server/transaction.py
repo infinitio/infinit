@@ -405,7 +405,7 @@ class Mixin:
         sender)
       is_ghost = recipient['register_status'] == "ghost"
       transaction = {
-        'sender_id': '',
+        'sender_id': bson.ObjectId(sender['_id']),
         'sender_fullname': '',
         'sender_device_id': '',
 
