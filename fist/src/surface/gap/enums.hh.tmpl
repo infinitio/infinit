@@ -45,6 +45,13 @@ extern "C"
 
   typedef enum
   {
+    gap_account_status_new,
+    gap_account_status_ghost,
+    gap_account_status_registered,
+  } AccountStatus;
+
+  typedef enum
+  {
     gap_proxy_http,
     gap_proxy_https,
     gap_proxy_socks,

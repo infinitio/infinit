@@ -648,6 +648,33 @@ gap_user_by_email(gap_State* state,
 }
 
 gap_Status
+gap_account_status_for_email(gap_State* state,
+                             std::string const& email,
+                             AccountStatus& res)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "account status",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      try
+      {
+        auto u = state.meta(false).user(email);
+        if (u.register_status == "ok")
+          res = gap_account_status_registered;
+        else if (u.register_status == "ghost")
+          res = gap_account_status_ghost;
+      }
+      catch (infinit::state::UserNotFoundError const&)
+      {
+        res = gap_account_status_new;
+      }
+      return gap_ok;
+    });
+}
+
+gap_Status
 gap_user_by_handle(gap_State* state,
                    std::string const& handle,
                    surface::gap::User& res)

@@ -241,6 +241,11 @@ gap_user_by_email(gap_State* state,
                   std::string const& email,
                   surface::gap::User& res);
 
+gap_Status
+gap_account_status_for_email(gap_State* state,
+                             std::string const& email,
+                             AccountStatus& res);
+
 /// Retrieve user with their handle.
 gap_Status
 gap_user_by_handle(gap_State* state,
