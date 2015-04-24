@@ -55,13 +55,13 @@ protected:
 
 static
 std::string
-login_success_response(elle::UUID id = elle::UUID("00000000-0000-0000-0000-000000000001"))
+login_success_response(bool registered = false,
+                       elle::UUID id = elle::UUID("00000000-0000-0000-0000-000000000001"))
 {
   return elle::sprintf("{"
                        "  \"device\": {\"id\": \"%s\", \"name\": \"johny\", \"passport\": \"passport\"},"
                        "  \"trophonius\": {\"host\": \"192.168.1.1\", \"port\": 4923, \"port_ssl\": 4233},"
                        "  \"features\": [],"
-                       "  \"account_registered\": false,"
                        "  \"self\": {"
                        "    \"_id\": \"0\","
                        "    \"id\": \"0\","
@@ -83,9 +83,10 @@ login_success_response(elle::UUID id = elle::UUID("00000000-0000-0000-0000-00000
                        "    \"status\": 1,"
                        "    \"creation_time\": 1420565249,"
                        "    \"last_connection\": 1420565249"
-                       "    }"
+                       "  },"
+                       "  \"account_registered\": %s"
                        " }",
-                       id, id, id);
+                       id, id, id, registered ? "true" : "false");
 }
 
 ELLE_TEST_SCHEDULED(connection_refused)
@@ -704,16 +705,34 @@ namespace facebook
   ELLE_TEST_SCHEDULED(connect_success)
   {
     HTTPServer s;
+    bool registered = true;
     s.register_route("/login", reactor::http::Method::POST,
-                     [] (HTTPServer::Headers const&,
-                         HTTPServer::Cookies const&,
-                         HTTPServer::Parameters const&,
-                         elle::Buffer const& body) -> std::string
+                     [&] (HTTPServer::Headers const&,
+                          HTTPServer::Cookies const&,
+                          HTTPServer::Parameters const&,
+                          elle::Buffer const& body) -> std::string
                      {
-                       return login_success_response();
+                       auto first_time = [&registered] ()
+                       {
+                         if (registered == true)
+                         {
+                           registered = false;
+                           return true;
+                         }
+                         return registered;
+                       };
+                       return login_success_response(first_time());
                      });
     infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
-    c.facebook_connect("foobar", boost::uuids::nil_uuid());
+    {
+      auto res = c.facebook_connect("foobar", boost::uuids::nil_uuid());
+      ELLE_ASSERT_EQ(static_cast<bool>(res.account_registered), true);
+    }
+    {
+      auto res = c.facebook_connect("foobar", boost::uuids::nil_uuid());
+      ELLE_ASSERT_EQ(static_cast<bool>(res.account_registered), false);
+    }
+
   }
 
   ELLE_TEST_SCHEDULED(already_registered)

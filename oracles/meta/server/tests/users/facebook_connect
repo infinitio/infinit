@@ -19,7 +19,7 @@ import random
 with Meta(enable_emails = False) as meta:
   with Trophonius(meta):
     meta.inner.facebook = Facebook()
-    bob = User(meta, facebook = True)
+    bob = User(meta, facebook = True, check_registration = True)
     id = int(uniform(1000000000000000, 1500000000000000))
     meta.inner.facebook.set_next_client_data({
       'id': id,
@@ -31,8 +31,8 @@ with Meta(enable_emails = False) as meta:
     except HTTPException as e:
       assert e.status == 404
 
-    for _ in range(2):
-      bob.facebook_connect("token")
+    for register in [True, False]:
+      bob.facebook_connect("token", check_registration = register)
       facebook_id = bob.facebook_id
       meta.get('users/facebook/%s' % facebook_id)
       bob.logout()
@@ -54,18 +54,18 @@ with Meta(enable_emails = False) as meta:
 with Meta(enable_emails = False) as meta:
   with Trophonius(meta):
     meta.inner.facebook = Facebook()
-    bob = User(meta, facebook = True)
+    bob = User(meta, facebook = True, check_registration = True)
     meta.inner.facebook.set_next_client_data({
       'id': int(uniform(1000000000000000, 1500000000000000)),
       'email': 'boo@infinit.io',
     })
-    bob.facebook_connect("token")
+    bob.facebook_connect("token", check_registration = True)
     meta.inner.facebook.set_next_client_data({
       'id': int(uniform(1000000000000000, 1500000000000000)),
       'email': 'bar@infinit.io',
     })
-    alice = User(meta, facebook = True)
-    alice.facebook_connect("fooooooo")
+    alice = User(meta, facebook = True, check_registration = True)
+    alice.facebook_connect("fooooooo", check_registration = True)
     assert meta.database.users.count() == 2
 
 # Connected on multiple devices.
@@ -78,7 +78,7 @@ with Meta(enable_emails = False) as meta:
         'email': 'castor@infinit.io',
       })
     meta.inner.facebook = Facebook()
-    bob = User(meta, facebook = True)
+    bob = User(meta, facebook = True, check_registration = True)
     bob_device_0 = copy.deepcopy(bob)
     bob_device_0.device_id = str(uuid4())
 
@@ -108,9 +108,9 @@ with Meta(enable_emails = False) as meta:
     bob_web_1.device_id = None
 
     give_a_different_access_token(meta)
-    bob_web_0.facebook_connect("TokenToken")
+    bob_web_0.facebook_connect("TokenToken", check_registration = True)
     give_a_different_access_token(meta)
-    bob_web_1.facebook_connect("TokenToken")
+    bob_web_1.facebook_connect("TokenToken", check_registration = False)
 
     bob_web_0.me
     bob_web_1.me
@@ -141,7 +141,7 @@ with Meta(enable_emails = False) as meta:
 with Meta(enable_emails = True) as meta:
   with Trophonius(meta):
     meta.inner.facebook = Facebook()
-    bob = User(meta, facebook = True)
+    bob = User(meta, facebook = True, check_registration = True)
     meta.inner.facebook.set_next_client_data({
       'id': int(uniform(1000000000000000, 1500000000000000)),
       'email': 'serge@infinit.io',
@@ -151,12 +151,12 @@ with Meta(enable_emails = True) as meta:
       'id': int(uniform(1000000000000000, 1500000000000000)),
       'email': 'dimrok@infinit.io',
     })
-    alice = User(meta, facebook = True)
-    alice.facebook_connect("foo")
+    alice = User(meta, facebook = True, check_registration = True)
+    alice.facebook_connect("foo", check_registration = True)
     bob.sendfile(alice.id, initialize = True)
     alice.logout()
     bob.sendfile(alice.id, initialize = True)
-    alice.facebook_connect("foo")
+    alice.facebook_connect("foo", check_registration = False)
     assert len(alice.transactions) == 2
 
 # Reverse send.
@@ -168,14 +168,14 @@ with Meta(enable_emails = True) as meta:
       'email': "dimrok@infinit.io",
       'access_token': "fooooooo",
     })
-    bob = User(meta, facebook = True)
+    bob = User(meta, facebook = True, check_registration = True)
     bob.facebook_connect("bite")
     meta.inner.facebook.set_next_client_data({
       'id': int(uniform(1000000000000000, 1500000000000000)),
       'email': "serge@infinit.io",
       'access_token': "fooooooo",
     })
-    alice = User(meta, facebook = True)
+    alice = User(meta, facebook = True, check_registration = True)
     alice.facebook_connect("foo")
     bob.sendfile(alice.id, initialize = True)
     alice.logout()
@@ -191,13 +191,13 @@ with Meta(enable_emails = True) as meta:
       'id': int(uniform(1000000000000000, 1500000000000000)),
       'email': None,
     })
-    bob = User(meta, facebook = True)
+    bob = User(meta, facebook = True, check_registration = True)
     bob.facebook_connect("bite", preferred_email = "dimrok@infinit.io")
     meta.inner.facebook.set_next_client_data({
       'id': int(uniform(1000000000000000, 1500000000000000)),
       'email': "serge@infinit.io",
     })
-    alice = User(meta, facebook = True)
+    alice = User(meta, facebook = True, check_registration = True)
     alice.facebook_connect("foo")
     bob.sendfile(alice.id, initialize = True)
     alice.logout()
@@ -217,7 +217,7 @@ with Meta(enable_emails = True) as meta:
       'id': int(uniform(1000000000000000, 1500000000000000)),
       'email': 'bob@infinit.io'
     })
-    bob = User(meta, facebook = True)
+    bob = User(meta, facebook = True, check_registration = True)
     bob.facebook_connect("bite")
     assert len(bob.transactions) == 1
 
@@ -232,7 +232,7 @@ with Meta(enable_emails = True) as meta:
       'id': int(uniform(1000000000000000, 1500000000000000)),
       'email': 'serge@infinit.io'
     })
-    bob = User(meta, facebook = True)
+    bob = User(meta, facebook = True, check_registration = True)
     bob.facebook_connect("bite", preferred_email = 'bob@infinit.io')
     assert len(bob.transactions) == 1
 
@@ -247,7 +247,7 @@ with Meta(enable_emails = True) as meta:
       'id': int(uniform(1000000000000000, 1500000000000000)),
       'email': 'serge@infinit.io'
     })
-    bob = User(meta, facebook = True)
+    bob = User(meta, facebook = True, check_registration = True)
     bob.facebook_connect("bite", preferred_email = '      bob@infinit.io')
     assert len(bob.transactions) == 1
 
@@ -260,7 +260,7 @@ for no_device in [True, False]:
         'id': int(uniform(1000000000000000, 1500000000000000)),
         'email': None,
       })
-      bob = User(meta, facebook = True)
+      bob = User(meta, facebook = True, check_registration = True)
       try:
         bob.facebook_connect("bite", no_device = no_device)
         assert False
@@ -277,7 +277,7 @@ for no_device in [True, False]:
         'id': int(uniform(1000000000000000, 1500000000000000)),
         'email': email,
       })
-      bob = User(meta, facebook = True)
+      bob = User(meta, facebook = True, check_registration = True)
       try:
         bob.facebook_connect("bite", no_device = no_device)
         assert False
@@ -293,7 +293,7 @@ for no_device in [True, False]:
         'id': int(uniform(1000000000000000, 1500000000000000)),
         'email': 'foobar@infinit.io'
       })
-      bob = User(meta, facebook = True)
+      bob = User(meta, facebook = True, check_registration = True)
       try:
         bob.facebook_connect("bite", no_device = no_device, preferred_email = "alice@infinit.io")
         assert False
@@ -308,7 +308,7 @@ for no_device in [True, False]:
         'id': int(uniform(1000000000000000, 1500000000000000)),
         'email': 'serge@infinit.io'
       })
-      bob = User(meta, facebook = True)
+      bob = User(meta, facebook = True, check_registration = True)
       try:
         bob.facebook_connect("bite", no_device = no_device, preferred_email = 'infinit.io')
         assert False
@@ -323,7 +323,7 @@ for no_device in [True, False]:
         'id': int(uniform(1000000000000000, 1500000000000000)),
         'email': None,
       })
-      bob = User(meta, facebook = True)
+      bob = User(meta, facebook = True, check_registration = True)
       try:
         bob.facebook_connect("bite", no_device = no_device)
         assert False

@@ -39,7 +39,8 @@ namespace tests
     register_user(std::string const& email,
                   std::string const& password = "password");
     User const&
-    facebook_connect(std::string const& token);
+    facebook_connect(std::string const& token,
+                     bool& registered);
 
     void
     register_device(User const& user,

@@ -183,7 +183,7 @@ namespace infinit
         };
         Trophonius trophonius;
         std::unordered_map<std::string, std::string> features;
-        bool account_registered; // True if this login was actually a registration
+        bool account_registered; // True if this login was actually a registration.
         LoginResponse() = default;
         LoginResponse(elle::serialization::SerializerIn& s);
         void

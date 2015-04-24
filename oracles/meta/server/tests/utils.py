@@ -493,7 +493,7 @@ class Meta:
                       'source': source,
                       'password_hash': password_hash,
                     })
-    assert res['success']
+    assertEq(res['success'], True)
     return password
 
   @property
@@ -515,7 +515,10 @@ def throws(f, expected = None):
     expected = BaseException
   try:
     f()
+    assert False
   except expected as e:
+    if isinstance(e, AssertionError):
+      raise Exception('exception expected')
     if guard is not None:
       guard(e)
   else:
@@ -611,14 +614,16 @@ class User(Client):
     params.update(kw)
     params.update({'pick_trophonius': False})
     res = self.post('login', params)
-    assert res['success']
+    assertEq(res['success'], True)
+    assertEq(res['account_registered'], False)
     self._login(res)
     return res
 
   def facebook_connect(self,
                        long_lived_access_token,
                        preferred_email = None,
-                       no_device = False):
+                       no_device = False,
+                       check_registration = None):
     args = {
       'long_lived_access_token': long_lived_access_token
     }
@@ -631,6 +636,8 @@ class User(Client):
       })
     if 'device_id' in args:
       res = self.post('login', args)
+      if check_registration is not None:
+        assertEq(res['account_registered'], check_registration)
       self._login(res)
     else:
       res = self.post('web-login', args)
