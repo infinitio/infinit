@@ -2745,7 +2745,12 @@ class Mixin:
         limit = history,
       ))
     # Include deleted links only during updates. At start up, ignore them.
-    res.update(self.links_list(mtime = mtime['date'], include_deleted = (not init)))
+    if self.device_mobile:
+      res['links'] = []
+    else:
+      res.update(self.links_list(mtime = mtime['date'],
+                                 include_deleted = not init,
+                                 include_canceled = not init))
     # XXX.
     # Return the correct list when iOS 0.9.34* is ready. This workarounds the
     # issue of auto receiving on specific iOS device.
