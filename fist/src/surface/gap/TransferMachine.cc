@@ -68,6 +68,10 @@ namespace surface
         this->_fsm.state_make(
           "transfer",
           std::bind(&Transferer::_transfer_wrapper, this));
+      auto& paused_state =
+        this->_fsm.state_make(
+          "paused",
+          std::bind(&Transferer::_paused, this));
       auto& cloud_buffer_state =
         this->_fsm.state_make(
           "cloud buffer",
@@ -334,6 +338,47 @@ namespace surface
           ELLE_TRACE("%s: %s triggered", *this, transition);
         });
 
+      // Pause
+      this->_fsm.transition_add(
+        cloud_synchronize_state,
+        paused_state,
+        reactor::Waitables{&this->_owner.transaction().paused()},
+        true);
+      this->_fsm.transition_add(
+        publish_interfaces_state,
+        paused_state,
+        reactor::Waitables{&this->_owner.transaction().paused()},
+        true);
+      this->_fsm.transition_add(
+        connection_state,
+        paused_state,
+        reactor::Waitables{&this->_owner.transaction().paused()},
+        true);
+      this->_fsm.transition_add(
+        wait_for_peer_state,
+        paused_state,
+        reactor::Waitables{&this->_owner.transaction().paused()},
+        true);
+      this->_fsm.transition_add(
+        transfer_state,
+        paused_state,
+        reactor::Waitables{&this->_owner.transaction().paused()},
+        true);
+      this->_fsm.transition_add(
+        cloud_buffer_state,
+        paused_state,
+        reactor::Waitables{&this->_owner.transaction().paused()},
+        true);
+      this->_fsm.transition_add(
+        stopped_state,
+        paused_state,
+        reactor::Waitables{&this->_owner.transaction().paused()},
+        true);
+      this->_fsm.transition_add(
+        paused_state,
+        cloud_synchronize_state,
+        reactor::Waitables{&!this->_owner.transaction().paused()},
+        true);
     }
 
     /*--------.
@@ -511,6 +556,12 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: stopped", *this);
       this->_stopped();
+    }
+
+    void
+    Transferer::_paused()
+    {
+      ELLE_TRACE_SCOPE("%s: paused", *this);
     }
 
     /*----------.
