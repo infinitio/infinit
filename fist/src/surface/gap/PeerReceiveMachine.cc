@@ -111,6 +111,7 @@ namespace surface
       , _snapshot(nullptr)
       , _completed(false)
       , _nothing_in_the_cloud(false)
+      , _chunk_size(rpc_chunk_size())
     {
       try
       {
@@ -630,9 +631,6 @@ namespace surface
         this->_snapshot.reset(new frete::TransferSnapshot(
           count, total_size, this->_relative_output_dir));
       }
-
-      static const std::streamsize chunk_size = rpc_chunk_size();
-
       ELLE_DEBUG("transfer snapshot: %s", *this->_snapshot);
 
       FilesInfo files_info = source.files_info();
@@ -700,13 +698,13 @@ namespace surface
                 elle::sprintf("transfer reader %s", i),
                 std::bind(&PeerReceiveMachine::_fetcher_thread<Source>,
                           this, std::ref(source), i, name_policy, explicit_ack,
-                          encryption, chunk_size, std::ref(*key),
+                          encryption, this->_chunk_size, std::ref(*key),
                           files_info));
           scope.run_background(
             "receive writer",
             std::bind(&PeerReceiveMachine::_disk_thread<Source>,
                       this, std::ref(source),
-                      peer_version, chunk_size));
+                      peer_version, this->_chunk_size));
           try
           {
             reactor::wait(scope);
