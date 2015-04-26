@@ -387,6 +387,7 @@ namespace infinit
         s.serialize("trophonius", this->trophonius);
         s.serialize("features", this->features);
         s.serialize("account_registered", this->account_registered);
+        s.serialize("ghost_code", this->ghost_code);
       }
 
       void
@@ -593,7 +594,19 @@ namespace infinit
         return LoginResponse::Trophonius(input);
       }
 
-      std::string
+      RegisterResponse::RegisterResponse(elle::serialization::SerializerIn& s)
+      {
+        this->serialize(s);
+      }
+
+      void
+      RegisterResponse::serialize(elle::serialization::SerializerIn& s)
+      {
+        s.serialize("registered_user_id", this->id);
+        s.serialize("ghost_code", this->ghost_code);
+      }
+
+      RegisterResponse
       Client::register_(std::string const& email,
                         std::string const& fullname,
                         std::string const& password) const
@@ -648,7 +661,7 @@ namespace infinit
                 elle::sprintf("Unknown registration error: %s", error_code));
           }
         }
-        return user_id;
+        return RegisterResponse(input);
       }
 
       SynchronizeResponse

@@ -167,6 +167,16 @@ namespace infinit
         identifier() const;
       };
 
+      struct RegisterResponse
+      {
+        RegisterResponse(elle::serialization::SerializerIn& s);
+        void
+        serialize(elle::serialization::SerializerIn& s);
+
+        std::string id;
+        boost::optional<std::string> ghost_code;
+      };
+
       struct LoginResponse
       {
         Device device;
@@ -184,6 +194,9 @@ namespace infinit
         Trophonius trophonius;
         std::unordered_map<std::string, std::string> features;
         bool account_registered; // True if this login was actually a registration.
+        // XXX: Because facebook connect can turn a ghost to a real account a
+        // ghost code can be consumed.
+        boost::optional<std::string> ghost_code;
         LoginResponse() = default;
         LoginResponse(elle::serialization::SerializerIn& s);
         void
@@ -441,7 +454,7 @@ namespace infinit
 
         ELLE_ATTRIBUTE_RW(bool, logged_in);
 
-        std::string
+        RegisterResponse
         register_(std::string const& email,
                   std::string const& fullname,
                   std::string const& password) const;

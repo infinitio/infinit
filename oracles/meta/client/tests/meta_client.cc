@@ -55,8 +55,10 @@ protected:
 
 static
 std::string
-login_success_response(bool registered = false,
-                       elle::UUID id = elle::UUID("00000000-0000-0000-0000-000000000001"))
+login_success_response(
+  bool registered = false,
+  std::string const& extra = "",
+  elle::UUID id = elle::UUID("00000000-0000-0000-0000-000000000001"))
 {
   return elle::sprintf("{"
                        "  \"device\": {\"id\": \"%s\", \"name\": \"johny\", \"passport\": \"passport\"},"
@@ -84,9 +86,10 @@ login_success_response(bool registered = false,
                        "    \"creation_time\": 1420565249,"
                        "    \"last_connection\": 1420565249"
                        "  },"
+                       "  %s"
                        "  \"account_registered\": %s"
                        " }",
-                       id, id, id, registered ? "true" : "false");
+                       id, id, id, extra, registered ? "true" : "false");
 }
 
 ELLE_TEST_SCHEDULED(connection_refused)
@@ -706,6 +709,7 @@ namespace facebook
   {
     HTTPServer s;
     bool registered = true;
+    std::string extra = "";
     s.register_route("/login", reactor::http::Method::POST,
                      [&] (HTTPServer::Headers const&,
                           HTTPServer::Cookies const&,
@@ -721,16 +725,25 @@ namespace facebook
                          }
                          return registered;
                        };
-                       return login_success_response(first_time());
+                       return login_success_response(first_time(), extra);
                      });
     infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
     {
       auto res = c.facebook_connect("foobar", boost::uuids::nil_uuid());
-      ELLE_ASSERT_EQ(static_cast<bool>(res.account_registered), true);
+      ELLE_ASSERT_EQ(static_cast<bool>(res.account_registered), false);
+      ELLE_ASSERT_EQ(static_cast<bool>(res.ghost_code), false);
     }
     {
       auto res = c.facebook_connect("foobar", boost::uuids::nil_uuid());
+      ELLE_ASSERT_EQ(static_cast<bool>(res.ghost_code), false);
       ELLE_ASSERT_EQ(static_cast<bool>(res.account_registered), false);
+    }
+    {
+      std::string code = "foooo";
+      extra = elle::sprintf("\"ghost_code\": \"%s\",", code);
+      auto res = c.facebook_connect("foobar", boost::uuids::nil_uuid());
+      ELLE_ASSERT_EQ(static_cast<bool>(res.ghost_code), true);
+      ELLE_ASSERT_EQ(res.ghost_code.get(), code);
     }
 
   }
