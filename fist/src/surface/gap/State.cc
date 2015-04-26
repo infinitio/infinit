@@ -983,7 +983,7 @@ namespace surface
       try
       {
         ELLE_DEBUG("register");
-        std::string user_id =
+        auto res =
           this->meta(false).register_(
             lower_email,
             fullname,
@@ -991,6 +991,8 @@ namespace surface
         register_failed.abort();
         ELLE_DEBUG("registered new user %s <%s>", fullname, lower_email);
         infinit::metrics::Reporter::metric_sender_id(user_id);
+        infinit::metrics::Reporter::metric_sender_id(res.id);
+        this->_metrics_reporter->user_register(true, "", "", res.ghost_code);
       }
       catch (elle::Error const& error)
       {
@@ -1025,7 +1027,7 @@ namespace surface
                                               device_model,
                                               device_name);
           if (response.account_registered && this->_metrics_reporter)
-            this->_metrics_reporter->user_register(true, "", true);
+            this->_metrics_reporter->user_register(true, "", "facebook", response.ghost_code);
           return response;
           },
           tropho,
