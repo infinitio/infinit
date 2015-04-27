@@ -705,6 +705,7 @@ def configure(cxx_toolkit = None,
         elle.aws.lib_dynamic,
         trophonius_client_lib,
         oracles.transaction_lib,
+        metrics_lib
       ],
       cxx_toolkit, gap_tests_cxx_config)
     gap_tests << test
