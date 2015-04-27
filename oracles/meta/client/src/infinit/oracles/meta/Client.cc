@@ -1672,6 +1672,19 @@ namespace infinit
       }
 
       void
+      Client::upload_address_book(std::string const& json) const
+      {
+        std::string url = "/user/contacts";
+        reactor::http::Request::QueryDict query;
+        query["contacts"] = json;
+        auto request = this->_request(url, Method::PUT,
+          [&] (reactor::http::Request& request)
+          {
+            request << "{\"contacts\":" << json << "}";
+          });
+      }
+
+      void
       User::print(std::ostream& stream) const
       {
         stream << "User(" << this->id << ", " << this->handle << ")";

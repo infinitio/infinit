@@ -1284,6 +1284,12 @@ extern "C" jlong Java_io_infinit_State_gapFacebookAlreadyRegistered(
   return res? 1:0;
 }
 
+extern "C" jlong Java_io_infinit_State_gapUploadAddressBook(
+  JNIEnv* env, jobject thiz, jlong handle, jstring jjson)
+{
+  std::string json = to_string(env, jjson);
+  return gap_upload_address_book((gap_State*)handle, json);
+}
 
 std::map<std::string, elle::network::Interface> interface_get_map()
 {
