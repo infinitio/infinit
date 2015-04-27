@@ -576,10 +576,11 @@ class Mixin:
         counts = ['sent_peer', 'sent'],
         pending = transaction,
         time = True)
-      self.__update_transaction_stats(
-        recipient,
-        unaccepted = transaction,
-        time = False)
+      if not is_ghost:
+        self.__update_transaction_stats(
+          recipient,
+          unaccepted = transaction,
+          time = False)
       self._increase_swag(sender['_id'], recipient['_id'])
       if  recipient_device_id is None and recipient['_id'] == sender['_id']:
         if 'send-to-self' not in recipient.get('emailing', {}):
