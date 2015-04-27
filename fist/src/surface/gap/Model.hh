@@ -29,7 +29,8 @@ namespace surface
       Device,
       das::Field<Device, elle::UUID, &Device::id>,
       das::Field<Device, das::Variable<std::string>, &Device::name>,
-      das::Field<Device, boost::optional<std::string>, &Device::os>
+      das::Field<Device, boost::optional<std::string>, &Device::os>,
+      das::Field<Device, boost::optional<std::string>, &Device::model>
       > DasDevice;
     typedef das::Collection<
       Device,
