@@ -23,6 +23,7 @@ namespace infinit
         Device(elle::serialization::SerializerIn& s);
         elle::UUID id;
         das::Variable<std::string> name;
+        boost::optional<std::string> model;
         boost::optional<std::string> os;
         boost::optional<std::string> passport;
         boost::optional<boost::posix_time::ptime> last_sync;
@@ -47,6 +48,7 @@ namespace infinit
 }
 
 DAS_MODEL_FIELD(infinit::oracles::meta::Device, id);
+DAS_MODEL_FIELD(infinit::oracles::meta::Device, model);
 DAS_MODEL_FIELD(infinit::oracles::meta::Device, name);
 DAS_MODEL_FIELD(infinit::oracles::meta::Device, os);
 DAS_MODEL_FIELD(infinit::oracles::meta::Device, passport);
