@@ -623,7 +623,8 @@ class User(Client):
                        long_lived_access_token,
                        preferred_email = None,
                        no_device = False,
-                       check_registration = None):
+                       check_registration = None,
+                       check_ghost_code = None):
     args = {
       'long_lived_access_token': long_lived_access_token
     }
@@ -638,6 +639,8 @@ class User(Client):
       res = self.post('login', args)
       if check_registration is not None:
         assertEq(res['account_registered'], check_registration)
+      if check_ghost_code is not None:
+        assert 'ghost_code' in res
       self._login(res)
     else:
       res = self.post('web-login', args)

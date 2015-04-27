@@ -217,7 +217,8 @@ with Meta(enable_emails = True) as meta:
       'id': int(uniform(1000000000000000, 1500000000000000)),
       'email': 'bob@infinit.io'
     })
-    bob = User(meta, facebook = True, check_registration = True)
+    bob = User(meta, facebook = True, check_registration = True,
+               check_ghost_code = True)
     bob.facebook_connect("bite")
     assert len(bob.transactions) == 1
 
