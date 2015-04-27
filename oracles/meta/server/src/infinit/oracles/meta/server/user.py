@@ -2813,7 +2813,7 @@ class Mixin:
       {
         '_id': {'$in': referrals},
         '$or': [{'plan': 'basic'}, {'plan': {'$exists': False}}],
-        'quota.total_link_size': {'$lt': 1e10}
+        'quota.total_link_size': {'$exists': True, '$lt': 1e10}
       },
       {
         '$inc': { 'quota.total_link_size': 1e9}
@@ -2824,7 +2824,7 @@ class Mixin:
       {
         '_id': new_user['_id'],
         '$or': [{'plan': 'basic'}, {'plan': {'$exists': False}}],
-        'quota.total_link_size': {'$lt': 1e10}
+        'quota.total_link_size': {'$exists': True, '$lt': 1e10}
       },
       {
         '$inc': { 'quota.total_link_size': 5e8}
