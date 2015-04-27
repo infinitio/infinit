@@ -539,19 +539,22 @@ class Mixin:
         'reason': 'you must provide facebook_token or (email, password)'
       })
     fields = self.__user_self_fields + ['unconfirmed_email_deadline']
-    registered = False
+    update = {'account_registered': False}
     if with_email:
       email = email.lower().strip()
       with elle.log.trace("%s: web login" % email):
         user = self._login(email, password = password, fields = fields)
     elif with_facebook:
-      user, registered = self.__facebook_connect(
+      user, update['registered'] = self.__facebook_connect(
         short_lived_access_token = short_lived_access_token,
         long_lived_access_token = long_lived_access_token,
         preferred_email = preferred_email,
         fields = fields)
+      ghost_codes = user.get('consumed_ghost_codes', [])
+      if len(ghost_codes):
+        update.update({'ghost_code': ghost_codes[0]})
     res = self._web_login(user)
-    res.update({'registered': registered})
+    res.update(update)
     return res
 
   def _web_login(self, user, new = False):
