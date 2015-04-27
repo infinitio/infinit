@@ -557,6 +557,7 @@ namespace surface
     Transferer::_paused()
     {
       ELLE_TRACE_SCOPE("%s: paused", *this);
+      this->_owner.gap_status(gap_transaction_paused);
     }
 
     /*----------.
