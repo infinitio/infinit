@@ -990,6 +990,7 @@ namespace surface
             password);
         register_failed.abort();
         ELLE_DEBUG("registered new user %s <%s>", fullname, lower_email);
+        infinit::metrics::Reporter::metric_sender_id(res.id);
         this->_metrics_reporter->user_register(true, "", "", res.ghost_code);
       }
       catch (elle::Error const& error)
