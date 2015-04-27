@@ -253,8 +253,7 @@ class Mixin:
                        recipient_device_id = None,
                        id_or_email = None,
                        recipient_identifier = None,
-                       message = "",
-                       paused = None):
+                       message = ""):
     return self.transaction_create(
       sender = self.user,
       files = files,
@@ -266,8 +265,7 @@ class Mixin:
       id_or_email = id_or_email,
       recipient_device_id = recipient_device_id,
       recipient_identifier = recipient_identifier,
-      message = message,
-      paused = paused)
+      message = message)
 
   @api('/transactions', method = 'POST')
   @require_logged_in
@@ -479,8 +477,7 @@ class Mixin:
                          recipient_identifier = None,
                          message = "",
                          transaction_id = None,
-                         recipient_device_id = None,
-                         paused = None):
+                         recipient_device_id = None):
     """
     Send a file to a specific user.
     If you pass an email and the user is not registered in infinit,
@@ -496,7 +493,6 @@ class Mixin:
     message -- an optional message.
     transaction_id -- id if the transaction was previously created with
     create_empty.
-    paused -- change transaction status to paused or not
 
     Errors:
     Using an id that doesn't exist.
@@ -553,7 +549,7 @@ class Mixin:
         'fallback_port_tcp': None,
         'aws_credentials': None,
         'is_ghost': is_ghost,
-        'paused': paused,
+        'paused': False,
         'strings': ' '.join([
               sender['fullname'],
               sender['handle'],
@@ -855,14 +851,16 @@ class Mixin:
                          transaction_id,
                          status,
                          device_id = None,
-                         device_name = None):
+                         device_name = None,
+                         paused = None):
 
     try:
       res = self._transaction_update(transaction_id,
                                      status,
                                      device_id,
                                      device_name,
-                                     self.user)
+                                     self.user,
+                                     paused)
     except error.Error as e:
       return self.fail(*e.args)
 
@@ -876,7 +874,8 @@ class Mixin:
                           status,
                           device_id = None,
                           device_name = None,
-                          user = None):
+                          user = None,
+                          paused = None):
     with elle.log.trace('update transaction %s to status %s' %
                         (transaction_id, status)):
       if user is None:
@@ -950,6 +949,10 @@ class Mixin:
         'mtime': time.time(),
         'modification_time': self.now,
       })
+      if paused is not None:
+        diff.update({
+          'paused': paused,
+        })
       # Don't update with an empty dictionary: it would empty the
       # object.
       if diff:

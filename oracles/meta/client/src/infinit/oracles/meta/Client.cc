@@ -936,6 +936,7 @@ namespace infinit
         s.serialize("aws_credentials", this->_cloud_credentials);
         s.serialize("ghost_code", this->_ghost_code);
         s.serialize("ghost_profile", this->_ghost_profile_url);
+        s.serialize("paused", this->_paused);
       }
 
       CreatePeerTransactionResponse

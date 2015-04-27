@@ -309,7 +309,7 @@ namespace infinit
         ELLE_ATTRIBUTE_R(boost::optional<std::string>, ghost_code);
         // The ghost profile url.
         ELLE_ATTRIBUTE_R(boost::optional<std::string>, ghost_profile_url);
-
+        ELLE_ATTRIBUTE_R(boost::optional<bool>, paused);
         UpdatePeerTransactionResponse(elle::serialization::SerializerIn& s);
         void
         serialize(elle::serialization::Serializer& s);
