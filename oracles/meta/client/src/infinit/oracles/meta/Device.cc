@@ -16,6 +16,7 @@ namespace infinit
       {
         s.serialize("id", this->id);
         s.serialize("last_sync", this->last_sync);
+        s.serialize("model", this->model);
         s.serialize("name", this->name);
         s.serialize("os", this->os);
         s.serialize("passport", this->passport);
