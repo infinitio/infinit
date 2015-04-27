@@ -1092,6 +1092,25 @@ class Mixin:
                         }
     return ghost_profile_url
 
+  @api('/ghost/code/<code>', method = 'GET')
+  def check_code(self, code):
+    """
+    Check if a ghost code exists.
+
+    code -- The code.
+    """
+    if len(code) == 0:
+      return self.bad_request({
+        'reason': 'code cannot be empty',
+      })
+    account = self.database.users.find_one({'ghost_code': code})
+    if account is None:
+      return self.not_found({
+        'reason': 'unknown code : %s' % code,
+        'code': code,
+      })
+    return {}
+
   @api('/ghost/<code>/merge', method = 'POST')
   @require_logged_in
   def merge_ghost(self,

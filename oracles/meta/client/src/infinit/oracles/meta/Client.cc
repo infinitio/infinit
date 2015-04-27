@@ -693,6 +693,21 @@ namespace infinit
         }
       }
 
+      bool
+      Client::check_ghost_code(std::string const& code_) const
+      {
+        reactor::http::EscapedString code{code_};
+        std::string url = elle::sprintf("/ghost/code/%s", code);
+        auto request = this->_request(url, Method::GET, false);
+        switch (request.status())
+        {
+          case reactor::http::StatusCode::OK:
+            return true;
+          default:
+            return false;
+        }
+      }
+
       static
       std::pair<std::string, User>
       email_and_user(boost::any const& json_)

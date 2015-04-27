@@ -468,6 +468,9 @@ namespace infinit
         void
         use_ghost_code(std::string const& code) const;
 
+        bool
+        check_ghost_code(std::string const& code_) const;
+
         User
         user_from_handle(std::string const& handle) const;
 
