@@ -2805,8 +2805,10 @@ class Mixin:
     # XXX.
     # Return the correct list when iOS 0.9.34* is ready. This workarounds the
     # issue of auto receiving on specific iOS device.
-    # res.update(self.devices_users_api(user['_id']))
-    res.update({'devices': [self.device_view(device)]})
+    if self.user_version < (0, 9, 34):
+      res.update({'devices': [self.device_view(device)]})
+    else:
+      res.update(self.devices_users_api(user['_id']))
     return self.success(res)
 
   @api('/users/<user>', method='PUT')

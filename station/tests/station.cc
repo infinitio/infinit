@@ -321,8 +321,8 @@ ELLE_TEST_SCHEDULED(connect_close_connect, (bool, swap))
 {
   Credentials c1("host1");
   Credentials c2("host2");
-  auto& master = c1.passport < c2.passport ? c1.passport : c2.passport;
-  auto& slave = c1.passport < c2.passport ? c2.passport : c1.passport;
+  // auto& master = c1.passport < c2.passport ? c1.passport : c2.passport;
+  // auto& slave = c1.passport < c2.passport ? c2.passport : c1.passport;
   station::Station station1(authority, std::min(c1.passport, c2.passport));
   station::Station station2(authority, std::max(c1.passport, c2.passport));
   StationInstrumentation instrumentation1(station1);

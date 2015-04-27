@@ -145,31 +145,6 @@ namespace infinit
         return "";
       }
 
-      /*-------.
-      | Device |
-      `-------*/
-
-      Device::Device(elle::serialization::SerializerIn& s)
-      {
-        this->serialize(s);
-      }
-
-      void
-      Device::serialize(elle::serialization::Serializer& s)
-      {
-        s.serialize("id", this->id);
-        s.serialize("last_sync", this->last_sync);
-        s.serialize("name", this->name);
-        s.serialize("os", this->os);
-        s.serialize("passport", this->passport);
-      }
-
-      void
-      Device::print(std::ostream& stream) const
-      {
-        stream << "Device(" << this->name << ")";
-      }
-
       /*-------------.
       | ServerStatus |
       `-------------*/
@@ -1642,6 +1617,14 @@ namespace infinit
       Client::_handle_errors(reactor::http::Request& request) const
       {
         auto response = request.status();
+        elle::SafeFinally finally(
+          [&]
+          {
+            if (this->_error_handlers.find(response) != this->_error_handlers.end())
+            {
+              this->_error_handlers.at(response)();
+            }
+          });
         if (response != reactor::http::StatusCode::OK)
         {
           ELLE_ERR("%s: error while posting: %s.\n%s",

@@ -7,7 +7,7 @@ import uuid
 import elle.log
 import pymongo
 
-from . import conf, error, regexp
+from . import conf, error, regexp, notifier
 from .utils import *
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Device'
@@ -73,12 +73,101 @@ class Mixin:
       res['os'] = device['os']
     if 'last_sync' in device:
       res['last_sync'] = device['last_sync']['date'].isoformat()
+    if 'version' in device:
+      res['version'] = device['version']
     return res
 
   @api('/user/devices')
   @require_logged_in_fields(['devices'])
   def devices_user_api(self):
     return self.devices_users_api(self.user['_id'])
+
+  @api('/devices/<id>', method = "PUT")
+  @require_logged_in
+  def update_device(self, id: uuid.UUID, name):
+    if regexp.Validator(regexp.DeviceName, error.DEVICE_NOT_VALID)(name):
+        self.bad_request({
+          "reason": "invalid name %s" % name,
+          "description": "name must contain 1 to 64 characters"
+        })
+    user = self.user
+    res = self.database.users.find_and_modify(
+      {'_id': user['_id'], 'devices.id': str(id)},
+      {'$set': {"devices.$.name": name}},
+      fields = ['devices'],
+    )
+    if res is None:
+      self.not_found(
+        {
+          "reason": "unknown device %s" % id
+        })
+    device = list(filter(lambda x: x['id'] == str(id), res['devices']))[0]
+    self.notifier.notify_some(
+      notifier.MODEL_UPDATE,
+      message = {
+        'devices': [{
+          'id': device['id'],
+          'name': name,
+        }]
+      },
+      recipient_ids = {user['_id']},
+      version = (0, 9, 35))
+    return self.device_view(device)
+
+  fields = {
+    'devices.id': True,
+    'devices.trophonius': True,
+    'devices.push_token': True,
+    'devices.os' : True,
+  }
+
+  delete_device_fields = copy.copy(notifier.Notifier.fields)
+  delete_device_fields.update({
+    'devices.name': True,
+    'devices.online': True,
+    'devices.passport': True,
+  })
+
+  @api('/devices/<id>', method = 'DELETE')
+  @require_logged_in
+  def invalidate_device(self, id):
+    user = self.user
+    fields = notifier.Notifier.fields
+    res = self.database.users.find_and_modify(
+      {
+        '_id': user['_id'],
+        'devices.id': id,
+      },
+      {
+        '$pull': {'devices': {'id': id}}
+      },
+      fields = Mixin.delete_device_fields,
+      new = False,
+    )
+    if res is not None:
+      devices = [device for device in res['devices'] if device['id'] == id]
+      if len(devices) == 1:
+        self.cancel_transactions(user, id)
+        self.notifier.notify_some(
+          notifier.MODEL_UPDATE,
+          message = {
+            'devices': [{
+              'id': devices[0]['id'],
+              '$remove': True,
+            }]
+          },
+          recipient_ids = {user['_id']},
+          version = (0, 9, 35))
+        # Kickout device.
+        self.remove_session(user, device = {'id': id})
+        target = self.notifier.build_target(user, devices[0])
+        if target is not None:
+          self.notifier.notify_targets(
+            [target],
+            message = {'response_details': 'this device has been deleted'},
+            notification_type = notifier.INVALID_CREDENTIALS)
+        return {}
+    return self.not_found()
 
   @api('/users/<user>/devices')
   @require_logged_in_or_admin
@@ -122,17 +211,6 @@ class Mixin:
         'reason': 'device %s does not exist' % id,
         'device': id,
       })
-
-  @api('/devices/<id>', method = "POST")
-  @require_logged_in
-  def update_device(self, id: uuid.UUID, name):
-    user = self.database.users.find_and_modify(
-      {'_id': user['_id'], 'devices.id': str(id)},
-      {'$set': {"devices.$.name": name}},
-      fields = ['devices'],
-    )
-    device = list(filter(lambda x: x['id'] == str(id), user['devices']))[0]
-    return self.device_view(device)
 
   def _create_device(self,
                      owner,
@@ -190,6 +268,13 @@ class Mixin:
             {'$push': {'devices': device}},
           )
       self.device_override_push_token(device_push_token, create)
+      self.notifier.notify_some(
+        notifier.MODEL_UPDATE,
+        message = {
+          'devices': [self.device_view(device)]
+        },
+        recipient_ids = {owner['_id']},
+        version = (0, 9, 35))
       return device
 
   def device_override_push_token(self, token, action):
@@ -299,6 +384,5 @@ class Mixin:
       device = self.device(**query)
     except error.Error as e:
       return self.fail(*e.args)
-
     self.database.users.update({'_id': user['_id']}, {'$pull': {'devices': {'id': str(id)}}})
     return self.success({'id': str(id)})

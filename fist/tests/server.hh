@@ -25,11 +25,15 @@ namespace tests
   class Server
     : public reactor::http::tests::Server
   {
-  public:
-
+    typedef reactor::http::tests::Server Super;
   public:
     Server(std::unique_ptr<Trophonius> trophonius = nullptr);
     Server(Server const&) = delete;
+
+   void
+   register_route(std::string const& route,
+                  reactor::http::Method method,
+                  Super::Function const& function) override;
 
     User const&
     register_user(std::string const& email,

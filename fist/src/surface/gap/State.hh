@@ -30,11 +30,12 @@
 # include <infinit/oracles/trophonius/fwd.hh>
 
 # include <surface/gap/Exception.hh>
-# include <surface/gap/gap.hh>
+# include <surface/gap/Model.hh>
 # include <surface/gap/Notification.hh>
 # include <surface/gap/Self.hh>
 # include <surface/gap/Transaction.hh>
 # include <surface/gap/User.hh>
+# include <surface/gap/gap.hh>
 
 namespace surface
 {
@@ -318,6 +319,20 @@ namespace surface
       void
       _cleanup();
 
+    private:
+      ELLE_ATTRIBUTE_R(reactor::Barrier, kick_out_barrier);
+      ELLE_ATTRIBUTE_R(std::unique_ptr<reactor::Thread>, kicker);
+    private:
+      void
+      _kick_out();
+
+      void
+      _kick_out(bool retry,
+               std::string const& message);
+      // Launch the kicker thread.
+      void
+      _initialize_kicker();
+
       /*-------------------.
       | External Callbacks |
       `-------------------*/
@@ -396,7 +411,6 @@ namespace surface
       | Papiers |
       `--------*/
     public:
-      typedef infinit::oracles::meta::Device Device;
       /// Get the remote device informations.
       Device const&
       device() const;
@@ -436,8 +450,14 @@ namespace surface
       | Devices |
       `--------*/
     public:
-      std::vector<Device>
+      std::vector<gap::Device const*>
       devices() const;
+
+      void
+      _on_devices_changed();
+
+      void
+      _devices(std::vector<Device> const& devices);
 
       // Could be factorized.
       /*------.
@@ -823,6 +843,12 @@ namespace surface
     private:
       void
       _apply_configuration(elle::json::Object json);
+
+    /*------.
+    | Model |
+    `------*/
+    public:
+      ELLE_ATTRIBUTE_R(Model, model);
 
     /*----------.
     | Printable |

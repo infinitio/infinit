@@ -97,7 +97,7 @@ with Meta(enable_emails = True) as meta:
     email = 'navet@infinit.io'
     alice.sendfile(email)
 
-    assert alice.next_notification.type == NEW_SWAGGER
+    assert alice.next_notification().type == NEW_SWAGGER
 
     meta.mailer = MailService()
     bob.put('user/accounts/%s' % email)
@@ -108,19 +108,19 @@ with Meta(enable_emails = True) as meta:
 
     trophonius.poll()
     assert len(bob.notifications) == 1
-    assert bob.next_notification.type == NEW_SWAGGER
+    assert bob.next_notification().type == NEW_SWAGGER
 
     # Ghost is now bob.
-    assert alice.next_notification.type == DELETED_SWAGGER
-    assert alice.next_notification.type == NEW_SWAGGER
+    assert alice.next_notification().type == DELETED_SWAGGER
+    assert alice.next_notification().type == NEW_SWAGGER
 
     email = 'poireau@infinit.io'
     tr, _ = alice.sendfile(email)
     alice.transaction_update(tr['_id'], INITIALIZED)
     # Ghost is a new swagger.
-    assert alice.next_notification.type == NEW_SWAGGER
+    assert alice.next_notification().type == NEW_SWAGGER
     # Transaction notification.
-    assert alice.next_notification.type == PEER_TRANSACTION
+    assert alice.next_notification().type == PEER_TRANSACTION
 
     assert len(bob.notifications) == 0
     assert len(bob.transactions) == 0
@@ -133,18 +133,18 @@ with Meta(enable_emails = True) as meta:
 
     assert len(bob.transactions) == 1
     # Alice is a bob new swagger.
-    # assert bob.next_notification.type == NEW_SWAGGER
+    # assert bob.next_notification().type == NEW_SWAGGER
     # Bob get the notification for the ghost transaction.
-    # notif = bob.next_notification
+    # notif = bob.next_notification()
     # assert notif.type == PEER_TRANSACTION
     # assert notif.status == INITIALIZED
     # assert notif.sender_id == alice.id
 
     # Ownership changed.
     # Fake trophonius is not deterministic...
-    # alices_notifications = [alice.next_notification.type,
-    #                         alice.next_notification.type,
-    #                         alice.next_notification.type]
+    # alices_notifications = [alice.next_notification().type,
+    #                         alice.next_notification().type,
+    #                         alice.next_notification().type]
     # alices_notifications.sort()
     # expected_notifications = [PEER_TRANSACTION, DELETED_SWAGGER, NEW_SWAGGER]
     # expected_notifications.sort()
@@ -154,20 +154,20 @@ with Meta(enable_emails = True) as meta:
     # # Check if bob can update transaction and get the notifications
     # bob.transaction_update(tr['_id'], ACCEPTED)
 
-    # notif = alice.next_notification
+    # notif = alice.next_notification()
     # assert notif.type == PEER_TRANSACTION
 
     # assert notif.status == ACCEPTED
-    # notif = bob.next_notification
+    # notif = bob.next_notification()
     # assert notif.type == PEER_TRANSACTION
     # assert notif.status == ACCEPTED
 
     # bob.transaction_update(tr['_id'], FINISHED)
 
-    # notif = alice.next_notification
+    # notif = alice.next_notification()
     # assert notif.type == PEER_TRANSACTION
     # assert notif.status == FINISHED
-    # notif = bob.next_notification
+    # notif = bob.next_notification()
     # assert notif.type == PEER_TRANSACTION
     # assert notif.status == FINISHED
 

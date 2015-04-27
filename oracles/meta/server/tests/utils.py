@@ -5,7 +5,7 @@ import infinit.oracles.meta.server
 from infinit.oracles.meta.server.mail import Mailer
 from infinit.oracles.meta.server.invitation import Invitation
 from infinit.oracles.meta.server import transaction_status
-from infinit.oracles.meta import version
+from infinit.oracles.meta import version as Version
 from random import uniform
 
 import socket
@@ -48,6 +48,12 @@ class Notification(dict):
   def __ge__(self, other):
     return self.notification_type >= other.notification_type
 
+def next_notification(user):
+  assert user.trophonius is not None
+  from time import sleep
+  user.trophonius.poll()
+  return user.notifications.pop(0)
+
 class HTTPException(Exception):
 
   def __init__(self, status, method, url, body, content):
@@ -62,7 +68,7 @@ class Client:
   def __init__(self, meta):
     self.__cookies = None
     self.__meta_port = meta.port
-    self.user_agent = 'MetaClient/' + version.version
+    self.user_agent = 'MetaClient/' + Version.version
 
   def __get_cookies(self, headers):
     cookies = headers.get('set-cookie', None)
@@ -124,6 +130,10 @@ class Client:
 class Trophonius(Client):
   class Accepter:
 
+    def poll(self, duration):
+      from time import sleep
+      sleep(duration)
+
     def __init__(self, trophonius):
       self.index = 0
       self.trophonius = trophonius
@@ -132,32 +142,37 @@ class Trophonius(Client):
       self.socket.bind(("localhost", 0))
       self.port = self.socket.getsockname()[1]
       self.socket.listen(2)
-
-    def poll(self):
-      while True:
-        try:
-          client = self.socket.accept()
-          client = client[0]
-          representation = str(client.recv(65535), 'utf-8')
-          representation = representation[:-1] # remove \n
-          d = json.loads(representation)
-          if d['notification']['notification_type'] == 14:
+      def poll():
+        while True:
+          try:
+            client = self.socket.accept()
+            client = client[0]
+            representation = str(client.recv(65535), 'utf-8')
+            representation = representation[:-1] # remove \n
+            d = json.loads(representation)
+            # Ignore configuration notification.
+            if d['notification']['notification_type'] == 14:
+              # OS X requires a larger backlog for the tests to function.
+              self.socket.listen(5)
+              self.poll()
+              continue
+            d['notification'].pop('timestamp')
+            for user in self.trophonius.users_on_device[UUID(d['device_id'])]:
+              user.notifications.append(Notification(d['notification']))
             # OS X requires a larger backlog for the tests to function.
             self.socket.listen(5)
-            self.poll()
-            return
-          d['notification'].pop('timestamp')
-          for user in self.trophonius.users_on_device[UUID(d['device_id'])]:
-            user.notifications.append(Notification(d['notification']))
-          # OS X requires a larger backlog for the tests to function.
-          self.socket.listen(5)
-        except:
-          return
+          except BaseException as e:
+            continue
+      import threading
+      self.__thread = threading.Thread(target = poll)
+      self.__thread.daemon = True
+      self.__thread.start()
 
   def __init__(self, meta):
     super().__init__(meta)
     self.__uuid = str(uuid4())
     self.__users = {}
+    self.__meta = meta
     self.users_on_device = {}
     self.meta_accepter = Trophonius.Accepter(self)
     self.client_accepter = Trophonius.Accepter(self)
@@ -167,8 +182,8 @@ class Trophonius(Client):
       'port_client_ssl': 23458,
     }
 
-  def poll(self):
-    return self.meta_accepter.poll()
+  def poll(self, duration = 0.1):
+    return self.meta_accepter.poll(duration)
 
   def __enter__(self):
     res = self.put('trophonius/%s' % self.__uuid, self.__args)
@@ -182,12 +197,24 @@ class Trophonius(Client):
   def connect_user(self, user):
     self.users_on_device.setdefault(user.device_id, set())
     user_id = str(user.id)
-    res = user.put('trophonius/%s/users/%s/%s' % \
-                   (self.__uuid, user_id, str(user.device_id)))
+    url = 'trophonius/%s/users/%s/%s' % \
+          (self.__uuid, user_id, str(user.device_id))
+    v = user.version
+    body = {}
+    if v is not None:
+      body['version'] = {
+        'major': v[0],
+        'minor': v[1],
+        'subminor': v[2],
+      }
+    res = user.put(url, body)
     assert res['success']
     self.__users.setdefault(user_id, [])
     self.__users[user_id].append(user.device_id)
     self.users_on_device[user.device_id].add(user)
+    setattr(user, 'trophonius', self)
+    setattr(user, 'notifications', [])
+    setattr(user, 'next_notification', lambda: next_notification(user))
 
   def disconnect_user(self, user):
     assert user.device_id in self.__users[user.id]
@@ -353,10 +380,15 @@ class Meta:
     if 'shorten_ghost_profile_url' not in self.__meta_args:
       self.__meta_args['shorten_ghost_profile_url'] = False
     self.__emailer = emailer or TestEmailer()
+    self.__version = infinit.oracles.meta.server.Meta.extract_version(Version.version, '')
 
   @property
   def emailer(self):
     return self.__emailer
+
+  @property
+  def version(self):
+    return self.__version
 
   @property
   def domain(self):
@@ -503,6 +535,7 @@ class User(Client):
                email = None,
                device_name = 'device',
                facebook = False,
+               version = None,
                **kwargs):
     super().__init__(meta)
 
@@ -513,8 +546,24 @@ class User(Client):
     else:
       self.__id = None
     self.device_id = uuid4()
-    self.notifications = []
     self.trophonius = None
+    self.__version = version or \
+                     infinit.oracles.meta.server.Meta.extract_version(
+                       Version.version, '')
+
+  def on_other_device(self):
+    from copy import copy
+    user_on_device = copy(self)
+    user_on_device.device_id = uuid4()
+    return user_on_device
+
+  @property
+  def version(self):
+    return self.__version
+
+  @version.setter
+  def version(self, version):
+    self.__version = version
 
   @property
   def id(self):
@@ -698,14 +747,6 @@ class User(Client):
       device_id = self.device_id
     return self.get('device/%s/%s/connected' % (self.id, str(device_id)))['connected']
 
-  @property
-  def next_notification(self):
-    assert self.trophonius is not None
-    from time import sleep
-    sleep(0.1)
-    self.trophonius.poll()
-    return self.notifications.pop(0)
-
   def __eq__(self, other):
     if isinstance(other, User):
       return self.email == other.email
@@ -864,6 +905,9 @@ def assertEq(a, b):
   if a != b:
     raise Exception('%r != %r' % (a, b))
 
+def assertNeq(a, b):
+  if a == b:
+    raise Exception('%r == %r' % (a, b))
 
 def assertIn(e, c):
   if e not in c:

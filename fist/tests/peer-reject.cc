@@ -34,8 +34,7 @@ ELLE_TEST_SCHEDULED(peer_reject)
       [&] (gap_TransactionStatus status)
       {
         ELLE_LOG("new local transaction status: %s", status);
-        auto& server_transaction =
-          server.transaction(transaction.data()->id);
+        server.transaction(transaction.data()->id);
         switch (status)
         {
           case gap_transaction_waiting_accept:

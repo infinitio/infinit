@@ -73,11 +73,11 @@ with Meta(enable_emails = True) as meta:
               })
     sleep(0.3)
 
-    notif = alice.next_notification
+    notif = alice.next_notification()
     assert notif.notification_type == PEER_CONNECTION_UPDATE
     assert notif.status == True
 
-    notif = bob.next_notification
+    notif = bob.next_notification()
     assert notif.notification_type == PEER_CONNECTION_UPDATE
     assert notif.status == True
 

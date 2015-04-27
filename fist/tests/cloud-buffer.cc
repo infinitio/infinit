@@ -246,7 +246,7 @@ ELLE_TEST_SCHEDULED(cloud_to_p2p)
   auto conn = state_transaction.status_changed().connect(
     [&] (gap_TransactionStatus status)
     {
-    t_id = state_transaction.data()->id;
+      t_id = state_transaction.data()->id;
       ELLE_LOG("new sender transaction status: %s", status);
       switch (status)
       {
