@@ -128,6 +128,20 @@ with mongobox.MongoBox() as mongo:
     sisy.boulders_run()
     assert not emailer.emails
 
+    # Check failed transfers don't trigger
+    failer = user_register(meta, 'failer@infinit.io')
+    for status in ['failed', 'rejected', 'canceled']:
+      tid = transaction_create(meta, failer,
+                               recipient_identifier = email)
+      sisy.boulders_run()
+      assert not emailer.emails
+      forward(reminder.delay * 1.1)
+      meta._transaction_update(tid, statuses[status],
+                               device, None, sender)
+      forward(reminder.delay * 1.1)
+      sisy.boulders_run()
+      check_no_mail(emailer.emails)
+
     # Check unaccepted transfers trigger too
     other = user_register(meta, 'other@infinit.io')
     tid = transaction_create(meta, other,
