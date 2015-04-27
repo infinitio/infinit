@@ -75,6 +75,8 @@ class Mixin:
       res['last_sync'] = device['last_sync']['date'].isoformat()
     if 'version' in device:
       res['version'] = device['version']
+    if 'model' in device:
+      res['model'] = device['model']
     return res
 
   @api('/user/devices')
