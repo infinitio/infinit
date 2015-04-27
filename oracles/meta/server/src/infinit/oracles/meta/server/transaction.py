@@ -902,6 +902,7 @@ class Mixin:
                                    device_id = device_id,
                                    device_name = device_name))
       elif status == transaction_status.REJECTED:
+        self.__complete_transaction_unaccepted_stats(user, transaction)
         diff.update(self.on_reject(transaction = transaction,
                                    user = user,
                                    device_id = device_id,
@@ -913,10 +914,12 @@ class Mixin:
                                      device_name = device_name,
                                      user = user))
       elif status == transaction_status.CANCELED:
+        self.__complete_transaction_unaccepted_stats(user, transaction)
         if not transaction.get('canceler', None):
           diff.update({'canceler': {'user': user['_id'], 'device': device_id}})
           diff.update(self.cloud_cleanup_transaction(transaction = transaction))
       elif status == transaction_status.FAILED:
+        self.__complete_transaction_unaccepted_stats(user, transaction)
         diff.update(self.cloud_cleanup_transaction(transaction = transaction))
       elif status == transaction_status.FINISHED:
         self.__update_transaction_stats(
