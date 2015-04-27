@@ -62,7 +62,7 @@ with Meta() as meta, Trophonius(meta) as t:
   expected_devices = set([str(u.device_id) for u in users])
   for u in users:
     assert expected_devices == set(u.get('user/self')['devices'])
-    u.notifications.clear()
+    del u.notifications[:]
   # Rename all of them as 'my mac'.
   new_name = 'my mac'
   for i in range(number_of_devices):
@@ -91,7 +91,7 @@ with Meta() as meta, Trophonius(meta) as t:
   all_devices = set([str(u.device_id) for u in users])
   for u in users:
     # Clear creation notification.
-    u.notifications.clear()
+    del u.notifications[:]
   for i in range(1, number_of_devices):
     users[0].delete('devices/%s' % users[i].device_id)
     for _ in range(number_of_devices - i):
