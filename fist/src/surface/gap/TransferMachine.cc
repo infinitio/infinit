@@ -370,11 +370,6 @@ namespace surface
         reactor::Waitables{&this->_owner.transaction().paused()},
         true);
       this->_fsm.transition_add(
-        stopped_state,
-        paused_state,
-        reactor::Waitables{&this->_owner.transaction().paused()},
-        true);
-      this->_fsm.transition_add(
         paused_state,
         cloud_synchronize_state,
         reactor::Waitables{&!this->_owner.transaction().paused()},
