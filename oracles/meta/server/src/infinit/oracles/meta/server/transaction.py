@@ -895,11 +895,13 @@ class Mixin:
         return {}
       allowed = transaction_status.transitions[transaction['status']][is_sender]
       if status not in allowed:
-        fmt = 'changing status %s to %s not permitted'
-        response(403, {'reason': fmt % args})
+        msg = 'changing status %s to %s not permitted' % args
+        elle.log.trace(msg)
+        response(403, {'reason': msg, 'sender': is_sender})
       if transaction['status'] in transaction_status.final:
-        fmt = 'changing final status %s to %s not permitted'
-        response(403, {'reason': fmt % args})
+        msg = 'changing final status %s to %s not permitted' % args
+        elle.log.trace(msg)
+        response(403, {'reason': msg})
       diff = {}
       operation = {}
       if status == transaction_status.ACCEPTED:
