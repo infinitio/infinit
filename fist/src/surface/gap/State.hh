@@ -710,6 +710,10 @@ namespace surface
       ELLE_ATTRIBUTE_R(Transactions, transactions);
       Transactions& transactions() {  return this->_transactions; }
 
+      void
+      transaction_pause(uint32_t id,
+                        bool paused = true);
+
       /*------------------.
       | Link Transactions |
       `------------------*/

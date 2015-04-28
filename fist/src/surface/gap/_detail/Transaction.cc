@@ -50,6 +50,20 @@ namespace surface
       ELLE_ERR("%s: transaction %s not found", *this, id);
     }
 
+    void
+    State::transaction_pause(uint32_t id,
+                             bool paused)
+    {
+      auto t_id = boost::lexical_cast<std::string>(id);
+      this->meta().update_transaction(t_id,
+                                      boost::none, //status
+                                      elle::UUID(), // device_id
+                                      "", // device_name
+                                      paused);
+      auto& transaction = this->_transactions.at(id);
+      transaction->paused().close();
+    }
+
     uint32_t
     State::create_link(std::vector<std::string> const& files,
                        std::string const& message)
