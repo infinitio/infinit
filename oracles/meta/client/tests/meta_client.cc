@@ -763,13 +763,13 @@ namespace facebook
     infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
     {
       auto res = c.facebook_connect("foobar", boost::uuids::nil_uuid());
-      ELLE_ASSERT_EQ(static_cast<bool>(res.account_registered), false);
+      ELLE_ASSERT_EQ(res.account_registered, true);
       ELLE_ASSERT_EQ(static_cast<bool>(res.ghost_code), false);
     }
     {
       auto res = c.facebook_connect("foobar", boost::uuids::nil_uuid());
       ELLE_ASSERT_EQ(static_cast<bool>(res.ghost_code), false);
-      ELLE_ASSERT_EQ(static_cast<bool>(res.account_registered), false);
+      ELLE_ASSERT_EQ(res.account_registered, false);
     }
     {
       std::string code = "foooo";
@@ -777,6 +777,7 @@ namespace facebook
       auto res = c.facebook_connect("foobar", boost::uuids::nil_uuid());
       ELLE_ASSERT_EQ(static_cast<bool>(res.ghost_code), true);
       ELLE_ASSERT_EQ(res.ghost_code.get(), code);
+      ELLE_ASSERT_EQ(res.account_registered, false);
     }
 
   }
