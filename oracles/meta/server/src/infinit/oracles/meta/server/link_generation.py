@@ -374,7 +374,10 @@ class Mixin:
             elle.log.warn('Link HEAD failed with %s on %s: %s' %
               ( r.status_code, link['_id'], r.content))
           file_size = int(r.headers.get('Content-Length', 0))
-          extra = {'file_size': file_size}
+          extra = {
+            'file_size': file_size,
+            'quota_counted': True
+          }
           self.database.users.update(
             {'_id': user['_id']},
             {'$inc': {'total_link_size': file_size}}
