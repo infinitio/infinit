@@ -5,8 +5,8 @@
 # include <unordered_map>
 # include <vector>
 
-/// Used by the iOS application.
 # include <infinit/oracles/TransactionStatuses.hh>
+# include <infinit/oracles/meta/AddressBookContact.hh>
 
 # include <surface/gap/LinkTransaction.hh>
 # include <surface/gap/Model.hh>
@@ -454,4 +454,10 @@ gap_facebook_connect(gap_State* state,
 gap_Status
 gap_upload_address_book(gap_State* state,
                         std::string const& json);
+
+typedef infinit::oracles::meta::AddressBookContact AddressBookContact;
+gap_Status
+gap_upload_address_book(gap_State* state,
+                        std::vector<AddressBookContact> const& contacts);
+
 #endif
