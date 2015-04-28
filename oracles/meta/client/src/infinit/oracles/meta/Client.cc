@@ -1030,7 +1030,7 @@ namespace infinit
 
       UpdatePeerTransactionResponse
       Client::update_transaction(std::string const& transaction_id,
-                                 Transaction::Status status,
+                                 boost::optional<Transaction::Status> status,
                                  elle::UUID const& device_id,
                                  std::string const& device_name,
                                  boost::optional<bool> paused) const
@@ -1055,20 +1055,22 @@ namespace infinit
             // const API
             query.serialize("transaction_id",
                             const_cast<std::string&>(transaction_id));
-            int status_integral = static_cast<int>(status);
-            query.serialize("status", status_integral);
-            if (status == oracles::Transaction::Status::accepted ||
-                status == oracles::Transaction::Status::rejected)
+            if (status)
             {
-              ELLE_ASSERT(!device_id.is_nil());
-              ELLE_ASSERT_GT(device_name.length(), 0u);
-              query.serialize("device_id",
-                              const_cast<elle::UUID&>(device_id));
-              query.serialize("device_name",
-                              const_cast<std::string&>(device_name));
-              query.serialize("paused",
-                              paused);
+              int status_integral = static_cast<int>(*status);
+              query.serialize("status", status_integral);
+              if (*status == oracles::Transaction::Status::accepted ||
+                  *status == oracles::Transaction::Status::rejected)
+              {
+                ELLE_ASSERT(!device_id.is_nil());
+                ELLE_ASSERT_GT(device_name.length(), 0u);
+                query.serialize("device_id",
+                                const_cast<elle::UUID&>(device_id));
+                query.serialize("device_name",
+                                const_cast<std::string&>(device_name));
+              }
             }
+            query.serialize("paused", paused);
           });
         SerializerIn input(url, request);
         return UpdatePeerTransactionResponse(input);

@@ -849,7 +849,7 @@ class Mixin:
   @require_logged_in
   def transaction_update(self,
                          transaction_id,
-                         status,
+                         status = None,
                          device_id = None,
                          device_name = None,
                          paused = None):
@@ -864,14 +864,11 @@ class Mixin:
     except error.Error as e:
       return self.fail(*e.args)
 
-    res.update({
-      'updated_transaction_id': transaction_id,
-    })
     return self.success(res)
 
   def _transaction_update(self,
                           transaction_id,
-                          status,
+                          status = None,
                           device_id = None,
                           device_name = None,
                           user = None,
@@ -889,62 +886,66 @@ class Mixin:
       transaction = self.transaction(transaction_id,
                                      owner_id = user['_id'])
       is_sender = self.is_sender(transaction, user['_id'], device_id)
-      args = (transaction['status'], status)
-      if transaction['status'] == status:
-        return {}
-      allowed = transaction_status.transitions[transaction['status']][is_sender]
-      if status not in allowed:
-        fmt = 'changing status %s to %s not permitted'
-        response(403, {'reason': fmt % args})
-      if transaction['status'] in transaction_status.final:
-        fmt = 'changing final status %s to %s not permitted'
-        response(403, {'reason': fmt % args})
+
       diff = {}
       operation = {}
-      if status == transaction_status.ACCEPTED:
-        diff.update(self.on_accept(transaction = transaction,
-                                   user = user,
-                                   device_id = device_id,
-                                   device_name = device_name))
-      elif status == transaction_status.REJECTED:
-        diff.update(self.on_reject(transaction = transaction,
-                                   user = user,
-                                   device_id = device_id,
-                                   device_name = device_name))
-        diff.update(self.cloud_cleanup_transaction(transaction = transaction))
-      elif status == transaction_status.GHOST_UPLOADED:
-        diff.update(self.on_ghost_uploaded(transaction = transaction,
+
+      if status is not None:
+        args = (transaction['status'], status)
+        if transaction['status'] == status:
+          return {}
+        allowed = transaction_status.transitions[transaction['status']][is_sender]
+        if status not in allowed:
+          fmt = 'changing status %s to %s not permitted'
+          response(403, {'reason': fmt % args})
+        if transaction['status'] in transaction_status.final:
+          fmt = 'changing final status %s to %s not permitted'
+          response(403, {'reason': fmt % args})
+
+        if status == transaction_status.ACCEPTED:
+          diff.update(self.on_accept(transaction = transaction,
+                                     user = user,
                                      device_id = device_id,
-                                     device_name = device_name,
-                                     user = user))
-      elif status == transaction_status.CANCELED:
-        if not transaction.get('canceler', None):
-          diff.update({'canceler': {'user': user['_id'], 'device': device_id}})
+                                     device_name = device_name))
+        elif status == transaction_status.REJECTED:
+          diff.update(self.on_reject(transaction = transaction,
+                                     user = user,
+                                     device_id = device_id,
+                                     device_name = device_name))
           diff.update(self.cloud_cleanup_transaction(transaction = transaction))
-      elif status == transaction_status.FAILED:
-        diff.update(self.cloud_cleanup_transaction(transaction = transaction))
-      elif status == transaction_status.FINISHED:
-        self.__update_transaction_stats(
-          transaction['recipient_id'],
-          counts = ['received_peer', 'received'],
-          time = True)
-        self.__update_transaction_stats(
-          transaction['sender_id'],
-          counts = ['reached_peer', 'reached'],
-          time = False)
-      if status in transaction_status.final:
-        operation["$unset"] = {"nodes": 1}
-      # Don't override accepted with cloud_buffered.
-      if status == transaction_status.CLOUD_BUFFERED and \
-         transaction['status'] == transaction_status.ACCEPTED:
-        diff.update({'status': transaction_status.ACCEPTED})
-      elif status == transaction_status.CLOUD_BUFFERED:
-        diff.update({
-          'status': status,
-          'cloud_buffered': True
-        })
-      else:
-        diff.update({'status': status})
+        elif status == transaction_status.GHOST_UPLOADED:
+          diff.update(self.on_ghost_uploaded(transaction = transaction,
+                                       device_id = device_id,
+                                       device_name = device_name,
+                                       user = user))
+        elif status == transaction_status.CANCELED:
+          if not transaction.get('canceler', None):
+            diff.update({'canceler': {'user': user['_id'], 'device': device_id}})
+            diff.update(self.cloud_cleanup_transaction(transaction = transaction))
+        elif status == transaction_status.FAILED:
+          diff.update(self.cloud_cleanup_transaction(transaction = transaction))
+        elif status == transaction_status.FINISHED:
+          self.__update_transaction_stats(
+            transaction['recipient_id'],
+            counts = ['received_peer', 'received'],
+            time = True)
+          self.__update_transaction_stats(
+            transaction['sender_id'],
+            counts = ['reached_peer', 'reached'],
+            time = False)
+        if status in transaction_status.final:
+          operation["$unset"] = {"nodes": 1}
+        # Don't override accepted with cloud_buffered.
+        if status == transaction_status.CLOUD_BUFFERED and \
+           transaction['status'] == transaction_status.ACCEPTED:
+          diff.update({'status': transaction_status.ACCEPTED})
+        elif status == transaction_status.CLOUD_BUFFERED:
+          diff.update({
+            'status': status,
+            'cloud_buffered': True
+          })
+        else:
+          diff.update({'status': status})
       diff.update({
         'mtime': time.time(),
         'modification_time': self.now,

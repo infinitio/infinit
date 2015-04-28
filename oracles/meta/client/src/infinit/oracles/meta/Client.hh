@@ -544,7 +544,7 @@ namespace infinit
 
         UpdatePeerTransactionResponse
         update_transaction(std::string const& transaction_id,
-                           Transaction::Status status,
+                           boost::optional<Transaction::Status> status = boost::none,
                            elle::UUID const& device_id = elle::UUID(),
                            std::string const& device_name = "",
                            boost::optional<bool> paused = boost::none) const;
