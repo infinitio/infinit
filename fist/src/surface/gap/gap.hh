@@ -98,6 +98,9 @@ gap_register(gap_State* state,
              boost::optional<std::string> device_name = {});
 
 gap_Status
+gap_check_ghost_code(gap_State* state, std::string const& code, bool& res);
+
+gap_Status
 gap_use_ghost_code(gap_State* state,
                    std::string const& code);
 

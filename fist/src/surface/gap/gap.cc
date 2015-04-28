@@ -287,8 +287,27 @@ gap_register(gap_State* state,
 }
 
 gap_Status
+gap_check_ghost_code(gap_State* state, std::string const& code, bool& res)
+{
+  ELLE_ASSERT(state != nullptr);
+  if (code.empty())
+  {
+    res = false;
+    return gap_ok;
+  }
+  return run<gap_Status>(
+    state,
+    "check ghost code",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      res = state.meta().check_ghost_code(code);
+      return gap_ok;
+    });
+}
+
+gap_Status
 gap_use_ghost_code(gap_State* state,
-                  std::string const& code)
+                   std::string const& code)
 {
   ELLE_ASSERT(state != nullptr);
   if (code.empty())
