@@ -1696,6 +1696,19 @@ namespace infinit
       }
 
       void
+      Client::upload_address_book(
+        std::vector<AddressBookContact> contacts) const
+      {
+        std::string url = "/user/contacts";
+        auto request = this->_request(url, Method::PUT,
+          [&] (reactor::http::Request& request)
+          {
+            elle::serialization::json::SerializerOut output(request, false);
+            output.serialize("contacts", contacts);
+          });
+      }
+
+      void
       User::print(std::ostream& stream) const
       {
         stream << "User(" << this->id << ", " << this->handle << ")";

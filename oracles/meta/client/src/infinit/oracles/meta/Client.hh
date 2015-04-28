@@ -31,6 +31,7 @@
 
 # include <infinit/oracles/LinkTransaction.hh>
 # include <infinit/oracles/PeerTransaction.hh>
+# include <infinit/oracles/meta/AddressBookContact.hh>
 # include <infinit/oracles/meta/Device.hh>
 # include <infinit/oracles/meta/Error.hh>
 
@@ -630,6 +631,9 @@ namespace infinit
 
         void
         upload_address_book(std::string const& json) const;
+
+        void
+        upload_address_book(std::vector<AddressBookContact> contacts) const;
 
       /*----------.
       | Printable |
