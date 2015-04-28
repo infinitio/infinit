@@ -14,4 +14,5 @@ notifications = {
   'ping': 208,
   'connection_enabled': -666,
   'suicide': 666,
+  'paused': 42,
 }

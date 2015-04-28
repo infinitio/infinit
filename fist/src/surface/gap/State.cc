@@ -1226,6 +1226,14 @@ namespace surface
         case infinit::oracles::trophonius::NotificationType::invalid_credentials:
           this->_on_invalid_trophonius_credentials();
           break;
+        case infinit::oracles::trophonius::NotificationType::paused:
+          ELLE_ASSERT(
+            dynamic_cast<infinit::oracles::trophonius::PausedNotification const*>(
+              notif.get()) != nullptr);
+          this->_on_transaction_paused(
+            *static_cast<infinit::oracles::trophonius::PausedNotification const*>(
+              notif.get()));
+          break;
         case infinit::oracles::trophonius::NotificationType::none:
         case infinit::oracles::trophonius::NotificationType::network_update:
         case infinit::oracles::trophonius::NotificationType::message:

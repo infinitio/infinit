@@ -189,6 +189,14 @@ namespace infinit
         : Notification(NotificationType::peer_connection_update)
       {}
 
+      PausedNotification::PausedNotification(
+        elle::serialization::SerializerIn& input)
+        : Notification(NotificationType::paused)
+      {
+        input.serialize("transaction_id", this->transaction_id);
+        input.serialize("paused", this->paused);
+      }
+
       static
       std::unique_ptr<Notification>
       notification_from_dict(elle::json::Object const& json)

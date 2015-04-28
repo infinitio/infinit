@@ -954,6 +954,14 @@ class Mixin:
         diff.update({
           'paused': paused,
         })
+        self.notifier.notify_some(
+          notifier.PAUSED,
+          recipient_ids = {transaction['sender_id'],
+                           transaction['recipient_id']},
+          message = {
+            'transaction_id': transaction_id,
+            'paused': paused,
+            })
       # Don't update with an empty dictionary: it would empty the
       # object.
       if diff:

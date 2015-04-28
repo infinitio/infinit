@@ -61,7 +61,11 @@ namespace surface
                                       "", // device_name
                                       paused);
       auto& transaction = this->_transactions.at(id);
-      transaction->paused().close();
+      if (paused)
+        transaction->paused().close();
+      else
+        transaction->paused().open();
+
     }
 
     uint32_t
@@ -482,6 +486,30 @@ namespace surface
                                           notif.endpoints_public);
       else
         it->second->notify_peer_unreachable();
+    }
+
+    void
+    State::_on_transaction_paused(
+      infinit::oracles::trophonius::PausedNotification const& notif)
+    {
+      auto it = std::find_if(
+        std::begin(this->_transactions),
+        std::end(this->_transactions),
+        [&] (TransactionConstPair const& pair)
+        {
+          return (!pair.second->data()->id.empty()) &&
+                 (pair.second->data()->id == notif.transaction_id);
+        });
+      if (it == std::end(this->_transactions))
+      {
+        ELLE_WARN("transaction pause: transaction %s doesn't exist",
+                  notif.transaction_id);
+        return;
+      }
+      if (notif.paused)
+        it->second->paused().close();
+      else
+        it->second->paused().open();
     }
   }
 }

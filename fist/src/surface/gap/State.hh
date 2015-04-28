@@ -790,6 +790,10 @@ namespace surface
       _on_peer_reachability_updated(
         infinit::oracles::trophonius::PeerReachabilityNotification const& notif);
 
+      void
+      _on_transaction_paused(
+        infinit::oracles::trophonius::PausedNotification const& notif);
+
     public:
       mutable reactor::MultiLockBarrier transaction_update_lock;
     /*--------------.
