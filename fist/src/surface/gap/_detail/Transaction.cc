@@ -275,26 +275,31 @@ namespace surface
             });
           if (it != std::end(this->_transactions))
           {
+            ELLE_TRACE_SCOPE(
+              "%s: update peer transactions with data: %s",
+              *this, transaction);
             it->second->on_transaction_update(
               std::make_shared<infinit::oracles::PeerTransaction>(transaction));
-            continue;
           }
-          ELLE_DUMP("ensure that both user are fetched")
+          else
           {
-            this->user(transaction.sender_id);
-            this->user(transaction.recipient_id);
-          }
-          bool sender = (this->me().id == transaction.sender_id);
-          auto const& final_statuses = sender
-            ? Transaction::sender_final_statuses
-            : Transaction::recipient_final_statuses;
-          bool history =
-            std::find(final_statuses.begin(),
-                      final_statuses.end(),
-                      transaction.status) != final_statuses.end();
-          auto _id = generate_id();
-          ELLE_TRACE("%s: create historical peer transactions from data: %s",
-                     *this, transaction)
+            ELLE_TRACE_SCOPE(
+              "%s: create historical peer transactions from data: %s",
+              *this, transaction);
+            ELLE_DEBUG("%s: ensure both user are fetched", *this)
+            {
+              this->user(transaction.sender_id);
+              this->user(transaction.recipient_id);
+            }
+            bool sender = (this->me().id == transaction.sender_id);
+            auto const& final_statuses = sender
+              ? Transaction::sender_final_statuses
+              : Transaction::recipient_final_statuses;
+            bool history =
+              std::find(final_statuses.begin(),
+                        final_statuses.end(),
+                        transaction.status) != final_statuses.end();
+            auto _id = generate_id();
             this->_transactions.emplace(
               _id,
               elle::make_unique<Transaction>(
@@ -303,6 +308,7 @@ namespace surface
                 this->_authority,
                 history,
                 login));
+          }
         }
       }
     }
