@@ -661,6 +661,8 @@ gap_account_status_for_email(gap_State* state,
           res = gap_account_status_registered;
         else if (u.register_status == "ghost")
           res = gap_account_status_ghost;
+        else if (u.register_status == "contact")
+          res = gap_account_status_contact;
       }
       catch (infinit::state::UserNotFoundError const&)
       {
