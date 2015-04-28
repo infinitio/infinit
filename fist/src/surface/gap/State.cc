@@ -705,7 +705,21 @@ namespace surface
               this->meta().synchronize(true)});
           ELLE_TRACE("got synchronisation response");
           this->_devices(this->_synchronize_response->devices);
-          this->_model.devices.changed().connect([this] { ELLE_LOG("CHANGED") this->_on_devices_changed(); });
+          this->_model.devices.added().connect(
+            [this] (Device& d)
+            {
+              this->_on_device_added(d);
+            });
+          this->_model.devices.removed().connect(
+            [this] (elle::UUID id)
+            {
+              this->_on_device_removed(id);
+            });
+          this->_model.devices.reset().connect(
+            [this] ()
+            {
+              this->_on_devices_reseted();
+            });
           this->_avatar_fetcher_thread.reset(
             new reactor::Thread{
               scheduler,
@@ -1337,31 +1351,46 @@ namespace surface
     }
 
     void
-    State::_on_devices_changed()
+    State::_on_device_added(Device const& device) const
+    {}
+
+    void
+    State::_on_device_removed(elle::UUID id)
     {
-      // If the device current device is not present in the list anymore, kick
-      // the user out.
+      ELLE_TRACE_SCOPE("device %s removed from list %s",
+        id, this->_model.devices);
+      if (id == this->_device_uuid)
+        this->_kick_out(false, "Your device has been deleted");
+    }
+
+    void
+    State::_on_devices_reseted()
+    {
+      ELLE_TRACE_SCOPE("devices reseted: %s", this->_model);
       if (this->_model.devices.empty() ||
         std::find_if(this->_model.devices.begin(),
                      this->_model.devices.end(),
                      [&] (Device const& device)
                      {
-                       return device.id == this->_device->id;
+                        return device.id == this->_device->id;
                      }) == this->_model.devices.end())
-        ELLE_LOG("kick out")
-          this->_kick_out(false, "Your device has been deleted");
+        this->_on_device_removed(this->_device->id);
     }
 
     void
     State::_devices(std::vector<Device> const& devices)
     {
+      ELLE_TRACE_SCOPE("reset %s with %s", this->_model, devices);
       this->_model.devices.reset(devices);
-      auto it = std::find_if(this->_model.devices.begin(),
-                             this->_model.devices.end(),
-                             [&] (Device const& device)
-                             {
-                               return device.id == this->_device->id;
-                             });
+      ELLE_ASSERT_EQ(this->_model.devices.size(), devices.size());
+      auto it = std::find_if(
+        this->_model.devices.begin(),
+        this->_model.devices.end(),
+        [&] (Device const& device)
+        {
+          ELLE_LOG("device id: %s - this->_device %s", device.id, this->_device->id);
+          return device.id == this->_device->id;
+        });
       if (it != this->_model.devices.end())
       {
         it->second.name.changed().connect([&] (std::string const& name)

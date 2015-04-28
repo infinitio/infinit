@@ -450,7 +450,13 @@ namespace surface
       devices() const;
 
       void
-      _on_devices_changed();
+      _on_device_added(Device const& device) const;
+
+      void
+      _on_device_removed(elle::UUID id);
+
+      void
+      _on_devices_reseted();
 
       void
       _devices(std::vector<Device> const& devices);
