@@ -939,6 +939,7 @@ namespace infinit
         s.serialize("aws_credentials", this->_cloud_credentials);
         s.serialize("ghost_code", this->_ghost_code);
         s.serialize("ghost_profile", this->_ghost_profile_url);
+        s.serialize("paused", this->_paused);
       }
 
       CreatePeerTransactionResponse
@@ -1032,14 +1033,20 @@ namespace infinit
 
       UpdatePeerTransactionResponse
       Client::update_transaction(std::string const& transaction_id,
-                                 Transaction::Status status,
+                                 boost::optional<Transaction::Status> status,
                                  elle::UUID const& device_id,
-                                 std::string const& device_name) const
+                                 std::string const& device_name,
+                                 boost::optional<bool> paused) const
       {
         ELLE_TRACE("%s: update %s transaction with new status %s",
                    *this,
                    transaction_id,
                    status);
+        if (paused)
+          ELLE_TRACE("%s: change transaction %s paused status to %s",
+                     *this,
+                     transaction_id,
+                     *paused);
         auto url = "/transaction/update";
         auto request = this->_request(
           url,
@@ -1051,18 +1058,22 @@ namespace infinit
             // const API
             query.serialize("transaction_id",
                             const_cast<std::string&>(transaction_id));
-            int status_integral = static_cast<int>(status);
-            query.serialize("status", status_integral);
-            if (status == oracles::Transaction::Status::accepted ||
-                status == oracles::Transaction::Status::rejected)
+            if (status)
             {
-              ELLE_ASSERT(!device_id.is_nil());
-              ELLE_ASSERT_GT(device_name.length(), 0u);
-              query.serialize("device_id",
-                              const_cast<elle::UUID&>(device_id));
-              query.serialize("device_name",
-                              const_cast<std::string&>(device_name));
+              int status_integral = static_cast<int>(*status);
+              query.serialize("status", status_integral);
+              if (*status == oracles::Transaction::Status::accepted ||
+                  *status == oracles::Transaction::Status::rejected)
+              {
+                ELLE_ASSERT(!device_id.is_nil());
+                ELLE_ASSERT_GT(device_name.length(), 0u);
+                query.serialize("device_id",
+                                const_cast<elle::UUID&>(device_id));
+                query.serialize("device_name",
+                                const_cast<std::string&>(device_name));
+              }
             }
+            query.serialize("paused", paused);
           });
         SerializerIn input(url, request);
         return UpdatePeerTransactionResponse(input);

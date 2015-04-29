@@ -140,6 +140,7 @@ class Mixin:
       'sender_fullname': True,
       'sender_id': True,
       'total_size': True,
+      'paused': True,
     }
     if include_id:
       res['_id'] = True
@@ -218,6 +219,7 @@ class Mixin:
           'sender_fullname': True,
           'sender_id': True,
           'total_size': True,
+          'paused': True,
         })
       # handle both negative search and empty transaction
       if not transaction:
@@ -562,6 +564,7 @@ class Mixin:
         'fallback_port_tcp': None,
         'aws_credentials': None,
         'is_ghost': is_ghost,
+        'paused': False,
         'strings': ' '.join([
               sender['fullname'],
               sender['handle'],
@@ -862,30 +865,30 @@ class Mixin:
   @require_logged_in
   def transaction_update(self,
                          transaction_id,
-                         status,
+                         status = None,
                          device_id = None,
-                         device_name = None):
+                         device_name = None,
+                         paused = None):
 
     try:
       res = self._transaction_update(transaction_id,
                                      status,
                                      device_id,
                                      device_name,
-                                     self.user)
+                                     self.user,
+                                     paused)
     except error.Error as e:
       return self.fail(*e.args)
 
-    res.update({
-      'updated_transaction_id': transaction_id,
-    })
     return self.success(res)
 
   def _transaction_update(self,
                           transaction_id,
-                          status,
+                          status = None,
                           device_id = None,
                           device_name = None,
-                          user = None):
+                          user = None,
+                          paused = None):
     with elle.log.trace('update transaction %s to status %s' %
                         (transaction_id, status)):
       if user is None:
@@ -899,74 +902,87 @@ class Mixin:
       transaction = self.transaction(transaction_id,
                                      owner_id = user['_id'])
       is_sender = self.is_sender(transaction, user['_id'], device_id)
-      args = (transaction['status'], status)
-      if transaction['status'] == status:
-        return {}
-      allowed = transaction_status.transitions[transaction['status']][is_sender]
-      if status not in allowed:
-        msg = 'changing status %s to %s not permitted' % args
-        elle.log.trace(msg)
-        response(403, {'reason': msg, 'sender': is_sender})
-      if transaction['status'] in transaction_status.final:
-        msg = 'changing final status %s to %s not permitted' % args
-        elle.log.trace(msg)
-        response(403, {'reason': msg})
       diff = {}
       operation = {}
-      if status == transaction_status.ACCEPTED:
-        diff.update(self.on_accept(transaction = transaction,
-                                   user = user,
-                                   device_id = device_id,
-                                   device_name = device_name))
-      elif status == transaction_status.REJECTED:
-        self.__complete_transaction_unaccepted_stats(user, transaction)
-        diff.update(self.on_reject(transaction = transaction,
-                                   user = user,
-                                   device_id = device_id,
-                                   device_name = device_name))
-        diff.update(self.cloud_cleanup_transaction(transaction = transaction))
-      elif status == transaction_status.GHOST_UPLOADED:
-        diff.update(self.on_ghost_uploaded(transaction = transaction,
+      if status is not None:
+        args = (transaction['status'], status)
+        if transaction['status'] == status:
+          return {}
+        allowed = transaction_status.transitions[transaction['status']][is_sender]
+        if status not in allowed:
+          msg = 'changing status %s to %s not permitted' % args
+          elle.log.trace(msg)
+          response(403, {'reason': msg, 'sender': is_sender})
+        if transaction['status'] in transaction_status.final:
+          msg = 'changing final status %s to %s not permitted' % args
+          elle.log.trace(msg)
+          response(403, {'reason': msg})
+        if status == transaction_status.ACCEPTED:
+          diff.update(self.on_accept(transaction = transaction,
+                                     user = user,
                                      device_id = device_id,
-                                     device_name = device_name,
-                                     user = user))
-      elif status == transaction_status.CANCELED:
-        self.__complete_transaction_unaccepted_stats(user, transaction)
-        if not transaction.get('canceler', None):
-          diff.update({'canceler': {'user': user['_id'], 'device': device_id}})
+                                     device_name = device_name))
+        elif status == transaction_status.REJECTED:
+          self.__complete_transaction_unaccepted_stats(user, transaction)
+          diff.update(self.on_reject(transaction = transaction,
+                                     user = user,
+                                     device_id = device_id,
+                                     device_name = device_name))
           diff.update(self.cloud_cleanup_transaction(transaction = transaction))
-      elif status == transaction_status.FAILED:
-        self.__complete_transaction_unaccepted_stats(user, transaction)
-        diff.update(self.cloud_cleanup_transaction(transaction = transaction))
-      elif status == transaction_status.FINISHED:
-        self.__update_transaction_stats(
-          transaction['recipient_id'],
-          counts = ['received_peer', 'received'],
-          time = True)
-        self.__update_transaction_stats(
-          transaction['sender_id'],
-          counts = ['reached_peer', 'reached'],
-          time = False)
-      if status in transaction_status.final:
-        operation["$unset"] = {"nodes": 1}
-      # Don't override accepted with cloud_buffered.
-      if status == transaction_status.CLOUD_BUFFERED and \
-         transaction['status'] == transaction_status.ACCEPTED:
-        diff.update({'status': transaction_status.ACCEPTED})
-      elif status == transaction_status.CLOUD_BUFFERED:
+        elif status == transaction_status.GHOST_UPLOADED:
+          diff.update(self.on_ghost_uploaded(transaction = transaction,
+                                       device_id = device_id,
+                                       device_name = device_name,
+                                       user = user))
+        elif status == transaction_status.CANCELED:
+          self.__complete_transaction_unaccepted_stats(user, transaction)
+          if not transaction.get('canceler', None):
+            diff.update({'canceler': {'user': user['_id'], 'device': device_id}})
+            diff.update(self.cloud_cleanup_transaction(transaction = transaction))
+        elif status == transaction_status.FAILED:
+          self.__complete_transaction_unaccepted_stats(user, transaction)
+          diff.update(self.cloud_cleanup_transaction(transaction = transaction))
+        elif status == transaction_status.FINISHED:
+          self.__update_transaction_stats(
+            transaction['recipient_id'],
+            counts = ['received_peer', 'received'],
+            time = True)
+          self.__update_transaction_stats(
+            transaction['sender_id'],
+            counts = ['reached_peer', 'reached'],
+            time = False)
+        if status in transaction_status.final:
+          operation["$unset"] = {"nodes": 1}
+        # Don't override accepted with cloud_buffered.
+        if status == transaction_status.CLOUD_BUFFERED and \
+           transaction['status'] == transaction_status.ACCEPTED:
+          diff.update({'status': transaction_status.ACCEPTED})
+        elif status == transaction_status.CLOUD_BUFFERED:
+          diff.update({
+            'status': status,
+            'cloud_buffered': True
+          })
+        else:
+          diff.update({'status': status})
+      if paused is not None:
         diff.update({
-          'status': status,
-          'cloud_buffered': True
+          'paused': paused,
         })
-      else:
-        diff.update({'status': status})
-      diff.update({
-        'mtime': time.time(),
-        'modification_time': self.now,
-      })
+        self.notifier.notify_some(
+          notifier.PAUSED,
+          recipient_ids = {transaction['sender_id'],
+                           transaction['recipient_id']},
+          message = {
+            'transaction_id': transaction_id,
+            'paused': paused,
+            })
       # Don't update with an empty dictionary: it would empty the
       # object.
       if diff:
+        diff.update({
+          'mtime': time.time(),
+          'modification_time': self.now,
+        })
         operation["$set"] = diff
         if status in transaction_status.final:
           for i in ['recipient_id', 'sender_id']:

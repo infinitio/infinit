@@ -732,6 +732,10 @@ namespace surface
       ELLE_ATTRIBUTE_R(Transactions, transactions);
       Transactions& transactions() {  return this->_transactions; }
 
+      void
+      transaction_pause(uint32_t id,
+                        bool paused = true);
+
       /*------------------.
       | Link Transactions |
       `------------------*/
@@ -807,6 +811,10 @@ namespace surface
       void
       _on_peer_reachability_updated(
         infinit::oracles::trophonius::PeerReachabilityNotification const& notif);
+
+      void
+      _on_transaction_paused(
+        infinit::oracles::trophonius::PausedNotification const& notif);
 
     public:
       mutable reactor::MultiLockBarrier transaction_update_lock;

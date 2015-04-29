@@ -193,6 +193,13 @@ namespace infinit
         elle::json::Json json;
       };
 
+      struct PausedNotification:
+        public Notification
+      {
+        PausedNotification(elle::serialization::SerializerIn& input);
+        std::string transaction_id;
+        bool paused;
+      };
 
       struct ConnectionState
       {

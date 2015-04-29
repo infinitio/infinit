@@ -50,6 +50,24 @@ namespace surface
       ELLE_ERR("%s: transaction %s not found", *this, id);
     }
 
+    void
+    State::transaction_pause(uint32_t id,
+                             bool paused)
+    {
+      auto& transaction = this->_transactions.at(id);
+      auto t_id = transaction->data()->id;
+      this->meta().update_transaction(t_id,
+                                      boost::none, //status
+                                      elle::UUID(), // device_id
+                                      "", // device_name
+                                      paused);
+      if (paused)
+        transaction->paused().open();
+      else
+        transaction->paused().close();
+
+    }
+
     uint32_t
     State::create_link(std::vector<std::string> const& files,
                        std::string const& message)
@@ -475,6 +493,30 @@ namespace surface
                                           notif.endpoints_public);
       else
         it->second->notify_peer_unreachable();
+    }
+
+    void
+    State::_on_transaction_paused(
+      infinit::oracles::trophonius::PausedNotification const& notif)
+    {
+      auto it = std::find_if(
+        std::begin(this->_transactions),
+        std::end(this->_transactions),
+        [&] (TransactionConstPair const& pair)
+        {
+          return (!pair.second->data()->id.empty()) &&
+                 (pair.second->data()->id == notif.transaction_id);
+        });
+      if (it == std::end(this->_transactions))
+      {
+        ELLE_WARN("transaction pause: transaction %s doesn't exist",
+                  notif.transaction_id);
+        return;
+      }
+      if (notif.paused)
+        it->second->paused().open();
+      else
+        it->second->paused().close();
     }
   }
 }
