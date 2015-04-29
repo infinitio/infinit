@@ -622,3 +622,33 @@ class Mixin:
     user_id = self.database.links.find_one({'_id': id})['sender_id']
     user = self.database.users.find_one(user_id)
     self.link_update(id, 1, transaction_status.DELETED, user)
+
+  @api('/stats/links')
+  @require_admin
+  def adm_link_stats(self):
+    count = self.database.links.count()
+    r = self.database.links.aggregate([
+      {'$match': {'quota_counted': True}},
+      {'$group': { '_id': 1, 'total':{'$sum': '$file_size'}, 'max': {'$max': '$file_size'}}}
+    ])['result'][0]
+    total_size = r['total']
+    max_size = r['max']
+    over_quota = self.database.users.aggregate([
+        {'$match': {
+          'quota.total_link_size': {'$exists': True},
+          'total_link_size': {'$exists': True},
+        }},
+        {'$project': {
+          'oq': {'$cond': [
+              {'$gt': ['$total_link_size', '$quota.total_link_size']},
+          1, 0]}
+        }},
+        {'$match': {'oq': 1}}
+    ])['result']
+    over_quota = len(over_quota)
+    return {
+      'link_count' : count,
+      'link_total_size' : total_size,
+      'link_max_size': max_size,
+      'user_over_quota': over_quota,
+    }
