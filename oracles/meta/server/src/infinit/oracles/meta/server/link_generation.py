@@ -6,9 +6,10 @@ import calendar
 import datetime
 import time
 import elle.log
+import requests
 
 from pymongo import errors, DESCENDING
-from .utils import api, require_logged_in, require_admin, json_value
+from .utils import api, require_logged_in, require_logged_in_fields, require_admin, json_value
 from . import cloud_buffer_token, cloud_buffer_token_gcs, error, notifier, regexp, conf, invitation, mail, transaction_status
 
 #
@@ -145,22 +146,40 @@ class Mixin:
       else:
         return link['aws_credentials']
 
+  def _link_check_quota(self, user):
+    elle.log.trace('checking link quota')
+    if 'quota' in user and 'total_link_size' in user.get('quota', {}):
+      quota = user['quota']['total_link_size']
+      usage = user.get('total_link_size', 0)
+      elle.log.trace('usage: %s quota: %s' %(usage, quota))
+      if quota >= 0 and quota < usage:
+        self.quota_exceeded(
+          {
+            'reason': 'link size quota of %s reached' % quota,
+            'quota': quota,
+            'usage': usage,
+          })
+
   @api('/link_empty', method = 'POST')
-  @require_logged_in
+  @require_logged_in_fields(['quota', 'total_link_size'])
   def link_create_empty(self):
+    user = self.user
+    self._link_check_quota(user)
     link_id = self.database.links.insert({})
     return self.success({
-      'created_link_id': link_id,
+        'created_link_id': link_id,
       })
 
   @api('/link/<link_id>', method = 'PUT')
-  @require_logged_in
+  @require_logged_in_fields(['quota', 'total_link_size'])
   def link_initialize(self, link_id: bson.ObjectId, files, name, message):
-    return self.link_generate(files, name, message, self.user,
-                              self.current_device, link_id)
+    return self.link_generate(files, name, message,
+                              user = self.user,
+                              device = self.current_device,
+                              link_id = link_id)
 
   @api('/link', method = 'POST')
-  @require_logged_in
+  @require_logged_in_fields(['quota', 'total_link_size'])
   def link_generate_api(self, files, name, message):
     return self.link_generate(files, name, message,
                               user = self.user,
@@ -183,9 +202,8 @@ class Mixin:
         self.bad_request('no file dictionary')
       if len(name) == 0:
         self.bad_request('no name')
-
+      self._link_check_quota(user)
       creation_time = self.now
-
       # Maintain a list of all elements in document here.
       # Do not add a None hash as this causes problems with concurrency.
       link = {
@@ -283,6 +301,7 @@ class Mixin:
         'ctime',
         'expiry_time',    # Needed until 0.9.9.
         'hash',           # Needed until 0.9.9.
+        'files',
         'message',
         'mtime',
         'name',
@@ -293,6 +312,7 @@ class Mixin:
     ))
     if link['expiry_time'] is None: # Needed until 0.9.9.
       link['expiry_time'] = 0
+    link['files'] = [(f['name'], f['size']) for f in link['files']]
     return link
 
   @api('/link/<id>', method = 'POST')
@@ -316,6 +336,7 @@ class Mixin:
     """
     with elle.log.trace('updating link %s with status %s and progress %s' %
                         (id, status, progress)):
+      extra = {}
       link = self.database.links.find_one({'_id': id})
       # If it's not found or the empty object.
       if link is None or len(link) == 1:
@@ -335,17 +356,48 @@ class Mixin:
         status is not transaction_status.DELETED:
           self.forbidden('cannot change status from %s to %s' %
                          (link['status'], status))
-      if status in transaction_status.final:
+      if status in transaction_status.final + [transaction_status.DELETED]:
         self.__complete_transaction_pending_stats(user, link)
-      link = self.database.links.find_and_modify(
-        {'_id': id},
-        {
-          '$set':
-          {
+        if status != transaction_status.FINISHED:
+          # erase data
+          deleter = self._generate_op_url(link, 'DELETE')
+          elle.log.log(deleter)
+          r = requests.delete(deleter)
+          if int(r.status_code/100) != 2:
+            elle.log.warn('Link deletion failed with %s on %s: %s' %
+              ( r.status_code, link['_id'], r.content))
+        else:
+          # Get effective size
+          head = self._generate_op_url(link, 'HEAD')
+          r = requests.head(head)
+          if int(r.status_code/100) != 2:
+            elle.log.warn('Link HEAD failed with %s on %s: %s' %
+              ( r.status_code, link['_id'], r.content))
+          file_size = int(r.headers.get('Content-Length', 0))
+          extra = {
+            'file_size': file_size,
+            'quota_counted': True
+          }
+          self.database.users.update(
+            {'_id': user['_id']},
+            {'$inc': {'total_link_size': file_size}}
+            )
+      if link['status'] == transaction_status.FINISHED:
+        # Deleting a previously finished link (all other case threw above)
+        self.database.users.update(
+            {'_id': user['_id']},
+            {'$inc': {'total_link_size': link['file_size'] * -1}}
+            )
+      setter = {
             'mtime': self.now,
             'progress': progress,
             'status': status,
           }
+      setter.update(extra)
+      link = self.database.links.find_and_modify(
+        {'_id': id},
+        {
+          '$set': setter
         },
         new = True,
       )
@@ -466,7 +518,7 @@ class Mixin:
       return web_link
 
   @api('/links')
-  @require_logged_in
+  @require_logged_in_fields(['quota', 'total_link_size'])
   def links_list(self,
                  mtime = None,
                  offset: int = 0,
@@ -513,10 +565,25 @@ class Mixin:
         {'$limit': count},
       ])['result']:
         res.append(self.__owner_link(link))
-      return {'links': res}
+      return {'links': res,
+        'total_link_size': user.get('total_link_size', 0),
+        'quota': user.get('quota', {}).get('total_link_size', 'unlimited'),
+      }
 
   # Used when a user deletes their account.
   def delete_all_links(self, user):
+    links = self.database.links.find(
+      {
+        'sender_id': user['_id'],
+        'status': {'$nin': [transaction_status.DELETED]}
+      },
+      fields = ['aws_credentials', 'name'])
+    for link in links:
+      deleter = self._generate_op_url(link, 'DELETE')
+      r = requests.delete(deleter)
+      if int(r.status_code/100) != 2:
+        elle.log.warn('Link deletion failed with %s on %s: %s' %
+          ( r.status_code, link['_id'], r.content))
     self.database.links.update(
       {
         'sender_id': user['_id'],
@@ -529,3 +596,29 @@ class Mixin:
         }
       },
       multi = True)
+
+  # Generate url on storage for given HTTP operation
+  def _generate_op_url(self, link, op):
+    proto = link['aws_credentials']['protocol']
+    if proto == 'aws':
+      res = cloud_buffer_token.generate_get_url(
+        self.aws_region, self.aws_link_bucket,
+        link['_id'],
+        link['name'],
+        valid_days = link_lifetime_days,
+        method = op)
+    else:
+      res = cloud_buffer_token_gcs.generate_get_url(
+        self.gcs_region, self.gcs_link_bucket,
+        link['_id'],
+        link['name'],
+        valid_days = link_lifetime_days,
+        method = op)
+    return res
+
+  @api('/adm/link/<id>/delete')
+  @require_admin
+  def adm_link_delete(self, id: bson.ObjectId):
+    user_id = self.database.links.find_one({'_id': id})['sender_id']
+    user = self.database.users.find_one(user_id)
+    self.link_update(id, 1, transaction_status.DELETED, user)

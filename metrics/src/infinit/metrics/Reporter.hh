@@ -154,6 +154,9 @@ namespace infinit
                 std::string const& aws_error_code,
                 std::string const& message);
 
+      void
+      quota_exceeded(uint64_t size, uint64_t current, uint64_t quota);
+
     /// Transaction metrics implementation.
     protected:
       virtual
@@ -225,6 +228,10 @@ namespace infinit
                  int http_status,
                  std::string const& aws_error_code,
                  std::string const& message);
+
+      virtual
+      void
+      _quota_exceeded(uint64_t size, uint64_t current, uint64_t quota);
 
     /// User metrics.
     public:

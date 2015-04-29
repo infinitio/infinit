@@ -1182,12 +1182,42 @@ namespace infinit
         s.serialize("transaction", this->_transaction);
       }
 
+      static
+      void
+      _check_for_quota(std::string const& url,
+                       reactor::http::Request& request)
+      {
+        ELLE_DEBUG_SCOPE("check if quota has been exceeded (%s)", url);
+        request.finalize();
+        if (request.status() == reactor::http::StatusCode::Payment_Required)
+        {
+          std::string body = request.response().string();
+          std::stringstream stream(body);
+          elle::serialization::json::SerializerIn input(stream, false);
+          std::string reason;
+          int64_t quota;
+          int64_t usage;
+          input.serialize("reason", reason);
+          input.serialize("quota", quota);
+          input.serialize("usage", usage);
+          throw QuotaExceeded(reason, quota, usage);
+        }
+      }
+
       std::string
       Client::create_link() const
       {
         ELLE_TRACE("%s: create empty link", *this);
         std::string const url = "/link_empty";
-        auto request = this->_request(url, Method::POST);
+        auto request =  this->_request(
+          url, Method::POST, [&] (reactor::http::Request& request)
+          {
+            // Use that because we expect the meta answer to be json so we have
+            // to talk to it in json... Don't ask.
+            request << "{}";
+          }, false);
+        _check_for_quota(url, request);
+        this->_handle_errors(request);
         SerializerIn input(url, request);
         std::string created_link_id;
         input.serialize("created_link_id", created_link_id);
@@ -1213,7 +1243,10 @@ namespace infinit
             query.serialize("files",
                             const_cast<LinkTransaction::FileList&>(files));
             query.serialize("message", const_cast<std::string&>(message));
-          });
+          },
+          false);
+        _check_for_quota(url, request);
+        this->_handle_errors(request);
         SerializerIn input(url, request);
         return CreateLinkTransactionResponse(input);
       }
@@ -1736,7 +1769,7 @@ namespace infinit
 
 
       CloudCredentialsAws::CloudCredentialsAws(elle::serialization::SerializerIn& s)
-      : aws::Credentials(s)
+        : aws::Credentials(s)
       {}
 
       void

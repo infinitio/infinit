@@ -359,6 +359,9 @@ class Meta(bottle.Bottle,
   def unavailable(self, message = None):
     response(503, message)
 
+  def quota_exceeded(self, message = None):
+    response(402, message)
+
   @api('/js/<filename:path>')
   def static_javascript(self, filename):
     return self.__static('js/%s' % filename)
@@ -384,7 +387,7 @@ class Meta(bottle.Bottle,
     source = bottle.request.environ.get('REMOTE_ADDR')
     force = self.__force_admin or \
       (self.__force_admin is not False and source == '127.0.0.1')
-    return force or bottle.request.certificate in [
+    return force or (hasattr(bottle.request, 'certificate') and bottle.request.certificate in [
       'antony.mechin@infinit.io',
       'baptiste.fradin@infinit.io',
       'christopher.crone@infinit.io',
@@ -393,7 +396,7 @@ class Meta(bottle.Bottle,
       'matthieu.nottale@infinit.io',
       'patrick.perlmutter@infinit.io',
       'quentin.hocquet@infinit.io',
-    ]
+    ])
 
   @property
   def logged_in(self):

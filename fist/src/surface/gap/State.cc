@@ -168,6 +168,7 @@ namespace surface
         this->local_configuration().enable_mirroring();
       config.max_mirror_size = this->local_configuration().max_mirror_size();
       config.max_compress_size = 0;
+      config.max_cloud_buffer_size = 0;
       config.disable_upnp = false;
       ELLE_TRACE("read local config")
       {
@@ -1413,6 +1414,7 @@ namespace surface
       s.serialize("enable_file_mirroring", this->enable_file_mirroring);
       s.serialize("max_mirror_size", this->max_mirror_size);
       s.serialize("max_compress_size", this->max_compress_size);
+      s.serialize("max_cloud_buffer_size", this->max_cloud_buffer_size);
       s.serialize("disable_upnp", this->disable_upnp);
       s.serialize("features", this->features);
     }
@@ -1550,6 +1552,9 @@ operator <<(std::ostream& out,
       break;
     case gap_transaction_paused:
       out << "paused";
+      break;
+    case gap_transaction_payment_required:
+      out << "payment required";
       break;
   }
   return out;

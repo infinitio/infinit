@@ -49,6 +49,8 @@ namespace infinit
       user_agent,
       version,
       who,
+      quota,
+      used_storage,
     };
 
     class JSONReporter:
@@ -140,6 +142,8 @@ namespace infinit
                 int http_status,
                 std::string const& aws_error_code,
                 std::string const& message) override;
+      void
+      _quota_exceeded(uint64_t size, uint64_t current, uint64_t total) override;
 
     /// Implementation of user metrics.
     private:

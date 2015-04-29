@@ -524,6 +524,15 @@ class Mixin:
             'device': recipient_device_id,
           })
       is_ghost = recipient['register_status'] == 'ghost'
+      if is_ghost and total_size > 2000000000:
+        self.forbidden('Transaction to nonexisting users limited to 2G')
+
+      if is_ghost:
+        # Add to referral
+        self.database.users.update(
+          {'_id': recipient['_id']},
+          {'$addToSet': {'referred_by': sender['_id']}}
+        )
       elle.log.debug("transaction recipient has id %s" % recipient['_id'])
       _id = sender['_id']
       elle.log.debug('Sender agent %s, version %s, peer_new %s peer_ghost %s'

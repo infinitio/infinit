@@ -28,6 +28,7 @@ namespace surface
                       double mtime,
                       boost::optional<std::string> link,
                       uint32_t click_count,
+                      uint64_t size,
                       gap_TransactionStatus status,
                       elle::UUID const& sender_device_id,
                       std::string const& message,
@@ -39,6 +40,7 @@ namespace surface
       double mtime;
       boost::optional<std::string> link;
       uint32_t click_count;
+      uint64_t size;
       gap_TransactionStatus status;
       std::string sender_device_id;
       std::string message;

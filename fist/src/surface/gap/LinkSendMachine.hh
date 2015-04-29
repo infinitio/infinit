@@ -38,8 +38,13 @@ namespace surface
                       std::shared_ptr<Data> data);
       virtual
       ~LinkSendMachine();
+
+    /*-----------.
+    | Attributes |
+    `-----------*/
       ELLE_ATTRIBUTE_R(std::string, message);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
+
     /*---------------.
     | Implementation |
     `---------------*/

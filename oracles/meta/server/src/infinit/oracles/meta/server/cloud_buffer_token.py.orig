@@ -17,12 +17,7 @@ import elle.log
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.CloudBufferToken'
 
 def _aws_urlquote(data):
-  # bit.ly and goo.gl shorteners unencode brackets which breaks the signing.
-  return urllib.parse.quote(data, safe='()')
-
-aws_default_region = 'us-east-1'
-aws_default_buffer_bucket = 'us-east-1-buffer-dev-infinit-io'
-aws_default_link_bucket = 'us-east-1-links-dev-infinit-io'
+  return urllib.parse.quote(data)
 
 class CloudBufferToken:
 
@@ -31,6 +26,8 @@ class CloudBufferToken:
 
   aws_secret = '6VphkFJAAWXTBLrDebB+AWmPAHPkJWfIFR2KCfSa'
   aws_id = 'AKIAIPTEKRYOSJORHQMA'
+
+  aws_default_bucket = 'us-east-1-buffer-infinit-io'
 
   default_headers = {
     'content-type': 'application/json',
@@ -52,9 +49,11 @@ class CloudBufferToken:
     return res
 
   def __init__(self, user_id, transaction_id, http_action,
-               aws_region = None,
+               aws_region = 'us-east-1',
                bucket_name = None):
-    assert http_action in ['PUT', 'GET', 'ALL']
+    assert http_action in ['PUT', 'GET']
+    elle.log.log('%s: fetching S3 %s token for transaction (%s), user_id (%s) for region: %s' %
+                 (self, http_action, transaction_id, user_id, aws_region))
     self.user_id = user_id
     self.transaction_id = transaction_id
     self.http_action = http_action
@@ -62,13 +61,9 @@ class CloudBufferToken:
     self.aws_sts_service = 'sts'
     self.aws_s3_service = 's3'
 
-    if aws_region is None:
-      aws_region = aws_default_region
     if bucket_name is None:
-      bucket_name = aws_default_bucket
+      bucket_name = CloudBufferToken.aws_default_bucket
     self.bucket_name = bucket_name
-    elle.log.log('%s: fetching S3 %s token for (%s/%s), user_id (%s) for region: %s' %
-                 (self, http_action, bucket_name, transaction_id, user_id, aws_region))
 
   def generate_s3_token(self):
     self.request_time = datetime.utcnow()
@@ -85,10 +80,6 @@ class CloudBufferToken:
       self.credentials = self._get_credentials(res_xml)
     except urllib.error.HTTPError as e:
       elle.log.err('%s: unable to fetch token (%s): %s' % (self, e, e.read()))
-      raise e
-    except urllib.error.URLError as e:
-      elle.log.err('%s: unable to fetch token with %s: %s' % (request, self, e))
-      raise e
     return self.credentials
 
   def delete_file(path):
@@ -148,9 +139,6 @@ class CloudBufferToken:
       bucket_actions = ['s3:ListBucket']
     elif self.http_action == 'GET':
       object_actions.extend(['s3:GetObject', 's3:DeleteObject'])
-      bucket_actions = ['s3:ListBucket']
-    elif self.http_action == 'ALL':
-      object_actions.extend(['s3:DeleteObject', 's3:GetObject', 's3:PutObject', 's3:ListMultipartUploadParts', 's3:AbortMultipartUpload'])
       bucket_actions = ['s3:ListBucket']
 
     object_statement = {
@@ -280,20 +268,15 @@ class CloudBufferToken:
     elle.log.debug('%s: url string: %s' % (self, url_string))
     return url_string
 
-# http://docs.aws.amazon.com/AmazonS3/latest/dev/RESTAuthentication.html
+#http://docs.aws.amazon.com/AmazonS3/latest/dev/RESTAuthentication.html
 # at the bottom, 'Query String Request Authentication Alternative'
-def generate_get_url(region,
-                     bucket_name,
-                     transaction_id,
-                     file_path,
-                     valid_days = 3650,
-                     method = 'GET'):
+def generate_get_url(bucket_name, transaction_id, file_path):
   """ Generate a GET URL that can access relative 'file_path' in bucket
       using the federated token we produced
   """
-  expires = int(time.time()) + valid_days * 24 * 60 * 60
-  string_to_sign = '%s\n\n\n%s\n/%s/%s/%s' % (
-    method, expires, bucket_name, transaction_id, _aws_urlquote(file_path))
+  expires = int(time.time()) + 15 * 24 * 60 * 60
+  string_to_sign = 'GET\n\n\n%s\n/%s/%s/%s' % (
+    expires, bucket_name, transaction_id, _aws_urlquote(file_path))
   signature = hmac.new(CloudBufferToken.aws_secret.encode('ascii'),
                        string_to_sign.encode('utf-8'),
                        hashlib.sha1).digest()
