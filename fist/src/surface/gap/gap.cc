@@ -1329,7 +1329,6 @@ gap_resume_transaction(gap_State* state, uint32_t id)
 {
   ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
-  elle::unreachable();
   return run<gap_Status>(
     state,
     "resume transaction",
