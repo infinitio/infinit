@@ -1399,7 +1399,6 @@ namespace surface
         this->_model.devices.end(),
         [&] (Device const& device)
         {
-          ELLE_LOG("device id: %s - this->_device %s", device.id, this->_device->id);
           return device.id == this->_device->id;
         });
       if (it != this->_model.devices.end())
