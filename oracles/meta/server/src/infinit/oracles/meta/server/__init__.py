@@ -236,7 +236,7 @@ class Meta(bottle.Bottle,
     self.__database.users.ensure_index([("_id", 1), ("os", 1)])
     # - register and user search
     self.__database.users.ensure_index([("accounts.id", 1)],
-                                       unique = True, sparse = True)
+                                       unique = False, sparse = True)
     # - Auxiliary emails.
     # Sparse because users may have no pending_auxiliary_emails field.
     self.__database.users.ensure_index([("pending_auxiliary_emails.hash", 1)], unique = True, sparse = True)
