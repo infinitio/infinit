@@ -72,6 +72,16 @@ namespace infinit
     }
 
     std::ostream&
+    operator <<(std::ostream& out, boost::optional<Transaction::Status> t)
+    {
+      if (t)
+        out << t.get();
+      else
+        out << "no status";
+      return out;
+    }
+
+    std::ostream&
     operator <<(std::ostream& out,
                 Transaction const& t)
     {
