@@ -670,6 +670,7 @@ def configure(cxx_toolkit = None,
                'resynchronization',
                'snapshot-resume',
                'transition-to-finish',
+               'pause',
              ):
     sources = drake.nodes('fist/tests/%s.cc' % name)
     if name != 'state':

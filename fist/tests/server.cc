@@ -545,9 +545,11 @@ namespace tests
         elle::IOStream stream(content.istreambuf());
         elle::serialization::json::SerializerIn input(stream, false);
         std::string id;
-        int status;
+        boost::optional<int> status;
+        boost::optional<bool> paused;
         input.serialize("transaction_id", id);
         input.serialize("status", status);
+        input.serialize("paused", paused);
         ELLE_LOG_SCOPE("%s: update transaction \"%s\" to status %s",
                        *this, id, status);
         auto it = this->_transactions.find(id);
@@ -560,15 +562,18 @@ namespace tests
             "transaction not found");
         }
         auto& t = **it;
-        t.status = infinit::oracles::Transaction::Status(status);
-        t.status_changed()(t.status);
-        if (t.status == infinit::oracles::Transaction::Status::accepted)
+        if (status)
         {
-          this->headers()["ETag"] = boost::lexical_cast<std::string>(elle::UUID::random());
-          auto const& user = this->user(cookies);
-          auto const& device = this->device(cookies);
-          t.recipient_id = boost::lexical_cast<std::string>(user.id());
-          t.recipient_device_id = boost::lexical_cast<std::string>(device.id());
+          t.status = infinit::oracles::Transaction::Status(*status);
+          t.status_changed()(t.status);
+          if (t.status == infinit::oracles::Transaction::Status::accepted)
+          {
+            this->headers()["ETag"] = boost::lexical_cast<std::string>(elle::UUID::random());
+            auto const& user = this->user(cookies);
+            auto const& device = this->device(cookies);
+            t.recipient_id = boost::lexical_cast<std::string>(user.id());
+            t.recipient_device_id = boost::lexical_cast<std::string>(device.id());
+          }
         }
         auto& tr = **this->_transactions.find(id);
         std::string transaction_notification = tr.json();
@@ -737,7 +742,7 @@ namespace tests
         elle::IOStream stream(content.istreambuf());
         elle::serialization::json::SerializerIn input(stream, false);
         std::string id;
-        int status;
+        boost::optional<int> status;
         input.serialize("transaction_id", id);
         input.serialize("status", status);
         ELLE_LOG_SCOPE("%s: update transaction \"%s\" to status %s",
@@ -752,19 +757,22 @@ namespace tests
             "transaction not found");
         }
         auto& t = **it;
-        t.status = infinit::oracles::Transaction::Status(status);
-        t.status_changed()(t.status);
-        if (t.status == infinit::oracles::Transaction::Status::accepted)
+        if (status)
         {
-          this->headers()["ETag"] = boost::lexical_cast<std::string>(elle::UUID::random());
-          auto const& user = this->user(cookies);
-          auto const& device = this->device(cookies);
-          t.recipient_id = boost::lexical_cast<std::string>(user.id());
-          t.recipient_device_id = boost::lexical_cast<std::string>(device.id());
-        }
-        if (t.status == infinit::oracles::Transaction::Status::cloud_buffered)
-        {
-          t.cloud_buffered = true;
+          t.status = infinit::oracles::Transaction::Status(*status);
+          t.status_changed()(t.status);
+          if (t.status == infinit::oracles::Transaction::Status::accepted)
+          {
+            this->headers()["ETag"] = boost::lexical_cast<std::string>(elle::UUID::random());
+            auto const& user = this->user(cookies);
+            auto const& device = this->device(cookies);
+            t.recipient_id = boost::lexical_cast<std::string>(user.id());
+            t.recipient_device_id = boost::lexical_cast<std::string>(device.id());
+          }
+          if (t.status == infinit::oracles::Transaction::Status::cloud_buffered)
+          {
+            t.cloud_buffered = true;
+          }
         }
         auto& tr = **this->_transactions.find(id);
         std::string transaction_notification = tr.json();
