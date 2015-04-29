@@ -305,7 +305,6 @@ class Mixin:
                     country_code = None,
                     device_name = None,
                     device_model = None,
-                    registered = False
   ):
     # If creation process was interrupted, generate identity now.
     if 'public_key' not in user:
@@ -394,7 +393,6 @@ class Mixin:
       features['preemptive_buffering_delay'] = '0'
     response['features'] = list(features.items())
     response['device'] = self.device_view(device)
-    response['account_registered'] = registered
     return response
 
   @api('/users/facebook/<facebook_id>')
@@ -427,7 +425,9 @@ class Mixin:
       user = self.user_by_facebook_id(facebook_user.facebook_id,
                                       fields = fields,
                                       ensure_existence = False)
+      new = False
       if user is None: # Register the user.
+        new = True
         user = self.facebook_register(
           facebook_user = facebook_user,
           preferred_email = preferred_email,
@@ -498,29 +498,30 @@ class Mixin:
       return self.fail(error.DEPRECATED)
     fields = self.__user_self_fields + ['public_key']
     with elle.log.trace("%s: log on device %s" % (email or 'facebook user', device_id)):
+      registered = False
       if with_email:
         email = email.strip().lower()
         user = self._login(email = email,
                            fields = fields,
                            password = password,
                            password_hash = password_hash)
-        registered = False
       elif with_facebook:
-        user,registered = self.__facebook_connect(
+        user, registered = self.__facebook_connect(
           short_lived_access_token = short_lived_access_token,
           long_lived_access_token = long_lived_access_token,
           preferred_email = preferred_email,
           fields = fields)
-      return self._in_app_login(user = user,
-                                password = password,
-                                device_id = device_id,
-                                OS = OS,
-                                pick_trophonius = pick_trophonius,
-                                device_push_token = device_push_token,
-                                country_code = country_code,
-                                device_model = device_model,
-                                device_name = device_name,
-                                registered = registered)
+      res = self._in_app_login(user = user,
+                               password = password,
+                               device_id = device_id,
+                               OS = OS,
+                               pick_trophonius = pick_trophonius,
+                               device_push_token = device_push_token,
+                               country_code = country_code,
+                               device_model = device_model,
+                               device_name = device_name)
+      res.update({'account_registered': registered})
+      return res
 
   @api('/web-login', method = 'POST')
   def web_login(self,
@@ -538,19 +539,25 @@ class Mixin:
         'reason': 'you must provide facebook_token or (email, password)'
       })
     fields = self.__user_self_fields + ['unconfirmed_email_deadline']
+    update = {'account_registered': False}
     if with_email:
       email = email.lower().strip()
       with elle.log.trace("%s: web login" % email):
         user = self._login(email, password = password, fields = fields)
     elif with_facebook:
-      user,register = self.__facebook_connect(
+      user, update['registered'] = self.__facebook_connect(
         short_lived_access_token = short_lived_access_token,
         long_lived_access_token = long_lived_access_token,
         preferred_email = preferred_email,
         fields = fields)
-    return self._web_login(user)
+      ghost_codes = user.get('consumed_ghost_codes', [])
+      if len(ghost_codes):
+        update.update({'ghost_code': ghost_codes[0]})
+    res = self._web_login(user)
+    res.update(update)
+    return res
 
-  def _web_login(self, user):
+  def _web_login(self, user, new = False):
       bottle.request.session['identifier'] = user['_id']
       user = self.user
       elle.log.trace("%s: successfully connected as %s" %
@@ -633,11 +640,15 @@ class Mixin:
                                 source = source,
                                 activation_code = activation_code,
                                 password_hash = password_hash)
-      return self.success({
+      res = {
         'registered_user_id': user['id'],
         'invitation_source': '',
         'unconfirmed_email_leeway': self.unconfirmed_email_leeway,
-      })
+      }
+      ghost_codes = user.get('consumed_ghost_codes', [])
+      if len(ghost_codes):
+        res.update({'ghost_code': ghost_codes[0]})
+      return self.success(res)
     except Exception as e:
       return self.fail(e.args[0])
 
@@ -1080,6 +1091,25 @@ class Mixin:
                           'type': type
                         }
     return ghost_profile_url
+
+  @api('/ghost/code/<code>', method = 'GET')
+  def check_code(self, code):
+    """
+    Check if a ghost code exists.
+
+    code -- The code.
+    """
+    if len(code) == 0:
+      return self.bad_request({
+        'reason': 'code cannot be empty',
+      })
+    account = self.database.users.find_one({'ghost_code': code})
+    if account is None:
+      return self.not_found({
+        'reason': 'unknown code : %s' % code,
+        'code': code,
+      })
+    return {}
 
   @api('/ghost/<code>/merge', method = 'POST')
   @require_logged_in

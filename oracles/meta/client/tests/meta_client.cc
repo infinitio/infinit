@@ -55,13 +55,15 @@ protected:
 
 static
 std::string
-login_success_response(elle::UUID id = elle::UUID("00000000-0000-0000-0000-000000000001"))
+login_success_response(
+  bool registered = false,
+  std::string const& extra = "",
+  elle::UUID id = elle::UUID("00000000-0000-0000-0000-000000000001"))
 {
   return elle::sprintf("{"
                        "  \"device\": {\"id\": \"%s\", \"name\": \"johny\", \"passport\": \"passport\"},"
                        "  \"trophonius\": {\"host\": \"192.168.1.1\", \"port\": 4923, \"port_ssl\": 4233},"
                        "  \"features\": [],"
-                       "  \"account_registered\": false,"
                        "  \"self\": {"
                        "    \"_id\": \"0\","
                        "    \"id\": \"0\","
@@ -83,9 +85,11 @@ login_success_response(elle::UUID id = elle::UUID("00000000-0000-0000-0000-00000
                        "    \"status\": 1,"
                        "    \"creation_time\": 1420565249,"
                        "    \"last_connection\": 1420565249"
-                       "    }"
+                       "  },"
+                       "  %s"
+                       "  \"account_registered\": %s"
                        " }",
-                       id, id, id);
+                       id, id, id, extra, registered ? "true" : "false");
 }
 
 ELLE_TEST_SCHEDULED(connection_refused)
@@ -558,54 +562,87 @@ ELLE_TEST_SCHEDULED(change_email)
   c.login("bob2@bob.com", "pass", boost::uuids::nil_uuid());
 }
 
-ELLE_TEST_SCHEDULED(merge_ghost)
+namespace ghost_code
 {
-  HTTPServer s;
-  s.register_route("/ghost/foo/merge", reactor::http::Method::POST,
-                   [] (HTTPServer::Headers const&,
-                       HTTPServer::Cookies const&,
-                       HTTPServer::Parameters const&,
-                       elle::Buffer const& body) -> std::string
-                   {
-                     return "{}";
-                   });
-  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
-  c.use_ghost_code("foo");
-}
+  ELLE_TEST_SCHEDULED(merge)
+  {
+    HTTPServer s;
+    s.register_route("/ghost/foo/merge", reactor::http::Method::POST,
+                     [] (HTTPServer::Headers const&,
+                         HTTPServer::Cookies const&,
+                         HTTPServer::Parameters const&,
+                         elle::Buffer const& body) -> std::string
+                     {
+                       return "{}";
+                     });
+    infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+    c.use_ghost_code("foo");
+  }
 
-ELLE_TEST_SCHEDULED(url_encoded_merge_ghost)
-{
-  HTTPServer s;
-  s.register_route("/ghost/foo%20/merge", reactor::http::Method::POST,
-                   [] (HTTPServer::Headers const&,
-                       HTTPServer::Cookies const&,
-                       HTTPServer::Parameters const&,
+  ELLE_TEST_SCHEDULED(url_encode_merge)
+  {
+    HTTPServer s;
+    s.register_route("/ghost/foo%20/merge", reactor::http::Method::POST,
+                     [] (HTTPServer::Headers const&,
+                         HTTPServer::Cookies const&,
+                         HTTPServer::Parameters const&,
                        elle::Buffer const& body) -> std::string
-                   {
-                     return "{}";
-                   });
-  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
-  c.use_ghost_code("foo ");
-}
+                     {
+                       return "{}";
+                     });
+    infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+    c.use_ghost_code("foo ");
+  }
 
-ELLE_TEST_SCHEDULED(merge_ghost_failure)
-{
-  HTTPServer s;
-  s.register_route("/ghost/bar/merge", reactor::http::Method::POST,
-                   [] (HTTPServer::Headers const&,
-                       HTTPServer::Cookies const&,
-                       HTTPServer::Parameters const&,
-                       elle::Buffer const& body) -> std::string
-                   {
-                     throw HTTPServer::Exception("",
-                                                 reactor::http::StatusCode::Not_Found,
-                                                 "{"
-                                                 "}");
+  ELLE_TEST_SCHEDULED(merge_failure)
+  {
+    HTTPServer s;
+    s.register_route("/ghost/bar/merge", reactor::http::Method::POST,
+                     [] (HTTPServer::Headers const&,
+                         HTTPServer::Cookies const&,
+                         HTTPServer::Parameters const&,
+                         elle::Buffer const& body) -> std::string
+                     {
+                       throw HTTPServer::Exception(
+                         "",
+                         reactor::http::StatusCode::Not_Found,
+                         "{"
+                         "}");
+                     });
+    infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+    // This should check for reactor::http::RequestError but it doesn't work.
+    BOOST_CHECK_THROW(c.use_ghost_code("foo"), elle::Exception);
+  }
 
-                   });
-  infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
-  // This should check for reactor::http::RequestError but it doesn't work.
-  BOOST_CHECK_THROW(c.use_ghost_code("foo"), elle::Exception);
+  ELLE_TEST_SCHEDULED(exists)
+  {
+    HTTPServer s;
+    s.register_route("/ghost/code/bar", reactor::http::Method::GET,
+                     [] (HTTPServer::Headers const&,
+                         HTTPServer::Cookies const&,
+                         HTTPServer::Parameters const&,
+                         elle::Buffer const& body) -> std::string
+                     {
+                       throw HTTPServer::Exception(
+                         "",
+                         reactor::http::StatusCode::Bad_Request,
+                         "{"
+                         "}");
+                     });
+    s.register_route("/ghost/code/barbe", reactor::http::Method::GET,
+                     [] (HTTPServer::Headers const&,
+                         HTTPServer::Cookies const&,
+                         HTTPServer::Parameters const&,
+                         elle::Buffer const& body) -> std::string
+                     {
+                       return "{}";
+                     });
+    infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+    // This should check for reactor::http::RequestError but it doesn't work.
+    BOOST_CHECK_EQUAL(c.check_ghost_code("bar"), false); // 403.
+    BOOST_CHECK_EQUAL(c.check_ghost_code("foo"), false); // 404.
+    BOOST_CHECK_EQUAL(c.check_ghost_code("barbe"), true); // 200.
+  }
 }
 
 ELLE_TEST_SCHEDULED(ghost_user_email)
@@ -704,16 +741,45 @@ namespace facebook
   ELLE_TEST_SCHEDULED(connect_success)
   {
     HTTPServer s;
+    bool registered = true;
+    std::string extra = "";
     s.register_route("/login", reactor::http::Method::POST,
-                     [] (HTTPServer::Headers const&,
-                         HTTPServer::Cookies const&,
-                         HTTPServer::Parameters const&,
-                         elle::Buffer const& body) -> std::string
+                     [&] (HTTPServer::Headers const&,
+                          HTTPServer::Cookies const&,
+                          HTTPServer::Parameters const&,
+                          elle::Buffer const& body) -> std::string
                      {
-                       return login_success_response();
+                       auto first_time = [&registered] ()
+                       {
+                         if (registered == true)
+                         {
+                           registered = false;
+                           return true;
+                         }
+                         return registered;
+                       };
+                       return login_success_response(first_time(), extra);
                      });
     infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
-    c.facebook_connect("foobar", boost::uuids::nil_uuid());
+    {
+      auto res = c.facebook_connect("foobar", boost::uuids::nil_uuid());
+      ELLE_ASSERT_EQ(res.account_registered, true);
+      ELLE_ASSERT_EQ(static_cast<bool>(res.ghost_code), false);
+    }
+    {
+      auto res = c.facebook_connect("foobar", boost::uuids::nil_uuid());
+      ELLE_ASSERT_EQ(static_cast<bool>(res.ghost_code), false);
+      ELLE_ASSERT_EQ(res.account_registered, false);
+    }
+    {
+      std::string code = "foooo";
+      extra = elle::sprintf("\"ghost_code\": \"%s\",", code);
+      auto res = c.facebook_connect("foobar", boost::uuids::nil_uuid());
+      ELLE_ASSERT_EQ(static_cast<bool>(res.ghost_code), true);
+      ELLE_ASSERT_EQ(res.ghost_code.get(), code);
+      ELLE_ASSERT_EQ(res.account_registered, false);
+    }
+
   }
 
   ELLE_TEST_SCHEDULED(already_registered)
@@ -842,11 +908,15 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(trophonius));
   suite.add(BOOST_TEST_CASE(upload_avatar));
   suite.add(BOOST_TEST_CASE(link_credentials));
-  suite.add(BOOST_TEST_CASE(transaction_create));
   suite.add(BOOST_TEST_CASE(change_email));
-  suite.add(BOOST_TEST_CASE(merge_ghost));
-  suite.add(BOOST_TEST_CASE(url_encoded_merge_ghost));
-  suite.add(BOOST_TEST_CASE(merge_ghost_failure));
+  suite.add(BOOST_TEST_CASE(transaction_create));
+  {
+    boost::unit_test::test_suite* s = BOOST_TEST_SUITE("ghost_code");
+    s->add(BOOST_TEST_CASE(ghost_code::merge));
+    s->add(BOOST_TEST_CASE(ghost_code::url_encode_merge));
+    s->add(BOOST_TEST_CASE(ghost_code::merge_failure));
+    s->add(BOOST_TEST_CASE(ghost_code::exists));
+  }
   suite.add(BOOST_TEST_CASE(normal_user));
   suite.add(BOOST_TEST_CASE(ghost_user_email));
   suite.add(BOOST_TEST_CASE(ghost_user_phone));

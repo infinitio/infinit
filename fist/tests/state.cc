@@ -346,7 +346,8 @@ public:
          "    \"host\": \"127.0.0.1\","
          "    \"port\": 0,"
          "    \"port_ssl\": %s"
-         "  }"
+         "  },"
+         "  \"registered\": false"
          "}",
          identity_serialized,
          this->_device_id,

@@ -243,9 +243,11 @@ namespace infinit
                   std::string const& info);
 
       void
-      user_register(bool success,
-                    std::string const& info,
-                    bool with_facebook = false);
+      user_register(
+        bool success,
+        std::string const& info,
+        std::string const& with = "",
+        boost::optional<std::string> const& ghost_code = boost::none);
 
       void
       user_unfavorite(std::string const& user_id);
@@ -300,7 +302,8 @@ namespace infinit
       void
       _user_register(bool success,
                      std::string const& info,
-                     bool with_facebook);
+                     std::string const& with,
+                     boost::optional<std::string> const& ghost_code);
 
       virtual
       void

@@ -31,6 +31,7 @@
 
 # include <infinit/oracles/LinkTransaction.hh>
 # include <infinit/oracles/PeerTransaction.hh>
+# include <infinit/oracles/meta/AddressBookContact.hh>
 # include <infinit/oracles/meta/Device.hh>
 # include <infinit/oracles/meta/Error.hh>
 
@@ -167,6 +168,16 @@ namespace infinit
         identifier() const;
       };
 
+      struct RegisterResponse
+      {
+        RegisterResponse(elle::serialization::SerializerIn& s);
+        void
+        serialize(elle::serialization::SerializerIn& s);
+
+        std::string id;
+        boost::optional<std::string> ghost_code;
+      };
+
       struct LoginResponse
       {
         Device device;
@@ -183,7 +194,10 @@ namespace infinit
         };
         Trophonius trophonius;
         std::unordered_map<std::string, std::string> features;
-        bool account_registered; // True if this login was actually a registration
+        bool account_registered; // True if this login was actually a registration.
+        // XXX: Because facebook connect can turn a ghost to a real account a
+        // ghost code can be consumed.
+        boost::optional<std::string> ghost_code;
         LoginResponse() = default;
         LoginResponse(elle::serialization::SerializerIn& s);
         void
@@ -441,7 +455,7 @@ namespace infinit
 
         ELLE_ATTRIBUTE_RW(bool, logged_in);
 
-        std::string
+        RegisterResponse
         register_(std::string const& email,
                   std::string const& fullname,
                   std::string const& password) const;
@@ -454,6 +468,9 @@ namespace infinit
 
         void
         use_ghost_code(std::string const& code) const;
+
+        bool
+        check_ghost_code(std::string const& code_) const;
 
         User
         user_from_handle(std::string const& handle) const;
@@ -614,6 +631,9 @@ namespace infinit
 
         void
         upload_address_book(std::string const& json) const;
+
+        void
+        upload_address_book(std::vector<AddressBookContact> contacts) const;
 
       /*----------.
       | Printable |

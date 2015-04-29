@@ -287,8 +287,27 @@ gap_register(gap_State* state,
 }
 
 gap_Status
+gap_check_ghost_code(gap_State* state, std::string const& code, bool& res)
+{
+  ELLE_ASSERT(state != nullptr);
+  if (code.empty())
+  {
+    res = false;
+    return gap_ok;
+  }
+  return run<gap_Status>(
+    state,
+    "check ghost code",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      res = state.meta().check_ghost_code(code);
+      return gap_ok;
+    });
+}
+
+gap_Status
 gap_use_ghost_code(gap_State* state,
-                  std::string const& code)
+                   std::string const& code)
 {
   ELLE_ASSERT(state != nullptr);
   if (code.empty())
@@ -661,6 +680,8 @@ gap_account_status_for_email(gap_State* state,
           res = gap_account_status_registered;
         else if (u.register_status == "ghost")
           res = gap_account_status_ghost;
+        else if (u.register_status == "contact")
+          res = gap_account_status_contact;
       }
       catch (infinit::state::UserNotFoundError const&)
       {
@@ -1772,12 +1793,26 @@ gap_Status
 gap_upload_address_book(gap_State* state,
                         std::string const& json)
 {
-    return run<gap_Status>(
+  return run<gap_Status>(
     state,
     "upload address book",
     [&] (surface::gap::State& state) -> gap_Status
     {
       state.meta().upload_address_book(json);
+      return gap_ok;
+    });
+}
+
+gap_Status
+gap_upload_address_book(gap_State* state,
+                        std::vector<AddressBookContact> const& contacts)
+{
+  return run<gap_Status>(
+    state,
+    "upload address book",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.meta().upload_address_book(contacts);
       return gap_ok;
     });
 }

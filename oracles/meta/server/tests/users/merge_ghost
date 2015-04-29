@@ -171,6 +171,24 @@ with Meta(enable_emails = True) as meta:
     # assert notif.type == PEER_TRANSACTION
     # assert notif.status == FINISHED
 
+# Check code.
+with Meta(enable_emails = True) as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  bob = User(meta, 'bob@infinit.io')
+  eve = 'eve@infinit.io'
+  meta.mailer = MailService()
+  tr, _ = alice.sendfile(eve, initialize = True)
+  alice.transaction_update(tr['_id'], GHOST_UPLOADED)
+  bob.login()
+  assert bob.get('users/%s' % eve)['register_status'] == 'ghost'
+  eve_id = bob.get('users/%s' % eve)['id']
+  emails = meta.emailer.emails
+  code = emails[0].variables['ghost_code']
+  throws(lambda: meta.get('ghost/code/00000'), 404)
+  bob.post('ghost/%s/merge' % code)
+  throws(lambda: meta.get('ghost/code/%s' % code), 404)
+
 # Using code.
 with Meta(enable_emails = True) as meta:
   alice = User(meta, 'alice@infinit.io')

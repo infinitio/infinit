@@ -91,6 +91,7 @@ namespace tests
         input.serialize("email", email);
         boost::optional<std::string> long_lived_access_token;
         input.serialize("long_lived_access_token", long_lived_access_token);
+        bool registered = false;
         auto const& user = [&] () -> User const&
           {
             if (email)
@@ -106,7 +107,8 @@ namespace tests
             }
             else if (long_lived_access_token)
             {
-              return this->facebook_connect(long_lived_access_token.get());
+              return this->facebook_connect(long_lived_access_token.get(),
+                                            registered);
             }
             elle::unreachable();
           }();
@@ -124,12 +126,13 @@ namespace tests
           " \"devices\": [%s],"
           " \"features\": [],"
           " \"trophonius\" : %s,"
-          " \"account_registered\" : false"
+          " \"account_registered\": %s"
           "}",
           user.self_json(),
           device.json(),
           device.json(),
-          this->trophonius->json());
+          this->trophonius->json(),
+          registered ? "true" : "false");
       });
 
     // this->register_route(
@@ -615,7 +618,8 @@ namespace tests
   }
 
   User const&
-  Server::facebook_connect(std::string const& token)
+  Server::facebook_connect(std::string const& token,
+                           bool& resgistered)
   {
     static std::unordered_map<std::string, std::string> facebook_ids;
     if (facebook_ids.find(token) == facebook_ids.end())
@@ -625,7 +629,9 @@ namespace tests
       auto keys =
         cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
                                         papier::Identity::keypair_length);
-      std::unique_ptr<papier::Identity> identity{generate_identity(keys, boost::lexical_cast<std::string>(user.id()), "my identity", "")};
+      std::unique_ptr<papier::Identity> identity{
+        generate_identity(
+          keys, boost::lexical_cast<std::string>(user.id()), "identity", "")};
       struct UpdateIdentity
       {
         UpdateIdentity(std::unique_ptr<papier::Identity>&& identity)
@@ -642,6 +648,7 @@ namespace tests
       };
       this->_users.modify(this->_users.get<0>().find(user.id()), UpdateIdentity(std::move(identity)));
       facebook_ids[token] = user.facebook_id();
+      resgistered = true;
     }
     auto const& facebook_id = facebook_ids[token];
     auto& users = this->_users.get<2>();

@@ -387,6 +387,7 @@ namespace infinit
         s.serialize("trophonius", this->trophonius);
         s.serialize("features", this->features);
         s.serialize("account_registered", this->account_registered);
+        s.serialize("ghost_code", this->ghost_code);
       }
 
       void
@@ -593,7 +594,19 @@ namespace infinit
         return LoginResponse::Trophonius(input);
       }
 
-      std::string
+      RegisterResponse::RegisterResponse(elle::serialization::SerializerIn& s)
+      {
+        this->serialize(s);
+      }
+
+      void
+      RegisterResponse::serialize(elle::serialization::SerializerIn& s)
+      {
+        s.serialize("registered_user_id", this->id);
+        s.serialize("ghost_code", this->ghost_code);
+      }
+
+      RegisterResponse
       Client::register_(std::string const& email,
                         std::string const& fullname,
                         std::string const& password) const
@@ -648,7 +661,7 @@ namespace infinit
                 elle::sprintf("Unknown registration error: %s", error_code));
           }
         }
-        return user_id;
+        return RegisterResponse(input);
       }
 
       SynchronizeResponse
@@ -677,6 +690,21 @@ namespace infinit
             throw infinit::state::GhostCodeAlreadyUsed();
           default:
             throw infinit::state::InvalidGhostCode();
+        }
+      }
+
+      bool
+      Client::check_ghost_code(std::string const& code_) const
+      {
+        reactor::http::EscapedString code{code_};
+        std::string url = elle::sprintf("/ghost/code/%s", code);
+        auto request = this->_request(url, Method::GET, false);
+        switch (request.status())
+        {
+          case reactor::http::StatusCode::OK:
+            return true;
+          default:
+            return false;
         }
       }
 
@@ -1658,12 +1686,23 @@ namespace infinit
       Client::upload_address_book(std::string const& json) const
       {
         std::string url = "/user/contacts";
-        reactor::http::Request::QueryDict query;
-        query["contacts"] = json;
         auto request = this->_request(url, Method::PUT,
           [&] (reactor::http::Request& request)
           {
             request << "{\"contacts\":" << json << "}";
+          });
+      }
+
+      void
+      Client::upload_address_book(
+        std::vector<AddressBookContact> contacts) const
+      {
+        std::string url = "/user/contacts";
+        auto request = this->_request(url, Method::PUT,
+          [&] (reactor::http::Request& request)
+          {
+            elle::serialization::json::SerializerOut output(request, false);
+            output.serialize("contacts", contacts);
           });
       }
 

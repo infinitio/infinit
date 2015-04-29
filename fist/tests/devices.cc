@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include <elle/filesystem/TemporaryFile.hh>
 #include <elle/log.hh>
 #include <elle/test.hh>
@@ -177,8 +179,7 @@ _remove_current_device(int other_devices = 0)
       BOOST_CHECK_EQUAL(connection.still_trying, false);
       beacon = true;
     });
-  _remove_device(sender.state->device().id,
-                 sender.state->_model);
+  _remove_device(sender.state->device().id, sender.state->_model);
   sender.state->poll();
   BOOST_CHECK_EQUAL(beacon, true);
 }
@@ -212,6 +213,7 @@ void
 _change_synchronize_route(tests::Server& server,
                           std::vector<surface::gap::Device>& devices)
 {
+  std::random_shuffle(devices.begin(), devices.end());
   server.register_route(
     "/user/synchronize",
     reactor::http::Method::GET,
@@ -282,6 +284,13 @@ ELLE_TEST_SCHEDULED(synchronize_update_devices)
   std::vector<surface::gap::Device> devices;
   _change_synchronize_route(server, devices);
   tests::Client sender(server, "sender@infinit.io");
+  bool beacon = false;
+  sender.state->attach_callback<surface::gap::State::ConnectionStatus>(
+    [&] (surface::gap::State::ConnectionStatus const& connection){
+      BOOST_CHECK_EQUAL(connection.status, false);
+      BOOST_CHECK_EQUAL(connection.still_trying, false);
+      beacon = true;
+    });
   sender.login();
   for (auto i = 0; i < 5; ++i)
     devices.push_back(_add_device(sender.state->_model));
@@ -301,7 +310,9 @@ ELLE_TEST_SCHEDULED(synchronize_update_devices)
   {
     device.name = name;
   }
+  ELLE_ASSERT_EQ(beacon, false);
   sender.state->synchronize();
+  ELLE_ASSERT_EQ(beacon, false);
   for (auto i = 0; i < 5; ++i)
   {
     int beacon = 0;

@@ -39,9 +39,6 @@ with Meta() as meta:
         assert False
       except HTTPException as e:
         assert e.status == 404
-    print(facebook_id)
-    print(phone)
-    print(email)
 
     # Phone.
     meta.get('users/%s' % u1.id)

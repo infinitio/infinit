@@ -418,12 +418,8 @@ namespace surface
     private:
       ELLE_ATTRIBUTE_R(boost::uuids::uuid, device_uuid);
       ELLE_ATTRIBUTE_P(std::unique_ptr<Device>, device, mutable);
-      ELLE_ATTRIBUTE_P(reactor::Mutex, device_mutex, mutable);
-
       ELLE_ATTRIBUTE_P(std::unique_ptr<papier::Passport>, passport, mutable);
-      ELLE_ATTRIBUTE_P(reactor::Mutex, passport_mutex, mutable);
       ELLE_ATTRIBUTE_P(std::unique_ptr<papier::Identity>, identity, mutable);
-      ELLE_ATTRIBUTE_P(reactor::Mutex, identity_mutex, mutable);
     public:
       /// Get the local passport of the logged user.
       papier::Passport const&
@@ -454,7 +450,13 @@ namespace surface
       devices() const;
 
       void
-      _on_devices_changed();
+      _on_device_added(Device const& device) const;
+
+      void
+      _on_device_removed(elle::UUID id);
+
+      void
+      _on_devices_reseted();
 
       void
       _devices(std::vector<Device> const& devices);
