@@ -259,6 +259,11 @@ namespace infinit
             elle::serialization::json::SerializerIn input(json);
             return elle::make_unique<UserStatusNotification>(input);
           }
+          case NotificationType::paused:
+          {
+            elle::serialization::json::SerializerIn input(json);
+            return elle::make_unique<PausedNotification>(input);
+          }
           default:
             ; // Nothing.
         }
