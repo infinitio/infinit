@@ -991,7 +991,8 @@ def configure(cxx_toolkit = None,
       openssl_include_dir = drake.path_build(
         openssl_config.local_include_path[0], absolute = True),
       openssl_libraries = fist_openssl_libs,
-      libraries = fist_libraries)
+      libraries = fist_libraries,
+      qt = qt)
     build << application.build
 
   ## ------- ##
