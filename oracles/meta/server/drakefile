@@ -21,6 +21,7 @@ def configure(production_build,
               apns,
               apns_cert,
               apns_cert_prod,
+              mongobox,
               python_common,
               papier_python,
               prefix = drake.Path('/usr/local')):
@@ -308,9 +309,8 @@ def configure(production_build,
     checks.setdefault(target, drake.TestSuite(target))
     test = drake.node('tests/%s' % name)
     test.dependency_add(drake.node('tests/utils.py'))
-    for source in python:
+    for source in chain(python, mongobox.nodes):
       test.dependency_add(source)
-
     import os
     pythonpath = [
       drake.path_source('tests'),
