@@ -38,11 +38,6 @@ parser.add_option('--unconfirmed-email-leeway',
                   action = 'store',
                   help = 'The duration (in sec) an unconfirmed email can be used',
                   default = 604800)
-parser.add_option(
-  '--email-confirmation-cooldown',
-  action = 'store',
-  help = 'The cooldown between confirmation emails in seconds',
-  default = 600)
 parser.add_option('--daily-summary-hour',
                   action = 'store',
                   help = 'The hour of the day in utc to send the daily summary',
@@ -97,9 +92,6 @@ args = {}
 if options.mongo_replica_set:
   args['mongo_replica_set'] = options.mongo_host
 
-email_confirmation_cooldown = int(options.email_confirmation_cooldown)
-email_confirmation_cooldown = \
-  datetime.timedelta(seconds = email_confirmation_cooldown)
 if options.enable_emails:
   swu_key = 'test_26008542af128a451ffd05a954c971066219b090'
   args['emailer'] = infinit.oracles.emailer.SendWithUsEmailer(
@@ -112,7 +104,6 @@ app = infinit.oracles.meta.server.Meta(
   mongo_port = options.mongo_port,
   unconfirmed_email_leeway = options.unconfirmed_email_leeway,
   daily_summary_hour = options.daily_summary_hour,
-  email_confirmation_cooldown = email_confirmation_cooldown,
   aws_region = options.aws_region,
   aws_buffer_bucket = options.aws_buffer_bucket,
   aws_link_bucket = options.aws_link_bucket,

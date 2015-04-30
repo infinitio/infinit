@@ -920,7 +920,7 @@ class Retention(Drip):
         ('emailing.retention.activation_time', pymongo.ASCENDING),
       ])
 
-  count = 7
+  count = 6
 
   @property
   def now(self):

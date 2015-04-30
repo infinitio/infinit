@@ -60,6 +60,22 @@ namespace infinit
         bool operator !=(Error const& error) const;
       };
 
+      class QuotaExceeded
+        : public elle::Error
+      {
+      public:
+        QuotaExceeded(std::string const& reason,
+                      uint64_t quota,
+                      uint64_t usage)
+          : elle::Error(reason)
+          , _quota(quota)
+          , _usage(usage)
+        {}
+
+        ELLE_ATTRIBUTE_R(uint64_t, quota);
+        ELLE_ATTRIBUTE_R(uint64_t, usage);
+      };
+
       struct User:
          public elle::Printable
       {
@@ -306,7 +322,7 @@ namespace infinit
         ELLE_ATTRIBUTE_R(boost::optional<std::string>, ghost_code);
         // The ghost profile url.
         ELLE_ATTRIBUTE_R(boost::optional<std::string>, ghost_profile_url);
-
+        ELLE_ATTRIBUTE_R(boost::optional<bool>, paused);
         UpdatePeerTransactionResponse(elle::serialization::SerializerIn& s);
         void
         serialize(elle::serialization::Serializer& s);
@@ -547,9 +563,10 @@ namespace infinit
 
         UpdatePeerTransactionResponse
         update_transaction(std::string const& transaction_id,
-                           Transaction::Status status,
+                           boost::optional<Transaction::Status> status = boost::none,
                            elle::UUID const& device_id = elle::UUID(),
-                           std::string const& device_name = "") const;
+                           std::string const& device_name = "",
+                           boost::optional<bool> paused = boost::none) const;
 
         std::string
         create_transaction(std::string const& recipient_id_or_email,

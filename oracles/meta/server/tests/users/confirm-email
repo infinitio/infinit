@@ -70,9 +70,7 @@ with Meta(enable_emails = True, unconfirmed_email_leeway = 0) as meta:
 # Reask hash.
 with Meta(
     enable_emails = True,
-    unconfirmed_email_leeway = 0,
-    email_confirmation_cooldown = datetime.timedelta(seconds = 1)) \
-as meta:
+    unconfirmed_email_leeway = 0) as meta:
   email = 'foobar@infinit.io'
   fullname = 'jean louis'
   meta.mailer = MailService()
@@ -96,12 +94,6 @@ as meta:
   assert hasattr(meta.mailer, 'email_reconfirmation_hash')
 
   meta.mailer = MailService()
-  # Cooldown.
-  res = u.post('users/%s/resend-confirmation-email' % u.email)
-  assert not hasattr(meta.mailer, 'email_reconfirmation_hash')
-
-  from time import sleep
-  sleep(2)
 
   res = u.post('users/%s/resend-confirmation-email' % u.email)
   assert hasattr(meta.mailer, 'email_reconfirmation_hash')

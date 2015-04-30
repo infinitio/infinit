@@ -119,6 +119,7 @@ class Mixin:
         'features',
         'os',
         'plan',
+        'quota',
       ]
     return res
 
@@ -134,9 +135,10 @@ class Mixin:
       'features',
       'identity',
       'swaggers',
+      'plan',
+      'quota',
       'consumed_ghost_codes',
       'stripe_id',
-      'plan',
     ]
     return res
 
@@ -351,6 +353,16 @@ class Mixin:
     # Remove potential leaked previous session.
     self.remove_session(user, device)
     elle.log.debug("%s: store session" % user['_id'])
+
+    # Check if this is the first login of this user
+    res = self.database.users.find_one(
+      {
+        '_id': user['_id'],
+        'last_connection': {'$exists': False},
+      },
+      fields = ['referred_by'])
+    if res is not None and 'referred_by' in res:
+      self.process_referrals(user, res['referred_by'])
 
     bottle.request.session['device'] = device['id']
     bottle.request.session['identifier'] = user['_id']
@@ -741,8 +753,14 @@ class Mixin:
     with elle.log.trace("registration: %s as %s" % (email, fullname)):
       email = email.strip().lower()
       handle = self.unique_handle(fullname)
+      plan = self.database.plans.find_one({'name': 'basic'})
+      features = self._roll_features(True)
+      quota = {}
+      if plan is not None:
+        features.update(plan.get('features', {}))
+        quota = plan.get('quota', {})
       user_content = {
-        'features': self._roll_features(True),
+        'features': features,
         'register_status': 'ok',
         'email': email,
         'fullname': fullname,
@@ -756,6 +774,8 @@ class Mixin:
         'old_notifications': [],
         'accounts': [collections.OrderedDict((('id', email), ('type', 'email')))],
         'creation_time': self.now,
+        'plan': 'basic',
+        'quota': quota,
       }
       if email_is_already_confirmed:
         user_content.update({'email_confirmed': True})
@@ -964,44 +984,16 @@ class Mixin:
       if user.get('email_confirmed', True):
         response(404, {'reason': 'email is already confirmed'})
       assert user.get('email_confirmation_hash') is not None
-      # XXX: Waiting for mandrill to put cooldown on mail.
-      now = self.now
-      confirmation_cooldown = now - self.email_confirmation_cooldown
-      res = self.database.users.update(
-        {
-          'email': user['email'],
-          '$or': [
-            {
-              'last_email_confirmation':
-              {
-                '$lt': confirmation_cooldown,
-              }
-            },
-            {
-              'last_email_confirmation':
-              {
-                '$exists': False,
-              }
-            }
-          ]
-        },
-        {
-          '$set':
-          {
-            'last_email_confirmation': now,
-          }
-        })
-      if res['n'] != 0:
-        self.mailer.send_template(
-          to = user['email'],
-          template_name = 'reconfirm-sign-up',
-          merge_vars = {
-            user['email']: {
-              'CONFIRM_KEY': key('/users/%s/confirm-email' % user['_id']),
-              'USER_FULLNAME': user['fullname'],
-              'USER_ID': str(user['_id']),
-              }}
-          )
+      self.mailer.send_template(
+        to = user['email'],
+        template_name = 'reconfirm-sign-up',
+        merge_vars = {
+          user['email']: {
+            'CONFIRM_KEY': key('/users/%s/confirm-email' % user['_id']),
+            'USER_FULLNAME': user['fullname'],
+            'USER_ID': str(user['_id']),
+            }}
+        )
       return {}
 
   @api('/user/<id>/connected')
@@ -1029,7 +1021,12 @@ class Mixin:
                        extra_fields,
                        recipient = None):
     assert 'accounts' in extra_fields
+    plan = self.database.plans.find_one({'name': 'basic'})
     features = self._roll_features(True)
+    quota = {}
+    if plan is not None:
+      features.update(plan.get('features', {}))
+      quota =  plan.get('quota', {})
     ghost_code = self.generate_random_sequence()
     request = {
       'register_status': 'ghost',
@@ -1041,6 +1038,8 @@ class Mixin:
       # Ghost code is used for merging mechanism.
       'ghost_code': ghost_code,
       'ghost_code_expiration': self.now + datetime.timedelta(days=14),
+      'quota': quota,
+      'plan': 'basic',
     }
     if recipient is not None:
       user_id = recipient['_id']
@@ -2841,6 +2840,63 @@ class Mixin:
       res.update(self.devices_users_api(user['_id']))
     return self.success(res)
 
+  def change_plan(self, uid, new_plan):
+    return self._change_plan(self._user_by_id(uid, self.__user_self_fields),
+                             new_plan)
+
+  def _change_plan(self, user, new_plan_name):
+    current_plan = self.database.plans.find_one({'name': user.get('plan', 'basic')})
+    new_plan = self.database.plans.find_one({'name': new_plan_name})
+    fset = dict()
+    funset = dict()
+    for (k, v) in new_plan['features'].items():
+      fset.update({'features.' + k: v})
+    for (k, v) in current_plan['features'].items():
+      if k not in new_plan['features']:
+        funset.update({'features.'+k: 1})
+    qset = dict()
+    qunset = dict()
+    for (k, v) in new_plan['quota'].items():
+      qset.update({'quota.' + k: v})
+    for (k, v) in current_plan['quota'].items():
+      if k not in new_plan['quota']:
+        qunset.update({'quota.'+k: 1})
+    fset.update(qset)
+    funset.update(qunset)
+    fset.update({'plan': new_plan_name})
+    update = {'$set': fset}
+    if len(funset):
+      update.update({'$unset': funset})
+    self.database.users.update({'_id': user['_id']}, update)
+
+  def process_referrals(self, new_user, referrals):
+    """ Called once per new_user upon first login.
+        @param new_user User struct for the invitee
+        @param referrals List of user ids who invited new_user
+    """
+    #policy: +1G for referrers up to 10G,  + 500Mo for referred
+    #FIXME: send email
+    self.database.users.update(
+      {
+        '_id': {'$in': referrals},
+        '$or': [{'plan': 'basic'}, {'plan': {'$exists': False}}],
+        'quota.total_link_size': {'$exists': True, '$lt': 1e10}
+      },
+      {
+        '$inc': { 'quota.total_link_size': 1e9}
+      },
+      multi = True
+    )
+    self.database.users.update(
+      {
+        '_id': new_user['_id'],
+        '$or': [{'plan': 'basic'}, {'plan': {'$exists': False}}],
+        'quota.total_link_size': {'$exists': True, '$lt': 1e10}
+      },
+      {
+        '$inc': { 'quota.total_link_size': 5e8}
+      },
+    )
   @api('/users/<user>', method='PUT')
   @require_logged_in
   def user_update(self,
@@ -2865,9 +2921,11 @@ class Mixin:
             sub = customer.subscriptions.data[0]
             sub.plan = plan
             sub.save()
-          self.database.users.update(
-            {'_id': user['_id']},
-            {'$set': {'plan': plan}})
+          if user.get('plan', 'basic') != plan:
+            self.database.users.update(
+              {'_id': user['_id']},
+              {'$set': {'plan': plan}})
+            self._change_plan(user, plan)
       except stripe.error.CardError as e:
         elle.log.warn('Stripe error: customer {0} card'
                       'has been declined'.format(user['_id'],
@@ -2932,7 +2990,7 @@ class Mixin:
       c['phones'] = list(filter(lambda x: x is not None, c['phones']))
     mails = [val for sublist in contacts for val in sublist.get('emails', [])]
     phones = [val for sublist in contacts for val in sublist.get('phones', [])]
-    ids = mails + phones
+    ids = mails
     existing = self.database.users.find(
       {'accounts.id': {'$in': ids}},
       fields = ['accounts', 'register_status', 'contact_of']
@@ -2978,11 +3036,12 @@ class Mixin:
       phones = c.get('phones', [])
       accounts_mails = list(map(lambda x: {'type': 'email', 'id': x}, c.get('emails', [])))
       accounts_phone = list(map(lambda x: {'type': 'phone', 'id': x}, c.get('phones', [])))
-      if len(accounts_mails) == 0 and len(accounts_phone) == 0:
+      if len(accounts_mails) == 0: # and len(accounts_phone) == 0:
         continue
       contact_data = {
           'register_status': 'contact',
-          'accounts': accounts_mails + accounts_phone,
+          'accounts': accounts_mails, # + accounts_phone,
+          'phone_numbers': phones,
           'notifications': [],
           'networks': [],
           'devices': [],

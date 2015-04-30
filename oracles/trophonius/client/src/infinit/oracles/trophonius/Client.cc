@@ -194,6 +194,13 @@ namespace infinit
         , json(std::move(json))
       {}
 
+      PausedNotification::PausedNotification(
+        elle::serialization::SerializerIn& input)
+        : Notification(NotificationType::paused)
+      {
+        input.serialize("transaction_id", this->transaction_id);
+        input.serialize("paused", this->paused);
+      }
 
       static
       std::unique_ptr<Notification>
@@ -260,6 +267,11 @@ namespace infinit
           case NotificationType::model_update:
           {
             return elle::make_unique<ModelUpdateNotification>(json);
+          }
+          case NotificationType::paused:
+          {
+            elle::serialization::json::SerializerIn input(json);
+            return elle::make_unique<PausedNotification>(input);
           }
           default:
             ; // Nothing.

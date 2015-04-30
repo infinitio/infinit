@@ -120,6 +120,7 @@ ELLE_TEST_SCHEDULED(recipient_states)
       f.write(&c, 1);
     }
   }
+  ELLE_LOG("send file");
   {
     tests::Client sender(server, sender_user, sender_home.path());
     sender.login();
@@ -132,7 +133,7 @@ ELLE_TEST_SCHEDULED(recipient_states)
       [&] (gap_TransactionStatus status)
       {
       t_id = state_transaction.data()->id;
-        ELLE_LOG("new local transaction status: %s", status);
+        ELLE_LOG("new gap status: %s", status);
         auto& server_transaction =
           server.transaction(state_transaction.data()->id);
         switch (status)
@@ -179,6 +180,7 @@ ELLE_TEST_SCHEDULED(recipient_states)
     auto conn = state_transaction.status_changed().connect(
       [&] (gap_TransactionStatus status)
       {
+        ELLE_LOG("new gap status: %s", status);
         switch (status)
         {
           case gap_transaction_connecting:

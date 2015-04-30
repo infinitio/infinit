@@ -37,6 +37,7 @@ namespace infinit
       s.serialize("id", this->id);
       s.serialize("click_count", this->click_count);
       s.serialize("ctime", this->ctime);
+      s.serialize("files", this->file_list);
       s.serialize("message", this->message);
       s.serialize("mtime", this->mtime);
       s.serialize("name", this->name);
@@ -44,6 +45,19 @@ namespace infinit
       s.serialize("sender_id", this->sender_id);
       s.serialize("share_link", this->share_link);
       s.serialize("status", this->status, elle::serialization::as<int>());
+    }
+
+    uint64_t
+    LinkTransaction::size() const
+    {
+      uint64_t sum = 0;
+      std::for_each(this->file_list.begin(),
+                    this->file_list.end(),
+                    [&] (FileNameSizePair const& p)
+                    {
+                      sum += p.second;
+                    });
+      return sum;
     }
 
     using elle::serialization::Hierarchy;

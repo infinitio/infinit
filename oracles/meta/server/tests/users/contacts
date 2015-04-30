@@ -57,46 +57,24 @@ with Meta() as meta:
   assert [str(carl.id)] == alice2.swaggers
 
 
-# check using phone numbers
-with Meta() as meta:
-  alice = User(meta, 'alice@infinit.io')
-  alice.login(country_code = 'FR')
-  alice.put('user/contacts',
-    {'contacts': [{'emails':['marc@infinit.io'], 'phones': ['1234555678']}]})
-  bob = User(meta, 'bob@infinit.io')
-  bob.login(country_code = 'FR')
-  carl = User(meta, 'carl@infinit.io')
-  carl.login()
-
-  transaction, res = bob.sendfile(recipient = '1234555678', use_identifier = False)
-  #Cheat to get the ghost code
-  marc_data = meta.database.users.find_one({'accounts.id': 'marc@infinit.io'})
-  print(marc_data)
-  d = meta.database.users.find({}, ['accounts', 'register_status'])
-  for e in d:
-    print(e)
-  code = marc_data['ghost_code']
-  carl.post('ghost/%s/merge' % (code)) # carl is marc!
-  assert [str(carl.id)] == alice.swaggers
-
 # check multiple
 with Meta() as meta:
   alice = User(meta, 'alice@infinit.io')
   alice.login(country_code = 'FR')
   alice.put('user/contacts',
-    {'contacts': [{'phones': ['0122334455']}]})
+    {'contacts': [{'emails': ['marc@wanadoo.fr']}]})
   bob = User(meta, 'bob@infinit.io')
   bob.login(country_code = 'FR')
   bob.put('user/contacts',
-    {'contacts': [{'phones': ['33122334455']}]})
+    {'contacts': [{'emails': ['marc@wanadoo.fr']}]})
   carl = User(meta, 'carl@infinit.io')
   carl.login()
   carl.put('user/contacts',
     {'contacts': [{'emails':['marc@infinit.io']}]})
   marc = User(meta, 'marc@infinit.io')
-  transaction, res = bob.sendfile(recipient = '0122334455', use_identifier = False)
+  transaction, res = bob.sendfile(recipient = 'marc@wanadoo.fr', use_identifier = False)
 
-  marc_data = meta.database.users.find_one({'accounts.id': '+33 1 22 33 44 55'})
+  marc_data = meta.database.users.find_one({'accounts.id': 'marc@wanadoo.fr'})
   code = marc_data['ghost_code']
   marc.login()
   marc.post('ghost/%s/merge' % (code))
@@ -123,25 +101,26 @@ with Meta() as meta:
     {'contacts':
         [{'phones': [x]} for x in ['', '4', 'ET telephone maison', '012345', '0122334455','0122334455']]
         + [{'phones': ['0133445566', '0133445566']}]
-        + [{'emails': [x]} for x in ['bob', '12', 'bob@bob.com', 'bob@bob.com']]
+        + [{'emails': [x]} for x in ['marc2@infinit.io', 'bob', '12', 'bob@bob.com', 'bob@bob.com']]
         + [{'emails': ['john@doe.com', 'john@doe.com']}]
+        + [{'emails': ['tango@tango.com'], 'phones': ['01234567']}]
     })
   bob = User(meta, 'bob@bob.com')
   bob.login(country_code = 'FR')
-  print('-----')
-  d = meta.database.users.find({}, ['accounts', 'register_status'])
-  for e in d:
-    del e['_id']
-    print(e)
-  print('+++++')
+  #print('-----')
+  #d = meta.database.users.find({}, ['accounts', 'register_status', 'phone_numbers'])
+  #for e in d:
+  #  del e['_id']
+  #  print(e)
+  #print('+++++')
   assert [str(bob.id)] == alice.swaggers
   john = User(meta, 'john@doe.com')
   john.login()
   assert str(john.id) in alice.swaggers
   marc = User(meta, 'marc@infinit.io')
-  transaction, res = bob.sendfile(recipient = '0122334455', use_identifier = False)
+  transaction, res = bob.sendfile(recipient = 'marc2@infinit.io', use_identifier = False)
 
-  marc_data = meta.database.users.find_one({'accounts.id': '+33 1 22 33 44 55'})
+  marc_data = meta.database.users.find_one({'accounts.id': 'marc2@infinit.io'})
   code = marc_data['ghost_code']
   marc.login()
   marc.post('ghost/%s/merge' % (code))

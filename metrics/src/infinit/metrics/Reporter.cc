@@ -249,6 +249,16 @@ namespace infinit
                                           url, attempt, http_status,
                                           aws_error_code, message));
     }
+
+    void
+    Reporter::quota_exceeded(uint64_t size,
+                             uint64_t current,
+                             uint64_t total)
+    {
+      this->_push(std::bind(&Reporter::_quota_exceeded,
+                            this, size, current, total));
+    }
+
     /*-------------.
     | User Metrics |
     `-------------*/
@@ -511,6 +521,10 @@ namespace infinit
                           int http_status,
                           std::string const& aws_error_code,
                           std::string const& message)
+    {}
+
+    void
+    Reporter::_quota_exceeded(uint64_t size, uint64_t current, uint64_t quota)
     {}
 
     /*----------------------------.

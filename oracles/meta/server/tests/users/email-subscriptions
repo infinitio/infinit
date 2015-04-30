@@ -9,9 +9,7 @@ unconfirmed_email_leeway = 100
 
 with Meta(
     enable_emails = True,
-    unconfirmed_email_leeway = unconfirmed_email_leeway,
-    email_confirmation_cooldown = datetime.timedelta(seconds = 0)) \
-as meta:
+    unconfirmed_email_leeway = unconfirmed_email_leeway) as meta:
   bob = User(meta)
   alice = User(meta)
 

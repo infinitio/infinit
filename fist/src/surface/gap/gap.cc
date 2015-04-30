@@ -300,7 +300,7 @@ gap_check_ghost_code(gap_State* state, std::string const& code, bool& res)
     "check ghost code",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      res = state.meta().check_ghost_code(code);
+      res = state.meta(false).check_ghost_code(code);
       return gap_ok;
     });
 }
@@ -1314,15 +1314,14 @@ gap_pause_transaction(gap_State* state, uint32_t id)
 {
   ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
-  elle::unreachable();
-  // return run<gap_Status>(
-  //   state,
-  //   "pause transaction",
-  //   [&] (surface::gap::State& state) -> gap_Status
-  //   {
-  //     state.transactions().at(id)->pause();
-  //     return gap_ok;
-  //   });
+  return run<gap_Status>(
+    state,
+    "pause transaction",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.transaction_pause(id, true);
+      return gap_ok;
+    });
 }
 
 gap_Status
@@ -1330,15 +1329,14 @@ gap_resume_transaction(gap_State* state, uint32_t id)
 {
   ELLE_ASSERT(state != nullptr);
   ELLE_ASSERT(id != surface::gap::null_id);
-  elle::unreachable();
-  // return run<gap_Status>(
-  //   state,
-  //   "resume transaction",
-  //   [&] (surface::gap::State& state) -> gap_Status
-  //   {
-  //     state.transactions().at(id)->resume();
-  //     return gap_ok;
-  //   });
+  return run<gap_Status>(
+    state,
+    "resume transaction",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.transaction_pause(id, false);
+      return gap_ok;
+    });
 }
 
 gap_Status

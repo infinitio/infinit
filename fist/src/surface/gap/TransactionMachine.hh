@@ -186,8 +186,6 @@ namespace surface
       cleanup() = 0;
     private:
       void
-      _clean();
-      void
       _end();
 
     protected:

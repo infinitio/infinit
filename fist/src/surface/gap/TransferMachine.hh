@@ -93,6 +93,8 @@ namespace surface
       _cloud_synchronize_wrapper();
       void
       _stopped_wrapper();
+      void
+      _paused();
 
     protected:
       virtual

@@ -69,7 +69,9 @@ namespace surface
           "frete.Frete:TRACE,"
           "infinit.surface.gap.Rounds:DEBUG,"
           "*meta*:TRACE,"
-          "OSX*:DUMP,"
+          "Gap-ObjC++.*:DEBUG,"
+          "iOS.*:DEBUG,"
+          "OSX*:DEBUG,"
           "reactor.fsm.*:TRACE,"
           "reactor.network.upnp:DEBUG,"
           "station.Station:DEBUG,"
@@ -168,6 +170,7 @@ namespace surface
         this->local_configuration().enable_mirroring();
       config.max_mirror_size = this->local_configuration().max_mirror_size();
       config.max_compress_size = 0;
+      config.max_cloud_buffer_size = 0;
       config.disable_upnp = false;
       ELLE_TRACE("read local config")
       {
@@ -1297,9 +1300,19 @@ namespace surface
             elle::cast<infinit::oracles::trophonius::ModelUpdateNotification>::
             runtime(notif);
           ELLE_ASSERT(n.get());
-          elle::serialization::json::SerializerIn input(n->json);
+          elle::serialization::json::SerializerIn input(n->json, false);
           DasModel::Update u(input);
           u.apply(this->_model);
+          break;
+        }
+        case infinit::oracles::trophonius::NotificationType::paused:
+        {
+          ELLE_ASSERT(
+            dynamic_cast<infinit::oracles::trophonius::PausedNotification const*>(
+              notif.get()) != nullptr);
+          this->_on_transaction_paused(
+            *static_cast<infinit::oracles::trophonius::PausedNotification const*>(
+              notif.get()));
           break;
         }
         case infinit::oracles::trophonius::NotificationType::none:
@@ -1388,7 +1401,6 @@ namespace surface
         this->_model.devices.end(),
         [&] (Device const& device)
         {
-          ELLE_LOG("device id: %s - this->_device %s", device.id, this->_device->id);
           return device.id == this->_device->id;
         });
       if (it != this->_model.devices.end())
@@ -1413,6 +1425,7 @@ namespace surface
       s.serialize("enable_file_mirroring", this->enable_file_mirroring);
       s.serialize("max_mirror_size", this->max_mirror_size);
       s.serialize("max_compress_size", this->max_compress_size);
+      s.serialize("max_cloud_buffer_size", this->max_cloud_buffer_size);
       s.serialize("disable_upnp", this->disable_upnp);
       s.serialize("features", this->features);
     }
@@ -1550,6 +1563,9 @@ operator <<(std::ostream& out,
       break;
     case gap_transaction_paused:
       out << "paused";
+      break;
+    case gap_transaction_payment_required:
+      out << "payment required";
       break;
   }
   return out;

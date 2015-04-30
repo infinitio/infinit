@@ -95,7 +95,6 @@ class Meta(bottle.Bottle,
       apertus_expiration_time = 90, # in sec
       unconfirmed_email_leeway = 604800, # in sec, 7 days.
       daily_summary_hour = 18, #in sec.
-      email_confirmation_cooldown = datetime.timedelta(weeks = 1),
       shorten_ghost_profile_url = True,
       aws_region = None,
       aws_buffer_bucket = None,
@@ -177,7 +176,6 @@ class Meta(bottle.Bottle,
     self.apertus_expiration_time = int(apertus_expiration_time)
     self.unconfirmed_email_leeway = int(unconfirmed_email_leeway)
     self.daily_summary_hour = int(daily_summary_hour)
-    self.email_confirmation_cooldown = email_confirmation_cooldown
     self.shorten_ghost_profile_url = shorten_ghost_profile_url
     self.shortener = shortener.ShortSwitch()
     if aws_region is None:
@@ -359,6 +357,9 @@ class Meta(bottle.Bottle,
   def unavailable(self, message = None):
     response(503, message)
 
+  def quota_exceeded(self, message = None):
+    response(402, message)
+
   @api('/js/<filename:path>')
   def static_javascript(self, filename):
     return self.__static('js/%s' % filename)
@@ -384,7 +385,7 @@ class Meta(bottle.Bottle,
     source = bottle.request.environ.get('REMOTE_ADDR')
     force = self.__force_admin or \
       (self.__force_admin is not False and source == '127.0.0.1')
-    return force or bottle.request.certificate in [
+    return force or (hasattr(bottle.request, 'certificate') and bottle.request.certificate in [
       'antony.mechin@infinit.io',
       'baptiste.fradin@infinit.io',
       'christopher.crone@infinit.io',
@@ -393,7 +394,7 @@ class Meta(bottle.Bottle,
       'matthieu.nottale@infinit.io',
       'patrick.perlmutter@infinit.io',
       'quentin.hocquet@infinit.io',
-    ]
+    ])
 
   @property
   def logged_in(self):

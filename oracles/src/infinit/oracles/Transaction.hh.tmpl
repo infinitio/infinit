@@ -70,6 +70,12 @@ namespace infinit
     operator <<(std::ostream& out,
                 Transaction::Status t);
 
+    // XXX workaround for bug in Boost 1.56 affecting iOS.
+    // https://svn.boost.org/trac/boost/ticket/10825
+    std::ostream&
+    operator <<(std::ostream& out,
+                boost::optional<Transaction::Status> t);
+
     std::ostream&
     operator <<(std::ostream& out,
                 Transaction const& t);

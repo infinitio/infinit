@@ -732,6 +732,10 @@ namespace surface
       ELLE_ATTRIBUTE_R(Transactions, transactions);
       Transactions& transactions() {  return this->_transactions; }
 
+      void
+      transaction_pause(uint32_t id,
+                        bool paused = true);
+
       /*------------------.
       | Link Transactions |
       `------------------*/
@@ -808,6 +812,10 @@ namespace surface
       _on_peer_reachability_updated(
         infinit::oracles::trophonius::PeerReachabilityNotification const& notif);
 
+      void
+      _on_transaction_paused(
+        infinit::oracles::trophonius::PausedNotification const& notif);
+
     public:
       mutable reactor::MultiLockBarrier transaction_update_lock;
     /*--------------.
@@ -834,6 +842,7 @@ namespace surface
         bool enable_file_mirroring; // Only copy files if this is true.
         int64_t max_mirror_size; // Copy files to send if below this size
         int64_t max_compress_size; // Only compresss archive if content below this size
+        int64_t max_cloud_buffer_size; // Only cloud buffer below this size
         bool disable_upnp;
         typedef std::unordered_map<std::string, std::string> Features;
         Features features;

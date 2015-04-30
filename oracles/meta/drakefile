@@ -42,6 +42,7 @@ def configure(production_build,
                          apns = apns,
                          apns_cert = apns_cert,
                          apns_cert_prod = apns_cert_prod,
+                         mongobox = mongobox,
                          papier_python = papier_python,
                          prefix = prefix)
 

@@ -197,6 +197,19 @@ namespace infinit
        this->_send(this->_transaction_dest, data);
      }
 
+     void
+     JSONReporter::_quota_exceeded(uint64_t size,
+                                   uint64_t used,
+                                   uint64_t quota)
+     {
+       elle::json::Object data;
+       data[this->_key_str(JSONKey::event)] = std::string("quota_exceeded");
+       data[this->_key_str(JSONKey::total_size)] = size;
+       data[this->_key_str(JSONKey::used_storage)] = used;
+       data[this->_key_str(JSONKey::quota)] = quota;
+       this->_send(this->_transaction_dest, data);
+     }
+
     /*-------------.
     | User Metrics |
     `-------------*/
@@ -548,6 +561,10 @@ namespace infinit
           return "who";
         case JSONKey::features:
           return "features";
+        case JSONKey::quota:
+          return "quota";
+        case JSONKey::used_storage:
+          return "used_storage";
         default:
           ELLE_ABORT("invalid metrics JSON key: %s", k);
       }

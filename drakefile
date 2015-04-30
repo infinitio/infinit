@@ -659,19 +659,22 @@ def configure(cxx_toolkit = None,
   gap_tests_cxx_config += boost_date_time
   gap_tests_cxx_config += boost_filesystem
   gap_tests_cxx_config.lib_path_runtime('../../lib')
-  for name in ('state',
-               'cloud-buffer',
-               'facebook_connect',
-               'devices',
-               'kickout',
-               'ghost-download',
-               'ghost-invite',
-               'invalid-credentials',
-               'peer-reject',
-               'resynchronization',
-               'snapshot-resume',
-               'transition-to-finish',
-             ):
+  for name in (
+      'cloud-buffer',
+      'devices',
+      'facebook_connect',
+      'ghost-download',
+      'ghost-invite',
+      'invalid-credentials',
+      'kickout',
+      'links',
+      'pause',
+      'peer-reject',
+      'resynchronization',
+      'snapshot-resume',
+      'state',
+      'transition-to-finish',
+  ):
     sources = drake.nodes('fist/tests/%s.cc' % name)
     if name != 'state':
       sources += drake.nodes(

@@ -398,6 +398,16 @@ class Meta:
     self.__mongo.__enter__()
     client = pymongo.MongoClient(port = self.__mongo.port)
     self.__database = client.meta
+    client.meta.plans.insert({
+      'name': 'basic',
+      'quota': { 'total_link_size': 1e9},
+      'features': {'nag': 'true'}
+    })
+    client.meta.plans.insert({
+      'name': 'premium',
+      'quota': { 'total_link_size': 5e10},
+      'features': {'turbo': 'true'}
+    })
     def run():
       try:
         self.__meta = infinit.oracles.meta.server.Meta(
