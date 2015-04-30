@@ -447,12 +447,19 @@ namespace surface
         // this->_sender is set true when creating a transaction on this device.
         if (this->_sender)
         {
-          ELLE_ASSERT_NEQ(this->_files, boost::none);
-          ELLE_TRACE("%s: create peer send machine (this device)", *this)
-            this->_machine.reset(
-              new PeerSendMachine(*this, this->_id, this->_files.get(),
-                                  this->_message.get(), peer_data,
-                                  this->_authority));
+          if (this->_files == boost::none)
+          {
+            ELLE_ERR("%s: sender snapshot contains no files section", *this);
+            cancel();
+          }
+          else
+          {
+            ELLE_TRACE("%s: create peer send machine (this device)", *this)
+              this->_machine.reset(
+                new PeerSendMachine(*this, this->_id, this->_files.get(),
+                                    this->_message.get(), peer_data,
+                                    this->_authority));
+          }
         }
         // Only create a send machine if the transaction is not to self.
         else if (peer_data->sender_id == this->state().me().id &&
