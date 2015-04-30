@@ -156,8 +156,8 @@ class Mixin:
         self.quota_exceeded(
           {
             'reason': 'link size quota of %s reached' % quota,
-            'quota': quota,
-            'usage': usage,
+            'quota': int(quota),
+            'usage': int(usage),
           })
 
   @api('/link_empty', method = 'POST')
