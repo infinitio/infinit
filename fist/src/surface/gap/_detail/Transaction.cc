@@ -54,17 +54,19 @@ namespace surface
     State::transaction_pause(uint32_t id,
                              bool paused)
     {
-      auto& transaction = this->_transactions.at(id);
+      auto transaction = this->_transactions.at(id).get();
       auto t_id = transaction->data()->id;
-      this->meta().update_transaction(t_id,
-                                      boost::none, //status
-                                      elle::UUID(), // device_id
-                                      "", // device_name
-                                      paused);
-      if (paused)
-        transaction->paused().open();
-      else
-        transaction->paused().close();
+      new reactor::Thread("pause", [=] {
+        this->meta().update_transaction(t_id,
+                                          boost::none, //status
+                                          elle::UUID(), // device_id
+                                          "", // device_name
+                                          paused);
+        if (paused)
+          transaction->paused().open();
+        else
+          transaction->paused().close();
+      }, true);
 
     }
 
