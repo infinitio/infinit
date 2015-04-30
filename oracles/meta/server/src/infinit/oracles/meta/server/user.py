@@ -984,44 +984,16 @@ class Mixin:
       if user.get('email_confirmed', True):
         response(404, {'reason': 'email is already confirmed'})
       assert user.get('email_confirmation_hash') is not None
-      # XXX: Waiting for mandrill to put cooldown on mail.
-      now = self.now
-      confirmation_cooldown = now - self.email_confirmation_cooldown
-      res = self.database.users.update(
-        {
-          'email': user['email'],
-          '$or': [
-            {
-              'last_email_confirmation':
-              {
-                '$lt': confirmation_cooldown,
-              }
-            },
-            {
-              'last_email_confirmation':
-              {
-                '$exists': False,
-              }
-            }
-          ]
-        },
-        {
-          '$set':
-          {
-            'last_email_confirmation': now,
-          }
-        })
-      if res['n'] != 0:
-        self.mailer.send_template(
-          to = user['email'],
-          template_name = 'reconfirm-sign-up',
-          merge_vars = {
-            user['email']: {
-              'CONFIRM_KEY': key('/users/%s/confirm-email' % user['_id']),
-              'USER_FULLNAME': user['fullname'],
-              'USER_ID': str(user['_id']),
-              }}
-          )
+      self.mailer.send_template(
+        to = user['email'],
+        template_name = 'reconfirm-sign-up',
+        merge_vars = {
+          user['email']: {
+            'CONFIRM_KEY': key('/users/%s/confirm-email' % user['_id']),
+            'USER_FULLNAME': user['fullname'],
+            'USER_ID': str(user['_id']),
+            }}
+        )
       return {}
 
   @api('/user/<id>/connected')
