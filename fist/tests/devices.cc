@@ -93,16 +93,22 @@ ELLE_TEST_SCHEDULED(remove_device)
   tests::Server server;
   tests::Client sender(server, "sender@infinit.io");
   sender.login();
+  bool beacon = false;
+  sender.state->attach_callback<surface::gap::State::ConnectionStatus>(
+    [&] (surface::gap::State::ConnectionStatus const& connection){
+      beacon = true;
+    });
   surface::gap::Device d;
-  d.id = elle::UUID::random();
   for (auto i = 0; i < 10; ++i)
   {
+    d.id = elle::UUID::random();
     BOOST_CHECK_EQUAL(sender.state->devices().size(), 1);
     _add_device(d, sender.state->_model);
     BOOST_CHECK_EQUAL(sender.state->devices().size(), 2);
     _remove_device(d.id, sender.state->_model);
     BOOST_CHECK_EQUAL(sender.state->devices().size(), 1);
   }
+  ELLE_ASSERT_EQ(beacon, false);
 }
 
 ELLE_TEST_SCHEDULED(update_device)

@@ -1300,7 +1300,7 @@ namespace surface
             elle::cast<infinit::oracles::trophonius::ModelUpdateNotification>::
             runtime(notif);
           ELLE_ASSERT(n.get());
-          elle::serialization::json::SerializerIn input(n->json);
+          elle::serialization::json::SerializerIn input(n->json, false);
           DasModel::Update u(input);
           u.apply(this->_model);
           break;
