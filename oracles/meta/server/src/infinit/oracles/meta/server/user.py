@@ -3012,6 +3012,9 @@ class Mixin:
     user = self.user
     new_swaggers = dict()
     country_code = self.current_device.get('country_code', None)
+    # Ignore phone numbers for now
+    for c in contacts:
+      c['phones'] = list()
     # Normalize phone numbers
     for c in contacts:
       c['phones'] = list(map(lambda x: clean_up_phone_number(x, country_code), c.get('phones', [])))
