@@ -3012,16 +3012,13 @@ class Mixin:
     user = self.user
     new_swaggers = dict()
     country_code = self.current_device.get('country_code', None)
-    # Ignore phone numbers for now
-    for c in contacts:
-      c['phones'] = list()
     # Normalize phone numbers
     for c in contacts:
       c['phones'] = list(map(lambda x: clean_up_phone_number(x, country_code), c.get('phones', [])))
       c['phones'] = list(filter(lambda x: x is not None, c['phones']))
     mails = [val for sublist in contacts for val in sublist.get('emails', [])]
     phones = [val for sublist in contacts for val in sublist.get('phones', [])]
-    ids = mails + phones
+    ids = mails
     existing = self.database.users.find(
       {'accounts.id': {'$in': ids}},
       fields = ['accounts', 'register_status', 'contact_of']
@@ -3067,11 +3064,12 @@ class Mixin:
       phones = c.get('phones', [])
       accounts_mails = list(map(lambda x: {'type': 'email', 'id': x}, c.get('emails', [])))
       accounts_phone = list(map(lambda x: {'type': 'phone', 'id': x}, c.get('phones', [])))
-      if len(accounts_mails) == 0 and len(accounts_phone) == 0:
+      if len(accounts_mails) == 0: # and len(accounts_phone) == 0:
         continue
       contact_data = {
           'register_status': 'contact',
-          'accounts': accounts_mails + accounts_phone,
+          'accounts': accounts_mails, # + accounts_phone,
+          'phone_numbers': phones,
           'notifications': [],
           'networks': [],
           'devices': [],
