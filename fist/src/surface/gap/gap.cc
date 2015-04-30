@@ -300,7 +300,7 @@ gap_check_ghost_code(gap_State* state, std::string const& code, bool& res)
     "check ghost code",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      res = state.meta().check_ghost_code(code);
+      res = state.meta(false).check_ghost_code(code);
       return gap_ok;
     });
 }
