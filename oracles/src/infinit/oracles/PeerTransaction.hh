@@ -60,6 +60,7 @@ namespace infinit
       int64_t total_size;
       TransactionCanceler canceler;
       bool cloud_buffered;
+      bool paused;
 
     /*--------------.
     | Serialization |

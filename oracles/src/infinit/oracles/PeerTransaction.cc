@@ -49,6 +49,7 @@ namespace infinit
       , total_size()
       , canceler()
       , cloud_buffered(false)
+      , paused(false)
     {}
 
     PeerTransaction::PeerTransaction(std::string sender_id,
@@ -68,6 +69,7 @@ namespace infinit
       , total_size()
       , canceler()
       , cloud_buffered(false)
+      , paused(false)
     {}
 
     PeerTransaction::~PeerTransaction() noexcept(true)
@@ -131,6 +133,14 @@ namespace infinit
       catch (elle::serialization::Error const&)
       {
         this->cloud_buffered = false;
+      }
+      try
+      {
+        s.serialize("paused", this->paused);
+      }
+      catch (elle::serialization::Error const&)
+      {
+        this->paused = false;
       }
     }
 
