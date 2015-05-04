@@ -434,9 +434,11 @@ namespace surface
       bool
       has_device() const;
 
-      /// Update the local device name.
+      /// Update the local device name, model and OS.
       void
-      update_device(std::string const& name) const;
+      update_device(boost::optional<std::string> name = {},
+                    boost::optional<std::string> model = {},
+                    boost::optional<std::string> os = {}) const;
 
       void
       change_password(std::string const& old_password,

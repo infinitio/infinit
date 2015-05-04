@@ -24,16 +24,24 @@ namespace surface
     }
 
     void
-    State::update_device(std::string const& name) const
+    State::update_device(boost::optional<std::string> name,
+                         boost::optional<std::string> model,
+                         boost::optional<std::string> os) const
     {
       ELLE_TRACE_METHOD(name);
+      if (!name && !model && !os)
+      {
+        ELLE_DEBUG("%s: neither name, model nor OS are present", *this);
+        return;
+      }
 
-      ELLE_DEBUG("update device name to %s", name);
+      ELLE_DEBUG("update device name to %s, model to %s, os to %s",
+                 name, model, os);
       std::string passport_path = this->local_configuration().passport_path();
 
       ELLE_ASSERT(this->_device != nullptr);
 
-      auto res = this->_meta.update_device(this->_device->id, name);
+      auto res = this->_meta.update_device(this->_device->id, name, model, os);
       this->_device.reset(new Device(res));
       auto passport_string = res.passport.get();
 
