@@ -209,7 +209,7 @@ namespace surface
     State::_kick_out(bool retry,
                     std::string const& message)
     {
-      this->_meta.error_handlers().erase(reactor::http::StatusCode::Forbidden);
+      ELLE_TRACE_SCOPE("kicked out: %s (retry: %s)", message, retry);
       this->logout();
       this->enqueue(ConnectionStatus(false, retry, message));
     }
@@ -836,6 +836,7 @@ namespace surface
     {
       if (this->_login_thread)
         this->_login_thread->terminate_now();
+      this->_meta.error_handlers().erase(reactor::http::StatusCode::Forbidden);
       reactor::Lock l(this->_login_mutex);
       this->_logged_in.close();
       ELLE_TRACE_SCOPE("%s: logout", *this);
