@@ -383,12 +383,15 @@ namespace surface
     void
     GhostReceiveMachine::_finish()
     {
-      TransactionMachine::_finish();
       auto peer_data =
         std::dynamic_pointer_cast<infinit::oracles::PeerTransaction>(
           transaction().data());
       if (peer_data->files_count > 1)
-        elle::archive::extract(_path);
+      {
+        elle::archive::extract(this->_path);
+        boost::filesystem::remove(this->_path);
+      }
+      TransactionMachine::_finish();
     }
 
     void

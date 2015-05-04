@@ -12,12 +12,13 @@ namespace tests
   State::State(Server& server,
                elle::UUID device_id,
                boost::filesystem::path const& home)
-    : _temporary_dir()
+    : _download_dir()
+    , _temporary_dir()
     , _state(
       "http", "127.0.0.1", server.port(),
       fingerprint,
       device_id,
-      this->_temporary_dir.path().string(),
+      this->_download_dir.path().string(),
       !home.empty() ? home.string() : this->_temporary_dir.path().string(),
       authority
       )

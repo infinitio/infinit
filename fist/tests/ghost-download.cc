@@ -144,16 +144,16 @@ ELLE_TEST_SCHEDULED(automatic_unzip)
 {
   tests::Server server;
   elle::filesystem::TemporaryDirectory dir;
-  auto a = dir.path() / "A";
-  auto b = dir.path() / "B";
-  boost::filesystem::ofstream a_file(a);
-  boost::filesystem::ofstream b_file(b);
+  std::vector<boost::filesystem::path> paths;
+  for (int i = 0; i < 10; ++i)
+  {
+    auto p = dir.path() / std::to_string(i);
+    paths.push_back(p);
+    boost::filesystem::ofstream file{p.string()};
+    file << std::string(1024, 'O');
+  }
   auto archive_path = dir.path() / "foo.zip";
-  elle::archive::archive(elle::archive::Format::zip,
-                         {a, b},
-                         archive_path);
-
-
+  elle::archive::archive(elle::archive::Format::zip, paths, archive_path);
   server.register_route(
     "/ghost-download.zip",
     reactor::http::Method::GET,
@@ -227,6 +227,18 @@ ELLE_TEST_SCHEDULED(automatic_unzip)
   {
     reactor::sleep(100_ms);
     state->poll();
+  }
+  {
+    using namespace boost::filesystem;
+    int count = std::count_if(
+      directory_iterator(state.download_dir().path()),
+      directory_iterator(),
+      [] (path const& p)
+      {
+        return is_regular_file(p);
+      });
+    // The archive should have been deleted, the two files extracted.
+    ELLE_ASSERT_EQ(count, paths.size());
   }
 }
 
