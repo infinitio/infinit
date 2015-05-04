@@ -57,9 +57,54 @@ ELLE_TEST_SCHEDULED(pause_transfer)
   reactor::wait(paused);
 }
 
+ELLE_TEST_SCHEDULED(pause_snapshot)
+{
+  tests::SleepyServer server;
+  elle::filesystem::TemporaryDirectory sender_home(
+    "pause_sender_home_p2p");
+  auto const& sender_user =
+    server.register_user("sender@infinit.io", "password");
+  elle::filesystem::TemporaryDirectory recipient_home(
+    "pause_recipient_home_p2p");
+  auto const& recipient_user =
+    server.register_user("recipient@infinit.io", "password");
+  std::string t_id;
+  elle::filesystem::TemporaryFile transfered("pause");
+  {
+    boost::filesystem::ofstream f(transfered.path());
+    BOOST_CHECK(f.good());
+    for (int i = 0; i < 2048; ++i)
+    {
+      char c = i % 256;
+      f.write(&c, 1);
+    }
+  }
+
+
+  {
+    tests::Client sender(server, sender_user, sender_home.path());
+    sender.login();
+    auto& state_transaction = sender.state->transaction_peer_create(
+      recipient_user.email(),
+      std::vector<std::string>{transfered.path().string().c_str()},
+      "message");
+    reactor::wait(server.started_blocking);
+    sender.state->transaction_pause(state_transaction.id());
+    reactor::wait(state_transaction.paused());
+  }
+  {
+    tests::Client sender(server, sender_user, sender_home.path());
+    sender.login();
+    sender.state->synchronize();
+    auto& state_transaction = *sender.state->transactions().begin()->second;
+    BOOST_CHECK(state_transaction.paused());
+  }
+}
+
 ELLE_TEST_SUITE()
 {
   auto timeout = valgrind(15);
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(pause_transfer), 0, timeout);
+  suite.add(BOOST_TEST_CASE(pause_snapshot), 0, timeout);
 }
