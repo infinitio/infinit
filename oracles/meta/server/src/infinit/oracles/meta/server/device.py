@@ -91,31 +91,51 @@ class Mixin:
 
   @api('/devices/<id>', method = "PUT")
   @require_logged_in
-  def update_device(self, id: uuid.UUID, name):
-    if regexp.Validator(regexp.DeviceName, error.DEVICE_NOT_VALID)(name):
+  def update_device(self,
+                    id: uuid.UUID,
+                    name = None,
+                    model = None,
+                    os = None):
+    if name is not None and \
+      regexp.Validator(regexp.DeviceName, error.DEVICE_NOT_VALID)(name):
         self.bad_request({
           "reason": "invalid name %s" % name,
           "description": "name must contain 1 to 64 characters"
         })
     user = self.user
-    res = self.database.users.find_and_modify(
-      {'_id': user['_id'], 'devices.id': str(id)},
-      {'$set': {"devices.$.name": name}},
-      fields = ['devices'],
-    )
+    set_dict = {}
+    notify_dict = {}
+    if name:
+      set_dict['devices.$.name'] = name
+      notify_dict['name'] = name
+    if model:
+      set_dict['devices.$.model'] = model
+      notify_dict['model'] = model
+    if os:
+      set_dict['devices.$.os'] = os
+      notify_dict['os'] = os
+    if set_dict:
+      res = self.database.users.find_and_modify(
+        {'_id': user['_id'], 'devices.id': str(id)},
+        {'$set': set_dict},
+        fields = ['devices'],
+      )
+    else:
+      res = self.database.users.find_one(
+        {'_id': user['_id'], 'devices.id': str(id)},
+        fields = ['devices']
+      )
     if res is None:
       self.not_found(
         {
           "reason": "unknown device %s" % id
         })
     device = list(filter(lambda x: x['id'] == str(id), res['devices']))[0]
+    notify_dict['id'] = device['id']
     self.notifier.notify_some(
       notifier.MODEL_UPDATE,
       message = {
-        'devices': [{
-          'id': device['id'],
-          'name': name,
-        }]
+        'devices': [notify_dict]
       },
       recipient_ids = {user['_id']},
       version = (0, 9, 35))
