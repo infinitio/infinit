@@ -700,6 +700,8 @@ namespace surface
               this->state().transaction_to_gap_transaction(
                 this->id(), *peer, this->status()));
           }
+          if (peer->paused)
+            this->paused().open();
         }
         else
           ELLE_ERR("%s: unknown transaction type: %s",
