@@ -517,8 +517,10 @@ namespace infinit
         devices() const;
 
         Device
-        update_device(boost::uuids::uuid const& device_uuid,
-                      std::string const& name) const;
+        update_device(elle::UUID const& device_uuid,
+                      boost::optional<std::string> const& name = {},
+                      boost::optional<std::string> const& model = {},
+                      boost::optional<std::string> const& os = {}) const;
 
         Device
         device(boost::uuids::uuid const& device_id) const;

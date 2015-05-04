@@ -882,17 +882,24 @@ namespace infinit
       }
 
       Device
-      Client::update_device(boost::uuids::uuid const& device_uuid,
-                            std::string const& name) const
+      Client::update_device(elle::UUID const& device_uuid,
+                            boost::optional<std::string> const& name,
+                            boost::optional<std::string> const& model,
+                            boost::optional<std::string> const& os) const
       {
         std::string url = elle::sprintf("/devices/%s", device_uuid);
         auto request = this->_request(
           url,
-          Method::POST,
+          Method::PUT,
           [&] (reactor::http::Request& request)
           {
             elle::serialization::json::SerializerOut query(request, false);
-            query.serialize("name", const_cast<std::string&>(name));
+            if (name)
+              query.serialize("name", const_cast<std::string&>(name.get()));
+            if (model)
+              query.serialize("model", const_cast<std::string&>(model.get()));
+            if (os)
+              query.serialize("os", const_cast<std::string&>(os.get()));
           });
         SerializerIn input(url, request);
         return Device(input);
