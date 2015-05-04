@@ -443,7 +443,8 @@ class Mixin:
         'is_ghost': False,
         'strings': '',
 
-        'cloud_buffered': False
+        'cloud_buffered': False,
+        'paused': False,
         }
       transaction_id = self.database.transactions.insert(transaction)
       return {
