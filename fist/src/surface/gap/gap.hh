@@ -182,6 +182,13 @@ gap_device_status(gap_State* state);
 gap_Status
 gap_set_device_name(gap_State* state, std::string const& name);
 
+/// Update this device's details
+gap_Status
+gap_update_device(gap_State* state,
+                  boost::optional<std::string> name = {},
+                  boost::optional<std::string> model = {},
+                  boost::optional<std::string> os = {});
+
 /// Get current user email.
 std::string
 gap_self_email(gap_State* state);

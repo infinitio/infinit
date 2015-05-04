@@ -425,6 +425,23 @@ gap_set_device_name(gap_State* state, std::string const& name)
     });
 }
 
+gap_Status
+gap_update_device(gap_State* state,
+                  boost::optional<std::string> name,
+                  boost::optional<std::string> model,
+                  boost::optional<std::string> os)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "update device",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.update_device(name, model, os);
+      return gap_ok;
+    });
+}
+
 /// - Self ----------------------------------------------------------------
 std::string
 gap_self_email(gap_State* state)
