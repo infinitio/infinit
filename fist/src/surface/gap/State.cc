@@ -223,8 +223,9 @@ namespace surface
       // delegate that part to a thread inside state to avoid cyclic
       // dependencies in the termination graph.
       this->_meta.error_handlers()[reactor::http::StatusCode::Forbidden] =
-        [this]
+        [this] (std::string const& url)
         {
+          ELLE_ERR("got a forbidden on %s", url);
           this->_kick_out();
         };
       this->_kicker.reset(new reactor::Thread{

@@ -357,8 +357,9 @@ namespace infinit
                           default_configuration);
         ELLE_ATTRIBUTE_RW(std::string, email);
         ELLE_ATTRIBUTE(std::string, session_id);
-        typedef std::unordered_map<reactor::http::StatusCode,
-                                   std::function<void ()>> ErrorHandlers;
+        typedef std::unordered_map<
+          reactor::http::StatusCode,
+          std::function<void (std::string const&)>> ErrorHandlers;
         ELLE_ATTRIBUTE_RX(ErrorHandlers, error_handlers);
       public:
         std::string

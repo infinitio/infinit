@@ -1701,7 +1701,7 @@ namespace infinit
           {
             if (this->_error_handlers.find(response) != this->_error_handlers.end())
             {
-              this->_error_handlers.at(response)();
+              this->_error_handlers.at(response)(request.url());
             }
           });
         if (response != reactor::http::StatusCode::OK)
