@@ -99,6 +99,7 @@ class Mixin:
       {'timestamp': {'$lt': res['timestamp']}},
       res,
       upsert = True)
+    bottle.response.set_header('Access-Control-Allow-Origin', '*')
     return res
 
   @api('/status')
