@@ -569,12 +569,12 @@ class Mixin:
     res.update(update)
     return res
 
-  def _web_login(self, user, new = False):
-      bottle.request.session['identifier'] = user['_id']
-      user = self.user
-      elle.log.trace("%s: successfully connected as %s" %
-                     (self.user_identifier(user), user['_id']))
-      return self.success(self._login_response(user, web = True))
+  def _web_login(self, user):
+    bottle.request.session['identifier'] = user['_id']
+    user = self.user
+    elle.log.trace("%s: successfully connected as %s" %
+                   (self.user_identifier(user), user['_id']))
+    return self.success(self._login_response(user, web = True))
 
   @api('/logout', method = 'POST')
   @require_logged_in
@@ -944,18 +944,19 @@ class Mixin:
           self.check_key(key)
         elif hash is not None:
           query['email_confirmation_hash'] = hash
-      res = self.database.users.update(
+      user = self.database.users.find_and_modify(
         query,
         {
           '$unset': {'unconfirmed_email_leeway': True},
           '$set': {'email_confirmed': True}
-        })
-      if res['n'] == 0:
+        },
+        fields = ['_id'])
+      if user is None:
         self.forbidden({
           'user': user,
           'reason': 'invalid confirmation hash or email',
         })
-      return {}
+      return self._web_login(user)
 
   # Deprecated
   @api('/user/resend_confirmation_email/<email>', method = 'POST')
