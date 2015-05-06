@@ -1841,6 +1841,7 @@ gap_session_id(gap_State* state, std::string& res)
     [&] (surface::gap::State& state) -> gap_Status
     {
       res = state.session_id();
+      res.erase(std::remove(res.begin(), res.end(), '"'), res.end());
       return gap_ok;
     });
 }
