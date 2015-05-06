@@ -2636,8 +2636,6 @@ class Mixin:
     name -- The name of the subscription to edit.
     value -- The status wanted for the subscription.
     """
-    if 'email' not in user:
-      return
     action = value and 'subscribe' or 'unsubscribe'
     with elle.log.debug(
         '%s %s from %s emails' % (action, user['email'], name)):
