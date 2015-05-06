@@ -8,6 +8,8 @@
 #include <elle/os/path.hh>
 #include <elle/system/home_directory.hh>
 
+#include <reactor/timer.hh>
+
 #include <common/common.hh>
 
 #include <surface/gap/gap.hh>
@@ -138,6 +140,8 @@ int main(int argc, char** argv)
         id = state.send_files(to, std::move(files), "");
         static const int width = 70;
         float previous_progress = 0.0;
+        bool paused = false;
+        std::unique_ptr<reactor::Timer> timer;
         do
         {
           state.poll();
@@ -156,6 +160,18 @@ int main(int argc, char** argv)
               std::cout << (float(i) / width < progress ? "#" : " ");
             }
             std::cout << "] " << int(progress * 100) << "%" << std::endl;
+          }
+          if (progress > 0.3 && !paused)
+          {
+            ELLE_WARN("CHATTE");
+            state.transaction_pause(id);
+            timer = elle::make_unique<reactor::Timer>(
+            "resume", boost::posix_time::seconds(5),
+            [&state, id]()
+            {
+              state.transaction_pause(id, false);
+            });
+            paused = true;
           }
           reactor::sleep(100_ms);
         }
