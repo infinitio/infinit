@@ -97,6 +97,8 @@ namespace surface
       */
       void
       try_mirroring_files(uint64_t total_size);
+      std::set<std::string>
+      get_extensions();
       virtual
       void
       cleanup () override;

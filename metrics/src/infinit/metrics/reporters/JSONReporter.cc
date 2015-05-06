@@ -64,6 +64,7 @@ namespace infinit
                                             int64_t file_count,
                                             int64_t total_size,
                                             uint32_t message_length,
+                                            std::vector<std::string> extensions,
                                             bool onboarding)
     {
       elle::json::Object data;
@@ -76,6 +77,8 @@ namespace infinit
       data[this->_key_str(JSONKey::onboarding)] = onboarding;
       data[this->_key_str(JSONKey::transaction_type)] =
         this->_transaction_type_str(LinkTransaction);
+      data[this->_key_str(JSONKey::extensions)] =
+        elle::json::Array(extensions.begin(), extensions.end());
 
       this->_send(this->_transaction_dest, data);
     }
@@ -88,7 +91,9 @@ namespace infinit
                                             int64_t total_size,
                                             uint32_t message_length,
                                             bool ghost,
-                                            bool onboarding)
+                                            bool onboarding,
+                                            std::vector<std::string> extensions
+                                            )
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] = std::string("created");
@@ -102,6 +107,8 @@ namespace infinit
       data[this->_key_str(JSONKey::transaction_type)] =
         this->_transaction_type_str(PeerTransaction);
       data[this->_key_str(JSONKey::onboarding)] = onboarding;
+      data[this->_key_str(JSONKey::extensions)] =
+        elle::json::Array(extensions.begin(), extensions.end());
 
       this->_send(this->_transaction_dest, data);
     }
@@ -565,6 +572,8 @@ namespace infinit
           return "quota";
         case JSONKey::used_storage:
           return "used_storage";
+        case JSONKey::extensions:
+          return "extensions";
         default:
           ELLE_ABORT("invalid metrics JSON key: %s", k);
       }
