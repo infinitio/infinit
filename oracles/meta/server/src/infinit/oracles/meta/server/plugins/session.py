@@ -34,6 +34,14 @@ class Plugin(object):
                                       secret = Plugin.secret)
       bottle.request.session_id = sid
       bottle.request.session = {}
+      if sid is None and 'session-id' in bottle.request.query:
+        sid = bottle.cookie_decode(bottle.request.query['session-id'],
+                                   Plugin.secret)[1]
+        del bottle.request.query['session-id']
+        bottle.response.set_cookie(Plugin.key,
+                                   sid,
+                                   secret = Plugin.secret,
+                                   max_age = 3600 * 24 * 365)
       if sid is not None:
         session = collection.find_one({'_id': sid})
         if session is not None:
