@@ -76,8 +76,6 @@ namespace surface
       /// Trophonius and Apertus will likely need SOCKS.
       ELLE_ATTRIBUTE_R(reactor::network::Proxy, socks_proxy);
       ELLE_ATTRIBUTE(infinit::oracles::meta::Client, meta);
-      std::string
-      session_id() const;
       ELLE_ATTRIBUTE_R(std::string, meta_message);
       ELLE_ATTRIBUTE(std::vector<unsigned char>, trophonius_fingerprint);
       ELLE_ATTRIBUTE_RX(std::unique_ptr<infinit::oracles::trophonius::Client>,
@@ -86,6 +84,10 @@ namespace surface
       ELLE_ATTRIBUTE(int, forced_trophonius_port);
       ELLE_ATTRIBUTE_RW(boost::optional<aws::URL>, s3_hostname);
 
+    public:
+      /// Meta session ID.
+      std::string
+      session_id() const;
 
     private:
       void
