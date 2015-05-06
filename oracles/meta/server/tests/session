@@ -16,3 +16,6 @@ with Meta() as meta:
   assertEq(client.get('user/self?session-id=%s' % id)['email'], email)
   # Check it is stored as cookie
   assertEq(client.get('user/self')['email'], email)
+  # Check an invalid session id is just ignored
+  client.get('?session-id=')
+  Client(meta).get('?session-id=lolnope')
