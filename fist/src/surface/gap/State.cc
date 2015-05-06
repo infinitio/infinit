@@ -202,7 +202,7 @@ namespace surface
     }
 
     std::string
-    State::session_id()
+    State::session_id() const
     {
       return this->_meta.session_id();
     }
