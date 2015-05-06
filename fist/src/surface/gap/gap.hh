@@ -470,4 +470,7 @@ gap_Status
 gap_upload_address_book(gap_State* state,
                         std::vector<AddressBookContact> const& contacts);
 
+gap_Status
+gap_session_id(gap_State* state, std::string& res);
+
 #endif
