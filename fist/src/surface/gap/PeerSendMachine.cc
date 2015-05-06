@@ -106,6 +106,11 @@ namespace surface
         this->_end_state,
         reactor::Waitables{&this->rejected()},
         true);
+      this->_machine.transition_add(
+        this->_wait_for_accept_state,
+        this->_pausing_state,
+        reactor::Waitables{&this->transaction().pausing()},
+        true);
       this->transaction_status_update(data->status);
     }
 
@@ -209,6 +214,10 @@ namespace surface
           this->_run(this->_wait_for_accept_state);
         else if (snapshot.current_state() == "another device")
           this->_run(this->_another_device_state);
+        else if (snapshot.current_state() == "pausing")
+          this->_run(this->_pausing_state);
+        else if (snapshot.current_state() == "paused")
+          this->_run(this->_paused_state);
         else
         {
           ELLE_WARN("%s: unkown state in snapshot: %s",
