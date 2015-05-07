@@ -200,7 +200,8 @@ gap_login(gap_State* state,
           boost::optional<std::string> device_push_token,
           boost::optional<std::string> country_code,
           boost::optional<std::string> device_model,
-          boost::optional<std::string> device_name)
+          boost::optional<std::string> device_name,
+          boost::optional<std::string> device_language)
 {
   ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
@@ -213,7 +214,8 @@ gap_login(gap_State* state,
                   device_push_token,
                   country_code,
                   device_model,
-                  device_name);
+                  device_name,
+                  device_language);
       return gap_ok;
     });
 }
@@ -267,7 +269,8 @@ gap_register(gap_State* state,
              boost::optional<std::string> device_push_token,
              boost::optional<std::string> country_code,
              boost::optional<std::string> device_model,
-             boost::optional<std::string> device_name)
+             boost::optional<std::string> device_name,
+             boost::optional<std::string> device_language)
 {
   ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
@@ -281,7 +284,8 @@ gap_register(gap_State* state,
                      device_push_token,
                      country_code,
                      device_model,
-                     device_name);
+                     device_name,
+                     device_language);
      return gap_ok;
     });
 }
@@ -1806,7 +1810,8 @@ gap_facebook_connect(gap_State* state,
                      boost::optional<std::string> device_push_token,
                      boost::optional<std::string> country_code,
                      boost::optional<std::string> device_model,
-                     boost::optional<std::string> device_name)
+                     boost::optional<std::string> device_name,
+                     boost::optional<std::string> device_language)
 {
   return run<gap_Status>(
     state,
@@ -1819,7 +1824,8 @@ gap_facebook_connect(gap_State* state,
         device_push_token,
         country_code,
         device_model,
-        device_name);
+        device_name,
+        device_language);
       return gap_ok;
     });
 }
