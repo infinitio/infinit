@@ -370,13 +370,6 @@ namespace infinit
     }
 
     void
-    Reporter::user_ghost_code_attributed(std::string const& code)
-    {
-      this->_push(std::bind(
-        &Reporter::_user_ghost_code_attributed, this, code));
-    }
-
-    void
     Reporter::user_sent_sms_ghost_code(bool success,
                                        std::string const& code,
                                        std::string const& fail_reason)
@@ -602,10 +595,6 @@ namespace infinit
                                     std::string const& code,
                                     bool link,
                                     std::string const& fail_reason)
-    {}
-
-    void
-    Reporter::_user_ghost_code_attributed(std::string const& code)
     {}
 
     void

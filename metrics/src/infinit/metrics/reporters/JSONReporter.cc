@@ -357,16 +357,6 @@ namespace infinit
     }
 
     void
-    JSONReporter::_user_ghost_code_attributed(std::string const& code)
-    {
-      elle::json::Object data;
-      data[this->_key_str(JSONKey::event)] =
-        std::string("app/ghost_code_attributed");
-      data[this->_key_str(JSONKey::ghost_code)] = code;
-      this->_send(this->_user_dest, data);
-    }
-
-    void
     JSONReporter::_user_sent_sms_ghost_code(bool success,
                                             std::string const& code,
                                             std::string const& fail_reason)

@@ -350,13 +350,6 @@ namespace infinit
     }
 
     void
-    CompositeReporter::_user_ghost_code_attributed(std::string const& code)
-    {
-      this->_dispatch(std::bind(
-        &Reporter::_user_ghost_code_attributed, std::placeholders::_1, code));
-    }
-
-    void
     CompositeReporter::_user_sent_sms_ghost_code(bool success,
                                                  std::string const& code,
                                                  std::string const& fail_reason)
