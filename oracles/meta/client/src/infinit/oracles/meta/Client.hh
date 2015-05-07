@@ -422,7 +422,8 @@ namespace infinit
         _log_device(boost::optional<std::string> push_token,
                     boost::optional<std::string> country,
                     boost::optional<std::string> model,
-                    boost::optional<std::string> name);
+                    boost::optional<std::string> name,
+                    boost::optional<std::string> language);
 
       public:
         typedef std::pair<std::string, std::string> EmailPasswordPair;
@@ -433,30 +434,33 @@ namespace infinit
         LoginResponse
         _login(ParametersUpdater parameters_updater,
                boost::uuids::uuid const& device_uuid,
-               boost::optional<std::string> device_push_token = {},
-               boost::optional<std::string> country_code = {},
+               boost::optional<std::string> device_push_token = boost::none,
+               boost::optional<std::string> country_code = boost::none,
                boost::optional<std::string> device_model = boost::none,
-               boost::optional<std::string> device_name = boost::none);
+               boost::optional<std::string> device_name = boost::none,
+               boost::optional<std::string> device_language = boost::none);
       public:
         LoginResponse
         login(
           std::string const& email,
           std::string const& password,
           boost::uuids::uuid const& device_uuid,
-          boost::optional<std::string> device_push_token = {},
-          boost::optional<std::string> country_code = {},
+          boost::optional<std::string> device_push_token = boost::none,
+          boost::optional<std::string> country_code = boost::none,
           boost::optional<std::string> device_model = boost::none,
-          boost::optional<std::string> device_name = boost::none);
+          boost::optional<std::string> device_name = boost::none,
+          boost::optional<std::string> device_language = boost::none);
 
         LoginResponse
         facebook_connect(
           std::string const& facebok_token,
           boost::uuids::uuid const& device_uuid,
-          boost::optional<std::string> preferred_email = {},
-          boost::optional<std::string> device_push_token = {},
-          boost::optional<std::string> country_code = {},
+          boost::optional<std::string> preferred_email = boost::none,
+          boost::optional<std::string> device_push_token = boost::none,
+          boost::optional<std::string> country_code = boost::none,
           boost::optional<std::string> device_model = boost::none,
-          boost::optional<std::string> device_name = boost::none);
+          boost::optional<std::string> device_name = boost::none,
+          boost::optional<std::string> device_language = boost::none);
 
         bool
         facebook_id_already_registered(std::string const& facebook_id) const;

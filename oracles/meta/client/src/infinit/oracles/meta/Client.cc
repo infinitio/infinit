@@ -435,12 +435,13 @@ namespace infinit
                     boost::optional<std::string> device_push_token,
                     boost::optional<std::string> country_code,
                     boost::optional<std::string> device_model,
-                    boost::optional<std::string> device_name)
+                    boost::optional<std::string> device_name,
+                    boost::optional<std::string> device_language)
       {
         ELLE_TRACE_SCOPE("%s: login as %s on device %s",
                          *this, email, device_uuid);
         this->_log_device(device_push_token, country_code,
-                          device_model, device_name);
+                          device_model, device_name, device_language);
         elle::SafeFinally set_email([&] { this->_email = email; });
         try
         {
@@ -461,7 +462,8 @@ namespace infinit
             device_push_token,
             country_code,
             device_model,
-            device_name);
+            device_name,
+            device_language);
         }
         catch (...)
         {
@@ -478,20 +480,26 @@ namespace infinit
         boost::optional<std::string> device_push_token,
         boost::optional<std::string> country_code,
         boost::optional<std::string> device_model,
-        boost::optional<std::string> device_name)
+        boost::optional<std::string> device_name,
+        boost::optional<std::string> device_language)
       {
         ELLE_TRACE_SCOPE("%s: login using facebook on device %s",
                          *this, device_uuid);
         this->_log_device(device_push_token, country_code,
-                          device_model, device_name);
+                          device_model, device_name, device_language);
         return this->_login(
           [&] (elle::serialization::json::SerializerOut& parameters)
           {
             parameters.serialize("long_lived_access_token",
                                  const_cast<std::string&>(facebook_token));
             parameters.serialize("preferred_email", preferred_email);
-          }, device_uuid, device_push_token, country_code, device_model,
-          device_name);
+          },
+          device_uuid,
+          device_push_token,
+          country_code,
+          device_model,
+          device_name,
+          device_language);
       }
 
       bool
@@ -511,7 +519,8 @@ namespace infinit
                      boost::optional<std::string> device_push_token,
                      boost::optional<std::string> country_code,
                      boost::optional<std::string> device_model,
-                     boost::optional<std::string> device_name)
+                     boost::optional<std::string> device_name,
+                     boost::optional<std::string> device_language)
       {
         auto url = "/login";
         auto request = this->_request(
@@ -529,6 +538,7 @@ namespace infinit
             output.serialize("OS", os);
             output.serialize("device_model", device_model);
             output.serialize("device_name", device_name);
+            output.serialize("device_language", device_language);
           },
           false);
         if (request.status() == reactor::http::StatusCode::Forbidden ||
@@ -1724,7 +1734,8 @@ namespace infinit
       Client::_log_device(boost::optional<std::string> push_token,
                           boost::optional<std::string> country,
                           boost::optional<std::string> model,
-                          boost::optional<std::string> name)
+                          boost::optional<std::string> name,
+                          boost::optional<std::string> language)
       {
         auto opt_to_str = [] (boost::optional<std::string>& opt) -> std::string
           {
@@ -1732,9 +1743,10 @@ namespace infinit
               return opt.get();
             return "<none>";
           };
-        ELLE_TRACE("%s: device: country(%s) push_token(%s) model(%s) name(%s)",
+        ELLE_TRACE("%s: device: country(%s) push_token(%s) model(%s) name(%s) "
+                   "language(%s)",
                    *this, opt_to_str(country), opt_to_str(push_token),
-                   opt_to_str(model), opt_to_str(name));
+                   opt_to_str(model), opt_to_str(name), opt_to_str(language));
       }
 
       void
