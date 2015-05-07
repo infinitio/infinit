@@ -25,13 +25,31 @@ def check_mail(mails, recipient, template):
   utils.check_mail(mails, recipient, template)
   assertEq(mails[0][1]['sender']['email'], 'sender@infinit.io')
 
+class Metrics:
+
+  def __init__(self):
+    self.expected = {}
+    self.got = {}
+
+  def send(self, metrics, collection):
+    for metric in metrics:
+      self.got.setdefault(metric['template'], []).append(metric)
+    # Do a better testing.
+    for key in self.expected.keys():
+      assertEq(len(self.got[key]), len(self.expected[key]))
+      if key == 'drip_delight-recipient_1':
+        assertEq(set([str(item['user']) for item in self.got[key]]),
+                 set([str(item['user']) for item in self.expected[key]]))
+
 with mongobox.MongoBox() as mongo:
   with Meta(mongo_port = mongo.port,
             enable_emails = False,
             force_admin = True) as meta:
     emailer = DummyEmailer()
+    metrics = Metrics()
     sisy = oracles.sisyphus.Sisyphus(mongo_port = mongo.port,
-                                     emailer = emailer)
+                                     emailer = emailer,
+                                     metrics = metrics)
     gestapo(sisy._Sisyphus__mongo)
     reminder = DelightRecipient(sisy)
 
@@ -78,6 +96,7 @@ with mongobox.MongoBox() as mongo:
                              recipient_device['id'],
                              recipient_device['name'],
                              recipient)
+    metrics.expected.setdefault('drip_delight-recipient_1', []).append({'user': recipient['_id']})
     sisy.boulders_run()
     check_mail(emailer.emails,
                recipient['email'], 'drip_delight-recipient_1')
@@ -94,3 +113,5 @@ with mongobox.MongoBox() as mongo:
                              recipient)
     sisy.boulders_run()
     assert not emailer.emails
+    assertEq(len(metrics.got), 1)
+    assertEq(len(metrics.got['drip_delight-recipient_1']), 1)

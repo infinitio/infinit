@@ -265,7 +265,8 @@ class Drip(Emailing):
               'user': str(user['_id']),
             }
             for user, elt in users
-          ])
+          ],
+          collection = 'users')
         return [user['email'] for user, elt in users
                 if 'email' in user]
 
