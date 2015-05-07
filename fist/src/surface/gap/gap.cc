@@ -307,7 +307,8 @@ gap_check_ghost_code(gap_State* state, std::string const& code, bool& res)
 
 gap_Status
 gap_use_ghost_code(gap_State* state,
-                   std::string const& code)
+                   std::string const& code,
+                   bool was_link)
 {
   ELLE_ASSERT(state != nullptr);
   if (code.empty())
@@ -321,13 +322,17 @@ gap_use_ghost_code(gap_State* state,
       {
         state.meta().use_ghost_code(code);
         res = gap_ok;
-        state.metrics_reporter()->user_used_ghost_code(true, code, "");
+        state.metrics_reporter()->user_used_ghost_code(true,
+                                                       code,
+                                                       was_link,
+                                                       "");
       }
       catch (infinit::state::GhostCodeAlreadyUsed const&)
       {
         res = gap_ghost_code_already_used;
         state.metrics_reporter()->user_used_ghost_code(false,
                                                        code,
+                                                       was_link,
                                                        "already used");
       }
       catch (elle::Error const&)
@@ -335,6 +340,7 @@ gap_use_ghost_code(gap_State* state,
         res = gap_unknown_user;
         state.metrics_reporter()->user_used_ghost_code(false,
                                                        code,
+                                                       was_link,
                                                        "invalid code");
       }
       return gap_ok;
@@ -1671,6 +1677,20 @@ gap_send_sms_ghost_code_metric(gap_State* state,
       state.metrics_reporter()->user_sent_sms_ghost_code(success,
                                                          code,
                                                          fail_reason);
+      return gap_ok;
+    });
+}
+
+gap_Status
+gap_send_ghost_code_attributed_metric(gap_State* state,
+                                      std::string const& code)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(state,
+                         "ghost code attributed",
+                         [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.metrics_reporter()->user_ghost_code_attributed(code);
       return gap_ok;
     });
 }

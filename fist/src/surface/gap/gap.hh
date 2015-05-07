@@ -92,17 +92,19 @@ gap_register(gap_State* state,
              std::string const& fullname,
              std::string const& email,
              std::string const& password,
-             boost::optional<std::string> device_push_token = {},
-             boost::optional<std::string> country_conde = {}, // ISO 3611-1 alpha-2
-             boost::optional<std::string> device_model = {},
-             boost::optional<std::string> device_name = {});
+             boost::optional<std::string> device_push_token = boost::none,
+             boost::optional<std::string> country_conde = boost::none, // ISO 3611-1 alpha-2
+             boost::optional<std::string> device_model = boost::none,
+             boost::optional<std::string> device_name = boost::none,
+             boost::optional<std::string> device_language = boost::none);
 
 gap_Status
 gap_check_ghost_code(gap_State* state, std::string const& code, bool& res);
 
 gap_Status
 gap_use_ghost_code(gap_State* state,
-                   std::string const& code);
+                   std::string const& code,
+                   bool was_link);
 
 gap_Status
 gap_update_user_callback(
@@ -427,6 +429,10 @@ gap_send_sms_ghost_code_metric(gap_State* state,
                                bool success,
                                std::string const& code,
                                std::string const& fail_reason);
+
+gap_Status
+gap_send_ghost_code_attributed_metric(gap_State* state,
+                                      std::string const& code);
 
 /// Send user report
 gap_Status
