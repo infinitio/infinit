@@ -287,7 +287,11 @@ namespace infinit
       void
       user_used_ghost_code(bool success,
                            std::string const& code,
+                           bool link,
                            std::string const& fail_reason);
+
+      void
+      user_ghost_code_attributed(std::string const& code);
 
     /// User metrics implementation.
     protected:
@@ -345,7 +349,12 @@ namespace infinit
       void
       _user_used_ghost_code(bool success,
                             std::string const& code,
+                            bool link,
                             std::string const& fail_reason);
+
+      virtual
+      void
+      _user_ghost_code_attributed(std::string const& code);
 
       virtual
       void

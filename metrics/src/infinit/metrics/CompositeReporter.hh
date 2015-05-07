@@ -145,7 +145,11 @@ namespace infinit
       void
       _user_used_ghost_code(bool success,
                             std::string const& code,
+                            bool link,
                             std::string const& fail_reason) override;
+
+      void
+      _user_ghost_code_attributed(std::string const& code) override;
 
       void
       _user_sent_sms_ghost_code(bool success,
