@@ -438,7 +438,8 @@ namespace surface
       boost::optional<std::string> device_push_token,
       boost::optional<std::string> country_code,
       boost::optional<std::string> device_model,
-      boost::optional<std::string> device_name)
+      boost::optional<std::string> device_name,
+      boost::optional<std::string> device_language)
     {
       this->login(email,
                   password,
@@ -447,7 +448,8 @@ namespace surface
                   device_push_token,
                   country_code,
                   device_model,
-                  device_name);
+                  device_name,
+                  device_language);
     }
 
     void
@@ -458,7 +460,8 @@ namespace surface
       boost::optional<std::string> device_push_token,
       boost::optional<std::string> country_code,
       boost::optional<std::string> device_model,
-      boost::optional<std::string> device_name)
+      boost::optional<std::string> device_name,
+      boost::optional<std::string> device_language)
     {
       this->login(
         email, password,
@@ -467,7 +470,8 @@ namespace surface
         device_push_token,
         country_code,
         device_model,
-        device_name);
+        device_name,
+        device_language);
     }
 
     void
@@ -531,7 +535,8 @@ namespace surface
       boost::optional<std::string> device_push_token,
       boost::optional<std::string> country_code,
       boost::optional<std::string> device_model,
-      boost::optional<std::string> device_name)
+      boost::optional<std::string> device_name,
+      boost::optional<std::string> device_language)
     {
       auto tropho = elle::utility::move_on_copy(std::move(trophonius));
       return this->_login_with_timeout(
@@ -539,7 +544,7 @@ namespace surface
         {
           this->_login(
             email, password, tropho, device_push_token, country_code,
-            device_model, device_name);
+            device_model, device_name, device_language);
         }, timeout);
     }
 
@@ -553,7 +558,8 @@ namespace surface
       boost::optional<std::string> device_push_token,
       boost::optional<std::string> country_code,
       boost::optional<std::string> device_model,
-      boost::optional<std::string> device_name)
+      boost::optional<std::string> device_name,
+      boost::optional<std::string> device_language)
     {
       ELLE_TRACE_SCOPE("%s: attempt to login as %s", *this, email);
       this->_email = email;
@@ -574,7 +580,8 @@ namespace surface
                                    device_push_token,
                                    country_code,
                                    device_model,
-                                   device_name);
+                                   device_name,
+                                   device_language);
         },
         trophonius,
         [=] { return hashed_password; },
@@ -985,7 +992,8 @@ namespace surface
                      boost::optional<std::string> device_push_token,
                      boost::optional<std::string> country_code,
                      boost::optional<std::string> device_model,
-                     boost::optional<std::string> device_name)
+                     boost::optional<std::string> device_name,
+                     boost::optional<std::string> device_language)
     {
       // !WARNING! Do not log the password.
       ELLE_TRACE_SCOPE("%s: register as %s: email %s",
@@ -1026,7 +1034,7 @@ namespace surface
         throw;
       }
       this->login(lower_email, password, device_push_token, country_code,
-                  device_model, device_name);
+                  device_model, device_name, device_language);
 
     }
 
@@ -1039,6 +1047,7 @@ namespace surface
       boost::optional<std::string> country_code,
       boost::optional<std::string> device_model,
       boost::optional<std::string> device_name,
+      boost::optional<std::string> device_language,
       reactor::DurationOpt timeout)
     {
       this->_login_with_timeout(
@@ -1051,7 +1060,8 @@ namespace surface
                                               device_push_token,
                                               country_code,
                                               device_model,
-                                              device_name);
+                                              device_name,
+                                              device_language);
           if (response.account_registered && this->_metrics_reporter)
             this->_metrics_reporter->user_register(true, "", "facebook", response.ghost_code);
           return response;
@@ -1075,12 +1085,13 @@ namespace surface
                             boost::optional<std::string> device_push_token,
                             boost::optional<std::string> country_code,
                             boost::optional<std::string> device_model,
-                            boost::optional<std::string> device_name)
+                            boost::optional<std::string> device_name,
+                            boost::optional<std::string> device_language)
     {
       return this->facebook_connect(
         token, TrophoniusClientPtr{},
         preferred_email, device_push_token, country_code,
-        device_model, device_name);
+        device_model, device_name, device_language);
     }
 
     Self const&
