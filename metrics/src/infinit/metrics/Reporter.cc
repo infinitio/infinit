@@ -149,6 +149,7 @@ namespace infinit
                                        int64_t file_count,
                                        int64_t total_size,
                                        uint32_t message_length,
+                                       std::vector<std::string> extensions,
                                        bool onboarding)
     {
       this->_push(std::bind(&Reporter::_link_transaction_created,
@@ -158,6 +159,7 @@ namespace infinit
                                          file_count,
                                          total_size,
                                          message_length,
+                                         extensions,
                                          onboarding));
     }
 
@@ -169,7 +171,9 @@ namespace infinit
                                        int64_t total_size,
                                        uint32_t message_length,
                                        bool ghost,
-                                       bool onboarding)
+                                       bool onboarding,
+                                       std::vector<std::string> extensions
+                                       )
     {
       this->_push(std::bind(&Reporter::_peer_transaction_created,
                                          this,
@@ -180,7 +184,8 @@ namespace infinit
                                          total_size,
                                          message_length,
                                          ghost,
-                                         onboarding));
+                                         onboarding,
+                                         extensions));
     }
 
     void
@@ -470,6 +475,7 @@ namespace infinit
                                         int64_t file_count,
                                         int64_t total_size,
                                         uint32_t message_length,
+                                        std::vector<std::string> extensions,
                                         bool onboarding)
     {}
 
@@ -481,7 +487,9 @@ namespace infinit
                                         int64_t total_size,
                                         uint32_t message_length,
                                         bool ghost,
-                                        bool onboarding)
+                                        bool onboarding,
+                                        std::vector<std::string> extensions
+                                        )
     {}
 
     void

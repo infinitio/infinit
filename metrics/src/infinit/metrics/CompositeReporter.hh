@@ -54,6 +54,7 @@ namespace infinit
                                 int64_t file_count,
                                 int64_t total_size,
                                 uint32_t message_length,
+                                std::vector<std::string> extensions,
                                 bool onboarding) override;
 
       void
@@ -64,7 +65,9 @@ namespace infinit
                                 int64_t total_size,
                                 uint32_t message_length,
                                 bool ghost,
-                                bool onboarding) override;
+                                bool onboarding,
+                                std::vector<std::string> extensions
+                                ) override;
 
       void
       _transaction_ended(std::string const& transaction_id,

@@ -1831,3 +1831,17 @@ gap_upload_address_book(gap_State* state,
       return gap_ok;
     });
 }
+
+gap_Status
+gap_session_id(gap_State* state, std::string& res)
+{
+  return run<gap_Status>(
+    state,
+    "fetch session id",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      res = state.session_id();
+      res.erase(std::remove(res.begin(), res.end(), '"'), res.end());
+      return gap_ok;
+    });
+}

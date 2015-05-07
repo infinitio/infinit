@@ -114,6 +114,7 @@ namespace surface
     /*--------------.
     | Notifications |
     `--------------*/
+
     State::ConnectionStatus::ConnectionStatus(bool status,
                                               bool still_trying,
                                               std::string const& last_error)
@@ -127,6 +128,7 @@ namespace surface
     /*-------------------------.
     | Construction/Destruction |
     `-------------------------*/
+
     State::State(common::infinit::Configuration local_config)
       : _logger_intializer()
       , _meta(local_config.meta_protocol(),
@@ -197,6 +199,12 @@ namespace surface
       }
       this->_check_first_launch();
       this->_check_forced_trophonius();
+    }
+
+    std::string
+    State::session_id() const
+    {
+      return this->_meta.session_id();
     }
 
     void

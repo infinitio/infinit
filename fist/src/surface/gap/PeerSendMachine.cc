@@ -430,6 +430,7 @@ namespace surface
       ELLE_TRACE("%s: initialize transaction, first_file=%s, dir=%s",
                  *this, first_file,
                  boost::filesystem::is_directory(first_file));
+
       {
         auto lock = this->state().transaction_update_lock.lock();
         boost::optional<elle::UUID> recipient_device_id;
@@ -462,6 +463,8 @@ namespace surface
         this->frete().save_snapshot();
       if (this->state().metrics_reporter())
       {
+        // Fetch extensions
+        auto extensions = this->get_extensions();
         bool onboarding = false;
         this->state().metrics_reporter()->peer_transaction_created(
           this->transaction_id(),
@@ -471,7 +474,8 @@ namespace surface
           size,
           this->_message.length(),
           this->data()->is_ghost,
-          onboarding);
+          onboarding,
+          std::vector<std::string>(extensions.begin(), extensions.end()));
       }
       this->transaction().data()->status = TransactionStatus::initialized;
     }

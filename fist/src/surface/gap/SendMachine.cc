@@ -768,5 +768,35 @@ namespace surface
       ELLE_TRACE("%s: Mirroring successful", *this);
       this->_files_mirrored = true;
     }
+
+    std::set<std::string>
+    SendMachine::get_extensions()
+    {
+      std::set<std::string> extensions;
+      for (auto const& f: this->_files)
+      {
+        namespace bfs = boost::filesystem;
+        if (bfs::is_directory(f))
+        {
+          auto it = bfs::recursive_directory_iterator(f);
+          for (;it != bfs::recursive_directory_iterator(); ++it)
+          {
+            if (!bfs::is_directory(*it))
+            {
+              std::string ext = bfs::path(*it).extension().string();
+              if (!ext.empty())
+                extensions.insert(ext.substr(1));
+            }
+          }
+        }
+        else
+        {
+          std::string ext = bfs::path(f).extension().string();
+          if (!ext.empty())
+            extensions.insert(ext.substr(1));
+        }
+      }
+      return extensions;
+    }
   }
 }

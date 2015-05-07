@@ -2636,8 +2636,6 @@ class Mixin:
     name -- The name of the subscription to edit.
     value -- The status wanted for the subscription.
     """
-    if 'email' not in user:
-      return
     action = value and 'subscribe' or 'unsubscribe'
     with elle.log.debug(
         '%s %s from %s emails' % (action, user['email'], name)):
@@ -2697,7 +2695,9 @@ class Mixin:
     name -- Name of the email set.
     """
     user = self.user_by_id_or_email(user, fields = ['email'])
-    return self.__modify_subscription(user, name, True)
+    res = self.__modify_subscription(user, name, True)
+    self._web_login(user)
+    return res
 
   @api('/users/<user>/email_subscriptions/<name>', method = 'DELETE')
   @require_key
@@ -2714,7 +2714,9 @@ class Mixin:
         'reason': 'user %s not found' % user,
         'user': user,
       })
-    return self.__modify_subscription(user, name, False)
+    res = self.__modify_subscription(user, name, False)
+    self._web_login(user)
+    return res
 
   # Restore.
   @api('/user/email_subscription/<name>', method = 'PUT')

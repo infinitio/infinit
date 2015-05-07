@@ -84,6 +84,10 @@ namespace surface
       ELLE_ATTRIBUTE(int, forced_trophonius_port);
       ELLE_ATTRIBUTE_RW(boost::optional<aws::URL>, s3_hostname);
 
+    public:
+      /// Meta session ID.
+      std::string
+      session_id() const;
 
     private:
       void
