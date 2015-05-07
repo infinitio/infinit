@@ -1686,20 +1686,6 @@ gap_send_sms_ghost_code_metric(gap_State* state,
 }
 
 gap_Status
-gap_send_ghost_code_attributed_metric(gap_State* state,
-                                      std::string const& code)
-{
-  ELLE_ASSERT(state != nullptr);
-  return run<gap_Status>(state,
-                         "ghost code attributed",
-                         [&] (surface::gap::State& state) -> gap_Status
-    {
-      state.metrics_reporter()->user_ghost_code_attributed(code);
-      return gap_ok;
-    });
-}
-
-gap_Status
 gap_send_user_report(gap_State* state,
                      std::string const& user_name,
                      std::string const& message,

@@ -431,10 +431,6 @@ gap_send_sms_ghost_code_metric(gap_State* state,
                                std::string const& code,
                                std::string const& fail_reason);
 
-gap_Status
-gap_send_ghost_code_attributed_metric(gap_State* state,
-                                      std::string const& code);
-
 /// Send user report
 gap_Status
 gap_send_user_report(gap_State* state,
