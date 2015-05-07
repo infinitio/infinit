@@ -200,7 +200,8 @@ gap_login(gap_State* state,
           boost::optional<std::string> device_push_token,
           boost::optional<std::string> country_code,
           boost::optional<std::string> device_model,
-          boost::optional<std::string> device_name)
+          boost::optional<std::string> device_name,
+          boost::optional<std::string> device_language)
 {
   ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
@@ -213,7 +214,8 @@ gap_login(gap_State* state,
                   device_push_token,
                   country_code,
                   device_model,
-                  device_name);
+                  device_name,
+                  device_language);
       return gap_ok;
     });
 }
@@ -267,7 +269,8 @@ gap_register(gap_State* state,
              boost::optional<std::string> device_push_token,
              boost::optional<std::string> country_code,
              boost::optional<std::string> device_model,
-             boost::optional<std::string> device_name)
+             boost::optional<std::string> device_name,
+             boost::optional<std::string> device_language)
 {
   ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
@@ -281,7 +284,8 @@ gap_register(gap_State* state,
                      device_push_token,
                      country_code,
                      device_model,
-                     device_name);
+                     device_name,
+                     device_language);
      return gap_ok;
     });
 }
@@ -307,7 +311,8 @@ gap_check_ghost_code(gap_State* state, std::string const& code, bool& res)
 
 gap_Status
 gap_use_ghost_code(gap_State* state,
-                   std::string const& code)
+                   std::string const& code,
+                   bool was_link)
 {
   ELLE_ASSERT(state != nullptr);
   if (code.empty())
@@ -321,13 +326,17 @@ gap_use_ghost_code(gap_State* state,
       {
         state.meta().use_ghost_code(code);
         res = gap_ok;
-        state.metrics_reporter()->user_used_ghost_code(true, code, "");
+        state.metrics_reporter()->user_used_ghost_code(true,
+                                                       code,
+                                                       was_link,
+                                                       "");
       }
       catch (infinit::state::GhostCodeAlreadyUsed const&)
       {
         res = gap_ghost_code_already_used;
         state.metrics_reporter()->user_used_ghost_code(false,
                                                        code,
+                                                       was_link,
                                                        "already used");
       }
       catch (elle::Error const&)
@@ -335,6 +344,7 @@ gap_use_ghost_code(gap_State* state,
         res = gap_unknown_user;
         state.metrics_reporter()->user_used_ghost_code(false,
                                                        code,
+                                                       was_link,
                                                        "invalid code");
       }
       return gap_ok;
@@ -1786,7 +1796,8 @@ gap_facebook_connect(gap_State* state,
                      boost::optional<std::string> device_push_token,
                      boost::optional<std::string> country_code,
                      boost::optional<std::string> device_model,
-                     boost::optional<std::string> device_name)
+                     boost::optional<std::string> device_name,
+                     boost::optional<std::string> device_language)
 {
   return run<gap_Status>(
     state,
@@ -1799,7 +1810,8 @@ gap_facebook_connect(gap_State* state,
         device_push_token,
         country_code,
         device_model,
-        device_name);
+        device_name,
+        device_language);
       return gap_ok;
     });
 }
@@ -1841,7 +1853,6 @@ gap_session_id(gap_State* state, std::string& res)
     [&] (surface::gap::State& state) -> gap_Status
     {
       res = state.session_id();
-      res.erase(std::remove(res.begin(), res.end(), '"'), res.end());
       return gap_ok;
     });
 }

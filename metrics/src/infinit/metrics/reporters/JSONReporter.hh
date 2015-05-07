@@ -28,6 +28,7 @@ namespace infinit
       file_count,
       ghost,
       ghost_code,
+      ghost_code_link,
       http_status,
       how_ended,
       initialization_time,
@@ -190,6 +191,7 @@ namespace infinit
       void
       _user_used_ghost_code(bool success,
                             std::string const& code,
+                            bool link,
                             std::string const& fail_reason) override;
 
       void

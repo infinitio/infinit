@@ -145,6 +145,7 @@ namespace infinit
       void
       _user_used_ghost_code(bool success,
                             std::string const& code,
+                            bool link,
                             std::string const& fail_reason) override;
 
       void

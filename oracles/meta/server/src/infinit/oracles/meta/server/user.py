@@ -307,6 +307,7 @@ class Mixin:
                     country_code = None,
                     device_name = None,
                     device_model = None,
+                    device_language = None,
   ):
     # If creation process was interrupted, generate identity now.
     if 'public_key' not in user:
@@ -486,7 +487,8 @@ class Mixin:
             country_code = None,
             pick_trophonius: bool = True,
             device_model : str = None,
-            device_name : str = None):
+            device_name : str = None,
+            device_language: str = None):
     # Check for service availability
     # XXX TODO: Fetch maintenance mode bool from somewhere
     maintenance_mode = False
@@ -531,7 +533,8 @@ class Mixin:
                                device_push_token = device_push_token,
                                country_code = country_code,
                                device_model = device_model,
-                               device_name = device_name)
+                               device_name = device_name,
+                               device_language = device_language)
       res.update({'account_registered': registered})
       return res
 

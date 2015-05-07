@@ -361,10 +361,12 @@ namespace infinit
     void
     Reporter::user_used_ghost_code(bool success,
                                    std::string const& code,
+                                   bool link,
                                    std::string const& fail_reason)
     {
       this->_push(std::bind(
-        &Reporter::_user_used_ghost_code, this, success, code, fail_reason));
+        &Reporter::_user_used_ghost_code, this, success, code, link,
+        fail_reason));
     }
 
     void
@@ -591,6 +593,7 @@ namespace infinit
     void
     Reporter::_user_used_ghost_code(bool success,
                                     std::string const& code,
+                                    bool link,
                                     std::string const& fail_reason)
     {}
 
