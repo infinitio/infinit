@@ -331,10 +331,11 @@ namespace infinit
       std::string
       Client::session_id() const
       {
-        std::string res = "";
         if (this->_client.cookies().find("session-id") !=
           this->_client.cookies().end())
           return this->_client.cookies()["session-id"];
+        else
+          return ""; // FIXME: optionals, FFS
       }
 
       void
