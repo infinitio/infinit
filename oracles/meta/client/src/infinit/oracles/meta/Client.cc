@@ -334,11 +334,7 @@ namespace infinit
         std::string res = "";
         if (this->_client.cookies().find("session-id") !=
           this->_client.cookies().end())
-        {
-          res = this->_client.cookies()["session-id"];
-          res.erase(std::remove(res.begin(), res.end(), '"'), res.end());
-        }
-        return res;
+          return this->_client.cookies()["session-id"];
       }
 
       void

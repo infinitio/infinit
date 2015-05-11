@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from utils import *
-
+from urllib.parse import quote
 
 with Meta() as meta:
   email = 'dave.null@infinit.io'
@@ -13,7 +13,8 @@ with Meta() as meta:
   # Reuse it through query string
   client = Client(meta)
   throws(lambda: client.get('user/self'), HTTPException)
-  assertEq(client.get('user/self?session-id=%s' % id)['email'], email)
+  assertEq(client.get('user/self?session-id=%s' % quote(id))['email'],
+           email)
   # Check it is stored as cookie
   assertEq(client.get('user/self')['email'], email)
   # Check an invalid session id is just ignored
