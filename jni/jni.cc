@@ -650,9 +650,9 @@ extern "C" jlong Java_io_infinit_State_gapRegister(
 }
 
 extern "C" jlong Java_io_infinit_State_gapUseGhostCode(
-  JNIEnv* env, jobject thiz, jlong handle, jstring code)
+  JNIEnv* env, jobject thiz, jlong handle, jstring code, jboolean was_link)
 {
-  return gap_use_ghost_code((gap_State*)handle, to_string(env, code));
+  return gap_use_ghost_code((gap_State*)handle, to_string(env, code), was_link);
 }
 
 extern "C" jlong Java_io_infinit_State_gapSetProxy(

@@ -16,6 +16,7 @@ sys.path.insert(0, '%s/../lib/python' % os.path.dirname(SELF))
 # load the system libcrypto.so, which will prevent loading our
 # libcrypto.so through a RPATH on our native module.
 import infinit.oracles.meta.server
+import infinit.oracles.metrics
 import bottle
 import elle.log
 
@@ -84,10 +85,16 @@ parser.add_option('--listen-all',
                   action = 'store_true',
                   help = 'listen on 0.0.0.0, default is to listen on 127.0.0.1',
                   default = False)
+parser.add_option('--enable-metrics',
+                  action = 'store_true',
+                  help = 'send metrics',
+                  default = False)
 
 options, args = parser.parse_args()
 
 args = {}
+
+metrics = infinit.oracles.metrics.Metrics() if options.enable_metrics else None
 
 if options.mongo_replica_set:
   args['mongo_replica_set'] = options.mongo_host
@@ -108,6 +115,7 @@ app = infinit.oracles.meta.server.Meta(
   aws_buffer_bucket = options.aws_buffer_bucket,
   aws_link_bucket = options.aws_link_bucket,
   zone = options.zone,
+  metrics = metrics,
   **args)
 
 app.port = 0

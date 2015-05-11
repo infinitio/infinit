@@ -1,9 +1,19 @@
 #!/usr/bin/env python3
 
-from utils import Meta, User
+from utils import *
 from infinit.oracles.meta.server import transaction_status
 
+class Metrics:
+
+  def __init__(self):
+    self.got = {}
+
+  def send(self, metrics, collection):
+    for metric in metrics:
+      self.got.setdefault(metric['event'], []).append(metric)
+
 with Meta() as meta:
+  assert meta.meta.metrics is None
   bob = User(meta, "bob@infinit.io")
   bob.login()
   transaction, res = bob.sendfile(recipient = "alice@infinit.io", use_identifier = False)
@@ -23,27 +33,35 @@ with Meta() as meta:
   res['recipient_id'] == transaction['id_or_email']
 
 # Check if download_link is sent.
-with Meta() as meta:
+with Meta(metrics = Metrics()) as meta:
+  assertEq(len(meta.meta.metrics.got), 0)
   bob = User(meta, "bob@infinit.io")
   bob.login()
   transaction, res = bob.sendfile(recipient = "alice@infinit.io", initialize = True)
   tid = res['created_transaction_id']
   res = bob.transaction_update(tid, transaction_status.GHOST_UPLOADED)
-  assert 'download_link' in res
-  assert 'transaction_hash' in res
+  assertIn('download_link', res)
+  assertIn('transaction_hash', res)
   res = bob.get('transaction/%s' % tid)
-  assert 'download_link' in res
-  assert 'transaction_hash' in res
+  assertIn('download_link', res)
+  assertIn('transaction_hash', res)
   res = bob.get('transaction/by_hash/%s' % res['transaction_hash'])
-  assert 'download_link' in res
+  assertIn('download_link', res)
 
   transaction, res = bob.sendfile(recipient = "+336000000", initialize = True)
   tid = res['created_transaction_id']
   res = bob.transaction_update(tid, transaction_status.GHOST_UPLOADED)
-  assert 'download_link' in res
-  assert 'transaction_hash' in res
+  assertIn('download_link', res)
+  assertIn('transaction_hash', res)
   res = bob.get('transaction/%s' % tid)
-  assert 'download_link' in res
-  assert 'transaction_hash' in res
+  assertIn('download_link', res)
+  assertIn('transaction_hash', res)
   res = bob.get('transaction/by_hash/%s' % res['transaction_hash'])
-  assert 'download_link' in res
+  assertIn('download_link', res)
+  assertEq(len(meta.meta.metrics.got), 1)
+  metrics = meta.meta.metrics.got['new_ghost']
+  assertEq(len(metrics), 2)
+  assertEq(set([metric['is_email'] for metric in metrics]), {True, False})
+  assertEq(len([metric['user'] for metric in metrics]), 2)
+  assertEq(len([metric['ghost_code'] for metric in metrics]), 2)
+  assertEq(set([metric['sender'] for metric in metrics]), {str(bob.id)})

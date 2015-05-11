@@ -19,6 +19,7 @@ import pymongo.errors
 import re
 
 import infinit.oracles.emailer
+import infinit.oracles.metrics
 
 from .plugins.certification import Plugin as CertificationPlugin
 from .plugins.failure import Plugin as FailurePlugin
@@ -109,6 +110,7 @@ class Meta(bottle.Bottle,
       facebook_domain = "https://graph.facebook.com",
       emailer = None,
       stripe_api_key = None,
+      metrics = infinit.oracles.metrics.Metrics(),
   ):
     self.__production = production
     import os
@@ -203,10 +205,15 @@ class Meta(bottle.Bottle,
     # Emailing
     self.__emailer = emailer or infinit.oracles.emailer.NoopEmailer()
     self.__stripe_api_key = stripe_api_key
+    self.__metrics = metrics
 
   @property
   def emailer(self):
     return self.__emailer
+
+  @property
+  def metrics(self):
+    return self.__metrics
 
   @property
   def production(self):

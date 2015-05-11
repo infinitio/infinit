@@ -35,11 +35,29 @@ def check_mail(emails, email, template):
   utils.check_mail(emails, email, template)
   assertEq(len(emails[0][1]['transactions']), 1)
 
+class Metrics:
+
+  def __init__(self):
+    self.expected = {}
+    self.got = {}
+
+  def send(self, metrics, collection):
+    for metric in metrics:
+      self.got.setdefault(metric['template'], []).append(metric)
+    # Do a better testing.
+    for key in self.expected.keys():
+      assertEq(len(self.got[key]), len(self.expected[key]))
+      if key == 'drip_activity-reminder_stuck':
+        assertEq(set([str(item['user']) for item in self.got[key]]),
+                 set([str(item['user']) for item in self.expected[key]]))
+
 with mongobox.MongoBox() as mongo:
   with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
     emailer = DummyEmailer()
+    metrics = Metrics()
     sisy = oracles.sisyphus.Sisyphus(mongo_port = mongo.port,
-                                     emailer = emailer)
+                                     emailer = emailer,
+                                     metrics = metrics)
     # gestapo(sisy.mongo)
     reminder = ActivityReminder(sisy)
 
@@ -50,6 +68,7 @@ with mongobox.MongoBox() as mongo:
     # Check nothing is sent with no users
     sisy.boulders_run()
     assert not emailer.emails
+    assert len(metrics.got) == 0
 
     # Create an activated user
     device = 'device'
@@ -64,8 +83,10 @@ with mongobox.MongoBox() as mongo:
     meta._cloud_buffer(tid, sender)
     meta._transaction_update(tid, statuses['ghost_uploaded'],
                              device, None, sender)
+    recipient_id = meta.transaction_view(tid)['recipient_id']
     sisy.boulders_run()
     assert not emailer.emails
+    assert len(metrics.got) == 0
     meta.set_connection_status(
       sender['_id'], sender_device['id'], False, 'tropho-id')
     forward(reminder.delay * 1.1)
@@ -73,7 +94,9 @@ with mongobox.MongoBox() as mongo:
     # Check nothing is sent for a finished transaction
     sisy.boulders_run()
     assert not emailer.emails
+    assert len(metrics.got) == 0
 
+    print(sender['_id'])
     # Check nothing is sent too early
     meta.set_connection_status(
       sender['_id'], sender_device['id'], True, 'tropho-id')
@@ -83,6 +106,7 @@ with mongobox.MongoBox() as mongo:
     forward(reminder.delay * 0.5)
     sisy.boulders_run()
     assert not emailer.emails
+    assert len(metrics.got) == 0
     import sys
     print('BEFORE', list(sisy.mongo.meta.users.find()), file = sys.stderr)
 
@@ -91,6 +115,7 @@ with mongobox.MongoBox() as mongo:
     print(reminder.now, file = sys.stderr)
     forward(reminder.delay * 1.1)
     print(reminder.now, file = sys.stderr)
+    metrics.expected.setdefault('drip_activity-reminder_stuck', []).append({'user': sender['_id']})
     sisy.boulders_run()
     check_mail(emailer.emails, email, 'drip_activity-reminder_stuck')
 
@@ -100,6 +125,7 @@ with mongobox.MongoBox() as mongo:
       sender['_id'], sender_device['id'], True, 'tropho-id')
     sisy.boulders_run()
     assert not emailer.emails
+    metrics.expected.setdefault('drip_activity-reminder_stuck', []).append({'user': sender['_id']})
     meta.set_connection_status(
       sender['_id'], sender_device['id'], False, 'tropho-id')
     forward(reminder.delay * 1.1)
@@ -113,9 +139,11 @@ with mongobox.MongoBox() as mongo:
     forward(reminder.delay * 0.6)
     sisy.boulders_run()
     assert not emailer.emails
+    metrics.expected.setdefault('drip_activity-reminder_stuck', []).append({'user': sender['_id']})
     forward(reminder.delay * 0.6)
     sisy.boulders_run()
     check_mail(emailer.emails, email, 'drip_activity-reminder_stuck')
+    metrics.expected.setdefault('drip_activity-reminder_stuck', []).append({'user': sender['_id']})
 
     # Accept and check emails stop
     meta._cloud_buffer(tid, sender)
@@ -151,3 +179,7 @@ with mongobox.MongoBox() as mongo:
     forward(reminder.delay * 1.1)
     sisy.boulders_run()
     check_mail(emailer.emails, email, 'drip_activity-reminder_stuck')
+
+    # Check that metrics have been received.
+    assertEq(len(metrics.got), 1)
+    assertEq(len(metrics.got['drip_activity-reminder_stuck']), 4)
