@@ -507,9 +507,15 @@ namespace surface
         return;
       }
       if (notif.paused)
+      {
+        it->second->pausing().open();
         it->second->paused().open();
+      }
       else
+      {
+        it->second->pausing().close();
         it->second->paused().close();
+      }
     }
   }
 }

@@ -165,7 +165,8 @@ namespace surface
       this->_machine.transition_add(
         this->_pausing_state,
         this->_paused_state,
-        reactor::Waitables{&this->transaction().paused()});
+        reactor::Waitables{&this->transaction().paused()},
+        true);
       this->_machine.transition_add(
         this->_transfer_state,
         this->_paused_state,
