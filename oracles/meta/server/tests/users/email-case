@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+
+from utils import *
+from uuid import uuid4
+import urllib
+#!/usr/bin/env python3
+
+# Import utils first for papier and OpenSSL
+from utils import Meta, User, NoOpMailer, HTTPException
+from utils import assertEq, throws
+
+from bson.objectid import ObjectId
+from infinit.oracles.meta import error
+from infinit.oracles.meta.server.transaction_status import CANCELED
+
+# Register / Login.
+with Meta(enable_emails = True) as meta:
+  email = 'FoObAr@infInit.io'
+  pwd = meta.create_user(email = email)
+  user = Client(meta)
+  assert email != email.lower()
+  user.post('login', {
+      'pick_trophonius': False,
+      'email': email,
+      'password': pwd,
+      'device_id': str(uuid4())
+  })
+  user.post('logout')
+  user.post('login', {
+      'pick_trophonius': False,
+      'email': email.lower(),
+      'password': pwd,
+      'device_id': str(uuid4())
+  })
+  user.post('logout')
+
+# Ghost.
+with Meta(enable_emails = True) as meta:
+  email = 'FoObAr@infInit.io'
+  bob = User(meta, 'boB@infinit.io')
+  bob.login()
+  bob.sendfile(recipient = email, use_identifier = False, initialize = True)
+  bob.sendfile(recipient = email.lower(), use_identifier = False, initialize = True)
+
+  bob.get('users/%s' % email)['id'] == bob.get('users/%s' % email.lower())['id']
+  # Check that only one ghost has been created.
+  assertEq(meta.database.users.count(), 2)
+  alice = User(meta, email)
+  alice.login()
+  assertEq(len(alice.transactions), 2)
+
+# Contacts.
+with Meta(enable_emails = True) as meta:
+  emails = ['AlIcE@infiniT.io', 'SeRge@infinit.IO', 'saaara@infinit.io', 'boB@infinit.io']
+  lowered_emails = {email.lower() for email in emails}
+  bob = User(meta, emails[-1])
+  bob.login()
+  bob.put('user/contacts',
+          {
+            'contacts': [{'emails': [email]} for email in emails]
+          })
+  print(list(meta.database.users.find({}, fields = ['accounts', 'email'])))
+  assertEq(meta.database.users.count(), len(emails))
+  for email in emails:
+    bob.get('users/%s' % email)
+    bob.get('users/%s' % email.lower())
+  users = {user['accounts'][0]['id'] for user in meta.database.users.find()}
+  assertEq(users, lowered_emails)
+
+# Pasted from auxiliary_emails
+class MailService(NoOpMailer):
+
+  def __init__(self):
+    self.change_email = {}
+    super().__init__(True)
+
+  def template_message(self, template_message, message):
+    merges = {}
+    for entry in message['merge_vars'][0]['vars']:
+      merges[entry['name']] = entry['content']
+    if template_message == 'change-email-address':
+       self.change_email.update(
+         {
+           merges['new_email_address']: merges['hash']
+         })
+
+def get_keys(emails, size):
+  assertEq(len(emails), size)
+  keys = {}
+  for email in emails:
+    keys[email.variables['email']] = email.variables['key']
+  return keys
+
+# Auxiliary email.
+with Meta(enable_emails = True) as meta:
+  # Add an auxiliary email and delete it.
+  bob = User(meta, 'boB@infinit.io')
+  bob.login()
+  meta.mailer = MailService()
+  emails = ['AlIcE@infiniT.io', 'SeRge@infinit.IO', 'saAAAra@infinit.io']
+  for email in emails:
+    bob.put('user/accounts/%s' % email)
+    keys = get_keys(meta.emailer.emails, 1)
+    print(keys)
+    # The key is calculted with the lower case email.
+    throws(lambda: bob.post('users/%s/accounts/%s/confirm' % (bob.id, email), {'key': keys[email.lower()]}),
+           403)
+    bob.post('users/%s/accounts/%s/confirm' % (bob.id, email.lower()), {'key': keys[email.lower()]}),
+  for email in emails:
+    bob.get('users/%s' % email)
+    bob.get('users/%s' % email.lower())
+
+  bob.post('user/accounts/%s/make_primary' % emails[1], {
+    'password': bob.password
+  })
+  assertEq(bob.me['email'], emails[1].lower())
+  bob.delete('user/accounts/%s' % emails[0])
