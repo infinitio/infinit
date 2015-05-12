@@ -147,5 +147,15 @@ namespace surface
                                               this->state().device().id,
                                               this->state().device().name);
     }
+
+    void
+    PeerMachine::_pause(bool pause_action)
+    {
+      this->state().meta().update_transaction(this->transaction_id(),
+                                              boost::none, //status
+                                              elle::UUID(), // device_id
+                                              "", // device_name
+                                              pause_action);
+    }
   }
 }

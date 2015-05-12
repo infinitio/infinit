@@ -175,7 +175,7 @@ namespace surface
       this->_machine.transition_add(
         this->_paused_state,
         this->_unpausing_state,
-        reactor::Waitables{&!this->transaction().pausing()});
+        reactor::Waitables{&this->transaction().unpausing()});
       // The catch transitions just open the barrier for logging purpose.
       // The snapshot will be kept.
       this->_machine.transition_add_catch(this->_fail_state, this->_end_state)
@@ -377,6 +377,7 @@ namespace surface
 
     void TransactionMachine::_pausing()
     {
+      this->transaction().unpausing().close();
       this->gap_status(gap_transaction_paused);
       this->_pause(true);
       this->transaction().paused().open();
@@ -384,18 +385,10 @@ namespace surface
 
     void TransactionMachine::_unpausing()
     {
+      this->transaction().pausing().close();
       this->_pause(false);
       this->gap_status(gap_transaction_waiting_accept);
       this->transaction().paused().close();
-    }
-
-    void TransactionMachine::_pause(bool pause_action)
-    {
-      this->state().meta().update_transaction(this->transaction_id(),
-                                              boost::none, //status
-                                              elle::UUID(), // device_id
-                                              "", // device_name
-                                              pause_action);
     }
 
     void TransactionMachine::_paused()

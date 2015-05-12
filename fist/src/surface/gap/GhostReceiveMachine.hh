@@ -57,6 +57,9 @@ namespace surface
       cleanup() override;
       virtual
       void _finish() override;
+      virtual
+      void
+      _pause(bool pause_action) override;
 
     private:
       void

@@ -58,7 +58,7 @@ namespace surface
       if (paused)
         transaction->pausing().open();
       else
-        transaction->pausing().close();
+        transaction->unpausing().open();
     }
 
     uint32_t
@@ -508,12 +508,10 @@ namespace surface
       }
       if (notif.paused)
       {
-        it->second->pausing().open();
         it->second->paused().open();
       }
       else
       {
-        it->second->pausing().close();
         it->second->paused().close();
       }
     }

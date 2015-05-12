@@ -193,7 +193,7 @@ namespace surface
       void
       cleanup() = 0;
       virtual
-      void _pause(bool pause_action);
+      void _pause(bool pause_action) = 0;
     private:
       void
       _end();
