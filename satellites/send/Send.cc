@@ -49,6 +49,7 @@ parse_options(int argc, char** argv)
     ("to,t", value<std::string>(), "the recipient")
     ("file,f", value<std::string>(), "the file to send, or comma-separated list")
     ("device,d", value<std::string>(), "send to specific device")
+    ("pause,x", value<bool>(), "pause transaction midway for testing purposes")
     ("production,r", value<bool>(), "send metrics to production");
 
   variables_map vm;
@@ -100,6 +101,7 @@ int main(int argc, char** argv)
     if (options.count("device") != 0)
       recipient_device_id = elle::UUID(options["device"].as<std::string>());
     reactor::Scheduler sched;
+    bool pause = (options.count("pause") != 0);
 
     sched.signal_handle(
       SIGINT,
@@ -161,9 +163,8 @@ int main(int argc, char** argv)
             }
             std::cout << "] " << int(progress * 100) << "%" << std::endl;
           }
-          if (progress > 0.3 && !paused)
+          if (pause && progress > 0.3 && !paused)
           {
-            ELLE_WARN("CHATTE");
             state.transaction_pause(id);
             timer = elle::make_unique<reactor::Timer>(
             "resume", boost::posix_time::seconds(5),

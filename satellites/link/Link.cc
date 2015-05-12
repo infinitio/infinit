@@ -10,6 +10,7 @@
 #include <elle/Exception.hh>
 
 #include <reactor/scheduler.hh>
+#include <reactor/timer.hh>
 
 #include <CrashReporter.hh>
 #include <common/common.hh>
@@ -41,6 +42,8 @@ parse_options(int argc, char** argv)
     ("password,p", value<std::string>(), "the password")
     ("file,f", value<std::string>(),
      "the file to send, or comma-separated list")
+    ("pause,x", value<bool>(),
+     "pause transaction midway, for testing purposes")
     ("production,r", value<bool>(), "use production servers");
   variables_map vm;
   try
@@ -81,6 +84,7 @@ int main(int argc, char** argv)
     bool production = false;
     if (options.count("production") != 0)
       production = options["production"].as<bool>();
+    bool pause = (options.count("pause") != 0);
 
     reactor::Scheduler sched;
     sched.signal_handle(
@@ -120,6 +124,8 @@ int main(int argc, char** argv)
         static const int width = 70;
         std::cout << std::endl;
         float previous_progress = 0.0;
+        bool paused = false;
+        std::unique_ptr<reactor::Timer> timer;
         do
         {
           state.poll();
@@ -138,6 +144,17 @@ int main(int argc, char** argv)
               std::cout << (float(i) / width < progress ? "#" : " ");
             }
             std::cout << "] " << int(progress * 100) << "%" << std::endl;
+          }
+          if (pause && progress > 0.3 && !paused)
+          {
+            state.transaction_pause(id);
+            timer = elle::make_unique<reactor::Timer>(
+            "resume", boost::posix_time::seconds(5),
+            [&state, id]()
+            {
+              state.transaction_pause(id, false);
+            });
+            paused = true;
           }
           reactor::sleep(100_ms);
         }
