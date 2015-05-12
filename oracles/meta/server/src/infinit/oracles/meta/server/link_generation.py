@@ -223,6 +223,7 @@ class Mixin:
         'sender_device_id': device['id'],
         'sender_id': user['_id'],
         'status': transaction_status.CREATED, # Use same enum as transactions.
+        'paused': False,
       }
 
       if link_id is not None:
@@ -319,20 +320,26 @@ class Mixin:
   @require_logged_in
   def link_update(self,
                   id: bson.ObjectId,
-                  progress: float,
-                  status: int):
-    return self.link_update(id, progress, status, self.user)
+                  progress: float = None,
+                  status: int = None,
+                  pause: bool = None):
+    return self.link_update(id, self.user,
+                            progress = progress,
+                            status = status,
+                            pause = pause)
 
   def link_update(self,
                   id,
-                  progress,
-                  status,
-                  user):
+                  user,
+                  progress = None,
+                  status = None,
+                  pause = None):
     """
     Update the status of a given link.
     id -- _id of link.
     progress -- upload progress of link.
     status -- Current status of link.
+    pause -- Pause status
     """
     with elle.log.trace('updating link %s with status %s and progress %s' %
                         (id, status, progress)):
@@ -346,9 +353,9 @@ class Mixin:
         })
       if link['sender_id'] != user['_id']:
         self.forbidden()
-      if progress < 0.0 or progress > 1.0:
+      if progress is not None and (progress < 0.0 or progress > 1.0):
         self.bad_request('invalid progress')
-      if status not in transaction_status.statuses.values():
+      if status is not None and status not in transaction_status.statuses.values():
         self.bad_request('invalid status')
       if status is link['status']:
         return self.success()
@@ -390,9 +397,19 @@ class Mixin:
             )
       setter = {
             'mtime': self.now,
-            'progress': progress,
-            'status': status,
           }
+      if progress is not None:
+        setter.update({
+            'progress': progress,
+            })
+      if status is not None:
+        setter.update({
+          'status': status,
+          })
+      if pause is not None:
+        setter.update({
+          'paused': pause,
+          })
       setter.update(extra)
       link = self.database.links.find_and_modify(
         {'_id': id},
@@ -621,7 +638,8 @@ class Mixin:
   def adm_link_delete(self, id: bson.ObjectId):
     user_id = self.database.links.find_one({'_id': id})['sender_id']
     user = self.database.users.find_one(user_id)
-    self.link_update(id, 1, transaction_status.DELETED, user)
+    self.link_update(id, user, progress = 1, status =
+        transaction_status.DELETED)
 
   @api('/stats/links')
   @require_admin

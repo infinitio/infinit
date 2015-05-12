@@ -1285,8 +1285,9 @@ namespace infinit
 
       void
       Client::update_link(std::string const& id,
-                          double progress,
-                          Transaction::Status status) const
+                          boost::optional<double> progress,
+                          boost::optional<Transaction::Status> status,
+                          boost::optional<bool> pause) const
       {
         auto url = elle::sprintf("/link/%s", id);
         auto request = this->_request(
@@ -1294,8 +1295,12 @@ namespace infinit
           [&] (reactor::http::Request& request)
           {
             elle::json::Object body;
-            body["progress"] = progress;
-            body["status"] = int(status);
+            if (progress)
+              body["progress"] = *progress;
+            if (status)
+            body["status"] = int(*status);
+            if (pause)
+              body["pause"] = *pause;
             elle::json::write(request, body);
           });
       }

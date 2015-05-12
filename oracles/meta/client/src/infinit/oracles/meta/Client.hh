@@ -573,7 +573,7 @@ namespace infinit
                            boost::optional<Transaction::Status> status = boost::none,
                            elle::UUID const& device_id = elle::UUID(),
                            std::string const& device_name = "",
-                           boost::optional<bool> paused = boost::none) const;
+                           boost::optional<bool> pause = boost::none) const;
 
         std::string
         create_transaction(std::string const& recipient_id_or_email,
@@ -618,8 +618,9 @@ namespace infinit
 
         void
         update_link(std::string const& id,
-                    double progress,
-                    Transaction::Status status) const;
+                    boost::optional<double> progress = boost::none,
+                    boost::optional<Transaction::Status> status = boost::none,
+                    boost::optional<bool> pause = boost::none) const;
         std::vector<LinkTransaction>
         links(int offset = 0,
               int count = 500,
