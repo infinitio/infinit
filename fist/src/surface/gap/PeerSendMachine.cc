@@ -116,6 +116,10 @@ namespace surface
         this->_wait_for_accept_state,
         reactor::Waitables{&!this->transaction().paused()},
         true);
+      this->_machine.transition_add(
+        this->_paused_state,
+        this->_wait_for_accept_state,
+        reactor::Waitables{&!this->transaction().paused()});
       this->transaction_status_update(data->status);
     }
 
