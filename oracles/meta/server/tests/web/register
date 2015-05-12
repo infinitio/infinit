@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import Meta, User
+from utils import *
 from infinit.oracles.meta import error
 
 with Meta() as meta:
@@ -21,10 +21,7 @@ with Meta() as meta:
   assert res['error_code'] == error.EMAIL_ALREADY_REGISTERED[0]
 
   query['email'] = 'heab'
-
-  res = meta.post("user/register", query)
-  assert not res['success']
-  assert res['error_code'] == error.EMAIL_NOT_VALID[0]
+  throws(lambda: meta.post("user/register", query), 400)
 
   query['email'] = 'bob@infinit.io'
   query['fullname'] = 'j'

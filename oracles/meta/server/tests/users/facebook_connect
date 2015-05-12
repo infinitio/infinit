@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import Meta, User, Trophonius
+from utils import *
 import copy
 from infinit.oracles.meta.server.facebook import FacebookGraph
 from infinit.oracles.utils import api
@@ -310,11 +310,7 @@ for no_device in [True, False]:
         'email': 'serge@infinit.io'
       })
       bob = User(meta, facebook = True, check_registration = True)
-      try:
-        bob.facebook_connect("bite", no_device = no_device, preferred_email = 'infinit.io')
-        assert False
-      except HTTPException as e:
-        assert e.status == 403
+      throws(lambda: bob.facebook_connect("bite", no_device = no_device, preferred_email = 'infinit.io'), 400)
 
   # No email.
   with Meta(enable_emails = True) as meta:

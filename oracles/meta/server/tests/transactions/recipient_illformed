@@ -17,14 +17,15 @@ with Meta() as meta:
     assert 'None' in e.content['detail']
 
 with Meta() as meta:
-  wrong_email = 'fimrok@akzd@ro.io'
+
   alice = User(meta, "alice@infinit.io")
   alice.login(country_code = None,
               device_push_token = "31")
-  try:
-    _, res1 = alice.sendfile(recipient = wrong_email, use_identifier = True, initialize = True)
-    assert False
-  except HTTPException as e:
-    assert e.status == 400
-    print(e.content)
-    assert wrong_email in e.content['reason']
+  for wrong_email in ['fimrok@akzd@ro.io', 'not_an_email']:
+    try:
+      _, res1 = alice.sendfile(recipient = wrong_email, use_identifier = True, initialize = True)
+      assert False
+    except HTTPException as e:
+      assert e.status == 400
+      print(e.content)
+      assert wrong_email in str(e.content['reason'])

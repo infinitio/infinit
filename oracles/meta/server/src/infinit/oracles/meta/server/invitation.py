@@ -4,6 +4,7 @@ import elle.log
 from . import conf, mail
 import decorator
 
+from infinit.oracles.meta.server import utils
 from itertools import chain
 
 def _generate_code(email):
@@ -35,7 +36,9 @@ class Invitation:
       self.__name = name
       self.__list_id = list_id
 
-    def subscribe(self, ms, email_address):
+    def subscribe(self,
+                  ms,
+                  email_address):
       try:
         ms.listSubscribe(id = self.__list_id,
                          email_address = email_address,
@@ -58,7 +61,9 @@ class Invitation:
         elle.log.warn("couldn't unsubscribe %s from %s (%s)" %  (email_address, self.__name, self.__list_id))
         return False
 
-    def contains(self, ms, email_address):
+    def contains(self,
+                 ms,
+                 email_address):
       res = ms.listMemberInfo(id = self.__list_id,
                               email_address = email_address)
       if not res['success']:
@@ -94,7 +99,9 @@ class Invitation:
     return decorator.decorator(wrapper, method)
 
   @is_active
-  def move_from_invited_to_userbase(self, ghost_mail, new_mail):
+  def move_from_invited_to_userbase(self,
+                                    ghost_mail,
+                                    new_mail):
     try:
       self.ms.listUnsubscribe(id = INVITED_LIST, email_address = ghost_mail)
       elle.log.trace("%s: unsubscribed from INVITED: %s" % (ghost_mail, INVITED_LIST))
@@ -103,7 +110,9 @@ class Invitation:
     self.subscribe(new_mail)
 
   @is_active
-  def subscribe(self, email, list_name = 'userbase'):
+  def subscribe(self,
+                email,
+                list_name = 'userbase'):
     mailing_list = self.lists.get(list_name)
     if mailing_list is not None:
       return mailing_list.subscribe(ms = self.ms,
@@ -113,7 +122,9 @@ class Invitation:
 
   # XXX should be moved to another class.
   @is_active
-  def unsubscribe(self, email, list_name = 'userbase'):
+  def unsubscribe(self,
+                  email,
+                  list_name = 'userbase'):
     mailing_list = self.lists.get(list_name)
     if mailing_list is not None:
       return mailing_list.unsubscribe(ms = self.ms,
@@ -122,7 +133,9 @@ class Invitation:
       elle.log.warn("unknown list %s" % list_name)
 
   @is_active
-  def subscribed(self, email, list_name = 'userbase'):
+  def subscribed(self,
+                 email,
+                 list_name = 'userbase'):
     mailing_list = self.lists.get(list_name)
     if mailing_list is not None:
       return mailing_list.contains(ms = self.ms,

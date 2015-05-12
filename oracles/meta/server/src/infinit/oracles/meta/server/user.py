@@ -254,7 +254,7 @@ class Mixin:
     self.sessions.remove(query)
 
   def _login(self,
-             email,
+             email: utils.enforce_as_email_address,
              fields,
              password,
              password_hash = None):
@@ -423,7 +423,7 @@ class Mixin:
                          fields,
                          short_lived_access_token = None,
                          long_lived_access_token = None,
-                         preferred_email = None,
+                         preferred_email: utils.enforce_as_email_address = None,
                          source = None):
     registered = False
     if bool(short_lived_access_token) == bool(long_lived_access_token):
@@ -475,7 +475,7 @@ class Mixin:
   @api('/login', method = 'POST')
   def login(self,
             device_id: uuid.UUID,
-            email: str = None,
+            email: utils.enforce_as_email_address = None,
             password: str = None,
             short_lived_access_token: str = None,
             long_lived_access_token: str = None,
@@ -512,7 +512,6 @@ class Mixin:
     with elle.log.trace("%s: log on device %s" % (email or 'facebook user', device_id)):
       registered = False
       if with_email:
-        email = email.strip().lower()
         user = self._login(email = email,
                            fields = fields,
                            password = password,
@@ -537,9 +536,9 @@ class Mixin:
 
   @api('/web-login', method = 'POST')
   def web_login(self,
-                email = None,
+                email: utils.enforce_as_email_address = None,
                 password = None,
-                preferred_email = None,
+                preferred_email: utils.enforce_as_email_address = None,
                 short_lived_access_token = None,
                 long_lived_access_token = None):
     # Xor facebook_token or email / password.
@@ -553,7 +552,6 @@ class Mixin:
     fields = self.__user_self_fields + ['unconfirmed_email_deadline']
     update = {'account_registered': False}
     if with_email:
-      email = email.lower().strip()
       with elle.log.trace("%s: web login" % email):
         user = self._login(email, password = password, fields = fields)
     elif with_facebook:
@@ -633,7 +631,7 @@ class Mixin:
 
   @api('/user/register', method = 'POST')
   def user_register_api(self,
-                        email,
+                        email: utils.enforce_as_email_address,
                         password,
                         fullname,
                         source = None,
@@ -674,11 +672,11 @@ class Mixin:
     # XXX: Make that cleaner...
     email = facebook_user.data.get('email', None)
     if email is not None:
-      email = email.strip().lower()
+      email = utils.enforce_as_email_address(email)
     if preferred_email is not None:
-      preferred_email = preferred_email.lower().strip()
+      preferred_email = utils.enforce_as_email_address(preferred_email)
     # Confirmed by facebook.
-    already_confirmed = preferred_email == email
+    already_confirmed = preferred_email == email or preferred_email is None
     email = preferred_email or email
     if email is None:
       return self.bad_request({
@@ -709,7 +707,8 @@ class Mixin:
     return self.user_by_facebook_id(
       facebook_user.facebook_id, fields = fields)
 
-  def __email_confirmation_fields(self, email):
+  def __email_confirmation_fields(self,
+                                  email : utils.enforce_as_email_address):
     email = email.strip().lower()
     import hashlib
     hash = str(time.time()) + email
@@ -723,7 +722,7 @@ class Mixin:
     }
 
   def user_register(self,
-                    email,
+                    email: utils.enforce_as_email_address,
                     password,
                     fullname,
                     password_hash = None,
@@ -738,9 +737,7 @@ class Mixin:
     fullname -- the user fullname.
     activation_code -- the activation code.
     """
-    email = email.strip().lower()
     _validators = [
-      (email, regexp.EmailValidator),
       (fullname, regexp.FullnameValidator),
     ]
     if password is not None:
@@ -751,7 +748,6 @@ class Mixin:
         raise Exception(res)
     fullname = fullname.strip()
     with elle.log.trace("registration: %s as %s" % (email, fullname)):
-      email = email.strip().lower()
       handle = self.unique_handle(fullname)
       plan = self.database.plans.find_one({'name': 'basic'})
       features = self._roll_features(True)
@@ -1194,15 +1190,11 @@ class Mixin:
 
   @api('/user/accounts/<email>', method = 'PUT')
   @require_logged_in
-  def account_add(self, email):
-    if regexp.EmailValidator(email) != 0:
-      self.bad_request({
-        'reason': 'invalid email',
-        'email': email,
-      })
-    other = self.user_by_email(email,
-                               ensure_existence = False,
-                               fields = ['register_status'])
+  def account_add(self, email: utils.enforce_as_email_address):
+    other = self.user_by_email(
+      email,
+      ensure_existence = False,
+      fields = ['register_status'])
     if other is not None and other['register_status'] != 'ghost':
       self.conflict({
           'reason': 'email already registered',
@@ -1266,7 +1258,8 @@ class Mixin:
 
   @api('/user/accounts/<email>', method = 'DELETE')
   @require_logged_in
-  def remove_auxiliary_email_address(self, email):
+  def remove_auxiliary_email_address(self,
+                                     email: utils.enforce_as_email_address):
     user = self.user
     if user.get('email') == email:
       self.forbidden({
@@ -1292,12 +1285,9 @@ class Mixin:
 
   @api('/user/accounts/<email>/make_primary', method = 'POST')
   @require_logged_in_fields(['password'])
-  def swap_primary_account(self, email, password):
-    if regexp.EmailValidator(email) != 0:
-      self.bad_request({
-        'reason': 'invalid email',
-        'email': email,
-      })
+  def swap_primary_account(self,
+                           email: utils.enforce_as_email_address,
+                           password):
     user = self.user
     if not any(a['id'] == email for a in user['accounts']):
       self.not_found({
@@ -1314,7 +1304,7 @@ class Mixin:
   @api('/user/change_email_request', method = 'POST')
   @require_logged_in_fields(['password', 'password_hash'])
   def change_email_request(self,
-                           new_email,
+                           new_email: utils.enforce_as_email_address,
                            password):
     """
     Request to change the main email address for the account.
@@ -1327,7 +1317,6 @@ class Mixin:
     with elle.log.trace('request to change main email from %s to %s' %
                         (user['email'], new_email)):
       _validators = [
-        (new_email, regexp.EmailValidator),
         (password, regexp.PasswordValidator),
       ]
 
@@ -1336,7 +1325,6 @@ class Mixin:
         if res != 0:
           return self._forbidden_with_error(error.EMAIL_NOT_VALID)
 
-      new_email = new_email.lower().strip()
       # Check if the new address is already in use.
       if self.user_by_email(new_email,
                             fields = [],
@@ -1421,7 +1409,10 @@ class Mixin:
         return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
       self._change_email(user, new_email, password)
 
-  def _change_email(self, user, new_email, password):
+  def _change_email(self,
+                    user,
+                    new_email: utils.enforce_as_email_address,
+                    password):
     self.remove_session(user)
     # Kick them out of the app.
     self.notifier.notify_some(
@@ -1804,8 +1795,8 @@ class Mixin:
       self.__ensure_user_existence(user)
     return user
 
-  def user_by_email_query(self, email):
-    email = email.lower().strip()
+  def user_by_email_query(self,
+                          email: utils.enforce_as_email_address):
     return {
       'accounts': {
         '$elemMatch': {'id': email, 'type': 'email'}
@@ -2074,43 +2065,51 @@ class Mixin:
                                  offset : int = 0):
     return self.__users_by_emails_search(emails, limit, offset)
 
+  def user_from_identifier(self,
+                           recipient_identifier: utils.identifier,
+                           country_code = None,
+                           account_type = None,
+                           fields = None):
+    args = {
+      'fields': fields,
+      'ensure_existence': False,
+    }
+    def check_type(account_type, expected):
+      return account_type == expected or account_type is None
+    user = None
+    if isinstance(recipient_identifier, bson.ObjectId):
+      if check_type(account_type, 'ObjectId'):
+        user = self._user_by_id(recipient_identifier, **args)
+    elif '@' in recipient_identifier:
+        if check_type(account_type, 'email'):
+          user = self.user_by_email(recipient_identifier, **args)
+    else:
+      if account_type == 'facebook':
+        user = self.user_by_facebook_id(recipient_identifier,
+                                        **args)
+      elif check_type(account_type, 'phone'):
+        if country_code is None and self.current_device is not None:
+          country_code = self.current_device.get('country_code', None)
+        phone_number = clean_up_phone_number(
+          recipient_identifier, country_code)
+        if phone_number:
+          user = self.user_by_phone_number(phone_number, **args)
+    return user
+
   @api('/users/<recipient_identifier>')
   def view_user(self,
-                recipient_identifier,
+                recipient_identifier: utils.identifier,
                 country_code = None,
                 account_type = None):
     """
     Get user's public information by identifier.
     recipient_identifier -- Something to identify the user (email, user_id or phone number).
     """
-    recipient_identifier = recipient_identifier.strip().lower()
-    args = {
-      'fields': self.__user_view_fields,
-      'ensure_existence': False,
-    }
-    user = None
-    try:
-      if account_type is not None and account_type != "ObjectId":
-        raise bson.errors.InvalidId("")
-      recipient_id = bson.ObjectId(recipient_identifier)
-      user = self._user_by_id(recipient_id, **args)
-    except bson.errors.InvalidId:
-      if ('@' in recipient_identifier and account_type is None) or \
-         account_type == "email":
-        user = self.user_by_email(recipient_identifier, **args)
-      else:
-        if account_type == "facebook":
-          user = self.user_by_facebook_id(recipient_identifier,
-                                          **args)
-        else:
-          if account_type is None or account_type == "phone":
-            if country_code is None and self.current_device is not None:
-              country_code = self.current_device.get('country_code', None)
-            phone_number = clean_up_phone_number(
-              recipient_identifier, country_code)
-            if phone_number:
-              user = self.user_by_phone_number(phone_number, **args)
-
+    user = self.user_from_identifier(
+      recipient_identifier = recipient_identifier,
+      country_code = country_code,
+      account_type = account_type,
+      fields = self.__user_view_fields)
     if user is None:
       self.not_found({
         'reason': 'user %s not found' % recipient_identifier,
@@ -2984,10 +2983,12 @@ class Mixin:
     user = self.user
     new_swaggers = dict()
     country_code = self.current_device.get('country_code', None)
-    # Normalize phone numbers
+    # Normalize phone numbers and email addresses.
     for c in contacts:
       c['phones'] = list(map(lambda x: clean_up_phone_number(x, country_code), c.get('phones', [])))
       c['phones'] = list(filter(lambda x: x is not None, c['phones']))
+      c['emails'] = list(map(lambda x: utils.enforce_as_email_address(x, False), c.get('emails', [])))
+      c['emails'] = list(filter(lambda x: x is not None, c['emails']))
     mails = [val for sublist in contacts for val in sublist.get('emails', [])]
     phones = [val for sublist in contacts for val in sublist.get('phones', [])]
     ids = mails

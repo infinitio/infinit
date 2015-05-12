@@ -35,8 +35,14 @@ class api:
               value = annotation(value)
             kwargs[arg] = value
           except:
-            m = '%r is not a valid %s' % (value, annotation.__name__)
-            self.bad_request(m)
+            # Could be improved (e.g. by catching Response).
+            # If the annotation is a type, just 'return' bad_request, otherwise
+            # let the exception go throught.
+            if type(annotation) is type:
+              m = '%r (%s) is not a valid %s' % (
+                value, arg, annotation.__name__)
+              self.bad_request(m)
+            raise
       return method(self, *args, **kwargs)
     annotation_mapper.__route__ = self.__route
     annotation_mapper.__method__ = self.__method

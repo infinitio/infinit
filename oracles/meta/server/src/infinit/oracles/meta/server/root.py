@@ -254,13 +254,13 @@ class Mixin:
     return self.success({'user_id': str(user['_id'])})
 
   @api('/lost-password', method = 'POST')
-  def declare_lost_password(self, email):
+  def declare_lost_password(self,
+                            email: utils.enforce_as_email_address):
     """Generate a reset password url.
 
     email -- The mail of the infortunate user
     """
 
-    email = email.lower()
     user = self.database.users.find_one({"email": email})
     if not user or user['register_status'] == 'ghost':
       return self.fail(error.UNKNOWN_USER)
@@ -300,7 +300,7 @@ class Mixin:
                   message = '',
                   env = [],
                   version = None,
-                  email = 'crash@infinit.io',
+                  email : utils.enforce_as_email_address = 'crash@infinit.io',
                   send = False,
                   more = '',
                   transaction_id = '',

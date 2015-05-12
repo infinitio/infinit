@@ -13,7 +13,7 @@ import json
 import elle.log
 from .utils import \
   api, require_logged_in, require_logged_in_or_admin, require_key, key, clean_up_phone_number
-from . import regexp, error, transaction_status, notifier, invitation, cloud_buffer_token, cloud_buffer_token_gcs, mail
+from . import regexp, error, transaction_status, notifier, invitation, cloud_buffer_token, cloud_buffer_token_gcs, mail, utils
 import uuid
 import re
 from pymongo import ASCENDING, DESCENDING
@@ -258,7 +258,7 @@ class Mixin:
                        device_id, # Can be determine by session.
                        recipient_device_id = None,
                        id_or_email = None,
-                       recipient_identifier = None,
+                       recipient_identifier: utils.identifier = None,
                        message = ""):
     return self.transaction_create(
       sender = self.user,
@@ -276,7 +276,7 @@ class Mixin:
   @api('/transactions', method = 'POST')
   @require_logged_in
   def transaction_post(self,
-                       recipient_identifier,
+                       recipient_identifier: utils.identifier,
                        files,
                        files_count,
                        message):
@@ -293,7 +293,7 @@ class Mixin:
   # FIXME: Nuke this ! Use the user fetching routines from user.py and
   # don't hardcode the list of fields. Stop ADDING code !
   def __recipient_from_identifier(self,
-                                  recipient_identifier,
+                                  recipient_identifier: utils.identifier,
                                   sender):
     """Get the recipient from identifier. If it doesn't exist, create a ghost.
     recipient_identifier -- The user identifier (can be an email, ObjectId or
@@ -328,7 +328,7 @@ class Mixin:
     except bson.errors.InvalidId:
       pass
     recipient_identifier = recipient_identifier.lower().strip()
-    is_an_email = re.match(regexp.Email, recipient_identifier) is not None
+    is_an_email = utils.is_an_email_address(recipient_identifier)
     if is_an_email:
       elle.log.debug("%s is an email" % recipient_identifier)
       peer_email = recipient_identifier
@@ -402,7 +402,7 @@ class Mixin:
 
   def _transactions(self,
                     sender,
-                    recipient_identifier,
+                    recipient_identifier: utils.identifier,
                     message,
                     files,
                     files_count):
@@ -459,7 +459,7 @@ class Mixin:
                              is_directory,
                              device_id, # Can be determine by session.
                              message = "",
-                             recipient_identifier = None,
+                             recipient_identifier: utils.identifier = None,
                              id_or_email = None):
     return self.transaction_create(
       sender = self.user,
@@ -480,7 +480,7 @@ class Mixin:
                          is_directory,
                          device_id, # Can be determine by session.
                          id_or_email = None,
-                         recipient_identifier = None,
+                         recipient_identifier : utils.identifier = None,
                          message = "",
                          transaction_id = None,
                          recipient_device_id = None):

@@ -3,11 +3,14 @@ import decorator
 import inspect
 import pymongo
 import phonenumbers
+import bson
 
 from itertools import chain
 
-from infinit.oracles.meta.server import conf
+from infinit.oracles.meta.server import conf, regexp
 from infinit.oracles.utils import api, json_value, utf8_string, key
+
+from .plugins.response import response
 
 def require_logged_in_fields(fields):
   def require_logged_in(method):
@@ -116,3 +119,52 @@ def clean_up_phone_number(phone_number, country_code):
     return res
   except phonenumbers.NumberParseException:
     return None
+
+def invalid_email(email, exit_on_failure = True, res = None):
+  if exit_on_failure:
+    message = {
+      'reason': '%s is not a valid email' % email
+    }
+    if res is not None:
+      message.update({'detail': 'got error %s' % (res,)})
+    response(400, message)
+  else:
+    return None
+
+def is_an_email_address(email):
+  import re
+  return '@' in email and re.match(regexp.Email, email) is not None
+
+def enforce_as_email_address(identifier, exit_on_failure = True):
+  if identifier is None:
+    return None
+  identifier = identifier.strip().lower()
+  if is_an_email_address(identifier):
+    return identifier
+  else:
+    return invalid_email(identifier, exit_on_failure)
+
+def identifier(user_identifier, country_code = None):
+  try:
+    print("user identifier", user_identifier)
+    if user_identifier is None:
+      return None
+    if isinstance(user_identifier, bson.ObjectId):
+      return user_identifier
+    user_identifier = user_identifier.strip()
+    try:
+      return bson.ObjectId(user_identifier)
+    except bson.errors.InvalidId:
+      pass
+    if '@' in user_identifier:
+      return enforce_as_email_address(user_identifier)
+    else:
+      # Phone or facebook id.
+      if country_code:
+        phone_number = clean_up_phone_number(user_identifier, country_code)
+        if phone_number is not None:
+          return phone_number
+      return user_identifier
+  except Exception as e:
+    print(e)
+    raise e
