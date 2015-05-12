@@ -102,7 +102,7 @@ ELLE_TEST_SCHEDULED(pause_snapshot)
 
 ELLE_TEST_SCHEDULED(pause_resume)
 {
-  tests::SleepyServer server;
+  tests::Server server;
   elle::filesystem::TemporaryDirectory sender_home(
     "pause_sender_home_p2p");
   auto const& sender_user =
@@ -130,7 +130,8 @@ ELLE_TEST_SCHEDULED(pause_resume)
     recipient_user.email(),
     std::vector<std::string>{transfered.path().string().c_str()},
     "message");
-  reactor::Barrier paused, finished;
+  reactor::Barrier paused, unpaused;
+  bool second_time = false;
   auto conn = state_transaction.status_changed().connect(
     [&] (gap_TransactionStatus status)
     {
@@ -138,10 +139,12 @@ ELLE_TEST_SCHEDULED(pause_resume)
       ELLE_WARN("new sender transaction status: %s", status);
       if (status == gap_transaction_paused)
         paused.open();
-      if (status == gap_transaction_finished)
-        finished.open();
+      if (status == gap_transaction_transferring)
+        if (second_time)
+          second_time = true;
+        else
+          unpaused.open();
     });
-  reactor::wait(server.started_blocking);
 
   ELLE_WARN("PUTE");
   tests::Client recipient(server, recipient_user, recipient_home.path());
@@ -158,7 +161,7 @@ ELLE_TEST_SCHEDULED(pause_resume)
   state_transaction_recipient.accept();
   reactor::wait(paused);
   sender.state->transaction_pause(state_transaction.id(), false);
-  reactor::wait(finished);
+  reactor::wait(unpaused);
 }
 
 ELLE_TEST_SUITE()
