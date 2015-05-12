@@ -149,6 +149,7 @@ namespace surface
       , _message(message)
       , _archived(false)
       , _pausing("pausing")
+      , _unpausing("unpausing")
       , _paused("paused")
       , _status(gap_transaction_new)
       , _id(id)
