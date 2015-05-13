@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
 import datetime
-import utils
 
-from utils import Meta, User, NoOpMailer
+from utils import *
 from infinit.oracles.meta import error
 
 unconfirmed_email_leeway = 100
@@ -55,7 +54,7 @@ with Meta(enable_emails = True, unconfirmed_email_leeway = 0) as meta:
   # should result to a EMAIL_NOT_CONFIRMED error.
   try:
     u.post('login', u.login_parameters)
-  except utils.HTTPException as e:
+  except HTTPException as e:
     assert e.status == 403
     assert e.content['code'] == error.EMAIL_NOT_CONFIRMED[0]
   else:
@@ -84,7 +83,7 @@ with Meta(
   # should result to a EMAIL_NOT_CONFIRMED error.
   try:
     u.post('login', u.login_parameters)
-  except utils.HTTPException as e:
+  except HTTPException as e:
     assert e.status == 403
     assert e.content['code'] == error.EMAIL_NOT_CONFIRMED[0]
   else:
@@ -98,12 +97,15 @@ with Meta(
   res = u.post('users/%s/resend-confirmation-email' % u.email)
   assert hasattr(meta.mailer, 'email_reconfirmation_hash')
 
-  res = u.post('users/%s/confirm-email' % u.id,
-               {'key': str(meta.mailer.email_reconfirmation_hash)})
-
+  client = Client(meta)
+  res = client.post(
+    'users/%s/confirm-email' % u.id,
+    {'key': str(meta.mailer.email_reconfirmation_hash)})
+  # Check confirming email logs in
+  assertEq(client.get('user/self')['email'], email)
   try:
     u.post('users/%s/resend-confirmation-email' % u.email)
-  except utils.HTTPException as e:
+  except HTTPException as e:
     assert e.status == 404
   else:
     raise Exception('invalid username didn\'t err')

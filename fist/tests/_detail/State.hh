@@ -19,7 +19,8 @@ namespace tests
           elle::UUID device_id,
           boost::filesystem::path const& home = boost::filesystem::path());
 
-    ELLE_ATTRIBUTE(elle::filesystem::TemporaryDirectory, temporary_dir);
+    ELLE_ATTRIBUTE_R(elle::filesystem::TemporaryDirectory, download_dir);
+    ELLE_ATTRIBUTE_R(elle::filesystem::TemporaryDirectory, temporary_dir);
     ELLE_ATTRIBUTE_X(surface::gap::State, state);
   };
 }

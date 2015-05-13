@@ -580,7 +580,8 @@ namespace surface
           "delay to connecting", boost::posix_time::seconds(5),
           [this]()
           {
-            this->_owner.gap_status(gap_transaction_connecting);
+            if (this->_owner.gap_status() == gap_transaction_transferring)
+              this->_owner.gap_status(gap_transaction_connecting);
           });
       }
       else

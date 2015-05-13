@@ -367,6 +367,7 @@ class Meta:
                enable_invitations = False,
                force_admin = False,
                emailer = None,
+               metrics = None,
                **kw):
     self.__mongo = mongobox.MongoBox()
     self.__server = bottle.WSGIRefServer(port = 0)
@@ -377,6 +378,7 @@ class Meta:
     self.__force_admin = force_admin
     self.__meta = None
     self.__meta_args = kw
+    self.__metrics = metrics
     if 'shorten_ghost_profile_url' not in self.__meta_args:
       self.__meta_args['shorten_ghost_profile_url'] = False
     self.__emailer = emailer or TestEmailer()
@@ -416,6 +418,7 @@ class Meta:
           enable_invitations = self.__enable_invitations,
           force_admin = self.__force_admin,
           emailer = self.__emailer,
+          metrics = self.__metrics,
           **self.__meta_args)
         self.__meta.mailer = NoOpMailer()
         self.__meta.invitation = NoOpInvitation()

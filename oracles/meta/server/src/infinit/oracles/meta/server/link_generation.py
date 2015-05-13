@@ -384,10 +384,11 @@ class Mixin:
             )
       if link['status'] == transaction_status.FINISHED:
         # Deleting a previously finished link (all other case threw above)
-        self.database.users.update(
-            {'_id': user['_id']},
-            {'$inc': {'total_link_size': link['file_size'] * -1}}
-            )
+        if 'file_size' in link:
+          self.database.users.update(
+              {'_id': user['_id']},
+              {'$inc': {'total_link_size': link['file_size'] * -1}}
+              )
       setter = {
             'mtime': self.now,
             'progress': progress,

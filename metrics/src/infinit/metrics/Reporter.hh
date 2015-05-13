@@ -104,6 +104,7 @@ namespace infinit
                                int64_t file_count,
                                int64_t total_size,
                                uint32_t message_length,
+                               std::vector<std::string> extensions,
                                bool onboarding = false);
 
       void
@@ -114,7 +115,8 @@ namespace infinit
                                int64_t total_size,
                                uint32_t message_length,
                                bool ghost,
-                               bool onboarding);
+                               bool onboarding,
+                               std::vector<std::string> extensions);
 
       void
       transaction_ended(std::string const& transaction_id,
@@ -177,6 +179,7 @@ namespace infinit
                                 int64_t file_count,
                                 int64_t total_size,
                                 uint32_t message_length,
+                                std::vector<std::string> extensions,
                                 bool onboarding);
 
       virtual
@@ -188,7 +191,9 @@ namespace infinit
                                 int64_t total_size,
                                 uint32_t message_length,
                                 bool ghost,
-                                bool onboarding);
+                                bool onboarding,
+                                std::vector<std::string> extensions
+                                );
 
       virtual
       void
@@ -282,6 +287,7 @@ namespace infinit
       void
       user_used_ghost_code(bool success,
                            std::string const& code,
+                           bool link,
                            std::string const& fail_reason);
 
     /// User metrics implementation.
@@ -340,6 +346,7 @@ namespace infinit
       void
       _user_used_ghost_code(bool success,
                             std::string const& code,
+                            bool link,
                             std::string const& fail_reason);
 
       virtual

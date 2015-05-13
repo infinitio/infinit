@@ -587,6 +587,8 @@ namespace tests
             "transaction not found");
         }
         auto& t = **it;
+        if (paused)
+          t.paused = *paused;
         if (status)
         {
           t.status = infinit::oracles::Transaction::Status(*status);
@@ -772,8 +774,10 @@ namespace tests
         elle::serialization::json::SerializerIn input(stream, false);
         std::string id;
         boost::optional<int> status;
+        boost::optional<bool> paused;
         input.serialize("transaction_id", id);
         input.serialize("status", status);
+        input.serialize("paused", paused);
         ELLE_LOG_SCOPE("%s: update transaction \"%s\" to status %s",
                        *this, id, status);
         auto it = this->_transactions.find(id);
@@ -786,6 +790,8 @@ namespace tests
             "transaction not found");
         }
         auto& t = **it;
+        if (paused)
+          t.paused = *paused;
         if (status)
         {
           t.status = infinit::oracles::Transaction::Status(*status);

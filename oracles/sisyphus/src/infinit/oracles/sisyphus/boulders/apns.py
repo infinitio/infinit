@@ -34,14 +34,16 @@ class APNSUnregister(Boulder):
         }
       )
       if self.sisyphus.metrics is not None:
-        res = self.sisyphus.metrics.send([
-          {
-            'event': 'push token invalidated',
-            'timestamp': datetime.datetime.utcnow(),
-            'fail_time': fail_time,
-            'user': str(user['_id']),
-          }
-        ])
+        res = self.sisyphus.metrics.send(
+          [
+            {
+              'event': 'push token invalidated',
+              'timestamp': datetime.datetime.utcnow(),
+              'fail_time': fail_time,
+              'user': str(user['_id']),
+            }
+          ],
+          collection = 'users')
 
   def status(self):
     return {}

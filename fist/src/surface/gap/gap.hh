@@ -66,10 +66,11 @@ gap_Status
 gap_login(gap_State* state,
           std::string const& email,
           std::string const& password,
-          boost::optional<std::string> device_push_token = {},
-          boost::optional<std::string> country_conde = {}, // ISO 3611-1 alpha-2
-          boost::optional<std::string> device_model = {},
-          boost::optional<std::string> device_name = {});
+          boost::optional<std::string> device_push_token = boost::none,
+          boost::optional<std::string> country_conde = boost::none, // ISO 3611-1 alpha-2
+          boost::optional<std::string> device_model = boost::none,
+          boost::optional<std::string> device_name = boost::none,
+          boost::optional<std::string> device_language = boost::none);
 
 /// Fetch features.
 std::unordered_map<std::string, std::string>
@@ -92,17 +93,19 @@ gap_register(gap_State* state,
              std::string const& fullname,
              std::string const& email,
              std::string const& password,
-             boost::optional<std::string> device_push_token = {},
-             boost::optional<std::string> country_conde = {}, // ISO 3611-1 alpha-2
-             boost::optional<std::string> device_model = {},
-             boost::optional<std::string> device_name = {});
+             boost::optional<std::string> device_push_token = boost::none,
+             boost::optional<std::string> country_conde = boost::none, // ISO 3611-1 alpha-2
+             boost::optional<std::string> device_model = boost::none,
+             boost::optional<std::string> device_name = boost::none,
+             boost::optional<std::string> device_language = boost::none);
 
 gap_Status
 gap_check_ghost_code(gap_State* state, std::string const& code, bool& res);
 
 gap_Status
 gap_use_ghost_code(gap_State* state,
-                   std::string const& code);
+                   std::string const& code,
+                   bool was_link);
 
 gap_Status
 gap_update_user_callback(
@@ -181,6 +184,13 @@ gap_device_status(gap_State* state);
 /// Update the local device name.
 gap_Status
 gap_set_device_name(gap_State* state, std::string const& name);
+
+/// Update this device's details
+gap_Status
+gap_update_device(gap_State* state,
+                  boost::optional<std::string> name = {},
+                  boost::optional<std::string> model = {},
+                  boost::optional<std::string> os = {});
 
 /// Get current user email.
 std::string
@@ -448,11 +458,12 @@ gap_facebook_already_registered(gap_State* state,
 gap_Status
 gap_facebook_connect(gap_State* state,
                      std::string const& facebook_token,
-                     boost::optional<std::string> preferred_email = {},
-                     boost::optional<std::string> device_push_token = {},
-                     boost::optional<std::string> country_conde = {}, // ISO 3611-1 alpha-2
-                     boost::optional<std::string> device_model = {},
-                     boost::optional<std::string> device_name = {});
+                     boost::optional<std::string> preferred_email = boost::none,
+                     boost::optional<std::string> device_push_token = boost::none,
+                     boost::optional<std::string> country_conde = boost::none, // ISO 3611-1 alpha-2
+                     boost::optional<std::string> device_model = boost::none,
+                     boost::optional<std::string> device_name = boost::none,
+                     boost::optional<std::string> device_language = boost::none);
 
 gap_Status
 gap_upload_address_book(gap_State* state,
@@ -462,5 +473,8 @@ typedef infinit::oracles::meta::AddressBookContact AddressBookContact;
 gap_Status
 gap_upload_address_book(gap_State* state,
                         std::vector<AddressBookContact> const& contacts);
+
+gap_Status
+gap_session_id(gap_State* state, std::string& res);
 
 #endif

@@ -296,12 +296,16 @@ namespace surface
       this->total_size(total_size);
       this->_save_snapshot();
       if (this->state().metrics_reporter())
+      {
+        auto extensions = this->get_extensions();
         this->state().metrics_reporter()->link_transaction_created(
           this->transaction_id(),
           this->state().me().id,
           this->files().size(),
           total_size,
-          this->_message.length());
+          this->_message.length(),
+          std::vector<std::string>(extensions.begin(), extensions.end()));
+      }
     }
 
     void

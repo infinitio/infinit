@@ -42,7 +42,8 @@ namespace surface
             0,
             0,
             false,
-            onboarding);
+            onboarding,
+            {boost::filesystem::path(this->_file_path).extension().string().substr(1)});
         }
         this->_run(this->_wait_for_decision_state);
       }

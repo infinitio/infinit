@@ -379,23 +379,18 @@ class Mixin:
       recipient = self.__user_fetch(
         {"_id": recipient_id},
         fields = recipient_fields)
-      # Post new_ghost event to metrics
-      url = 'http://metrics.9.0.api.production.infinit.io/collections/users'
-      metrics = {
-        'event': 'new_ghost',
-        'ghost_code': recipient['ghost_code'],
-        'user': str(recipient['_id']),
-        'features': recipient['features'],
-        'sender': str(sender['_id']),
-        'timestamp': time.time(),
-        'is_email': is_an_email,
-      }
-      res = requests.post(
-        url,
-        headers = {'content-type': 'application/json'},
-        data = json.dumps(metrics),
-      )
-      elle.log.debug('metrics answer: %s' % res)
+      if self.metrics is not None:
+        self.metrics.send(
+          [{
+            'event': 'new_ghost',
+            'ghost_code': recipient['ghost_code'],
+            'user': str(recipient['_id']),
+            'features': recipient['features'],
+            'sender': str(sender['_id']),
+            'timestamp': time.time(),
+            'is_email': is_an_email,
+          }],
+          collection = 'users')
       return recipient, True
     else:
       return recipient, False
@@ -443,7 +438,8 @@ class Mixin:
         'is_ghost': False,
         'strings': '',
 
-        'cloud_buffered': False
+        'cloud_buffered': False,
+        'paused': False,
         }
       transaction_id = self.database.transactions.insert(transaction)
       return {

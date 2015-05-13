@@ -307,6 +307,7 @@ class Mixin:
                     country_code = None,
                     device_name = None,
                     device_model = None,
+                    device_language = None,
   ):
     # If creation process was interrupted, generate identity now.
     if 'public_key' not in user:
@@ -486,7 +487,8 @@ class Mixin:
             country_code = None,
             pick_trophonius: bool = True,
             device_model : str = None,
-            device_name : str = None):
+            device_name : str = None,
+            device_language: str = None):
     # Check for service availability
     # XXX TODO: Fetch maintenance mode bool from somewhere
     maintenance_mode = False
@@ -530,7 +532,8 @@ class Mixin:
                                device_push_token = device_push_token,
                                country_code = country_code,
                                device_model = device_model,
-                               device_name = device_name)
+                               device_name = device_name,
+                               device_language = device_language)
       res.update({'account_registered': registered})
       return res
 
@@ -567,12 +570,12 @@ class Mixin:
     res.update(update)
     return res
 
-  def _web_login(self, user, new = False):
-      bottle.request.session['identifier'] = user['_id']
-      user = self.user
-      elle.log.trace("%s: successfully connected as %s" %
-                     (self.user_identifier(user), user['_id']))
-      return self.success(self._login_response(user, web = True))
+  def _web_login(self, user):
+    bottle.request.session['identifier'] = user['_id']
+    user = self.user
+    elle.log.trace("%s: successfully connected as %s" %
+                   (self.user_identifier(user), user['_id']))
+    return self.success(self._login_response(user, web = True))
 
   @api('/logout', method = 'POST')
   @require_logged_in
@@ -940,18 +943,19 @@ class Mixin:
           self.check_key(key)
         elif hash is not None:
           query['email_confirmation_hash'] = hash
-      res = self.database.users.update(
+      user = self.database.users.find_and_modify(
         query,
         {
           '$unset': {'unconfirmed_email_leeway': True},
           '$set': {'email_confirmed': True}
-        })
-      if res['n'] == 0:
+        },
+        fields = ['_id'])
+      if user is None:
         self.forbidden({
           'user': user,
           'reason': 'invalid confirmation hash or email',
         })
-      return {}
+      return self._web_login(user)
 
   # Deprecated
   @api('/user/resend_confirmation_email/<email>', method = 'POST')
@@ -2634,8 +2638,6 @@ class Mixin:
     name -- The name of the subscription to edit.
     value -- The status wanted for the subscription.
     """
-    if 'email' not in user:
-      return
     action = value and 'subscribe' or 'unsubscribe'
     with elle.log.debug(
         '%s %s from %s emails' % (action, user['email'], name)):
@@ -2695,7 +2697,9 @@ class Mixin:
     name -- Name of the email set.
     """
     user = self.user_by_id_or_email(user, fields = ['email'])
-    return self.__modify_subscription(user, name, True)
+    res = self.__modify_subscription(user, name, True)
+    self._web_login(user)
+    return res
 
   @api('/users/<user>/email_subscriptions/<name>', method = 'DELETE')
   @require_key
@@ -2712,7 +2716,9 @@ class Mixin:
         'reason': 'user %s not found' % user,
         'user': user,
       })
-    return self.__modify_subscription(user, name, False)
+    res = self.__modify_subscription(user, name, False)
+    self._web_login(user)
+    return res
 
   # Restore.
   @api('/user/email_subscription/<name>', method = 'PUT')

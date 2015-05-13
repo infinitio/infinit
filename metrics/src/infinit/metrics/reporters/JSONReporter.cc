@@ -64,6 +64,7 @@ namespace infinit
                                             int64_t file_count,
                                             int64_t total_size,
                                             uint32_t message_length,
+                                            std::vector<std::string> extensions,
                                             bool onboarding)
     {
       elle::json::Object data;
@@ -76,6 +77,8 @@ namespace infinit
       data[this->_key_str(JSONKey::onboarding)] = onboarding;
       data[this->_key_str(JSONKey::transaction_type)] =
         this->_transaction_type_str(LinkTransaction);
+      data[this->_key_str(JSONKey::extensions)] =
+        elle::json::Array(extensions.begin(), extensions.end());
 
       this->_send(this->_transaction_dest, data);
     }
@@ -88,7 +91,9 @@ namespace infinit
                                             int64_t total_size,
                                             uint32_t message_length,
                                             bool ghost,
-                                            bool onboarding)
+                                            bool onboarding,
+                                            std::vector<std::string> extensions
+                                            )
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] = std::string("created");
@@ -102,6 +107,8 @@ namespace infinit
       data[this->_key_str(JSONKey::transaction_type)] =
         this->_transaction_type_str(PeerTransaction);
       data[this->_key_str(JSONKey::onboarding)] = onboarding;
+      data[this->_key_str(JSONKey::extensions)] =
+        elle::json::Array(extensions.begin(), extensions.end());
 
       this->_send(this->_transaction_dest, data);
     }
@@ -337,11 +344,13 @@ namespace infinit
     void
     JSONReporter::_user_used_ghost_code(bool success,
                                         std::string const& code,
+                                        bool link,
                                         std::string const& fail_reason)
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] = std::string("app/use_ghost_code");
       data[this->_key_str(JSONKey::ghost_code)] = code;
+      data[this->_key_str(JSONKey::ghost_code_link)] = link;
       data[this->_key_str(JSONKey::fail_reason)] = fail_reason;
       data[this->_key_str(JSONKey::status)] = this->_status_string(success);
       this->_send(this->_user_dest, data);
@@ -517,6 +526,8 @@ namespace infinit
           return "ghost";
         case JSONKey::ghost_code:
           return "ghost_code";
+        case JSONKey::ghost_code_link:
+          return "link";
         case JSONKey::http_status:
           return "http_status";
         case JSONKey::how_ended:
@@ -565,6 +576,8 @@ namespace infinit
           return "quota";
         case JSONKey::used_storage:
           return "used_storage";
+        case JSONKey::extensions:
+          return "extensions";
         default:
           ELLE_ABORT("invalid metrics JSON key: %s", k);
       }
