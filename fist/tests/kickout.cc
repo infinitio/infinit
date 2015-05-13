@@ -67,7 +67,7 @@ ELLE_TEST_SCHEDULED(kickout)
     sender.state->attach_callback<surface::gap::State::ConnectionStatus>(
       [&] (surface::gap::State::ConnectionStatus const& connection){
         BOOST_CHECK_EQUAL(connection.status, false);
-        BOOST_CHECK_EQUAL(connection.still_trying, true);
+        BOOST_CHECK_EQUAL(connection.still_trying, false);
         beacon = true;
       });
     sender.state->transaction_peer_create(
