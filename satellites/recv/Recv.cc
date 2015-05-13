@@ -15,6 +15,7 @@
 #include <elle/system/home_directory.hh>
 
 #include <reactor/scheduler.hh>
+#include <reactor/timer.hh>
 
 #include <CrashReporter.hh>
 #include <common/common.hh>
@@ -48,7 +49,8 @@ parse_options(int argc, char** argv)
     ("reject,n", value<bool>(), "Reject all incoming transfers")
     ("production,r", value<bool>(), "send metrics to production")
     ("output,o", value<std::string>(),
-     "output directory (default: ~/Downloads");
+     "output directory (default: ~/Downloads")
+    ("pause,x", value<bool>(), "pause transaction midway for testing purposes");
 
   variables_map vm;
   try
@@ -99,6 +101,7 @@ int main(int argc, char** argv)
                            "Downloads");
     if (options.count("output") != 0)
       download_dir = options["output"].as<std::string>();
+    bool pause = (options.count("pause") != 0);
 
     if (!boost::filesystem::exists(download_dir) ||
         !boost::filesystem::is_directory(download_dir))
@@ -176,9 +179,29 @@ int main(int argc, char** argv)
 
         state.login(user, password);
 
+        std::unordered_map<uint32_t,
+          std::pair<bool, std::unique_ptr<reactor::Timer>>> pause_tracker;
         do
         {
           state.poll();
+          for (auto& tr: state.transactions())
+          {
+            auto id = tr.second->id();
+            if (pause_tracker.find(id) == pause_tracker.end())
+              pause_tracker[id] = std::make_pair(false, nullptr);
+            if (pause && tr.second->progress() > 0.3 && !pause_tracker[id].first)
+            {
+              state.transaction_pause(id);
+              pause_tracker[id].second = elle::make_unique<reactor::Timer>(
+              "resume", boost::posix_time::seconds(5),
+              [&state, id, &pause_tracker]()
+              {
+                state.transaction_pause(id, false);
+                pause_tracker.erase(id);
+              });
+              pause_tracker[id].first = true;
+            }
+          }
           reactor::sleep(1_sec);
         }
         while (stop != true);
