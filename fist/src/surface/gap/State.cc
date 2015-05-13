@@ -233,7 +233,7 @@ namespace surface
             [this]
             {
               reactor::wait(this->_kick_out_barrier);
-              this->_kick_out(true, "Credentials no longer valid");
+              this->_kick_out(false, "Credentials no longer valid");
             }
         });
     }
