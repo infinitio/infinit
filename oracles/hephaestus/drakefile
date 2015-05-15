@@ -1,0 +1,37 @@
+import drake
+import drake.python
+import sys
+
+rule_build = None
+rule_check = None
+rule_install = None
+rule_tests = None
+
+def configure(prefix, bottle, python_common):
+  global rule_build, rule_check, rule_install, rule_tests
+  rule_build = drake.Rule('build')
+  rule_check = drake.Rule('check')
+  rule_install = drake.Rule('install')
+  rule_tests = drake.Rule('tests')
+
+  sources = drake.nodes(
+    'src/__init__.py',
+    'src/wsgi.py',
+  )
+  python_version = drake.Version(*sys.version_info[0:2])
+  python_prefix = drake.Path('lib/python%s' % python_version)
+  built = drake.copy(sources,
+                     python_prefix / 'infinit/oracles/hephaestus',
+                     strip_prefix = 'src')
+  built += drake.copy(bottle,
+                      python_prefix,
+                      strip_prefix = True)
+  rule_build << built
+  rule_build << drake.copy(drake.node('hephaestus'), 'bin')
+  hephaestus = drake.python.Package('hephaestus',
+                                    nodes = built,
+                                    root = python_prefix)
+  rule_install << drake.install(
+    hephaestus.nodes,
+    prefix / python_prefix,
+    hephaestus.root)
