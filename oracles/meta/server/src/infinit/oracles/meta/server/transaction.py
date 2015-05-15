@@ -293,7 +293,7 @@ class Mixin:
   # FIXME: Nuke this ! Use the user fetching routines from user.py and
   # don't hardcode the list of fields. Stop ADDING code !
   def __recipient_from_identifier(self,
-                                  recipient_identifier: utils.identifier,
+                                  recipient_identifier,
                                   sender):
     """Get the recipient from identifier. If it doesn't exist, create a ghost.
     recipient_identifier -- The user identifier (can be an email, ObjectId or
@@ -302,6 +302,7 @@ class Mixin:
 
     Return ghost, new_user tuple.
     """
+    recipient_identifier = utils.identifier(recipient_identifier)
     recipient_fields = self.__user_view_fields + [
       'email',
       'devices.id',
@@ -317,17 +318,12 @@ class Mixin:
     is_an_email = False
     peer_email = None
     phone_number = None
-    try:
-      recipient_id = bson.ObjectId(recipient_identifier)
-      # recipient_identifier is an ObjectId.
+    if isinstance(recipient_identifier, bson.ObjectId):
       recipient = self.__user_fetch(
-        {'_id': recipient_id},
+        {'_id': recipient_identifier},
         fields = recipient_fields)
       if recipient is not None:
         return recipient, False
-    except bson.errors.InvalidId:
-      pass
-    recipient_identifier = recipient_identifier.lower().strip()
     is_an_email = utils.is_an_email_address(recipient_identifier)
     if is_an_email:
       elle.log.debug("%s is an email" % recipient_identifier)
@@ -402,12 +398,12 @@ class Mixin:
 
   def _transactions(self,
                     sender,
-                    recipient_identifier: utils.identifier,
+                    recipient_identifier,
                     message,
                     files,
                     files_count):
+    recipient_identifier = utils.identifier(recipient_identifier)
     with elle.log.trace("create transaction (recipient %s)" % recipient_identifier):
-      recipient_identifier = recipient_identifier.strip().lower()
       recipient, new_user = self.__recipient_from_identifier(
         recipient_identifier,
         sender)
@@ -507,9 +503,8 @@ class Mixin:
       self.bad_request({
         'reason': 'you must provide id_or_email or recipient_identifier'
       })
-    recipient_identifier = recipient_identifier or id_or_email
-    with elle.log.trace("create transaction (recipient %s)" % recipient_identifier):
-      recipient_identifier = recipient_identifier.strip().lower()
+    recipient_identifier = recipient_identifier or utils.identifier(id_or_email)
+    with elle.log.trace("create transaction 2 (recipient %s)" % recipient_identifier):
       recipient, new_user = self.__recipient_from_identifier(recipient_identifier,
                                                              sender)
       is_ghost = recipient['register_status'] == "ghost"
