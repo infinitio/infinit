@@ -74,7 +74,7 @@ namespace surface
       completed() const override;
       ELLE_ATTRIBUTE_RX(reactor::Barrier, accepted);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, rejected);
-      ELLE_ATTRIBUTE_RX(reactor::Barrier, ghost_uploaded);
+      ELLE_ATTRIBUTE_RX(reactor::Barrier, ghost_uploaded_barrier);
       ELLE_ATTRIBUTE(std::unique_ptr<frete::Frete>, frete);
 
     /*-------.
@@ -85,6 +85,9 @@ namespace surface
       _wait_for_accept();
       reactor::fsm::State& _wait_for_accept_state;
 
+      void
+      _ghost_uploaded();
+      reactor::fsm::State& _ghost_uploaded_state;
     /*---------------.
     | Implementation |
     `---------------*/

@@ -37,8 +37,7 @@ namespace surface
       infinit::oracles::Transaction::Status::finished,
       infinit::oracles::Transaction::Status::canceled,
       infinit::oracles::Transaction::Status::failed,
-      infinit::oracles::Transaction::Status::deleted,
-      infinit::oracles::Transaction::Status::ghost_uploaded
+      infinit::oracles::Transaction::Status::deleted
     });
 
     // - Exception -------------------------------------------------------------
@@ -239,8 +238,9 @@ namespace surface
         case Status::failed:
           return gap_transaction_failed;
         case Status::finished:
-        case Status::ghost_uploaded:
           return gap_transaction_finished;
+        case Status::ghost_uploaded:
+          return gap_transaction_ghost_uploaded;
         case Status::rejected:
           return gap_transaction_rejected;
         case Status::deleted:
@@ -428,13 +428,6 @@ namespace surface
         // Check for an updated final status from meta
         ELLE_ASSERT(state.synchronize_response() != nullptr);
         using TransactionStatus = infinit::oracles::Transaction::Status;
-        if (this->_data->is_ghost &&
-            this->_data->status == TransactionStatus::ghost_uploaded &&
-          (this->_sender || peer_data->sender_id == this->state().me().id))
-        {
-          ELLE_TRACE("%s sender of ghost_uploaded transaction", *this);
-          return;
-        }
         if (!snapshot.data()->id.empty())
         {
           auto it = state.synchronize_response()->transactions.find(snapshot.data()->id);

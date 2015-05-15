@@ -259,8 +259,10 @@ namespace surface
       switch (status)
       {
         case infinit::oracles::Transaction::Status::finished:
-        case infinit::oracles::Transaction::Status::ghost_uploaded:
           this->gap_status(gap_transaction_finished);
+          break;
+        case infinit::oracles::Transaction::Status::ghost_uploaded:
+          this->gap_status(gap_transaction_ghost_uploaded);
           break;
         case infinit::oracles::Transaction::Status::rejected:
           this->gap_status(gap_transaction_rejected);

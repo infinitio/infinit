@@ -46,6 +46,9 @@ namespace surface
         this->_machine.state_make(
           "wait for accept",
           std::bind(&PeerSendMachine::_wait_for_accept, this)))
+      , _ghost_uploaded_state(
+        this->_machine.state_make(
+          "ghost_uploaded", std::bind(&PeerSendMachine::_ghost_uploaded, this)))
     {
       if (run_to_fail)
         ELLE_TRACE_SCOPE("%s: run to fail", *this);
@@ -79,12 +82,15 @@ namespace surface
       , _recipient(std::move(recipient))
       , _accepted("accepted")
       , _rejected("rejected")
-      , _ghost_uploaded("rejected")
+      , _ghost_uploaded_barrier("rejected")
       , _frete()
       , _wait_for_accept_state(
         this->_machine.state_make(
           "wait for accept",
           std::bind(&PeerSendMachine::_wait_for_accept, this)))
+      , _ghost_uploaded_state(
+        this->_machine.state_make(
+          "ghost_uploaded", std::bind(&PeerSendMachine::_ghost_uploaded, this)))
     {
       ELLE_TRACE_SCOPE("%s: generic peer send machine", *this);
       this->_setup_end_state(this->_wait_for_accept_state);
@@ -93,8 +99,8 @@ namespace surface
         this->_wait_for_accept_state);
       this->_machine.transition_add(
         this->_wait_for_accept_state,
-        this->_finish_state,
-        reactor::Waitables{&this->ghost_uploaded()},
+        this->_ghost_uploaded_state,
+        reactor::Waitables{&this->ghost_uploaded_barrier()},
         true);
       this->_machine.transition_add(
         this->_wait_for_accept_state,
@@ -106,6 +112,12 @@ namespace surface
         this->_end_state,
         reactor::Waitables{&this->rejected()},
         true);
+      this->_machine.transition_add(
+        this->_ghost_uploaded_state,
+        this->_finish_state,
+        reactor::Waitables{&this->finished()},
+        true);
+
       this->transaction_status_update(data->status);
     }
 
@@ -209,6 +221,8 @@ namespace surface
           this->_run(this->_wait_for_accept_state);
         else if (snapshot.current_state() == "another device")
           this->_run(this->_another_device_state);
+        else if (snapshot.current_state() == "ghost_uploaded")
+          this->_run(this->_ghost_uploaded_state);
         else
         {
           ELLE_WARN("%s: unkown state in snapshot: %s",
@@ -248,8 +262,10 @@ namespace surface
           if (this->concerns_this_device())
             this->_run(this->_transfer_state);
           break;
-        case TransactionStatus::finished:
         case TransactionStatus::ghost_uploaded:
+          this->_run(this->_ghost_uploaded_state);
+          break;
+        case TransactionStatus::finished:
           this->_run(this->_finish_state);
           break;
         case TransactionStatus::canceled:
@@ -315,8 +331,11 @@ namespace surface
           if (!this->concerns_this_device())
             this->gap_status(gap_transaction_failed);
           break;
-        case TransactionStatus::finished:
         case TransactionStatus::ghost_uploaded:
+          ELLE_DEBUG("%s: open ghost_uploaded barrier", *this)
+          this->ghost_uploaded_barrier().open();
+          break;
+        case TransactionStatus::finished:
           ELLE_DEBUG("%s: open finished barrier", *this)
             this->finished().open();
           if (!this->concerns_this_device())
@@ -492,7 +511,7 @@ namespace surface
         if (this->data()->is_ghost)
         {
           this->_plain_upload();
-          this->_ghost_uploaded.open();
+          this->_ghost_uploaded_barrier.open();
         }
         else if (this->data()->status == TransactionStatus::cloud_buffered)
         {
@@ -546,9 +565,7 @@ namespace surface
     void
     PeerSendMachine::_finish()
     {
-      this->_finish(transaction().data()->is_ghost
-                    ? infinit::oracles::Transaction::Status::ghost_uploaded
-                    : infinit::oracles::Transaction::Status::finished);
+      this->_finish(infinit::oracles::Transaction::Status::finished);
     }
 
     void
@@ -960,6 +977,14 @@ namespace surface
       {
         this->_peer_connection_changed(device_status);
       }
+    }
+
+    void
+    PeerSendMachine::_ghost_uploaded()
+    {
+      ELLE_TRACE("%s: ghost_uploaded", *this);
+      this->_update_meta_status(TransactionStatus::ghost_uploaded);
+      this->gap_status(gap_transaction_ghost_uploaded);
     }
   }
 }
