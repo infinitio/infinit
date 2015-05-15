@@ -793,54 +793,41 @@ class ActivityReminder(Drip):
   def run(self):
     response = {}
     # -> clean
-    transited = self.transition(
-      None,
-      'clean',
-      {
-        # Fully registered
-        'register_status': 'ok',
-        # Connected
-        'online': True,
-      },
-      template = False,
-    )
-    response.update(transited)
-    # clean -> stuck
-    transited = self.transition(
-      'clean',
-      'stuck',
-      {
-        # Fully registered
-        'register_status': 'ok',
-        # Disconnected
-        'online': False,
-        # With activity
-        'transactions.activity_has': True,
-        # From infinit
-        'email': {'$regex': '@infinit.io$'},
-      },
-      template = False,
-      update = {
-        'emailing.activity-reminder.remind-time':
-        self.now + self.delay,
-      },
-    )
-    response.update(transited)
-    # stuck -> clean when user gets back online
-    transited = self.transition(
-      'stuck',
-      'clean',
-      {
-        # Fully registered
-        'register_status': 'ok',
-        # Connected
-        'online': True,
-      },
-      template = False,
-    )
-    response.update(transited)
+    for start in (None, 'stuck'):
+      transited = self.transition(
+        start,
+        'clean',
+        {
+          # Fully registered
+          'register_status': 'ok',
+          # Connected
+          'online': True,
+        },
+        template = False,
+      )
+      response.update(transited)
+    # -> stuck
+    for start in (None, 'clean'):
+      transited = self.transition(
+        start,
+        'stuck',
+        {
+          # Fully registered
+          'register_status': 'ok',
+          # Disconnected
+          'online': False,
+          # With activity
+          'transactions.activity_has': True,
+        },
+        template = False,
+        update = {
+          'emailing.activity-reminder.remind-time':
+          self.now + self.delay,
+        },
+      )
+      response.update(transited)
     # stuck -> clean if user finished is activity, even if we missed
-    # the online transition juste above.
+    # the online transition.
     transited = self.transition(
       'stuck',
       'clean',
@@ -871,8 +858,6 @@ class ActivityReminder(Drip):
         {
           '$lt': self.now,
         },
-        # From infinit
-        'email': {'$regex': '@infinit.io$'},
       },
       update = {
         'emailing.activity-reminder.remind-time':

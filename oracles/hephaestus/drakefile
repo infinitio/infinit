@@ -4,13 +4,15 @@ import sys
 
 rule_build = None
 rule_check = None
+rule_debian = None
 rule_install = None
 rule_tests = None
 
 def configure(prefix, bottle, python_common):
-  global rule_build, rule_check, rule_install, rule_tests
+  global rule_build, rule_debian, rule_check, rule_install, rule_tests
   rule_build = drake.Rule('build')
   rule_check = drake.Rule('check')
+  rule_debian = drake.Rule('debian')
   rule_install = drake.Rule('install')
   rule_tests = drake.Rule('tests')
 
@@ -31,7 +33,40 @@ def configure(prefix, bottle, python_common):
   hephaestus = drake.python.Package('hephaestus',
                                     nodes = built,
                                     root = python_prefix)
+
+  ## ------- ##
+  ## Install ##
+  ## ------- ##
+
   rule_install << drake.install(
     hephaestus.nodes,
     prefix / python_prefix,
     hephaestus.root)
+
+  ## ------ ##
+  ## Debian ##
+  ## ------ ##
+
+  debian_nodes = drake.copy(
+    hephaestus.nodes,
+    drake.Path('debian/opt/infinit/hephaestus') / python_prefix,
+    hephaestus.root)
+  git = drake.git.Git()
+  with drake.templating.Context(content = {
+      'python_version_major': python_version.major,
+      'python_version_minor': python_version.minor,
+      'version': git.description(),
+  }):
+    drake.node('DEBIAN/control.tmpl')
+    drake.node('config/etc/nginx/sites-available/hephaestus')
+    drake.node('config/etc/uwsgi/apps-available/hephaestus.xml.tmpl')
+  debian_nodes += drake.copy(drake.nodes('DEBIAN/control'), 'debian')
+  debian_nodes += drake.copy(
+    drake.nodes(
+      'config/etc/nginx/sites-available/hephaestus',
+      'config/etc/uwsgi/apps-available/hephaestus.xml',
+    ),
+    'debian', 'config')
+  rule_debian << drake.debian.Packager(
+    'hephaestus_%s_amd64.deb' % git.description(),
+    debian_nodes, 'debian').package

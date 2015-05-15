@@ -15,9 +15,10 @@ subprocess.check_call(
 if targets.osyst.startswith('linux'):
   subprocess.check_call(
     ['python3', 'drake', '--prefix=../%s' % os.environ['DIR_INSTALL'],
+     '//oracles/apertus/server/debian',
+     '//oracles/hephaestus/debian',
      '//oracles/meta/server/debian',
      '//oracles/trophonius/server/debian',
-     '//oracles/apertus/server/debian',
    ])
 if targets.osyst.startswith('osx'):
   subprocess.check_call(

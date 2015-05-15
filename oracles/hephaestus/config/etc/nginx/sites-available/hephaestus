@@ -1,0 +1,41 @@
+server
+{
+    listen      80;
+    access_log  /var/log/nginx/hephaestus/access.log;
+    error_log   /var/log/nginx/hephaestus/error.log;
+    client_max_body_size 15M;
+
+    location /
+    {
+        uwsgi_pass      unix:///run/uwsgi/app/hephaestus/socket;
+        include         uwsgi_params;
+        uwsgi_param     UWSGI_SCHEME $scheme;
+        uwsgi_param     SERVER_SOFTWARE nginx/$nginx_version;
+    }
+}
+
+server
+{
+    listen      443;
+
+    access_log  /var/log/nginx/hephaestus/access-ssl.log;
+    error_log   /var/log/nginx/hephaestus/error-ssl.log;
+    client_max_body_size 15M;
+
+    ssl on;
+
+    ssl_certificate "/etc/ssl/hephaestus.crt";
+    ssl_certificate_key "/etc/ssl/private/hephaestus.key";
+    ssl_client_certificate /etc/ssl/ca.crt;
+    ssl_verify_client optional;
+
+    location /
+    {
+        uwsgi_pass      unix:///run/uwsgi/app/hephaestus/socket;
+        include         uwsgi_params;
+        uwsgi_param     UWSGI_SCHEME $scheme;
+        uwsgi_param     SERVER_SOFTWARE nginx/$nginx_version;
+        uwsgi_param     SSL_CLIENT_VERIFIED $ssl_client_verify;
+        uwsgi_param     SSL_CLIENT_DN $ssl_client_s_dn;
+    }
+}
