@@ -68,7 +68,7 @@ class Mixin:
     Fetch AWS credentials.
     """
 
-    if self.user_gcs_enabled:
+    if conf.USE_GCS:
       link = self.database.links.find_one({'_id': link_id})
       file_name = link['name']
       token_maker = cloud_buffer_token_gcs.CloudBufferTokenGCS(
