@@ -190,6 +190,7 @@ class Mixin:
         transaction['sender_id'],
         counts = ['reached_peer', 'reached'],
         time = False)
+      transaction['status'] = transaction_status.FINISHED
       self.notifier.notify_some(
         notifier.PEER_TRANSACTION,
         recipient_ids = {transaction['sender_id'],
