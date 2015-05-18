@@ -114,6 +114,9 @@ gap_use_ghost_code(gap_State* state,
                    bool was_link);
 
 gap_Status
+gap_add_fingerprint(gap_State* state, std::string const& fingerprint);
+
+gap_Status
 gap_update_user_callback(
   gap_State* state,
   std::function<void (surface::gap::User const&)> const& callback);

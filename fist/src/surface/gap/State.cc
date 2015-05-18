@@ -15,6 +15,8 @@
 #include <elle/serialize/HexadecimalArchive.hh>
 #include <elle/system/platform.hh>
 
+#include <das/serializer.hh>
+
 #include <reactor/Scope.hh>
 #include <reactor/duration.hh>
 #include <reactor/exception.hh>
@@ -37,6 +39,30 @@
 #include <version.hh>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
+
+
+DAS_MODEL_FIELD(surface::gap::State::GhostCode, code);
+DAS_MODEL_FIELD(surface::gap::State::GhostCode, was_link);
+typedef das::Object<
+  surface::gap::State::GhostCode,
+  das::Field<surface::gap::State::GhostCode, std::string, &surface::gap::State::GhostCode::code>,
+  das::Field<surface::gap::State::GhostCode, bool, &surface::gap::State::GhostCode::was_link>
+  >
+DasGhostCode;
+DAS_MODEL(surface::gap::State::GhostCode, DasGhostCode);
+
+namespace elle
+{
+  namespace serialization
+  {
+    template <>
+    struct Serialize<surface::gap::State::GhostCode>
+    {
+      typedef das::Serializer<surface::gap::State::GhostCode> Wrapper;
+    };
+  }
+}
+
 
 namespace surface
 {
@@ -1235,6 +1261,7 @@ namespace surface
           this->_synchronized.signal();
         }
         while (!resynched);
+        this->_ghost_code_use();
       }
       else
       { // not connected
@@ -1516,6 +1543,82 @@ namespace surface
                            std::string const& new_password)
     {
       meta().change_password(password, new_password);
+    }
+
+    /*-----------.
+    | Ghost code |
+    `-----------*/
+
+    void
+    State::ghost_code_use(std::string const& code, bool was_link)
+    {
+      ELLE_DEBUG_SCOPE("%s: register ghost codes: %s", *this, code);
+      this->_ghost_codes.push_back(GhostCode{code, was_link});
+      this->_ghost_code_snapshot();
+      if (this->_logged_in)
+        this->_ghost_code_use();
+    }
+
+    void
+    State::_ghost_code_snapshot()
+    {
+      ELLE_DEBUG_SCOPE("%s: snapshot ghost codes", *this);
+      boost::filesystem::path dir(
+        this->local_configuration().non_persistent_config_dir());
+      elle::AtomicFile snapshot(dir / "ghost-code.snapshot");
+      elle::With<elle::AtomicFile::Write>(snapshot.write())
+        << [&] (elle::AtomicFile::Write& write)
+      {
+        elle::serialization::json::SerializerOut output(write.stream());
+        output.serialize("codes", this->_ghost_codes);
+      };
+    }
+
+    void
+    State::_ghost_code_use()
+    {
+      ELLE_TRACE_SCOPE("%s: consume ghost codes", *this);
+      while (!this->_ghost_codes.empty())
+      {
+        auto code = this->_ghost_codes.back();
+        ELLE_DEBUG_SCOPE("%s: consume %s", *this, code.code);
+        try
+        {
+          this->meta().use_ghost_code(code.code);
+          this->metrics_reporter()->user_used_ghost_code(
+            true, code.code, code.was_link, "");
+        }
+        catch (infinit::state::GhostCodeAlreadyUsed const&)
+        {
+          ELLE_DEBUG("%s: code was already used", *this);
+          this->metrics_reporter()->user_used_ghost_code(
+            false, code.code, code.was_link, "already used");
+        }
+        catch (elle::Error const& e)
+        {
+          // FIXME: what about it ? just ignore it ?
+          ELLE_WARN("%s: unable to use code %s: %s", *this, code.code, e);
+          this->metrics_reporter()->user_used_ghost_code(
+            false, code.code, code.was_link, elle::sprintf("%s", e));
+        }
+        this->_ghost_codes.pop_back();
+        this->_ghost_code_snapshot();
+      }
+    }
+
+    /*------------.
+    | Fingerprint |
+    `------------*/
+
+    void
+    State::fingerprint_add(std::string const& fingerprint)
+    {
+      ELLE_TRACE_SCOPE("%s: handle fingerprint: %s", *this, fingerprint);
+      if (fingerprint.substr(0, 7) != "INVITE:")
+        throw elle::Error(
+          elle::sprintf("invalid fingerprint: %s", fingerprint));
+      auto code = fingerprint.substr(7, fingerprint.find_last_not_of(' ') - 7);
+      this->ghost_code_use(code, true);
     }
 
     /*----------.
