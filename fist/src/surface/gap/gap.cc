@@ -317,39 +317,28 @@ gap_use_ghost_code(gap_State* state,
   ELLE_ASSERT(state != nullptr);
   if (code.empty())
     return gap_unknown_user;
-  gap_Status res = gap_error;
-  run<gap_Status>(state,
-                  "use ghost code",
-                  [&] (surface::gap::State& state) -> gap_Status
+  return run<gap_Status>(
+    state,
+    "use ghost code",
+    [&] (surface::gap::State& state) -> gap_Status
     {
-      try
-      {
-        state.meta().use_ghost_code(code);
-        res = gap_ok;
-        state.metrics_reporter()->user_used_ghost_code(true,
-                                                       code,
-                                                       was_link,
-                                                       "");
-      }
-      catch (infinit::state::GhostCodeAlreadyUsed const&)
-      {
-        res = gap_ghost_code_already_used;
-        state.metrics_reporter()->user_used_ghost_code(false,
-                                                       code,
-                                                       was_link,
-                                                       "already used");
-      }
-      catch (elle::Error const&)
-      {
-        res = gap_unknown_user;
-        state.metrics_reporter()->user_used_ghost_code(false,
-                                                       code,
-                                                       was_link,
-                                                       "invalid code");
-      }
+      state.ghost_code_use(code, was_link);
       return gap_ok;
     });
-  return res;
+}
+
+gap_Status
+gap_add_fingerprint(gap_State* state, std::string const& fingerprint)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "add fingerpring",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.fingerprint_add(fingerprint);
+      return gap_ok;
+    });
 }
 
 gap_Status

@@ -771,6 +771,33 @@ namespace surface
 
     public:
       mutable reactor::MultiLockBarrier transaction_update_lock;
+
+
+    /*------------.
+    | Ghost codes |
+    `------------*/
+    public:
+      void
+      ghost_code_use(std::string const& code, bool was_link);
+      struct GhostCode
+      {
+        std::string code;
+        bool was_link;
+      };
+    private:
+      void
+      _ghost_code_snapshot();
+      void
+      _ghost_code_use();
+      ELLE_ATTRIBUTE(std::vector<GhostCode>, ghost_codes);
+
+    /*------------.
+    | Fingerprint |
+    `------------*/
+    public:
+      void
+      fingerprint_add(std::string const& fingerprint);
+
     /*--------------.
     | Configuration |
     `--------------*/
