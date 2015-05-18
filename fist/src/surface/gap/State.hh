@@ -672,67 +672,6 @@ namespace surface
                                 elle::UUID const& device_id,
                                 bool device_status);
 
-      /*---------.
-      | Networks |
-      `---------*/
-    //   class NetworkNotFoundException:
-    //     public Exception
-    //   {
-    //   public:
-    //     NetworkNotFoundException(uint32_t id);
-    //     NetworkNotFoundException(std::string const& id);
-    //   };
-
-    //   typedef plasma::meta::Network Network;
-    //   typedef std::pair<uint32_t, Network> NetworkPair;
-    //   typedef std::unordered_map<uint32_t, Network> NetworkMap;
-    //   typedef std::unordered_map<uint32_t, std::string> NetworkIndexMap;
-    //   typedef std::unordered_set<uint32_t> NetworkIndexes;
-
-    // public:
-    //   ELLE_ATTRIBUTE_R(NetworkMap, users);
-
-    //   /// Synchronise network.
-    //   Network const&
-    //   network_sync(Network const& network);
-
-    //   /// Synchronise network.
-    //   Network const&
-    //   network_sync(std::string const& id);
-
-    //   /// Retrieve a network.
-    //   Network const&
-    //   network(std::string const& id);
-
-    //   /// Retrieve a network.
-    //   Network const&
-    //   network(uint32_t id);
-
-    //   /// Create a new network.
-    //   uint32_t
-    //   network_create(std::string const& name,
-    //                  bool auto_add = true);
-
-    //   /// Prepare directories and files for the network to be launched.
-    //   void
-    //   network_prepare(std::string const& network_id);
-
-    //   /// Delete a new network.
-    //   std::string
-    //   network_delete(std::string const& name,
-    //                  bool force = false);
-
-    //   /// Add a user to a network with its mail or id.
-    //   void
-    //   network_add_user(std::string const& network_id,
-    //            std::string const& inviter_id,
-    //            std::string const& user_id,
-    //            std::string const& identity);
-
-    //   void
-    //   on_network_update_notification(
-    //     infinit::oracles::trophonius::NetworkUpdateNotification const& notif);
-
       /*-------------.
       | Transactions |
       `-------------*/
