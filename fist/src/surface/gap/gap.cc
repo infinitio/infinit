@@ -362,7 +362,7 @@ gap_add_fingerprint(gap_State* state, std::string const& fingerprint)
   ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
-    "add fingerpring",
+    "add fingerprint",
     [&] (surface::gap::State& state) -> gap_Status
     {
       state.fingerprint_add(fingerprint);
