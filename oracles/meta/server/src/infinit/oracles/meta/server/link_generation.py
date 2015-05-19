@@ -317,11 +317,12 @@ class Mixin:
 
   @api('/link/<id>', method = 'POST')
   @require_logged_in
-  def link_update(self,
+  def link_update_api(self,
                   id: bson.ObjectId,
                   progress: float,
                   status: int):
-    return self.link_update(id, progress, status, self.user)
+    return self.success(
+      self.link_update(id, progress, status, user = self.user))
 
   def link_update(self,
                   id,
@@ -330,76 +331,80 @@ class Mixin:
                   user):
     """
     Update the status of a given link.
-    id -- _id of link.
-    progress -- upload progress of link.
-    status -- Current status of link.
     """
     with elle.log.trace('updating link %s with status %s and progress %s' %
                         (id, status, progress)):
-      extra = {}
       link = self.database.links.find_one({'_id': id})
-      # If it's not found or the empty object.
       if link is None or len(link) == 1:
         self.not_found({
           'reason': 'link %s does not exist' % id,
           'link': id,
         })
       if link['sender_id'] != user['_id']:
-        self.forbidden()
-      if progress < 0.0 or progress > 1.0:
-        self.bad_request('invalid progress')
-      if status not in transaction_status.statuses.values():
-        self.bad_request('invalid status')
-      if status is link['status']:
-        return self.success()
-      elif link['status'] in transaction_status.final and \
-        status is not transaction_status.DELETED:
-          self.forbidden('cannot change status from %s to %s' %
-                         (link['status'], status))
-      if status in transaction_status.final + [transaction_status.DELETED]:
-        self.__complete_transaction_pending_stats(user, link)
-        if status != transaction_status.FINISHED:
-          # erase data
-          deleter = self._generate_op_url(link, 'DELETE')
-          elle.log.log(deleter)
-          r = requests.delete(deleter)
-          if int(r.status_code/100) != 2:
-            elle.log.warn('Link deletion failed with %s on %s: %s' %
-              ( r.status_code, link['_id'], r.content))
-        else:
-          # Get effective size
-          head = self._generate_op_url(link, 'HEAD')
-          r = requests.head(head)
-          if int(r.status_code/100) != 2:
-            elle.log.warn('Link HEAD failed with %s on %s: %s' %
-              ( r.status_code, link['_id'], r.content))
-          file_size = int(r.headers.get('Content-Length', 0))
-          extra = {
-            'file_size': file_size,
-            'quota_counted': True
-          }
-          self.database.users.update(
-            {'_id': user['_id']},
-            {'$inc': {'total_link_size': file_size}}
-            )
-      if link['status'] == transaction_status.FINISHED:
-        # Deleting a previously finished link (all other case threw above)
-        if 'file_size' in link:
-          self.database.users.update(
-              {'_id': user['_id']},
-              {'$inc': {'total_link_size': link['file_size'] * -1}}
-              )
-      setter = {
-            'mtime': self.now,
-            'progress': progress,
+        self.forbidden({
+          'reason': 'link %s does not belong to you' % id,
+          'link': id,
+        })
+      update = {}
+      if progress is not None:
+        if progress < 0.0 or progress > 1.0:
+          self.bad_request('invalid progress')
+        if progress != link['progress']:
+          update['progress'] = progress
+      if status is not None:
+        if status not in transaction_status.statuses.values():
+          self.bad_request({
+            'reason': 'invalid status',
             'status': status,
-          }
-      setter.update(extra)
+          })
+        if status is not link['status']:
+          if link['status'] in transaction_status.final and \
+             status is not transaction_status.DELETED:
+            self.forbidden('cannot change status from %s to %s' %
+                           (link['status'], status))
+          update['status'] = status
+          if status in transaction_status.final + [transaction_status.DELETED]:
+            self.__complete_transaction_pending_stats(user, link)
+          if status != transaction_status.FINISHED:
+            # erase data
+            deleter = self._generate_op_url(link, 'DELETE')
+            r = requests.delete(deleter)
+            if int(r.status_code/100) != 2:
+              elle.log.warn('Link deletion failed with %s on %s: %s' %
+                            ( r.status_code, link['_id'], r.content))
+              self.abort({
+                'reason': 'unable to delete link',
+                'status_code': r.status_code,
+                'error': r.content,
+              })
+            if link['status'] == transaction_status.FINISHED:
+              if 'file_size' in link:
+                self.database.users.update(
+                  {'_id': user['_id']},
+                  {'$inc': {'total_link_size': link['file_size'] * -1}}
+                )
+          else:
+            # Get effective size
+            head = self._generate_op_url(link, 'HEAD')
+            r = requests.head(head)
+            if int(r.status_code/100) != 2:
+              elle.log.warn('Link HEAD failed with %s on %s: %s' %
+                ( r.status_code, link['_id'], r.content))
+            file_size = int(r.headers.get('Content-Length', 0))
+            update.update({
+              'file_size': file_size,
+              'quota_counted': True
+            })
+            self.database.users.update(
+              {'_id': user['_id']},
+              {'$inc': {'total_link_size': file_size}}
+            )
+      if not update:
+        return {}
+      update['mtime'] = self.now
       link = self.database.links.find_and_modify(
         {'_id': id},
-        {
-          '$set': setter
-        },
+        {'$set': update},
         new = True,
       )
       self.notifier.notify_some(
@@ -407,7 +412,7 @@ class Mixin:
         recipient_ids = {link['sender_id']},
         message = self.__owner_link(link),
       )
-      return self.success()
+      return {}
 
   def __need_update_get_link(self, link):
     """

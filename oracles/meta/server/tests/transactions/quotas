@@ -22,9 +22,9 @@ with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   # server is updating quota by reading cloud storage file size which is
   # not realy uploaded here, so insert the result ourselve in db
   meta.database.users.update({'accounts.id': 'alice@infinit.io'},
-    {'$inc': {'total_link_size': 1100}})
+    {'$inc': {'total_link_size': 1100,}})
   meta.database.links.update({'hash': link['hash']},
-    {'$set': {'file_size': 1100}})
+    {'$set': {'file_size': 1100, 'quota_counted': True}})
   throws(
     lambda: alice.getalink(),
     402)
