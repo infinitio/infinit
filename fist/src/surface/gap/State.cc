@@ -1585,12 +1585,14 @@ namespace surface
         try
         {
           this->meta().use_ghost_code(code.code);
+          this->_ghost_code_used(code.code, true, "");
           this->metrics_reporter()->user_used_ghost_code(
             true, code.code, code.was_link, "");
         }
         catch (infinit::state::GhostCodeAlreadyUsed const&)
         {
           ELLE_DEBUG("%s: code was already used", *this);
+          this->_ghost_code_used(code.code, false, "already used");
           this->metrics_reporter()->user_used_ghost_code(
             false, code.code, code.was_link, "already used");
         }
@@ -1598,8 +1600,10 @@ namespace surface
         {
           // FIXME: what about it ? just ignore it ?
           ELLE_WARN("%s: unable to use code %s: %s", *this, code.code, e);
+          auto reason = elle::sprintf("%s", e);
+          this->_ghost_code_used(code.code, false, reason);
           this->metrics_reporter()->user_used_ghost_code(
-            false, code.code, code.was_link, elle::sprintf("%s", e));
+            false, code.code, code.was_link, reason);
         }
         this->_ghost_codes.pop_back();
         this->_ghost_code_snapshot();

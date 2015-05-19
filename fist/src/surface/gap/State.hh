@@ -7,6 +7,8 @@
 # include <string>
 # include <unordered_set>
 
+# include <boost/signals2.hpp>
+
 # include <common/common.hh>
 
 # include <elle/format/json/fwd.hh>
@@ -792,6 +794,12 @@ namespace surface
         std::string code;
         bool was_link;
       };
+      ELLE_ATTRIBUTE_RX(
+        (boost::signals2::signal<void (std::string const& code,
+                                       bool succeded,
+                                       std::string const& reason)>),
+        ghost_code_used);
+
     private:
       void
       _ghost_code_snapshot();
