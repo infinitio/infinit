@@ -7,7 +7,9 @@ def targets(action):
   yield '//frete/%s' % action
   yield '//station/%s' % action
   yield '//papier/%s' % action
-  if osyst.startswith('linux') or osyst.startswith('osx'):
+
+  # Only stock Ubuntus used in production should run the server tests.
+  if osyst == 'linux_ubuntu_14':
     yield '//oracles/%s' % action
   else:
     yield '//oracles/meta/client/%s' % action
