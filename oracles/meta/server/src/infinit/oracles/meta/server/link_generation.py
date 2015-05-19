@@ -561,7 +561,7 @@ class Mixin:
       res = list()
       for link in self.database.links.aggregate([
         {'$match': query},
-        {'$sort': {'creation_time': DESCENDING}},
+        {'$sort': {'ctime': DESCENDING}},
         {'$skip': offset},
         {'$limit': count},
       ])['result']:
