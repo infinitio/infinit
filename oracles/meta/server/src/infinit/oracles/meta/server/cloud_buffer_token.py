@@ -11,6 +11,7 @@ import json
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as etree
+import ssl
 
 import elle.log
 
@@ -76,11 +77,12 @@ class CloudBufferToken:
     self.key = self._make_key(CloudBufferToken.aws_secret, self.aws_sts_service)
     self.parameters = self._make_parameters()
     self.request_url = self._generate_url()
+    self.ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
 
     headers_dict = self._list_to_dict(self.headers)
     request = urllib.request.Request(self.request_url, headers=headers_dict)
     try:
-      res_xml = urllib.request.urlopen(request).read()
+      res_xml = urllib.request.urlopen(request, context=self.ctx).read()
       elle.log.debug('%s: XML response: %s' % (self, res_xml))
       self.credentials = self._get_credentials(res_xml)
     except urllib.error.HTTPError as e:
@@ -111,7 +113,7 @@ class CloudBufferToken:
     url_string = 'https://%s:443?%s' % (host, completed_request)
     request = urllib.request.Request(self.request_url, headers=headers_dict)
     try:
-      res_xml = urllib.request.urlopen(request).read()
+      res_xml = urllib.request.urlopen(request, context=self.ctx).read()
       elle.log.debug('%s: XML response: %s' % (self, res_xml))
     except urllib.error.HTTPError as e:
       elle.log.err('%s: unable to delete (%s): %s' % (self, e, e.read()))

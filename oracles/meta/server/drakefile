@@ -24,7 +24,8 @@ def configure(production_build,
               mongobox,
               python_common,
               papier_python,
-              prefix = drake.Path('/usr/local')):
+              prefix = drake.Path('/usr/local'),
+              php = None):
 
   global build, check, install
   global meta, python
@@ -327,3 +328,26 @@ def configure(production_build,
     runner.reporting = drake.Runner.Reporting.on_failure
     check << runner.status
     checks[target] << runner.status
+
+  ## --- ##
+  ## PHP ##
+  ## --- ##
+
+  if php is not None:
+    php = drake.node('MetaClient.php')
+    php_requests = drake.node('Requests/library/Requests.php')
+
+    test = drake.node('tests/php')
+    test.dependency_add(php)
+    test.dependency_add(php_requests)
+    tests << test
+
+    runner = drake.Runner(
+      test,
+      args = [php_requests.path(), php.path()],
+      env = {
+        'PYTHONPATH': ':'.join(
+          str(p) for p in chain(meta.pythonpath, mongobox.pythonpath)),
+      })
+    runner.reporting = drake.Runner.Reporting.on_failure
+    check << runner.status

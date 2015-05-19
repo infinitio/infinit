@@ -180,26 +180,3 @@ def configure(elle,
   runner.reporting = drake.Runner.Reporting.on_failure
   tests << test_bin
   check << runner.status
-
-  ## --- ##
-  ## PHP ##
-  ## --- ##
-
-  if php is not None:
-    php = drake.node('MetaClient.php')
-    php_requests = drake.node('Requests/library/Requests.php')
-
-    test = drake.node('tests/php')
-    test.dependency_add(php)
-    test.dependency_add(php_requests)
-    tests << test
-
-    runner = drake.Runner(
-      test,
-      args = [php_requests.path(), php.path()],
-      env = {
-        'PYTHONPATH': ':'.join(
-          str(p) for p in chain(meta.pythonpath, mongobox.pythonpath)),
-      })
-    runner.reporting = drake.Runner.Reporting.on_failure
-    check << runner.status

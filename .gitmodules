@@ -32,6 +32,6 @@
 [submodule "oracles/PyAPNs"]
 	path = oracles/PyAPNs
 	url = https://github.com/mefyl/PyAPNs.git
-[submodule "oracles/meta/client/Requests"]
-	path = oracles/meta/client/Requests
+[submodule "oracles/meta/server/Requests"]
+	path = oracles/meta/server/Requests
 	url = https://github.com/rmccue/Requests.git
