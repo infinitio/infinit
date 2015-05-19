@@ -113,6 +113,12 @@ gap_use_ghost_code(gap_State* state,
                    std::string const& code,
                    bool was_link);
 
+typedef std::function<void (std::string const& code,
+                            bool success,
+                            std::string const& reason)> GhostCodeUsedCallback;
+gap_Status
+gap_ghost_code_used_callback(gap_State* state, GhostCodeUsedCallback callback);
+
 gap_Status
 gap_add_fingerprint(gap_State* state, std::string const& fingerprint);
 

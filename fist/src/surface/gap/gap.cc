@@ -357,6 +357,19 @@ gap_use_ghost_code(gap_State* state,
 }
 
 gap_Status
+gap_ghost_code_used_callback(gap_State* state, GhostCodeUsedCallback callback)
+{
+  return run<gap_Status>(
+    state,
+    "attach ghost code callback",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.ghost_code_used().connect(callback);
+      return gap_ok;
+    });
+}
+
+gap_Status
 gap_add_fingerprint(gap_State* state, std::string const& fingerprint)
 {
   ELLE_ASSERT(state != nullptr);
