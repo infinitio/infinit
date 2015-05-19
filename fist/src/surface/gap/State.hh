@@ -788,7 +788,7 @@ namespace surface
       };
       ELLE_ATTRIBUTE_RX(
         (boost::signals2::signal<void (std::string const& code,
-                                       bool succeded,
+                                       bool success,
                                        std::string const& reason)>),
         ghost_code_used);
 
