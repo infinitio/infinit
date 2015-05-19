@@ -45,7 +45,7 @@ ELLE_TEST_SCHEDULED(send_ghost)
           BOOST_CHECK(!finished);
           transferring.open();
           break;
-        case gap_transaction_finished:
+        case gap_transaction_ghost_uploaded:
           BOOST_CHECK(transferring);
           BOOST_CHECK(!finished);
           finished.open();
