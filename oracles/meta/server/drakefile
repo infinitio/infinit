@@ -340,7 +340,6 @@ def configure(production_build,
     test = drake.node('tests/php')
     test.dependency_add(php)
     test.dependency_add(php_requests)
-    tests << test
 
     runner = drake.Runner(
       test,
