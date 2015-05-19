@@ -310,6 +310,7 @@ class Mixin:
       'ghost_code',
       'shorten_ghost_profile_url',
       'emailing.send-to-self',
+      'merged_with'
     ]
     # Determine the nature of the recipient identifier.
     recipient_id = None
@@ -503,6 +504,15 @@ class Mixin:
     with elle.log.trace("create transaction 2 (recipient %s)" % recipient_identifier):
       recipient, new_user = self.__recipient_from_identifier(recipient_identifier,
                                                              sender)
+      if recipient['register_status'] == 'merged':
+        merge_target = recipient.get('merged_with', None)
+        if merge_target is None:
+          self.gone({
+              'reason': 'user %s is merged' % recipient['_id'],
+              'recipient_id': recipient['_id'],
+        })
+        recipient, new_user = self.__recipient_from_identifier(merge_target,
+                                                               sender)
       is_ghost = recipient['register_status'] == "ghost"
       if recipient['register_status'] == 'deleted':
         self.gone({

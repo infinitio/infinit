@@ -262,6 +262,10 @@ class Meta(bottle.Bottle,
     # - Login.
     self.__database.users.ensure_index([('email', 1)],
                                        unique = False)
+    # merge account
+    self.__database.users.ensure_index([('favorites', 1)],
+                                       unique = False)
+
 
     #---------------------------------------------------------------------------
     # Transactions
