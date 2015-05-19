@@ -172,11 +172,17 @@ class Mixin:
 
   @api('/link/<link_id>', method = 'PUT')
   @require_logged_in_fields(['quota', 'total_link_size'])
-  def link_initialize(self, link_id: bson.ObjectId, files, name, message):
+  def link_initialize(self,
+                      link_id: bson.ObjectId,
+                      files,
+                      name,
+                      message,
+                      password = None):
     return self.link_generate(files, name, message,
                               user = self.user,
                               device = self.current_device,
-                              link_id = link_id)
+                              link_id = link_id,
+                              password = password)
 
   @api('/link', method = 'POST')
   @require_logged_in_fields(['quota', 'total_link_size'])
@@ -185,7 +191,14 @@ class Mixin:
                               user = self.user,
                               device = self.current_device)
 
-  def link_generate(self, files, name, message, user, device, link_id = None):
+  def link_generate(self,
+                    files,
+                    name,
+                    message,
+                    user,
+                    device,
+                    link_id = None,
+                    password = None):
     """
     Generate a link from a list of files and a message.
 
@@ -223,6 +236,7 @@ class Mixin:
         'sender_device_id': device['id'],
         'sender_id': user['_id'],
         'status': transaction_status.CREATED, # Use same enum as transactions.
+        'password': self.__link_password_hash(password),
       }
 
       if link_id is not None:
@@ -315,6 +329,7 @@ class Mixin:
     link['files'] = [(f['name'], f['size']) for f in link['files']]
     return link
 
+  # Deprecated in favor of /links/<id>
   @api('/link/<id>', method = 'POST')
   @require_logged_in
   def link_update_api(self,
@@ -322,12 +337,28 @@ class Mixin:
                   progress: float,
                   status: int):
     return self.success(
-      self.link_update(id, progress, status, user = self.user))
+      self.link_update(id, progress, status, False, user = self.user))
+
+  @api('/links/<id>', method = 'POST')
+  @require_logged_in
+  def link_update_api(self,
+                      id: bson.ObjectId,
+                      progress: float = None,
+                      status: int = None,
+                      password: str = False):
+    return self.link_update(id, progress, status, password, self.user)
+
+  def __link_password_hash(self, password):
+    if password is None:
+      return password
+    import hashlib
+    return hashlib.sha256(password.encode('utf-8')).hexdigest()
 
   def link_update(self,
                   id,
                   progress,
                   status,
+                  password,
                   user):
     """
     Update the status of a given link.
@@ -399,6 +430,8 @@ class Mixin:
               {'_id': user['_id']},
               {'$inc': {'total_link_size': file_size}}
             )
+      if password is not False:
+        update['password'] = self.__link_password_hash(password)
       if not update:
         return {}
       update['mtime'] = self.now
@@ -457,20 +490,46 @@ class Mixin:
       ret_link['link'] = link['link']
     return ret_link
 
+  @api('/links/<hash>')
+  def link_by_hash_api(self, hash,
+                       password = None,
+                       no_count: bool = False):
+    return self.link_by_hash(hash = hash, password = password, no_count = no_count)
+
+  # Deprecated in favor of /link/<hash>
   @api('/link/<hash>')
-  def link_by_hash(self, hash, no_count: bool = False):
+  def link_by_hash(self, hash,
+                   password = None,
+                   no_count: bool = False):
     """
     Find and return the link related to the given hash for a web client.
     """
-    with elle.log.trace('find link for hash %s: %s' % ('leaving click count' if no_count else 'increasing click count', hash)):
+    with elle.log.trace('find link for hash %s' % hash):
       link = self.database.links.find_one({'hash': hash})
       if link is None:
-        self.not_found('link not found')
+        self.not_found({
+          'reason': 'link not found',
+          'hash': hash,
+        })
       elif link['status'] is transaction_status.DELETED:
-        self.not_found('deleted')
+        self.not_found({
+          'reason': 'link was deleted',
+          'hash': hash,
+        })
       elif (link['expiry_time'] is not None and
             self.now > link['expiry_time']):
-              self.not_found('link expired')
+              self.not_found(
+                {
+                  'reason': 'link expired',
+                  'hash': hash,
+                })
+      if 'password' in link and link['password'] is not None:
+        if password is None or \
+           self.__link_password_hash(password) != link['password']:
+          self.unauthorized({
+            'reason': 'wrong password',
+            'hash': hash,
+          })
       time_now = self.now
       set_dict = dict()
       set_dict['last_accessed'] = time_now

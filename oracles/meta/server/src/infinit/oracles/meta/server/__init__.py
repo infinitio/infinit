@@ -343,6 +343,9 @@ class Meta(bottle.Bottle,
   def abort(self, message):
     response(500, message)
 
+  def unauthorized(self, message = None):
+    response(401, message)
+
   def forbidden(self, message = None):
     response(403, message)
 

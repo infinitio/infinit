@@ -824,13 +824,16 @@ class User(Client):
   def getalink(self,
                files = [['file1', 42], ['file2', 43], ['file3', 44]],
                name = 'name',
-               message = ''):
-    return self.post('link',
-                     {
-                       'files': files,
-                       'name': name,
-                       'message': message
-                     })['transaction']
+               message = '',
+               password = None):
+    id = self.post('link_empty')['created_link_id']
+    return self.put('link/%s' % id,
+                    {
+                      'files': files,
+                      'name': name,
+                      'message': message,
+                      'password': password,
+                    })['transaction']
 
   # FIXME: remove when link & peer transactions are merged
   def link_update(self, link, status):
