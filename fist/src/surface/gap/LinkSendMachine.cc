@@ -55,6 +55,10 @@ namespace surface
       this->_machine.transition_add(
         this->_transfer_state,
         this->_finish_state);
+      this->_machine.transition_add(
+        this->_unpausing_state,
+        this->_transfer_state,
+        reactor::Waitables{&!this->transaction().paused()});
       if (data->id.empty())
         // Transaction has just been created locally.
         this->_run(this->_create_transaction_state);
@@ -320,7 +324,16 @@ namespace surface
     LinkSendMachine::_update_meta_status(
       infinit::oracles::Transaction::Status status)
     {
-      this->state().meta().update_link(this->data()->id, 0, status);
+      this->state().meta().update_link(this->data()->id, boost::none, status);
+    }
+
+    void
+    LinkSendMachine::_pause(bool pause_action)
+    {
+      this->state().meta().update_link(this->data()->id,
+                                       boost::none, // progress
+                                       boost::none, // status
+                                       pause_action);
     }
   }
 }

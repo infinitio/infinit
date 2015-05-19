@@ -178,12 +178,22 @@ namespace surface
       virtual
       void
       _transfer() = 0;
+      virtual
+      void
+      _pausing();
+      virtual
+      void
+      _unpausing();
+      virtual
+      void _paused();
       void
       _finalize(infinit::oracles::Transaction::Status);
       // invoked to cleanup data when this transaction will never restart
       virtual
       void
       cleanup() = 0;
+      virtual
+      void _pause(bool pause_action) = 0;
     private:
       void
       _end();
@@ -198,6 +208,9 @@ namespace surface
       reactor::fsm::State& _finish_state;
       reactor::fsm::State& _reject_state;
       reactor::fsm::State& _transfer_state;
+      reactor::fsm::State& _pausing_state;
+      reactor::fsm::State& _unpausing_state;
+      reactor::fsm::State& _paused_state;
 
     public:
       virtual

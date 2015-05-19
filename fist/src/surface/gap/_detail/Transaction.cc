@@ -55,19 +55,10 @@ namespace surface
                              bool paused)
     {
       auto transaction = this->_transactions.at(id).get();
-      auto t_id = transaction->data()->id;
-      new reactor::Thread("pause", [=] {
-        this->meta().update_transaction(t_id,
-                                          boost::none, //status
-                                          elle::UUID(), // device_id
-                                          "", // device_name
-                                          paused);
-        if (paused)
-          transaction->paused().open();
-        else
-          transaction->paused().close();
-      }, true);
-
+      if (paused)
+        transaction->pausing().open();
+      else
+        transaction->unpausing().open();
     }
 
     uint32_t
@@ -516,9 +507,13 @@ namespace surface
         return;
       }
       if (notif.paused)
+      {
         it->second->paused().open();
+      }
       else
+      {
         it->second->paused().close();
+      }
     }
   }
 }

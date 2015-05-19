@@ -8,6 +8,8 @@
 #include <elle/os/path.hh>
 #include <elle/system/home_directory.hh>
 
+#include <reactor/timer.hh>
+
 #include <common/common.hh>
 
 #include <surface/gap/gap.hh>
@@ -47,6 +49,7 @@ parse_options(int argc, char** argv)
     ("to,t", value<std::string>(), "the recipient")
     ("file,f", value<std::string>(), "the file to send, or comma-separated list")
     ("device,d", value<std::string>(), "send to specific device")
+    ("pause,x", value<bool>(), "pause transaction midway for testing purposes")
     ("production,r", value<bool>(), "send metrics to production");
 
   variables_map vm;
@@ -98,6 +101,7 @@ int main(int argc, char** argv)
     if (options.count("device") != 0)
       recipient_device_id = elle::UUID(options["device"].as<std::string>());
     reactor::Scheduler sched;
+    bool pause = (options.count("pause") != 0);
 
     sched.signal_handle(
       SIGINT,
@@ -138,6 +142,8 @@ int main(int argc, char** argv)
         id = state.send_files(to, std::move(files), "");
         static const int width = 70;
         float previous_progress = 0.0;
+        bool paused = false;
+        std::unique_ptr<reactor::Timer> timer;
         do
         {
           state.poll();
@@ -156,6 +162,17 @@ int main(int argc, char** argv)
               std::cout << (float(i) / width < progress ? "#" : " ");
             }
             std::cout << "] " << int(progress * 100) << "%" << std::endl;
+          }
+          if (pause && progress > 0.3 && !paused)
+          {
+            state.transaction_pause(id);
+            timer = elle::make_unique<reactor::Timer>(
+            "resume", boost::posix_time::seconds(5),
+            [&state, id]()
+            {
+              state.transaction_pause(id, false);
+            });
+            paused = true;
           }
           reactor::sleep(100_ms);
         }

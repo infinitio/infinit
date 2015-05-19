@@ -72,6 +72,9 @@ namespace surface
       virtual
       void
       _update_meta_status(infinit::oracles::Transaction::Status) override;
+      virtual
+      void
+      _pause(bool pause_action) override;
     private:
       void
       _run_from_snapshot();

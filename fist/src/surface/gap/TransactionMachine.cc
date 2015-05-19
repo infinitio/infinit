@@ -117,6 +117,15 @@ namespace surface
       , _transfer_state(
         this->_machine.state_make(
           "transfer", std::bind(&TransactionMachine::_transfer, this)))
+      , _pausing_state(
+        this->_machine.state_make(
+          "pausing", std::bind(&TransactionMachine::_pausing, this)))
+      , _unpausing_state(
+        this->_machine.state_make(
+          "unpausing", std::bind(&TransactionMachine::_unpausing, this)))
+      , _paused_state(
+        this->_machine.state_make(
+          "paused", std::bind(&TransactionMachine::_paused, this)))
       , _finished("finished")
       , _rejected("rejected")
       , _canceled("canceled")
@@ -147,6 +156,26 @@ namespace surface
       this->_machine.transition_add(this->_fail_state, this->_end_state);
       // Reject.
       this->_machine.transition_add(this->_reject_state, this->_end_state);
+      // Pause.
+      this->_machine.transition_add(
+        this->_transfer_state,
+        this->_pausing_state,
+        reactor::Waitables{&this->transaction().pausing()},
+        true);
+      this->_machine.transition_add(
+        this->_pausing_state,
+        this->_paused_state,
+        reactor::Waitables{&this->transaction().paused()},
+        true);
+      this->_machine.transition_add(
+        this->_transfer_state,
+        this->_paused_state,
+        reactor::Waitables{&this->transaction().paused()},
+        true);
+      this->_machine.transition_add(
+        this->_paused_state,
+        this->_unpausing_state,
+        reactor::Waitables{&this->transaction().unpausing()});
       // The catch transitions just open the barrier for logging purpose.
       // The snapshot will be kept.
       this->_machine.transition_add_catch(this->_fail_state, this->_end_state)
@@ -344,6 +373,26 @@ namespace surface
         ELLE_ERR("unable to report transaction failure: %s", e);
       }
       this->_finalize(infinit::oracles::Transaction::Status::failed);
+    }
+
+    void TransactionMachine::_pausing()
+    {
+      this->transaction().unpausing().close();
+      this->gap_status(gap_transaction_paused);
+      this->_pause(true);
+      this->transaction().paused().open();
+    }
+
+    void TransactionMachine::_unpausing()
+    {
+      this->transaction().pausing().close();
+      this->_pause(false);
+      this->gap_status(gap_transaction_waiting_accept);
+      this->transaction().paused().close();
+    }
+
+    void TransactionMachine::_paused()
+    {
     }
 
     void

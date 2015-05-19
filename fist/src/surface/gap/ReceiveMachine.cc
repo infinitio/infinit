@@ -68,6 +68,15 @@ namespace surface
         _cancel_state,
         reactor::Waitables{&this->canceled()},
         true);
+      this->_machine.transition_add(
+        _unpausing_state,
+        _wait_for_decision_state,
+        reactor::Waitables{&!this->transaction().paused()});
+      this->_machine.transition_add(
+        _paused_state,
+        _wait_for_decision_state,
+        reactor::Waitables{&!this->transaction().paused()},
+        true);
 
       // Exception.
       auto action = [this] ( std::exception_ptr e)

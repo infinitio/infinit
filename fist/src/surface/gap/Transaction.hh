@@ -176,6 +176,8 @@ namespace surface
       ELLE_ATTRIBUTE(boost::optional<std::string>, message);
       ELLE_ATTRIBUTE_RW(boost::optional<std::string>, plain_upload_uid);
       ELLE_ATTRIBUTE_Rw(bool, archived);
+      ELLE_ATTRIBUTE_RX(reactor::Barrier, pausing);
+      ELLE_ATTRIBUTE_RX(reactor::Barrier, unpausing);
       ELLE_ATTRIBUTE_RX(reactor::Barrier, paused);
 
     public:

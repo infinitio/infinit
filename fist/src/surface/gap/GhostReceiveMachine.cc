@@ -413,5 +413,11 @@ namespace surface
                                               this->state().device().id,
                                               this->state().device().name);
     }
+
+    void
+    GhostReceiveMachine::_pause(bool pause_action)
+    {
+      // FIXME: What call to meta should we make?
+    }
   }
 }
