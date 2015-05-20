@@ -3064,3 +3064,46 @@ class Mixin:
       except Exception as e:
         elle.log.log('Exception while inserting contacts: %s' % e)
     return self.success()
+
+  def __check_gcs(self):
+    if self.gcs is None:
+      self.not_implemented({
+        'reason': 'GCS support not enabled',
+      })
+
+  @api('/user/backgrounds/<name>', method = 'PUT')
+  @require_logged_in
+  def user_background_put_api(self, name):
+    self.__check_gcs()
+    t = bottle.request.headers['Content-Type']
+    l = bottle.request.headers['Content-Length']
+    if t not in ['image/gif', 'image/jpeg', 'image/png']:
+      self.unsupported_media_type({
+        'reason': 'invalid image format: %s' % t,
+        'mime-type': t,
+      })
+    url = self.gcs.upload_url(
+      'backgrounds', '%s/%s' % (self.user['_id'], name),
+      content_type = t,
+      content_length = l,
+      expiration = datetime.timedelta(minutes = 3),
+    )
+    bottle.response.status = 301
+    bottle.response.headers['Location'] = url
+
+  @api('/user/backgrounds/<name>', method = 'DELETE')
+  @require_logged_in
+  def user_background_put_api(self, name):
+    self.__check_gcs()
+    self.gcs.delete(
+      'backgrounds', '%s/%s' % (self.user['_id'], name))
+    self.no_content()
+
+  @api('/user/backgrounds', method = 'GET')
+  @require_logged_in
+  def user_background_put_api(self):
+    self.__check_gcs()
+    return {
+      'backgrounds': self.gcs.bucket_list('backgrounds',
+                                          prefix = self.user['_id']),
+    }
