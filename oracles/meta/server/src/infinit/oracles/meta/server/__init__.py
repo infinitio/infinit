@@ -111,6 +111,7 @@ class Meta(bottle.Bottle,
       emailer = None,
       stripe_api_key = None,
       metrics = infinit.oracles.metrics.Metrics(),
+      gcs = None,
   ):
     self.__production = production
     import os
@@ -207,6 +208,11 @@ class Meta(bottle.Bottle,
     self.__emailer = emailer or infinit.oracles.emailer.NoopEmailer()
     self.__stripe_api_key = stripe_api_key
     self.__metrics = metrics
+    self.__gcs = gcs
+
+  @property
+  def gcs(self):
+    return self.__gcs
 
   @property
   def emailer(self):
@@ -341,6 +347,9 @@ class Meta(bottle.Bottle,
     assert self.__sessions is not None
     return self.__sessions
 
+  def no_content(self):
+    bottle.response.status = 204
+
   def abort(self, message):
     response(500, message)
 
@@ -353,8 +362,11 @@ class Meta(bottle.Bottle,
   def gone(self, message = None):
     response(410, message)
 
-  def not_found(self, message = None):
-    response(404, message)
+  def unsupported_media_type(self, message = None):
+    response(415, message)
+
+  def not_implemented(self, message = None):
+    response(501, message)
 
   def bad_request(self, message = None):
     response(400, message)
