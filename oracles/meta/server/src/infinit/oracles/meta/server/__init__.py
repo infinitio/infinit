@@ -120,7 +120,6 @@ class Meta(bottle.Bottle,
     self.__force_admin = force_admin
     if self.__force_admin:
       elle.log.warn('%s: running in force admin mode' % self)
-    super().__init__()
     if mongo_replica_set is not None:
       with elle.log.log(
           '%s: connect to MongoDB replica set %s' % (self, mongo_replica_set)):
@@ -142,6 +141,8 @@ class Meta(bottle.Bottle,
         self.__mongo = pymongo.MongoClient(**db_args)
     self.__database = self.__mongo.meta
     self.__set_constraints()
+    bottle.Bottle.__init__(self)
+    link_generation.Mixin.__init__(self)
     self.catchall = debug
     bottle.debug(debug)
     # Plugins.
