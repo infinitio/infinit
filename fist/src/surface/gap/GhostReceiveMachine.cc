@@ -5,6 +5,7 @@
 #include <elle/AtomicFile.hh>
 #include <elle/serialization/json/SerializerIn.hh>
 #include <elle/serialization/json/SerializerOut.hh>
+#include <elle/serialization/json/MissingKey.hh>
 #include <elle/system/system.hh>
 #include <elle/archive/archive.hh>
 
@@ -188,11 +189,11 @@ namespace surface
         {
           elle::serialization::json::SerializerIn input(read.stream(), false);
           std::string target_file;
-          if (this->_relative_output_dir.empty())
+          try
           {
             input.serialize("target_file", target_file);
           }
-          else
+          catch(elle::serialization::MissingKey const& e)
           {
             std::string relative_target_file;
             input.serialize("relative_target_file", relative_target_file);
