@@ -995,7 +995,9 @@ def configure(cxx_toolkit = None,
         openssl_config.local_include_path[0], absolute = True),
       openssl_libraries = fist_openssl_libs,
       libraries = fist_libraries,
-      qt = qt)
+      qt = qt,
+      python3 = python3,
+      elle = elle)
     build << application.build
 
   ## ------- ##
