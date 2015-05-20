@@ -532,8 +532,6 @@ class Mixin:
             'device': recipient_device_id,
           })
       is_ghost = recipient['register_status'] == 'ghost'
-      if is_ghost and total_size > 2000000000:
-        self.forbidden('Transaction to nonexisting users limited to 2G')
 
       if is_ghost:
         # Add to referral
