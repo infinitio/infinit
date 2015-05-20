@@ -10,10 +10,6 @@ import bson
 with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   alice = User(meta, "alice@infinit.io")
   alice.login()
-  # Send to ghost size limit
-  throws(lambda:
-      alice.sendfile("bob@infinit.io", total_size = 5000000000),
-      402)
   # Link quotas
   meta.database.users.update({'accounts.id': 'alice@infinit.io'},
     {'$set': { 'quota.total_link_size': 1000}})
