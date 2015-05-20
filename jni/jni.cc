@@ -1298,6 +1298,14 @@ extern "C" jlong Java_io_infinit_State_gapSendSmsGhostCodeMetric(
     to_string(env, code), to_string(env, fail_reason));
 }
 
+extern "C" jstring Java_io_infinit_State_gapSessionId(
+  JNIEnv* env, jobject thiz, jlong handle)
+{
+  std::string res;
+  gap_session_id((gap_State*)handle, res);
+  return from_string(env, res);
+}
+
 std::map<std::string, elle::network::Interface> interface_get_map()
 {
   std::map<std::string, elle::network::Interface> result;
