@@ -9,7 +9,7 @@ import elle.log
 import requests
 
 from pymongo import errors, DESCENDING
-from .utils import api, require_logged_in, require_logged_in_fields, require_admin, json_value
+from .utils import api, require_logged_in, require_logged_in_fields, require_admin, json_value, date_time
 from . import cloud_buffer_token, cloud_buffer_token_gcs, error, notifier, regexp, conf, invitation, mail, transaction_status
 
 #
@@ -24,6 +24,11 @@ link_lifetime_days = 1 # Days that each S3 request link is valid.
 link_update_window_hours = 2 # Minimum number of hours an S3 link will be valid.
 
 class Mixin:
+
+  def __init__(self):
+    self.database.users.ensure_index(
+      [('expiration_date', 1)],
+      sparse = True)
 
   def _basex_encode(self, hex_num, alphabet = default_alphabet):
     """
@@ -177,12 +182,16 @@ class Mixin:
                       files,
                       name,
                       message,
-                      password = None):
-    return self.link_generate(files, name, message,
-                              user = self.user,
-                              device = self.current_device,
-                              link_id = link_id,
-                              password = password)
+                      password = None,
+                      expiration_date: date_time = None):
+    return self.link_generate(
+      files, name, message,
+      user = self.user,
+      device = self.current_device,
+      link_id = link_id,
+      password = password,
+      expiration_date = expiration_date,
+    )
 
   @api('/link', method = 'POST')
   @require_logged_in_fields(['quota', 'total_link_size'])
@@ -198,7 +207,9 @@ class Mixin:
                     user,
                     device,
                     link_id = None,
-                    password = None):
+                    password = None,
+                    expiration_date = None,
+  ):
     """
     Generate a link from a list of files and a message.
 
@@ -237,8 +248,8 @@ class Mixin:
         'sender_id': user['_id'],
         'status': transaction_status.CREATED, # Use same enum as transactions.
         'password': self.__link_password_hash(password),
+        'expiration_date': expiration_date,
       }
-
       if link_id is not None:
         self.database.links.update(
             {'_id': link_id},
@@ -251,7 +262,6 @@ class Mixin:
         counts = ['sent_link', 'sent'],
         pending = link,
         time = True)
-
       credentials = self._get_aws_credentials(user, link_id)
       if credentials is None:
         self.fail(error.UNABLE_TO_GET_AWS_CREDENTIALS)
@@ -262,7 +272,6 @@ class Mixin:
         }},
         new = True,
       )
-
       # We will use the DB to ensure that our hash is unique.
       attempt = 1
       link_hash = None
@@ -287,7 +296,6 @@ class Mixin:
             elle.log.err('unable to generate unique link hash')
             self.abort('unable to generate link')
           attempt += 1
-
       res = {
         'transaction': self.__owner_link(link),
         'aws_credentials': credentials,
@@ -333,20 +341,36 @@ class Mixin:
   @api('/link/<id>', method = 'POST')
   @require_logged_in
   def link_update_api(self,
-                  id: bson.ObjectId,
-                  progress: float,
-                  status: int):
+                      id: bson.ObjectId,
+                      progress: float,
+                      status: int,
+  ):
     return self.success(
-      self.link_update(id, progress, status, False, user = self.user))
+      self.link_update(
+        id,
+        status = status,
+        progress = progress,
+        password = False,
+        expiration_date = None,
+        user = self.user))
 
   @api('/links/<id>', method = 'POST')
   @require_logged_in
-  def link_update_api(self,
-                      id: bson.ObjectId,
-                      progress: float = None,
-                      status: int = None,
-                      password: str = False):
-    return self.link_update(id, progress, status, password, self.user)
+  def link_update_api(
+      self,
+      id: bson.ObjectId,
+      progress: float = None,
+      status: int = None,
+      password: str = False,
+      expiration_date: date_time = None,
+  ):
+    return self.link_update(
+      id,
+      status = status,
+      progress = progress,
+      password = password,
+      expiration_date = expiration_date,
+      user = self.user)
 
   def __link_password_hash(self, password):
     if password is None:
@@ -355,23 +379,25 @@ class Mixin:
     return hashlib.sha256(password.encode('utf-8')).hexdigest()
 
   def link_update(self,
-                  id,
-                  progress,
-                  status,
-                  password,
-                  user):
+                  link,
+                  progress = None,
+                  status = None,
+                  password = False,
+                  expiration_date = None,
+                  user = None):
     """
     Update the status of a given link.
     """
     with elle.log.trace('updating link %s with status %s and progress %s' %
                         (id, status, progress)):
-      link = self.database.links.find_one({'_id': id})
+      if not isinstance(link, dict):
+        link = self.database.links.find_one({'_id': link})
       if link is None or len(link) == 1:
         self.not_found({
           'reason': 'link %s does not exist' % id,
           'link': id,
         })
-      if link['sender_id'] != user['_id']:
+      if user is not None and link['sender_id'] != user['_id']:
         self.forbidden({
           'reason': 'link %s does not belong to you' % id,
           'link': id,
@@ -432,11 +458,13 @@ class Mixin:
             )
       if password is not False:
         update['password'] = self.__link_password_hash(password)
+      if expiration_date is not None:
+        update['expiration_date'] = expiration_date
       if not update:
         return {}
       update['mtime'] = self.now
       link = self.database.links.find_and_modify(
-        {'_id': id},
+        {'_id': link['_id']},
         {'$set': update},
         new = True,
       )
@@ -477,6 +505,7 @@ class Mixin:
         'id',
         'click_count',
         'ctime',
+        'expiration_date',
         'files',
         'message',
         'mtime',
@@ -512,7 +541,7 @@ class Mixin:
           'hash': hash,
         })
       elif link['status'] is transaction_status.DELETED:
-        self.not_found({
+        self.gone({
           'reason': 'link was deleted',
           'hash': hash,
         })
@@ -717,3 +746,12 @@ class Mixin:
       'link_max_size': max_size,
       'user_over_quota': over_quota,
     }
+
+  def link_cleanup_expired(self):
+    expired = self.database.links.find({
+      'expiration_date': {'$lt': self.now},
+    })
+    for link in expired:
+      print(link)
+      self.link_update(link = link,
+                       status = transaction_status.DELETED)

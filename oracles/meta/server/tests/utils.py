@@ -8,6 +8,7 @@ from infinit.oracles.meta.server import transaction_status
 from infinit.oracles.meta import version as Version
 from random import uniform
 
+import datetime
 import socket
 import http.cookies
 import os
@@ -360,6 +361,20 @@ class TestEmailer(infinit.oracles.emailer.Emailer):
     return res
 
 
+class InstrumentedMeta(infinit.oracles.meta.server.Meta):
+
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.__now = datetime.datetime.utcnow()
+
+  @property
+  def now(self):
+    return self.__now
+
+  def forward(self, duration):
+    self.__now += duration
+
+
 class Meta:
 
   def __init__(self,
@@ -412,7 +427,7 @@ class Meta:
     })
     def run():
       try:
-        self.__meta = infinit.oracles.meta.server.Meta(
+        self.__meta = InstrumentedMeta(
           mongo_port = self.__mongo.port,
           enable_emails = self.__enable_emails,
           enable_invitations = self.__enable_invitations,
@@ -825,15 +840,20 @@ class User(Client):
                files = [['file1', 42], ['file2', 43], ['file3', 44]],
                name = 'name',
                message = '',
-               password = None):
+               password = None,
+               expiration_date = None):
     id = self.post('link_empty')['created_link_id']
-    return self.put('link/%s' % id,
-                    {
-                      'files': files,
-                      'name': name,
-                      'message': message,
-                      'password': password,
-                    })['transaction']
+    if expiration_date is not None:
+      expiration_date = expiration_date.isoformat()
+    return self.put(
+      'link/%s' % id,
+      {
+        'expiration_date': expiration_date,
+        'files': files,
+        'name': name,
+        'message': message,
+        'password': password,
+      })['transaction']
 
   # FIXME: remove when link & peer transactions are merged
   def link_update(self, link, status):

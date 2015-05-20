@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+
+import datetime
+from time import sleep
+
+from utils import *
+from bson.objectid import ObjectId
+import infinit.oracles.meta.server.transaction_status as transaction_status
+
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  link = alice.getalink(expiration_date = meta.meta.now + datetime.timedelta(days = 2))
+  meta.get('links/%s' % link['hash'])
+  meta.meta.link_cleanup_expired()
+  meta.get('links/%s' % link['hash'])
+  meta.meta.forward(datetime.timedelta(days = 1))
+  meta.meta.link_cleanup_expired()
+  meta.get('links/%s' % link['hash'])
+  meta.meta.forward(datetime.timedelta(days = 2))
+  meta.meta.link_cleanup_expired()
+  throws(lambda: meta.get('links/%s' % link['hash']), 410)
