@@ -21,6 +21,7 @@ def _aws_urlquote(data):
   return urllib.parse.quote(data, safe='()')
 
 aws_default_region = 'us-east-1'
+aws_default_invite_bucket = 'us-east-1-invite-dev-infinit-io'
 aws_default_buffer_bucket = 'us-east-1-buffer-dev-infinit-io'
 aws_default_link_bucket = 'us-east-1-links-dev-infinit-io'
 

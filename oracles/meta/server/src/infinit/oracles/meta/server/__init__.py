@@ -99,6 +99,7 @@ class Meta(bottle.Bottle,
       shorten_ghost_profile_url = True,
       aws_region = None,
       aws_buffer_bucket = None,
+      aws_invite_bucket = None,
       aws_link_bucket = None,
       gcs_region = None,
       gcs_buffer_bucket = None,
@@ -186,6 +187,9 @@ class Meta(bottle.Bottle,
     if aws_buffer_bucket is None:
       aws_buffer_bucket = cloud_buffer_token.aws_default_buffer_bucket
     self.aws_buffer_bucket = aws_buffer_bucket
+    if aws_invite_bucket is None:
+      aws_invite_bucket = cloud_buffer_token.aws_default_invite_bucket
+    self.aws_invite_bucket = aws_invite_bucket
     if aws_link_bucket is None:
       aws_link_bucket = cloud_buffer_token.aws_default_link_bucket
     self.aws_link_bucket = aws_link_bucket

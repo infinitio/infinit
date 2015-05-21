@@ -6,6 +6,8 @@
         "Action":["s3:*"],
         "Resource": ["arn:aws:s3:::us-east-1-buffer-dev-infinit-io",
                      "arn:aws:s3:::us-east-1-buffer-infinit-io",
+                     "arn:aws:s3:::us-east-1-invite-dev-infinit-io",
+                     "arn:aws:s3:::us-east-1-invite-infinit-io",
                      "arn:aws:s3:::us-east-1-links-dev-infinit-io",
                      "arn:aws:s3:::us-east-1-links-infinit-io"]
    },
@@ -14,6 +16,8 @@
         "Action":["s3:*"],
         "Resource": ["arn:aws:s3:::us-east-1-buffer-dev-infinit-io/*",
                      "arn:aws:s3:::us-east-1-buffer-infinit-io/*",
+                     "arn:aws:s3:::us-east-1-invite-dev-infinit-io/*",
+                     "arn:aws:s3:::us-east-1-invite-infinit-io/*",
                      "arn:aws:s3:::us-east-1-links-dev-infinit-io/*",
                      "arn:aws:s3:::us-east-1-links-infinit-io/*"]
    },

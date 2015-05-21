@@ -814,7 +814,7 @@ class Mixin:
       backend_name = transaction['aws_credentials']['protocol']
       if backend_name == 'aws':
         backend = cloud_buffer_token
-        bucket = self.aws_buffer_bucket
+        bucket = transaction['aws_credentials']['bucket']
         region = self.aws_region
       elif backend_name == 'gcs':
         backend = cloud_buffer_token_gcs
@@ -1205,13 +1205,12 @@ class Mixin:
     amazon_time_format = '%Y-%m-%dT%H-%M-%SZ'
     now = time.gmtime()
     current_time = time.strftime(amazon_time_format, now)
-
+    existing_creds = transaction.get('aws_credentials', None)
     if not force_regenerate:
-      res = transaction.get('aws_credentials', None)
-      if res is not None:
+      if existing_creds is not None:
         elle.log.debug('cloud_buffer: returning from cache')
-        res['current_time'] = current_time
-        return self.success(res)
+        existing_creds['current_time'] = current_time
+        return self.success(existing_creds)
     elle.log.debug('Regenerating AWS token')
     # As long as those creds are transaction specific there is no risk
     # in letting the recipient have WRITE access. This will no longuer hold
@@ -1227,9 +1226,15 @@ class Mixin:
       credentials['expiration']        = (datetime.date.today()+datetime.timedelta(days=7)).isoformat()
       credentials['current_time']      = current_time
     else:
+      if existing_creds is not None and existing_creds.get('bucket', None) is not None:
+        bucket = existing_creds['bucket']
+      elif transaction['is_ghost']:
+        bucket = self.aws_invite_bucket
+      else:
+        bucket = self.aws_buffer_bucket
       token_maker = cloud_buffer_token.CloudBufferToken(
         user['_id'], transaction_id, 'ALL',
-        aws_region = self.aws_region, bucket_name = self.aws_buffer_bucket)
+        aws_region = self.aws_region, bucket_name = bucket)
       raw_creds = token_maker.generate_s3_token()
 
       if raw_creds == None:
@@ -1243,7 +1248,7 @@ class Mixin:
       credentials['expiration']        = raw_creds['Expiration']
       credentials['protocol']          = 'aws'
       credentials['region']            = self.aws_region
-      credentials['bucket']            = self.aws_buffer_bucket
+      credentials['bucket']            = bucket
       credentials['folder']            = transaction_id
       credentials['current_time']      = current_time
 

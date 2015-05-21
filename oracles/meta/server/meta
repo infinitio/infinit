@@ -73,6 +73,10 @@ parser.add_option('--aws-buffer-bucket',
                   action = 'store',
                   help = 'aws bucket for buffering cloud data',
                   default = None)
+parser.add_option('--aws-invite-bucket',
+                  action = 'store',
+                  help = 'aws bucket for storing invitation data',
+                  default = None)
 parser.add_option('--aws-link-bucket',
                   action = 'store',
                   help = 'aws bucket for link cloud data',
@@ -113,6 +117,7 @@ app = infinit.oracles.meta.server.Meta(
   daily_summary_hour = options.daily_summary_hour,
   aws_region = options.aws_region,
   aws_buffer_bucket = options.aws_buffer_bucket,
+  aws_invite_bucket = options.aws_invite_bucket,
   aws_link_bucket = options.aws_link_bucket,
   zone = options.zone,
   metrics = metrics,
