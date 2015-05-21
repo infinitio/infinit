@@ -23,14 +23,17 @@ e9FGZj7sEHpPuDE=
 -----END PRIVATE KEY-----
 ''', 'UTF-8')
 
+GCS_HOST = None
 class GCS(infinit.oracles.meta.server.gcs.GCS):
-  pass
+
+  @property
+  def host(self):
+    return GCS_HOST
 
 gcs = GCS(login = gcs_login, key = gcs_key, bucket_ns = 'test')
 
-
-
 with Meta(gcs = gcs) as meta:
+  GCS_HOST = 'http://localhost:%s/gcs' % meta.port
   import sys
   user = User(meta, 'user@infinit.io')
   user.login()
@@ -45,14 +48,17 @@ with Meta(gcs = gcs) as meta:
                       body = body)
   assertEq(response.status_code, 301)
   url = response.headers['location']
+  print('SNATHUsnthu', url)
   response = requests.put(url,
                           headers = {
                             'Content-Type': content_type,
                             'Content-Length': content_length,
                           },
                           data = body)
-  assertEq(response.status_code / 100, 2)
+  assertEq(response.status_code, 204)
   # List backgrounds
+  print('hop')
   assertEq(user.get('user/backgrounds')['backgrounds'], ['bg.jpg'])
+  print('/hop')
   user.delete('user/backgrounds/bg.jpg')
   assertEq(user.get('user/backgrounds')['backgrounds'], [])

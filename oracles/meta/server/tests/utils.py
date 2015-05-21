@@ -6,6 +6,7 @@ from infinit.oracles.meta.server.mail import Mailer
 from infinit.oracles.meta.server.invitation import Invitation
 from infinit.oracles.meta.server import transaction_status
 from infinit.oracles.meta import version as Version
+from infinit.oracles.utils import api
 from random import uniform
 
 import datetime
@@ -366,6 +367,7 @@ class InstrumentedMeta(infinit.oracles.meta.server.Meta):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.__now = datetime.datetime.utcnow()
+    self.__gcs_buckets = {}
 
   @property
   def now(self):
@@ -374,6 +376,47 @@ class InstrumentedMeta(infinit.oracles.meta.server.Meta):
   def forward(self, duration):
     self.__now += duration
 
+  class GCSObject:
+    pass
+
+  @api('/gcs/<bucket>/<path:path>', method = 'PUT')
+  def gcs_upload_api(self, bucket, path,
+                     GoogleAccessId, Expires, Signature):
+    bucket = self.__gcs_buckets.setdefault(bucket, {})
+    stored = InstrumentedMeta.GCSObject()
+    stored.length = bottle.request.headers['Content-Length']
+    stored.type = bottle.request.headers['Content-Type']
+    stored.data = bottle.request.body
+    if path not in bucket:
+      bottle.response.status = 204
+    bucket[path] = stored
+
+  @api('/gcs/<bucket>', method = 'GET')
+  def gcs_upload_api(self, bucket):
+    if bucket not in self.__gcs_buckets:
+      self.not_found()
+    content = ('''\
+    <Key>%s</Key>
+    <Generation>1432207653322000</Generation>
+    <MetaGeneration>1</MetaGeneration>
+    <LastModified>2015-05-21T11:27:33.321Z</LastModified>
+    <ETag>"3dc6862aaced087142142587cba2123e"</ETag>
+    <Size>8</Size>
+    <Owner>
+      <ID>00b4903a97ebc5d8c3244d92a89f87ce180bf96f0761616c4bf5200fb001b087</ID>
+    </Owner>''' % f for f in self.__gcs_buckets[bucket])
+    return '''\
+<?xml version='1.0' encoding='UTF-8'?>
+<ListBucketResult xmlns='http://doc.s3.amazonaws.com/2006-03-01'>
+  <Name>io_infinit_test_backgrounds</Name>
+  <Prefix>555dc10f4b82cf4fbd2159c1</Prefix>
+  <Marker></Marker>
+  <IsTruncated>false</IsTruncated>
+  <Contents>
+    %s
+  </Contents>
+</ListBucketResult>
+''' % ''.join(content)
 
 class Meta:
 
@@ -385,7 +428,7 @@ class Meta:
                metrics = None,
                **kw):
     self.__mongo = mongobox.MongoBox()
-    self.__server = bottle.WSGIRefServer(port = 0)
+    self.__server = bottle.TornadoServer(port = 0)
     self.__database = None
     self.__client = None
     self.__enable_emails = enable_emails

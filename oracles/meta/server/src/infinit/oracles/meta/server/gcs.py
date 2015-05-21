@@ -13,7 +13,7 @@ import Crypto.Signature.PKCS1_v1_5 as PKCS1_v1_5
 class GCS:
 
   default_bucket = 'io_infinit_links'
-  host = 'storage.googleapis.com'
+  host = 'https://storage.googleapis.com'
 
   def __init__(self, login, key, bucket_ns = None):
     self.__login = login
@@ -21,6 +21,10 @@ class GCS:
     self.__bucket_ns = 'io_infinit_'
     if bucket_ns is not None:
       self.__bucket_ns += bucket_ns + '_'
+
+  @property
+  def host(self):
+    return GCS.host
 
   def __bucket(self, name):
     return self.__bucket_ns + name
@@ -43,10 +47,14 @@ class GCS:
     return headers
 
   def __url(self, bucket, path = ''):
-    return \
-      'https://%s.%s/%s' % (self.__bucket(bucket), GCS.host, path)
+    return '%(host)s/%(bucket)s/%(path)s' % {
+      'bucket': self.__bucket(bucket),
+      'host': self.host,
+      'path': path,
+    }
 
   def __request(self, method, *args, **kwargs):
+    print('GCS', method, args, kwargs)
     response = method(*args, **kwargs)
     if int(response.status_code / 100) != 2:
       raise Exception('gcs error %s: %s' %
@@ -81,8 +89,7 @@ class GCS:
       'Signature': sig
     }
     params = urllib.parse.urlencode(params)
-    url = 'https://%s.%s/%s?%s' % (self.__bucket(bucket), GCS.host,
-                                   path, params)
+    url = '%s?%s' % (self.__url(bucket, path), params)
     return url
 
   def upload(self, bucket, path, data, content_type = None):
