@@ -413,6 +413,15 @@ gap_get_output_dir(gap_State* state);
 
 
 typedef std::unordered_map<std::string, std::string> Additionals;
+
+/// Messages
+
+typedef std::function<void (std::string const&)> MessageCallback;
+
+gap_Status
+gap_message_callback(gap_State* state, MessageCallback callback);
+
+
 /// Metrics.
 gap_Status
 gap_send_metric(gap_State* state,

@@ -7,6 +7,8 @@
 # include <string>
 # include <unordered_set>
 
+# include <boost/signals2.hpp>
+
 # include <common/common.hh>
 
 # include <elle/format/json/fwd.hh>
@@ -874,6 +876,14 @@ namespace surface
     `------*/
     public:
       ELLE_ATTRIBUTE_R(Model, model);
+
+    /*--------.
+    | Message |
+    `--------*/
+    public:
+      ELLE_ATTRIBUTE_RX(
+        (boost::signals2::signal<void (std::string const& message)>),
+        message_received);
 
     /*----------.
     | Printable |

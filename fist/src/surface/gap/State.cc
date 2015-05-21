@@ -1336,9 +1336,19 @@ namespace surface
               notif.get()));
           break;
         }
+        case infinit::oracles::trophonius::NotificationType::message:
+        {
+          ELLE_ASSERT(
+            dynamic_cast<infinit::oracles::trophonius::MessageNotification const*>(
+              notif.get()) != nullptr);
+          auto& message =
+            *static_cast<infinit::oracles::trophonius::MessageNotification const*>(
+              notif.get());
+          this->_message_received(message.message);
+          break;
+        }
         case infinit::oracles::trophonius::NotificationType::none:
         case infinit::oracles::trophonius::NotificationType::network_update:
-        case infinit::oracles::trophonius::NotificationType::message:
         case infinit::oracles::trophonius::NotificationType::ping:
         case infinit::oracles::trophonius::NotificationType::connection_enabled:
         case infinit::oracles::trophonius::NotificationType::suicide:

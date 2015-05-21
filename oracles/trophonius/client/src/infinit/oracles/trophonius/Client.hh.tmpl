@@ -175,17 +175,6 @@ namespace infinit
         std::vector<Endpoint> endpoints_public;
       };
 
-      struct MessageNotification:
-        public Notification
-      {
-        std::string sender_id;
-        std::string message;
-
-        ELLE_SERIALIZE_CONSTRUCT(MessageNotification,
-                                 Notification)
-        {}
-      };
-
       struct ModelUpdateNotification
         : public Notification
       {
@@ -199,6 +188,14 @@ namespace infinit
         PausedNotification(elle::serialization::SerializerIn& input);
         std::string transaction_id;
         bool paused;
+      };
+
+      struct MessageNotification
+        : public Notification
+      {
+      public:
+        MessageNotification(elle::serialization::SerializerIn& input);
+        std::string message;
       };
 
       struct ConnectionState

@@ -1514,6 +1514,22 @@ gap_onboarding_set_peer_availability(gap_State* state, uint32_t id, bool status)
     });
 }
 
+/// Messages
+
+gap_Status
+gap_message_callback(gap_State* state, MessageCallback callback)
+{
+  return run<gap_Status>(
+    state,
+    "attach message callback",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.message_received().connect(std::move(callback));
+      return gap_ok;
+    });
+}
+
+
 // Metrics.
 gap_Status
 gap_send_metric(gap_State* state,

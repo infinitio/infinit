@@ -106,18 +106,6 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::DeletedFavoriteNotification,
   ar & named("user_id", value.user_id);
 }
 
-ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::MessageNotification);
-ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::MessageNotification,
-                      ar,
-                      value,
-                      version)
-{
-  (void)version;
-  ar & base_class<infinit::oracles::trophonius::Notification>(value);
-  ar & named("sender_id", value.sender_id);
-  ar & named("message", value.message);
-}
-
 namespace infinit
 {
   namespace oracles
@@ -202,6 +190,13 @@ namespace infinit
         input.serialize("paused", this->paused);
       }
 
+      MessageNotification::MessageNotification(
+        elle::serialization::SerializerIn& input)
+        : Notification(NotificationType::message)
+      {
+        input.serialize("message", this->message);
+      }
+
       static
       std::unique_ptr<Notification>
       notification_from_dict(elle::json::Object const& json)
@@ -273,6 +268,11 @@ namespace infinit
             elle::serialization::json::SerializerIn input(json);
             return elle::make_unique<PausedNotification>(input);
           }
+          case NotificationType::message:
+          {
+            elle::serialization::json::SerializerIn input(json);
+            return elle::make_unique<MessageNotification>(input);
+          }
           default:
             ; // Nothing.
         }
@@ -298,8 +298,6 @@ namespace infinit
             return Ptr(new DeletedSwaggerNotification{extractor});
           case NotificationType::deleted_favorite:
             return Ptr(new DeletedFavoriteNotification{extractor});
-          case NotificationType::message:
-            return Ptr(new MessageNotification{extractor});
           case NotificationType::connection_enabled:
             return Ptr(new ConnectionEnabledNotification{extractor});
             // XXX: Handle at upper levels (?)
