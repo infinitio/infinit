@@ -525,6 +525,8 @@ namespace surface
       bool send_notification = true;
       bool swagger = true;
       this->user_sync(notif.user_id, send_notification, swagger);
+      if (notif.contact)
+        this->_contact_joined(notif.user_id, notif.contact.get());
     }
 
     void

@@ -281,9 +281,20 @@ gap_users_by_emails(gap_State* state,
                     std::vector<std::string> const& emails,
                     std::unordered_map<std::string, surface::gap::User>& res);
 
+/*---------.
+| Swaggers |
+`---------*/
+
 /// Get the list of user's swaggers.
 gap_Status
 gap_swaggers(gap_State* state, std::vector<surface::gap::User>& res);
+
+typedef std::function<void (std::string const& user_id,
+                            std::string const& contact)> ContactJoinedCallback;
+gap_Status
+gap_contact_joined_callback(gap_State* state, ContactJoinedCallback callback);
+
+
 
 /// Get the list of user's favorites.
 gap_Status

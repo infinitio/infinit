@@ -631,40 +631,39 @@ namespace surface
       user_to_gap_user(uint32_t id,
                         State::User const& user) const;
 
-      ///- Swaggers --------------------------------------------------------------
+    /*---------.
+    | Swaggers |
+    `---------*/
+    public:
       UserIndexes
       swaggers();
-
       bool
       is_swagger(uint32_t id) const;
-
       User
       swagger(std::string const& user_id);
-
       User
       swagger(uint32_t id);
-
       void
       _on_new_swagger(
         infinit::oracles::trophonius::NewSwaggerNotification const& notif);
-
       void
       _on_deleted_swagger(
         infinit::oracles::trophonius::DeletedSwaggerNotification const& notif);
-
       void
       _on_deleted_favorite(
         infinit::oracles::trophonius::DeletedFavoriteNotification const& notif);
-
       void
       _on_swagger_status_update(
         infinit::oracles::trophonius::UserStatusNotification const& notif);
-
       void
       _on_swagger_status_update(std::string const& user_id,
                                 bool user_status,
                                 elle::UUID const& device_id,
                                 bool device_status);
+      ELLE_ATTRIBUTE_RX(
+        (boost::signals2::signal<void (std::string const& user_id,
+                                       std::string const& contact)>),
+        contact_joined);
 
       /*---------.
       | Networks |
