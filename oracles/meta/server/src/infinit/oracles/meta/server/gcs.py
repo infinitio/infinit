@@ -101,6 +101,13 @@ class GCS:
                            content_type = content_type,
                            content_length = content_length)
 
+  def download_url(self, bucket, path, expiration,
+                   content_type = None,
+                   content_length = None):
+    return self.__sign_url(bucket, path, expiration, 'GET',
+                           content_type = content_type,
+                           content_length = content_length)
+
   def start_upload(self, bucket, path, content_type = None):
     response = self.__request(
       requests.post,

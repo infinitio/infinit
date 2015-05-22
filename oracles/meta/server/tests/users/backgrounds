@@ -28,8 +28,6 @@ class GCS(infinit.oracles.meta.server.gcs.GCS):
 
 gcs = GCS(login = gcs_login, key = gcs_key, bucket_ns = 'test')
 
-
-
 with Meta(gcs = gcs) as meta:
   import sys
   user = User(meta, 'user@infinit.io')
@@ -37,7 +35,7 @@ with Meta(gcs = gcs) as meta:
   # Upload background
   body = b'coincoin'
   content_type = 'image/png'
-  content_length = len(content_type)
+  content_length = len(body)
   response = user.put('user/backgrounds/bg.jpg',
                       raw = True,
                       content_type = content_type,
@@ -54,5 +52,21 @@ with Meta(gcs = gcs) as meta:
   assertEq(response.status_code / 100, 2)
   # List backgrounds
   assertEq(user.get('user/backgrounds')['backgrounds'], ['bg.jpg'])
+  # Get background
+  response = user.get('user/backgrounds/bg.jpg', raw = True)
+  assertEq(response.status_code, 301)
+  print(response.headers['location'])
+  response = requests.get(response.headers['location'])
+  print(response.content, response.headers)
+  assertEq(response.status_code, 200)
+  assertEq(response.content, body)
+  assertEq(response.headers['content-type'], content_type)
+  assertEq(int(response.headers['content-length']), content_length)
+  # Erase background
   user.delete('user/backgrounds/bg.jpg')
   assertEq(user.get('user/backgrounds')['backgrounds'], [])
+  # Get background
+  response = user.get('user/backgrounds/bg.jpg', raw = True)
+  assertEq(response.status_code, 301)
+  response = requests.get(response.headers['location'])
+  assertEq(response.status_code, 404)

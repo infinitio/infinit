@@ -3091,6 +3091,17 @@ class Mixin:
     bottle.response.status = 301
     bottle.response.headers['Location'] = url
 
+  @api('/user/backgrounds/<name>', method = 'GET')
+  @require_logged_in
+  def user_background_put_api(self, name):
+    self.__check_gcs()
+    url = self.gcs.download_url(
+      'backgrounds', '%s/%s' % (self.user['_id'], name),
+      expiration = datetime.timedelta(minutes = 3),
+    )
+    bottle.response.status = 301
+    bottle.response.headers['Location'] = url
+
   @api('/user/backgrounds/<name>', method = 'DELETE')
   @require_logged_in
   def user_background_put_api(self, name):
