@@ -551,8 +551,7 @@ class Mixin:
         user = self.database.users.find_one(
           {'_id': link['sender_id']},
           fields = ['plan', 'account.custom-domains'])
-        if user.get('plan') != 'premium':
-          self.payment_required()
+        self.require_premium(user)
         account = user.get('account')
         domains = (d['name']
                    for d in (account.get('custom-domains', ())

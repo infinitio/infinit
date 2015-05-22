@@ -356,7 +356,7 @@ class Meta(bottle.Bottle,
   def unauthorized(self, message = None):
     response(401, message)
 
-  def payment_required(self, message = {'reason': 'premium plan required'}):
+  def payment_required(self, message = None):
     response(402, message)
 
   def forbidden(self, message = None):
@@ -514,6 +514,12 @@ Session: %(session)s
   def check_key(self, k):
     if k is None or k != key(bottle.request.path):
       self.forbidden()
+
+  def require_premium(self, user = None):
+    if user is None:
+      user = self.user
+    if user.get('plan') != 'premium':
+      self.payment_required({'reason': 'premium plan required'})
 
   def url_absolute(self, url = ''):
     if not url.startswith('/'):
