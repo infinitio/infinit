@@ -1306,6 +1306,18 @@ extern "C" jstring Java_io_infinit_State_gapSessionId(
   return from_string(env, res);
 }
 
+extern "C" jlong Java_io_infinit_State_gapConnect(
+  JNIEnv* env, jobject thiz, jlong handle)
+{
+  return gap_connect((gap_State*)handle);
+}
+
+extern "C" jlong Java_io_infinit_State_gapDisconnect(
+  JNIEnv* env, jobject thiz, jlong handle)
+{
+  return gap_disconnect((gap_State*)handle);
+}
+
 std::map<std::string, elle::network::Interface> interface_get_map()
 {
   std::map<std::string, elle::network::Interface> result;

@@ -220,6 +220,35 @@ gap_login(gap_State* state,
     });
 }
 
+gap_Status
+gap_connect(gap_State* state)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "connect",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.connect();
+      return gap_ok;
+    });
+}
+
+gap_Status
+gap_disconnect(gap_State* state)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "disconnect",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.disconnect();
+      return gap_ok;
+    });
+}
+
+
 std::unordered_map<std::string, std::string>
 gap_fetch_features(gap_State* state)
 {
@@ -317,39 +346,41 @@ gap_use_ghost_code(gap_State* state,
   ELLE_ASSERT(state != nullptr);
   if (code.empty())
     return gap_unknown_user;
-  gap_Status res = gap_error;
-  run<gap_Status>(state,
-                  "use ghost code",
-                  [&] (surface::gap::State& state) -> gap_Status
+  return run<gap_Status>(
+    state,
+    "use ghost code",
+    [&] (surface::gap::State& state) -> gap_Status
     {
-      try
-      {
-        state.meta().use_ghost_code(code);
-        res = gap_ok;
-        state.metrics_reporter()->user_used_ghost_code(true,
-                                                       code,
-                                                       was_link,
-                                                       "");
-      }
-      catch (infinit::state::GhostCodeAlreadyUsed const&)
-      {
-        res = gap_ghost_code_already_used;
-        state.metrics_reporter()->user_used_ghost_code(false,
-                                                       code,
-                                                       was_link,
-                                                       "already used");
-      }
-      catch (elle::Error const&)
-      {
-        res = gap_unknown_user;
-        state.metrics_reporter()->user_used_ghost_code(false,
-                                                       code,
-                                                       was_link,
-                                                       "invalid code");
-      }
+      state.ghost_code_use(code, was_link);
       return gap_ok;
     });
-  return res;
+}
+
+gap_Status
+gap_ghost_code_used_callback(gap_State* state, GhostCodeUsedCallback callback)
+{
+  return run<gap_Status>(
+    state,
+    "attach ghost code callback",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.ghost_code_used().connect(callback);
+      return gap_ok;
+    });
+}
+
+gap_Status
+gap_add_fingerprint(gap_State* state, std::string const& fingerprint)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "add fingerprint",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.fingerprint_add(fingerprint);
+      return gap_ok;
+    });
 }
 
 gap_Status
@@ -1889,3 +1920,4 @@ gap_session_id(gap_State* state, std::string& res)
       return gap_ok;
     });
 }
+

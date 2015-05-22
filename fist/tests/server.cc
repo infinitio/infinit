@@ -789,27 +789,26 @@ namespace tests
             reactor::http::StatusCode::Not_Found,
             "transaction not found");
         }
-        auto& t = **it;
+        auto& tr = **this->_transactions.find(id);
         if (paused)
-          t.paused = *paused;
+          tr.paused = *paused;
         if (status)
         {
-          t.status = infinit::oracles::Transaction::Status(*status);
-          t.status_changed()(t.status);
-          if (t.status == infinit::oracles::Transaction::Status::accepted)
+          tr.status = infinit::oracles::Transaction::Status(*status);
+          tr.status_changed()(tr.status);
+          if (tr.status == infinit::oracles::Transaction::Status::accepted)
           {
             this->headers()["ETag"] = boost::lexical_cast<std::string>(elle::UUID::random());
             auto const& user = this->user(cookies);
             auto const& device = this->device(cookies);
-            t.recipient_id = boost::lexical_cast<std::string>(user.id());
-            t.recipient_device_id = boost::lexical_cast<std::string>(device.id());
+            tr.recipient_id = boost::lexical_cast<std::string>(user.id());
+            tr.recipient_device_id = boost::lexical_cast<std::string>(device.id());
           }
-          if (t.status == infinit::oracles::Transaction::Status::cloud_buffered)
+          if (tr.status == infinit::oracles::Transaction::Status::cloud_buffered)
           {
-            t.cloud_buffered = true;
+            tr.cloud_buffered = true;
           }
         }
-        auto& tr = **this->_transactions.find(id);
         std::string transaction_notification = tr.json();
         transaction_notification.insert(1, "\"notification_type\":7,");
         for (auto& socket: this->trophonius->clients(elle::UUID(tr.sender_id)))
@@ -820,15 +819,15 @@ namespace tests
         {
           elle::serialization::json::SerializerOut output(res);
           output.serialize("updated_transaction_id", tr.id);
-          if (t.status == infinit::oracles::Transaction::Status::accepted)
+          if (tr.status == infinit::oracles::Transaction::Status::accepted)
           {
             output.serialize("recipent_device_id", tr.recipient_device_id);
             std::string name = "bite";
             output.serialize("recipient_device_name", name);
           }
-          if (t.cloud_credentials())
+          if (tr.cloud_credentials())
           {
-            output.serialize("aws_credentials", t.cloud_credentials());
+            output.serialize("aws_credentials", tr.cloud_credentials());
           }
         }
         return res.str();

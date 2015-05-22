@@ -72,6 +72,12 @@ gap_login(gap_State* state,
           boost::optional<std::string> device_name = boost::none,
           boost::optional<std::string> device_language = boost::none);
 
+gap_Status
+gap_disconnect(gap_State* state);
+
+gap_Status
+gap_connect(gap_State* state);
+
 /// Fetch features.
 std::unordered_map<std::string, std::string>
 gap_fetch_features(gap_State* state);
@@ -106,6 +112,15 @@ gap_Status
 gap_use_ghost_code(gap_State* state,
                    std::string const& code,
                    bool was_link);
+
+typedef std::function<void (std::string const& code,
+                            bool success,
+                            std::string const& reason)> GhostCodeUsedCallback;
+gap_Status
+gap_ghost_code_used_callback(gap_State* state, GhostCodeUsedCallback callback);
+
+gap_Status
+gap_add_fingerprint(gap_State* state, std::string const& fingerprint);
 
 gap_Status
 gap_update_user_callback(

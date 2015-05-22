@@ -103,12 +103,10 @@ ELLE_TEST_SCHEDULED(pause_snapshot)
 ELLE_TEST_SCHEDULED(pause_resume)
 {
   tests::Server server;
-  elle::filesystem::TemporaryDirectory sender_home(
-    "pause_sender_home_p2p");
+  elle::filesystem::TemporaryDirectory sender_home("pause_send_home_p2p");
   auto const& sender_user =
     server.register_user("sender@infinit.io", "password");
-  elle::filesystem::TemporaryDirectory recipient_home(
-    "pause_recipient_home_p2p");
+  elle::filesystem::TemporaryDirectory recipient_home("pause_recv_home_p2p");
   auto const& recipient_user =
     server.register_user("recipient@infinit.io", "password");
   std::string t_id;
@@ -116,21 +114,20 @@ ELLE_TEST_SCHEDULED(pause_resume)
   {
     boost::filesystem::ofstream f(transfered.path());
     BOOST_CHECK(f.good());
-    for (int i = 0; i < 2048; ++i)
+    for (int i = 0; i < 1048 * 200; ++i)
     {
       char c = i % 256;
       f.write(&c, 1);
     }
   }
 
-
   tests::Client sender(server, sender_user, sender_home.path());
   sender.login();
   auto& state_transaction = sender.state->transaction_peer_create(
     recipient_user.email(),
-    std::vector<std::string>{transfered.path().string().c_str()},
+    std::vector<std::string>{transfered.path().string()},
     "message");
-  reactor::Barrier paused, unpaused;
+  reactor::Barrier paused;
   bool second_time = false;
   auto conn = state_transaction.status_changed().connect(
     [&] (gap_TransactionStatus status)
@@ -140,28 +137,28 @@ ELLE_TEST_SCHEDULED(pause_resume)
       if (status == gap_transaction_paused)
         paused.open();
       if (status == gap_transaction_transferring)
-        if (second_time)
+        if (!second_time)
           second_time = true;
-        else
-          unpaused.open();
     });
 
-  ELLE_WARN("PUTE");
   tests::Client recipient(server, recipient_user, recipient_home.path());
   recipient.login();
   BOOST_CHECK_EQUAL(recipient.state->transactions().size(), 1);
-  auto& state_transaction_recipient = *recipient.state->transactions().begin()->second;
+  auto& state_transaction_recipient =
+    *recipient.state->transactions().begin()->second;
+  reactor::Barrier recipient_finished;
   state_transaction_recipient.status_changed().connect(
     [&] (gap_TransactionStatus status)
     {
-      ELLE_WARN("NEW RECIPIENT STATUS: %s", status);
+      ELLE_WARN("new recipient status: %s", status);
+      if (status == gap_transaction_finished)
+        recipient_finished.open();
     });
-  reactor::Barrier recipient_finished;
   sender.state->transaction_pause(state_transaction.id());
   state_transaction_recipient.accept();
   reactor::wait(paused);
   sender.state->transaction_pause(state_transaction.id(), false);
-  reactor::wait(unpaused);
+  reactor::wait(recipient_finished);
 }
 
 ELLE_TEST_SUITE()
