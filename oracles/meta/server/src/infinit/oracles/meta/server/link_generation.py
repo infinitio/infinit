@@ -226,6 +226,8 @@ class Mixin:
         self.bad_request('no file dictionary')
       if len(name) == 0:
         self.bad_request('no name')
+      if password is not None:
+        self.require_premium()
       self._link_check_quota(user)
       creation_time = self.now
       # Maintain a list of all elements in document here.
