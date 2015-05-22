@@ -356,6 +356,9 @@ class Meta(bottle.Bottle,
   def unauthorized(self, message = None):
     response(401, message)
 
+  def payment_required(self, message = {'reason': 'premium plan required'}):
+    response(402, message)
+
   def forbidden(self, message = None):
     response(403, message)
 

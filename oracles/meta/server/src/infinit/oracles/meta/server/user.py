@@ -3118,3 +3118,40 @@ class Mixin:
       'backgrounds': self.gcs.bucket_list('backgrounds',
                                           prefix = self.user['_id']),
     }
+
+  def __user_account_domains_edit(self, name, action):
+    domain = {'name': name}
+    user = self.database.users.find_and_modify(
+      {'_id': self.user['_id']},
+      {action: {'account.custom-domains': domain}},
+      new = False,
+    )
+    account = user.get('account')
+    domains = \
+      account.get('custom-domains') if account is not None else ()
+    return next(filter(lambda d: d['name'] == name, domains), None), domain
+
+
+  @api('/user/account/custom-domains/<name>', method = 'PUT')
+  @require_logged_in
+  def user_account_domains_post_api(self, name):
+    old, new = self.__user_account_domains_edit(name, '$addToSet')
+    if old is None:
+      bottle.response.status = 201
+    return new
+
+  @api('/user/account/custom-domains/<name>', method = 'DELETE')
+  @require_logged_in
+  def user_account_patch_api(self, name):
+    old, new = self.__user_account_domains_edit(name, '$pull')
+    if old is None:
+      self.not_found({
+        'reason': 'custom domain %s not found' % name,
+        'custom-domain': name,
+      })
+    return new
+
+  @api('/user/account', method = 'GET')
+  @require_logged_in_fields(['account'])
+  def user_account_get_api(self):
+    return self.user.get('account', {})

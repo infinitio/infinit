@@ -522,14 +522,21 @@ class Mixin:
   @api('/links/<hash>')
   def link_by_hash_api(self, hash,
                        password = None,
-                       no_count: bool = False):
-    return self.link_by_hash(hash = hash, password = password, no_count = no_count)
+                       no_count: bool = False,
+                       custom_domain = None):
+    return self.link_by_hash(
+      hash = hash,
+      password = password,
+      no_count = no_count,
+      custom_domain = custom_domain,
+    )
 
   # Deprecated in favor of /link/<hash>
   @api('/link/<hash>')
   def link_by_hash(self, hash,
                    password = None,
-                   no_count: bool = False):
+                   no_count: bool = False,
+                   custom_domain = None):
     """
     Find and return the link related to the given hash for a web client.
     """
@@ -540,7 +547,22 @@ class Mixin:
           'reason': 'link not found',
           'hash': hash,
         })
-      elif link['status'] is transaction_status.DELETED:
+      if custom_domain is not None:
+        user = self.database.users.find_one(
+          {'_id': link['sender_id']},
+          fields = ['plan', 'account.custom-domains'])
+        if user.get('plan') != 'premium':
+          self.payment_required()
+        account = user.get('account')
+        domains = (d['name']
+                   for d in (account.get('custom-domains', ())
+                             if account is not None else ()))
+        if custom_domain not in domains:
+          self.payment_required({
+            'reason': 'invalid custom domain: %s' % custom_domain,
+            'custom-domain': custom_domain,
+          })
+      if link['status'] is transaction_status.DELETED:
         self.gone({
           'reason': 'link was deleted',
           'hash': hash,
