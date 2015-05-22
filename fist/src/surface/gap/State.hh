@@ -247,6 +247,14 @@ namespace surface
       void
       logout();
 
+      /// disconnect from tropho.
+      void
+      disconnect();
+
+      /// Reconnect to trophonius, assuming we are still logged in.
+      void
+      connect();
+
       void
       register_(std::string const& fullname,
                 std::string const& email,

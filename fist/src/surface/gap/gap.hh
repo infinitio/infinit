@@ -72,6 +72,12 @@ gap_login(gap_State* state,
           boost::optional<std::string> device_name = boost::none,
           boost::optional<std::string> device_language = boost::none);
 
+gap_Status
+gap_disconnect(gap_State* state);
+
+gap_Status
+gap_connect(gap_State* state);
+
 /// Fetch features.
 std::unordered_map<std::string, std::string>
 gap_fetch_features(gap_State* state);

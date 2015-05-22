@@ -220,6 +220,35 @@ gap_login(gap_State* state,
     });
 }
 
+gap_Status
+gap_connect(gap_State* state)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "connect",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.connect();
+      return gap_ok;
+    });
+}
+
+gap_Status
+gap_disconnect(gap_State* state)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "disconnect",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.disconnect();
+      return gap_ok;
+    });
+}
+
+
 std::unordered_map<std::string, std::string>
 gap_fetch_features(gap_State* state)
 {
@@ -1856,3 +1885,4 @@ gap_session_id(gap_State* state, std::string& res)
       return gap_ok;
     });
 }
+

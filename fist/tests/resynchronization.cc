@@ -168,6 +168,37 @@ ELLE_TEST_SCHEDULED(swaggers)
   ELLE_ASSERT(step3);
 }
 
+ELLE_TEST_SCHEDULED(disconnect)
+{
+  tests::Server server;
+  tests::Client sender(server, "sender@infinit.io");
+  tests::Client recipient(server, "recipient@infinit.io");
+  sender.login();
+  recipient.login();
+  recipient.state->disconnect();
+  elle::filesystem::TemporaryFile transfered("cloud-buffered");
+  auto& transaction = sender.state->transaction_peer_create(
+      "recipient@infinit.io",
+      std::vector<std::string>{transfered.path().string().c_str()},
+      "message");
+  reactor::Barrier done;
+  transaction.status_changed().connect(
+      [&] (gap_TransactionStatus status)
+      {
+        ELLE_LOG("new local transaction status: %s", status);
+        if (status == gap_transaction_waiting_accept)
+        {
+          BOOST_CHECK_EQUAL(recipient.state->transactions().size(), 0);
+          recipient.state->connect();
+          BOOST_CHECK_EQUAL(recipient.state->transactions().size(), 1);
+          auto& state_transaction_recipient = *recipient.state->transactions().begin()->second;
+          state_transaction_recipient.accept();
+        }
+        else if(status == gap_transaction_finished)
+          done.open();
+      });
+  reactor::wait(done);
+}
 
 ELLE_TEST_SUITE()
 {
@@ -176,4 +207,5 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(links), 0, timeout);
   suite.add(BOOST_TEST_CASE(links_another_device), 0, timeout);
   suite.add(BOOST_TEST_CASE(swaggers), 0, timeout);
+  suite.add(BOOST_TEST_CASE(disconnect), 0, timeout);
 }

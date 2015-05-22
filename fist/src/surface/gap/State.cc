@@ -432,6 +432,28 @@ namespace surface
     `----------------------*/
 
     void
+    State::connect()
+    {
+      if (this->_trophonius->connected().opened())
+        return;
+      ELLE_TRACE("%s: reconnecting to trophonius", *this);
+      this->_trophonius->connect(
+        this->me().id, this->device().id, this->_meta.session_id());
+      reactor::wait(_trophonius->connected());
+            ELLE_TRACE("%s: connected to trophonius", *this);
+      ELLE_TRACE("%s: reconnected to trophonius", *this);
+      this->_synchronize_response.reset(
+        new infinit::oracles::meta::SynchronizeResponse{
+        this->meta().synchronize(false)});
+      this->_devices(this->_synchronize_response->devices);
+      this->_user_resync(this->_synchronize_response->swaggers, false);
+      this->_peer_transaction_resync(
+        this->_synchronize_response->transactions, false);
+      this->_link_transaction_resync(
+        this->_synchronize_response->links, false);
+    }
+
+    void
     State::login(
       std::string const& email,
       std::string const& password,
@@ -847,6 +869,14 @@ namespace surface
     }
 
     void
+    State::disconnect()
+    {
+      ELLE_TRACE_SCOPE("%s: disconnect", *this);
+      if (this->_trophonius)
+        this->_trophonius->disconnect();
+    }
+
+    void
     State::logout()
     {
       if (this->_login_thread)
@@ -868,6 +898,7 @@ namespace surface
         this->_logged_out.open();
         return;
       }
+
       try
       {
         reactor::Barrier timed_out;
@@ -900,6 +931,7 @@ namespace surface
         this->_meta.logged_in(false);
         this->_metrics_reporter->user_logout(false, elle::exception_string());
       }
+
       if (this->_trophonius)
         this->_trophonius->disconnect();
       this->_logged_out.open();
