@@ -669,7 +669,7 @@ namespace surface
                                 elle::UUID const& device_id,
                                 bool device_status);
       ELLE_ATTRIBUTE_RX(
-        (boost::signals2::signal<void (std::string const& user_id,
+        (boost::signals2::signal<void (uint32_t user_id,
                                        std::string const& contact)>),
         contact_joined);
 
