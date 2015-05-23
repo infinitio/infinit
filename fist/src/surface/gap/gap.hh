@@ -304,7 +304,7 @@ gap_users_by_emails(gap_State* state,
 gap_Status
 gap_swaggers(gap_State* state, std::vector<surface::gap::User>& res);
 
-typedef std::function<void (std::string const& user_id,
+typedef std::function<void (uint32_t user_id,
                             std::string const& contact)> ContactJoinedCallback;
 gap_Status
 gap_contact_joined_callback(gap_State* state, ContactJoinedCallback callback);
