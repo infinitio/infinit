@@ -18,8 +18,14 @@ with Meta() as meta:
     ['file3', 44],
   ]
   message = 'salut!'
-  res = jean.post('link',
-    {'files': file_list, 'name': 'some files.zip', 'message': message})
+  res = jean.post(
+    'link',
+    {
+      'files': file_list,
+      'name': 'some files.zip',
+      'message': message,
+    }
+  )
   assert res['aws_credentials']
   assert res['transaction']
   link = res['transaction']

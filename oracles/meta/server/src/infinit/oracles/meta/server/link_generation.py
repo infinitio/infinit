@@ -183,7 +183,9 @@ class Mixin:
                       name,
                       message,
                       password = None,
-                      expiration_date: date_time = None):
+                      expiration_date: date_time = None,
+                      background = None,
+  ):
     return self.link_generate(
       files, name, message,
       user = self.user,
@@ -191,6 +193,7 @@ class Mixin:
       link_id = link_id,
       password = password,
       expiration_date = expiration_date,
+      background = background,
     )
 
   @api('/link', method = 'POST')
@@ -209,6 +212,7 @@ class Mixin:
                     link_id = None,
                     password = None,
                     expiration_date = None,
+                    background = None,
   ):
     """
     Generate a link from a list of files and a message.
@@ -226,7 +230,8 @@ class Mixin:
         self.bad_request('no file dictionary')
       if len(name) == 0:
         self.bad_request('no name')
-      if password is not None or expiration_date is not None:
+      if any(p is not None
+             for p in [password, expiration_date, background]):
         self.require_premium()
       self._link_check_quota(user)
       creation_time = self.now
@@ -234,6 +239,7 @@ class Mixin:
       # Do not add a None hash as this causes problems with concurrency.
       link = {
         'aws_credentials': None,
+        'background': background,
         'click_count': 0,
         'ctime': creation_time,
         'expiry_time': None, # Field set when a link has expired.
@@ -503,20 +509,22 @@ class Mixin:
       'files': 'file_list',
     }
     ret_link = dict(
-      (key, link[key in mapping and mapping[key] or key]) for key in (
-        'id',
-        'click_count',
-        'ctime',
-        'expiration_date',
-        'files',
-        'message',
-        'mtime',
-        'name',
-        'progress',
-        'sender_id',
-        'sender_device_id',
-        'status',
-    ))
+      (key, link.get(key in mapping and mapping[key] or key))
+      for key in [
+          'id',
+          'background',
+          'click_count',
+          'ctime',
+          'expiration_date',
+          'files',
+          'message',
+          'mtime',
+          'name',
+          'progress',
+          'sender_id',
+          'sender_device_id',
+          'status',
+      ])
     if link.get('link', None) is not None:
       ret_link['link'] = link['link']
     return ret_link

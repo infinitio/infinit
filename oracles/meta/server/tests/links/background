@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+
+from utils import *
+import bson
+
+with Meta() as meta:
+  jean = User(meta, 'jeantest@infinit.io')
+  jean.login()
+  def create():
+    return jean.getalink(background = 'bg.jpg')
+  throws(create, 402)
+  meta.meta.change_plan(bson.ObjectId(jean.id), 'premium')
+  link = create()
+  assertEq(meta.get('link/%s' % link['hash'])['background'], 'bg.jpg')
