@@ -196,6 +196,7 @@ namespace infinit
       struct PausedNotification:
         public Notification
       {
+        PausedNotification();
         PausedNotification(elle::serialization::SerializerIn& input);
         std::string transaction_id;
         bool paused;

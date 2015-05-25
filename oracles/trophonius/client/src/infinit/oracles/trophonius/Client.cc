@@ -194,6 +194,12 @@ namespace infinit
         , json(std::move(json))
       {}
 
+      PausedNotification::PausedNotification()
+        : Notification(NotificationType::paused)
+        , transaction_id{}
+        , paused{false}
+      {}
+
       PausedNotification::PausedNotification(
         elle::serialization::SerializerIn& input)
         : Notification(NotificationType::paused)
