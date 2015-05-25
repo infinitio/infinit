@@ -139,6 +139,18 @@ int main(int argc, char** argv)
                                               download_dir);
         surface::gap::State state(config);
 
+#ifdef INFINIT_LINUX
+        sched.signal_handle(SIGUSR1, [&]
+          {
+            ELLE_LOG("Disconnecting");
+            state.disconnect();
+          });
+        sched.signal_handle(SIGUSR2, [&]
+          {
+            ELLE_LOG("Reconnecting");
+            state.connect();
+          });
+#endif
         state.attach_callback<surface::gap::State::ConnectionStatus>(
           [&] (surface::gap::State::ConnectionStatus const& notif)
           {
