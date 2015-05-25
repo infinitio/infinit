@@ -127,7 +127,7 @@ ELLE_TEST_SCHEDULED(pause_resume)
     recipient_user.email(),
     std::vector<std::string>{transfered.path().string()},
     "message");
-  reactor::Barrier paused;
+  reactor::Barrier paused, transfer_again;
   bool second_time = false;
   auto conn = state_transaction.status_changed().connect(
     [&] (gap_TransactionStatus status)
@@ -137,12 +137,15 @@ ELLE_TEST_SCHEDULED(pause_resume)
       if (status == gap_transaction_paused)
         paused.open();
       if (status == gap_transaction_transferring)
-        if (!second_time)
+        if (second_time)
+          transfer_again.open();
+        else
           second_time = true;
     });
 
   tests::Client recipient(server, recipient_user, recipient_home.path());
   recipient.login();
+  recipient.state->synchronize();
   BOOST_CHECK_EQUAL(recipient.state->transactions().size(), 1);
   auto& state_transaction_recipient =
     *recipient.state->transactions().begin()->second;
@@ -155,10 +158,12 @@ ELLE_TEST_SCHEDULED(pause_resume)
         recipient_finished.open();
     });
   sender.state->transaction_pause(state_transaction.id());
+  recipient.state->on_transaction_paused(state_transaction.data()->id, true);
   state_transaction_recipient.accept();
   reactor::wait(paused);
   sender.state->transaction_pause(state_transaction.id(), false);
-  reactor::wait(recipient_finished);
+  recipient.state->on_transaction_paused(state_transaction.data()->id, false);
+  reactor::wait(transfer_again);
 }
 
 ELLE_TEST_SUITE()

@@ -2,6 +2,9 @@
 
 #include <elle/UUID.hh>
 #include <elle/serialization/json.hh>
+#include <elle/log.hh>
+
+ELLE_LOG_COMPONENT("fist.tests");
 
 namespace tests
 {
