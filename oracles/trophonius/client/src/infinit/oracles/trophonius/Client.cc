@@ -73,28 +73,6 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::ConnectionEnabledNotificatio
   ar & named("response_details", value.response_details);
 }
 
-ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::NewSwaggerNotification);
-ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::NewSwaggerNotification,
-                      ar,
-                      value,
-                      version)
-{
-  (void)version;
-  ar & base_class<infinit::oracles::trophonius::Notification>(value);
-  ar & named("user_id", value.user_id);
-}
-
-ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::DeletedSwaggerNotification);
-ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::DeletedSwaggerNotification,
-                      ar,
-                      value,
-                      version)
-{
-  (void)version;
-  ar & base_class<infinit::oracles::trophonius::Notification>(value);
-  ar & named("user_id", value.user_id);
-}
-
 ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::DeletedFavoriteNotification);
 ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::DeletedFavoriteNotification,
                       ar,
@@ -104,18 +82,6 @@ ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::DeletedFavoriteNotification,
   (void)version;
   ar & base_class<infinit::oracles::trophonius::Notification>(value);
   ar & named("user_id", value.user_id);
-}
-
-ELLE_SERIALIZE_NO_FORMAT(infinit::oracles::trophonius::MessageNotification);
-ELLE_SERIALIZE_SIMPLE(infinit::oracles::trophonius::MessageNotification,
-                      ar,
-                      value,
-                      version)
-{
-  (void)version;
-  ar & base_class<infinit::oracles::trophonius::Notification>(value);
-  ar & named("sender_id", value.sender_id);
-  ar & named("message", value.message);
 }
 
 namespace infinit
@@ -202,6 +168,28 @@ namespace infinit
         input.serialize("paused", this->paused);
       }
 
+      MessageNotification::MessageNotification(
+        elle::serialization::SerializerIn& input)
+        : Notification(NotificationType::message)
+      {
+        input.serialize("message", this->message);
+      }
+
+      NewSwaggerNotification::NewSwaggerNotification(
+        elle::serialization::SerializerIn& input)
+        : Notification(NotificationType::new_swagger)
+      {
+        input.serialize("user_id", this->user_id);
+        input.serialize("contact", this->contact);
+      }
+
+      DeletedSwaggerNotification::DeletedSwaggerNotification(
+        elle::serialization::SerializerIn& input)
+        : Notification(NotificationType::deleted_swagger)
+      {
+        input.serialize("user_id", this->user_id);
+      }
+
       static
       std::unique_ptr<Notification>
       notification_from_dict(elle::json::Object const& json)
@@ -273,6 +261,21 @@ namespace infinit
             elle::serialization::json::SerializerIn input(json);
             return elle::make_unique<PausedNotification>(input);
           }
+          case NotificationType::message:
+          {
+            elle::serialization::json::SerializerIn input(json);
+            return elle::make_unique<MessageNotification>(input);
+          }
+          case NotificationType::new_swagger:
+          {
+            elle::serialization::json::SerializerIn input(json);
+            return elle::make_unique<NewSwaggerNotification>(input);
+          }
+          case NotificationType::deleted_swagger:
+          {
+            elle::serialization::json::SerializerIn input(json);
+            return elle::make_unique<DeletedSwaggerNotification>(input);
+          }
           default:
             ; // Nothing.
         }
@@ -292,14 +295,8 @@ namespace infinit
             elle::unreachable();
           case NotificationType::peer_connection_update:
             elle::unreachable();
-          case NotificationType::new_swagger:
-            return Ptr(new NewSwaggerNotification{extractor});
-          case NotificationType::deleted_swagger:
-            return Ptr(new DeletedSwaggerNotification{extractor});
-          case NotificationType::deleted_favorite:
+         case NotificationType::deleted_favorite:
             return Ptr(new DeletedFavoriteNotification{extractor});
-          case NotificationType::message:
-            return Ptr(new MessageNotification{extractor});
           case NotificationType::connection_enabled:
             return Ptr(new ConnectionEnabledNotification{extractor});
             // XXX: Handle at upper levels (?)

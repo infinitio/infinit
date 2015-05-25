@@ -814,6 +814,10 @@ gap_user_status(gap_State* state, uint32_t id)
     });
 }
 
+/*---------.
+| Swaggers |
+`---------*/
+
 gap_Status
 gap_swaggers(gap_State* state, std::vector<surface::gap::User>& res)
 {
@@ -828,6 +832,19 @@ gap_swaggers(gap_State* state, std::vector<surface::gap::User>& res)
         auto const& user = state.user(user_id);
         res.push_back(state.user_to_gap_user(user_id, user));
       }
+      return gap_ok;
+    });
+}
+
+gap_Status
+gap_contact_joined_callback(gap_State* state, ContactJoinedCallback callback)
+{
+  return run<gap_Status>(
+    state,
+    "attach contact joined callback",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.contact_joined().connect(std::move(callback));
       return gap_ok;
     });
 }
@@ -1544,6 +1561,22 @@ gap_onboarding_set_peer_availability(gap_State* state, uint32_t id, bool status)
       return gap_ok;
     });
 }
+
+/// Messages
+
+gap_Status
+gap_message_callback(gap_State* state, MessageCallback callback)
+{
+  return run<gap_Status>(
+    state,
+    "attach message callback",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.message_received().connect(std::move(callback));
+      return gap_ok;
+    });
+}
+
 
 // Metrics.
 gap_Status
