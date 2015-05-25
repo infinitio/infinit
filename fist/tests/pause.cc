@@ -103,10 +103,12 @@ ELLE_TEST_SCHEDULED(pause_snapshot)
 ELLE_TEST_SCHEDULED(pause_resume)
 {
   tests::Server server;
-  elle::filesystem::TemporaryDirectory sender_home("pause_send_home_p2p");
+  elle::filesystem::TemporaryDirectory sender_home(
+    "pause_sender_home_p2p");
   auto const& sender_user =
     server.register_user("sender@infinit.io", "password");
-  elle::filesystem::TemporaryDirectory recipient_home("pause_recv_home_p2p");
+  elle::filesystem::TemporaryDirectory recipient_home(
+    "pause_recipient_home_p2p");
   auto const& recipient_user =
     server.register_user("recipient@infinit.io", "password");
   std::string t_id;
@@ -114,18 +116,19 @@ ELLE_TEST_SCHEDULED(pause_resume)
   {
     boost::filesystem::ofstream f(transfered.path());
     BOOST_CHECK(f.good());
-    for (int i = 0; i < 1048 * 200; ++i)
+    for (int i = 0; i < 2048; ++i)
     {
       char c = i % 256;
       f.write(&c, 1);
     }
   }
 
+
   tests::Client sender(server, sender_user, sender_home.path());
   sender.login();
   auto& state_transaction = sender.state->transaction_peer_create(
     recipient_user.email(),
-    std::vector<std::string>{transfered.path().string()},
+    std::vector<std::string>{transfered.path().string().c_str()},
     "message");
   reactor::Barrier paused, transfer_again;
   bool second_time = false;
@@ -147,16 +150,13 @@ ELLE_TEST_SCHEDULED(pause_resume)
   recipient.login();
   recipient.state->synchronize();
   BOOST_CHECK_EQUAL(recipient.state->transactions().size(), 1);
-  auto& state_transaction_recipient =
-    *recipient.state->transactions().begin()->second;
-  reactor::Barrier recipient_finished;
+  auto& state_transaction_recipient = *recipient.state->transactions().begin()->second;
   state_transaction_recipient.status_changed().connect(
     [&] (gap_TransactionStatus status)
     {
       ELLE_WARN("new recipient status: %s", status);
-      if (status == gap_transaction_finished)
-        recipient_finished.open();
     });
+  reactor::Barrier recipient_finished;
   sender.state->transaction_pause(state_transaction.id());
   recipient.state->on_transaction_paused(state_transaction.data()->id, true);
   state_transaction_recipient.accept();

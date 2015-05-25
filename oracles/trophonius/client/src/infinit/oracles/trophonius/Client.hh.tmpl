@@ -103,25 +103,6 @@ namespace infinit
         {}
       };
 
-      struct NewSwaggerNotification:
-        public Notification
-      {
-        std::string user_id;
-
-        ELLE_SERIALIZE_CONSTRUCT(NewSwaggerNotification,
-                                 Notification)
-        {}
-      };
-
-      struct DeletedSwaggerNotification:
-        public Notification
-      {
-        std::string user_id;
-        ELLE_SERIALIZE_CONSTRUCT(DeletedSwaggerNotification,
-                                 Notification)
-        {}
-      };
-
       struct DeletedFavoriteNotification:
         public Notification
       {
@@ -175,17 +156,6 @@ namespace infinit
         std::vector<Endpoint> endpoints_public;
       };
 
-      struct MessageNotification:
-        public Notification
-      {
-        std::string sender_id;
-        std::string message;
-
-        ELLE_SERIALIZE_CONSTRUCT(MessageNotification,
-                                 Notification)
-        {}
-      };
-
       struct ModelUpdateNotification
         : public Notification
       {
@@ -202,11 +172,34 @@ namespace infinit
         bool paused;
       };
 
+      struct MessageNotification
+        : public Notification
+      {
+      public:
+        MessageNotification(elle::serialization::SerializerIn& input);
+        std::string message;
+      };
+
       struct ConnectionState
       {
         bool connected;
         elle::Exception last_error;
         bool still_trying;
+      };
+
+      struct NewSwaggerNotification
+        : public Notification
+      {
+        NewSwaggerNotification(elle::serialization::SerializerIn& input);
+        std::string user_id;
+        boost::optional<std::string> contact;
+      };
+
+      struct DeletedSwaggerNotification
+        : public Notification
+      {
+        DeletedSwaggerNotification(elle::serialization::SerializerIn& input);
+        std::string user_id;
       };
 
       class Client:

@@ -50,7 +50,7 @@ namespace tests
 ELLE_TEST_SCHEDULED(kickout)
 {
   tests::KickoutServer server;
-  bool beacon = false;
+  reactor::Barrier kicked;
   {
     tests::Client sender(server, "sender@infinit.io");
     sender.login();
@@ -68,16 +68,18 @@ ELLE_TEST_SCHEDULED(kickout)
       [&] (surface::gap::State::ConnectionStatus const& connection){
         BOOST_CHECK_EQUAL(connection.status, false);
         BOOST_CHECK_EQUAL(connection.still_trying, false);
-        beacon = true;
+        kicked.open();
       });
     sender.state->transaction_peer_create(
       "foo@bar.io",
       std::vector<std::string>{transfered.path().string().c_str()},
       "message");
-    reactor::sleep(500_ms);
-    sender.state->poll();
+    while (!kicked)
+    {
+      reactor::sleep(100_ms);
+      sender.state->poll();
+    }
   }
-  BOOST_CHECK_EQUAL(beacon, true);
 }
 
 ELLE_TEST_SUITE()

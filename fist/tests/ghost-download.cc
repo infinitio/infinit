@@ -230,7 +230,7 @@ ELLE_TEST_SCHEDULED(automatic_unzip)
   }
   {
     using namespace boost::filesystem;
-    int count = std::count_if(
+    unsigned count = std::count_if(
       directory_iterator(state.download_dir().path()),
       directory_iterator(),
       [] (path const& p)

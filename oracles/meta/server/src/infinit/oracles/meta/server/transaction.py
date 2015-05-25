@@ -523,7 +523,7 @@ class Mixin:
         if not any(d['id'] == recipient_device_id for d in recipient['devices']):
           self.not_found({
             'reason': 'no such device for user',
-            'user': recipient['id'],
+            'user': recipient['_id'],
             'device': recipient_device_id,
           })
       is_ghost = recipient['register_status'] == 'ghost'

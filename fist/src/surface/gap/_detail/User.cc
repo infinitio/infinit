@@ -524,7 +524,12 @@ namespace surface
       ELLE_TRACE_SCOPE("%s: new swagger notification %s", *this, notif);
       bool send_notification = true;
       bool swagger = true;
-      this->user_sync(notif.user_id, send_notification, swagger);
+      auto& user = this->user_sync(notif.user_id, send_notification, swagger);
+      if (notif.contact)
+      {
+        this->_contact_joined(this->_user_indexes.at(user.id),
+                              notif.contact.get());
+      }
     }
 
     void
