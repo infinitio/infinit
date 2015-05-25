@@ -26,7 +26,7 @@ def configure(cxx_toolkit = None,
               php = None,
               production_build = False,
               enable_debug = True,
-              qt = False,
+              qt = None,
               valgrind = None,
               valgrind_tests = False,
 ):
@@ -977,26 +977,25 @@ def configure(cxx_toolkit = None,
   ## ------ ##
   ## Qt GUI ##
   ## ------ ##
-  if qt:
-    fist_cxx_config = drake.cxx.Config(gap_cxx_config)
-    fist_libraries = [gap_lib]
-    fist_openssl_libs = openssl_libs_eay
-    if cxx_toolkit.os != drake.os.windows:
-      fist_libraries += [elle_lib, cryptography_lib, crash_lib, oracles.transaction_lib]
-      fist_openssl_libs += openssl_libs
-    application = drake.include(
-      'fist-gui-qt',
-      cxx_toolkit = cxx_toolkit,
-      cxx_config = fist_cxx_config,
-      fist_production_build = production_build,
-      boost = boost,
-      prefix = prefix,
-      openssl_include_dir = drake.path_build(
-        openssl_config.local_include_path[0], absolute = True),
-      openssl_libraries = fist_openssl_libs,
-      libraries = fist_libraries,
-      qt = qt)
-    build << application.build
+  fist_cxx_config = drake.cxx.Config(gap_cxx_config)
+  fist_libraries = [gap_lib]
+  fist_openssl_libs = openssl_libs_eay
+  if cxx_toolkit.os != drake.os.windows:
+    fist_libraries += [elle_lib, cryptography_lib, crash_lib, oracles.transaction_lib]
+    fist_openssl_libs += openssl_libs
+  application = drake.include(
+    'fist-gui-qt',
+    cxx_toolkit = cxx_toolkit,
+    cxx_config = fist_cxx_config,
+    fist_production_build = production_build,
+    boost = boost,
+    prefix = prefix,
+    openssl_include_dir = drake.path_build(
+      openssl_config.local_include_path[0], absolute = True),
+    openssl_libraries = fist_openssl_libs,
+    libraries = fist_libraries,
+    qt = qt)
+  build << application.build
 
   ## ------- ##
   ## Mac App ##
