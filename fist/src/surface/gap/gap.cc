@@ -1415,6 +1415,24 @@ gap_resume_transaction(gap_State* state, uint32_t id)
 }
 
 gap_Status
+gap_toggle_transaction_pause(gap_State* state,
+                             uint32_t id,
+                             bool& new_state)
+{
+  ELLE_ASSERT(state != nullptr);
+  ELLE_ASSERT(id != surface::gap::null_id);
+  return run<gap_Status>(
+    state,
+    "toggle pause transaction",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      new_state = !state.transactions().at(id)->paused();
+      state.transaction_pause(id, new_state);
+      return gap_ok;
+    });
+}
+
+gap_Status
 gap_cancel_transaction(gap_State* state, uint32_t id)
 {
   ELLE_ASSERT(state != nullptr);
@@ -1920,4 +1938,3 @@ gap_session_id(gap_State* state, std::string& res)
       return gap_ok;
     });
 }
-

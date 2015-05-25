@@ -384,6 +384,11 @@ gap_pause_transaction(gap_State* state, uint32_t id);
 gap_Status
 gap_resume_transaction(gap_State* state, uint32_t id);
 
+/// Toggle pause on the transaction.
+/// If the return value is 0, the operation failed.
+gap_Status
+gap_toggle_transaction_pause(gap_State* state, uint32_t id, bool&);
+
 /// Cancel transaction.
 /// If the return value is 0, the operation failed.
 gap_Status
