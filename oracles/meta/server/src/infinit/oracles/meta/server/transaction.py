@@ -407,7 +407,7 @@ class Mixin:
       transaction = {
         'sender_id': bson.ObjectId(sender['_id']),
         'sender_fullname': '',
-        'sender_device_id': '',
+        'sender_device_id': self.current_device['id'],
 
         'recipient_id': bson.ObjectId(recipient['_id']),
         'recipient_fullname': '',
