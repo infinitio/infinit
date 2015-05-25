@@ -489,6 +489,16 @@ namespace surface
     }
 
     void
+    State::on_transaction_paused(std::string const& transaction_id,
+                                 bool paused)
+    {
+      infinit::oracles::trophonius::PausedNotification notif;
+      notif.transaction_id = transaction_id;
+      notif.paused = paused;
+      this->_on_transaction_paused(notif);
+    }
+
+    void
     State::_on_transaction_paused(
       infinit::oracles::trophonius::PausedNotification const& notif)
     {

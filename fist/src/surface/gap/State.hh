@@ -780,6 +780,10 @@ namespace surface
         infinit::oracles::trophonius::PausedNotification const& notif);
 
     public:
+      void
+      on_transaction_paused(std::string const& transaction_id,
+                            bool paused);
+
       mutable reactor::MultiLockBarrier transaction_update_lock;
 
 
