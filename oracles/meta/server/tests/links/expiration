@@ -10,7 +10,12 @@ import infinit.oracles.meta.server.transaction_status as transaction_status
 with Meta() as meta:
   alice = User(meta, 'alice@infinit.io')
   alice.login()
-  link = alice.getalink(expiration_date = meta.meta.now + datetime.timedelta(days = 2))
+  def create_link():
+    return alice.getalink(
+      expiration_date = meta.meta.now + datetime.timedelta(days = 2))
+  throws(create_link, 402)
+  meta.meta.change_plan(bson.ObjectId(alice.id), 'premium')
+  link = create_link()
   meta.get('links/%s' % link['hash'])
   meta.meta.link_cleanup_expired()
   meta.get('links/%s' % link['hash'])
