@@ -391,7 +391,9 @@ namespace surface
       this->transaction().pausing().close();
       this->transaction().unpausing().close();
       this->_pause(false);
-      this->gap_status(gap_transaction_waiting_accept);
+      this->gap_status(this->concerns_this_device()
+                       ? gap_transaction_waiting_accept
+                       : gap_transaction_on_other_device);
       this->transaction().paused().close();
     }
 
