@@ -377,6 +377,8 @@ namespace surface
 
     void TransactionMachine::_pausing()
     {
+      ELLE_TRACE_SCOPE("%s: entering pausing state", *this);
+      this->transaction().pausing().close();
       this->transaction().unpausing().close();
       this->gap_status(gap_transaction_paused);
       this->_pause(true);
@@ -385,7 +387,9 @@ namespace surface
 
     void TransactionMachine::_unpausing()
     {
+      ELLE_TRACE_SCOPE("%s: entering unpausing state", *this);
       this->transaction().pausing().close();
+      this->transaction().unpausing().close();
       this->_pause(false);
       this->gap_status(gap_transaction_waiting_accept);
       this->transaction().paused().close();
