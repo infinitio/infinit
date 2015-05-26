@@ -7,6 +7,8 @@
 # include <string>
 # include <unordered_set>
 
+# include <boost/signals2.hpp>
+
 # include <common/common.hh>
 
 # include <elle/format/json/fwd.hh>
@@ -246,6 +248,14 @@ namespace surface
       /// Logout from meta.
       void
       logout();
+
+      /// disconnect from tropho.
+      void
+      disconnect();
+
+      /// Reconnect to trophonius, assuming we are still logged in.
+      void
+      connect();
 
       void
       register_(std::string const& fullname,
@@ -629,101 +639,39 @@ namespace surface
       user_to_gap_user(uint32_t id,
                         State::User const& user) const;
 
-      ///- Swaggers --------------------------------------------------------------
+    /*---------.
+    | Swaggers |
+    `---------*/
+    public:
       UserIndexes
       swaggers();
-
       bool
       is_swagger(uint32_t id) const;
-
       User
       swagger(std::string const& user_id);
-
       User
       swagger(uint32_t id);
-
       void
       _on_new_swagger(
         infinit::oracles::trophonius::NewSwaggerNotification const& notif);
-
       void
       _on_deleted_swagger(
         infinit::oracles::trophonius::DeletedSwaggerNotification const& notif);
-
       void
       _on_deleted_favorite(
         infinit::oracles::trophonius::DeletedFavoriteNotification const& notif);
-
       void
       _on_swagger_status_update(
         infinit::oracles::trophonius::UserStatusNotification const& notif);
-
       void
       _on_swagger_status_update(std::string const& user_id,
                                 bool user_status,
                                 elle::UUID const& device_id,
                                 bool device_status);
-
-      /*---------.
-      | Networks |
-      `---------*/
-    //   class NetworkNotFoundException:
-    //     public Exception
-    //   {
-    //   public:
-    //     NetworkNotFoundException(uint32_t id);
-    //     NetworkNotFoundException(std::string const& id);
-    //   };
-
-    //   typedef plasma::meta::Network Network;
-    //   typedef std::pair<uint32_t, Network> NetworkPair;
-    //   typedef std::unordered_map<uint32_t, Network> NetworkMap;
-    //   typedef std::unordered_map<uint32_t, std::string> NetworkIndexMap;
-    //   typedef std::unordered_set<uint32_t> NetworkIndexes;
-
-    // public:
-    //   ELLE_ATTRIBUTE_R(NetworkMap, users);
-
-    //   /// Synchronise network.
-    //   Network const&
-    //   network_sync(Network const& network);
-
-    //   /// Synchronise network.
-    //   Network const&
-    //   network_sync(std::string const& id);
-
-    //   /// Retrieve a network.
-    //   Network const&
-    //   network(std::string const& id);
-
-    //   /// Retrieve a network.
-    //   Network const&
-    //   network(uint32_t id);
-
-    //   /// Create a new network.
-    //   uint32_t
-    //   network_create(std::string const& name,
-    //                  bool auto_add = true);
-
-    //   /// Prepare directories and files for the network to be launched.
-    //   void
-    //   network_prepare(std::string const& network_id);
-
-    //   /// Delete a new network.
-    //   std::string
-    //   network_delete(std::string const& name,
-    //                  bool force = false);
-
-    //   /// Add a user to a network with its mail or id.
-    //   void
-    //   network_add_user(std::string const& network_id,
-    //            std::string const& inviter_id,
-    //            std::string const& user_id,
-    //            std::string const& identity);
-
-    //   void
-    //   on_network_update_notification(
-    //     infinit::oracles::trophonius::NetworkUpdateNotification const& notif);
+      ELLE_ATTRIBUTE_RX(
+        (boost::signals2::signal<void (uint32_t user_id,
+                                       std::string const& contact)>),
+        contact_joined);
 
       /*-------------.
       | Transactions |
@@ -832,6 +780,39 @@ namespace surface
 
     public:
       mutable reactor::MultiLockBarrier transaction_update_lock;
+
+
+    /*------------.
+    | Ghost codes |
+    `------------*/
+    public:
+      void
+      ghost_code_use(std::string const& code, bool was_link);
+      struct GhostCode
+      {
+        std::string code;
+        bool was_link;
+      };
+      ELLE_ATTRIBUTE_RX(
+        (boost::signals2::signal<void (std::string const& code,
+                                       bool success,
+                                       std::string const& reason)>),
+        ghost_code_used);
+
+    private:
+      void
+      _ghost_code_snapshot();
+      void
+      _ghost_code_use();
+      ELLE_ATTRIBUTE(std::vector<GhostCode>, ghost_codes);
+
+    /*------------.
+    | Fingerprint |
+    `------------*/
+    public:
+      void
+      fingerprint_add(std::string const& fingerprint);
+
     /*--------------.
     | Configuration |
     `--------------*/
@@ -874,6 +855,14 @@ namespace surface
     `------*/
     public:
       ELLE_ATTRIBUTE_R(Model, model);
+
+    /*--------.
+    | Message |
+    `--------*/
+    public:
+      ELLE_ATTRIBUTE_RX(
+        (boost::signals2::signal<void (std::string const& message)>),
+        message_received);
 
     /*----------.
     | Printable |

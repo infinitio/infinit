@@ -72,6 +72,12 @@ gap_login(gap_State* state,
           boost::optional<std::string> device_name = boost::none,
           boost::optional<std::string> device_language = boost::none);
 
+gap_Status
+gap_disconnect(gap_State* state);
+
+gap_Status
+gap_connect(gap_State* state);
+
 /// Fetch features.
 std::unordered_map<std::string, std::string>
 gap_fetch_features(gap_State* state);
@@ -106,6 +112,15 @@ gap_Status
 gap_use_ghost_code(gap_State* state,
                    std::string const& code,
                    bool was_link);
+
+typedef std::function<void (std::string const& code,
+                            bool success,
+                            std::string const& reason)> GhostCodeUsedCallback;
+gap_Status
+gap_ghost_code_used_callback(gap_State* state, GhostCodeUsedCallback callback);
+
+gap_Status
+gap_add_fingerprint(gap_State* state, std::string const& fingerprint);
 
 gap_Status
 gap_update_user_callback(
@@ -281,9 +296,20 @@ gap_users_by_emails(gap_State* state,
                     std::vector<std::string> const& emails,
                     std::unordered_map<std::string, surface::gap::User>& res);
 
+/*---------.
+| Swaggers |
+`---------*/
+
 /// Get the list of user's swaggers.
 gap_Status
 gap_swaggers(gap_State* state, std::vector<surface::gap::User>& res);
+
+typedef std::function<void (uint32_t user_id,
+                            std::string const& contact)> ContactJoinedCallback;
+gap_Status
+gap_contact_joined_callback(gap_State* state, ContactJoinedCallback callback);
+
+
 
 /// Get the list of user's favorites.
 gap_Status
@@ -358,6 +384,11 @@ gap_pause_transaction(gap_State* state, uint32_t id);
 gap_Status
 gap_resume_transaction(gap_State* state, uint32_t id);
 
+/// Toggle pause on the transaction.
+/// If the return value is 0, the operation failed.
+gap_Status
+gap_toggle_transaction_pause(gap_State* state, uint32_t id, bool&);
+
 /// Cancel transaction.
 /// If the return value is 0, the operation failed.
 gap_Status
@@ -413,6 +444,15 @@ gap_get_output_dir(gap_State* state);
 
 
 typedef std::unordered_map<std::string, std::string> Additionals;
+
+/// Messages
+
+typedef std::function<void (std::string const&)> MessageCallback;
+
+gap_Status
+gap_message_callback(gap_State* state, MessageCallback callback);
+
+
 /// Metrics.
 gap_Status
 gap_send_metric(gap_State* state,

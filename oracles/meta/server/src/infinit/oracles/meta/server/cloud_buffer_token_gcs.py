@@ -18,8 +18,8 @@ try:
   import Crypto.PublicKey.RSA as RSA
   import Crypto.Signature.PKCS1_v1_5 as PKCS1_v1_5
 
-except Exception:
-  elle.log.warn("oauth2 not present, disabling google cloud storage")
+except Exception as e:
+  elle.log.warn("oauth2 not present, disabling google cloud storage: %s" % e)
   module_enabled = False
 
 gcs_default_region = ''

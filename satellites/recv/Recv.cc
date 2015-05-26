@@ -50,7 +50,9 @@ parse_options(int argc, char** argv)
     ("production,r", value<bool>(), "send metrics to production")
     ("output,o", value<std::string>(),
      "output directory (default: ~/Downloads")
-    ("pause,x", value<bool>(), "pause transaction midway for testing purposes");
+    ("pause,x", value<bool>(), "pause transaction midway for testing purposes")
+    ("code,c", value<std::string>(), "Use ghost code")
+    ;
 
   variables_map vm;
   try
@@ -103,6 +105,9 @@ int main(int argc, char** argv)
       download_dir = options["output"].as<std::string>();
     bool pause = (options.count("pause") != 0);
 
+    std::string code;
+    if (options.count("code") != 0)
+      code = options["code"].as<std::string>();
     if (!boost::filesystem::exists(download_dir) ||
         !boost::filesystem::is_directory(download_dir))
     {
@@ -134,12 +139,30 @@ int main(int argc, char** argv)
                                               download_dir);
         surface::gap::State state(config);
 
+#ifdef INFINIT_LINUX
+        sched.signal_handle(SIGUSR1, [&]
+          {
+            ELLE_LOG("Disconnecting");
+            state.disconnect();
+          });
+        sched.signal_handle(SIGUSR2, [&]
+          {
+            ELLE_LOG("Reconnecting");
+            state.connect();
+          });
+#endif
         state.attach_callback<surface::gap::State::ConnectionStatus>(
           [&] (surface::gap::State::ConnectionStatus const& notif)
           {
             ELLE_TRACE("connection status notification: %s", notif);
             if (!notif.status && !notif.still_trying)
               stop = true;
+            if (notif.status && !code.empty())
+            {
+              ELLE_LOG("Using ghost code...");
+              state.meta().use_ghost_code(code);
+              ELLE_LOG("...done");
+            }
           }
         );
 

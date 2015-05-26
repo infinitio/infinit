@@ -109,7 +109,34 @@ bind_conversions()
                                      user_to_dict>();
 }
 
-static boost::python::object
+static
+gap_State*
+_gap_new(bool production, std::string const& download_dir)
+{
+  return gap_new(production, download_dir);
+}
+
+static
+gap_Status
+_gap_register(gap_State* state,
+              std::string const& fullname,
+              std::string const& email,
+              std::string const& password)
+{
+  return gap_register(state, fullname, email, password);
+}
+
+static
+gap_Status
+_gap_login(gap_State* state,
+          std::string const& email,
+          std::string const& password)
+{
+  return gap_login(state, email, password);
+}
+
+static
+boost::python::object
 _get_peer_transactions(gap_State* state)
 {
   assert(state != nullptr);
@@ -124,7 +151,8 @@ _get_peer_transactions(gap_State* state)
   return transactions_;
 }
 
-static boost::python::object
+static
+boost::python::object
 _get_link_transactions(gap_State* state)
 {
   assert(state != nullptr);
@@ -139,7 +167,8 @@ _get_link_transactions(gap_State* state)
   return transactions_;
 }
 
-static boost::python::object
+static
+boost::python::object
 _get_swaggers(gap_State* state)
 {
   assert(state != nullptr);
@@ -442,16 +471,16 @@ BOOST_PYTHON_MODULE(_gap)
   py::class_<gap_State, boost::noncopyable>("State", py::init<bool>());
 
   py::def("new",
-          &gap_new,
+          &_gap_new,
           py::return_value_policy<py::return_opaque_pointer>());
   py::def("free", &gap_free);
 
   //- Authentication and registration -----------------------------------------
 
-  py::def("login", &gap_login);
+  py::def("login", &_gap_login);
   py::def("is_logged", &gap_logged_in);
   py::def("logout", &gap_logout);
-  py::def("register", &gap_register);
+  py::def("register", &_gap_register);
 
   //- Notifications ------------------------------------------------------------
 

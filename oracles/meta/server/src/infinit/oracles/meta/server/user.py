@@ -845,7 +845,10 @@ class Mixin:
           for c in contact_of:
             self.notifier.notify_some(
               notifier.NEW_SWAGGER,
-              message = {'user_id': str(user['_id'])},
+              message = {
+                'user_id': str(user['_id']),
+                'contact': email,
+              },
               recipient_ids = {c},
               )
         else:

@@ -15,6 +15,8 @@
 #include <elle/serialize/HexadecimalArchive.hh>
 #include <elle/system/platform.hh>
 
+#include <das/serializer.hh>
+
 #include <reactor/Scope.hh>
 #include <reactor/duration.hh>
 #include <reactor/exception.hh>
@@ -37,6 +39,30 @@
 #include <version.hh>
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
+
+
+DAS_MODEL_FIELD(surface::gap::State::GhostCode, code);
+DAS_MODEL_FIELD(surface::gap::State::GhostCode, was_link);
+typedef das::Object<
+  surface::gap::State::GhostCode,
+  das::Field<surface::gap::State::GhostCode, std::string, &surface::gap::State::GhostCode::code>,
+  das::Field<surface::gap::State::GhostCode, bool, &surface::gap::State::GhostCode::was_link>
+  >
+DasGhostCode;
+DAS_MODEL(surface::gap::State::GhostCode, DasGhostCode);
+
+namespace elle
+{
+  namespace serialization
+  {
+    template <>
+    struct Serialize<surface::gap::State::GhostCode>
+    {
+      typedef das::Serializer<surface::gap::State::GhostCode> Wrapper;
+    };
+  }
+}
+
 
 namespace surface
 {
@@ -430,6 +456,28 @@ namespace surface
     /*----------------------.
     | Login/Logout/Register |
     `----------------------*/
+
+    void
+    State::connect()
+    {
+      if (this->_trophonius->connected().opened())
+        return;
+      ELLE_TRACE("%s: reconnecting to trophonius", *this);
+      this->_trophonius->connect(
+        this->me().id, this->device().id, this->_meta.session_id());
+      reactor::wait(_trophonius->connected());
+            ELLE_TRACE("%s: connected to trophonius", *this);
+      ELLE_TRACE("%s: reconnected to trophonius", *this);
+      this->_synchronize_response.reset(
+        new infinit::oracles::meta::SynchronizeResponse{
+        this->meta().synchronize(false)});
+      this->_devices(this->_synchronize_response->devices);
+      this->_user_resync(this->_synchronize_response->swaggers, false);
+      this->_peer_transaction_resync(
+        this->_synchronize_response->transactions, false);
+      this->_link_transaction_resync(
+        this->_synchronize_response->links, false);
+    }
 
     void
     State::login(
@@ -847,6 +895,14 @@ namespace surface
     }
 
     void
+    State::disconnect()
+    {
+      ELLE_TRACE_SCOPE("%s: disconnect", *this);
+      if (this->_trophonius)
+        this->_trophonius->disconnect();
+    }
+
+    void
     State::logout()
     {
       if (this->_login_thread)
@@ -868,6 +924,7 @@ namespace surface
         this->_logged_out.open();
         return;
       }
+
       try
       {
         reactor::Barrier timed_out;
@@ -900,6 +957,7 @@ namespace surface
         this->_meta.logged_in(false);
         this->_metrics_reporter->user_logout(false, elle::exception_string());
       }
+
       if (this->_trophonius)
         this->_trophonius->disconnect();
       this->_logged_out.open();
@@ -1203,6 +1261,7 @@ namespace surface
           this->_synchronized.signal();
         }
         while (!resynched);
+        this->_ghost_code_use();
       }
       else
       { // not connected
@@ -1336,9 +1395,19 @@ namespace surface
               notif.get()));
           break;
         }
+        case infinit::oracles::trophonius::NotificationType::message:
+        {
+          ELLE_ASSERT(
+            dynamic_cast<infinit::oracles::trophonius::MessageNotification const*>(
+              notif.get()) != nullptr);
+          auto& message =
+            *static_cast<infinit::oracles::trophonius::MessageNotification const*>(
+              notif.get());
+          this->_message_received(message.message);
+          break;
+        }
         case infinit::oracles::trophonius::NotificationType::none:
         case infinit::oracles::trophonius::NotificationType::network_update:
-        case infinit::oracles::trophonius::NotificationType::message:
         case infinit::oracles::trophonius::NotificationType::ping:
         case infinit::oracles::trophonius::NotificationType::connection_enabled:
         case infinit::oracles::trophonius::NotificationType::suicide:
@@ -1484,6 +1553,89 @@ namespace surface
                            std::string const& new_password)
     {
       meta().change_password(password, new_password);
+    }
+
+    /*-----------.
+    | Ghost code |
+    `-----------*/
+
+    void
+    State::ghost_code_use(std::string const& code, bool was_link)
+    {
+      ELLE_DEBUG_SCOPE("%s: register ghost codes: %s", *this, code);
+      this->_ghost_codes.push_back(GhostCode{code, was_link});
+      this->_ghost_code_snapshot();
+      if (this->_logged_in)
+        this->_ghost_code_use();
+    }
+
+    void
+    State::_ghost_code_snapshot()
+    {
+      ELLE_DEBUG_SCOPE("%s: snapshot ghost codes", *this);
+      boost::filesystem::path dir(
+        this->local_configuration().non_persistent_config_dir());
+      elle::AtomicFile snapshot(dir / "ghost-code.snapshot");
+      elle::With<elle::AtomicFile::Write>(snapshot.write())
+        << [&] (elle::AtomicFile::Write& write)
+      {
+        elle::serialization::json::SerializerOut output(write.stream());
+        output.serialize("codes", this->_ghost_codes);
+      };
+    }
+
+    void
+    State::_ghost_code_use()
+    {
+      ELLE_TRACE_SCOPE("%s: consume ghost codes", *this);
+      while (!this->_ghost_codes.empty())
+      {
+        auto code = this->_ghost_codes.back();
+        ELLE_DEBUG_SCOPE("%s: consume %s", *this, code.code);
+        try
+        {
+          this->meta().use_ghost_code(code.code);
+          this->_ghost_code_used(code.code, true, "");
+          this->metrics_reporter()->user_used_ghost_code(
+            true, code.code, code.was_link, "");
+        }
+        catch (infinit::state::GhostCodeAlreadyUsed const&)
+        {
+          ELLE_DEBUG("%s: code was already used", *this);
+          this->_ghost_code_used(code.code, false, "already used");
+          this->metrics_reporter()->user_used_ghost_code(
+            false, code.code, code.was_link, "already used");
+        }
+        catch (elle::Error const& e)
+        {
+          // FIXME: what about it ? just ignore it ?
+          ELLE_WARN("%s: unable to use code %s: %s", *this, code.code, e);
+          auto reason = elle::sprintf("%s", e);
+          this->_ghost_code_used(code.code, false, reason);
+          this->metrics_reporter()->user_used_ghost_code(
+            false, code.code, code.was_link, reason);
+        }
+        this->_ghost_codes.pop_back();
+        this->_ghost_code_snapshot();
+      }
+    }
+
+    /*------------.
+    | Fingerprint |
+    `------------*/
+
+    void
+    State::fingerprint_add(std::string const& fingerprint)
+    {
+      ELLE_TRACE_SCOPE("%s: handle fingerprint: %s", *this, fingerprint);
+      if (fingerprint.substr(0, 7) == "INVITE:")
+      {
+        auto code = fingerprint.substr(7, fingerprint.find_first_of(' ') - 7);
+        this->ghost_code_use(code, true);
+      }
+      else if (fingerprint != "0123456789ABCDEF")
+        throw elle::Error(
+          elle::sprintf("invalid fingerprint: %s", fingerprint));
     }
 
     /*----------.

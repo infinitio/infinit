@@ -5,7 +5,7 @@
 
 #include <fist/tests/_detail/Authority.hh>
 
-ELLE_LOG_COMPONENT("fist.tests")
+// ELLE_LOG_COMPONENT("fist.tests")
 
 namespace tests
 {

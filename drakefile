@@ -977,7 +977,7 @@ def configure(cxx_toolkit = None,
   ## ------ ##
   ## Qt GUI ##
   ## ------ ##
-  if qt:
+  if qt is not False:
     fist_cxx_config = drake.cxx.Config(gap_cxx_config)
     fist_libraries = [gap_lib]
     fist_openssl_libs = openssl_libs_eay
