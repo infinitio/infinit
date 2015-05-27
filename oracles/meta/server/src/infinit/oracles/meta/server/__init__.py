@@ -253,6 +253,8 @@ class Meta(bottle.Bottle,
     # - register and user search
     self.__database.users.ensure_index([("accounts.id", 1)],
                                        unique = True, sparse = True)
+    self.__database.users.ensure_index([("register_status", 1)],
+                                       unique = False, sparse = True)
     # - Auxiliary emails.
     # Sparse because users may have no pending_auxiliary_emails field.
     self.__database.users.ensure_index([("pending_auxiliary_emails.hash", 1)], unique = True, sparse = True)
@@ -321,6 +323,8 @@ class Meta(bottle.Bottle,
     # Sessions
     self.__database.sessions.ensure_index([('device', 1)],
                                           unique = False)
+    self.__database.sessions.ensure_index([('identifier', 1)],
+                                          unique = False, sparse = True)
 
   @property
   def mailer(self):
