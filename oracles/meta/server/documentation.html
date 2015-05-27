@@ -1,0 +1,261 @@
+<html>
+  <head>
+    <title>Meta documentation</title>
+    <style>
+      td, th
+      {
+        padding: 0.5em;
+        border: 1px solid black;
+      }
+
+      span.url, span.method, span.status
+      {
+        font-family: monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Meta documentation</h1>
+
+    <h2>API Reference</h2>
+
+    <h2>API Quick Reference</h2>
+
+    <table>
+      <tr>
+        <th>URL</th>
+        <th>Method</th>
+        <th>Purpose</th>
+        <th>Parameters</th>
+        <th>Status</th>
+        <th>Precondition</th>
+        <th>Postcondition</th>
+        <th>Response</th>
+      </tr>
+      <tr>
+        <td rowspan="12" class="url"><span class="url">/user/backgrounds/&lt;name&gt;<span></td>
+        <td rowspan="4"><span class="method">GET</span></td>
+        <td rowspan="4">Fetch background</td>
+        <td rowspan="4"></td>
+        <td><span class="status">307 Temporary redirect</span><br/></td>
+        <td>logged in, GCS enabled, premium</td>
+        <td></td>
+        <td>Empty</td>
+      </tr>
+      <tr>
+        <td><span class="status">403 Forbidden</span></td>
+        <td>not logged in</td>
+        <td></td>
+        <td>Error response<pre>{"reason": "..."}</pre></td>
+      </tr>
+      <tr>
+        <td><span class="status">501 Not implemented</span></td>
+        <td>GCS disabled</td>
+        <td></td>
+        <td>Error response<pre>{"reason": "..."}</pre></td>
+      </tr>
+      <tr>
+        <td><span class="status">402 payment required</span></td>
+        <td>not premium</td>
+        <td></td>
+        <td>Error response<pre>{"reason": "..."}</pre></td>
+      </tr>
+      <tr>
+        <td rowspan="4"><span class="method">PUT</span></td>
+        <td rowspan="4">Create or overwrite background</td>
+        <td rowspan="4"></td>
+        <td><span class="status">307 Temporary redirect</span><br/></td>
+        <td>logged in, GCS enabled, premium</td>
+        <td></td>
+        <td>Empty</td>
+      </tr>
+      <tr>
+        <td><span class="status">403 Forbidden</span></td>
+        <td>not logged in</td>
+        <td></td>
+        <td>Error response<pre>{"reason": "..."}</pre></td>
+      </tr>
+      <tr>
+        <td><span class="status">501 Not implemented</span></td>
+        <td>GCS disabled</td>
+        <td></td>
+        <td>Error response<pre>{"reason": "..."}</pre></td>
+      </tr>
+      <tr>
+        <td><span class="status">402 payment required</span></td>
+        <td>not premium</td>
+        <td></td>
+        <td>Error response<pre>{"reason": "..."}</pre></td>
+      </tr>
+      <tr>
+        <td rowspan="4"><span class="method">DELETE</span></td>
+        <td rowspan="4">Delete background</td>
+        <td rowspan="4"></td>
+        <td><span class="status">200 OK</span><br/></td>
+        <td>logged in, GCS enabled, premium</td>
+        <td>Background does not exist</td>
+        <td>Empty</td>
+      </tr>
+      <tr>
+        <td><span class="status">403 Forbidden</span></td>
+        <td>not logged in</td>
+        <td></td>
+        <td>Error response<pre>{"reason": "..."}</pre></td>
+      </tr>
+      <tr>
+        <td><span class="status">501 Not implemented</span></td>
+        <td>GCS disabled</td>
+        <td></td>
+        <td>Error response<pre>{"reason": "..."}</pre></td>
+      </tr>
+      <tr>
+        <td><span class="status">402 payment required</span></td>
+        <td>not premium</td>
+        <td></td>
+        <td>Error response<pre>{"reason": "..."}</pre></td>
+      </tr>
+      <tr>
+        <td rowspan="3"><span class="url">/user/backgrounds</span></td>
+        <td rowspan="3"><span class="method">GET</span></td>
+        <td rowspan="3">List backgrounds</td>
+        <td rowspan="3"></td>
+        <td><span class="status">200 OK</span></td>
+        <td>logged in, GCS enabled</td>
+        <td></td>
+        <td>List of backgrounds
+          <pre class="json">{
+  "backgrounds": ["dark.jpg", "light.png"]
+}</pre></td>
+      </tr>
+      <tr>
+        <td><span class="status">403 Forbidden</span></td>
+        <td>not logged in</td>
+        <td></td>
+        <td>Error response<pre>{"reason": "..."}</pre></td>
+      </tr>
+      <tr>
+        <td><span class="status">501 Not implemented</span></td>
+        <td>GCS disabled</td>
+        <td></td>
+        <td>Error response<pre>{"reason": "..."}</pre></td>
+      </tr>
+
+      <!-- Account -->
+
+      <tr>
+        <td rowspan="2" class="url"><span class="url">/user/account<span></td>
+        <td rowspan="2"><span class="method">GET</span></td>
+        <td rowspan="2">Fetch account information</td>
+        <td rowspan="2"></td>
+        <td><span class="status">200 OK</span><br/></td>
+        <td>logged in</td>
+        <td></td>
+        <td><pre class="json">{
+  "custom-domains": [{"name": "links.gruntech.org"}, ...]
+}</pre></td>
+      </tr>
+      <tr>
+        <td><span class="status">403 Forbidden</span></td>
+        <td>not logged in</td>
+        <td></td>
+        <td>Error response<pre>{"reason": "..."}</pre></td>
+      </tr>
+
+
+      <!-- Custom domains -->
+
+      <tr>
+        <td rowspan="8" class="url"><span class="url">/user/account/custom-domain/&lt;name&gt;<span></td>
+        <td rowspan="4"><span class="method">PUT</span></td>
+        <td rowspan="4">Create custom domain</td>
+        <td rowspan="4"></td>
+        <td><span class="status">201 Created</span><br/></td>
+        <td>logged in, domain does not exist, premium</td>
+        <td>domain exists</td>
+        <td><pre class="json">{"name": "&lt;name&gt;"}</pre></td>
+      </tr>
+      <tr>
+        <td><span class="status">200 OK</span></td>
+        <td>logged in, domain exists, premium</td>
+        <td>domain exists</td>
+        <td><pre class="json">{"name": "&lt;name&gt;"}</pre></td>
+      </tr>
+      <tr>
+        <td><span class="status">403 Forbidden</span></td>
+        <td>not logged in</td>
+        <td></td>
+        <td>Error response<pre>{"reason": "..."}</pre></td>
+      </tr>
+      <tr>
+        <td><span class="status">402 payment required</span></td>
+        <td>not premium</td>
+        <td></td>
+        <td>Error response<pre>{"reason": "..."}</pre></td>
+      </tr>
+      <tr>
+        <td rowspan="4"><span class="method">DELETE</span></td>
+        <td rowspan="4">Delete custom domain</td>
+        <td rowspan="4"></td>
+        <td><span class="status">200 OK</span><br/></td>
+        <td>logged in, domain exists, premium</td>
+        <td>domain does not exist</td>
+        <td><pre class="json">{"name": "&lt;name&gt;"}</pre></td>
+      </tr>
+      <tr>
+        <td><span class="status">404 Not found</span></td>
+        <td>logged in, domain does not exist, premium</td>
+        <td></td>
+        <td>Error response<pre>{"reason": "...", "custom-domain": "&lt;name&gt;"}</pre></td>
+      </tr>
+      <tr>
+        <td><span class="status">403 Forbidden</span></td>
+        <td>not logged in</td>
+        <td></td>
+        <td>Error response<pre>{"reason": "..."}</pre></td>
+      </tr>
+      <tr>
+        <td><span class="status">402 payment required</span></td>
+        <td>not premium</td>
+        <td></td>
+        <td>Error response<pre>{"reason": "..."}</pre></td>
+      </tr>
+
+      <!-- Links -->
+
+      <tr>
+        <td rowspan="4" class="url"><span class="url">/links/&lt;id&gt;<span></td>
+        <td rowspan="4"><span class="method">POST</span></td>
+        <td rowspan="4">Update link</td>
+        <td rowspan="4">
+          <ul>
+            <li>password (string): access password, null to unset</li>
+            <li>expiration_date (date): automatic expiration date, null to unset</li>
+            <li>background (string): background, null to unset</li>
+          </ul>
+        </td>
+        <td><span class="status">200 OK</span><br/></td>
+        <td>logged in, link owned, premium</td>
+        <td>link updated</td>
+        <td><pre class="json">{}</pre></td>
+      </tr>
+      <tr>
+        <td><span class="status">403 Forbidden</span></td>
+        <td>not logged in or link not owned</td>
+        <td></td>
+        <td>Error response<pre>{"reason": "..."}</pre></td>
+      </tr>
+      <tr>
+        <td><span class="status">404 Not found</span></td>
+        <td>logged in, link does not exist</td>
+        <td></td>
+        <td>Error response<pre>{"reason": "...", "link": "&lt;id&gt;"}</pre></td>
+      </tr>
+      <tr>
+        <td><span class="status">402 payment required</span></td>
+        <td>logged in, link owned, not premium</td>
+        <td></td>
+        <td>Error response<pre>{"reason": "..."}</pre></td>
+      </tr>
+    </table>
+  </body>
+</html>
