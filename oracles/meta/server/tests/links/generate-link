@@ -3,7 +3,7 @@
 import datetime
 from time import sleep
 
-from utils import Meta, User, HTTPException
+from utils import *
 from bson.objectid import ObjectId
 import infinit.oracles.meta.server.transaction_status as transaction_status
 
@@ -18,8 +18,14 @@ with Meta() as meta:
     ['file3', 44],
   ]
   message = 'salut!'
-  res = jean.post('link',
-    {'files': file_list, 'name': 'some files.zip', 'message': message})
+  res = jean.post(
+    'link',
+    {
+      'files': file_list,
+      'name': 'some files.zip',
+      'message': message,
+    }
+  )
   assert res['aws_credentials']
   assert res['transaction']
   link = res['transaction']
@@ -120,10 +126,4 @@ with Meta() as meta:
   assert db_link['status'] == transaction_status.DELETED
   deleted_hash = db_link['hash']
 
-  try:
-    meta.get('link/%s' % deleted_hash)
-    raise Exception('got 200 response when expecting 404')
-  except HTTPException as e:
-    assert e.status == 404
-  else:
-    raise Exception('shouldn\'t have got here')
+  throws(lambda: meta.get('link/%s' % deleted_hash), 410)

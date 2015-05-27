@@ -3067,3 +3067,97 @@ class Mixin:
       except Exception as e:
         elle.log.log('Exception while inserting contacts: %s' % e)
     return self.success()
+
+  def __check_gcs(self):
+    if self.gcs is None:
+      self.not_implemented({
+        'reason': 'GCS support not enabled',
+      })
+
+  @api('/user/backgrounds/<name>', method = 'PUT')
+  @require_logged_in
+  def user_background_put_api(self, name):
+    self.__check_gcs()
+    self.require_premium(self.user)
+    t = bottle.request.headers['Content-Type']
+    l = bottle.request.headers['Content-Length']
+    if t not in ['image/gif', 'image/jpeg', 'image/png']:
+      self.unsupported_media_type({
+        'reason': 'invalid image format: %s' % t,
+        'mime-type': t,
+      })
+    url = self.gcs.upload_url(
+      'backgrounds', '%s/%s' % (self.user['_id'], name),
+      content_type = t,
+      content_length = l,
+      expiration = datetime.timedelta(minutes = 3),
+    )
+    bottle.response.status = 307
+    bottle.response.headers['Location'] = url
+
+  @api('/user/backgrounds/<name>', method = 'GET')
+  @require_logged_in
+  def user_background_put_api(self, name):
+    self.__check_gcs()
+    self.require_premium(self.user)
+    url = self.gcs.download_url(
+      'backgrounds', '%s/%s' % (self.user['_id'], name),
+      expiration = datetime.timedelta(minutes = 3),
+    )
+    bottle.response.status = 307
+    bottle.response.headers['Location'] = url
+
+  @api('/user/backgrounds/<name>', method = 'DELETE')
+  @require_logged_in
+  def user_background_put_api(self, name):
+    self.__check_gcs()
+    self.require_premium(self.user)
+    self.gcs.delete(
+      'backgrounds', '%s/%s' % (self.user['_id'], name))
+    self.no_content()
+
+  @api('/user/backgrounds', method = 'GET')
+  @require_logged_in
+  def user_background_put_api(self):
+    self.__check_gcs()
+    return {
+      'backgrounds': self.gcs.bucket_list('backgrounds',
+                                          prefix = self.user['_id']),
+    }
+
+  def __user_account_domains_edit(self, name, action):
+    domain = {'name': name}
+    user = self.database.users.find_and_modify(
+      {'_id': self.user['_id']},
+      {action: {'account.custom-domains': domain}},
+      new = False,
+    )
+    account = user.get('account')
+    domains = \
+      account.get('custom-domains') if account is not None else ()
+    return next(filter(lambda d: d['name'] == name, domains), None), domain
+
+
+  @api('/user/account/custom-domains/<name>', method = 'PUT')
+  @require_logged_in
+  def user_account_domains_post_api(self, name):
+    old, new = self.__user_account_domains_edit(name, '$addToSet')
+    if old is None:
+      bottle.response.status = 201
+    return new
+
+  @api('/user/account/custom-domains/<name>', method = 'DELETE')
+  @require_logged_in
+  def user_account_patch_api(self, name):
+    old, new = self.__user_account_domains_edit(name, '$pull')
+    if old is None:
+      self.not_found({
+        'reason': 'custom domain %s not found' % name,
+        'custom-domain': name,
+      })
+    return new
+
+  @api('/user/account', method = 'GET')
+  @require_logged_in_fields(['account'])
+  def user_account_get_api(self):
+    return self.user.get('account', {})

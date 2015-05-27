@@ -112,6 +112,7 @@ class Meta(bottle.Bottle,
       emailer = None,
       stripe_api_key = None,
       metrics = infinit.oracles.metrics.Metrics(),
+      gcs = None,
   ):
     self.__production = production
     import os
@@ -121,7 +122,6 @@ class Meta(bottle.Bottle,
     self.__force_admin = force_admin
     if self.__force_admin:
       elle.log.warn('%s: running in force admin mode' % self)
-    super().__init__()
     if mongo_replica_set is not None:
       with elle.log.log(
           '%s: connect to MongoDB replica set %s' % (self, mongo_replica_set)):
@@ -143,6 +143,8 @@ class Meta(bottle.Bottle,
         self.__mongo = pymongo.MongoClient(**db_args)
     self.__database = self.__mongo.meta
     self.__set_constraints()
+    bottle.Bottle.__init__(self)
+    link_generation.Mixin.__init__(self)
     self.catchall = debug
     bottle.debug(debug)
     # Plugins.
@@ -210,6 +212,11 @@ class Meta(bottle.Bottle,
     self.__emailer = emailer or infinit.oracles.emailer.NoopEmailer()
     self.__stripe_api_key = stripe_api_key
     self.__metrics = metrics
+    self.__gcs = gcs
+
+  @property
+  def gcs(self):
+    return self.__gcs
 
   @property
   def emailer(self):
@@ -348,17 +355,32 @@ class Meta(bottle.Bottle,
     assert self.__sessions is not None
     return self.__sessions
 
+  def no_content(self):
+    bottle.response.status = 204
+
   def abort(self, message):
     response(500, message)
+
+  def unauthorized(self, message = None):
+    response(401, message)
+
+  def payment_required(self, message = None):
+    response(402, message)
 
   def forbidden(self, message = None):
     response(403, message)
 
+  def not_found(self, message = None):
+    response(404, message)
+
   def gone(self, message = None):
     response(410, message)
 
-  def not_found(self, message = None):
-    response(404, message)
+  def unsupported_media_type(self, message = None):
+    response(415, message)
+
+  def not_implemented(self, message = None):
+    response(501, message)
 
   def bad_request(self, message = None):
     response(400, message)
@@ -500,6 +522,12 @@ Session: %(session)s
   def check_key(self, k):
     if k is None or k != key(bottle.request.path):
       self.forbidden()
+
+  def require_premium(self, user = None):
+    if user is None:
+      user = self.user
+    if user.get('plan') != 'premium':
+      self.payment_required({'reason': 'premium plan required'})
 
   def url_absolute(self, url = ''):
     if not url.startswith('/'):

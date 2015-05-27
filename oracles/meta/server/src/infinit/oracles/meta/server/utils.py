@@ -1,9 +1,10 @@
 import bottle
+import bson
 import decorator
 import inspect
-import pymongo
+import iso8601
 import phonenumbers
-import bson
+import pymongo
 
 from itertools import chain
 
@@ -146,7 +147,6 @@ def enforce_as_email_address(identifier, exit_on_failure = True):
 
 def identifier(user_identifier, country_code = None):
   try:
-    print("user identifier", user_identifier)
     if user_identifier is None:
       return None
     if isinstance(user_identifier, bson.ObjectId):
@@ -168,3 +168,6 @@ def identifier(user_identifier, country_code = None):
   except Exception as e:
     print(e)
     raise e
+
+def date_time(str):
+  return iso8601.parse_date(str)

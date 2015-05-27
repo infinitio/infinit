@@ -60,7 +60,8 @@ class Plugin(object):
             bottle.response.set_cookie(Plugin.key,
                                        sid,
                                        secret = Plugin.secret,
-                                       max_age = 3600 * 24 * 365)
+                                       max_age = 3600 * 24 * 365,
+                                       path = '/')
         elif len(session):
           session['_id'] = sid
           sid = collection.save(session)

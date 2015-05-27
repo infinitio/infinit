@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import datetime
+
 from utils import HTTPException, Meta, User
 from bson import ObjectId
 from functools import reduce
@@ -36,6 +38,7 @@ with Meta() as meta:
   assert len(res['running_transactions']) == 20
   assert len(res['final_transactions']) == 0
 
+  meta.meta.forward(datetime.timedelta(seconds = 1))
   for tr in trs:
     bob.post("transaction/update", {"transaction_id": tr, "status": transaction_status.CANCELED})
 
@@ -66,6 +69,7 @@ with Meta() as meta:
   res = bob.get('user/synchronize?init=0')
   assert len(res['links']) == 0
 
+  meta.meta.forward(datetime.timedelta(seconds = 1))
   res = bob.post('link/%s' % str(link['_id']),
                   {'progress': 1.0,
                    'status': transaction_status.FINISHED})
@@ -104,7 +108,8 @@ with Meta() as meta:
     ['file3', 44],
   ]
   message = 'salut!'
-  res = bob.post('link',
+  meta.meta.forward(datetime.timedelta(seconds = 1))
+  re2s = bob.post('link',
     {'files': file_list, 'name': 'some files.zip', 'message': message})
 
   res = alice.get('user/synchronize?init=0')
@@ -114,6 +119,7 @@ with Meta() as meta:
   assert len(res['links']) == 1
 
   message = 'salut!'
+  meta.meta.forward(datetime.timedelta(seconds = 1))
   res = alice.post('link',
     {'files': file_list, 'name': 'some files.zip', 'message': message})
 

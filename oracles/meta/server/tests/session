@@ -8,8 +8,8 @@ with Meta() as meta:
   # Get a valid session ID.
   user = User(meta, email)
   user.login()
-  assert 'session-id' in user.cookie
-  id = user.cookie['session-id'].value
+  assert 'session-id' in user.cookies
+  id = user.cookies['session-id']
   # Reuse it through query string
   client = Client(meta)
   throws(lambda: client.get('user/self'), HTTPException)

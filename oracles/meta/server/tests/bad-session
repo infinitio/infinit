@@ -7,16 +7,16 @@ sid = None
 with Meta() as meta:
   client = User(meta, 'dave.null@infinit.io')
   client.login()
-  assert 'session-id' in client.cookie
-  sid = client.cookie['session-id'].value
+  assert 'session-id' in client.cookies
+  sid = client.cookies['session-id']
 
 # Reuse check
 with Meta() as meta:
   client = User(meta, 'dave.null@infinit.io')
   client.login()
-  client.cookie['session-id'] = sid
+  client.cookies.clear()
   try:
-    client.get('user/self')
+    print(client.get('user/self', cookies = {'session-id': sid}))
   except HTTPException as e:
     assert e.status == 403
   else:
