@@ -535,6 +535,10 @@ class Mixin:
                                device_name = device_name,
                                device_language = device_language)
       res.update({'account_registered': registered})
+      if registered:
+        ghost_codes = user.get('consumed_ghost_codes', [])
+        if len(ghost_codes):
+          res.update({'ghost_code': ghost_codes[0]})
       return res
 
   @api('/web-login', method = 'POST')

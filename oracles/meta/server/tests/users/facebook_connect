@@ -219,7 +219,8 @@ with Meta(enable_emails = True) as meta:
     })
     bob = User(meta, facebook = True, check_registration = True,
                check_ghost_code = True)
-    bob.facebook_connect("bite")
+    res = bob.facebook_connect("bite")
+    assert res.get('ghost_code', None)
     assert len(bob.transactions) == 1
 
 # Facebook connect on a ghost with prefered email.
