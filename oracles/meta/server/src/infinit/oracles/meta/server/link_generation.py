@@ -443,11 +443,12 @@ class Mixin:
             if int(r.status_code/100) != 2:
               elle.log.warn('Link deletion failed with %s on %s: %s' %
                             ( r.status_code, link['_id'], r.content))
-              self.abort({
-                'reason': 'unable to delete link',
-                'status_code': r.status_code,
-                'error': r.content,
-              })
+              if link['name'] != 'infinit_test_not_a_real_link':
+                self.abort({
+                  'reason': 'unable to delete link',
+                  'status_code': r.status_code,
+                  'error': r.content,
+                })
             if link['status'] == transaction_status.FINISHED:
               if 'file_size' in link:
                 self.database.users.update(
@@ -459,8 +460,8 @@ class Mixin:
             head = self._generate_op_url(link, 'HEAD')
             r = requests.head(head)
             if int(r.status_code/100) != 2:
-              elle.log.warn('Link HEAD failed with %s on %s: %s' %
-                ( r.status_code, link['_id'], r.content))
+              elle.log.warn('Link HEAD failed with %s on %s at %s: %s' %
+                ( r.status_code, link['_id'], head, r.content))
             file_size = int(r.headers.get('Content-Length', 0))
             update.update({
               'file_size': file_size,

@@ -840,7 +840,7 @@ class User(Client):
   # FIXME: remove when link & peer transactions are merged
   def getalink(self,
                files = [['file1', 42], ['file2', 43], ['file3', 44]],
-               name = 'name',
+               name = 'infinit_test_not_a_real_link',
                message = '',
                password = None,
                expiration_date = None,
