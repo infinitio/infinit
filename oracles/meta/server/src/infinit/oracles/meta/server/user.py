@@ -3075,6 +3075,7 @@ class Mixin:
   @require_logged_in
   def user_background_put_api(self, name):
     self.__check_gcs()
+    self.require_premium(self.user)
     t = bottle.request.headers['Content-Type']
     l = bottle.request.headers['Content-Length']
     if t not in ['image/gif', 'image/jpeg', 'image/png']:
@@ -3088,24 +3089,26 @@ class Mixin:
       content_length = l,
       expiration = datetime.timedelta(minutes = 3),
     )
-    bottle.response.status = 301
+    bottle.response.status = 307
     bottle.response.headers['Location'] = url
 
   @api('/user/backgrounds/<name>', method = 'GET')
   @require_logged_in
   def user_background_put_api(self, name):
     self.__check_gcs()
+    self.require_premium(self.user)
     url = self.gcs.download_url(
       'backgrounds', '%s/%s' % (self.user['_id'], name),
       expiration = datetime.timedelta(minutes = 3),
     )
-    bottle.response.status = 301
+    bottle.response.status = 307
     bottle.response.headers['Location'] = url
 
   @api('/user/backgrounds/<name>', method = 'DELETE')
   @require_logged_in
   def user_background_put_api(self, name):
     self.__check_gcs()
+    self.require_premium(self.user)
     self.gcs.delete(
       'backgrounds', '%s/%s' % (self.user['_id'], name))
     self.no_content()

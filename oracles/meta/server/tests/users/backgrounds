@@ -36,12 +36,16 @@ with Meta(gcs = gcs) as meta:
   body = b'coincoin'
   content_type = 'image/png'
   content_length = len(body)
-  response = user.put('user/backgrounds/bg.jpg',
-                      raw = True,
-                      content_type = content_type,
-                      content_length = content_length,
-                      body = body)
-  assertEq(response.status_code, 301)
+  def put():
+    return user.put('user/backgrounds/bg.jpg',
+                    raw = True,
+                    content_type = content_type,
+                    content_length = content_length,
+                    body = body)
+  #throws(put, 402);
+  meta.meta.change_plan(bson.ObjectId(user.id), 'premium')
+  response = put()
+  assertEq(response.status_code, 307)
   url = response.headers['location']
   response = requests.put(url,
                           headers = {
@@ -54,7 +58,7 @@ with Meta(gcs = gcs) as meta:
   assertEq(user.get('user/backgrounds')['backgrounds'], ['bg.jpg'])
   # Get background
   response = user.get('user/backgrounds/bg.jpg', raw = True)
-  assertEq(response.status_code, 301)
+  assertEq(response.status_code, 307)
   print(response.headers['location'])
   response = requests.get(response.headers['location'])
   print(response.content, response.headers)
@@ -67,6 +71,6 @@ with Meta(gcs = gcs) as meta:
   assertEq(user.get('user/backgrounds')['backgrounds'], [])
   # Get background
   response = user.get('user/backgrounds/bg.jpg', raw = True)
-  assertEq(response.status_code, 301)
+  assertEq(response.status_code, 307)
   response = requests.get(response.headers['location'])
   assertEq(response.status_code, 404)
