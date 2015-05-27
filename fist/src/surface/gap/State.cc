@@ -1628,11 +1628,14 @@ namespace surface
     State::fingerprint_add(std::string const& fingerprint)
     {
       ELLE_TRACE_SCOPE("%s: handle fingerprint: %s", *this, fingerprint);
-      if (fingerprint.substr(0, 7) != "INVITE:")
+      if (fingerprint.substr(0, 7) == "INVITE:")
+      {
+        auto code = fingerprint.substr(7, fingerprint.find_first_of(' ') - 7);
+        this->ghost_code_use(code, true);
+      }
+      else if (fingerprint != "0123456789ABCDEF")
         throw elle::Error(
           elle::sprintf("invalid fingerprint: %s", fingerprint));
-      auto code = fingerprint.substr(7, fingerprint.find_last_not_of(' ') - 7);
-      this->ghost_code_use(code, true);
     }
 
     /*----------.

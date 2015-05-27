@@ -191,6 +191,7 @@ namespace infinit
         : public Notification
       {
         NewSwaggerNotification(elle::serialization::SerializerIn& input);
+        ~NewSwaggerNotification() noexcept(true) {}
         std::string user_id;
         boost::optional<std::string> contact;
       };
