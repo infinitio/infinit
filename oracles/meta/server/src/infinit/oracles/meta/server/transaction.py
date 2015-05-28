@@ -379,13 +379,15 @@ class Mixin:
       if self.metrics is not None:
         #FIXME: enable when clients will push their OS in user-agent
         #user_agent = bottle.request.headers['User-Agent']
+        user_agent = None
         device = self.current_device
-        user_agent = 'MetaClientProxy/%s.%s.%s (%s)' % (
-          device['version']['major'],
-          device['version']['minor'],
-          device['version']['subminor'],
-          device['os']
-        )
+        if device and 'version' in device and 'os' in device:
+          user_agent = 'MetaClientProxy/%s.%s.%s (%s)' % (
+            device['version']['major'],
+            device['version']['minor'],
+            device['version']['subminor'],
+            device['os']
+          )
         self.metrics.send(
           [{
             'event': 'new_ghost',
