@@ -35,9 +35,11 @@ class Plugin(object):
       bottle.request.session_id = sid
       bottle.request.session = {}
       if 'session-id' in bottle.request.query:
+        sid_data = bottle.request.query['session-id']
+        if len(sid_data) != 0 and sid_data[0] == '"':
+          sid_data = sid_data[1:-1]
         if sid is None:
-          sid = bottle.cookie_decode(
-            bottle.request.query['session-id'], Plugin.secret)
+          sid = bottle.cookie_decode(sid_data, Plugin.secret)
           if sid is not None:
             sid = sid[1]
             bottle.response.set_cookie(Plugin.key,
