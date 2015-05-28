@@ -17,15 +17,18 @@ class Metrics:
                url = 'http://metrics.9.0.api.production.infinit.io/collections/'):
     self.__url = url
 
-  def send(self, metrics, collection):
+  def send(self, metrics, collection, user_agent = None):
     url = self.__url + collection
+    headers = {'content-type': 'application/json'}
+    if user_agent != None:
+      headers['user-agent'] = user_agent
     for metrics in slice(metrics, 100):
       with elle.log.trace(
           '%s: send %s metrics to %s' % (self, len(metrics), url)):
         elle.log.dump('%s: metrics: %s' % (self, metrics))
         res = requests.post(
           url,
-          headers = {'content-type': 'application/json'},
+          headers = headers,
           data = json.dumps({'events': metrics},
                             default = jsonify_value),
         )
