@@ -70,14 +70,14 @@ with Meta(force_admin = True) as meta:
   # Create a link
   link1 = alice.post('link',
                    {
-                     'files': ['lol'],
+                     'files': [['lol', 10]],
                      'name': 'lol.zip',
                      'message': '',
                    })
   # Create a clicked link
   link2 = alice.post('link',
                    {
-                     'files': ['lol'],
+                     'files': [['lol', 10]],
                      'name': 'lol.zip',
                      'message': '',
                    })
