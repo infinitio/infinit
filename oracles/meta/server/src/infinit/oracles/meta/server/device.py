@@ -49,6 +49,8 @@ class Mixin:
   def current_device(self):
     if hasattr(bottle.request, 'device'):
       return bottle.request.device
+    if not hasattr(bottle.request, 'session'):
+      return None
     device = bottle.request.session.get('device')
     if device is None:
       return None
