@@ -447,7 +447,7 @@ class Mixin:
                 self.abort({
                   'reason': 'unable to delete link',
                   'status_code': r.status_code,
-                  'error': r.content,
+                  'error': str(r.content),
                 })
             if link['status'] == transaction_status.FINISHED:
               if 'file_size' in link:
