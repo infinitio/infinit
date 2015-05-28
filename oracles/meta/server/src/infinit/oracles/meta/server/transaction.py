@@ -377,6 +377,15 @@ class Mixin:
         {"_id": recipient_id},
         fields = recipient_fields)
       if self.metrics is not None:
+        #FIXME: enable when clients will push their OS in user-agent
+        #user_agent = bottle.request.headers['User-Agent']
+        device = self.current_device
+        user_agent = 'MetaClientProxy/%s.%s.%s (%s)' % (
+          device['version']['major'],
+          device['version']['minor'],
+          device['version']['subminor'],
+          device['os']
+        )
         self.metrics.send(
           [{
             'event': 'new_ghost',
@@ -387,7 +396,8 @@ class Mixin:
             'timestamp': time.time(),
             'is_email': is_an_email,
           }],
-          collection = 'users')
+          collection = 'users',
+          user_agent = user_agent)
       return recipient, True
     else:
       return recipient, False
