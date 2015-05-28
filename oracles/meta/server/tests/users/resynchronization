@@ -58,7 +58,7 @@ with Meta() as meta:
   ]
   message = 'salut!'
   res = bob.post('link',
-    {'files': file_list, 'name': 'some files.zip', 'message': message})
+    {'files': file_list, 'name': 'infinit_test_not_a_real_link', 'message': message})
   assert res['aws_credentials']
   assert res['transaction']
   link = res['transaction']
