@@ -244,7 +244,7 @@ class Mixin:
         'ctime': creation_time,
         'expiry_time': None, # Field set when a link has expired.
         'file_list':
-          [{'name': file[0], 'size': file[1]} for file in files],
+          [{'name': file[0], 'size': int(file[1])} for file in files],
         'get_url_updated': None,
         'last_accessed': None,
         'link': None,
