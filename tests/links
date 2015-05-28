@@ -25,7 +25,7 @@ class TestLinks(unittest.TestCase):
   def test_finish_notif(self):
     with infinit.oracles.servers.Oracles(
       mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
-      with utils.TemporaryData('foo', 1000) as tmp:
+      with utils.TemporaryData('infinit_test_not_a_real_link', 1000) as tmp:
         s = o.state()
         s.login('mefyl@infinit.io', 'mefyl')
         id = s.create_link([tmp.full_path], "foo")
@@ -62,7 +62,7 @@ class TestLinks(unittest.TestCase):
   def test_remove_file(self):
     with infinit.oracles.servers.Oracles(
       mongo_dump = '%s/two-users' % os.environ['DUMPS']) as o:
-      with utils.TemporaryData('foo', 10000000) as tmp:
+      with utils.TemporaryData('infinit_test_not_a_real_link', 10000000) as tmp:
         s = o.state()
         s.configuration_set_max_mirror_size(1)
         s.login('mefyl@infinit.io', 'mefyl')
