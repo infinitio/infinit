@@ -22,7 +22,7 @@ with Meta() as meta:
     'link',
     {
       'files': file_list,
-      'name': 'some files.zip',
+      'name': 'infinit_test_not_a_real_link',
       'message': message,
     }
   )
@@ -56,7 +56,7 @@ with Meta() as meta:
 
   # Create another link.
   res = jean.post('link', {'files': [['some_file.zip', 12321]],
-                           'name': 'some_file.zip',
+                           'name': 'infinit_test_not_a_real_link',
                            'message': message})
   assert res['aws_credentials']
   assert res['transaction']
@@ -111,7 +111,7 @@ with Meta() as meta:
   ]
   message = 'about to be deleted!'
   res = jean.post('link',
-    {'files': file_list, 'name': 'file1', 'message': message})
+    {'files': file_list, 'name': 'infinit_test_not_a_real_link', 'message': message})
   assert res['aws_credentials']
   assert res['transaction']
   link = res['transaction']
