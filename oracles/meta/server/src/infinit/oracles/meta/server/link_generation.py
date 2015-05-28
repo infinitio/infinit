@@ -351,8 +351,8 @@ class Mixin:
   @require_logged_in
   def link_update_api(self,
                       id: bson.ObjectId,
-                      progress: float,
                       status: int,
+                      progress: float = None,
                       pause: bool = None
   ):
     return self.success(
