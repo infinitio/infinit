@@ -17,6 +17,11 @@ with Meta() as meta:
            email)
   # Check it is stored as cookie
   assertEq(client.get('user/self')['email'], email)
+  # Check it is a different session
+  assertNeq(id, client.cookies['session-id'])
+  user.post('logout')
+  throws(lambda: user.get('user/self'), HTTPException)
+  assertEq(client.get('user/self')['email'], email)
   # Check an invalid session id is just ignored
   client.get('?session-id=')
   Client(meta).get('?session-id=lolnope')
