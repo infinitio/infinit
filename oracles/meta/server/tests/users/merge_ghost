@@ -209,7 +209,7 @@ with Meta(enable_emails = True) as meta:
   emails = meta.emailer.emails
   codes = {}
   for email in emails:
-    assertEq(email.template, 'ghost-invitation')
+    assertEq(email.template, 'Transfer (Initial)')
     codes[email.variables['sender']['fullname']] = \
       email.variables['ghost_code']
   assertEq(len(codes), 2)

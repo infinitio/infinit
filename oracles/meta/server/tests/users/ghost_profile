@@ -101,7 +101,7 @@ with Meta(enable_emails = True,
     assertEq(len(emails), 3)
     ghost_profile = None
     for email in emails:
-      assertEq(email.template, 'ghost-invitation')
+      assertEq(email.template, 'Transfer (Initial)')
       assertEq(email.variables['ghost_code'],
                db_recipient['ghost_code'])
       if ghost_profile is None:
@@ -175,7 +175,7 @@ with Meta(enable_emails = True) as meta:
   assert 'ghost_code' not in res['recipient']
   emails = meta.emailer.emails
   assertEq(len(emails), 1)
-  assertEq(emails[0].template, 'ghost-invitation')
+  assertEq(emails[0].template, 'Transfer (Initial)')
   ghost_code = emails[0].variables['ghost_code']
   eve = User(meta, "eve@infinit.io")
   eve.login()
@@ -218,7 +218,7 @@ with Meta(enable_emails = True) as meta:
   assertEq(len(emails), 1)
   # Email are consummed when the getter is called.
   assertEq(len(meta.emailer.emails), 0)
-  assertEq(emails[0].template, 'ghost-invitation')
+  assertEq(emails[0].template, 'Transfer (Initial)')
   assert 'ghost_code' in emails[0].variables
   assert 'ghost_profile' in emails[0].variables
   transaction, res = bob.sendfile(recipient = alice_email, initialize = True)
@@ -226,6 +226,6 @@ with Meta(enable_emails = True) as meta:
   assert 'ghost_code' not in res['recipient']
   emails = meta.emailer.emails
   assertEq(len(emails), 1)
-  assertEq(emails[0].template, 'ghost-invitation')
+  assertEq(emails[0].template, 'Transfer (Initial)')
   assert 'ghost_code' not in emails[0].variables
   assert 'ghost_profile' in emails[0].variables

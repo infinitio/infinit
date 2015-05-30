@@ -848,10 +848,9 @@ class Mixin:
           })
 
         self.emailer.send_one(
-          'ghost-invitation',
+          'Transfer (Initial)',
           recipient_email = peer_email,
-          sender_email = user['email'],
-          sender_name = user['fullname'],
+          sender_name = '%s via Infinit' % user['fullname'],
           variables = variables,
         )
       return {
