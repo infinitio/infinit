@@ -67,6 +67,7 @@ class SendWithUsEmailer(Emailer):
         except Exception as e:
           err('%s: non-JSON response (%s): %s' % (self, e, r.text))
       raise Exception('%s: request failed' % self)
+    return r
 
   def __template(self, name):
     if name not in self.__templates:
@@ -141,9 +142,9 @@ class SendWithUsEmailer(Emailer):
           recipient['vars'],
           swu)
       if swu.command_length() >= 100:
-        self.__execute(swu)
+        return self.__execute(swu)
     if swu.command_length() > 0:
-      self.__execute(swu)
+      return self.__execute(swu)
 
 
 class MandrillEmailer(Emailer):
