@@ -62,7 +62,7 @@ with mongobox.MongoBox() as mongo:
     check_no_mail(emailer.emails)
 
     # Check nothing is sent while the transaction is not uploaded.
-    forward(reminder.delay_first_reminder * 2)
+    forward(reminder.delay * 2)
     sisy.boulders_run()
     check_no_mail(emailer.emails)
 
@@ -72,12 +72,12 @@ with mongobox.MongoBox() as mongo:
                              device, None, sender)
 
     # Check nothing is sent less than a day after upload
-    forward(reminder.delay_first_reminder / 2)
+    forward(reminder.delay / 2)
     sisy.boulders_run()
     check_no_mail(emailer.emails)
 
     # Check reminder 1 is sent 24h after upload
-    forward(reminder.delay_first_reminder)
+    forward(reminder.delay)
     sisy.boulders_run()
     check_mail_transaction(emailer.emails,
                            'sender@infinit.io', ghost_email)
@@ -89,7 +89,7 @@ with mongobox.MongoBox() as mongo:
     meta._cloud_buffer(tid, sender)
     meta._transaction_update(tid, statuses['ghost_uploaded'],
                              device, None, sender)
-    forward(reminder.delay_first_reminder * 2)
+    forward(reminder.delay * 2)
     meta._transaction_update(tid, statuses['finished'],
                              device, None, ghost)
     sisy.boulders_run()
@@ -108,7 +108,7 @@ with mongobox.MongoBox() as mongo:
                                device, None, sender)
       meta._transaction_update(tid_2, statuses['ghost_uploaded'],
                                device, None, sender)
-      forward(reminder.delay_first_reminder * 2)
+      forward(reminder.delay * 2)
       sisy.boulders_run()
       mails = emailer.emails
       assert len(mails) == 2
@@ -139,7 +139,7 @@ with mongobox.MongoBox() as mongo:
                                device, None, sender)
       meta._transaction_update(tid_2, statuses['ghost_uploaded'],
                                device, None, sender)
-      forward(reminder.delay_first_reminder * 1.5)
+      forward(reminder.delay * 1.5)
       sisy.boulders_run()
       mails = emailer.emails
       assert len(mails) == 2

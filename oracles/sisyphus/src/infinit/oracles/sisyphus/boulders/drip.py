@@ -397,7 +397,7 @@ class GhostReminder(Drip):
     return datetime.datetime.utcnow()
 
   @property
-  def delay_first_reminder(self):
+  def delay(self):
     return datetime.timedelta(days = 4)
 
   def run(self):
@@ -411,12 +411,13 @@ class GhostReminder(Drip):
         'is_ghost': True,
         # Ghost uploaded
         'status': statuses['ghost_uploaded'],
-        # Ghost uploaded more than 24h ago
+        # Uploaded more than 4d ago
         'modification_time':
         {
-          '$lt': self.now - self.delay_first_reminder,
+          '$lt': self.now - self.delay,
         },
       },
+      template = 'Transfer (Reminder)',
     )
     response.update(transited)
     return response
@@ -450,7 +451,9 @@ class GhostReminder(Drip):
     }
 
   def sender(self, v):
-    return ({'fullname': '%s via Infinit' % v['sender']['fullname']})
+    return {
+      'fullname': '%s via Infinit' % v['sender']['fullname'],
+    }
 
 
 #
