@@ -128,17 +128,17 @@ class SendWithUsEmailer(Emailer):
                                           cls = self.__json_encoder))
         sender_name = None
         sender_email = None
-        if 'sender' in recipient and recipient['sender'] is not None:
-          sender_name = recipient['sender'].get('fullname', None)
-          sender_email = recipient['sender'].get('email', None)
+        if recipient.get('sender') is not None:
+          sender_name = recipient['sender'].get('fullname')
+          sender_email = recipient['sender'].get('email')
         self.__send_one(
-          template,
-          email,
-          recipient['name'],
-          sender_name,
-          sender_email,
-          recipient['vars'],
-          swu)
+          template = template,
+          recipient_email = email,
+          recipient_name = recipient['name'],
+          sender_name = sender_name,
+          sender_email = sender_email,
+          variables = recipient['vars'],
+          swu = swu)
       if swu.command_length() >= 100:
         return self.__execute(swu)
     if swu.command_length() > 0:
