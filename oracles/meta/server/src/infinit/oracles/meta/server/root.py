@@ -182,78 +182,7 @@ class Mixin:
       )
     return user
 
-  @api('/reset-accounts/<hash>', method = 'GET')
-  def reseted_account(self, hash):
-    """Reset account using the hash generated from the /lost-password page.
-
-    hash -- the reset password token.
-    """
-    with elle.log.trace('reseted account %s' % hash):
-      try:
-        user = self.__user_from_hash(hash)
-        elle.log.debug('found user %s' % user['email'])
-      except error.Error as e:
-        self.fail(*e.args)
-      return self.success(
-        {
-          'email': user['email'],
-        }
-      )
-
-  @api('/reset-accounts/<hash>', method = 'POST')
-  def reset_account(self, hash, password, password_hash = None):
-    try:
-      user = self.__user_from_hash(hash)
-    except error.Error as e:
-      self.fail(*e.args)
-    # Remove sessions.
-    self.remove_session(user)
-    # Cancel all the current transactions.
-    self.cancel_transactions(user)
-    # Remove all the devices from the user because they are based on his old
-    # public key.
-    self.remove_devices(user)
-    self.kickout('account was reset', user = user)
-    import papier
-    identity, public_key = papier.generate_identity(
-      str(user["_id"]),
-      user['email'],
-      password,
-      conf.INFINIT_AUTHORITY_PATH,
-      conf.INFINIT_AUTHORITY_PASSWORD
-    )
-    to_set = {
-      'register_status': 'ok',
-      'password': hash_password(password),
-      'identity': identity,
-      'public_key': public_key,
-      'networks': [],
-      'devices': [],
-      'notifications': [],
-      'old_notifications': [],
-      'email_confirmed': True, # User got a reset account mail, email confirmed.
-    }
-    to_unset = {
-      'reset_password_hash': True,
-      'reset_password_hash_validity': True,
-    }
-    if password_hash:
-      to_set.update({
-        'password_hash': utils.password_hash(password_hash)
-      })
-    else:
-      to_unset.update({
-        'password_hash': True,
-      })
-    self.database.users.find_and_modify(
-      {'_id': user['_id']},
-      {
-        '$set': to_set,
-        '$unset': to_unset,
-      }
-    )
-    return self.success({'user_id': str(user['_id'])})
-
+  # Deprecated
   @api('/lost-password', method = 'POST')
   def declare_lost_password(self,
                             email: utils.enforce_as_email_address):
@@ -261,36 +190,7 @@ class Mixin:
 
     email -- The mail of the infortunate user
     """
-
-    user = self.database.users.find_one({"email": email})
-    if not user or user['register_status'] == 'ghost':
-      return self.fail(error.UNKNOWN_USER)
-    import time, hashlib
-    hash = str(time.time()) + email
-    hash = hash.encode('utf-8')
-    self.database.users.update(
-      {'email': email},
-      {'$set':
-        {
-          'reset_password_hash': hashlib.md5(hash).hexdigest(),
-          'reset_password_hash_validity': time.time() + RESET_PASSWORD_VALIDITY,
-        }
-      })
-
-    user = self.database.users.find_one(
-      {'email': email},
-      fields = ['reset_password_hash', 'fullname'],
-    )
-    self.emailer.send_one(
-      'Reset Password',
-      recipient_email = email,
-      recipient_name = user['fullname'],
-      variables = {
-        'reset_password_hash': user['reset_password_hash'],
-      },
-    )
-
-    return self.success()
+    return self.lost_password(email)
 
   # XXX: Accept 15M body as JSON
   bottle.Request.MEMFILE_MAX = 15 * 1024 * 1024

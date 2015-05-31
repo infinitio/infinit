@@ -1761,6 +1761,7 @@ class Mixin:
         '$elemMatch': {'id': email, 'type': 'email'}
       }
     }
+
   def user_by_email(self,
                     email,
                     fields = None,
@@ -3019,3 +3020,105 @@ class Mixin:
       except Exception as e:
         elle.log.log('Exception while inserting contacts: %s' % e)
     return self.success()
+
+  @api('/users/<email>/reset-password', method = 'POST')
+  def reset_account_api(
+      self,
+      email,
+      password,
+      password_hash = None,
+      reset_token = None,
+  ):
+    user = self.user_by_email(email)
+    if user is None:
+      self.not_found({
+        'reason': 'user not found',
+        'user': email,
+      })
+    self.check_signature(
+      {'action': 'reset-password', 'email': email},
+      reset_token)
+    # Remove sessions.
+    self.remove_session(user)
+    # Cancel all the current transactions.
+    self.cancel_transactions(user)
+    # Remove all the devices from the user because they are based on
+    # his old public key.
+    self.remove_devices(user)
+    self.kickout('account was reset', user = user)
+    import papier
+    identity, public_key = papier.generate_identity(
+      str(user['_id']),
+      email,
+      password,
+      conf.INFINIT_AUTHORITY_PATH,
+      conf.INFINIT_AUTHORITY_PASSWORD
+    )
+    to_set = {
+      'register_status': 'ok',
+      'password': hash_password(password),
+      'identity': identity,
+      'public_key': public_key,
+      'networks': [],
+      'devices': [],
+      'notifications': [],
+      'old_notifications': [],
+      'email_confirmed': True, # User got a reset account mail, email confirmed.
+    }
+    to_unset = {
+      'reset_password_hash': True,
+      'reset_password_hash_validity': True,
+    }
+    if password_hash:
+      to_set.update({
+        'password_hash': utils.password_hash(password_hash)
+      })
+    else:
+      to_unset.update({
+        'password_hash': True,
+      })
+    self.database.users.find_and_modify(
+      {'_id': user['_id']},
+      {
+        '$set': to_set,
+        '$unset': to_unset,
+      }
+    )
+
+  reset_token_expiration = datetime.timedelta(days = 7)
+  @api('/users/<email>/lost-password', method = 'POST')
+  def lost_password_api(self,
+                        email: utils.enforce_as_email_address):
+    """Generate a reset password url.
+
+    email -- The mail of the infortunate user
+    """
+    return self.lost_password(email)
+
+  def lost_password(self, email):
+    user = self.database.users.find_one({'email': email})
+    if not user or user['register_status'] == 'ghost':
+      self.not_found({
+        'reason': 'user not found',
+        'user': email,
+      })
+    self.emailer.send_one(
+      'Reset Password',
+      recipient_email = email,
+      recipient_name = user['fullname'],
+      variables = {
+        'user': self.email_user_vars(user),
+        'reset_token': self.sign(
+          {
+            'action': 'reset-password',
+            'email': email,
+          },
+          expiration = Mixin.reset_token_expiration),
+        'login_token': self.sign(
+          {
+            'action': 'login',
+            'email': email,
+          },
+          expiration = datetime.timedelta(days = 7)),
+      },
+    )

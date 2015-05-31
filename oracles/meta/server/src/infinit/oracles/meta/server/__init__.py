@@ -4,6 +4,7 @@
 # system one will be loaded through hashlib, by bottle for instance.
 import papier
 
+import base64
 import bson
 import bottle
 import bson
@@ -12,11 +13,17 @@ import decorator
 import elle.log
 import inspect
 import mako.lookup
+import pickle
 import pymongo
 import pymongo.collection
 import pymongo.database
 import pymongo.errors
 import re
+
+import Crypto.Cipher.AES as AES
+import Crypto.Hash.SHA256 as SHA256
+import Crypto.PublicKey.RSA as RSA
+import Crypto.Signature.PKCS1_v1_5 as PKCS1_v1_5
 
 import infinit.oracles.emailer
 import infinit.oracles.metrics
@@ -363,8 +370,8 @@ class Meta(bottle.Bottle,
   def bad_request(self, message = None):
     response(400, message)
 
-  def bad_request(self, message = None):
-    response(400, message)
+  def unauthorized(self, message = None):
+    response(401, message)
 
   def conflict(self, message = None):
     response(409, message)
@@ -527,3 +534,28 @@ Session: %(session)s
           subject = ('Meta: Unable to shorten using %s' % self.shortener),
           body = 'Exception: %s' % e)
     return url
+
+  def __sign_cipher(self):
+    return AES.new('8d245bc7b3d6c2f2c13a4a2c675c4e81',
+                   AES.MODE_CFB,
+                   IV = b'e80919d4715320e1')
+
+  def sign(self, d, expiration):
+    pickled = pickle.dumps((self.now + expiration, d))
+    crypted = self.__sign_cipher().encrypt(pickled)
+    b64 = base64.urlsafe_b64encode(crypted).decode('latin-1')
+    return b64
+
+  def check_signature(self, d, b64):
+    if b64 is None:
+      self.unauthorized()
+    try:
+      crypted = base64.urlsafe_b64decode(b64.encode('latin-1'))
+      pickled = self.__sign_cipher().decrypt(crypted)
+      expiration, sig = pickle.loads(pickled)
+    except:
+      self.unauthorized()
+    if self.now > expiration or sig != d:
+      self.unauthorized()
+
+CHIEN_DE_LA_CASSE = []
