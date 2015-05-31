@@ -100,6 +100,7 @@ class SendWithUsEmailer(Emailer):
                  variables,
                  swu,
                ):
+    sender = None
     if any(x is not None for x in (sender_email, sender_name)):
       sender = {}
       if sender_email is not None:
