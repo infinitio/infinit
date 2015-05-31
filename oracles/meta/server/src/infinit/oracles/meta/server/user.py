@@ -3084,6 +3084,7 @@ class Mixin:
         '$unset': to_unset,
       }
     )
+    return self._web_login(user)
 
   reset_token_expiration = datetime.timedelta(days = 7)
   @api('/users/<email>/lost-password', method = 'POST')
