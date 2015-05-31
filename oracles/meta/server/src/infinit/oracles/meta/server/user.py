@@ -261,31 +261,43 @@ class Mixin:
              long_lived_access_token,
              short_lived_access_token,
              preferred_email,
+             login_token,
            ):
     # Xor facebook_token or email / password.
-    with_email = bool(email is not None and password is not None)
-    with_facebook = bool(long_lived_access_token is not None or
-                         short_lived_access_token is not None)
-    if with_email == with_facebook:
+    with_email = bool(email)
+    with_facebook = any(
+      t is not None for t in [long_lived_access_token,
+                              short_lived_access_token])
+    if not any([with_email, with_facebook]):
       return self.bad_request({
-        'reason': 'you must provide facebook_token or (email, password)'
+        'reason': 'you must provide a connection mean'
       })
-    with elle.log.trace("%s: log %s" % (self, email or 'facebook user')):
+    with elle.log.trace('%s: log %s' % (self, email or 'facebook user')):
       res = {
         'account_registered': False,
         }
       if with_email:
+        fields = fields + ['email_confirmed',
+                           'unconfirmed_email_deadline']
         try:
-          user = self.user_by_email_password(
-            email, password = password, password_hash = password_hash,
-            fields = fields + ['email_confirmed',
-                               'unconfirmed_email_deadline'],
-            ensure_existence = True)
-          if not user['email_confirmed']:
-            from time import time
-            if time() > user['unconfirmed_email_deadline']:
-              self.resend_confirmation_email(email)
-              self._forbidden_with_error(error.EMAIL_NOT_CONFIRMED)
+          if login_token is not None:
+            self.check_signature({'action': 'login', 'email': email},
+                                 login_token)
+            user = self.user_by_email(email,
+                                      fields = fields,
+                                      ensure_existence = True)
+          else:
+            user = self.user_by_email_password(
+              email,
+              password = password,
+              password_hash = password_hash,
+              fields = fields,
+              ensure_existence = True)
+            if not user['email_confirmed']:
+              from time import time
+              if time() > user['unconfirmed_email_deadline']:
+                self.resend_confirmation_email(email)
+                self._forbidden_with_error(error.EMAIL_NOT_CONFIRMED)
         except error.Error as e:
           args = e.args
           self._forbidden_with_error(args[0])
@@ -534,6 +546,7 @@ class Mixin:
       long_lived_access_token = long_lived_access_token,
       short_lived_access_token = short_lived_access_token,
       preferred_email = preferred_email,
+      login_token = None,
     )
     res.update(
       self._in_app_login(user = user,
@@ -555,7 +568,8 @@ class Mixin:
                     password_hash: str = None,
                     preferred_email: utils.enforce_as_email_address = None,
                     short_lived_access_token = None,
-                    long_lived_access_token = None):
+                    long_lived_access_token = None,
+                    login_token = None):
     user, res = self._login(
       email = email,
       fields = self.__user_self_fields,
@@ -564,6 +578,7 @@ class Mixin:
       long_lived_access_token = long_lived_access_token,
       short_lived_access_token = short_lived_access_token,
       preferred_email = preferred_email,
+      login_token = login_token,
     )
     res.update(self._web_login(user))
     return res
@@ -3113,11 +3128,14 @@ class Mixin:
             'email': email,
           },
           expiration = Mixin.reset_token_expiration),
-        'login_token': self.sign(
-          {
-            'action': 'login',
-            'email': email,
-          },
-          expiration = datetime.timedelta(days = 7)),
+        'login_token': self.login_token(email),
       },
     )
+
+  def login_token(self,
+                  email,
+                  expiration = datetime.timedelta(days = 7)):
+    return self.sign({
+      'action': 'login',
+      'email': email,
+    }, expiration)
