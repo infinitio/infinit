@@ -257,22 +257,48 @@ class Mixin:
              email: utils.enforce_as_email_address,
              fields,
              password,
-             password_hash = None):
-    try:
-      user = self.user_by_email_password(
-        email, password = password, password_hash = password_hash,
-        fields = fields + ['email_confirmed',
-                           'unconfirmed_email_deadline'],
-        ensure_existence = True)
-      if not user['email_confirmed']:
-        from time import time
-        if time() > user['unconfirmed_email_deadline']:
-          self.resend_confirmation_email(email)
-          self._forbidden_with_error(error.EMAIL_NOT_CONFIRMED)
-      return user
-    except error.Error as e:
-      args = e.args
-      self._forbidden_with_error(args[0])
+             password_hash,
+             long_lived_access_token,
+             short_lived_access_token,
+             preferred_email,
+           ):
+    # Xor facebook_token or email / password.
+    with_email = bool(email is not None and password is not None)
+    with_facebook = bool(long_lived_access_token is not None or
+                         short_lived_access_token is not None)
+    if with_email == with_facebook:
+      return self.bad_request({
+        'reason': 'you must provide facebook_token or (email, password)'
+      })
+    with elle.log.trace("%s: log %s" % (self, email or 'facebook user')):
+      res = {
+        'account_registered': False,
+        }
+      if with_email:
+        try:
+          user = self.user_by_email_password(
+            email, password = password, password_hash = password_hash,
+            fields = fields + ['email_confirmed',
+                               'unconfirmed_email_deadline'],
+            ensure_existence = True)
+          if not user['email_confirmed']:
+            from time import time
+            if time() > user['unconfirmed_email_deadline']:
+              self.resend_confirmation_email(email)
+              self._forbidden_with_error(error.EMAIL_NOT_CONFIRMED)
+        except error.Error as e:
+          args = e.args
+          self._forbidden_with_error(args[0])
+      elif with_facebook:
+        user, res['account_registered'] = self.__facebook_connect(
+          short_lived_access_token = short_lived_access_token,
+          long_lived_access_token = long_lived_access_token,
+          preferred_email = preferred_email,
+          fields = fields)
+        ghost_codes = user.get('consumed_ghost_codes', [])
+        if len(ghost_codes):
+          res['ghost_code'] = ghost_codes[0]
+    return user, res
 
   def _login_response(self,
                       user,
@@ -474,100 +500,72 @@ class Mixin:
       self._forbidden_with_error(e.args[0])
 
   @api('/login', method = 'POST')
-  def login(self,
-            device_id: uuid.UUID,
-            email: utils.enforce_as_email_address = None,
-            password: str = None,
-            short_lived_access_token: str = None,
-            long_lived_access_token: str = None,
-            preferred_email: str = None,
-            password_hash: str = None,
-            OS: str = None,
-            device_push_token = None,
-            country_code = None,
-            pick_trophonius: bool = True,
-            device_model : str = None,
-            device_name : str = None,
-            device_language: str = None):
+  def login_api(self,
+                device_id: uuid.UUID,
+                email: utils.enforce_as_email_address = None,
+                password: str = None,
+                short_lived_access_token: str = None,
+                long_lived_access_token: str = None,
+                preferred_email: str = None,
+                password_hash: str = None,
+                OS: str = None,
+                device_push_token = None,
+                country_code = None,
+                pick_trophonius: bool = True,
+                device_model : str = None,
+                device_name : str = None,
+                device_language: str = None):
     # Check for service availability
     # XXX TODO: Fetch maintenance mode bool from somewhere
     maintenance_mode = False
-
     if maintenance_mode:
       return self.unavailable({
         'reason': 'Server is down for maintenance.',
         'code': error.MAINTENANCE_MODE
         })
-
-    # Xor facebook_token or email / password.
-    with_email = bool(email is not None and password is not None)
-    with_facebook = bool(long_lived_access_token is not None or
-                         short_lived_access_token is not None)
-    if with_email == with_facebook:
-      return self.bad_request({
-        'reason': 'you must provide facebook_token or (email, password)'
-      })
     # FIXME: 0.0.0.0 is the website.
     if self.user_version < (0, 9, 0) and self.user_version != (0, 0, 0):
       return self.fail(error.DEPRECATED)
-    fields = self.__user_self_fields + ['public_key']
-    with elle.log.trace("%s: log on device %s" % (email or 'facebook user', device_id)):
-      registered = False
-      if with_email:
-        user = self._login(email = email,
-                           fields = fields,
-                           password = password,
-                           password_hash = password_hash)
-      elif with_facebook:
-        user, registered = self.__facebook_connect(
-          short_lived_access_token = short_lived_access_token,
-          long_lived_access_token = long_lived_access_token,
-          preferred_email = preferred_email,
-          fields = fields)
-      res = self._in_app_login(user = user,
-                               password = password,
-                               device_id = device_id,
-                               OS = OS,
-                               pick_trophonius = pick_trophonius,
-                               device_push_token = device_push_token,
-                               country_code = country_code,
-                               device_model = device_model,
-                               device_name = device_name,
-                               device_language = device_language)
-      res.update({'account_registered': registered})
-      return res
+    user, res = self._login(
+      email = email,
+      fields = self.__user_self_fields + ['public_key'],
+      password = password,
+      password_hash = password_hash,
+      long_lived_access_token = long_lived_access_token,
+      short_lived_access_token = short_lived_access_token,
+      preferred_email = preferred_email,
+    )
+    res.update(
+      self._in_app_login(user = user,
+                         password = password,
+                         device_id = device_id,
+                         OS = OS,
+                         pick_trophonius = pick_trophonius,
+                         device_push_token = device_push_token,
+                         country_code = country_code,
+                         device_model = device_model,
+                         device_name = device_name,
+                         device_language = device_language))
+    return res
 
   @api('/web-login', method = 'POST')
-  def web_login(self,
-                email: utils.enforce_as_email_address = None,
-                password = None,
-                preferred_email: utils.enforce_as_email_address = None,
-                short_lived_access_token = None,
-                long_lived_access_token = None):
-    # Xor facebook_token or email / password.
-    with_email = bool(email is not None and password is not None)
-    with_facebook = bool(long_lived_access_token is not None or
-                         short_lived_access_token is not None)
-    if with_email == with_facebook:
-      return self.bad_request({
-        'reason': 'you must provide facebook_token or (email, password)'
-      })
-    fields = self.__user_self_fields + ['unconfirmed_email_deadline']
-    update = {'account_registered': False}
-    if with_email:
-      with elle.log.trace("%s: web login" % email):
-        user = self._login(email, password = password, fields = fields)
-    elif with_facebook:
-      user, update['registered'] = self.__facebook_connect(
-        short_lived_access_token = short_lived_access_token,
-        long_lived_access_token = long_lived_access_token,
-        preferred_email = preferred_email,
-        fields = fields)
-      ghost_codes = user.get('consumed_ghost_codes', [])
-      if len(ghost_codes):
-        update.update({'ghost_code': ghost_codes[0]})
-    res = self._web_login(user)
-    res.update(update)
+  def web_login_api(self,
+                    email: utils.enforce_as_email_address = None,
+                    password: str = None,
+                    password_hash: str = None,
+                    preferred_email: utils.enforce_as_email_address = None,
+                    short_lived_access_token = None,
+                    long_lived_access_token = None):
+    user, res = self._login(
+      email = email,
+      fields = self.__user_self_fields,
+      password = password,
+      password_hash = password_hash,
+      long_lived_access_token = long_lived_access_token,
+      short_lived_access_token = short_lived_access_token,
+      preferred_email = preferred_email,
+    )
+    res.update(self._web_login(user))
     return res
 
   def _web_login(self, user):
