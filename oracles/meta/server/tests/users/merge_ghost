@@ -73,14 +73,12 @@ with Meta(enable_emails = True) as meta:
   bob.login()
   bob.put('user/accounts/%s' % eve)
   # But eve registers...
+  print('XXX', meta.emailer.emails)
   eve = User(meta, eve)
-  emails = meta.emailer.emails
-  assertEq(len(emails), 1)
-  key = emails[0].variables['key']
   throws(lambda:
          bob.post(
            'users/%s/accounts/%s/confirm' % (bob.id, eve.email),
-           {'key': key}),
+           {'key': eve.email_confirmation_key}),
          HTTPException)
 
 # Notifications.

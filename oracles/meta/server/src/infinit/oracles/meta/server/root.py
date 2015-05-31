@@ -277,15 +277,17 @@ class Mixin:
         }
       })
 
-    user = self.database.users.find_one({'email': email}, fields = ['reset_password_hash'])
-    self.mailer.send_template(
-      to = email,
-      template_name = LOST_PASSWORD_TEMPLATE_ID,
-      reply_to = 'Infinit <support@infinit.io>',
-      merge_vars = {
-        email: {
-          'reset_password_hash': user['reset_password_hash']
-          }}
+    user = self.database.users.find_one(
+      {'email': email},
+      fields = ['reset_password_hash', 'fullname'],
+    )
+    self.emailer.send_one(
+      'Reset Password',
+      recipient_email = email,
+      recipient_name = user['fullname'],
+      variables = {
+        'reset_password_hash': user['reset_password_hash'],
+      },
     )
 
     return self.success()

@@ -865,17 +865,15 @@ class Mixin:
         },
         user_id = user_id,
       )
-
       if not user.get('email_confirmed', False):
-        self.mailer.send_template(
-          to = email,
-          template_name = 'confirm-sign-up',
-          merge_vars = {
-            email: {
-              'CONFIRM_KEY': key('/users/%s/confirm-email' % user_id),
-              'USER_FULLNAME': fullname,
-              'USER_ID': str(user_id),
-            }}
+        self.emailer.send_one(
+          'Confirm Registration (Initial)',
+          recipient_email = email,
+          recipient_name = user['fullname'],
+          variables = {
+            'confirm_key': key('/users/%s/confirm-email' % user_id),
+            'user': self.email_user_vars(user),
+          },
         )
       return self.__user_view(self.__user_fill(user))
 
@@ -987,16 +985,15 @@ class Mixin:
       if user.get('email_confirmed', True):
         response(404, {'reason': 'email is already confirmed'})
       assert user.get('email_confirmation_hash') is not None
-      self.mailer.send_template(
-        to = user['email'],
-        template_name = 'reconfirm-sign-up',
-        merge_vars = {
-          user['email']: {
-            'CONFIRM_KEY': key('/users/%s/confirm-email' % user['_id']),
-            'USER_FULLNAME': user['fullname'],
-            'USER_ID': str(user['_id']),
-            }}
-        )
+      self.emailer.send_one(
+        'Confirm Registration (Initial)',
+        recipient_email = user['email'],
+        recipient_name = user['fullname'],
+        variables = {
+          'confirm_key': key('/users/%s/confirm-email' % user['_id']),
+          'user': self.email_user_vars(user),
+        },
+      )
       return {}
 
   @api('/user/<id>/connected')
@@ -1215,9 +1212,9 @@ class Mixin:
       'url': self.url_absolute(url),
       'key': key(url),
     }
-    self.emailer.send_one('account-add-email',
-                          email,
-                          self.user['fullname'],
+    self.emailer.send_one('Confirm New Email Address',
+                          recipient_email = email,
+                          recipient_name = self.user['fullname'],
                           variables = variables)
     return {}
 
@@ -1307,61 +1304,6 @@ class Mixin:
                        new_email = email,
                        password = password)
     return {}
-
-  @api('/user/change_email_request', method = 'POST')
-  @require_logged_in_fields(['password', 'password_hash'])
-  def change_email_request(self,
-                           new_email: utils.enforce_as_email_address,
-                           password):
-    """
-    Request to change the main email address for the account.
-    The main email is used for login and email alerts.
-
-    new_email -- The new main email address.
-    password -- The password of the account.
-    """
-    user = self.user
-    with elle.log.trace('request to change main email from %s to %s' %
-                        (user['email'], new_email)):
-      _validators = [
-        (password, regexp.PasswordValidator),
-      ]
-
-      for arg, validator in _validators:
-        res = validator(arg)
-        if res != 0:
-          return self._forbidden_with_error(error.EMAIL_NOT_VALID)
-
-      # Check if the new address is already in use.
-      if self.user_by_email(new_email,
-                            fields = [],
-                            ensure_existence = False) is not None:
-        return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
-      if hash_password(password) != user['password'] and utils.password_hash(password) != user['password_hash']:
-        return self._forbidden_with_error(error.PASSWORD_NOT_VALID)
-      from time import time
-      import hashlib
-      seed = str(time()) + new_email
-      hash = hashlib.md5(seed.encode('utf-8')).hexdigest()
-      res = self.mailer.send_template(
-        new_email,
-        'change-email-address',
-        merge_vars = {
-          new_email : {
-            "hash": hash,
-            "new_email_address": new_email,
-            "user_fullname": user['fullname']
-          }
-        })
-      self.database.users.update(
-        { "_id": user['_id'] },
-        {
-          "$set": {
-            "new_main_email": new_email,
-            "new_main_email_hash": hash,
-          }
-        })
-      return {}
 
   @api('/user/change_email/<hash>', method = 'GET')
   def new_email_from_hash(self, hash):
@@ -1742,7 +1684,17 @@ class Mixin:
                                 recipient_ids = swaggers,
                                 message = {'user_id': deleted_user['merged_with']})
     self.remove_user_as_favorite_and_notify(user)
-    return self.success()
+    if not merge_with:
+      self.emailer.send_one(
+        'Deleted',
+        recipient_email = user['email'],
+        recipient_name = user['fullname'],
+        variables = {
+          'user': self.email_user_vars(user),
+        },
+      )
+
+    return {}
 
   def remove_user_as_favorite_and_notify(self, user):
     user_id = user['_id']

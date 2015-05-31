@@ -491,13 +491,15 @@ class Meta:
   def delete(self, url, body = None):
     return self.client.delete(url, body)
 
-  def create_user(self,
-                  email,
-                  fullname = None,
-                  password = '0' * 64,
-                  source = None,
-                  password_hash = None,
-                  ):
+  def create_user(
+      self,
+      email,
+      fullname = None,
+      password = '0' * 64,
+      source = None,
+      password_hash = None,
+      get_confirmation_code = False,
+  ):
     res = self.post('user/register',
                     {
                       'email': email,
@@ -507,7 +509,14 @@ class Meta:
                       'password_hash': password_hash,
                     })
     assertEq(res['success'], True)
-    return password
+    emails = self.emailer.emails
+    assertEq(len(emails), 1)
+    email = emails[0]
+    assertEq(email.template, 'Confirm Registration (Initial)')
+    if get_confirmation_code:
+      return password, email.variables['confirm_key']
+    else:
+      return password
 
   @property
   def database(self):
@@ -557,7 +566,10 @@ class User(Client):
 
     if not facebook:
       self.email = email is not None and email or random_email() + '@infinit.io'
-      self.password = meta.create_user(self.email, **kwargs)
+      self.password, self.email_confirmation_key = \
+        meta.create_user(self.email,
+                         get_confirmation_code = True,
+                         **kwargs)
       self.__id = meta.get('users/%s' % self.email)['id']
     else:
       self.__id = None
