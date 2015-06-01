@@ -286,7 +286,9 @@ class Notifier:
       files = 'files'
     if status is transaction_status.INITIALIZED: # Only sent to recipient
       if to_self:
-        if message['recipient_device_id'] in [device, '']:
+        if message['recipient_device_id'] == device:
+          alert = "Open Infinit for the transfer to begin"
+        else:
           alert = "Accept transfer from another device"
       else:
         alert = "Accept transfer from %s" % message['sender_fullname']
