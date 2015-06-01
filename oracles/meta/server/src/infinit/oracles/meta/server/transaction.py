@@ -530,8 +530,9 @@ class Mixin:
           })
       is_ghost = recipient['register_status'] == 'ghost'
       if is_ghost and total_size > 2000000000:
-        self.forbidden('Transaction to nonexisting users limited to 2G')
-
+        self.forbidden({
+          'reason': 'transaction to non-existing users limited to 2GB',
+        })
       if is_ghost:
         # Add to referral
         self.database.users.update(
@@ -589,19 +590,19 @@ class Mixin:
           recipient_ids = {transaction['recipient_id']},
           message = transaction,
         )
+        self.__update_transaction_stats(
+          sender,
+          counts = ['sent_peer', 'sent'],
+          pending = transaction,
+          time = True)
+        if not is_ghost:
+          self.__update_transaction_stats(
+            recipient,
+            unaccepted = transaction,
+            time = False)
       else:
         transaction_id = self.database.transactions.insert(transaction)
       transaction['_id'] = transaction_id
-      self.__update_transaction_stats(
-        sender,
-        counts = ['sent_peer', 'sent'],
-        pending = transaction,
-        time = True)
-      if not is_ghost:
-        self.__update_transaction_stats(
-          recipient,
-          unaccepted = transaction,
-          time = False)
       self._increase_swag(sender['_id'], recipient['_id'])
       if  recipient_device_id is None and recipient['_id'] == sender['_id']:
         if 'send-to-self' not in recipient.get('emailing', {}):
