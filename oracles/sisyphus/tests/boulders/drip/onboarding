@@ -54,7 +54,7 @@ with mongobox.MongoBox() as mongo:
       assert not emailer.emails
 
     # Check unactivated 1 is sent to an aging user
-    diff = onboarding.delay_first_reminder * 1.5
+    diff = onboarding.delay * 1.5
     onboarding.now += diff
     meta.now += diff
     # Add unrelevant users to check they are not scanned by our mongo
@@ -66,9 +66,7 @@ with mongobox.MongoBox() as mongo:
     # to check last_transaction.time, hence the one miss.
     with MongoExpectation(object_miss = 1):
       sisy.boulders_run()
-      check_mail(emailer.emails, 'user1@infinit.io',
-                 ('drip_onboarding_unactivated-1_A',
-                  'drip_onboarding_unactivated-1_B'))
+      check_mail(emailer.emails, 'user1@infinit.io', 'Unactivated')
       # Check it's not sent twice
       sisy.boulders_run()
       assert not emailer.emails

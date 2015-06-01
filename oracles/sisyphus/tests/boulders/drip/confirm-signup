@@ -56,26 +56,27 @@ with mongobox.MongoBox() as mongo:
     # Create user
     sender = user_register(meta, 'sender@infinit.io')
     # Check nothing is sent to a fresh user
-    forward(confirm.delay_first_reminder / 2)
+    forward(confirm.delay / 2)
     sisy.boulders_run()
     check_no_mail(emailer.emails)
     # Check first mail is sent
-    forward(confirm.delay_first_reminder)
+    forward(confirm.delay)
     sisy.boulders_run()
     check_mail(emailer.emails,
-               'sender@infinit.io', 'drip_confirm-signup_1')
+               'sender@infinit.io', 'Confirm Registration (Reminder)')
     sisy.boulders_run()
     check_no_mail(emailer.emails)
     # Check no mail is sent to ghosts
-    transaction_create(meta, sender, recipient_identifier = 'ghost@infinit.io')
-    forward(confirm.delay_first_reminder * 2)
+    transaction_create(meta, sender,
+                       recipient_identifier = 'ghost@infinit.io')
+    forward(confirm.delay * 2)
     sisy.boulders_run()
     check_no_mail(emailer.emails)
     # Check leeway starts on ghost registration
     meta.user_register('ghost@infinit.io', '*' * 64, 'Foo Bar')
     sisy.boulders_run()
     check_no_mail(emailer.emails)
-    forward(confirm.delay_first_reminder * 1.5)
+    forward(confirm.delay * 1.5)
     sisy.boulders_run()
     check_mail(emailer.emails,
-               'ghost@infinit.io', 'drip_confirm-signup_1')
+               'ghost@infinit.io', 'Confirm Registration (Reminder)')

@@ -342,7 +342,7 @@ class Onboarding(Drip):
         # Registered more than 1 day ago.
         'creation_time':
         {
-          '$lt': self.now - self.delay_first_reminder,
+          '$lt': self.now - self.delay,
         },
         # Did a transaction
         'last_transaction.time': {'$exists': True},
@@ -360,19 +360,19 @@ class Onboarding(Drip):
         # Registered more than 1 day ago.
         'creation_time':
         {
-          '$lt': self.now - self.delay_first_reminder,
+          '$lt': self.now - self.delay,
         },
         # Never did a transaction
         'last_transaction.time': {'$exists': False},
       },
-      variations = ('A', 'B'),
+      template = 'Unactivated',
     )
     response.update(transited)
     return response
 
   @property
-  def delay_first_reminder(self):
-    return datetime.timedelta(days = 3)
+  def delay(self):
+    return datetime.timedelta(days = 5)
 
 
 class GhostReminder(Drip):
