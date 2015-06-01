@@ -402,19 +402,19 @@ class Mixin:
     """
     Update the status of a given link.
     """
+    if not isinstance(link, dict):
+      link = self.database.links.find_one({'_id': link})
     with elle.log.trace('updating link %s with status %s and progress %s' %
-                        (id, status, progress)):
-      if not isinstance(link, dict):
-        link = self.database.links.find_one({'_id': link})
+                        (link['_id'], status, progress)):
       if link is None or len(link) == 1:
         self.not_found({
-          'reason': 'link %s does not exist' % id,
-          'link': id,
+          'reason': 'link %s does not exist' % link['_id'],
+          'link': link['_id'],
         })
       if user is not None and link['sender_id'] != user['_id']:
         self.forbidden({
-          'reason': 'link %s does not belong to you' % id,
-          'link': id,
+          'reason': 'link %s does not belong to you' % link['_id'],
+          'link': link['_id'],
         })
       update = {}
       if progress is not None:
@@ -436,41 +436,43 @@ class Mixin:
           update['status'] = status
           if status in transaction_status.final + [transaction_status.DELETED]:
             self.__complete_transaction_pending_stats(user, link)
-          if status != transaction_status.FINISHED:
-            # erase data
-            deleter = self._generate_op_url(link, 'DELETE')
-            r = requests.delete(deleter)
-            if int(r.status_code/100) != 2:
-              elle.log.warn('Link deletion failed with %s on %s: %s' %
-                            ( r.status_code, link['_id'], r.content))
-              if link['name'] != 'infinit_test_not_a_real_link':
-                self.abort({
-                  'reason': 'unable to delete link',
-                  'status_code': r.status_code,
-                  'error': str(r.content),
-                })
-            if link['status'] == transaction_status.FINISHED:
-              if 'file_size' in link:
-                self.database.users.update(
-                  {'_id': user['_id']},
-                  {'$inc': {'total_link_size': link['file_size'] * -1}}
-                )
-          else:
-            # Get effective size
-            head = self._generate_op_url(link, 'HEAD')
-            r = requests.head(head)
-            if int(r.status_code/100) != 2:
-              elle.log.warn('Link HEAD failed with %s on %s at %s: %s' %
-                ( r.status_code, link['_id'], head, r.content))
-            file_size = int(r.headers.get('Content-Length', 0))
-            update.update({
-              'file_size': file_size,
-              'quota_counted': True
-            })
-            self.database.users.update(
-              {'_id': user['_id']},
-              {'$inc': {'total_link_size': file_size}}
-            )
+            if status != transaction_status.FINISHED:
+              # If there is no creds, nothing was uploaded
+              if link['aws_credentials'] != None:
+                # erase data
+                deleter = self._generate_op_url(link, 'DELETE')
+                r = requests.delete(deleter)
+                if int(r.status_code/100) != 2:
+                  elle.log.warn('Link deletion failed with %s on %s: %s' %
+                                ( r.status_code, link['_id'], r.content))
+                  if link['name'] != 'infinit_test_not_a_real_link':
+                    self.abort({
+                      'reason': 'unable to delete link',
+                      'status_code': r.status_code,
+                      'error': str(r.content),
+                    })
+                if link['status'] == transaction_status.FINISHED:
+                  if 'file_size' in link:
+                    self.database.users.update(
+                      {'_id': user['_id']},
+                      {'$inc': {'total_link_size': link['file_size'] * -1}}
+                    )
+            else: #status = FINISHED
+              # Get effective size
+              head = self._generate_op_url(link, 'HEAD')
+              r = requests.head(head)
+              if int(r.status_code/100) != 2:
+                elle.log.warn('Link HEAD failed with %s on %s at %s: %s' %
+                  ( r.status_code, link['_id'], head, r.content))
+              file_size = int(r.headers.get('Content-Length', 0))
+              update.update({
+                'file_size': file_size,
+                'quota_counted': True
+              })
+              self.database.users.update(
+                {'_id': user['_id']},
+                {'$inc': {'total_link_size': file_size}}
+              )
       if password is not False:
         update['password'] = self.__link_password_hash(password)
       if expiration_date is not None:
