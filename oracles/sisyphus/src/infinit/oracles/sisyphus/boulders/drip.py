@@ -554,9 +554,7 @@ class DelightRecipient(Drip):
     }
 
 
-#
-#    -> 1 -> 2
-#
+#    -> 1
 
 class ConfirmSignup(Drip):
 
@@ -587,18 +585,19 @@ class ConfirmSignup(Drip):
         'register_status': 'ok',
         # Unconfirmed email
         'email_confirmed': False,
-        # Registered more than 3 day ago.
+        # Registered more than 5 day ago.
         'creation_time':
         {
-          '$lt': self.now - self.delay_first_reminder,
+          '$lt': self.now - self.delay,
         },
       },
+      template = 'Confirm Registration (Reminder)',
     )
     response.update(transited)
     return response
 
   @property
-  def delay_first_reminder(self):
+  def delay(self):
     return datetime.timedelta(days = 5)
 
   def _vars(self, elt, user):
