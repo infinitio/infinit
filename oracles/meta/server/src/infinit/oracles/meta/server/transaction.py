@@ -175,6 +175,8 @@ class Mixin:
       {'$set': diff},
       new = False,
     )
+    self.__complete_transaction_pending_stats(
+      transaction['recipient_id'], transaction)
     # handle both negative search and empty transaction
     if not transaction or len(transaction) == 1:
       self.not_found({
@@ -923,7 +925,8 @@ class Mixin:
                                      device_id = device_id,
                                      device_name = device_name))
         elif status == transaction_status.REJECTED:
-          self.__complete_transaction_unaccepted_stats(user, transaction)
+          self.__complete_transaction_unaccepted_stats(
+            transaction['recipient_id'], transaction)
           diff.update(self.on_reject(transaction = transaction,
                                      user = user,
                                      device_id = device_id,
@@ -935,12 +938,14 @@ class Mixin:
                                        device_name = device_name,
                                        user = user))
         elif status == transaction_status.CANCELED:
-          self.__complete_transaction_unaccepted_stats(user, transaction)
+          self.__complete_transaction_unaccepted_stats(
+            transaction['recipient_id'], transaction)
           if not transaction.get('canceler', None):
             diff.update({'canceler': {'user': user['_id'], 'device': device_id}})
             diff.update(self.cloud_cleanup_transaction(transaction = transaction))
         elif status == transaction_status.FAILED:
-          self.__complete_transaction_unaccepted_stats(user, transaction)
+          self.__complete_transaction_unaccepted_stats(
+            transaction['recipient_id'], transaction)
           diff.update(self.cloud_cleanup_transaction(transaction = transaction))
         elif status == transaction_status.FINISHED:
           self.__update_transaction_stats(

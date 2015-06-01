@@ -500,6 +500,7 @@ class Meta:
       password_hash = None,
       get_confirmation_code = False,
   ):
+    self.emailer.emails # flush leftover emails
     res = self.post('user/register',
                     {
                       'email': email,

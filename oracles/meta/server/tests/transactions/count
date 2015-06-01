@@ -52,6 +52,21 @@ with Meta(force_admin = True) as meta:
   tid5 = res['created_transaction_id']
   alice.transaction_update(tid5, ghost_uploaded)
   alice.post('transactions/%s/downloaded?key=admin' % tid5)
+  # Send to a ghost and download as a user
+  transaction, res = alice.sendfile(recipient = 'dave@infinit.io',
+                                    initialize = True)
+  tid5bis = res['created_transaction_id']
+  transaction, res = alice.sendfile(recipient = 'dave@infinit.io',
+                                    initialize = True)
+  tid5ter = res['created_transaction_id']
+  alice.transaction_update(tid5ter, ghost_uploaded)
+  dave = User(meta, 'dave@infinit.io')
+  dave.login()
+  dave.transaction_update(tid5bis, accepted)
+  dave.transaction_update(tid5bis, finished)
+  dave.transaction_update(tid5ter, accepted)
+  dave.post('transactions/%s/downloaded?key=admin' % tid5ter)
+
   # Download a transaction
   transaction, res = bob.sendfile(recipient = 'alice@infinit.io',
                                   initialize = True)
@@ -89,14 +104,14 @@ with Meta(force_admin = True) as meta:
   transactions = stats()
   assertEq(transactions['accepted'], 2)
   assertEq(transactions['accepted_peer'], 2)
-  assertEq(transactions['reached'], 3)
+  assertEq(transactions['reached'], 5)
   assertEq(transactions['reached_link'], 1)
-  assertEq(transactions['reached_peer'], 2)
+  assertEq(transactions['reached_peer'], 4)
   assertEq(transactions['received'], 1)
   assertEq(transactions['received_peer'], 1)
-  assertEq(transactions['sent'], 8)
+  assertEq(transactions['sent'], 10)
   assertEq(transactions['sent_link'], 2)
-  assertEq(transactions['sent_peer'], 6)
+  assertEq(transactions['sent_peer'], 8)
   assertEq(len(transactions['pending']), 5)
   assert transactions['pending_has']
   assertEq(transactions['unaccepted'], [tid_unaccepted])
@@ -142,3 +157,11 @@ with Meta(force_admin = True) as meta:
   transactions = carol['transactions']
   assertEq(transactions['received'], 1)
   assertEq(transactions['received_ghost'], 1)
+
+  stats = meta.database.users.find_one({'email': 'carol@infinit.io'})['transactions']
+  assertEq(len(stats.get('pending', [])), 0)
+  assertEq(len(stats.get('unaccepted', [])), 0)
+
+  stats = meta.database.users.find_one({'_id': bson.ObjectId(dave.id)})['transactions']
+  assertEq(len(stats['pending']), 0)
+  assertEq(len(stats.get('unaccepted', [])), 0)
