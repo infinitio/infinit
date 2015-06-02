@@ -2391,7 +2391,25 @@ class Mixin:
   def get_avatar(self,
                  id: bson.ObjectId,
                  date: int = 0,
-                 no_place_holder: bool = False):
+                 no_place_holder: bool = False,
+                 ghost_code: str = ''):
+    if len(ghost_code):
+      # Link from a mail, notify opened
+      self.database.invitations.update(
+        {'ghost_code': ghost_code, 'status': 'pending'},
+        {'$set': {'status': 'opened'}},
+        multi = True
+        )
+      # send metric
+      if self.metrics is not None:
+        self.metrics.send(
+          [{
+            'event': 'invite/opened',
+            'ghost_code': ghost_code,
+            'user': str(id),
+            'timestamp': time.time(),
+          }],
+          collection = 'users')
     user = self._user_by_id(id,
                             ensure_existence = False,
                             fields = ['small_avatar'])
@@ -3201,18 +3219,19 @@ class Mixin:
         'code': code,
         'status': 'pending',
         'recipient': recipient['_id'],
-        'sender': user['_id']
+        'sender': user['_id'],
+        'ghost_code': recipient['ghost_code']
     })
     is_an_email = utils.is_an_email_address(name)
     if is_an_email:
       # send email
       variables = {
         'sender': self.email_user_vars(user),
+        'ghost_code': recipient['ghost_code'],
       }
-      if 'ghost_code' in recipient:
-        variables.update({
-            'ghost_code': recipient['ghost_code'],
-        })
+
+      # insert our tracker in avatar url
+      variables['sender']['avatar'] += '?ghost_code=%s' % recipient['ghost_code']
       self.emailer.send_one(
         'Plain',
         recipient_email = name,

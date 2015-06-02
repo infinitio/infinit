@@ -859,7 +859,7 @@ class Mixin:
           variables.update({
             'ghost_code': recipient['ghost_code'],
           })
-
+          variables['sender']['avatar'] += '?ghost_code=%s' % recipient['ghost_code']
         self.emailer.send_one(
           'ghost-invitation',
           recipient_email = peer_email,

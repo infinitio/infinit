@@ -15,6 +15,13 @@ with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   inv = inv['results']
   assert len(inv) == 1
   assert inv[0]['status'] == 'pending'
+  emails = meta.emailer.emails
+  url = emails[0].variables['sender']['avatar']
+  alice.get(url)
+  inv = alice.get('user/invites')
+  inv = inv['results']
+  assert len(inv) == 1
+  assert inv[0]['status'] == 'opened'
   bob = User(meta, 'bob@infinit.io')
   bob.login()
   inv = alice.get('user/invites')
