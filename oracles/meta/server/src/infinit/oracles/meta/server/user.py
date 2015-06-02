@@ -1698,8 +1698,11 @@ class Mixin:
       },
       new = True)
     if merge_with is not None:
+      res = self.database.users.find_one({'_id': user['_id']},
+        fields = ['referred_by']
+        )
       # Apply referrals on the ghost to this user
-      self.process_referrals(merge_with, user['referred_by'])
+      self.process_referrals(merge_with, res.get('referred_by', []))
       # Increase swaggers swag for self
       update = {
         '$addToSet': {
