@@ -71,3 +71,12 @@ with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   assert c['quota']['total_link_size'] == 25e8
   b = bob.me
   assert b['quota']['total_link_size'] == 3e9
+  # Referral through ghost
+  transaction, res = bob.sendfile(recipient = 'edgar@infinit.io')
+  edgar = User(meta, 'edgar2@infinit.io')
+  edgar.login()
+  assert edgar.me['quota']['total_link_size'] == 1e9
+  gc = meta.database.users.find_one({'accounts.id': 'edgar@infinit.io'})['ghost_code']
+  edgar.post('ghost/%s/merge' % gc)
+  assert edgar.me['quota']['total_link_size'] == 15e8
+  assert bob.me['quota']['total_link_size'] == 4e9
