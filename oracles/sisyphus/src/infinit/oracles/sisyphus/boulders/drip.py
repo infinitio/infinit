@@ -116,19 +116,10 @@ class Drip(Emailing):
       start_condition = {field: {'$in': start}}
     condition.update(start_condition)
     condition[self.field_lock] = {'$exists': False}
-    if template is None:
-      template = 'drip_%s_%s' % (self.campaign, end)
-    # Uncomment this to go in full test mode.
-    # import sys
-    # print('%s -> %s: %s (%s)' % (start, end, self.__table.find(condition).count(), template), file = sys.stderr)
-    # print(condition, file = sys.stderr)
-    # return {}
-    final_update = {}
-    # if start != end:
-    final_update.update({field: end})
+    final_update = {field: end}
     if update is not None:
       final_update.update(update)
-    if template is False:
+    if template is None:
       if self.__pretend:
         n = self.__table.find(condition).count()
       else:
@@ -144,40 +135,40 @@ class Drip(Emailing):
         return {'%s -> %s' % (start, end): n}
       else:
         return {}
-    self.__table.update(
-      condition,
-      {
-        '$set':
+    else:
+      # Lock documents
+      self.__table.update(
+        condition,
         {
-          self.field_lock: self.lock_id,
+          '$set':
+          {
+            self.field_lock: self.lock_id,
+          },
         },
-      },
-      multi = True,
-    )
-    result = {}
-    elts = list(self.__table.find(
-      { self.field_lock: self.lock_id },
-      fields = self.fields,
-    ))
-    if len(elts) > 0:
-      users = [(self._user(elt), elt) for elt in elts]
-      res = {}
-      unsubscribed = [(u, e) for u, e in users if not self.__email_enabled(u)]
-      users = [(u, e) for u, e in users if self.__email_enabled(u)]
-      templates = self._pick_template(template, users)
-      for template, users in templates:
-        sent = self.send_email(
-          end,
-          template,
-          users,
-          variations = variations)
-        res[template] = sent
+        multi = True,
+      )
+      # Fetch documents
+      elts = self.__table.find({self.field_lock: self.lock_id},
+                               fields = self.fields)
+      # Split unsubscribed
+      users = []
+      unsubscribed = []
+      for u, e in [(self._user(elt), elt) for elt in elts]:
+        (users if self.__email_enabled(u) else unsubscribed)\
+          .append((u, e))
+      # Send email
+      sent = self.send_email(
+        end,
+        template,
+        users,
+        variations = variations)
       update = {
         '$unset':
         {
           self.field_lock: True,
         },
       }
+      # Unlock and commit
       if not self.__pretend:
         update['$set'] = final_update
       self.__table.update(
@@ -185,27 +176,16 @@ class Drip(Emailing):
         update,
         multi = True,
       )
-      # Unlock users that were not picked
-      unpicked = self.__table.update(
-        {self.field_lock: self.lock_id},
-        {
-          '$unset':
-          {
-            self.field_lock: True,
-          },
-        },
-        multi = True,
-      )
-      n = unpicked['n']
-      if n > 0:
-        res['unpicked'] = n
-      if unsubscribed:
+      # Format result
+      res = {}
+      if len(sent) > 0:
+        res[template] = sent
+      if len(unsubscribed) > 0:
         res['unsubscribed'] = [u['email'] for u, e in unsubscribed]
-      merge_result(result, res)
-    if result == {}:
-      return {}
-    else:
-      return {'%s -> %s' % (start, end): result}
+      if res == {}:
+        return {}
+      else:
+        return {'%s -> %s' % (start, end): res}
 
   def _pick_template(self, template, users):
     return [(template, users)]
@@ -358,7 +338,6 @@ class Onboarding(Drip):
         # Did a transaction
         'last_transaction.time': {'$exists': True},
       },
-      template = False,
     )
     response.update(transited)
     # -> unactivated-1
@@ -554,7 +533,6 @@ class ActivityReminder(Drip):
           # With activity
           'transactions.activity_has': True,
         },
-        template = False,
         update = {
           'emailing.activity-reminder.remind-time':
           self.now + self.delay(0),
@@ -572,7 +550,6 @@ class ActivityReminder(Drip):
           # Connected
           'online': True,
         },
-        template = False,
       )
       response.update(transited)
     for stuckiness in range(5):
@@ -589,7 +566,6 @@ class ActivityReminder(Drip):
           # Without activity
           'transactions.activity_has': False,
         },
-        template = False,
       )
       response.update(transited)
     for stuckiness in range(5):
@@ -663,56 +639,50 @@ class ActivityReminder(Drip):
     return res
 
 
-class Retention(Drip):
+class Tips(Drip):
 
   def __init__(self, sisyphus, pretend = False):
-    super().__init__(sisyphus, 'retention', 'users', pretend)
+    super().__init__(sisyphus, 'tips', 'users', pretend)
     self.sisyphus.mongo.meta.users.ensure_index(
       [
-        ('emailing.retention.state', pymongo.ASCENDING),
+        ('emailing.tips.state', pymongo.ASCENDING),
         ('register_status', pymongo.ASCENDING),
-        ('emailing.retention.activation_time', pymongo.ASCENDING),
       ])
-
-  count = 6
 
   @property
   def now(self):
     return datetime.datetime.utcnow()
+
+  @property
+  def delay(self):
+    return datetime.timedelta(weeks = 2)
 
   def run(self):
     response = {}
     # -> 1
     transited = self.transition(
       None,
-      'activated',
+      'fresh',
       {
         # Fully registered
         'register_status': 'ok',
       },
-      template = False,
       update = {
-        'emailing.retention.activation_time': self.now,
+        'emailing.tips.next': self.now + self.delay,
       }
     )
     response.update(transited)
-    for i in range(Retention.count):
-      # 1 -> 2
-      transited = self.transition(
-        str(i) if i > 0 else 'activated',
-        str(i + 1),
-        {
-          # Fully registered
-          'register_status': 'ok',
-          # For long enough
-          'emailing.retention.activation_time': {
-            '$lt': self.now - self.delay_nth_reminder(i),
-          },
+    transited = self.transition(
+      'fresh',
+      'send-to-self',
+      {
+        # Fully registered
+        'register_status': 'ok',
+        # For long enough
+        'emailing.tips.next': {
+          '$lt': self.now,
         },
-      )
-      response.update(transited)
+      },
+    )
+    response.update(transited)
     return response
-
-  def delay_nth_reminder(self, nth):
-    # Starts after two weeks
-    return datetime.timedelta(weeks = nth + 1)
