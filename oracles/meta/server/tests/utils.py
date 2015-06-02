@@ -95,7 +95,10 @@ class Client:
               content_length = None,
               raw = False,
               cookies = None):
-    uri = "http://127.0.0.1:%s/%s" % (self.__meta_port, url)
+    if url[0:4] != 'http':
+      uri = "http://127.0.0.1:%s/%s" % (self.__meta_port, url)
+    else:
+      uri = url
     headers = {
       'User-Agent': self.user_agent,
     }
