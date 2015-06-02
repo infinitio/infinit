@@ -855,6 +855,11 @@ class Mixin:
               },
               recipient_ids = {c},
               )
+          # Mark invitations as completed
+          self.database.invitations.update(
+            {'recipient': user['_id']},
+            {'$set': {'status': 'completed'}},
+            multi = True)
         else:
           # The user existed.
           raise Exception(error.EMAIL_ALREADY_REGISTERED)
@@ -1698,6 +1703,11 @@ class Mixin:
       },
       new = True)
     if merge_with is not None:
+      # mark invites as completed
+      self.database.invitations.update(
+        {'recipient': user['_id']},
+        {'$set': {'status': 'completed'}},
+        multi = True)
       # Apply referrals on the ghost to this user
       self.process_referrals(merge_with, user['referred_by'])
       # Increase swaggers swag for self
@@ -3167,3 +3177,59 @@ class Mixin:
   @require_logged_in_fields(['account'])
   def user_account_get_api(self):
     return self.user.get('account', {})
+
+  @api('/user/invite', method = 'PUT')
+  @require_logged_in
+  def user_invite(self, name):
+    user = self.user
+    recipient, created = self.__recipient_from_identifier(name, user, True)
+    if recipient['register_status'] in ['merged', 'ok']:
+      self.forbidden({
+          'reason': 'User already registered.'
+      })
+    if recipient['register_status'] == 'deleted':
+      self.forbidden({
+          'reason': 'User was deleted.'
+      })
+    self.database.users.update({'_id': recipient['_id']},
+                               {'$addToSet': {'referred_by':user['_id']}})
+    code = uuid.uuid4()
+    self.database.invitations.insert({
+        'code': code,
+        'status': 'pending',
+        'recipient': recipient['_id'],
+        'sender': user['_id']
+    })
+    is_an_email = utils.is_an_email_address(name)
+    if is_an_email:
+      # send email
+      variables = {
+        'sender': self.email_user_vars(user),
+      }
+      if 'ghost_code' in recipient:
+        variables.update({
+            'ghost_code': recipient['ghost_code'],
+        })
+      self.emailer.send_one(
+        'Plain',
+        recipient_email = name,
+        sender_email = user['email'],
+        sender_name = user['fullname'],
+        variables = variables,
+        )
+    return {}
+
+  @api('/user/invite/<code>/opened', method = 'POST')
+  def user_invite_opened(self, code):
+    self.database.invitations.update(
+      {'code': code, 'status': 'pending'},
+      {'$set': {'status': 'opened'}}
+    )
+    return {}
+
+  @api('/user/invites', method = 'GET')
+  @require_logged_in
+  def user_invites(self):
+    res = self.database.invitations.find({'sender': self.user['_id']})
+    res = [{'recipient': str(r['recipient']), 'status': r['status']} for r in res]
+    return {'results': res}

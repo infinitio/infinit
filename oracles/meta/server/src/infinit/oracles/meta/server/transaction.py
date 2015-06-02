@@ -294,7 +294,8 @@ class Mixin:
   # don't hardcode the list of fields. Stop ADDING code !
   def __recipient_from_identifier(self,
                                   recipient_identifier,
-                                  sender):
+                                  sender,
+                                  plain_invite = False):
     """Get the recipient from identifier. If it doesn't exist, create a ghost.
     recipient_identifier -- The user identifier (can be an email, ObjectId or
                             a phone number)
@@ -391,6 +392,7 @@ class Mixin:
         self.metrics.send(
           [{
             'event': 'new_ghost',
+            'plain': plain_invite,
             'ghost_code': recipient['ghost_code'],
             'user': str(recipient['_id']),
             'features': recipient['features'],
