@@ -794,8 +794,28 @@ class ActivityReminder(Drip):
 
   def run(self):
     response = {}
-    # -> clean
-    for start in (None, 'stuck'):
+    # Stuck if offline with activity
+    for start in (None, 'clean'):
+      transited = self.transition(
+        start,
+        'stuck-0',
+        {
+          # Fully registered
+          'register_status': 'ok',
+          # Disconnected
+          'online': False,
+          # With activity
+          'transactions.activity_has': True,
+        },
+        template = False,
+        update = {
+          'emailing.activity-reminder.remind-time':
+          self.now + self.delay(0),
+        },
+      )
+      response.update(transited)
+    # Back to clean if online
+    for start in chain((None,), ('stuck-%s' % i for i in range(5))):
       transited = self.transition(
         start,
         'clean',
@@ -808,65 +828,54 @@ class ActivityReminder(Drip):
         template = False,
       )
       response.update(transited)
-    # -> stuck
-    for start in (None, 'clean'):
+    for stuckiness in range(5):
+      # Back to clean if user finished his activity, even if we missed
+      # the online transition.
       transited = self.transition(
-        start,
-        'stuck',
+        'stuck-%s' % stuckiness,
+        'clean',
         {
           # Fully registered
           'register_status': 'ok',
           # Disconnected
           'online': False,
-          # With activity
-          'transactions.activity_has': True,
+          # Without activity
+          'transactions.activity_has': False,
         },
         template = False,
-        update = {
-          'emailing.activity-reminder.remind-time':
-          self.now + self.delay,
-        },
       )
       response.update(transited)
-    # stuck -> clean if user finished is activity, even if we missed
-    # the online transition.
-    transited = self.transition(
-      'stuck',
-      'clean',
-      {
-        # Fully registered
-        'register_status': 'ok',
-        # Disconnected
-        'online': False,
-        # Without activity
-        'transactions.activity_has': False,
-      },
-      template = False,
-    )
-    response.update(transited)
-    # stuck -> stuck
-    transited = self.transition(
-      'stuck',
-      'stuck',
-      {
-        # Fully registered
-        'register_status': 'ok',
-        # Disconnected
-        'online': False,
-        # Has activity
-        'transactions.activity_has': True,
-        # Reminder is due
-        'emailing.activity-reminder.remind-time':
+    for stuckiness in range(5):
+      if stuckiness == 4:
+        update = {
+          'emailing.activity-reminder.remind-time': None,
+        }
+      else:
+        update = {
+          'emailing.activity-reminder.remind-time':
+          self.now + self.delay(stuckiness + 1),
+        }
+      # stuck -> stuck
+      transited = self.transition(
+        'stuck-%s' % stuckiness,
+        'stuck-%s' % (stuckiness + 1),
         {
-          '$lt': self.now,
+          # Fully registered
+          'register_status': 'ok',
+          # Disconnected
+          'online': False,
+          # Has activity
+          'transactions.activity_has': True,
+          # Reminder is due
+          'emailing.activity-reminder.remind-time':
+          {
+            '$lt': self.now,
+          },
         },
-      },
-      update = {
-        'emailing.activity-reminder.remind-time':
-        self.now + self.delay,
-      },
-    )
-    response.update(transited)
+        template = 'Pending',
+        update = update,
+      )
+      response.update(transited)
     return response
 
   def _vars(self, element, user):
@@ -885,9 +894,19 @@ class ActivityReminder(Drip):
       ]
     }
 
-  @property
-  def delay(self):
-    return datetime.timedelta(days = 2)
+  def delay(self, n):
+    if n == 0:
+      return datetime.timedelta(hours = 8)
+    elif n == 1:
+      return datetime.timedelta(days = 2)
+    elif n == 2:
+      return datetime.timedelta(weeks = 1)
+    elif n == 3:
+      return datetime.timedelta(weeks = 2)
+    elif n == 4:
+      return datetime.timedelta(weeks = 4)
+    else:
+      raise IndexError()
 
   @property
   def user_fields(self):
