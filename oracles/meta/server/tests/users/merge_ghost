@@ -181,7 +181,7 @@ with Meta(enable_emails = True) as meta:
   bob.login()
   assert bob.get('users/%s' % eve)['register_status'] == 'ghost'
   eve_id = bob.get('users/%s' % eve)['id']
-  emails = meta.emailer.emails
+  emails = meta.emailer.template('Transfer (Initial)')
   code = emails[0].variables['ghost_code']
   throws(lambda: meta.get('ghost/code/00000'), 404)
   bob.post('ghost/%s/merge' % code)
@@ -204,7 +204,7 @@ with Meta(enable_emails = True) as meta:
   bob.login()
   assert bob.get('users/%s' % eve)['register_status'] == 'ghost'
   eve_id = bob.get('users/%s' % eve)['id']
-  emails = meta.emailer.emails
+  emails = meta.emailer.template('Transfer (Initial)')
   codes = {}
   for email in emails:
     assertEq(email.template, 'Transfer (Initial)')

@@ -34,7 +34,6 @@ with Meta() as meta:
                'transaction_id': res['created_transaction_id'],
                'status': GHOST_UPLOADED,
              })
-    assertEq(len(meta.emailer.emails), 1)
   alice = User(meta, "dimrok@infinit.io")
   alice.login()
   assert len(alice.transactions) == transaction_count
@@ -59,7 +58,6 @@ with Meta() as meta:
                'transaction_id': res['created_transaction_id'],
                'status': GHOST_UPLOADED,
              })
-    assertEq(len(meta.emailer.emails), 1)
   alice = User(meta, "dimrok@infinit.io")
   alice.login()
   assert len(alice.transactions) == transaction_count

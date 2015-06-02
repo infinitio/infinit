@@ -359,6 +359,18 @@ class TestEmailer(infinit.oracles.emailer.Emailer):
     self.__emails = []
     return res
 
+  def template(self, template):
+    res = []
+    i = 0
+    while i < len(self.__emails):
+      email = self.__emails[i]
+      if email.template == template:
+        res.append(email)
+        del self.__emails[i]
+      else:
+        i += 1
+    return res
+
 
 class Meta:
 
@@ -500,7 +512,6 @@ class Meta:
       password_hash = None,
       get_confirmation_code = False,
   ):
-    self.emailer.emails # flush leftover emails
     res = self.post('user/register',
                     {
                       'email': email,
@@ -510,10 +521,9 @@ class Meta:
                       'password_hash': password_hash,
                     })
     assertEq(res['success'], True)
-    emails = self.emailer.emails
+    emails = self.emailer.template('Confirm Registration (Initial)')
     assertEq(len(emails), 1)
     email = emails[0]
-    assertEq(email.template, 'Confirm Registration (Initial)')
     if get_confirmation_code:
       return password, email.variables['confirm_key']
     else:

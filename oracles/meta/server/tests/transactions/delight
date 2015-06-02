@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+
+from utils import *
+from infinit.oracles.meta.server.transaction_status import *
+
+# Check send to self delight emails
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  alice.sendfile(alice.email)
+  emails = meta.emailer.template('Send to Self')
+  assertEq(len(emails), 1)
+  alice.sendfile(alice.email)
+  assert not meta.emailer.emails
+
+# Cloud buffered
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  bob = User(meta, 'bob@infinit.io')
+  alice.login()
+  transaction, _ = alice.sendfile(bob.email, initialize = True)
+  assert not meta.emailer.emails
+  alice.transaction_update(transaction['_id'], CLOUD_BUFFERED)
+  emails = meta.emailer.emails
+  assertEq(len(emails), 1)
+  assertEq(emails[0].template, 'Shared')
+  assert not meta.emailer.emails
+
+# Ghost
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  transaction, _ = alice.sendfile('ghost@infinit.io',
+                                  initialize = True)
+  assert not meta.emailer.emails
+  alice.transaction_update(transaction['_id'], GHOST_UPLOADED)
+  emails = meta.emailer.template('Shared')
+  assertEq(len(emails), 1)
+
+# Complete transfer
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  bob = User(meta, 'bob@infinit.io')
+  alice.login()
+  transaction, _ = alice.sendfile(bob.email, initialize = True)
+  bob.login()
+  bob.transaction_update(transaction['_id'], ACCEPTED)
+  assert not meta.emailer.emails
+  bob.transaction_update(transaction['_id'], FINISHED)
+  emails = meta.emailer.template('Shared')
+  assertEq(len(emails), 1)
+  emails = meta.emailer.template('Received')
+  assertEq(len(emails), 1)

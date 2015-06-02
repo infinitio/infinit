@@ -70,8 +70,6 @@ def configure(
     for name in (
         'boulders/drip/activity-reminder',
         'boulders/drip/confirm-signup',
-        'boulders/drip/delight-recipient',
-        'boulders/drip/delight-sender',
         'boulders/drip/ghost-reminder',
         'boulders/drip/onboarding',
         'boulders/drip/retention',

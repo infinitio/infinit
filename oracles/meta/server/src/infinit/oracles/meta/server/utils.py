@@ -146,7 +146,6 @@ def enforce_as_email_address(identifier, exit_on_failure = True):
 
 def identifier(user_identifier, country_code = None):
   try:
-    print("user identifier", user_identifier)
     if user_identifier is None:
       return None
     if isinstance(user_identifier, bson.ObjectId):
