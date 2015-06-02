@@ -415,7 +415,6 @@ class Mixin:
       recipient, new_user = self.__recipient_from_identifier(
         recipient_identifier,
         sender)
-      is_ghost = recipient['register_status'] == "ghost"
       transaction = {
         'sender_id': bson.ObjectId(sender['_id']),
         'sender_fullname': '',
@@ -525,7 +524,6 @@ class Mixin:
         })
         recipient, new_user = self.__recipient_from_identifier(merge_target,
                                                                sender)
-      is_ghost = recipient['register_status'] == "ghost"
       if recipient['register_status'] == 'deleted':
         self.gone({
           'reason': 'user %s is deleted' % recipient['_id'],
@@ -804,7 +802,8 @@ class Mixin:
     # Guess if this was a ghost cloud upload or not
     recipient = self.__user_fetch(
       transaction['recipient_id'],
-      fields = self.__user_view_fields + ['email', 'ghost_code', 'shorten_ghost_profile_url'])
+      fields = self.__user_view_fields + \
+        ['email', 'ghost_code', 'shorten_ghost_profile_url'])
     if recipient['register_status'] == 'deleted':
       self.gone({
         'reason': 'user %s is deleted' % recipient['_id'],
@@ -848,7 +847,7 @@ class Mixin:
           'sender': self.email_user_vars(user),
           'ghost_email': peer_email,
           'transaction':
-          self.email_transaction_vars(transaction, recipient),
+            self.email_transaction_vars(transaction, recipient),
           'ghost_profile': recipient.get(
             'shorten_ghost_profile_url',
               self.__ghost_profile_url(recipient, type = "email")),
