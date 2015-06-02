@@ -199,7 +199,7 @@ class MandrillEmailer(Emailer):
 
 
 def avatar(i, meta):
-  return '%s/user/%s/avatar' % (meta, i)
+  return '%suser/%s/avatar' % (meta, i)
 
 def user_vars(user, meta):
   return {
