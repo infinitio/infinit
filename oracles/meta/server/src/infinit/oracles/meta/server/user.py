@@ -2528,193 +2528,40 @@ class Mixin:
           }
         )
 
-  # Email subscription.
-  # XXX: Make it a decorator.
+  ## ------------------- ##
+  ## Email subscriptions ##
+  ## ------------------- ##
 
-  def user_unsubscription_hash(self, user):
-    """
-    Return the hash that will be used to find the user (compute it if absent).
-    This hash will be used to manage email subscriptions.
-
-    user -- The user.
-    """
-    with elle.log.debug('get user hash for email'):
-      assert user is not None
-      if not hasattr(user, 'email_hash'):
-        import hashlib
-        hash = hashlib.md5(str(user['_id']).encode('utf-8')).hexdigest()
-        user = self.__user_fetch_and_modify(
-          {"email": user['email']},
-          {"$set": {'email_hash': hash}},
-          new = True,
-          fields = ['email_hash'])
-    return user['email_hash']
-
-  def __user_by_email_hash(self, hash, avatar = False, identity=False, passport=False):
-    """
-    Return the user linked the hash.
-    """
-    with elle.log.debug('get user from email hash'):
-      user = self.__user_fetch({'email_hash': hash},
-                               fields = ['_id', 'email'])
-      if user is None:
-        raise error.Error(
-          error.UNKNOWN_USER,
-        )
-      return user
+  email_lists = ['alerts', 'tips']
 
   @api('/user/email_subscriptions', method = 'GET')
   @require_logged_in_fields(['unsubscriptions'])
   def mail_subscriptions(self):
-    """
-    Return the status of every subscriptions.
-    """
-    return self.success({
-      'subscriptions':
-      {
-        k:
-        {
-          'status': not k in self.user.get('unsubscriptions', []),
-          'pretty': mail.subscriptions[k]
-        }
-        for k in mail.subscriptions.keys()
-      }
-    })
-
-  def has_email_subscription(self, user, name):
-    subscription = mail.subscription_name(name)
-    return subscription not in user.get('unsubscriptions', [])
-
-  @api('/user/email_subscription/<name>', method = 'GET')
-  @require_logged_in
-  def get_mail_subscription(self, name):
-    """
-    Return the status for a specific subscription.
-
-    type -- The name of the subscription.
-    """
-    try:
-      user = self._user_from_session(fields = ['unsubscriptions'])
-      return self.success({name: self.has_email_subscription(user, name)})
-    except mail.EmailSubscriptionNotFound as e:
-      self.not_found()
-
-  def __modify_subscription(self, user, name, value):
-    """
-    Add or remove a subscription for a user.
-
-    user -- The user to edit.
-    name -- The name of the subscription to edit.
-    value -- The status wanted for the subscription.
-    """
-    action = value and 'subscribe' or 'unsubscribe'
-    with elle.log.debug(
-        '%s %s from %s emails' % (action, user['email'], name)):
-      try:
-        name = mail.subscription_name(name)
-        action = value and "$pop" or "$addToSet"
-        document = { action: {"unsubscriptions": name} }
-        self.database.users.update({'_id': user['_id']},
-                                   document = document,
-                                   upsert = False)
-        return {name: value}
-      except mail.EmailSubscriptionNotFound as e:
-        self.not_found()
-
-
-  def __set_subscription(self, user, unsubscriptions):
-    """
-    Add or remove a subscription for a user.
-
-    user -- The user to edit.
-    name -- The name of the subscription to edit.
-    value -- The status wanted for the subscription.
-    """
-    document = { "$set": { "unsubscriptions": unsubscriptions } }
-    self.database.users.update({'_id': user['_id']},
-                               document = document,
-                               upsert = False)
-
-  @api('/user/email_subscription/<name>', method = 'DELETE')
-  @require_logged_in
-  def delete_mail_subscription_logged(self, name):
-    """
-    Remove a specific subscription.
-
-    name -- The name of the subscription to edit.
-    """
-    return self.__modify_subscription(self.user, name, False)
-
-  @api('/user/<hash>/email_subscription/<name>', method = 'DELETE')
-  def delete_mail_subscription(self, hash, name):
-    """
-    Restore a specify subscription.
-
-    hash -- The hash associated to the user.
-    name -- The name of the subscription to edit.
-    """
-    user = self.__user_by_email_hash(hash)
-    return self.__modify_subscription(user, name, False)
-
-  @api('/users/<user>/email_subscriptions/<name>', method = 'PUT')
-  @require_key
-  def mail_subscribe_key(self, user, name):
-    """
-    Subscribe to an email set.
-
-    user -- Email or id of the user to unsubscribe.
-    name -- Name of the email set.
-    """
-    user = self.user_by_id_or_email(user, fields = ['email'])
-    res = self.__modify_subscription(user, name, True)
-    self._web_login(user)
-    return res
-
-  @api('/users/<user>/email_subscriptions/<name>', method = 'DELETE')
-  @require_key
-  def mail_unsubscribe_key(self, user, name):
-    """
-    Unsubscribe from an email set.
-
-    user -- Email or id of the user to unsubscribe.
-    name -- Name of the email set.
-    """
-    user = self.user_by_id_or_email(user, fields = ['email'])
-    if user is None:
-      self.not_found({
-        'reason': 'user %s not found' % user,
-        'user': user,
-      })
-    res = self.__modify_subscription(user, name, False)
-    self._web_login(user)
-    return res
-
-  # Restore.
-  @api('/user/email_subscription/<name>', method = 'PUT')
-  @require_logged_in
-  def restore_mail_subscription(self, name):
-    """
-    Restore a specific subscription.
-
-    name -- The name of the subscription to edit.
-    """
-    return self.__modify_subscription(self.user, name, True)
+    '''Get email subscriptions'''
+    return dict((l, self.user.get('unsubscriptions', {}).get(l, True))
+                for l in Mixin.email_lists)
 
   @api('/user/email_subscriptions', method = 'POST')
   @require_logged_in
-  def change_mail_subscriptions(self,
-                                subscriptions):
-    try:
-      user = self.user
-      if subscriptions is None:
-        subscriptions = []
-      subscriptions = isinstance(subscriptions, (str)) and [subscriptions] or subscriptions
-      subscriptions = list(map(lambda x: mail.subscription_name(str(x)), subscriptions))
-      self.__set_subscription(user, [x for x in mail.subscriptions.keys() \
-                                     if x not in subscriptions])
-      return self.success()
-    except mail.EmailSubscriptionNotFound as e:
-        self.not_found()
+  def mail_subscriptions(self, **kwargs):
+    '''Change email subscriptions'''
+    for k, v in kwargs.items():
+      if k not in Mixin.email_lists:
+        self.bad_request({
+          'reason': 'invalid email list: %s' % k,
+          'list': k,
+        })
+      if not isinstance(v, bool):
+        self.bad_request({
+          'reason': 'invalide list subscription value',
+          'value': v,
+        })
+
+    self.database.users.update(
+      {'_id': self.user['_id']},
+      {'$set': {'unsubscriptions.%s' % k: v
+                for k, v in kwargs.items()}})
+    return kwargs
 
   ## --------- ##
   ## Campaigns ##

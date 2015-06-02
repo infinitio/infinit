@@ -63,10 +63,16 @@ def merge_result(a, b):
 
 class Drip(Emailing):
 
-  def __init__(self, sisyphus, campaign, table, pretend = False):
+  def __init__(self,
+               sisyphus,
+               campaign,
+               table,
+               pretend = False,
+               list = None):
     super().__init__(sisyphus, campaign, table)
-    self.__table = self._Emailing__table
+    self.__list = list
     self.__pretend = pretend
+    self.__table = self._Emailing__table
 
   @property
   def user_fields(self):
@@ -205,8 +211,11 @@ class Drip(Emailing):
     return [(template, users)]
 
   def __email_enabled(self, user):
-    return 'unsubscriptions' not in user \
-      or 'drip' not in user['unsubscriptions']
+    if self.__list is not None:
+      return 'unsubscriptions' not in user \
+        or self.__list not in user['unsubscriptions']
+    else:
+      return True
 
   def sender(self, v):
     return None
@@ -238,6 +247,7 @@ class Drip(Emailing):
                   ('template', template),
                   ('campaign', self.campaign),
                   ('user', self.user_vars(user)),
+                  ('list', self.__list),
                 ],
                 vars.items(),
               )),
@@ -320,7 +330,8 @@ class Drip(Emailing):
 class Onboarding(Drip):
 
   def __init__(self, sisyphus, pretend = False):
-    super().__init__(sisyphus, 'onboarding', 'users', pretend)
+    super().__init__(sisyphus, 'onboarding', 'users',
+                     pretend, list = 'tips')
     # Find user in any status without scanning all ghosts, deleted
     # users etc.
     self.sisyphus.mongo.meta.users.ensure_index(
@@ -776,7 +787,8 @@ class WeeklyReport(Drip):
 class ActivityReminder(Drip):
 
   def __init__(self, sisyphus, pretend = False):
-    super().__init__(sisyphus, 'activity-reminder', 'users', pretend)
+    super().__init__(sisyphus, 'activity-reminder', 'users',
+                     pretend, list = 'alerts')
     self.sisyphus.mongo.meta.users.ensure_index(
       [
         # Find initialized users
