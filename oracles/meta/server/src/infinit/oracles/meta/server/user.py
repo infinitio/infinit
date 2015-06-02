@@ -2383,7 +2383,19 @@ class Mixin:
   def get_avatar(self,
                  id: bson.ObjectId,
                  date: int = 0,
-                 no_place_holder: bool = False):
+                 no_place_holder: bool = False,
+                 ghost_code: str = ''):
+    if len(ghost_code):
+      # send metric
+      if self.metrics is not None:
+        self.metrics.send(
+          [{
+            'event': 'invite/opened',
+            'ghost_code': ghost_code,
+            'user': str(id),
+            'timestamp': time.time(),
+          }],
+          collection = 'users')
     user = self._user_by_id(id,
                             ensure_existence = False,
                             fields = ['small_avatar'])
