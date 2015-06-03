@@ -11,6 +11,7 @@
 # include <surface/gap/LinkTransaction.hh>
 # include <surface/gap/Model.hh>
 # include <surface/gap/PeerTransaction.hh>
+# include <surface/gap/PlainInvitation.hh>
 # include <surface/gap/User.hh>
 # include <surface/gap/enums.hh>
 
@@ -104,6 +105,11 @@ gap_register(gap_State* state,
              boost::optional<std::string> device_model = boost::none,
              boost::optional<std::string> device_name = boost::none,
              boost::optional<std::string> device_language = boost::none);
+
+gap_Status
+gap_plain_invite_contact(gap_State* state,
+                         std::string const& identifier,
+                         surface::gap::PlainInvitation& res);
 
 gap_Status
 gap_check_ghost_code(gap_State* state, std::string const& code, bool& res);

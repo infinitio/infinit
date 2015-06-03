@@ -320,6 +320,29 @@ gap_register(gap_State* state,
 }
 
 gap_Status
+gap_plain_invite_contact(gap_State* state,
+                         std::string const& identifier,
+                         surface::gap::PlainInvitation& res)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "plain invite",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      try
+      {
+        res = state.plain_invite_contact(identifier);
+        return gap_ok;
+      }
+      catch (infinit::state::InvitationError const&)
+      {
+        return gap_email_already_registered;
+      }
+    });
+}
+
+gap_Status
 gap_check_ghost_code(gap_State* state, std::string const& code, bool& res)
 {
   ELLE_ASSERT(state != nullptr);
