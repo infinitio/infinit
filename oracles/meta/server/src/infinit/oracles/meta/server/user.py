@@ -3215,26 +3215,40 @@ class Mixin:
       self.forbidden({
           'reason': 'User was deleted.'
       })
+    query = {'$addToSet': {'referred_by':user['_id']}}
+    ghost_code = recipient.get('ghost_code', None)
+    shorten_ghost_profile_url = recipient.get('shorten_ghost_profile_url', None)
+    if not ghost_code:
+      ghost_code = self.generate_random_sequence()
+      query.update({'$set': {'ghost_code': ghost_code}})
+      query['$set']['shorten_ghost_profile_url'] = self.shorten(
+            self.__ghost_profile_url(
+              {
+                '_id': recipient['_id'],
+                'ghost_code': ghost_code,
+              },
+              type = recipient['accounts'][0]["type"],
+            ))
     self.database.users.update({'_id': recipient['_id']},
-                               {'$addToSet': {'referred_by':user['_id']}})
+                               query)
     code = uuid.uuid4()
     self.database.invitations.insert({
         'code': code,
         'status': 'pending',
         'recipient': recipient['_id'],
         'sender': user['_id'],
-        'ghost_code': recipient['ghost_code']
+        'ghost_code': ghost_code
     })
     is_an_email = utils.is_an_email_address(identifier)
     if is_an_email:
       # send email
       variables = {
         'sender': self.email_user_vars(user),
-        'ghost_code': recipient['ghost_code'],
+        'ghost_code': ghost_code,
       }
 
       # insert our tracker in avatar url
-      variables['sender']['avatar'] += '?ghost_code=%s' % recipient['ghost_code']
+      variables['sender']['avatar'] += '?ghost_code=%s' % ghost_code
       self.emailer.send_one(
         'Plain',
         recipient_email = identifier,
@@ -3244,8 +3258,8 @@ class Mixin:
         )
     return {
       'identifier': identifier,
-      'ghost_code': recipient['ghost_code'],
-      'shorten_ghost_profile_url': recipient['shorten_ghost_profile_url']
+      'ghost_code': ghost_code,
+      'shorten_ghost_profile_url': shorten_ghost_profile_url
     }
 
   @api('/user/invite/<code>/opened', method = 'POST')
