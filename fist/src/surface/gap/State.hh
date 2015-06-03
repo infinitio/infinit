@@ -34,6 +34,7 @@
 # include <surface/gap/Exception.hh>
 # include <surface/gap/Model.hh>
 # include <surface/gap/Notification.hh>
+# include <surface/gap/PlainInvitation.hh>
 # include <surface/gap/Self.hh>
 # include <surface/gap/Transaction.hh>
 # include <surface/gap/User.hh>
@@ -785,6 +786,12 @@ namespace surface
 
       mutable reactor::MultiLockBarrier transaction_update_lock;
 
+    /*------------.
+    | Invitations |
+    `------------*/
+    public:
+      surface::gap::PlainInvitation
+      plain_invite_contact(std::string const& identifier);
 
     /*------------.
     | Ghost codes |

@@ -1552,7 +1552,27 @@ namespace surface
     State::change_password(std::string const& password,
                            std::string const& new_password)
     {
-      meta().change_password(password, new_password);
+      this->meta().change_password(password, new_password);
+    }
+
+    /*------------.
+    | Invitations |
+    `------------*/
+    surface::gap::PlainInvitation
+    State::plain_invite_contact(std::string const& identifier)
+    {
+      try
+      {
+        auto const& meta_invite = this->meta().plain_invite_contact(identifier);
+        return surface::gap::PlainInvitation(meta_invite.identifier(),
+                                             meta_invite.ghost_code(),
+                                             meta_invite.ghost_profile_url());
+      }
+      catch (infinit::state::InvitationError const&)
+      {
+        ELLE_WARN("%s: unable to plain invite contact: %s", *this, identifier);
+        return surface::gap::PlainInvitation();
+      }
     }
 
     /*-----------.
