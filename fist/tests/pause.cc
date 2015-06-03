@@ -103,66 +103,78 @@ ELLE_TEST_SCHEDULED(pause_snapshot)
 ELLE_TEST_SCHEDULED(pause_resume)
 {
   tests::Server server;
-  elle::filesystem::TemporaryDirectory sender_home(
-    "pause_sender_home_p2p");
+  elle::filesystem::TemporaryDirectory sender_home("pause_sender_home_p2p");
   auto const& sender_user =
     server.register_user("sender@infinit.io", "password");
   elle::filesystem::TemporaryDirectory recipient_home(
     "pause_recipient_home_p2p");
   auto const& recipient_user =
     server.register_user("recipient@infinit.io", "password");
-  std::string t_id;
   elle::filesystem::TemporaryFile transfered("pause");
   {
     boost::filesystem::ofstream f(transfered.path());
     BOOST_CHECK(f.good());
-    for (int i = 0; i < 2048; ++i)
+    for (int i = 0; i < (5 * 1024 * 1024); ++i)
     {
       char c = i % 256;
       f.write(&c, 1);
     }
   }
 
-
   tests::Client sender(server, sender_user, sender_home.path());
+  reactor::Barrier first_transfer, paused, transfer_again;
+  bool second_time = false;
+  sender.state->attach_callback<surface::gap::PeerTransaction>(
+    [&] (surface::gap::PeerTransaction const& transaction)
+    {
+      ELLE_WARN("new sender transaction status: %s", transaction.status);
+      if (transaction.status == gap_transaction_paused)
+        paused.open();
+      if (transaction.status == gap_transaction_connecting ||
+          transaction.status == gap_transaction_transferring)
+      {
+        if (second_time)
+        {
+          transfer_again.open();
+        }
+        else
+        {
+          second_time = true;
+          first_transfer.open();
+        }
+      }
+    });
   sender.login();
   auto& state_transaction = sender.state->transaction_peer_create(
     recipient_user.email(),
-    std::vector<std::string>{transfered.path().string().c_str()},
+    std::vector<std::string>{transfered.path().string()},
     "message");
-  reactor::Barrier paused, transfer_again;
-  bool second_time = false;
-  auto conn = state_transaction.status_changed().connect(
-    [&] (gap_TransactionStatus status)
-    {
-      t_id = state_transaction.data()->id;
-      ELLE_WARN("new sender transaction status: %s", status);
-      if (status == gap_transaction_paused)
-        paused.open();
-      if (status == gap_transaction_transferring)
-        if (second_time)
-          transfer_again.open();
-        else
-          second_time = true;
-    });
 
   tests::Client recipient(server, recipient_user, recipient_home.path());
   recipient.login();
-  recipient.state->synchronize();
   BOOST_CHECK_EQUAL(recipient.state->transactions().size(), 1);
-  auto& state_transaction_recipient = *recipient.state->transactions().begin()->second;
-  state_transaction_recipient.status_changed().connect(
-    [&] (gap_TransactionStatus status)
-    {
-      ELLE_WARN("new recipient status: %s", status);
-    });
-  reactor::Barrier recipient_finished;
-  sender.state->transaction_pause(state_transaction.id());
-  recipient.state->on_transaction_paused(state_transaction.data()->id, true);
+  auto& state_transaction_recipient =
+    *recipient.state->transactions().begin()->second;
   state_transaction_recipient.accept();
+  while (!first_transfer)
+  {
+    sender.state->poll(); // Open first_transfer_barrier
+    reactor::sleep(10_ms);
+  }
+  reactor::wait(first_transfer);
+  sender.state->transaction_pause(state_transaction.id());
+  while (!paused)
+  {
+    sender.state->poll(); // Open pause barrier
+    reactor::sleep(10_ms);
+  }
   reactor::wait(paused);
   sender.state->transaction_pause(state_transaction.id(), false);
-  recipient.state->on_transaction_paused(state_transaction.data()->id, false);
+  while (!transfer_again)
+  {
+    sender.state->poll(); // Open transfer_again barrier
+    reactor::sleep(10_ms);
+  }
   reactor::wait(transfer_again);
 }
 
