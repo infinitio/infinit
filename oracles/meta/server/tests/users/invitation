@@ -10,7 +10,7 @@ import bson
 with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   alice = User(meta, "alice@infinit.io")
   alice.login()
-  alice.put('user/invite', {'name': 'bob@infinit.io'})
+  alice.put('user/invite', {'identifier': 'bob@infinit.io'})
   inv = alice.get('user/invites')
   inv = inv['results']
   assert len(inv) == 1
@@ -29,7 +29,7 @@ with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   assert len(inv) == 1
   assert inv[0]['status'] == 'completed'
 
-  alice.put('user/invite', {'name': 'carl@infinit.io'})
+  alice.put('user/invite', {'identifier': 'carl@infinit.io'})
   carl = User(meta, 'carl2@infinit.io')
   carl.login()
   gc = meta.database.users.find_one({'accounts.id': 'carl@infinit.io'})['ghost_code']
@@ -39,3 +39,10 @@ with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   assert len(inv) == 2
   assert inv[0]['status'] == 'completed'
   assert inv[1]['status'] == 'completed'
+
+  # Test phone invite response
+  invitee = '+33 6 10 15 00 65'
+  res = alice.put('user/invite', {'identifier': invitee})
+  assert(res['identifier'] == invitee)
+  assert(len(res['ghost_code']) > 0)
+  assert(len(res['shorten_ghost_profile_url']) > 0)
