@@ -97,5 +97,16 @@ namespace infinit
     GhostCodeAlreadyUsed::GhostCodeAlreadyUsed()
       : Error("ghost code already used")
     {}
+
+    /*------------------.
+    | Invitation Errors |
+    `------------------*/
+    InvitationError::InvitationError(std::string const& message)
+      : Error(message)
+    {}
+
+    InviteeInvalid::InviteeInvalid()
+      : InvitationError::InvitationError("invitee invalid")
+    {}
   }
 }

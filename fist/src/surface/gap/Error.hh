@@ -164,6 +164,23 @@ namespace infinit
     public:
       inline GhostCodeAlreadyUsed();
     };
+
+    /*------------------.
+    | Invitation Errors |
+    `------------------*/
+    class InvitationError
+      : public Error
+    {
+    public:
+      inline InvitationError(std::string const& message);
+    };
+
+    class InviteeInvalid
+      : public InvitationError
+    {
+    public:
+      inline InviteeInvalid();
+    };
   }
 }
 
