@@ -1715,15 +1715,17 @@ class Mixin:
       self.process_referrals(merge_with, res.get('referred_by', []))
       # Increase swaggers swag for self
       update = {
-        '$inc': {
-          'swaggers.%s' % id: deleted_user_swaggers[id] for id in deleted_user_swaggers
-        },
         '$addToSet': {
           'accounts': {
             '$each': deleted_user_accounts,
           },
         }
       }
+      if len(deleted_user_swaggers) > 0:
+        update['$inc'] = {
+          'swaggers.%s' % \
+            id: deleted_user_swaggers[id] for id in deleted_user_swaggers
+        }
       if ghost_code is not None:
         update['$addToSet']['consumed_ghost_codes'] = ghost_code
       self.database.users.update({'_id': merge_with['_id']}, update)
