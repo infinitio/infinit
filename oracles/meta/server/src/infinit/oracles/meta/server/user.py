@@ -1211,7 +1211,7 @@ class Mixin:
       email,
       ensure_existence = False,
       fields = ['register_status'])
-    if other is not None and other['register_status'] != 'ghost':
+    if other is not None and other['register_status'] not in ['contact', 'ghost']:
       self.conflict({
           'reason': 'email already registered',
           'email': email,
@@ -1267,7 +1267,7 @@ class Mixin:
               'reason': 'email already registered',
               'email': name,
             })
-          if status in ['ghost', 'deleted']:
+          if status in ['ghost', 'deleted', 'contact']:
             self.user_delete(previous, merge_with = user)
             continue
       return {}
@@ -1587,7 +1587,7 @@ class Mixin:
        Considerations:
        - Keep the process as atomic at the DB level as possible.
     """
-    if merge_with and user['register_status'] not in ['ghost', 'deleted']:
+    if merge_with and user['register_status'] not in ['ghost', 'contact', 'deleted']:
       self.bad_request({
         'reason': 'Only ghost accounts can be merged'
       })

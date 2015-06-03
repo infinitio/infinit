@@ -125,3 +125,18 @@ with Meta() as meta:
   marc.login()
   marc.post('ghost/%s/merge' % (code))
   assert str(marc.id) in alice.swaggers
+
+# Check contacts and alternate email registration
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login(country_code = 'FR')
+  bob = User(meta, 'bob@bob.com')
+  bob.login(country_code = 'FR')
+  email = 'marc@wanadoo.fr'
+  alice.put('user/contacts',
+    {'contacts': [{'emails': [email]}]})
+  bob.put('user/accounts/%s' % email)
+  hash = meta.emailer.emails[0].variables['key']
+  bob.post(
+    'users/%s/accounts/%s/confirm' % (bob.id, email),
+    {'key': hash})
