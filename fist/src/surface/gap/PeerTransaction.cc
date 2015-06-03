@@ -17,7 +17,7 @@ namespace surface
       bool is_directory_,
       std::string const& message_,
       TransactionCanceler const& canceler_,
-      std::string const & meta_id_)
+      std::string const& meta_id_)
         : id(id_)
         , status(status_)
         , sender_id(sender_id_)
