@@ -47,6 +47,11 @@ class Emailing(Boulder):
   def now(self):
     return datetime.datetime.utcnow()
 
+  @property
+  def table(self):
+    return self.__table
+
+
 def merge_result(a, b):
   for key, value in b.items():
     if isinstance(value, int):
@@ -105,87 +110,107 @@ class Drip(Emailing):
                  condition,
                  template = None,
                  variations = None,
-                 update = None):
-    meta = self.sisyphus.mongo.meta
-    field = 'emailing.%s.state' % self.campaign
-    if start is None:
-      start_condition = {field: {'$exists': False}}
-    elif isinstance(start, str):
-      start_condition = {field: start}
-    else:
-      start_condition = {field: {'$in': start}}
-    condition.update(start_condition)
-    condition[self.field_lock] = {'$exists': False}
-    final_update = {field: end}
-    if update is not None:
-      final_update.update(update)
-    if template is None:
-      if self.__pretend:
-        n = self.__table.find(condition).count()
+                 update = None,
+                 guard = None):
+    with elle.log.trace(
+        '%s: transition from %s to %s' % (self, start, end)):
+      meta = self.sisyphus.mongo.meta
+      field = 'emailing.%s.state' % self.campaign
+      if start is None:
+        start_condition = {field: {'$exists': False}}
+      elif isinstance(start, str):
+        start_condition = {field: start}
       else:
+        start_condition = {field: {'$in': start}}
+      condition.update(start_condition)
+      condition[self.field_lock] = {'$exists': False}
+      final_update = {field: end}
+      if update is not None:
+        final_update.update(update)
+      if template is None:
+        assert guard is None
+        if self.__pretend:
+          n = self.__table.find(condition).count()
+        else:
+          res = self.__table.update(
+            condition,
+            {
+              '$set': final_update,
+            },
+            multi = True,
+          )
+          n = res['n']
+        if n > 0:
+          return {'%s -> %s' % (start, end): n}
+        else:
+          return {}
+      else:
+        # Lock documents
         res = self.__table.update(
           condition,
           {
-            '$set': final_update,
+            '$set':
+            {
+              self.field_lock: self.lock_id,
+            },
           },
           multi = True,
         )
-        n = res['n']
-      if n > 0:
-        return {'%s -> %s' % (start, end): n}
-      else:
-        return {}
-    else:
-      # Lock documents
-      self.__table.update(
-        condition,
-        {
-          '$set':
+        elle.log.debug('%s: %s match' % (self, res['n']))
+        update = {
+          '$unset':
           {
-            self.field_lock: self.lock_id,
+            self.field_lock: True,
           },
-        },
-        multi = True,
-      )
-      # Fetch documents
-      elts = self.__table.find({self.field_lock: self.lock_id},
-                               fields = self.fields)
-      # Split unsubscribed
-      users = []
-      unsubscribed = []
-      for u, e in [(self._user(elt), elt) for elt in elts]:
-        (users if self.__email_enabled(u) else unsubscribed)\
-          .append((u, e))
-      # Send email
-      sent = self.send_email(
-        end,
-        template,
-        users,
-        variations = variations)
-      update = {
-        '$unset':
-        {
-          self.field_lock: True,
-        },
-      }
-      # Unlock and commit
-      if not self.__pretend:
-        update['$set'] = final_update
-      self.__table.update(
-        {self.field_lock: self.lock_id},
-        update,
-        multi = True,
-      )
-      # Format result
-      res = {}
-      if len(sent) > 0:
-        res[template] = sent
-      if len(unsubscribed) > 0:
-        res['unsubscribed'] = [u['email'] for u, e in unsubscribed]
-      if res == {}:
-        return {}
-      else:
-        return {'%s -> %s' % (start, end): res}
+        }
+        # Fetch documents
+        elts = self.__table.find({self.field_lock: self.lock_id},
+                                 fields = self.fields)
+        # Partition
+        skipped = []
+        users = []
+        unsubscribed = []
+        for u, e in [(self._user(elt), elt) for elt in elts]:
+          if guard and not guard(u, e):
+            skipped.append((u, e))
+          elif self.__email_enabled(u):
+            users.append((u, e))
+          else:
+            unsubscribed.append((u, e))
+        # Unlock skipped
+        if skipped:
+          res = self.__table.update(
+            {'_id': {'$in': [e['_id'] for u, e in skipped]}},
+            update,
+            multi = True,
+          )
+          elle.log.debug('%s: %s skipped' % (self, res['n']))
+        # Send email
+        sent = None
+        if users:
+          sent = self.send_email(
+            end,
+            template,
+            users,
+            variations = variations)
+        # Unlock and commit
+        if not self.__pretend:
+          update['$set'] = final_update
+        self.__table.update(
+          {self.field_lock: self.lock_id},
+          update,
+          multi = True,
+        )
+        # Format result
+        res = {}
+        if sent:
+          res[template] = sent
+        if unsubscribed:
+          res['unsubscribed'] = [u['email'] for u, e in unsubscribed]
+        if res == {}:
+          return {}
+        else:
+          return {'%s -> %s' % (start, end): res}
 
   def _pick_template(self, template, users):
     return [(template, users)]
@@ -647,7 +672,40 @@ class Tips(Drip):
       [
         ('emailing.tips.state', pymongo.ASCENDING),
         ('register_status', pymongo.ASCENDING),
+        ('emailing.tips.next', pymongo.ASCENDING),
       ])
+    for name, idx in [
+        self.transactions_self_index,
+        self.transactions_size_sender_index,
+        self.transactions_size_recipient_index,
+    ]:
+      self.sisyphus.mongo.meta.transactions.ensure_index(
+        idx,
+        name = name)
+
+  @property
+  def transactions_self_index(self):
+    # Find transfers to self
+    return 'emailing.tips.self', [
+      ('sender_id', pymongo.ASCENDING),
+      ('recipient_id', pymongo.ASCENDING),
+    ]
+
+  @property
+  def transactions_size_sender_index(self):
+    # Find biggest sent transfer
+    return 'emailing.tips.sender_size', [
+      ('sender_id', pymongo.ASCENDING),
+      ('total_size', pymongo.ASCENDING),
+    ]
+
+  @property
+  def transactions_size_recipient_index(self):
+    # Find biggest received transfer
+    return 'emailing.tips.recipient_size', [
+      ('recipient_id', pymongo.ASCENDING),
+      ('total_size', pymongo.ASCENDING),
+    ]
 
   @property
   def now(self):
@@ -656,6 +714,41 @@ class Tips(Drip):
   @property
   def delay(self):
     return datetime.timedelta(weeks = 2)
+
+  def hasnt_sent_to_self(self, user, element):
+    query = self.sisyphus.mongo.meta.transactions.find({
+      'sender_id': user['_id'],
+      'recipient_id': user['_id'],
+    }, hint = self.transactions_self_index[1])
+    try:
+      next(iter(query))
+      return False
+    except StopIteration:
+      return True
+
+  @property
+  def big_transaction_threshold(self):
+    return 100000000 # 100MB
+
+  def hasnt_sent_big(self, user, element):
+    for k, idx in [
+        ('sender_id', self.transactions_size_sender_index),
+        ('recipient_id', self.transactions_size_recipient_index),
+    ]:
+      query = self.sisyphus.mongo.meta.transactions.find({
+        k: user['_id'],
+        'total_size': {'$gt': self.big_transaction_threshold},
+      }, hint = idx[1])
+      try:
+        next(iter(query))
+        return False
+      except StopIteration:
+        pass
+    return True
+
+  def hasnt_sent_link(self, user, element):
+    return self.sisyphus.mongo.meta.links.find_one(
+      {'sender_id': user['_id']}) is None
 
   def run(self):
     response = {}
@@ -669,7 +762,7 @@ class Tips(Drip):
       },
       update = {
         'emailing.tips.next': self.now + self.delay,
-      }
+      },
     )
     response.update(transited)
     transited = self.transition(
@@ -683,6 +776,65 @@ class Tips(Drip):
           '$lt': self.now,
         },
       },
+      update = {
+        'emailing.tips.next': self.now + self.delay,
+      },
+      guard = self.hasnt_sent_to_self,
+      template = 'Send to Self Tip',
     )
     response.update(transited)
+    for start in ['fresh', 'send-to-self']:
+      transited = self.transition(
+        start,
+        'send-anything',
+        {
+          # Fully registered
+          'register_status': 'ok',
+          # For long enough
+          'emailing.tips.next': {
+            '$lt': self.now,
+          },
+        },
+        update = {
+          'emailing.tips.next': self.now + self.delay,
+        },
+        guard = self.hasnt_sent_big,
+        template = 'Send Anything',
+      )
+      response.update(transited)
+    for start in ['fresh', 'send-to-self', 'send-anything']:
+      transited = self.transition(
+        start,
+        'create-links',
+        {
+          # Fully registered
+          'register_status': 'ok',
+          # For long enough
+          'emailing.tips.next': {
+            '$lt': self.now,
+          },
+        },
+        update = {
+          'emailing.tips.next': self.now + self.delay,
+        },
+        guard = self.hasnt_sent_link,
+        template = 'Links',
+      )
+      response.update(transited)
+    for start in ['fresh', 'send-to-self',
+                  'send-anything', 'create-links']:
+      transited = self.transition(
+        start,
+        'done',
+        {
+          # Fully registered
+          'register_status': 'ok',
+          # For long enough
+          'emailing.tips.next': {
+            '$lt': self.now,
+          },
+        },
+      )
+      response.update(transited)
+    return response
     return response

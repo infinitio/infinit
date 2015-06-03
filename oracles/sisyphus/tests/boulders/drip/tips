@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+
+# utils first, beware of system OpenSSL.
+from utils import *
+
+import elle.log
+
+from infinit.oracles.transaction import statuses
+
+import oracles.sisyphus
+import oracles.sisyphus.boulders.drip
+
+ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.boulders.drip'
+
+class Tips(oracles.sisyphus.boulders.drip.Tips):
+
+  def __init__(self, sisyphus):
+    super().__init__(sisyphus)
+    self.__now = datetime.datetime.utcnow()
+
+  @property
+  def now(self):
+    return self.__now
+
+  @now.setter
+  def now(self, value):
+    self.__now = value
+
+def forward(tips, meta, duration):
+  tips.now += duration
+  meta.now = tips.now
+
+def forward_and_check(email, tips, meta, template):
+  forward(tips, meta, tips.delay / 2)
+  tips.sisyphus.boulders_run()
+  check_no_mail(tips.sisyphus.emailer.emails)
+  forward(tips, meta, tips.delay)
+  tips.sisyphus.boulders_run()
+  if template:
+    check_mail(tips.sisyphus.emailer.emails, email, template)
+  else:
+    check_no_mail(tips.sisyphus.emailer.emails)
+
+def create_user(email, meta, sisy):
+  res = user_register(meta, email)
+  # Check nothing is sent to a fresh user
+  sisy.boulders_run()
+  check_no_mail(sisy.emailer.emails)
+  return res, email
+
+def check(f):
+  with mongobox.MongoBox() as mongo:
+    with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
+      emailer = DummyEmailer()
+      sisy = oracles.sisyphus.Sisyphus(mongo_port = mongo.port,
+                                       emailer = emailer)
+      gestapo(sisy.mongo)
+      tips = Tips(sisy)
+      # Check nothing is sent with no users
+      sisy.boulders_run()
+      check_no_mail(emailer.emails)
+      f(sisy, meta, tips, emailer)
+
+def send_to_self(sisy, meta, tips, emailer):
+  user, email = create_user('user@infinit.io', meta, sisy)
+  forward_and_check(email, tips, meta, 'Send to Self Tip')
+  forward_and_check(email, tips, meta, 'Send Anything')
+  forward_and_check(email, tips, meta, 'Links')
+  forward_and_check(email, tips, meta, None)
+check(send_to_self)
+
+def send_anything(sisy, meta, tips, emailer):
+  user, email = create_user('user@infinit.io', meta, sisy)
+  transaction_create(meta, user, email)
+  forward_and_check(email, tips, meta, 'Send Anything')
+  forward_and_check(email, tips, meta, 'Links')
+  forward_and_check(email, tips, meta, None)
+check(send_anything)
+
+def create_links(sisy, meta, tips, emailer):
+  user, email = create_user('user@infinit.io', meta, sisy)
+  transaction_create(meta, user, email)
+  transaction_create(
+    meta, user, 'ghost@infinit.io',
+    size = tips.big_transaction_threshold * 1.1)
+  forward_and_check(email, tips, meta, 'Links')
+  forward_and_check(email, tips, meta, None)
+check(create_links)
+
+def none(sisy, meta, tips, emailer):
+  user, email = create_user('user@infinit.io', meta, sisy)
+  tid = transaction_create(
+    meta, user, email,
+    size = tips.big_transaction_threshold * 1.1)
+  meta.link_generate({'name': 3}, 'name', '', user,
+                     {'id': 'device-id'})
+  forward_and_check(email, tips, meta, None)
+check(none)
+
+
+def skip_some(sisy, meta, tips, emailer):
+  user, email = create_user('user@infinit.io', meta, sisy)
+  forward_and_check(email, tips, meta, 'Send to Self Tip')
+  transaction_create(
+    meta, user, 'ghost@infinit.io',
+    size = tips.big_transaction_threshold * 1.1)
+  forward_and_check(email, tips, meta, 'Links')
+check(skip_some)

@@ -72,7 +72,7 @@ def configure(
         'boulders/drip/confirm-signup',
         'boulders/drip/ghost-reminder',
         'boulders/drip/onboarding',
-        'boulders/drip/retention',
+        'boulders/drip/tips',
     ):
       test = drake.node('tests/%s' % name)
       for source in sources_built:
