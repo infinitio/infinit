@@ -305,6 +305,7 @@ class Mixin:
     """
     recipient_identifier = utils.identifier(recipient_identifier)
     recipient_fields = self.__user_view_fields + [
+      'accounts',
       'email',
       'devices.id',
       'features',
