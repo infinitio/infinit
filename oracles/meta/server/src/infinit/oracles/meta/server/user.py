@@ -1743,6 +1743,7 @@ class Mixin:
         )
       self.change_transactions_recipient(
         current_owner = user, new_owner = merge_with)
+      # XXX: We can currently only merge ghosts and ghosts have no links.
       # self.change_links_ownership(user, merge_with)
       new_id = merge_with['_id']
       if len(deleted_user_contact_of):
