@@ -837,4 +837,35 @@ class Tips(Drip):
       )
       response.update(transited)
     return response
+
+
+class NPS(Drip):
+
+  def __init__(self, sisyphus, pretend = False):
+    super().__init__(sisyphus, 'nps', 'users', pretend)
+    self.sisyphus.mongo.meta.users.ensure_index(
+      [
+        ('emailing.nps.state', pymongo.ASCENDING),
+        ('register_status', pymongo.ASCENDING),
+        ('creation_time', pymongo.ASCENDING),
+      ])
+
+  @property
+  def delay(self):
+    return datetime.timedelta(days = 60)
+
+  def run(self):
+    response = {}
+    transited = self.transition(
+      None,
+      'sent',
+      {
+        # Fully registered
+        'register_status': 'ok',
+        # For more than 60 days
+        'creation_time': {'$lt': self.now - self.delay},
+      },
+      template = 'Net Promoter Score',
+    )
+    response.update(transited)
     return response
