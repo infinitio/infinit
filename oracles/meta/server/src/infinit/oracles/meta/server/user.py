@@ -3204,9 +3204,9 @@ class Mixin:
 
   @api('/user/invite', method = 'PUT')
   @require_logged_in
-  def user_invite(self, name):
+  def user_invite(self, identifier):
     user = self.user
-    recipient, created = self.__recipient_from_identifier(name, user, True)
+    recipient, created = self.__recipient_from_identifier(identifier, user, True)
     if recipient['register_status'] in ['merged', 'ok']:
       self.forbidden({
           'reason': 'User already registered.'
@@ -3225,7 +3225,7 @@ class Mixin:
         'sender': user['_id'],
         'ghost_code': recipient['ghost_code']
     })
-    is_an_email = utils.is_an_email_address(name)
+    is_an_email = utils.is_an_email_address(identifier)
     if is_an_email:
       # send email
       variables = {
@@ -3237,12 +3237,16 @@ class Mixin:
       variables['sender']['avatar'] += '?ghost_code=%s' % recipient['ghost_code']
       self.emailer.send_one(
         'Plain',
-        recipient_email = name,
+        recipient_email = identifier,
         sender_email = user['email'],
         sender_name = user['fullname'],
         variables = variables,
         )
-    return {}
+    return {
+      'identifier': identifier,
+      'ghost_code': recipient['ghost_code'],
+      'shorten_ghost_profile_url': recipient['shorten_ghost_profile_url']
+    }
 
   @api('/user/invite/<code>/opened', method = 'POST')
   def user_invite_opened(self, code):
