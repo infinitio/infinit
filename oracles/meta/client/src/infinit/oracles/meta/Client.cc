@@ -701,6 +701,49 @@ namespace infinit
         return SynchronizeResponse{input};
       }
 
+      PlainInvitationResponse::PlainInvitationResponse(
+        elle::serialization::SerializerIn& s)
+      {
+        this->serialize(s);
+      }
+
+      void
+      PlainInvitationResponse::serialize(
+        elle::serialization::Serializer& s)
+      {
+        s.serialize("identifier", this->_identifier);
+        s.serialize("ghost_code", this->_ghost_code);
+        s.serialize("shorten_ghost_profile_url", this->_ghost_profile_url);
+      }
+
+      PlainInvitationResponse
+      Client::plain_invite_contact(std::string const& identifier) const
+      {
+        std::string url("/user/invite");
+        auto request = this->_request(
+          url,
+          Method::PUT,
+          [&] (reactor::http::Request& r)
+          {
+            elle::serialization::json::SerializerOut output(r, false);
+            output.serialize("identifier",
+                             const_cast<std::string&>(identifier));
+          }, false);
+        switch (request.status())
+        {
+          case reactor::http::StatusCode::OK:
+            break;
+          case reactor::http::StatusCode::Bad_Request:
+            throw infinit::state::InviteeInvalid();
+          case reactor::http::StatusCode::Forbidden:
+            throw infinit::state::InvitationError(request.response().string());
+          default:
+            this->_handle_errors(request);
+        }
+        SerializerIn input(url, request);
+        return PlainInvitationResponse(input);
+      }
+
       void
       Client::use_ghost_code(std::string const& code_) const
       {

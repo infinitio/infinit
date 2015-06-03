@@ -342,6 +342,20 @@ namespace infinit
         serialize(elle::serialization::Serializer& s);
       };
 
+      class PlainInvitationResponse
+      {
+      public:
+        PlainInvitationResponse() = default;
+
+        ELLE_ATTRIBUTE_R(std::string, identifier);
+        ELLE_ATTRIBUTE_R(std::string, ghost_code);
+        ELLE_ATTRIBUTE_R(std::string, ghost_profile_url);
+
+        PlainInvitationResponse(elle::serialization::SerializerIn& s);
+        void
+        serialize(elle::serialization::Serializer& s);
+      };
+
       typedef elle::ConstWeakBuffer UserIcon;
 
       class Client: public elle::Printable
@@ -486,6 +500,10 @@ namespace infinit
 
         Self
         self() const;
+
+        /// 'identifier' can be either email address or phone number.
+        PlainInvitationResponse
+        plain_invite_contact(std::string const& identifier) const;
 
         void
         use_ghost_code(std::string const& code) const;
