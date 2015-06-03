@@ -890,6 +890,62 @@ namespace devices
   }
 }
 
+namespace invitations
+{
+  ELLE_TEST_SCHEDULED(plain_invite)
+  {
+    std::string ghost_code("aaaaa");
+    std::string ghost_profile_url("https://infinit.io");
+    HTTPServer s;
+    s.register_route("/user/invite",
+                     reactor::http::Method::PUT,
+                     [ghost_code, ghost_profile_url] (
+                        HTTPServer::Headers const&,
+                        HTTPServer::Cookies const&,
+                        HTTPServer::Parameters const&,
+                        elle::Buffer const& body) -> std::string
+    {
+      elle::IOStream stream(body.istreambuf());
+      elle::serialization::json::SerializerIn input(stream, false);
+      std::string identifier;
+      input.serialize("identifier", identifier);
+      return elle::sprintf("{"
+        "  \"identifier\": \"%s\","
+        "  \"ghost_code\": \"%s\","
+        "  \"shorten_ghost_profile_url\": \"%s\""
+        "}", identifier, ghost_code, ghost_profile_url);
+    });
+    infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+    std::string identifier("bob@infinit.io");
+    auto const& invite = c.plain_invite_contact(identifier);
+    BOOST_CHECK_EQUAL(invite.identifier(), identifier);
+    BOOST_CHECK_EQUAL(invite.ghost_code(), ghost_code);
+    BOOST_CHECK_EQUAL(invite.ghost_profile_url(), ghost_profile_url);
+  }
+
+  ELLE_TEST_SCHEDULED(plain_invite_error)
+  {
+    HTTPServer s;
+    s.register_route("/user/invite", reactor::http::Method::PUT,
+                     [] (HTTPServer::Headers const&,
+                         HTTPServer::Cookies const&,
+                         HTTPServer::Parameters const&,
+                         elle::Buffer const& body) -> std::string
+    {
+      throw HTTPServer::Exception(
+        "",
+        reactor::http::StatusCode::Forbidden,
+        "{"
+        " \"code\": \"some_code\","
+        " \"message\": \"some_message\""
+        "}");
+    });
+    infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+    BOOST_CHECK_THROW(c.plain_invite_contact("throw"),
+                      infinit::state::InvitationError);
+  }
+}
+
 ELLE_TEST_SUITE()
 {
   auto& suite = boost::unit_test::framework::master_test_suite();
@@ -932,5 +988,11 @@ ELLE_TEST_SUITE()
     suite.add(s);
     auto devices = &devices::devices;
     s->add(BOOST_TEST_CASE(devices));
+  }
+  {
+    boost::unit_test::test_suite* s = BOOST_TEST_SUITE("invitations");
+    suite.add(s);
+    s->add(BOOST_TEST_CASE(invitations::plain_invite));
+    s->add(BOOST_TEST_CASE(invitations::plain_invite_error));
   }
 }
