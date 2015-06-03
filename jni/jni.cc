@@ -1318,6 +1318,34 @@ extern "C" jlong Java_io_infinit_State_gapDisconnect(
   return gap_disconnect((gap_State*)handle);
 }
 
+void to_plain_invitation(JNIEnv* env, surface::gap::PlainInvitation const& in,
+                         jobject out)
+{
+  static jclass pi_class = 0;
+  if (!pi_class)
+  {
+    pi_class = env->FindClass("io/infinit/PlainInvitation");
+    pi_class = (jclass)env->NewGlobalRef(pi_class);
+  }
+  jfieldID f;
+  f = env->GetFieldID(pi_class, "identifier", "Ljava/lang/String;");
+  env->SetObjectField(out, f, from_string(env, in.identifier));
+  f = env->GetFieldID(pi_class, "ghostCode", "Ljava/lang/String;");
+  env->SetObjectField(out, f, from_string(env, in.ghost_code));
+  f = env->GetFieldID(pi_class, "ghostProfileUrl", "Ljava/lang/String;");
+  env->SetObjectField(out, f, from_string(env, in.ghost_profile_url));
+}
+
+extern "C" jlong Java_io_infinit_State_gapPlainInvite(
+  JNIEnv* env, jobject thiz, jlong handle, jstring identifier, jobject pi)
+{
+  surface::gap::PlainInvitation res;
+  gap_Status s = gap_plain_invite_contact((gap_State*)handle,
+    to_string(env, identifier), res);
+  to_plain_invitation(env, res, pi);
+  return s;
+}
+
 std::map<std::string, elle::network::Interface> interface_get_map()
 {
   std::map<std::string, elle::network::Interface> result;
