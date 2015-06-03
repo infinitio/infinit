@@ -44,6 +44,7 @@ with drake.Drake('../..') as d:
   cxx_config.flag('--sysroot=%s' % os.environ['SDKROOT'])
 
   d.run(cxx_toolkit,
+        None,
         cxx_config,
         archs = archs,
         python3 = False,
