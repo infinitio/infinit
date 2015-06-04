@@ -3276,3 +3276,61 @@ class Mixin:
     res = self.database.invitations.find({'sender': self.user['_id']})
     res = [{'recipient': str(r['recipient']), 'status': r['status']} for r in res]
     return {'results': res}
+
+  @api('/user/accounts_facebook', method = 'PUT')
+  @require_logged_in
+  def user_accounts_facebook(self,
+                             short_lived_access_token = None,
+                             long_lived_access_token = None):
+    if bool(short_lived_access_token) == bool(long_lived_access_token):
+      return self.bad_request({
+        'reason': 'you must provide short or long lived token'
+      })
+    try:
+      facebook_user = self.facebook.user(
+        short_lived_access_token = short_lived_access_token,
+        long_lived_access_token = long_lived_access_token)
+      user = self.user_by_facebook_id(facebook_user.facebook_id,
+                                      fields = None,
+                                      ensure_existence = False)
+      current = self.user
+      if user is None:
+        # Add it to our account
+        self.database.users.update({'_id': current['_id']},
+          {'$push': {'accounts': {'type': 'facebook',
+                                  'id': facebook_user.facebook_user.facebook_id}}}
+          )
+      elif user['_id'] != current['_id']:
+        self._forbidden_with_error("This facebook account belong to an other user")
+      f = facebook_user.friends
+      friend_ids = [friend['id'] for friend in f['data']]
+      ## Add self to their swaggers
+      self.database.users.update(
+        {
+          'accounts.id' : {'$in': friend_ids},
+          'swaggers.' + str(current['_id']) : {'$exists': False}
+        },
+        {
+         '$inc': {'swaggers.' + str(current['_id']) : 0}
+        },
+        multi = True
+      )
+      ## Add them to self swaggers
+      existing = self.database.users.find(
+        {'accounts.id' : {'$in': friend_ids}},
+        fields = ['_id']
+      )
+      inc = {}
+      for e in existing:
+        inc['swaggers.' + str(e['_id'])] = 0
+      self.database.users.update(
+        { '_id': current['_id']},
+        {'$inc': inc}
+      )
+    except Response as r:
+      raise r
+    except Exception as e:
+      self._forbidden_with_error(e.args[0])
+    except error.Error as e:
+      self._forbidden_with_error(e.args[0])
+    return {}
