@@ -2917,7 +2917,11 @@ class Mixin:
       update.update({'$unset': funset})
     self.database.users.update({'_id': user['_id']}, update)
 
-  def process_referrals(self, new_user, referrals):
+  def process_referrals(self, new_user, referrals,
+                        inviter_bonus = 1e9,
+                        inviter_cap = 10e9,
+                        invitee_bonus = 500e6,
+                        invitee_cap = 10e9):
     """ Called once per new_user upon first login.
         @param new_user User struct for the invitee
         @param referrals List of user ids who invited new_user
@@ -2928,10 +2932,10 @@ class Mixin:
       {
         '_id': {'$in': referrals},
         '$or': [{'plan': 'basic'}, {'plan': {'$exists': False}}],
-        'quota.total_link_size': {'$exists': True, '$lt': 1e10}
+        'quota.total_link_size': {'$exists': True, '$lt': inviter_cap}
       },
       {
-        '$inc': { 'quota.total_link_size': 1e9}
+        '$inc': { 'quota.total_link_size': inviter_bonus}
       },
       multi = True
     )
@@ -2939,10 +2943,10 @@ class Mixin:
       {
         '_id': new_user['_id'],
         '$or': [{'plan': 'basic'}, {'plan': {'$exists': False}}],
-        'quota.total_link_size': {'$exists': True, '$lt': 1e10}
+        'quota.total_link_size': {'$exists': True, '$lt': invitee_cap}
       },
       {
-        '$inc': { 'quota.total_link_size': 5e8}
+        '$inc': { 'quota.total_link_size': invitee_bonus}
       },
     )
   @api('/users/<user>', method='PUT')
