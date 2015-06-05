@@ -885,6 +885,9 @@ class Mixin:
                          device_name = None,
                          paused = None):
 
+    if transaction_id == 'TransactionID':
+      # onboarding transactions event sent by bogus client
+      return {}
     try:
       res = self._transaction_update(transaction_id,
                                      status,
