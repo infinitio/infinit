@@ -1123,15 +1123,34 @@ class Mixin:
     return {}
 
   @api('/ghost/<code>/merge', method = 'POST')
-  @require_logged_in
+  @require_logged_in_fields(['used_referral_link'])
   def merge_ghost(self,
                   code : str):
     """
+    Use code stored in or passed to the client: can be a ghost code or a
+    referral code
     Merge a ghost to an existing user account.
     The code is given (via email, sms) to the recipient.
 
     code -- The code.
     """
+    if len(code) >= 10:
+      #referral code
+      if self.user.get('used_referral_link', None):
+        return {} # already used
+      self.database.users.update({'_id': self.user['_id']},
+                           {'$set': {'used_referral_link': code}})
+      inviter = self.database.users.find_one({'referral_code': code},
+                                       fields=['_id'])
+      if inviter == None:
+        return {}
+      self.process_referrals(self.user, [inviter['_id']],
+                             inviter_bonus = 500e6,
+                             invitee_bonus = 250e6,
+                             inviter_cap = 16e9,
+                             invitee_cap = 16e9)
+      return
+    # Ghost code
     with elle.log.trace("merge ghost with code %s" % code):
       if len(code) == 0:
         return self.bad_request({
@@ -3338,3 +3357,14 @@ class Mixin:
     except error.Error as e:
       self._forbidden_with_error(e.args[0])
     return {}
+
+  @api('/user/referral_code')
+  @require_logged_in_fields(['referral_code'])
+  def user_referral_code(self):
+    # We distinguish ghost code and referral code by their size
+    code = self.user.get('referral_code', None)
+    if not code:
+      code = self.generate_random_sequence(length=10)
+      self.database.users.update({'_id': self.user['_id']},
+                                 {'$set': {'referral_code': code}})
+    return {'referral_code': code}

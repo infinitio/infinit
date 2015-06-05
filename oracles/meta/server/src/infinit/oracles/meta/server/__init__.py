@@ -278,6 +278,10 @@ class Meta(bottle.Bottle,
     # merge account
     self.__database.users.ensure_index([('favorites', 1)],
                                        unique = False)
+    # Referral through link
+    self.__database.users.ensure_index([('referral_code', 1)],
+                                       unique = True,
+                                       sparse = True)
 
 
     #---------------------------------------------------------------------------

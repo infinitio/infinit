@@ -80,3 +80,22 @@ with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   edgar.post('ghost/%s/merge' % gc)
   assert edgar.me['quota']['total_link_size'] == 15e8
   assert bob.me['quota']['total_link_size'] == 4e9
+
+# Referral through invite link
+with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
+  alice = User(meta, "alice@infinit.io")
+  alice.login()
+  bob = User(meta, "bob@infinit.io")
+  bob.login()
+  meta.database.users.update({'accounts.id': 'alice@infinit.io'},
+    {'$set': { 'quota.total_link_size': 0}})
+  meta.database.users.update({'accounts.id': 'bob@infinit.io'},
+    {'$set': { 'quota.total_link_size': 0}})
+  ref_code = alice.get('user/referral_code')['referral_code']
+  bob.post('ghost/%s/merge' % ref_code)
+  assert bob.me['quota']['total_link_size'] == 250e6
+  assert alice.me['quota']['total_link_size'] == 500e6
+  bob.post('ghost/%s/merge' % ref_code)
+  assert bob.me['quota']['total_link_size'] == 250e6
+  assert bob.swaggers == []
+  assert alice.swaggers == []
