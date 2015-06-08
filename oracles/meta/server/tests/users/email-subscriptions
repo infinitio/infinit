@@ -17,4 +17,7 @@ with Meta() as meta:
                  {'tips': False})
   assert not res['tips']
   subscriptions = bob.get('user/email_subscriptions')
-  assertEq(subscriptions, {'tips': False, 'alerts': True,})
+  assertEq(subscriptions, {'tips': False,
+                           'alerts': True,
+                           'newsletter': True,
+                         })

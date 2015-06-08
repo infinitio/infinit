@@ -2551,7 +2551,7 @@ class Mixin:
   ## Email subscriptions ##
   ## ------------------- ##
 
-  email_lists = ['alerts', 'tips']
+  email_lists = ['alerts', 'newsletter', 'tips']
 
   @api('/user/email_subscriptions', method = 'GET')
   @require_logged_in_fields(['unsubscriptions'])
