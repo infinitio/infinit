@@ -76,7 +76,7 @@ def configure(
         'boulders/drip/tips',
     ):
       test = drake.node('tests/%s' % name)
-      for source in sources_built:
+      for source in sisyphus.nodes:
         test.dependency_add(source)
       test.dependency_add(drake.node('tests/boulders/drip/utils.py'))
       test.dependency_add(meta)
