@@ -99,3 +99,4 @@ with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   assert bob.me['quota']['total_link_size'] == 250e6
   assert bob.swaggers == []
   assert alice.swaggers == []
+  assert alice.get('user/referral_code')['count'] == 1

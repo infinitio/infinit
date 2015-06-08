@@ -3367,4 +3367,5 @@ class Mixin:
       code = self.generate_random_sequence(length=10)
       self.database.users.update({'_id': self.user['_id']},
                                  {'$set': {'referral_code': code}})
-    return {'referral_code': code}
+    count = self.database.users.find({'used_referral_link': code}).count()
+    return {'referral_code': code, 'count': count}
