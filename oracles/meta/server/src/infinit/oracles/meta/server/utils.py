@@ -1,9 +1,10 @@
 import bottle
+import bson
 import decorator
 import inspect
-import pymongo
+import iso8601
 import phonenumbers
-import bson
+import pymongo
 
 from itertools import chain
 
@@ -167,3 +168,6 @@ def identifier(user_identifier, country_code = None):
   except Exception as e:
     print(e)
     raise e
+
+def date_time(str):
+  return iso8601.parse_date(str)

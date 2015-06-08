@@ -11,9 +11,9 @@ with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   alice = User(meta, "alice@infinit.io")
   alice.login()
   # Send to ghost size limit
-  throws(lambda:
-      alice.sendfile("bob@infinit.io", total_size = 5000000000),
-      402)
+  #throws(lambda:
+  #    alice.sendfile("bob@infinit.io", total_size = 5000000000),
+  #    402)
   # Link quotas
   meta.database.users.update({'accounts.id': 'alice@infinit.io'},
     {'$set': { 'quota.total_link_size': 1000}})
@@ -22,9 +22,9 @@ with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   # server is updating quota by reading cloud storage file size which is
   # not realy uploaded here, so insert the result ourselve in db
   meta.database.users.update({'accounts.id': 'alice@infinit.io'},
-    {'$inc': {'total_link_size': 1100}})
+    {'$inc': {'total_link_size': 1100,}})
   meta.database.links.update({'hash': link['hash']},
-    {'$set': {'file_size': 1100}})
+    {'$set': {'file_size': 1100, 'quota_counted': True}})
   throws(
     lambda: alice.getalink(),
     402)
@@ -71,3 +71,12 @@ with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   assert c['quota']['total_link_size'] == 25e8
   b = bob.me
   assert b['quota']['total_link_size'] == 3e9
+  # Referral through ghost
+  transaction, res = bob.sendfile(recipient = 'edgar@infinit.io')
+  edgar = User(meta, 'edgar2@infinit.io')
+  edgar.login()
+  assert edgar.me['quota']['total_link_size'] == 1e9
+  gc = meta.database.users.find_one({'accounts.id': 'edgar@infinit.io'})['ghost_code']
+  edgar.post('ghost/%s/merge' % gc)
+  assert edgar.me['quota']['total_link_size'] == 15e8
+  assert bob.me['quota']['total_link_size'] == 4e9

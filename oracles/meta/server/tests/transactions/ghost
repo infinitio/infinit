@@ -8,7 +8,7 @@ class Metrics:
   def __init__(self):
     self.got = {}
 
-  def send(self, metrics, collection):
+  def send(self, metrics, collection, user_agent = None):
     for metric in metrics:
       self.got.setdefault(metric['event'], []).append(metric)
 

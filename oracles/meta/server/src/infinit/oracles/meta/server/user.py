@@ -1212,7 +1212,7 @@ class Mixin:
       email,
       ensure_existence = False,
       fields = ['register_status'])
-    if other is not None and other['register_status'] != 'ghost':
+    if other is not None and other['register_status'] not in ['contact', 'ghost']:
       self.conflict({
           'reason': 'email already registered',
           'email': email,
@@ -1268,7 +1268,7 @@ class Mixin:
               'reason': 'email already registered',
               'email': name,
             })
-          if status in ['ghost', 'deleted']:
+          if status in ['ghost', 'deleted', 'contact']:
             self.user_delete(previous, merge_with = user)
             continue
       return {}
@@ -1533,7 +1533,7 @@ class Mixin:
        Considerations:
        - Keep the process as atomic at the DB level as possible.
     """
-    if merge_with and user['register_status'] not in ['ghost', 'deleted']:
+    if merge_with and user['register_status'] not in ['ghost', 'contact', 'deleted']:
       self.bad_request({
         'reason': 'Only ghost accounts can be merged'
       })
@@ -1649,17 +1649,24 @@ class Mixin:
       },
       new = True)
     if merge_with is not None:
+      res = self.database.users.find_one({'_id': user['_id']},
+        fields = ['referred_by']
+        )
+      # Apply referrals on the ghost to this user
+      self.process_referrals(merge_with, res.get('referred_by', []))
       # Increase swaggers swag for self
       update = {
-        '$inc': {
-          'swaggers.%s' % id: deleted_user_swaggers[id] for id in deleted_user_swaggers
-        },
         '$addToSet': {
           'accounts': {
             '$each': deleted_user_accounts,
           },
         }
       }
+      if len(deleted_user_swaggers) > 0:
+        update['$inc'] = {
+          'swaggers.%s' % \
+            id: deleted_user_swaggers[id] for id in deleted_user_swaggers
+        }
       if ghost_code is not None:
         update['$addToSet']['consumed_ghost_codes'] = ghost_code
       self.database.users.update({'_id': merge_with['_id']}, update)
@@ -2338,7 +2345,19 @@ class Mixin:
   def get_avatar(self,
                  id: bson.ObjectId,
                  date: int = 0,
-                 no_place_holder: bool = False):
+                 no_place_holder: bool = False,
+                 ghost_code: str = ''):
+    if len(ghost_code):
+      # send metric
+      if self.metrics is not None:
+        self.metrics.send(
+          [{
+            'event': 'invite/opened',
+            'ghost_code': ghost_code,
+            'user': str(id),
+            'timestamp': time.time(),
+          }],
+          collection = 'users')
     user = self._user_by_id(id,
                             ensure_existence = False,
                             fields = ['small_avatar'])
@@ -2986,3 +3005,97 @@ class Mixin:
       'action': 'login',
       'email': email,
     }, expiration)
+
+  def __check_gcs(self):
+    if self.gcs is None:
+      self.not_implemented({
+        'reason': 'GCS support not enabled',
+      })
+
+  @api('/user/backgrounds/<name>', method = 'PUT')
+  @require_logged_in
+  def user_background_put_api(self, name):
+    self.__check_gcs()
+    self.require_premium(self.user)
+    t = bottle.request.headers['Content-Type']
+    l = bottle.request.headers['Content-Length']
+    if t not in ['image/gif', 'image/jpeg', 'image/png']:
+      self.unsupported_media_type({
+        'reason': 'invalid image format: %s' % t,
+        'mime-type': t,
+      })
+    url = self.gcs.upload_url(
+      'backgrounds', '%s/%s' % (self.user['_id'], name),
+      content_type = t,
+      content_length = l,
+      expiration = datetime.timedelta(minutes = 3),
+    )
+    bottle.response.status = 307
+    bottle.response.headers['Location'] = url
+
+  @api('/user/backgrounds/<name>', method = 'GET')
+  @require_logged_in
+  def user_background_put_api(self, name):
+    self.__check_gcs()
+    self.require_premium(self.user)
+    url = self.gcs.download_url(
+      'backgrounds', '%s/%s' % (self.user['_id'], name),
+      expiration = datetime.timedelta(minutes = 3),
+    )
+    bottle.response.status = 307
+    bottle.response.headers['Location'] = url
+
+  @api('/user/backgrounds/<name>', method = 'DELETE')
+  @require_logged_in
+  def user_background_put_api(self, name):
+    self.__check_gcs()
+    self.require_premium(self.user)
+    self.gcs.delete(
+      'backgrounds', '%s/%s' % (self.user['_id'], name))
+    self.no_content()
+
+  @api('/user/backgrounds', method = 'GET')
+  @require_logged_in
+  def user_background_put_api(self):
+    self.__check_gcs()
+    return {
+      'backgrounds': self.gcs.bucket_list('backgrounds',
+                                          prefix = self.user['_id']),
+    }
+
+  def __user_account_domains_edit(self, name, action):
+    domain = {'name': name}
+    user = self.database.users.find_and_modify(
+      {'_id': self.user['_id']},
+      {action: {'account.custom-domains': domain}},
+      new = False,
+    )
+    account = user.get('account')
+    domains = \
+      account.get('custom-domains') if account is not None else ()
+    return next(filter(lambda d: d['name'] == name, domains), None), domain
+
+
+  @api('/user/account/custom-domains/<name>', method = 'PUT')
+  @require_logged_in
+  def user_account_domains_post_api(self, name):
+    old, new = self.__user_account_domains_edit(name, '$addToSet')
+    if old is None:
+      bottle.response.status = 201
+    return new
+
+  @api('/user/account/custom-domains/<name>', method = 'DELETE')
+  @require_logged_in
+  def user_account_patch_api(self, name):
+    old, new = self.__user_account_domains_edit(name, '$pull')
+    if old is None:
+      self.not_found({
+        'reason': 'custom domain %s not found' % name,
+        'custom-domain': name,
+      })
+    return new
+
+  @api('/user/account', method = 'GET')
+  @require_logged_in_fields(['account'])
+  def user_account_get_api(self):
+    return self.user.get('account', {})

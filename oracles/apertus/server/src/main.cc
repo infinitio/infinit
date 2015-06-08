@@ -146,7 +146,7 @@ int main(int argc, char** argv)
   }
   catch (...)
   {
-    std::cerr << "unkown fatal error" << std::endl;
+    std::cerr << "unknown fatal error" << std::endl;
     return 1;
   }
 }

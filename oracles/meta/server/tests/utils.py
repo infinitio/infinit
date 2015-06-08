@@ -8,6 +8,7 @@ from infinit.oracles.meta.server import transaction_status
 from infinit.oracles.meta import version as Version
 from random import uniform
 
+import datetime
 import socket
 import http.cookies
 import os
@@ -20,11 +21,10 @@ sys.path.append(root + '/../src')
 sys.path.append(root + '/../../../mongobox')
 sys.path.append(root + '/../../../bottle')
 
-import httplib2
+import bottle
 import json
 import mongobox
-
-import bottle
+import requests
 
 from uuid import uuid4, UUID
 
@@ -68,64 +68,67 @@ class Client:
   def __init__(self, meta):
     self.__cookies = None
     self.__meta_port = meta.port
+    self.__session = requests.Session()
     self.user_agent = 'MetaClient/' + Version.version
 
-  def __get_cookies(self, headers):
-    cookies = headers.get('set-cookie', None)
-    if cookies is not None:
-      self.__cookies = http.cookies.SimpleCookie(cookies)
-
-  def __set_cookies(self, headers):
-    if self.__cookies is not None:
-      headers['Cookie'] = self.__cookies.output()
-
   @property
-  def cookie(self):
-    return self.__cookies
+  def cookies(self):
+    return self.__session.cookies
 
-  def __convert_result(self, url, method, body, headers, content):
-    status = headers['status']
-    if headers['content-type'] == 'application/json':
-      content = json.loads(content.decode())
-    elif headers['content-type'] == 'text/plain':
-      content = content.decode()
+  def __convert_result(self, url, method, body, response):
+    headers = response.headers
+    if headers.get('content-type') == 'application/json':
+      content = response.json()
+    elif headers.get('content-type') == 'text/plain':
+      content = response.text
     else:
-      content = content
-    if status != '200':
-      raise HTTPException(status, method, url, body, content)
+      content = response.content
+    if int(response.status_code) / 100 >= 4:
+      raise HTTPException(response.status_code,
+                          method, url, body, content)
     else:
       return content
 
-  def request(self, url, method, body, assert_success = True):
-    h = httplib2.Http()
-    uri = "http://localhost:%s/%s" % (self.__meta_port, url)
-    headers = {}
-    headers['user-agent'] = self.user_agent
+  def request(self, url, method,
+              body = None,
+              content_type = None,
+              content_length = None,
+              raw = False,
+              cookies = None):
+    uri = "http://127.0.0.1:%s/%s" % (self.__meta_port, url)
+    headers = {
+      'User-Agent': self.user_agent,
+    }
     if body is not None and isinstance(body, dict):
       headers['Content-Type'] = 'application/json'
       body = json.dumps(body)
-    self.__set_cookies(headers)
-    resp, content = h.request(uri,
-                              method,
-                              body = body,
-                              headers = headers)
-    self.__get_cookies(resp)
-    res = self.__convert_result(url, method, body, resp, content)
-    if assert_success and 'success' in res:
-      assert res['success']
-    return res
+    else:
+      if content_type is not None:
+        headers['Content-Type'] = content_type
+      if content_length is not None:
+        headers['Content-Length'] = content_length
+    request = requests.Request(method, uri,
+                               headers = headers,
+                               data = body,
+                               cookies = cookies,
+                             )
+    response = self.__session.send(self.__session.prepare_request(request), allow_redirects = False)
+    if raw:
+      return response
+    else:
+      return self.__convert_result(url, method, body, response)
 
-  def post(self, url, body = None, assert_success = False):
-    return self.request(url, 'POST', body, assert_success)
+  def post(self, url, *args, **kwargs):
+    return self.request(url, 'POST', *args, **kwargs)
 
-  def get(self, url, body = None, assert_success = False):
-    return self.request(url, 'GET', body, assert_success)
+  def get(self, url, *args, **kwargs):
+    return self.request(url, 'GET', *args, **kwargs)
 
-  def put(self, url, body = None, assert_success = False):
-    return self.request(url, 'PUT', body, assert_success)
+  def put(self, url, *args, **kwargs):
+    return self.request(url, 'PUT', *args, **kwargs)
 
-  def delete(self, url, body = None, assert_success = False):
-    return self.request(url, 'DELETE', body, assert_success)
+  def delete(self, url, *args, **kwargs):
+    return self.request(url, 'DELETE', *args, **kwargs)
 
 class Trophonius(Client):
   class Accepter:
@@ -372,6 +375,20 @@ class TestEmailer(infinit.oracles.emailer.Emailer):
     return res
 
 
+class InstrumentedMeta(infinit.oracles.meta.server.Meta):
+
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.__now = datetime.datetime.utcnow()
+
+  @property
+  def now(self):
+    return self.__now
+
+  def forward(self, duration):
+    self.__now += duration
+
+
 class Meta:
 
   def __init__(self,
@@ -424,7 +441,7 @@ class Meta:
     })
     def run():
       try:
-        self.__meta = infinit.oracles.meta.server.Meta(
+        self.__meta = InstrumentedMeta(
           mongo_port = self.__mongo.port,
           enable_emails = self.__enable_emails,
           enable_invitations = self.__enable_invitations,
@@ -491,17 +508,17 @@ class Meta:
   def __exit__(self, *args, **kwargs):
     self.__mongo.__exit__(*args, **kwargs)
 
-  def post(self, url, body = None):
-    return self.client.post(url, body)
+  def post(self, url, body = None, raw = False):
+    return self.client.post(url, body, raw = raw)
 
-  def get(self, url, body = None):
-    return self.client.get(url, body)
+  def get(self, url, body = None, raw = False):
+    return self.client.get(url, body, raw = raw)
 
-  def put(self, url, body = None):
-    return self.client.put(url, body)
+  def put(self, url, body = None, raw = False):
+    return self.client.put(url, body, raw = raw)
 
-  def delete(self, url, body = None):
-    return self.client.delete(url, body)
+  def delete(self, url, body = None, raw = False):
+    return self.client.delete(url, body, raw = raw)
 
   def create_user(
       self,
@@ -846,14 +863,25 @@ class User(Client):
   # FIXME: remove when link & peer transactions are merged
   def getalink(self,
                files = [['file1', 42], ['file2', 43], ['file3', 44]],
-               name = 'name',
-               message = ''):
-    return self.post('link',
-                     {
-                       'files': files,
-                       'name': name,
-                       'message': message
-                     })['transaction']
+               name = 'infinit_test_not_a_real_link',
+               message = '',
+               password = None,
+               expiration_date = None,
+               background = None,
+  ):
+    id = self.post('link_empty')['created_link_id']
+    if expiration_date is not None:
+      expiration_date = expiration_date.isoformat()
+    return self.put(
+      'link/%s' % id,
+      {
+        'expiration_date': expiration_date,
+        'files': files,
+        'name': name,
+        'message': message,
+        'password': password,
+        'background': background,
+      })['transaction']
 
   # FIXME: remove when link & peer transactions are merged
   def link_update(self, link, status):

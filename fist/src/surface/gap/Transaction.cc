@@ -400,7 +400,7 @@ namespace surface
       }
       else
       {
-        ELLE_ERR("%s: unkown transaction type: %s",
+        ELLE_ERR("%s: unknown transaction type: %s",
                  *this, elle::demangle(typeid(*this->_data).name()));
       }
     }

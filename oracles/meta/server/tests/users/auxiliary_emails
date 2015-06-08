@@ -90,7 +90,7 @@ with Meta(enable_emails = True) as meta:
   user = User(meta, 'foobar@infinit.io')
   user.login()
 
-  # Delete an unkown email.
+  # Delete an unknown email.
   throws(lambda: user.delete('user/accounts/invalid@infinit.io'))
 
 # Delete.
@@ -99,7 +99,7 @@ with Meta(enable_emails = True) as meta:
   user = User(meta, 'foobar@infinit.io')
   user.login()
 
-  # Delete an unkown email.
+  # Delete an unknown email.
   try:
     user.delete('user/accounts/%s' % 'invalid@infinit.io')
     assert False # It should throw.

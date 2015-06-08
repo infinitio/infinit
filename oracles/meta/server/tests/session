@@ -8,14 +8,19 @@ with Meta() as meta:
   # Get a valid session ID.
   user = User(meta, email)
   user.login()
-  assert 'session-id' in user.cookie
-  id = user.cookie['session-id'].value
+  assert 'session-id' in user.cookies
+  id = user.cookies['session-id']
   # Reuse it through query string
   client = Client(meta)
   throws(lambda: client.get('user/self'), HTTPException)
   assertEq(client.get('user/self?session-id=%s' % quote(id))['email'],
            email)
   # Check it is stored as cookie
+  assertEq(client.get('user/self')['email'], email)
+  # Check it is a different session
+  assertNeq(id, client.cookies['session-id'])
+  user.post('logout')
+  throws(lambda: user.get('user/self'), HTTPException)
   assertEq(client.get('user/self')['email'], email)
   # Check an invalid session id is just ignored
   client.get('?session-id=')

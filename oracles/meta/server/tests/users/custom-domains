@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+
+from utils import *
+import requests
+
+with Meta() as meta:
+  domain = 'links.gruntech.org'
+  def check_link(works):
+    def get():
+      meta.get('links/%s?custom_domain=%s' % (link['hash'], domain))
+    if works:
+      get()
+    else:
+      throws(get, 402)
+  def check_domains(expected):
+    assertEq(user.get('user/account').get('custom-domains', []),
+             expected)
+  def action(action):
+    return action('user/account/custom-domains/%s' % domain,
+                  raw = True)
+  user = User(meta, 'user@infinit.io')
+  user.login()
+  meta.meta.change_plan(bson.ObjectId(user.id), 'premium')
+  link = user.getalink()
+  # Read link
+  meta.get('links/%s' % link['hash'])
+  check_link(False)
+  # Read domains
+  check_domains([])
+  # Put domain
+  r = action(user.put)
+  assertEq(r.status_code, 201)
+  assertEq(r.json(), {'name': domain})
+  check_domains([{'name': domain}])
+  check_link(True)
+  meta.meta.change_plan(bson.ObjectId(user.id), 'basic')
+  check_link(False)
+  meta.meta.change_plan(bson.ObjectId(user.id), 'premium')
+  # Put domain again
+  r = action(user.put)
+  assertEq(r.status_code, 200)
+  assertEq(r.json(), {'name': domain})
+  check_domains([{'name': domain}])
+  # Delete domain
+  r = action(user.delete)
+  assertEq(r.status_code, 200)
+  assertEq(r.json(), {'name': domain})
+  check_domains([])
+  check_link(False)
+  # Delete domain again
+  r = action(user.delete)
+  assertEq(r.status_code, 404)
+  check_domains([])

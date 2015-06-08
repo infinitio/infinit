@@ -378,6 +378,17 @@ class Mixin:
         {"_id": recipient_id},
         fields = recipient_fields)
       if self.metrics is not None:
+        #FIXME: enable when clients will push their OS in user-agent
+        #user_agent = bottle.request.headers['User-Agent']
+        user_agent = None
+        device = self.current_device
+        if device and 'version' in device and 'os' in device:
+          user_agent = 'MetaClientProxy/%s.%s.%s (%s)' % (
+            device['version']['major'],
+            device['version']['minor'],
+            device['version']['subminor'],
+            device['os']
+          )
         self.metrics.send(
           [{
             'event': 'new_ghost',
@@ -388,7 +399,8 @@ class Mixin:
             'timestamp': time.time(),
             'is_email': is_an_email,
           }],
-          collection = 'users')
+          collection = 'users',
+          user_agent = user_agent)
       return recipient, True
     else:
       return recipient, False
@@ -404,11 +416,10 @@ class Mixin:
       recipient, new_user = self.__recipient_from_identifier(
         recipient_identifier,
         sender)
-      is_ghost = recipient['register_status'] == "ghost"
       transaction = {
         'sender_id': bson.ObjectId(sender['_id']),
         'sender_fullname': '',
-        'sender_device_id': '',
+        'sender_device_id': self.current_device['id'],
 
         'recipient_id': bson.ObjectId(recipient['_id']),
         'recipient_fullname': '',
@@ -514,7 +525,6 @@ class Mixin:
         })
         recipient, new_user = self.__recipient_from_identifier(merge_target,
                                                                sender)
-      is_ghost = recipient['register_status'] == "ghost"
       if recipient['register_status'] == 'deleted':
         self.gone({
           'reason': 'user %s is deleted' % recipient['_id'],
@@ -528,10 +538,12 @@ class Mixin:
             'device': recipient_device_id,
           })
       is_ghost = recipient['register_status'] == 'ghost'
-      if is_ghost and total_size > 2000000000:
-        self.forbidden({
-          'reason': 'transaction to non-existing users limited to 2GB',
-        })
+      # FIXME: restore when clients will handle it.
+      # if is_ghost and total_size > 2000000000:
+      #   self.forbidden({
+      #     'reason': 'transaction to non-existing users limited to 2GB',
+      #    })
+
       if is_ghost:
         # Add to referral
         self.database.users.update(
@@ -796,7 +808,8 @@ class Mixin:
     # Guess if this was a ghost cloud upload or not
     recipient = self.__user_fetch(
       transaction['recipient_id'],
-      fields = self.__user_view_fields + ['email', 'ghost_code', 'shorten_ghost_profile_url'])
+      fields = self.__user_view_fields + \
+        ['email', 'ghost_code', 'shorten_ghost_profile_url'])
     if recipient['register_status'] == 'deleted':
       self.gone({
         'reason': 'user %s is deleted' % recipient['_id'],
@@ -840,7 +853,7 @@ class Mixin:
           'sender': self.email_user_vars(user),
           'ghost_email': peer_email,
           'transaction':
-          self.email_transaction_vars(transaction, recipient),
+            self.email_transaction_vars(transaction, recipient),
           'ghost_profile': recipient.get(
             'shorten_ghost_profile_url',
               self.__ghost_profile_url(recipient, type = "email")),
@@ -850,7 +863,7 @@ class Mixin:
           variables.update({
             'ghost_code': recipient['ghost_code'],
           })
-
+          variables['sender']['avatar'] += '?ghost_code=%s' % recipient['ghost_code']
         self.emailer.send_one(
           'Transfer (Initial)',
           recipient_email = peer_email,

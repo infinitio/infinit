@@ -311,7 +311,23 @@ namespace infinit
         , _root_url(elle::sprintf("%s://%s:%d",
                                   this->_protocol, this->_host, this->_port))
         , _client(elle::os::getenv("INFINIT_USER_AGENT",
-                                   "MetaClient/" INFINIT_VERSION))
+                                   "MetaClient/"
+                                   INFINIT_VERSION
+        " ("
+#ifdef INFINIT_LINUX
+        "Linux"
+#elif defined(INFINIT_MACOSX)
+        "OS X"
+#elif defined(INFINIT_IOS)
+        "iOS"
+#elif defined(INFINIT_WINDOWS)
+        "Windows"
+#elif defined(INFINIT_ANDROID)
+      "Android"
+#else
+# error "machine not supported"
+#endif
+      ")"))
         ,  _default_configuration(_requests_timeout(),
                                  {},
                                  reactor::http::Version::v10)

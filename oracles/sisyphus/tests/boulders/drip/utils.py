@@ -88,7 +88,7 @@ class GestapoCollection(pymongo.collection.Collection):
         nplans = len(list(e for e in explanation['allPlans']
                           if e['cursor'] != 'BasicCursor'))
         if nplans > 1:
-          raise Exception('%s viable plans for condition: %s' % \
+          elle.log.warn('%s viable plans for condition: %s' % \
                           (nplans, condition))
       ns = explanation['nscanned']
       nso = explanation['nscannedObjects']

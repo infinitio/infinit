@@ -34,16 +34,20 @@ class Plugin(object):
                                       secret = Plugin.secret)
       bottle.request.session_id = sid
       bottle.request.session = {}
+      clone_session = False
       if 'session-id' in bottle.request.query:
+        sid_data = bottle.request.query['session-id']
+        if len(sid_data) != 0 and sid_data[0] == '"':
+          sid_data = sid_data[1:-1]
         if sid is None:
-          sid = bottle.cookie_decode(
-            bottle.request.query['session-id'], Plugin.secret)
+          sid = bottle.cookie_decode(sid_data, Plugin.secret)
           if sid is not None:
             sid = sid[1]
             bottle.response.set_cookie(Plugin.key,
                                        sid,
                                        secret = Plugin.secret,
                                        max_age = 3600 * 24 * 365)
+            clone_session = True
         del bottle.request.query['session-id']
       if sid is not None:
         session = collection.find_one({'_id': sid})
@@ -53,14 +57,17 @@ class Plugin(object):
       previous = copy.deepcopy(bottle.request.session)
       res = callback(*args, **kwargs)
       session = bottle.request.session
-      if session != previous:
+      if clone_session:
+        sid = None #Force creation with a new sid
+      if session != previous or clone_session:
         if sid is None:
           if len(session):
             sid = collection.insert(session)
             bottle.response.set_cookie(Plugin.key,
                                        sid,
                                        secret = Plugin.secret,
-                                       max_age = 3600 * 24 * 365)
+                                       max_age = 3600 * 24 * 365,
+                                       path = '/')
         elif len(session):
           session['_id'] = sid
           sid = collection.save(session)

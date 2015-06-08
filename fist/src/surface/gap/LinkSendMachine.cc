@@ -123,7 +123,7 @@ namespace surface
           this->_run(this->_another_device_state);
         else
         {
-          ELLE_WARN("%s: unkown state in snapshot: %s",
+          ELLE_WARN("%s: unknown state in snapshot: %s",
                     *this, snapshot.current_state());
           started = false;
         }
