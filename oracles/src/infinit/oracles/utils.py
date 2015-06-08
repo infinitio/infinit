@@ -1,11 +1,18 @@
+import base64
 import bottle
 import datetime
 import elle
 import inspect
 import iso8601
 import json
+import pickle
 import pymongo
 import re
+
+import Crypto.Cipher.AES as AES
+import Crypto.Hash.SHA256 as SHA256
+import Crypto.PublicKey.RSA as RSA
+import Crypto.Signature.PKCS1_v1_5 as PKCS1_v1_5
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.utils'
 
@@ -144,3 +151,25 @@ def key(url):
   salt = 'aeVi&ap2'
   key = '%s-%s' % (url, salt)
   return sha1(key.encode('latin-1')).hexdigest()
+
+def __sign_cipher():
+  return AES.new('8d245bc7b3d6c2f2c13a4a2c675c4e81',
+                 AES.MODE_CFB,
+                 IV = b'e80919d4715320e1')
+
+def sign(d, expiration, now):
+  pickled = pickle.dumps((now + expiration, d))
+  crypted = __sign_cipher().encrypt(pickled)
+  b64 = base64.urlsafe_b64encode(crypted).decode('latin-1')
+  return b64
+
+def check_signature(d, b64, now):
+  if b64 is None:
+    return False
+  try:
+    crypted = base64.urlsafe_b64decode(b64.encode('latin-1'))
+    pickled = __sign_cipher().decrypt(crypted)
+    expiration, sig = pickle.loads(pickled)
+    return now <= expiration and sig == d
+  except:
+    return False
