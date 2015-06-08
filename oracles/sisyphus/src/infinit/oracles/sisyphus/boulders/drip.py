@@ -10,7 +10,7 @@ from itertools import chain
 
 from .. import Boulder
 from .. import version
-from infinit.oracles.utils import key
+from infinit.oracles.utils import key, sign
 from infinit.oracles.transaction import statuses
 import infinit.oracles.emailer
 
@@ -253,6 +253,10 @@ class Drip(Emailing):
                   ('campaign', self.campaign),
                   ('user', self.user_vars(user)),
                   ('list', self.__list),
+                  ('login_token',
+                   sign({'action': 'login', 'email': user['email']},
+                        datetime.timedelta(days = 7),
+                        self.now)),
                 ],
                 vars.items(),
               )),
