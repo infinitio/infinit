@@ -182,12 +182,13 @@ class Mixin:
                       files,
                       name,
                       message,
+                      screenshot = False,
                       password = None,
                       expiration_date: date_time = None,
                       background = None,
   ):
     return self.link_generate(
-      files, name, message,
+      files, name, message, screenshot,
       user = self.user,
       device = self.current_device,
       link_id = link_id,
@@ -198,8 +199,8 @@ class Mixin:
 
   @api('/link', method = 'POST')
   @require_logged_in_fields(['quota', 'total_link_size'])
-  def link_generate_api(self, files, name, message):
-    return self.link_generate(files, name, message,
+  def link_generate_api(self, files, name, message, screenshot = False):
+    return self.link_generate(files, name, message, screenshot,
                               user = self.user,
                               device = self.current_device)
 
@@ -207,6 +208,7 @@ class Mixin:
                     files,
                     name,
                     message,
+                    screenshot,
                     user,
                     device,
                     link_id = None,
@@ -242,6 +244,7 @@ class Mixin:
         'background': background,
         'click_count': 0,
         'ctime': creation_time,
+        'expiration_date': expiration_date,
         'expiry_time': None, # Field set when a link has expired.
         'file_list':
           [{'name': file[0], 'size': int(file[1])} for file in files],
@@ -251,13 +254,13 @@ class Mixin:
         'message': message,
         'mtime': creation_time,
         'name': name,
+        'password': self.__link_password_hash(password),
+        'paused': False,
         'progress': 0.0,
+        'screenshot': screenshot,
         'sender_device_id': device['id'],
         'sender_id': user['_id'],
         'status': transaction_status.CREATED, # Use same enum as transactions.
-        'paused': False,
-        'password': self.__link_password_hash(password),
-        'expiration_date': expiration_date,
       }
       if link_id is not None:
         self.database.links.update(
@@ -331,11 +334,12 @@ class Mixin:
         'click_count',
         'ctime',
         'expiry_time',    # Needed until 0.9.9.
-        'hash',           # Needed until 0.9.9.
         'files',
+        'hash',           # Needed until 0.9.9.
         'message',
         'mtime',
         'name',
+        'screenshot',
         'sender_device_id',
         'sender_id',
         'share_link',
