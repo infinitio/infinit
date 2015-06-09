@@ -41,6 +41,7 @@ namespace infinit
       std::string message;
       std::string name;
       std::string share_link;
+      boost::optional<bool> screenshot;
 
     public:
       uint64_t

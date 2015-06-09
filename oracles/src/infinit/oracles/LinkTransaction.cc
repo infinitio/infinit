@@ -45,6 +45,7 @@ namespace infinit
       s.serialize("sender_id", this->sender_id);
       s.serialize("share_link", this->share_link);
       s.serialize("status", this->status, elle::serialization::as<int>());
+      s.serialize("screenshot", this->screenshot);
     }
 
     uint64_t
