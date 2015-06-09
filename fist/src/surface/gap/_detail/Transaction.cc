@@ -63,14 +63,15 @@ namespace surface
 
     uint32_t
     State::create_link(std::vector<std::string> const& files,
-                       std::string const& message)
+                       std::string const& message,
+                       bool screenshot)
     {
       ELLE_TRACE_SCOPE("%s: create link for %s", *this, files);
       auto id = generate_id();
       this->_transactions.emplace(
         id,
         elle::make_unique<Transaction>(*this, id, std::move(files), message,
-                                       this->_authority));
+                                       screenshot, this->_authority));
       return id;
     }
 
@@ -79,7 +80,8 @@ namespace surface
                                    std::vector<std::string> files,
                                    std::string const& message)
     {
-      return this->_transaction_peer_create(peer_id, files, message, this->_authority);
+      return this->_transaction_peer_create(peer_id, files, message,
+                                            this->_authority);
     }
 
     Transaction&
@@ -151,7 +153,8 @@ namespace surface
         status,
         link.sender_device_id,
         link.message,
-        link.id);
+        link.id,
+        link.screenshot ? link.screenshot.get() : false);
     }
 
     uint32_t
