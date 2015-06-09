@@ -1006,6 +1006,7 @@ class Mixin:
         variables = {
           'confirm_key': key('/users/%s/confirm-email' % user['_id']),
           'user': self.email_user_vars(user),
+          'login_token': self.login_token(user['email']),
         },
       )
       return {}
@@ -1225,6 +1226,7 @@ class Mixin:
       'user': self.email_user_vars(self.user),
       'url': self.url_absolute(url),
       'key': key(url),
+      'login_token': self.login_token(email),
     }
     self.emailer.send_one('Confirm New Email Address',
                           recipient_email = email,

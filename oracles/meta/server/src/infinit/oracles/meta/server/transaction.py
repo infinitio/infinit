@@ -640,6 +640,7 @@ class Mixin:
           'user': self.email_user_vars(user),
           'transaction':
             self.email_transaction_vars(transaction, peer),
+          'login_token': self.login_token(user['email']),
         },
       )
 
