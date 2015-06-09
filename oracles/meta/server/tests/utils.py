@@ -848,6 +848,7 @@ class User(Client):
                password = None,
                expiration_date = None,
                background = None,
+               screenshot = False,
   ):
     id = self.post('link_empty')['created_link_id']
     if expiration_date is not None:
@@ -861,6 +862,7 @@ class User(Client):
         'message': message,
         'password': password,
         'background': background,
+        'screenshot': screenshot,
       })['transaction']
 
   # FIXME: remove when link & peer transactions are merged
