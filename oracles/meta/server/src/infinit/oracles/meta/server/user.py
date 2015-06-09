@@ -887,6 +887,9 @@ class Mixin:
             'confirm_key': key('/users/%s/confirm-email' % user_id),
             'user': self.email_user_vars(user),
             'login_token': self.login_token(email),
+            'confirm_token': self.sign(
+              self.confirm_token(email),
+              datetime.timedelta(days = 7)),
           },
         )
       return self.__user_view(self.__user_fill(user))
@@ -947,7 +950,8 @@ class Mixin:
   def confirm_email(self,
                     user,
                     hash: str = None,
-                    key: str = None):
+                    key: str = None,
+                    confirm_token: str = None):
     with elle.log.trace('confirm email for %s' % user):
       if '@' in user:
         query = {'email': user}
@@ -958,6 +962,10 @@ class Mixin:
           self.check_key(key)
         elif hash is not None:
           query['email_confirmation_hash'] = hash
+        else:
+          self.check_signature(
+            self.confirm_token(user),
+            datetime.timedelta(days = 7))
       user = self.database.users.find_and_modify(
         query,
         {
@@ -999,14 +1007,18 @@ class Mixin:
       if user.get('email_confirmed', True):
         response(404, {'reason': 'email is already confirmed'})
       assert user.get('email_confirmation_hash') is not None
+      email = user['email']
       self.emailer.send_one(
         'Confirm Registration (Initial)',
-        recipient_email = user['email'],
+        recipient_email = email,
         recipient_name = user['fullname'],
         variables = {
           'confirm_key': key('/users/%s/confirm-email' % user['_id']),
           'user': self.email_user_vars(user),
-          'login_token': self.login_token(user['email']),
+          'login_token': self.login_token(email),
+          'confirm_token': self.sign(
+            self.confirm_token(email),
+            datetime.timedelta(days = 7)),
         },
       )
       return {}
@@ -1227,6 +1239,9 @@ class Mixin:
       'url': self.url_absolute(url),
       'key': key(url),
       'login_token': self.login_token(email),
+      'confirm_token': self.sign(
+        self.confirm_token(email),
+        datetime.timedelta(days = 7)),
     }
     self.emailer.send_one('Confirm New Email Address',
                           recipient_email = email,
@@ -3008,6 +3023,12 @@ class Mixin:
       'action': 'login',
       'email': email,
     }, expiration)
+
+  def confirm_token(self, email):
+    return {
+      'action': 'confirm_email',
+      'email': email,
+    }
 
   def __check_gcs(self):
     if self.gcs is None:
