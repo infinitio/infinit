@@ -55,7 +55,7 @@ ELLE_TEST_SCHEDULED(early_402)
     });
   sender.login();
   sender.state->create_link(
-    std::vector<std::string>{transfered.path().string().c_str()}, "message");
+    std::vector<std::string>{transfered.path().string()}, "message", false);
 
   while (!finished && !failed)
   {
@@ -123,7 +123,7 @@ ELLE_TEST_SCHEDULED(other_402)
     });
   sender.login();
   sender.state->create_link(
-    std::vector<std::string>{transfered.path().string().c_str()}, "message");
+    std::vector<std::string>{transfered.path().string()}, "message", false);
 
   while (!finished && !failed)
   {
