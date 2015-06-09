@@ -32,7 +32,8 @@ namespace surface
                       gap_TransactionStatus status,
                       elle::UUID const& sender_device_id,
                       std::string const& message,
-                      std::string const& meta_id);
+                      std::string const& meta_id,
+                      bool screenshot);
       ~LinkTransaction() noexcept(true);
 
       uint32_t id;
@@ -45,6 +46,7 @@ namespace surface
       std::string sender_device_id;
       std::string message;
       std::string meta_id;
+      bool screenshot;
 
       static Notification::Type type;
 

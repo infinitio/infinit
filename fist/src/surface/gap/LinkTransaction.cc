@@ -13,7 +13,8 @@ namespace surface
                                      gap_TransactionStatus status_,
                                      elle::UUID const& sender_device_id_,
                                      std::string const& message_,
-                                     std::string const& meta_id_)
+                                     std::string const& meta_id_,
+                                     bool screenshot_)
       : id(id_)
       , name(std::move(name_))
       , mtime(mtime_)
@@ -24,6 +25,7 @@ namespace surface
       , sender_device_id(sender_device_id_.repr())
       , message(message_)
       , meta_id(meta_id_)
+      , screenshot(screenshot_)
     {
       // FIXME: for now the server always return the share link, as an empty
       // string if not ready. Remove when we remove the old serialization,
@@ -41,7 +43,8 @@ namespace surface
       stream << "LinkTransaction("
              << this->id << ", "
              << this->status << " clicked("
-             << this->click_count << " time(s))";
+             << this->click_count << " time"
+             << (this->click_count == 1 ? "" : "s") << ")";
     }
 
     Notification::Type LinkTransaction::type = NotificationType_LinkTransactionUpdate;
