@@ -26,7 +26,7 @@ ELLE_TEST_SCHEDULED(links)
     }
   }
   sender.state->create_link(
-    std::vector<std::string>{transfered.path().string().c_str()}, "message");
+    std::vector<std::string>{transfered.path().string()}, "message", false);
   // Because our trophonius is a brick, we will not receive the notification.
   ELLE_ASSERT_EQ(sender.state->transactions().size(), 1u);
   // At the stage, status is new.
