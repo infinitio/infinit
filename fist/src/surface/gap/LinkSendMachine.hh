@@ -43,6 +43,7 @@ namespace surface
     | Attributes |
     `-----------*/
       ELLE_ATTRIBUTE_R(std::string, message);
+      ELLE_ATTRIBUTE_R(bool, screenshot);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
 
     /*---------------.

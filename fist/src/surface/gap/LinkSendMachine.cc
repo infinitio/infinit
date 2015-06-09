@@ -25,6 +25,7 @@ namespace surface
       : Super::Super(transaction, id, data)
       , Super(transaction, id, data)
       , _message(data->message)
+      , _screenshot(data->screenshot ? data->screenshot.get() : false)
       , _data(data)
       , _completed(false)
     {
@@ -45,6 +46,7 @@ namespace surface
       : Super::Super(transaction, id, data)
       , Super(transaction, id, std::move(files), data)
       , _message(message)
+      , _screenshot(data->screenshot ? data->screenshot.get() : false)
       , _data(data)
       , _credentials()
       , _completed(false)
@@ -292,7 +294,7 @@ namespace surface
         auto response =
           this->state().meta().create_link(
             files, this->archive_info().first, this->message(),
-            this->transaction_id());
+            this->screenshot(), this->transaction_id());
         *this->_data = std::move(response.transaction());
         this->transaction()._snapshot_save();
         this->_credentials = std::move(response.cloud_credentials());
@@ -308,6 +310,7 @@ namespace surface
           this->files().size(),
           total_size,
           this->_message.length(),
+          this->screenshot(),
           std::vector<std::string>(extensions.begin(), extensions.end()));
       }
     }
