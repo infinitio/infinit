@@ -523,9 +523,10 @@ public:
 
   uint32_t
   wrap_create_link(std::vector<std::string> files,
-    const std::string& message)
+                   const std::string& message,
+                   bool screenshot)
   {
-    return create_link(files, message);
+    return create_link(files, message, screenshot);
   }
 
   std::string
