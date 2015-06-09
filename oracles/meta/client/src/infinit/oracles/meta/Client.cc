@@ -597,6 +597,21 @@ namespace infinit
       }
 
       void
+      Client::add_facebook_account(std::string const& facebook_token) const
+      {
+        std::string url("/user/accounts_facebook");
+        auto request = this->_request(
+          url,
+          Method::PUT,
+          [&] (reactor::http::Request& r)
+          {
+            elle::serialization::json::SerializerOut output(r, false);
+            output.serialize("short_lived_access_token",
+                             const_cast<std::string&>(facebook_token));
+          });
+      }
+
+      void
       Client::logout()
       {
         this->_request("/logout", Method::POST);
