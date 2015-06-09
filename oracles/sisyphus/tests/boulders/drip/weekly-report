@@ -130,7 +130,7 @@ with mongobox.MongoBox() as mongo:
 
     # Create a link transaction
     forward(datetime.timedelta(minutes = 1))
-    res = meta.link_generate([('lol', 10000000)], 'lol', '',
+    res = meta.link_generate([('lol', 10000000)], 'lol', '', False,
                              sender, sender_device)
     meta.link_update(res['transaction']['id'], user = sender,
                      progress = 1.0, status = statuses['finished'])
