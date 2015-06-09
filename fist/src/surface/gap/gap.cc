@@ -1609,6 +1609,7 @@ gap_onboarding_set_peer_availability(gap_State* state, uint32_t id, bool status)
 gap_Status
 gap_message_callback(gap_State* state, MessageCallback callback)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
     "attach message callback",
@@ -1626,6 +1627,7 @@ gap_send_metric(gap_State* state,
                 UIMetricsType metric,
                 Additionals additional)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
     "gap send metrics",
@@ -1763,6 +1765,7 @@ gap_send_generic_metric(gap_State* state,
                         std::string const& method,
                         Additionals additional)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
     "gap send generic metric",
@@ -1779,6 +1782,7 @@ gap_send_sms_ghost_code_metric(gap_State* state,
                                std::string const& code,
                                std::string const& fail_reason)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
     "gap send sms ghost metric",
@@ -1923,9 +1927,24 @@ gap_facebook_connect(gap_State* state,
 }
 
 gap_Status
+gap_add_facebook_account(gap_State* state, std::string const& facebook_token)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "add facebook account",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.add_facebook_account(facebook_token);
+      return gap_ok;
+    });
+}
+
+gap_Status
 gap_upload_address_book(gap_State* state,
                         std::string const& json)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
     "upload address book",
@@ -1940,6 +1959,7 @@ gap_Status
 gap_upload_address_book(gap_State* state,
                         std::vector<AddressBookContact> const& contacts)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
     "upload address book",
@@ -1953,6 +1973,7 @@ gap_upload_address_book(gap_State* state,
 gap_Status
 gap_session_id(gap_State* state, std::string& res)
 {
+  ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
     "fetch session id",

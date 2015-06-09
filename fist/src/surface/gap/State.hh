@@ -293,6 +293,10 @@ namespace surface
         boost::optional<std::string> device_language = boost::none,
         reactor::DurationOpt timeout = reactor::DurationOpt());
 
+      /// Add Facebook account so that user can find Facebook friends.
+      void
+      add_facebook_account(std::string const& facebook_token);
+
       std::string
       user_directory();
 

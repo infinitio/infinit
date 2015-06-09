@@ -479,6 +479,10 @@ namespace infinit
         bool
         facebook_id_already_registered(std::string const& facebook_id) const;
 
+        /// Add Facebook account so that user can find Facebook friends.
+        void
+        add_facebook_account(std::string const& facebook_token) const;
+
         void
         logout();
 
