@@ -1152,6 +1152,12 @@ namespace surface
         device_model, device_name, device_language);
     }
 
+    void
+    State::add_facebook_account(std::string const& facebook_token)
+    {
+      this->meta().add_facebook_account(facebook_token);
+    }
+
     Self const&
     State::me() const
     {
