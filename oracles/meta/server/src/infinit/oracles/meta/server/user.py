@@ -886,6 +886,7 @@ class Mixin:
           variables = {
             'confirm_key': key('/users/%s/confirm-email' % user_id),
             'user': self.email_user_vars(user),
+            'login_token': self.login_token(email),
           },
         )
       return self.__user_view(self.__user_fill(user))
