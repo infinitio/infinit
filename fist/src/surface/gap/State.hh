@@ -705,7 +705,8 @@ namespace surface
 
       uint32_t
       create_link(std::vector<std::string> const& files,
-                  std::string const& message);
+                  std::string const& message,
+                  bool screenshot);
 
       surface::gap::LinkTransaction
       link_to_gap_link(uint32_t id,
