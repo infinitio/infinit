@@ -166,6 +166,7 @@ namespace surface
                   uint32_t id,
                   std::vector<std::string> files,
                   std::string const& message,
+                  bool screenshot,
                   papier::Authority const& authority);
       /// Move.
       Transaction(Transaction&&) = default;

@@ -186,6 +186,7 @@ namespace surface
                              uint32_t id,
                              std::vector<std::string> files,
                              std::string const& message,
+                             bool screenshot,
                              papier::Authority const& authority)
       // FIXME: ensure better uniqueness.
       : _snapshots_directory(
@@ -213,6 +214,7 @@ namespace surface
       auto data = std::make_shared<infinit::oracles::LinkTransaction>();
       data->sender_id = state.me().id;
       data->sender_device_id = state.device().id;
+      data->screenshot = screenshot;
       this->_data = data;
       this->_machine.reset(
         new LinkSendMachine(
