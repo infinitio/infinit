@@ -1316,6 +1316,7 @@ namespace infinit
       Client::create_link(LinkTransaction::FileList const& files,
                           std::string const& name,
                           std::string const& message,
+                          bool screenshot,
                           boost::optional<std::string const&> link_id) const
       {
         auto url = link_id ? "/link/" + *link_id : "/link" ;
@@ -1331,6 +1332,7 @@ namespace infinit
             query.serialize("files",
                             const_cast<LinkTransaction::FileList&>(files));
             query.serialize("message", const_cast<std::string&>(message));
+            query.serialize("screenshot", screenshot);
           },
           false);
         _check_for_quota(url, request);

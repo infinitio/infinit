@@ -625,6 +625,7 @@ namespace infinit
         create_link(LinkTransaction::FileList const& file_list,
                     std::string const& name,
                     std::string const& message,
+                    bool screenshot,
                     boost::optional<std::string const&> link_id = boost::none) const;
 
         /// create an empty link, to be initialized later.
