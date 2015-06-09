@@ -512,6 +512,9 @@ gap_facebook_connect(gap_State* state,
                      boost::optional<std::string> device_language = boost::none);
 
 gap_Status
+gap_add_facebook_account(gap_State* state, std::string const& facebook_token);
+
+gap_Status
 gap_upload_address_book(gap_State* state,
                         std::string const& json);
 

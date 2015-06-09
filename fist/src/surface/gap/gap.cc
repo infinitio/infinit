@@ -1926,6 +1926,20 @@ gap_facebook_connect(gap_State* state,
 }
 
 gap_Status
+gap_add_facebook_account(gap_State* state, std::string const& facebook_token)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "add facebook account",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.add_facebook_account(facebook_token);
+      return gap_ok;
+    });
+}
+
+gap_Status
 gap_upload_address_book(gap_State* state,
                         std::string const& json)
 {
