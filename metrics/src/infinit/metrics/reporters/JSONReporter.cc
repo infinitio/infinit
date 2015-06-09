@@ -64,6 +64,7 @@ namespace infinit
                                             int64_t file_count,
                                             int64_t total_size,
                                             uint32_t message_length,
+                                            bool screenshot,
                                             std::vector<std::string> extensions,
                                             bool onboarding)
     {
@@ -74,6 +75,7 @@ namespace infinit
       data[this->_key_str(JSONKey::file_count)] = file_count;
       data[this->_key_str(JSONKey::total_size)] = total_size;
       data[this->_key_str(JSONKey::message_length)] = message_length;
+      data[this->_key_str(JSONKey::screenshot)] = screenshot;
       data[this->_key_str(JSONKey::onboarding)] = onboarding;
       data[this->_key_str(JSONKey::transaction_type)] =
         this->_transaction_type_str(LinkTransaction);
@@ -548,6 +550,8 @@ namespace infinit
           return "operation";
         case JSONKey::recipient_id:
           return "recipient";
+        case JSONKey::screenshot:
+          return "screenshot";
         case JSONKey::sender_id:
           return "sender";
         case JSONKey::status:

@@ -149,6 +149,7 @@ namespace infinit
                                        int64_t file_count,
                                        int64_t total_size,
                                        uint32_t message_length,
+                                       bool screenshot,
                                        std::vector<std::string> extensions,
                                        bool onboarding)
     {
@@ -159,6 +160,7 @@ namespace infinit
                                          file_count,
                                          total_size,
                                          message_length,
+                                         screenshot,
                                          extensions,
                                          onboarding));
     }
@@ -477,6 +479,7 @@ namespace infinit
                                         int64_t file_count,
                                         int64_t total_size,
                                         uint32_t message_length,
+                                        bool screenshot,
                                         std::vector<std::string> extensions,
                                         bool onboarding)
     {}
