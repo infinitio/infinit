@@ -72,6 +72,8 @@ namespace surface
         virtual
         bool
         completed() const;
+        virtual
+        void _pause(bool pause_action) override;
         ELLE_ATTRIBUTE(std::string, file_path);
 
       /*--------.
