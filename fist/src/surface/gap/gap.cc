@@ -1269,7 +1269,8 @@ gap_is_link_transaction(gap_State* state, uint32_t id)
 uint32_t
 gap_create_link_transaction(gap_State* state,
                             std::vector<std::string> const& files,
-                            std::string const& message)
+                            std::string const& message,
+                            bool screenshot)
 {
   ELLE_ASSERT(state != nullptr);
   return run<uint32_t>(
@@ -1277,7 +1278,7 @@ gap_create_link_transaction(gap_State* state,
     "create link",
     [&] (surface::gap::State& state) -> uint32_t
     {
-      return state.create_link(files, message);
+      return state.create_link(files, message, screenshot);
     });
 }
 

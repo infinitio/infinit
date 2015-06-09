@@ -345,7 +345,8 @@ gap_is_p2p_transaction(gap_State* state, uint32_t id);
 uint32_t
 gap_create_link_transaction(gap_State* state,
                             std::vector<std::string> const& files,
-                            std::string const& message);
+                            std::string const& message,
+                            bool screenshot);
 
 /// Fetch a transaction by id.
 gap_Status
