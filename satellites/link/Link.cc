@@ -118,7 +118,7 @@ int main(int argc, char** argv)
         std::string file_names = options["file"].as<std::string>();
         std::vector<std::string> files;
         boost::algorithm::split(files, file_names, boost::is_any_of(","));
-        id = state.create_link(files, "");
+        id = state.create_link(files, "", false);
         ELLE_ASSERT_NEQ(id, surface::gap::null_id);
 
         static const int width = 70;
