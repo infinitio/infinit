@@ -638,8 +638,9 @@ class Mixin:
         recipient_name = user['fullname'],
         variables = {
           'user': self.email_user_vars(user),
+          'peer': self.email_user_vars(peer),
           'transaction':
-            self.email_transaction_vars(transaction, peer),
+            self.email_transaction_vars(transaction, user),
           'login_token': self.login_token(user['email']),
         },
       )

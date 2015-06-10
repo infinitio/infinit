@@ -204,10 +204,10 @@ def avatar(i, meta):
 def user_vars(user, meta):
   return {
     'avatar': avatar(user['_id'], meta),
-    'email': user['email'],
-    'fullname': user['fullname'],
+    'email': user.get('email'),
+    'fullname': user.get('fullname'),
     'id': str(user['_id']),
-    'os': user['os'] if 'os' in user else [],
+    'os': user.get('os', []),
   }
 
 def transaction_vars(transaction, user, meta):
