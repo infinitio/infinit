@@ -19,6 +19,7 @@ if targets.osyst.startswith('linux'):
      '//oracles/hephaestus/debian',
      '//oracles/meta/server/debian',
      '//oracles/trophonius/server/debian',
+     '//fist-gui-qt/debian'
    ])
 if targets.osyst.startswith('osx'):
   subprocess.check_call(

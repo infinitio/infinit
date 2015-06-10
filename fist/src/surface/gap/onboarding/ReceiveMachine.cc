@@ -134,6 +134,12 @@ namespace surface
         // nothing
       }
 
+      void
+      ReceiveMachine::_pause(bool)
+      {
+        // nada
+      }
+
       bool
       ReceiveMachine::completed() const
       {

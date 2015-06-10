@@ -26,7 +26,7 @@ def configure(cxx_toolkit = None,
               php = None,
               production_build = False,
               enable_debug = True,
-              qt = False,
+              qt = None,
               valgrind = None,
               valgrind_tests = False,
 ):
