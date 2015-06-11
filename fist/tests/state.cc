@@ -205,6 +205,7 @@ public:
           "  \"running_transactions\": [],"
           "  \"final_transactions\": [],"
           "  \"links\": [],"
+          "  \"accounts\": [],"
           "  \"devices\": []"
           "}";
       });
@@ -263,6 +264,7 @@ public:
           "  \"register_status\": \"\","
           "  \"email\": \"\","
           "  \"identity\": \"\","
+          "  \"accounts\": [],"
           "  \"devices\": [],"
           "  \"favorites\": [],"
           "  \"success\": true"
@@ -330,6 +332,7 @@ public:
          "    \"register_status\": \"\","
          "    \"email\": \"\","
          "    \"identity\": \"%s\","
+         "    \"accounts\": [],"
          "    \"devices\": [],"
          "    \"favorites\": [],"
          "    \"success\": true"
