@@ -31,6 +31,7 @@
 
 #include <surface/gap/Error.hh>
 #include <surface/gap/gap_bridge.hh>
+#include <surface/gap/Model.hh>
 #include <surface/gap/onboarding/Transaction.hh>
 #include <surface/gap/State.hh>
 #include <surface/gap/Transaction.hh>
@@ -316,6 +317,39 @@ gap_register(gap_State* state,
                      device_name,
                      device_language);
      return gap_ok;
+    });
+}
+
+gap_Status
+gap_accounts(gap_State* state, std::vector<Account const*>& res)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "fetch account list",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      res = state.accounts();
+      return gap_ok;
+    });
+}
+
+gap_Status
+gap_accounts_changed_callback(gap_State* state,
+                              AccountsChangedCallback callback)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "attach accounts changed callback",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.model().accounts.changed().connect(
+        [callback, &state]
+        {
+          callback(state.accounts());
+        });
+      return gap_ok;
     });
 }
 
