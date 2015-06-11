@@ -31,6 +31,7 @@
 
 # include <infinit/oracles/LinkTransaction.hh>
 # include <infinit/oracles/PeerTransaction.hh>
+# include <infinit/oracles/meta/Account.hh>
 # include <infinit/oracles/meta/AddressBookContact.hh>
 # include <infinit/oracles/meta/Device.hh>
 # include <infinit/oracles/meta/Error.hh>
@@ -227,6 +228,7 @@ namespace infinit
         std::unordered_map<std::string, PeerTransaction> transactions;
         std::vector<LinkTransaction> links;
         std::vector<Device> devices;
+        std::vector<Account> accounts;
 
         SynchronizeResponse() = default;
         SynchronizeResponse(elle::serialization::SerializerIn& s);
