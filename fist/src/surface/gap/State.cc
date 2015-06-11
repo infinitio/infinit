@@ -170,8 +170,6 @@ namespace surface
       , _me()
       , _output_dir(local_config.download_dir())
       , _reconnection_cooldown(10_sec)
-      , _kick_out_barrier()
-      , _kicker(nullptr)
       , _device_uuid(std::move(local_config.device_id()))
       , _device()
       , _login_watcher_thread(nullptr)
@@ -234,43 +232,12 @@ namespace surface
     }
 
     void
-    State::_kick_out()
-    {
-      this->_kick_out_barrier.open();
-    }
-
-    void
     State::_kick_out(bool retry,
-                    std::string const& message)
+                     std::string const& message)
     {
       ELLE_TRACE_SCOPE("kicked out: %s (retry: %s)", message, retry);
       this->logout();
       this->enqueue(ConnectionStatus(false, retry, message));
-    }
-
-    void
-    State::_initialize_kicker()
-    {
-      // Because we don't know where we are going to encounter a forbidden
-      // (probably a transaction), we can't execute the clean up from inside a
-      // resource that is going to be clean up during the _cleanup. So we just
-      // delegate that part to a thread inside state to avoid cyclic
-      // dependencies in the termination graph.
-      this->_meta.error_handlers()[reactor::http::StatusCode::Forbidden] =
-        [this] (std::string const& url)
-        {
-          ELLE_ERR("got a forbidden on %s", url);
-          this->_kick_out();
-        };
-      this->_kicker.reset(new reactor::Thread{
-          *reactor::Scheduler::scheduler(),
-            "kick_out",
-            [this]
-            {
-              reactor::wait(this->_kick_out_barrier);
-              this->_kick_out(false, "Credentials no longer valid");
-            }
-        });
     }
 
     State::State(std::string const& meta_protocol,
@@ -673,7 +640,6 @@ namespace surface
           << [&] (elle::Finally& finally_logout)
         {
           auto login_response = login_function();
-          this->_initialize_kicker();
           ELLE_TRACE("%s: logged in to meta", *this);
           this->_me.reset(new Self(login_response.self));
           // Don't send notification for me user here.
@@ -909,7 +875,6 @@ namespace surface
     {
       if (this->_login_thread)
         this->_login_thread->terminate_now();
-      this->_meta.error_handlers().erase(reactor::http::StatusCode::Forbidden);
       reactor::Lock l(this->_login_mutex);
       this->_logged_in.close();
       ELLE_TRACE_SCOPE("%s: logout", *this);
@@ -1035,13 +1000,6 @@ namespace surface
         ELLE_DEBUG("stop polling");
         this->_polling_thread->terminate_now();
         this->_polling_thread.reset();
-      }
-
-      if (this->_kicker != nullptr &&
-          reactor::Scheduler::scheduler()->current() != this->_kicker.get())
-      {
-        this->_kicker->terminate_now();
-        this->_kicker.reset();
       }
     }
 
