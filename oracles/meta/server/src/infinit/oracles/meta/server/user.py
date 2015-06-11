@@ -2363,7 +2363,8 @@ class Mixin:
   def get_avatar_api(self, id, ghost_code: str = None):
     user = self.user_from_identifier(id)
     return self.get_avatar(user = user,
-                           ghost_code = ghost_code)
+                           ghost_code = ghost_code,
+                           fields = ['small_avatar'])
 
   # Deprecated in favor of /users/<id>/avatar
   @api('/user/<id>/avatar')
