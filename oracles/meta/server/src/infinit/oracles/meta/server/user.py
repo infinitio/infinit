@@ -3340,12 +3340,23 @@ class Mixin:
       current = self.user
       if user is None:
         # Add it to our account
-        self.database.users.update({'_id': current['_id']},
-          {'$push': {'accounts': {'type': 'facebook',
-                                  'id': facebook_user.facebook_user.facebook_id}}}
-          )
+        account = {
+          'type': 'facebook',
+          'id': facebook_user.facebook_id
+        }
+        self.database.users.update(
+          {'_id': current['_id']},
+          {'$push': {'accounts': account}}
+        )
+        self.notifier.notify_some(
+          notifier.MODEL_UPDATE,
+          message = {
+            'accounts': [account]
+          },
+          recipient_ids = {current['_id']},
+          version = (0, 9, 37))
       elif user['_id'] != current['_id']:
-        self._forbidden_with_error("This facebook account belong to an other user")
+        self._forbidden_with_error("This facebook account belongs to another user")
       f = facebook_user.friends
       friend_ids = [friend['id'] for friend in f['data']]
       ## Add self to their swaggers
@@ -3367,10 +3378,25 @@ class Mixin:
       inc = {}
       for e in existing:
         inc['swaggers.' + str(e['_id'])] = 0
-      self.database.users.update(
-        { '_id': current['_id']},
-        {'$inc': inc}
-      )
+      if inc:
+        self.database.users.update(
+          { '_id': current['_id']},
+          {'$inc': inc}
+        )
+        # Notify both the current user and existing Facebook user.
+        for e in existing:
+          # Notify current user.
+          self.notifier.notify_some(
+            notifier.NEW_SWAGGER,
+            message = {'user_id': e['_id']},
+            recipient_ids = {current['_id']},
+          )
+          # Notify other user.
+          self.notifier.notify_some(
+            notifier.NEW_SWAGGER,
+            message = {'user_id': current['_id']},
+            recipient_ids = {e['_id']},
+          )
     except Response as r:
       raise r
     except Exception as e:
