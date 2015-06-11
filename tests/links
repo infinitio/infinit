@@ -28,7 +28,7 @@ class TestLinks(unittest.TestCase):
       with utils.TemporaryData('infinit_test_not_a_real_link', 1000) as tmp:
         s = o.state()
         s.login('mefyl@infinit.io', 'mefyl')
-        id = s.create_link([tmp.full_path], "foo", false)
+        id = s.create_link([tmp.full_path], "foo", False)
         for i in range(100):
           s.poll()
           reactor.sleep(datetime.timedelta(milliseconds = 100))
@@ -66,7 +66,7 @@ class TestLinks(unittest.TestCase):
         s = o.state()
         s.configuration_set_max_mirror_size(1)
         s.login('mefyl@infinit.io', 'mefyl')
-        id = s.create_link([tmp.full_path], "foo", false)
+        id = s.create_link([tmp.full_path], "foo", False)
         for i in range(500):
           s.poll()
           reactor.sleep(datetime.timedelta(milliseconds = 10))
