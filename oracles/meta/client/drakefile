@@ -66,17 +66,19 @@ def configure(elle,
 
   with template_context:
     sources = drake.nodes(
-      'src/infinit/oracles/meta/Error.hh.tmpl',
-      'src/infinit/oracles/meta/Error.cc.tmpl',
+      'src/infinit/oracles/meta/Account.cc',
+      'src/infinit/oracles/meta/Account.hh',
+      'src/infinit/oracles/meta/AddressBookContact.cc',
+      'src/infinit/oracles/meta/AddressBookContact.hh',
+      'src/infinit/oracles/meta/Admin.cc',
+      'src/infinit/oracles/meta/Admin.hh',
       'src/infinit/oracles/meta/Client.cc',
       'src/infinit/oracles/meta/Client.hh',
       'src/infinit/oracles/meta/Client.hxx',
       'src/infinit/oracles/meta/Device.cc',
       'src/infinit/oracles/meta/Device.hh',
-      'src/infinit/oracles/meta/Admin.cc',
-      'src/infinit/oracles/meta/Admin.hh',
-      'src/infinit/oracles/meta/AddressBookContact.cc',
-      'src/infinit/oracles/meta/AddressBookContact.hh',
+      'src/infinit/oracles/meta/Error.cc.tmpl',
+      'src/infinit/oracles/meta/Error.hh.tmpl',
     )
 
   if cxx_toolkit.os in [drake.os.windows, drake.os.ios, drake.os.android]:
