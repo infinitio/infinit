@@ -884,7 +884,6 @@ class Mixin:
           recipient_email = email,
           recipient_name = user['fullname'],
           variables = {
-            'confirm_key': key('/users/%s/confirm-email' % user_id),
             'user': self.email_user_vars(user),
             'login_token': self.login_token(email),
             'confirm_token': self.sign(
@@ -1013,7 +1012,6 @@ class Mixin:
         recipient_email = email,
         recipient_name = user['fullname'],
         variables = {
-          'confirm_key': key('/users/%s/confirm-email' % user['_id']),
           'user': self.email_user_vars(user),
           'login_token': self.login_token(email),
           'confirm_token': self.sign(
