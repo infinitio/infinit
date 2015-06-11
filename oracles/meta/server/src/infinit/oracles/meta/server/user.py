@@ -965,7 +965,7 @@ class Mixin:
         else:
           self.check_signature(
             self.confirm_token(user),
-            datetime.timedelta(days = 7))
+            confirm_token)
       user = self.database.users.find_and_modify(
         query,
         {
