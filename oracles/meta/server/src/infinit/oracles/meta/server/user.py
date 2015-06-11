@@ -1214,6 +1214,26 @@ class Mixin:
         'transactions': transactions
       }
 
+  @api('/users/<user>/accounts')
+  @require_logged_in
+  def accounts_users_api(self, user):
+    fields = ['accounts']
+    if isinstance(user, bson.ObjectId):
+      user = self._user_by_id(user, fields = fields)
+    else:
+      user = self.user_by_id_or_email(user, fields = fields)
+    if not self.admin and user['_id'] != self.user['_id']:
+      self.forbidden({
+        'reason': 'not your accounts',
+      })
+    return self.account_list(user)
+
+  def account_list(self, user):
+    return {
+      'accounts': user.get('accounts', []),
+    }
+
+  # Used by website
   @api('/user/accounts')
   @require_logged_in
   def accounts(self):
@@ -2905,6 +2925,7 @@ class Mixin:
       res.update({'devices': [self.device_view(device)]})
     else:
       res.update(self.devices_users_api(user['_id']))
+    res.update(self.accounts_users_api(user['_id']))
     return self.success(res)
 
   def change_plan(self, uid, new_plan):
