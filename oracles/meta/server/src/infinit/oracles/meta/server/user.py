@@ -2383,7 +2383,7 @@ class Mixin:
                  date: int = 0,
                  no_place_holder: bool = False,
                  ghost_code: str = ''):
-    if len(ghost_code):
+    if ghost_code:
       # send metric
       if self.metrics is not None:
         self.metrics.send(
