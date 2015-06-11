@@ -115,7 +115,8 @@ namespace tests
         std::string device_id_str;
         input.serialize("device_id", device_id_str);
         auto device_id = elle::UUID(device_id_str);
-        this->headers()["Set-Cookie"] = elle::sprintf("session-id=%s+%s", user.id(), device_id_str);
+        this->headers()["Set-Cookie"] =
+          elle::sprintf("session-id=%s+%s", user.id(), device_id_str);
         if (this->_devices.find(device_id) == this->_devices.end())
           this->register_device(user, device_id);
         auto const& device = this->_devices.at(device_id);
@@ -126,13 +127,15 @@ namespace tests
           " \"devices\": [%s],"
           " \"features\": [],"
           " \"trophonius\" : %s,"
-          " \"account_registered\": %s"
+          " \"account_registered\": %s,"
+          " \"accounts\": [{\"type\": \"email\", \"id\": \"%s\"}]"
           "}",
           user.self_json(),
           device.json(),
           device.json(),
           this->trophonius->json(),
-          registered ? "true" : "false");
+          registered ? "true" : "false",
+          user.email());
       });
 
     // this->register_route(
@@ -186,13 +189,15 @@ namespace tests
           "  \"running_transactions\": %s,"
           "  \"final_transactions\": %s,"
           "  \"links\": %s,"
-          "  \"devices\": [%s]"
+          "  \"devices\": [%s],"
+          "  \"accounts\": [{\"type\": \"email\", \"id\": \"%s\"}]"
           "}",
           user.swaggers_json(),
           json(runnings),
           json(finals),
           user.links_json(),
-          device.json());
+          device.json(),
+          user.email());
         return res;
       });
 
