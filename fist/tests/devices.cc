@@ -255,6 +255,7 @@ _change_synchronize_route(tests::Server& server,
         "  \"running_transactions\": [],"
         "  \"final_transactions\": [],"
         "  \"links\": [],"
+        "  \"accounts\": [{\"type\": \"email\", \"id\": \"f@ke.email\"}],"
         "%s"
         "}", devices);
     });
