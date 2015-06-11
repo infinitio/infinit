@@ -542,7 +542,7 @@ class Meta:
     assertEq(len(emails), 1)
     email = emails[0]
     if get_confirmation_code:
-      return password, email.variables['confirm_key']
+      return password, email.variables['confirm_token']
     else:
       return password
 
@@ -594,7 +594,7 @@ class User(Client):
 
     if not facebook:
       self.email = email is not None and email or random_email() + '@infinit.io'
-      self.password, self.email_confirmation_key = \
+      self.password, self.email_confirmation_token = \
         meta.create_user(self.email,
                          get_confirmation_code = True,
                          **kwargs)

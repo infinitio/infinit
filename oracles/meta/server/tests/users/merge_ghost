@@ -78,7 +78,7 @@ with Meta(enable_emails = True) as meta:
   throws(lambda:
          bob.post(
            'users/%s/accounts/%s/confirm' % (bob.id, eve.email),
-           {'key': eve.email_confirmation_key}),
+           {'confirm_token': eve.email_confirmation_token}),
          HTTPException)
 
 # Notifications.

@@ -39,10 +39,10 @@ with Meta(enable_emails = True, unconfirmed_email_leeway = 0) as meta:
   else:
     raise Exception('invalid login should have yield 403 forbidden')
 
-  res = u.post('users/%s/confirm-email' % u.id,
-               {'key': u.email_confirmation_key})
-  res = u.post('users/%s/confirm-email' % u.id,
-               {'key': u.email_confirmation_key})
+  res = u.post('users/%s/confirm-email' % u.email,
+               {'confirm_token': u.email_confirmation_token})
+  res = u.post('users/%s/confirm-email' % u.email,
+               {'confirm_token': u.email_confirmation_token})
   u.login()
 
 # Reask hash.
@@ -75,8 +75,8 @@ with Meta(
 
   client = Client(meta)
   res = client.post(
-    'users/%s/confirm-email' % u.id,
-    {'key': emails[0].variables['confirm_key']})
+    'users/%s/confirm-email' % u.email,
+    {'confirm_token': emails[0].variables['confirm_token']})
   # Check confirming email logs in
   assertEq(client.get('user/self')['email'], email)
   try:
