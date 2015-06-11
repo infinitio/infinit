@@ -471,6 +471,17 @@ namespace surface
       change_password(std::string const& old_password,
                       std::string const& new_password);
 
+      /*---------.
+      | Accounts |
+      `---------*/
+    public:
+      std::vector<Account const*>
+      accounts() const;
+
+    private:
+      void
+      _accounts(std::vector<Account> const& accounts);
+
       /*--------.
       | Devices |
       `--------*/
@@ -870,7 +881,7 @@ namespace surface
     | Model |
     `------*/
     public:
-      ELLE_ATTRIBUTE_R(Model, model);
+      ELLE_ATTRIBUTE_RX(Model, model);
 
     /*--------.
     | Message |

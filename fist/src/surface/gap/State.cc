@@ -471,6 +471,7 @@ namespace surface
       this->_synchronize_response.reset(
         new infinit::oracles::meta::SynchronizeResponse{
         this->meta().synchronize(false)});
+      this->_accounts(this->_synchronize_response->accounts);
       this->_devices(this->_synchronize_response->devices);
       this->_user_resync(this->_synchronize_response->swaggers, false);
       this->_peer_transaction_resync(
@@ -771,6 +772,7 @@ namespace surface
             new infinit::oracles::meta::SynchronizeResponse{
               this->meta().synchronize(true)});
           ELLE_TRACE("got synchronisation response");
+          this->_accounts(this->_synchronize_response->accounts);
           this->_devices(this->_synchronize_response->devices);
           this->_model.devices.added().connect(
             [this] (Device& d)
@@ -1251,6 +1253,7 @@ namespace surface
               }
            this->_synchronize_response.reset(
              new infinit::oracles::meta::SynchronizeResponse{this->meta().synchronize(false)});
+           this->_accounts(this->_synchronize_response->accounts);
            this->_devices(this->_synchronize_response->devices);
           }
           // This is never the first call to _user_resync as the function is
@@ -1443,6 +1446,27 @@ namespace surface
         }
         (*runner)();
       }
+    }
+
+    /*---------.
+    | Accounts |
+    `---------*/
+    std::vector<Account const*>
+    State::accounts() const
+    {
+      std::vector<Account const*> res;
+      res.reserve(this->_model.accounts.size());
+      for (auto const& account: this->_model.accounts)
+        res.push_back(&account);
+      return res;
+    }
+
+    void
+    State::_accounts(std::vector<Account> const& accounts)
+    {
+      ELLE_TRACE_SCOPE("reset %s with %s", this->_model, accounts);
+      this->_model.accounts.reset(accounts);
+      ELLE_ASSERT_EQ(this->_model.accounts.size(), accounts.size());
     }
 
     /*--------.
