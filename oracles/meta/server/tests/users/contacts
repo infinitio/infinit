@@ -136,7 +136,7 @@ with Meta() as meta:
   alice.put('user/contacts',
     {'contacts': [{'emails': [email]}]})
   bob.put('user/accounts/%s' % email)
-  hash = meta.emailer.emails[0].variables['key']
+  token = meta.emailer.emails[0].variables['confirm_token']
   bob.post(
-    'users/%s/accounts/%s/confirm' % (bob.id, email),
-    {'key': hash})
+    'users/%s/accounts/%s/confirm' % (bob.email, email),
+    {'confirm_token': token})

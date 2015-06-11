@@ -88,7 +88,7 @@ def get_keys(emails, size):
   assertEq(len(emails), size)
   keys = {}
   for email in emails:
-    keys[email.variables['email']] = email.variables['key']
+    keys[email.variables['email']] = email.variables['confirm_token']
   return keys
 
 # Auxiliary email.
@@ -103,9 +103,9 @@ with Meta(enable_emails = True) as meta:
     keys = get_keys(meta.emailer.emails, 1)
     print(keys)
     # The key is calculted with the lower case email.
-    throws(lambda: bob.post('users/%s/accounts/%s/confirm' % (bob.id, email), {'key': keys[email.lower()]}),
+    throws(lambda: bob.post('users/%s/accounts/%s/confirm' % (bob.id, email), {'confirm_token': keys[email.lower()]}),
            403)
-    bob.post('users/%s/accounts/%s/confirm' % (bob.id, email.lower()), {'key': keys[email.lower()]}),
+    bob.post('users/%s/accounts/%s/confirm' % (bob.id, email.lower()), {'confirm_token': keys[email.lower()]}),
   for email in emails:
     bob.get('users/%s' % email)
     bob.get('users/%s' % email.lower())

@@ -1229,13 +1229,9 @@ class Mixin:
           'reason': 'email already registered',
           'email': email,
         })
-    url ='/users/%s/accounts/%s/confirm' % (self.user['_id'], email)
-    k = key(url)
     variables = {
       'email': email,
       'user': self.email_user_vars(self.user),
-      'url': self.url_absolute(url),
-      'key': key(url),
       'login_token': self.login_token(email),
       'confirm_token': self.sign(
         self.confirm_token(email),
@@ -1248,17 +1244,21 @@ class Mixin:
     return {}
 
   @api('/users/<user>/accounts/<name>/confirm', method = 'POST')
-  @require_key
-  def account_confirm(self, user, name):
+  def account_confirm(self, user, name, confirm_token: str = None):
     with elle.log.trace('validate email %s for user %s' %
                         (name, user)):
+      self.check_signature(
+        self.confirm_token(name),
+        confirm_token)
       update = {
         '$addToSet':
         {
-          'accounts': collections.OrderedDict((('id', name), ('type', 'email')))
+          'accounts': collections.OrderedDict
+          ([('id', name), ('type', 'email')]),
         }
       }
-      user = self.user_by_id_or_email(user, fields = ['_id', 'accounts'])
+      user = self.user_by_id_or_email(user,
+                                      fields = ['_id', 'accounts'])
       while True:
         try:
           self.database.users.update(

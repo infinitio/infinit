@@ -44,7 +44,7 @@ with Meta(enable_emails = True,
   emails = meta.emailer.emails
   assertEq(len(emails), 1)
   bob.post('users/%s/accounts/%s/confirm' % (bob.id, eve),
-           {'key': emails[0].variables['key']})
+           {'confirm_token': emails[0].variables['confirm_token']})
   # Spoiler: Eve is bob...
   assert bob.get('users/%s' % eve)['register_status'] == 'ok'
   assert bob.id == bob.get('users/%s' % eve)['id']
@@ -102,7 +102,7 @@ with Meta(enable_emails = True) as meta:
     emails = meta.emailer.emails
     assertEq(len(emails), 1)
     bob.post('users/%s/accounts/%s/confirm' % (bob.id, email),
-             {'key': emails[0].variables['key']})
+             {'confirm_token': emails[0].variables['confirm_token']})
 
     trophonius.poll()
     assert len(bob.notifications) == 1
@@ -127,7 +127,7 @@ with Meta(enable_emails = True) as meta:
     emails = meta.emailer.emails
     assertEq(len(emails), 1)
     bob.post('users/%s/accounts/%s/confirm' % (bob.id, email),
-             {'key': emails[0].variables['key']})
+             {'confirm_token': emails[0].variables['confirm_token']})
 
     assert len(bob.transactions) == 1
     # Alice is a bob new swagger.
