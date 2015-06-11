@@ -33,4 +33,5 @@ with drake.Drake('../..') as d:
         python3 = python3,
         # fuse = '/usr/local',
         php = False,
+        qt = False,
   )
