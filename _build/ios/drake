@@ -50,4 +50,5 @@ with drake.Drake('../..') as d:
         python3 = False,
         boost = '_build/ios/elle/boost',
         production_build = True,
+        qt = False,
   )
