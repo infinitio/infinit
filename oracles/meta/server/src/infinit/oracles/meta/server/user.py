@@ -2357,9 +2357,29 @@ class Mixin:
     from bottle import Request
     return Request().url + 'user/%s/avatar' % str(id)
 
+  @api('/users/<id>/avatar')
+  def get_avatar_api(self, id, ghost_code: str = None):
+    user = self.user_from_identifier(id)
+    return self.get_avatar(user = user,
+                           ghost_code = ghost_code)
+
+  # Deprecated in favor of /users/<id>/avatar
   @api('/user/<id>/avatar')
+  def get_avatar_api(self,
+                     id: bson.ObjectId,
+                     date: int = 0,
+                     no_place_holder: bool = False,
+                     ghost_code: str = ''):
+    user = self._user_by_id(id,
+                            ensure_existence = False,
+                            fields = ['small_avatar'])
+    return self.get_avatar(user = user,
+                           date = date,
+                           no_place_holder = no_place_holder,
+                           ghost_code = ghost_code)
+
   def get_avatar(self,
-                 id: bson.ObjectId,
+                 user,
                  date: int = 0,
                  no_place_holder: bool = False,
                  ghost_code: str = ''):
@@ -2370,13 +2390,10 @@ class Mixin:
           [{
             'event': 'invite/opened',
             'ghost_code': ghost_code,
-            'user': str(id),
+            'user': str(user['_id']),
             'timestamp': time.time(),
           }],
           collection = 'users')
-    user = self._user_by_id(id,
-                            ensure_existence = False,
-                            fields = ['small_avatar'])
     if user is None:
       if no_place_holder:
         return self.not_found()
