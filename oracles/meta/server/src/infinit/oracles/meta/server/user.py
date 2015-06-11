@@ -1232,7 +1232,7 @@ class Mixin:
     variables = {
       'email': email,
       'user': self.email_user_vars(self.user),
-      'login_token': self.login_token(email),
+      'login_token': self.login_token(self.user['email']),
       'confirm_token': self.sign(
         self.confirm_token(email),
         datetime.timedelta(days = 7)),
