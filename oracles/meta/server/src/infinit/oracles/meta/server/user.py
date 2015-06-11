@@ -2062,10 +2062,12 @@ class Mixin:
     return self.__users_by_emails_search(emails, limit, offset)
 
   def user_from_identifier(self,
-                           recipient_identifier: utils.identifier,
+                           identifier,
                            country_code = None,
                            account_type = None,
                            fields = None):
+
+    identifier = utils.identifier(identifier)
     args = {
       'fields': fields,
       'ensure_existence': False,
@@ -2073,21 +2075,21 @@ class Mixin:
     def check_type(account_type, expected):
       return account_type == expected or account_type is None
     user = None
-    if isinstance(recipient_identifier, bson.ObjectId):
+    if isinstance(identifier, bson.ObjectId):
       if check_type(account_type, 'ObjectId'):
-        user = self._user_by_id(recipient_identifier, **args)
-    elif '@' in recipient_identifier:
+        user = self._user_by_id(identifier, **args)
+    elif '@' in identifier:
         if check_type(account_type, 'email'):
-          user = self.user_by_email(recipient_identifier, **args)
+          user = self.user_by_email(identifier, **args)
     else:
       if account_type == 'facebook':
-        user = self.user_by_facebook_id(recipient_identifier,
+        user = self.user_by_facebook_id(identifier,
                                         **args)
       elif check_type(account_type, 'phone'):
         if country_code is None and self.current_device is not None:
           country_code = self.current_device.get('country_code', None)
         phone_number = clean_up_phone_number(
-          recipient_identifier, country_code)
+          identifier, country_code)
         if phone_number:
           user = self.user_by_phone_number(phone_number, **args)
     return user
@@ -2102,7 +2104,7 @@ class Mixin:
     recipient_identifier -- Something to identify the user (email, user_id or phone number).
     """
     user = self.user_from_identifier(
-      recipient_identifier = recipient_identifier,
+      identifier = recipient_identifier,
       country_code = country_code,
       account_type = account_type,
       fields = self.__user_view_fields)

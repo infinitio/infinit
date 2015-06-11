@@ -146,28 +146,24 @@ def enforce_as_email_address(identifier, exit_on_failure = True):
     return invalid_email(identifier, exit_on_failure)
 
 def identifier(user_identifier, country_code = None):
+  if user_identifier is None:
+    return None
+  if isinstance(user_identifier, bson.ObjectId):
+    return user_identifier
+  user_identifier = user_identifier.strip()
   try:
-    if user_identifier is None:
-      return None
-    if isinstance(user_identifier, bson.ObjectId):
-      return user_identifier
-    user_identifier = user_identifier.strip()
-    try:
-      return bson.ObjectId(user_identifier)
-    except bson.errors.InvalidId:
-      pass
-    if '@' in user_identifier:
-      return enforce_as_email_address(user_identifier)
-    else:
-      # Phone or facebook id.
-      if country_code:
-        phone_number = clean_up_phone_number(user_identifier, country_code)
-        if phone_number is not None:
-          return phone_number
-      return user_identifier
-  except Exception as e:
-    print(e)
-    raise e
+    return bson.ObjectId(user_identifier)
+  except bson.errors.InvalidId:
+    pass
+  if '@' in user_identifier:
+    return enforce_as_email_address(user_identifier)
+  else:
+    # Phone or facebook id.
+    if country_code:
+      phone_number = clean_up_phone_number(user_identifier, country_code)
+      if phone_number is not None:
+        return phone_number
+    return user_identifier
 
 def date_time(str):
   return iso8601.parse_date(str)
