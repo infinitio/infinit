@@ -1287,7 +1287,8 @@ class Mixin:
           if status in ['ghost', 'deleted', 'contact']:
             self.user_delete(previous, merge_with = user)
             continue
-      return {}
+      return self._web_login(user)
+
 
   @api('/user/accounts/<email>', method = 'DELETE')
   @require_logged_in
