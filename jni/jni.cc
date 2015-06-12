@@ -1031,7 +1031,7 @@ extern "C" int Java_io_infinit_State_gapCreateLinkTransaction(
 {
   std::vector<std::string> files = from_array<std::string>(env, jfiles, to_string);
   return gap_create_link_transaction((gap_State*)handle, files,
-                                     to_string(env, message));
+                                     to_string(env, message), false);
 }
 
 extern "C" jobject Java_io_infinit_State_gapLinkTransactionById(
@@ -1344,6 +1344,12 @@ extern "C" jlong Java_io_infinit_State_gapPlainInvite(
     to_string(env, identifier), res);
   to_plain_invitation(env, res, pi);
   return s;
+}
+
+extern "C" jlong Java_io_infinit_State_gapAddFacebookAccount(
+  JNIEnv* env, jobject thiz, jlong handle, jstring token)
+{
+  return gap_add_facebook_account((gap_State*)handle, to_string(env, token));
 }
 
 std::map<std::string, elle::network::Interface> interface_get_map()

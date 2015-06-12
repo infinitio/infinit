@@ -1020,6 +1020,8 @@ def configure(cxx_toolkit = None,
     jni_cxx_config.add_local_include_path('oracles/src')
     jni_cxx_config.add_local_include_path('oracles/meta/client/src')
     jni_cxx_config.add_local_include_path('oracles/trophonius/client/src')
+    jni_cxx_config += elle.config
+    jni_cxx_config += elle.das.config
     if cxx_toolkit.os != drake.os.android:
       # JNI headers are in the android toolchain
       jni_cxx_config.add_local_include_path(os.environ['JAVA_HOME'] + '/include')
