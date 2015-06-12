@@ -3183,11 +3183,19 @@ class Mixin:
 
   @api('/user/backgrounds/<name>', method = 'GET')
   @require_logged_in
-  def user_background_put_api(self, name):
+  def user_background_get_api(self, name):
+    return self.user_background_get(self.user, name)
+
+  @api('/users/<user_id>/backgrounds/<name>', method = 'GET')
+  def user_background_get_api(self, user_id, name):
+    return self.user_background_get(
+      self.user_from_identifier(user_id, fields = ['plan']), name)
+
+  def user_background_get(self, user, name):
     self.__check_gcs()
-    self.require_premium(self.user)
+    self.require_premium(user)
     url = self.gcs.download_url(
-      'backgrounds', '%s/%s' % (self.user['_id'], name),
+      'backgrounds', '%s/%s' % (user['_id'], name),
       expiration = datetime.timedelta(minutes = 3),
     )
     bottle.response.status = 307

@@ -57,15 +57,20 @@ with Meta(gcs = gcs) as meta:
   # List backgrounds
   assertEq(user.get('user/backgrounds')['backgrounds'], ['bg.jpg'])
   # Get background
-  response = user.get('user/backgrounds/bg.jpg', raw = True)
-  assertEq(response.status_code, 307)
-  print(response.headers['location'])
-  response = requests.get(response.headers['location'])
-  print(response.content, response.headers)
-  assertEq(response.status_code, 200)
-  assertEq(response.content, body)
-  assertEq(response.headers['content-type'], content_type)
-  assertEq(int(response.headers['content-length']), content_length)
+  for request in [
+      lambda: user.get('user/backgrounds/bg.jpg', raw = True),
+      lambda: meta.get('users/%s/backgrounds/bg.jpg' % user.id,
+                       raw = True),
+      lambda: meta.get('users/%s/backgrounds/bg.jpg' % user.email,
+                       raw = True),
+  ]:
+    response = request()
+    assertEq(response.status_code, 307)
+    response = requests.get(response.headers['location'])
+    assertEq(response.status_code, 200)
+    assertEq(response.content, body)
+    assertEq(response.headers['content-type'], content_type)
+    assertEq(int(response.headers['content-length']), content_length)
   # Erase background
   user.delete('user/backgrounds/bg.jpg')
   assertEq(user.get('user/backgrounds')['backgrounds'], [])
