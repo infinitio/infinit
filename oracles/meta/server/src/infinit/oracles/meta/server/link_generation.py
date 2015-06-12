@@ -393,7 +393,8 @@ class Mixin:
     if password is None:
       return password
     import hashlib
-    return hashlib.sha256(password.encode('utf-8')).hexdigest()
+    return hashlib.sha256(
+      (password + 'infinit.io/links').encode('utf-8')).hexdigest()
 
   def link_update(self,
                   link,
