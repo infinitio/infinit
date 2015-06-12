@@ -599,7 +599,9 @@ class Mixin:
                   'reason': 'link expired',
                   'hash': hash,
                 })
-      if 'password' in link and link['password'] is not None:
+      user = self.user
+      mine = user is not None and user['_id'] == link['sender_id']
+      if not mine and link.get('password'):
         if password is None or \
            self.__link_password_hash(password) != link['password']:
           self.unauthorized({
