@@ -59,7 +59,6 @@ with Meta(enable_emails = True) as meta:
           {
             'contacts': [{'emails': [email]} for email in emails]
           })
-  print(list(meta.database.users.find({}, fields = ['accounts', 'email'])))
   assertEq(meta.database.users.count(), len(emails))
   for email in emails:
     bob.get('users/%s' % email)
@@ -101,11 +100,9 @@ with Meta(enable_emails = True) as meta:
   for email in emails:
     bob.put('user/accounts/%s' % email)
     keys = get_keys(meta.emailer.emails, 1)
-    print(keys)
-    # The key is calculted with the lower case email.
-    throws(lambda: bob.post('users/%s/accounts/%s/confirm' % (bob.id, email), {'confirm_token': keys[email.lower()]}),
-           403)
-    bob.post('users/%s/accounts/%s/confirm' % (bob.id, email.lower()), {'confirm_token': keys[email.lower()]}),
+    bob.post(
+      'users/%s/accounts/%s/confirm' % (bob.email, email),
+      {'confirm_token': keys[email.lower()]}),
   for email in emails:
     bob.get('users/%s' % email)
     bob.get('users/%s' % email.lower())

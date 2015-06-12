@@ -50,7 +50,7 @@ with Meta(enable_emails = True) as meta:
   random.shuffle(emails)
   i = 0
   for email in emails:
-    user.post('users/%s/accounts/%s/confirm' % (user.id, email),
+    user.post('users/%s/accounts/%s/confirm' % (user.email, email),
               {'confirm_token': tokens[email]})
     i += 1
     res = user.post('user/search_emails', {'emails': [email]})
@@ -111,7 +111,7 @@ with Meta(enable_emails = True) as meta:
   email = 'endive@infinit.io'
   user.put('user/accounts/%s' % email)
   tokens = get_tokens(meta.emailer.emails, 1)
-  user.post('users/%s/accounts/%s/confirm' % (user.id, email),
+  user.post('users/%s/accounts/%s/confirm' % (user.email, email),
             {'confirm_token': tokens[email]})
   res = user.post('user/search_emails', {'emails': [email]})
   assert len(res['users']) == 1
@@ -149,7 +149,7 @@ with Meta(enable_emails = True) as meta:
   eve.login()
 
   try:
-    bob.post('users/%s/accounts/%s/confirm' % (bob.id, eve_email),
+    bob.post('users/%s/accounts/%s/confirm' % (bob.email, eve_email),
              {'confirm_token': tokens[eve_email]})
     assert False
   except HTTPException:
@@ -176,11 +176,11 @@ with Meta(enable_emails = True) as meta:
   alice.token = tokens[email]
 
   bob.post(
-    'users/%s/accounts/%s/confirm' % (bob.id, email),
+    'users/%s/accounts/%s/confirm' % (bob.email, email),
     {'confirm_token': bob.token})
   throws(lambda:
          alice.post(
-           'users/%s/accounts/%s/confirm' % (alice.id, email),
+           'users/%s/accounts/%s/confirm' % (alice.email, email),
            {'confirm_token': alice.token}))
 
 # Swap primary email address.
@@ -191,7 +191,7 @@ with Meta(enable_emails = True) as meta:
   meta.mailer = MailService()
   user.put('user/accounts/%s' % new_email,)
   tokens = get_tokens(meta.emailer.emails, 1)
-  user.post('users/%s/accounts/%s/confirm' % (user.id, email),
+  user.post('users/%s/accounts/%s/confirm' % (user.email, email),
             {'confirm_token': tokens[email]})
   user.logout()
   try:

@@ -1234,7 +1234,7 @@ class Mixin:
       'user': self.email_user_vars(self.user),
       'login_token': self.login_token(self.user['email']),
       'confirm_token': self.sign(
-        self.confirm_token(email),
+        self.confirm_token(email, self.user['email']),
         datetime.timedelta(days = 7)),
     }
     self.emailer.send_one('Confirm New Email Address',
@@ -1243,22 +1243,22 @@ class Mixin:
                           variables = variables)
     return {}
 
-  @api('/users/<user>/accounts/<name>/confirm', method = 'POST')
-  def account_confirm(self, user, name, confirm_token: str = None):
+  @api('/users/<user>/accounts/<email>/confirm', method = 'POST')
+  def account_confirm(self, user, email, confirm_token: str = None):
     with elle.log.trace('validate email %s for user %s' %
-                        (name, user)):
+                        (email, user)):
+      email = email.lower()
       self.check_signature(
-        self.confirm_token(name),
+        self.confirm_token(email, account = user),
         confirm_token)
       update = {
         '$addToSet':
         {
           'accounts': collections.OrderedDict
-          ([('id', name), ('type', 'email')]),
+          ([('id', email), ('type', 'email')]),
         }
       }
-      user = self.user_by_id_or_email(user,
-                                      fields = ['_id', 'accounts'])
+      user = self.user_from_identifier(user, fields = ['accounts'])
       while True:
         try:
           self.database.users.update(
@@ -1268,7 +1268,7 @@ class Mixin:
           break
         except pymongo.errors.DuplicateKeyError:
           previous = self.user_by_id_or_email(
-            name,
+            email,
             fields = ['email', 'register_status', 'swaggers'],
             ensure_existence = False)
           if previous is None:
@@ -1279,10 +1279,10 @@ class Mixin:
           if status in ['ok', 'merged']:
             elle.log.trace(
               'account %s has non-mergeable register status: %s' %
-              (name, status))
+              (email, status))
             self.forbidden({
               'reason': 'email already registered',
-              'email': name,
+              'email': email,
             })
           if status in ['ghost', 'deleted', 'contact']:
             self.user_delete(previous, merge_with = user)
@@ -3042,11 +3042,14 @@ class Mixin:
       'email': email,
     }, expiration)
 
-  def confirm_token(self, email):
-    return {
+  def confirm_token(self, email, account = None):
+    res = {
       'action': 'confirm_email',
-      'email': email,
+      'email': utils.identifier(email),
     }
+    if account is not None:
+      res['account'] = utils.identifier(account)
+    return res
 
   def __check_gcs(self):
     if self.gcs is None:

@@ -43,7 +43,7 @@ with Meta(enable_emails = True,
   bob.put('user/accounts/%s' % eve)
   emails = meta.emailer.emails
   assertEq(len(emails), 1)
-  bob.post('users/%s/accounts/%s/confirm' % (bob.id, eve),
+  bob.post('users/%s/accounts/%s/confirm' % (bob.email, eve),
            {'confirm_token': emails[0].variables['confirm_token']})
   # Spoiler: Eve is bob...
   assert bob.get('users/%s' % eve)['register_status'] == 'ok'
@@ -101,7 +101,7 @@ with Meta(enable_emails = True) as meta:
     bob.put('user/accounts/%s' % email)
     emails = meta.emailer.emails
     assertEq(len(emails), 1)
-    bob.post('users/%s/accounts/%s/confirm' % (bob.id, email),
+    bob.post('users/%s/accounts/%s/confirm' % (bob.email, email),
              {'confirm_token': emails[0].variables['confirm_token']})
 
     trophonius.poll()
@@ -126,7 +126,7 @@ with Meta(enable_emails = True) as meta:
     bob.put('user/accounts/%s' % email)
     emails = meta.emailer.emails
     assertEq(len(emails), 1)
-    bob.post('users/%s/accounts/%s/confirm' % (bob.id, email),
+    bob.post('users/%s/accounts/%s/confirm' % (bob.email, email),
              {'confirm_token': emails[0].variables['confirm_token']})
 
     assert len(bob.transactions) == 1
