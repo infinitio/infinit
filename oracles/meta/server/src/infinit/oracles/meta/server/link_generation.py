@@ -374,6 +374,7 @@ class Mixin:
   def link_update_api(
       self,
       id: bson.ObjectId,
+      message: str = None,
       progress: float = None,
       status: int = None,
       password: str = False,
@@ -382,11 +383,12 @@ class Mixin:
   ):
     return self.link_update(
       id,
-      status = status,
-      progress = progress,
-      password = password,
       expiration_date = expiration_date,
+      message = message,
+      password = password,
       pause = pause,
+      progress = progress,
+      status = status,
       user = self.user)
 
   def __link_password_hash(self, password):
@@ -398,11 +400,12 @@ class Mixin:
 
   def link_update(self,
                   link,
+                  expiration_date = None,
+                  message = None,
+                  password = False,
+                  pause = None,
                   progress = None,
                   status = None,
-                  password = False,
-                  expiration_date = None,
-                  pause = None,
                   user = None):
     """
     Update the status of a given link.
@@ -478,10 +481,12 @@ class Mixin:
                 {'_id': user['_id']},
                 {'$inc': {'total_link_size': file_size}}
               )
-      if password is not False:
-        update['password'] = self.__link_password_hash(password)
       if expiration_date is not None:
         update['expiration_date'] = expiration_date
+      if message is not None:
+        update['message'] = message
+      if password is not False:
+        update['password'] = self.__link_password_hash(password)
       if pause is not None:
         update['paused'] = pause
       if not update:
