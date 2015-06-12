@@ -329,7 +329,7 @@ class Mixin:
     }
     link['share_link'] = self._make_share_link(link['hash'])
     link = dict(
-      (key, link[key in mapping and mapping[key] or key]) for key in (
+      (key, link.get(key in mapping and mapping[key] or key)) for key in (
         'id',
         'click_count',
         'ctime',
