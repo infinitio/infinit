@@ -3231,7 +3231,6 @@ class Mixin:
       account.get('custom-domains') if account is not None else ()
     return next(filter(lambda d: d['name'] == name, domains), None), domain
 
-
   @api('/user/account/custom-domains/<name>', method = 'PUT')
   @require_logged_in
   def user_account_domains_post_api(self, name):
@@ -3255,6 +3254,24 @@ class Mixin:
   @require_logged_in_fields(['account'])
   def user_account_get_api(self):
     return self.user.get('account', {})
+
+  @api('/user/account', method = 'POST')
+  @require_logged_in
+  def user_account_update_api(self, **kwargs):
+    update = {}
+    for field, premium in [
+        ('default_background', True)
+    ]:
+      if field in kwargs:
+        if premium:
+          self.require_premium(self.user)
+        update[field] = kwargs[field]
+    self.database.users.update(
+      {'_id': self.user['_id']},
+      {'$set': {'account.%s' % field: value
+                for field, value in update.items()}},
+    )
+    return update
 
   @api('/user/invite', method = 'PUT')
   @require_logged_in

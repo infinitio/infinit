@@ -79,3 +79,14 @@ with Meta(gcs = gcs) as meta:
   assertEq(response.status_code, 307)
   response = requests.get(response.headers['location'])
   assertEq(response.status_code, 404)
+  # Account default background
+  assert user.get('user/account').get('default_background') is None
+  assertEq(
+    user.post('user/account', {'default_background': 'bg.jpg'}),
+    {'default_background': 'bg.jpg'})
+  assertEq(user.get('user/account').get('default_background'),
+           'bg.jpg')
+  assertEq(
+    user.post('user/account', {'default_background': None}),
+    {'default_background': None})
+  assert user.get('user/account').get('default_background') is None
