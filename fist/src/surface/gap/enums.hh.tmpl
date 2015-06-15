@@ -62,6 +62,13 @@ extern "C"
 
   typedef enum
   {
+    gap_invite_message_email,
+    gap_invite_message_native, // SMS/iMessage/Hangouts.
+    gap_invite_message_whatsapp,
+  } gap_InviteMessageMethod;
+
+  typedef enum
+  {
     NotificationType_PeerTransactionUpdate,
     NotificationType_UserStatusUpdate,
     NotificationType_NewSwagger,
