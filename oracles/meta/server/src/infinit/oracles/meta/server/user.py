@@ -3383,7 +3383,7 @@ class Mixin:
           recipient_ids = {current['_id']},
           version = (0, 9, 37))
       elif user['_id'] != current['_id']:
-        self._forbidden_with_error("This facebook account belongs to another user")
+        self.forbidden({'reason': "This facebook account belongs to another user"})
       f = facebook_user.friends
       friend_ids = [friend['id'] for friend in f['data']]
       ## Add self to their swaggers
@@ -3427,9 +3427,9 @@ class Mixin:
     except Response as r:
       raise r
     except Exception as e:
-      self._forbidden_with_error(e.args[0])
+      self.forbidden({'reason': e.args[0]})
     except error.Error as e:
-      self._forbidden_with_error(e.args[0])
+      self.forbidden({'reason': e.args[0]})
     return {}
 
   @api('/user/referral_code')
