@@ -1294,8 +1294,8 @@ extern "C" jlong Java_io_infinit_State_gapUploadAddressBook(
 extern "C" jlong Java_io_infinit_State_gapSendSmsGhostCodeMetric(
   JNIEnv* env, jobject thiz, jlong handle, jboolean success, jstring code, jstring fail_reason)
 {
-  return gap_send_sms_ghost_code_metric((gap_State*)handle, success,
-    to_string(env, code), to_string(env, fail_reason));
+  return gap_invitation_message_sent_metric((gap_State*)handle, success,
+    to_string(env, code), gap_invite_message_native, to_string(env, fail_reason));
 }
 
 extern "C" jstring Java_io_infinit_State_gapSessionId(
