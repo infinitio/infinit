@@ -7,23 +7,6 @@ from infinit.oracles.meta import error
 
 unconfirmed_email_leeway = 100
 
-class MailService(NoOpMailer):
-
-  def __init__(self):
-    super().__init__(True)
-
-  def template_message(self, template_message, message):
-    merges = {}
-    for entry in message['merge_vars'][0]['vars']:
-      merges[entry['name']] = entry['content']
-    if template_message == 'confirm-sign-up':
-      self.email_confirmation_hash = merges['CONFIRM_KEY']
-    elif template_message == 'reconfirm-sign-up':
-      self.email_reconfirmation_hash = merges['CONFIRM_KEY']
-    elif template_message == 'lost-password':
-      self.reset_password_hash = merges['reset_password_hash']
-    NoOpMailer.template_message(self, template_message, message)
-
 with Meta(enable_emails = True,
           unconfirmed_email_leeway = unconfirmed_email_leeway) as meta:
   email = 'foobar@infinit.io'
@@ -31,7 +14,6 @@ with Meta(enable_emails = True,
   u = User(meta,
            email = email,
            fullname = fullname)
-  assert meta.mailer.sent
 
   # To make sure the system is not too fast (less than one sec), sleep.
   from time import sleep
@@ -43,13 +25,10 @@ with Meta(enable_emails = True,
 with Meta(enable_emails = True, unconfirmed_email_leeway = 0) as meta:
   email = 'foobar@infinit.io'
   fullname = 'jean louis'
-  meta.mailer = MailService()
 
   u = User(meta,
            email = email,
            fullname = fullname)
-  assert meta.mailer.sent
-  assert hasattr(meta.mailer, 'email_confirmation_hash')
   # The unconfirmed email leeway is 0 so login without confirming email
   # should result to a EMAIL_NOT_CONFIRMED error.
   try:
@@ -60,10 +39,10 @@ with Meta(enable_emails = True, unconfirmed_email_leeway = 0) as meta:
   else:
     raise Exception('invalid login should have yield 403 forbidden')
 
-  res = u.post('users/%s/confirm-email' % u.id,
-               {'key': meta.mailer.email_confirmation_hash})
-  res = u.post('users/%s/confirm-email' % u.id,
-               {'key': meta.mailer.email_confirmation_hash})
+  res = u.post('users/%s/confirm-email' % u.email,
+               {'confirm_token': u.email_confirmation_token})
+  res = u.post('users/%s/confirm-email' % u.email,
+               {'confirm_token': u.email_confirmation_token})
   u.login()
 
 # Reask hash.
@@ -72,13 +51,10 @@ with Meta(
     unconfirmed_email_leeway = 0) as meta:
   email = 'foobar@infinit.io'
   fullname = 'jean louis'
-  meta.mailer = MailService()
 
   u = User(meta,
            email = email,
            fullname = fullname)
-  assert meta.mailer.sent
-  assert hasattr(meta.mailer, 'email_confirmation_hash')
   # The unconfirmed email leeway is 0 so login without confirming email
   # should result to a EMAIL_NOT_CONFIRMED error.
   try:
@@ -88,19 +64,19 @@ with Meta(
     assert e.content['code'] == error.EMAIL_NOT_CONFIRMED[0]
   else:
     raise Exception('invalid login should have yield 403 forbidden')
+  assertEq(len(meta.emailer.emails), 1)
+  res = u.post('users/%s/resend-confirmation-email' % u.email)
+  emails = meta.emailer.emails
+  assertEq(len(emails), 1)
 
   res = u.post('users/%s/resend-confirmation-email' % u.email)
-  assert hasattr(meta.mailer, 'email_reconfirmation_hash')
-
-  meta.mailer = MailService()
-
-  res = u.post('users/%s/resend-confirmation-email' % u.email)
-  assert hasattr(meta.mailer, 'email_reconfirmation_hash')
+  emails = meta.emailer.emails
+  assertEq(len(emails), 1)
 
   client = Client(meta)
   res = client.post(
-    'users/%s/confirm-email' % u.id,
-    {'key': str(meta.mailer.email_reconfirmation_hash)})
+    'users/%s/confirm-email' % u.email,
+    {'confirm_token': emails[0].variables['confirm_token']})
   # Check confirming email logs in
   assertEq(client.get('user/self')['email'], email)
   try:
@@ -111,15 +87,3 @@ with Meta(
     raise Exception('invalid username didn\'t err')
 
   u.login()
-
-# Confirm by reseting password.
-with Meta(enable_emails = True, unconfirmed_email_leeway = 0) as meta:
-  email = 'foobar@infinit.io'
-  fullname = 'jean louis'
-  meta.mailer = MailService()
-
-  u = User(meta,
-           email = email,
-           fullname = fullname)
-  assert meta.mailer.sent
-  assert hasattr(meta.mailer, 'email_confirmation_hash')

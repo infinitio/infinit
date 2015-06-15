@@ -54,20 +54,28 @@ class GestapoDatabase(pymongo.database.Database):
 
 class GestapoCollection(pymongo.collection.Collection):
 
-  def find(self, spec = None, fields = None, *args, **kwargs):
-    self.__check(spec, fields)
+  def find(self, spec = None, fields = None, hint = None, *args, **kwargs):
+    self.__check(spec, fields, hint = hint)
     return super().find(spec = spec, fields = fields, *args, **kwargs)
 
   def update(self, spec, document, multi = False):
-    self.__check(spec)
+    # Skip single conditions on _id, mongo will still consider several
+    # plans, can't see why.
+    if len(spec) == 1 and spec.get('_id') is not None:
+      pass
+    else:
+      self.__check(spec)
     return super().update(spec = spec,
                           document = document,
                           multi = multi)
 
-  def __check(self, condition, fields = None):
+  def __check(self, condition, fields = None, hint = None):
     if MongoExpectation.instance.ignore or condition is None:
       return
-    explanation = super().find(condition, fields = fields).explain()
+    cursor = super().find(condition, fields = fields)
+    if hint:
+      cursor = cursor.hint(hint)
+    explanation = cursor.explain()
     try:
       if explanation['cursor'] == 'BasicCursor':
         raise Exception('table scan on condition: %s' % condition)

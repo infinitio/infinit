@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 from time import time
-from utils import Meta, User
+from utils import *
 from uuid import uuid4
 
 with Meta() as meta:
   user = User(meta, 'foo@bar.baz')
   user.login()
-  import sys
-  print(user.data, file = sys.stderr)
   assert not user.data['connected']
+
+with Meta() as meta:
+  email = 'foo@bar.baz'
+  user = User(meta, email)
+  token = meta.meta.login_token(email)
+  throws(lambda: user.get('user/self'), 403)
+  user.post('web-login?email=%s&login_token=%s' % (email, token))
+  user.get('user/self')

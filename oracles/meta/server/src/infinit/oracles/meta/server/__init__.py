@@ -4,6 +4,7 @@
 # system one will be loaded through hashlib, by bottle for instance.
 import papier
 
+import base64
 import bson
 import bottle
 import bson
@@ -12,6 +13,7 @@ import decorator
 import elle.log
 import inspect
 import mako.lookup
+import pickle
 import pymongo
 import pymongo.collection
 import pymongo.database
@@ -254,7 +256,7 @@ class Meta(bottle.Bottle,
     self.__database.users.ensure_index([("accounts.id", 1)],
                                        unique = True, sparse = True)
     self.__database.users.ensure_index([("register_status", 1)],
-                                       unique = False, sparse = True)
+                                       unique = False)
     # - Auxiliary emails.
     # Sparse because users may have no pending_auxiliary_emails field.
     self.__database.users.ensure_index([("pending_auxiliary_emails.hash", 1)], unique = True, sparse = True)
@@ -393,8 +395,8 @@ class Meta(bottle.Bottle,
   def bad_request(self, message = None):
     response(400, message)
 
-  def bad_request(self, message = None):
-    response(400, message)
+  def unauthorized(self, message = None):
+    response(401, message)
 
   def conflict(self, message = None):
     response(409, message)
@@ -563,3 +565,17 @@ Session: %(session)s
           subject = ('Meta: Unable to shorten using %s' % self.shortener),
           body = 'Exception: %s' % e)
     return url
+
+  def __sign_cipher(self):
+    return AES.new('8d245bc7b3d6c2f2c13a4a2c675c4e81',
+                   AES.MODE_CFB,
+                   IV = b'e80919d4715320e1')
+
+  def sign(self, d, expiration):
+    from infinit.oracles.utils import sign
+    return infinit.oracles.utils.sign(d, expiration, self.now)
+
+  def check_signature(self, d, b64):
+    from infinit.oracles.utils import check_signature
+    if not infinit.oracles.utils.check_signature(d, b64, self.now):
+      self.unauthorized()

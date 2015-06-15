@@ -453,12 +453,8 @@ class Mixin:
                 if int(r.status_code/100) != 2:
                   elle.log.warn('Link deletion failed with %s on %s: %s' %
                                 ( r.status_code, link['_id'], r.content))
-                  if link['name'] != 'infinit_test_not_a_real_link':
-                    self.abort({
-                      'reason': 'unable to delete link',
-                      'status_code': r.status_code,
-                      'error': str(r.content),
-                    })
+                # The delete can fail if on aws and there was a partial
+                # upload, or if on gcs if nothing was uploaded at all
                 if link['status'] == transaction_status.FINISHED:
                   if 'file_size' in link:
                     self.database.users.update(

@@ -43,8 +43,8 @@ with Meta(enable_emails = True,
   bob.put('user/accounts/%s' % eve)
   emails = meta.emailer.emails
   assertEq(len(emails), 1)
-  bob.post('users/%s/accounts/%s/confirm' % (bob.id, eve),
-           {'key': emails[0].variables['key']})
+  bob.post('users/%s/accounts/%s/confirm' % (bob.email, eve),
+           {'confirm_token': emails[0].variables['confirm_token']})
   # Spoiler: Eve is bob...
   assert bob.get('users/%s' % eve)['register_status'] == 'ok'
   assert bob.id == bob.get('users/%s' % eve)['id']
@@ -73,14 +73,12 @@ with Meta(enable_emails = True) as meta:
   bob.login()
   bob.put('user/accounts/%s' % eve)
   # But eve registers...
+  print('XXX', meta.emailer.emails)
   eve = User(meta, eve)
-  emails = meta.emailer.emails
-  assertEq(len(emails), 1)
-  key = emails[0].variables['key']
   throws(lambda:
          bob.post(
            'users/%s/accounts/%s/confirm' % (bob.id, eve.email),
-           {'key': key}),
+           {'confirm_token': eve.email_confirmation_token}),
          HTTPException)
 
 # Notifications.
@@ -103,8 +101,8 @@ with Meta(enable_emails = True) as meta:
     bob.put('user/accounts/%s' % email)
     emails = meta.emailer.emails
     assertEq(len(emails), 1)
-    bob.post('users/%s/accounts/%s/confirm' % (bob.id, email),
-             {'key': emails[0].variables['key']})
+    bob.post('users/%s/accounts/%s/confirm' % (bob.email, email),
+             {'confirm_token': emails[0].variables['confirm_token']})
 
     trophonius.poll()
     assert len(bob.notifications) == 1
@@ -128,8 +126,8 @@ with Meta(enable_emails = True) as meta:
     bob.put('user/accounts/%s' % email)
     emails = meta.emailer.emails
     assertEq(len(emails), 1)
-    bob.post('users/%s/accounts/%s/confirm' % (bob.id, email),
-             {'key': emails[0].variables['key']})
+    bob.post('users/%s/accounts/%s/confirm' % (bob.email, email),
+             {'confirm_token': emails[0].variables['confirm_token']})
 
     assert len(bob.transactions) == 1
     # Alice is a bob new swagger.
@@ -183,7 +181,7 @@ with Meta(enable_emails = True) as meta:
   bob.login()
   assert bob.get('users/%s' % eve)['register_status'] == 'ghost'
   eve_id = bob.get('users/%s' % eve)['id']
-  emails = meta.emailer.emails
+  emails = meta.emailer.template('Transfer (Initial)')
   code = emails[0].variables['ghost_code']
   throws(lambda: meta.get('ghost/code/00000'), 404)
   bob.post('ghost/%s/merge' % code)
@@ -206,10 +204,10 @@ with Meta(enable_emails = True) as meta:
   bob.login()
   assert bob.get('users/%s' % eve)['register_status'] == 'ghost'
   eve_id = bob.get('users/%s' % eve)['id']
-  emails = meta.emailer.emails
+  emails = meta.emailer.template('Transfer (Initial)')
   codes = {}
   for email in emails:
-    assertEq(email.template, 'ghost-invitation')
+    assertEq(email.template, 'Transfer (Initial)')
     codes[email.variables['sender']['fullname']] = \
       email.variables['ghost_code']
   assertEq(len(codes), 2)

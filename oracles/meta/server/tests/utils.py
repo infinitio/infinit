@@ -365,6 +365,18 @@ class TestEmailer(infinit.oracles.emailer.Emailer):
     self.__emails = []
     return res
 
+  def template(self, template):
+    res = []
+    i = 0
+    while i < len(self.__emails):
+      email = self.__emails[i]
+      if email.template == template:
+        res.append(email)
+        del self.__emails[i]
+      else:
+        i += 1
+    return res
+
 
 class InstrumentedMeta(infinit.oracles.meta.server.Meta):
 
@@ -511,13 +523,15 @@ class Meta:
   def delete(self, url, body = None, raw = False):
     return self.client.delete(url, body, raw = raw)
 
-  def create_user(self,
-                  email,
-                  fullname = None,
-                  password = '0' * 64,
-                  source = None,
-                  password_hash = None,
-                  ):
+  def create_user(
+      self,
+      email,
+      fullname = None,
+      password = '0' * 64,
+      source = None,
+      password_hash = None,
+      get_confirmation_code = False,
+  ):
     res = self.post('user/register',
                     {
                       'email': email,
@@ -527,7 +541,13 @@ class Meta:
                       'password_hash': password_hash,
                     })
     assertEq(res['success'], True)
-    return password
+    emails = self.emailer.template('Confirm Registration (Initial)')
+    assertEq(len(emails), 1)
+    email = emails[0]
+    if get_confirmation_code:
+      return password, email.variables['confirm_token']
+    else:
+      return password
 
   @property
   def database(self):
@@ -577,7 +597,10 @@ class User(Client):
 
     if not facebook:
       self.email = email is not None and email or random_email() + '@infinit.io'
-      self.password = meta.create_user(self.email, **kwargs)
+      self.password, self.email_confirmation_token = \
+        meta.create_user(self.email,
+                         get_confirmation_code = True,
+                         **kwargs)
       self.__id = meta.get('users/%s' % self.email)['id']
     else:
       self.__id = None

@@ -2,85 +2,22 @@
 
 import datetime
 
-from utils import Meta, User, NoOpMailer
+from utils import *
 from infinit.oracles.meta import error
 
 unconfirmed_email_leeway = 100
 
-with Meta(
-    enable_emails = True,
-    unconfirmed_email_leeway = unconfirmed_email_leeway) as meta:
+with Meta() as meta:
   bob = User(meta)
-  alice = User(meta)
-
-  meta.mailer = NoOpMailer()
-  meta.mailer.sent == 0
-
-  alice.login()
-  alice.sendfile(bob.email)
-
-  # Bob should receive 'offline transfer email'.
-  meta.mailer.sent == 1
-
-  bob.login()
-  res = bob.get('user/email_subscription/accept-file-only-offline')
-  assert res['success']
-  assert res['accept-file-only-offline']
-
-  res = bob.delete('user/email_subscription/accept-file-only-offline')
-  assert res['accept-file-only-offline'] == False
-
-  bob.logout()
-  alice.sendfile(bob.email)
-
-  # Bob shouldn't receive 'offline transfer email'.
-  meta.mailer.sent == 1
-  bob.login()
-
-  res = bob.put('user/email_subscription/accept-file-only-offline')
-  assert res['accept-file-only-offline'] == True
-
-  res = bob.post('user/resend_confirmation_email/%s' % bob.email)
-  bob.logout()
-
-  alice.sendfile(bob.email)
-  # Bob should receive 'offline transfer email' again.
-  meta.mailer.sent == 2
-
   bob.login()
   res = bob.get('user/email_subscriptions')
-  assert res['success']
-  subscriptions = res['subscriptions']
-  subscription_names = list(subscriptions.keys())
-
-  assert list(map(lambda x: x['status'], subscriptions.values())).count(False) == 0
-
-  for sub in subscriptions.keys():
-    res = bob.delete('user/email_subscription/%s' % sub)
-    print(">>", res)
-
-  res = bob.get('user/email_subscriptions')
-  assert res['success']
-  subscriptions = res['subscriptions']
-  print(subscriptions.values())
-  assert list(map(lambda x: x['status'], subscriptions.values())).count(True) == 0
-
-  res = bob.post('user/email_subscriptions?subscriptions=%s' % subscription_names[0])
-  assert res['success']
-  subscriptions = bob.get('user/email_subscriptions')['subscriptions']
-  assert list(map(lambda x: x['status'], subscriptions.values())).count(True) == 1
-
-  res = bob.post('user/email_subscriptions', {'subscriptions': subscription_names[0]})
-  assert res['success']
-  subscriptions = bob.get('user/email_subscriptions')['subscriptions']
-  assert list(map(lambda x: x['status'], subscriptions.values())).count(True) == 1
-
-  res = bob.post('user/email_subscriptions', {'subscriptions': subscription_names})
-  assert res['success']
-  subscriptions = bob.get('user/email_subscriptions')['subscriptions']
-  assert list(map(lambda x: x['status'], subscriptions.values())).count(False) == 0
-
-  res = bob.post('user/email_subscriptions', {'subscriptions': None})
-  assert res['success']
-  subscriptions = bob.get('user/email_subscriptions')['subscriptions']
-  assert list(map(lambda x: x['status'], subscriptions.values())).count(True) == 0
+  assert res['tips']
+  assert res['alerts']
+  res = bob.post('user/email_subscriptions',
+                 {'tips': False})
+  assert not res['tips']
+  subscriptions = bob.get('user/email_subscriptions')
+  assertEq(subscriptions, {'tips': False,
+                           'alerts': True,
+                           'newsletter': True,
+                         })

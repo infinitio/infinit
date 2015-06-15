@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import Meta, User
+from utils import *
 
 from infinit.oracles.meta.server.transaction_status import GHOST_UPLOADED
 
@@ -34,7 +34,6 @@ with Meta() as meta:
                'transaction_id': res['created_transaction_id'],
                'status': GHOST_UPLOADED,
              })
-
   alice = User(meta, "dimrok@infinit.io")
   alice.login()
   assert len(alice.transactions) == transaction_count
@@ -59,7 +58,6 @@ with Meta() as meta:
                'transaction_id': res['created_transaction_id'],
                'status': GHOST_UPLOADED,
              })
-
   alice = User(meta, "dimrok@infinit.io")
   alice.login()
   assert len(alice.transactions) == transaction_count

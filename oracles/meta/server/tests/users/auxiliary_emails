@@ -28,12 +28,12 @@ class MailService(NoOpMailer):
            merges['new_email_address']: merges['hash']
          })
 
-def get_keys(emails, size):
+def get_tokens(emails, size):
   assertEq(len(emails), size)
-  keys = {}
+  tokens = {}
   for email in emails:
-    keys[email.variables['email']] = email.variables['key']
-  return keys
+    tokens[email.variables['email']] = email.variables['confirm_token']
+  return tokens
 
 # Normal.
 with Meta(enable_emails = True) as meta:
@@ -45,13 +45,13 @@ with Meta(enable_emails = True) as meta:
   emails = ['babar@infinit.io', 'foufou@infinit.io', 'beetroot@infinit.io', 'fesse@infinit.io']
   for email in emails:
     user.put('user/accounts/%s' % email)
-  keys = get_keys(meta.emailer.emails, len(emails))
+  tokens = get_tokens(meta.emailer.emails, len(emails))
   import random
   random.shuffle(emails)
   i = 0
   for email in emails:
-    user.post('users/%s/accounts/%s/confirm' % (user.id, email),
-              {'key': keys[email]})
+    user.post('users/%s/accounts/%s/confirm' % (user.email, email),
+              {'confirm_token': tokens[email]})
     i += 1
     res = user.post('user/search_emails', {'emails': [email]})
     assert len(res['users']) == 1
@@ -110,9 +110,9 @@ with Meta(enable_emails = True) as meta:
   meta.mailer = MailService()
   email = 'endive@infinit.io'
   user.put('user/accounts/%s' % email)
-  keys = get_keys(meta.emailer.emails, 1)
-  user.post('users/%s/accounts/%s/confirm' % (user.id, email),
-            {'key': keys[email]})
+  tokens = get_tokens(meta.emailer.emails, 1)
+  user.post('users/%s/accounts/%s/confirm' % (user.email, email),
+            {'confirm_token': tokens[email]})
   res = user.post('user/search_emails', {'emails': [email]})
   assert len(res['users']) == 1
   user.delete('user/accounts/%s' % email)
@@ -144,13 +144,13 @@ with Meta(enable_emails = True) as meta:
   eve_email = 'eve@infinit.io'
   meta.mailer = MailService()
   bob.put('user/accounts/%s' % eve_email)
-  keys = get_keys(meta.emailer.emails, 1)
+  tokens = get_tokens(meta.emailer.emails, 1)
   eve = User(meta, eve_email)
   eve.login()
 
   try:
-    bob.post('users/%s/accounts/%s/confirm' % (bob.id, eve_email),
-             {'key': keys[eve_email]})
+    bob.post('users/%s/accounts/%s/confirm' % (bob.email, eve_email),
+             {'confirm_token': tokens[eve_email]})
     assert False
   except HTTPException:
     pass
@@ -167,21 +167,21 @@ with Meta(enable_emails = True) as meta:
   email = 'endive@infinit.io'
   meta.mailer = MailService()
   bob.put('user/accounts/%s' % email)
-  keys = get_keys(meta.emailer.emails, 1)
-  bob.hash = keys[email]
+  tokens = get_tokens(meta.emailer.emails, 1)
+  bob.token = tokens[email]
 
   meta.mailer = MailService()
   alice.put('user/accounts/%s' % email)
-  keys = get_keys(meta.emailer.emails, 1)
-  alice.hash = keys[email]
+  tokens = get_tokens(meta.emailer.emails, 1)
+  alice.token = tokens[email]
 
   bob.post(
-    'users/%s/accounts/%s/confirm' % (bob.id, email),
-    {'key': bob.hash})
+    'users/%s/accounts/%s/confirm' % (bob.email, email),
+    {'confirm_token': bob.token})
   throws(lambda:
          alice.post(
-           'users/%s/accounts/%s/confirm' % (alice.id, email),
-           {'key': alice.hash}))
+           'users/%s/accounts/%s/confirm' % (alice.email, email),
+           {'confirm_token': alice.token}))
 
 # Swap primary email address.
 with Meta(enable_emails = True) as meta:
@@ -190,9 +190,9 @@ with Meta(enable_emails = True) as meta:
   new_email = 'endive@infinit.io'
   meta.mailer = MailService()
   user.put('user/accounts/%s' % new_email,)
-  keys = get_keys(meta.emailer.emails, 1)
-  user.post('users/%s/accounts/%s/confirm' % (user.id, email),
-            {'key': keys[email]})
+  tokens = get_tokens(meta.emailer.emails, 1)
+  user.post('users/%s/accounts/%s/confirm' % (user.email, email),
+            {'confirm_token': tokens[email]})
   user.logout()
   try:
     user.login(email = new_email)

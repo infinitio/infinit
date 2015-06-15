@@ -10,7 +10,7 @@ from itertools import chain
 
 from .. import Boulder
 from .. import version
-from infinit.oracles.utils import key
+from infinit.oracles.utils import key, sign
 from infinit.oracles.transaction import statuses
 import infinit.oracles.emailer
 
@@ -47,6 +47,11 @@ class Emailing(Boulder):
   def now(self):
     return datetime.datetime.utcnow()
 
+  @property
+  def table(self):
+    return self.__table
+
+
 def merge_result(a, b):
   for key, value in b.items():
     if isinstance(value, int):
@@ -63,10 +68,16 @@ def merge_result(a, b):
 
 class Drip(Emailing):
 
-  def __init__(self, sisyphus, campaign, table, pretend = False):
+  def __init__(self,
+               sisyphus,
+               campaign,
+               table,
+               pretend = False,
+               list = None):
     super().__init__(sisyphus, campaign, table)
-    self.__table = self._Emailing__table
+    self.__list = list
     self.__pretend = pretend
+    self.__table = self._Emailing__table
 
   @property
   def user_fields(self):
@@ -99,114 +110,117 @@ class Drip(Emailing):
                  condition,
                  template = None,
                  variations = None,
-                 update = None):
-    meta = self.sisyphus.mongo.meta
-    field = 'emailing.%s.state' % self.campaign
-    if start is None:
-      start_condition = {field: {'$exists': False}}
-    elif isinstance(start, str):
-      start_condition = {field: start}
-    else:
-      start_condition = {field: {'$in': start}}
-    condition.update(start_condition)
-    condition[self.field_lock] = {'$exists': False}
-    if template is None:
-      template = 'drip_%s_%s' % (self.campaign, end)
-    # Uncomment this to go in full test mode.
-    # import sys
-    # print('%s -> %s: %s (%s)' % (start, end, self.__table.find(condition).count(), template), file = sys.stderr)
-    # print(condition, file = sys.stderr)
-    # return {}
-    final_update = {}
-    # if start != end:
-    final_update.update({field: end})
-    if update is not None:
-      final_update.update(update)
-    if template is False:
-      if self.__pretend:
-        n = self.__table.find(condition).count()
+                 update = None,
+                 guard = None):
+    with elle.log.trace(
+        '%s: transition from %s to %s' % (self, start, end)):
+      meta = self.sisyphus.mongo.meta
+      field = 'emailing.%s.state' % self.campaign
+      if start is None:
+        start_condition = {field: {'$exists': False}}
+      elif isinstance(start, str):
+        start_condition = {field: start}
       else:
+        start_condition = {field: {'$in': start}}
+      condition.update(start_condition)
+      condition[self.field_lock] = {'$exists': False}
+      final_update = {field: end}
+      if update is not None:
+        final_update.update(update)
+      if template is None:
+        assert guard is None
+        if self.__pretend:
+          n = self.__table.find(condition).count()
+        else:
+          res = self.__table.update(
+            condition,
+            {
+              '$set': final_update,
+            },
+            multi = True,
+          )
+          n = res['n']
+        if n > 0:
+          return {'%s -> %s' % (start, end): n}
+        else:
+          return {}
+      else:
+        # Lock documents
         res = self.__table.update(
           condition,
           {
-            '$set': final_update,
+            '$set':
+            {
+              self.field_lock: self.lock_id,
+            },
           },
           multi = True,
         )
-        n = res['n']
-      if n > 0:
-        return {'%s -> %s' % (start, end): n}
-      else:
-        return {}
-    self.__table.update(
-      condition,
-      {
-        '$set':
-        {
-          self.field_lock: self.lock_id,
-        },
-      },
-      multi = True,
-    )
-    result = {}
-    elts = list(self.__table.find(
-      { self.field_lock: self.lock_id },
-      fields = self.fields,
-    ))
-    if len(elts) > 0:
-      users = [(self._user(elt), elt) for elt in elts]
-      res = {}
-      unsubscribed = [(u, e) for u, e in users if not self.__email_enabled(u)]
-      users = [(u, e) for u, e in users if self.__email_enabled(u)]
-      templates = self._pick_template(template, users)
-      for template, users in templates:
-        sent = self.send_email(
-          end,
-          template,
-          users,
-          variations = variations)
-        res[template] = sent
-      update = {
-        '$unset':
-        {
-          self.field_lock: True,
-        },
-      }
-      if not self.__pretend:
-        update['$set'] = final_update
-      self.__table.update(
-        {self.field_lock: self.lock_id},
-        update,
-        multi = True,
-      )
-      # Unlock users that were not picked
-      unpicked = self.__table.update(
-        {self.field_lock: self.lock_id},
-        {
+        elle.log.debug('%s: %s match' % (self, res['n']))
+        update = {
           '$unset':
           {
             self.field_lock: True,
           },
-        },
-        multi = True,
-      )
-      n = unpicked['n']
-      if n > 0:
-        res['unpicked'] = n
-      if unsubscribed:
-        res['unsubscribed'] = [u['email'] for u, e in unsubscribed]
-      merge_result(result, res)
-    if result == {}:
-      return {}
-    else:
-      return {'%s -> %s' % (start, end): result}
+        }
+        # Fetch documents
+        elts = self.__table.find({self.field_lock: self.lock_id},
+                                 fields = self.fields)
+        # Partition
+        skipped = []
+        users = []
+        unsubscribed = []
+        for u, e in [(self._user(elt), elt) for elt in elts]:
+          if guard and not guard(u, e):
+            skipped.append((u, e))
+          elif self.__email_enabled(u):
+            users.append((u, e))
+          else:
+            unsubscribed.append((u, e))
+        # Unlock skipped
+        if skipped:
+          res = self.__table.update(
+            {'_id': {'$in': [e['_id'] for u, e in skipped]}},
+            update,
+            multi = True,
+          )
+          elle.log.debug('%s: %s skipped' % (self, res['n']))
+        # Send email
+        sent = None
+        if users:
+          sent = self.send_email(
+            end,
+            template,
+            users,
+            variations = variations)
+        # Unlock and commit
+        if not self.__pretend:
+          update['$set'] = final_update
+        self.__table.update(
+          {self.field_lock: self.lock_id},
+          update,
+          multi = True,
+        )
+        # Format result
+        res = {}
+        if sent:
+          res[template] = sent
+        if unsubscribed:
+          res['unsubscribed'] = [u['email'] for u, e in unsubscribed]
+        if res == {}:
+          return {}
+        else:
+          return {'%s -> %s' % (start, end): res}
 
   def _pick_template(self, template, users):
     return [(template, users)]
 
   def __email_enabled(self, user):
-    return 'unsubscriptions' not in user \
-      or 'drip' not in user['unsubscriptions']
+    if self.__list is not None:
+      return 'unsubscriptions' not in user \
+        or self.__list not in user['unsubscriptions']
+    else:
+      return True
 
   def sender(self, v):
     return None
@@ -238,6 +252,11 @@ class Drip(Emailing):
                   ('template', template),
                   ('campaign', self.campaign),
                   ('user', self.user_vars(user)),
+                  ('list', self.__list),
+                  ('login_token',
+                   sign({'action': 'login', 'email': user['email']},
+                        datetime.timedelta(days = 7),
+                        self.now)),
                 ],
                 vars.items(),
               )),
@@ -320,7 +339,8 @@ class Drip(Emailing):
 class Onboarding(Drip):
 
   def __init__(self, sisyphus, pretend = False):
-    super().__init__(sisyphus, 'onboarding', 'users', pretend)
+    super().__init__(sisyphus, 'onboarding', 'users',
+                     pretend, list = 'tips')
     # Find user in any status without scanning all ghosts, deleted
     # users etc.
     self.sisyphus.mongo.meta.users.ensure_index(
@@ -342,12 +362,11 @@ class Onboarding(Drip):
         # Registered more than 1 day ago.
         'creation_time':
         {
-          '$lt': self.now - self.delay_first_reminder,
+          '$lt': self.now - self.delay,
         },
         # Did a transaction
         'last_transaction.time': {'$exists': True},
       },
-      template = False,
     )
     response.update(transited)
     # -> unactivated-1
@@ -360,19 +379,19 @@ class Onboarding(Drip):
         # Registered more than 1 day ago.
         'creation_time':
         {
-          '$lt': self.now - self.delay_first_reminder,
+          '$lt': self.now - self.delay,
         },
         # Never did a transaction
         'last_transaction.time': {'$exists': False},
       },
-      variations = ('A', 'B'),
+      template = 'Unactivated',
     )
     response.update(transited)
     return response
 
   @property
-  def delay_first_reminder(self):
-    return datetime.timedelta(days = 3)
+  def delay(self):
+    return datetime.timedelta(days = 5)
 
 
 class GhostReminder(Drip):
@@ -397,7 +416,7 @@ class GhostReminder(Drip):
     return datetime.datetime.utcnow()
 
   @property
-  def delay_first_reminder(self):
+  def delay(self):
     return datetime.timedelta(days = 4)
 
   def run(self):
@@ -411,12 +430,13 @@ class GhostReminder(Drip):
         'is_ghost': True,
         # Ghost uploaded
         'status': statuses['ghost_uploaded'],
-        # Ghost uploaded more than 24h ago
+        # Uploaded more than 4d ago
         'modification_time':
         {
-          '$lt': self.now - self.delay_first_reminder,
+          '$lt': self.now - self.delay,
         },
       },
+      template = 'Transfer (Reminder)',
     )
     response.update(transited)
     return response
@@ -450,110 +470,12 @@ class GhostReminder(Drip):
     }
 
   def sender(self, v):
-    return ({'fullname': '%s via Infinit' % v['sender']['fullname']})
-
-
-#
-#    -> 1 -> 2 -> 3
-#
-
-class DelightSender(Drip):
-
-  def __init__(self, sisyphus, pretend = False):
-    super().__init__(sisyphus, 'delight-sender', 'users', pretend)
-    # Find user in any status without scanning all ghosts, deleted
-    # users etc.
-    self.sisyphus.mongo.meta.users.ensure_index(
-      [
-        ('emailing.delight-sender.state', pymongo.ASCENDING),
-        ('register_status', pymongo.ASCENDING),
-        ('transactions.reached', pymongo.ASCENDING),
-      ])
-
-  @property
-  def now(self):
-    return datetime.datetime.utcnow()
-
-  def run(self):
-    response = {}
-    # -> 1
-    transited = self.transition(
-      None,
-      '1',
-      {
-        'register_status': 'ok',
-        'transactions.reached': {'$gte': self.threshold_first},
-        'emailing.delight-recipient.state': {'$ne': '1'},
-      },
-    )
-    response.update(transited)
-    return response
-
-  @property
-  def threshold_first(self):
-    return 1
-
-#
-# -> 1
-#
-
-class DelightRecipient(Drip):
-
-  def __init__(self, sisyphus, pretend = False):
-    super().__init__(sisyphus, 'delight-recipient', 'users', pretend)
-    # Find user in any status without scanning all ghosts, deleted
-    # users etc.
-    self.sisyphus.mongo.meta.users.ensure_index(
-      [
-        ('emailing.delight-recipient.state', pymongo.ASCENDING),
-        ('transactions.received_peer', pymongo.ASCENDING),
-      ])
-
-  @property
-  def now(self):
-    return datetime.datetime.utcnow()
-
-  def run(self):
-    response = {}
-    # -> 1
-    transited = self.transition(
-      None,
-      '1',
-      {
-        'transactions.received_peer': {'$gte': self.threshold_first},
-        'emailing.delight-sender.state': {'$ne': '1'},
-      },
-    )
-    response.update(transited)
-    return response
-
-  @property
-  def threshold_first(self):
-    return 1
-
-  def _vars(self, elt, user):
-    transaction = self.sisyphus.mongo.meta.transactions.find_one(
-      {
-        'recipient_id': user['_id'],
-        'status': {'$in': [statuses['accepted'],
-                           statuses['finished']]},
-      }
-    )
-    if transaction is None:
-      raise Exception(
-        'unable to find received transaction for %s' % user['_id'])
-    sender = self.sisyphus.mongo.meta.users.find_one(
-      transaction['sender_id'])
-    assert sender is not None
     return {
-      'sender': self.user_vars(sender),
-      'transaction': self.transaction_vars(transaction, user),
+      'fullname': '%s via Infinit' % v['sender']['fullname'],
     }
 
 
-#
-#    -> 1 -> 2
-#
+#    -> 1
 
 class ConfirmSignup(Drip):
 
@@ -584,18 +506,19 @@ class ConfirmSignup(Drip):
         'register_status': 'ok',
         # Unconfirmed email
         'email_confirmed': False,
-        # Registered more than 3 day ago.
+        # Registered more than 5 day ago.
         'creation_time':
         {
-          '$lt': self.now - self.delay_first_reminder,
+          '$lt': self.now - self.delay,
         },
       },
+      template = 'Confirm Registration (Reminder)',
     )
     response.update(transited)
     return response
 
   @property
-  def delay_first_reminder(self):
+  def delay(self):
     return datetime.timedelta(days = 5)
 
   def _vars(self, elt, user):
@@ -603,178 +526,12 @@ class ConfirmSignup(Drip):
       'confirm_key': key('/users/%s/confirm-email' % user['_id']),
     }
 
-#
-# -> 1 -> 2
-#
-
-# FIXME: factor with GhostReminder
-class WeeklyReport(Drip):
-
-  def __init__(self, sisyphus, pretend = False):
-    super().__init__(sisyphus, 'weekly-report', 'users', pretend)
-    self.sisyphus.mongo.meta.users.ensure_index(
-      [
-        # Find initialized users
-        ('emailing.weekly-report.state', pymongo.ASCENDING),
-        # Fully registered
-        ('register_status', pymongo.ASCENDING),
-        # Did a transfer
-        ('activated', pymongo.ASCENDING),
-        # Retention emails are over
-        ('emailing.retention.state', pymongo.ASCENDING),
-        # With due report
-        ('emailing.weekly-report.next', pymongo.ASCENDING),
-      ],
-      name = 'emailing.weekly-report')
-    for role in ('sender', 'recipient'):
-      self.sisyphus.mongo.meta.transactions.ensure_index(
-        [
-          # Find sent transactions
-          ('%s_id' % role, pymongo.ASCENDING),
-          # Successful
-          ('status', pymongo.ASCENDING),
-          # In a given period of time
-          ('modification_time', pymongo.ASCENDING),
-        ])
-
-  def run(self):
-    response = {}
-    now = self.now
-    offset = datetime.timedelta(
-      # 3 was for Friday. 0 is for Monday.
-      days = now.weekday() + 0,
-      hours = now.time().hour - 15,
-      minutes = now.time().minute,
-      seconds = now.time().second,
-      microseconds = now.time().microsecond,
-    )
-    offset %= datetime.timedelta(weeks = 1)
-    self.current = now - offset
-    self.previous = self.current - datetime.timedelta(weeks = 1)
-    self.next = self.current + datetime.timedelta(weeks = 1)
-    elle.log.debug('%s: send report for %s to %s' %
-                   (self, self.previous, self.current))
-    # -> initialized
-    transited = self.transition(
-      None,
-      'initialized',
-      {
-        # Fully registered
-        'register_status': 'ok',
-        # Did a transaction
-        'activated': True,
-        # Retention is over
-        'emailing.retention.state': str(Retention.count),
-      },
-      template = False,
-      update = {
-        'emailing.weekly-report.next':
-          self.next + datetime.timedelta(weeks = 1),
-      },
-    )
-    response.update(transited)
-    # initialized -> initialized
-    transited = self.transition(
-      'initialized',
-      'initialized',
-      {
-        # Fully registered
-        'register_status': 'ok',
-        # Did a transaction
-        'activated': True,
-        # Retention is over
-        'emailing.retention.state': str(Retention.count),
-        # Report is due
-        'emailing.weekly-report.next':
-        {
-          '$lt': self.now,
-        },
-      },
-      template = 'drip_weekly-report',
-      update = {
-        'emailing.weekly-report.next': self.next,
-      },
-    )
-    response.update(transited)
-    return response
-
-  def _vars(self, element, user):
-    res = {}
-    peers = list(chain(*(self.sisyphus.mongo.meta.transactions.find(
-      {
-        '%s_id' % role: user['_id'],
-        'status': {'$in': [statuses['finished'],
-                           statuses['ghost_uploaded']]},
-        'modification_time':
-        {
-          '$gt': self.previous,
-          '$lt': self.current,
-        }
-      }) for role in ['sender', 'recipient'])))
-    res['peer_transactions'] = [
-      {
-        # 'start': t['creation_time'],
-        'files': t['files'],
-        'size': t['total_size'],
-        'peer':
-        {
-          'id': str(t['recipient_id']),
-          'fullname': t['recipient_fullname'],
-          'avatar': self.avatar(t['recipient_id']),
-        }
-        if sender else
-        {
-          'id': str(t['sender_id']),
-          'fullname': t['sender_fullname'],
-          'avatar': self.avatar(t['sender_id']),
-        },
-        'verb': 'to' if sender else 'from',
-      } for t, sender in map(
-        lambda t: (t, t['sender_id'] == user['_id']),
-        sorted(peers,
-               key = lambda t: t.get('modification_time'),
-               reverse = True))
-    ]
-    links = list(self.sisyphus.mongo.meta.links.find(
-      {
-        'sender_id': user['_id'],
-        'status': statuses['finished'],
-        'mtime':
-        {
-          '$gt': self.previous,
-          '$lt': self.current,
-        }
-      }
-    ))
-    res['link_transactions'] = [
-      {
-        # 'start': t['ctime'],
-        'files': [f['name'] for f in t['file_list']],
-        'size': sum(f['size'] for f in t['file_list']),
-        'count': t['click_count'],
-        'url': 'http://inft.ly/%s' % t['hash'],
-      } for t in sorted(links,
-                        key = lambda t: t.get('click_count'),
-                        reverse = True)
-    ]
-    size = sum(chain(
-      (t['total_size'] for t in peers),
-      (sum(f['size'] for f in l['file_list']) * l['click_count']
-       for l in links)))
-    people = len(peers) + sum(l['click_count'] for l in links)
-    res.update({
-      'people': people,
-      'size': size,
-      'start': self.previous,
-      'end': self.current,
-    })
-    return res
-
 
 class ActivityReminder(Drip):
 
   def __init__(self, sisyphus, pretend = False):
-    super().__init__(sisyphus, 'activity-reminder', 'users', pretend)
+    super().__init__(sisyphus, 'activity-reminder', 'users',
+                     pretend, list = 'alerts')
     self.sisyphus.mongo.meta.users.ensure_index(
       [
         # Find initialized users
@@ -792,8 +549,27 @@ class ActivityReminder(Drip):
 
   def run(self):
     response = {}
-    # -> clean
-    for start in (None, 'stuck'):
+    # Stuck if offline with activity
+    for start in (None, 'clean'):
+      transited = self.transition(
+        start,
+        'stuck-0',
+        {
+          # Fully registered
+          'register_status': 'ok',
+          # Disconnected
+          'online': False,
+          # With activity
+          'transactions.activity_has': True,
+        },
+        update = {
+          'emailing.activity-reminder.remind-time':
+          self.now + self.delay(0),
+        },
+      )
+      response.update(transited)
+    # Back to clean if online
+    for start in chain((None,), ('stuck-%s' % i for i in range(5))):
       transited = self.transition(
         start,
         'clean',
@@ -803,68 +579,55 @@ class ActivityReminder(Drip):
           # Connected
           'online': True,
         },
-        template = False,
       )
       response.update(transited)
-    # -> stuck
-    for start in (None, 'clean'):
+    for stuckiness in range(5):
+      # Back to clean if user finished his activity, even if we missed
+      # the online transition.
       transited = self.transition(
-        start,
-        'stuck',
+        'stuck-%s' % stuckiness,
+        'clean',
         {
           # Fully registered
           'register_status': 'ok',
           # Disconnected
           'online': False,
-          # With activity
-          'transactions.activity_has': True,
-        },
-        template = False,
-        update = {
-          'emailing.activity-reminder.remind-time':
-          self.now + self.delay,
+          # Without activity
+          'transactions.activity_has': False,
         },
       )
       response.update(transited)
-    # stuck -> clean if user finished is activity, even if we missed
-    # the online transition.
-    transited = self.transition(
-      'stuck',
-      'clean',
-      {
-        # Fully registered
-        'register_status': 'ok',
-        # Disconnected
-        'online': False,
-        # Without activity
-        'transactions.activity_has': False,
-      },
-      template = False,
-    )
-    response.update(transited)
-    # stuck -> stuck
-    transited = self.transition(
-      'stuck',
-      'stuck',
-      {
-        # Fully registered
-        'register_status': 'ok',
-        # Disconnected
-        'online': False,
-        # Has activity
-        'transactions.activity_has': True,
-        # Reminder is due
-        'emailing.activity-reminder.remind-time':
+    for stuckiness in range(5):
+      if stuckiness == 4:
+        update = {
+          'emailing.activity-reminder.remind-time': None,
+        }
+      else:
+        update = {
+          'emailing.activity-reminder.remind-time':
+          self.now + self.delay(stuckiness + 1),
+        }
+      # stuck -> stuck
+      transited = self.transition(
+        'stuck-%s' % stuckiness,
+        'stuck-%s' % (stuckiness + 1),
         {
-          '$lt': self.now,
+          # Fully registered
+          'register_status': 'ok',
+          # Disconnected
+          'online': False,
+          # Has activity
+          'transactions.activity_has': True,
+          # Reminder is due
+          'emailing.activity-reminder.remind-time':
+          {
+            '$lt': self.now,
+          },
         },
-      },
-      update = {
-        'emailing.activity-reminder.remind-time':
-        self.now + self.delay,
-      },
-    )
-    response.update(transited)
+        template = 'Pending',
+        update = update,
+      )
+      response.update(transited)
     return response
 
   def _vars(self, element, user):
@@ -883,9 +646,19 @@ class ActivityReminder(Drip):
       ]
     }
 
-  @property
-  def delay(self):
-    return datetime.timedelta(days = 2)
+  def delay(self, n):
+    if n == 0:
+      return datetime.timedelta(hours = 8)
+    elif n == 1:
+      return datetime.timedelta(days = 2)
+    elif n == 2:
+      return datetime.timedelta(weeks = 1)
+    elif n == 3:
+      return datetime.timedelta(weeks = 2)
+    elif n == 4:
+      return datetime.timedelta(weeks = 4)
+    else:
+      raise IndexError()
 
   @property
   def user_fields(self):
@@ -895,56 +668,208 @@ class ActivityReminder(Drip):
     return res
 
 
-class Retention(Drip):
+class Tips(Drip):
 
   def __init__(self, sisyphus, pretend = False):
-    super().__init__(sisyphus, 'retention', 'users', pretend)
+    super().__init__(sisyphus, 'tips', 'users', pretend)
     self.sisyphus.mongo.meta.users.ensure_index(
       [
-        ('emailing.retention.state', pymongo.ASCENDING),
+        ('emailing.tips.state', pymongo.ASCENDING),
         ('register_status', pymongo.ASCENDING),
-        ('emailing.retention.activation_time', pymongo.ASCENDING),
+        ('emailing.tips.next', pymongo.ASCENDING),
       ])
+    for name, idx in [
+        self.transactions_self_index,
+        self.transactions_size_sender_index,
+        self.transactions_size_recipient_index,
+    ]:
+      self.sisyphus.mongo.meta.transactions.ensure_index(
+        idx,
+        name = name)
 
-  count = 6
+  @property
+  def transactions_self_index(self):
+    # Find transfers to self
+    return 'emailing.tips.self', [
+      ('sender_id', pymongo.ASCENDING),
+      ('recipient_id', pymongo.ASCENDING),
+    ]
+
+  @property
+  def transactions_size_sender_index(self):
+    # Find biggest sent transfer
+    return 'emailing.tips.sender_size', [
+      ('sender_id', pymongo.ASCENDING),
+      ('total_size', pymongo.ASCENDING),
+    ]
+
+  @property
+  def transactions_size_recipient_index(self):
+    # Find biggest received transfer
+    return 'emailing.tips.recipient_size', [
+      ('recipient_id', pymongo.ASCENDING),
+      ('total_size', pymongo.ASCENDING),
+    ]
 
   @property
   def now(self):
     return datetime.datetime.utcnow()
+
+  @property
+  def delay(self):
+    return datetime.timedelta(weeks = 2)
+
+  def hasnt_sent_to_self(self, user, element):
+    query = self.sisyphus.mongo.meta.transactions.find({
+      'sender_id': user['_id'],
+      'recipient_id': user['_id'],
+    }, hint = self.transactions_self_index[1])
+    try:
+      next(iter(query))
+      return False
+    except StopIteration:
+      return True
+
+  @property
+  def big_transaction_threshold(self):
+    return 100000000 # 100MB
+
+  def hasnt_sent_big(self, user, element):
+    for k, idx in [
+        ('sender_id', self.transactions_size_sender_index),
+        ('recipient_id', self.transactions_size_recipient_index),
+    ]:
+      query = self.sisyphus.mongo.meta.transactions.find({
+        k: user['_id'],
+        'total_size': {'$gt': self.big_transaction_threshold},
+      }, hint = idx[1])
+      try:
+        next(iter(query))
+        return False
+      except StopIteration:
+        pass
+    return True
+
+  def hasnt_sent_link(self, user, element):
+    return self.sisyphus.mongo.meta.links.find_one(
+      {'sender_id': user['_id']}) is None
 
   def run(self):
     response = {}
     # -> 1
     transited = self.transition(
       None,
-      'activated',
+      'fresh',
       {
         # Fully registered
         'register_status': 'ok',
       },
-      template = False,
       update = {
-        'emailing.retention.activation_time': self.now,
-      }
+        'emailing.tips.next': self.now + self.delay,
+      },
     )
     response.update(transited)
-    for i in range(Retention.count):
-      # 1 -> 2
+    transited = self.transition(
+      'fresh',
+      'send-to-self',
+      {
+        # Fully registered
+        'register_status': 'ok',
+        # For long enough
+        'emailing.tips.next': {
+          '$lt': self.now,
+        },
+      },
+      update = {
+        'emailing.tips.next': self.now + self.delay,
+      },
+      guard = self.hasnt_sent_to_self,
+      template = 'Send to Self Tip',
+    )
+    response.update(transited)
+    for start in ['fresh', 'send-to-self']:
       transited = self.transition(
-        str(i) if i > 0 else 'activated',
-        str(i + 1),
+        start,
+        'send-anything',
         {
           # Fully registered
           'register_status': 'ok',
           # For long enough
-          'emailing.retention.activation_time': {
-            '$lt': self.now - self.delay_nth_reminder(i),
+          'emailing.tips.next': {
+            '$lt': self.now,
+          },
+        },
+        update = {
+          'emailing.tips.next': self.now + self.delay,
+        },
+        guard = self.hasnt_sent_big,
+        template = 'Send Anything',
+      )
+      response.update(transited)
+    for start in ['fresh', 'send-to-self', 'send-anything']:
+      transited = self.transition(
+        start,
+        'create-links',
+        {
+          # Fully registered
+          'register_status': 'ok',
+          # For long enough
+          'emailing.tips.next': {
+            '$lt': self.now,
+          },
+        },
+        update = {
+          'emailing.tips.next': self.now + self.delay,
+        },
+        guard = self.hasnt_sent_link,
+        template = 'Links',
+      )
+      response.update(transited)
+    for start in ['fresh', 'send-to-self',
+                  'send-anything', 'create-links']:
+      transited = self.transition(
+        start,
+        'done',
+        {
+          # Fully registered
+          'register_status': 'ok',
+          # For long enough
+          'emailing.tips.next': {
+            '$lt': self.now,
           },
         },
       )
       response.update(transited)
     return response
 
-  def delay_nth_reminder(self, nth):
-    # Starts after two weeks
-    return datetime.timedelta(weeks = nth + 1)
+
+class NPS(Drip):
+
+  def __init__(self, sisyphus, pretend = False):
+    super().__init__(sisyphus, 'nps', 'users', pretend)
+    self.sisyphus.mongo.meta.users.ensure_index(
+      [
+        ('emailing.nps.state', pymongo.ASCENDING),
+        ('register_status', pymongo.ASCENDING),
+        ('creation_time', pymongo.ASCENDING),
+      ])
+
+  @property
+  def delay(self):
+    return datetime.timedelta(days = 60)
+
+  def run(self):
+    response = {}
+    transited = self.transition(
+      None,
+      'sent',
+      {
+        # Fully registered
+        'register_status': 'ok',
+        # For more than 60 days
+        'creation_time': {'$lt': self.now - self.delay},
+      },
+      template = 'Net Promoter Score',
+    )
+    response.update(transited)
+    return response

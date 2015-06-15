@@ -257,22 +257,60 @@ class Mixin:
              email: utils.enforce_as_email_address,
              fields,
              password,
-             password_hash = None):
-    try:
-      user = self.user_by_email_password(
-        email, password = password, password_hash = password_hash,
+             password_hash,
+             long_lived_access_token,
+             short_lived_access_token,
+             preferred_email,
+             login_token,
+           ):
+    # Xor facebook_token or email / password.
+    with_email = bool(email)
+    with_facebook = any(
+      t is not None for t in [long_lived_access_token,
+                              short_lived_access_token])
+    if not any([with_email, with_facebook]):
+      return self.bad_request({
+        'reason': 'you must provide a connection mean'
+      })
+    with elle.log.trace('%s: log %s' % (self, email or 'facebook user')):
+      res = {
+        'account_registered': False,
+        }
+      if with_email:
         fields = fields + ['email_confirmed',
-                           'unconfirmed_email_deadline'],
-        ensure_existence = True)
-      if not user['email_confirmed']:
-        from time import time
-        if time() > user['unconfirmed_email_deadline']:
-          self.resend_confirmation_email(email)
-          self._forbidden_with_error(error.EMAIL_NOT_CONFIRMED)
-      return user
-    except error.Error as e:
-      args = e.args
-      self._forbidden_with_error(args[0])
+                           'unconfirmed_email_deadline']
+        try:
+          if login_token is not None:
+            self.check_signature({'action': 'login', 'email': email},
+                                 login_token)
+            user = self.user_by_email(email,
+                                      fields = fields,
+                                      ensure_existence = True)
+          else:
+            user = self.user_by_email_password(
+              email,
+              password = password,
+              password_hash = password_hash,
+              fields = fields,
+              ensure_existence = True)
+            if not user['email_confirmed']:
+              from time import time
+              if time() > user['unconfirmed_email_deadline']:
+                self.resend_confirmation_email(email)
+                self._forbidden_with_error(error.EMAIL_NOT_CONFIRMED)
+        except error.Error as e:
+          args = e.args
+          self._forbidden_with_error(args[0])
+      elif with_facebook:
+        user, res['account_registered'] = self.__facebook_connect(
+          short_lived_access_token = short_lived_access_token,
+          long_lived_access_token = long_lived_access_token,
+          preferred_email = preferred_email,
+          fields = fields)
+        ghost_codes = user.get('consumed_ghost_codes', [])
+        if len(ghost_codes):
+          res['ghost_code'] = ghost_codes[0]
+    return user, res
 
   def _login_response(self,
                       user,
@@ -474,104 +512,75 @@ class Mixin:
       self._forbidden_with_error(e.args[0])
 
   @api('/login', method = 'POST')
-  def login(self,
-            device_id: uuid.UUID,
-            email: utils.enforce_as_email_address = None,
-            password: str = None,
-            short_lived_access_token: str = None,
-            long_lived_access_token: str = None,
-            preferred_email: str = None,
-            password_hash: str = None,
-            OS: str = None,
-            device_push_token = None,
-            country_code = None,
-            pick_trophonius: bool = True,
-            device_model : str = None,
-            device_name : str = None,
-            device_language: str = None):
+  def login_api(self,
+                device_id: uuid.UUID,
+                email: utils.enforce_as_email_address = None,
+                password: str = None,
+                short_lived_access_token: str = None,
+                long_lived_access_token: str = None,
+                preferred_email: str = None,
+                password_hash: str = None,
+                OS: str = None,
+                device_push_token = None,
+                country_code = None,
+                pick_trophonius: bool = True,
+                device_model : str = None,
+                device_name : str = None,
+                device_language: str = None):
     # Check for service availability
     # XXX TODO: Fetch maintenance mode bool from somewhere
     maintenance_mode = False
-
     if maintenance_mode:
       return self.unavailable({
         'reason': 'Server is down for maintenance.',
         'code': error.MAINTENANCE_MODE
         })
-
-    # Xor facebook_token or email / password.
-    with_email = bool(email is not None and password is not None)
-    with_facebook = bool(long_lived_access_token is not None or
-                         short_lived_access_token is not None)
-    if with_email == with_facebook:
-      return self.bad_request({
-        'reason': 'you must provide facebook_token or (email, password)'
-      })
     # FIXME: 0.0.0.0 is the website.
     if self.user_version < (0, 9, 0) and self.user_version != (0, 0, 0):
       return self.fail(error.DEPRECATED)
-    fields = self.__user_self_fields + ['public_key']
-    with elle.log.trace("%s: log on device %s" % (email or 'facebook user', device_id)):
-      registered = False
-      if with_email:
-        user = self._login(email = email,
-                           fields = fields,
-                           password = password,
-                           password_hash = password_hash)
-      elif with_facebook:
-        user, registered = self.__facebook_connect(
-          short_lived_access_token = short_lived_access_token,
-          long_lived_access_token = long_lived_access_token,
-          preferred_email = preferred_email,
-          fields = fields)
-      res = self._in_app_login(user = user,
-                               password = password,
-                               device_id = device_id,
-                               OS = OS,
-                               pick_trophonius = pick_trophonius,
-                               device_push_token = device_push_token,
-                               country_code = country_code,
-                               device_model = device_model,
-                               device_name = device_name,
-                               device_language = device_language)
-      res.update({'account_registered': registered})
-      if registered:
-        ghost_codes = user.get('consumed_ghost_codes', [])
-        if len(ghost_codes):
-          res.update({'ghost_code': ghost_codes[0]})
-      return res
+    user, res = self._login(
+      email = email,
+      fields = self.__user_self_fields + ['public_key'],
+      password = password,
+      password_hash = password_hash,
+      long_lived_access_token = long_lived_access_token,
+      short_lived_access_token = short_lived_access_token,
+      preferred_email = preferred_email,
+      login_token = None,
+    )
+    res.update(
+      self._in_app_login(user = user,
+                         password = password,
+                         device_id = device_id,
+                         OS = OS,
+                         pick_trophonius = pick_trophonius,
+                         device_push_token = device_push_token,
+                         country_code = country_code,
+                         device_model = device_model,
+                         device_name = device_name,
+                         device_language = device_language))
+    return res
 
   @api('/web-login', method = 'POST')
-  def web_login(self,
-                email: utils.enforce_as_email_address = None,
-                password = None,
-                preferred_email: utils.enforce_as_email_address = None,
-                short_lived_access_token = None,
-                long_lived_access_token = None):
-    # Xor facebook_token or email / password.
-    with_email = bool(email is not None and password is not None)
-    with_facebook = bool(long_lived_access_token is not None or
-                         short_lived_access_token is not None)
-    if with_email == with_facebook:
-      return self.bad_request({
-        'reason': 'you must provide facebook_token or (email, password)'
-      })
-    fields = self.__user_self_fields + ['unconfirmed_email_deadline']
-    update = {'account_registered': False}
-    if with_email:
-      with elle.log.trace("%s: web login" % email):
-        user = self._login(email, password = password, fields = fields)
-    elif with_facebook:
-      user, update['registered'] = self.__facebook_connect(
-        short_lived_access_token = short_lived_access_token,
-        long_lived_access_token = long_lived_access_token,
-        preferred_email = preferred_email,
-        fields = fields)
-      ghost_codes = user.get('consumed_ghost_codes', [])
-      if len(ghost_codes):
-        update.update({'ghost_code': ghost_codes[0]})
-    res = self._web_login(user)
-    res.update(update)
+  def web_login_api(self,
+                    email: utils.enforce_as_email_address = None,
+                    password: str = None,
+                    password_hash: str = None,
+                    preferred_email: utils.enforce_as_email_address = None,
+                    short_lived_access_token = None,
+                    long_lived_access_token = None,
+                    login_token = None):
+    user, res = self._login(
+      email = email,
+      fields = self.__user_self_fields,
+      password = password,
+      password_hash = password_hash,
+      long_lived_access_token = long_lived_access_token,
+      short_lived_access_token = short_lived_access_token,
+      preferred_email = preferred_email,
+      login_token = login_token,
+    )
+    res.update(self._web_login(user))
     return res
 
   def _web_login(self, user):
@@ -874,17 +883,18 @@ class Mixin:
         },
         user_id = user_id,
       )
-
       if not user.get('email_confirmed', False):
-        self.mailer.send_template(
-          to = email,
-          template_name = 'confirm-sign-up',
-          merge_vars = {
-            email: {
-              'CONFIRM_KEY': key('/users/%s/confirm-email' % user_id),
-              'USER_FULLNAME': fullname,
-              'USER_ID': str(user_id),
-            }}
+        self.emailer.send_one(
+          'Confirm Registration (Initial)',
+          recipient_email = email,
+          recipient_name = user['fullname'],
+          variables = {
+            'user': self.email_user_vars(user),
+            'login_token': self.login_token(email),
+            'confirm_token': self.sign(
+              self.confirm_token(email),
+              datetime.timedelta(days = 7)),
+          },
         )
       return self.__user_view(self.__user_fill(user))
 
@@ -944,7 +954,8 @@ class Mixin:
   def confirm_email(self,
                     user,
                     hash: str = None,
-                    key: str = None):
+                    key: str = None,
+                    confirm_token: str = None):
     with elle.log.trace('confirm email for %s' % user):
       if '@' in user:
         query = {'email': user}
@@ -955,6 +966,10 @@ class Mixin:
           self.check_key(key)
         elif hash is not None:
           query['email_confirmation_hash'] = hash
+        else:
+          self.check_signature(
+            self.confirm_token(user),
+            confirm_token)
       user = self.database.users.find_and_modify(
         query,
         {
@@ -996,16 +1011,19 @@ class Mixin:
       if user.get('email_confirmed', True):
         response(404, {'reason': 'email is already confirmed'})
       assert user.get('email_confirmation_hash') is not None
-      self.mailer.send_template(
-        to = user['email'],
-        template_name = 'reconfirm-sign-up',
-        merge_vars = {
-          user['email']: {
-            'CONFIRM_KEY': key('/users/%s/confirm-email' % user['_id']),
-            'USER_FULLNAME': user['fullname'],
-            'USER_ID': str(user['_id']),
-            }}
-        )
+      email = user['email']
+      self.emailer.send_one(
+        'Confirm Registration (Initial)',
+        recipient_email = email,
+        recipient_name = user['fullname'],
+        variables = {
+          'user': self.email_user_vars(user),
+          'login_token': self.login_token(email),
+          'confirm_token': self.sign(
+            self.confirm_token(email),
+            datetime.timedelta(days = 7)),
+        },
+      )
       return {}
 
   @api('/user/<id>/connected')
@@ -1255,32 +1273,36 @@ class Mixin:
           'reason': 'email already registered',
           'email': email,
         })
-    url ='/users/%s/accounts/%s/confirm' % (self.user['_id'], email)
-    k = key(url)
     variables = {
       'email': email,
       'user': self.email_user_vars(self.user),
-      'url': self.url_absolute(url),
-      'key': key(url),
+      'login_token': self.login_token(self.user['email']),
+      'confirm_token': self.sign(
+        self.confirm_token(email, self.user['email']),
+        datetime.timedelta(days = 7)),
     }
-    self.emailer.send_one('account-add-email',
-                          email,
-                          self.user['fullname'],
+    self.emailer.send_one('Confirm New Email Address',
+                          recipient_email = email,
+                          recipient_name = self.user['fullname'],
                           variables = variables)
     return {}
 
-  @api('/users/<user>/accounts/<name>/confirm', method = 'POST')
-  @require_key
-  def account_confirm(self, user, name):
+  @api('/users/<user>/accounts/<email>/confirm', method = 'POST')
+  def account_confirm(self, user, email, confirm_token: str = None):
     with elle.log.trace('validate email %s for user %s' %
-                        (name, user)):
+                        (email, user)):
+      email = email.lower()
+      self.check_signature(
+        self.confirm_token(email, account = user),
+        confirm_token)
       update = {
         '$addToSet':
         {
-          'accounts': collections.OrderedDict((('id', name), ('type', 'email')))
+          'accounts': collections.OrderedDict
+          ([('id', email), ('type', 'email')]),
         }
       }
-      user = self.user_by_id_or_email(user, fields = ['_id', 'accounts'])
+      user = self.user_from_identifier(user, fields = ['accounts'])
       while True:
         try:
           self.database.users.update(
@@ -1290,7 +1312,7 @@ class Mixin:
           break
         except pymongo.errors.DuplicateKeyError:
           previous = self.user_by_id_or_email(
-            name,
+            email,
             fields = ['email', 'register_status', 'swaggers'],
             ensure_existence = False)
           if previous is None:
@@ -1301,15 +1323,16 @@ class Mixin:
           if status in ['ok', 'merged']:
             elle.log.trace(
               'account %s has non-mergeable register status: %s' %
-              (name, status))
+              (email, status))
             self.forbidden({
               'reason': 'email already registered',
-              'email': name,
+              'email': email,
             })
           if status in ['ghost', 'deleted', 'contact']:
             self.user_delete(previous, merge_with = user)
             continue
-      return {}
+      return self._web_login(user)
+
 
   @api('/user/accounts/<email>', method = 'DELETE')
   @require_logged_in
@@ -1355,61 +1378,6 @@ class Mixin:
                        new_email = email,
                        password = password)
     return {}
-
-  @api('/user/change_email_request', method = 'POST')
-  @require_logged_in_fields(['password', 'password_hash'])
-  def change_email_request(self,
-                           new_email: utils.enforce_as_email_address,
-                           password):
-    """
-    Request to change the main email address for the account.
-    The main email is used for login and email alerts.
-
-    new_email -- The new main email address.
-    password -- The password of the account.
-    """
-    user = self.user
-    with elle.log.trace('request to change main email from %s to %s' %
-                        (user['email'], new_email)):
-      _validators = [
-        (password, regexp.PasswordValidator),
-      ]
-
-      for arg, validator in _validators:
-        res = validator(arg)
-        if res != 0:
-          return self._forbidden_with_error(error.EMAIL_NOT_VALID)
-
-      # Check if the new address is already in use.
-      if self.user_by_email(new_email,
-                            fields = [],
-                            ensure_existence = False) is not None:
-        return self._forbidden_with_error(error.EMAIL_ALREADY_REGISTERED)
-      if hash_password(password) != user['password'] and utils.password_hash(password) != user['password_hash']:
-        return self._forbidden_with_error(error.PASSWORD_NOT_VALID)
-      from time import time
-      import hashlib
-      seed = str(time()) + new_email
-      hash = hashlib.md5(seed.encode('utf-8')).hexdigest()
-      res = self.mailer.send_template(
-        new_email,
-        'change-email-address',
-        merge_vars = {
-          new_email : {
-            "hash": hash,
-            "new_email_address": new_email,
-            "user_fullname": user['fullname']
-          }
-        })
-      self.database.users.update(
-        { "_id": user['_id'] },
-        {
-          "$set": {
-            "new_main_email": new_email,
-            "new_main_email_hash": hash,
-          }
-        })
-      return {}
 
   @api('/user/change_email/<hash>', method = 'GET')
   def new_email_from_hash(self, hash):
@@ -1803,7 +1771,17 @@ class Mixin:
                                 recipient_ids = swaggers,
                                 message = {'user_id': deleted_user['merged_with']})
     self.remove_user_as_favorite_and_notify(user)
-    return self.success()
+    if not merge_with:
+      self.emailer.send_one(
+        'Deleted',
+        recipient_email = user['email'],
+        recipient_name = user['fullname'],
+        variables = {
+          'user': self.email_user_vars(user),
+        },
+      )
+
+    return {}
 
   def remove_user_as_favorite_and_notify(self, user):
     user_id = user['_id']
@@ -1870,6 +1848,7 @@ class Mixin:
         '$elemMatch': {'id': email, 'type': 'email'}
       }
     }
+
   def user_by_email(self,
                     email,
                     fields = None,
@@ -2431,14 +2410,33 @@ class Mixin:
     from bottle import Request
     return Request().url + 'user/%s/avatar' % str(id)
 
+  @api('/users/<id>/avatar')
+  def get_avatar_api(self, id, ghost_code: str = None):
+    user = self.user_from_identifier(id, fields = ['small_avatar'])
+    return self.get_avatar(user = user,
+                           ghost_code = ghost_code)
+
+  # Deprecated in favor of /users/<id>/avatar
   @api('/user/<id>/avatar')
+  def get_avatar_api(self,
+                     id: bson.ObjectId,
+                     date: int = 0,
+                     no_place_holder: bool = False,
+                     ghost_code: str = ''):
+    user = self._user_by_id(id,
+                            ensure_existence = False,
+                            fields = ['small_avatar'])
+    return self.get_avatar(user = user,
+                           date = date,
+                           no_place_holder = no_place_holder,
+                           ghost_code = ghost_code)
+
   def get_avatar(self,
-                 id: bson.ObjectId,
+                 user,
                  date: int = 0,
                  no_place_holder: bool = False,
                  ghost_code: str = ''):
-    if len(ghost_code):
-      # Link from a mail, notify opened
+    if ghost_code:
       self.database.invitations.update(
         {'ghost_code': ghost_code, 'status': 'pending'},
         {'$set': {'status': 'opened'}},
@@ -2450,13 +2448,10 @@ class Mixin:
           [{
             'event': 'invite/opened',
             'ghost_code': ghost_code,
-            'user': str(id),
+            'user': str(user['_id']),
             'timestamp': time.time(),
           }],
           collection = 'users')
-    user = self._user_by_id(id,
-                            ensure_existence = False,
-                            fields = ['small_avatar'])
     if user is None:
       if no_place_holder:
         return self.not_found()
@@ -2643,193 +2638,40 @@ class Mixin:
           }
         )
 
-  # Email subscription.
-  # XXX: Make it a decorator.
+  ## ------------------- ##
+  ## Email subscriptions ##
+  ## ------------------- ##
 
-  def user_unsubscription_hash(self, user):
-    """
-    Return the hash that will be used to find the user (compute it if absent).
-    This hash will be used to manage email subscriptions.
-
-    user -- The user.
-    """
-    with elle.log.debug('get user hash for email'):
-      assert user is not None
-      if not hasattr(user, 'email_hash'):
-        import hashlib
-        hash = hashlib.md5(str(user['_id']).encode('utf-8')).hexdigest()
-        user = self.__user_fetch_and_modify(
-          {"email": user['email']},
-          {"$set": {'email_hash': hash}},
-          new = True,
-          fields = ['email_hash'])
-    return user['email_hash']
-
-  def __user_by_email_hash(self, hash, avatar = False, identity=False, passport=False):
-    """
-    Return the user linked the hash.
-    """
-    with elle.log.debug('get user from email hash'):
-      user = self.__user_fetch({'email_hash': hash},
-                               fields = ['_id', 'email'])
-      if user is None:
-        raise error.Error(
-          error.UNKNOWN_USER,
-        )
-      return user
+  email_lists = ['alerts', 'newsletter', 'tips']
 
   @api('/user/email_subscriptions', method = 'GET')
   @require_logged_in_fields(['unsubscriptions'])
   def mail_subscriptions(self):
-    """
-    Return the status of every subscriptions.
-    """
-    return self.success({
-      'subscriptions':
-      {
-        k:
-        {
-          'status': not k in self.user.get('unsubscriptions', []),
-          'pretty': mail.subscriptions[k]
-        }
-        for k in mail.subscriptions.keys()
-      }
-    })
-
-  def has_email_subscription(self, user, name):
-    subscription = mail.subscription_name(name)
-    return subscription not in user.get('unsubscriptions', [])
-
-  @api('/user/email_subscription/<name>', method = 'GET')
-  @require_logged_in
-  def get_mail_subscription(self, name):
-    """
-    Return the status for a specific subscription.
-
-    type -- The name of the subscription.
-    """
-    try:
-      user = self._user_from_session(fields = ['unsubscriptions'])
-      return self.success({name: self.has_email_subscription(user, name)})
-    except mail.EmailSubscriptionNotFound as e:
-      self.not_found()
-
-  def __modify_subscription(self, user, name, value):
-    """
-    Add or remove a subscription for a user.
-
-    user -- The user to edit.
-    name -- The name of the subscription to edit.
-    value -- The status wanted for the subscription.
-    """
-    action = value and 'subscribe' or 'unsubscribe'
-    with elle.log.debug(
-        '%s %s from %s emails' % (action, user['email'], name)):
-      try:
-        name = mail.subscription_name(name)
-        action = value and "$pop" or "$addToSet"
-        document = { action: {"unsubscriptions": name} }
-        self.database.users.update({'_id': user['_id']},
-                                   document = document,
-                                   upsert = False)
-        return {name: value}
-      except mail.EmailSubscriptionNotFound as e:
-        self.not_found()
-
-
-  def __set_subscription(self, user, unsubscriptions):
-    """
-    Add or remove a subscription for a user.
-
-    user -- The user to edit.
-    name -- The name of the subscription to edit.
-    value -- The status wanted for the subscription.
-    """
-    document = { "$set": { "unsubscriptions": unsubscriptions } }
-    self.database.users.update({'_id': user['_id']},
-                               document = document,
-                               upsert = False)
-
-  @api('/user/email_subscription/<name>', method = 'DELETE')
-  @require_logged_in
-  def delete_mail_subscription_logged(self, name):
-    """
-    Remove a specific subscription.
-
-    name -- The name of the subscription to edit.
-    """
-    return self.__modify_subscription(self.user, name, False)
-
-  @api('/user/<hash>/email_subscription/<name>', method = 'DELETE')
-  def delete_mail_subscription(self, hash, name):
-    """
-    Restore a specify subscription.
-
-    hash -- The hash associated to the user.
-    name -- The name of the subscription to edit.
-    """
-    user = self.__user_by_email_hash(hash)
-    return self.__modify_subscription(user, name, False)
-
-  @api('/users/<user>/email_subscriptions/<name>', method = 'PUT')
-  @require_key
-  def mail_subscribe_key(self, user, name):
-    """
-    Subscribe to an email set.
-
-    user -- Email or id of the user to unsubscribe.
-    name -- Name of the email set.
-    """
-    user = self.user_by_id_or_email(user, fields = ['email'])
-    res = self.__modify_subscription(user, name, True)
-    self._web_login(user)
-    return res
-
-  @api('/users/<user>/email_subscriptions/<name>', method = 'DELETE')
-  @require_key
-  def mail_unsubscribe_key(self, user, name):
-    """
-    Unsubscribe from an email set.
-
-    user -- Email or id of the user to unsubscribe.
-    name -- Name of the email set.
-    """
-    user = self.user_by_id_or_email(user, fields = ['email'])
-    if user is None:
-      self.not_found({
-        'reason': 'user %s not found' % user,
-        'user': user,
-      })
-    res = self.__modify_subscription(user, name, False)
-    self._web_login(user)
-    return res
-
-  # Restore.
-  @api('/user/email_subscription/<name>', method = 'PUT')
-  @require_logged_in
-  def restore_mail_subscription(self, name):
-    """
-    Restore a specific subscription.
-
-    name -- The name of the subscription to edit.
-    """
-    return self.__modify_subscription(self.user, name, True)
+    '''Get email subscriptions'''
+    return dict((l, self.user.get('unsubscriptions', {}).get(l, True))
+                for l in Mixin.email_lists)
 
   @api('/user/email_subscriptions', method = 'POST')
   @require_logged_in
-  def change_mail_subscriptions(self,
-                                subscriptions):
-    try:
-      user = self.user
-      if subscriptions is None:
-        subscriptions = []
-      subscriptions = isinstance(subscriptions, (str)) and [subscriptions] or subscriptions
-      subscriptions = list(map(lambda x: mail.subscription_name(str(x)), subscriptions))
-      self.__set_subscription(user, [x for x in mail.subscriptions.keys() \
-                                     if x not in subscriptions])
-      return self.success()
-    except mail.EmailSubscriptionNotFound as e:
-        self.not_found()
+  def mail_subscriptions(self, **kwargs):
+    '''Change email subscriptions'''
+    for k, v in kwargs.items():
+      if k not in Mixin.email_lists:
+        self.bad_request({
+          'reason': 'invalid email list: %s' % k,
+          'list': k,
+        })
+      if not isinstance(v, bool):
+        self.bad_request({
+          'reason': 'invalide list subscription value',
+          'value': v,
+        })
+
+    self.database.users.update(
+      {'_id': self.user['_id']},
+      {'$set': {'unsubscriptions.%s' % k: v
+                for k, v in kwargs.items()}})
+    return kwargs
 
   ## --------- ##
   ## Campaigns ##
@@ -3153,6 +2995,121 @@ class Mixin:
       except Exception as e:
         elle.log.log('Exception while inserting contacts: %s' % e)
     return self.success()
+
+  @api('/users/<email>/reset-password', method = 'POST')
+  def reset_account_api(
+      self,
+      email,
+      password,
+      password_hash = None,
+      reset_token = None,
+  ):
+    user = self.user_by_email(email)
+    if user is None:
+      self.not_found({
+        'reason': 'user not found',
+        'user': email,
+      })
+    self.check_signature(
+      {'action': 'reset-password', 'email': email},
+      reset_token)
+    # Remove sessions.
+    self.remove_session(user)
+    # Cancel all the current transactions.
+    self.cancel_transactions(user)
+    # Remove all the devices from the user because they are based on
+    # his old public key.
+    self.remove_devices(user)
+    self.kickout('account was reset', user = user)
+    import papier
+    identity, public_key = papier.generate_identity(
+      str(user['_id']),
+      email,
+      password,
+      conf.INFINIT_AUTHORITY_PATH,
+      conf.INFINIT_AUTHORITY_PASSWORD
+    )
+    to_set = {
+      'register_status': 'ok',
+      'password': hash_password(password),
+      'identity': identity,
+      'public_key': public_key,
+      'networks': [],
+      'devices': [],
+      'notifications': [],
+      'old_notifications': [],
+      'email_confirmed': True, # User got a reset account mail, email confirmed.
+    }
+    to_unset = {
+      'reset_password_hash': True,
+      'reset_password_hash_validity': True,
+    }
+    if password_hash:
+      to_set.update({
+        'password_hash': utils.password_hash(password_hash)
+      })
+    else:
+      to_unset.update({
+        'password_hash': True,
+      })
+    self.database.users.find_and_modify(
+      {'_id': user['_id']},
+      {
+        '$set': to_set,
+        '$unset': to_unset,
+      }
+    )
+    return self._web_login(user)
+
+  reset_token_expiration = datetime.timedelta(days = 7)
+  @api('/users/<email>/lost-password', method = 'POST')
+  def lost_password_api(self,
+                        email: utils.enforce_as_email_address):
+    """Generate a reset password url.
+
+    email -- The mail of the infortunate user
+    """
+    return self.lost_password(email)
+
+  def lost_password(self, email):
+    user = self.database.users.find_one({'email': email})
+    if not user or user['register_status'] == 'ghost':
+      self.not_found({
+        'reason': 'user not found',
+        'user': email,
+      })
+    self.emailer.send_one(
+      'Reset Password',
+      recipient_email = email,
+      recipient_name = user['fullname'],
+      variables = {
+        'user': self.email_user_vars(user),
+        'reset_token': self.sign(
+          {
+            'action': 'reset-password',
+            'email': email,
+          },
+          expiration = Mixin.reset_token_expiration),
+        'login_token': self.login_token(email),
+      },
+    )
+
+  def login_token(self,
+                  email,
+                  expiration = datetime.timedelta(days = 7)):
+    return self.sign({
+      'action': 'login',
+      'email': email,
+    }, expiration)
+
+  def confirm_token(self, email, account = None):
+    res = {
+      'action': 'confirm_email',
+      'email': utils.identifier(email),
+    }
+    if account is not None:
+      res['account'] = utils.identifier(account)
+    return res
 
   ## ------------------ ##
   ## User images helper ##

@@ -97,11 +97,10 @@ with Meta(enable_emails = True,
 
     db_recipient = meta.database.users.find_one({"_id": ObjectId(bob.swaggers[0])})
     # Check if the 3 emails have been delivered and contain ghost_code and url.
-    emails = meta.emailer.emails
+    emails = meta.emailer.template('Transfer (Initial)')
     assertEq(len(emails), 3)
     ghost_profile = None
     for email in emails:
-      assertEq(email.template, 'ghost-invitation')
       assertEq(email.variables['ghost_code'],
                db_recipient['ghost_code'])
       if ghost_profile is None:
@@ -142,7 +141,7 @@ with Meta(enable_emails = True,
     bob.transaction_update(t2, GHOST_UPLOADED)
 
     db_recipient = meta.database.users.find_one({"_id": ObjectId(bob.swaggers[0])})
-    assertEq(len(meta.emailer.emails), 0)
+    assertEq(len(meta.emailer.template('Transfer (Initial)')), 0)
     ghost_profile = recipient['ghost_profile']
     check_merge(meta, db_recipient, ghost_profile, 'phone')
 
@@ -153,7 +152,7 @@ with Meta(enable_emails = True) as meta:
   bob.login()
   transaction, res = bob.sendfile(recipient = alice_email, initialize = True)
   bob.transaction_update(res['created_transaction_id'], GHOST_UPLOADED)
-  emails = meta.emailer.emails
+  emails = meta.emailer.template('Transfer (Initial)')
   assertEq(len(emails), 1)
   ghost_code = emails[0].variables['ghost_code']
   alice = User(meta, alice_email)
@@ -173,9 +172,9 @@ with Meta(enable_emails = True) as meta:
   transaction, res = bob.sendfile(recipient = alice_email, initialize = True)
   bob.transaction_update(res['created_transaction_id'], GHOST_UPLOADED)
   assert 'ghost_code' not in res['recipient']
-  emails = meta.emailer.emails
+  emails = meta.emailer.template('Transfer (Initial)')
   assertEq(len(emails), 1)
-  assertEq(emails[0].template, 'ghost-invitation')
+  assertEq(emails[0].template, 'Transfer (Initial)')
   ghost_code = emails[0].variables['ghost_code']
   eve = User(meta, "eve@infinit.io")
   eve.login()
@@ -214,18 +213,15 @@ with Meta(enable_emails = True) as meta:
         'shorten_ghost_profile_url': 1
       }
     })
-  emails = meta.emailer.emails
+  emails = meta.emailer.template('Transfer (Initial)')
   assertEq(len(emails), 1)
-  # Email are consummed when the getter is called.
-  assertEq(len(meta.emailer.emails), 0)
-  assertEq(emails[0].template, 'ghost-invitation')
+  assertEq(emails[0].template, 'Transfer (Initial)')
   assert 'ghost_code' in emails[0].variables
   assert 'ghost_profile' in emails[0].variables
   transaction, res = bob.sendfile(recipient = alice_email, initialize = True)
   bob.transaction_update(res['created_transaction_id'], GHOST_UPLOADED)
   assert 'ghost_code' not in res['recipient']
-  emails = meta.emailer.emails
+  emails = meta.emailer.template('Transfer (Initial)')
   assertEq(len(emails), 1)
-  assertEq(emails[0].template, 'ghost-invitation')
   assert 'ghost_code' not in emails[0].variables
   assert 'ghost_profile' in emails[0].variables

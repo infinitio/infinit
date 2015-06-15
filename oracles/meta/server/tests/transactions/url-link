@@ -19,7 +19,7 @@ def check_email(emails, recipient):
   import sys
   print('EMAILS', emails, file = sys.stderr)
   assertEq(len(emails), 1)
-  assertEq(emails[0].template, 'ghost-invitation')
+  assertEq(emails[0].template, 'Transfer (Initial)')
   assertEq(emails[0].recipient.email, recipient)
 
 with Meta() as meta:
@@ -41,7 +41,8 @@ with Meta() as meta:
                                         "device_id": str(bob.device_id),
                                         "device_name": bob.device_name})
   assert res['success']
-  check_email(meta.emailer.emails, alice_email)
+  check_email(meta.emailer.template('Transfer (Initial)'),
+              alice_email)
 
   # Check that sending a hash that's not real gives a 404.
   throws(lambda: meta.get('transaction/by_hash/%s' % ('0' * 64)), 404)
@@ -71,4 +72,5 @@ with Meta() as meta:
                                         "device_id": str(bob.device_id),
                                         "device_name": bob.device_name})
   assert res['success']
-  check_email(meta.emailer.emails, alice_email)
+  check_email(meta.emailer.template('Transfer (Initial)'),
+              alice_email)

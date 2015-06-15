@@ -11,8 +11,7 @@ import requests
 import json
 
 import elle.log
-from .utils import \
-  api, require_logged_in, require_logged_in_or_admin, require_key, key, clean_up_phone_number
+from .utils import *
 from . import regexp, error, transaction_status, notifier, invitation, cloud_buffer_token, cloud_buffer_token_gcs, mail, utils
 import uuid
 import re
@@ -175,6 +174,8 @@ class Mixin:
       {'$set': diff},
       new = False,
     )
+    self.__complete_transaction_pending_stats(
+      transaction['recipient_id'], transaction)
     # handle both negative search and empty transaction
     if not transaction or len(transaction) == 1:
       self.not_found({
@@ -311,7 +312,7 @@ class Mixin:
       'features',
       'ghost_code',
       'shorten_ghost_profile_url',
-      'emailing.send-to-self',
+      'emailing.delight',
       'merged_with'
     ]
     # Determine the nature of the recipient identifier.
@@ -540,8 +541,11 @@ class Mixin:
             'device': recipient_device_id,
           })
       is_ghost = recipient['register_status'] == 'ghost'
-      if is_ghost and total_size > 2000000000:
-        self.forbidden('Transaction to nonexisting users limited to 2G')
+      # FIXME: restore when clients will handle it.
+      # if is_ghost and total_size > 2000000000:
+      #   self.forbidden({
+      #     'reason': 'transaction to non-existing users limited to 2GB',
+      #    })
 
       if is_ghost:
         # Add to referral
@@ -600,38 +604,23 @@ class Mixin:
           recipient_ids = {transaction['recipient_id']},
           message = transaction,
         )
+        self.__update_transaction_stats(
+          sender,
+          counts = ['sent_peer', 'sent'],
+          pending = transaction,
+          time = True)
+        if not is_ghost:
+          self.__update_transaction_stats(
+            recipient,
+            unaccepted = transaction,
+            time = False)
       else:
         transaction_id = self.database.transactions.insert(transaction)
       transaction['_id'] = transaction_id
-      self.__update_transaction_stats(
-        sender,
-        counts = ['sent_peer', 'sent'],
-        pending = transaction,
-        time = True)
-      if not is_ghost:
-        self.__update_transaction_stats(
-          recipient,
-          unaccepted = transaction,
-          time = False)
       self._increase_swag(sender['_id'], recipient['_id'])
       if  recipient_device_id is None and recipient['_id'] == sender['_id']:
-        if 'send-to-self' not in recipient.get('emailing', {}):
-          self.database.users.update(
-            {'_id': recipient['_id']},
-            {'$set': {'emailing.send-to-self.state':  'sent'}},
-          )
-          self.emailer.send_one(
-            'send-self-first',
-            recipient['email'],
-            recipient['fullname'],
-            recipient['email'],
-            recipient['fullname'],
-            {
-              'user': self.email_user_vars(sender),
-              'transaction':
-                self.email_transaction_vars(transaction, recipient),
-            },
-          )
+        self.__delight(recipient, 'Send to Self',
+                       transaction, recipient)
       recipient_view = self.__user_view(recipient)
       return self.success({
           'created_transaction_id': transaction_id,
@@ -639,6 +628,25 @@ class Mixin:
           'recipient_is_ghost': is_ghost,
           'recipient': recipient_view,
         })
+
+  def __delight(self, user, template, transaction, peer):
+    if 'delight' not in user.get('emailing', {}):
+      self.database.users.update(
+        {'_id': user['_id']},
+        {'$set': {'emailing.delight': template}},
+      )
+      self.emailer.send_one(
+        template,
+        recipient_email = user['email'],
+        recipient_name = user['fullname'],
+        variables = {
+          'user': self.email_user_vars(user),
+          'peer': self.email_user_vars(peer),
+          'transaction':
+            self.email_transaction_vars(transaction, user),
+          'login_token': self.login_token(user['email']),
+        },
+      )
 
   def __update_transaction_stats(self,
                                  user,
@@ -862,10 +870,9 @@ class Mixin:
           })
           variables['sender']['avatar'] += '?ghost_code=%s' % recipient['ghost_code']
         self.emailer.send_one(
-          'ghost-invitation',
+          'Transfer (Initial)',
           recipient_email = peer_email,
-          sender_email = user['email'],
-          sender_name = user['fullname'],
+          sender_name = '%s via Infinit' % user['fullname'],
           variables = variables,
         )
       return {
@@ -877,7 +884,7 @@ class Mixin:
       return {}
 
   @api('/transaction/update', method = 'POST')
-  @require_logged_in
+  @require_logged_in_fields(['emailing.delight'])
   def transaction_update(self,
                          transaction_id,
                          status = None,
@@ -920,6 +927,18 @@ class Mixin:
       transaction = self.transaction(transaction_id,
                                      owner_id = user['_id'])
       is_sender = self.is_sender(transaction, user['_id'], device_id)
+      if is_sender:
+        sender = user
+        recipient = self.__user_fetch(
+          {'_id': transaction['recipient_id']},
+          fields = self.__user_self_fields + ['emailing.delight'],
+        )
+      else:
+        recipient = user
+        sender = self.__user_fetch(
+          {'_id': transaction['sender_id']},
+          fields = self.__user_self_fields + ['emailing.delight'],
+        )
       diff = {}
       operation = {}
       if status is not None:
@@ -941,34 +960,40 @@ class Mixin:
                                      device_id = device_id,
                                      device_name = device_name))
         elif status == transaction_status.REJECTED:
-          self.__complete_transaction_unaccepted_stats(user, transaction)
+          self.__complete_transaction_unaccepted_stats(
+            transaction['recipient_id'], transaction)
           diff.update(self.on_reject(transaction = transaction,
                                      user = user,
                                      device_id = device_id,
                                      device_name = device_name))
           diff.update(self.cloud_cleanup_transaction(transaction = transaction))
         elif status == transaction_status.GHOST_UPLOADED:
+          self.__delight(user, 'Shared', transaction, recipient)
           diff.update(self.on_ghost_uploaded(transaction = transaction,
                                        device_id = device_id,
                                        device_name = device_name,
                                        user = user))
         elif status == transaction_status.CANCELED:
-          self.__complete_transaction_unaccepted_stats(user, transaction)
+          self.__complete_transaction_unaccepted_stats(
+            transaction['recipient_id'], transaction)
           if not transaction.get('canceler', None):
             diff.update({'canceler': {'user': user['_id'], 'device': device_id}})
             diff.update(self.cloud_cleanup_transaction(transaction = transaction))
         elif status == transaction_status.FAILED:
-          self.__complete_transaction_unaccepted_stats(user, transaction)
+          self.__complete_transaction_unaccepted_stats(
+            transaction['recipient_id'], transaction)
           diff.update(self.cloud_cleanup_transaction(transaction = transaction))
         elif status == transaction_status.FINISHED:
-          self.__update_transaction_stats(
-            transaction['recipient_id'],
-            counts = ['received_peer', 'received'],
-            time = True)
+          self.__delight(sender, 'Shared', transaction, recipient)
           self.__update_transaction_stats(
             transaction['sender_id'],
             counts = ['reached_peer', 'reached'],
             time = False)
+          self.__delight(recipient, 'Received', transaction, sender)
+          self.__update_transaction_stats(
+            transaction['recipient_id'],
+            counts = ['received_peer', 'received'],
+            time = True)
         if status in transaction_status.final:
           operation["$unset"] = {"nodes": 1}
         # Don't override accepted with cloud_buffered.
@@ -976,6 +1001,7 @@ class Mixin:
            transaction['status'] == transaction_status.ACCEPTED:
           diff.update({'status': transaction_status.ACCEPTED})
         elif status == transaction_status.CLOUD_BUFFERED:
+          self.__delight(sender, 'Shared', transaction, recipient)
           diff.update({
             'status': status,
             'cloud_buffered': True

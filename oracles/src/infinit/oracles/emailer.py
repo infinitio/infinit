@@ -67,6 +67,7 @@ class SendWithUsEmailer(Emailer):
         except Exception as e:
           err('%s: non-JSON response (%s): %s' % (self, e, r.text))
       raise Exception('%s: request failed' % self)
+    return r
 
   def __template(self, name):
     if name not in self.__templates:
@@ -99,14 +100,13 @@ class SendWithUsEmailer(Emailer):
                  variables,
                  swu,
                ):
-    if sender_email is not None:
+    sender = None
+    if any(x is not None for x in (sender_email, sender_name)):
       sender = {}
-      sender['address'] = sender_email
+      if sender_email is not None:
+        sender['address'] = sender_email
       if sender_name is not None:
         sender['name'] = sender_name
-    else:
-      assert sender_name is None
-      sender = None
     recipient = {
       'address': recipient_email,
     }
@@ -129,21 +129,21 @@ class SendWithUsEmailer(Emailer):
                                           cls = self.__json_encoder))
         sender_name = None
         sender_email = None
-        if 'sender' in recipient and recipient['sender'] is not None:
-          sender_name = recipient['sender'].get('fullname', None)
-          sender_email = recipient['sender'].get('email', None)
+        if recipient.get('sender') is not None:
+          sender_name = recipient['sender'].get('fullname')
+          sender_email = recipient['sender'].get('email')
         self.__send_one(
-          template,
-          email,
-          recipient['name'],
-          sender_name,
-          sender_email,
-          recipient['vars'],
-          swu)
+          template = template,
+          recipient_email = email,
+          recipient_name = recipient['name'],
+          sender_name = sender_name,
+          sender_email = sender_email,
+          variables = recipient['vars'],
+          swu = swu)
       if swu.command_length() >= 100:
-        self.__execute(swu)
+        return self.__execute(swu)
     if swu.command_length() > 0:
-      self.__execute(swu)
+      return self.__execute(swu)
 
 
 class MandrillEmailer(Emailer):
@@ -204,10 +204,10 @@ def avatar(i, meta):
 def user_vars(user, meta):
   return {
     'avatar': avatar(user['_id'], meta),
-    'email': user['email'],
-    'fullname': user['fullname'],
+    'email': user.get('email'),
+    'fullname': user.get('fullname'),
     'id': str(user['_id']),
-    'os': user['os'] if 'os' in user else [],
+    'os': user.get('os', []),
   }
 
 def transaction_vars(transaction, user, meta):

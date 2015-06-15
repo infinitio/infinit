@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+
+# utils first, beware of system OpenSSL.
+from utils import *
+
+import elle.log
+
+import oracles.sisyphus
+import oracles.sisyphus.boulders.drip
+
+ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.boulders.drip'
+
+class NPS(oracles.sisyphus.boulders.drip.NPS):
+
+  def __init__(self, sisyphus):
+    super().__init__(sisyphus)
+    self.__now = datetime.datetime.utcnow()
+
+  @property
+  def now(self):
+    return self.__now
+
+  @now.setter
+  def now(self, value):
+    self.__now = value
+
+
+with mongobox.MongoBox() as mongo:
+  with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
+    emailer = DummyEmailer()
+    sisy = oracles.sisyphus.Sisyphus(mongo_port = mongo.port,
+                                     emailer = emailer)
+    gestapo(sisy.mongo)
+    nps = NPS(sisy)
+    def forward(duration):
+      nps.now += duration
+      meta.now = nps.now
+    sisy.boulders_run()
+    check_no_mail(emailer.emails)
+    email = 'alice@infinit.io'
+    alice = user_register(meta, email)
+    forward(nps.delay / 2)
+    sisy.boulders_run()
+    check_no_mail(emailer.emails)
+    forward(nps.delay)
+    sisy.boulders_run()
+    check_mail(emailer.emails, email, 'Net Promoter Score')
