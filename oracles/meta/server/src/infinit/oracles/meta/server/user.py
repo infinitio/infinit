@@ -3245,6 +3245,31 @@ class Mixin:
                                           prefix = self.user['_id']),
     }
 
+  ## ---- ##
+  ## Logo ##
+  ## ---- ##
+
+  @api('/user/logo', method = 'PUT')
+  @require_logged_in
+  def user_logo_put_api(self):
+    return self.__user_upload_image('logo', None, self.user)
+
+  @api('/user/logo', method = 'GET')
+  @require_logged_in
+  def user_logo_get_api(self):
+    return self.__user_get_image('logo', None, self.user)
+
+  @api('/users/<user_id>/logo', method = 'GET')
+  def user_logo_get_api(self, user_id):
+    return self.__user_get_image(
+      'logo', None,
+      self.user_from_identifier(user_id, fields = ['plan']))
+
+  @api('/user/logo', method = 'DELETE')
+  @require_logged_in
+  def user_background_delete_api(self):
+    return self.__user_delete_image('logo', None, self.user)
+
   ## -------------- ##
   ## Custom domains ##
   ## -------------- ##
