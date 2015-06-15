@@ -34,6 +34,7 @@ namespace infinit
       initialization_time,
       message,
       message_length,
+      method,
       metric_sender_id,
       onboarding,
       operation,
@@ -197,9 +198,10 @@ namespace infinit
                             std::string const& fail_reason) override;
 
       void
-      _user_sent_sms_ghost_code(bool success,
-                                std::string const& code,
-                                std::string const& fail_reason) override;
+      _user_sent_invitation_message(bool success,
+                                    std::string const& code,
+                                    std::string const& method,
+                                    std::string const& fail_reason) override;
 
     /// Implementations of UI metrics.
     private:

@@ -352,14 +352,17 @@ namespace infinit
     }
 
     void
-    CompositeReporter::_user_sent_sms_ghost_code(bool success,
-                                                 std::string const& code,
-                                                 std::string const& fail_reason)
+    CompositeReporter::_user_sent_invitation_message(
+      bool success,
+      std::string const& code,
+      std::string const& method,
+      std::string const& fail_reason)
     {
-      this->_dispatch(std::bind(&Reporter::_user_sent_sms_ghost_code,
+      this->_dispatch(std::bind(&Reporter::_user_sent_invitation_message,
                                 std::placeholders::_1,
                                 success,
                                 code,
+                                method,
                                 fail_reason));
     }
 

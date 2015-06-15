@@ -359,14 +359,17 @@ namespace infinit
     }
 
     void
-    JSONReporter::_user_sent_sms_ghost_code(bool success,
-                                            std::string const& code,
-                                            std::string const& fail_reason)
+    JSONReporter::_user_sent_invitation_message(
+      bool success,
+      std::string const& code,
+      std::string const& method,
+      std::string const& fail_reason)
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] =
         std::string("app/send_sms_ghost_code");
       data[this->_key_str(JSONKey::ghost_code)] = code;
+      data[this->_key_str(JSONKey::method)] = method;
       data[this->_key_str(JSONKey::fail_reason)] = fail_reason;
       data[this->_key_str(JSONKey::status)] = this->_status_string(success);
       this->_send(this->_user_dest, data);
@@ -540,6 +543,8 @@ namespace infinit
           return "message";
         case JSONKey::message_length:
           return "message_length";
+        case JSONKey::method:
+          return "method";
         case JSONKey::onboarding:
           return "onboarding";
         case JSONKey::proxy_type:

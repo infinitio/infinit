@@ -372,12 +372,14 @@ namespace infinit
     }
 
     void
-    Reporter::user_sent_sms_ghost_code(bool success,
-                                       std::string const& code,
-                                       std::string const& fail_reason)
+    Reporter::user_sent_invitation_message(bool success,
+                                           std::string const& code,
+                                           std::string const& method,
+                                           std::string const& fail_reason)
     {
       this->_push(std::bind(
-        &Reporter::_user_sent_sms_ghost_code, this, success, code, fail_reason));
+        &Reporter::_user_sent_invitation_message, this, success, code, method,
+        fail_reason));
     }
 
     void
@@ -601,9 +603,10 @@ namespace infinit
     {}
 
     void
-    Reporter::_user_sent_sms_ghost_code(bool success,
-                                        std::string const& code,
-                                        std::string const& fail_reason)
+    Reporter::_user_sent_invitation_message(bool success,
+                                            std::string const& code,
+                                            std::string const& method,
+                                            std::string const& fail_reason)
     {}
 
     /*--------------------------.
