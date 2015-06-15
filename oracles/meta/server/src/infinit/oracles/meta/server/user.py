@@ -3154,17 +3154,25 @@ class Mixin:
         elle.log.log('Exception while inserting contacts: %s' % e)
     return self.success()
 
+  ## ------------------ ##
+  ## User images helper ##
+  ## ------------------ ##
+
   def __check_gcs(self):
     if self.gcs is None:
       self.not_implemented({
         'reason': 'GCS support not enabled',
       })
 
-  @api('/user/backgrounds/<name>', method = 'PUT')
-  @require_logged_in
-  def user_background_put_api(self, name):
+  def __user_image_name(self, name, user):
+    if user:
+      return '%s/%s' % (user['_id'], name)
+    else:
+      return str(user['_id'])
+
+  def __user_upload_image(self, bucket, name, user):
     self.__check_gcs()
-    self.require_premium(self.user)
+    self.require_premium(user)
     t = bottle.request.headers['Content-Type']
     l = bottle.request.headers['Content-Length']
     if t not in ['image/gif', 'image/jpeg', 'image/png']:
@@ -3173,13 +3181,42 @@ class Mixin:
         'mime-type': t,
       })
     url = self.gcs.upload_url(
-      'backgrounds', '%s/%s' % (self.user['_id'], name),
+      bucket,
+      self.__user_image_name(name, user),
       content_type = t,
       content_length = l,
       expiration = datetime.timedelta(minutes = 3),
     )
     bottle.response.status = 307
     bottle.response.headers['Location'] = url
+
+  def __user_get_image(self, bucket, name, user):
+    self.__check_gcs()
+    self.require_premium(user)
+    url = self.gcs.download_url(
+      bucket,
+      self.__user_image_name(name, user),
+      expiration = datetime.timedelta(minutes = 3),
+    )
+    bottle.response.status = 307
+    bottle.response.headers['Location'] = url
+
+  def __user_delete_image(self, bucket, name, user):
+    self.__check_gcs()
+    self.require_premium(user)
+    self.gcs.delete(
+      bucket,
+      self.__user_image_name(name, user))
+    self.no_content()
+
+  ## ----------- ##
+  ## Backgrounds ##
+  ## ----------- ##
+
+  @api('/user/backgrounds/<name>', method = 'PUT')
+  @require_logged_in
+  def user_background_put_api(self, name):
+    return self.__user_upload_image('backgrounds', name, self.user)
 
   @api('/user/backgrounds/<name>', method = 'GET')
   @require_logged_in
@@ -3192,32 +3229,25 @@ class Mixin:
       self.user_from_identifier(user_id, fields = ['plan']), name)
 
   def user_background_get(self, user, name):
-    self.__check_gcs()
-    self.require_premium(user)
-    url = self.gcs.download_url(
-      'backgrounds', '%s/%s' % (user['_id'], name),
-      expiration = datetime.timedelta(minutes = 3),
-    )
-    bottle.response.status = 307
-    bottle.response.headers['Location'] = url
+    return self.__user_get_image('backgrounds', name, user)
 
   @api('/user/backgrounds/<name>', method = 'DELETE')
   @require_logged_in
-  def user_background_put_api(self, name):
-    self.__check_gcs()
-    self.require_premium(self.user)
-    self.gcs.delete(
-      'backgrounds', '%s/%s' % (self.user['_id'], name))
-    self.no_content()
+  def user_background_delete_api(self, name):
+    return self.__user_delete_image('backgrounds', name, self.user)
 
   @api('/user/backgrounds', method = 'GET')
   @require_logged_in
-  def user_background_put_api(self):
+  def user_background_list_api(self):
     self.__check_gcs()
     return {
       'backgrounds': self.gcs.bucket_list('backgrounds',
                                           prefix = self.user['_id']),
     }
+
+  ## -------------- ##
+  ## Custom domains ##
+  ## -------------- ##
 
   def __user_account_domains_edit(self, name, action):
     domain = {'name': name}
