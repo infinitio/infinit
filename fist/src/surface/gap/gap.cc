@@ -371,6 +371,7 @@ gap_plain_invite_contact(gap_State* state,
       }
       catch (infinit::state::InvitationError const&)
       {
+        ELLE_WARN("unable to plain invite contact: %s", identifier);
         return gap_email_already_registered;
       }
     });
@@ -1811,20 +1812,35 @@ gap_send_generic_metric(gap_State* state,
 }
 
 gap_Status
-gap_send_sms_ghost_code_metric(gap_State* state,
-                               bool success,
-                               std::string const& code,
-                               std::string const& fail_reason)
+gap_invitation_message_sent_metric(gap_State* state,
+                                   bool success,
+                                   std::string const& code,
+                                   gap_InviteMessageMethod method,
+                                   std::string const& fail_reason)
 {
   ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
-    "gap send sms ghost metric",
-    [&] (surface::gap::State& state)
+    "send invitation message metric",
+    [&] (surface::gap::State& state) -> gap_Status
     {
-      state.metrics_reporter()->user_sent_sms_ghost_code(success,
-                                                         code,
-                                                         fail_reason);
+      std::string method_str;
+      switch (method)
+      {
+        case gap_invite_message_email:
+          method_str = "email";
+          break;
+        case gap_invite_message_native:
+          method_str = "native";
+          break;
+        case gap_invite_message_whatsapp:
+          method_str = "whatsapp";
+          break;
+      }
+      state.metrics_reporter()->user_sent_invitation_message(success,
+                                                             code,
+                                                             method_str,
+                                                             fail_reason);
       return gap_ok;
     });
 }

@@ -484,10 +484,11 @@ gap_send_generic_metric(gap_State* state,
                         Additionals additional = Additionals{});
 
 gap_Status
-gap_send_sms_ghost_code_metric(gap_State* state,
-                               bool success,
-                               std::string const& code,
-                               std::string const& fail_reason);
+gap_invitation_message_sent_metric(gap_State* state,
+                                   bool success,
+                                   std::string const& code,
+                                   gap_InviteMessageMethod method,
+                                   std::string const& fail_reason);
 
 /// Send user report
 gap_Status
