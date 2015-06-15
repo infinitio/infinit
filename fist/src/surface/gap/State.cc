@@ -1549,18 +1549,10 @@ namespace surface
     surface::gap::PlainInvitation
     State::plain_invite_contact(std::string const& identifier)
     {
-      try
-      {
-        auto const& meta_invite = this->meta().plain_invite_contact(identifier);
-        return surface::gap::PlainInvitation(meta_invite.identifier(),
-                                             meta_invite.ghost_code(),
-                                             meta_invite.ghost_profile_url());
-      }
-      catch (infinit::state::InvitationError const&)
-      {
-        ELLE_WARN("%s: unable to plain invite contact: %s", *this, identifier);
-        return surface::gap::PlainInvitation();
-      }
+      auto const& meta_invite = this->meta().plain_invite_contact(identifier);
+      return surface::gap::PlainInvitation(meta_invite.identifier(),
+                                           meta_invite.ghost_code(),
+                                           meta_invite.ghost_profile_url());
     }
 
     /*-----------.
