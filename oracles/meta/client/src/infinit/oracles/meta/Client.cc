@@ -711,7 +711,7 @@ namespace infinit
       Client::synchronize(bool init) const
       {
         std::string url = elle::sprintf("/user/synchronize?init=%s",
-                                        init);
+                                        init ? 1 : 0);
         auto request = this->_request(url, Method::GET);
         SerializerIn input(url, request);
         return SynchronizeResponse{input};
