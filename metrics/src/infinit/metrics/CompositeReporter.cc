@@ -192,10 +192,11 @@ namespace infinit
     }
 
     void
-    CompositeReporter::_transaction_transfer_begin(std::string const& transaction_id,
-                                                   TransferMethod method,
-                                                   float initialization_time,
-                                                   int attempt)
+    CompositeReporter::_transaction_transfer_begin(
+      std::string const& transaction_id,
+      TransferMethod method,
+      float initialization_time,
+      int attempt)
     {
       this->_dispatch(std::bind(&Reporter::_transaction_transfer_begin,
                                 std::placeholders::_1,
@@ -206,13 +207,14 @@ namespace infinit
     }
 
     void
-    CompositeReporter::_transaction_transfer_end(std::string const& transaction_id,
-                                                 TransferMethod method,
-                                                 float duration,
-                                                 uint64_t bytes_transfered,
-                                                 TransferExitReason reason,
-                                                 std::string const& message,
-                                                 int attempt)
+    CompositeReporter::_transaction_transfer_end(
+      std::string const& transaction_id,
+      TransferMethod method,
+      float duration,
+      uint64_t bytes_transfered,
+      TransferExitReason reason,
+      std::string const& message,
+      int attempt)
     {
       this->_dispatch(std::bind(&Reporter::_transaction_transfer_end,
                                 std::placeholders::_1,
@@ -371,7 +373,11 @@ namespace infinit
                            std::string const& from,
                            Additional const& additional)
     {
-      this->_dispatch(std::bind(&Reporter::_ui, std::placeholders::_1, event, from, additional));
+      this->_dispatch(std::bind(&Reporter::_ui,
+                                std::placeholders::_1,
+                                event,
+                                from,
+                                additional));
     }
   }
 }
