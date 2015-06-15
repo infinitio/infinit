@@ -13,10 +13,10 @@ with Meta() as meta:
     else:
       throws(get, 402)
   def check_domains(expected):
-    assertEq(user.get('user/account').get('custom-domains', []),
+    assertEq(user.get('user/account').get('custom_domains', []),
              expected)
   def action(action):
-    return action('user/account/custom-domains/%s' % domain,
+    return action('user/account/custom_domains/%s' % domain,
                   raw = True)
   user = User(meta, 'user@infinit.io')
   user.login()

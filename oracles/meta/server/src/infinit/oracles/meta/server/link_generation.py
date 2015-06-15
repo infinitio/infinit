@@ -578,13 +578,13 @@ class Mixin:
       owner = self.database.users.find_one(
         {'_id': link['sender_id']},
         fields = ['plan',
-                  'account.custom-domains',
+                  'account.custom_domains',
                   'account.default_background'])
       if custom_domain is not None:
         self.require_premium(owner)
         account = owner.get('account')
         domains = (d['name']
-                   for d in (account.get('custom-domains', ())
+                   for d in (account.get('custom_domains', ())
                              if account is not None else ()))
         if custom_domain not in domains:
           self.payment_required({

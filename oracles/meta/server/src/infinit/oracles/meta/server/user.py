@@ -3235,15 +3235,15 @@ class Mixin:
     domain = {'name': name}
     user = self.database.users.find_and_modify(
       {'_id': self.user['_id']},
-      {action: {'account.custom-domains': domain}},
+      {action: {'account.custom_domains': domain}},
       new = False,
     )
     account = user.get('account')
     domains = \
-      account.get('custom-domains') if account is not None else ()
+      account.get('custom_domains') if account is not None else ()
     return next(filter(lambda d: d['name'] == name, domains), None), domain
 
-  @api('/user/account/custom-domains/<name>', method = 'PUT')
+  @api('/user/account/custom_domains/<name>', method = 'PUT')
   @require_logged_in
   def user_account_domains_post_api(self, name):
     old, new = self.__user_account_domains_edit(name, '$addToSet')
@@ -3251,7 +3251,7 @@ class Mixin:
       bottle.response.status = 201
     return new
 
-  @api('/user/account/custom-domains/<name>', method = 'DELETE')
+  @api('/user/account/custom_domains/<name>', method = 'DELETE')
   @require_logged_in
   def user_account_patch_api(self, name):
     old, new = self.__user_account_domains_edit(name, '$pull')
