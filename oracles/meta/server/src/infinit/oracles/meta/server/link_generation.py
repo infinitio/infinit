@@ -578,12 +578,14 @@ class Mixin:
           'reason': 'link not found',
           'hash': hash,
         })
+      owner = self.database.users.find_one(
+        {'_id': link['sender_id']},
+        fields = ['plan',
+                  'account.custom-domains',
+                  'account.default_background'])
       if custom_domain is not None:
-        user = self.database.users.find_one(
-          {'_id': link['sender_id']},
-          fields = ['plan', 'account.custom-domains'])
-        self.require_premium(user)
-        account = user.get('account')
+        self.require_premium(owner)
+        account = owner.get('account')
         domains = (d['name']
                    for d in (account.get('custom-domains', ())
                              if account is not None else ()))
@@ -663,6 +665,9 @@ class Mixin:
         recipient_ids = {link['sender_id']},
         message = owner_link,
       )
+      if web_link.get('background') is None:
+        web_link['background'] = \
+          owner.get('account', {}).get('default_background')
       return web_link
 
   @api('/links')
