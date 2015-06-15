@@ -546,8 +546,9 @@ class Mixin:
           'sender_device_id',
           'status',
       ])
-    if link.get('link', None) is not None:
+    if link.get('link') is not None:
       ret_link['link'] = link['link']
+    ret_link['password'] = link.get('password') is not None
     return ret_link
 
   @api('/links/<hash>')
