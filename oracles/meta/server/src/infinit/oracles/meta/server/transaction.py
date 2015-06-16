@@ -628,22 +628,25 @@ class Mixin:
 
   def __delight(self, user, template, transaction, peer):
     if 'delight' not in user.get('emailing', {}):
-      self.database.users.update(
-        {'_id': user['_id']},
-        {'$set': {'emailing.delight': template}},
-      )
-      self.emailer.send_one(
-        template,
-        recipient_email = user['email'],
-        recipient_name = user['fullname'],
-        variables = {
-          'user': self.email_user_vars(user),
-          'peer': self.email_user_vars(peer),
-          'transaction':
-            self.email_transaction_vars(transaction, user),
-          'login_token': self.login_token(user['email']),
-        },
-      )
+      with elle.log.trace(
+          '%s: send %r delight email to %s for transaction %s' % \
+          (self, template, user['email'], transaction['_id'])):
+        self.database.users.update(
+          {'_id': user['_id']},
+          {'$set': {'emailing.delight': template}},
+        )
+        self.emailer.send_one(
+          template,
+          recipient_email = user['email'],
+          recipient_name = user['fullname'],
+          variables = {
+            'user': self.email_user_vars(user),
+            'peer': self.email_user_vars(peer),
+            'transaction':
+              self.email_transaction_vars(transaction, user),
+            'login_token': self.login_token(user['email']),
+          },
+        )
 
   def __update_transaction_stats(self,
                                  user,
