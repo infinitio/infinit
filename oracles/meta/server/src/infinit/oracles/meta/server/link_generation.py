@@ -68,69 +68,30 @@ class Mixin:
       encoded_hash = self._basex_encode(link_hash)
       return encoded_hash[:encoded_hash_length]
 
-  def _get_aws_credentials(self, user, link_id):
-    """
-    Fetch AWS credentials.
-    """
-
-    if conf.USE_GCS:
-      link = self.database.links.find_one({'_id': link_id})
-      file_name = link['name']
-      token_maker = cloud_buffer_token_gcs.CloudBufferTokenGCS(
-        link_id, file_name, self.gcs_link_bucket)
-      url = token_maker.get_upload_token()
-      credentials = dict()
-      credentials['protocol']          = 'gcs'
-      now = time.strftime('%Y-%m-%dT%H-%M-%SZ', time.gmtime())
-      credentials['current_time']      = now
-      credentials['expiration']        = (datetime.date.today()+datetime.timedelta(days=7)).isoformat()
-      credentials['url'] = url
-    else:
-      token_maker = cloud_buffer_token.CloudBufferToken(
-        user['_id'], link_id, 'ALL',
-        aws_region = self.aws_region, bucket_name = self.aws_link_bucket)
-      raw_creds = token_maker.generate_s3_token()
-
-      if raw_creds is None:
-        return None
-
-      credentials = dict()
-      credentials['access_key_id']     = raw_creds['AccessKeyId']
-      credentials['bucket']            = self.aws_link_bucket
-      credentials['expiration']        = raw_creds['Expiration']
-      credentials['folder']            = link_id
-      credentials['protocol']          = 'aws'
-      credentials['region']            = self.aws_region
-      credentials['secret_access_key'] = raw_creds['SecretAccessKey']
-      credentials['session_token']     = raw_creds['SessionToken']
-      now = time.strftime('%Y-%m-%dT%H-%M-%SZ', time.gmtime())
-      credentials['current_time']      = now
-
-    return credentials
-
   def _make_share_link(self, hash):
     return str('%(short_host)s/%(hash)s' % {'short_host': short_host,
                                             'hash': hash})
 
+  ## ----------------- ##
+  ## Cloud credentials ##
+  ## ----------------- ##
+
   @api('/link/<link_id>/credentials', method = 'GET')
   @require_logged_in
   def get_link_credentials(self, link_id: bson.ObjectId):
-    """
-    Fetch AWS credentials from DB.
-    """
     return self.__credentials(link_id, False)
 
   @api('/link/<link_id>/credentials', method = 'POST')
   @require_logged_in
   def make_link_credentials(self, link_id: bson.ObjectId):
     """
-    Generate new AWS credentials and save them to the DB.
+    Generate new cloud credentials and save them to the DB.
     """
     return self.__credentials(link_id, True)
 
   def __credentials(self, link_id, regenerate = False):
     with elle.log.trace(
-        'fetch AWS credentials for user (%s) and link (%s)' %
+        'fetch cloud credentials for user (%s) and link (%s)' %
         (self.user['_id'], link_id)):
       user = self.user
       link = self.database.links.find_one({'_id': link_id})
@@ -141,15 +102,27 @@ class Mixin:
       if link['sender_id'] != user['_id']:
         self.forbidden()
       if link['aws_credentials'] is None or regenerate:
-        credentials = self._get_aws_credentials(user, link_id)
-        if credentials is None:
-          self.fail(error.UNABLE_TO_GET_AWS_CREDENTIALS)
+        credentials = self.__generate_credentials(user, link_id)
         self.database.links.update(
           {'_id': link_id},
           {'$set': {'aws_credentials': credentials}})
         return credentials
       else:
         return link['aws_credentials']
+
+  def __generate_credentials(self, user, link_id):
+    link = self.database.links.find_one({'_id': link_id})
+    file_name = link['name']
+    token_maker = cloud_buffer_token_gcs.CloudBufferTokenGCS(
+      link_id, file_name, self.gcs_link_bucket)
+    url = token_maker.get_upload_token()
+    credentials = dict()
+    credentials['protocol']          = 'gcs'
+    now = time.strftime('%Y-%m-%dT%H-%M-%SZ', time.gmtime())
+    credentials['current_time']      = now
+    credentials['expiration']        = (datetime.date.today()+datetime.timedelta(days=7)).isoformat()
+    credentials['url'] = url
+    return credentials
 
   def _link_check_quota(self, user):
     elle.log.trace('checking link quota')
@@ -274,9 +247,7 @@ class Mixin:
         counts = ['sent_link', 'sent'],
         pending = link,
         time = True)
-      credentials = self._get_aws_credentials(user, link_id)
-      if credentials is None:
-        self.fail(error.UNABLE_TO_GET_AWS_CREDENTIALS)
+      credentials = self.__generate_credentials(user, link_id)
       link = self.database.links.find_and_modify(
         {'_id': link_id},
         {'$set': {
