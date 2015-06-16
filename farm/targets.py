@@ -14,8 +14,8 @@ def targets(action):
   else:
     yield '//oracles/meta/client/%s' % action
     yield '//oracles/trophonius/client/%s' % action
-  # XXX: Until moc fix on Windows, only run fist-gui-qt/build target on unix.
-  if osyst != 'win':
+  # XXX: Until moc fix on Windows, only run fist-gui-qt/build target on linux.
+  if osyst.startswith('linux'):
     yield '//fist-gui-qt/%s' % action
   if action == 'build':
     yield '//python'
