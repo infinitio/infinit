@@ -347,6 +347,8 @@ class Mixin:
     ))
     if link['expiry_time'] is None: # Needed until 0.9.9.
       link['expiry_time'] = 0
+    if link['screenshot'] is None: # Links prior to 0.9.37
+      link['screenshot'] = False
     link['files'] = [(f['name'], f['size']) for f in link['files']]
     return link
 
