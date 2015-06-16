@@ -95,8 +95,9 @@ class CloudBufferTokenGCS:
       "m4v": "video/mp4",
     }
     content_type = mimetypes.get(self.file_name.split('.')[-1], 'application/octet-stream')
+    encoded_file_name = urllib.parse.quote(self.file_name)
     r = requests.post('https://%s.%s/%s/%s' % (self.bucket, CloudBufferTokenGCS.host,
-                                               self.transaction_id, self.file_name),
+                                               self.transaction_id, encoded_file_name),
                  headers = {
                   'Authorization' : 'Bearer ' + creds,
                   'Content-Length': '0',
