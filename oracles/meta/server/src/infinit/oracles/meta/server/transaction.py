@@ -615,9 +615,10 @@ class Mixin:
         transaction_id = self.database.transactions.insert(transaction)
       transaction['_id'] = transaction_id
       self._increase_swag(sender['_id'], recipient['_id'])
-      if  recipient_device_id is None and recipient['_id'] == sender['_id']:
+      if recipient['_id'] == sender['_id']:
         self.__delight(recipient, 'Send to Self',
-                       transaction, recipient)
+                       transaction, recipient,
+                       send = recipient_device_id is None)
       recipient_view = self.__user_view(recipient)
       return self.success({
           'created_transaction_id': transaction_id,
@@ -626,7 +627,7 @@ class Mixin:
           'recipient': recipient_view,
         })
 
-  def __delight(self, user, template, transaction, peer):
+  def __delight(self, user, template, transaction, peer, send = True):
     if 'delight' not in user.get('emailing', {}):
       with elle.log.trace(
           '%s: send %r delight email to %s for transaction %s' % \
@@ -635,18 +636,19 @@ class Mixin:
           {'_id': user['_id']},
           {'$set': {'emailing.delight': template}},
         )
-        self.emailer.send_one(
-          template,
-          recipient_email = user['email'],
-          recipient_name = user['fullname'],
-          variables = {
-            'user': self.email_user_vars(user),
-            'peer': self.email_user_vars(peer),
-            'transaction':
-              self.email_transaction_vars(transaction, user),
-            'login_token': self.login_token(user['email']),
-          },
-        )
+        if send:
+          self.emailer.send_one(
+            template,
+            recipient_email = user['email'],
+            recipient_name = user['fullname'],
+            variables = {
+              'user': self.email_user_vars(user),
+              'peer': self.email_user_vars(peer),
+              'transaction':
+                self.email_transaction_vars(transaction, user),
+              'login_token': self.login_token(user['email']),
+            },
+          )
 
   def __update_transaction_stats(self,
                                  user,
@@ -676,7 +678,6 @@ class Mixin:
 
   def __complete_transaction_pending_stats(self, user, transaction):
     self.__complete_transaction_stats(user, transaction, 'pending')
-
 
   def __complete_transaction_unaccepted_stats(self, user, transaction):
     self.__complete_transaction_stats(user, transaction, 'unaccepted')
