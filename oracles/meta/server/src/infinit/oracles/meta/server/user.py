@@ -2,7 +2,6 @@
 
 import bottle
 import bson
-import collections
 import datetime
 import json
 import bson.code
@@ -17,6 +16,7 @@ import infinit.oracles.emailer
 
 from .plugins.response import response, Response
 from .utils import api, require_logged_in, require_logged_in_fields, require_admin, require_logged_in_or_admin, hash_password, json_value, require_key, key, clean_up_phone_number
+from .utils import sort_dict
 from . import utils
 from . import error, notifier, regexp, conf, invitation, mail, transaction_status
 
@@ -784,7 +784,7 @@ class Mixin:
         'devices': [],
         'notifications': [],
         'old_notifications': [],
-        'accounts': [collections.OrderedDict((('id', email), ('type', 'email')))],
+        'accounts': [sort_dict({'id': email, 'type': 'email'})],
         'creation_time': self.now,
         'plan': 'basic',
         'quota': quota,
@@ -1254,8 +1254,7 @@ class Mixin:
       update = {
         '$addToSet':
         {
-          'accounts': collections.OrderedDict
-          ([('id', email), ('type', 'email')]),
+          'accounts': sort_dict({'id': email, 'type': 'email'}),
         }
       }
       user = self.user_from_identifier(user, fields = ['accounts'])
@@ -1308,7 +1307,8 @@ class Mixin:
         'email': {'$ne': email} # Not the primary email.
       },
       {
-        '$pull': {'accounts': collections.OrderedDict((('id', email), ('type', 'email')))}
+        '$pull': {'accounts': sort_dict({'id': email,
+                                         'type': 'email'})},
       })
     if res['n'] == 0:
       return self.not_found({
@@ -2479,7 +2479,7 @@ class Mixin:
       update_action = status and '$addToSet' or '$pull'
       action = {}
       if version is not None:
-        version = collections.OrderedDict(sorted(version.items()))
+        version = sort_dict(version)
       match = {
         '_id': user_id,
         'devices': {'$elemMatch': {'id': str(device_id)}},
@@ -2614,8 +2614,9 @@ class Mixin:
 
     self.database.users.update(
       {'_id': self.user['_id']},
-      {'$set': {'unsubscriptions.%s' % k: v
-                for k, v in kwargs.items()}})
+      {'$set': sort_dict({'unsubscriptions.%s' % k: v
+                          for k, v in kwargs.items()})},
+    )
     return kwargs
 
   ## --------- ##

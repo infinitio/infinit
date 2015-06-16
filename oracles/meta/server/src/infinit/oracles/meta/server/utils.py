@@ -1,5 +1,6 @@
 import bottle
 import bson
+import collections
 import decorator
 import inspect
 import iso8601
@@ -164,6 +165,9 @@ def identifier(user_identifier, country_code = None):
       if phone_number is not None:
         return phone_number
     return user_identifier
+
+def sort_dict(d):
+  return collections.OrderedDict(sorted(d.items()))
 
 def date_time(str):
   return iso8601.parse_date(str)
