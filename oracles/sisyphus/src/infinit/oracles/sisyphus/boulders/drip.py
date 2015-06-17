@@ -457,7 +457,8 @@ class GhostReminder(Drip):
 
   def _user(self, transaction):
     recipient = transaction['recipient_id']
-    return self.sisyphus.mongo.meta.users.find_one(recipient)
+    return self.sisyphus.mongo.meta.users.find_one(
+      recipient, fields = self.user_fields)
 
   def _vars(self, transaction, recipient):
     sender_id = transaction['sender_id']
