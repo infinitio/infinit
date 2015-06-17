@@ -761,6 +761,25 @@ namespace infinit
       }
 
       void
+      Client::send_invite(std::string const& destination,
+                          std::string const& message,
+                          std::string const& ghost_code) const
+      {
+        auto request = this->_request(
+          "/user/send_invite",
+          Method::POST,
+          [&] (reactor::http::Request& r)
+          {
+            elle::serialization::json::SerializerOut output(r, false);
+            output.serialize("destination",
+                             const_cast<std::string&>(destination));
+            output.serialize("message", const_cast<std::string&>(message));
+            output.serialize("ghost_code",
+                             const_cast<std::string&>(ghost_code));
+          });
+      }
+
+      void
       Client::use_ghost_code(std::string const& code_) const
       {
         reactor::http::EscapedString code{code_};

@@ -512,6 +512,11 @@ namespace infinit
         plain_invite_contact(std::string const& identifier) const;
 
         void
+        send_invite(std::string const& destination,
+                    std::string const& message,
+                    std::string const& ghost_code) const;
+
+        void
         use_ghost_code(std::string const& code) const;
 
         bool
