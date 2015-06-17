@@ -3445,6 +3445,14 @@ class Mixin:
       self.forbidden({'reason': e.args[0]})
     return {}
 
+  @api('/user/send_invite', method = 'POST')
+  @require_logged_in
+  def user_send_invite(self,
+                       destination: str,
+                       message: str,
+                       ghost_code: str):
+    return {}
+
   @api('/user/referral_code')
   @require_logged_in_fields(['referral_code'])
   def user_referral_code(self):
