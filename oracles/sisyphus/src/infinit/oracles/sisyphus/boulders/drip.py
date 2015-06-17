@@ -674,7 +674,8 @@ class ActivityReminder(Drip):
 class Tips(Drip):
 
   def __init__(self, sisyphus, pretend = False):
-    super().__init__(sisyphus, 'tips', 'users', pretend)
+    super().__init__(sisyphus, 'tips', 'users',
+                     pretend, list = 'tips')
     self.sisyphus.mongo.meta.users.ensure_index(
       [
         ('emailing.tips.state', pymongo.ASCENDING),
