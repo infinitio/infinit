@@ -803,6 +803,12 @@ namespace surface
       surface::gap::PlainInvitation
       plain_invite_contact(std::string const& identifier);
 
+      void
+      send_invite(std::string const& destination,
+                  std::string const& message,
+                  std::string const& ghost_code);
+
+
     /*------------.
     | Ghost codes |
     `------------*/

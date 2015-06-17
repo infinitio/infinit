@@ -1555,6 +1555,14 @@ namespace surface
                                            meta_invite.ghost_profile_url());
     }
 
+    void
+    State::send_invite(std::string const& destination,
+                       std::string const& message,
+                       std::string const& ghost_code)
+    {
+      this->meta().send_invite(destination, message, ghost_code);
+    }
+
     /*-----------.
     | Ghost code |
     `-----------*/
