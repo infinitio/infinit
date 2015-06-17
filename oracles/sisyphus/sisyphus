@@ -56,6 +56,10 @@ if options.mongo_host:
 swu_key = 'live_7e775f6f0e1404802a5fbbc0fcfa9c238b065c49'
 # Send to mefyl@infinit.io
 # swu_key = 'test_8a19af75d006192a3e51dcab310fa1ed428e53ba'
+# Send to julien@infinit.io
+# swu_key = 'test_ba7aa36c79a43f9d82cfc83a5da1e9d605ef4dbf'
+# Don't send
+# swu_key = 'test_26008542af128a451ffd05a954c971066219b090'
 
 args['emailer'] = infinit.oracles.emailer.SendWithUsEmailer(
   api_key = swu_key)
@@ -64,14 +68,13 @@ args['metrics'] = infinit.oracles.metrics.Metrics()
 app = infinit.oracles.sisyphus.Sisyphus(**args)
 
 pretend = False
-# infinit.oracles.sisyphus.boulders.drip.ActivityReminder(app, pretend = pretend)
+
 infinit.oracles.sisyphus.boulders.drip.ConfirmSignup(app, pretend = pretend)
-infinit.oracles.sisyphus.boulders.drip.DelightRecipient(app, pretend = pretend)
-infinit.oracles.sisyphus.boulders.drip.DelightSender(app, pretend = pretend)
 infinit.oracles.sisyphus.boulders.drip.GhostReminder(app, pretend = pretend)
 infinit.oracles.sisyphus.boulders.drip.Onboarding(app, pretend = pretend)
-infinit.oracles.sisyphus.boulders.drip.Retention(app, pretend = pretend)
-# infinit.oracles.sisyphus.boulders.drip.WeeklyReport(app, pretend = pretend)
+infinit.oracles.sisyphus.boulders.drip.Tips(app, pretend = pretend)
+
+# infinit.oracles.sisyphus.boulders.drip.ActivityReminder(app, pretend = pretend)
 
 apns_cert = '%s/../share/aps.pem' % SELF_DIR
 apns_cert_prod = '%s/../share/aps_production.pem' % SELF_DIR
