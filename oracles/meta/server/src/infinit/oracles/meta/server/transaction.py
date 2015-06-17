@@ -874,6 +874,7 @@ class Mixin:
           'Transfer (Initial)',
           recipient_email = peer_email,
           sender_name = '%s via Infinit' % user['fullname'],
+          reply_to = user['email'],
           variables = variables,
         )
       return {

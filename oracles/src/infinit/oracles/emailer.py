@@ -19,6 +19,7 @@ class NoopEmailer(Emailer):
                recipient_name = None,
                sender_email = None,
                sender_name = None,
+               reply_to = None,
                variables = None,
              ):
     pass
@@ -80,6 +81,7 @@ class SendWithUsEmailer(Emailer):
                recipient_name = None,
                sender_email = None,
                sender_name = None,
+               reply_to = None,
                variables = None,
                ):
     return self.__send_one(self.__template(template),
@@ -87,6 +89,7 @@ class SendWithUsEmailer(Emailer):
                            recipient_name,
                            sender_email,
                            sender_name,
+                           reply_to,
                            variables,
                            self.__swu,
                          )
@@ -97,6 +100,7 @@ class SendWithUsEmailer(Emailer):
                  recipient_name,
                  sender_email,
                  sender_name,
+                 reply_to,
                  variables,
                  swu,
                ):
@@ -107,6 +111,8 @@ class SendWithUsEmailer(Emailer):
         sender['address'] = sender_email
       if sender_name is not None:
         sender['name'] = sender_name
+      if reply_to is not None:
+        sender['reply_to'] = reply_to
     recipient = {
       'address': recipient_email,
     }
@@ -129,15 +135,18 @@ class SendWithUsEmailer(Emailer):
                                           cls = self.__json_encoder))
         sender_name = None
         sender_email = None
+        reply_to = None
         if recipient.get('sender') is not None:
           sender_name = recipient['sender'].get('fullname')
           sender_email = recipient['sender'].get('email')
+          reply_to = recipient['sender'].get('reply-to')
         self.__send_one(
           template = template,
           recipient_email = email,
           recipient_name = recipient['name'],
           sender_name = sender_name,
           sender_email = sender_email,
+          reply_to = reply_to,
           variables = recipient['vars'],
           swu = swu)
       if swu.command_length() >= 100:

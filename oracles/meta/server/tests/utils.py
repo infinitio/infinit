@@ -342,6 +342,7 @@ class TestEmailer(infinit.oracles.emailer.Emailer):
                recipient_name = None,
                sender_email = None,
                sender_name = None,
+               reply_to = None,
                variables = None,
              ):
     o = Email()
