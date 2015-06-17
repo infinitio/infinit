@@ -523,8 +523,11 @@ class ConfirmSignup(Drip):
 
   def _vars(self, elt, user):
     return {
-      'confirm_key': key('/users/%s/confirm-email' % user['_id']),
-    }
+      'confirm_token': sign(
+        {'action': 'confirm_email', 'email': user['email']},
+        datetime.timedelta(days = 7),
+        self.now,
+      )}
 
 
 class ActivityReminder(Drip):

@@ -35,8 +35,7 @@ class ConfirmSignup(oracles.sisyphus.boulders.drip.ConfirmSignup):
 
 def check_mail(mails, recipient, template):
   utils.check_mail(mails, recipient, template)
-  assertEq(mails[0][1]['confirm_key'],
-           key('/users/%s/confirm-email' % mails[0][1]['user']['id']))
+  assert 'confirm_token' in mails[0][1]
 
 with mongobox.MongoBox() as mongo:
   with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
