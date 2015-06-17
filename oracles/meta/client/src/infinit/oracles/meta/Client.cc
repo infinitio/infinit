@@ -738,7 +738,7 @@ namespace infinit
         std::string url("/user/invite");
         auto request = this->_request(
           url,
-          Method::PUT,
+          Method::POST,
           [&] (reactor::http::Request& r)
           {
             elle::serialization::json::SerializerOut output(r, false);

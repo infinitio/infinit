@@ -3286,7 +3286,7 @@ class Mixin:
     )
     return update
 
-  @api('/user/invite', method = 'PUT')
+  @api('/user/invite', method = 'POST')
   @require_logged_in
   def user_invite(self, identifier):
     user = self.user
