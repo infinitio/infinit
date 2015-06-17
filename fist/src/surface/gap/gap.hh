@@ -123,6 +123,12 @@ gap_plain_invite_contact(gap_State* state,
                          surface::gap::PlainInvitation& res);
 
 gap_Status
+gap_send_invite(gap_State* state,
+                std::string const& destination,
+                std::string const& message,
+                std::string const& ghost_code);
+
+gap_Status
 gap_check_ghost_code(gap_State* state, std::string const& code, bool& res);
 
 gap_Status

@@ -378,6 +378,23 @@ gap_plain_invite_contact(gap_State* state,
 }
 
 gap_Status
+gap_send_invite(gap_State* state,
+                std::string const& destination,
+                std::string const& message,
+                std::string const& ghost_code)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "send invite",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      state.send_invite(destination, message, ghost_code);
+      return gap_ok;
+    });
+}
+
+gap_Status
 gap_check_ghost_code(gap_State* state, std::string const& code, bool& res)
 {
   ELLE_ASSERT(state != nullptr);
