@@ -898,7 +898,7 @@ namespace invitations
     std::string ghost_profile_url("https://infinit.io");
     HTTPServer s;
     s.register_route("/user/invite",
-                     reactor::http::Method::PUT,
+                     reactor::http::Method::POST,
                      [ghost_code, ghost_profile_url] (
                         HTTPServer::Headers const&,
                         HTTPServer::Cookies const&,
@@ -926,7 +926,7 @@ namespace invitations
   ELLE_TEST_SCHEDULED(plain_invite_error)
   {
     HTTPServer s;
-    s.register_route("/user/invite", reactor::http::Method::PUT,
+    s.register_route("/user/invite", reactor::http::Method::POST,
                      [] (HTTPServer::Headers const&,
                          HTTPServer::Cookies const&,
                          HTTPServer::Parameters const&,
