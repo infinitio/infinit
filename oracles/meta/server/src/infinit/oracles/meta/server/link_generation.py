@@ -520,17 +520,29 @@ class Mixin:
     ret_link['password'] = link.get('password') is not None
     return ret_link
 
-  @api('/links/<hash>')
-  def link_by_hash_api(self, hash,
+  @api('/links/<id_or_hash>')
+  def link_by_hash_api(self, id_or_hash,
                        password = None,
                        no_count: bool = False,
                        custom_domain = None):
-    return self.link_by_hash(
-      hash = hash,
-      password = password,
-      no_count = no_count,
-      custom_domain = custom_domain,
-    )
+    try:
+      link_id = bson.ObjectId(id_or_hash)
+      link = self.database.links.find_one({'_id': link_id})
+      if link is None:
+        self.not_found({
+          'reason': 'link not found',
+          'hash': hash,
+        })
+      if self.admin:
+        return self.__owner_link(link)
+      return self.__client_link(link)
+    except bson.errors.InvalidId:
+      return self.link_by_hash(
+        hash = id_or_hash,
+        password = password,
+        no_count = no_count,
+        custom_domain = custom_domain,
+      )
 
   # Deprecated in favor of /link/<hash>
   @api('/link/<hash>')
