@@ -925,6 +925,16 @@ class Mixin:
       # current_device is None if we do a delete user / reset account.
       if device_id is None and self.current_device is not None:
         device_id = str(self.current_device['id'])
+      if transaction_id == 'TransactionID':
+        raise Exception(
+          'onboarding transaction made it to the server: %s' %
+          {
+            'status': status,
+            'device_id': device_id,
+            'device_name': device_name,
+            'user': user,
+            'paused': paused,
+          })
       transaction_id = bson.ObjectId(transaction_id)
       transaction = self.transaction(transaction_id,
                                      owner_id = user['_id'])
