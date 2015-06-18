@@ -162,26 +162,21 @@ class Mixin:
       else:
         return self.success(transaction)
 
-  @api('/transactions/<id>/downloaded', method='POST')
+  @api('/transactions/<tid>/downloaded', method='POST')
   @require_key
-  def transaction_download_api(self, id: bson.ObjectId):
-    return self.transaction_download(id)
+  def transaction_download_api(self, tid: bson.ObjectId):
+    return self.transaction_download(tid)
 
-  def transaction_download(self, id: bson.ObjectId):
-    diff = {'status': transaction_status.FINISHED}
-    transaction = self.database.transactions.find_and_modify(
-      {'_id': id},
-      {'$set': diff},
-      new = False,
-    )
-    self.__complete_transaction_pending_stats(
-      transaction['recipient_id'], transaction)
-    # handle both negative search and empty transaction
+  def transaction_download(self, tid):
+    # Complete transactions stats first
+    transaction = self.database.transactions.find_one({'_id': tid})
     if not transaction or len(transaction) == 1:
       self.not_found({
-        'reason': 'transaction %s not found' % id,
-        'transaction_id': id,
+        'reason': 'transaction %s not found' % tid,
+        'transaction_id': tid,
       })
+    self.__complete_transaction_pending_stats(
+      transaction['recipient_id'], transaction)
     if transaction['status'] != transaction_status.FINISHED:
       self.__update_transaction_stats(
         transaction['recipient_id'],
@@ -191,10 +186,18 @@ class Mixin:
         transaction['sender_id'],
         counts = ['reached_peer', 'reached'],
         time = False)
+    # Update transaction
+    diff = {'status': transaction_status.FINISHED}
+    transaction = self.database.transactions.find_and_modify(
+      {'_id': tid},
+      {'$set': diff},
+      new = False,
+    )
+    if transaction['status'] != transaction_status.FINISHED:
       self.notifier.notify_some(
         notifier.PEER_TRANSACTION,
-        recipient_ids = {transaction['sender_id'],
-                         transaction['recipient_id']},
+        recipient_ids =
+          {transaction['sender_id'], transaction['recipient_id']},
         message = transaction,
       )
       return diff
