@@ -11,6 +11,7 @@ import re
 import stripe
 
 import elle.log
+from elle.log import log, trace, debug, dump
 import papier
 import infinit.oracles.emailer
 
@@ -615,27 +616,30 @@ class Mixin:
 
   def _user_from_session(self, fields):
     if hasattr(bottle.request, 'user'):
-      elle.log.trace('get user from session: cached')
+      dump('get user from session: cached')
       return bottle.request.user
     if not hasattr(bottle.request, 'session'):
-      elle.log.trace('get user from session: no session')
+      dump('get user from session: no session')
       return None
-    # For a smoother transition, sessions registered as
-    # email are still available.
-    methods = {'identifier': self._user_by_id, 'email': self.user_by_email}
-    with elle.log.trace('get user from session'):
-      elle.log.dump('session: %s' % bottle.request.session)
-      for key in methods:
-        identifier = bottle.request.session.get(key, None)
-        if identifier is not None:
-          elle.log.debug('get user from session by %s: %s' % (key, identifier))
-          user = methods[key](identifier,
-                              ensure_existence = False,
-                              fields = fields)
-          if user is not None:
-            bottle.request.user = user
-            return user
-      elle.log.trace('session not found')
+    # For a smoother transition, sessions registered as email are
+    # still available.
+    methods = {
+      'identifier': self._user_by_id,
+      'email': self.user_by_email,
+    }
+    with dump('get user from session: %s' % bottle.request.session):
+      for key, method in methods.items():
+        idt = bottle.request.session.get(key)
+        if idt is not None:
+          with debug('get user from session by %s: %s' % (key, idt)):
+            user = method(idt,
+                          ensure_existence = False,
+                          fields = fields)
+            if user is not None:
+              dump('user: %r' % user)
+              bottle.request.user = user
+              return user
+      elle.log.dump('session not found')
 
   ## -------- ##
   ## Register ##
