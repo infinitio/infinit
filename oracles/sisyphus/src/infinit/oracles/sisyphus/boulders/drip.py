@@ -535,7 +535,7 @@ class ConfirmSignup(Drip):
 
   @property
   def delay(self):
-    return datetime.timedelta(days = 5)
+    return datetime.timedelta(days = 3)
 
   def _vars(self, elt, user):
     return {
