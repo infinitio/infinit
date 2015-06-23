@@ -651,8 +651,8 @@ class Mixin:
                         password,
                         fullname,
                         source = None,
-                        activation_code = None,
-                        password_hash = None):
+                        password_hash = None,
+                        referral_code = None):
     if self.user is not None:
       return self.fail(error.ALREADY_LOGGED_IN)
     if password is None:
@@ -664,8 +664,8 @@ class Mixin:
                                 password = password,
                                 fullname = fullname,
                                 source = source,
-                                activation_code = activation_code,
-                                password_hash = password_hash)
+                                password_hash = password_hash,
+                                referral_code = referral_code)
       res = {
         'registered_user_id': user['id'],
         'invitation_source': '',
@@ -684,7 +684,8 @@ class Mixin:
                         facebook_user,
                         fields,
                         preferred_email = None,
-                        source = None):
+                        source = None,
+                        referral_code = None):
     # XXX: Make that cleaner...
     email = facebook_user.data.get('email', None)
     if email is not None:
@@ -719,7 +720,7 @@ class Mixin:
       source = source,
       email_is_already_confirmed = already_confirmed,
       extra_fields = extra_fields,
-      activation_code = None)
+      referral_code = referral_code)
     return self.user_by_facebook_id(
       facebook_user.facebook_id, fields = fields)
 
@@ -745,13 +746,12 @@ class Mixin:
                     source = None,
                     email_is_already_confirmed = False,
                     extra_fields = None,
-                    activation_code = None):
+                    referral_code = None):
     """Register a new user.
 
     email -- the account email.
     password -- the client side hashed password.
     fullname -- the user fullname.
-    activation_code -- the activation code.
     """
     _validators = [
       (fullname, regexp.FullnameValidator),
@@ -896,6 +896,25 @@ class Mixin:
               datetime.timedelta(days = 7)),
           },
         )
+      if referral_code:
+        self.database.users.update(
+          {'_id': user_id},
+          {'$set': {'used_referral_link': referral_code}}
+        )
+        try:
+          import base64
+          inviter_id = bson.ObjectId(base64.urlsafe_b64decode(referral_code))
+        except Exception as e:
+          inviter_id = None
+        if inviter_id:
+          inviter = self.database.users.find_one({'_id': inviter_id},
+                                                 fields = ['_id'])
+          if inviter:
+            self.process_referrals(user, [inviter['_id']],
+                                   inviter_bonus = 500e6,
+                                   invitee_bonus = 250e6,
+                                   inviter_cap = 16e9,
+                                   invitee_cap = 16e9)
       return self.__user_view(self.__user_fill(user))
 
   def __generate_identity(self, user, password):
@@ -1152,22 +1171,6 @@ class Mixin:
 
     code -- The code.
     """
-    if len(code) >= 10:
-      #referral code
-      if self.user.get('used_referral_link', None):
-        return {} # already used
-      self.database.users.update({'_id': self.user['_id']},
-                           {'$set': {'used_referral_link': code}})
-      inviter = self.database.users.find_one({'referral_code': code},
-                                       fields=['_id'])
-      if inviter == None:
-        return {}
-      self.process_referrals(self.user, [inviter['_id']],
-                             inviter_bonus = 500e6,
-                             invitee_bonus = 250e6,
-                             inviter_cap = 16e9,
-                             invitee_cap = 16e9)
-      return
     # Ghost code
     with elle.log.trace("merge ghost with code %s" % code):
       if len(code) == 0:
@@ -2834,6 +2837,7 @@ class Mixin:
         '$inc': { 'quota.total_link_size': invitee_bonus}
       },
     )
+
   @api('/users/<user>', method='PUT')
   @require_logged_in
   def user_update(self,
@@ -3460,14 +3464,11 @@ class Mixin:
                        ghost_code: str):
     return {}
 
-  @api('/user/referral_code')
-  @require_logged_in_fields(['referral_code'])
+  @api('/user/referral-code')
+  @require_logged_in
   def user_referral_code(self):
-    # We distinguish ghost code and referral code by their size
-    code = self.user.get('referral_code', None)
-    if not code:
-      code = self.generate_random_sequence(length=10)
-      self.database.users.update({'_id': self.user['_id']},
-                                 {'$set': {'referral_code': code}})
+    user_id_bin = self.user['_id'].binary
+    import base64
+    code = base64.urlsafe_b64encode(user_id_bin).decode('utf-8')
     count = self.database.users.find({'used_referral_link': code}).count()
-    return {'referral_code': code, 'count': count}
+    return {'referral_code': code, 'refer_count': count}
