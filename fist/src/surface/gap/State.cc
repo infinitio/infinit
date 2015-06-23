@@ -172,6 +172,7 @@ namespace surface
       , _reconnection_cooldown(10_sec)
       , _device_uuid(std::move(local_config.device_id()))
       , _device()
+      , _referral_code()
       , _login_watcher_thread(nullptr)
       , _authority(local_config.authority())
     {
@@ -1042,11 +1043,15 @@ namespace surface
       try
       {
         ELLE_DEBUG("register");
+        boost::optional<std::string> referral_code_opt;
+        if (this->_referral_code.length())
+          referral_code_opt = this->_referral_code;
         auto res =
           this->meta(false).register_(
             lower_email,
             fullname,
-            password);
+            password,
+            referral_code_opt);
         register_failed.abort();
         ELLE_DEBUG("registered new user %s <%s>", fullname, lower_email);
         infinit::metrics::Reporter::metric_sender_id(res.id);
@@ -1648,8 +1653,9 @@ namespace surface
         this->ghost_code_use(code, true);
       }
       else if (fingerprint != "0123456789ABCDEF")
-        throw elle::Error(
-          elle::sprintf("invalid fingerprint: %s", fingerprint));
+      {
+        this->_referral_code = fingerprint;
+      }
     }
 
     /*----------.

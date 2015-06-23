@@ -836,6 +836,7 @@ namespace surface
       void
       _ghost_code_use();
       ELLE_ATTRIBUTE(std::vector<GhostCode>, ghost_codes);
+      ELLE_ATTRIBUTE(std::string, referral_code);
 
     /*------------.
     | Fingerprint |
