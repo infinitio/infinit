@@ -92,7 +92,7 @@ def none(sisy, meta, tips, emailer):
   tid = transaction_create(
     meta, user, email,
     size = tips.big_transaction_threshold * 1.1)
-  meta.link_generate([('name', 3)], 'name', '', user,
+  meta.link_generate([('name', 3)], 'name', '', False, user,
                      {'id': 'device-id'})
   forward_and_check(email, tips, meta, None)
 check(none)
