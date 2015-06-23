@@ -517,7 +517,8 @@ namespace infinit
         RegisterResponse
         register_(std::string const& email,
                   std::string const& fullname,
-                  std::string const& password) const;
+                  std::string const& password,
+                  boost::optional<std::string> referral_code) const;
 
         User
         user(std::string const& id) const;

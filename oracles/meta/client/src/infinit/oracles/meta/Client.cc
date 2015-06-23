@@ -673,7 +673,8 @@ namespace infinit
       RegisterResponse
       Client::register_(std::string const& email,
                         std::string const& fullname,
-                        std::string const& password) const
+                        std::string const& password,
+                        boost::optional<std::string> referral_code) const
       {
         ELLE_TRACE_SCOPE("%s: register %s <%s>", *this, fullname, email);
         std::string source = "app";
@@ -690,9 +691,16 @@ namespace infinit
             elle::serialization::json::SerializerOut output(request, false);
             output.serialize("email", const_cast<std::string&>(email));
             output.serialize("fullname", const_cast<std::string&>(fullname));
-            output.serialize("password", const_cast<std::string&>(old_password));
-            output.serialize("password_hash", const_cast<std::string&>(new_password));
+            output.serialize(
+              "password", const_cast<std::string&>(old_password));
+            output.serialize(
+              "password_hash", const_cast<std::string&>(new_password));
             output.serialize("source", const_cast<std::string&>(source));
+            if (referral_code)
+            {
+              output.serialize(
+                "referral_code", const_cast<std::string&>(referral_code.get()));
+            }
           });
         std::string user_id = "";
         SerializerIn input(url, request);
