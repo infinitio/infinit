@@ -195,6 +195,34 @@ gap_clean_state(gap_State* state)
 }
 
 gap_Status
+gap_session_id(gap_State* state, std::string& res)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "fetch session id",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      res = state.session_id();
+      return gap_ok;
+    });
+}
+
+gap_Status
+gap_web_login_token(gap_State* state, std::string& res)
+{
+  ELLE_ASSERT(state != nullptr);
+  return run<gap_Status>(
+    state,
+    "web login token",
+    [&] (surface::gap::State& state) -> gap_Status
+    {
+      res = state.web_login_token();
+      return gap_ok;
+    });
+}
+
+gap_Status
 gap_login(gap_State* state,
           std::string const& email,
           std::string const& password,
@@ -2033,20 +2061,6 @@ gap_upload_address_book(gap_State* state,
     [&] (surface::gap::State& state) -> gap_Status
     {
       state.meta().upload_address_book(contacts);
-      return gap_ok;
-    });
-}
-
-gap_Status
-gap_session_id(gap_State* state, std::string& res)
-{
-  ELLE_ASSERT(state != nullptr);
-  return run<gap_Status>(
-    state,
-    "fetch session id",
-    [&] (surface::gap::State& state) -> gap_Status
-    {
-      res = state.session_id();
       return gap_ok;
     });
 }

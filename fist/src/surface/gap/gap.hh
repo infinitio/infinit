@@ -63,6 +63,14 @@ gap_unset_proxy(gap_State* state, gap_ProxyType type);
 void
 gap_clean_state(gap_State* state);
 
+/// Get current Meta session ID.
+gap_Status
+gap_session_id(gap_State* state, std::string& res);
+
+/// Login token to facilitate automatic login on the website.
+gap_Status
+gap_web_login_token(gap_State* state, std::string& res);
+
 /// Login to meta.
 gap_Status
 gap_login(gap_State* state,
@@ -541,8 +549,5 @@ typedef infinit::oracles::meta::AddressBookContact AddressBookContact;
 gap_Status
 gap_upload_address_book(gap_State* state,
                         std::vector<AddressBookContact> const& contacts);
-
-gap_Status
-gap_session_id(gap_State* state, std::string& res);
 
 #endif
