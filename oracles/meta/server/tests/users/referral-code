@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+
+from utils import Meta, HTTPException, User
+
+with Meta() as meta:
+  bob = User(meta, 'bob@infinit.io')
+  bob.login()
+  res = bob.get('user/referral-code')
+  assert (len(res['referral_code']) == 16) # ObjectId is 12 bytes, base64 gives 4/3 n
