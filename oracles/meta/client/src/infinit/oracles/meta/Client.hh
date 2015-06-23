@@ -221,6 +221,19 @@ namespace infinit
         serialize(elle::serialization::Serializer& s);
       };
 
+      class WebLoginTokenResponse
+      {
+      public:
+        WebLoginTokenResponse() = default;
+        WebLoginTokenResponse(elle::serialization::SerializerIn& s);
+
+        ELLE_ATTRIBUTE_R(std::string, token);
+
+      protected:
+        void
+        serialize(elle::serialization::Serializer& s);
+      };
+
       struct SynchronizeResponse
       {
         // Self self;
@@ -466,6 +479,11 @@ namespace infinit
           boost::optional<std::string> device_model = boost::none,
           boost::optional<std::string> device_name = boost::none,
           boost::optional<std::string> device_language = boost::none);
+
+        /// Web login tokens provide automatic login capabilities for use with
+        /// the website.
+        WebLoginTokenResponse
+        web_login_token() const;
 
         LoginResponse
         facebook_connect(

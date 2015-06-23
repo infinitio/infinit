@@ -415,6 +415,18 @@ namespace infinit
         s.serialize("port_ssl", this->port_ssl);
       }
 
+      WebLoginTokenResponse::WebLoginTokenResponse(
+        elle::serialization::SerializerIn& s)
+      {
+        this->serialize(s);
+      }
+
+      void
+      WebLoginTokenResponse::serialize(elle::serialization::Serializer& s)
+      {
+        s.serialize("login-token", this->_token);
+      }
+
       SynchronizeResponse::SynchronizeResponse(
         elle::serialization::SerializerIn& s)
       {
@@ -484,6 +496,15 @@ namespace infinit
           set_email.abort();
           throw;
         }
+      }
+
+      WebLoginTokenResponse
+      Client::web_login_token() const
+      {
+        std::string url("/user/login-token");
+        auto request = this->_request(url, Method::GET);
+        SerializerIn input(url, request);
+        return WebLoginTokenResponse(input);
       }
 
       LoginResponse
@@ -1657,7 +1678,7 @@ namespace infinit
         auto randomness = random(this->_rng) / 100.;
         auto factor = std::pow(2, std::min(try_count, 5));
         auto delay = 1_sec * factor * randomness;
-        ELLE_TRACE("%s: wait %s before retrying", this, delay);
+        ELLE_TRACE("%s: wait %s before retrying", *this, delay);
         reactor::sleep(delay);
       }
 
