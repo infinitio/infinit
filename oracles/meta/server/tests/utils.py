@@ -531,6 +531,7 @@ class Meta:
       source = None,
       password_hash = None,
       get_confirmation_code = False,
+      referral_code = None,
   ):
     res = self.post('user/register',
                     {
@@ -539,6 +540,7 @@ class Meta:
                       'fullname': fullname or email.split('@')[0],
                       'source': source,
                       'password_hash': password_hash,
+                      'referral_code': referral_code,
                     })
     assertEq(res['success'], True)
     emails = self.emailer.template('Confirm Registration (Initial)')
