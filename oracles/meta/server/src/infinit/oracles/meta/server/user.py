@@ -3095,6 +3095,13 @@ class Mixin:
       },
     )
 
+  @api('/user/login-token')
+  @require_logged_in
+  def login_token_api(self):
+    return {
+      'login-token': self.login_token(self.user.get('email'))
+    }
+
   def login_token(self,
                   email,
                   expiration = datetime.timedelta(days = 7)):
