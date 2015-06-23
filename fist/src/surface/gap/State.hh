@@ -203,6 +203,10 @@ namespace surface
       typedef std::unique_ptr<infinit::oracles::trophonius::Client>
       TrophoniusClientPtr;
 
+      /// Used to allow users to login to the website automatically.
+      std::string
+      web_login_token();
+
       /// Keep trying, returns on success or throw on definitive failure.
       void
       login(std::string const& email,

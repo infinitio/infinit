@@ -447,6 +447,12 @@ namespace surface
         this->_synchronize_response->links, false);
     }
 
+    std::string
+    State::web_login_token()
+    {
+      return this->meta().web_login_token().token();
+    }
+
     void
     State::login(
       std::string const& email,
