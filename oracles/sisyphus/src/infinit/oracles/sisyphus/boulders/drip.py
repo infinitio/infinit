@@ -51,6 +51,16 @@ class Emailing(Boulder):
   def table(self):
     return self.__table
 
+  def _log_progress_start(self):
+    self.__log_progress_date = self.now
+
+  def _log_progress(self, message, n, total):
+    threshold = datetime.timedelta(seconds = 1)
+    if self.now - self.__log_progress_date > threshold:
+      self.__log_progress_date = self.now
+      elle.log.dump(
+        '%s: %s: %s / %s (%s%%)' %
+        (self, message, n, total, round(100 * n / total)))
 
 def merge_result(a, b):
   for key, value in b.items():
@@ -156,7 +166,8 @@ class Drip(Emailing):
           },
           multi = True,
         )
-        elle.log.debug('%s: %s match' % (self, res['n']))
+        matches = res['n']
+        elle.log.debug('%s: %s match' % (self, matches))
         update = {
           '$unset':
           {
@@ -170,13 +181,17 @@ class Drip(Emailing):
         skipped = []
         users = []
         unsubscribed = []
-        for u, e in [(self._user(elt), elt) for elt in elts]:
-          if guard and not guard(u, e):
-            skipped.append((u, e))
-          elif self.__email_enabled(u):
-            users.append((u, e))
-          else:
-            unsubscribed.append((u, e))
+        self._log_progress_start()
+        with elle.log.debug('%s: select users' % (self,)):
+          for idx, (u, e) in \
+              enumerate((self._user(elt), elt) for elt in elts):
+            self._log_progress('selecting users', idx, matches)
+            if guard and not guard(u, e):
+              skipped.append((u, e))
+            elif self.__email_enabled(u):
+              users.append((u, e))
+            else:
+              unsubscribed.append((u, e))
         # Unlock skipped
         if skipped:
           res = self.__table.update(
@@ -457,7 +472,8 @@ class GhostReminder(Drip):
 
   def _user(self, transaction):
     recipient = transaction['recipient_id']
-    return self.sisyphus.mongo.meta.users.find_one(recipient)
+    return self.sisyphus.mongo.meta.users.find_one(
+      recipient, fields = self.user_fields)
 
   def _vars(self, transaction, recipient):
     sender_id = transaction['sender_id']
@@ -519,12 +535,15 @@ class ConfirmSignup(Drip):
 
   @property
   def delay(self):
-    return datetime.timedelta(days = 5)
+    return datetime.timedelta(days = 3)
 
   def _vars(self, elt, user):
     return {
-      'confirm_key': key('/users/%s/confirm-email' % user['_id']),
-    }
+      'confirm_token': sign(
+        {'action': 'confirm_email', 'email': user['email']},
+        datetime.timedelta(days = 7),
+        self.now,
+      )}
 
 
 class ActivityReminder(Drip):
@@ -671,7 +690,8 @@ class ActivityReminder(Drip):
 class Tips(Drip):
 
   def __init__(self, sisyphus, pretend = False):
-    super().__init__(sisyphus, 'tips', 'users', pretend)
+    super().__init__(sisyphus, 'tips', 'users',
+                     pretend, list = 'tips')
     self.sisyphus.mongo.meta.users.ensure_index(
       [
         ('emailing.tips.state', pymongo.ASCENDING),

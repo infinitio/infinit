@@ -1,0 +1,4 @@
+umask 022
+pip-3.2 install iso8601
+pip-3.2 install pymongo==2.8
+pip-3.2 install pycrypto

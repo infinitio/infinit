@@ -96,8 +96,26 @@ def configure(
 
     install = drake.Rule('install')
     python_version = drake.Version(*sys.version_info[0:2])
-    install << drake.install(
-      sisyphus.nodes,
-      prefix / ('lib/python%s' % python_version),
-      sisyphus.root)
-    install << drake.copy(build_binary, prefix / 'bin', True)
+    def install_nodes(where, how):
+      where = drake.Path(where)
+      build_python_path = where / ('lib/python%s' % python_version)
+      res = how(sisyphus.nodes, build_python_path, sisyphus.root)
+      res += how(sendwithus.nodes, build_python_path,
+                 drake.Path('..') / sendwithus.root)
+      res.append(how(build_binary, where / 'bin', True))
+      return res
+    install << install_nodes(prefix, drake.install)
+    debian = drake.Rule('debian')
+    debian_nodes = install_nodes('debian/opt/infinit/sisyphus',
+                                 drake.copy)
+    with drake.templating.Context(content = {
+        'version': git.description(),
+    }):
+      drake.node('control.tmpl')
+    debian_nodes += drake.copy(
+      drake.nodes('control', 'postinst'), 'debian/DEBIAN')
+
+    debian << drake.debian.Packager(
+      'fist-sisyphus_%s_amd64.deb' % git.description(),
+      debian_nodes,
+      'debian').package
