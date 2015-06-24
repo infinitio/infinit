@@ -40,7 +40,6 @@
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
 
-
 DAS_MODEL_FIELD(surface::gap::State::GhostCode, code);
 DAS_MODEL_FIELD(surface::gap::State::GhostCode, was_link);
 typedef das::Object<
@@ -49,7 +48,7 @@ typedef das::Object<
   das::Field<surface::gap::State::GhostCode, bool, &surface::gap::State::GhostCode::was_link>
   >
 DasGhostCode;
-DAS_MODEL(surface::gap::State::GhostCode, DasGhostCode);
+DAS_MODEL_DEFAULT(surface::gap::State::GhostCode, DasGhostCode);
 
 namespace elle
 {
@@ -62,7 +61,6 @@ namespace elle
     };
   }
 }
-
 
 namespace surface
 {
