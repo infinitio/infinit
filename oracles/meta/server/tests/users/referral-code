@@ -2,8 +2,67 @@
 
 from utils import Meta, HTTPException, User
 
+# Fetch referral code.
 with Meta() as meta:
   bob = User(meta, 'bob@infinit.io')
   bob.login()
   res = bob.get('user/referral-code')
   assert (len(res['referral_code']) == 16) # ObjectId is 12 bytes, base64 gives 4/3 n
+
+# Add referral code retrospectively.
+with Meta() as meta:
+
+  def __quota_for_user(user):
+    if not user.logged_in:
+      user.login()
+    return meta.database.users.find_one({'_id': user._id},
+                                        {'quota': True})['quota']
+
+  bob = User(meta, 'bob@infinit.io')
+  bob.login()
+  res = bob.get('user/referral-code')
+  assert (len(res['referral_code']) == 16)
+  assert (res['refer_count'] == 0)
+  bob_quota_1 = __quota_for_user(bob)
+  assert (bob_quota_1['total_link_size'] == 1e9)
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  alice_quota_1 = __quota_for_user(alice)
+  assert (alice_quota_1['total_link_size'] == 1e9)
+  alice.post('user/referral-code', {'referral_code': res['referral_code']})
+  bob_quota_2 = __quota_for_user(bob)
+  assert (bob_quota_2['total_link_size'] == (bob_quota_1['total_link_size'] + 500e6))
+  alice_quota_2 = __quota_for_user(alice)
+  assert (alice_quota_2['total_link_size'] == (alice_quota_1['total_link_size'] + 250e6))
+  res = bob.get('user/referral-code')
+  assert (res['refer_count'] == 1)
+
+# Add referral code retrospectively failure checks.
+with Meta() as meta:
+  bob = User(meta, 'bob@infinit.io')
+  bob.login()
+  referral_code = bob.get('user/referral-code')['referral_code']
+  alice = User(meta, 'alice@infinit.io')
+  # Not logged in
+  try:
+    alice.post('user/referral-code', {'referral_code': referral_code})
+    assert False
+  except HTTPException as e:
+    assert e.status == 403
+  alice.login()
+  # Wrong code
+  try:
+    alice.post('user/referral-code', {'referral_code': 'wrongcode'})
+  except HTTPException as e:
+    assert e.status == 400
+  # Too old account
+  import datetime
+  old_date = datetime.datetime.utcnow() - datetime.timedelta(days = 10)
+  meta.database.users.update(
+    {'_id': alice._id},
+    {'$set': {'creation_time': old_date}})
+  try:
+    alice.post('user/referral-code', {'referral_code': referral_code})
+    assert False
+  except HTTPException as e:
+    assert e.status == 403
