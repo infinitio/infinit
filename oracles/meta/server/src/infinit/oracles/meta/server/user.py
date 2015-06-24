@@ -270,7 +270,7 @@ class Mixin:
                               short_lived_access_token])
     if not any([with_email, with_facebook]):
       return self.bad_request({
-        'reason': 'you must provide a connection mean'
+        'reason': 'you must provide a connection means'
       })
     with elle.log.trace('%s: log %s' % (self, email or 'facebook user')):
       res = {
@@ -897,24 +897,9 @@ class Mixin:
           },
         )
       if referral_code:
-        self.database.users.update(
-          {'_id': user_id},
-          {'$set': {'used_referral_link': referral_code}}
-        )
-        try:
-          import base64
-          inviter_id = bson.ObjectId(base64.urlsafe_b64decode(referral_code))
-        except Exception as e:
-          inviter_id = None
-        if inviter_id:
-          inviter = self.database.users.find_one({'_id': inviter_id},
-                                                 fields = ['_id'])
-          if inviter:
-            self.process_referrals(user, [inviter['_id']],
-                                   inviter_bonus = 500e6,
-                                   invitee_bonus = 250e6,
-                                   inviter_cap = 16e9,
-                                   invitee_cap = 16e9)
+        res = self.__user_add_referral_code(user, referral_code)
+        if res is not None:
+          user['referral_code'] = res
       return self.__user_view(self.__user_fill(user))
 
   def __generate_identity(self, user, password):
@@ -3464,11 +3449,67 @@ class Mixin:
                        ghost_code: str):
     return {}
 
+  def __mongo_id_to_base64(self, mongo_id: bson.ObjectId):
+    import base64
+    return base64.urlsafe_b64encode(mongo_id.binary).decode('utf-8')
+
+  def __base64_to_mongo_id(self, hash: str):
+    import base64
+    return bson.ObjectId(base64.urlsafe_b64decode(hash))
+
   @api('/user/referral-code')
   @require_logged_in
   def user_referral_code(self):
-    user_id_bin = self.user['_id'].binary
-    import base64
-    code = base64.urlsafe_b64encode(user_id_bin).decode('utf-8')
+    code = self.__mongo_id_to_base64(self.user['_id'])
     count = self.database.users.find({'used_referral_link': code}).count()
     return {'referral_code': code, 'refer_count': count}
+
+  def __user_add_referral_code(self,
+                               user,
+                               referral_code: str):
+    elle.log.trace('add referral code (%s) to user (%s)' %
+                   (referral_code, user['_id']))
+    try:
+      inviter_id = self.__base64_to_mongo_id(referral_code)
+      inviter = self.database.users.find_one({'_id': inviter_id},
+                                                 fields = ['_id'])
+      if inviter:
+        self.database.users.update(
+          {'_id': user['_id']},
+          {'$set': {'used_referral_link': referral_code}}
+        )
+        self.process_referrals(user, [inviter['_id']],
+                               inviter_bonus = 500e6,
+                               invitee_bonus = 250e6,
+                               inviter_cap = 16e9,
+                               invitee_cap = 16e9)
+        return referral_code
+      else:
+        return None
+    except Exception as e:
+      elle.log.warn('unable to add referral code: %s' % e)
+      return None
+
+
+  @api('/user/referral-code', method = 'POST')
+  @require_logged_in_or_admin
+  def user_add_referral_code_api(self,
+                                 referral_code: str,
+                                 user_id: bson.ObjectId = None):
+    if self.user is None and not self.admin:
+      self.forbidden({'reason': 'unauthorized'})
+    user = self.user
+    if user is None:
+      user = self.database.users.find_one({'_id': user_id})
+      if user is None:
+        self.bad_request({'reason': 'user not found'})
+    if not self.admin:
+      days = 7
+      if user['creation_time'] < self.now - datetime.timedelta(days = days):
+        self.forbidden(
+          {'reason': 'can only add referrer in first %s days' % days})
+
+    res = self.__user_add_referral_code(user, referral_code)
+    if res is None:
+      self.bad_request({'reason': 'invalid referrer'})
+    return {}
