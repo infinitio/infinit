@@ -206,6 +206,6 @@ ELLE_TEST_SUITE()
   auto& suite = boost::unit_test::framework::master_test_suite();
   suite.add(BOOST_TEST_CASE(links), 0, timeout);
   suite.add(BOOST_TEST_CASE(links_another_device), 0, timeout);
-  suite.add(BOOST_TEST_CASE(swaggers), 0, timeout);
-  suite.add(BOOST_TEST_CASE(disconnect), 0, timeout);
+  // suite.add(BOOST_TEST_CASE(swaggers), 0, timeout);
+  // suite.add(BOOST_TEST_CASE(disconnect), 0, timeout);
 }
