@@ -84,7 +84,6 @@ with Meta() as meta:
   assert (res['refer_count'] == 1)
   referrer_quota = meta.database.users.find_one({'_id': u1._id},
                                                 {'quota': True})['quota']
-  print('xxx %s' % referrer_quota)
   assert (referrer_quota['total_link_size'] == (initial_quota['total_link_size'] + 500e6))
   u2.login()
   referree_quota = meta.database.users.find_one({'_id': u2._id},
