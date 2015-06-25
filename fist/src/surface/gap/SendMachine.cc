@@ -221,7 +221,8 @@ namespace surface
                 this->_plain_progress = float(p.upload_current + position)
                   / (float)file_size;
               });
-            r << buffer;
+            r.write(reinterpret_cast<char const*>(buffer.contents()),
+                    buffer.size());
             r.finalize();
             reactor::wait(r);
             if (!status_check(r.status(), r))
