@@ -451,7 +451,8 @@ namespace infinit
         s.serialize("links", this->links);
         s.serialize("swaggers", this->swaggers);
         s.serialize("devices", this->devices);
-        s.serialize("accounts", this->accounts);
+        s.serialize("accounts", this->external_accounts);
+        s.serialize("account", this->account);
       }
 
       LoginResponse
