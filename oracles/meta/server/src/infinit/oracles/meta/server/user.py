@@ -129,17 +129,18 @@ class Mixin:
     res = self.__user_view_fields
     res += [
       'accounts',
+      'consumed_ghost_codes',
       'creation_time',
       'email',
       'facebook_id',
       'favorites',
       'features',
       'identity',
-      'swaggers',
+      'total_link_size',
       'plan',
       'quota',
-      'consumed_ghost_codes',
       'stripe_id',
+      'swaggers',
     ]
     return res
 
