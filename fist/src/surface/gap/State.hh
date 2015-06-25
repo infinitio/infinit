@@ -469,16 +469,27 @@ namespace surface
       change_password(std::string const& old_password,
                       std::string const& new_password);
 
-      /*---------.
-      | Accounts |
-      `---------*/
+      /*--------.
+      | Account |
+      `--------*/
     public:
-      std::vector<Account const*>
-      accounts() const;
+      Account
+      account() const;
 
     private:
       void
-      _accounts(std::vector<Account> const& accounts);
+      _account(Account const& account);
+
+      /*------------------.
+      | External Accounts |
+      `------------------*/
+    public:
+      std::vector<ExternalAccount const*>
+      external_accounts() const;
+
+    private:
+      void
+      _external_accounts(std::vector<ExternalAccount> const& accounts);
 
       /*--------.
       | Devices |

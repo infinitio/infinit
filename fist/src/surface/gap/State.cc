@@ -437,8 +437,9 @@ namespace surface
       this->_synchronize_response.reset(
         new infinit::oracles::meta::SynchronizeResponse{
         this->meta().synchronize(false)});
-      this->_accounts(this->_synchronize_response->accounts);
+      this->_account(this->_synchronize_response->account);
       this->_devices(this->_synchronize_response->devices);
+      this->_external_accounts(this->_synchronize_response->external_accounts);
       this->_user_resync(this->_synchronize_response->swaggers, false);
       this->_peer_transaction_resync(
         this->_synchronize_response->transactions, false);
@@ -743,8 +744,10 @@ namespace surface
             new infinit::oracles::meta::SynchronizeResponse{
               this->meta().synchronize(true)});
           ELLE_TRACE("got synchronisation response");
-          this->_accounts(this->_synchronize_response->accounts);
+          this->_account(this->_synchronize_response->account);
           this->_devices(this->_synchronize_response->devices);
+          this->_external_accounts(
+            this->_synchronize_response->external_accounts);
           this->_model.devices.added().connect(
             [this] (Device& d)
             {
@@ -1220,8 +1223,10 @@ namespace surface
               }
            this->_synchronize_response.reset(
              new infinit::oracles::meta::SynchronizeResponse{this->meta().synchronize(false)});
-           this->_accounts(this->_synchronize_response->accounts);
+           this->_account(this->_synchronize_response->account);
            this->_devices(this->_synchronize_response->devices);
+           this->_external_accounts(
+             this->_synchronize_response->external_accounts);
           }
           // This is never the first call to _user_resync as the function is
           // called in login.
@@ -1415,25 +1420,40 @@ namespace surface
       }
     }
 
-    /*---------.
-    | Accounts |
-    `---------*/
-    std::vector<Account const*>
-    State::accounts() const
+    /*--------.
+    | Account |
+    `--------*/
+    Account
+    State::account() const
     {
-      std::vector<Account const*> res;
-      res.reserve(this->_model.accounts.size());
-      for (auto const& account: this->_model.accounts)
+      return this->_model.account;
+    }
+
+    void
+    State::_account(Account const& account)
+    {
+      this->_model.account = account;
+    }
+
+    /*------------------.
+    | External Accounts |
+    `------------------*/
+    std::vector<ExternalAccount const*>
+    State::external_accounts() const
+    {
+      std::vector<ExternalAccount const*> res;
+      res.reserve(this->_model.external_accounts.size());
+      for (auto const& account: this->_model.external_accounts)
         res.push_back(&account);
       return res;
     }
 
     void
-    State::_accounts(std::vector<Account> const& accounts)
+    State::_external_accounts(std::vector<ExternalAccount> const& accounts)
     {
       ELLE_TRACE_SCOPE("reset %s with %s", this->_model, accounts);
-      this->_model.accounts.reset(accounts);
-      ELLE_ASSERT_EQ(this->_model.accounts.size(), accounts.size());
+      this->_model.external_accounts.reset(accounts);
+      ELLE_ASSERT_EQ(this->_model.external_accounts.size(), accounts.size());
     }
 
     /*--------.
