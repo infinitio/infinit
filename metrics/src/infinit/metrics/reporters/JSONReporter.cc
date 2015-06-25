@@ -270,7 +270,8 @@ namespace infinit
     void
     JSONReporter::_user_register(bool success, std::string const& info,
                                  std::string const& with,
-                                 boost::optional<std::string> const& ghost_code)
+                                 boost::optional<std::string> ghost_code,
+                                 boost::optional<std::string> referral_code)
     {
       elle::json::Object data;
       data[this->_key_str(JSONKey::event)] =
@@ -282,6 +283,8 @@ namespace infinit
         data[this->_key_str(JSONKey::fail_reason)] = info;
       if (ghost_code)
         data[this->_key_str(JSONKey::ghost_code)] = ghost_code.get();
+      if (referral_code)
+        data[this->_key_str(JSONKey::referral_code)] = referral_code.get();
       this->_send(this->_user_dest, data);
     }
 
@@ -555,6 +558,8 @@ namespace infinit
           return "operation";
         case JSONKey::recipient_id:
           return "recipient";
+        case JSONKey::referral_code:
+          return "referral_code";
         case JSONKey::screenshot:
           return "screenshot";
         case JSONKey::sender_id:

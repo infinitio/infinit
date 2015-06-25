@@ -310,14 +310,16 @@ namespace infinit
     Reporter::user_register(bool success,
                             std::string const& info,
                             std::string const& with,
-                            boost::optional<std::string> const& ghost_code)
+                            boost::optional<std::string> ghost_code,
+                            boost::optional<std::string> referral_code)
     {
       this->_push(std::bind(&Reporter::_user_register,
                             this,
                             success,
                             info,
                             with,
-                            ghost_code));
+                            ghost_code,
+                            referral_code));
     }
 
     void
@@ -568,7 +570,8 @@ namespace infinit
     Reporter::_user_register(bool success,
                              std::string const& info,
                              std::string const& with,
-                             boost::optional<std::string> const& ghost_code)
+                             boost::optional<std::string> ghost_code,
+                             boost::optional<std::string> referral_code)
     {}
 
     void

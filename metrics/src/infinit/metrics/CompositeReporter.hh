@@ -123,7 +123,8 @@ namespace infinit
       void
       _user_register(bool success, std::string const& info,
                      std::string const& with,
-                     boost::optional<std::string> const& ghost_code) override;
+                     boost::optional<std::string> ghost_code,
+                     boost::optional<std::string> referral_code) override;
 
       void
       _user_unfavorite(std::string const& user_id) override;
