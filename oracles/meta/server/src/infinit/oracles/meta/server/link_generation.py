@@ -124,11 +124,11 @@ class Mixin:
     credentials['url'] = url
     return credentials
 
-  def _link_check_quota(self, user):
+  def _link_check_quota(self, user, new_link_size):
     elle.log.trace('checking link quota')
     if 'quota' in user and 'total_link_size' in user.get('quota', {}):
       quota = user['quota']['total_link_size']
-      usage = user.get('total_link_size', 0)
+      usage = user.get('total_link_size', 0) + new_link_size
       elle.log.trace('usage: %s quota: %s' %(usage, quota))
       if quota >= 0 and quota < usage:
         self.quota_exceeded(
@@ -142,11 +142,12 @@ class Mixin:
   @require_logged_in_fields(['quota', 'total_link_size'])
   def link_create_empty(self):
     user = self.user
-    self._link_check_quota(user)
+    # We don't know link size yet so just check if user is currently over quota.
+    self._link_check_quota(user, 0)
     link_id = self.database.links.insert({})
     return self.success({
-        'created_link_id': link_id,
-      })
+      'created_link_id': link_id,
+    })
 
   @api('/link/<link_id>', method = 'PUT')
   @require_logged_in_fields(['quota', 'total_link_size'])
@@ -200,6 +201,12 @@ class Mixin:
     message --  A string message.
     Returns the id, link and AWS credentials.
     """
+    def __link_size_from_file_list(files):
+      res = 0;
+      for name, size in files:
+        res += size
+      return res
+
     with elle.log.trace('generating a link for user (%s)' % user['_id']):
       if len(files) == 0:
         self.bad_request('no file dictionary')
@@ -208,7 +215,17 @@ class Mixin:
       if any(p is not None
              for p in [password, expiration_date, background]):
         self.require_premium()
-      self._link_check_quota(user)
+      link_size = __link_size_from_file_list(files)
+      # self._link_check_quota(user, link_size)
+      self.notifier.notify_some(
+        notifier.MODEL_UPDATE,
+        message = {
+          'account': {
+            'link_size_used': user.get('total_link_size', 0) + link_size,
+          }
+        },
+        recipient_ids = {user['_id']},
+        version = (0, 9, 37))
       creation_time = self.now
       # Maintain a list of all elements in document here.
       # Do not add a None hash as this causes problems with concurrency.
@@ -261,7 +278,6 @@ class Mixin:
       while True:
         try:
           link_hash = self._hash_link_id(link_id)
-          elle.log.log('Your hash is %s' % (link_hash))
           elle.log.debug('trying to store created hash (%s), attempt: %s' %
                          (link_hash, attempt))
           link = self.database.links.find_and_modify(
@@ -441,15 +457,29 @@ class Mixin:
               if int(r.status_code/100) != 2:
                 elle.log.warn('Link HEAD failed with %s on %s at %s: %s' %
                   ( r.status_code, link['_id'], head, r.content))
-              file_size = int(r.headers.get('Content-Length', 0))
-              update.update({
-                'file_size': file_size,
-                'quota_counted': True
-              })
-              self.database.users.update(
-                {'_id': user['_id']},
-                {'$inc': {'total_link_size': file_size}}
-              )
+                update.update({
+                  'quota_counted': False
+                })
+              else:
+                file_size = int(r.headers.get('Content-Length', 0))
+                update.update({
+                  'file_size': file_size,
+                  'quota_counted': True
+                })
+                user = self.database.users.find_and_modify(
+                  {'_id': user['_id']},
+                  {'$inc': {'total_link_size': file_size}},
+                  new = True,
+                )
+                self.notifier.notify_some(
+                notifier.MODEL_UPDATE,
+                message = {
+                  'account': {
+                    'link_size_used': user.get('total_link_size', 0),
+                  }
+                },
+                recipient_ids = {user['_id']},
+                version = (0, 9, 37))
       if expiration_date is not None:
         update['expiration_date'] = expiration_date
       if message is not None:
