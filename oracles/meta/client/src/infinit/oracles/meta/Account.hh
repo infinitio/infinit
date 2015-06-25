@@ -11,6 +11,13 @@ namespace infinit
   {
     namespace meta
     {
+      typedef enum
+        : unsigned int
+      {
+        AccountPlanType_Basic = 0,
+        AccountPlanType_Premium,
+      } AccountPlanType;
+
       struct Account
         : public elle::Printable
       {
@@ -20,8 +27,9 @@ namespace infinit
       public:
         Account() = default;
         Account(elle::serialization::SerializerIn& s);
-        std::string id;
-        std::string type;
+        das::Variable<uint64_t> link_size_quota;
+        das::Variable<uint64_t> link_size_used;
+        das::Variable<AccountPlanType> plan;
 
       /*--------------.
       | Serialization |
@@ -38,11 +46,17 @@ namespace infinit
         void
         print(std::ostream& stream) const override;
       };
+
+      std::ostream&
+      operator <<(std::ostream& output, AccountPlanType account_type);
     }
   }
 }
 
-DAS_MODEL_FIELD(infinit::oracles::meta::Account, id);
-DAS_MODEL_FIELD(infinit::oracles::meta::Account, type);
+# include <infinit/oracles/meta/Account.hxx>
+
+DAS_MODEL(infinit::oracles::meta::Account,
+          (plan, link_size_quota, link_size_used), DasAccount);
+DAS_MODEL_DEFAULT(infinit::oracles::meta::Account, DasAccount);
 
 #endif
