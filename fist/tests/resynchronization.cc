@@ -38,7 +38,7 @@ ELLE_TEST_SCHEDULED(links)
     // At this stage, status has been set locally.
     if (sender.state->transactions().begin()->second->data()->status == infinit::oracles::Transaction::Status::finished)
       break;
-    reactor::sleep(100ms);
+    reactor::sleep(100_ms);
   }
   ELLE_ASSERT_EQ(sender.user.links.begin()->second.status, oracles::Transaction::Status::finished);
 
