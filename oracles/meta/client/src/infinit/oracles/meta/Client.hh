@@ -194,6 +194,7 @@ namespace infinit
 
         std::string id;
         boost::optional<std::string> ghost_code;
+        boost::optional<std::string> referral_code;
       };
 
       struct LoginResponse
@@ -216,6 +217,7 @@ namespace infinit
         // XXX: Because facebook connect can turn a ghost to a real account a
         // ghost code can be consumed.
         boost::optional<std::string> ghost_code;
+        boost::optional<std::string> referral_code;
         LoginResponse() = default;
         LoginResponse(elle::serialization::SerializerIn& s);
         void
@@ -469,7 +471,8 @@ namespace infinit
                boost::optional<std::string> country_code = boost::none,
                boost::optional<std::string> device_model = boost::none,
                boost::optional<std::string> device_name = boost::none,
-               boost::optional<std::string> device_language = boost::none);
+               boost::optional<std::string> device_language = boost::none,
+               boost::optional<std::string> referral_code = boost::none); // Used for Facebook register.
       public:
         LoginResponse
         login(
@@ -496,7 +499,8 @@ namespace infinit
           boost::optional<std::string> country_code = boost::none,
           boost::optional<std::string> device_model = boost::none,
           boost::optional<std::string> device_name = boost::none,
-          boost::optional<std::string> device_language = boost::none);
+          boost::optional<std::string> device_language = boost::none,
+          boost::optional<std::string> referral_code = boost::none);
 
         bool
         facebook_id_already_registered(std::string const& facebook_id) const;

@@ -405,6 +405,7 @@ namespace infinit
         s.serialize("features", this->features);
         s.serialize("account_registered", this->account_registered);
         s.serialize("ghost_code", this->ghost_code);
+        s.serialize("referral_code", this->referral_code);
       }
 
       void
@@ -517,7 +518,8 @@ namespace infinit
         boost::optional<std::string> country_code,
         boost::optional<std::string> device_model,
         boost::optional<std::string> device_name,
-        boost::optional<std::string> device_language)
+        boost::optional<std::string> device_language,
+        boost::optional<std::string> referral_code)
       {
         ELLE_TRACE_SCOPE("%s: login using facebook on device %s",
                          *this, device_uuid);
@@ -535,7 +537,8 @@ namespace infinit
           country_code,
           device_model,
           device_name,
-          device_language);
+          device_language,
+          referral_code);
       }
 
       bool
@@ -556,7 +559,8 @@ namespace infinit
                      boost::optional<std::string> country_code,
                      boost::optional<std::string> device_model,
                      boost::optional<std::string> device_name,
-                     boost::optional<std::string> device_language)
+                     boost::optional<std::string> device_language,
+                     boost::optional<std::string> referral_code)
       {
         auto url = "/login";
         auto request = this->_request(
@@ -575,6 +579,7 @@ namespace infinit
             output.serialize("device_model", device_model);
             output.serialize("device_name", device_name);
             output.serialize("device_language", device_language);
+            output.serialize("referral_code", referral_code);
           },
           false);
         if (request.status() == reactor::http::StatusCode::Forbidden ||
@@ -669,6 +674,7 @@ namespace infinit
       {
         s.serialize("registered_user_id", this->id);
         s.serialize("ghost_code", this->ghost_code);
+        s.serialize("referral_code", this->referral_code);
       }
 
       RegisterResponse
