@@ -665,7 +665,7 @@ def configure(cxx_toolkit = None,
       'cloud-buffer',
       'devices',
       'facebook_connect',
-      'ghost-download',
+      # 'ghost-download',
       'ghost-invite',
       'invalid-credentials',
       # Kickout mechanism has been temporary disabled.
