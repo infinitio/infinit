@@ -1056,7 +1056,9 @@ namespace surface
         register_failed.abort();
         ELLE_DEBUG("registered new user %s <%s>", fullname, lower_email);
         infinit::metrics::Reporter::metric_sender_id(res.id);
-        this->_metrics_reporter->user_register(true, "", "", res.ghost_code);
+        this->metrics_reporter()->user_register(
+          true, "", "", res.ghost_code, res.referral_code);
+        this->_referral_code = "";
       }
       catch (elle::Error const& error)
       {
@@ -1083,18 +1085,24 @@ namespace surface
       this->_login_with_timeout(
       [&] {
         auto tropho = elle::utility::move_on_copy(std::move(trophonius));
+        boost::optional<std::string> referral_code_opt;
+        if (this->_referral_code.length())
+          referral_code_opt = this->_referral_code;
         this->_login([&] {
-          auto response =  this->_meta.facebook_connect(facebook_token,
-                                              this->device_uuid(),
-                                              preferred_email,
-                                              device_push_token,
-                                              country_code,
-                                              device_model,
-                                              device_name,
-                                              device_language);
-          if (response.account_registered && this->_metrics_reporter)
-            this->_metrics_reporter->user_register(true, "", "facebook", response.ghost_code);
-          return response;
+          auto res = this->_meta.facebook_connect(facebook_token,
+                                                  this->device_uuid(),
+                                                  preferred_email,
+                                                  device_push_token,
+                                                  country_code,
+                                                  device_model,
+                                                  device_name,
+                                                  device_language);
+          if (res.account_registered && this->_metrics_reporter)
+          {
+            this->_metrics_reporter->user_register(
+              true, "", "facebook", res.ghost_code, res.referral_code);
+          }
+          return res;
           },
           tropho,
           // Password.
@@ -1103,6 +1111,7 @@ namespace surface
           },
           [&] (bool success, std::string const& failure_reason) {
             this->_metrics_reporter->facebook_connect(success, failure_reason);
+            this->_referral_code = "";
           });
       },
       timeout);
