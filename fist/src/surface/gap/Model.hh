@@ -5,6 +5,7 @@
 
 # include <infinit/oracles/meta/Account.hh>
 # include <infinit/oracles/meta/Device.hh>
+# include <infinit/oracles/meta/ExternalAccount.hh>
 
 namespace surface
 {
@@ -12,34 +13,27 @@ namespace surface
   {
     typedef infinit::oracles::meta::Account Account;
     typedef infinit::oracles::meta::Device Device;
+    typedef infinit::oracles::meta::ExternalAccount ExternalAccount;
 
     class Model
     {
     public:
-      das::IndexList<Account, std::string, &Account::id> accounts;
+      Account account;
       das::IndexList<Device, elle::UUID, &Device::id> devices;
+      das::IndexList<
+        ExternalAccount, std::string, &ExternalAccount::id> external_accounts;
     };
   }
 }
 
-DAS_MODEL_FIELD(surface::gap::Model, accounts);
+DAS_MODEL_FIELD(surface::gap::Model, account);
+DAS_MODEL_FIELD(surface::gap::Model, external_accounts);
 DAS_MODEL_FIELD(surface::gap::Model, devices);
 
 namespace surface
 {
   namespace gap
   {
-    typedef das::Object<
-      Account,
-      das::Field<Account, std::string, &Account::id>,
-      das::Field<Account, std::string, &Account::type>
-      > DasAccount;
-    typedef das::Collection<
-      Account,
-      std::string,
-      &Account::id,
-      DasAccount
-      > DasAccounts;
     typedef das::Object<
       Device,
       das::Field<Device, elle::UUID, &Device::id>,
@@ -54,15 +48,27 @@ namespace surface
       DasDevice
       > DasDevices;
     typedef das::Object<
+      ExternalAccount,
+      das::Field<ExternalAccount, std::string, &ExternalAccount::id>,
+      das::Field<ExternalAccount, std::string, &ExternalAccount::type>
+      > DasExternalAccount;
+    typedef das::Collection<
+      ExternalAccount,
+      std::string,
+      &ExternalAccount::id,
+      DasExternalAccount
+      > DasExternalAccounts;
+    typedef das::Object<
       Model,
       das::Field<Model,
                  das::IndexList<Device, elle::UUID, &Device::id>,
                  &Model::devices,
                  DasDevices>,
       das::Field<Model,
-                 das::IndexList<Account, std::string, &Account::id>,
-                 &Model::accounts,
-                 DasAccounts>
+                 das::IndexList<ExternalAccount, std::string, &ExternalAccount::id>,
+                 &Model::external_accounts,
+                 DasExternalAccounts>,
+      das::Field<Model, Account, &Model::account, DasAccount>
       > DasModel;
   }
 }
