@@ -33,12 +33,12 @@ ELLE_TEST_SCHEDULED(links)
   ELLE_ASSERT_EQ(sender.state->transactions().begin()->second->data()->status,
                  infinit::oracles::Transaction::Status::created);
 
-  while (true)
+  for (int i = 0; i < 100; ++i)
   {
     // At this stage, status has been set locally.
     if (sender.state->transactions().begin()->second->data()->status == infinit::oracles::Transaction::Status::finished)
       break;
-    reactor::yield();
+    reactor::sleep(100ms);
   }
   ELLE_ASSERT_EQ(sender.user.links.begin()->second.status, oracles::Transaction::Status::finished);
 
@@ -204,8 +204,8 @@ ELLE_TEST_SUITE()
 {
   auto timeout = valgrind(15);
   auto& suite = boost::unit_test::framework::master_test_suite();
-  // suite.add(BOOST_TEST_CASE(links), 0, timeout);
-  suite.add(BOOST_TEST_CASE(links_another_device), 0, timeout);
-  suite.add(BOOST_TEST_CASE(swaggers), 0, timeout);
-  suite.add(BOOST_TEST_CASE(disconnect), 0, timeout);
+  suite.add(BOOST_TEST_CASE(links), 0, timeout);
+  // suite.add(BOOST_TEST_CASE(links_another_device), 0, timeout);
+  // suite.add(BOOST_TEST_CASE(swaggers), 0, timeout);
+  // suite.add(BOOST_TEST_CASE(disconnect), 0, timeout);
 }
