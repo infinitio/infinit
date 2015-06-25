@@ -1441,6 +1441,7 @@ namespace surface
     void
     State::_account(Account const& account)
     {
+      ELLE_TRACE_SCOPE("reset %s with %s", this->_model, account);
       this->_model.account = account;
     }
 
