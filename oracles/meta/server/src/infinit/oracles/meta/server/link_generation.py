@@ -216,7 +216,7 @@ class Mixin:
              for p in [password, expiration_date, background]):
         self.require_premium()
       link_size = __link_size_from_file_list(files)
-      # self._link_check_quota(user, link_size)
+      self._link_check_quota(user, link_size)
       self.notifier.notify_some(
         notifier.MODEL_UPDATE,
         message = {
