@@ -263,6 +263,7 @@ class Mixin:
              short_lived_access_token,
              preferred_email,
              login_token,
+             referral_code = None,
            ):
     # Xor facebook_token or email / password.
     with_email = bool(email)
@@ -307,10 +308,14 @@ class Mixin:
           short_lived_access_token = short_lived_access_token,
           long_lived_access_token = long_lived_access_token,
           preferred_email = preferred_email,
-          fields = fields)
+          fields = fields,
+          referral_code = referral_code)
         ghost_codes = user.get('consumed_ghost_codes', [])
         if len(ghost_codes):
           res['ghost_code'] = ghost_codes[0]
+        referral_code = user.get('used_referral_link', None)
+        if referral_code:
+          res['referral_code'] = referral_code
     return user, res
 
   def _login_response(self,
@@ -464,7 +469,8 @@ class Mixin:
                          short_lived_access_token = None,
                          long_lived_access_token = None,
                          preferred_email: utils.enforce_as_email_address = None,
-                         source = None):
+                         source = None,
+                         referral_code = None):
     registered = False
     if bool(short_lived_access_token) == bool(long_lived_access_token):
       return self.bad_request({
@@ -484,7 +490,8 @@ class Mixin:
           facebook_user = facebook_user,
           preferred_email = preferred_email,
           source = source,
-          fields = fields)
+          fields = fields,
+          referral_code = referral_code)
         registered = True
         try:
           self._set_avatar(user, facebook_user.avatar)
@@ -527,7 +534,8 @@ class Mixin:
                 pick_trophonius: bool = True,
                 device_model : str = None,
                 device_name : str = None,
-                device_language: str = None):
+                device_language: str = None,
+                referral_code: str = None):
     # Check for service availability
     # XXX TODO: Fetch maintenance mode bool from somewhere
     maintenance_mode = False
@@ -548,6 +556,7 @@ class Mixin:
       short_lived_access_token = short_lived_access_token,
       preferred_email = preferred_email,
       login_token = None,
+      referral_code = None,
     )
     res.update(
       self._in_app_login(user = user,
@@ -716,6 +725,7 @@ class Mixin:
     for field in ['first_name', 'last_name', 'gender', 'timezone', 'locale', 'birthday']:
       if field in facebook_user.data:
         extra_fields['facebook'][field] = facebook_user.data[field]
+    fields.append('used_referral_link')
     self.user_register(
       email = email,
       password = None,
@@ -2763,6 +2773,11 @@ class Mixin:
     else:
       res.update(self.devices_users_api(user['_id']))
     res.update(self.accounts_users_api(user['_id']))
+    res['account'] = {
+      'plan': user.get('plan', 'basic'),
+      'link_size_quota': user.get('quota', {}).get('total_link_size', 0),
+      'link_size_used': user.get('total_link_size', 0),
+    }
     return self.success(res)
 
   def change_plan(self, uid, new_plan):
@@ -2793,6 +2808,16 @@ class Mixin:
     if len(funset):
       update.update({'$unset': funset})
     self.database.users.update({'_id': user['_id']}, update)
+    self.notifier.notify_some(
+      notifier.MODEL_UPDATE,
+      message = {
+        'account': {
+          'link_size_quota': user.get('quota', {}).get('total_link_size', 0),
+          'plan': new_plan_name,
+        }
+      },
+      recipient_ids = {user['_id']},
+      version = (0, 9, 37))
 
   def process_referrals(self, new_user, referrals,
                         inviter_bonus = 1e9,
