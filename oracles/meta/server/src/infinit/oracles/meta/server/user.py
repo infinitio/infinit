@@ -3303,8 +3303,9 @@ class Mixin:
         'code': code,
         'status': 'pending',
         'recipient': recipient['_id'],
+        'recipient_name': recipient['accounts'][0]['id'],
         'sender': user['_id'],
-        'ghost_code': ghost_code
+        'ghost_code': ghost_code,
     })
     is_an_email = utils.is_an_email_address(identifier)
     if is_an_email:
@@ -3341,8 +3342,13 @@ class Mixin:
   @require_logged_in
   def user_invites(self):
     res = self.database.invitations.find({'sender': self.user['_id']})
-    res = [{'recipient': str(r['recipient']), 'status': r['status']} for r in res]
-    return {'results': res}
+    res = [
+      {
+        'recipient': str(r['recipient']),
+        'recipient_name': r['recipient_name'],
+        'status': r['status'],
+      } for r in res]
+    return {'invites': res}
 
   @api('/user/accounts_facebook', method = 'PUT')
   @require_logged_in

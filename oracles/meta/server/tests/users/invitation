@@ -2,7 +2,7 @@
 
 import datetime
 
-from utils import Meta, User, throws
+from utils import *
 import infinit.oracles.meta.server.transaction_status as transaction_status
 
 import bson
@@ -12,22 +12,25 @@ with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   alice.login()
   alice.post('user/invite', {'identifier': 'bob@infinit.io'})
   inv = alice.get('user/invites')
-  inv = inv['results']
-  assert len(inv) == 1
-  assert inv[0]['status'] == 'pending'
+  inv = inv['invites']
+  assertEq(len(inv), 1)
+  assertEq(inv[0]['status'], 'pending')
+  assertEq(inv[0]['recipient_name'], 'bob@infinit.io')
   emails = meta.emailer.emails
   url = emails[0].variables['sender']['avatar']
   alice.get(url)
   inv = alice.get('user/invites')
-  inv = inv['results']
-  assert len(inv) == 1
-  assert inv[0]['status'] == 'opened'
+  inv = inv['invites']
+  assertEq(len(inv), 1)
+  assertEq(inv[0]['status'], 'opened')
+  assertEq(inv[0]['recipient_name'], 'bob@infinit.io')
   bob = User(meta, 'bob@infinit.io')
   bob.login()
   inv = alice.get('user/invites')
-  inv = inv['results']
-  assert len(inv) == 1
-  assert inv[0]['status'] == 'completed'
+  inv = inv['invites']
+  assertEq(len(inv), 1)
+  assertEq(inv[0]['status'], 'completed')
+  assertEq(inv[0]['recipient_name'], 'bob@infinit.io')
 
   alice.post('user/invite', {'identifier': 'carl@infinit.io'})
   carl = User(meta, 'carl2@infinit.io')
@@ -35,14 +38,20 @@ with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   gc = meta.database.users.find_one({'accounts.id': 'carl@infinit.io'})['ghost_code']
   carl.post('ghost/%s/merge' % gc)
   inv = alice.get('user/invites')
-  inv = inv['results']
-  assert len(inv) == 2
-  assert inv[0]['status'] == 'completed'
-  assert inv[1]['status'] == 'completed'
+  inv = inv['invites']
+  assertEq(len(inv), 2)
+  assertEq(inv[0]['status'], 'completed')
+  assertEq(inv[1]['status'], 'completed')
+  assertEq(inv[0]['recipient_name'], 'bob@infinit.io')
+  assertEq(inv[1]['recipient_name'], 'carl@infinit.io')
 
   # Test phone invite response
   invitee = '+33 6 10 15 00 65'
   res = alice.post('user/invite', {'identifier': invitee})
-  assert(res['identifier'] == invitee)
-  assert(len(res['ghost_code']) > 0)
-  assert(len(res['shorten_ghost_profile_url']) > 0)
+  assertEq(res['identifier'], invitee)
+  assert len(res['ghost_code']) > 0
+  assert len(res['shorten_ghost_profile_url']) > 0
+  inv = alice.get('user/invites')['invites']
+  assertEq(len(inv), 3)
+  assertEq(inv[2]['status'], 'pending')
+  assertEq(inv[2]['recipient_name'], '+33 6 10 15 00 65')
