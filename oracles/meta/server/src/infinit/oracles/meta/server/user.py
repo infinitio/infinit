@@ -1214,7 +1214,7 @@ class Mixin:
       transactions = list(self.database.transactions.find(
         {
           'involved': account['_id'],
-          'status': {'$nin': transaction_status.final + [transaction_status.CREATED] }
+          'status': {'$nin': transaction_status.final + [transaction_status.CREATED] },
         },
         fields = self.__transaction_hash_fields(include_id = True)
       ))

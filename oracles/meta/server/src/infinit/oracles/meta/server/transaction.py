@@ -141,6 +141,7 @@ class Mixin:
       'sender_id': True,
       'total_size': True,
       'paused': True,
+      'premium': True,
     }
     if include_id:
       res['_id'] = True
@@ -225,6 +226,7 @@ class Mixin:
           'sender_id': True,
           'total_size': True,
           'paused': True,
+          'premium': True,
         })
       # handle both negative search and empty transaction
       if not transaction:
