@@ -3214,11 +3214,11 @@ class Mixin:
 
   @api('/user/logo', method = 'GET')
   @require_logged_in
-  def user_logo_get_api(self):
+  def user_logo_get_api(self, cache_buster = None):
     return self.__user_get_image('logo', None, self.user)
 
   @api('/users/<user_id>/logo', method = 'GET')
-  def user_logo_get_api(self, user_id):
+  def user_logo_get_api(self, user_id, cache_buster = None):
     return self.__user_get_image(
       'logo', None,
       self.user_from_identifier(user_id, fields = ['plan']))
