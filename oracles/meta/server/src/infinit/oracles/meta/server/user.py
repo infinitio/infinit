@@ -2365,23 +2365,6 @@ class Mixin:
       update)
     return self.success()
 
-  @api('/user/invited')
-  @require_logged_in
-  def invited(self):
-    """Return the list of users invited.
-    """
-    user = self.user
-    source = user.get('email', self.user_identifier(user))
-    invitees = self.database.invitations.find(
-      {
-        'source': source,
-      },
-      fields = {'email': True, '_id': False}
-    )
-    return self.success({
-      'user': list(map(lambda u: u['email'], invitees)),
-    })
-
   @api('/user/self')
   @require_logged_in_fields(['identity'])
   def user_self(self):
