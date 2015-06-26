@@ -264,18 +264,19 @@ class Mixin:
                        id_or_email = None,
                        recipient_identifier: utils.identifier = None,
                        message = ""):
-    return self.transaction_create(
-      sender = self.user,
-      files = files,
-      files_count = files_count,
-      total_size = total_size,
-      is_directory = is_directory,
-      device_id = device_id,
-      transaction_id = t_id,
-      id_or_email = id_or_email,
-      recipient_device_id = recipient_device_id,
-      recipient_identifier = recipient_identifier,
-      message = message)
+    with trace('%s: fill transaction %s' % (self, t_id)):
+      return self.transaction_create(
+        sender = self.user,
+        files = files,
+        files_count = files_count,
+        total_size = total_size,
+        is_directory = is_directory,
+        device_id = device_id,
+        transaction_id = t_id,
+        id_or_email = id_or_email,
+        recipient_device_id = recipient_device_id,
+        recipient_identifier = recipient_identifier,
+        message = message)
 
   @api('/transactions', method = 'POST')
   @require_logged_in
@@ -519,119 +520,118 @@ class Mixin:
         'reason': 'you must provide id_or_email or recipient_identifier'
       })
     recipient_identifier = recipient_identifier or utils.identifier(id_or_email)
-    with elle.log.trace("create transaction 2 (recipient %s)" % recipient_identifier):
-      recipient, new_user = self.__recipient_from_identifier(recipient_identifier,
-                                                             sender)
-      if recipient['register_status'] == 'merged':
-        merge_target = recipient.get('merged_with', None)
-        if merge_target is None:
-          self.gone({
-              'reason': 'user %s is merged' % recipient['_id'],
-              'recipient_id': recipient['_id'],
-        })
-        recipient, new_user = self.__recipient_from_identifier(merge_target,
-                                                               sender)
-      if recipient['register_status'] == 'deleted':
+    recipient, new_user = self.__recipient_from_identifier(recipient_identifier,
+                                                           sender)
+    if recipient['register_status'] == 'merged':
+      merge_target = recipient.get('merged_with', None)
+      if merge_target is None:
         self.gone({
-          'reason': 'user %s is deleted' % recipient['_id'],
-          'recipient_id': recipient['_id'],
+            'reason': 'user %s is merged' % recipient['_id'],
+            'recipient_id': recipient['_id'],
+      })
+      recipient, new_user = self.__recipient_from_identifier(merge_target,
+                                                             sender)
+    if recipient['register_status'] == 'deleted':
+      self.gone({
+        'reason': 'user %s is deleted' % recipient['_id'],
+        'recipient_id': recipient['_id'],
+      })
+    if recipient_device_id is not None:
+      if not any(d['id'] == recipient_device_id for d in recipient['devices']):
+        self.not_found({
+          'reason': 'no such device for user',
+          'user': recipient['_id'],
+          'device': recipient_device_id,
         })
-      if recipient_device_id is not None:
-        if not any(d['id'] == recipient_device_id for d in recipient['devices']):
-          self.not_found({
-            'reason': 'no such device for user',
-            'user': recipient['_id'],
-            'device': recipient_device_id,
-          })
-      is_ghost = recipient['register_status'] == 'ghost'
-      # FIXME: restore when clients will handle it.
-      # if is_ghost and total_size > 2000000000:
-      #   self.forbidden({
-      #     'reason': 'transaction to non-existing users limited to 2GB',
-      #    })
+    is_ghost = recipient['register_status'] == 'ghost'
+    # FIXME: restore when clients will handle it.
+    # if is_ghost and total_size > 2000000000:
+    #   self.forbidden({
+    #     'reason': 'transaction to non-existing users limited to 2GB',
+    #    })
 
-      if is_ghost:
-        # Add to referral
-        self.database.users.update(
-          {'_id': recipient['_id']},
-          {'$addToSet': {'referred_by': sender['_id']}}
-        )
-      elle.log.debug("transaction recipient has id %s" % recipient['_id'])
-      _id = sender['_id']
-      elle.log.debug('Sender agent %s, version %s, peer_new %s peer_ghost %s'
-                     % (self.user_agent, self.user_version, new_user,  is_ghost))
-      transaction = {
-        'sender_id': _id,
-        'sender_fullname': sender['fullname'],
-        'sender_device_id': device_id, # bson.ObjectId(device_id),
-        'recipient_id': recipient['_id'], #X
-        'recipient_fullname': recipient['fullname'],
-        'recipient_device_id': recipient_device_id if recipient_device_id else '',
-        'involved': [_id, recipient['_id']],
-        # Empty until accepted.
-        'recipient_device_name': '',
-        'message': message,
-        'files': files,
-        'files_count': files_count,
-        'total_size': total_size,
-        'is_directory': is_directory,
-        'creation_time': self.now,
-        'modification_time': self.now,
-        'ctime': time.time(),
-        'mtime': time.time(),
-        'status': transaction_status.CREATED,
-        'fallback_host': None,
-        'fallback_port_ssl': None,
-        'fallback_port_tcp': None,
-        'aws_credentials': None,
-        'is_ghost': is_ghost,
-        'paused': False,
-        'strings': ' '.join([
-              sender['fullname'],
-              sender['handle'],
-              self.user_identifier(sender),
-              recipient['fullname'],
-              recipient.get('handle', ""),
-              self.user_identifier(recipient),
-              message,
-              ] + files)
-        }
-      if transaction_id is not None:
-        transaction['status'] = transaction_status.INITIALIZED
-        self.database.transactions.update(
-            {'_id': transaction_id},
-            {'$set': transaction})
-        transaction['_id'] = transaction_id
-        self.notifier.notify_some(
-          notifier.PEER_TRANSACTION,
-          recipient_ids = {transaction['recipient_id']},
-          message = transaction,
-        )
-        self.__update_transaction_stats(
-          sender,
-          counts = ['sent_peer', 'sent'],
-          pending = transaction,
-          time = True)
-        if not is_ghost:
-          self.__update_transaction_stats(
-            recipient,
-            unaccepted = transaction,
-            time = False)
-      else:
-        transaction_id = self.database.transactions.insert(transaction)
+    if is_ghost:
+      # Add to referral
+      self.database.users.update(
+        {'_id': recipient['_id']},
+        {'$addToSet': {'referred_by': sender['_id']}}
+      )
+    elle.log.debug("transaction recipient has id %s" % recipient['_id'])
+    _id = sender['_id']
+    elle.log.debug('Sender agent %s, version %s, peer_new %s peer_ghost %s'
+                   % (self.user_agent, self.user_version, new_user,  is_ghost))
+    transaction = {
+      'sender_id': _id,
+      'sender_fullname': sender['fullname'],
+      'sender_device_id': device_id, # bson.ObjectId(device_id),
+      'recipient_id': recipient['_id'], #X
+      'recipient_fullname': recipient['fullname'],
+      'recipient_device_id': recipient_device_id if recipient_device_id else '',
+      'involved': [_id, recipient['_id']],
+      # Empty until accepted.
+      'recipient_device_name': '',
+      'message': message,
+      'files': files,
+      'files_count': files_count,
+      'total_size': total_size,
+      'is_directory': is_directory,
+      'creation_time': self.now,
+      'modification_time': self.now,
+      'ctime': time.time(),
+      'mtime': time.time(),
+      'status': transaction_status.CREATED,
+      'fallback_host': None,
+      'fallback_port_ssl': None,
+      'fallback_port_tcp': None,
+      'aws_credentials': None,
+      'is_ghost': is_ghost,
+      'paused': False,
+      'strings': ' '.join([
+            sender['fullname'],
+            sender['handle'],
+            self.user_identifier(sender),
+            recipient['fullname'],
+            recipient.get('handle', ""),
+            self.user_identifier(recipient),
+            message,
+            ] + files)
+      }
+    if transaction_id is not None:
+      transaction['status'] = transaction_status.INITIALIZED
+      self.database.transactions.update(
+          {'_id': transaction_id},
+          {'$set': transaction})
       transaction['_id'] = transaction_id
-      self._increase_swag(sender['_id'], recipient['_id'])
-      if recipient['_id'] == sender['_id']:
-        self.__delight(recipient, 'Send to Self',
-                       transaction, recipient,
-                       send = recipient_device_id is None)
-      recipient_view = self.__user_view(recipient)
-      return self.success({
-          'created_transaction_id': transaction_id,
-          'remaining_invitations': sender.get('remaining_invitations', 0),
-          'recipient_is_ghost': is_ghost,
-          'recipient': recipient_view,
-        })
+      self.notifier.notify_some(
+        notifier.PEER_TRANSACTION,
+        recipient_ids = {transaction['recipient_id']},
+        message = transaction,
+      )
+      self.__update_transaction_stats(
+        sender,
+        counts = ['sent_peer', 'sent'],
+        pending = transaction,
+        time = True)
+      if not is_ghost:
+        self.__update_transaction_stats(
+          recipient,
+          unaccepted = transaction,
+          time = False)
+    else:
+      transaction_id = self.database.transactions.insert(transaction)
+    transaction['_id'] = transaction_id
+    self._increase_swag(sender['_id'], recipient['_id'])
+    if recipient['_id'] == sender['_id']:
+      self.__delight(recipient, 'Send to Self',
+                     transaction, recipient,
+                     send = recipient_device_id is None)
+    recipient_view = self.__user_view(recipient)
+    return self.success({
+        'created_transaction_id': transaction_id,
+        'remaining_invitations': sender.get('remaining_invitations', 0),
+        'recipient_is_ghost': is_ghost,
+        'recipient': recipient_view,
+      })
 
   def __delight(self, user, template, transaction, peer, send = True):
     if 'delight' not in user.get('emailing', {}):
