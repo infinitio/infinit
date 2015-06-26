@@ -17,7 +17,6 @@ from . import cloud_buffer_token, cloud_buffer_token_gcs, error, notifier, regex
 #
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.LinkGeneration'
 
-short_host = 'http://inft.ly'
 default_alphabet = '23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ'
 encoded_hash_length = 7
 link_lifetime_days = 1 # Days that each S3 request link is valid.
@@ -69,8 +68,7 @@ class Mixin:
       return encoded_hash[:encoded_hash_length]
 
   def _make_share_link(self, hash):
-    return str('%(short_host)s/%(hash)s' % {'short_host': short_host,
-                                            'hash': hash})
+    return str('https://infinit.io/_/%s' % hash)
 
   ## ----------------- ##
   ## Cloud credentials ##
