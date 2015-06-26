@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import HTTPException, Meta, User
+from utils import *
 
 def check_search_result(res, ids):
   assert [user['id'] for user in res['users']] == ids
@@ -29,12 +29,12 @@ with Meta() as meta:
   print(res['users'])
   assert len(res['users']) == number_of_alices
 
-  bob.sendfile(alices[3].email)
-  bob.sendfile(alices[1].email)
-  bob.sendfile(alices[3].email)
-  bob.sendfile(alices[3].email)
-  bob.sendfile(alices[5].email)
-  bob.sendfile(alices[5].email)
+  bob.send(alices[3].email)
+  bob.send(alices[1].email)
+  bob.send(alices[3].email)
+  bob.send(alices[3].email)
+  bob.send(alices[5].email)
+  bob.send(alices[5].email)
 
   # Current swag amounts:
   # alice3 : 3
@@ -42,9 +42,9 @@ with Meta() as meta:
   # alice1 : 1.
 
   res = bob.get('users?search=al&limit=10')
-  print(res['users'])
   assert len(res['users']) == number_of_alices
-  assert [user['id'] for user in res['users'][:3]] == [alices[3].id, alices[5].id, alices[1].id]
+  assertEq([user['id'] for user in res['users'][:3]],
+           [alices[3].id, alices[5].id, alices[1].id])
   res = bob.get('users?search=al&limit=1')
   assert len(res['users']) == 1
   assert [user['id'] for user in res['users']] == [alices[3].id]

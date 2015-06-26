@@ -2,7 +2,7 @@
 
 import datetime
 
-from utils import Meta, User, throws
+from utils import *
 import infinit.oracles.meta.server.transaction_status as transaction_status
 
 import bson
@@ -37,47 +37,46 @@ with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   bob = User(meta, 'bob@infinit.io')
   bob.login()
   me = bob.me
-  assert me['plan'] == 'basic'
+  assertEq(me['plan'], 'basic')
   assert me['features']['nag']
   assert me['features'].get('turbo') is None
-  assert me['quota']['total_link_size'] == 1e9
+  assertEq(me['quota']['total_link_size'], 1e9)
   print(me['id'])
   meta.meta.change_plan(bson.ObjectId(me['id']), 'premium')
   me = bob.me
-  assert me['plan'] == 'premium'
+  assertEq(me['plan'], 'premium')
   assert me['features'].get('nag') is None
   assert me['features'].get('turbo')
-  assert me['quota']['total_link_size'] == 5e10
+  assertEq(me['quota']['total_link_size'], 5e10)
   bob.put('users/%s' % bob.id, {'plan': 'basic'})
   me = bob.me
-  assert me['plan'] == 'basic'
+  assertEq(me['plan'], 'basic')
   assert me['features']['nag']
   assert me['features'].get('turbo') is None
-  assert me['quota']['total_link_size'] == 1e9
+  assertEq(me['quota']['total_link_size'], 1e9)
 
   # Referral program
-  transaction, res = bob.sendfile(recipient = "candy@infinit.io")
-  transaction, res = bob.sendfile(recipient = "daniel@infinit.io")
+  transaction, res = bob.send(recipient = "candy@infinit.io")
+  transaction, res = bob.send(recipient = "daniel@infinit.io")
   candy = User(meta, 'candy@infinit.io')
   candy.login()
   c = candy.me
-  assert c['quota']['total_link_size'] == 15e8
+  assertEq(c['quota']['total_link_size'], 15e8)
   b = bob.me
-  assert b['quota']['total_link_size'] == 2e9
-  candy.sendfile(recipient = "daniel@infinit.io")
+  assertEq(b['quota']['total_link_size'], 2e9)
+  candy.send(recipient = "daniel@infinit.io")
   daniel = User(meta, 'daniel@infinit.io')
   daniel.login()
   c = candy.me
-  assert c['quota']['total_link_size'] == 25e8
+  assertEq(c['quota']['total_link_size'], 25e8)
   b = bob.me
-  assert b['quota']['total_link_size'] == 3e9
+  assertEq(b['quota']['total_link_size'], 3e9)
   # Referral through ghost
-  transaction, res = bob.sendfile(recipient = 'edgar@infinit.io')
+  transaction, res = bob.send(recipient = 'edgar@infinit.io')
   edgar = User(meta, 'edgar2@infinit.io')
   edgar.login()
-  assert edgar.me['quota']['total_link_size'] == 1e9
+  assertEq(edgar.me['quota']['total_link_size'], 1e9)
   gc = meta.database.users.find_one({'accounts.id': 'edgar@infinit.io'})['ghost_code']
   edgar.post('ghost/%s/merge' % gc)
-  assert edgar.me['quota']['total_link_size'] == 15e8
-  assert bob.me['quota']['total_link_size'] == 4e9
-
+  assertEq(edgar.me['quota']['total_link_size'], 15e8)
+  assertEq(bob.me['quota']['total_link_size'], 4e9)

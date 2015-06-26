@@ -533,12 +533,6 @@ Session: %(session)s
     if k is None or k != key(bottle.request.path):
       self.forbidden()
 
-  def require_premium(self, user = None):
-    if user is None:
-      user = self.user
-    if user.get('plan') != 'premium':
-      self.payment_required({'reason': 'premium plan required'})
-
   def url_absolute(self, url = ''):
     if not url.startswith('/'):
       url = '/' + url

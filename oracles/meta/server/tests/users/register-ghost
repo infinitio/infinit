@@ -7,8 +7,7 @@ with Meta() as meta:
   alice_email = "alice@infinit.io"
   bob = User(meta, "bob@infinit.io")
   bob.login()
-  transaction, res = bob.sendfile(recipient = alice_email)
-  assert res['success']
+  transaction, res = bob.send(recipient = alice_email)
   transaction_id = res['created_transaction_id']
   ghost = meta.get('users/%s' % alice_email)
   expected_fullname = "alice in chains"

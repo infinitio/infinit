@@ -17,7 +17,6 @@ with Meta() as meta:
   bob = User(meta, "bob@infinit.io")
   bob.login()
   transaction, res = bob.sendfile(recipient = "alice@infinit.io", use_identifier = False)
-  assert res['success']
 
   transaction_id = res['created_transaction_id']
 
@@ -30,7 +29,7 @@ with Meta() as meta:
     if key in ['id_or_email', 'device_id']: # Special cases.
       continue
     assert res[key] == transaction[key]
-  res['recipient_id'] == transaction['id_or_email']
+  res['recipient_id'] == transaction['recipient_id']
 
 # Check if download_link is sent.
 with Meta(metrics = Metrics()) as meta:

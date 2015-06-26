@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import Meta, User
+from utils import *
 
 with Meta() as meta:
   alice = User(meta, "alice@infinit.io")
@@ -10,8 +10,6 @@ with Meta() as meta:
 
   transaction, res = bob.sendfile(recipient = alice.id,
                                   use_identifier = False)
-  assert res['success']
-
   transaction_id = res['created_transaction_id']
 
   alice.login()
@@ -22,4 +20,4 @@ with Meta() as meta:
     if key in ['id_or_email', 'device_id']: # Special cases.
       continue
     assert res[key] == transaction[key]
-  res['recipient_id'] == transaction['id_or_email']
+  assertEq(res['recipient_id'], transaction['recipient_id'])

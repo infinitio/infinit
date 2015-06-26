@@ -26,7 +26,6 @@ with Meta() as meta:
   # Test contact-ing a ghost
   bob.login()
   transaction, res = bob.sendfile(recipient = 'daniel@infinit.io', use_identifier = False)
-  assert res['success']
   conrad.put('user/contacts',
     {'contacts': [{'emails':['daniel@infinit.io']}]})
   assert [str(bob.id)] == conrad.swaggers

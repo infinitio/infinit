@@ -18,14 +18,11 @@ with Meta() as meta:
 
   transaction_ids = {alice.id: [], charles.id: []}
   for _ in range(10):
-    transaction_ids[alice.id].append(bob.sendfile(recipient = alice.id)[1]['created_transaction_id'])
+    transaction_ids[alice.id].append(bob.send(recipient = alice.id)[1]['created_transaction_id'])
   for _ in range(10):
-    transaction_ids[charles.id].append(bob.sendfile(recipient = charles.id)[1]['created_transaction_id'])
+    transaction_ids[charles.id].append(bob.send(recipient = charles.id)[1]['created_transaction_id'])
 
   trs = transaction_ids[alice.id] + transaction_ids[charles.id]
-
-  for tr in trs:
-    bob.post("transaction/update", {"transaction_id": tr, "status": transaction_status.INITIALIZED})
 
   res = bob.get('user/synchronize?init=0')
 

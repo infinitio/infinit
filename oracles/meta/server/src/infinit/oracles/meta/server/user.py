@@ -3517,3 +3517,12 @@ class Mixin:
     if res is None:
       self.bad_request({'reason': 'invalid referrer'})
     return {}
+
+  def user_premium(self, user = None):
+    if user is None:
+      user = self.user
+    return user.get('plan') == 'premium'
+
+  def require_premium(self, user = None):
+    if not self.user_premium(user):
+      self.payment_required({'reason': 'premium plan required'})

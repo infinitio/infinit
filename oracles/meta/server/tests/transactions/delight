@@ -7,10 +7,10 @@ from infinit.oracles.meta.server.transaction_status import *
 with Meta() as meta:
   alice = User(meta, 'alice@infinit.io')
   alice.login()
-  alice.sendfile(alice.email)
+  alice.send(alice.email)
   emails = meta.emailer.template('Send to Self')
   assertEq(len(emails), 1)
-  alice.sendfile(alice.email)
+  alice.send(alice.email)
   assert not meta.emailer.emails
 
 # Cloud buffered
@@ -18,7 +18,7 @@ with Meta() as meta:
   alice = User(meta, 'alice@infinit.io')
   bob = User(meta, 'bob@infinit.io')
   alice.login()
-  transaction, _ = alice.sendfile(bob.email, initialize = True)
+  transaction, _ = alice.send(bob.email, initialize = True)
   assert not meta.emailer.emails
   alice.transaction_update(transaction['_id'], CLOUD_BUFFERED)
   emails = meta.emailer.emails
@@ -30,7 +30,7 @@ with Meta() as meta:
 with Meta() as meta:
   alice = User(meta, 'alice@infinit.io')
   alice.login()
-  transaction, _ = alice.sendfile('ghost@infinit.io',
+  transaction, _ = alice.send('ghost@infinit.io',
                                   initialize = True)
   assert not meta.emailer.emails
   alice.transaction_update(transaction['_id'], GHOST_UPLOADED)
@@ -42,7 +42,7 @@ with Meta() as meta:
   alice = User(meta, 'alice@infinit.io')
   bob = User(meta, 'bob@infinit.io')
   alice.login()
-  transaction, _ = alice.sendfile(bob.email, initialize = True)
+  transaction, _ = alice.send(bob.email, initialize = True)
   bob.login()
   bob.transaction_update(transaction['_id'], ACCEPTED)
   assert not meta.emailer.emails

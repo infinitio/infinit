@@ -821,6 +821,9 @@ class User(Client):
       return self.email == other.email
     return NotImplemented
 
+  def send(self, *args, **kwargs):
+    kwargs.setdefault('initialize', True)
+    return self.sendfile(*args, **kwargs)
 
   def sendfile(self,
                recipient,
@@ -835,26 +838,30 @@ class User(Client):
                use_identifier = False):
     if device_id is None:
       device_id = self.device_id
-
-    transaction = {
-      'files': files,
-      'files_count': len(files),
-      'total_size': total_size,
-      'message': message,
-      'is_directory': is_directory,
-      'device_id': str(device_id),
-      use_identifier and 'recipient_identifier' or 'id_or_email': recipient,
-    }
-    if not initialize:
-      res = self.post('transaction/create', transaction)
-      ghost = res['recipient_is_ghost']
-    else:
-      id = self.post('transaction/create_empty')['created_transaction_id']
-      res = self.put('transaction/%s' % id, transaction)
-      ghost = res['recipient_is_ghost']
-    if ghost:
-      self.get('transaction/%s/cloud_buffer' % res['created_transaction_id'])
-    transaction.update({'_id': res['created_transaction_id']})
+    res = self.post(
+      'transactions',
+      {
+        'recipient_identifier': recipient,
+        'files': files,
+        'files_count': len(files),
+        'message': message
+      })
+    transaction = res['transaction']
+    tid = transaction['_id']
+    if initialize:
+      content = {
+        'files': files,
+        'files_count': len(files),
+        'total_size': total_size,
+        'message': message,
+        'is_directory': is_directory,
+        'device_id': str(device_id),
+        'recipient_identifier': recipient,
+      }
+      res = self.put('transaction/%s' % tid, content)
+      transaction = res['transaction']
+      if transaction['is_ghost']:
+        self.get('transaction/%s/cloud_buffer' % transaction['_id'])
     return transaction, res
 
   def transaction_update(self, transaction, status):

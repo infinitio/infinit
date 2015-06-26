@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import HTTPException, Meta, User
+from utils import *
 from bson import ObjectId
 from functools import reduce
 import sys
@@ -11,10 +11,10 @@ with Meta() as meta:
   alice = User(meta, "alice@infinit.io")
   alice.login()
 
-  ti1 = alice.sendfile(recipient = '+33600000000')[1]['created_transaction_id']
-  assert meta.database.users.count() == 2
-  ti2 = alice.sendfile(recipient = '+33600000000')[1]['created_transaction_id']
-  assert meta.database.users.count() == 2
+  ti1 = alice.send(recipient = '+33600000000')[1]['created_transaction_id']
+  assertEq(meta.database.users.count(), 2)
+  ti2 = alice.send(recipient = '+33600000000')[1]['created_transaction_id']
+  assertEq(meta.database.users.count(), 2)
   assert meta.database.users.find_one(
     {'accounts.id': '+33 6 00 00 00 00'})
   recipient = meta.database.users.find_one(
@@ -22,28 +22,28 @@ with Meta() as meta:
   assert len(recipient['ghost_code'])
   alice.transaction_update(ti1, transaction_status.INITIALIZED)
   # Only one is visible.
-  assert(len(alice.transactions) == 1)
+  assertEq(len(alice.transactions), 2)
   bob = User(meta, "bob@infinit.io")
   bob.login()
-  assert(len(bob.transactions) == 0)
+  assertEq(len(bob.transactions), 0)
   bob.post('ghost/%s/merge' % recipient['ghost_code'])
-  assert(len(bob.transactions) == 1)
+  assertEq(len(bob.transactions), 2)
   alice.transaction_update(ti2, transaction_status.INITIALIZED)
-  assert(len(alice.transactions) == 2)
-  assert(len(bob.transactions) == 2)
-  ti3 = alice.sendfile(recipient = '+33600000000')[1]['created_transaction_id']
+  assertEq(len(alice.transactions), 2)
+  assertEq(len(bob.transactions), 2)
+  ti3 = alice.send(recipient = '+33600000000')[1]['created_transaction_id']
   alice.transaction_update(ti3, transaction_status.INITIALIZED)
-  assert meta.database.users.count() == 3
-  assert(len(alice.transactions) == 3)
+  assertEq(meta.database.users.count(), 3)
+  assertEq(len(alice.transactions), 3)
 
 with Meta() as meta:
   alice = User(meta, "alice@infinit.io")
   alice.login(country_code = "FR")
-  ti1 = alice.sendfile(recipient = '+33600000000', use_identifier = True)[1]['created_transaction_id']
-  assert meta.database.users.count() == 2
-  ti2 = alice.sendfile(recipient = '0600000000', use_identifier = True)[1]['created_transaction_id']
+  ti1 = alice.send(recipient = '+33600000000', use_identifier = True)[1]['created_transaction_id']
+  assertEq(meta.database.users.count(), 2)
+  ti2 = alice.send(recipient = '0600000000', use_identifier = True)[1]['created_transaction_id']
   print(list(meta.database.users.find({}, {'accounts': 1})))
-  assert meta.database.users.count() == 2
+  assertEq(meta.database.users.count(), 2)
   assert meta.database.users.find_one(
     {'accounts.id': '+33 6 00 00 00 00'})
   assert meta.database.users.find_one(
@@ -52,15 +52,15 @@ with Meta() as meta:
     {'accounts.id': '+33 6 00 00 00 00'})
   recipient = meta.database.users.find_one(
     {'accounts.id': '+33 6 00 00 00 00'})
-  assert recipient['_id'] == recipientplus['_id']
-  assert recipient['ghost_code'] == recipientplus['ghost_code']
+  assertEq(recipient['_id'], recipientplus['_id'])
+  assertEq(recipient['ghost_code'], recipientplus['ghost_code'])
   alice.transaction_update(ti1, transaction_status.INITIALIZED)
   alice.transaction_update(ti2, transaction_status.INITIALIZED)
   bob = User(meta, "bob@infinit.io")
   bob.login()
-  assert(len(bob.transactions) == 0)
+  assertEq(len(bob.transactions), 0)
   bob.post('ghost/%s/merge' % recipient['ghost_code'])
-  assert(len(bob.transactions) == 2)
+  assertEq(len(bob.transactions), 2)
 
 # Ghost code, one with country code, the other with no country code.
 with Meta() as meta:
@@ -68,10 +68,10 @@ with Meta() as meta:
   # Device push token is needed because
   alice.login(country_code = "FR",
               device_push_token = "31")
-  _, res0 = alice.sendfile(recipient = '+33600000000', use_identifier = True, initialize = True)
-  assert meta.database.users.count() == 2
-  _, res1 = alice.sendfile(recipient = '0600000000', use_identifier = True, initialize = True)
-  assert meta.database.users.count() == 2
+  _, res0 = alice.send(recipient = '+33600000000', use_identifier = True, initialize = True)
+  assertEq(meta.database.users.count(), 2)
+  _, res1 = alice.send(recipient = '0600000000', use_identifier = True, initialize = True)
+  assertEq(meta.database.users.count(), 2)
   ti0 = res0['created_transaction_id']
   ti1 = res1['created_transaction_id']
   assert meta.database.users.find_one(
@@ -84,9 +84,9 @@ with Meta() as meta:
     {'accounts.id': '+33 6 00 00 00 00'})
   extra_transactions = 2
   for _ in range(extra_transactions):
-    alice.sendfile(recipient = '0600000000', use_identifier = True, initialize = True)
-  assert recipient['_id'] == recipientplus['_id']
-  assert recipient['ghost_code'] == recipientplus['ghost_code']
+    alice.send(recipient = '0600000000', use_identifier = True, initialize = True)
+  assertEq(recipient['_id'], recipientplus['_id'])
+  assertEq(recipient['ghost_code'], recipientplus['ghost_code'])
   alice.transaction_update(ti0, transaction_status.INITIALIZED)
   alice.transaction_update(ti1, transaction_status.INITIALIZED)
   alice.transaction_update(ti0, transaction_status.GHOST_UPLOADED)
@@ -97,7 +97,7 @@ with Meta() as meta:
   eve.login()
   eve.post('ghost/%s/merge' % ghost_code)
 
-  assert len(eve.transactions) == 2 + extra_transactions
+  assertEq(len(eve.transactions), 2 + extra_transactions)
   eve.transaction_update(ti0, transaction_status.ACCEPTED)
   eve.transaction_update(ti0, transaction_status.FINISHED)
 
@@ -112,26 +112,26 @@ with Meta() as meta:
     # Device push token is needed because
     alice.login(country_code = None,
                 device_push_token = "31")
-    _, res0 = alice.sendfile(recipient = '+33600000000', use_identifier = True, initialize = True)
-    assert meta.database.users.count() == 2
+    _, res0 = alice.send(recipient = '+33600000000', use_identifier = True, initialize = True)
+    assertEq(meta.database.users.count(), 2)
     try:
-      _, res1 = alice.sendfile(recipient = '0600000000', use_identifier = True, initialize = True)
+      _, res1 = alice.send(recipient = '0600000000', use_identifier = True, initialize = True)
       assert False
     except HTTPException as e:
-      assert e.status == 400
+      assertEq(e.status, 400)
     print(list(meta.database.users.find({}, {'accounts': 1})))
     assert 'id' in alice.get('users/+33600000000')
     try:
       alice.get('users/0600000000')
       assert False
     except HTTPException as e:
-      assert e.status == 404
+      assertEq(e.status, 404)
     alice.logout()
     print("+" * 64)
     alice.login(country_code = "FR")
-    alice.sendfile(recipient = '+33600000000', use_identifier = True, initialize = True)
-    alice.sendfile(recipient = '0600000000', use_identifier = True, initialize = True)
-    assert meta.database.users.count() == 2
+    alice.send(recipient = '+33600000000', use_identifier = True, initialize = True)
+    alice.send(recipient = '0600000000', use_identifier = True, initialize = True)
+    assertEq(meta.database.users.count(), 2)
     assert 'id' in alice.get('users/+33600000000')
     assert 'id' in alice.get('users/0600000000')
 
@@ -140,7 +140,7 @@ with Meta() as meta:
   alice = User(meta, "alice@infinit.io")
   def send(alice, country_code, phone):
     alice.login(country_code = country_code, device_push_token = "31")
-    _, res0 = alice.sendfile(recipient = phone)
+    _, res0 = alice.send(recipient = phone)
     alice.logout()
   send(alice, 'US', '4074610254')
   send(alice, 'US', '(231) 510-5912')

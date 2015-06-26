@@ -11,6 +11,7 @@ import requests
 import json
 
 import elle.log
+from elle.log import log, trace, debug, dump
 from .utils import *
 from . import regexp, error, transaction_status, notifier, invitation, cloud_buffer_token, cloud_buffer_token_gcs, mail, utils
 import uuid
@@ -231,70 +232,6 @@ class Mixin:
       else:
         return transaction
 
-  @api('/transaction/create_empty', method='POST')
-  @require_logged_in
-  def transaction_create_empty_api(self):
-    """
-    Create an empty transaction, to be filled in a separate API call.
-    This allows for the client finer snapshot granularity, along with easier
-    cleanup of unfulfilled transactions.
-    Deprecated by /transactions POST.
-
-    Return: the newly created transaction id.
-    """
-    return self.transaction_create_empty()
-
-
-  def transaction_create_empty(self):
-    transaction_id = self.database.transactions.insert({})
-    return {
-      'created_transaction_id': transaction_id,
-      }
-
-  @api('/transaction/<t_id>', method='PUT')
-  @require_logged_in
-  def transaction_fill(self,
-                       t_id: bson.ObjectId,
-                       files,
-                       files_count,
-                       total_size,
-                       is_directory,
-                       device_id, # Can be determine by session.
-                       recipient_device_id = None,
-                       id_or_email = None,
-                       recipient_identifier: utils.identifier = None,
-                       message = ""):
-    with trace('%s: fill transaction %s' % (self, t_id)):
-      return self.transaction_create(
-        sender = self.user,
-        files = files,
-        files_count = files_count,
-        total_size = total_size,
-        is_directory = is_directory,
-        device_id = device_id,
-        transaction_id = t_id,
-        id_or_email = id_or_email,
-        recipient_device_id = recipient_device_id,
-        recipient_identifier = recipient_identifier,
-        message = message)
-
-  @api('/transactions', method = 'POST')
-  @require_logged_in
-  def transaction_post(self,
-                       recipient_identifier: utils.identifier,
-                       files,
-                       files_count,
-                       message):
-    """
-    Create a bare transaction, with minimal information and placeholder values.
-    Deprecates /transactions/create_empty POST.
-    """
-    return self._transactions(self.user,
-                              recipient_identifier,
-                              message,
-                              files,
-                              files_count)
-
   # FIXME: Nuke this ! Use the user fetching routines from user.py and
   # don't hardcode the list of fields. Stop ADDING code !
   def __recipient_from_identifier(self,
@@ -412,90 +349,116 @@ class Mixin:
     else:
       return recipient, False
 
-  def _transactions(self,
-                    sender,
-                    recipient_identifier,
-                    message,
-                    files,
-                    files_count):
-    recipient_identifier = utils.identifier(recipient_identifier)
-    with elle.log.trace("create transaction (recipient %s)" % recipient_identifier):
-      recipient, new_user = self.__recipient_from_identifier(
-        recipient_identifier,
-        sender)
-      transaction = {
-        'sender_id': bson.ObjectId(sender['_id']),
-        'sender_fullname': '',
-        'sender_device_id': self.current_device['id'],
-
-        'recipient_id': bson.ObjectId(recipient['_id']),
-        'recipient_fullname': '',
-        'recipient_device_id': '',
-        'involved': ['', recipient['_id']],
-        # Empty until accepted.
-        'recipient_device_name': '',
-
-        'message': message,
-
-        'files': files,
-        'files_count': files_count,
-        'total_size': 0,
-        'is_directory': False,
-
-        'creation_time': self.now,
-        'modification_time': self.now,
-        'ctime': time.time(),
-        'mtime': time.time(),
-        'status': transaction_status.CREATED,
-        'fallback_host': None,
-        'fallback_port_ssl': None,
-        'fallback_port_tcp': None,
-        'aws_credentials': None,
-        'is_ghost': False,
-        'strings': '',
-
-        'cloud_buffered': False,
-        'paused': False,
-        }
-      transaction_id = self.database.transactions.insert(transaction)
-      return {
-        'created_transaction_id': transaction_id,
-      }
-
-  @api('/transaction/create', method = 'POST')
+  @api('/transactions', method = 'POST')
   @require_logged_in
-  def transaction_create_api(self,
-                             files,
-                             files_count,
-                             total_size,
-                             is_directory,
-                             device_id, # Can be determine by session.
-                             message = "",
-                             recipient_identifier: utils.identifier = None,
-                             id_or_email = None):
-    return self.transaction_create(
-      sender = self.user,
-      files = files,
-      files_count = files_count,
-      total_size = total_size,
-      is_directory = is_directory,
-      id_or_email = id_or_email,
-      recipient_identifier = recipient_identifier,
-      device_id = device_id,
-      message = message)
+  def transaction_create_api(
+      self,
+      recipient_identifier: utils.identifier,
+      files,
+      files_count,
+      message):
+    """
+    Create a bare transaction, with minimal information and placeholder values.
+    """
+    with trace('%s: create transaction from %s to %s' %
+               (self, self.user['_id'], recipient_identifier)):
+      return self.transaction_create(
+        self.user,
+        recipient_identifier,
+        message,
+        files,
+        files_count,
+      )
 
   def transaction_create(self,
                          sender,
+                         recipient_identifier,
+                         message,
                          files,
-                         files_count,
-                         total_size,
-                         is_directory,
-                         device_id, # Can be determine by session.
-                         id_or_email = None,
-                         recipient_identifier : utils.identifier = None,
-                         message = "",
-                         transaction_id = None,
-                         recipient_device_id = None):
+                         files_count):
+    recipient_identifier = utils.identifier(recipient_identifier)
+    recipient, new_user = self.__recipient_from_identifier(
+      recipient_identifier,
+      sender)
+    transaction = {
+      'sender_id': bson.ObjectId(sender['_id']),
+      'sender_fullname': '',
+      'sender_device_id': self.current_device['id'],
+      'recipient_id': bson.ObjectId(recipient['_id']),
+      'recipient_fullname': '',
+      'recipient_device_id': '',
+      'involved': ['', recipient['_id']],
+      # Empty until accepted.
+      'recipient_device_name': '',
+      'message': message,
+      'files': files,
+      'files_count': files_count,
+      'total_size': 0,
+      'is_directory': False,
+      'creation_time': self.now,
+      'modification_time': self.now,
+      'ctime': time.time(),
+      'mtime': time.time(),
+      'status': transaction_status.CREATED,
+      'fallback_host': None,
+      'fallback_port_ssl': None,
+      'fallback_port_tcp': None,
+      'aws_credentials': None,
+      'is_ghost': recipient['register_status'] == 'ghost',
+      'strings': '',
+      'cloud_buffered': False,
+      'paused': False,
+      'premium': self.user_premium(sender),
+    }
+    transaction_id = self.database.transactions.insert(transaction)
+    return {
+      'created_transaction_id': transaction_id, # Deprecated
+      'transaction': self._transaction_view(transaction),
+    }
+
+  @api('/transaction/<t_id>', method='PUT')
+  @require_logged_in
+  def transaction_fill_api(
+      self,
+      t_id: bson.ObjectId,
+      files,
+      files_count,
+      total_size,
+      is_directory,
+      device_id, # Can be determine by session.
+      recipient_device_id = None,
+      id_or_email = None,
+      recipient_identifier: utils.identifier = None,
+      message = '',
+  ):
+    with trace('%s: fill transaction %s' % (self, t_id)):
+      return self.transaction_fill(
+        sender = self.user,
+        files = files,
+        files_count = files_count,
+        total_size = total_size,
+        is_directory = is_directory,
+        device_id = device_id,
+        transaction_id = t_id,
+        id_or_email = id_or_email,
+        recipient_device_id = recipient_device_id,
+        recipient_identifier = recipient_identifier,
+        message = message)
+
+  def transaction_fill(
+      self,
+      sender,
+      files,
+      files_count,
+      total_size,
+      is_directory,
+      device_id, # Can be determine by session.
+      id_or_email = None,
+      recipient_identifier : utils.identifier = None,
+      message = '',
+      transaction_id = None,
+      recipient_device_id = None,
+  ):
     """
     Send a file to a specific user.
     If you pass an email and the user is not registered in infinit,
@@ -509,8 +472,7 @@ class Mixin:
     id_or_email -- the recipient id or email.
     recipient -- a more generic id_or_email.
     message -- an optional message.
-    transaction_id -- id if the transaction was previously created with
-    create_empty.
+    transaction_id -- id if the transaction was previously created
 
     Errors:
     Using an id that doesn't exist.
@@ -549,7 +511,6 @@ class Mixin:
     #   self.forbidden({
     #     'reason': 'transaction to non-existing users limited to 2GB',
     #    })
-
     if is_ghost:
       # Add to referral
       self.database.users.update(
@@ -627,10 +588,11 @@ class Mixin:
                      send = recipient_device_id is None)
     recipient_view = self.__user_view(recipient)
     return self.success({
-        'created_transaction_id': transaction_id,
-        'remaining_invitations': sender.get('remaining_invitations', 0),
-        'recipient_is_ghost': is_ghost,
-        'recipient': recipient_view,
+      'created_transaction_id': transaction_id, # deprecated
+      'remaining_invitations': sender.get('remaining_invitations', 0),
+      'recipient_is_ghost': is_ghost, # deprecated
+      'recipient': recipient_view,
+      'transaction': self._transaction_view(transaction),
       })
 
   def __delight(self, user, template, transaction, peer, send = True):
@@ -1357,3 +1319,7 @@ class Mixin:
       "running_transactions": list(runnings),
       "final_transactions": list(finals),
     }
+
+  # FIXME: fill and apply this everywhere relevant
+  def _transaction_view(self, transaction):
+    return transaction

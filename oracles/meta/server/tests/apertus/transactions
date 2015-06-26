@@ -47,7 +47,6 @@ with Meta() as meta:
 
   tr, res = alice.sendfile(bob.id)
   transaction_id = res['created_transaction_id']
-  assert res['success']
 
   res = alice.get('apertus/fallback/%s' % transaction_id)
   assert not res['success']

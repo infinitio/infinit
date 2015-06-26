@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import HTTPException, Meta, User
+from utils import *
 from bson import ObjectId
 from functools import reduce
 import sys
@@ -15,54 +15,44 @@ with Meta() as meta:
 
   transaction_ids = {alice.id: [], charles.id: []}
   for _ in range(10):
-    transaction_ids[alice.id].append(bob.sendfile(recipient = alice.id)[1]['created_transaction_id'])
+    transaction_ids[alice.id].append(bob.send(recipient = alice.id)[1]['created_transaction_id'])
   for _ in range(10):
-    transaction_ids[charles.id].append(bob.sendfile(recipient = charles.id)[1]['created_transaction_id'])
+    transaction_ids[charles.id].append(bob.send(recipient = charles.id)[1]['created_transaction_id'])
 
-  # While in status created, transactions are not matched by default search.
   res = bob.get('transactions')
-  assert len(res['transactions']) == 0
-
-  res = bob.get(
-    'transactions?filter=[%s]&negate=false' % transaction_status.CREATED)
-  assert len(res['transactions']) == 20
-
-  trs = transaction_ids[alice.id] + transaction_ids[charles.id]
-
-  for tr in trs:
-    bob.post("transaction/update", {"transaction_id": tr, "status": transaction_status.INITIALIZED})
+  assertEq(len(res['transactions']), 20)
 
   # Count.
   res = bob.get('transactions?count=5')
-  assert len(res['transactions']) == 5
+  assertEq(len(res['transactions']), 5)
   res['transactions'].reverse()
-  assert [t['_id'] for t in res['transactions']] == transaction_ids[charles.id][5:]
+  assertEq([t['_id'] for t in res['transactions']], transaction_ids[charles.id][5:])
 
   # Count & Offset.
   res = bob.get('transactions?count=5&offset=5')
-  assert len(res['transactions']) == 5
+  assertEq(len(res['transactions']), 5)
 
   res['transactions'].reverse()
-  assert [t['_id'] for t in res['transactions']] == transaction_ids[charles.id][:5]
+  assertEq([t['_id'] for t in res['transactions']], transaction_ids[charles.id][:5])
 
   # With.
   res = bob.get('transactions?peer_id=%s' % alice.id)
-  assert len(res['transactions']) == 10
-  assert set(t['_id'] for t in res['transactions']) == set(transaction_ids[alice.id])
+  assertEq(len(res['transactions']), 10)
+  assertEq(set(t['_id'] for t in res['transactions']), set(transaction_ids[alice.id]))
 
   res = bob.get('transactions?peer_id=%s' % charles.id)
-  assert len(res['transactions']) == 10
-  assert set(t['_id'] for t in res['transactions']) == set(transaction_ids[charles.id])
+  assertEq(len(res['transactions']), 10)
+  assertEq(set(t['_id'] for t in res['transactions']), set(transaction_ids[charles.id]))
 
   # Edit transaction_ids, must be the last.
   res = bob.get('transactions')
   def concat_list(x, y):
     x.extend(y)
     return x
-  assert set(t['_id'] for t in res['transactions']) == set(reduce(concat_list, transaction_ids.values()))
+  assertEq(set(t['_id'] for t in res['transactions']), set(reduce(concat_list, transaction_ids.values())))
   try:
     bob.get('transaction/%s' % bob.id)
   except HTTPException as e:
-    assert e.status == 404
+    assertEq(e.status, 404)
   else:
     raise Exception('unexisistent transaction was found')

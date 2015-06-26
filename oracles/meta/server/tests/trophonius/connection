@@ -69,7 +69,7 @@ with Meta() as meta:
   alice.login()
   # Create a swagger so we get notifications
   bob = User(meta, 'bob@infinit.io')
-  alice.sendfile('bob@infinit.io')
+  alice.send('bob@infinit.io')
 
   assert alice.id not in meta.notifier.users
   alice.put('trophonius/%s/users/%s/%s' %

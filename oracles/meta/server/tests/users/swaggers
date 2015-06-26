@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import Meta, Client, User
+from utils import *
 
 with Meta(force_admin = True) as meta:
   u1 = User(meta, 'jeanlouis@infinit.io')
@@ -30,9 +30,9 @@ with Meta(force_admin = True) as meta:
 with Meta() as meta:
   alice = User(meta, 'alice@infinit.io')
   alice.login(country_code = 'FR')
-  transaction, res = alice.sendfile(recipient = 'bob@infinit.io', use_identifier = False)
+  transaction, res = alice.send(recipient = 'bob@infinit.io', use_identifier = False)
   swags = alice.swaggers
-  assert len(swags) == 1
+  assertEq(len(swags), 1)
   bob2 = User(meta, 'bob2@infinit.io')
   bob2.login()
   bob_data = meta.database.users.find_one({'accounts.id': 'bob@infinit.io'})
