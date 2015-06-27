@@ -13,7 +13,6 @@ with Meta() as meta:
     password = 'crappy__language' * 4,
     fullname = 'ass_stupid_parser',
     source = 'the hairy butt of a script kiddy',
-    activation_code = 'please kill me',
     password_hash = 'still_crappy',
   )
   def check(code):
