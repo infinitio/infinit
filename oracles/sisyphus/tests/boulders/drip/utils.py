@@ -236,15 +236,31 @@ def user_register(meta, email):
   user.setdefault('devices', [])
   return user
 
-def transaction_create(meta, sender, recipient_identifier, files = ['foobar'],
-                       initialize = True, size = 42):
-  tid = meta.transaction_create_empty()
-  tid = tid['created_transaction_id']
+def transaction_create(
+    meta,
+    sender,
+    recipient_identifier,
+    files = ['foobar'],
+    initialize = True,
+    size = 42):
+  transaction = meta.transaction_create(
+    sender = sender,
+    device = {'id': 'device'},
+    recipient_identifier = recipient_identifier,
+    files = files,
+    files_count = len(files),
+    message = '',
+  )['transaction']
   if initialize:
-    tid2 = transaction_initialize(
-      meta, tid, sender, recipient_identifier, files, size)
-    assertEq(tid, tid2)
-  return tid
+    transaction_initialize(
+      meta,
+      transaction['_id'],
+      sender,
+      recipient_identifier,
+      files,
+      size,
+    )
+  return transaction['_id']
 
 def transaction_initialize(meta,
                            tid,
@@ -252,7 +268,7 @@ def transaction_initialize(meta,
                            recipient,
                            files = ['foobar'],
                            size = 42):
-  return meta.transaction_create(
+  return meta.transaction_fill(
     sender = sender,
     files = files,
     recipient_identifier = recipient,

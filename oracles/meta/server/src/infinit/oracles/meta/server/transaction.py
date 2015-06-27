@@ -366,6 +366,7 @@ class Mixin:
                (self, self.user['_id'], recipient_identifier)):
       return self.transaction_create(
         self.user,
+        self.current_device,
         recipient_identifier,
         message,
         files,
@@ -374,6 +375,7 @@ class Mixin:
 
   def transaction_create(self,
                          sender,
+                         device,
                          recipient_identifier,
                          message,
                          files,
@@ -385,7 +387,7 @@ class Mixin:
     transaction = {
       'sender_id': bson.ObjectId(sender['_id']),
       'sender_fullname': '',
-      'sender_device_id': self.current_device['id'],
+      'sender_device_id': device['id'],
       'recipient_id': bson.ObjectId(recipient['_id']),
       'recipient_fullname': '',
       'recipient_device_id': '',
