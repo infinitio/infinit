@@ -30,11 +30,12 @@
 # include <reactor/http/Request.hh>
 
 # include <infinit/oracles/LinkTransaction.hh>
-# include <infinit/oracles/PeerTransaction.hh>
 # include <infinit/oracles/meta/Account.hh>
 # include <infinit/oracles/meta/AddressBookContact.hh>
 # include <infinit/oracles/meta/Device.hh>
 # include <infinit/oracles/meta/Error.hh>
+# include <infinit/oracles/meta/ExternalAccount.hh>
+# include <infinit/oracles/PeerTransaction.hh>
 
 namespace infinit
 {
@@ -193,6 +194,7 @@ namespace infinit
 
         std::string id;
         boost::optional<std::string> ghost_code;
+        boost::optional<std::string> referral_code;
       };
 
       struct LoginResponse
@@ -215,6 +217,7 @@ namespace infinit
         // XXX: Because facebook connect can turn a ghost to a real account a
         // ghost code can be consumed.
         boost::optional<std::string> ghost_code;
+        boost::optional<std::string> referral_code;
         LoginResponse() = default;
         LoginResponse(elle::serialization::SerializerIn& s);
         void
@@ -237,11 +240,12 @@ namespace infinit
       struct SynchronizeResponse
       {
         // Self self;
+        Account account;
         std::vector<User> swaggers;
         std::unordered_map<std::string, PeerTransaction> transactions;
         std::vector<LinkTransaction> links;
         std::vector<Device> devices;
-        std::vector<Account> accounts;
+        std::vector<ExternalAccount> external_accounts;
 
         SynchronizeResponse() = default;
         SynchronizeResponse(elle::serialization::SerializerIn& s);
@@ -467,7 +471,8 @@ namespace infinit
                boost::optional<std::string> country_code = boost::none,
                boost::optional<std::string> device_model = boost::none,
                boost::optional<std::string> device_name = boost::none,
-               boost::optional<std::string> device_language = boost::none);
+               boost::optional<std::string> device_language = boost::none,
+               boost::optional<std::string> referral_code = boost::none); // Used for Facebook register.
       public:
         LoginResponse
         login(
@@ -494,7 +499,8 @@ namespace infinit
           boost::optional<std::string> country_code = boost::none,
           boost::optional<std::string> device_model = boost::none,
           boost::optional<std::string> device_name = boost::none,
-          boost::optional<std::string> device_language = boost::none);
+          boost::optional<std::string> device_language = boost::none,
+          boost::optional<std::string> referral_code = boost::none);
 
         bool
         facebook_id_already_registered(std::string const& facebook_id) const;

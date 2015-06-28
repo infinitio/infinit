@@ -256,6 +256,11 @@ _change_synchronize_route(tests::Server& server,
         "  \"final_transactions\": [],"
         "  \"links\": [],"
         "  \"accounts\": [{\"type\": \"email\", \"id\": \"f@ke.email\"}],"
+        "  \"account\": {"
+        "    \"plan\": \"basic\","
+        "    \"link_size_quota\": 0,"
+        "    \"link_size_used\": 0"
+        "  },"
         "%s"
         "}", devices);
     });

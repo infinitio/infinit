@@ -68,6 +68,7 @@ def configure(elle,
     sources = drake.nodes(
       'src/infinit/oracles/meta/Account.cc',
       'src/infinit/oracles/meta/Account.hh',
+      'src/infinit/oracles/meta/Account.hxx',
       'src/infinit/oracles/meta/AddressBookContact.cc',
       'src/infinit/oracles/meta/AddressBookContact.hh',
       'src/infinit/oracles/meta/Admin.cc',
@@ -79,6 +80,8 @@ def configure(elle,
       'src/infinit/oracles/meta/Device.hh',
       'src/infinit/oracles/meta/Error.cc.tmpl',
       'src/infinit/oracles/meta/Error.hh.tmpl',
+      'src/infinit/oracles/meta/ExternalAccount.cc',
+      'src/infinit/oracles/meta/ExternalAccount.hh',
     )
 
   if cxx_toolkit.os in [drake.os.windows, drake.os.ios, drake.os.android]:

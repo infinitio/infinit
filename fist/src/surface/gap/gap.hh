@@ -6,8 +6,8 @@
 # include <vector>
 
 # include <infinit/oracles/TransactionStatuses.hh>
-# include <infinit/oracles/meta/Account.hh>
 # include <infinit/oracles/meta/AddressBookContact.hh>
+# include <infinit/oracles/meta/ExternalAccount.hh>
 
 # include <surface/gap/LinkTransaction.hh>
 # include <surface/gap/Model.hh>
@@ -116,14 +116,17 @@ gap_register(gap_State* state,
              boost::optional<std::string> device_language = boost::none);
 
 typedef infinit::oracles::meta::Account Account;
+typedef std::function<void (Account const& account)> AccountChangedCallback;
 gap_Status
-gap_accounts(gap_State* state, std::vector<Account const*>& res);
+gap_account_changed_callback(gap_State* state, AccountChangedCallback callback);
 
+typedef infinit::oracles::meta::ExternalAccount ExternalAccount;
 typedef std::function<void (
-  std::vector<Account const*> accounts)> AccountsChangedCallback;
+  std::vector<
+    ExternalAccount const*> accounts)> ExternalAccountsChangedCallback;
 gap_Status
-gap_accounts_changed_callback(gap_State* state,
-                              AccountsChangedCallback callback);
+gap_external_accounts_changed_callback(
+  gap_State* state, ExternalAccountsChangedCallback callback);
 
 gap_Status
 gap_plain_invite_contact(gap_State* state,

@@ -40,7 +40,6 @@
 
 ELLE_LOG_COMPONENT("infinit.surface.gap.State");
 
-
 DAS_MODEL_FIELD(surface::gap::State::GhostCode, code);
 DAS_MODEL_FIELD(surface::gap::State::GhostCode, was_link);
 typedef das::Object<
@@ -49,7 +48,7 @@ typedef das::Object<
   das::Field<surface::gap::State::GhostCode, bool, &surface::gap::State::GhostCode::was_link>
   >
 DasGhostCode;
-DAS_MODEL(surface::gap::State::GhostCode, DasGhostCode);
+DAS_MODEL_DEFAULT(surface::gap::State::GhostCode, DasGhostCode);
 
 namespace elle
 {
@@ -62,7 +61,6 @@ namespace elle
     };
   }
 }
-
 
 namespace surface
 {
@@ -439,8 +437,9 @@ namespace surface
       this->_synchronize_response.reset(
         new infinit::oracles::meta::SynchronizeResponse{
         this->meta().synchronize(false)});
-      this->_accounts(this->_synchronize_response->accounts);
+      this->_account(this->_synchronize_response->account);
       this->_devices(this->_synchronize_response->devices);
+      this->_external_accounts(this->_synchronize_response->external_accounts);
       this->_user_resync(this->_synchronize_response->swaggers, false);
       this->_peer_transaction_resync(
         this->_synchronize_response->transactions, false);
@@ -745,8 +744,10 @@ namespace surface
             new infinit::oracles::meta::SynchronizeResponse{
               this->meta().synchronize(true)});
           ELLE_TRACE("got synchronisation response");
-          this->_accounts(this->_synchronize_response->accounts);
+          this->_account(this->_synchronize_response->account);
           this->_devices(this->_synchronize_response->devices);
+          this->_external_accounts(
+            this->_synchronize_response->external_accounts);
           this->_model.devices.added().connect(
             [this] (Device& d)
             {
@@ -1055,7 +1056,9 @@ namespace surface
         register_failed.abort();
         ELLE_DEBUG("registered new user %s <%s>", fullname, lower_email);
         infinit::metrics::Reporter::metric_sender_id(res.id);
-        this->_metrics_reporter->user_register(true, "", "", res.ghost_code);
+        this->metrics_reporter()->user_register(
+          true, "", "", res.ghost_code, res.referral_code);
+        this->_referral_code = "";
       }
       catch (elle::Error const& error)
       {
@@ -1082,18 +1085,24 @@ namespace surface
       this->_login_with_timeout(
       [&] {
         auto tropho = elle::utility::move_on_copy(std::move(trophonius));
+        boost::optional<std::string> referral_code_opt;
+        if (this->_referral_code.length())
+          referral_code_opt = this->_referral_code;
         this->_login([&] {
-          auto response =  this->_meta.facebook_connect(facebook_token,
-                                              this->device_uuid(),
-                                              preferred_email,
-                                              device_push_token,
-                                              country_code,
-                                              device_model,
-                                              device_name,
-                                              device_language);
-          if (response.account_registered && this->_metrics_reporter)
-            this->_metrics_reporter->user_register(true, "", "facebook", response.ghost_code);
-          return response;
+          auto res = this->_meta.facebook_connect(facebook_token,
+                                                  this->device_uuid(),
+                                                  preferred_email,
+                                                  device_push_token,
+                                                  country_code,
+                                                  device_model,
+                                                  device_name,
+                                                  device_language);
+          if (res.account_registered && this->_metrics_reporter)
+          {
+            this->_metrics_reporter->user_register(
+              true, "", "facebook", res.ghost_code, res.referral_code);
+          }
+          return res;
           },
           tropho,
           // Password.
@@ -1102,6 +1111,7 @@ namespace surface
           },
           [&] (bool success, std::string const& failure_reason) {
             this->_metrics_reporter->facebook_connect(success, failure_reason);
+            this->_referral_code = "";
           });
       },
       timeout);
@@ -1222,8 +1232,10 @@ namespace surface
               }
            this->_synchronize_response.reset(
              new infinit::oracles::meta::SynchronizeResponse{this->meta().synchronize(false)});
-           this->_accounts(this->_synchronize_response->accounts);
+           this->_account(this->_synchronize_response->account);
            this->_devices(this->_synchronize_response->devices);
+           this->_external_accounts(
+             this->_synchronize_response->external_accounts);
           }
           // This is never the first call to _user_resync as the function is
           // called in login.
@@ -1417,25 +1429,41 @@ namespace surface
       }
     }
 
-    /*---------.
-    | Accounts |
-    `---------*/
-    std::vector<Account const*>
-    State::accounts() const
+    /*--------.
+    | Account |
+    `--------*/
+    Account
+    State::account() const
     {
-      std::vector<Account const*> res;
-      res.reserve(this->_model.accounts.size());
-      for (auto const& account: this->_model.accounts)
+      return this->_model.account;
+    }
+
+    void
+    State::_account(Account const& account)
+    {
+      ELLE_TRACE_SCOPE("reset %s with %s", this->_model, account);
+      this->_model.account = account;
+    }
+
+    /*------------------.
+    | External Accounts |
+    `------------------*/
+    std::vector<ExternalAccount const*>
+    State::external_accounts() const
+    {
+      std::vector<ExternalAccount const*> res;
+      res.reserve(this->_model.external_accounts.size());
+      for (auto const& account: this->_model.external_accounts)
         res.push_back(&account);
       return res;
     }
 
     void
-    State::_accounts(std::vector<Account> const& accounts)
+    State::_external_accounts(std::vector<ExternalAccount> const& accounts)
     {
       ELLE_TRACE_SCOPE("reset %s with %s", this->_model, accounts);
-      this->_model.accounts.reset(accounts);
-      ELLE_ASSERT_EQ(this->_model.accounts.size(), accounts.size());
+      this->_model.external_accounts.reset(accounts);
+      ELLE_ASSERT_EQ(this->_model.external_accounts.size(), accounts.size());
     }
 
     /*--------.

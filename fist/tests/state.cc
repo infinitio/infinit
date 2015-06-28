@@ -206,7 +206,12 @@ public:
           "  \"final_transactions\": [],"
           "  \"links\": [],"
           "  \"accounts\": [],"
-          "  \"devices\": []"
+          "  \"devices\": [],"
+          "  \"account\": {"
+          "    \"plan\": \"basic\","
+          "    \"link_size_quota\": 0,"
+          "    \"link_size_used\": 0"
+          "  }"
           "}";
       });
 
@@ -266,6 +271,11 @@ public:
           "  \"identity\": \"\","
           "  \"accounts\": [],"
           "  \"devices\": [],"
+          "  \"account\": {"
+          "    \"plan\": \"basic\","
+          "    \"link_size_quota\": 0,"
+          "    \"link_size_used\": 0"
+          "  },"
           "  \"favorites\": [],"
           "  \"success\": true"
           "}",
@@ -334,6 +344,11 @@ public:
          "    \"identity\": \"%s\","
          "    \"accounts\": [],"
          "    \"devices\": [],"
+         "    \"account\": {"
+         "      \"plan\": \"basic\","
+         "      \"link_size_quota\": 0,"
+         "      \"link_size_used\": 0"
+         "    },"
          "    \"favorites\": [],"
          "    \"success\": true"
          "  },"

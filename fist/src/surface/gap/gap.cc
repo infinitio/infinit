@@ -349,22 +349,36 @@ gap_register(gap_State* state,
 }
 
 gap_Status
-gap_accounts(gap_State* state, std::vector<Account const*>& res)
+gap_account_changed_callback(gap_State* state, AccountChangedCallback callback)
 {
   ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
     state,
-    "fetch account list",
+    "attach account changed callback",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      res = state.accounts();
+      state.model().account.plan.changed().connect(
+        [callback, &state] (infinit::oracles::meta::AccountPlanType)
+        {
+          callback(state.account());
+        });
+      state.model().account.link_size_quota.changed().connect(
+        [callback, &state] (uint64_t)
+        {
+          callback(state.account());
+        });
+      state.model().account.link_size_used.changed().connect(
+        [callback, &state] (uint64_t)
+        {
+          callback(state.account());
+        });
       return gap_ok;
     });
 }
 
 gap_Status
-gap_accounts_changed_callback(gap_State* state,
-                              AccountsChangedCallback callback)
+gap_external_accounts_changed_callback(gap_State* state,
+                                       ExternalAccountsChangedCallback callback)
 {
   ELLE_ASSERT(state != nullptr);
   return run<gap_Status>(
@@ -372,10 +386,10 @@ gap_accounts_changed_callback(gap_State* state,
     "attach accounts changed callback",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      state.model().accounts.changed().connect(
+      state.model().external_accounts.changed().connect(
         [callback, &state]
         {
-          callback(state.accounts());
+          callback(state.external_accounts());
         });
       return gap_ok;
     });

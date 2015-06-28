@@ -128,7 +128,12 @@ namespace tests
           " \"features\": [],"
           " \"trophonius\" : %s,"
           " \"account_registered\": %s,"
-          " \"accounts\": [{\"type\": \"email\", \"id\": \"%s\"}]"
+          " \"accounts\": [{\"type\": \"email\", \"id\": \"%s\"}],"
+          " \"account\": {"
+          "   \"plan\": \"basic\","
+          "   \"link_size_quota\": 0,"
+          "   \"link_size_used\": 0"
+          " }"
           "}",
           user.self_json(),
           device.json(),
@@ -190,7 +195,12 @@ namespace tests
           "  \"final_transactions\": %s,"
           "  \"links\": %s,"
           "  \"devices\": [%s],"
-          "  \"accounts\": [{\"type\": \"email\", \"id\": \"%s\"}]"
+          "  \"accounts\": [{\"type\": \"email\", \"id\": \"%s\"}],"
+          "  \"account\": {"
+          "    \"plan\": \"basic\","
+          "    \"link_size_quota\": 0,"
+          "    \"link_size_used\": 0"
+          "  }"
           "}",
           user.swaggers_json(),
           json(runnings),
