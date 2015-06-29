@@ -19,7 +19,7 @@ if targets.osyst.startswith('linux'):
      '//oracles/hephaestus/debian',
      '//oracles/meta/server/debian',
      '//oracles/trophonius/server/debian',
-     '//fist-gui-qt/debian'
+     '//fist-gui-qt/debian',
      '//oracles/sisyphus/debian',
    ])
 if targets.osyst.startswith('osx'):
