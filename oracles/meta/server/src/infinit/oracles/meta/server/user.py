@@ -39,6 +39,9 @@ ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.User'
 
 class Mixin:
 
+  def __init__(self):
+    pass
+
   def __user_fill(self, user):
     '''Fill dynamic fields for users fetched from the database.'''
     if user is None:
@@ -3325,14 +3328,15 @@ class Mixin:
     self.database.users.update({'_id': recipient['_id']},
                                query)
     code = uuid.uuid4()
-    self.database.invitations.insert({
-        'code': code,
-        'status': 'pending',
-        'recipient': recipient['_id'],
-        'recipient_name': recipient['accounts'][0]['id'],
-        'sender': user['_id'],
-        'ghost_code': ghost_code,
-    })
+    if created:
+      self.database.invitations.insert({
+          'code': code,
+          'status': 'pending',
+          'recipient': recipient['_id'],
+          'recipient_name': recipient['accounts'][0]['id'],
+          'sender': user['_id'],
+          'ghost_code': ghost_code,
+      })
     is_an_email = utils.is_an_email_address(identifier)
     if is_an_email:
       # send email

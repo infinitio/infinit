@@ -147,6 +147,7 @@ class Meta(bottle.Bottle,
     self.__set_constraints()
     bottle.Bottle.__init__(self)
     link_generation.Mixin.__init__(self)
+    user.Mixin.__init__(self)
     self.catchall = debug
     bottle.debug(debug)
     # Plugins.

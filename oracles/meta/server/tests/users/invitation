@@ -8,7 +8,7 @@ import infinit.oracles.meta.server.transaction_status as transaction_status
 import bson
 
 with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
-  alice = User(meta, "alice@infinit.io")
+  alice = User(meta, 'alice@infinit.io')
   alice.login()
   alice.post('user/invite', {'identifier': 'bob@infinit.io'})
   inv = alice.get('user/invites')
@@ -55,3 +55,12 @@ with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   assertEq(len(inv), 3)
   assertEq(inv[2]['status'], 'pending')
   assertEq(inv[2]['recipient_name'], '+33 6 10 15 00 65')
+
+# Double invite
+with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  alice.post('user/invite', {'identifier': 'bob@infinit.io'})
+  alice.post('user/invite', {'identifier': 'bob@infinit.io'})
+  inv = alice.get('user/invites')['invites']
+  assertEq(len(inv), 1)
