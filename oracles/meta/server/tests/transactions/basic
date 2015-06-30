@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from utils import Meta, User, NoOpMailer
+from utils import *
 
 class MailService(NoOpMailer):
 
@@ -15,7 +15,7 @@ class MailService(NoOpMailer):
     merges = {}
     for entry in message['merge_vars'][0]['vars']:
       merges[entry['name']] = entry['content']
-    assert self.__expected_template == template_name
+    assertEq(self.__expected_template, template_name)
     # NoOpMailer.template_message(template_message, msg)
 
 with Meta() as meta:
@@ -35,5 +35,5 @@ with Meta() as meta:
   for key in transaction.keys():
     if key in ['id_or_email', 'device_id']: # Special cases.
       continue
-    assert res[key] == transaction[key]
+    assertEq(res[key], transaction[key])
   res['recipient_id'] == transaction['recipient_id']
