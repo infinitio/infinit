@@ -488,6 +488,7 @@ class GhostReminder(Drip):
   def sender(self, v):
     return {
       'fullname': '%s via Infinit' % v['sender']['fullname'],
+      'reply-to': v['sender']['email'],
     }
 
 
