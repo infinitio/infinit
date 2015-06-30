@@ -1481,7 +1481,7 @@ class Mixin:
           'new_main_email_hash': '',
         },
         '$addToSet': {
-          'accounts': {'type': 'email', 'id': new_email}
+          'accounts': sort_dict({'type': 'email', 'id': new_email})
         },
       })
     return {}
