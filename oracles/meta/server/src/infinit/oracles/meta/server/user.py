@@ -2844,7 +2844,9 @@ class Mixin:
   def user_update(self,
                   user,
                   plan = None,
-                  stripe_token = None):
+                  stripe_token = None,
+                  stripe_coupon = None,
+                ):
       user = self.user
       customer = self.__fetch_or_create_stripe_customer(user)
       # Subscribing to a paying plan without source raises an error
@@ -2858,7 +2860,8 @@ class Mixin:
           # customer can only have at most one subscription (ideally, exactly one
           # subscription, which would be 'basic' for non paying customers)
           if customer.subscriptions.total_count == 0:
-            customer.subscriptions.create(plan=plan)
+            customer.subscriptions.create(plan = plan,
+                                          coupon = stripe_coupon)
           else:
             sub = customer.subscriptions.data[0]
             sub.plan = plan
