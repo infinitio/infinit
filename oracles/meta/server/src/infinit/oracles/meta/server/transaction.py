@@ -28,6 +28,89 @@ ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Transaction'
 code_alphabet = '23456789abcdefghijkmnpqrstuvwxyz'
 code_length = 7
 
+class Transaction(dict):
+
+  def __init__(
+      self,
+      meta,
+      sender,
+      sender_device,
+      recipient,
+      files,
+      message,
+  ):
+    self.__meta = meta
+    self.__id = None
+    # Sender and recipient
+    self['sender_id'] = sender['_id']
+    self['sender_fullname'] = sender['fullname']
+    self['sender_device_id'] = sender_device['id']
+    self['recipient_id'] = recipient['_id']
+    self['recipient_fullname'] = recipient['fullname']
+    self['recipient_device_id'] = '', # Empty until accepted
+    self['recipient_device_name'] = '', # Empty until accepted
+    self['involved'] = [sender['_id'], recipient['_id']]
+    # Content
+    self['status'] = transaction_status.CREATED
+    self['message'] = message
+    self['files'] = files
+    self['files_count'] = len(files)
+    self['total_size'] = 0
+    self['is_directory'] = False
+    self['fallback_host'] = None
+    self['fallback_port_ssl'] = None
+    self['fallback_port_tcp'] = None
+    self['aws_credentials'] = None
+    self['is_ghost'] = recipient['register_status'] == 'ghost'
+    self['strings'] = ''
+    self['cloud_buffered'] = False
+    self['paused'] = False
+    self['premium'] = meta.user_premium(sender)
+    # Stats
+    self['creation_time'] = meta.now
+    self['modification_time'] = meta.now
+    self['ctime'] = time.time()
+    self['mtime'] = time.time()
+
+  @staticmethod
+  def find(meta, tid, fields = None):
+    fields = {} if fields is None else fields
+    fields['_id'] = False
+    transaction = meta.database.transactions.find_one(
+      { '_id': tid },
+      fields = fields,
+    )
+    if transaction is None:
+      return None
+    res = Transaction.__new__(Transaction)
+    res.__meta = meta
+    res.__id = tid
+    res.update(transaction)
+    res['id'] = tid
+    return res
+
+  def db_insert(self):
+    self.__id = self.__meta.database.transactions.insert(dict(self))
+    self['id'] = self.__id
+
+  @property
+  def view(self):
+    return self
+
+  @property
+  def id(self):
+    return self.__id
+
+  def __getitem__(self, k):
+    if k == '_id':
+      import warnings
+      warnings.warn(
+        'getting a transaction id through [\'_id\'] is deprecated',
+        category = DeprecationWarning, stacklevel = 2)
+      return self.id
+    return super(Transaction, self).__getitem__(k)
+
+
 class Mixin:
 
   def is_sender(self, transaction, owner_id, device_id = None):
@@ -48,7 +131,7 @@ class Mixin:
 
   def transaction(self, id, owner_id = None):
     assert isinstance(id, bson.ObjectId)
-    transaction = self.database.transactions.find_one(id)
+    transaction = Transaction.find(self, id)
 
     # handle both negative search and empty transaction
     if not transaction or len(transaction) == 1:
@@ -214,20 +297,17 @@ class Mixin:
       return self.transaction(id, self.user['_id'])
     else:
       self.check_key(key)
-      transaction = self.database.transactions.find_one(
-        { '_id': id },
-        fields = {
-          '_id': False,
-          'download_link': True,
-          'files': True,
-          'message': True,
-          'recipient_id': True,
-          'sender_fullname': True,
-          'sender_id': True,
-          'total_size': True,
-          'paused': True,
-          'premium': True,
-        })
+      transaction = Transaction.find(self, id, fields = [
+        'download_link',
+        'files',
+        'message',
+        'recipient_id',
+        'sender_fullname',
+        'sender_id',
+        'total_size',
+        'paused',
+      'premium',
+      ])
       # handle both negative search and empty transaction
       if not transaction:
         self.not_found()
@@ -364,7 +444,7 @@ class Mixin:
     """
     with trace('%s: create transaction from %s to %s' %
                (self, self.user['_id'], recipient_identifier)):
-      return self.transaction_create(
+      transaction = self.transaction_create(
         self.user,
         self.current_device,
         recipient_identifier,
@@ -372,6 +452,10 @@ class Mixin:
         files,
         files_count,
       )
+      return {
+        'created_transaction_id': transaction.id, # Deprecated
+        'transaction': transaction.view,
+      }
 
   def transaction_create(self,
                          sender,
@@ -384,41 +468,17 @@ class Mixin:
     recipient, new_user = self.__recipient_from_identifier(
       recipient_identifier,
       sender)
-    transaction = {
-      'sender_id': bson.ObjectId(sender['_id']),
-      'sender_fullname': '',
-      'sender_device_id': device['id'],
-      'recipient_id': bson.ObjectId(recipient['_id']),
-      'recipient_fullname': '',
-      'recipient_device_id': '',
-      'involved': ['', recipient['_id']],
-      # Empty until accepted.
-      'recipient_device_name': '',
-      'message': message,
-      'files': files,
-      'files_count': files_count,
-      'total_size': 0,
-      'is_directory': False,
-      'creation_time': self.now,
-      'modification_time': self.now,
-      'ctime': time.time(),
-      'mtime': time.time(),
-      'status': transaction_status.CREATED,
-      'fallback_host': None,
-      'fallback_port_ssl': None,
-      'fallback_port_tcp': None,
-      'aws_credentials': None,
-      'is_ghost': recipient['register_status'] == 'ghost',
-      'strings': '',
-      'cloud_buffered': False,
-      'paused': False,
-      'premium': self.user_premium(sender),
-    }
-    transaction_id = self.database.transactions.insert(transaction)
-    return {
-      'created_transaction_id': transaction_id, # Deprecated
-      'transaction': self._transaction_view(transaction),
-    }
+    transaction = Transaction(
+      self,
+      sender = sender,
+      sender_device = device,
+      recipient = recipient,
+      files = files,
+      message = message,
+    )
+    transaction.db_insert()
+
+    return transaction
 
   @api('/transaction/<t_id>', method='PUT')
   @require_logged_in
@@ -771,7 +831,7 @@ class Mixin:
     import hashlib, random
     random.seed()
     random.random()
-    string_to_hash = str(transaction['_id']) + str(random.random())
+    string_to_hash = str(transaction.id) + str(random.random())
     txn_hash = hashlib.sha256(string_to_hash.encode('utf-8')).hexdigest()
     elle.log.debug('transaction (%s) hash: %s' % (transaction['_id'], txn_hash))
     return txn_hash
@@ -797,9 +857,9 @@ class Mixin:
     elle.log.log('transaction: %s' % transaction.keys())
     peer_email = recipient.get('email', '')
     if transaction.get('is_ghost', False):
-      transaction_id = transaction['_id']
-      elle.log.trace("send invitation to new user %s for transaction %s" % (
-        peer_email, transaction_id))
+      tid = transaction.id
+      trace('send invitation to new user %s for transaction %s' % (
+        peer_email, tid))
       ghost_upload_file = self._upload_file_name(transaction)
       # Generate GET URL for ghost cloud uploaded file
       # FIXME: AFAICT nothing prevent us from generating this directly
@@ -818,9 +878,7 @@ class Mixin:
       else:
         elle.log.err('unknown backend %s' % (backend_name))
       ghost_get_url = backend.generate_get_url(
-        region, bucket,
-        transaction_id,
-        ghost_upload_file)
+        region, bucket, tid, ghost_upload_file)
       elle.log.log('Generating cloud GET URL for %s: %s'
         % (ghost_upload_file, ghost_get_url))
       # Generate hash for transaction and store it in the transaction

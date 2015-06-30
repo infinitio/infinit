@@ -847,7 +847,7 @@ class User(Client):
         'message': message
       })
     transaction = res['transaction']
-    tid = transaction['_id']
+    tid = transaction['id']
     if initialize:
       content = {
         'files': files,

@@ -216,6 +216,9 @@ class Meta(bottle.Bottle,
     self.__stripe_api_key = stripe_api_key
     self.__metrics = metrics
     self.__gcs = gcs
+    # Show deprecation warnings. How is this not the default ...
+    import warnings
+    warnings.simplefilter('default', DeprecationWarning)
 
   @property
   def gcs(self):
