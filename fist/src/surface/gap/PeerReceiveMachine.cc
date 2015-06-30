@@ -888,10 +888,10 @@ namespace surface
       {
         if (_fetch_current_file_index == -1u)
         {
-          ELLE_DEBUG("Thread %s has nothing to do, exiting", id);
+          ELLE_DUMP("Thread %s has nothing to do, exiting", id);
           break; // some other thread figured out this was over
         }
-        ELLE_DEBUG("Reading buffer at %s/%s in mode %s",
+        ELLE_DUMP("Reading buffer at %s/%s in mode %s",
           _fetch_current_file_index,
           _fetch_current_position,
           explicit_ack? std::string("read_encrypt_ack") :
@@ -949,7 +949,7 @@ namespace surface
           }
           ELLE_ASSERT_NO_OTHER_EXCEPTION
         }
-        ELLE_DEBUG("Queuing buffer %s/%s size:%s. Writer waits for %s/%s",
+        ELLE_DUMP("Queuing buffer %s/%s size:%s. Writer waits for %s/%s",
           local_index, local_position, buffer.size(),
           _store_expected_file, _store_expected_position);
         // Subtelty here: put will block us *after* the insert operation
@@ -958,7 +958,7 @@ namespace surface
          if (local_index == _store_expected_file
           && local_position == _store_expected_position)
         {
-          ELLE_DEBUG("Opening disk writer barrier at %s/%s", local_index, local_position);
+          ELLE_DUMP("Opening disk writer barrier at %s/%s", local_index, local_position);
           _disk_writer_barrier.open();
         }
         this->_buffers.put(
@@ -993,7 +993,7 @@ namespace surface
       }
       while (true)
       {
-        ELLE_DEBUG("%s waiting for block %s/%s", *this, _store_expected_file,
+        ELLE_DUMP("%s waiting for block %s/%s", *this, _store_expected_file,
           _store_expected_position);
         reactor::wait(_disk_writer_barrier);
         while (true)
@@ -1006,7 +1006,7 @@ namespace surface
             break;
           }
           const elle::Buffer& buffer = data.buffer;
-          ELLE_DEBUG("%s: receiver got data for file %s at position %s with size %s, "
+          ELLE_DUMP("%s: receiver got data for file %s at position %s with size %s, "
                      "will write to %s",
                      *this,
                      data.file_index, data.start_position,
@@ -1024,7 +1024,7 @@ namespace surface
           if (peer_version < elle::Version(0, 8, 7))
             source.set_progress(this->_snapshot->progress());
           // Write snapshot state to file
-          ELLE_DEBUG("%s: write down snapshot", *this)
+          ELLE_DUMP("%s: write down snapshot", *this)
           {
             ELLE_DUMP("%s: snapshot: %s", *this, *this->_snapshot);
             this->_save_frete_snapshot();
