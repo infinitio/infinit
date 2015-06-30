@@ -250,7 +250,7 @@ def transaction_create(
     files = files,
     files_count = len(files),
     message = '',
-  )['transaction']
+  )
   if initialize:
     transaction_initialize(
       meta,
