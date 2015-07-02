@@ -984,18 +984,8 @@ def configure(cxx_toolkit = None,
 
   if qt is not False:
     fist_cxx_config = drake.cxx.Config(gap_cxx_config)
-    # FIXME: it doesn't ofc make any sense to pick libraries infinit
-    # links to here.
-    fist_libraries = [gap_lib]
     fist_openssl_libs = openssl_libs_eay
     if cxx_toolkit.os != drake.os.windows:
-      fist_libraries += [
-        elle_lib,
-        cryptography_lib,
-        crash_lib,
-        oracles.transaction_lib,
-        oracles.meta.client.lib,
-      ]
       fist_openssl_libs += openssl_libs
     application = drake.include(
       'fist-gui-qt',
@@ -1007,9 +997,13 @@ def configure(cxx_toolkit = None,
       openssl_include_dir = drake.path_build(
         openssl_config.local_include_path[0], absolute = True),
       openssl_libraries = fist_openssl_libs,
-      libraries = fist_libraries,
+      elle = elle,
+      oracles = oracles,
+      gap_lib = gap_lib,
+      crash_lib = crash_lib,
       qt = qt,
-      elle = elle)
+      git = git,
+    )
     build << application.build
 
   ## ------- ##
