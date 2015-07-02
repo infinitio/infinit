@@ -33,37 +33,43 @@ with Meta() as meta:
     u2.facebook_connect("osef")
     facebook_id = u2.facebook_id
 
-    def expect_404(meta, route):
+    def expect(meta, route, error):
       try:
         meta.get(route)
         assert False
       except HTTPException as e:
-        assert e.status == 404
+        assert e.status == error
+
+    def expect_404(meta, route):
+      return expect(meta, route, 404)
+
+    def expect_400(meta, route):
+      return expect(meta, route, 400)
 
     # Phone.
     meta.get('users/%s' % u1.id)
-    meta.get('users/%s?account_type=ObjectId' % u1.id)
+    meta.get('users/%s?account_type=id' % u1.id)
     expect_404(meta, 'users/%s?account_type=phone' % u1.id)
-    expect_404(meta, 'users/%s?account_type=email' % u1.id)
+    expect_400(meta, 'users/%s?account_type=email' % u1.id)
     expect_404(meta, 'users/%s?account_type=facebook' % u1.id)
 
     # Phone.
     meta.get('users/%s' % phone)
     meta.get('users/%s?account_type=phone' % phone)
-    expect_404(meta, 'users/%s?account_type=ObjectId' % phone)
-    expect_404(meta, 'users/%s?account_type=email' % phone)
+    expect_400(meta, 'users/%s?account_type=id' % phone)
+    expect_400(meta, 'users/%s?account_type=email' % phone)
     expect_404(meta, 'users/%s?account_type=facebook' % phone)
 
     # Facebook.
-    expect_404(meta, 'users/%s' % facebook_id)
+    meta.get('users/%s' % facebook_id)
     meta.get('users/%s?account_type=facebook' % facebook_id)
-    expect_404(meta, 'users/%s?account_type=ObjectId' % facebook_id)
-    expect_404(meta, 'users/%s?account_type=email' % facebook_id)
+    expect_400(meta, 'users/%s?account_type=id' % facebook_id)
+    expect_400(meta, 'users/%s?account_type=email' % facebook_id)
     expect_404(meta, 'users/%s?account_type=phone' % facebook_id)
 
     # Email.
     meta.get('users/%s' % email)
     meta.get('users/%s?account_type=email' % email)
-    expect_404(meta, 'users/%s?account_type=ObjectId' % email)
+    expect_400(meta, 'users/%s?account_type=id' % email)
     expect_404(meta, 'users/%s?account_type=facebook' % email)
     expect_404(meta, 'users/%s?account_type=phone' % email)

@@ -1847,11 +1847,11 @@ class Mixin:
       self.__ensure_user_existence(user)
     return user
 
-  def user_by_email_query(self,
-                          email: utils.enforce_as_email_address):
+  def user_by_email_query(self, email):
     return {
       'accounts': {
-        '$elemMatch': {'id': email, 'type': 'email'}
+        '$elemMatch':
+        {'id': utils.enforce_as_email_address(email), 'type': 'email'}
       }
     }
 
@@ -1980,7 +1980,7 @@ class Mixin:
     handle -- the handle of the user.
     ensure_existence -- if set, raise if user is invald.
     """
-    user = self.__users_fetch(
+    user = self.__user_fetch(
       {'lw_handle': handle.lower()},
       fields = fields)
     if ensure_existence:
@@ -2136,7 +2136,7 @@ class Mixin:
     # Explicit cases
     if account_type is not None:
       if account_type == 'id':
-        return self._user_by_id(identifier, **args)
+        return self._user_by_id(self.__object_id(identifier), **args)
       elif account_type == 'email':
         return self.user_by_email(identifier, **args)
       elif account_type == 'facebook':
@@ -2149,6 +2149,11 @@ class Mixin:
           return None
       elif account_type == 'handle':
         return self.user_by_handle(handle, **args)
+      else:
+        self.bad_request({
+          'reason': 'invalid account type: %s' % account_type,
+          'account_type': account_type,
+        })
     # Try as an email
     assert isinstance(identifier, str)
     if '@' in identifier:
@@ -2171,7 +2176,7 @@ class Mixin:
 
   @api('/users/<recipient_identifier>')
   def view_user(self,
-                recipient_identifier: utils.identifier,
+                recipient_identifier,
                 country_code = None,
                 account_type = None):
     """
@@ -2190,21 +2195,6 @@ class Mixin:
       })
     else:
       return self.__user_view(user)
-
-  @api('/users/from_handle/<handle>')
-  @require_logged_in
-  def view_from_handle(self, handle):
-    """
-    Get user information from handle
-    """
-    with elle.log.trace("%s: search user from handle %s" % (self, handle)):
-      user = self.user_by_handle(handle,
-                                 fields = self.__user_view_fields,
-                                 ensure_existence = False)
-      if user is None:
-        return self.not_found()
-      else:
-        return self.__user_view(user)
 
   ## ------- ##
   ## Swagger ##
