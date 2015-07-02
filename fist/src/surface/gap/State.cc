@@ -1372,6 +1372,8 @@ namespace surface
           ELLE_ASSERT(n.get());
           elle::serialization::json::SerializerIn input(n->json, false);
           DasModel::Update u(input);
+          ELLE_DEBUG("%s: apply model update", *this);
+          ELLE_DUMP("new model: %s", u);
           u.apply(this->_model);
           break;
         }
