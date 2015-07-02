@@ -175,7 +175,7 @@ def configure(elle,
                         debian_path)
   debian << drake.debian.Packager(
     'fist-apertus_%s_amd64.deb' % git.description(),
-    package, 'debian', preload = elle.elle.dpkg_preload).package
+    package, 'debian').package
 
   ## ------ ##
   ## Python ##

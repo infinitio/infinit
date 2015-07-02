@@ -214,7 +214,7 @@ def configure(production_build,
     debian = drake.Rule('debian')
     debian << drake.debian.Packager(
       'fist-meta_%s_amd64.deb' % git.description(),
-      package, 'debian', preload = elle.elle.dpkg_preload).package
+      package, 'debian').package
 
 
   ## ----- ##

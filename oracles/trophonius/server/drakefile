@@ -193,4 +193,4 @@ def configure(elle,
   debian = drake.Rule('debian')
   debian << drake.debian.Packager(
     'fist-trophonius_%s_amd64.deb' % git.description(),
-    package, 'debian', preload = elle.elle.dpkg_preload).package
+    package, 'debian').package
