@@ -12,17 +12,21 @@ subprocess.check_call(
   + list(targets.targets('install')))
 
 # FIXME: use targets
-if targets.osyst.startswith('linux'):
+if targets.osyst.startswith('linux_ubuntu'):
   subprocess.check_call(
     ['python3', 'drake', '--prefix=../%s' % os.environ['DIR_INSTALL'],
      '//oracles/apertus/server/debian',
      '//oracles/hephaestus/debian',
      '//oracles/meta/server/debian',
      '//oracles/trophonius/server/debian',
-     '//fist-gui-qt/debian',
      '//oracles/sisyphus/debian',
    ])
-if targets.osyst.startswith('osx'):
+elif targets.osyst.startswith('linux_debian'):
+  subprocess.check_call(
+    ['python3', 'drake', '--prefix=../%s' % os.environ['DIR_INSTALL'],
+     '//fist-gui-qt/debian',
+   ])
+elif targets.osyst.startswith('osx'):
   subprocess.check_call(
     ['python3', 'drake', '--prefix=../%s' % os.environ['DIR_INSTALL'],
      '//surface/osx/package'])
