@@ -61,16 +61,16 @@ with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   candy = User(meta, 'candy@infinit.io')
   candy.login()
   c = candy.me
-  assertEq(c['quota']['total_link_size'], 15e8)
+  assertEq(c['quota']['total_link_size'], 125e7)
   b = bob.me
-  assertEq(b['quota']['total_link_size'], 2e9)
+  assertEq(b['quota']['total_link_size'], 1.5e9)
   candy.send(recipient = "daniel@infinit.io")
   daniel = User(meta, 'daniel@infinit.io')
   daniel.login()
   c = candy.me
-  assertEq(c['quota']['total_link_size'], 25e8)
+  assertEq(c['quota']['total_link_size'], 175e7)
   b = bob.me
-  assertEq(b['quota']['total_link_size'], 3e9)
+  assertEq(b['quota']['total_link_size'], 2e9)
   # Referral through ghost
   transaction, res = bob.send(recipient = 'edgar@infinit.io')
   edgar = User(meta, 'edgar2@infinit.io')
@@ -78,5 +78,5 @@ with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   assertEq(edgar.me['quota']['total_link_size'], 1e9)
   gc = meta.database.users.find_one({'accounts.id': 'edgar@infinit.io'})['ghost_code']
   edgar.post('ghost/%s/merge' % gc)
-  assertEq(edgar.me['quota']['total_link_size'], 15e8)
-  assertEq(bob.me['quota']['total_link_size'], 4e9)
+  assertEq(edgar.me['quota']['total_link_size'], 125e7)
+  assertEq(bob.me['quota']['total_link_size'], 25e8)

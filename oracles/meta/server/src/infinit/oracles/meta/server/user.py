@@ -411,7 +411,12 @@ class Mixin:
       },
       fields = ['referred_by'])
     if res is not None and 'referred_by' in res:
-      self.process_referrals(user, res['referred_by'])
+      self.process_referrals(user, res['referred_by'],
+                             inviter_bonus = 500e6,
+                             invitee_bonus = 250e6,
+                             inviter_cap = 16e9,
+                             invitee_cap = 16e9
+                             )
 
     bottle.request.session['device'] = device['id']
     bottle.request.session['identifier'] = user['_id']
@@ -1725,7 +1730,12 @@ class Mixin:
         fields = ['referred_by']
         )
       # Apply referrals on the ghost to this user
-      self.process_referrals(merge_with, res.get('referred_by', []))
+      self.process_referrals(merge_with, res.get('referred_by', []),
+                             inviter_bonus = 500e6,
+                             invitee_bonus = 250e6,
+                             inviter_cap = 16e9,
+                             invitee_cap = 16e9
+                             )
       # Increase swaggers swag for self
       update = {
         '$addToSet': {
