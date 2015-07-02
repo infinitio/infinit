@@ -2123,33 +2123,51 @@ class Mixin:
                            country_code = None,
                            account_type = None,
                            fields = None):
-
-    identifier = utils.identifier(identifier)
     args = {
       'fields': fields,
       'ensure_existence': False,
     }
-    def check_type(account_type, expected):
-      return account_type == expected or account_type is None
-    user = None
+    if country_code is None and self.current_device is not None:
+      country_code = self.current_device.get('country_code')
+    # ObjectIds
     if isinstance(identifier, bson.ObjectId):
-      if check_type(account_type, 'ObjectId'):
-        user = self._user_by_id(identifier, **args)
-    elif '@' in identifier:
-        if check_type(account_type, 'email'):
-          user = self.user_by_email(identifier, **args)
-    else:
-      if account_type == 'facebook':
-        user = self.user_by_facebook_id(identifier,
-                                        **args)
-      elif check_type(account_type, 'phone'):
-        if country_code is None and self.current_device is not None:
-          country_code = self.current_device.get('country_code', None)
-        phone_number = clean_up_phone_number(
-          identifier, country_code)
+      assert account_type is None or account_type == 'id'
+      return self._user_by_id(identifier, **args)
+    # Explicit cases
+    if account_type is not None:
+      if account_type == 'id':
+        return self._user_by_id(identifier, **args)
+      elif account_type == 'email':
+        return self.user_by_email(identifier, **args)
+      elif account_type == 'facebook':
+        return self.user_by_facebook_id(identifier, **args)
+      elif account_type == 'phone':
+        phone_number = clean_up_phone_number(identifier, country_code)
         if phone_number:
-          user = self.user_by_phone_number(phone_number, **args)
-    return user
+          return self.user_by_phone_number(phone_number, **args)
+        else:
+          return None
+      elif account_type == 'handle':
+        return self.user_by_handle(handle, **args)
+    # Try as an email
+    assert isinstance(identifier, str)
+    if '@' in identifier:
+      return self.user_by_email(identifier, **args)
+    # Try as a phone
+    phone_number = clean_up_phone_number(identifier, country_code)
+    if phone_number:
+      return self.user_by_phone_number(phone_number, **args)
+    # Try as a facebook id
+    if len(identifier) == 15 and \
+       all(c in '0123456789' for c in identifier):
+      return self.user_by_facebook_id(identifier, **args)
+    # Try as an id
+    try:
+      return self._user_by_id(bson.ObjectId(identifier), **args)
+    except:
+      pass
+    # Try as a handle
+    return self.user_by_handle(identifier, **args)
 
   @api('/users/<recipient_identifier>')
   def view_user(self,
