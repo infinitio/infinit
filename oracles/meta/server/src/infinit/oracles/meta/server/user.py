@@ -2872,31 +2872,33 @@ class Mixin:
               {'$set': {'plan': plan}})
             self._change_plan(user, plan)
       except stripe.error.CardError as e:
-        elle.log.warn('Stripe error: customer {0} card'
-                      'has been declined'.format(user['_id'],
-                      e.args[0]))
+        warn(
+          '%s: stripe error: customer %s card has been declined' % \
+          (self, user['_id'], e.args[0]))
         return self.bad_request({
-                'reason': (e.args),
-                'plan': plan
-                })
+          'reason': e.args[0],
+        })
       except stripe.error.InvalidRequestError as e:
-        elle.log.warn('Invalid stripe request, cannot update customer'
-                      '{0} plan: {1}'.format(user['_id'],
-                      e.args[0]))
+        warn(
+          '%s: invalid stripe request: cannot update customer: %s' % \
+          (self, e.args[0]))
         return self.bad_request({
-                'reason': (e.args),
-                'plan': plan
-                })
+          'reason': e.args[0],
+        })
       except stripe.error.AuthentificationError as e:
-        elle.log.warn('Stripe auth failure: {1}'.format(e.args[0]))
+        warn('%s: stripe auth failed: %s' % (self, e.args[0]))
         return self.bad_request({
-                'reason': (e.args),
-                'plan': plan
-                })
+          'reason': e.args[0],
+        })
       except stripe.error.APIConnectionError as e:
-        elle.log.warn('Connection to Stripe failed: {1}'.format(e.args[0]))
-        return self.unavailable()
-      return self.success()
+        warn(
+          '%s: connection to stripe failed: %s' % (self, e.args[0]))
+        return self.unavailable({
+          'reason': e.args[0],
+        })
+      return {
+        'plan': plan,
+      }
 
   def __fetch_or_create_stripe_customer(self, user):
     if self.stripe_api_key is None:
