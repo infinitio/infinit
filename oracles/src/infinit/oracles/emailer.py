@@ -150,8 +150,10 @@ class SendWithUsEmailer(Emailer):
           variables = recipient['vars'],
           swu = swu)
       if swu.command_length() >= 100:
-        return self.__execute(swu)
+        dump('%s: send batch of 100' % self)
+        self.__execute(swu)
     if swu.command_length() > 0:
+      dump('%s: send batch of %s' % (self, swu.command_length()))
       return self.__execute(swu)
 
 

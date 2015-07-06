@@ -14,22 +14,28 @@ class Metrics:
 
 with Meta() as meta:
   assert meta.meta.metrics is None
-  bob = User(meta, "bob@infinit.io")
+  bob = User(meta, 'bob@infinit.io')
   bob.login()
-  transaction, res = bob.sendfile(recipient = "alice@infinit.io", use_identifier = False)
-
+  transaction, res = bob.send(recipient = 'alice@infinit.io')
   transaction_id = res['created_transaction_id']
+  bob.transaction_update(transaction_id,
+                         transaction_status.GHOST_UPLOADED)
+  emails = meta.emailer.template('Transfer (Initial)')
+  assertEq(len(emails), 1)
+  email = emails[0]
+  print(email.variables)
+  t = meta.get(
+    'transactions/%s?key=%s' % (
+      transaction_id,
+      email.variables['transaction']['key']))
+  assertEq(t['id'], transaction_id)
 
-  alice = User(meta, "alice@infinit.io")
+  alice = User(meta, 'alice@infinit.io')
   alice.login()
 
-  res = alice.get('transaction/%s' % transaction_id)
-
-  for key in transaction.keys():
-    if key in ['id_or_email', 'device_id']: # Special cases.
-      continue
-    assertEq(res[key], transaction[key])
-  res['recipient_id'] == transaction['recipient_id']
+  t = alice.get('transaction/%s' % transaction_id)
+  assertEq(t['id'], transaction_id)
+  assertEq(t['recipient_id'], transaction['recipient_id'])
 
 # Check if download_link is sent.
 with Meta(metrics = Metrics()) as meta:

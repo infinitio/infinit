@@ -74,7 +74,7 @@ class Transaction(dict):
 
   @staticmethod
   def find(meta, tid, fields = None):
-    fields = {} if fields is None else fields
+    fields = {} if fields is None else {f: True for f in fields}
     fields['_id'] = False
     transaction = meta.database.transactions.find_one(
       { '_id': tid },
@@ -289,8 +289,15 @@ class Mixin:
     else:
       return {}
 
+  @api('/transactions/<id>')
+  def transaction_view_api(self, id: bson.ObjectId, key = None):
+    return self.transaction_view(id = id, key = key)
+
   @api('/transaction/<id>')
-  def transaction_view(self, id: bson.ObjectId, key = None):
+  def transaction_view_api(self, id: bson.ObjectId, key = None):
+    return self.transaction_view(id = id, key = key)
+
+  def transaction_view(self, id, key = None):
     if self.admin:
       return self.transaction(id, None)
     elif self.logged_in:
@@ -306,7 +313,7 @@ class Mixin:
         'sender_id',
         'total_size',
         'paused',
-      'premium',
+        'premium',
       ])
       # handle both negative search and empty transaction
       if not transaction:
