@@ -44,4 +44,13 @@ with mongobox.MongoBox() as mongo:
     check_no_mail(emailer.emails)
     forward(nps.delay)
     sisy.boulders_run()
-    check_mail(emailer.emails, email, 'Net Promoter Score')
+    check_no_mail(emailer.emails)
+    bob = user_register(meta, 'bob@infinit.io')
+    forward(nps.delay / 2)
+    transaction_create(
+      meta, bob, recipient_identifier ='ghost1@infinit.io')
+    transaction_create(
+      meta, bob, recipient_identifier ='ghost1@infinit.io')
+    forward(nps.delay)
+    sisy.boulders_run()
+    check_mail(emailer.emails, bob['email'], 'Net Promoter Score')

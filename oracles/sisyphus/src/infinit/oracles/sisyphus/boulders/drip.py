@@ -121,7 +121,9 @@ class Drip(Emailing):
                  template = None,
                  variations = None,
                  update = None,
-                 guard = None):
+                 guard = None,
+                 guard_transition = False,
+                 hint = None):
     with elle.log.trace(
         '%s: transition from %s to %s' % (self, start, end)):
       meta = self.sisyphus.mongo.meta
@@ -194,13 +196,14 @@ class Drip(Emailing):
               users.append((u, e))
             else:
               unsubscribed.append((u, e))
-        # Unlock skipped
         if skipped:
-          res = self.__table.update(
-            {'_id': {'$in': [e['_id'] for u, e in skipped]}},
-            update,
-            multi = True,
-          )
+          if guard_transition:
+            # Unlock skipped
+            res = self.__table.update(
+              {'_id': {'$in': [e['_id'] for u, e in skipped]}},
+              update,
+              multi = True,
+            )
           elle.log.debug('%s: %s skipped' % (self, res['n']))
         # Send email
         sent = None
@@ -826,6 +829,7 @@ class Tips(Drip):
         'emailing.tips.next': self.now + self.delay,
       },
       guard = self.hasnt_sent_to_self,
+      guard_transition = True,
       template = 'Send to Self Tip',
       hint = self.index[1],
     )
@@ -846,6 +850,7 @@ class Tips(Drip):
           'emailing.tips.next': self.now + self.delay,
         },
         guard = self.hasnt_sent_big,
+        guard_transition = True,
         template = 'Send Anything',
         hint = self.index[1],
       )
@@ -866,6 +871,7 @@ class Tips(Drip):
           'emailing.tips.next': self.now + self.delay,
         },
         guard = self.hasnt_sent_link,
+        guard_transition = True,
         template = 'Links',
         hint = self.index[1],
       )
@@ -908,6 +914,9 @@ class NPS(Drip):
   def delay(self):
     return datetime.timedelta(days = 60)
 
+  def guard(self, u, e):
+    return u.get('transactions', {}).get('sent', 0) == 2
+
   def run(self):
     response = {}
     transited = self.transition(
@@ -920,7 +929,12 @@ class NPS(Drip):
         'creation_time': {'$lt': self.now - self.delay},
       },
       template = 'Net Promoter Score',
+      guard = self.guard,
       hint = self.index[1],
     )
     response.update(transited)
     return response
+
+  @property
+  def fields(self):
+    return self.user_fields + ['transactions']
