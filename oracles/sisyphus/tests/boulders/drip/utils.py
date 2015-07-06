@@ -58,13 +58,13 @@ class GestapoCollection(pymongo.collection.Collection):
     self.__check(spec, fields, hint = hint)
     return super().find(spec = spec, fields = fields, *args, **kwargs)
 
-  def update(self, spec, document, multi = False):
+  def update(self, spec, document, multi = False, hint = None):
     # Skip single conditions on _id, mongo will still consider several
     # plans, can't see why.
     if len(spec) == 1 and spec.get('_id') is not None:
       pass
     else:
-      self.__check(spec)
+      self.__check(spec, hint = hint)
     return super().update(spec = spec,
                           document = document,
                           multi = multi)
@@ -88,8 +88,12 @@ class GestapoCollection(pymongo.collection.Collection):
         nplans = len(list(e for e in explanation['allPlans']
                           if e['cursor'] != 'BasicCursor'))
         if nplans > 1:
-          raise Exception('%s viable plans for condition: %s' % \
-                          (nplans, condition))
+          message = '%s viable plans for condition: %s' % \
+                    (nplans, condition)
+          with elle.log.err(message):
+            for plan in explanation['allPlans']:
+              elle.log.err(repr(plan))
+          raise Exception(message)
       ns = explanation['nscanned']
       nso = explanation['nscannedObjects']
       n = explanation['n']

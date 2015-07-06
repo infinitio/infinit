@@ -148,6 +148,7 @@ class Drip(Emailing):
               '$set': final_update,
             },
             multi = True,
+            hint = hint,
           )
           n = res['n']
         if n > 0:
@@ -165,6 +166,7 @@ class Drip(Emailing):
             },
           },
           multi = True,
+          hint = hint,
         )
         matches = res['n']
         elle.log.debug('%s: %s match' % (self, matches))
@@ -358,12 +360,16 @@ class Onboarding(Drip):
                      pretend, list = 'tips')
     # Find user in any status without scanning all ghosts, deleted
     # users etc.
-    self.sisyphus.mongo.meta.users.ensure_index(
-      [
-        ('emailing.onboarding.state', pymongo.ASCENDING),
-        ('register_status', pymongo.ASCENDING),
-        ('creation_time', pymongo.ASCENDING),
-      ])
+    name, index = self.index
+    self.sisyphus.mongo.meta.users.ensure_index(index, name = name)
+
+  @property
+  def index(self):
+    return 'emailing.onboarding', [
+      ('emailing.onboarding.state', pymongo.ASCENDING),
+      ('register_status', pymongo.ASCENDING),
+      ('creation_time', pymongo.ASCENDING),
+    ]
 
   def run(self):
     response = {}
@@ -382,6 +388,7 @@ class Onboarding(Drip):
         # Did a transaction
         'last_transaction.time': {'$exists': True},
       },
+      hint = self.index[1],
     )
     response.update(transited)
     # -> unactivated-1
@@ -400,6 +407,7 @@ class Onboarding(Drip):
         'last_transaction.time': {'$exists': False},
       },
       template = 'Unactivated',
+      hint = self.index[1],
     )
     response.update(transited)
     return response
@@ -500,13 +508,17 @@ class ConfirmSignup(Drip):
     super().__init__(sisyphus, 'confirm-signup', 'users', pretend)
     # Find user in any status without scanning all ghosts, deleted
     # users etc.
-    self.sisyphus.mongo.meta.users.ensure_index(
-      [
+    name, index = self.index
+    self.sisyphus.mongo.meta.users.ensure_index(index, name = name)
+
+  @property
+  def index(self):
+    return 'emailing.confirm_signup', [
         ('emailing.confirm-signup.state', pymongo.ASCENDING),
         ('register_status', pymongo.ASCENDING),
         ('email_confirmed', pymongo.ASCENDING),
         ('creation_time', pymongo.ASCENDING),
-      ])
+      ]
 
   @property
   def now(self):
@@ -530,6 +542,7 @@ class ConfirmSignup(Drip):
         },
       },
       template = 'Confirm Registration (Reminder)',
+      hint = self.index[1],
     )
     response.update(transited)
     return response
@@ -693,12 +706,8 @@ class Tips(Drip):
   def __init__(self, sisyphus, pretend = False):
     super().__init__(sisyphus, 'tips', 'users',
                      pretend, list = 'tips')
-    self.sisyphus.mongo.meta.users.ensure_index(
-      [
-        ('emailing.tips.state', pymongo.ASCENDING),
-        ('register_status', pymongo.ASCENDING),
-        ('emailing.tips.next', pymongo.ASCENDING),
-      ])
+    name, index = self.index
+    self.sisyphus.mongo.meta.users.ensure_index(index, name = name)
     for name, idx in [
         self.transactions_self_index,
         self.transactions_size_sender_index,
@@ -707,6 +716,14 @@ class Tips(Drip):
       self.sisyphus.mongo.meta.transactions.ensure_index(
         idx,
         name = name)
+
+  @property
+  def index(self):
+    return 'emailing.tips', [
+      ('emailing.tips.state', pymongo.ASCENDING),
+      ('register_status', pymongo.ASCENDING),
+      ('emailing.tips.next', pymongo.ASCENDING),
+    ]
 
   @property
   def transactions_self_index(self):
@@ -760,10 +777,13 @@ class Tips(Drip):
         ('sender_id', self.transactions_size_sender_index),
         ('recipient_id', self.transactions_size_recipient_index),
     ]:
-      query = self.sisyphus.mongo.meta.transactions.find({
-        k: user['_id'],
-        'total_size': {'$gt': self.big_transaction_threshold},
-      }, hint = idx[1])
+      query = self.sisyphus.mongo.meta.transactions.find(
+        {
+          k: user['_id'],
+          'total_size': {'$gt': self.big_transaction_threshold},
+        },
+        hint = idx[1],
+      )
       try:
         next(iter(query))
         return False
@@ -788,6 +808,7 @@ class Tips(Drip):
       update = {
         'emailing.tips.next': self.now + self.delay,
       },
+      hint = self.index[1],
     )
     response.update(transited)
     transited = self.transition(
@@ -806,6 +827,7 @@ class Tips(Drip):
       },
       guard = self.hasnt_sent_to_self,
       template = 'Send to Self Tip',
+      hint = self.index[1],
     )
     response.update(transited)
     for start in ['fresh', 'send-to-self']:
@@ -825,6 +847,7 @@ class Tips(Drip):
         },
         guard = self.hasnt_sent_big,
         template = 'Send Anything',
+        hint = self.index[1],
       )
       response.update(transited)
     for start in ['fresh', 'send-to-self', 'send-anything']:
@@ -844,6 +867,7 @@ class Tips(Drip):
         },
         guard = self.hasnt_sent_link,
         template = 'Links',
+        hint = self.index[1],
       )
       response.update(transited)
     for start in ['fresh', 'send-to-self',
@@ -859,6 +883,7 @@ class Tips(Drip):
             '$lt': self.now,
           },
         },
+        hint = self.index[1],
       )
       response.update(transited)
     return response
@@ -868,12 +893,16 @@ class NPS(Drip):
 
   def __init__(self, sisyphus, pretend = False):
     super().__init__(sisyphus, 'nps', 'users', pretend)
-    self.sisyphus.mongo.meta.users.ensure_index(
-      [
+    name, index = self.index
+    self.sisyphus.mongo.meta.users.ensure_index(index, name = name)
+
+  @property
+  def index(self):
+    return 'emailing.nps', [
         ('emailing.nps.state', pymongo.ASCENDING),
         ('register_status', pymongo.ASCENDING),
         ('creation_time', pymongo.ASCENDING),
-      ])
+      ]
 
   @property
   def delay(self):
@@ -891,6 +920,7 @@ class NPS(Drip):
         'creation_time': {'$lt': self.now - self.delay},
       },
       template = 'Net Promoter Score',
+      hint = self.index[1],
     )
     response.update(transited)
     return response
