@@ -23,7 +23,6 @@ with Meta() as meta:
   emails = meta.emailer.template('Transfer (Initial)')
   assertEq(len(emails), 1)
   email = emails[0]
-  print(email.variables)
   t = meta.get(
     'transactions/%s?key=%s' % (
       transaction_id,
