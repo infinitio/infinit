@@ -411,13 +411,7 @@ class Mixin:
       },
       fields = ['referred_by'])
     if res is not None and 'referred_by' in res:
-      self.process_referrals(user, res['referred_by'],
-                             inviter_bonus = 500e6,
-                             invitee_bonus = 250e6,
-                             inviter_cap = 16e9,
-                             invitee_cap = 16e9
-                             )
-
+      self.process_referrals(user, res['referred_by'])
     bottle.request.session['device'] = device['id']
     bottle.request.session['identifier'] = user['_id']
 
@@ -1730,12 +1724,7 @@ class Mixin:
         fields = ['referred_by']
         )
       # Apply referrals on the ghost to this user
-      self.process_referrals(merge_with, res.get('referred_by', []),
-                             inviter_bonus = 500e6,
-                             invitee_bonus = 250e6,
-                             inviter_cap = 16e9,
-                             invitee_cap = 16e9
-                             )
+      self.process_referrals(merge_with, res.get('referred_by', []))
       # Increase swaggers swag for self
       update = {
         '$addToSet': {
@@ -2826,9 +2815,9 @@ class Mixin:
 
   def process_referrals(self, new_user, referrals,
                         inviter_bonus = 1e9,
-                        inviter_cap = 10e9,
                         invitee_bonus = 500e6,
-                        invitee_cap = 10e9):
+                        inviter_cap = 16e9,
+                        invitee_cap = 16e9):
     """ Called once per new_user upon first login.
         @param new_user User struct for the invitee
         @param referrals List of user ids who invited new_user
@@ -3524,11 +3513,7 @@ class Mixin:
           {'_id': user['_id']},
           {'$set': {'used_referral_link': referral_code}}
         )
-        self.process_referrals(user, [inviter['_id']],
-                               inviter_bonus = 500e6,
-                               invitee_bonus = 250e6,
-                               inviter_cap = 16e9,
-                               invitee_cap = 16e9)
+        self.process_referrals(user, [inviter['_id']])
         return referral_code
       else:
         return None
