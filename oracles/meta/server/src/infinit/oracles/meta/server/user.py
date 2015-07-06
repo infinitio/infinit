@@ -3373,8 +3373,8 @@ class Mixin:
       self.emailer.send_one(
         'Plain',
         recipient_email = identifier,
-        sender_email = user['email'],
-        sender_name = user['fullname'],
+        sender_name = '%s via Infinit' % user['fullname'],
+        reply_to = user['email'],
         variables = variables,
         )
     return {
