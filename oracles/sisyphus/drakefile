@@ -103,6 +103,8 @@ def configure(
       res += how(sendwithus.nodes, build_python_path,
                  drake.Path('..') / sendwithus.root)
       res.append(how(build_binary, where / 'bin', True))
+      res.append(how(apns_cert_prod, where / 'share',
+                     strip_prefix = True))
       return res
     install << install_nodes(prefix, drake.install)
     debian = drake.Rule('debian')
