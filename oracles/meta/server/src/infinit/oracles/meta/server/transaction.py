@@ -47,8 +47,8 @@ class Transaction(dict):
     self['sender_device_id'] = sender_device['id']
     self['recipient_id'] = recipient['_id']
     self['recipient_fullname'] = recipient['fullname']
-    self['recipient_device_id'] = '', # Empty until accepted
-    self['recipient_device_name'] = '', # Empty until accepted
+    self['recipient_device_id'] = '' # Empty until accepted
+    self['recipient_device_name'] = '' # Empty until accepted
     self['involved'] = [sender['_id'], recipient['_id']]
     # Content
     self['status'] = transaction_status.CREATED
