@@ -124,6 +124,7 @@ class Mixin:
         'os',
         'plan',
         'quota',
+        'total_link_size',
       ]
     return res
 
