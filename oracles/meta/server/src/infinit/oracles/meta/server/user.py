@@ -2839,6 +2839,8 @@ class Mixin:
         @param new_user User struct for the invitee
         @param referrals List of user ids who invited new_user
     """
+    inviter_bonus = int(inviter_bonus)
+    invitee_bonus = int(invitee_bonus)
     #policy: +1G for referrers up to 10G,  + 500Mo for referred
     #FIXME: send email
     self.database.users.update(
