@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
-from utils import Meta, HTTPException, User
+from utils import *
 
 # Fetch referral code.
 with Meta() as meta:
   bob = User(meta, 'bob@infinit.io')
   bob.login()
   res = bob.get('user/referral-code')
-  assert (len(res['referral_code']) == 16) # ObjectId is 12 bytes, base64 gives 4/3 n
+  # ObjectId is 12 bytes, base64 gives 4/3 n
+  assertEq(len(res['referral_code']), 16)
 
 # Add referral code retrospectively.
 with Meta() as meta:
@@ -21,21 +22,24 @@ with Meta() as meta:
   bob = User(meta, 'bob@infinit.io')
   bob.login()
   res = bob.get('user/referral-code')
-  assert (len(res['referral_code']) == 16)
-  assert (res['refer_count'] == 0)
+  assertEq(len(res['referral_code']), 16)
+  assertEq(res['refer_count'], 0)
   bob_quota_1 = __quota_for_user(bob)
-  assert (bob_quota_1['total_link_size'] == 1e9)
+  assertEq(bob_quota_1['total_link_size'], 1e9)
   alice = User(meta, 'alice@infinit.io')
   alice.login()
   alice_quota_1 = __quota_for_user(alice)
-  assert (alice_quota_1['total_link_size'] == 1e9)
-  alice.post('user/referral-code', {'referral_code': res['referral_code']})
+  assertEq(alice_quota_1['total_link_size'], 1e9)
+  alice.post('user/referral-code',
+             {'referral_code': res['referral_code']})
   bob_quota_2 = __quota_for_user(bob)
-  assert (bob_quota_2['total_link_size'] == (bob_quota_1['total_link_size'] + 500e6))
+  assertEq(bob_quota_2['total_link_size'],
+           (bob_quota_1['total_link_size'] + 1e9))
   alice_quota_2 = __quota_for_user(alice)
-  assert (alice_quota_2['total_link_size'] == (alice_quota_1['total_link_size'] + 250e6))
+  assertEq(alice_quota_2['total_link_size'],
+           (alice_quota_1['total_link_size'] + 500e6))
   res = bob.get('user/referral-code')
-  assert (res['refer_count'] == 1)
+  assertEq(res['refer_count'], 1)
 
 # Add referral code retrospectively failure checks.
 with Meta() as meta:
@@ -57,10 +61,10 @@ with Meta() as meta:
     assert e.status == 400
   # Too old account
   import datetime
-  old_date = datetime.datetime.utcnow() - datetime.timedelta(days = 10)
+  date = datetime.datetime.utcnow() - datetime.timedelta(days = 10)
   meta.database.users.update(
     {'_id': alice._id},
-    {'$set': {'creation_time': old_date}})
+    {'$set': {'creation_time': date}})
   try:
     alice.post('user/referral-code', {'referral_code': referral_code})
     assert False

@@ -5,8 +5,6 @@ import datetime
 from utils import *
 from infinit.oracles.meta import error
 
-unconfirmed_email_leeway = 100
-
 with Meta() as meta:
   bob = User(meta)
   bob.login()
