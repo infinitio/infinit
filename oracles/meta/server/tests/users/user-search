@@ -2,62 +2,6 @@
 
 from utils import *
 
-def check_search_result(res, ids):
-  assert [user['id'] for user in res['users']] == ids
-
-with Meta() as meta:
-  alice = User(meta, 'alice@provider.com')
-  bob = User(meta, 'bobbymcferrin@provider.com')
-  charles = User(meta, 'charles@provider.com')
-  alice.login();
-  res = alice.get('users?search=al')
-  assert [user['id'] for user in res['users']] == [alice.id]
-  res = alice.get('users?search=dick')
-  assert res['users'] == []
-  alice.logout()
-
-with Meta() as meta:
-  alices = []
-  number_of_alices = 8
-  for i in range(0, number_of_alices):
-    alices.append(User(meta, 'alice%s@infinit.com' % i))
-  bob = User(meta, 'bobbymcferrin@infinit.com')
-
-  bob.login()
-
-  res = bob.get('users?search=al&limit=10')
-  print(res['users'])
-  assert len(res['users']) == number_of_alices
-
-  bob.send(alices[3].email)
-  bob.send(alices[1].email)
-  bob.send(alices[3].email)
-  bob.send(alices[3].email)
-  bob.send(alices[5].email)
-  bob.send(alices[5].email)
-
-  # Current swag amounts:
-  # alice3 : 3
-  # alice5 : 2.
-  # alice1 : 1.
-
-  res = bob.get('users?search=al&limit=10')
-  assert len(res['users']) == number_of_alices
-  assertEq([user['id'] for user in res['users'][:3]],
-           [alices[3].id, alices[5].id, alices[1].id])
-  res = bob.get('users?search=al&limit=1')
-  assert len(res['users']) == 1
-  assert [user['id'] for user in res['users']] == [alices[3].id]
-  bob.logout()
-
-with Meta() as meta:
-  bob = User(meta, email = 'bobbymcferrin@infinit.com', fullname = 'jean @ bob')
-
-  bob.login()
-  res = bob.get('users?search=jean%20@&limit=10')
-  assert len(res['users']) == 1
-  bob.logout()
-
 with Meta() as meta:
   bob = User(meta, email = 'bobbymcferrin@infinit.com', fullname = 'jean @ bob')
   bob.login()
