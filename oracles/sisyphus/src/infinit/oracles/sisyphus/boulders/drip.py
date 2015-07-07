@@ -246,7 +246,7 @@ class Drip(Emailing):
   def __email_enabled(self, user):
     if self.__list is not None:
       return 'unsubscriptions' not in user \
-        or self.__list not in user['unsubscriptions']
+        or user['unsubscriptions'].get(self.__list, True)
     else:
       return True
 

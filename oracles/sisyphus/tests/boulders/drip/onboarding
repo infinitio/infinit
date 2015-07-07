@@ -70,3 +70,21 @@ with mongobox.MongoBox() as mongo:
       # Check it's not sent twice
       sisy.boulders_run()
       assert not emailer.emails
+
+
+with mongobox.MongoBox() as mongo:
+  with Meta(mongo_port = mongo.port, enable_emails = False) as meta:
+    emailer = DummyEmailer()
+    sisy = oracles.sisyphus.Sisyphus(mongo_port = mongo.port,
+                                     emailer = emailer)
+    onboarding = Onboarding(sisy)
+    user_y = user_register(meta, 'user_y@infinit.io')
+    user_n = user_register(meta, 'user_n@infinit.io')
+    meta.change_mail_subscriptions(user_y, tips = True)
+    meta.change_mail_subscriptions(user_n, tips = False)
+    # Check unactivated 1 is sent to an aging user
+    diff = onboarding.delay * 1.5
+    onboarding.now += diff
+    meta.now += diff
+    sisy.boulders_run()
+    check_mail(emailer.emails, 'user_y@infinit.io', 'Unactivated')

@@ -2650,8 +2650,7 @@ class Mixin:
 
   @api('/user/email_subscriptions', method = 'POST')
   @require_logged_in
-  def mail_subscriptions(self, **kwargs):
-    '''Change email subscriptions'''
+  def change_mail_subscriptions_api(self, **kwargs):
     for k, v in kwargs.items():
       if k not in Mixin.email_lists:
         self.bad_request({
@@ -2663,13 +2662,30 @@ class Mixin:
           'reason': 'invalide list subscription value',
           'value': v,
         })
+    return self.change_mail_subscriptions(self.user, **kwargs)
 
+  def change_mail_subscriptions(
+      self,
+      user,
+      alerts = None,
+      newsletter = None,
+      tips = None,
+  ):
+    values = {
+      k: v
+      for k, v in [('alerts', alerts),
+                   ('newsletter', newsletter),
+                   ('tips', tips)]
+      if v is not None
+    }
     self.database.users.update(
-      {'_id': self.user['_id']},
-      {'$set': sort_dict({'unsubscriptions.%s' % k: v
-                          for k, v in kwargs.items()})},
+      {'_id': user['_id']},
+      {
+        '$set': sort_dict(
+          {'unsubscriptions.%s' % k: v for k, v in values.items()}),
+      },
     )
-    return kwargs
+    return values
 
   ## --------- ##
   ## Campaigns ##
