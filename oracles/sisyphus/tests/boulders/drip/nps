@@ -13,8 +13,8 @@ ELLE_LOG_COMPONENT = 'infinit.oracles.sisyphus.boulders.drip'
 class NPS(oracles.sisyphus.boulders.drip.NPS):
 
   def __init__(self, sisyphus):
-    super().__init__(sisyphus)
     self.__now = datetime.datetime.utcnow()
+    super().__init__(sisyphus)
 
   @property
   def now(self):
@@ -37,8 +37,7 @@ with mongobox.MongoBox() as mongo:
       meta.now = nps.now
     sisy.boulders_run()
     check_no_mail(emailer.emails)
-    email = 'alice@infinit.io'
-    alice = user_register(meta, email)
+    alice = user_register(meta, 'alice@infinit.io')
     forward(nps.delay / 2)
     sisy.boulders_run()
     check_no_mail(emailer.emails)
@@ -51,6 +50,10 @@ with mongobox.MongoBox() as mongo:
       meta, bob, recipient_identifier ='ghost1@infinit.io')
     transaction_create(
       meta, bob, recipient_identifier ='ghost1@infinit.io')
+    transaction_create(
+      meta, alice, recipient_identifier ='ghost1@infinit.io')
+    transaction_create(
+      meta, alice, recipient_identifier ='ghost1@infinit.io')
     forward(nps.delay)
     sisy.boulders_run()
     check_mail(emailer.emails, bob['email'], 'Net Promoter Score')

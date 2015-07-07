@@ -7,6 +7,7 @@ import pymongo
 import time
 
 from itertools import chain
+from elle.log import log, trace, debug, dump
 
 from .. import Boulder
 from .. import version
@@ -123,6 +124,7 @@ class Drip(Emailing):
                  update = None,
                  guard = None,
                  guard_transition = False,
+                 guard_end = None,
                  hint = None):
     with elle.log.trace(
         '%s: transition from %s to %s' % (self, start, end)):
@@ -159,6 +161,7 @@ class Drip(Emailing):
           return {}
       else:
         # Lock documents
+        elle.log.dump('%s: match condition: %s' % (self, condition))
         res = self.__table.update(
           condition,
           {
@@ -197,14 +200,19 @@ class Drip(Emailing):
             else:
               unsubscribed.append((u, e))
         if skipped:
-          if guard_transition:
-            # Unlock skipped
-            res = self.__table.update(
-              {'_id': {'$in': [e['_id'] for u, e in skipped]}},
-              update,
-              multi = True,
-            )
-          elle.log.debug('%s: %s skipped' % (self, res['n']))
+          with debug('%s: %s skipped' % (self, len(skipped))):
+            if any([guard_transition, guard_end]):
+              skipped_update = dict(update)
+              if guard_end:
+                assert not guard_transition
+                if not self.__pretend:
+                  skipped_update.update({'$set': {field: guard_end}})
+              # Unlock skipped
+              res = self.__table.update(
+                {'_id': {'$in': [e['_id'] for u, e in skipped]}},
+                skipped_update,
+                multi = True,
+              )
         # Send email
         sent = None
         if users:
@@ -901,6 +909,7 @@ class NPS(Drip):
     super().__init__(sisyphus, 'nps', 'users', pretend)
     name, index = self.index
     self.sisyphus.mongo.meta.users.ensure_index(index, name = name)
+    self.__next = self.now
 
   @property
   def index(self):
@@ -915,7 +924,12 @@ class NPS(Drip):
     return datetime.timedelta(days = 60)
 
   def guard(self, u, e):
-    return u.get('transactions', {}).get('sent', 0) == 2
+    if self.now < self.__next:
+      return False
+    if u.get('transactions', {}).get('sent', 0) != 2:
+      return False
+    self.__next = self.now + datetime.timedelta(hours = 12)
+    return True
 
   def run(self):
     response = {}
@@ -930,6 +944,7 @@ class NPS(Drip):
       },
       template = 'Net Promoter Score',
       guard = self.guard,
+      guard_end = 'not-sent',
       hint = self.index[1],
     )
     response.update(transited)

@@ -74,6 +74,7 @@ infinit.oracles.sisyphus.boulders.drip.ConfirmSignup(app, pretend = pretend)
 infinit.oracles.sisyphus.boulders.drip.GhostReminder(app, pretend = pretend)
 infinit.oracles.sisyphus.boulders.drip.Onboarding(app, pretend = pretend)
 infinit.oracles.sisyphus.boulders.drip.Tips(app, pretend = pretend)
+infinit.oracles.sisyphus.boulders.drip.NPS(app, pretend = pretend)
 
 
 apns_cert = '%s/../share/aps.pem' % SELF_DIR
