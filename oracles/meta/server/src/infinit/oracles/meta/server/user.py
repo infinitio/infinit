@@ -2030,55 +2030,6 @@ class Mixin:
         'id': id,
       })
 
-  @api('/users')
-  @require_logged_in_or_admin
-  def users(self, search = None, limit : int = 5, skip : int = 0, ids = None):
-    """Search the ids of the users with handle or fullname matching text.
-
-    search -- the query.
-    skip -- the number of user to skip in the result (optional).
-    limit -- the maximum number of match to return (optional).
-    """
-    with elle.log.trace('search %s (limit: %s, skip: %s)' % \
-                        (search, limit, skip)):
-      pipeline = []
-      match = {}
-      if not self.admin:
-        # User must not be a ghost as ghost fullnames are their email
-        # addresses.
-        match['register_status'] = 'ok'
-      if ids is not None:
-        for c in "'\"[]":
-          ids = ids.replace(c, '')
-        ids = [self.__object_id(id) for id in ids.split(',')]
-        match['_id'] = {'$in' : list(ids)}
-      if search is not None:
-        match['$or'] = [
-          {'fullname' : {'$regex' : search,  '$options': 'i'}},
-          {'handle' : {'$regex' : search, '$options': 'i'}},
-        ]
-      pipeline.append({'$match': match})
-      # FIXME: workaround mongo 2.6 which requires a project after a
-      # match with an or.
-      fields = {f.split('.')[0]: '$%s' % f.split('.')[0]
-                for f in self.__user_view_fields}
-      fields['swaggers'] = '$swaggers'
-      pipeline.append({
-        '$project': fields,
-      })
-      # /FIXME
-      if self.logged_in:
-        pipeline.append({
-          '$sort': {'swaggers.%s' % str(self.user['_id']) : -1}
-        })
-      pipeline.append({'$skip': skip})
-      pipeline.append({'$limit': limit})
-      users = self.database.users.aggregate(pipeline)
-      for user in users['result']:
-        del user['swaggers']
-        self.__user_fill(user)
-      return {'users': [self.__user_view(u) for u in users['result']]}
-
   def __users_by_emails_search(self, emails, limit, offset):
     """Search users for a list of emails.
 
