@@ -33,7 +33,7 @@ class APNSUnregister(Boulder):
           '_id': True,
         }
       )
-      if self.sisyphus.metrics is not None:
+      if user is not None and self.sisyphus.metrics is not None:
         res = self.sisyphus.metrics.send(
           [
             {
