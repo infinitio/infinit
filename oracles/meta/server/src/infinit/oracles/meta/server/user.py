@@ -3496,7 +3496,7 @@ class Mixin:
     try:
       inviter_id = self.__base64_to_mongo_id(referral_code)
       inviter = self.database.users.find_one({'_id': inviter_id},
-                                                 fields = ['_id'])
+                                             fields = ['_id'])
       if inviter:
         self.database.users.update(
           {'_id': user['_id']},

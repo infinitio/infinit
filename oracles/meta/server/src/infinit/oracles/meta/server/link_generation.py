@@ -779,7 +779,7 @@ class Mixin:
     user_id = self.database.links.find_one({'_id': id})['sender_id']
     user = self.database.users.find_one(user_id)
     self.link_update(id, user, progress = 1, status =
-        transaction_status.DELETED)
+                     transaction_status.DELETED)
 
   @api('/stats/links')
   @require_admin
