@@ -879,6 +879,8 @@ class Mixin:
               message = {
                 'user_id': str(user['_id']),
                 'contact': email,
+                'contact_email': email,
+                'contact_fullname': fullname,
               },
               recipient_ids = {c},
               )

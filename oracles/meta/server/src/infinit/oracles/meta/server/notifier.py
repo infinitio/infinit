@@ -257,57 +257,70 @@ class Notifier:
       elle.log.trace('Android notification: %s' % r.content)
 
   def prepare_notification(self, notification_type, device, owner, message, os):
-    if notification_type is not PEER_TRANSACTION:
-      return None
-    sender_id = str(message['sender_id'])
-    recipient_id = str(message['recipient_id'])
-    status = int(message['status'])
     content_available = False
     badge = 0
     sound = None
-    if (str(owner) == sender_id) and (device == message['sender_device_id']):
-      if status not in [transaction_status.REJECTED, transaction_status.FINISHED]:
+    if notification_type == PEER_TRANSACTION:
+      sender_id = str(message['sender_id'])
+      recipient_id = str(message['recipient_id'])
+      status = int(message['status'])
+      if (str(owner) == sender_id) and (device == message['sender_device_id']):
+        if status not in [transaction_status.REJECTED, transaction_status.FINISHED]:
+          return None
+      elif str(owner) == recipient_id:
+        if status not in [transaction_status.INITIALIZED]:
+          return None
+        badge = 1
+        sound = 'default'
+      else:
         return None
-    elif str(owner) == recipient_id:
-      if status not in [transaction_status.INITIALIZED]:
-        return None
-      badge = 1
-      sound = 'default'
-    else:
-      return None
-    if sender_id == recipient_id:
-      to_self = True
-    else:
-      to_self = False
-    alert = None
-    if message['files_count'] == 1:
-      files = 'file'
-    else:
-      files = 'files'
-    if status is transaction_status.INITIALIZED: # Only sent to recipient
-      if to_self:
-        if message['recipient_device_id'] == device:
-          alert = "Open Infinit for the transfer to begin"
+      if sender_id == recipient_id:
+        to_self = True
+      else:
+        to_self = False
+      alert = None
+      if message['files_count'] == 1:
+        files = 'file'
+      else:
+        files = 'files'
+      if status is transaction_status.INITIALIZED: # Only sent to recipient
+        if to_self:
+          if message['recipient_device_id'] == device:
+            alert = "Open Infinit for the transfer to begin"
+          else:
+            alert = "Accept transfer from another device"
         else:
-          alert = "Accept transfer from another device"
+          alert = "Accept transfer from %s" % message['sender_fullname']
+      elif status is transaction_status.REJECTED: # Only sent to sender
+        if not to_self:
+          alert = 'Canceled by %s' % message['recipient_fullname']
+      elif status is transaction_status.FINISHED:
+        if to_self:
+          alert = 'Transfer received'
+        else:
+          alert = 'Transfer received by %s' % message['recipient_fullname']
+      if alert is None:
+        return None
+      if os == 'iOS':
+        return apns.Payload(alert = alert,
+                            badge = badge,
+                            sound = sound,
+                            content_available = content_available)
+      elif os == 'Android':
+          return { 'title' : 'Infinit', 'message' : alert }
       else:
-        alert = "Accept transfer from %s" % message['sender_fullname']
-    elif status is transaction_status.REJECTED: # Only sent to sender
-      if not to_self:
-        alert = 'Canceled by %s' % message['recipient_fullname']
-    elif status is transaction_status.FINISHED:
-      if to_self:
-        alert = 'Transfer received'
+        return None
+    elif notification_type == NEW_SWAGGER:
+      if 'contact_email' not in message:
+        return None
+      alert = 'Your contact %s (%s) joined Infinit' % \
+              (message['contact_fullname'], message['contact_email'])
+      if os == 'iOS':
+        return apns.Payload(alert = alert,
+                            badge = badge,
+                            sound = sound,
+                            content_available = content_available)
       else:
-        alert = 'Transfer received by %s' % message['recipient_fullname']
-    if alert is None:
-      return None
-    if os == 'iOS':
-      return apns.Payload(alert = alert,
-                          badge = badge,
-                          sound = sound,
-                          content_available = content_available)
-    elif os == 'Android':
-        return { 'title' : 'Infinit', 'message' : alert }
+        return {'title': 'Infinit', 'message': alert}
     else:
       return None
