@@ -8,8 +8,9 @@ def targets(action):
   yield '//station/%s' % action
   yield '//papier/%s' % action
 
-  # Only stock Ubuntus used in production should run the server tests.
-  if osyst == 'linux_ubuntu_14':
+  # Only stock Ubuntus used in production and Mac Mini should run the server
+  # tests.
+  if osyst in ['linux_ubuntu_14', 'osx']:
     yield '//oracles/%s' % action
   else:
     yield '//oracles/meta/client/%s' % action
@@ -19,3 +20,6 @@ def targets(action):
     yield '//fist-gui-qt/%s' % action
   if action == 'build':
     yield '//python'
+  # Run the functional tests on the Mac Mini only.
+  if action is 'check' and osyst is 'osx':
+    yield '//functional/check'
