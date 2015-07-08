@@ -2742,6 +2742,18 @@ class Mixin:
     }
     return self.success(res)
 
+  def _quota_updated_notification(self, user):
+    self.notifier.notify_some(
+      notifier.MODEL_UPDATE,
+      message = {
+        'account': {
+          'link_size_used': user.get('total_link_size', 0),
+          'link_size_quota': user.get('quota', {}).get('total_link_size', 0),
+        }
+      },
+      recipient_ids = {user['_id']},
+      version = (0, 9, 37))
+
   def change_plan(self, uid, new_plan):
     return self._change_plan(self._user_by_id(uid, self.__user_self_fields),
                              new_plan)
@@ -2817,6 +2829,11 @@ class Mixin:
         '$inc': { 'quota.total_link_size': invitee_bonus}
       },
     )
+    referrers = list(map(lambda x: self.user_from_identifier(
+      x, fields = ['quota']),
+                         referrals))
+    for user in referrers + [new_user]:
+      self._quota_updated_notification(user)
 
   @api('/users/<user>', method='PUT')
   @require_logged_in

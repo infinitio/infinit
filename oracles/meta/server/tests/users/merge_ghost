@@ -104,13 +104,15 @@ with Meta(enable_emails = True) as meta:
              {'confirm_token': emails[0].variables['confirm_token']})
 
     trophonius.poll()
-    assertEq(len(bob.notifications), 2)
+    assertEq(len(bob.notifications), 3)
     assertEq(bob.next_notification().type, PEER_TRANSACTION)
+    assertEq(bob.next_notification().type, MODEL_UPDATE)
     assertEq(bob.next_notification().type, NEW_SWAGGER)
 
     # Ghost is now bob.
-    assertEq(len(alice.notifications), 3)
+    assertEq(len(alice.notifications), 4)
     assertEq(alice.next_notification().type, PEER_TRANSACTION)
+    assertEq(alice.next_notification().type, MODEL_UPDATE)
     assertEq(alice.next_notification().type, DELETED_SWAGGER)
     assertEq(alice.next_notification().type, NEW_SWAGGER)
 

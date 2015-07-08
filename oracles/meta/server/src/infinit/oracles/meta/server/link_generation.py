@@ -444,10 +444,12 @@ class Mixin:
                 # upload, or if on gcs if nothing was uploaded at all
                 if link['status'] == transaction_status.FINISHED:
                   if 'file_size' in link:
-                    self.database.users.update(
+                    user = self.database.users.find_and_modify(
                       {'_id': user['_id']},
-                      {'$inc': {'total_link_size': link['file_size'] * -1}}
+                      {'$inc': {'total_link_size': link['file_size'] * -1}},
+                      new = True,
                     )
+                    self._quota_updated_notification(user)
             else: #status = FINISHED
               # Get effective size
               head = self._generate_op_url(link, 'HEAD')
@@ -469,15 +471,7 @@ class Mixin:
                   {'$inc': {'total_link_size': file_size}},
                   new = True,
                 )
-                self.notifier.notify_some(
-                notifier.MODEL_UPDATE,
-                message = {
-                  'account': {
-                    'link_size_used': user.get('total_link_size', 0),
-                  }
-                },
-                recipient_ids = {user['_id']},
-                version = (0, 9, 37))
+                self._quota_updated_notification(user)
       if expiration_date is not None:
         update['expiration_date'] = expiration_date
       if message is not None:
