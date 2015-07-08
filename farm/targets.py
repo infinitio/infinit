@@ -21,5 +21,5 @@ def targets(action):
   if action == 'build':
     yield '//python'
   # Run the functional tests on the Mac Mini only.
-  if action is 'check' and osyst is 'osx':
+  if action == 'check' and osyst == 'osx':
     yield '//functional/check'
