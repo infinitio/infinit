@@ -684,6 +684,8 @@ namespace infinit
                         boost::optional<std::string> referral_code) const
       {
         ELLE_TRACE_SCOPE("%s: register %s <%s>", *this, fullname, email);
+        if (referral_code)
+          ELLE_DEBUG("referral_code: %s", referral_code.get());
         std::string source = "app";
         auto url = "/user/register";
         auto request = this->_request(
