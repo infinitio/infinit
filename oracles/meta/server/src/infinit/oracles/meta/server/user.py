@@ -1084,6 +1084,7 @@ class Mixin:
     ghost_code = self.generate_random_sequence()
     request = {
       'register_status': 'ghost',
+      'creation_time': self.now,
       'notifications': [],
       'networks': [],
       'devices': [],
