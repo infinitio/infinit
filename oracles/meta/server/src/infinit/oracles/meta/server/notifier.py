@@ -286,11 +286,11 @@ class Notifier:
       if status is transaction_status.INITIALIZED: # Only sent to recipient
         if to_self:
           if message['recipient_device_id'] == device:
-            alert = "Open Infinit for the transfer to begin"
-          else:
-            alert = "Accept transfer from another device"
+            alert = 'Open Infinit for the transfer to begin'
+          elif message['recipient_device_id'] == '':
+            alert = 'Accept transfer from another device'
         else:
-          alert = "Accept transfer from %s" % message['sender_fullname']
+          alert = 'Accept transfer from %s' % message['sender_fullname']
       elif status is transaction_status.REJECTED: # Only sent to sender
         if not to_self:
           alert = 'Canceled by %s' % message['recipient_fullname']
