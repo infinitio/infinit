@@ -165,48 +165,46 @@ class Mixin:
         'version',
       ])
     trophoniuses = list(trophoniuses)
-    def format_version(version):
-      if version is None:
-        return None
-      return '%s.%s.%s' % (version['major'],
-                           version['minor'],
-                           version['subminor'])
-
-    clients = self.database.users.aggregate([
-      #Much faster with a match before the unwind.
-      {'$match': {'devices.trophonius': {'$in': [t['_id'] for t in trophoniuses]}}},
-      {'$unwind': '$devices'},
-      {'$match': {'devices.trophonius': {'$in': [t['_id'] for t in trophoniuses]}}},
-      {
-        '$group':
-        {
-          '_id': {'os': '$devices.os', 'version': '$devices.version'},
-          'count': {'$sum': 1},
-        }
-      },
-    ])['result']
-
-    versions = {}
-    oses = {}
-
-    for client in clients:
-      version = format_version(client['_id'].get('version', None))
-      versions.setdefault(version, 0)
-      versions[version] += client['count']
-      os = client['_id'].get('os', None)
-      # No null keys in JSON, sadly.
-      if os is None:
-        os = 'unknown'
-      oses.setdefault(os, {})
-      oses[os].setdefault('total', 0)
-      oses[os].setdefault(version, 0)
-      oses[os]['total'] += client['count']
-      oses[os][version] += client['count']
+    # Does not run in a reasonable time
+    # def format_version(version):
+    #   if version is None:
+    #     return None
+    #   return '%s.%s.%s' % (version['major'],
+    #                        version['minor'],
+    #                        version['subminor'])
+    # clients = self.database.users.aggregate([
+    #   #Much faster with a match before the unwind.
+    #   {'$match': {'devices.trophonius': {'$in': [t['_id'] for t in trophoniuses]}}},
+    #   {'$unwind': '$devices'},
+    #   {'$match': {'devices.trophonius': {'$in': [t['_id'] for t in trophoniuses]}}},
+    #   {
+    #     '$group':
+    #     {
+    #       '_id': {'os': '$devices.os', 'version': '$devices.version'},
+    #       'count': {'$sum': 1},
+    #     }
+    #   },
+    # ])['result']
+    # versions = {}
+    # oses = {}
+    # for client in clients:
+    #   version = format_version(client['_id'].get('version', None))
+    #   versions.setdefault(version, 0)
+    #   versions[version] += client['count']
+    #   os = client['_id'].get('os', None)
+    #   # No null keys in JSON, sadly.
+    #   if os is None:
+    #     os = 'unknown'
+    #   oses.setdefault(os, {})
+    #   oses[os].setdefault('total', 0)
+    #   oses[os].setdefault(version, 0)
+    #   oses[os]['total'] += client['count']
+    #   oses[os][version] += client['count']
     return {
       'trophoniuses': trophoniuses,
       'users': sum(tropho['users'] for tropho in trophoniuses),
-      'versions': versions,
-      'oses': oses,
+      # 'versions': versions,
+      # 'oses': oses,
     }
 
   @api('/trophonius')
