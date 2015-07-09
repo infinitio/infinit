@@ -38,6 +38,7 @@ namespace infinit
       s.serialize("click_count", this->click_count);
       s.serialize("ctime", this->ctime);
       s.serialize("files", this->file_list);
+      s.serialize("hash", this->hash);
       s.serialize("message", this->message);
       s.serialize("mtime", this->mtime);
       s.serialize("name", this->name);
