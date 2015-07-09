@@ -26,6 +26,7 @@ namespace surface
       LinkTransaction(uint32_t id,
                       std::string name,
                       double mtime,
+                      boost::optional<std::string> hash,
                       boost::optional<std::string> link,
                       uint32_t click_count,
                       uint64_t size,
@@ -39,6 +40,7 @@ namespace surface
       uint32_t id;
       std::string name;
       double mtime;
+      boost::optional<std::string> hash;
       boost::optional<std::string> link;
       uint32_t click_count;
       uint64_t size;

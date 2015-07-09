@@ -7,6 +7,7 @@ namespace surface
     LinkTransaction::LinkTransaction(uint32_t id_,
                                      std::string name_,
                                      double mtime_,
+                                     boost::optional<std::string> hash_,
                                      boost::optional<std::string> link_,
                                      uint32_t click_count_,
                                      uint64_t size_,
@@ -18,6 +19,7 @@ namespace surface
       : id(id_)
       , name(std::move(name_))
       , mtime(mtime_)
+      , hash()
       , link()
       , click_count(click_count_)
       , size(size_)
@@ -32,6 +34,8 @@ namespace surface
       // can handle optionals and not return an empty string.
       if (link_ && !link_.get().empty())
         this->link = std::move(link_);
+      if (hash_ && !hash_.get().empty())
+        this->hash = std::move(hash_);
     }
 
     LinkTransaction::~LinkTransaction() noexcept(true)
@@ -42,6 +46,7 @@ namespace surface
     {
       stream << "LinkTransaction("
              << this->id << ", "
+             << (this->hash ? this->hash.get() : "<no hash>") << ", "
              << this->status << " clicked("
              << this->click_count << " time"
              << (this->click_count == 1 ? "" : "s") << ")";
