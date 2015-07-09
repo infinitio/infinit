@@ -117,6 +117,8 @@ class Mixin:
     ]
     if self.admin:
       res += [
+        'account',
+        'accounts',
         'creation_time',
         'email',
         'email_confirmed',
@@ -132,6 +134,7 @@ class Mixin:
   def __user_self_fields(self):
     res = self.__user_view_fields
     res += [
+      'account',
       'accounts',
       'consumed_ghost_codes',
       'creation_time',
@@ -2743,10 +2746,12 @@ class Mixin:
     else:
       res.update(self.devices_users_api(user['_id']))
     res.update(self.accounts_users_api(user['_id']))
+    custom_domains = user.get('account', {}).get('custom_domains', [])
     res['account'] = {
       'plan': user.get('plan', 'basic'),
       'link_size_quota': user.get('quota', {}).get('total_link_size', 0),
       'link_size_used': user.get('total_link_size', 0),
+      'custom_domain': next(iter(custom_domains), {'name': ''})['name'],
     }
     return self.success(res)
 
@@ -3271,6 +3276,15 @@ class Mixin:
     old, new = self.__user_account_domains_edit(name, '$addToSet')
     if old is None:
       bottle.response.status = 201
+    self.notifier.notify_some(
+      notifier.MODEL_UPDATE,
+      message = {
+        'account': {
+          'custom_domain': new.get('name', ''),
+        }
+      },
+      recipient_ids = {self.user['_id']},
+      version = (0, 9, 37))
     return new
 
   @api('/user/account/custom_domains/<name>', method = 'DELETE')
@@ -3282,6 +3296,15 @@ class Mixin:
         'reason': 'custom domain %s not found' % name,
         'custom-domain': name,
       })
+    self.notifier.notify_some(
+      notifier.MODEL_UPDATE,
+      message = {
+        'account': {
+          'custom_domain': '',
+        }
+      },
+      recipient_ids = {self.user['_id']},
+      version = (0, 9, 37))
     return new
 
   @api('/user/account', method = 'GET')
