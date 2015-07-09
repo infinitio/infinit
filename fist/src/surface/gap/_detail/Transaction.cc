@@ -147,6 +147,7 @@ namespace surface
         id,
         link.name,
         link.mtime,
+        link.hash,
         link.share_link,
         link.click_count,
         link.size(),
