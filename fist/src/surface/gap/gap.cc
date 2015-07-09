@@ -362,6 +362,11 @@ gap_account_changed_callback(gap_State* state, AccountChangedCallback callback)
         {
           callback(state.account());
         });
+      state.model().account.custom_domain.changed().connect(
+        [callback, &state] (std::string)
+        {
+          callback(state.account());
+        });
       state.model().account.link_size_quota.changed().connect(
         [callback, &state] (uint64_t)
         {
