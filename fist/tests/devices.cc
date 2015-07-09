@@ -258,6 +258,7 @@ _change_synchronize_route(tests::Server& server,
         "  \"accounts\": [{\"type\": \"email\", \"id\": \"f@ke.email\"}],"
         "  \"account\": {"
         "    \"plan\": \"basic\","
+        "    \"custom_domain\": \"\","
         "    \"link_size_quota\": 0,"
         "    \"link_size_used\": 0"
         "  },"
