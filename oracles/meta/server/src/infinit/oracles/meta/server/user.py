@@ -551,6 +551,11 @@ class Mixin:
     # FIXME: 0.0.0.0 is the website.
     if self.user_version < (0, 9, 0) and self.user_version != (0, 0, 0):
       return self.fail(error.DEPRECATED)
+    if self.user_version < (0, 9, 39) and OS == "Windows":
+      return self.forbidden({
+        'reason': 'Version is deprecated',
+        'code': error.DEPRECATED[0]
+      })
     user, res = self._login(
       email = email,
       fields = self.__user_self_fields + ['public_key'],
@@ -1084,6 +1089,7 @@ class Mixin:
     ghost_code = self.generate_random_sequence()
     request = {
       'register_status': 'ghost',
+      'creation_time': self.now,
       'notifications': [],
       'networks': [],
       'devices': [],
