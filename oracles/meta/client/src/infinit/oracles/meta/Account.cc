@@ -30,6 +30,7 @@ namespace infinit
       void
       Account::serialize(elle::serialization::Serializer& s)
       {
+        s.serialize("custom_domain", this->custom_domain);
         s.serialize("plan", this->plan);
         s.serialize("link_size_quota", this->link_size_quota);
         s.serialize("link_size_used", this->link_size_used);
@@ -39,6 +40,7 @@ namespace infinit
       Account::print(std::ostream& stream) const
       {
         stream << "Account(" << account_type_string(this->plan)
+               << ", custom_domain = " << this->custom_domain
                << ", link_size_used = " << this->link_size_used
                << ", link_size_quota = " << this->link_size_quota << ")";
       }
