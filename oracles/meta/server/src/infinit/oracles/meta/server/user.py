@@ -3403,14 +3403,27 @@ class Mixin:
   @api('/user/invites', method = 'GET')
   @require_logged_in
   def user_invites(self):
-    res = self.database.invitations.find({'sender': self.user['_id']})
-    res = [
+    invites = self.database.invitations.find(
+      {'sender': self.user['_id']})
+    invites = [
       {
         'recipient': str(r['recipient']),
         'recipient_name': r['recipient_name'],
         'status': r['status'],
-      } for r in res]
-    return {'invites': res}
+      } for r in invites]
+    code = self.__mongo_id_to_base64(self.user['_id'])
+    referred = self.database.users.find(
+      {'used_referral_link': code,})
+    referred = [
+      {
+        'id': str(r['_id']),
+        'name': str(r['fullname']),
+      } for r in referred
+    ]
+    return {
+      'invites': invites,
+      'referred': referred,
+    }
 
   @api('/user/accounts_facebook', method = 'PUT')
   @require_logged_in

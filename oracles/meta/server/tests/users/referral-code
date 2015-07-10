@@ -40,6 +40,9 @@ with Meta() as meta:
            (alice_quota_1['total_link_size'] + 500e6))
   res = bob.get('user/referral-code')
   assertEq(res['refer_count'], 1)
+  res = bob.get('user/invites')
+  assertEq(res['referred'],
+           [{'name': 'alice', 'id': str(alice.id)}])
 
 # Add referral code retrospectively failure checks.
 with Meta() as meta:
