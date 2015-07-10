@@ -383,6 +383,8 @@ namespace surface
       this->gap_status(gap_transaction_paused);
       this->_pause(true);
       this->transaction().paused().open();
+      ELLE_TRACE("%s: leaving pausing state with status %s",
+                 *this, this->gap_status());
     }
 
     void TransactionMachine::_unpausing()
@@ -399,6 +401,9 @@ namespace surface
 
     void TransactionMachine::_paused()
     {
+      ELLE_TRACE("%s: entering paused state with status %s",
+                 *this, this->gap_status());
+      this->gap_status(gap_transaction_paused);
     }
 
     void

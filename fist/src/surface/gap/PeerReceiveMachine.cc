@@ -174,6 +174,18 @@ namespace surface
             this->_run(this->_wait_for_decision_state);
           else if (snapshot.current_state() == "another device")
             this->_run(this->_another_device_state);
+          else if (snapshot.current_state() == "paused")
+          {
+            // unpausing will bounce us back to wait_for_decision expecting
+            // it to pass because accepted was opened, but that is not true
+            // if we restarted
+            this->_accepted.open();
+            // status will be set asynchronously by fsm state, but at that point
+            // login will have already returned which means the user can
+            // read an incorrect status
+            this->gap_status(gap_transaction_paused);
+            this->_run(this->_pausing_state);
+          }
           else
           {
             ELLE_WARN("%s: unknown state in snapshot: %s",
