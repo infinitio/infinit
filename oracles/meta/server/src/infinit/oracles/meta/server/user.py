@@ -2752,6 +2752,7 @@ class Mixin:
       'link_size_quota': user.get('quota', {}).get('total_link_size', 0),
       'link_size_used': user.get('total_link_size', 0),
       'custom_domain': next(iter(custom_domains), {'name': ''})['name'],
+      'link_format': user.get('account', {}).get('link_format', 'http://%s/_/%s'),
     }
     return self.success(res)
 
