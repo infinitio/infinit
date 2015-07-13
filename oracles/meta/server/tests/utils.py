@@ -65,11 +65,13 @@ class HTTPException(Exception):
 
 class Client:
 
-  def __init__(self, meta):
+  def __init__(self, meta, version = None):
     self.__cookies = None
     self.__meta_port = meta.port
     self.__session = requests.Session()
-    self.user_agent = 'MetaClient/' + Version.version
+    self.user_agent = 'MetaClient/' + (Version.version
+                                       if version is None
+                                       else '%s.%s.%s' % version)
 
   @property
   def cookies(self):
@@ -596,7 +598,7 @@ class User(Client):
                facebook = False,
                version = None,
                **kwargs):
-    super().__init__(meta)
+    super().__init__(meta, version)
 
     if not facebook:
       self.email = email is not None and email or random_email() + '@infinit.io'

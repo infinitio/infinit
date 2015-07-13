@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User, Trophonius, throws
+
+# 0.9.36 is broken.
+with Meta() as meta, Trophonius(meta) as t:
+  user = User(meta, 'serge@infinit.io', version = (0, 9, 36))
+  throws(lambda: user.login(OS = "Windows"))
+
+# 0.9.39 is also broken.
+with Meta() as meta, Trophonius(meta) as t:
+  user = User(meta, 'serge@infinit.io', version = (0, 9, 39))
+  throws(lambda: user.login(OS = "Windows"))
+
+# 0.9.40 should be fine.
+with Meta() as meta, Trophonius(meta) as t:
+  user = User(meta, 'serge@infinit.io', version = (0, 9, 40))
+  user.login(OS = "Windows")
