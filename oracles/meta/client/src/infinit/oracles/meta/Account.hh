@@ -28,6 +28,7 @@ namespace infinit
         Account() = default;
         Account(elle::serialization::SerializerIn& s);
         das::Variable<std::string> custom_domain;
+        das::Variable<std::string> link_format;
         das::Variable<uint64_t> link_size_quota;
         das::Variable<uint64_t> link_size_used;
         das::Variable<AccountPlanType> plan;
@@ -57,7 +58,8 @@ namespace infinit
 # include <infinit/oracles/meta/Account.hxx>
 
 DAS_MODEL(infinit::oracles::meta::Account,
-          (custom_domain, plan, link_size_quota, link_size_used), DasAccount);
+          (custom_domain, link_format, plan, link_size_quota, link_size_used),
+          DasAccount);
 DAS_MODEL_DEFAULT(infinit::oracles::meta::Account, DasAccount);
 
 #endif

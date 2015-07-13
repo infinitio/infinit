@@ -200,7 +200,7 @@ public:
           Server::Parameters const&,
           elle::Buffer const&)
       {
-        return "{"
+        return elle::sprintf("{"
           "  \"swaggers\": [],"
           "  \"running_transactions\": [],"
           "  \"final_transactions\": [],"
@@ -210,10 +210,11 @@ public:
           "  \"account\": {"
           "    \"plan\": \"basic\","
           "    \"custom_domain\": \"\","
+          "    \"link_format\": \"%s\","
           "    \"link_size_quota\": 0,"
           "    \"link_size_used\": 0"
           "  }"
-          "}";
+          "}", std::string("http://%s/_/%s"));
       });
 
     this->register_route(
@@ -275,13 +276,15 @@ public:
           "  \"account\": {"
           "    \"plan\": \"basic\","
           "    \"custom_domain\": \"\","
+          "    \"link_format\": \"%s\","
           "    \"link_size_quota\": 0,"
           "    \"link_size_used\": 0"
           "  },"
           "  \"favorites\": [],"
           "  \"success\": true"
           "}",
-          this->_identity.id());
+          this->_identity.id(),
+          std::string("http://%s/_/%s"));
       };
     this->register_route(
       "/user/self",
@@ -349,6 +352,7 @@ public:
          "    \"account\": {"
          "      \"plan\": \"basic\","
          "      \"custom_domain\": \"\","
+         "      \"link_format\": \"%s\","
          "      \"link_size_quota\": 0,"
          "      \"link_size_used\": 0"
          "    },"
@@ -371,6 +375,7 @@ public:
          "  \"registered\": false"
          "}",
          identity_serialized,
+         std::string("http://%s/_/%s"),
          this->_device_id,
          generate_passport(this->_device_id, "DEVICE",
                            this->_identity.pair().K()),
