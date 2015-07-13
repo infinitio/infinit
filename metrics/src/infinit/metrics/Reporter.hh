@@ -84,7 +84,8 @@ namespace infinit
       void
       metric_device_id(std::string const& device_id);
 
-      static void
+      static
+      void
       metric_features(std::unordered_map<std::string, std::string> const& features);
 
     /// Transaction metrics.
