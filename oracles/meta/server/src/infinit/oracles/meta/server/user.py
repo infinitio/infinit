@@ -554,7 +554,7 @@ class Mixin:
     # FIXME: 0.0.0.0 is the website.
     if self.user_version < (0, 9, 0) and self.user_version != (0, 0, 0):
       return self.fail(error.DEPRECATED)
-    if self.user_version < (0, 9, 39) and OS == "Windows":
+    if self.user_version < (0, 9, 40) and OS == "Windows":
       return self.forbidden({
         'reason': 'Version is deprecated',
         'code': error.DEPRECATED[0]
@@ -2752,6 +2752,7 @@ class Mixin:
       'link_size_quota': user.get('quota', {}).get('total_link_size', 0),
       'link_size_used': user.get('total_link_size', 0),
       'custom_domain': next(iter(custom_domains), {'name': ''})['name'],
+      'link_format': user.get('account', {}).get('link_format', 'http://%s/_/%s'),
     }
     return self.success(res)
 

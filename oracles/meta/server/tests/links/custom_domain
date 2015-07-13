@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+
+from utils import Meta, User, Trophonius, throws, assertEq
+
+# Device creation.
+with Meta() as meta, Trophonius(meta) as t:
+  user = User(meta, 'serge@infinit.io')
+  res = user.login(trophonius = t)
+  default_format = "http://%s/_/%s"
+  assertEq(res["account"]["custom_domain"], '')
+  assertEq(res["account"]["link_format"], "http://%s/_/%s")
+  res = user.synchronize()
+  assertEq(res["account"]["custom_domain"], '')
+  assertEq(res["account"]["link_format"], "http://%s/_/%s")
+
+  # Add.
+  domain = 'gerbe.io'
+  del user.notifications[:]
+  user.put('user/account/custom_domains/%s' % domain)
+  res = user.synchronize()
+  assertEq(res["account"]["link_format"], default_format)
+  t.poll()
+  print(user.notifications)
+  assertEq(len(user.notifications), 1)
+  notif = user.next_notification()
+  assertEq(notif.type, 42)
+  assertEq(notif['account']['custom_domain'], domain)
+
+  # Remove.
+  user.delete('user/account/custom_domains/%s' % domain)
+  res = user.synchronize()
+  assertEq(res["account"]["link_format"], default_format)
+  t.poll()
+  print(user.notifications)
+  assertEq(len(user.notifications), 1)
+  notif = user.next_notification()
+  assertEq(notif.type, 42)
+  assertEq(notif['account']['custom_domain'], '')
+
+  expected_format = "http://%s/%s"
+  meta.database.users.find_and_modify(
+    {
+      'email': 'serge@infinit.io',
+    },
+    {
+      '$set': {
+        'account': {
+          'link_format': expected_format,
+        }
+      }
+    })
+
+  user.logout()
+  res = user.login(trophonius = t)
+  assertEq(res["account"]["custom_domain"], '')
+  assertEq(res["account"]["link_format"], expected_format)

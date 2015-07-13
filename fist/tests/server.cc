@@ -120,7 +120,7 @@ namespace tests
         if (this->_devices.find(device_id) == this->_devices.end())
           this->register_device(user, device_id);
         auto const& device = this->_devices.at(device_id);
-        return elle::sprintf(
+        auto res = elle::sprintf(
           "{"
           " \"self\": %s,"
           " \"device\": %s,"
@@ -130,6 +130,7 @@ namespace tests
           " \"account_registered\": %s,"
           " \"accounts\": [{\"type\": \"email\", \"id\": \"%s\"}],"
           " \"account\": {"
+          "   \"link_format\": \"%s\","
           "   \"plan\": \"basic\","
           "   \"custom_domain\": \"\","
           "   \"link_size_quota\": 0,"
@@ -141,7 +142,11 @@ namespace tests
           device.json(),
           this->trophonius->json(),
           registered ? "true" : "false",
-          user.email());
+          user.email(),
+          std::string("http://%s/_/%s")
+          );
+        ELLE_DEBUG("login res: %s", res);
+        return res;
       });
 
     // this->register_route(
@@ -198,6 +203,7 @@ namespace tests
           "  \"devices\": [%s],"
           "  \"accounts\": [{\"type\": \"email\", \"id\": \"%s\"}],"
           "  \"account\": {"
+          "   \"link_format\": \"%s\","
           "    \"plan\": \"basic\","
           "    \"custom_domain\": \"\","
           "    \"link_size_quota\": 0,"
@@ -209,7 +215,9 @@ namespace tests
           json(finals),
           user.links_json(),
           device.json(),
-          user.email());
+          user.email(),
+          std::string("http://%s/_/%s"));
+        ELLE_DEBUG("synchronize res: %s", res);
         return res;
       });
 

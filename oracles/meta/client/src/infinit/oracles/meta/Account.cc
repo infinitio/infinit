@@ -31,6 +31,7 @@ namespace infinit
       Account::serialize(elle::serialization::Serializer& s)
       {
         s.serialize("custom_domain", this->custom_domain);
+        s.serialize("link_format", this->link_format);
         s.serialize("plan", this->plan);
         s.serialize("link_size_quota", this->link_size_quota);
         s.serialize("link_size_used", this->link_size_used);

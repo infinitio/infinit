@@ -131,6 +131,14 @@ ELLE_TEST_SCHEDULED(other_402)
     sender.state->poll();
   }
   BOOST_CHECK_EQUAL(beacon, true);
+  std::string custom_domain = sender.state->account().custom_domain.value();
+  if (custom_domain.empty())
+    custom_domain = "infinit.io";
+  ELLE_DEBUG("link format: %s", sender.state->account().link_format.value());
+  // Try to format a log using the link_format from meta.
+  elle::sprintf(sender.state->account().link_format.value(),
+                custom_domain,
+                std::string("hash"));
 }
 
 ELLE_TEST_SUITE()

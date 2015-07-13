@@ -249,7 +249,7 @@ _change_synchronize_route(tests::Server& server,
       std::advance(end, devices.size() - 2);
       devices = std::string(beg, end);
       ELLE_LOG("devices: %s", devices);
-      return elle::sprintf(
+      auto res = elle::sprintf(
         "{"
         "  \"swaggers\": [],"
         "  \"running_transactions\": [],"
@@ -259,11 +259,14 @@ _change_synchronize_route(tests::Server& server,
         "  \"account\": {"
         "    \"plan\": \"basic\","
         "    \"custom_domain\": \"\","
+        "    \"link_format\": \"%s\","
         "    \"link_size_quota\": 0,"
         "    \"link_size_used\": 0"
         "  },"
         "%s"
-        "}", devices);
+        "}", std::string("http://%s/_/%s"), devices);
+      ELLE_DEBUG("synchronize response: %s", res);
+      return res;
     });
 }
 
