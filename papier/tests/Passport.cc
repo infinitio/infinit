@@ -1,19 +1,18 @@
 #include <elle/test.hh>
 
-#include <cryptography/KeyPair.hh>
+#include <cryptography/rsa/KeyPair.hh>
 
 #include <papier/Passport.hh>
 
 class KeyPair:
-  public infinit::cryptography::KeyPair
+  public infinit::cryptography::rsa::KeyPair
 {
 public:
   KeyPair()
-    : infinit::cryptography::KeyPair(
-      infinit::cryptography::KeyPair::generate(
-        infinit::cryptography::Cryptosystem::rsa, 1024))
+    : infinit::cryptography::rsa::KeyPair(
+      infinit::cryptography::rsa::keypair::generate(
+        1024))
   {}
-
 };
 
 KeyPair authority_keys;

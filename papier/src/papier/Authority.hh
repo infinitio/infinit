@@ -7,10 +7,7 @@
 # include <elle/concept/Fileable.hh>
 
 # include <cryptography/fwd.hh>
-# include <cryptography/PublicKey.hh>
-
-// XXX[temporary: for cryptography]
-using namespace infinit;
+# include <cryptography/rsa/PublicKey.hh>
 
 namespace papier
 {
@@ -40,9 +37,9 @@ namespace papier
   `-------------*/
   public:
     /// Create an authority based on the given key pair.
-    Authority(cryptography::KeyPair const&);
+    Authority(infinit::cryptography::rsa::KeyPair const&);
     /// Create an authority based on the given public key only.
-    Authority(cryptography::PublicKey const&);
+    Authority(infinit::cryptography::rsa::PublicKey const&);
     /// Create a copy of an Authority.
     Authority(Authority const& from);
     /// Deserialize an Authority.
@@ -82,17 +79,16 @@ namespace papier
     //
     Type                type;
 
-    ELLE_ATTRIBUTE_R(cryptography::PublicKey, K);
+    ELLE_ATTRIBUTE_R(infinit::cryptography::rsa::PublicKey, K);
   private:
-    ELLE_ATTRIBUTE(cryptography::PrivateKey*, k);
-    ELLE_ATTRIBUTE(cryptography::Code*, code);
+    ELLE_ATTRIBUTE(infinit::cryptography::rsa::PrivateKey*, k);
+    ELLE_ATTRIBUTE(infinit::cryptography::Code*, code);
 
   public:
-    cryptography::PrivateKey const&
+    infinit::cryptography::rsa::PrivateKey const&
     k() const;
-    cryptography::Code const&
+    infinit::cryptography::Code const&
     code() const;
-
   };
 
 

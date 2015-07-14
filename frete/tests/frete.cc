@@ -11,9 +11,9 @@
 #include <reactor/network/tcp-server.hh>
 #include <reactor/scheduler.hh>
 
-#include <cryptography/Code.hh>
-#include <cryptography/KeyPair.hh>
-#include <cryptography/Output.hh>
+#include <cryptography/_legacy/Code.hh>
+#include <cryptography/rsa/KeyPair.hh>
+#include <cryptography/_legacy/Output.hh>
 
 #include <protocol/ChanneledStream.hh>
 #include <protocol/Serializer.hh>
@@ -138,10 +138,8 @@ private:
 
 ELLE_TEST_SCHEDULED(connection)
 {
-  auto recipient_key_pair = infinit::cryptography::KeyPair::generate(
-    infinit::cryptography::Cryptosystem::rsa, 2048);
-  auto sender_key_pair = infinit::cryptography::KeyPair::generate(
-    infinit::cryptography::Cryptosystem::rsa, 2048);
+  auto recipient_key_pair = infinit::cryptography::rsa::keypair::generate(2048);
+  auto sender_key_pair = infinit::cryptography::rsa::keypair::generate(2048);
   int port = 0;
   reactor::Barrier listening;
 
@@ -305,8 +303,7 @@ ELLE_TEST_SCHEDULED(connection)
 
 ELLE_TEST_SCHEDULED(invalid_snapshot)
 {
-  auto keys = infinit::cryptography::KeyPair::generate(
-    infinit::cryptography::Cryptosystem::rsa, 2048);
+  auto keys = infinit::cryptography::rsa::keypair::generate(2048);
   elle::filesystem::TemporaryFile f("frete.snapshot");
   {
     boost::filesystem::ofstream output(f.path());
@@ -322,8 +319,7 @@ ELLE_TEST_SCHEDULED(invalid_snapshot)
 
   }
   frete::Frete frete("password", keys, f.path(), "", false);
-  auto peer_keys = infinit::cryptography::KeyPair::generate(
-    infinit::cryptography::Cryptosystem::rsa, 2048);
+  auto peer_keys = infinit::cryptography::rsa::keypair::generate(2048);
   frete.set_peer_key(peer_keys.K());
   frete.key_code();
 }

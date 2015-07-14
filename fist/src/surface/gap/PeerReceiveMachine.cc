@@ -321,8 +321,8 @@ namespace surface
       }
       this->gap_status(gap_transaction_transferring);
       auto start_time = boost::posix_time::microsec_clock::universal_time();
-      metrics::TransferExitReason exit_reason =
-        metrics::TransferExitReasonUnknown;
+      infinit::metrics::TransferExitReason exit_reason =
+        infinit::metrics::TransferExitReasonUnknown;
       std::string exit_message;
       uint64_t total_bytes_transfered = 0;
       FileSize initial_progress = 0;
@@ -336,7 +336,7 @@ namespace surface
           float duration =
             float((now - start_time).total_milliseconds()) / 1000.0f;
           mr->transaction_transfer_end(this->transaction_id(),
-                                       metrics::TransferMethodCloud,
+                                       infinit::metrics::TransferMethodCloud,
                                        duration,
                                        total_bytes_transfered,
                                        exit_reason,
@@ -385,7 +385,7 @@ namespace surface
           this->get(*_bufferer);
         // We finished
         ELLE_ASSERT_EQ(progress(), 1);
-        exit_reason = metrics::TransferExitReasonFinished;
+        exit_reason = infinit::metrics::TransferExitReasonFinished;
         ELLE_ASSERT_NEQ(this->_snapshot, nullptr);
         total_bytes_transfered = this->_snapshot->progress() - initial_progress;
       }
@@ -393,7 +393,7 @@ namespace surface
       {
         ELLE_WARN("%s: local file error: %s", *this, e.what());
         // Local file error, cancel transaction
-        exit_reason = metrics::TransferExitReasonError;
+        exit_reason = infinit::metrics::TransferExitReasonError;
         exit_message = e.what();
         if (this->_snapshot)
           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
@@ -401,7 +401,7 @@ namespace surface
       }
       catch (TransferBufferer::DataExhausted const&)
       {
-        exit_reason = metrics::TransferExitReasonExhausted;
+        exit_reason = infinit::metrics::TransferExitReasonExhausted;
         if (this->_snapshot)
           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
         ELLE_TRACE("%s: Data exhausted on cloud bufferer", *this);
@@ -409,7 +409,7 @@ namespace surface
       }
       catch (reactor::Terminate const&)
       { // aye aye
-        exit_reason = metrics::TransferExitReasonTerminated;
+        exit_reason = infinit::metrics::TransferExitReasonTerminated;
          if (this->_snapshot)
            total_bytes_transfered = this->_snapshot->progress() - initial_progress;
         throw;
@@ -436,7 +436,7 @@ namespace surface
         ELLE_WARN("%s: cloud download exception, exiting cloud state: %s",
                   *this, e.what());
         this->gap_status(gap_transaction_waiting_data);
-        exit_reason = metrics::TransferExitReasonError;
+        exit_reason = infinit::metrics::TransferExitReasonError;
         if (this->_snapshot)
           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
         exit_message = e.what();
@@ -504,7 +504,8 @@ namespace surface
                             std::string const& name_policy)
     {
       auto start_time = boost::posix_time::microsec_clock::universal_time();
-      metrics::TransferExitReason exit_reason = metrics::TransferExitReasonUnknown;
+      infinit::metrics::TransferExitReason exit_reason =
+        infinit::metrics::TransferExitReasonUnknown;
       std::string exit_message;
       FileSize total_bytes_transfered = 0;
       FileSize initial_progress = 0;
@@ -522,7 +523,7 @@ namespace surface
           float duration =
             float((now - start_time).total_milliseconds()) / 1000.0f;
           mr->transaction_transfer_end(this->transaction_id(),
-                                       metrics::TransferMethodP2P,
+                                       infinit::metrics::TransferMethodP2P,
                                        duration,
                                        total_bytes_transfered,
                                        exit_reason,
@@ -554,7 +555,7 @@ namespace surface
           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
         else // normal termination: snapshot was removed
           total_bytes_transfered = this->transfer_info(frete).full_size();
-        exit_reason = metrics::TransferExitReasonFinished;
+        exit_reason = infinit::metrics::TransferExitReasonFinished;
         return this->get<frete::RPCFrete>(
           frete,
           strong_encryption ? EncryptionLevel_Strong : EncryptionLevel_Weak,
@@ -565,7 +566,7 @@ namespace surface
       {
         ELLE_WARN("%s: Local file error: %s", *this, e.what());
         // Local file error, cancel transaction
-        exit_reason = metrics::TransferExitReasonError;
+        exit_reason = infinit::metrics::TransferExitReasonError;
         exit_message = e.what();
         if (this->_snapshot)
           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
@@ -575,14 +576,14 @@ namespace surface
       {
         if (this->_snapshot)
           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
-        exit_reason = metrics::TransferExitReasonTerminated;
+        exit_reason = infinit::metrics::TransferExitReasonTerminated;
         throw;
       }
       catch(...)
       {
         if (this->_snapshot)
           total_bytes_transfered = this->_snapshot->progress() - initial_progress;
-        exit_reason = metrics::TransferExitReasonError;
+        exit_reason = infinit::metrics::TransferExitReasonError;
         exit_message = elle::exception_string();
         throw;
       }
@@ -668,8 +669,9 @@ namespace surface
       {
       case EncryptionLevel_Weak:
         key.reset(new infinit::cryptography::SecretKey(
-                    infinit::cryptography::cipher::Algorithm::aes256,
-                    this->transaction_id()));
+                    this->transaction_id(),
+                    infinit::cryptography::Cipher::aes256,
+                    infinit::cryptography::Mode::cbc));
         break;
       case EncryptionLevel_Strong:
         key.reset(new infinit::cryptography::SecretKey(

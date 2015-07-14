@@ -40,14 +40,14 @@ ELLE_TEST_SCHEDULED(links)
       break;
     reactor::yield();
   }
-  ELLE_ASSERT_EQ(sender.user.links.begin()->second.status, oracles::Transaction::Status::finished);
+  ELLE_ASSERT_EQ(sender.user.links.begin()->second.status, infinit::oracles::Transaction::Status::finished);
 
-  sender.user.links.begin()->second.status =  oracles::Transaction::Status::canceled;
+  sender.user.links.begin()->second.status =  infinit::oracles::Transaction::Status::canceled;
   // Disconnect trophonius.
   sender.state->synchronize();
   // At this stage, state should have resynchronization
   ELLE_ASSERT_EQ(sender.state->transactions().begin()->second->data()->status,
-                 oracles::Transaction::Status::canceled);
+                 infinit::oracles::Transaction::Status::canceled);
 }
 
 ELLE_TEST_SCHEDULED(links_another_device)
@@ -80,14 +80,14 @@ ELLE_TEST_SCHEDULED(links_another_device)
   sender.state->synchronize();
 
   ELLE_ASSERT_EQ(sender.state->transactions().begin()->second->data()->status,
-                 oracles::Transaction::Status::initialized);
+                 infinit::oracles::Transaction::Status::initialized);
 
   sender.user.links[t.id].status = infinit::oracles::Transaction::Status::finished;
 
   sender.state->synchronize();
 
   ELLE_ASSERT_EQ(sender.state->transactions().begin()->second->data()->status,
-                 oracles::Transaction::Status::finished);
+                 infinit::oracles::Transaction::Status::finished);
 }
 
 ELLE_TEST_SCHEDULED(swaggers)

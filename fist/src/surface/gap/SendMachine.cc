@@ -270,7 +270,8 @@ namespace surface
       // exit information for factored metrics writer.
       // needs to stay out of the try, as catch clause will fill those
       auto start_time = boost::posix_time::microsec_clock::universal_time();
-      metrics::TransferExitReason exit_reason = metrics::TransferExitReasonUnknown;
+      infinit::metrics::TransferExitReason exit_reason =
+        infinit::metrics::TransferExitReasonUnknown;
       std::string exit_message;
       uint64_t total_bytes_transfered = 0;
       elle::SafeFinally write_end_message([&,this]
@@ -280,12 +281,13 @@ namespace surface
             auto now = boost::posix_time::microsec_clock::universal_time();
             float duration =
               float((now - start_time).total_milliseconds()) / 1000.0f;
-            mr->transaction_transfer_end(this->transaction_id(),
-                                         metrics::TransferMethodGhostCloud,
-                                         duration,
-                                         total_bytes_transfered,
-                                         exit_reason,
-                                         exit_message);
+            mr->transaction_transfer_end(
+              this->transaction_id(),
+              infinit::metrics::TransferMethodGhostCloud,
+              duration,
+              total_bytes_transfered,
+              exit_reason,
+              exit_message);
           }
         });
       try
@@ -377,7 +379,7 @@ namespace surface
         {
           // Google upload
           _gcs_plain_upload(source_file_path, gcs_creds->url());
-          exit_reason = metrics::TransferExitReasonFinished;
+          exit_reason = infinit::metrics::TransferExitReasonFinished;
           return;
         }
         std::string source_file_name = source_file_path.filename().string();
@@ -563,7 +565,7 @@ namespace surface
               return a.first < b.first;
             });
         handler.multipart_finalize(source_file_name, upload_id, chunks);
-        exit_reason = metrics::TransferExitReasonFinished;
+        exit_reason = infinit::metrics::TransferExitReasonFinished;
       }
       catch (boost::filesystem::filesystem_error const& e)
       {
@@ -584,12 +586,12 @@ namespace surface
       }
       catch(reactor::Terminate const&)
       {
-        exit_reason = metrics::TransferExitReasonTerminated;
+        exit_reason = infinit::metrics::TransferExitReasonTerminated;
         throw;
       }
       catch(...)
       {
-        exit_reason = metrics::TransferExitReasonError;
+        exit_reason = infinit::metrics::TransferExitReasonError;
         exit_message = elle::exception_string();
         throw;
       }

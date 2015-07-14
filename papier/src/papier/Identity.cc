@@ -1,10 +1,10 @@
 #include <elle/os/path.hh>
 #include <elle/serialize/TupleSerializer.hxx>
 
-#include <cryptography/KeyPair.hh>
-#include <cryptography/Code.hh>
+#include <cryptography/rsa/KeyPair.hh>
+#include <cryptography/_legacy/Code.hh>
 #include <cryptography/SecretKey.hh>
-#include <cryptography/Signature.hh>
+#include <cryptography/_legacy/Signature.hh>
 
 #include <papier/Authority.hh>
 
@@ -39,9 +39,9 @@ namespace papier
   Identity::Identity(Identity const& other):
     _id(other._id),
     _description(other._description),
-    _pair(new cryptography::KeyPair{*other._pair}),
-    _signature(new cryptography::Signature{*other._signature}),
-    code(new cryptography::Code{*other.code})
+    _pair(new infinit::cryptography::rsa::KeyPair{*other._pair}),
+    _signature(new infinit::cryptography::Signature{*other._signature}),
+    code(new infinit::cryptography::Code{*other.code})
   {}
 
   ///
@@ -64,14 +64,14 @@ namespace papier
   elle::Status
   Identity::Create(elle::String const& user_id,
                    const elle::String& description,
-                   cryptography::KeyPair const& pair)
+                   infinit::cryptography::rsa::KeyPair const& pair)
   {
     this->_id = user_id;
     this->_description = description;
 
     delete this->_pair;
     this->_pair = nullptr;
-    this->_pair = new cryptography::KeyPair{pair};
+    this->_pair = new infinit::cryptography::rsa::KeyPair{pair};
 
     return elle::Status::Ok;
   }
@@ -82,13 +82,16 @@ namespace papier
   elle::Status          Identity::Encrypt(const elle::String&   pass)
   {
     // XXX[factor algo with decrypt()]
-    cryptography::SecretKey key(cryptography::cipher::Algorithm::aes256, pass);
+    infinit::cryptography::SecretKey key(
+      pass,
+      infinit::cryptography::Cipher::aes256,
+      infinit::cryptography::Mode::cbc);
 
     ELLE_ASSERT(this->_pair != nullptr);
 
     delete this->code;
     this->code = nullptr;
-    this->code = new cryptography::Code{
+    this->code = new infinit::cryptography::Code{
       key.encrypt(*this->_pair)};
 
     return elle::Status::Ok;
@@ -103,13 +106,16 @@ namespace papier
     if (this->code == nullptr)
       throw elle::Exception("unable to decrypt an unencrypted identity");
 
-    cryptography::SecretKey key{cryptography::cipher::Algorithm::aes256, pass};
+    infinit::cryptography::SecretKey key{
+      pass,
+      infinit::cryptography::Cipher::aes256,
+      infinit::cryptography::Mode::cbc};
 
     // decrypt the authority.
     delete this->_pair;
     this->_pair = nullptr;
-    this->_pair = new cryptography::KeyPair{
-      key.decrypt<cryptography::KeyPair>(*this->code)};
+    this->_pair = new infinit::cryptography::rsa::KeyPair{
+      key.decrypt<infinit::cryptography::rsa::KeyPair>(*this->code)};
 
     return elle::Status::Ok;
   }
@@ -144,7 +150,7 @@ namespace papier
     // sign with the authority.
     delete this->_signature;
     this->_signature = nullptr;
-    this->_signature = new cryptography::Signature{
+    this->_signature = new infinit::cryptography::Signature{
       authority.k().sign(
         elle::serialize::make_tuple(this->_id, this->_description, *this->code))};
 

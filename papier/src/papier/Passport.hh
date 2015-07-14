@@ -7,12 +7,9 @@
 # include <elle/concept/Uniquable.hh>
 # include <elle/serialize/construct.hh>
 
-# include <cryptography/Signature.hh>
+# include <cryptography/_legacy/Signature.hh>
 
 # include <papier/Authority.hh>
-
-// XXX[temporary: for cryptography]
-using namespace infinit;
 
 namespace papier
 {
@@ -29,8 +26,8 @@ namespace papier
   private:
     ELLE_ATTRIBUTE_R(elle::String, id);
     ELLE_ATTRIBUTE_R(elle::String, name);
-    ELLE_ATTRIBUTE_R(cryptography::PublicKey, owner_K);
-    cryptography::Signature _signature;
+    ELLE_ATTRIBUTE_R(infinit::cryptography::rsa::PublicKey, owner_K);
+    infinit::cryptography::Signature _signature;
 
     /*-------------.
     | Construction |
@@ -45,7 +42,7 @@ namespace papier
     /// @param
     Passport(elle::String const& id,
              elle::String const& name,
-             cryptography::PublicKey const& owner_K,
+             infinit::cryptography::rsa::PublicKey const& owner_K,
              papier::Authority const& authority);
 
   public:

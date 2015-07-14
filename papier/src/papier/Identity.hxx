@@ -3,9 +3,9 @@
 
 # include <elle/serialize/Pointer.hh>
 
-# include <cryptography/Code.hh>
-# include <cryptography/Signature.hh>
-# include <cryptography/KeyPair.hh>
+# include <cryptography/_legacy/Code.hh>
+# include <cryptography/_legacy/Signature.hh>
+# include <cryptography/rsa/KeyPair.hh>
 
 ELLE_SERIALIZE_SIMPLE(papier::Identity,
                       archive,

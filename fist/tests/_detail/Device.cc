@@ -9,7 +9,7 @@
 
 namespace tests
 {
-  Device::Device(cryptography::PublicKey const& key,
+  Device::Device(infinit::cryptography::rsa::PublicKey const& key,
                    boost::optional<elle::UUID> device)
     : _id(device ? device.get() : elle::UUID::random())
     , _passport(boost::lexical_cast<std::string>(this->_id), "osef", key, tests::authority)

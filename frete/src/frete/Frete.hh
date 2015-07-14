@@ -21,9 +21,9 @@
 # include <protocol/Serializer.hh>
 # include <protocol/RPC.hh>
 
-# include <cryptography/Code.hh>
+# include <cryptography/_legacy/Code.hh>
 # include <cryptography/SecretKey.hh>
-# include <cryptography/cipher.hh>
+# include <cryptography/Cipher.hh>
 
 # include <frete/fwd.hh>
 
@@ -53,13 +53,13 @@ namespace frete
   `-------------*/
   public:
     Frete(std::string const& password, // Retro compatibility.
-          infinit::cryptography::KeyPair const& self_K, /*needed to decrypt session key from snapshot*/
+          infinit::cryptography::rsa::KeyPair const& self_K, /*needed to decrypt session key from snapshot*/
           boost::filesystem::path const& snapshot_destination,
           boost::filesystem::path const& mirror_root,
           bool files_mirrored);
     ~Frete();
     /// Set peer key (used to encrypt session key in key_code())
-    void set_peer_key(infinit::cryptography::PublicKey peer_K);
+    void set_peer_key(infinit::cryptography::rsa::PublicKey peer_K);
     bool has_peer_key() const;
   private:
     class Impl;

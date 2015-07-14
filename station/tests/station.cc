@@ -1,6 +1,6 @@
 #include <elle/test.hh>
 
-#include <cryptography/KeyPair.hh>
+#include <cryptography/rsa/KeyPair.hh>
 
 #include <reactor/network/buffer.hh>
 #include <reactor/scheduler.hh>
@@ -13,24 +13,22 @@
 
 ELLE_LOG_COMPONENT("station.test")
 
-infinit::cryptography::KeyPair authority_keys =
-  infinit::cryptography::KeyPair::generate(
-  infinit::cryptography::Cryptosystem::rsa, 1024);
+infinit::cryptography::rsa::KeyPair authority_keys =
+  infinit::cryptography::rsa::keypair::generate(1024);
 papier::Authority authority(authority_keys);
 
 // Helper to quickly generate a keypair and related passport.
 struct Credentials
 {
   Credentials(std::string const& name):
-    keys(infinit::cryptography::KeyPair::generate(
-           infinit::cryptography::Cryptosystem::rsa, 1024)),
+    keys(infinit::cryptography::rsa::keypair::generate(1024)),
     passport(elle::sprintf("passport_%s", name),
              elle::sprintf("host_%s", name),
              keys.K(),
              authority)
   {}
 
-  infinit::cryptography::KeyPair keys;
+  infinit::cryptography::rsa::KeyPair keys;
   papier::Passport passport;
 };
 

@@ -1,7 +1,7 @@
 #include <surface/gap/Error.hh>
 #include <surface/gap/PeerSendMachine.hh>
 
-#include <cryptography/PublicKey.hh>
+#include <cryptography/rsa/PublicKey.hh>
 
 #include <elle/Error.hh>
 #include <elle/log.hh>
@@ -905,7 +905,7 @@ namespace surface
         return false;
       ELLE_ASSERT(!k.empty());
       ELLE_DEBUG("restoring key from %s", k);
-      infinit::cryptography::PublicKey peer_K;
+      infinit::cryptography::rsa::PublicKey peer_K;
       peer_K.Restore(k);
       frete.set_peer_key(peer_K);
       return true;

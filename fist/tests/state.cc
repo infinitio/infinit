@@ -9,7 +9,7 @@
 #include <elle/test.hh>
 #include <elle/utility/Move.hh>
 
-#include <cryptography/KeyPair.hh>
+#include <cryptography/rsa/KeyPair.hh>
 
 #include <reactor/network/exception.hh>
 #include <reactor/network/ssl-server.hh>
@@ -42,13 +42,12 @@ random_uuid()
 }
 
 class KeyPair:
-  public infinit::cryptography::KeyPair
+  public infinit::cryptography::rsa::KeyPair
 {
 public:
   KeyPair()
-    : infinit::cryptography::KeyPair(
-      infinit::cryptography::KeyPair::generate(
-        infinit::cryptography::Cryptosystem::rsa, 1024))
+    : infinit::cryptography::rsa::KeyPair(
+      infinit::cryptography::rsa::keypair::generate(1024))
   {}
 };
 
@@ -57,7 +56,7 @@ papier::Authority authority(authority_keys);
 
 static
 papier::Identity
-generate_identity(cryptography::KeyPair const& keypair,
+generate_identity(infinit::cryptography::rsa::KeyPair const& keypair,
                   std::string const& id,
                   std::string const& description,
                   std::string const& password)
@@ -76,7 +75,7 @@ static
 std::string
 generate_passport(boost::uuids::uuid const& id,
                   std::string const& name,
-                  cryptography::PublicKey const& key)
+                  infinit::cryptography::rsa::PublicKey const& key)
 {
   papier::Passport passport(boost::lexical_cast<std::string>(id),
                             name, key, authority);
@@ -420,9 +419,9 @@ ELLE_TEST_SCHEDULED(login)
   auto password = "secret";
   auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
   auto user_id = random_uuid();
-  cryptography::KeyPair keys =
-    cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
-                                    papier::Identity::keypair_length);
+  infinit::cryptography::rsa::KeyPair keys =
+    infinit::cryptography::rsa::keypair::generate(
+      papier::Identity::keypair_length);
   auto identity = generate_identity(
     keys, boost::lexical_cast<std::string>(user_id), "my identity", password_hash);
   auto device_id = random_uuid();
@@ -446,9 +445,9 @@ ELLE_TEST_SCHEDULED(login_failure)
   auto password = "secret";
   auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
   auto user_id = random_uuid();
-  cryptography::KeyPair keys =
-    cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
-                                    papier::Identity::keypair_length);
+  infinit::cryptography::rsa::KeyPair keys =
+    infinit::cryptography::rsa::keypair::generate(
+      papier::Identity::keypair_length);
   auto identity = generate_identity(
     keys, boost::lexical_cast<std::string>(user_id), "my identity", password_hash);
   auto device_id = random_uuid();
@@ -527,9 +526,9 @@ ELLE_TEST_SCHEDULED(trophonius_forbidden)
   auto password = "secret";
   auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
   auto user_id = random_uuid();
-  cryptography::KeyPair keys =
-    cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
-                                    papier::Identity::keypair_length);
+  infinit::cryptography::rsa::KeyPair keys =
+    infinit::cryptography::rsa::keypair::generate(
+      papier::Identity::keypair_length);
   auto identity = generate_identity(
     keys, boost::lexical_cast<std::string>(user_id), "my identity", password_hash);
   auto device_id = random_uuid();
@@ -611,9 +610,9 @@ ELLE_TEST_SCHEDULED(trophonius_timeout)
   auto password = "secret";
   auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
   auto user_id = random_uuid();
-  cryptography::KeyPair keys =
-    cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
-                                    papier::Identity::keypair_length);
+  infinit::cryptography::rsa::KeyPair keys =
+    infinit::cryptography::rsa::keypair::generate(
+      papier::Identity::keypair_length);
   auto identity = generate_identity(
     keys, boost::lexical_cast<std::string>(user_id), "my identity", password_hash);
   auto device_id = random_uuid();

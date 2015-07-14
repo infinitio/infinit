@@ -40,16 +40,16 @@ namespace papier
     // The description of the identity. Cosmetic purpose only.
     ELLE_ATTRIBUTE_R(elle::String, description);
   private: // XXX
-    ELLE_ATTRIBUTE(cryptography::KeyPair*, pair);
-    ELLE_ATTRIBUTE(cryptography::Signature*, signature);
+    ELLE_ATTRIBUTE(infinit::cryptography::rsa::KeyPair*, pair);
+    ELLE_ATTRIBUTE(infinit::cryptography::Signature*, signature);
   public: // XXX
-    cryptography::Code*       code;
+    infinit::cryptography::Code*       code;
 
     ELLE_OPERATOR_NO_ASSIGNMENT(Identity);
 
   public:
     // XXX
-    cryptography::KeyPair const&
+    infinit::cryptography::rsa::KeyPair const&
     pair() const
     {
       ELLE_ASSERT(this->_pair != nullptr);
@@ -67,7 +67,7 @@ namespace papier
     elle::Status
     Create(elle::String const& id,
            elle::String const& description,
-           cryptography::KeyPair const&);
+           infinit::cryptography::rsa::KeyPair const&);
 
     elle::Status
     Encrypt(const elle::String&);

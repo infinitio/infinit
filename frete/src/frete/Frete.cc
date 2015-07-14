@@ -15,8 +15,9 @@
 #include <elle/system/system.hh>
 
 #include <cryptography/SecretKey.hh>
-#include <cryptography/PrivateKey.hh>
-#include <cryptography/Code.hh>
+#include <cryptography/rsa/KeyPair.hh>
+#include <cryptography/rsa/PrivateKey.hh>
+#include <cryptography/_legacy/Code.hh>
 
 #include <reactor/network/socket.hh>
 
@@ -37,22 +38,26 @@ namespace frete
   {
   public:
     Impl(std::string const& password)
-      : _old_key(infinit::cryptography::cipher::Algorithm::aes256, password)
+      : _old_key(password,
+                 infinit::cryptography::Cipher::aes256,
+                 infinit::cryptography::Mode::cbc)
       , _key(new infinit::cryptography::SecretKey(
-          infinit::cryptography::SecretKey::generate(
-            infinit::cryptography::cipher::Algorithm::aes256, 2048)))
+          infinit::cryptography::secretkey::generate(
+            2048,
+            infinit::cryptography::Cipher::aes256,
+            infinit::cryptography::Mode::cbc)))
     {
       ELLE_DEBUG("frete impl initialized");
     }
 
     ELLE_ATTRIBUTE_R(infinit::cryptography::SecretKey, old_key);
     ELLE_ATTRIBUTE_R(std::unique_ptr<infinit::cryptography::SecretKey>, key);
-    ELLE_ATTRIBUTE_R(std::unique_ptr<infinit::cryptography::PublicKey>, peer_key);
+    ELLE_ATTRIBUTE_R(std::unique_ptr<infinit::cryptography::rsa::PublicKey>, peer_key);
     friend class Frete;
   };
 
   Frete::Frete(std::string const& password,
-               infinit::cryptography::KeyPair const& self_key,
+               infinit::cryptography::rsa::KeyPair const& self_key,
                boost::filesystem::path const& snapshot_destination,
                boost::filesystem::path const& mirror_root,
                bool files_mirrored)
@@ -114,12 +119,12 @@ namespace frete
   }
 
   void
-  Frete::set_peer_key(infinit::cryptography::PublicKey peer_K)
+  Frete::set_peer_key(infinit::cryptography::rsa::PublicKey peer_K)
   {
     if (this->_impl->_peer_key)
       throw elle::Exception("Peer key can only be set once");
     this->_impl->_peer_key.reset(
-      new infinit::cryptography::PublicKey(std::move(peer_K)));
+      new infinit::cryptography::rsa::PublicKey(std::move(peer_K)));
   }
 
   bool

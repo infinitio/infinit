@@ -18,7 +18,7 @@
 ELLE_LOG_COMPONENT("fist.tests");
 
 std::unique_ptr<papier::Identity>
-generate_identity(cryptography::KeyPair const& keypair,
+generate_identity(infinit::cryptography::rsa::KeyPair const& keypair,
                   std::string const& id,
                   std::string const& description,
                   std::string const& password);
@@ -659,8 +659,8 @@ namespace tests
       User const& user = this->register_user("", "");
       // Replace identity.
       auto keys =
-        cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
-                                        papier::Identity::keypair_length);
+        infinit::cryptography::rsa::keypair::generate(
+          papier::Identity::keypair_length);
       std::unique_ptr<papier::Identity> identity{
         generate_identity(
           keys, boost::lexical_cast<std::string>(user.id()), "identity", "")};
@@ -1012,8 +1012,8 @@ namespace tests
                         std::string const& password)
   {
     auto keys =
-      cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
-                                      papier::Identity::keypair_length);
+      infinit::cryptography::rsa::keypair::generate(
+        papier::Identity::keypair_length);
     auto password_hash = infinit::oracles::meta::old_password_hash(email, password);
     elle::UUID id = elle::UUID::random();
     ELLE_TRACE_SCOPE("%s: generate user %s", *this, id);
@@ -1082,7 +1082,7 @@ namespace tests
                          reactor::http::Method::GET, response);
     this->_users.emplace(id,
                          email,
-                         boost::optional<cryptography::KeyPair>{},
+                         boost::optional<infinit::cryptography::rsa::KeyPair>{},
                          std::unique_ptr<papier::Identity>{});
 
     {
@@ -1156,7 +1156,7 @@ namespace tests
 }
 
 std::unique_ptr<papier::Identity>
-generate_identity(cryptography::KeyPair const& keypair,
+generate_identity(infinit::cryptography::rsa::KeyPair const& keypair,
                   std::string const& id,
                   std::string const& description,
                   std::string const& password)

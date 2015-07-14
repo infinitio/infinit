@@ -3,7 +3,7 @@
 
 # include <elle/UUID.hh>
 
-# include <cryptography/KeyPair.hh>
+# include <cryptography/rsa/KeyPair.hh>
 
 # include <papier/Passport.hh>
 
@@ -12,7 +12,7 @@ namespace tests
   class Device
   {
   public:
-    Device(cryptography::PublicKey const& key,
+    Device(infinit::cryptography::rsa::PublicKey const& key,
            boost::optional<elle::UUID> device);
   private:
     ELLE_ATTRIBUTE_R(elle::UUID, id);

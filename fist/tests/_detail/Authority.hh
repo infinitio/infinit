@@ -1,20 +1,19 @@
 #ifndef FIST_SURFACE_GAP_TESTS_AUTHORITY_HH
 # define FIST_SURFACE_GAP_TESTS_AUTHORITY_HH
 
-#include <cryptography/KeyPair.hh>
+#include <cryptography/rsa/KeyPair.hh>
 
 #include <papier/Authority.hh>
 
 namespace tests
 {
   class KeyPair:
-    public infinit::cryptography::KeyPair
+    public infinit::cryptography::rsa::KeyPair
   {
   public:
     KeyPair()
-      : infinit::cryptography::KeyPair(
-        infinit::cryptography::KeyPair::generate(
-          infinit::cryptography::Cryptosystem::rsa, 1024))
+      : infinit::cryptography::rsa::KeyPair(
+        infinit::cryptography::rsa::keypair::generate(1024))
     {}
   };
 

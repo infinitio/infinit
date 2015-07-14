@@ -1,10 +1,9 @@
 #include <elle/log.hh>
 #include <elle/serialize/TupleSerializer.hxx>
 
-#include <cryptography/PublicKey.hh>
-#include <cryptography/PrivateKey.hh>
-#include <cryptography/KeyPair.hh>
-#include <cryptography/Code.hh>
+#include <cryptography/rsa/PublicKey.hh>
+#include <cryptography/rsa/PrivateKey.hh>
+#include <cryptography/rsa/KeyPair.hh>
 #include <cryptography/SecretKey.hh>
 
 #include <papier/Authority.hh>
@@ -24,20 +23,20 @@ namespace papier
     _code(nullptr)
   {
     if (from._k)
-      this->_k = new cryptography::PrivateKey(*from._k);
+      this->_k = new infinit::cryptography::rsa::PrivateKey(*from._k);
     if (from._code)
-      this->_code = new cryptography::Code(*from._code);
+      this->_code = new infinit::cryptography::Code(*from._code);
   }
 
-  Authority::Authority(cryptography::KeyPair const& pair):
+  Authority::Authority(infinit::cryptography::rsa::KeyPair const& pair):
     type(Authority::TypePair),
     _K(pair.K()),
-    _k(new cryptography::PrivateKey{pair.k()}),
+    _k(new infinit::cryptography::rsa::PrivateKey{pair.k()}),
     _code(nullptr)
   {
   }
 
-  Authority::Authority(cryptography::PublicKey const& K):
+  Authority::Authority(infinit::cryptography::rsa::PublicKey const& K):
     type(Authority::TypePublic),
     _K(K),
     _k(nullptr),
@@ -77,13 +76,16 @@ namespace papier
     ELLE_TRACE_METHOD(pass);
 
     // XXX[setter l'algo en constant pour eviter la duplication avec decrypt()]
-    cryptography::SecretKey key{cryptography::cipher::Algorithm::aes256, pass};
+    infinit::cryptography::SecretKey key{
+      pass,
+      infinit::cryptography::Cipher::aes256,
+      infinit::cryptography::Mode::cbc};
 
     ELLE_ASSERT(this->type == Authority::TypePair);
 
     delete this->_code;
     this->_code = nullptr;
-    this->_code = new cryptography::Code{key.encrypt(this->k())};
+    this->_code = new infinit::cryptography::Code{key.encrypt(this->k())};
 
     return elle::Status::Ok;
   }
@@ -98,13 +100,16 @@ namespace papier
     ELLE_ASSERT(this->type == Authority::TypePair);
     ELLE_ASSERT(this->_code != nullptr);
 
-    cryptography::SecretKey key{cryptography::cipher::Algorithm::aes256, pass};
+    infinit::cryptography::SecretKey key{
+      pass,
+      infinit::cryptography::Cipher::aes256,
+      infinit::cryptography::Mode::cbc};
 
     delete this->_k;
     this->_k = nullptr;
     this->_k =
-      new cryptography::PrivateKey{
-        key.decrypt<cryptography::PrivateKey>(*this->_code)};
+      new infinit::cryptography::rsa::PrivateKey{
+        key.decrypt<infinit::cryptography::rsa::PrivateKey>(*this->_code)};
 
     return elle::Status::Ok;
   }
@@ -147,14 +152,14 @@ namespace papier
     return elle::Status::Ok;
   }
 
-  cryptography::PrivateKey const&
+  infinit::cryptography::rsa::PrivateKey const&
   Authority::k() const
   {
     ELLE_ASSERT_NEQ(this->_k, nullptr);
     return *this->_k;
   }
 
-  cryptography::Code const&
+  infinit::cryptography::Code const&
   Authority::code() const
   {
     ELLE_ASSERT_NEQ(this->_code, nullptr);
@@ -173,7 +178,7 @@ namespace papier
   papier::Authority
   _authority()
   {
-    cryptography::PublicKey K;
+    infinit::cryptography::rsa::PublicKey K;
 
     assert(!key.empty());
     if (K.Restore(key) == elle::Status::Error)

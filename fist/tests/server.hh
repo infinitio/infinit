@@ -5,8 +5,6 @@
 #include <boost/multi_index/mem_fun.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 
-#include <cryptography/KeyPair.hh>
-
 #include <elle/UUID.hh>
 #include <elle/reactor/tests/http_server.hh>
 #include <elle/UUID.hh>

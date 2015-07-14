@@ -1,8 +1,8 @@
 #include <elle/log.hh>
 #include <elle/serialize/TupleSerializer.hxx>
 
-#include <cryptography/PrivateKey.hh>
-#include <cryptography/oneway.hh>
+#include <cryptography/rsa/PrivateKey.hh>
+#include <cryptography/hash.hh>
 
 #include <papier/Authority.hh>
 #include <boost/functional/hash.hpp>
@@ -18,7 +18,7 @@ namespace papier
 
   Passport::Passport(elle::String const& id,
                      elle::String const& name,
-                     cryptography::PublicKey const& owner_K,
+                     infinit::cryptography::rsa::PublicKey const& owner_K,
                      papier::Authority const& authority)
     : _id{id}
     , _name{name}
@@ -38,7 +38,8 @@ namespace papier
   Passport::validate(papier::Authority const& authority) const
   {
     return (authority.K().verify(this->_signature,
-                                 elle::serialize::make_tuple(_id, _owner_K)));
+                                 elle::serialize::make_tuple(this->_id,
+                                                             this->_owner_K)));
   }
 
 //
@@ -110,8 +111,8 @@ namespace std
     // XXX: The id is definitely not unique.
     auto id = std::hash<std::string>()(s.id());
     auto k = std::hash<elle::ConstWeakBuffer>()(
-      infinit::cryptography::oneway::hash(
-        s.owner_K(), infinit::cryptography::oneway::Algorithm::sha1).buffer());
+      infinit::cryptography::hash(
+        s.owner_K(), infinit::cryptography::Oneway::sha1).buffer());
     size_t seed = 0;
     boost::hash_combine(seed, id);
     boost::hash_combine(seed, k);

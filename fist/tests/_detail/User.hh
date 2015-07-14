@@ -23,13 +23,13 @@ namespace tests
   public:
     User(elle::UUID id,
          std::string email,
-         boost::optional<cryptography::KeyPair> keys,
+         boost::optional<infinit::cryptography::rsa::KeyPair> keys,
          std::unique_ptr<papier::Identity> identity);
     User(User const&) = default;
 
     ELLE_ATTRIBUTE_R(elle::UUID, id);
     ELLE_ATTRIBUTE_R(std::string, email);
-    ELLE_ATTRIBUTE_R(boost::optional<cryptography::KeyPair>, keys);
+    ELLE_ATTRIBUTE_R(boost::optional<infinit::cryptography::rsa::KeyPair>, keys);
     ELLE_ATTRIBUTE_RX(std::unique_ptr<papier::Identity>, identity);
     ELLE_ATTRIBUTE_R(std::string, facebook_id);
     typedef std::unordered_set<User*> Swaggers;

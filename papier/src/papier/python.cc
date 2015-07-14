@@ -4,7 +4,7 @@
 #include <boost/python.hpp>
 
 #include <papier/Authority.hh>
-#include <cryptography/PublicKey.hh>
+#include <cryptography/rsa/PublicKey.hh>
 #include <papier/Identity.hh>
 #include <papier/Passport.hh>
 
@@ -29,7 +29,7 @@ passport(std::string const& id,
   if (authority.Decrypt(authority_password) == elle::Status::Error)
     throw std::runtime_error("unable to decrypt the authority");
 
-  cryptography::PublicKey pubkey{};
+  infinit::cryptography::rsa::PublicKey pubkey{};
   pubkey.Restore(public_key);
 
   papier::Passport passport{id, name, pubkey, authority};
@@ -50,9 +50,9 @@ identity(std::string const& id,
          std::string const& authority_file,
          std::string const& authority_password)
 {
-  cryptography::KeyPair pair =
-    cryptography::KeyPair::generate(cryptography::Cryptosystem::rsa,
-                                    papier::Identity::keypair_length);
+  infinit::cryptography::rsa::KeyPair pair =
+    infinit::cryptography::rsa::keypair::generate(
+      papier::Identity::keypair_length);
 
   elle::io::Path authority_path;
   papier::Identity identity;

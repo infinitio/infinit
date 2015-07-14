@@ -110,7 +110,7 @@ namespace surface
     };
 
     FallbackRound::FallbackRound(std::string const& name,
-                                 oracles::meta::Client const& meta,
+                                 infinit::oracles::meta::Client const& meta,
                                  std::string const& uid)
       : Round(name)
       , _meta(meta)

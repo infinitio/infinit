@@ -13,7 +13,7 @@ namespace tests
 {
   User::User(elle::UUID id,
              std::string email,
-             boost::optional<cryptography::KeyPair> keys,
+             boost::optional<infinit::cryptography::rsa::KeyPair> keys,
              std::unique_ptr<papier::Identity> identity)
     : _id(std::move(id))
     , _email(std::move(email))

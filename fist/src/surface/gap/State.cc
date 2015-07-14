@@ -651,7 +651,8 @@ namespace surface
           // Don't send notification for me user here.
           this->user_sync(this->me(), false);
           this->_configuration.features = login_response.features;
-          metrics::Reporter::metric_features(this->_configuration.features);
+          infinit::metrics::Reporter::metric_features(
+            this->_configuration.features);
           // Trophonius.
           if (*trophonius)
           {
@@ -848,12 +849,12 @@ namespace surface
           _login_watcher_thread->raise(std::make_exception_ptr(e));\
         return false;                                                    \
       }
-      RETHROW(state::CredentialError)
-      RETHROW(state::UnconfirmedEmailError)
-      RETHROW(state::VersionRejected)
-      RETHROW(state::AlreadyLoggedIn)
-      RETHROW(state::MissingEmail)
-      RETHROW(state::EmailAlreadyRegistered)
+      RETHROW(infinit::state::CredentialError)
+      RETHROW(infinit::state::UnconfirmedEmailError)
+      RETHROW(infinit::state::VersionRejected)
+      RETHROW(infinit::state::AlreadyLoggedIn)
+      RETHROW(infinit::state::MissingEmail)
+      RETHROW(infinit::state::EmailAlreadyRegistered)
       #undef RETHROW
       catch(elle::Exception const& e)
       { // Assume temporary failure and retry
@@ -1572,7 +1573,8 @@ namespace surface
       elle::serialization::json::SerializerIn input(json);
       input.partial(true);
       this->_configuration.serialize(input);
-      metrics::Reporter::metric_features(this->_configuration.features);
+      infinit::metrics::Reporter::metric_features(
+        this->_configuration.features);
       std::ofstream fconfig(this->local_configuration().configuration_path());
       elle::json::write(fconfig, json);
     }
