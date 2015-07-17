@@ -73,6 +73,8 @@ class SendWithUsEmailer(Emailer):
   def __template(self, name):
     if name not in self.__templates:
       self.__load_templates()
+    if name not in self.__templates:
+      raise Exception('no such template: %s' % name)
     return self.__templates[name]['id']
 
   def send_one(self,
@@ -210,7 +212,7 @@ class MandrillEmailer(Emailer):
 
 
 def avatar(i, meta):
-  return '%suser/%s/avatar' % (meta, i)
+  return '%s/user/%s/avatar' % (meta, i)
 
 def user_vars(user, meta):
   return {

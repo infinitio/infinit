@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+
+import datetime
+import pymongo
+from infinit.oracles.emailer import *
+from infinit.oracles.utils import sign
+
+import argparse
+
+try:
+  # Parse options
+  parser = argparse.ArgumentParser(description = 'send infinit newsletter')
+  parser.add_argument('--template',
+                      metavar = 'TEMPLATE',
+                      type = str,
+                      help = 'template to send')
+  parser.add_argument('--live',
+                      type = bool,
+                      help = 'whether to actually send shit')
+  args = parser.parse_args()
+
+  if args.live:
+    swu_key = 'live_7e775f6f0e1404802a5fbbc0fcfa9c238b065c49'
+  else:
+    # swu_key = 'test_8a19af75d006192a3e51dcab310fa1ed428e53ba'
+    swu_key = 'test_ba7aa36c79a43f9d82cfc83a5da1e9d605ef4dbf'
+
+  emailer = SendWithUsEmailer(api_key = swu_key)
+
+  meta = 'https://meta.api.production.infinit.io'
+
+  mongo = pymongo.MongoClient(host = 'mongo-1')
+
+  if args.template is None:
+    raise Exception('missing mandatory argument: template')
+
+  users = mongo.meta.users.find(
+          {
+            'register_status': 'ok',
+            'unsubscriptions.newsletter': {'$ne': False},
+          })
+  if not args.live:
+    users.limit(1)
+
+  emailer.send_template(
+    args.template,
+    (
+      {
+        'email': user['email'],
+        'name': user['fullname'],
+        'vars': {
+          'user': user_vars(user, meta),
+          'list': 'newsletter',
+          'login_token': sign(
+            {'action': 'login', 'email': user['email']},
+            datetime.timedelta(weeks = 1),
+            datetime.datetime.utcnow(),
+          ),
+        },
+      }
+      for user in users
+    ))
+except Exception as e:
+  import sys
+  print('%s: %s' % (sys.argv[0], str(e)), file = sys.stderr)
+  exit(1)
