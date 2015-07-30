@@ -1345,16 +1345,12 @@ namespace infinit
 
       static
       void
-      _check_for_quota(std::string const& url,
-                       reactor::http::Request& request)
+      _check_for_quota(std::string const& url, reactor::http::Request& request)
       {
         ELLE_DEBUG_SCOPE("check if quota has been exceeded (%s)", url);
-        request.finalize();
         if (request.status() == reactor::http::StatusCode::Payment_Required)
         {
-          std::string body = request.response().string();
-          std::stringstream stream(body);
-          elle::serialization::json::SerializerIn input(stream, false);
+          elle::serialization::json::SerializerIn input(request);
           std::string reason;
           int64_t quota;
           int64_t usage;
