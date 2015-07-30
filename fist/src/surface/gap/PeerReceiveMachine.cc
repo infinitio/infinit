@@ -956,7 +956,7 @@ namespace surface
           {
             buffer = key.legacy_decrypt_buffer(code);
           }
-          catch(infinit::cryptography::Exception const& e)
+          catch (infinit::cryptography::Error const& e)
           {
             ELLE_WARN("%s: decryption error on block %s/%s: %s", *this, local_index, local_position, e.what());
             throw;
