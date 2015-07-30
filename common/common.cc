@@ -36,12 +36,7 @@ namespace
     std::string res;
     if (production)
     {
-      res = elle::sprintf(
-        "%s.%s.%s.api.production.infinit.io",
-        server_name,
-        INFINIT_VERSION_MINOR,
-        INFINIT_VERSION_MAJOR
-      );
+      res = elle::sprintf("%s.api.production.infinit.io", server_name);
     }
     else
     {
