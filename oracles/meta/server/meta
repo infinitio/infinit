@@ -97,6 +97,10 @@ parser.add_option('--enable-metrics',
                   action = 'store_true',
                   help = 'send metrics',
                   default = False)
+parser.add_option('--stripe-api-key',
+                  action = 'store',
+                  help = 'Stripe API key',
+                  default = None)
 
 options, args = parser.parse_args()
 
@@ -149,6 +153,7 @@ app = infinit.oracles.meta.server.Meta(
   aws_link_bucket = options.aws_link_bucket,
   zone = options.zone,
   metrics = metrics,
+  stripe_api_key = options.stripe_api_key,
   **args)
 
 app.port = 0
