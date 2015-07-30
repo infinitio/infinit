@@ -2895,7 +2895,7 @@ class Mixin:
         return self.bad_request({
           'reason': e.args[0],
         })
-      except stripe.error.AuthentificationError as e:
+      except stripe.error.AuthenticationError as e:
         warn('%s: stripe auth failed: %s' % (self, e.args[0]))
         return self.bad_request({
           'reason': e.args[0],
