@@ -150,7 +150,7 @@ ELLE_TEST_SCHEDULED(connection)
   elle::With<reactor::Scope>() << [&] (reactor::Scope& scope)
   {
     scope.run_background("server", [&]
-                         {
+    {
       auto snap = root;
       snap += "server";
       try
@@ -200,8 +200,8 @@ ELLE_TEST_SCHEDULED(connection)
         *reactor::Scheduler::scheduler(), serializer);
       frete::RPCFrete rpcs(channels);
       ELLE_DEBUG("get symmetric key for transaction and decrypt it");
-      auto key = infinit::cryptography::SecretKey(
-        recipient_key_pair.k().decrypt<infinit::cryptography::SecretKey>(rpcs.key_code()));
+      auto key =
+        recipient_key_pair.k().decrypt<infinit::cryptography::SecretKey>(rpcs.key_code());
       ELLE_DEBUG("Read the number of transaction");
       auto infos = rpcs.transfer_info();
       BOOST_CHECK_EQUAL(rpcs.count(), infos.count());
