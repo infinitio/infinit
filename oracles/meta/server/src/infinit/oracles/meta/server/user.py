@@ -11,7 +11,7 @@ import re
 import stripe
 
 import elle.log
-from elle.log import log, trace, debug, dump
+from elle.log import log, trace, debug, dump, warn, err
 import papier
 import infinit.oracles.emailer
 
