@@ -537,7 +537,7 @@ Session: %(session)s
       self.forbidden()
 
   def url_absolute(self, url = ''):
-    if not url.startswith('/'):
+    if not url.startswith('/') and len(url) > 0:
       url = '/' + url
     meta = '%s://%s' % bottle.request.urlparts[0:2]
     return meta + url
