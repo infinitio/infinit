@@ -90,10 +90,10 @@ namespace frete
                    snapshot->file(0).progress():
                    0));
         // reload key from snapshot
-        _impl->_key.reset(
-          new infinit::cryptography::SecretKey(
-            self_key.k().decrypt<infinit::cryptography::SecretKey>(
-              *snapshot->key_code())));
+        auto const& key =
+          self_key.k().decrypt<infinit::cryptography::SecretKey>(
+            *snapshot->key_code());
+        _impl->_key.reset(new infinit::cryptography::SecretKey(std::move(key)));
         this->_transfer_snapshot = std::move(snapshot);
       }
       catch (boost::filesystem::filesystem_error const&)
