@@ -454,6 +454,7 @@ def configure(cxx_toolkit = None,
         reactor_lib,
         elle_lib,
         cryptography_lib,
+        elle.openssl_lib_crypto,
       ],
       cxx_toolkit, frete_cxx_config_tests)
     frete_tests << test
