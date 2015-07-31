@@ -698,7 +698,7 @@ def configure(cxx_toolkit = None,
         'fist/tests/_detail/Transaction.cc',
         'fist/tests/_detail/Transaction.hh',
         'fist/tests/_detail/Authority.cc',
-        'fist/tests/_detail/AUthority.hh',
+        'fist/tests/_detail/Authority.hh',
       )
     test = drake.cxx.Executable(
       'fist/tests/%s' % name,
