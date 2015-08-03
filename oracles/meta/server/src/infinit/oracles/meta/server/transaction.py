@@ -505,12 +505,6 @@ class Mixin:
       message = '',
   ):
     with trace('%s: fill transaction %s' % (self, t_id)):
-      if self.user.get('plan', None) == 'basic':
-        if total_size > basic_user_transfer_size_limit:
-          self.payment_required({
-            'error': error.FILE_TRANSFER_SIZE_LIMITED[0],
-            'reason': error.FILE_TRANSFER_SIZE_LIMITED[1],
-          })
       return self.transaction_fill(
         sender = self.user,
         files = files,
@@ -560,6 +554,12 @@ class Mixin:
       self.bad_request({
         'reason': 'you must provide id_or_email or recipient_identifier'
       })
+    if self.user.get('plan', None) == 'basic':
+      if total_size > basic_user_transfer_size_limit:
+        self.payment_required({
+          'error': error.FILE_TRANSFER_SIZE_LIMITED[0],
+          'reason': error.FILE_TRANSFER_SIZE_LIMITED[1],
+        })
     recipient_identifier = recipient_identifier or utils.identifier(id_or_email)
     recipient, new_user = self.__recipient_from_identifier(recipient_identifier,
                                                            sender)
