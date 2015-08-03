@@ -566,16 +566,17 @@ class Mixin:
       self.bad_request({
         'reason': 'you must provide id_or_email or recipient_identifier'
       })
-    if self.user.get('plan', None) == 'basic':
-      if total_size > basic_user_transfer_size_limit:
-        self.payment_required({
-          'error': error.FILE_TRANSFER_SIZE_LIMITED[0],
-          'reason': error.FILE_TRANSFER_SIZE_LIMITED[1],
-          'limit': basic_user_transfer_size_limit,
-        })
     recipient_identifier = recipient_identifier or utils.identifier(id_or_email)
     recipient, new_user = self.__recipient_from_identifier(recipient_identifier,
                                                            sender)
+    if self.user.get('plan', None) == 'basic':
+      if recipient['_id'] != sender['_id']: # Not send to self.
+        if total_size > basic_user_transfer_size_limit:
+          self.payment_required({
+            'error': error.FILE_TRANSFER_SIZE_LIMITED[0],
+            'reason': error.FILE_TRANSFER_SIZE_LIMITED[1],
+            'limit': basic_user_transfer_size_limit,
+          })
     if recipient['register_status'] == 'merged':
       merge_target = recipient.get('merged_with', None)
       if merge_target is None:
