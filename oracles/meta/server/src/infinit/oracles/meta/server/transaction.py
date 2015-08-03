@@ -485,6 +485,17 @@ class Mixin:
       files = files,
       message = message,
     )
+    if recipient['_id'] == sender['_id']: # Send to self.
+      elle.log.trace("send to self")
+      send_to_self_quota = sender.get('quota', {}).get('send-to-self', {})
+      limit = send_to_self_quota.get('limit')
+      sent_to_self = self.__sent_to_self(sender)
+      elle.log.debug("limit (%s) / sent to self (%s)" % (limit, sent_to_self))
+      if limit is not None and sent_to_self >= limit:
+        self.payment_required(
+          {
+            'error': error.SEND_TO_SELF_LIMIT_REACHED[0],
+          })
     transaction.db_insert()
 
     return transaction
@@ -550,6 +561,7 @@ class Mixin:
     Errors:
     Using an id that doesn't exist.
     """
+    elle.log.debug('fill transaction %s' % self)
     if id_or_email is None and recipient_identifier is None:
       self.bad_request({
         'reason': 'you must provide id_or_email or recipient_identifier'
@@ -595,7 +607,14 @@ class Mixin:
       # Add to referral
       self.database.users.update(
         {'_id': recipient['_id']},
-        {'$addToSet': {'referred_by': sender['_id']}}
+        {'$addToSet': {
+          'referred_by': sort_dict({
+            'id': sender['_id'],
+            'type': 'ghost_invite',
+            'date': self.now,
+          })
+        }
+       }
       )
     elle.log.debug("transaction recipient has id %s" % recipient['_id'])
     _id = sender['_id']

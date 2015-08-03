@@ -287,7 +287,10 @@ class Meta(bottle.Bottle,
     # Collect referred users.
     self.__database.users.ensure_index([('used_referral_link', 1)],
                                        sparse = True)
-
+    # Collect referrer users.
+    self.__database.users.ensure_index([('referred_by.id', 1)],
+                                       sparse = True,
+                                       unique = False)
 
     #---------------------------------------------------------------------------
     # Transactions

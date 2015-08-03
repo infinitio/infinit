@@ -82,11 +82,11 @@ with Meta() as meta:
             referral_code = referral_code)
   res = u1.get('user/referral-code')
   assert (res['refer_count'] == 1)
+  u2.login()
   referrer_quota = meta.database.users.find_one(
     {'_id': u1._id}, {'quota': True})['quota']
   assertEq(referrer_quota['total_link_size'],
            initial_quota['total_link_size'] + 1e9)
-  u2.login()
   referree_quota = meta.database.users.find_one(
     {'_id': u2._id}, {'quota': True})['quota']
   assertEq(referree_quota['total_link_size'],

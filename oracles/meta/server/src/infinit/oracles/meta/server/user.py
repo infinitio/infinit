@@ -78,12 +78,24 @@ class Mixin:
           del user['shorten_ghost_profile_url']
     return user
 
+  def __sent_to_self(self, user):
+    user_id = user.get('_id')
+    assert user_id is not None
+    res = self.database.transactions.find({
+      'sender_id': user_id,
+      'recipient_id': user_id,
+      'creation_time': {
+        "$gte": datetime.datetime(datetime.datetime.today().year,
+                                  datetime.datetime.today().month,
+                                  1)}
+    })
+    return res.count()
+
   def __user_self(self, user):
     '''Layout self-user to be returned to clients'''
     if user is None:
       return user
     user['id'] = user['_id']
-    del user['_id']
     user['status'] = user['connected'] # FIXME: seriously WTF
     user['devices'] = [d['id'] for d in user['devices']]
     if 'favorites' not in user:
@@ -96,6 +108,11 @@ class Mixin:
       )
       if cus.subscriptions.total_count > 0:
           user['subscription_data'] = cus.subscriptions.data[0]
+    # Quota.
+    user.setdefault('quota', {}).setdefault('send-to-self', {}).setdefault('used', self.__sent_to_self(user))
+
+    # Remove '_id' key, replaced earlier by 'id'.
+    del user['_id']
     return user
 
   @property
@@ -408,20 +425,17 @@ class Mixin:
     elle.log.debug("%s: store session" % user['_id'])
 
     # Check if this is the first login of this user
-    res = self.database.users.find_one(
+    res = self.database.users.find_and_modify(
       {
         '_id': user['_id'],
-        'last_connection': {'$exists': False},
       },
-      fields = ['referred_by'])
+      { '$set': {'last_connection': time.time()} },
+      fields = ['referred_by'],
+      new = False)
     if res is not None and 'referred_by' in res:
-      self.process_referrals(user, res['referred_by'])
+      self.process_referrals(user, [referrer['id'] for referrer in res['referred_by']])
     bottle.request.session['device'] = device['id']
     bottle.request.session['identifier'] = user['_id']
-
-    self.database.users.update(
-      {'_id': user['_id']},
-      {'$set': {'last_connection': time.time(),}})
     elle.log.trace("successfully connected as %s on device %s" %
                    (user['_id'], device['id']))
     if OS is not None:
@@ -678,6 +692,8 @@ class Mixin:
                         source = None,
                         password_hash = None,
                         referral_code = None):
+    elle.log.trace('%s register as %s (referral code: %s)' %
+                   (email, fullname, referral_code))
     if self.user is not None:
       return self.fail(error.ALREADY_LOGGED_IN)
     if password is None:
@@ -793,10 +809,14 @@ class Mixin:
       handle = self.unique_handle(fullname)
       plan = self.database.plans.find_one({'name': 'basic'})
       features = self._roll_features(True)
-      quota = {}
+      quota = {
+        'send-to-self': {
+          'limit': 5
+        }
+      }
       if plan is not None:
         features.update(plan.get('features', {}))
-        quota = plan.get('quota', {})
+        quota.update(plan.get('quota', {}))
       user_content = {
         'features': features,
         'register_status': 'ok',
@@ -925,6 +945,7 @@ class Mixin:
           },
         )
       if referral_code:
+        elle.log.trace('%s used referral_code %s' % (user['_id'], referral_code))
         res = self.__user_add_referral_code(user, referral_code)
         if res is not None:
           user['referral_code'] = res
@@ -1736,7 +1757,8 @@ class Mixin:
         fields = ['referred_by']
         )
       # Apply referrals on the ghost to this user
-      self.process_referrals(merge_with, res.get('referred_by', []))
+      self.process_referrals(merge_with, [referrer['id'] for referrer
+                                          in res.get('referred_by', [])])
       # Increase swaggers swag for self
       update = {
         '$addToSet': {
@@ -2350,7 +2372,7 @@ class Mixin:
     return self.success()
 
   @api('/user/self')
-  @require_logged_in_fields(['identity'])
+  @require_logged_in_fields(['identity', 'quota'])
   def user_self(self):
     """Return self data."""
     return self.__user_self(self.user)
@@ -2807,6 +2829,14 @@ class Mixin:
       recipient_ids = {user['_id']},
       version = (0, 9, 37))
 
+  def __referred_by(self, referrer, fields = ['referred_by', 'register_status']):
+    return self.database.users.find(
+      {
+        'referred_by.id': referrer
+      },
+      fields = fields,
+    )
+
   def process_referrals(self, new_user, referrals,
                         inviter_bonus = 1e9,
                         invitee_bonus = 500e6,
@@ -2816,23 +2846,38 @@ class Mixin:
         @param new_user User struct for the invitee
         @param referrals List of user ids who invited new_user
     """
+    elle.log.trace('process referral for %s (referred by %s)' % (new_user, referrals))
     # In mongo, summing an integer and a double results in a double.
     # So, make sure we don't change the data type in the database.
     inviter_bonus = int(inviter_bonus)
     invitee_bonus = int(invitee_bonus)
     #policy: +1G for referrers up to 10G,  + 500Mo for referred
     #FIXME: send email
-    self.database.users.update(
-      {
-        '_id': {'$in': referrals},
-        '$or': [{'plan': 'basic'}, {'plan': {'$exists': False}}],
-        'quota.total_link_size': {'$exists': True, '$lt': inviter_cap}
-      },
-      {
-        '$inc': { 'quota.total_link_size': inviter_bonus}
-      },
-      multi = True
-    )
+    # Because each referrers may have a
+    for referrer in referrals:
+      update = {
+        '$inc': {
+          'quota.total_link_size': inviter_bonus,
+        }
+      }
+      number_of_referred = self.__referred_by(referrer).count()
+      # The first you referrer gives you plus 2 send to self.
+      if number_of_referred == 1:
+        update['$inc'].update(
+          {'quota.send-to-self.limit': 2}
+        )
+      # The second one remove your limit.
+      else:
+        update['$set'] = {'quota.send-to-self.limit': None}
+      elle.log.debug('update: %s' % update)
+      self.database.users.update(
+        {
+          '_id': referrer,
+          '$or': [{'plan': 'basic'}, {'plan': {'$exists': False}}],
+          'quota.total_link_size': {'$exists': True, '$lt': inviter_cap}
+        },
+        update)
+
     self.database.users.update(
       {
         '_id': new_user['_id'],
@@ -3344,7 +3389,15 @@ class Mixin:
       self.forbidden({
           'reason': 'User was deleted.'
       })
-    query = {'$addToSet': {'referred_by':user['_id']}}
+    query = {
+      '$addToSet': {
+        'referred_by': sort_dict({
+          'id': user['_id'],
+          'type': 'plain_invite',
+          'date': self.now,
+        })
+      }
+    }
     ghost_code = recipient.get('ghost_code', None)
     shorten_ghost_profile_url = recipient.get('shorten_ghost_profile_url', None)
     if not ghost_code:
@@ -3535,7 +3588,8 @@ class Mixin:
 
   def __user_add_referral_code(self,
                                user,
-                               referral_code: str):
+                               referral_code: str,
+                               immediate = False):
     elle.log.trace('add referral code (%s) to user (%s)' %
                    (referral_code, user['_id']))
     try:
@@ -3545,9 +3599,22 @@ class Mixin:
       if inviter:
         self.database.users.update(
           {'_id': user['_id']},
-          {'$set': {'used_referral_link': referral_code}}
+          {
+            '$set': {
+              'used_referral_link': referral_code},
+            '$addToSet': {
+              'referred_by':  sort_dict({
+                'id': inviter['_id'],
+                'type': 'plain_invite',
+                'date': self.now,
+              })
+            }
+          }
         )
-        self.process_referrals(user, [inviter['_id']])
+        # XXX: This is buggy because referred_by will be proceed twice.
+        # But posting /user/referral-code seems deprecated...
+        if immediate:
+          self.process_referrals(user, [inviter['_id']])
         return referral_code
       else:
         return None
@@ -3574,7 +3641,7 @@ class Mixin:
         self.forbidden(
           {'reason': 'can only add referrer in first %s days' % days})
 
-    res = self.__user_add_referral_code(user, referral_code)
+    res = self.__user_add_referral_code(user, referral_code, immediate = True)
     if res is None:
       self.bad_request({'reason': 'invalid referrer'})
     return {}

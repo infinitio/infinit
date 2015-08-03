@@ -7,6 +7,7 @@ from infinit.oracles.meta.server.invitation import Invitation
 from infinit.oracles.meta.server import error
 from infinit.oracles.meta.server import transaction_status
 from infinit.oracles.meta import version as Version
+from infinit.oracles.meta import error
 from random import uniform
 
 import datetime
@@ -774,6 +775,10 @@ class User(Client):
     return self.data['favorites']
 
   @property
+  def referral_code(self):
+    return self.get('user/referral-code')['referral_code']
+
+  @property
   def logged_in(self):
     try:
       res = self.data
@@ -1004,3 +1009,7 @@ def assertNeq(a, b):
 def assertIn(e, c):
   if e not in c:
     raise Exception('%r not in %r' % (e, c))
+
+def assertGT(a, b):
+  if a <= b:
+    raise Exception('%r <= %r' % (a, b))
