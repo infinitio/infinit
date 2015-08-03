@@ -21,3 +21,13 @@ with Meta() as meta:
       continue
     assertEq(res[key], transaction[key])
   assertEq(res['recipient_id'], transaction['recipient_id'])
+
+  # Over limit for basic user.
+  try:
+    transaction, res = alice.sendfile(recipient = bob.id,
+                                      total_size = 20 * 1000 * 1000 * 1000,
+                                      initialize = True)
+  except HTTPException as e:
+    assert e.status == 402
+    e.content['error'] == error.FILE_TRANSFER_SIZE_LIMITED[0]
+    e.content['reason'] == error.FILE_TRANSFER_SIZE_LIMITED[1]
