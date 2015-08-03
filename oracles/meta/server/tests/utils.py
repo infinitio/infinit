@@ -4,6 +4,7 @@ import infinit.oracles.emailer
 import infinit.oracles.meta.server
 from infinit.oracles.meta.server.mail import Mailer
 from infinit.oracles.meta.server.invitation import Invitation
+from infinit.oracles.meta.server import error
 from infinit.oracles.meta.server import transaction_status
 from infinit.oracles.meta import version as Version
 from random import uniform
