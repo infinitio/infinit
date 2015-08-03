@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from utils import *
+from bson import ObjectId
 
 with Meta() as meta:
   alice = User(meta, "alice@infinit.io")
@@ -23,11 +24,18 @@ with Meta() as meta:
   assertEq(res['recipient_id'], transaction['recipient_id'])
 
   # Over limit for basic user.
+  size_to_send = 20 * 1000 * 1000 * 1000
   try:
     transaction, res = alice.sendfile(recipient = bob.id,
-                                      total_size = 20 * 1000 * 1000 * 1000,
+                                      total_size = size_to_send,
                                       initialize = True)
   except HTTPException as e:
     assert e.status == 402
     e.content['error'] == error.FILE_TRANSFER_SIZE_LIMITED[0]
     e.content['reason'] == error.FILE_TRANSFER_SIZE_LIMITED[1]
+
+  meta.database.users.update({'_id': bson.ObjectId(bob.id)},
+                             {'$set': {'plan': 'premium'}})
+  bob.sendfile(recipient = alice.id,
+               total_size = size_to_send,
+               initialize = True)
