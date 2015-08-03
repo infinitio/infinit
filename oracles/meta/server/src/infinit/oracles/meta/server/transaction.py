@@ -24,9 +24,11 @@ import infinit.oracles.emailer
 
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Transaction'
 
-# This create a code with more than 8 billions possibilities.
+# This allows for a code with > 8 billion possibilities.
 code_alphabet = '23456789abcdefghijkmnpqrstuvwxyz'
 code_length = 7
+
+basic_user_transfer_size_limit = 10 * 1000 * 1000 * 1000 # 10 GB
 
 class Transaction(dict):
 
@@ -503,6 +505,12 @@ class Mixin:
       message = '',
   ):
     with trace('%s: fill transaction %s' % (self, t_id)):
+      if self.user.get('plan', None) == 'basic':
+        if total_size > basic_user_transfer_size_limit:
+          self.payment_required({
+            'error': error.FILE_TRANSFER_SIZE_LIMITED[0],
+            'reason': error.FILE_TRANSFER_SIZE_LIMITED[1],
+          })
       return self.transaction_fill(
         sender = self.user,
         files = files,
