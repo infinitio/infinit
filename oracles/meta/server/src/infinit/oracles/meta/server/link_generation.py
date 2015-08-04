@@ -314,6 +314,13 @@ class Mixin:
     }
     link['share_link'] = self._make_share_link(link['hash'])
     link['has_password'] = link.get('password') is not None
+    if link.get('file_size') is None:
+      total_size = 0
+      for f in link['file_list']:
+        total_size += f['size']
+      link['size'] = total_size
+    else:
+      link['size'] = link.get('file_size')
     link = dict(
       (key, link.get(key in mapping and mapping[key] or key)) for key in (
         'id',
@@ -330,6 +337,7 @@ class Mixin:
         'sender_device_id',
         'sender_id',
         'share_link',
+        'size',
         'status',
     ))
     if link['expiry_time'] is None: # Needed until 0.9.9.
@@ -521,6 +529,7 @@ class Mixin:
     mapping = {
       'id': '_id',
       'files': 'file_list',
+      'size': 'file_size',
     }
     ret_link = dict(
       (key, link.get(key in mapping and mapping[key] or key))
@@ -537,12 +546,18 @@ class Mixin:
           'progress',
           'sender_id',
           'sender_device_id',
+          'size',
           'status',
       ])
     if link.get('link') is not None:
       ret_link['link'] = link['link']
     ret_link['password'] = link.get('password') is not None # deprecated in favour of 'has_password'
     ret_link['has_password'] = link.get('password') is not None
+    if ret_link['size'] is None:
+      total_size = 0
+      for f in link['file_list']:
+        total_size += f['size']
+      ret_link['size'] = total_size
     return ret_link
 
   @api('/links/<id_or_hash>')
