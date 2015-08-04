@@ -15,6 +15,8 @@
 
 #include <infinit/oracles/meta/Admin.hh>
 #include <infinit/oracles/meta/Client.hh>
+#include <infinit/oracles/meta/Error.hh>
+#include <infinit/oracles/meta/error/AccountLimitationError.hh>
 #include <surface/gap/Exception.hh>
 #include <surface/gap/Error.hh>
 #include <version.hh>
@@ -359,23 +361,151 @@ ELLE_TEST_SCHEDULED(transactions)
 ELLE_TEST_SCHEDULED(transaction_create)
 {
   HTTPServer s;
-  s.register_route(
-    "/transaction/create_empty",
-    reactor::http::Method::POST,
-    [] (HTTPServer::Headers const&,
-        HTTPServer::Cookies const&,
-        HTTPServer::Parameters const&,
-        elle::Buffer const& body)
+  infinit::oracles::meta::User recipient("42", "bob", "bob", "registered");
+  std::list<std::string> files = {"file1", "file2"};
+  std::string transaction_id = "42";
+  infinit::oracles::meta::CreatePeerTransactionResponse transaction(
+    recipient, transaction_id);
+  s.register_route("/transactions",
+                     reactor::http::Method::POST,
+                     [&transaction] (HTTPServer::Headers const&,
+                                     HTTPServer::Cookies const&,
+                                     HTTPServer::Parameters const&,
+                                     elle::Buffer const&)
     {
-      return R"JSON(
-        {
-          "created_transaction_id": "42"
-        }
-        )JSON";
+      std::stringstream ss;
+      {
+        elle::serialization::json::SerializerOut output(ss, false);
+        output.serialize("transaction", transaction);
+        output.serialize("created_transaction_id",
+                         transaction.created_transaction_id());
+      }
+      return ss.str();
+    });
+  s.register_route(elle::sprintf("/transaction/%s", transaction_id),
+                     reactor::http::Method::PUT,
+                     [&transaction, &recipient] (HTTPServer::Headers const&,
+                                                 HTTPServer::Cookies const&,
+                                                 HTTPServer::Parameters const&,
+                                                 elle::Buffer const&)
+    {
+      std::stringstream ss;
+      {
+        elle::serialization::json::SerializerOut output(ss, false);
+        output.serialize("transaction", transaction);
+        output.serialize("created_transaction_id",
+                         transaction.created_transaction_id());
+        output.serialize("recipient", recipient);
+        output.serialize("recipient_is_ghost", false);
+      }
+      return ss.str();
     });
   Client c("http", "127.0.0.1", s.port());
-  auto t_id = c.create_transaction();
-  BOOST_CHECK(t_id == "42");
+  auto const& returned_id = c.create_transaction(recipient.id, files, 2);
+  BOOST_CHECK(returned_id == transaction_id);
+  BOOST_CHECK_NO_THROW(c.fill_transaction(recipient.id,
+                                          files,
+                                          files.size(),
+                                          200,
+                                          false,
+                                          elle::UUID::random(),
+                                          "coucou",
+                                          transaction_id));
+}
+
+ELLE_TEST_SCHEDULED(link_create)
+{
+  HTTPServer s;
+  std::string link_id("42");
+  using FileList = infinit::oracles::LinkTransaction::FileList;
+  using FileNameSizePair =
+    infinit::oracles::LinkTransaction::FileNameSizePair;
+  std::string name("bob");
+  std::string message("coucou");
+  bool screenshot = true;
+  FileList files;
+  files.push_back(FileNameSizePair("file", 100));
+  aws::Credentials aws_credentails("access_key_id",
+                                   "secret_access_key",
+                                   "session_token",
+                                   "region",
+                                   "bucket",
+                                   "folder",
+                                   boost::posix_time::ptime(),
+                                   boost::posix_time::ptime());
+  uint32_t click_count = 10;
+  std::string cloud_location = "";
+  std::string hash = "pound";
+  std::string share_link = "http://someaddress";
+  std::unique_ptr<infinit::oracles::Transaction> transaction_ptr(
+    new infinit::oracles::LinkTransaction(click_count,
+                                          cloud_location,
+                                          files,
+                                          hash,
+                                          message,
+                                          name,
+                                          share_link,
+                                          screenshot));
+  s.register_route("/link_empty",
+                   reactor::http::Method::POST,
+                   [link_id] (HTTPServer::Headers const&,
+                              HTTPServer::Cookies const&,
+                              HTTPServer::Parameters const&,
+                              elle::Buffer const&)
+    {
+      std::stringstream ss;
+      {
+        elle::serialization::json::SerializerOut output(ss, false);
+        output.serialize("created_link_id", link_id);
+      }
+      return ss.str();
+    });
+  s.register_route(elle::sprintf("/link/%s", link_id),
+                   reactor::http::Method::PUT,
+                   [&] (HTTPServer::Headers const&,
+                        HTTPServer::Cookies const&,
+                        HTTPServer::Parameters const&,
+                        elle::Buffer const& body)
+    {
+      elle::IOStream stream(body.istreambuf());
+      elle::serialization::json::SerializerIn input(stream, false);
+      std::string r_name, r_message;
+      FileList r_files;
+      bool r_screenshot;
+      input.serialize("name", r_name);
+      BOOST_CHECK_EQUAL(name, r_name);
+      input.serialize("message", r_message);
+      BOOST_CHECK_EQUAL(message, r_message);
+      input.serialize("files", r_files);
+      BOOST_CHECK_EQUAL(files.size(), r_files.size());
+      input.serialize("screenshot", r_screenshot);
+      BOOST_CHECK_EQUAL(screenshot, r_screenshot);
+      std::stringstream ss;
+      {
+        elle::serialization::json::SerializerOut output(ss, false);
+        output.serialize("credentials", aws_credentails);
+        output.serialize("transaction", transaction_ptr);
+      }
+      return ss.str();
+    });
+  Client c("http", "127.0.0.1", s.port());
+  auto const& received_link_id = c.create_link();
+  BOOST_CHECK_EQUAL(received_link_id, link_id);
+  auto const& response =
+    c.fill_link(files, name, message, screenshot, link_id);
+  auto const& created_link =
+    dynamic_cast<infinit::oracles::LinkTransaction&>(*transaction_ptr);
+  auto const& received_link = response.transaction();
+  BOOST_CHECK_EQUAL(created_link.click_count, received_link.click_count);
+  BOOST_CHECK_EQUAL(created_link.cloud_location, received_link.cloud_location);
+  BOOST_CHECK_EQUAL(created_link.file_list.size(),
+                    received_link.file_list.size());
+  BOOST_CHECK_EQUAL(created_link.hash, received_link.hash);
+  BOOST_CHECK_EQUAL(created_link.message, received_link.message);
+  BOOST_CHECK_EQUAL(created_link.name, received_link.name);
+  BOOST_CHECK_EQUAL(created_link.share_link, received_link.share_link);
+  BOOST_CHECK_EQUAL(created_link.screenshot.get(),
+                    received_link.screenshot.get());
 }
 
 ELLE_TEST_SCHEDULED(trophonius)
@@ -971,6 +1101,192 @@ namespace invitations
       return elle::sprintf("{}");
     });
     infinit::oracles::meta::Client c("http", "127.0.0.1", s.port());
+    c.send_invite(destination, message, ghost_code);
+  }
+}
+
+namespace account_limits
+{
+  typedef infinit::oracles::meta::CreatePeerTransactionResponse CreatePeerTransactionResponse;
+
+  static
+  void
+  _create_peer_transaction_route(
+    HTTPServer& s,
+    CreatePeerTransactionResponse const& transaction)
+  {
+    s.register_route("/transactions",
+                     reactor::http::Method::POST,
+                     [&transaction] (HTTPServer::Headers const&,
+                                     HTTPServer::Cookies const&,
+                                     HTTPServer::Parameters const&,
+                                     elle::Buffer const&)
+      {
+        std::stringstream ss;
+        {
+          elle::serialization::json::SerializerOut output(ss, false);
+          output.serialize("transaction", transaction);
+          output.serialize("created_transaction_id",
+                           transaction.created_transaction_id());
+        }
+        return ss.str();
+      });
+  }
+
+  ELLE_TEST_SCHEDULED(send_to_self_limit)
+  {
+    HTTPServer s;
+    infinit::oracles::meta::User recipient("42", "bob", "bob", "registered");
+    std::list<std::string> files = {"file1", "file2"};
+    std::string transaction_id = "43";
+    CreatePeerTransactionResponse transaction(recipient, transaction_id);
+    _create_peer_transaction_route(s, transaction);
+    s.register_route(elle::sprintf("/transaction/%s", transaction_id),
+                     reactor::http::Method::PUT,
+                     [] (HTTPServer::Headers const&,
+                         HTTPServer::Cookies const&,
+                         HTTPServer::Parameters const&,
+                         elle::Buffer const&) -> std::string
+      {
+        throw HTTPServer::Exception(
+          "",
+          reactor::http::StatusCode::Payment_Required,
+          elle::sprintf(
+          "{"
+          "  \"error\": %s,"
+          "  \"reason\": \"Send to self transaction limit reached.\""
+          "}", static_cast<int32_t>(
+            infinit::oracles::meta::Error::send_to_self_limit_reached)));
+      });
+    Client c("http", "127.0.0.1", s.port());
+    auto const& returned_id = c.create_transaction(recipient.id, files, 2);
+    BOOST_CHECK(returned_id == transaction_id);
+    BOOST_CHECK_THROW(
+      c.fill_transaction(
+        recipient.id,
+        files,
+        files.size(),
+        200,
+        false,
+        elle::UUID::random(),
+        "coucou",
+        transaction_id),
+      infinit::oracles::meta::SendToSelfTransactionLimitReached);
+  }
+
+  ELLE_TEST_SCHEDULED(file_transfer_size_limited)
+  {
+    HTTPServer s;
+    infinit::oracles::meta::User recipient("1", "bob", "bob", "registered");
+    std::list<std::string> files = {"file"};
+    std::string transaction_id = "42";
+    uint64_t file_size = 10 * 1000 * 1000 * 1000;
+    CreatePeerTransactionResponse transaction(recipient, transaction_id);
+    _create_peer_transaction_route(s, transaction);
+    s.register_route(elle::sprintf("/transaction/%s", transaction_id),
+                     reactor::http::Method::PUT,
+                     [file_size] (HTTPServer::Headers const&,
+                                  HTTPServer::Cookies const&,
+                                  HTTPServer::Parameters const&,
+                                  elle::Buffer const& body) -> std::string
+      {
+        elle::IOStream stream(body.istreambuf());
+        elle::serialization::json::SerializerIn input(stream, false);
+        uint64_t received_file_size;
+        input.serialize("total_size", received_file_size);
+        BOOST_CHECK_EQUAL(file_size, received_file_size);
+        throw HTTPServer::Exception(
+          "",
+          reactor::http::StatusCode::Payment_Required,
+          elle::sprintf(
+          "{"
+          "  \"error\": %s,"
+          "  \"reason\": \"File transfer size limited.\""
+          "}", static_cast<int32_t>(
+            infinit::oracles::meta::Error::file_transfer_size_limited)));
+      });
+    Client c("http", "127.0.0.1", s.port());
+    auto const& returned_id = c.create_transaction(recipient.id, files, 2);
+    BOOST_CHECK(returned_id == transaction_id);
+    BOOST_CHECK_THROW(
+      c.fill_transaction(
+        recipient.id,
+        files,
+        files.size(),
+        file_size,
+        false,
+        elle::UUID::random(),
+        "coucou",
+        transaction_id),
+      infinit::oracles::meta::TransferSizeLimitExceeded);
+  }
+
+  ELLE_TEST_SCHEDULED(link_storage_limit_reached)
+  {
+    HTTPServer s;
+    std::string link_id("42");
+    using FileList = infinit::oracles::LinkTransaction::FileList;
+    using FileNameSizePair =
+      infinit::oracles::LinkTransaction::FileNameSizePair;
+    std::string name("bob");
+    std::string message("coucou");
+    bool screenshot = false;
+    FileList files;
+    files.push_back(FileNameSizePair("file", 100));
+    s.register_route("/link_empty",
+                     reactor::http::Method::POST,
+                     [link_id] (HTTPServer::Headers const&,
+                                HTTPServer::Cookies const&,
+                                HTTPServer::Parameters const&,
+                                elle::Buffer const&)
+      {
+        std::stringstream ss;
+        {
+          elle::serialization::json::SerializerOut output(ss, false);
+          output.serialize("created_link_id", link_id);
+        }
+        return ss.str();
+      });
+    s.register_route(elle::sprintf("/link/%s", link_id),
+                     reactor::http::Method::PUT,
+                     [&] (HTTPServer::Headers const&,
+                          HTTPServer::Cookies const&,
+                          HTTPServer::Parameters const&,
+                          elle::Buffer const& body) -> std::string
+      {
+        elle::IOStream stream(body.istreambuf());
+        elle::serialization::json::SerializerIn input(stream, false);
+        std::string r_name, r_message;
+        FileList r_files;
+        bool r_screenshot;
+        input.serialize("name", r_name);
+        BOOST_CHECK_EQUAL(name, r_name);
+        input.serialize("message", r_message);
+        BOOST_CHECK_EQUAL(message, r_message);
+        input.serialize("files", r_files);
+        BOOST_CHECK_EQUAL(files.size(), r_files.size());
+        input.serialize("screenshot", r_screenshot);
+        BOOST_CHECK_EQUAL(screenshot, r_screenshot);
+        std::stringstream ss;
+        {
+          elle::serialization::json::SerializerOut output(ss, false);
+          output.serialize("error", static_cast<int32_t>(
+            infinit::oracles::meta::Error::link_storage_limit_reached));
+          output.serialize("reason",
+                           std::string("Link storage limit reached."));
+          output.serialize("quota", 100);
+          output.serialize("usage", 100);
+        }
+        throw HTTPServer::Exception(
+          "",
+          reactor::http::StatusCode::Payment_Required,
+          ss.str());
+      });
+    Client c("http", "127.0.0.1", s.port());
+    auto const& received_link_id = c.create_link();
+    BOOST_CHECK_EQUAL(received_link_id, link_id);
+    BOOST_CHECK_THROW(c.fill_link(files, name, message, screenshot, link_id),
+                      infinit::oracles::meta::LinkQuotaExceeded);
   }
 }
 
@@ -994,6 +1310,7 @@ ELLE_TEST_SUITE()
   suite.add(BOOST_TEST_CASE(link_credentials));
   suite.add(BOOST_TEST_CASE(change_email));
   suite.add(BOOST_TEST_CASE(transaction_create));
+  suite.add(BOOST_TEST_CASE(link_create));
   {
     boost::unit_test::test_suite* s = BOOST_TEST_SUITE("ghost_code");
     s->add(BOOST_TEST_CASE(ghost_code::merge));
@@ -1023,5 +1340,12 @@ ELLE_TEST_SUITE()
     s->add(BOOST_TEST_CASE(invitations::plain_invite));
     s->add(BOOST_TEST_CASE(invitations::plain_invite_error));
     s->add(BOOST_TEST_CASE(invitations::send_invite));
+  }
+  {
+    boost::unit_test::test_suite* s = BOOST_TEST_SUITE("account_limits");
+    suite.add(s);
+    s->add(BOOST_TEST_CASE(account_limits::send_to_self_limit));
+    s->add(BOOST_TEST_CASE(account_limits::file_transfer_size_limited));
+    s->add(BOOST_TEST_CASE(account_limits::link_storage_limit_reached));
   }
 }
