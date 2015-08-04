@@ -145,7 +145,7 @@ namespace infinit
     }
 
     using elle::serialization::Hierarchy;
-    static Hierarchy<Transaction>::Register<PeerTransaction> _register;
+    static const Hierarchy<Transaction>::Register<PeerTransaction> _registerPeerTransaction;
 
     /*----------.
     | Printable |
