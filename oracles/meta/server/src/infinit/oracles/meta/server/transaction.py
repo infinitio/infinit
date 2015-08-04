@@ -393,13 +393,13 @@ class Mixin:
         recipient_id = self.__register_ghost({
           'email': peer_email,
           'fullname': peer_email, # This is safe as long as we don't allow searching for ghost users.
-          'accounts': [{'type':'email', 'id': peer_email}],
+          'accounts': [sort_dict({'type':'email', 'id': peer_email})],
         }, recipient)
       if is_a_phone_number:
         recipient_id = self.__register_ghost({
           'phone_number': phone_number,
           'fullname': phone_number, # Same comment.
-          'accounts': [{'type':'phone', 'id': phone_number}],
+          'accounts': [sort_dict({'type':'phone', 'id': phone_number})],
         }, recipient)
       if recipient_id is None:
         return self.bad_request({
