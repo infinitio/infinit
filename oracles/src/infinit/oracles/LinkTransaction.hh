@@ -27,6 +27,14 @@ namespace infinit
     | Construction |
     `-------------*/
     public:
+      LinkTransaction(uint32_t click_count,
+                      std::string cloud_location,
+                      FileList file_list,
+                      std::string hash,
+                      std::string message,
+                      std::string name,
+                      std::string share_link,
+                      boost::optional<bool> screenshot);
       LinkTransaction();
       ~LinkTransaction() noexcept(true);
 
