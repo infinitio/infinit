@@ -262,7 +262,8 @@ namespace surface
       friend class Transferer;
       friend class TransferMachine;
       void
-      gap_status(gap_TransactionStatus);
+      gap_status(gap_TransactionStatus status,
+                 boost::optional<gap_Status> failure_reason = boost::none);
 
       gap_TransactionStatus
       gap_status();

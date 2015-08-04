@@ -262,9 +262,10 @@ namespace surface
     }
 
     void
-    TransactionMachine::gap_status(gap_TransactionStatus v)
+    TransactionMachine::gap_status(gap_TransactionStatus v,
+                                   boost::optional<gap_Status> failure_reason)
     {
-      this->_transaction.status(v);
+      this->_transaction.status(v, failure_reason);
     }
 
     gap_TransactionStatus
@@ -527,11 +528,6 @@ namespace surface
           this->data()->status = s;
           this->transaction()._snapshot_save();
           this->_metrics_ended(s);
-        }
-        catch (infinit::oracles::meta::Exception const& e)
-        {
-          ELLE_ERR("%s: unable to finalize the transaction %s: %s",
-                   *this, this->transaction_id(), elle::exception_string());
         }
         catch (elle::Error const&)
         {
