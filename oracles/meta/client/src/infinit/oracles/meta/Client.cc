@@ -29,6 +29,7 @@
 #include <infinit/oracles/meta/Client.hh>
 #include <infinit/oracles/meta/Error.hh>
 #include <infinit/oracles/meta/macro.hh>
+#include <infinit/oracles/meta/error/AccountLimitationError.hh>
 
 #include <surface/gap/Error.hh>
 
@@ -113,6 +114,54 @@ namespace infinit
       {
         static const std::string header = "X-Fist-Meta-Version";
         return request.headers().find(header) != request.headers().end();
+      }
+
+      static
+      void
+      _check_account_limit(std::string const& url,
+                           reactor::http::Request& request)
+      {
+        ELLE_DEBUG_SCOPE("check if account has been limited (%s)", url);
+        if (request.status() == reactor::http::StatusCode::Payment_Required)
+        {
+          try
+          {
+            elle::serialization::json::SerializerIn input(request, false);
+            int32_t error_code;
+            input.serialize("error", error_code);
+            auto const& meta_error = Error(error_code);
+            if (meta_error == Error::link_storage_limit_reached)
+            {
+              int64_t quota;
+              int64_t usage;
+              input.serialize("quota", quota);
+              input.serialize("usage", usage);
+              throw LinkQuotaExceeded(meta_error, quota, usage);
+            }
+            else if (meta_error == Error::send_to_self_limit_reached)
+            {
+              throw SendToSelfTransactionLimitReached(meta_error);
+            }
+            else if (meta_error == Error::file_transfer_size_limited)
+            {
+              throw TransferSizeLimitExceeded(meta_error);
+            }
+            else
+            {
+              std::string reason;
+              input.serialize("reason", reason);
+              throw AccountLimitationError(meta_error, reason);
+            }
+          }
+          catch (elle::serialization::Error const& e)
+          {
+            ELLE_ERR("JSON parse error requesting %s: %s", url, e);
+            if (e.inner_exception())
+              ELLE_ERR("Inner exception: %s", *e.inner_exception());
+            ELLE_ERR("body was: %s", request.response().string());
+            throw;
+          }
+        }
       }
 
       /*-----.
@@ -228,33 +277,6 @@ namespace infinit
 
       using elle::sprintf;
       using reactor::http::Method;
-
-      /*----------.
-      | Exception |
-      `----------*/
-
-      Exception::Exception(Error const& error, std::string const& message)
-        : elle::Exception(message)
-        , err{error}
-      {}
-
-      bool
-      Exception::operator ==(Exception const& e) const
-      {
-        return (this->err == e.err);
-      }
-
-      bool
-      Exception::operator ==(Error const& error) const
-      {
-        return (this->err == error);
-      }
-
-      bool
-      Exception::operator !=(Error const& error) const
-      {
-        return !(*this == error);
-      }
 
       namespace json = elle::format::json;
 
@@ -1062,6 +1084,15 @@ namespace infinit
       `------------------*/
 
       CreatePeerTransactionResponse::CreatePeerTransactionResponse(
+        User const& recipient,
+        std::string const& id,
+        bool recipient_is_ghost)
+          : _recipient(recipient)
+          , _created_transaction_id(id)
+          , _recipient_is_ghost(recipient_is_ghost)
+      {}
+
+      CreatePeerTransactionResponse::CreatePeerTransactionResponse(
         elle::serialization::SerializerIn& s)
       {
         this->serialize(s);
@@ -1092,63 +1123,6 @@ namespace infinit
         s.serialize("paused", this->_paused);
       }
 
-      CreatePeerTransactionResponse
-      Client::create_transaction(
-        std::string const& recipient_identifier,
-        std::list<std::string> const& files,
-        uint64_t count,
-        uint64_t size,
-        bool is_dir,
-        elle::UUID const& device_id,
-        std::string const& message,
-        boost::optional<std::string const&> transaction_id,
-        boost::optional<elle::UUID> recipient_device_id
-        ) const
-      {
-        ELLE_TRACE_SCOPE(
-          "%s: create peer transaction to %s%s",
-          *this,
-          recipient_identifier,
-          recipient_device_id
-          ? elle::sprintf(" on device %s", recipient_device_id.get()) : "");
-        std::string const url = transaction_id ?
-          "/transaction/" + *transaction_id :
-          "/transaction/create";
-        auto method = transaction_id ? Method::PUT : Method::POST;
-        auto request = this->_request(
-          url,
-          method,
-          [&] (reactor::http::Request& r)
-          {
-            elle::serialization::json::SerializerOut query(r, false);
-            query.serialize("recipient_identifier",
-                            const_cast<std::string&>(recipient_identifier));
-            query.serialize("files",
-                            const_cast<std::list<std::string>&>(files));
-            int64_t count_integral = static_cast<int64_t>(count);
-            query.serialize("files_count", count_integral);
-            int64_t size_integral = static_cast<int64_t>(size);
-            query.serialize("total_size", size_integral);
-            query.serialize("is_directory", is_dir);
-            query.serialize("device_id", const_cast<elle::UUID&>(device_id));
-            query.serialize("message", const_cast<std::string&>(message));
-            query.serialize("recipient_device_id", recipient_device_id);
-          });
-        SerializerIn input(url, request);
-        return CreatePeerTransactionResponse(input);
-      }
-
-      std::string
-      Client::create_transaction() const
-      {
-        ELLE_TRACE("%s: create empty transaction", *this);
-        std::string const url = "/transaction/create_empty";
-        auto request = this->_request( url, Method::POST);
-        SerializerIn input(url, request);
-        std::string created_transaction_id;
-        input.serialize("created_transaction_id", created_transaction_id);
-        return created_transaction_id;
-      }
       std::string
       Client::create_transaction(std::string const& recipient_identifier,
                                  std::list<std::string> const& files,
@@ -1179,6 +1153,51 @@ namespace infinit
         std::string created_transaction_id;
         input.serialize("created_transaction_id", created_transaction_id);
         return created_transaction_id;
+      }
+
+      CreatePeerTransactionResponse
+      Client::fill_transaction(
+        std::string const& recipient_identifier,
+        std::list<std::string> const& files,
+        uint64_t count,
+        uint64_t size,
+        bool is_dir,
+        elle::UUID const& device_id,
+        std::string const& message,
+        std::string const& transaction_id,
+        boost::optional<elle::UUID> recipient_device_id
+        ) const
+      {
+        ELLE_TRACE_SCOPE(
+          "%s: create peer transaction to %s%s",
+          *this,
+          recipient_identifier,
+          recipient_device_id
+          ? elle::sprintf(" on device %s", recipient_device_id.get()) : "");
+        std::string url = elle::sprintf("/transaction/%s",transaction_id);
+        auto request = this->_request(
+          url,
+          Method::PUT,
+          [&] (reactor::http::Request& r)
+          {
+            elle::serialization::json::SerializerOut query(r, false);
+            query.serialize("recipient_identifier",
+                            const_cast<std::string&>(recipient_identifier));
+            query.serialize("files",
+                            const_cast<std::list<std::string>&>(files));
+            int64_t count_integral = static_cast<int64_t>(count);
+            query.serialize("files_count", count_integral);
+            int64_t size_integral = static_cast<int64_t>(size);
+            query.serialize("total_size", size_integral);
+            query.serialize("is_directory", is_dir);
+            query.serialize("device_id", const_cast<elle::UUID&>(device_id));
+            query.serialize("message", const_cast<std::string&>(message));
+            query.serialize("recipient_device_id", recipient_device_id);
+          }, false);
+        _check_account_limit(url, request);
+        this->_handle_errors(request);
+        SerializerIn input(url, request);
+        return CreatePeerTransactionResponse(input);
       }
 
       UpdatePeerTransactionResponse
@@ -1343,24 +1362,6 @@ namespace infinit
         s.serialize("transaction", this->_transaction);
       }
 
-      static
-      void
-      _check_for_quota(std::string const& url, reactor::http::Request& request)
-      {
-        ELLE_DEBUG_SCOPE("check if quota has been exceeded (%s)", url);
-        if (request.status() == reactor::http::StatusCode::Payment_Required)
-        {
-          elle::serialization::json::SerializerIn input(request);
-          std::string reason;
-          int64_t quota;
-          int64_t usage;
-          input.serialize("reason", reason);
-          input.serialize("quota", quota);
-          input.serialize("usage", usage);
-          throw QuotaExceeded(reason, quota, usage);
-        }
-      }
-
       std::string
       Client::create_link() const
       {
@@ -1373,7 +1374,7 @@ namespace infinit
             // to talk to it in json... Don't ask.
             request << "{}";
           }, false);
-        _check_for_quota(url, request);
+        _check_account_limit(url, request);
         this->_handle_errors(request);
         SerializerIn input(url, request);
         std::string created_link_id;
@@ -1382,14 +1383,14 @@ namespace infinit
       }
 
       CreateLinkTransactionResponse
-      Client::create_link(LinkTransaction::FileList const& files,
-                          std::string const& name,
-                          std::string const& message,
-                          bool screenshot,
-                          boost::optional<std::string const&> link_id) const
+      Client::fill_link(LinkTransaction::FileList const& files,
+                        std::string const& name,
+                        std::string const& message,
+                        bool screenshot,
+                        std::string const& link_id) const
       {
-        auto url = link_id ? "/link/" + *link_id : "/link" ;
-        auto method = link_id ? Method::PUT : Method::POST;
+        auto url = elle::sprintf("/link/%s", link_id);
+        auto method = Method::PUT;
         auto request = this->_request(
           url, method,
           [&] (reactor::http::Request& request)
@@ -1404,7 +1405,7 @@ namespace infinit
             query.serialize("screenshot", screenshot);
           },
           false);
-        _check_for_quota(url, request);
+        _check_account_limit(url, request);
         this->_handle_errors(request);
         SerializerIn input(url, request);
         return CreateLinkTransactionResponse(input);
@@ -1857,8 +1858,8 @@ namespace infinit
           ELLE_ERR("%s", elle::Backtrace::current());
           throw elle::http::Exception(
             static_cast<elle::http::ResponseCode>(response),
-            elle::sprintf("error %s while posting on %s",
-                          response, request.url()));
+            elle::sprintf("error %s performing %s on %s",
+                          response, request.method(), request.url()));
         }
       }
 
