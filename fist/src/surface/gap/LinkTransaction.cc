@@ -4,30 +4,33 @@ namespace surface
 {
   namespace gap
   {
-    LinkTransaction::LinkTransaction(uint32_t id_,
-                                     std::string name_,
-                                     double mtime_,
-                                     boost::optional<std::string> hash_,
-                                     boost::optional<std::string> link_,
-                                     uint32_t click_count_,
-                                     uint64_t size_,
-                                     gap_TransactionStatus status_,
-                                     elle::UUID const& sender_device_id_,
-                                     std::string const& message_,
-                                     std::string const& meta_id_,
-                                     bool screenshot_)
-      : id(id_)
-      , name(std::move(name_))
-      , mtime(mtime_)
-      , hash()
-      , link()
-      , click_count(click_count_)
-      , size(size_)
-      , status(status_)
-      , sender_device_id(sender_device_id_.repr())
-      , message(message_)
-      , meta_id(meta_id_)
-      , screenshot(screenshot_)
+    LinkTransaction::LinkTransaction(
+      uint32_t id_,
+      std::string name_,
+      double mtime_,
+      boost::optional<std::string> hash_,
+      boost::optional<std::string> link_,
+      uint32_t click_count_,
+      uint64_t size_,
+      gap_TransactionStatus status_,
+      elle::UUID const& sender_device_id_,
+      std::string const& message_,
+      std::string const& meta_id_,
+      bool screenshot_,
+      boost::optional<gap_Status> failure_reason_)
+        : id(id_)
+        , name(std::move(name_))
+        , mtime(mtime_)
+        , hash()
+        , link()
+        , click_count(click_count_)
+        , size(size_)
+        , status(status_)
+        , sender_device_id(sender_device_id_.repr())
+        , message(message_)
+        , meta_id(meta_id_)
+        , screenshot(screenshot_)
+        , failure_reason(failure_reason_)
     {
       // FIXME: for now the server always return the share link, as an empty
       // string if not ready. Remove when we remove the old serialization,
