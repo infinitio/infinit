@@ -13,6 +13,7 @@
 #include <frete/Frete.hh>
 #include <frete/TransferSnapshot.hh>
 #include <infinit/metrics/Reporter.hh>
+#include <infinit/oracles/meta/error/AccountLimitationError.hh>
 #include <infinit/oracles/Transaction.hh>
 #include <papier/Identity.hh>
 #include <surface/gap/FilesystemTransferBufferer.hh>
@@ -121,6 +122,41 @@ namespace surface
         this->_wait_for_accept_state,
         reactor::Waitables{&!this->transaction().paused()});
       this->transaction_status_update(data->status);
+
+      typedef infinit::oracles::meta::SendToSelfTransactionLimitReached
+        SendToSelfTransactionLimitReached;
+      typedef infinit::oracles::meta::TransferSizeLimitExceeded
+        TransferSizeLimitExceeded;
+
+      auto limitation_hit_e = [this] (std::exception_ptr e)
+      {
+        try
+        {
+          std::rethrow_exception(e);
+        }
+        catch (SendToSelfTransactionLimitReached const& e)
+        {
+          ELLE_WARN("send to self limit hit: %s", e);
+          gap_Status meta_error = static_cast<gap_Status>(e.meta_error());
+          this->gap_status(gap_transaction_payment_required, meta_error);
+          return;
+        }
+        catch (TransferSizeLimitExceeded const& e)
+        {
+          ELLE_WARN("transfer size limit hit: %s", e);
+          gap_Status meta_error = static_cast<gap_Status>(e.meta_error());
+          this->gap_status(gap_transaction_payment_required, meta_error);
+          return;
+        }
+        elle::unreachable();
+      };
+
+      this->_machine.transition_add_catch_specific<SendToSelfTransactionLimitReached>(
+        this->_initialize_transaction_state, this->_end_state, true).action_exception(
+          limitation_hit_e);
+      this->_machine.transition_add_catch_specific<TransferSizeLimitExceeded>(
+        this->_initialize_transaction_state, this->_end_state, true).action_exception(
+          limitation_hit_e);
     }
 
     /// Construct to send files.
@@ -442,7 +478,7 @@ namespace surface
         if (!this->data()->recipient_device_id.is_nil())
           recipient_device_id = this->data()->recipient_device_id;
         auto transaction_response =
-          this->state().meta().create_transaction(
+          this->state().meta().fill_transaction(
             this->data()->recipient_id,
             this->data()->files,
             this->data()->files.size(),
