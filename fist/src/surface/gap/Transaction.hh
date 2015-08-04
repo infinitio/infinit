@@ -231,7 +231,10 @@ namespace surface
     | Attributes |
     `------------*/
     public:
-      ELLE_ATTRIBUTE_Rw(gap_TransactionStatus, status);
+      ELLE_ATTRIBUTE_R(gap_TransactionStatus, status);
+      void
+      status(gap_TransactionStatus status,
+             boost::optional<gap_Status> failure_reason = boost::none);
       ELLE_ATTRIBUTE_RX(boost::signals2::signal<void (gap_TransactionStatus)>,
                         status_changed);
       ELLE_ATTRIBUTE_R(uint32_t, id);

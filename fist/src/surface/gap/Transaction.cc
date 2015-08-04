@@ -628,7 +628,8 @@ namespace surface
     }
 
     void
-    Transaction::status(gap_TransactionStatus status)
+    Transaction::status(gap_TransactionStatus status,
+                        boost::optional<gap_Status> failure_reason)
     {
       if (status != this->_status)
       {
@@ -640,14 +641,15 @@ namespace surface
         {
           this->state().enqueue(
             this->state().transaction_to_gap_transaction(
-              this->id(), *peer_data, this->status()));
+              this->id(), *peer_data, this->status(), failure_reason));
         }
         else if (auto link_data =
           std::dynamic_pointer_cast<infinit::oracles::LinkTransaction>(
             this->_data))
         {
           this->state().enqueue(
-            this->state().link_to_gap_link(this->id(), *link_data, status));
+            this->state().link_to_gap_link(
+              this->id(), *link_data, status, failure_reason));
         }
         this->_status_changed(status);
       }
