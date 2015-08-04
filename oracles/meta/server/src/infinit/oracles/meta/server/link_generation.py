@@ -313,6 +313,7 @@ class Mixin:
       'files': 'file_list',
     }
     link['share_link'] = self._make_share_link(link['hash'])
+    link['has_password'] = link.get('password') is not None
     link = dict(
       (key, link.get(key in mapping and mapping[key] or key)) for key in (
         'id',
@@ -320,6 +321,7 @@ class Mixin:
         'ctime',
         'expiry_time',    # Needed until 0.9.9.
         'files',
+        'has_password',
         'hash',
         'message',
         'mtime',
@@ -539,7 +541,8 @@ class Mixin:
       ])
     if link.get('link') is not None:
       ret_link['link'] = link['link']
-    ret_link['password'] = link.get('password') is not None
+    ret_link['password'] = link.get('password') is not None # deprecated in favour of 'has_password'
+    ret_link['has_password'] = link.get('password') is not None
     return ret_link
 
   @api('/links/<id_or_hash>')
@@ -566,7 +569,7 @@ class Mixin:
         custom_domain = custom_domain,
       )
 
-  # Deprecated in favor of /link/<hash>
+  # Deprecated in favor of /links/<hash>
   @api('/link/<hash>')
   def link_by_hash(self, hash,
                    password = None,
