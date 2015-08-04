@@ -1,24 +1,38 @@
 #!/usr/bin/env python3
 
 import datetime
+from pprint import pprint
 
 from utils import *
 from infinit.oracles.meta import error
 
+def get_quota(user):
+  return user.me['quota']['send-to-self']['quota']
+
+def get_used(user):
+  return user.me['quota']['send-to-self']['used']
+
 def send_to_self(user, failure_expected = False):
   try:
-    alice.sendfile(recipient = user.id)
+    # Always make sure synchronize returns the same quota.
+    sync = user.get('user/synchronize')
+    assertEq(sync['account']['quota']['send-to-self']['used'],
+             get_used(user))
+    _, res = user.sendfile(recipient = user.id, initialize = True)
+    del user.notifications[:]
+    user.transaction_update(res['created_transaction_id'],
+                            transaction_status.FINISHED)
+    notifications = user.notifications
+    pprint(notifications)
+    assertEq(len(notifications), 2) # Transaction + quota.
+    notifications.sort()
+    assertEq(notifications[1]['account']['quota']['send-to-self']['used'],
+             get_used(user))
     assert not failure_expected
     return
   except HTTPException as e:
     assertEq(e.status, 402)
     assertEq(e.content['error'], error.SEND_TO_SELF_LIMIT_REACHED[0])
-
-def get_limit(user):
-  return user.me['quota']['send-to-self']['limit']
-
-def get_used(user):
-  return user.me['quota']['send-to-self']['used']
 
 def previous_month(year, month):
   month = (month - 2) % 12 + 1
@@ -35,10 +49,15 @@ assertEq(previous_month(2015, 2),  datetime.datetime(2015, 1, 1))
 assertEq(previous_month(2015, 1),  datetime.datetime(2014, 12, 1))
 
 # Referral via file invitation.
-with Meta() as meta:
+with Meta() as meta, Trophonius(meta) as trophonius:
   alice = User(meta, "alice@infinit.io")
-  alice.login()
-  limit = get_limit(alice)
+  alice.login(trophonius = trophonius)
+  limit = get_quota(alice)
+  # Make sure unfinished transaction doesn't count.
+  for _ in range(0, limit):
+    alice.sendfile(recipient = alice.id, initialize = True)
+  assertEq(get_used(alice), 0)
+  # Perform n send to self.
   for _ in range(0, limit):
     send_to_self(alice, False)
   used = get_used(alice)
@@ -64,7 +83,7 @@ with Meta() as meta:
   def invite(inviter, invitee):
     inviter.sendfile(recipient = invitee, initialize = True)
     # Nothing since the user registered.
-    assertEq(limit, get_limit(inviter))
+    assertEq(limit, get_quota(inviter))
     send_to_self(inviter, failure_expected = True)
     invitee = User(meta, invitee)
     invitee.login()
@@ -72,50 +91,50 @@ with Meta() as meta:
 
   invite(alice, "bob@infinit.io")
   # At least one extra send to self..
-  assertGT(get_limit(alice), limit)
-  limit = get_limit(alice)
+  assertGT(get_quota(alice), limit)
+  limit = get_quota(alice)
   send_to_self(alice, False)
   # Rexhaust remaining send to self.
   for _ in range(get_used(alice), limit):
     send_to_self(alice, failure_expected = False)
   assertEq(get_used(alice), limit)
-  assertEq(limit, get_limit(alice))
+  assertEq(limit, get_quota(alice))
   send_to_self(alice, failure_expected = True)
 
   invite(alice, "george@infinit.io")
-  assertEq(get_limit(alice), None)
+  assertEq(get_quota(alice), None)
   # Lets try to send a lot...
-  for _ in range(0, 100):
+  for _ in range(0, 10):
     send_to_self(alice, failure_expected = False)
 
 # Referral via invitation (no file).
 with Meta() as meta:
   alice = User(meta, "alice@infinit.io")
   alice.login()
-  limit = get_limit(alice)
+  limit = get_quota(alice)
   def invite(inviter, invitee):
     inviter.post('user/invite', {'identifier': invitee})
-    assertEq(get_limit(inviter), limit)
+    assertEq(get_quota(inviter), limit)
     invitee = User(meta, invitee)
-    assertEq(get_limit(inviter), limit)
+    assertEq(get_quota(inviter), limit)
     invitee.login()
   invite(alice, 'bob@infinit.io')
-  assertGT(get_limit(alice), limit)
-  limit = get_limit(alice)
+  assertGT(get_quota(alice), limit)
+  limit = get_quota(alice)
   invite(alice, 'eve@infinit.io')
-  assertEq(get_limit(alice), None)
+  assertEq(get_quota(alice), None)
 
 # Referral code.
 with Meta() as meta:
   alice = User(meta, "alice@infinit.io")
   alice.login()
-  limit = get_limit(alice)
+  limit = get_quota(alice)
   def invite(inviter, invitee):
     invitee = User(meta, invitee, referral_code = inviter.referral_code)
-    assertEq(get_limit(inviter), limit)
+    assertEq(get_quota(inviter), limit)
     invitee.login()
   invite(alice, 'bob@infinit.io')
-  assertGT(get_limit(alice), limit)
-  limit = get_limit(alice)
+  assertGT(get_quota(alice), limit)
+  limit = get_quota(alice)
   invite(alice, 'eve@infinit.io')
-  assertEq(get_limit(alice), None)
+  assertEq(get_quota(alice), None)

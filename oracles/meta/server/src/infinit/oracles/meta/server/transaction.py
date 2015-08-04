@@ -1117,6 +1117,9 @@ class Mixin:
           recipient_ids = {transaction['sender_id'], transaction['recipient_id']},
           message = transaction,
         )
+        if transaction['sender_id'] == transaction['recipient_id'] and \
+           status == transaction_status.FINISHED:
+          self._quota_updated_notification(sender, version = (0, 9, 40)) # XXX 41.
       return diff
 
   @api('/transaction/search')

@@ -163,14 +163,14 @@ class Trophonius(Client):
             # Ignore configuration notification.
             if d['notification']['notification_type'] == 14:
               # OS X requires a larger backlog for the tests to function.
-              self.socket.listen(5)
+              self.socket.listen(8)
               self.poll()
               continue
             d['notification'].pop('timestamp')
             for user in self.trophonius.users_on_device[UUID(d['device_id'])]:
               user.notifications.append(Notification(d['notification']))
             # OS X requires a larger backlog for the tests to function.
-            self.socket.listen(5)
+            self.socket.listen(8)
           except BaseException as e:
             continue
       import threading
