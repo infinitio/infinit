@@ -127,11 +127,10 @@ namespace surface
             meta.get_cloud_buffer_token(this->transaction_id(), !first_time);
           break;
         }
-        catch(infinit::oracles::meta::Exception const&)
+        catch (elle::http::Exception const&)
         {
-          ELLE_LOG("%s: get_cloud_buffer_token failed with %s, retrying...",
-                   *this, elle::exception_string());
-          // if meta looses connectivity to provider let's not flood it
+          ELLE_LOG("%s: get_cloud_buffer_token failed with %s, "
+                   "retrying in %s...", *this, elle::exception_string(), delay);
           reactor::sleep(boost::posix_time::seconds(delay));
           delay = std::min(delay * 2, 60 * 10);
         }
