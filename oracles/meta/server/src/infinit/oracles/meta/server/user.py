@@ -3376,6 +3376,20 @@ class Mixin:
     )
     return update
 
+  def __add_referrer_update_query(self, referrer, kind):
+    # I'd be glad to use $addToSet but the 'date' field  make it
+    # impossible (because we can't specify the criteria of the set
+    # uniqueness).
+    return {
+      '$push': {
+        'referred_by': sort_dict({
+          'id': referrer['_id'],
+          'type': kind,
+          'date': self.now,
+        })
+      }
+    }
+
   @api('/user/invite', method = 'POST')
   @require_logged_in
   def user_invite(self, identifier):
@@ -3389,15 +3403,7 @@ class Mixin:
       self.forbidden({
           'reason': 'User was deleted.'
       })
-    query = {
-      '$addToSet': {
-        'referred_by': sort_dict({
-          'id': user['_id'],
-          'type': 'plain_invite',
-          'date': self.now,
-        })
-      }
-    }
+    query = self.__add_referrer_update_query(user, 'plain_invite')
     ghost_code = recipient.get('ghost_code', None)
     shorten_ghost_profile_url = recipient.get('shorten_ghost_profile_url', None)
     if not ghost_code:
@@ -3597,19 +3603,15 @@ class Mixin:
       inviter = self.database.users.find_one({'_id': inviter_id},
                                              fields = ['_id'])
       if inviter:
+        update = {
+          '$set': {
+            'used_referral_link': referral_code
+          }
+        }
+        update.update(self.__add_referrer_update_query(inviter, 'public_link'))
         self.database.users.update(
           {'_id': user['_id']},
-          {
-            '$set': {
-              'used_referral_link': referral_code},
-            '$addToSet': {
-              'referred_by':  sort_dict({
-                'id': inviter['_id'],
-                'type': 'plain_invite',
-                'date': self.now,
-              })
-            }
-          }
+          update,
         )
         # XXX: This is buggy because referred_by will be proceed twice.
         # But posting /user/referral-code seems deprecated...

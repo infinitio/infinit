@@ -608,14 +608,7 @@ class Mixin:
       # Add to referral
       self.database.users.update(
         {'_id': recipient['_id']},
-        {'$addToSet': {
-          'referred_by': sort_dict({
-            'id': sender['_id'],
-            'type': 'ghost_invite',
-            'date': self.now,
-          })
-        }
-       }
+        self.__add_referrer_update_query(sender, 'ghost_invite'),
       )
     elle.log.debug("transaction recipient has id %s" % recipient['_id'])
     _id = sender['_id']
