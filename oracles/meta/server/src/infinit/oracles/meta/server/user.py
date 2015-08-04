@@ -84,10 +84,12 @@ class Mixin:
     res = self.database.transactions.find({
       'sender_id': user_id,
       'recipient_id': user_id,
+      'status': transaction_status.FINISHED,
       'creation_time': {
-        "$gte": datetime.datetime(datetime.datetime.today().year,
+        '$gte': datetime.datetime(datetime.datetime.today().year,
                                   datetime.datetime.today().month,
-                                  1)}
+                                  1)
+      }
     })
     return res.count()
 
