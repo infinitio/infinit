@@ -238,11 +238,11 @@ namespace infinit
     }
 
     void
-    CompositeReporter::_quota_exceeded(uint64_t size,
-                                       uint64_t current,
-                                       uint64_t total)
+    CompositeReporter::_link_quota_exceeded(uint64_t size,
+                                            uint64_t current,
+                                            uint64_t total)
     {
-      this->_dispatch(std::bind(&Reporter::_quota_exceeded,
+      this->_dispatch(std::bind(&Reporter::_link_quota_exceeded,
                                 std::placeholders::_1, size, current, total));
     }
 

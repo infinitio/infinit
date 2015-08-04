@@ -258,11 +258,11 @@ namespace infinit
     }
 
     void
-    Reporter::quota_exceeded(uint64_t size,
-                             uint64_t current,
-                             uint64_t total)
+    Reporter::link_quota_exceeded(uint64_t size,
+                                  uint64_t current,
+                                  uint64_t total)
     {
-      this->_push(std::bind(&Reporter::_quota_exceeded,
+      this->_push(std::bind(&Reporter::_link_quota_exceeded,
                             this, size, current, total));
     }
 
@@ -541,7 +541,9 @@ namespace infinit
     {}
 
     void
-    Reporter::_quota_exceeded(uint64_t size, uint64_t current, uint64_t quota)
+    Reporter::_link_quota_exceeded(uint64_t size,
+                                   uint64_t current,
+                                   uint64_t quota)
     {}
 
     /*----------------------------.

@@ -105,7 +105,9 @@ namespace infinit
 
       virtual
       void
-      _quota_exceeded(uint64_t size, uint64_t current, uint64_t total) override;
+      _link_quota_exceeded(uint64_t size,
+                           uint64_t current,
+                           uint64_t total) override;
     /// User metrics.
     private:
       void

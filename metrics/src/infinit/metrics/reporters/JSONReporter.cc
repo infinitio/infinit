@@ -207,9 +207,9 @@ namespace infinit
      }
 
      void
-     JSONReporter::_quota_exceeded(uint64_t size,
-                                   uint64_t used,
-                                   uint64_t quota)
+     JSONReporter::_link_quota_exceeded(uint64_t size,
+                                        uint64_t used,
+                                        uint64_t quota)
      {
        elle::json::Object data;
        data[this->_key_str(JSONKey::event)] = std::string("quota_exceeded");

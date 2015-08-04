@@ -159,7 +159,7 @@ namespace infinit
                 std::string const& message);
 
       void
-      quota_exceeded(uint64_t size, uint64_t current, uint64_t quota);
+      link_quota_exceeded(uint64_t size, uint64_t current, uint64_t quota);
 
     /// Transaction metrics implementation.
     protected:
@@ -239,7 +239,7 @@ namespace infinit
 
       virtual
       void
-      _quota_exceeded(uint64_t size, uint64_t current, uint64_t quota);
+      _link_quota_exceeded(uint64_t size, uint64_t current, uint64_t quota);
 
     /// User metrics.
     public:
