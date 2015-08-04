@@ -2869,13 +2869,73 @@ class Mixin:
       recipient_ids = {user['_id']},
       version = (0, 9, 37))
 
-  def __referred_by(self, referrer, fields = ['referred_by', 'register_status']):
+  def __referred_by(self,
+                    referrer,
+                    fields = ['referred_by', 'register_status']):
     return self.database.users.find(
       {
         'referred_by.id': referrer
       },
       fields = fields,
     )
+
+  # XXX: referrees (2 r) is an homemade word, representing 'people who have been
+  # referred'.
+  @api('/user/referrees')
+  @require_logged_in
+  def referred_users(self):
+    # Plain invites.
+    invites = self.database.invitations.find(
+      {'sender': self.user['_id']})
+    invitees = {}
+    for invitation in invites:
+      invitees[str(invitation['recipient'])] = invitation
+    fields = {
+      'referred_by.date': 1,
+      'referred_by.type': 1,
+      'register_status': 1,
+      'accounts.id': 1,
+      'email': 1,
+    }
+    res = self.database.users.aggregate([
+      {'$match': {'referred_by.id': self.user['_id']}},
+      {
+        '$project': {
+          'id': '$_id',
+          '_id': 0,
+          'referred_by.date': 1,
+          'referred_by.type': 1,
+          'register_status': 1,
+          'accounts.id': 1,
+          'email': 1,
+        }
+      },
+    ])['result']
+
+    def _recipient(entry):
+      if entry['register_status'] != 'ok':
+        return entry['accounts'][0]['id']
+      else:
+        return entry['email']
+
+    def _status(invitees, entry):
+      if entry['register_status'] == 'ok':
+        return 'completed'
+      elif invitees.get(str(entry['id'])) is None:
+        return 'pending'
+      else:
+        return invitees.get(str(entry['id']))['status']
+
+    res = {
+      'referrees': [{
+        'invitations': [p for p in entry['referred_by']],
+        'type': entry['referred_by'][0]['type'],
+        'register_status': entry['register_status'],
+        'recipient': _recipient(entry),
+        'status': _status(invitees, entry),
+      } for entry in res]
+    }
+    return res
 
   def process_referrals(self, new_user, referrals,
                         inviter_bonus = 1e9,
@@ -2889,7 +2949,11 @@ class Mixin:
         @param new_user User struct for the invitee
         @param referrals List of user ids who invited new_user
     """
-    elle.log.trace('process referral for %s (referred by %s)' % (new_user, referrals))
+    # Because someone can be referred more than one (e.g. sending multiple
+    # invitations), we have to force uniqueness manually.
+    # See __add_referrer_query for more details.
+    referrals = set(referrals)
+    elle.log.trace('process referral for %s (referred by %s)' % (new_user['accounts'], referrals))
     # In mongo, summing an integer and a double results in a double.
     # So, make sure we don't change the data type in the database.
     inviter_bonus = int(inviter_bonus)

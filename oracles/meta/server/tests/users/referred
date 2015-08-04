@@ -1,0 +1,139 @@
+#!/usr/bin/env python3
+
+import datetime
+
+from utils import *
+from infinit.oracles.meta import error
+
+# Referral via file invitation.
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+
+  invitees = [
+    'castor@infinit.io',
+    'polux@infinit.io',
+    'luc@infinit.io',
+    'poil@infinit.io',
+    'bob@infinit.io',
+    'serge@infinit.io',
+  ]
+
+  alice.post('user/invite', {'identifier': invitees[0]})
+  assertEq(len(alice.referrees), 1)
+  # Make sure inviting someone multiple times still results on a unique
+  # invitation
+  alice.post('user/invite', {'identifier': invitees[0]})
+  assertEq(len(alice.referrees), 1)
+  assertEq(len(alice.referrees[0]['invitations']), 2)
+  # Make sure, even with an old invitation.
+  new_date = datetime.datetime(2015, 1, 1)
+  updated = meta.database.users.find_and_modify(
+    {
+      'accounts.id': invitees[0],
+    },
+    {
+      '$set': {
+        'referred_by.$.date': new_date,
+      }
+    },
+    fields = ['referred_by'],
+    new = True,
+  )
+  assert updated is not None
+  assertEq(updated['referred_by'][0]['date'], new_date)
+  alice.post('user/invite', {'identifier': invitees[0]})
+  assertEq(len(alice.referrees), 1)
+  assertEq(len(alice.referrees[0]['invitations']), 3)
+  assertEq(alice.referrees[0]['status'], 'pending')
+
+  # Open the email.
+  url = meta.emailer.emails[0].variables['sender']['avatar']
+  alice.get(url)
+  assertEq(len(alice.referrees), 1)
+  assertEq(alice.referrees[0]['status'], 'opened')
+
+  alice.post('user/invite', {'identifier': invitees[1]})
+  assertEq(len(alice.referrees), 2)
+
+  # Register user (after a plain invite).
+  luc = invitees[2]
+  alice.post('user/invite', {'identifier': luc})
+  assertEq(len(alice.referrees), 3)
+  luc = User(meta, luc)
+  assertEq(len(alice.referrees), 3)
+
+  # Ghost invite.
+  alice.sendfile(recipient = invitees[3], initialize = True)
+  assertEq(len(alice.referrees), 4)
+
+  # Ghost invite someone already referrees.
+  # XXX: Ghost invite is shadowed by the previous plain invite.
+  alice.sendfile(recipient = invitees[0], initialize = True)
+  assertEq(len(alice.referrees), 4)
+
+  # Invite a ghost.
+  # XXX: Invite is also shadowed by the previous ghost invite.
+  alice.post('user/invite', {'identifier': invitees[3]})
+  assertEq(len(alice.referrees), 4)
+
+  # Register user (after a ghost invite).
+  bob = invitees[4]
+  alice.sendfile(recipient = bob, initialize = True)
+  assertEq(len(alice.referrees), 5)
+  bob = User(meta, bob)
+  assertEq(len(alice.referrees), 5)
+
+  # Someone registered via your public url.
+  eve = invitees[5]
+  eve = User(meta, eve, referral_code = alice.referral_code)
+  assertEq(len(alice.referrees), 6)
+
+  # Check if all the invites are listed.
+  assertEq(set([entry['recipient'] for entry in alice.referrees]),
+           set(invitees))
+
+  jean_luc = User(meta, 'jean.luc@infinit.io')
+  jean_luc.login()
+  # The non converted.
+  for invitee in invitees[:2]:
+    jean_luc.post('user/invite', {'identifier': invitee})
+  # Check if they are also referred by jean_luc..
+  assertEq(len(jean_luc.referrees), 2)
+  assertEq(set([entry['recipient'] for entry in jean_luc.referrees]),
+           set(invitees[:2]))
+
+  # Check if invitees are still referrees by alice.
+  assertEq(set([entry['recipient'] for entry in alice.referrees]),
+           set(invitees))
+
+  # Expected behavior when invitees[0] registers (and has been referred by both
+  # alice & jean luc is that BOATH get extra storage.
+  # At that stage, none of the referrees logged in for the first time so
+  # referral is not processed.
+  assertEq(alice.link_quota, jean_luc.link_quota)
+  previous = alice.link_quota
+  User(meta, invitees[0]).login()
+  assertGT(alice.link_quota, previous)
+  assertEq(alice.link_quota, jean_luc.link_quota)
+  # Second time.
+  previous = alice.link_quota
+  User(meta, invitees[1]).login()
+  assertGT(alice.link_quota, previous)
+  assertEq(alice.link_quota, jean_luc.link_quota)
+
+  # Invite someone and then use another infinit.me to register.
+  previous = alice.link_quota
+  alice.post('user/invite', {'identifier': 'qwerty@infinit.io'})
+  User(meta, 'qwerty@infinit.io', referral_code = jean_luc.referral_code).login()
+  assertGT(alice.link_quota, previous)
+  assertEq(alice.link_quota, jean_luc.link_quota)
+
+  # Invite someone and then use the same infinit.me to register.
+  previous = jean_luc.link_quota
+  referrees = jean_luc.referrees
+  jean_luc.post('user/invite', {'identifier': 'serge.karmazov@infinit.io'})
+  User(meta, 'serge.karmazov@infinit.io', referral_code = jean_luc.referral_code).login()
+  print(previous, jean_luc.link_quota)
+  assertGT(jean_luc.link_quota, previous)
+  assertEq(len(jean_luc.referrees), len(referrees) + 1)

@@ -789,6 +789,10 @@ class User(Client):
     return self.get('user/referral-code')['referral_code']
 
   @property
+  def referrees(self):
+    return self.get('user/referrees')['referrees']
+
+  @property
   def logged_in(self):
     try:
       res = self.data
