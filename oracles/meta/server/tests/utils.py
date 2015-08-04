@@ -140,7 +140,7 @@ class Client:
 class Trophonius(Client):
   class Accepter:
 
-    def poll(self, duration):
+    def poll(self, duration = 0.1):
       from time import sleep
       sleep(duration)
 
@@ -736,6 +736,16 @@ class User(Client):
   @property
   def me(self):
     res = self.get('user/self')
+    return res
+
+  @property
+  def link_usage(self):
+    res = self.get('user/self')['quota']['links']['used']
+    return res
+
+  @property
+  def link_quota(self):
+    res = self.get('user/self')['quota']['links']['quota']
     return res
 
   @property

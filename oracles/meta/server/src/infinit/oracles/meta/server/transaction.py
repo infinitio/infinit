@@ -28,8 +28,6 @@ ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.Transaction'
 code_alphabet = '23456789abcdefghijkmnpqrstuvwxyz'
 code_length = 7
 
-basic_user_transfer_size_limit = 10 * 1000 * 1000 * 1000 # 10 GB
-
 class Transaction(dict):
 
   def __init__(
@@ -487,14 +485,15 @@ class Mixin:
     )
     if recipient['_id'] == sender['_id']: # Send to self.
       elle.log.trace("send to self")
-      send_to_self_quota = sender.get('quota', {}).get('send-to-self', {})
-      limit = send_to_self_quota.get('limit')
-      sent_to_self = self.__sent_to_self(sender)
+      send_to_self_quota = self.__quota(sender)['quota']['send-to-self']
+      limit = send_to_self_quota['quota']
+      sent_to_self = send_to_self_quota['used']
       elle.log.debug("limit (%s) / sent to self (%s)" % (limit, sent_to_self))
       if limit is not None and sent_to_self >= limit:
         self.payment_required(
           {
             'error': error.SEND_TO_SELF_LIMIT_REACHED[0],
+            'reason': error.SEND_TO_SELF_LIMIT_REACHED[0],
           })
     transaction.db_insert()
 
@@ -569,13 +568,13 @@ class Mixin:
     recipient_identifier = recipient_identifier or utils.identifier(id_or_email)
     recipient, new_user = self.__recipient_from_identifier(recipient_identifier,
                                                            sender)
-    if self.user.get('plan', None) == 'basic':
-      if recipient['_id'] != sender['_id']: # Not send to self.
-        if total_size > basic_user_transfer_size_limit:
+    if recipient['_id'] != sender['_id']: # Not send to self.
+      transfer_size_limit = self.__quota(sender)['quota']['p2p']['limit']
+      if transfer_size_limit is not None and total_size > transfer_size_limit:
           self.payment_required({
             'error': error.FILE_TRANSFER_SIZE_LIMITED[0],
             'reason': error.FILE_TRANSFER_SIZE_LIMITED[1],
-            'limit': basic_user_transfer_size_limit,
+            'limit': transfer_size_limit,
           })
     if recipient['register_status'] == 'merged':
       merge_target = recipient.get('merged_with', None)

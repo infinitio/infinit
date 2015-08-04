@@ -37,6 +37,8 @@ code_length = 5
 #
 ELLE_LOG_COMPONENT = 'infinit.oracles.meta.server.User'
 
+basic_user_transfer_size_limit = 10 * 1000 * 1000 * 1000 # 10 GB
+
 class Mixin:
 
   def __init__(self):
@@ -110,8 +112,9 @@ class Mixin:
       )
       if cus.subscriptions.total_count > 0:
           user['subscription_data'] = cus.subscriptions.data[0]
+
     # Quota.
-    user.setdefault('quota', {}).setdefault('send-to-self', {}).setdefault('used', self.__sent_to_self(user))
+    user.get('quota', {}).update(self.__quota(user)['quota'])
 
     # Remove '_id' key, replaced earlier by 'id'.
     del user['_id']
@@ -813,7 +816,7 @@ class Mixin:
       features = self._roll_features(True)
       quota = {
         'send-to-self': {
-          'limit': 5
+          'quota': 5
         }
       }
       if plan is not None:
@@ -2719,6 +2722,35 @@ class Mixin:
     )
     return self.success()
 
+  def __quota(self,
+              user):
+    user_quota = user.get('quota', {})
+    def _send_to_self_quota(user):
+      if user.get('plan', None) == 'basic':
+        return user_quota.get('send-to-self', {}).get('quota')
+      else:
+        return None
+    def _file_size_limit(user):
+      if user.get('plan', None) == 'basic':
+        return basic_user_transfer_size_limit
+      else:
+        return None
+    return {
+      'quota': {
+        'links': {
+          'quota': user_quota.get('total_link_size', 0),
+          'used': user.get('total_link_size', 0),
+        },
+        'send-to-self': {
+          'quota': _send_to_self_quota(user),
+          'used': self.__sent_to_self(user),
+        },
+        'p2p': {
+          'limit': _file_size_limit(user),
+        }
+      }
+    }
+
   @api('/user/synchronize')
   @require_logged_in
   def synchronize(self,
@@ -2773,24 +2805,30 @@ class Mixin:
     custom_domains = user.get('account', {}).get('custom_domains', [])
     res['account'] = {
       'plan': user.get('plan', 'basic'),
-      'link_size_quota': user.get('quota', {}).get('total_link_size', 0),
-      'link_size_used': user.get('total_link_size', 0),
       'custom_domain': next(iter(custom_domains), {'name': ''})['name'],
       'link_format': user.get('account', {}).get('link_format', 'http://%s/_/%s'),
+      # 0.9.40.
+      'link_size_quota': user.get('quota', {}).get('total_link_size', 0),
+      'link_size_used': user.get('total_link_size', 0),
     }
+    res['account'].update(self.__quota(user))
     return self.success(res)
 
-  def _quota_updated_notification(self, user):
+  def _quota_updated_notification(self, user, version = (0, 9, 37)):
+    message = {
+      'account': {
+        # 0.9.40.
+        'link_size_used': user.get('total_link_size', 0),
+        'link_size_quota': user.get('quota', {}).get('total_link_size', 0),
+      }
+    }
+    message['account'].update(self.__quota(user))
+
     self.notifier.notify_some(
       notifier.MODEL_UPDATE,
-      message = {
-        'account': {
-          'link_size_used': user.get('total_link_size', 0),
-          'link_size_quota': user.get('quota', {}).get('total_link_size', 0),
-        }
-      },
+      message = message,
       recipient_ids = {user['_id']},
-      version = (0, 9, 37))
+      version = version)
 
   def change_plan(self, uid, new_plan):
     return self._change_plan(self._user_by_id(uid, self.__user_self_fields),
@@ -2843,7 +2881,10 @@ class Mixin:
                         inviter_bonus = 1e9,
                         invitee_bonus = 500e6,
                         inviter_cap = 16e9,
-                        invitee_cap = 16e9):
+                        invitee_cap = 16e9,
+                        send_to_self_bonus = 2,
+                        number_of_send_to_self_to_get_unlimited = 2,
+                      ):
     """ Called once per new_user upon first login.
         @param new_user User struct for the invitee
         @param referrals List of user ids who invited new_user
@@ -2864,13 +2905,13 @@ class Mixin:
       }
       number_of_referred = self.__referred_by(referrer).count()
       # The first you referrer gives you plus 2 send to self.
-      if number_of_referred == 1:
+      if number_of_referred < number_of_send_to_self_to_get_unlimited:
         update['$inc'].update(
-          {'quota.send-to-self.limit': 2}
+          {'quota.send-to-self.quota': send_to_self_bonus}
         )
       # The second one remove your limit.
       else:
-        update['$set'] = {'quota.send-to-self.limit': None}
+        update['$set'] = {'quota.send-to-self.quota': None}
       elle.log.debug('update: %s' % update)
       self.database.users.update(
         {
