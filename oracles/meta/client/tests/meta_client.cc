@@ -1139,39 +1139,44 @@ namespace account_limits
     infinit::oracles::meta::User recipient("42", "bob", "bob", "registered");
     std::list<std::string> files = {"file1", "file2"};
     std::string transaction_id = "43";
+    int32_t limit = 5;
     CreatePeerTransactionResponse transaction(recipient, transaction_id);
     _create_peer_transaction_route(s, transaction);
     s.register_route(elle::sprintf("/transaction/%s", transaction_id),
                      reactor::http::Method::PUT,
-                     [] (HTTPServer::Headers const&,
-                         HTTPServer::Cookies const&,
-                         HTTPServer::Parameters const&,
-                         elle::Buffer const&) -> std::string
+                     [limit] (HTTPServer::Headers const&,
+                              HTTPServer::Cookies const&,
+                              HTTPServer::Parameters const&,
+                              elle::Buffer const&) -> std::string
       {
+        std::stringstream ss;
+        {
+          elle::serialization::json::SerializerOut output(ss, false);
+          output.serialize("error", static_cast<int32_t>(
+            infinit::oracles::meta::Error::send_to_self_limit_reached));
+          output.serialize(
+            "reason", std::string("Send to self transaction limit reached."));
+          output.serialize("limit", limit);
+        }
         throw HTTPServer::Exception(
           "",
           reactor::http::StatusCode::Payment_Required,
-          elle::sprintf(
-          "{"
-          "  \"error\": %s,"
-          "  \"reason\": \"Send to self transaction limit reached.\""
-          "}", static_cast<int32_t>(
-            infinit::oracles::meta::Error::send_to_self_limit_reached)));
+          ss.str());
       });
     Client c("http", "127.0.0.1", s.port());
     auto const& returned_id = c.create_transaction(recipient.id, files, 2);
     BOOST_CHECK(returned_id == transaction_id);
-    BOOST_CHECK_THROW(
-      c.fill_transaction(
-        recipient.id,
-        files,
-        files.size(),
-        200,
-        false,
-        elle::UUID::random(),
-        "coucou",
-        transaction_id),
-      infinit::oracles::meta::SendToSelfTransactionLimitReached);
+    try
+    {
+      c.fill_transaction(recipient.id, files, files.size(), 200, false,
+        elle::UUID::random(), "coucou", transaction_id);
+      ELLE_ERR("fill_transaction should throw");
+      elle::unreachable();
+    }
+    catch (infinit::oracles::meta::SendToSelfTransactionLimitReached const& e)
+    {
+      BOOST_CHECK_EQUAL(e.limit(), limit);
+    }
   }
 
   ELLE_TEST_SCHEDULED(file_transfer_size_limited)
@@ -1195,30 +1200,34 @@ namespace account_limits
         uint64_t received_file_size;
         input.serialize("total_size", received_file_size);
         BOOST_CHECK_EQUAL(file_size, received_file_size);
+        std::stringstream ss;
+        {
+          elle::serialization::json::SerializerOut output(ss, false);
+          output.serialize("error", static_cast<int32_t>(
+            infinit::oracles::meta::Error::file_transfer_size_limited));
+          output.serialize("reason",
+                           std::string("File transfer size limited."));
+          output.serialize("limit", file_size - 1);
+        }
         throw HTTPServer::Exception(
           "",
           reactor::http::StatusCode::Payment_Required,
-          elle::sprintf(
-          "{"
-          "  \"error\": %s,"
-          "  \"reason\": \"File transfer size limited.\""
-          "}", static_cast<int32_t>(
-            infinit::oracles::meta::Error::file_transfer_size_limited)));
+          ss.str());
       });
     Client c("http", "127.0.0.1", s.port());
     auto const& returned_id = c.create_transaction(recipient.id, files, 2);
     BOOST_CHECK(returned_id == transaction_id);
-    BOOST_CHECK_THROW(
-      c.fill_transaction(
-        recipient.id,
-        files,
-        files.size(),
-        file_size,
-        false,
-        elle::UUID::random(),
-        "coucou",
-        transaction_id),
-      infinit::oracles::meta::TransferSizeLimitExceeded);
+    try
+    {
+      c.fill_transaction(recipient.id, files, files.size(), file_size, false,
+        elle::UUID::random(), "coucou", transaction_id);
+      ELLE_ERR("fill_transaction should throw");
+      elle::unreachable();
+    }
+    catch (infinit::oracles::meta::TransferSizeLimitExceeded const& e)
+    {
+      BOOST_CHECK_EQUAL(e.limit(), file_size - 1);
+    }
   }
 
   ELLE_TEST_SCHEDULED(link_storage_limit_reached)
@@ -1275,7 +1284,7 @@ namespace account_limits
           output.serialize("reason",
                            std::string("Link storage limit reached."));
           output.serialize("quota", 100);
-          output.serialize("usage", 100);
+          output.serialize("usage", 99);
         }
         throw HTTPServer::Exception(
           "",
@@ -1285,8 +1294,17 @@ namespace account_limits
     Client c("http", "127.0.0.1", s.port());
     auto const& received_link_id = c.create_link();
     BOOST_CHECK_EQUAL(received_link_id, link_id);
-    BOOST_CHECK_THROW(c.fill_link(files, name, message, screenshot, link_id),
-                      infinit::oracles::meta::LinkQuotaExceeded);
+    try
+    {
+      c.fill_link(files, name, message, screenshot, link_id);
+      ELLE_ERR("fill_link should throw");
+      elle::unreachable();
+    }
+    catch (infinit::oracles::meta::LinkQuotaExceeded const& e)
+    {
+      BOOST_CHECK_EQUAL(e.quota(), 100);
+      BOOST_CHECK_EQUAL(e.usage(), 99);
+    }
   }
 }
 
