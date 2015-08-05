@@ -139,6 +139,11 @@ namespace surface
           ELLE_WARN("send to self limit hit: %s", e);
           gap_Status meta_error = static_cast<gap_Status>(e.meta_error());
           this->gap_status(gap_transaction_payment_required, meta_error);
+          if (this->state().metrics_reporter())
+          {
+            this->state().metrics_reporter()->send_to_self_limit_reached(
+              e.limit());
+          }
           return;
         }
         catch (TransferSizeLimitExceeded const& e)
@@ -146,6 +151,11 @@ namespace surface
           ELLE_WARN("transfer size limit hit: %s", e);
           gap_Status meta_error = static_cast<gap_Status>(e.meta_error());
           this->gap_status(gap_transaction_payment_required, meta_error);
+          if (this->state().metrics_reporter())
+          {
+            this->state().metrics_reporter()->file_transfer_limit_reached(
+              e.limit(), this->data()->total_size);
+          }
           return;
         }
         elle::unreachable();
