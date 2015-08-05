@@ -32,6 +32,7 @@ namespace infinit
       http_status,
       how_ended,
       initialization_time,
+      limit,
       message,
       message_length,
       method,
@@ -155,6 +156,13 @@ namespace infinit
       _link_quota_exceeded(uint64_t size,
                            uint64_t current,
                            uint64_t total) override;
+
+      void
+      _send_to_self_limit_reached(uint64_t limit) override;
+
+      void
+      _file_transfer_limit_reached(uint64_t limit,
+                                   uint64_t transfer_size) override;
 
     /// Implementation of user metrics.
     private:

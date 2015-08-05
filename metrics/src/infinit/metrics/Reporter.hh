@@ -161,6 +161,12 @@ namespace infinit
       void
       link_quota_exceeded(uint64_t size, uint64_t current, uint64_t quota);
 
+      void
+      send_to_self_limit_reached(uint64_t limit);
+
+      void
+      file_transfer_limit_reached(uint64_t limit, uint64_t transfer_size);
+
     /// Transaction metrics implementation.
     protected:
       virtual
@@ -240,6 +246,14 @@ namespace infinit
       virtual
       void
       _link_quota_exceeded(uint64_t size, uint64_t current, uint64_t quota);
+
+      virtual
+      void
+      _send_to_self_limit_reached(uint64_t limit);
+
+      virtual
+      void
+      _file_transfer_limit_reached(uint64_t limit, uint64_t transfer_size);
 
     /// User metrics.
     public:

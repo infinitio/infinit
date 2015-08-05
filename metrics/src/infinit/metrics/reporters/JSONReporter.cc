@@ -145,79 +145,100 @@ namespace infinit
       this->_send(this->_transaction_dest, data);
     }
 
-     void
-     JSONReporter::_transaction_transfer_begin(std::string const& transaction_id,
-                                               TransferMethod method,
-                                               float initialization_time,
-                                               int attempt)
-     {
-       elle::json::Object data;
-       data[this->_key_str(JSONKey::event)] = std::string("transfer_begin");
-       data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
-       data[this->_key_str(JSONKey::transfer_method)] =
-         this->_transfer_method_str(method);
-       data[this->_key_str(JSONKey::initialization_time)] = initialization_time;
-       data[this->_key_str(JSONKey::attempt_number)] = attempt;
-       this->_send(this->_transaction_dest, data);
-     }
-
-     void
-     JSONReporter::_transaction_transfer_end(std::string const& transaction_id,
+    void
+    JSONReporter::_transaction_transfer_begin(std::string const& transaction_id,
                                              TransferMethod method,
-                                             float duration,
-                                             uint64_t bytes_transfered,
-                                             TransferExitReason reason,
-                                             std::string const& message,
-                                             int attempt)
-     {
-       elle::json::Object data;
-       data[this->_key_str(JSONKey::event)] = std::string("transfer_end");
+                                              float initialization_time,
+                                              int attempt)
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] = std::string("transfer_begin");
+      data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
+      data[this->_key_str(JSONKey::transfer_method)] =
+        this->_transfer_method_str(method);
+      data[this->_key_str(JSONKey::initialization_time)] = initialization_time;
+      data[this->_key_str(JSONKey::attempt_number)] = attempt;
+      this->_send(this->_transaction_dest, data);
+    }
 
-       data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
-       data[this->_key_str(JSONKey::transfer_method)] =
-         this->_transfer_method_str(method);
-       data[this->_key_str(JSONKey::duration)] = duration;
-       data[this->_key_str(JSONKey::bytes_transfered)] = bytes_transfered;
-       data[this->_key_str(JSONKey::exit_reason)] =
-         this->_transfer_exit_reason_str(reason);
-       data[this->_key_str(JSONKey::message)] = message;
-       data[this->_key_str(JSONKey::attempt_number)] = attempt;
-       this->_send(this->_transaction_dest, data);
-     }
+    void
+    JSONReporter::_transaction_transfer_end(std::string const& transaction_id,
+                                            TransferMethod method,
+                                            float duration,
+                                            uint64_t bytes_transfered,
+                                            TransferExitReason reason,
+                                            std::string const& message,
+                                            int attempt)
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] = std::string("transfer_end");
+      data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
+      data[this->_key_str(JSONKey::transfer_method)] =
+        this->_transfer_method_str(method);
+      data[this->_key_str(JSONKey::duration)] = duration;
+      data[this->_key_str(JSONKey::bytes_transfered)] = bytes_transfered;
+      data[this->_key_str(JSONKey::exit_reason)] =
+        this->_transfer_exit_reason_str(reason);
+      data[this->_key_str(JSONKey::message)] = message;
+      data[this->_key_str(JSONKey::attempt_number)] = attempt;
+      this->_send(this->_transaction_dest, data);
+    }
 
-     void
-     JSONReporter::_aws_error(std::string const& transaction_id,
-                              std::string const& operation,
-                              std::string const& url,
-                              unsigned int attempt_number,
-                              int http_status,
-                              std::string const& aws_error_code,
-                              std::string const& message)
-     {
-       elle::json::Object data;
-       data[this->_key_str(JSONKey::event)] = std::string("aws_error");
-       data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
-       data[this->_key_str(JSONKey::operation)] = operation;
-       data[this->_key_str(JSONKey::url)] = url;
-       data[this->_key_str(JSONKey::attempt_number)] = attempt_number;
-       data[this->_key_str(JSONKey::http_status)] = http_status;
-       data[this->_key_str(JSONKey::aws_error_code)] = aws_error_code;
-       data[this->_key_str(JSONKey::message)] = message;
-       this->_send(this->_transaction_dest, data);
-     }
+    void
+    JSONReporter::_aws_error(std::string const& transaction_id,
+                             std::string const& operation,
+                             std::string const& url,
+                             unsigned int attempt_number,
+                             int http_status,
+                             std::string const& aws_error_code,
+                             std::string const& message)
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] = std::string("aws_error");
+      data[this->_key_str(JSONKey::transaction_id)] = transaction_id;
+      data[this->_key_str(JSONKey::operation)] = operation;
+      data[this->_key_str(JSONKey::url)] = url;
+      data[this->_key_str(JSONKey::attempt_number)] = attempt_number;
+      data[this->_key_str(JSONKey::http_status)] = http_status;
+      data[this->_key_str(JSONKey::aws_error_code)] = aws_error_code;
+      data[this->_key_str(JSONKey::message)] = message;
+      this->_send(this->_transaction_dest, data);
+    }
 
-     void
-     JSONReporter::_link_quota_exceeded(uint64_t size,
-                                        uint64_t used,
-                                        uint64_t quota)
-     {
-       elle::json::Object data;
-       data[this->_key_str(JSONKey::event)] = std::string("quota_exceeded");
-       data[this->_key_str(JSONKey::total_size)] = size;
-       data[this->_key_str(JSONKey::used_storage)] = used;
-       data[this->_key_str(JSONKey::quota)] = quota;
-       this->_send(this->_transaction_dest, data);
-     }
+    void
+    JSONReporter::_link_quota_exceeded(uint64_t size,
+                                       uint64_t used,
+                                       uint64_t quota)
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] = std::string("quota_exceeded");
+      data[this->_key_str(JSONKey::total_size)] = size;
+      data[this->_key_str(JSONKey::used_storage)] = used;
+      data[this->_key_str(JSONKey::quota)] = quota;
+      this->_send(this->_transaction_dest, data);
+    }
+
+    void
+    JSONReporter::_send_to_self_limit_reached(uint64_t limit)
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] =
+        std::string("send_to_self_limited");
+      data[this->_key_str(JSONKey::limit)] = limit;
+      this->_send(this->_transaction_dest, data);
+    }
+
+    void
+    JSONReporter::_file_transfer_limit_reached(uint64_t limit,
+                                               uint64_t transfer_size)
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] =
+        std::string("transfer_size_limited");
+      data[this->_key_str(JSONKey::limit)] = limit;
+      data[this->_key_str(JSONKey::total_size)] = transfer_size;
+      this->_send(this->_transaction_dest, data);
+    }
 
     /*-------------.
     | User Metrics |
@@ -542,6 +563,8 @@ namespace infinit
           return "how_ended";
         case JSONKey::initialization_time:
           return "initialization_time";
+        case JSONKey::limit:
+          return "limit";
         case JSONKey::message:
           return "message";
         case JSONKey::message_length:

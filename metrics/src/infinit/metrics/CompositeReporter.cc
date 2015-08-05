@@ -246,6 +246,23 @@ namespace infinit
                                 std::placeholders::_1, size, current, total));
     }
 
+    void
+    CompositeReporter::_send_to_self_limit_reached(uint64_t limit)
+    {
+      this->_dispatch(std::bind(
+        &Reporter::_send_to_self_limit_reached, std::placeholders::_1, limit));
+    }
+
+    void
+    CompositeReporter::_file_transfer_limit_reached(uint64_t limit,
+                                                    uint64_t transfer_size)
+    {
+      this->_dispatch(std::bind(&Reporter::_file_transfer_limit_reached,
+                                std::placeholders::_1,
+                                limit,
+                                transfer_size));
+    }
+
     /*-------------.
     | User Metrics |
     `-------------*/
