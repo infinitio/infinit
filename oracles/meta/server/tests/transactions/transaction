@@ -30,9 +30,10 @@ with Meta() as meta:
                                       total_size = size_to_send,
                                       initialize = True)
   except HTTPException as e:
-    assert e.status == 402
-    e.content['error'] == error.FILE_TRANSFER_SIZE_LIMITED[0]
-    e.content['reason'] == error.FILE_TRANSFER_SIZE_LIMITED[1]
+    assertEq(e.status, 402)
+    assertEq(e.content['error'], error.FILE_TRANSFER_SIZE_LIMITED[0])
+    assertEq(e.content['reason'], error.FILE_TRANSFER_SIZE_LIMITED[1])
+    assertEq(e.content['limit'], 10 * 1000 * 1000 * 1000)
 
   meta.meta.change_plan(bson.ObjectId(bob.id), 'premium')
   bob.sendfile(recipient = alice.id,
