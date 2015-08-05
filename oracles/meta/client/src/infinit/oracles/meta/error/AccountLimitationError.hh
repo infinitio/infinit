@@ -38,14 +38,19 @@ namespace infinit
         : public AccountLimitationError
       {
       public:
-        SendToSelfTransactionLimitReached(MetaError const& error);
+        SendToSelfTransactionLimitReached(MetaError const& error,
+                                          uint64_t limit);
+
+        ELLE_ATTRIBUTE_R(uint64_t, limit);
       };
 
       class TransferSizeLimitExceeded
         : public AccountLimitationError
       {
       public:
-        TransferSizeLimitExceeded(MetaError const& error);
+        TransferSizeLimitExceeded(MetaError const& error, uint64_t limit);
+
+        ELLE_ATTRIBUTE_R(uint64_t, limit);
       };
     }
   }

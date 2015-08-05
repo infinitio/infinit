@@ -26,13 +26,16 @@ namespace infinit
       {}
 
       SendToSelfTransactionLimitReached::SendToSelfTransactionLimitReached(
-        infinit::oracles::meta::Error const& error)
+        infinit::oracles::meta::Error const& error, uint64_t limit)
           : AccountLimitationError(error,
                                    "Send to self transaction limit reached.")
+          , _limit(limit)
       {}
 
-      TransferSizeLimitExceeded::TransferSizeLimitExceeded(MetaError const& error)
-        : AccountLimitationError(error, "File transfer size limited.")
+      TransferSizeLimitExceeded::TransferSizeLimitExceeded(
+        MetaError const& error, uint64_t limit)
+          : AccountLimitationError(error, "File transfer size limited.")
+          , _limit(limit)
       {}
     }
   }
