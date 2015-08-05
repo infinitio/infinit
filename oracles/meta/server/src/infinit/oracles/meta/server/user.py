@@ -2858,17 +2858,7 @@ class Mixin:
     if len(funset):
       update.update({'$unset': funset})
     self.database.users.update({'_id': user['_id']}, update)
-    self.notifier.notify_some(
-      notifier.MODEL_UPDATE,
-      message = {
-        'account': {
-          'link_size_quota': user.get('quota', {}).get('total_link_size', 0),
-          'plan': new_plan_name,
-        }
-      },
-      recipient_ids = {user['_id']},
-      version = (0, 9, 37))
-
+    self._quota_updated_notification(user)
   def __referred_by(self,
                     referrer,
                     fields = ['referred_by', 'register_status']):
@@ -2937,14 +2927,7 @@ class Mixin:
     }
     return res
 
-  def process_referrals(self, new_user, referrals,
-                        inviter_bonus = 1e9,
-                        invitee_bonus = 500e6,
-                        inviter_cap = 16e9,
-                        invitee_cap = 16e9,
-                        send_to_self_bonus = 2,
-                        number_of_send_to_self_to_get_unlimited = 2,
-                      ):
+  def process_referrals(self, new_user, referrals):
     """ Called once per new_user upon first login.
         @param new_user User struct for the invitee
         @param referrals List of user ids who invited new_user
@@ -2954,49 +2937,23 @@ class Mixin:
     # See __add_referrer_query for more details.
     referrals = set(referrals)
     elle.log.trace('process referral for %s (referred by %s)' % (new_user['accounts'], referrals))
-    # In mongo, summing an integer and a double results in a double.
-    # So, make sure we don't change the data type in the database.
-    inviter_bonus = int(inviter_bonus)
-    invitee_bonus = int(invitee_bonus)
-    #policy: +1G for referrers up to 10G,  + 500Mo for referred
     #FIXME: send email
-    # Because each referrers may have a
     for referrer in referrals:
-      update = {
-        '$inc': {
-          'quota.total_link_size': inviter_bonus,
-        }
-      }
+      update = {}
       number_of_referred = self.__referred_by(referrer).count()
       # The first you referrer gives you plus 2 send to self.
-      if number_of_referred < number_of_send_to_self_to_get_unlimited:
-        update['$inc'].update(
-          {'quota.send-to-self.quota': send_to_self_bonus}
-        )
-      # The second one remove your limit.
-      else:
-        update['$set'] = {'quota.send-to-self.quota': None}
-      elle.log.debug('update: %s' % update)
-      self.database.users.update(
-        {
-          '_id': referrer,
-          '$or': [{'plan': 'basic'}, {'plan': {'$exists': False}}],
-          'quota.total_link_size': {'$exists': True, '$lt': inviter_cap}
-        },
-        update)
-
-    self.database.users.update(
-      {
-        '_id': new_user['_id'],
-        '$or': [{'plan': 'basic'}, {'plan': {'$exists': False}}],
-        'quota.total_link_size': {'$exists': True, '$lt': invitee_cap}
-      },
-      {
-        '$inc': { 'quota.total_link_size': invitee_bonus}
-      },
-    )
+      if number_of_referred >= 2:
+        update['$set'] = {
+          'plan': 'plus',
+        }
+        self.database.users.update(
+          {
+            '_id': referrer,
+            '$or': [{'plan': 'basic'}, {'plan': {'$exists': False}}],
+          },
+          update)
     referrers = list(map(lambda x: self.user_from_identifier(
-      x, fields = ['quota']),
+      x, fields = ['quota', 'plan']),
                          referrals))
     for user in referrers + [new_user]:
       self._quota_updated_notification(user)
