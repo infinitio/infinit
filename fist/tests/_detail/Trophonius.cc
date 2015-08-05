@@ -47,8 +47,9 @@ namespace tests
       while (true)
       {
         auto socket = elle::utility::move_on_copy(this->_server.accept());
+        std::string name = elle::sprintf("serve %s", **socket);
         scope.run_background(
-          elle::sprintf("serve %s", **socket),
+          name,
           [socket, this]
           {
             this->_serve(std::move(*socket));
