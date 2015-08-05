@@ -132,19 +132,23 @@ namespace infinit
             auto const& meta_error = Error(error_code);
             if (meta_error == Error::link_storage_limit_reached)
             {
-              int64_t quota;
-              int64_t usage;
+              uint64_t quota;
+              uint64_t usage;
               input.serialize("quota", quota);
               input.serialize("usage", usage);
               throw LinkQuotaExceeded(meta_error, quota, usage);
             }
             else if (meta_error == Error::send_to_self_limit_reached)
             {
-              throw SendToSelfTransactionLimitReached(meta_error);
+              uint64_t limit;
+              input.serialize("limit", limit);
+              throw SendToSelfTransactionLimitReached(meta_error, limit);
             }
             else if (meta_error == Error::file_transfer_size_limited)
             {
-              throw TransferSizeLimitExceeded(meta_error);
+              uint64_t limit;
+              input.serialize("limit", limit);
+              throw TransferSizeLimitExceeded(meta_error, limit);
             }
             else
             {
