@@ -34,6 +34,7 @@ class ActivityReminder(oracles.sisyphus.boulders.drip.ActivityReminder):
 def check_mail(emails, email, template):
   utils.check_mail(emails, email, template)
   assertEq(len(emails[0][1]['transactions']), 1)
+  assert emails[0][1]['transactions'][0].get('device')
 
 
 class Metrics:
