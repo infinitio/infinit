@@ -81,11 +81,9 @@ namespace surface
           ELLE_WARN("link quota exceeded: %s", e);
           gap_Status meta_error = static_cast<gap_Status>(e.meta_error());
           this->gap_status(gap_transaction_payment_required, meta_error);
-          auto quota = e.quota();
-          auto usage = e.usage();
           if (this->state().metrics_reporter())
             this->state().metrics_reporter()->link_quota_exceeded(
-              this->total_size(), quota, usage);
+              this->total_size(), e.quota(), e.usage());
           return;
         }
         elle::unreachable();
