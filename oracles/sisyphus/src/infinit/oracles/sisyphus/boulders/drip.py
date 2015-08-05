@@ -700,7 +700,7 @@ class ActivityReminder(Drip):
           if i not in devices:
             device = meta.users.find_one(
               {'devices.id': i}, fields = fields)['devices'][0]
-            device = {k: device[k] for k in ('id', 'name', 'os')}
+            device = {k: device.get(k) for k in ('id', 'name', 'os')}
             devices[i] = device
           else:
             device = devices[i]
