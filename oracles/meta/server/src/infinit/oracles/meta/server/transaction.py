@@ -559,6 +559,7 @@ class Mixin:
         self.payment_required({
           'error': error.FILE_TRANSFER_SIZE_LIMITED[0],
           'reason': error.FILE_TRANSFER_SIZE_LIMITED[1],
+          'limit': basic_user_transfer_size_limit,
         })
     recipient_identifier = recipient_identifier or utils.identifier(id_or_email)
     recipient, new_user = self.__recipient_from_identifier(recipient_identifier,
