@@ -481,10 +481,13 @@ class GhostReminder(Drip):
       'files',
       'files_count',
       'message',
-      'recipient_id',
+      'recipient_device_id',
       'recipient_fullname',
+      'recipient_id',
+      'sender_device_id',
       'sender_fullname',
       'sender_id',
+      'status',
       'total_size',
       'transaction_hash',
     ]
@@ -675,10 +678,10 @@ class ActivityReminder(Drip):
     return response
 
   def _vars(self, element, user):
-    return {
-      'transactions': [
+    meta = self.sisyphus.mongo.meta
+    transactions = [
         self.transaction_vars(t, user) for t in
-        self.sisyphus.mongo.meta.transactions.find(
+        meta.transactions.find(
           {
             '_id':
             {
@@ -688,6 +691,22 @@ class ActivityReminder(Drip):
             }
           })
       ]
+    devices = {}
+    fields = ['devices.$']
+    for t in transactions:
+      for d in (t, t['peer']):
+        i = d['device']
+        if i:
+          if i not in devices:
+            device = meta.users.find_one(
+              {'devices.id': i}, fields = fields)['devices'][0]
+            device = {k: device[k] for k in ('id', 'name', 'os')}
+            devices[i] = device
+          else:
+            device = devices[i]
+          t['device'] = device
+    return {
+      'transactions': transactions,
     }
 
   def delay(self, n):
