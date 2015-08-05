@@ -704,7 +704,7 @@ class ActivityReminder(Drip):
             devices[i] = device
           else:
             device = devices[i]
-          t['device'] = device
+          d['device'] = device
     return {
       'transactions': transactions,
     }

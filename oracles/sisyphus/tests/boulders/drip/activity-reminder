@@ -31,11 +31,11 @@ class ActivityReminder(oracles.sisyphus.boulders.drip.ActivityReminder):
     return oracles.sisyphus.boulders.drip.Drip._pick_template(
       self, template, users)
 
-def check_mail(emails, email, template):
+def check_mail(emails, email, template, sender):
   utils.check_mail(emails, email, template)
   assertEq(len(emails[0][1]['transactions']), 1)
-  assert emails[0][1]['transactions'][0].get('device')
-
+  if sender:
+    assert emails[0][1]['transactions'][0].get('device')
 
 class Metrics:
 
@@ -103,7 +103,7 @@ with mongobox.MongoBox() as mongo:
     import sys
     forward(reminder.delay(0) * 1.1)
     sisy.boulders_run()
-    check_mail(emailer.emails, email, 'Pending')
+    check_mail(emailer.emails, email, 'Pending', True)
 
     # Check coming online resets
     forward(reminder.delay(0) * 2)
@@ -120,13 +120,13 @@ with mongobox.MongoBox() as mongo:
     assert not emailer.emails
     forward(reminder.delay(0) * 0.6)
     sisy.boulders_run()
-    check_mail(emailer.emails, email, 'Pending')
+    check_mail(emailer.emails, email, 'Pending', True)
     forward(reminder.delay(1) * 0.9)
     sisy.boulders_run()
     assert not emailer.emails
     forward(reminder.delay(1) * 0.2)
     sisy.boulders_run()
-    check_mail(emailer.emails, email, 'Pending')
+    check_mail(emailer.emails, email, 'Pending', True)
 
     # Accept and check emails stop
     meta._cloud_buffer(tid, sender)
@@ -163,7 +163,7 @@ with mongobox.MongoBox() as mongo:
     assert not emailer.emails
     forward(reminder.delay(0) * 1.1)
     sisy.boulders_run()
-    check_mail(emailer.emails, email, 'Pending')
+    check_mail(emailer.emails, email, 'Pending', False)
 
     # Check the whole serie
     meta.set_connection_status(
@@ -179,7 +179,7 @@ with mongobox.MongoBox() as mongo:
       assert not emailer.emails
       forward(reminder.delay(i) * 0.4)
       sisy.boulders_run()
-      check_mail(emailer.emails, email, 'Pending')
+      check_mail(emailer.emails, email, 'Pending', False)
     forward(reminder.delay(i) * 2)
     sisy.boulders_run()
     assert not emailer.emails
