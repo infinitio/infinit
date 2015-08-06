@@ -2877,6 +2877,7 @@ class Mixin:
                                           coupon = stripe_coupon)
           else:
             sub = customer.subscriptions.data[0]
+            sub.prorate = plan != 'basic' or sub.plan != 'premium'
             sub.plan = plan
             sub.save()
           if user.get('plan', 'basic') != plan:
