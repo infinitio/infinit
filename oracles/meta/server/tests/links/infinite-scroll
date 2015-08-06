@@ -13,6 +13,9 @@ with Meta() as meta:
     link = alice.getalink(name = 'link_%s' % i)
     alice.link_update(link, transaction_status.FINISHED)
     meta.meta.forward(timedelta(seconds = 2))
+  # Count test.
+  res = alice.get('links?&count=%s' % 3)['links']
+  assertEq(len(res), 3)
   # Zero offset test.
   res = alice.get('links?offset=%s&count=%s' % (0, 2))['links']
   assertEq(len(res), 2)
