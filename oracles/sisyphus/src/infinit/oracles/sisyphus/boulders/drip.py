@@ -857,7 +857,7 @@ class Tips(Drip):
       },
       guard = self.hasnt_sent_to_self,
       guard_transition = True,
-      template = 'Send to Self Tip',
+      template = 'Send to Device',
       hint = self.index[1],
     )
     response.update(transited)

@@ -63,7 +63,7 @@ def check(f):
 
 def send_to_self(sisy, meta, tips, emailer):
   user, email = create_user('user@infinit.io', meta, sisy)
-  forward_and_check(email, tips, meta, 'Send to Self Tip')
+  forward_and_check(email, tips, meta, 'Send to Device')
   forward_and_check(email, tips, meta, 'Send Anything')
   forward_and_check(email, tips, meta, 'Links')
   forward_and_check(email, tips, meta, None)
@@ -100,7 +100,7 @@ check(none)
 
 def skip_some(sisy, meta, tips, emailer):
   user, email = create_user('user@infinit.io', meta, sisy)
-  forward_and_check(email, tips, meta, 'Send to Self Tip')
+  forward_and_check(email, tips, meta, 'Send to Device')
   transaction_create(
     meta, user, 'ghost@infinit.io',
     size = tips.big_transaction_threshold * 1.1)
