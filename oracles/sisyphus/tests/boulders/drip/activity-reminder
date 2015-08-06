@@ -34,6 +34,7 @@ class ActivityReminder(oracles.sisyphus.boulders.drip.ActivityReminder):
 def check_mail(emails, email, template, sender):
   utils.check_mail(emails, email, template)
   assertEq(len(emails[0][1]['transactions']), 1)
+  assert len(emails[0][1]['user']['devices']) > 0
   if sender:
     assert emails[0][1]['transactions'][0].get('device')
 

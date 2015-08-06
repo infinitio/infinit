@@ -726,6 +726,9 @@ class ActivityReminder(Drip):
   @property
   def user_fields(self):
     res = super().user_fields
+    res.append('devices.id')
+    res.append('devices.name')
+    res.append('devices.os')
     res.append('transactions.unaccepted')
     res.append('transactions.pending')
     return res
