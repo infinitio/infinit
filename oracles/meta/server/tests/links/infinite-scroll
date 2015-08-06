@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+
+from utils import *
+
+from bson.objectid import ObjectId
+from datetime import timedelta
+
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  num_links = 6
+  for i in range(1, num_links + 1):
+    link = alice.getalink(name = 'link_%s' % i)
+    alice.link_update(link, transaction_status.FINISHED)
+    meta.meta.forward(timedelta(seconds = 2))
+  # Zero offset test.
+  res = alice.get('links?offset=%s&count=%s' % (0, 2))['links']
+  assertEq(len(res), 2)
+  for i in range(0, 2):
+    assertEq(res[i]['name'], 'link_%s' % (num_links - i))
+  # Offset test.
+  res = alice.get('links?offset=%s&count=%s' % (2, 3))['links']
+  assertEq(len(res), 3)
+  for i in range(0, 3):
+    print(res[i]['name'])
+    assertEq(res[i]['name'], 'link_%s' % (num_links - 2 - i))
