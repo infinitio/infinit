@@ -1286,10 +1286,13 @@ class Mixin:
       ensure_existence = False,
       fields = ['register_status'])
     if other is not None and other['register_status'] not in ['contact', 'ghost']:
-      self.conflict({
+      if other['_id'] != self.user['_id']:
+        self.conflict({
           'reason': 'email already registered',
           'email': email,
         })
+      else:
+        return {}
     variables = {
       'email': email,
       'user': self.email_user_vars(self.user),
