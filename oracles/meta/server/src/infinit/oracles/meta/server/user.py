@@ -2860,6 +2860,12 @@ class Mixin:
                   stripe_token = None,
                   stripe_coupon = None,
                 ):
+      if plan not in ['basic', 'premium']:
+        self.bad_request({
+          'error': 'invalid_plan',
+          'reason': 'invalid plan: %s' % plan,
+          'plan': plan,
+        })
       user = self.user
       customer = self.__fetch_or_create_stripe_customer(user)
       # Subscribing to a paying plan without source raises an error
@@ -2868,22 +2874,35 @@ class Mixin:
         if stripe_token is not None:
           customer.source = stripe_token
           customer.save()
-        if plan is not None:
-          # We do not want multiple plans to be active at the same time, so a
-          # customer can only have at most one subscription (ideally, exactly one
-          # subscription, which would be 'basic' for non paying customers)
-          if customer.subscriptions.total_count == 0:
-            customer.subscriptions.create(plan = plan,
-                                          coupon = stripe_coupon)
-          else:
+        if plan is not None or stripe_coupon is not None:
+          # We do not want multiple plans to be active at the same
+          # time, so a customer can only have at most one subscription
+          # (ideally, exactly one subscription, which would be 'basic'
+          # for non paying customers)
+          if customer.subscriptions.total_count > 0:
             sub = customer.subscriptions.data[0]
-            sub.prorate = plan != 'basic' or sub.plan != 'premium'
-            sub.plan = plan
-            sub.save()
+          else:
+            sub = None
+          if plan == 'premium':
+            if sub is None:
+              customer.subscriptions.create(
+                plan = plan, coupon = stripe_coupon)
+              stripe_coupon = None
+            else:
+              sub.plan = 'premium'
+          elif plan == 'basic':
+            if sub is not None:
+              sub.delete(at_period_end = True)
+              sub = None
+          if stripe_coupon is not None:
+            if sub is None:
+              self.bad_request({
+                'error': 'invalid_plan_coupon',
+                'reason': 'cannot use a coupon on basic plan',
+              })
+            sub.coupon = stripe_coupon
+          sub.save();
           if user.get('plan', 'basic') != plan:
-            self.database.users.update(
-              {'_id': user['_id']},
-              {'$set': {'plan': plan}})
             self._change_plan(user, plan)
       except stripe.error.CardError as e:
         warn(
