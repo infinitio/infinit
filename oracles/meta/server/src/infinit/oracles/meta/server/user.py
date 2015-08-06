@@ -2901,7 +2901,8 @@ class Mixin:
                 'reason': 'cannot use a coupon on basic plan',
               })
             sub.coupon = stripe_coupon
-          sub.save();
+          if sub:
+            sub.save();
           if user.get('plan', 'basic') != plan:
             self._change_plan(user, plan)
       except stripe.error.CardError as e:
