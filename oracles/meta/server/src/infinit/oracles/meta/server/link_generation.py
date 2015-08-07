@@ -775,6 +775,20 @@ class Mixin:
       },
       multi = True)
 
+  def __link_usage(self, user):
+    res =self.database.links.aggregate([
+      {
+        '$match': {
+          'sender_id': user['_id'],
+          'status': transaction_status.FINISHED,
+          'quota_counted': True,
+        }
+      },
+      {
+        '$group': {'_id': None, 'total':{'$sum': '$file_size'}}
+      }])['result']
+    return res[0]['total'] if len(res) else 0
+
   # Generate url on storage for given HTTP operation
   def _generate_op_url(self, link, op):
     proto = link['aws_credentials']['protocol']
