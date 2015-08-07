@@ -226,7 +226,6 @@ class Mixin:
       if template is None:
         self.fail(error.UNKNOWN)
       # Username can contain '@'. If it's not a valid email,
-      # the sender address (no-reply@infinit.io) will be used.
       user_email = '@' in user_name and user_name or None
       if len(file):
         attachment = ('log.tar.bz', file)
