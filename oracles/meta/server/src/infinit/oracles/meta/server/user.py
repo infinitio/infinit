@@ -1729,6 +1729,7 @@ class Mixin:
       cleared_user['merged_with'] = merge_with['_id']
       deleted_user_swaggers = user.get('swaggers', {})
       deleted_user_contact_of = user.get('contact_of', [])
+      deleted_user_referrers = user.get('referred_by', [])
       # XXX: Obvious race condition here.
       # Accounts fields are unique. If we want to copy user['accounts'] to
       # merge_with, we need to copy and delete them first, and the add them
@@ -1759,12 +1760,6 @@ class Mixin:
         {'recipient': user['_id']},
         {'$set': {'status': 'completed'}},
         multi = True)
-      res = self.database.users.find_one({'_id': user['_id']},
-        fields = ['referred_by']
-        )
-      # Apply referrals on the ghost to this user
-      self.process_referrals(merge_with, [referrer['id'] for referrer
-                                          in res.get('referred_by', [])])
       # Increase swaggers swag for self
       update = {
         '$addToSet': {
@@ -1780,7 +1775,19 @@ class Mixin:
         }
       if ghost_code is not None:
         update['$addToSet']['consumed_ghost_codes'] = ghost_code
-      self.database.users.update({'_id': merge_with['_id']}, update)
+      if len(deleted_user_referrers):
+        update['$addToSet'].update({
+          'referred_by': {'$each': deleted_user_referrers}})
+      res = self.database.users.find_and_modify(
+        {
+          '_id': merge_with['_id']
+        },
+        update,
+        fields = ['referred_by'],
+        new = True)
+      # Apply referrals on the ghost to this user
+      self.process_referrals(merge_with, [referrer['id'] for referrer
+                                          in res.get('referred_by', [])])
       # Increase self swag for swaggers
       for swagger, amount in deleted_user_swaggers.items():
         self.database.users.update(
