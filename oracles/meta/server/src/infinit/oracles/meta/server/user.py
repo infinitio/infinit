@@ -57,7 +57,7 @@ class Mixin:
 
   def __user_view(self, user):
     '''Layout user to be returned to clients'''
-    user = self.__user_self(user)
+    user = self.__user(user)
     # Devices are fetched to compute connectivity, hide them
     del user['devices']
     # FIXME: Here's the joke: we return ghost and registered users
@@ -95,13 +95,17 @@ class Mixin:
     })
     return res.count()
 
-  def __user_self(self, user):
+  def __user(self, user):
     '''Layout self-user to be returned to clients'''
     if user is None:
       return user
     user['id'] = user['_id']
     user['status'] = user['connected'] # FIXME: seriously WTF
     user['devices'] = [d['id'] for d in user['devices']]
+    return user
+
+  def __user_self(self, user):
+    user = self.__user(user)
     if 'favorites' not in user:
       user['favorites'] = []
     if self.stripe_api_key is not None and 'stripe_id' in user:
