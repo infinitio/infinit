@@ -2885,11 +2885,16 @@ class Mixin:
 
   def __referred_by(self,
                     referrer,
+                    registered_user = False,
                     fields = ['referred_by', 'register_status']):
+    assert isinstance(referrer, bson.ObjectId)
+    query = {
+      'referred_by.id': referrer,
+    }
+    if registered_user:
+      query['last_connection'] = {'$exists': True}
     return self.database.users.find(
-      {
-        'referred_by.id': referrer
-      },
+      query,
       fields = fields,
     )
 
