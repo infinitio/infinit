@@ -130,6 +130,8 @@ class Mailer():
            reply_to = None,
            attachment = None):
     with elle.log.trace('send non-templated email to %s' % to):
+      if fr is None:
+        fr = 'Infinit <contact@infinit.io>'
       message = self.build_message(to = to,
                                    subject = subject,
                                    fr = fr,
