@@ -397,6 +397,33 @@ class InstrumentedMeta(infinit.oracles.meta.server.Meta):
     self.__now += duration
 
 
+basic_user_transfer_size_limit = 10 * 1000 * 1000 * 1000 # 10 GB
+def make_plan(name,
+              default_storage,
+              storage_bonuses,
+              send_to_self_quota,
+              send_to_self_bonus,
+              file_size_limit,
+              features = {}):
+  return {
+    'name': name,
+    'quotas': {
+      'links': {
+        'default_storage': default_storage,
+        'referrer_bonus': storage_bonuses[0],
+        'referree_bonus': storage_bonuses[1]
+      },
+      'p2p': {
+        'size_limit': file_size_limit,
+      },
+      'send_to_self': {
+        'default_quota': send_to_self_quota,
+        'bonus': send_to_self_bonus,
+      }
+    },
+    'features': features,
+  }
+
 class Meta:
 
   def __init__(self,
@@ -437,16 +464,32 @@ class Meta:
     self.__mongo.__enter__()
     client = pymongo.MongoClient(port = self.__mongo.port)
     self.__database = client.meta
-    client.meta.plans.insert({
-      'name': 'basic',
-      'quota': { 'total_link_size': 1e9},
-      'features': {'nag': 'true'}
-    })
-    client.meta.plans.insert({
-      'name': 'premium',
-      'quota': { 'total_link_size': 5e10},
-      'features': {'turbo': 'true'}
-    })
+    self.__database.plans.insert(
+      make_plan(name = 'basic',
+                default_storage = int(1e9),
+                storage_bonuses = (int(1e9), int(5e8)),
+                send_to_self_quota = 5,
+                send_to_self_bonus = 2,
+                file_size_limit = int(10e9),
+                features = {'nag': True}
+    ))
+    self.__database.plans.insert(
+      make_plan(name = 'plus',
+                default_storage = int(1e9),
+                storage_bonuses = (int(1e9), int(5e8)),
+                send_to_self_quota = None,
+                send_to_self_bonus = None,
+                file_size_limit = None,
+    ))
+    self.__database.plans.insert(
+      make_plan(name = 'premium',
+                default_storage = int(1e11),
+                storage_bonuses = (int(5e9), int(5e8)),
+                send_to_self_quota = None,
+                send_to_self_bonus = None,
+                file_size_limit = None,
+                features = {'turbo': True}
+    ))
     def run():
       try:
         self.__meta = InstrumentedMeta(

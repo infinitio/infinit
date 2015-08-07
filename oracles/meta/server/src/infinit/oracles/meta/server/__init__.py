@@ -221,6 +221,16 @@ class Meta(bottle.Bottle,
     warnings.simplefilter('default', DeprecationWarning)
 
   @property
+  def plans(self):
+    # XXX: Could be cached.
+    plans = {}
+    for plan in self.database.plans.find():
+      plans[plan['name']] = plan
+    # XXX: Dirty.
+    plans[None] = plans['basic']
+    return plans
+
+  @property
   def gcs(self):
     return self.__gcs
 
