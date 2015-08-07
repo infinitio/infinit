@@ -40,20 +40,28 @@ with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   assertEq(me['plan'], 'basic')
   assert me['features']['nag']
   assert me['features'].get('turbo') is None
-  assertEq(me['quota']['total_link_size'], 1e9)
-  print(me['id'])
+  assertEq(me['quotas']['links']['quota'],
+           meta.database.plans.find_one({
+             'name': 'basic'
+           })['quotas']['links']['default_storage'])
   meta.meta.change_plan(bson.ObjectId(me['id']), 'premium')
   me = bob.me
   assertEq(me['plan'], 'premium')
   assert me['features'].get('nag') is None
   assert me['features'].get('turbo')
-  assertEq(me['quota']['total_link_size'], 5e10)
+  assertEq(me['quotas']['links']['quota'],
+           meta.database.plans.find_one({
+             'name': 'premium'
+           })['quotas']['links']['default_storage'])
   bob.put('users/%s' % bob.id, {'plan': 'basic'})
   me = bob.me
   assertEq(me['plan'], 'basic')
   assert me['features']['nag']
   assert me['features'].get('turbo') is None
-  assertEq(me['quota']['total_link_size'], 1e9)
+  assertEq(me['quotas']['links']['quota'],
+           meta.database.plans.find_one({
+             'name': 'basic'
+           })['quotas']['links']['default_storage'])
 
   # Referral program
   transaction, res = bob.send(recipient = "candy@infinit.io")
@@ -61,23 +69,23 @@ with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   candy = User(meta, 'candy@infinit.io')
   candy.login()
   c = candy.me
-  assertEq(c['quota']['total_link_size'], 150e7)
+  assertEq(c['quotas']['links']['quota'], 150e7)
   b = bob.me
-  assertEq(b['quota']['total_link_size'], 2e9)
+  assertEq(b['quotas']['links']['quota'], 2e9)
   candy.send(recipient = "daniel@infinit.io")
   daniel = User(meta, 'daniel@infinit.io')
   daniel.login()
   c = candy.me
-  assertEq(c['quota']['total_link_size'], 250e7)
+  assertEq(c['quotas']['links']['quota'], 250e7)
   b = bob.me
-  assertEq(b['quota']['total_link_size'], 3e9)
+  assertEq(b['quotas']['links']['quota'], 3e9)
   # Referral through ghost
   transaction, res = bob.send(recipient = 'edgar@infinit.io')
   edgar = User(meta, 'edgar2@infinit.io')
   edgar.login()
-  assertEq(edgar.me['quota']['total_link_size'], 1e9)
+  assertEq(edgar.me['quotas']['links']['quota'], 1e9)
   gc = meta.database.users.find_one(
     {'accounts.id': 'edgar@infinit.io'})['ghost_code']
   edgar.post('ghost/%s/merge' % gc)
-  assertEq(edgar.me['quota']['total_link_size'], 150e7)
-  assertEq(bob.me['quota']['total_link_size'], 4e9)
+  assertEq(edgar.me['quotas']['links']['quota'], 150e7)
+  assertEq(bob.me['quotas']['links']['quota'], 4e9)

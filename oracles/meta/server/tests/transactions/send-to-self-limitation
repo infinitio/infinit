@@ -7,16 +7,16 @@ from utils import *
 from infinit.oracles.meta import error
 
 def get_quota(user):
-  return user.me['quota']['send-to-self']['quota']
+  return user.me['quotas']['send_to_self']['quota']
 
 def get_used(user):
-  return user.me['quota']['send-to-self']['used']
+  return user.me['quotas']['send_to_self']['used']
 
 def send_to_self(user, failure_expected = False):
   try:
     # Always make sure synchronize returns the same quota.
     sync = user.get('user/synchronize')
-    assertEq(sync['account']['quota']['send-to-self']['used'],
+    assertEq(sync['account']['quotas']['send_to_self']['used'],
              get_used(user))
     _, res = user.sendfile(recipient = user.id, initialize = True)
     del user.notifications[:]
@@ -26,7 +26,7 @@ def send_to_self(user, failure_expected = False):
     pprint(notifications)
     assertEq(len(notifications), 2) # Transaction + quota.
     notifications.sort()
-    assertEq(notifications[1]['account']['quota']['send-to-self']['used'],
+    assertEq(notifications[1]['account']['quotas']['send_to_self']['used'],
              get_used(user))
     assert not failure_expected
     return

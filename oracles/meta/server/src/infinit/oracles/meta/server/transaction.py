@@ -485,7 +485,7 @@ class Mixin:
     )
     if recipient['_id'] == sender['_id']: # Send to self.
       elle.log.trace("send to self")
-      send_to_self_quota = self.__quota(sender)['quota']['send-to-self']
+      send_to_self_quota = self.__quotas(sender)['send_to_self']
       limit = send_to_self_quota['quota']
       sent_to_self = send_to_self_quota['used']
       elle.log.debug("limit (%s) / sent to self (%s)" % (limit, sent_to_self))
@@ -569,7 +569,7 @@ class Mixin:
     recipient, new_user = self.__recipient_from_identifier(recipient_identifier,
                                                            sender)
     if recipient['_id'] != sender['_id']: # Not send to self.
-      transfer_size_limit = self.__quota(sender)['quota']['p2p']['limit']
+      transfer_size_limit = self.__quotas(sender)['p2p']['limit']
       if transfer_size_limit is not None and total_size > transfer_size_limit:
           self.payment_required({
             'error': error.FILE_TRANSFER_SIZE_LIMITED[0],

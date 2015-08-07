@@ -116,9 +116,9 @@ class Mixin:
       )
       if cus.subscriptions.total_count > 0:
           user['subscription_data'] = cus.subscriptions.data[0]
-
-    # Quota.
-    user.get('quota', {}).update(self.__quota(user)['quota'])
+    # Quotas.
+    quotas = self.__quotas(user)
+    user.update({'quotas': self.__quotas(user)})
 
     # Remove '_id' key, replaced earlier by 'id'.
     del user['_id']
@@ -140,6 +140,8 @@ class Mixin:
       'phone_number',
       'ghost_code',
       'shorten_ghost_profile_url',
+      'plan',
+      'quota',
     ]
     if self.admin:
       res += [
@@ -150,8 +152,6 @@ class Mixin:
         'email_confirmed',
         'features',
         'os',
-        'plan',
-        'quota',
         'total_link_size',
       ]
     return res
@@ -174,6 +174,7 @@ class Mixin:
       'quota',
       'stripe_id',
       'swaggers',
+      'referred_by',
     ]
     return res
 
@@ -818,11 +819,7 @@ class Mixin:
       handle = self.unique_handle(fullname)
       plan = self.database.plans.find_one({'name': 'basic'})
       features = self._roll_features(True)
-      quota = {
-        'send-to-self': {
-          'quota': 5
-        }
-      }
+      quota = {}
       if plan is not None:
         features.update(plan.get('features', {}))
         quota.update(plan.get('quota', {}))
@@ -1348,7 +1345,7 @@ class Mixin:
           'accounts': sort_dict({'id': email, 'type': 'email'}),
         }
       }
-      user = self.user_from_identifier(user, fields = ['accounts'])
+      user = self.user_from_identifier(user, fields = self.__user_self_fields)
       while True:
         try:
           self.database.users.update(
@@ -1359,7 +1356,7 @@ class Mixin:
         except pymongo.errors.DuplicateKeyError:
           previous = self.user_by_id_or_email(
             email,
-            fields = ['email', 'register_status', 'swaggers'],
+            fields = self.__user_self_fields,
             ensure_existence = False)
           if previous is None:
             elle.log.warn('email confirmation duplicate disappeared')
@@ -2726,32 +2723,54 @@ class Mixin:
     )
     return self.success()
 
-  def __quota(self,
-              user):
-    user_quota = user.get('quota', {})
+  def __quotas(self,
+               user):
+    # Get the user quota according to his plan or his custom account
+    # limitations.
+    user_quota = user.get('quotas', {})
+    user['plan']
+    user_plan = self.plans[user.get('plan', 'basic')]['quotas']
+    number_of_referred = self.__referred_by(user['_id'],
+                                            registered_user = True).count()
     def _send_to_self_quota(user):
-      if user.get('plan', None) == 'basic':
-        return user_quota.get('send-to-self', {}).get('quota')
-      else:
+      if user.get('plan', 'basic') != 'basic':
         return None
+      return user_quota.get('send_to_self', {}).get(
+        'quota',
+        user_plan['send_to_self']['default_quota']) \
+        + number_of_referred * user_plan['send_to_self']['bonus'] #\
+        # + facebook_linked(False).get('storage', 0)
+
     def _file_size_limit(user):
-      if user.get('plan', None) == 'basic':
-        return basic_user_transfer_size_limit
-      else:
+      if user.get('plan', 'basic') != 'basic':
         return None
+      return user_quota.get('p2p', {}).get(
+        'size_limit',
+        user_plan['p2p']['size_limit'])
+
+    def _link_storage(user):
+      links = user_plan['links']
+      # Plan default storage
+      # + (number of referred) * bonus
+      # + referred bonus if referred by someone
+      # + other bonuses.
+      return user_quota.get('links', {}).get(
+        'storage',
+        links['default_storage'] +
+        min(16, number_of_referred) * links['referrer_bonus'] +
+        links['referree_bonus'] * bool(len(user.get('referred_by', []))))
+
     return {
-      'quota': {
-        'links': {
-          'quota': user_quota.get('total_link_size', 0),
-          'used': user.get('total_link_size', 0),
-        },
-        'send-to-self': {
-          'quota': _send_to_self_quota(user),
-          'used': self.__sent_to_self(user),
-        },
-        'p2p': {
-          'limit': _file_size_limit(user),
-        }
+      'links': {
+        'quota': _link_storage(user),
+        'used': self.__link_usage(user),
+      },
+      'send_to_self': {
+        'quota': _send_to_self_quota(user),
+        'used': self.__sent_to_self(user),
+      },
+      'p2p': {
+        'limit': _file_size_limit(user),
       }
     }
 
@@ -2807,26 +2826,28 @@ class Mixin:
       res.update(self.devices_users_api(user['_id']))
     res.update(self.accounts_users_api(user['_id']))
     custom_domains = user.get('account', {}).get('custom_domains', [])
+    quotas = self.__quotas(user)
     res['account'] = {
       'plan': user.get('plan', 'basic'),
       'custom_domain': next(iter(custom_domains), {'name': ''})['name'],
       'link_format': user.get('account', {}).get('link_format', 'http://%s/_/%s'),
       # 0.9.40.
-      'link_size_quota': user.get('quota', {}).get('total_link_size', 0),
-      'link_size_used': user.get('total_link_size', 0),
+      'link_size_quota': quotas['links']['quota'],
+      'link_size_used': quotas['links']['used'],
     }
-    res['account'].update(self.__quota(user))
+    res['account'].update({'quotas': quotas})
     return self.success(res)
 
   def _quota_updated_notification(self, user, version = (0, 9, 37)):
+    quotas = self.__quotas(user)
     message = {
       'account': {
         # 0.9.40.
-        'link_size_used': user.get('total_link_size', 0),
-        'link_size_quota': user.get('quota', {}).get('total_link_size', 0),
+        'link_size_used': quotas['links']['used'],
+        'link_size_quota': quotas['links']['quota'],
       }
     }
-    message['account'].update(self.__quota(user))
+    message['account'].update({'quotas': quotas})
 
     self.notifier.notify_some(
       notifier.MODEL_UPDATE,

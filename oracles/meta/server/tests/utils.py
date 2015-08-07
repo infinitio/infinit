@@ -754,7 +754,6 @@ class User(Client):
       assert res['success']
     return res
 
-
   def __hash__(self):
     return str(self.id).__hash__()
 
@@ -783,12 +782,12 @@ class User(Client):
 
   @property
   def link_usage(self):
-    res = self.get('user/self')['quota']['links']['used']
+    res = self.get('user/self')['quotas']['links']['used']
     return res
 
   @property
   def link_quota(self):
-    res = self.get('user/self')['quota']['links']['quota']
+    res = self.get('user/self')['quotas']['links']['quota']
     return res
 
   @property
