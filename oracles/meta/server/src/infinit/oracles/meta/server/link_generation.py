@@ -698,6 +698,7 @@ class Mixin:
                  mtime = None,
                  offset: int = 0,
                  count: int = 500,
+                 include_failed: bool = False,
                  include_deleted: bool = False,
                  include_canceled: bool = False,
                  include_expired: bool = False,
@@ -726,6 +727,8 @@ class Mixin:
           {'expiry_time': {'$gt': self.now}},
         ]
       nin = []
+      if not include_deleted:
+        nin.append(transaction_status.FAILED)
       if not include_deleted:
         nin.append(transaction_status.DELETED)
       if not include_canceled:
