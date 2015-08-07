@@ -2871,26 +2871,18 @@ class Mixin:
     new_plan = self.database.plans.find_one({'name': new_plan_name})
     fset = dict()
     funset = dict()
-    for (k, v) in new_plan['features'].items():
+    for (k, v) in new_plan.get('features', {}).items():
       fset.update({'features.' + k: v})
-    for (k, v) in current_plan['features'].items():
-      if k not in new_plan['features']:
-        funset.update({'features.'+k: 1})
-    qset = dict()
-    qunset = dict()
-    for (k, v) in new_plan['quota'].items():
-      qset.update({'quota.' + k: v})
-    for (k, v) in current_plan['quota'].items():
-      if k not in new_plan['quota']:
-        qunset.update({'quota.'+k: 1})
-    fset.update(qset)
-    funset.update(qunset)
+    for (k, v) in current_plan.get('features', {}).items():
+      if k not in new_plan.get('features', {}):
+        funset.update({'features.' + k: 1})
     fset.update({'plan': new_plan_name})
     update = {'$set': fset}
     if len(funset):
       update.update({'$unset': funset})
     self.database.users.update({'_id': user['_id']}, update)
     self._quota_updated_notification(user)
+
   def __referred_by(self,
                     referrer,
                     fields = ['referred_by', 'register_status']):
