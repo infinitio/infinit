@@ -494,6 +494,7 @@ class Mixin:
           {
             'error': error.SEND_TO_SELF_LIMIT_REACHED[0],
             'reason': error.SEND_TO_SELF_LIMIT_REACHED[0],
+            'limit': limit,
           })
     transaction.db_insert()
 
