@@ -300,8 +300,7 @@ def configure(cxx_toolkit = None,
   if python3 is not None:
     papier_python_cxx_config = drake.cxx.Config(cxx_config)
     if cxx_toolkit.os is drake.os.macos:
-      papier_python_cxx_config.flag('-framework')
-      papier_python_cxx_config.flag('CoreServices')
+      papier_python_cxx_config.framework_add('CoreServices')
     papier_python_sources = drake.nodes('papier/src/papier/python.cc')
     papier_python_sources.append(papier_lib)
     papier_python_cxx_config += boost_filesystem
@@ -923,8 +922,7 @@ def configure(cxx_toolkit = None,
       gap_python_cxx_config += boost_python
     else:
       if cxx_toolkit.os is drake.os.macos:
-        gap_python_cxx_config.flag('-framework')
-        gap_python_cxx_config.flag('CoreServices')
+        gap_python_cxx_config.framework_add('CoreServices')
       gap_python_cxx_config += boost_python
     with templating_context:
       gap_python_sources = drake.nodes(
