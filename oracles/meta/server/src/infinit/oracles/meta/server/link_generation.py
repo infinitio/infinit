@@ -851,6 +851,5 @@ class Mixin:
       'expiration_date': {'$lt': self.now},
     })
     for link in expired:
-      print(link)
       self.link_update(link = link,
                        status = transaction_status.DELETED)
