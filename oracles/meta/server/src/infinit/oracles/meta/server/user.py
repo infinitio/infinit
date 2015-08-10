@@ -117,7 +117,6 @@ class Mixin:
       if cus.subscriptions.total_count > 0:
           user['subscription_data'] = cus.subscriptions.data[0]
     # Quotas.
-    quotas = self.__quotas(user)
     user.update({'quotas': self.__quotas(user)})
 
     # Remove '_id' key, replaced earlier by 'id'.
@@ -140,8 +139,6 @@ class Mixin:
       'phone_number',
       'ghost_code',
       'shorten_ghost_profile_url',
-      'plan',
-      'quota',
     ]
     if self.admin:
       res += [
@@ -1379,7 +1376,6 @@ class Mixin:
             continue
       return self._web_login(user)
 
-
   @api('/user/accounts/<email>', method = 'DELETE')
   @require_logged_in
   def remove_auxiliary_email_address(self,
@@ -1870,7 +1866,7 @@ class Mixin:
 
   def user_by_id_query(self, id):
     assert isinstance(id, bson.ObjectId)
-    return id
+    return {'_id': id}
 
   def _user_by_id(self, _id, fields, ensure_existence = True):
     """Get a user using by id.
