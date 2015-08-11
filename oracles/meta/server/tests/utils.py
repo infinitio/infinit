@@ -424,8 +424,8 @@ def make_plan(name,
         'default_quota': send_to_self_quota,
         'bonuses': {
           'referrer': send_to_self_bonus[0],
-          'facebook_linked': storage_bonuses[1],
-          'social_post': storage_bonuses[2],
+          'facebook_linked': send_to_self_bonus[1],
+          'social_post': send_to_self_bonus[2],
         },
       }
     },
@@ -483,10 +483,10 @@ class Meta:
     ))
     self.__database.plans.insert(
       make_plan(name = 'plus',
-                default_storage = int(1e9),
+                default_storage = int(5e9),
                 storage_bonuses = (int(1e9), int(5e8), int(3e8), int(5e8)),
                 send_to_self_quota = None,
-                send_to_self_bonus = (2, 1),
+                send_to_self_bonus = (2, 1, 1),
                 file_size_limit = None,
     ))
     self.__database.plans.insert(
