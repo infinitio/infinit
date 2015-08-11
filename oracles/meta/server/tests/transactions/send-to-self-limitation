@@ -103,8 +103,8 @@ with Meta() as meta, Trophonius(meta) as trophonius:
 
   invite(alice, "george@infinit.io")
   assertEq(get_quota(alice), None)
-  # Lets try to send a lot...
-  for _ in range(0, 10):
+  # Lets try to send.
+  for _ in range(0, 3):
     send_to_self(alice, failure_expected = False)
 
 # Referral via invitation (no file).
