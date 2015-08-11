@@ -169,6 +169,7 @@ class Mixin:
       'plan',
       'quota',
       'referred_by',
+      'social_posts',
       'stripe_id',
       'swaggers',
       'total_link_size',
@@ -2384,7 +2385,7 @@ class Mixin:
     return self.success()
 
   @api('/user/self')
-  @require_logged_in_fields(['identity', 'quota'])
+  @require_logged_in_fields(['identity', 'quota', 'referred_by', 'social_posts'])
   def user_self(self):
     """Return self data."""
     return self.__user_self(self.user)
@@ -2730,7 +2731,7 @@ class Mixin:
     return self.success()
 
   @api('/user/synchronize')
-  @require_logged_in
+  @require_logged_in_fields(['referred_by', 'social_posts', 'plan'])
   def synchronize(self,
                   init : int = 1,
                   history = 20):
@@ -3642,6 +3643,39 @@ class Mixin:
     # The first you referrer gives you plus 2 send to self.
     return number_of_referred >= 2
 
+  ## ------------ ##
+  ## Social posts ##
+  ## ------------ ##
+
+  @api('/user/social_posts/<medium>', method = 'POST')
+  @require_logged_in_fields(['social_posts'])
+  def social_post(self, medium):
+    if medium not in ['facebook', 'twitter']:
+      return self.bad_request(
+        {
+          'reason': 'invalid medium: %s' % medium
+        })
+    user = self.user
+    for social_post in user.get('social_posts', []):
+      if social_post['medium'] == medium:
+        self.bad_request(
+          {
+            'reason': '%s has already been used' % medium,
+          })
+    user = self.database.users.find_and_modify(
+      {
+        '_id': self.user['_id'],
+      },
+      {
+        '$addToSet': {
+          'social_posts': {
+            'medium': medium,
+            'date': self.now
+          }
+        }
+      })
+    return {}
+
   ## -------- ##
   ## Referral ##
   ## -------- ##
@@ -3761,6 +3795,10 @@ class Mixin:
     user_plan = self.plans[user.get('plan', 'basic')]['quotas']
     number_of_referred = self.__referred_by(user['_id'],
                                             registered_user = True).count()
+    social_posts = user.get('social_posts', [])
+    social_posts = set((post['medium'] for post in social_posts))
+    facebook_linked = 'facebook' in set((account['type']
+                                         for account in user['accounts']))
     def _send_to_self_quota(user):
       if user.get('plan', 'basic') != 'basic':
         return None
@@ -3769,7 +3807,10 @@ class Mixin:
       return user_quota.get('send_to_self', {}).get(
         'quota',
         send_to_self['default_quota']) \
-        + number_of_referred * bonuses['referrer']
+        + number_of_referred * bonuses['referrer'] \
+        + int(user.get('has_avatar', False)) \
+        + len(social_posts) * bonuses['social_post'] \
+        + facebook_linked * bonuses['facebook_linked']
 
     def _file_size_limit(user):
       if user.get('plan', 'basic') != 'basic':
@@ -3789,8 +3830,9 @@ class Mixin:
         'storage',
         links['default_storage']) + \
         min(16, number_of_referred) * bonuses['referrer'] + \
-        bonuses['referree'] * (len(user.get('referred_by', [])))
-
+        bonuses['referree'] * (len(user.get('referred_by', []))) + \
+        len(social_posts) * bonuses['social_post'] + \
+        facebook_linked * bonuses['facebook_linked']
 
     return {
       'links': {

@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+
+from utils import *
+import os
+from random import uniform
+
+# Add avatar.
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  previous_quota = alice.me['quotas']['send_to_self']['quota']
+  assert alice.me['has_avatar'] == False
+  with open('%s/avatar.jpg' % os.path.dirname(__file__), 'rb') as f:
+    alice.post('user/avatar', body = f.read())
+  assert alice.me['has_avatar'] == True
+  assertGT(alice.me['quotas']['send_to_self']['quota'],
+           previous_quota)
+
+def social_post(user, medium):
+  previous_links = user.me['quotas']['links']['quota']
+  previous_send_to_self = user.me['quotas']['send_to_self']['quota']
+  user.post('user/social_posts/' + medium)
+  assertGT(user.me['quotas']['links']['quota'],
+           previous_links)
+  assertGT(user.me['quotas']['send_to_self']['quota'],
+           previous_send_to_self)
+  throws(lambda: user.post('user/social_posts/' + medium))
+  assert medium in set((post['medium'] for post in user.me['social_posts']))
+
+# Facebook then Twitter.
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  social_post(alice, 'facebook')
+  social_post(alice, 'twitter')
+
+# Twitter then Facebook.
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  social_post(alice, 'twitter')
+  social_post(alice, 'facebook')
+
+# Link facebook.
+with Meta() as meta, Trophonius(meta) as t:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+
+  meta.inner.facebook = Facebook()
+  bob = User(meta, facebook = True, check_registration = True)
+  meta.inner.facebook.set_next_client_data({
+    'id': int(uniform(1000000000000000, 1500000000000000)),
+    'email': 'boo@infinit.io',
+  })
+  bob.facebook_connect("token", check_registration = True)
+  assertGT(bob.me['quotas']['links']['quota'],
+           alice.me['quotas']['links']['quota'])
+  assertGT(bob.me['quotas']['send_to_self']['quota'],
+           alice.me['quotas']['send_to_self']['quota'])
+  meta.inner.facebook.set_next_client_data({
+    'id': int(uniform(1000000000000000, 1500000000000000)),
+    'email': None,
+  })
+  alice.put('user/accounts_facebook',
+            {'long_lived_access_token': 'super_token'})
+  assertEq(bob.me['quotas']['links']['quota'],
+           alice.me['quotas']['links']['quota'])
+  assertEq(bob.me['quotas']['send_to_self']['quota'],
+           alice.me['quotas']['send_to_self']['quota'])
