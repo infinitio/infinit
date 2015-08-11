@@ -67,3 +67,49 @@ with Meta() as meta, Trophonius(meta) as t:
            alice.me['quotas']['links']['quota'])
   assertEq(bob.me['quotas']['send_to_self']['quota'],
            alice.me['quotas']['send_to_self']['quota'])
+
+
+# Link facebook.
+with Meta() as meta, Trophonius(meta) as t:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+
+  def _change_send_to_self_quota(user, value):
+    res = meta.database.users.find_and_modify(
+      {'_id': bson.ObjectId(user.id)},
+      {'$set': {
+        'quotas.send_to_self.quota': value,
+      }},
+      new = True)
+    assertEq(res['quotas']['send_to_self']['quota'],
+             value)
+    assertEq(user.me['quotas']['send_to_self']['quota'],
+             value)
+  def _change_links_quota(user, value):
+    res = meta.database.users.find_and_modify(
+      {'_id': bson.ObjectId(user.id)},
+      {'$set': {
+        'quotas.links.storage': value,
+      }},
+      new = True)
+    assertEq(res['quotas']['links']['storage'],
+             value)
+    assertEq(user.me['quotas']['links']['quota'],
+             value)
+
+  _change_send_to_self_quota(alice, 1000)
+  _change_send_to_self_quota(alice, None)
+  _change_send_to_self_quota(alice, 10)
+  # Check if bonuses still apply.
+  User(meta, 'bob@infinit.io', referral_code = alice.referral_code).login()
+  assertGT(alice.me['quotas']['send_to_self']['quota'], 10)
+
+  # New alice.
+  alice = User(meta, 'alice2@infinit.io')
+  alice.login()
+  _change_links_quota(alice, 1000)
+  _change_links_quota(alice, 100000000000)
+  _change_links_quota(alice, 10)
+  # Check if bonuses still apply.
+  User(meta, 'bob2@infinit.io', referral_code = alice.referral_code).login()
+  assertGT(alice.me['quotas']['links']['quota'], 10)

@@ -154,11 +154,19 @@ class Mixin:
     return res
 
   @property
-  def __user_self_fields(self):
-    res = self.__user_view_fields
-    res += [
-      'account',
+  def __referral_fields(self):
+    return [
       'accounts',
+      'plan',
+      'quotas',
+      'referred_by',
+      'social_posts',
+    ]
+
+  @property
+  def __user_self_fields(self):
+    return self.__user_view_fields + [
+      'account',
       'consumed_ghost_codes',
       'creation_time',
       'email',
@@ -167,14 +175,12 @@ class Mixin:
       'features',
       'identity',
       'plan',
-      'quota',
-      'referred_by',
-      'social_posts',
       'stripe_id',
       'swaggers',
+      # Old clients.
+      'quota',
       'total_link_size',
-    ]
-    return res
+    ] + self.__referral_fields
 
   def __user_fetch(self, query, fields = None):
     return self.__user_fill(
@@ -2385,7 +2391,7 @@ class Mixin:
     return self.success()
 
   @api('/user/self')
-  @require_logged_in_fields(['identity', 'quota', 'referred_by', 'social_posts'])
+  @require_logged_in_fields(['identity'])
   def user_self(self):
     """Return self data."""
     return self.__user_self(self.user)
@@ -2731,7 +2737,7 @@ class Mixin:
     return self.success()
 
   @api('/user/synchronize')
-  @require_logged_in_fields(['referred_by', 'social_posts', 'plan'])
+  @require_logged_in
   def synchronize(self,
                   init : int = 1,
                   history = 20):
@@ -3777,7 +3783,7 @@ class Mixin:
           },
           update)
     referrers = list(map(lambda x: self.user_from_identifier(
-      x, fields = ['quota', 'plan']),
+      x, fields = self.__referral_fields),
                          referrals))
     for user in referrers + [new_user]:
       self._quota_updated_notification(user)
@@ -3790,8 +3796,7 @@ class Mixin:
                user):
     # Get the user quota according to his plan or his custom account
     # limitations.
-    user_quota = user.get('quotas', {})
-    user['plan']
+    user_quotas = user.get('quotas', {})
     user_plan = self.plans[user.get('plan', 'basic')]['quotas']
     number_of_referred = self.__referred_by(user['_id'],
                                             registered_user = True).count()
@@ -3800,22 +3805,26 @@ class Mixin:
     facebook_linked = 'facebook' in set((account['type']
                                          for account in user['accounts']))
     def _send_to_self_quota(user):
-      if user.get('plan', 'basic') != 'basic':
-        return None
       send_to_self = user_plan['send_to_self']
+      if send_to_self['default_quota'] == None:
+        return None
       bonuses = send_to_self['bonuses']
-      return user_quota.get('send_to_self', {}).get(
+      quota = user_quotas.get('send_to_self', {}).get(
         'quota',
-        send_to_self['default_quota']) \
+        send_to_self['default_quota'])
+      elle.log.debug('send to self quota before bonuses: %s' % quota)
+      if quota is None:
+        return quota
+      quota = quota \
         + number_of_referred * bonuses['referrer'] \
         + int(user.get('has_avatar', False)) \
         + len(social_posts) * bonuses['social_post'] \
         + facebook_linked * bonuses['facebook_linked']
+      elle.log.debug('send to self quota after bonuses: %s' % quota)
+      return quota
 
     def _file_size_limit(user):
-      if user.get('plan', 'basic') != 'basic':
-        return None
-      return user_quota.get('p2p', {}).get(
+      return user_quotas.get('p2p', {}).get(
         'size_limit',
         user_plan['p2p']['size_limit'])
 
@@ -3826,13 +3835,17 @@ class Mixin:
       # + (number of referred) * bonus
       # + referred bonus if referred by someone
       # + other bonuses.
-      return user_quota.get('links', {}).get(
+      storage = user_quotas.get('links', {}).get(
         'storage',
-        links['default_storage']) + \
+        links['default_storage'])
+      elle.log.debug('link storage before bonuses: %s' % storage)
+      storage = storage + \
         min(16, number_of_referred) * bonuses['referrer'] + \
         bonuses['referree'] * (len(user.get('referred_by', []))) + \
         len(social_posts) * bonuses['social_post'] + \
         facebook_linked * bonuses['facebook_linked']
+      elle.log.debug('link storage after bonuses: %s' % storage)
+      return storage
 
     return {
       'links': {
