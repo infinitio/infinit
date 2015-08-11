@@ -161,6 +161,7 @@ class Mixin:
       'quotas',
       'referred_by',
       'social_posts',
+      'has_avatar',
     ]
 
   @property
@@ -183,8 +184,17 @@ class Mixin:
     ] + self.__referral_fields
 
   def __user_fetch(self, query, fields = None):
-    return self.__user_fill(
-      self.database.users.find_one(query, fields = fields))
+    if fields is None or 'has_avatar' not in fields:
+      return self.__user_fill(
+        self.database.users.find_one(query, fields = fields))
+    else:
+      fields = {field: 1 for field in fields}
+      fields['has_avatar'] = {'$gt': ["$avatar", None]}
+      res = self.database.users.aggregate([
+        {'$match': query},
+        {'$project': fields}
+      ])['result']
+      return None if len(res) == 0 else self.__user_fill(res[0])
 
   def __user_fetch_and_modify(self, query, update, fields, new):
     return self.__user_fill(self.database.users.find_and_modify(
