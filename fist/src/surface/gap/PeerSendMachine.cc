@@ -162,10 +162,17 @@ namespace surface
       };
 
       this->_machine.transition_add_catch_specific<SendToSelfTransactionLimitReached>(
-        this->_initialize_transaction_state, this->_end_state, true).action_exception(
+        this->_create_transaction_state, this->_cancel_state, true).action_exception(
+          limitation_hit_e);
+      this->_machine.transition_add_catch_specific<SendToSelfTransactionLimitReached>(
+        this->_initialize_transaction_state, this->_cancel_state, true).action_exception(
+          limitation_hit_e);
+
+      this->_machine.transition_add_catch_specific<TransferSizeLimitExceeded>(
+        this->_create_transaction_state, this->_cancel_state, true).action_exception(
           limitation_hit_e);
       this->_machine.transition_add_catch_specific<TransferSizeLimitExceeded>(
-        this->_initialize_transaction_state, this->_end_state, true).action_exception(
+        this->_initialize_transaction_state, this->_cancel_state, true).action_exception(
           limitation_hit_e);
     }
 
@@ -505,7 +512,6 @@ namespace surface
           transaction_response.recipient(), send_notification, is_swagger);
         this->data()->is_ghost = peer.ghost();
         this->data()->recipient_id = peer.id;
-        this->transaction_id(transaction_response.created_transaction_id());
         this->transaction()._snapshot_save();
       }
       ELLE_TRACE("%s: initialized transaction %s", *this, this->transaction_id());
