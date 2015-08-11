@@ -483,19 +483,6 @@ class Mixin:
       files = files,
       message = message,
     )
-    if recipient['_id'] == sender['_id']: # Send to self.
-      elle.log.trace("send to self")
-      send_to_self_quota = self.__quotas(sender)['send_to_self']
-      limit = send_to_self_quota['quota']
-      sent_to_self = send_to_self_quota['used']
-      elle.log.debug("limit (%s) / sent to self (%s)" % (limit, sent_to_self))
-      if limit is not None and sent_to_self >= limit:
-        self.payment_required(
-          {
-            'error': error.SEND_TO_SELF_LIMIT_REACHED[0],
-            'reason': error.SEND_TO_SELF_LIMIT_REACHED[0],
-            'limit': limit,
-          })
     transaction.db_insert()
 
     return transaction
@@ -569,14 +556,6 @@ class Mixin:
     recipient_identifier = recipient_identifier or utils.identifier(id_or_email)
     recipient, new_user = self.__recipient_from_identifier(recipient_identifier,
                                                            sender)
-    if recipient['_id'] != sender['_id']: # Not send to self.
-      transfer_size_limit = self.__quotas(sender)['p2p']['limit']
-      if transfer_size_limit is not None and total_size > transfer_size_limit:
-          self.payment_required({
-            'error': error.FILE_TRANSFER_SIZE_LIMITED[0],
-            'reason': error.FILE_TRANSFER_SIZE_LIMITED[1],
-            'limit': transfer_size_limit,
-          })
     if recipient['register_status'] == 'merged':
       merge_target = recipient.get('merged_with', None)
       if merge_target is None:
@@ -614,6 +593,20 @@ class Mixin:
     _id = sender['_id']
     elle.log.debug('Sender agent %s, version %s, peer_new %s peer_ghost %s'
                    % (self.user_agent, self.user_version, new_user,  is_ghost))
+    # Check limits.
+    limit_reached = ()
+    quotas = self.__quotas(sender)
+    if recipient['_id'] == sender['_id']: # Send to self.
+      elle.log.trace("send to self")
+      send_to_self_quota = quotas['send_to_self']
+      limit = send_to_self_quota['quota']
+      sent_to_self = send_to_self_quota['used']
+      elle.log.debug("limit (%s) / sent to self (%s)" % (limit, sent_to_self))
+      if limit is not None and sent_to_self >= limit:
+        limit_reached = (error.SEND_TO_SELF_LIMIT_REACHED, limit)
+    transfer_size_limit = quotas['p2p']['limit']
+    if transfer_size_limit is not None and total_size > transfer_size_limit:
+      limit_reached = (error.FILE_TRANSFER_SIZE_LIMITED, transfer_size_limit)
     transaction = {
       'sender_id': _id,
       'sender_fullname': sender['fullname'],
@@ -650,6 +643,8 @@ class Mixin:
             message,
             ] + files)
       }
+    if len(limit_reached):
+      transaction['limit_reached'] = limit_reached[0][0]
     if transaction_id is not None:
       transaction['status'] = transaction_status.INITIALIZED
       self.database.transactions.update(
@@ -673,6 +668,12 @@ class Mixin:
           time = False)
     else:
       transaction_id = self.database.transactions.insert(transaction)
+    if len(limit_reached):
+      self.payment_required({
+        'error': limit_reached[0][0],
+        'reason': limit_reached[0][1],
+        'limit': limit_reached[1],
+      })
     transaction['_id'] = transaction_id
     self._increase_swag(sender['_id'], recipient['_id'])
     if recipient['_id'] == sender['_id']:

@@ -35,12 +35,17 @@ with Meta() as meta:
     assertEq(e.content['reason'], error.FILE_TRANSFER_SIZE_LIMITED[1])
     assertEq(e.content['limit'], 10 * 1000 * 1000 * 1000)
 
-  # Make sure send to self still works.
-  alice.sendfile(recipient = alice.id,
-                 total_size = size_to_send,
-                 initialize = True)
+  # Make sure send to self is blocked too.
+  throws(lambda: alice.sendfile(recipient = alice.id,
+                                total_size = size_to_send,
+                                initialize = True))
 
   meta.meta.change_plan(bson.ObjectId(bob.id), 'premium')
   bob.sendfile(recipient = alice.id,
+               total_size = size_to_send,
+               initialize = True)
+
+  # Make sure send to self works too.
+  bob.sendfile(recipient = bob.id,
                total_size = size_to_send,
                initialize = True)
