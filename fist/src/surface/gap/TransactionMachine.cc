@@ -518,8 +518,11 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("%s: finalize transaction: %s", *this, s);
       if (this->data()->id.empty())
+      {
         ELLE_TRACE("%s: no need to finalize transaction: id is still empty",
                    *this);
+        this->data()->status = s;
+      }
       else
       {
         try
