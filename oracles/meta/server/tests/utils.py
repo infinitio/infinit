@@ -693,12 +693,18 @@ class User(Client):
     return self.me['facebook_id']
 
   @property
-  def login_parameters(self):
+  def web_login_parameters(self):
     return {
       'email': self.email,
       'password': self.password,
-      'device_id': str(self.device_id),
     }
+  @property
+  def login_parameters(self):
+    res = self.web_login_parameters
+    res.update({
+      'device_id': str(self.device_id),
+    })
+    return res
 
   @property
   def data(self):

@@ -5,7 +5,21 @@ import datetime
 from utils import *
 from infinit.oracles.meta import error
 
-# Referral via file invitation.
+# Basic.
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  alice.post('user/invite', {'identifier': 'bob@infinit.io'})
+  assert alice.referrees[0]['has_logged_in'] == False
+  bob = User(meta, 'bob@infinit.io')
+  assert alice.referrees[0]['has_logged_in'] == False
+  res = bob.post('web-login', bob.web_login_parameters)
+  assert res['success'] == True
+  assert alice.referrees[0]['has_logged_in'] == False
+  bob.login()
+  assert alice.referrees[0]['has_logged_in'] == True
+
+# Complete.
 with Meta() as meta:
   alice = User(meta, 'alice@infinit.io')
   alice.login()

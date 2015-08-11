@@ -3658,7 +3658,8 @@ class Mixin:
   ## ----- ##
 
   def __eligible_for_plus(self, referrer):
-    number_of_referred = self.__referred_by(referrer).count()
+    number_of_referred = self.__referred_by(referrer,
+                                            registered_user = True).count()
     # The first you referrer gives you plus 2 send to self.
     return number_of_referred >= 2
 
@@ -3746,6 +3747,7 @@ class Mixin:
           'referred_by.date': 1,
           'referred_by.type': 1,
           'register_status': 1,
+          'has_logged_in': {'$gt': ["$last_connection", None]},
           'accounts.id': 1,
           'email': 1,
         }
@@ -3770,7 +3772,7 @@ class Mixin:
       'referrees': [{
         'invitations': [p for p in entry['referred_by']],
         'type': entry['referred_by'][0]['type'],
-        'register_status': entry['register_status'],
+        'has_logged_in': entry['has_logged_in'],
         'recipient': _recipient(entry),
         'status': _status(invitees, entry),
       } for entry in res]
