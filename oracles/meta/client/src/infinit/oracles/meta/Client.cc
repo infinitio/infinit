@@ -1152,7 +1152,9 @@ namespace infinit
             int64_t count_integral = static_cast<int64_t>(count);
             query.serialize("files_count", count_integral);
             query.serialize("message", const_cast<std::string&>(message));
-          });
+          }, false);
+        _check_account_limit(url, request);
+        this->_handle_errors(request);
         SerializerIn input(url, request);
         std::string created_transaction_id;
         input.serialize("created_transaction_id", created_transaction_id);
