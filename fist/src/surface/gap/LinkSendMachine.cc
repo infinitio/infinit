@@ -90,10 +90,10 @@ namespace surface
       };
 
       this->_machine.transition_add_catch_specific<QuotaExceeded>(
-        this->_create_transaction_state, this->_end_state, true).action_exception(
+        this->_create_transaction_state, this->_cancel_state, true).action_exception(
           quota_exceeded_e);
       this->_machine.transition_add_catch_specific<QuotaExceeded>(
-        this->_initialize_transaction_state, this->_end_state, true).action_exception(
+        this->_initialize_transaction_state, this->_cancel_state, true).action_exception(
           quota_exceeded_e);
     }
 
