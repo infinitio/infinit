@@ -25,66 +25,117 @@ import infinit.oracles.emailer
 import bottle
 import elle.log
 
-import optparse
-usage = "usage: %prog [options]"
-parser = optparse.OptionParser(usage = usage)
-parser.add_option('--port',
-                  action = 'store',
-                  help = 'Port to listen on',
-                  default = '8080')
-parser.add_option('--mongo-port',
-                  action = 'store',
-                  help = 'Mongodb port',
-                  type = int,
-                  default = None)
-parser.add_option('--mongo-host',
-                  action = 'append',
-                  help = 'Mongodb host',
-                  type = str,
-                  default = None)
-parser.add_option('--mongo-replica-set',
-                  action = 'store_true',
-                  help = 'Use mongo replica set',
-                  default = False)
+ELLE_LOG_COMPONENT = 'sisyphus'
 
-options, _ = parser.parse_args()
+def main():
 
-args = {}
-if options.mongo_host:
-  args['mongo_host'] = options.mongo_host
+  import optparse
+  usage = "usage: %prog [options]"
+  parser = optparse.OptionParser(usage = usage)
+  parser.add_option('--port',
+                    action = 'store',
+                    help = 'Port to listen on',
+                    default = '8080')
+  parser.add_option('--mongo-port',
+                    action = 'store',
+                    help = 'Mongodb port',
+                    type = int,
+                    default = None)
+  parser.add_option('--mongo-host',
+                    action = 'append',
+                    help = 'Mongodb host',
+                    type = str,
+                    default = None)
+  parser.add_option('--mongo-replica-set',
+                    action = 'store_true',
+                    help = 'Use mongo replica set',
+                    default = False)
+  # Boulders
+  parser.add_option('--boulders-show',
+                    action = 'store_true',
+                    help = 'Show available boulders',
+                    default = False)
+  parser.add_option('--boulders-enable',
+                    action = 'store',
+                    help = 'Only run specified boulders')
+  # SWU
+  parser.add_option('--emails-disable',
+                    action = 'store_true',
+                    help = 'Do not send emails')
+  boulders = {
+    c.__name__ : c
+    for c in [
+      infinit.oracles.sisyphus.boulders.drip.ActivityReminder,
+      infinit.oracles.sisyphus.boulders.drip.ConfirmSignup,
+      infinit.oracles.sisyphus.boulders.drip.GhostReminder,
+      infinit.oracles.sisyphus.boulders.drip.Onboarding,
+      infinit.oracles.sisyphus.boulders.drip.Tips,
+      infinit.oracles.sisyphus.boulders.drip.NPS,
+      ]}
 
-swu_key = 'live_7e775f6f0e1404802a5fbbc0fcfa9c238b065c49'
-# Send to mefyl@infinit.io
-# swu_key = 'test_8a19af75d006192a3e51dcab310fa1ed428e53ba'
-# Send to julien@infinit.io
-# swu_key = 'test_ba7aa36c79a43f9d82cfc83a5da1e9d605ef4dbf'
-# Don't send
-# swu_key = 'test_26008542af128a451ffd05a954c971066219b090'
+  boulders_run = boulders
 
-args['emailer'] = infinit.oracles.emailer.SendWithUsEmailer(
-  api_key = swu_key)
-args['metrics'] = infinit.oracles.metrics.Metrics()
+  options, _ = parser.parse_args()
 
-app = infinit.oracles.sisyphus.Sisyphus(**args)
+  if options.boulders_show:
+    for b in boulders.values():
+      print(b.__name__)
+    exit(0)
 
-pretend = False
+  if options.boulders_enable:
+    boulders_run = {}
+    for b in options.boulders_enable.split(','):
+      try:
+        boulders_run[b] = boulders[b]
+      except KeyError:
+        raise Exception('no such boulder: %s' % b)
 
-infinit.oracles.sisyphus.boulders.drip.ActivityReminder(app, pretend = pretend)
-infinit.oracles.sisyphus.boulders.drip.ConfirmSignup(app, pretend = pretend)
-infinit.oracles.sisyphus.boulders.drip.GhostReminder(app, pretend = pretend)
-infinit.oracles.sisyphus.boulders.drip.Onboarding(app, pretend = pretend)
-infinit.oracles.sisyphus.boulders.drip.Tips(app, pretend = pretend)
-infinit.oracles.sisyphus.boulders.drip.NPS(app, pretend = pretend)
+  args = {}
+  if options.mongo_host:
+    args['mongo_host'] = options.mongo_host
+
+  swu_live_key = 'live_7e775f6f0e1404802a5fbbc0fcfa9c238b065c49'
+  swu_disable_key = 'test_26008542af128a451ffd05a954c971066219b090'
+  swu_redirect_keys = {
+    'mefyl@infinit.io':
+      'test_8a19af75d006192a3e51dcab310fa1ed428e53ba',
+    'julien@infinit.io':
+      'test_ba7aa36c79a43f9d82cfc83a5da1e9d605ef4dbf',
+    }
+
+  if options.emails_disable:
+    elle.log.log('emails disabled')
+    swu_key = swu_disable_key
+    pretend = True
+  else:
+    elle.log.log('sending emails for real')
+    swu_key = swu_live_key
+    args['metrics'] = infinit.oracles.metrics.Metrics()
+    pretend = False
+  args['emailer'] = infinit.oracles.emailer.SendWithUsEmailer(
+    api_key = swu_key)
+
+  app = infinit.oracles.sisyphus.Sisyphus(**args)
+
+  for b in boulders_run.values():
+    with elle.log.log('starting boulder %s' % b.__name__):
+      b(app, pretend = pretend)
 
 
-apns_cert = '%s/../share/aps.pem' % SELF_DIR
-apns_cert_prod = '%s/../share/aps_production.pem' % SELF_DIR
-infinit.oracles.sisyphus.boulders.apns.APNSUnregister(
-  app,
-  certificate = apns_cert_prod,
-  production = True,
-)
+  apns_cert = '%s/../share/aps.pem' % SELF_DIR
+  apns_cert_prod = '%s/../share/aps_production.pem' % SELF_DIR
+  infinit.oracles.sisyphus.boulders.apns.APNSUnregister(
+    app,
+    certificate = apns_cert_prod,
+    production = True,
+  )
 
-bottle.run(app = app,
-           host = '127.0.0.1',
-           port = int(options.port))
+  bottle.run(app = app,
+             host = '127.0.0.1',
+             port = int(options.port))
+
+try:
+  main()
+except Exception as e:
+  print('%s: fatal error: %s' % (sys.argv[0], e), file = sys.stderr)
+  exit(1)

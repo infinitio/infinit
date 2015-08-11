@@ -215,28 +215,44 @@ def avatar(i, meta):
   return '%s/user/%s/avatar' % (meta, i)
 
 def user_vars(user, meta):
-  return {
+  res = {
     'avatar': avatar(user['_id'], meta),
     'email': user.get('email'),
     'fullname': user.get('fullname'),
     'id': str(user['_id']),
     'os': user.get('os', []),
   }
+  if 'devices' in user:
+    res['devices'] = user['devices']
+  return res
 
 def transaction_vars(transaction, user, meta):
   sender = transaction['sender_id'] == user['_id']
   verb = 'to' if sender else 'from'
-  peer = 'recipient' if sender else 'sender'
+  me =   'recipient' if not sender else 'sender'
+  peer = 'recipient' if     sender else 'sender'
+  def device_id(v):
+    '''Change empty device ids to None'''
+    if not v:
+      return None
+    else:
+      return v
   return {
     'id': str(transaction['_id']),
+    'status': transaction['status'],
     'files': transaction['files'],
     'key': key('/transactions/%s' % transaction['_id']),
     'message': transaction['message'],
+    # 'device': {
+    #   'name': transaction[''],
+    #   },
+    'device': device_id(transaction['%s_device_id' % me]),
     'peer':
     {
       'fullname': transaction['%s_fullname' % peer],
       'id': transaction['%s_id' % peer],
       'avatar': avatar(transaction['%s_id' % peer], meta),
+      'device': device_id(transaction['%s_device_id' % peer]),
     },
     'size': transaction['total_size'],
     'verb': verb,

@@ -246,10 +246,14 @@ def transaction_create(
     recipient_identifier,
     files = ['foobar'],
     initialize = True,
-    size = 42):
+    size = 42,
+    device = None):
+  # Thanks Raph
+  device = {'id': str(device['id'])} if device is not None \
+           else {'id': 'device'}
   transaction = meta.transaction_create(
     sender = sender,
-    device = {'id': 'device'},
+    device = device,
     recipient_identifier = recipient_identifier,
     files = files,
     files_count = len(files),
@@ -263,6 +267,7 @@ def transaction_create(
       recipient_identifier,
       files,
       size,
+      device = device,
     )
   return transaction['_id']
 
@@ -271,7 +276,11 @@ def transaction_initialize(meta,
                            sender,
                            recipient,
                            files = ['foobar'],
-                           size = 42):
+                           size = 42,
+                           device = None):
+  # Thanks Raph
+  device = {'id': str(device['id'])} if device is not None \
+           else {'id': 'device'}
   return meta.transaction_fill(
     sender = sender,
     files = files,
@@ -279,7 +288,7 @@ def transaction_initialize(meta,
     files_count = 1,
     total_size = size,
     is_directory = False,
-    device_id = 'device',
+    device_id = device['id'],
     transaction_id = tid)['created_transaction_id']
 
 def check_mail(mails, user, template):

@@ -31,10 +31,12 @@ class ActivityReminder(oracles.sisyphus.boulders.drip.ActivityReminder):
     return oracles.sisyphus.boulders.drip.Drip._pick_template(
       self, template, users)
 
-def check_mail(emails, email, template):
+def check_mail(emails, email, template, sender):
   utils.check_mail(emails, email, template)
   assertEq(len(emails[0][1]['transactions']), 1)
-
+  assert len(emails[0][1]['user']['devices']) > 0
+  if sender:
+    assert emails[0][1]['transactions'][0].get('device')
 
 class Metrics:
 
@@ -61,14 +63,15 @@ with mongobox.MongoBox() as mongo:
     assert not emailer.emails
 
     # Create an activated user
-    device = 'device'
     email = 'user@infinit.io'
     sender = user_register(meta, email)
     sender_device = meta._create_device(sender)
+    device = sender_device['id']
     sender_device['id'] = uuid.UUID(sender_device['id'])
     meta.set_connection_status(
       sender['_id'], sender_device['id'], True, 'tropho-id')
     tid = transaction_create(meta, sender,
+                             device = sender_device,
                              recipient_identifier ='ghost@infinit.io')
     meta._cloud_buffer(tid, sender)
     meta._transaction_update(tid, statuses['ghost_uploaded'],
@@ -87,7 +90,9 @@ with mongobox.MongoBox() as mongo:
     # Check nothing is sent too early
     meta.set_connection_status(
       sender['_id'], sender_device['id'], True, 'tropho-id')
-    tid = transaction_create(meta, sender, recipient_identifier = 'ghost@infinit.io')
+    tid = transaction_create(meta, sender,
+                             device = sender_device,
+                             recipient_identifier = 'ghost@infinit.io')
     meta.set_connection_status(
       sender['_id'], sender_device['id'], False, 'tropho-id')
     forward(reminder.delay(0) * 0.5)
@@ -99,7 +104,7 @@ with mongobox.MongoBox() as mongo:
     import sys
     forward(reminder.delay(0) * 1.1)
     sisy.boulders_run()
-    check_mail(emailer.emails, email, 'Pending')
+    check_mail(emailer.emails, email, 'Pending', True)
 
     # Check coming online resets
     forward(reminder.delay(0) * 2)
@@ -116,13 +121,13 @@ with mongobox.MongoBox() as mongo:
     assert not emailer.emails
     forward(reminder.delay(0) * 0.6)
     sisy.boulders_run()
-    check_mail(emailer.emails, email, 'Pending')
+    check_mail(emailer.emails, email, 'Pending', True)
     forward(reminder.delay(1) * 0.9)
     sisy.boulders_run()
     assert not emailer.emails
     forward(reminder.delay(1) * 0.2)
     sisy.boulders_run()
-    check_mail(emailer.emails, email, 'Pending')
+    check_mail(emailer.emails, email, 'Pending', True)
 
     # Accept and check emails stop
     meta._cloud_buffer(tid, sender)
@@ -151,13 +156,15 @@ with mongobox.MongoBox() as mongo:
 
     # Check unaccepted transfers trigger too
     other = user_register(meta, 'other@infinit.io')
+    other_device = meta._create_device(sender)
     tid = transaction_create(meta, other,
-                             recipient_identifier = email)
+                             recipient_identifier = email,
+                             device = other_device)
     sisy.boulders_run()
     assert not emailer.emails
     forward(reminder.delay(0) * 1.1)
     sisy.boulders_run()
-    check_mail(emailer.emails, email, 'Pending')
+    check_mail(emailer.emails, email, 'Pending', False)
 
     # Check the whole serie
     meta.set_connection_status(
@@ -173,7 +180,7 @@ with mongobox.MongoBox() as mongo:
       assert not emailer.emails
       forward(reminder.delay(i) * 0.4)
       sisy.boulders_run()
-      check_mail(emailer.emails, email, 'Pending')
+      check_mail(emailer.emails, email, 'Pending', False)
     forward(reminder.delay(i) * 2)
     sisy.boulders_run()
     assert not emailer.emails
