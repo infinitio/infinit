@@ -3666,17 +3666,22 @@ class Mixin:
   @api('/user/social_posts/<medium>', method = 'POST')
   @require_logged_in_fields(['social_posts'])
   def social_post(self, medium):
-    if medium not in ['facebook', 'twitter']:
-      return self.bad_request(
+    medium = medium.lower()
+    mediums = {
+      'facebook': 'Facebook',
+      'twitter': 'Twitter',
+    }
+    if medium not in mediums.keys():
+      return self.not_found(
         {
-          'reason': 'invalid medium: %s' % medium
+          'reason': 'Invalid medium: %s.' % mediums[medium],
         })
     user = self.user
     for social_post in user.get('social_posts', []):
       if social_post['medium'] == medium:
-        self.bad_request(
+        self.gone(
           {
-            'reason': '%s has already been used' % medium,
+            'reason': 'You\'ve already posted on %s.' % mediums[medium],
           })
     user = self.database.users.find_and_modify(
       {
