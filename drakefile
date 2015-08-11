@@ -666,6 +666,7 @@ def configure(cxx_toolkit = None,
   gap_tests_cxx_config += boost_filesystem
   gap_tests_cxx_config.lib_path_runtime('../../lib')
   for name in (
+      'account-limits',
       'cloud-buffer',
       'devices',
       'facebook_connect',
