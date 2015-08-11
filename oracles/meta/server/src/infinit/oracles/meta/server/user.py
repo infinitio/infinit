@@ -3824,22 +3824,21 @@ class Mixin:
                                          for account in user['accounts']))
     def _send_to_self_quota(user):
       send_to_self = user_plan['send_to_self']
-      if send_to_self['default_quota'] == None:
-        return None
       bonuses = send_to_self['bonuses']
+      bonus = number_of_referred * bonuses['referrer'] + \
+              int(user.get('has_avatar', False)) + \
+              len(social_posts) * bonuses['social_post'] + \
+              facebook_linked * bonuses['facebook_linked']
+      if send_to_self['default_quota'] == None:
+        return None, bonus
       quota = user_quotas.get('send_to_self', {}).get(
         'quota',
         send_to_self['default_quota'])
       elle.log.debug('send to self quota before bonuses: %s' % quota)
       if quota is None:
-        return quota
-      quota = quota \
-        + number_of_referred * bonuses['referrer'] \
-        + int(user.get('has_avatar', False)) \
-        + len(social_posts) * bonuses['social_post'] \
-        + facebook_linked * bonuses['facebook_linked']
+        return quota, bonus
       elle.log.debug('send to self quota after bonuses: %s' % quota)
-      return quota
+      return quota + bonus, bonus
 
     def _file_size_limit(user):
       return user_quotas.get('p2p', {}).get(
@@ -3857,21 +3856,24 @@ class Mixin:
         'storage',
         links['default_storage'])
       elle.log.debug('link storage before bonuses: %s' % storage)
-      storage = storage + \
-        min(16, number_of_referred) * bonuses['referrer'] + \
-        bonuses['referree'] * (len(user.get('referred_by', []))) + \
-        len(social_posts) * bonuses['social_post'] + \
-        facebook_linked * bonuses['facebook_linked']
+      bonus = number_of_referred * bonuses['referrer'] + \
+              bonuses['referree'] * (len(user.get('referred_by', []))) + \
+              len(social_posts) * bonuses['social_post'] + \
+              facebook_linked * bonuses['facebook_linked']
       elle.log.debug('link storage after bonuses: %s' % storage)
-      return storage
+      return storage + bonus, bonus
 
+    link_storage = _link_storage(user)
+    send_to_self_quota = _send_to_self_quota(user)
     return {
       'links': {
-        'quota': _link_storage(user),
+        'quota': link_storage[0],
+        'bonus': link_storage[1],
         'used': self.__link_usage(user),
       },
       'send_to_self': {
-        'quota': _send_to_self_quota(user),
+        'quota': send_to_self_quota[0],
+        'bonus': send_to_self_quota[1],
         'used': self.__sent_to_self(user),
       },
       'p2p': {
