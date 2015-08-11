@@ -28,10 +28,10 @@ namespace tests
     Server(std::unique_ptr<Trophonius> trophonius = nullptr);
     Server(Server const&) = delete;
 
-   void
-   register_route(std::string const& route,
-                  reactor::http::Method method,
-                  Super::Function const& function) override;
+    void
+    register_route(std::string const& route,
+                   reactor::http::Method method,
+                   Super::Function const& function) override;
 
     User const&
     register_user(std::string const& email,
@@ -59,17 +59,28 @@ namespace tests
     User const&
     user(Cookies const& cookies) const;
 
+    User const&
+    user(std::string const& id_or_email) const;
+
     Device const&
     device(Cookies const& cookies) const;
 
   protected:
     virtual
     elle::UUID
-    _create_empty();
+    _create_empty(elle::UUID const& sender_id,
+                  std::string const& recipient_identifier);
 
     virtual
     void
     _maybe_sleep();
+
+    virtual
+    std::string
+    _transaction_post(Headers const&,
+                      Cookies const&,
+                      Parameters const&,
+                      elle::Buffer const&);
 
     virtual
     std::string

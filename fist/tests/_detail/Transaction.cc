@@ -8,14 +8,16 @@ ELLE_LOG_COMPONENT("fist.tests");
 
 namespace tests
 {
-  Transaction::Transaction()
+  Transaction::Transaction(std::string const& sender_id,
+                           std::string const& recipient_id)
   {
     this->id = boost::lexical_cast<std::string>(elle::UUID::random());
+    this->sender_id = sender_id;
+    this->recipient_id = recipient_id;
   }
 
   Transaction::~Transaction() noexcept(true)
-  {
-  }
+  {}
 
   void
   Transaction::print(std::ostream& out) const

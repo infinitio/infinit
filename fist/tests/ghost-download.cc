@@ -31,9 +31,8 @@ ELLE_TEST_SCHEDULED(ghost_download)
   auto& sender = server.register_user("sender@infinit.io", password);
   auto& user = server.register_user(email, password);
   tests::State state(server, elle::UUID::random());
-  auto t = std::make_shared<tests::Transaction>();
-  t->recipient_id = user.id().repr();
-  t->sender_id = sender.id().repr();
+  auto t = std::make_shared<tests::Transaction>(sender.id().repr(),
+                                                user.id().repr());
   t->is_ghost = true;
   t->download_link =
     elle::sprintf("http://127.0.0.1:%s/ghost-download", server.port());
@@ -93,9 +92,8 @@ ELLE_TEST_SCHEDULED(wait_for_data)
   auto& sender = server.register_user("sender@infinit.io", password);
   auto& user = server.register_user(email, password);
   tests::State state(server, elle::UUID::random());
-  auto t = std::make_shared<tests::Transaction>();
-  t->recipient_id = user.id().repr();
-  t->sender_id = sender.id().repr();
+  auto t = std::make_shared<tests::Transaction>(sender.id().repr(),
+                                                user.id().repr());
   t->is_ghost = true;
   t->download_link =
     elle::sprintf("http://127.0.0.1:%s/ghost-download", server.port());
@@ -177,9 +175,8 @@ ELLE_TEST_SCHEDULED(automatic_unzip)
   auto& sender = server.register_user("sender@infinit.io", password);
   auto& user = server.register_user(email, password);
   tests::State state(server, elle::UUID::random());
-  auto t = std::make_shared<tests::Transaction>();
-  t->recipient_id = user.id().repr();
-  t->sender_id = sender.id().repr();
+  auto t = std::make_shared<tests::Transaction>(sender.id().repr(),
+                                                user.id().repr());
   t->is_ghost = true;
   t->download_link =
     elle::sprintf("http://127.0.0.1:%s/ghost-download.zip", server.port());
