@@ -1141,9 +1141,8 @@ namespace account_limits
     std::string transaction_id = "43";
     int32_t limit = 5;
     CreatePeerTransactionResponse transaction(recipient, transaction_id);
-    _create_peer_transaction_route(s, transaction);
-    s.register_route(elle::sprintf("/transaction/%s", transaction_id),
-                     reactor::http::Method::PUT,
+    s.register_route(elle::sprintf("/transactions"),
+                     reactor::http::Method::POST,
                      [limit] (HTTPServer::Headers const&,
                               HTTPServer::Cookies const&,
                               HTTPServer::Parameters const&,
@@ -1164,13 +1163,10 @@ namespace account_limits
           ss.str());
       });
     Client c("http", "127.0.0.1", s.port());
-    auto const& returned_id = c.create_transaction(recipient.id, files, 2);
-    BOOST_CHECK(returned_id == transaction_id);
     try
     {
-      c.fill_transaction(recipient.id, files, files.size(), 200, false,
-        elle::UUID::random(), "coucou", transaction_id);
-      ELLE_ERR("fill_transaction should throw");
+      auto const& returned_id = c.create_transaction(recipient.id, files, 2);
+      ELLE_ERR("create_transaction should throw");
       elle::unreachable();
     }
     catch (infinit::oracles::meta::SendToSelfTransactionLimitReached const& e)
