@@ -20,8 +20,8 @@ with Meta() as meta:
 
   plan = meta.database.plans.find_one({'name': 'basic'})
   default_storage = plan['quotas']['links']['default_storage']
-  referrer_bonus = plan['quotas']['links']['referrer_bonus']
-  referree_bonus = plan['quotas']['links']['referree_bonus']
+  referrer_bonus = plan['quotas']['links']['bonuses']['referrer']
+  referree_bonus = plan['quotas']['links']['bonuses']['referree']
   bob = User(meta, 'bob@infinit.io')
   bob.login()
   res = bob.get('user/referral-code')

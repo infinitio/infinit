@@ -84,8 +84,8 @@ with Meta() as meta:
   u2.login()
   referrer_quota = u1.me['quotas']['links']['quota']
   plan = meta.database.plans.find_one({'name': 'basic'})
-  referrer_bonus = plan['quotas']['links']['referrer_bonus']
-  referree_bonus = plan['quotas']['links']['referree_bonus']
+  referrer_bonus = plan['quotas']['links']['bonuses']['referrer']
+  referree_bonus = plan['quotas']['links']['bonuses']['referree']
   assertEq(referrer_quota, initial_quota + referrer_bonus)
   referree_quota = u2.me['quotas']['links']['quota']
   assertEq(referree_quota,

@@ -2729,57 +2729,6 @@ class Mixin:
     )
     return self.success()
 
-  def __quotas(self,
-               user):
-    # Get the user quota according to his plan or his custom account
-    # limitations.
-    user_quota = user.get('quotas', {})
-    user['plan']
-    user_plan = self.plans[user.get('plan', 'basic')]['quotas']
-    number_of_referred = self.__referred_by(user['_id'],
-                                            registered_user = True).count()
-    def _send_to_self_quota(user):
-      if user.get('plan', 'basic') != 'basic':
-        return None
-      return user_quota.get('send_to_self', {}).get(
-        'quota',
-        user_plan['send_to_self']['default_quota']) \
-        + number_of_referred * user_plan['send_to_self']['bonus'] #\
-        # + facebook_linked(False).get('storage', 0)
-
-    def _file_size_limit(user):
-      if user.get('plan', 'basic') != 'basic':
-        return None
-      return user_quota.get('p2p', {}).get(
-        'size_limit',
-        user_plan['p2p']['size_limit'])
-
-    def _link_storage(user):
-      links = user_plan['links']
-      # Plan default storage
-      # + (number of referred) * bonus
-      # + referred bonus if referred by someone
-      # + other bonuses.
-      return user_quota.get('links', {}).get(
-        'storage',
-        links['default_storage'] +
-        min(16, number_of_referred) * links['referrer_bonus'] +
-        links['referree_bonus'] * bool(len(user.get('referred_by', []))))
-
-    return {
-      'links': {
-        'quota': _link_storage(user),
-        'used': self.__link_usage(user),
-      },
-      'send_to_self': {
-        'quota': _send_to_self_quota(user),
-        'used': self.__sent_to_self(user),
-      },
-      'p2p': {
-        'limit': _file_size_limit(user),
-      }
-    }
-
   @api('/user/synchronize')
   @require_logged_in
   def synchronize(self,
@@ -2867,6 +2816,8 @@ class Mixin:
 
   def _change_plan(self, user, new_plan_name):
     current_plan = self.database.plans.find_one({'name': user.get('plan', 'basic')})
+    if new_plan_name == 'basic' and self.__eligible_for_plus(user['_id']):
+      new_plan_name = 'plus'
     new_plan = self.database.plans.find_one({'name': new_plan_name})
     fset = dict()
     funset = dict()
@@ -2881,110 +2832,9 @@ class Mixin:
       update.update({'$unset': funset})
     self.database.users.update({'_id': user['_id']}, update)
     self._quota_updated_notification(user)
-
-  def __referred_by(self,
-                    referrer,
-                    registered_user = False,
-                    fields = ['referred_by', 'register_status']):
-    assert isinstance(referrer, bson.ObjectId)
-    query = {
-      'referred_by.id': referrer,
+    return {
+      'plan': new_plan_name
     }
-    if registered_user:
-      query['last_connection'] = {'$exists': True}
-    return self.database.users.find(
-      query,
-      fields = fields,
-    )
-
-  # XXX: referrees (2 r) is an homemade word, representing 'people who have been
-  # referred'.
-  @api('/user/referrees')
-  @require_logged_in
-  def referred_users(self):
-    # Plain invites.
-    invites = self.database.invitations.find(
-      {'sender': self.user['_id']})
-    invitees = {}
-    for invitation in invites:
-      invitees[str(invitation['recipient'])] = invitation
-    fields = {
-      'referred_by.date': 1,
-      'referred_by.type': 1,
-      'register_status': 1,
-      'accounts.id': 1,
-      'email': 1,
-    }
-    res = self.database.users.aggregate([
-      {'$match': {'referred_by.id': self.user['_id']}},
-      {
-        '$project': {
-          'id': '$_id',
-          '_id': 0,
-          'referred_by.date': 1,
-          'referred_by.type': 1,
-          'register_status': 1,
-          'accounts.id': 1,
-          'email': 1,
-        }
-      },
-    ])['result']
-
-    def _recipient(entry):
-      if entry['register_status'] != 'ok':
-        return entry['accounts'][0]['id']
-      else:
-        return entry['email']
-
-    def _status(invitees, entry):
-      if entry['register_status'] == 'ok':
-        return 'completed'
-      elif invitees.get(str(entry['id'])) is None:
-        return 'pending'
-      else:
-        return invitees.get(str(entry['id']))['status']
-
-    res = {
-      'referrees': [{
-        'invitations': [p for p in entry['referred_by']],
-        'type': entry['referred_by'][0]['type'],
-        'register_status': entry['register_status'],
-        'recipient': _recipient(entry),
-        'status': _status(invitees, entry),
-      } for entry in res]
-    }
-    return res
-
-  def process_referrals(self, new_user, referrals):
-    """ Called once per new_user upon first login.
-        @param new_user User struct for the invitee
-        @param referrals List of user ids who invited new_user
-    """
-    # Because someone can be referred more than one (e.g. sending multiple
-    # invitations), we have to force uniqueness manually.
-    # See __add_referrer_query for more details.
-    referrals = set(referrals)
-    elle.log.trace('process referral for %s (referred by %s)' % (new_user['accounts'], referrals))
-    #FIXME: send email
-    for referrer in referrals:
-      update = {}
-      number_of_referred = self.__referred_by(referrer).count()
-      # The first you referrer gives you plus 2 send to self.
-      if number_of_referred >= 2:
-        update['$set'] = {
-          'plan': 'plus',
-        }
-        self.database.users.update(
-          {
-            '_id': referrer,
-            '$or': [{'plan': 'basic'}, {'plan': {'$exists': False}}],
-          },
-          update)
-    referrers = list(map(lambda x: self.user_from_identifier(
-      x, fields = ['quota', 'plan']),
-                         referrals))
-    for user in referrers + [new_user]:
-      self._quota_updated_notification(user)
 
   @api('/users/<user>', method='PUT')
   @require_logged_in
@@ -2994,79 +2844,92 @@ class Mixin:
                   stripe_token = None,
                   stripe_coupon = None,
                 ):
-      if plan not in ['basic', 'premium']:
-        self.bad_request({
-          'error': 'invalid_plan',
-          'reason': 'invalid plan: %s' % plan,
-          'plan': plan,
-        })
-      user = self.user
-      customer = self.__fetch_or_create_stripe_customer(user)
-      # Subscribing to a paying plan without source raises an error
-      try:
-      # Update user's payment source, represented by a token
-        if stripe_token is not None:
-          customer.source = stripe_token
-          customer.save()
-        if plan is not None or stripe_coupon is not None:
-          # We do not want multiple plans to be active at the same
-          # time, so a customer can only have at most one subscription
-          # (ideally, exactly one subscription, which would be 'basic'
-          # for non paying customers)
-          if customer.subscriptions.total_count > 0:
-            sub = customer.subscriptions.data[0]
-          else:
-            sub = None
-          if plan == 'premium':
-            if sub is None:
-              customer.subscriptions.create(
-                plan = plan, coupon = stripe_coupon)
-              stripe_coupon = None
-            else:
-              sub.plan = 'premium'
-          elif plan == 'basic':
-            if sub is not None:
-              sub.delete(at_period_end = True)
-              sub = None
-          if stripe_coupon is not None:
-            if sub is None:
-              self.bad_request({
-                'error': 'invalid_plan_coupon',
-                'reason': 'cannot use a coupon on basic plan',
-              })
-            sub.coupon = stripe_coupon
-          if sub:
-            sub.save();
-          if user.get('plan', 'basic') != plan:
-            self._change_plan(user, plan)
-      except stripe.error.CardError as e:
-        warn(
-          '%s: stripe error: customer %s card has been declined' % \
-          (self, user['_id'], e.args[0]))
-        return self.bad_request({
-          'reason': e.args[0],
-        })
-      except stripe.error.InvalidRequestError as e:
-        warn(
-          '%s: invalid stripe request: cannot update customer: %s' % \
-          (self, e.args[0]))
-        return self.bad_request({
-          'reason': e.args[0],
-        })
-      except stripe.error.AuthenticationError as e:
-        warn('%s: stripe auth failed: %s' % (self, e.args[0]))
-        return self.bad_request({
-          'reason': e.args[0],
-        })
-      except stripe.error.APIConnectionError as e:
-        warn(
-          '%s: connection to stripe failed: %s' % (self, e.args[0]))
-        return self.unavailable({
-          'reason': e.args[0],
-        })
-      return {
+    if plan not in self.plans.keys():
+      return self.bad_request({
+        'error': 'invalid_plan',
+        'reason': 'invalid plan: %s' % plan,
         'plan': plan,
-      }
+      })
+    user = self.user
+    customer = self.__fetch_or_create_stripe_customer(user)
+    res = {
+      'plan': plan
+    }
+    eligible_for_plus = self.__eligible_for_plus(user['_id'])
+    # Subscribing to a paying plan without source raises an error
+    try:
+      # Update user's payment source, represented by a token
+      if stripe_token is not None:
+        customer.source = stripe_token
+        customer.save()
+      if plan is not None or stripe_coupon is not None:
+        # We do not want multiple plans to be active at the same
+        # time, so a customer can only have at most one subscription
+        # (ideally, exactly one subscription, which would be 'basic'
+        # for non paying customers)
+        def _build_response(sub):
+          discount = sub.discount
+          off = discount.coupon.percent_off / 100 if sub.discount else 0
+          return {
+            'amount': sub.plan['amount'] * (1 - off),
+            'currency': sub.plan['currency'],
+          }
+        if customer.subscriptions.total_count > 0:
+          sub = customer.subscriptions.data[0]
+        else:
+          sub = None
+        free_plans = ['basic']
+        if eligible_for_plus:
+          free_plans.append('plus')
+        if plan not in free_plans:
+          if sub is None:
+            sub = customer.subscriptions.create(
+              plan = plan, coupon = stripe_coupon)
+            stripe_coupon = None
+          else:
+            sub.plan = plan
+        else:
+          if sub is not None:
+            sub.delete(at_period_end = True)
+            sub = None
+        if stripe_coupon is not None:
+          if sub is None:
+            self.bad_request({
+              'error': 'invalid_plan_coupon',
+              'reason': 'cannot use a coupon on basic plan',
+            })
+          sub.coupon = stripe_coupon
+        if sub:
+          sub = sub.save()
+          res.update(_build_response(sub))
+        if user.get('plan', 'basic') != plan:
+          res.update(self._change_plan(user, plan))
+    except stripe.error.CardError as e:
+      warn(
+        '%s: stripe error: customer %s card has been declined' % \
+        (self, user['_id'], e.args[0]))
+      return self.bad_request({
+        'reason': e.args[0],
+      })
+    except stripe.error.InvalidRequestError as e:
+      warn(
+        '%s: invalid stripe request: cannot update customer: %s' % \
+        (self, e.args[0]))
+      return self.bad_request({
+        'reason': e.args[0],
+      })
+    except stripe.error.AuthenticationError as e:
+      warn('%s: stripe auth failed: %s' % (self, e.args[0]))
+      return self.bad_request({
+        'reason': e.args[0],
+      })
+    except stripe.error.APIConnectionError as e:
+      warn(
+        '%s: connection to stripe failed: %s' % (self, e.args[0]))
+      return self.unavailable({
+        'reason': e.args[0],
+      })
+    return res
 
   def __fetch_or_create_stripe_customer(self, user):
     if self.stripe_api_key is None:
@@ -3769,3 +3632,176 @@ class Mixin:
   def require_premium(self, user = None):
     if not self.user_premium(user):
       self.payment_required({'reason': 'premium plan required'})
+
+  ## ----- ##
+  ## Plans ##
+  ## ----- ##
+
+  def __eligible_for_plus(self, referrer):
+    number_of_referred = self.__referred_by(referrer).count()
+    # The first you referrer gives you plus 2 send to self.
+    return number_of_referred >= 2
+
+  ## -------- ##
+  ## Referral ##
+  ## -------- ##
+
+  def __referred_by(self,
+                    referrer,
+                    registered_user = False,
+                    fields = ['referred_by', 'register_status']):
+    assert isinstance(referrer, bson.ObjectId)
+    query = {
+      'referred_by.id': referrer,
+    }
+    if registered_user:
+      query['last_connection'] = {'$exists': True}
+    return self.database.users.find(
+      query,
+      fields = fields,
+    )
+
+  # XXX: referrees (2 r) is an homemade word, representing 'people who have been
+  # referred'.
+  @api('/user/referrees')
+  @require_logged_in
+  def referred_users(self):
+    # Plain invites.
+    invites = self.database.invitations.find(
+      {'sender': self.user['_id']})
+    invitees = {}
+    for invitation in invites:
+      invitees[str(invitation['recipient'])] = invitation
+    fields = {
+      'referred_by.date': 1,
+      'referred_by.type': 1,
+      'register_status': 1,
+      'accounts.id': 1,
+      'email': 1,
+    }
+    res = self.database.users.aggregate([
+      {'$match': {'referred_by.id': self.user['_id']}},
+      {
+        '$project': {
+          'id': '$_id',
+          '_id': 0,
+          'referred_by.date': 1,
+          'referred_by.type': 1,
+          'register_status': 1,
+          'accounts.id': 1,
+          'email': 1,
+        }
+      },
+    ])['result']
+
+    def _recipient(entry):
+      if entry['register_status'] != 'ok':
+        return entry['accounts'][0]['id']
+      else:
+        return entry['email']
+
+    def _status(invitees, entry):
+      if entry['register_status'] == 'ok':
+        return 'completed'
+      elif invitees.get(str(entry['id'])) is None:
+        return 'pending'
+      else:
+        return invitees.get(str(entry['id']))['status']
+
+    res = {
+      'referrees': [{
+        'invitations': [p for p in entry['referred_by']],
+        'type': entry['referred_by'][0]['type'],
+        'register_status': entry['register_status'],
+        'recipient': _recipient(entry),
+        'status': _status(invitees, entry),
+      } for entry in res]
+    }
+    return res
+
+  def process_referrals(self, new_user, referrals):
+    """ Called once per new_user upon first login.
+        @param new_user User struct for the invitee
+        @param referrals List of user ids who invited new_user
+    """
+    # Because someone can be referred more than one (e.g. sending multiple
+    # invitations), we have to force uniqueness manually.
+    # See __add_referrer_query for more details.
+    referrals = set(referrals)
+    elle.log.trace('process referral for %s (referred by %s)' % (new_user['accounts'], referrals))
+    #FIXME: send email
+    for referrer in referrals:
+      update = {}
+      if self.__eligible_for_plus(referrer):
+        update['$set'] = {
+          'plan': 'plus',
+        }
+        self.database.users.update(
+          {
+            '_id': referrer,
+            '$or': [{'plan': 'basic'}, {'plan': {'$exists': False}}],
+          },
+          update)
+    referrers = list(map(lambda x: self.user_from_identifier(
+      x, fields = ['quota', 'plan']),
+                         referrals))
+    for user in referrers + [new_user]:
+      self._quota_updated_notification(user)
+
+  ## ------ ##
+  ## Quotas ##
+  ## ------ ##
+
+  def __quotas(self,
+               user):
+    # Get the user quota according to his plan or his custom account
+    # limitations.
+    user_quota = user.get('quotas', {})
+    user['plan']
+    user_plan = self.plans[user.get('plan', 'basic')]['quotas']
+    number_of_referred = self.__referred_by(user['_id'],
+                                            registered_user = True).count()
+    def _send_to_self_quota(user):
+      if user.get('plan', 'basic') != 'basic':
+        return None
+      send_to_self = user_plan['send_to_self']
+      bonuses = send_to_self['bonuses']
+      return user_quota.get('send_to_self', {}).get(
+        'quota',
+        send_to_self['default_quota']) \
+        + number_of_referred * bonuses['referrer']
+
+    def _file_size_limit(user):
+      if user.get('plan', 'basic') != 'basic':
+        return None
+      return user_quota.get('p2p', {}).get(
+        'size_limit',
+        user_plan['p2p']['size_limit'])
+
+    def _link_storage(user):
+      links = user_plan['links']
+      bonuses = links['bonuses']
+      # Plan default storage
+      # + (number of referred) * bonus
+      # + referred bonus if referred by someone
+      # + other bonuses.
+      return user_quota.get('links', {}).get(
+        'storage',
+        links['default_storage']) + \
+        min(16, number_of_referred) * bonuses['referrer'] + \
+        bonuses['referree'] * (len(user.get('referred_by', [])))
+
+
+    return {
+      'links': {
+        'quota': _link_storage(user),
+        'used': self.__link_usage(user),
+      },
+      'send_to_self': {
+        'quota': _send_to_self_quota(user),
+        'used': self.__sent_to_self(user),
+      },
+      'p2p': {
+        'limit': _file_size_limit(user),
+      }
+    }
