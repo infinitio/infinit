@@ -118,7 +118,10 @@ class Mixin:
           user['subscription_data'] = cus.subscriptions.data[0]
     # Quotas.
     user.update({'quotas': self.__quotas(user)})
-
+    user['social_posts'] = {
+      social_post['medium']: social_post['date']
+      for social_post in user.get('social_posts', {})
+    }
     # Remove '_id' key, replaced earlier by 'id'.
     del user['_id']
     return user

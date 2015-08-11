@@ -25,7 +25,7 @@ def social_post(user, medium):
   assertGT(user.me['quotas']['send_to_self']['quota'],
            previous_send_to_self)
   throws(lambda: user.post('user/social_posts/' + medium))
-  assert medium in set((post['medium'] for post in user.me['social_posts']))
+  assert medium in user.me['social_posts'].keys()
 
 # Facebook then Twitter.
 with Meta() as meta:
