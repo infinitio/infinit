@@ -166,12 +166,12 @@ class Mixin:
       'favorites',
       'features',
       'identity',
-      'total_link_size',
       'plan',
       'quota',
+      'referred_by',
       'stripe_id',
       'swaggers',
-      'referred_by',
+      'total_link_size',
     ]
     return res
 
