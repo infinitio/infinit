@@ -237,32 +237,6 @@ namespace infinit
                                  http_status, aws_error_code, message));
     }
 
-    void
-    CompositeReporter::_link_quota_exceeded(uint64_t size,
-                                            uint64_t current,
-                                            uint64_t total)
-    {
-      this->_dispatch(std::bind(&Reporter::_link_quota_exceeded,
-                                std::placeholders::_1, size, current, total));
-    }
-
-    void
-    CompositeReporter::_send_to_self_limit_reached(uint64_t limit)
-    {
-      this->_dispatch(std::bind(
-        &Reporter::_send_to_self_limit_reached, std::placeholders::_1, limit));
-    }
-
-    void
-    CompositeReporter::_file_transfer_limit_reached(uint64_t limit,
-                                                    uint64_t transfer_size)
-    {
-      this->_dispatch(std::bind(&Reporter::_file_transfer_limit_reached,
-                                std::placeholders::_1,
-                                limit,
-                                transfer_size));
-    }
-
     /*-------------.
     | User Metrics |
     `-------------*/
@@ -385,6 +359,32 @@ namespace infinit
                                 code,
                                 method,
                                 fail_reason));
+    }
+
+    void
+    CompositeReporter::_link_quota_exceeded(uint64_t size,
+                                            uint64_t current,
+                                            uint64_t total)
+    {
+      this->_dispatch(std::bind(&Reporter::_link_quota_exceeded,
+                                std::placeholders::_1, size, current, total));
+    }
+
+    void
+    CompositeReporter::_send_to_self_limit_reached(uint64_t limit)
+    {
+      this->_dispatch(std::bind(
+        &Reporter::_send_to_self_limit_reached, std::placeholders::_1, limit));
+    }
+
+    void
+    CompositeReporter::_file_transfer_limit_reached(uint64_t limit,
+                                                    uint64_t transfer_size)
+    {
+      this->_dispatch(std::bind(&Reporter::_file_transfer_limit_reached,
+                                std::placeholders::_1,
+                                limit,
+                                transfer_size));
     }
 
     void

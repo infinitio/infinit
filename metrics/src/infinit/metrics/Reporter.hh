@@ -158,15 +158,6 @@ namespace infinit
                 std::string const& aws_error_code,
                 std::string const& message);
 
-      void
-      link_quota_exceeded(uint64_t size, uint64_t current, uint64_t quota);
-
-      void
-      send_to_self_limit_reached(uint64_t limit);
-
-      void
-      file_transfer_limit_reached(uint64_t limit, uint64_t transfer_size);
-
     /// Transaction metrics implementation.
     protected:
       virtual
@@ -243,18 +234,6 @@ namespace infinit
                  std::string const& aws_error_code,
                  std::string const& message);
 
-      virtual
-      void
-      _link_quota_exceeded(uint64_t size, uint64_t current, uint64_t quota);
-
-      virtual
-      void
-      _send_to_self_limit_reached(uint64_t limit);
-
-      virtual
-      void
-      _file_transfer_limit_reached(uint64_t limit, uint64_t transfer_size);
-
     /// User metrics.
     public:
       void
@@ -308,6 +287,15 @@ namespace infinit
                            std::string const& code,
                            bool link,
                            std::string const& fail_reason);
+
+      void
+      link_quota_exceeded(uint64_t size, uint64_t current, uint64_t quota);
+
+      void
+      send_to_self_limit_reached(uint64_t limit);
+
+      void
+      file_transfer_limit_reached(uint64_t limit, uint64_t transfer_size);
 
     /// User metrics implementation.
     protected:
@@ -375,6 +363,18 @@ namespace infinit
                                     std::string const& code,
                                     std::string const& method,
                                     std::string const& fail_reason);
+
+      virtual
+      void
+      _link_quota_exceeded(uint64_t size, uint64_t current, uint64_t quota);
+
+      virtual
+      void
+      _send_to_self_limit_reached(uint64_t limit);
+
+      virtual
+      void
+      _file_transfer_limit_reached(uint64_t limit, uint64_t transfer_size);
 
       /// UI metrics.
     public:

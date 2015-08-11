@@ -205,41 +205,6 @@ namespace infinit
       this->_send(this->_transaction_dest, data);
     }
 
-    void
-    JSONReporter::_link_quota_exceeded(uint64_t size,
-                                       uint64_t used,
-                                       uint64_t quota)
-    {
-      elle::json::Object data;
-      data[this->_key_str(JSONKey::event)] = std::string("quota_exceeded");
-      data[this->_key_str(JSONKey::total_size)] = size;
-      data[this->_key_str(JSONKey::used_storage)] = used;
-      data[this->_key_str(JSONKey::quota)] = quota;
-      this->_send(this->_transaction_dest, data);
-    }
-
-    void
-    JSONReporter::_send_to_self_limit_reached(uint64_t limit)
-    {
-      elle::json::Object data;
-      data[this->_key_str(JSONKey::event)] =
-        std::string("send_to_self_limited");
-      data[this->_key_str(JSONKey::limit)] = limit;
-      this->_send(this->_transaction_dest, data);
-    }
-
-    void
-    JSONReporter::_file_transfer_limit_reached(uint64_t limit,
-                                               uint64_t transfer_size)
-    {
-      elle::json::Object data;
-      data[this->_key_str(JSONKey::event)] =
-        std::string("transfer_size_limited");
-      data[this->_key_str(JSONKey::limit)] = limit;
-      data[this->_key_str(JSONKey::total_size)] = transfer_size;
-      this->_send(this->_transaction_dest, data);
-    }
-
     /*-------------.
     | User Metrics |
     `-------------*/
@@ -396,6 +361,41 @@ namespace infinit
       data[this->_key_str(JSONKey::method)] = method;
       data[this->_key_str(JSONKey::fail_reason)] = fail_reason;
       data[this->_key_str(JSONKey::status)] = this->_status_string(success);
+      this->_send(this->_user_dest, data);
+    }
+
+    void
+    JSONReporter::_link_quota_exceeded(uint64_t size,
+                                       uint64_t used,
+                                       uint64_t quota)
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] = std::string("quota_exceeded");
+      data[this->_key_str(JSONKey::total_size)] = size;
+      data[this->_key_str(JSONKey::used_storage)] = used;
+      data[this->_key_str(JSONKey::quota)] = quota;
+      this->_send(this->_user_dest, data);
+    }
+
+    void
+    JSONReporter::_send_to_self_limit_reached(uint64_t limit)
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] =
+        std::string("send_to_self_limited");
+      data[this->_key_str(JSONKey::limit)] = limit;
+      this->_send(this->_user_dest, data);
+    }
+
+    void
+    JSONReporter::_file_transfer_limit_reached(uint64_t limit,
+                                               uint64_t transfer_size)
+    {
+      elle::json::Object data;
+      data[this->_key_str(JSONKey::event)] =
+        std::string("transfer_size_limited");
+      data[this->_key_str(JSONKey::limit)] = limit;
+      data[this->_key_str(JSONKey::total_size)] = transfer_size;
       this->_send(this->_user_dest, data);
     }
 

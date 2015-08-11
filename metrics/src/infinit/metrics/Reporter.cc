@@ -257,30 +257,6 @@ namespace infinit
                                           aws_error_code, message));
     }
 
-    void
-    Reporter::link_quota_exceeded(uint64_t size,
-                                  uint64_t current,
-                                  uint64_t total)
-    {
-      this->_push(std::bind(&Reporter::_link_quota_exceeded,
-                            this, size, current, total));
-    }
-
-    void
-    Reporter::send_to_self_limit_reached(uint64_t limit)
-    {
-      this->_push(std::bind(
-        &Reporter::_send_to_self_limit_reached, this, limit));
-    }
-
-    void
-    Reporter::file_transfer_limit_reached(uint64_t limit,
-                                          uint64_t transfer_size)
-    {
-      this->_push(std::bind(
-        &Reporter::_file_transfer_limit_reached, this, limit, transfer_size));
-    }
-
     /*-------------.
     | User Metrics |
     `-------------*/
@@ -400,12 +376,37 @@ namespace infinit
     }
 
     void
+    Reporter::link_quota_exceeded(uint64_t size,
+                                  uint64_t current,
+                                  uint64_t total)
+    {
+      this->_push(std::bind(&Reporter::_link_quota_exceeded,
+                            this, size, current, total));
+    }
+
+    void
+    Reporter::send_to_self_limit_reached(uint64_t limit)
+    {
+      this->_push(std::bind(
+        &Reporter::_send_to_self_limit_reached, this, limit));
+    }
+
+    void
+    Reporter::file_transfer_limit_reached(uint64_t limit,
+                                          uint64_t transfer_size)
+    {
+      this->_push(std::bind(
+        &Reporter::_file_transfer_limit_reached, this, limit, transfer_size));
+    }
+
+    void
     Reporter::ui(std::string const& event,
                  std::string const& from,
                  Additional const& additional)
     {
       this->_push(std::bind(&Reporter::_ui, this, event, from, additional));
     }
+
     /*---------------.
     | Queue Handling |
     `---------------*/
@@ -555,21 +556,6 @@ namespace infinit
                           std::string const& message)
     {}
 
-    void
-    Reporter::_link_quota_exceeded(uint64_t size,
-                                   uint64_t current,
-                                   uint64_t quota)
-    {}
-
-    void
-    Reporter::_send_to_self_limit_reached(uint64_t limit)
-    {}
-
-    void
-    Reporter::_file_transfer_limit_reached(uint64_t limit,
-                                           uint64_t transfer_size)
-    {}
-
     /*----------------------------.
     | Default User Implementation |
     `----------------------------*/
@@ -636,6 +622,21 @@ namespace infinit
                                             std::string const& code,
                                             std::string const& method,
                                             std::string const& fail_reason)
+    {}
+
+    void
+    Reporter::_link_quota_exceeded(uint64_t size,
+                                   uint64_t current,
+                                   uint64_t quota)
+    {}
+
+    void
+    Reporter::_send_to_self_limit_reached(uint64_t limit)
+    {}
+
+    void
+    Reporter::_file_transfer_limit_reached(uint64_t limit,
+                                           uint64_t transfer_size)
     {}
 
     /*--------------------------.
