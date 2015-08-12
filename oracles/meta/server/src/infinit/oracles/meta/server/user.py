@@ -3862,7 +3862,7 @@ class Mixin:
         links['default_storage'])
       elle.log.debug('link storage before bonuses: %s' % storage)
       bonus = number_of_referred * bonuses['referrer'] + \
-              bonuses['referree'] * (len(user.get('referred_by', []))) + \
+              bonuses['referree'] * bool(len(user.get('referred_by', []))) + \
               len(social_posts) * bonuses['social_post'] + \
               facebook_linked * bonuses['facebook_linked']
       elle.log.debug('link storage after bonuses: %s' % storage)
