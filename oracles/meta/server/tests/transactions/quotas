@@ -76,7 +76,7 @@ with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   assertEq(alice.me['quotas']['links']['used'], 0)
 
   # Create a link already to big.
-  throws(lambda: user.getalink(files = [('bite', storage + 1)]), 402)
+  throws(lambda: alice.getalink(files = [('bite', storage + 1)]), 402)
   assertEq(alice.me['quotas']['links']['used'], 0)
 
   link = None
@@ -95,7 +95,7 @@ with Meta(stripe_api_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI') as meta:
   # Right now, storage can be over quota.
   assertGT(alice.me['quotas']['links']['used'],
            alice.me['quotas']['links']['quota'])
-  throws(lambda: user.getalink(files = [('bite', 1)]), 402)
+  throws(lambda: alice.getalink(files = [('bite', 1)]), 402)
   alice.link_update(link1, transaction_status.DELETED)
   assertEq(alice.me['quotas']['links']['used'],
            half_storage_plus)
