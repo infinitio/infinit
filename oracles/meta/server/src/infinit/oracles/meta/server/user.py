@@ -2860,7 +2860,7 @@ class Mixin:
                   stripe_token = None,
                   stripe_coupon = None,
                 ):
-      if plan not in ['basic', 'premium']:
+      if plan not in [None, 'basic', 'premium']:
         self.bad_request({
           'error': 'invalid_plan',
           'reason': 'invalid plan: %s' % plan,
