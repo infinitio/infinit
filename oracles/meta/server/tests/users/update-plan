@@ -22,7 +22,7 @@ with Meta(stripe_api_key = stripe_key) as meta:
     {'$set': {'plan': None}})
   assertEq(res['n'], 1)
   user.login()
-  assertEq(user.me['plan'], None)
+  assertEq(user.me['plan'], 'basic')
 
 stripe_token = None
 def clear():

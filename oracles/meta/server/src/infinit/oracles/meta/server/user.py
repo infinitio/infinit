@@ -122,6 +122,9 @@ class Mixin:
       social_post['medium']: social_post['date']
       for social_post in user.get('social_posts', {})
     }
+    # If you has no plan or 'None', return basic.
+    user['plan'] = user.get('plan', 'basic') or 'basic'
+
     # Remove '_id' key, replaced earlier by 'id'.
     del user['_id']
     return user
