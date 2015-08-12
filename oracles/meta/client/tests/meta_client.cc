@@ -1140,13 +1140,10 @@ namespace account_limits
     std::list<std::string> files = {"file1", "file2"};
     std::string transaction_id = "43";
     int32_t limit = 5;
-    CreatePeerTransactionResponse transaction(recipient, transaction_id);
-    s.register_route(elle::sprintf("/transactions"),
-                     reactor::http::Method::POST,
-                     [limit] (HTTPServer::Headers const&,
-                              HTTPServer::Cookies const&,
-                              HTTPServer::Parameters const&,
-                              elle::Buffer const&) -> std::string
+    auto send_to_self_error = [limit] (HTTPServer::Headers const&,
+                                       HTTPServer::Cookies const&,
+                                       HTTPServer::Parameters const&,
+                                       elle::Buffer const&) -> std::string
       {
         std::stringstream ss;
         {
@@ -1161,17 +1158,64 @@ namespace account_limits
           "",
           reactor::http::StatusCode::Payment_Required,
           ss.str());
-      });
-    Client c("http", "127.0.0.1", s.port());
-    try
+      };
+
+    // Failure while POST on /transactions
     {
-      auto const& returned_id = c.create_transaction(recipient.id, files, 2);
-      ELLE_ERR("create_transaction should throw");
-      elle::unreachable();
+      CreatePeerTransactionResponse transaction(recipient, transaction_id);
+      HTTPServer s;
+      s.register_route(elle::sprintf("/transactions"),
+                       reactor::http::Method::POST,
+                       send_to_self_error);
+      Client c("http", "127.0.0.1", s.port());
+      try
+      {
+        c.create_transaction(recipient.id, files, 2);
+        ELLE_ERR("create_transaction should throw");
+        elle::unreachable();
+      }
+      catch (infinit::oracles::meta::SendToSelfTransactionLimitReached const& e)
+      {
+        BOOST_CHECK_EQUAL(e.limit(), limit);
+      }
     }
-    catch (infinit::oracles::meta::SendToSelfTransactionLimitReached const& e)
+    // Failure while filling.
     {
-      BOOST_CHECK_EQUAL(e.limit(), limit);
+      CreatePeerTransactionResponse transaction(recipient, transaction_id);
+      HTTPServer s;
+      s.register_route(
+        "/transactions",
+        reactor::http::Method::POST,
+        [&transaction] (HTTPServer::Headers const&,
+                        HTTPServer::Cookies const&,
+                        HTTPServer::Parameters const&,
+                        elle::Buffer const&)
+        {
+          std::stringstream ss;
+          {
+            elle::serialization::json::SerializerOut output(ss, false);
+            output.serialize("transaction", transaction);
+            output.serialize("created_transaction_id",
+                             transaction.created_transaction_id());
+          }
+          return ss.str();
+        });
+      s.register_route(elle::sprintf("/transaction/%s", transaction_id),
+                       reactor::http::Method::PUT,
+                       send_to_self_error);
+      Client c("http", "127.0.0.1", s.port());
+      auto const& returned_id = c.create_transaction(recipient.id, files, 2);
+      try
+      {
+        c.fill_transaction(recipient.id, files, files.size(), 10, false,
+                           elle::UUID::random(), "coucou", transaction_id);
+        ELLE_ERR("fill transaction should throw");
+        elle::unreachable();
+      }
+      catch (infinit::oracles::meta::SendToSelfTransactionLimitReached const& e)
+      {
+        BOOST_CHECK_EQUAL(e.limit(), limit);
+      }
     }
   }
 
