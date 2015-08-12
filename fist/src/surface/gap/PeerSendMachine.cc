@@ -143,6 +143,9 @@ namespace surface
           {
             this->state().metrics_reporter()->send_to_self_limit_reached(
               e.limit());
+            this->_metrics_ended(
+              infinit::oracles::Transaction::Status::canceled,
+              "send to self limit");
           }
           return;
         }
@@ -155,6 +158,9 @@ namespace surface
           {
             this->state().metrics_reporter()->file_transfer_limit_reached(
               e.limit(), this->data()->total_size);
+            this->_metrics_ended(
+              infinit::oracles::Transaction::Status::canceled,
+              "transfer size limit");
           }
           return;
         }

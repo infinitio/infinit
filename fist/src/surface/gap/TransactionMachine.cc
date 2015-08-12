@@ -467,7 +467,8 @@ namespace surface
     void
     TransactionMachine::cancel(std::string const& reason)
     {
-      ELLE_TRACE_SCOPE("%s: cancel transaction %s: %s", *this, this->data()->id, reason);
+      ELLE_TRACE_SCOPE(
+        "%s: cancel transaction %s: %s", *this, this->data()->id, reason);
       if (!this->canceled().opened())
         this->_metrics_ended(infinit::oracles::Transaction::Status::canceled,
                              reason);
