@@ -123,18 +123,18 @@ class Mixin:
     return credentials
 
   def _link_check_quota(self, user, new_link_size):
-    elle.log.trace('checking link quota')
-    if 'quota' in user and 'total_link_size' in user.get('quota', {}):
-      quota = user['quota']['total_link_size']
-      usage = user.get('total_link_size', 0) + new_link_size
-      elle.log.trace('usage: %s quota: %s' %(usage, quota))
-      if quota >= 0 and quota < usage:
-        self.quota_exceeded(
-          {
-            'reason': 'link size quota of %s reached' % quota,
-            'quota': int(quota),
-            'usage': int(usage),
-          })
+    elle.log.trace('checking link quota for %s big link' % new_link_size)
+    user_links = self.__quotas(user)['links']
+    elle.log.trace('usage: %s quota: %s' % (
+      user_links['used'], user_links['quota']))
+    if (user_links['used'] + new_link_size) > user_links['quota']:
+      self.quota_exceeded(
+        {
+          'reason': 'Link size quota of %s reached' % user_links['quota'],
+          'quota': int(user_links['quota']),
+          'usage': int(user_links['used']),
+          'link_size': int(new_link_size)
+        })
 
   @api('/link_empty', method = 'POST')
   @require_logged_in_fields(['quota', 'total_link_size'])
