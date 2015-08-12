@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/uuid/nil_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
@@ -1204,7 +1206,7 @@ namespace account_limits
                        reactor::http::Method::PUT,
                        send_to_self_error);
       Client c("http", "127.0.0.1", s.port());
-      auto const& returned_id = c.create_transaction(recipient.id, files, 2);
+      c.create_transaction(recipient.id, files, 2);
       try
       {
         c.fill_transaction(recipient.id, files, files.size(), 10, false,
@@ -1225,7 +1227,7 @@ namespace account_limits
     infinit::oracles::meta::User recipient("1", "bob", "bob", "registered");
     std::list<std::string> files = {"file"};
     std::string transaction_id = "42";
-    uint64_t file_size = 10 * 1000 * 1000 * 1000;
+    uint64_t file_size = pow(10, 10);
     CreatePeerTransactionResponse transaction(recipient, transaction_id);
     _create_peer_transaction_route(s, transaction);
     s.register_route(elle::sprintf("/transaction/%s", transaction_id),
