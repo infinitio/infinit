@@ -19,6 +19,29 @@ with Meta() as meta:
   bob.login()
   assert alice.referrees[0]['has_logged_in'] == True
 
+# Retro compatiblity (referred_by).
+# Referred_by uses to be referred_by = (id, id, id).
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  alice.post('user/invite', {'identifier': 'bob@infinit.io'})
+  res = meta.database.users.update(
+    {'email': 'bob@infinit.io'},
+    {
+      '$set': {'referred_by': [alice.id]}
+    })
+  assertEq(res['n'], 1)
+  # They are ignored.
+  assertEq(len(alice.referrees), 0)
+  eve = User(meta, 'eve@infinit.io')
+  eve.login()
+  eve.post('user/invite', {'identifier': 'bob@infinit.io'})
+  assertEq(len(meta.database.users.find_one(
+    {'email': 'bob@infinit.io'})['referred_by']),
+           2)
+  assertEq(len(alice.referrees), 0)
+  assertEq(len(eve.referrees), 1)
+
 # Complete.
 with Meta() as meta:
   alice = User(meta, 'alice@infinit.io')
