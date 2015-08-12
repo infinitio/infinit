@@ -64,7 +64,7 @@ premium = {
         "facebook_linked": int(3e8),
         "social_post": int(5e8),
       },
-      "default_sto)rage": int(1e11),
+      "default_storage": int(1e11),
     },
     "send_to_self": {
       "bonuses": {
