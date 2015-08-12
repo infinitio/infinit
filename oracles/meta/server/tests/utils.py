@@ -492,7 +492,7 @@ class Meta:
     self.__database.plans.insert(
       make_plan(name = 'premium',
                 default_storage = int(1e11),
-                storage_bonuses = (int(5e9), int(5e8), int(3e8), int(5e8)),
+                storage_bonuses = (int(1e9), int(5e8), int(3e8), int(5e8)),
                 send_to_self_quota = None,
                 send_to_self_bonus = (2, 1, 1),
                 file_size_limit = None,
