@@ -16,6 +16,7 @@ namespace infinit
         : unsigned int
       {
         AccountPlanType_Basic = 0,
+        AccountPlanType_Plus,
         AccountPlanType_Premium,
       } AccountPlanType;
 
