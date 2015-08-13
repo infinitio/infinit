@@ -33,6 +33,9 @@ namespace tests
                    reactor::http::Method method,
                    Super::Function const& function) override;
 
+    infinit::oracles::meta::Account::Quotas
+    empty_account_quotas();
+
     User const&
     register_user(std::string const& email,
                   std::string const& password = "password");
@@ -68,7 +71,7 @@ namespace tests
   protected:
     virtual
     elle::UUID
-    _create_empty(elle::UUID const& sender_id,
+    _create_empty(std::string const& sender_id,
                   std::string const& recipient_identifier);
 
     virtual
@@ -103,7 +106,7 @@ namespace tests
     ELLE_ATTRIBUTE_R(Devices, devices);
     // Users.
     typedef
-    bmi::const_mem_fun<User, elle::UUID const&, &User::id>
+    bmi::const_mem_fun<User, std::string const&, &User::bmi_id>
     UserId;
     typedef
     bmi::const_mem_fun<User, std::string const&, &User::email>

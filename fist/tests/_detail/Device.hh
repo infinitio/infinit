@@ -4,19 +4,20 @@
 # include <elle/UUID.hh>
 
 # include <cryptography/rsa/KeyPair.hh>
+# include <infinit/oracles/meta/Device.hh>
 
 # include <papier/Passport.hh>
 
 namespace tests
 {
   class Device
+    : public infinit::oracles::meta::Device
   {
   public:
     Device(infinit::cryptography::rsa::PublicKey const& key,
-           boost::optional<elle::UUID> device);
+           boost::optional<elle::UUID> device_id);
   private:
-    ELLE_ATTRIBUTE_R(elle::UUID, id);
-    ELLE_ATTRIBUTE_R(papier::Passport, passport);
+    ELLE_ATTRIBUTE_R(papier::Passport, passport_);
 
   public:
     std::string

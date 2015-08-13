@@ -10,6 +10,7 @@ namespace tests
 {
   Transaction::Transaction(std::string const& sender_id,
                            std::string const& recipient_id)
+    : infinit::oracles::PeerTransaction()
   {
     this->id = boost::lexical_cast<std::string>(elle::UUID::random());
     this->sender_id = sender_id;

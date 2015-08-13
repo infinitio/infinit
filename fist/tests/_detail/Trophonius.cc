@@ -18,14 +18,17 @@ extern const std::vector<char> server_dh1024;
 namespace tests
 {
   Trophonius::Trophonius()
-    : _server(elle::make_unique<reactor::network::SSLCertificate>(
+    : infinit::oracles::meta::LoginResponse::Trophonius()
+    , _server(elle::make_unique<reactor::network::SSLCertificate>(
                 server_certificate,
                 server_key,
                 server_dh1024))
     , _accepter(new reactor::Thread{elle::sprintf("%s accepter", *this),
-          boost::bind(&Trophonius::_serve, this)})
+        boost::bind(&Trophonius::_serve, this)})
   {
     this->_server.listen();
+    this->host = "127.0.0.1";
+    this->port_ssl = this->port();
   }
 
   Trophonius::~Trophonius()
@@ -129,13 +132,10 @@ namespace tests
   std::string
   Trophonius::json() const
   {
-    return elle::sprintf(
-      "{"
-      "  \"host\": \"127.0.0.1\","
-      "  \"port\": 0,"
-      "  \"port_ssl\": %s"
-      "}",
-      this->port());
+    elle::Buffer serialized =
+      elle::serialization::json::serialize(
+        static_cast<infinit::oracles::meta::LoginResponse::Trophonius>(*this));
+    return serialized.string();
   }
 }
 

@@ -12,7 +12,7 @@ class CreateEmptyServer
 protected:
   virtual
   elle::UUID
-  _create_empty(elle::UUID const& sender_id,
+  _create_empty(std::string const& sender_id,
                 std::string const& recipient_identifier) override
   {
     this->_created.open();
@@ -60,7 +60,7 @@ public:
 
 protected:
   elle::UUID
-  _create_empty(elle::UUID const& sender_id,
+  _create_empty(std::string const& sender_id,
                 std::string const& recipient_identifier) override
   {
     BOOST_CHECK(!this->_created);

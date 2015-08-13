@@ -11,7 +11,7 @@ namespace tests
   public:
     Transaction(std::string const& sender_id,
                 std::string const& recipient_id);
-    ~Transaction() noexcept (true);
+    ~Transaction() noexcept(true);
     ELLE_ATTRIBUTE_RX(
       boost::signals2::signal<void (infinit::oracles::Transaction::Status)>,
       status_changed);

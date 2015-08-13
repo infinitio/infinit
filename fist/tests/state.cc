@@ -30,6 +30,8 @@
 
 #include <version.hh>
 
+#include "server.hh"
+
 ELLE_LOG_COMPONENT("surface.gap.State.test");
 
 static
@@ -156,232 +158,233 @@ protected:
 
 template <typename Trophonius = Trophonius>
 class Server
-  : public reactor::http::tests::Server
+  : public tests::Server
 {
 public:
   Server(papier::Identity identity,
          boost::uuids::uuid device_id)
-    : _device_id(device_id)
+    : tests::Server()
+    , _device_id(device_id)
     , _session_id(random_uuid())
     , _identity(std::move(identity))
     , _trophonius()
     , _login_result(0)
   {
-    this->headers()["X-Fist-Meta-Version"] = INFINIT_VERSION;
-    this->headers()["Set-Cookie"] =
-      elle::sprintf("session-id=%s", this->_session_id);
-    this->register_route(
-      "/status",
-      reactor::http::Method::GET,
-      [] (Server::Headers const&,
-          Server::Cookies const&,
-          Server::Parameters const&,
-          elle::Buffer const&)
-      {
-        return "{\"status\" : true, \"success\": true}";
-      });
+  //   this->headers()["X-Fist-Meta-Version"] = INFINIT_VERSION;
+  //   this->headers()["Set-Cookie"] =
+  //     elle::sprintf("session-id=%s", this->_session_id);
+  //   this->register_route(
+  //     "/status",
+  //     reactor::http::Method::GET,
+  //     [] (Server::Headers const&,
+  //         Server::Cookies const&,
+  //         Server::Parameters const&,
+  //         elle::Buffer const&)
+  //     {
+  //       return "{\"status\" : true, \"success\": true}";
+  //     });
 
-    this->register_route(
-      "/login",
-      reactor::http::Method::POST,
-      std::bind(&Server::_post_login,
-                this,
-                std::placeholders::_1,
-                std::placeholders::_2,
-                std::placeholders::_3,
-                std::placeholders::_4));
+  //   this->register_route(
+  //     "/login",
+  //     reactor::http::Method::POST,
+  //     std::bind(&Server::_post_login,
+  //               this,
+  //               std::placeholders::_1,
+  //               std::placeholders::_2,
+  //               std::placeholders::_3,
+  //               std::placeholders::_4));
 
-    this->register_route(
-      "/user/synchronize",
-      reactor::http::Method::GET,
-      [] (Server::Headers const&,
-          Server::Cookies const&,
-          Server::Parameters const&,
-          elle::Buffer const&)
-      {
-        return elle::sprintf("{"
-          "  \"swaggers\": [],"
-          "  \"running_transactions\": [],"
-          "  \"final_transactions\": [],"
-          "  \"links\": [],"
-          "  \"accounts\": [],"
-          "  \"devices\": [],"
-          "  \"account\": {"
-          "    \"plan\": \"basic\","
-          "    \"custom_domain\": \"\","
-          "    \"link_format\": \"%s\","
-          "    \"link_size_quota\": 0,"
-          "    \"link_size_used\": 0"
-          "  }"
-          "}", std::string("http://%s/_/%s"));
-      });
+  //   this->register_route(
+  //     "/user/synchronize",
+  //     reactor::http::Method::GET,
+  //     [] (Server::Headers const&,
+  //         Server::Cookies const&,
+  //         Server::Parameters const&,
+  //         elle::Buffer const&)
+  //     {
+  //       return elle::sprintf("{"
+  //         "  \"swaggers\": [],"
+  //         "  \"running_transactions\": [],"
+  //         "  \"final_transactions\": [],"
+  //         "  \"links\": [],"
+  //         "  \"accounts\": [],"
+  //         "  \"devices\": [],"
+  //         "  \"account\": {"
+  //         "    \"plan\": \"basic\","
+  //         "    \"custom_domain\": \"\","
+  //         "    \"link_format\": \"%s\","
+  //         "    \"link_size_quota\": 0,"
+  //         "    \"link_size_used\": 0"
+  //         "  }"
+  //         "}", std::string("http://%s/_/%s"));
+  //     });
 
-    this->register_route(
-      "/trophonius",
-      reactor::http::Method::GET,
-      std::bind(&Server::_get_trophonius,
-                this,
-                std::placeholders::_1,
-                std::placeholders::_2,
-                std::placeholders::_3,
-                std::placeholders::_4));
-    this->register_route(
-      elle::sprintf("/device/%s/view", this->_device_id),
-      reactor::http::Method::GET,
-      [&] (Server::Headers const&,
-           Server::Cookies const&,
-           Server::Parameters const&,
-           elle::Buffer const&)
-      {
-        return elle::sprintf(
-          "{"
-          "  \"id\" : \"%s\","
-          "  \"name\": \"device\","
-          "  \"passport\": \"%s\","
-          "  \"success\": true"
-          "}",
-          this->_device_id,
-          generate_passport(this->_device_id, "DEVICE",
-                            this->_identity.pair().K()));
-      });
-    this->register_route(
-      "/logout",
-      reactor::http::Method::POST,
-      [] (Server::Headers const&,
-          Server::Cookies const&,
-          Server::Parameters const&,
-          elle::Buffer const&)
-      {
-        return "{\"success\": true}";
-      });
-    auto self =
-      [&] (Server::Headers const&,
-           Server::Cookies const&,
-           Server::Parameters const&,
-           elle::Buffer const&)
-      {
-        return elle::sprintf(
-          "{"
-          "  \"id\": \"%s\","
-          "  \"public_key\": \"\","
-          "  \"fullname\": \"\","
-          "  \"handle\": \"\","
-          "  \"connected_devices\": [],"
-          "  \"register_status\": \"\","
-          "  \"email\": \"\","
-          "  \"identity\": \"\","
-          "  \"accounts\": [],"
-          "  \"devices\": [],"
-          "  \"account\": {"
-          "    \"plan\": \"basic\","
-          "    \"custom_domain\": \"\","
-          "    \"link_format\": \"%s\","
-          "    \"link_size_quota\": 0,"
-          "    \"link_size_used\": 0"
-          "  },"
-          "  \"favorites\": [],"
-          "  \"success\": true"
-          "}",
-          this->_identity.id(),
-          std::string("http://%s/_/%s"));
-      };
-    this->register_route(
-      "/user/self",
-      reactor::http::Method::GET,
-      self);
-    this->register_route(
-      elle::sprintf("/users/%s", this->_identity.id()),
-      reactor::http::Method::GET,
-      self);
-    this->register_route(
-      "/user/full_swaggers",
-      reactor::http::Method::GET,
-      [&] (Server::Headers const&,
-           Server::Cookies const&,
-           Server::Parameters const&,
-           elle::Buffer const&)
-      {
-        return "{\"success\": true, \"swaggers\": []}";
-      });
-    this->register_route(
-      "/transactions",
-      reactor::http::Method::GET,
-      [&] (Server::Headers const&,
-           Server::Cookies const&,
-           Server::Parameters const&,
-           elle::Buffer const&)
-      {
-        return "{\"success\": true, \"transactions\": []}";
-      });
-    this->register_route(
-      "/links",
-      reactor::http::Method::GET,
-      [&] (Server::Headers const&,
-           Server::Cookies const&,
-           Server::Parameters const&,
-           elle::Buffer const&)
-      {
-        return "{\"success\": true, \"links\": []}";
-      });
-  }
+  //   this->register_route(
+  //     "/trophonius",
+  //     reactor::http::Method::GET,
+  //     std::bind(&Server::_get_trophonius,
+  //               this,
+  //               std::placeholders::_1,
+  //               std::placeholders::_2,
+  //               std::placeholders::_3,
+  //               std::placeholders::_4));
+  //   this->register_route(
+  //     elle::sprintf("/device/%s/view", this->_device_id),
+  //     reactor::http::Method::GET,
+  //     [&] (Server::Headers const&,
+  //          Server::Cookies const&,
+  //          Server::Parameters const&,
+  //          elle::Buffer const&)
+  //     {
+  //       return elle::sprintf(
+  //         "{"
+  //         "  \"id\" : \"%s\","
+  //         "  \"name\": \"device\","
+  //         "  \"passport\": \"%s\","
+  //         "  \"success\": true"
+  //         "}",
+  //         this->_device_id,
+  //         generate_passport(this->_device_id, "DEVICE",
+  //                           this->_identity.pair().K()));
+  //     });
+  //   this->register_route(
+  //     "/logout",
+  //     reactor::http::Method::POST,
+  //     [] (Server::Headers const&,
+  //         Server::Cookies const&,
+  //         Server::Parameters const&,
+  //         elle::Buffer const&)
+  //     {
+  //       return "{\"success\": true}";
+  //     });
+  //   auto self =
+  //     [&] (Server::Headers const&,
+  //          Server::Cookies const&,
+  //          Server::Parameters const&,
+  //          elle::Buffer const&)
+  //     {
+  //       return elle::sprintf(
+  //         "{"
+  //         "  \"id\": \"%s\","
+  //         "  \"public_key\": \"\","
+  //         "  \"fullname\": \"\","
+  //         "  \"handle\": \"\","
+  //         "  \"connected_devices\": [],"
+  //         "  \"register_status\": \"\","
+  //         "  \"email\": \"\","
+  //         "  \"identity\": \"\","
+  //         "  \"accounts\": [],"
+  //         "  \"devices\": [],"
+  //         "  \"account\": {"
+  //         "    \"plan\": \"basic\","
+  //         "    \"custom_domain\": \"\","
+  //         "    \"link_format\": \"%s\","
+  //         "    \"link_size_quota\": 0,"
+  //         "    \"link_size_used\": 0"
+  //         "  },"
+  //         "  \"favorites\": [],"
+  //         "  \"success\": true"
+  //         "}",
+  //         this->_identity.id(),
+  //         std::string("http://%s/_/%s"));
+  //     };
+  //   this->register_route(
+  //     "/user/self",
+  //     reactor::http::Method::GET,
+  //     self);
+  //   this->register_route(
+  //     elle::sprintf("/users/%s", this->_identity.id()),
+  //     reactor::http::Method::GET,
+  //     self);
+  //   this->register_route(
+  //     "/user/full_swaggers",
+  //     reactor::http::Method::GET,
+  //     [&] (Server::Headers const&,
+  //          Server::Cookies const&,
+  //          Server::Parameters const&,
+  //          elle::Buffer const&)
+  //     {
+  //       return "{\"success\": true, \"swaggers\": []}";
+  //     });
+  //   this->register_route(
+  //     "/transactions",
+  //     reactor::http::Method::GET,
+  //     [&] (Server::Headers const&,
+  //          Server::Cookies const&,
+  //          Server::Parameters const&,
+  //          elle::Buffer const&)
+  //     {
+  //       return "{\"success\": true, \"transactions\": []}";
+  //     });
+  //   this->register_route(
+  //     "/links",
+  //     reactor::http::Method::GET,
+  //     [&] (Server::Headers const&,
+  //          Server::Cookies const&,
+  //          Server::Parameters const&,
+  //          elle::Buffer const&)
+  //     {
+  //       return "{\"success\": true, \"links\": []}";
+  //     });
+  // }
 
-  std::string
-  _post_login(Headers const&,
-              Cookies const&,
-              Parameters const&,
-              elle::Buffer const&)
-  {
-    if (_login_result == 0)
-    {
-       std::string identity_serialized;
-       this->_identity.Save(identity_serialized);
-       return elle::sprintf(
-         "{"
-         "  \"self\": {"
-         "    \"id\": \"000\","
-         "    \"public_key\": \"\","
-         "    \"fullname\": \"\","
-         "    \"handle\": \"\","
-         "    \"connected_devices\": [],"
-         "    \"register_status\": \"\","
-         "    \"email\": \"\","
-         "    \"identity\": \"%s\","
-         "    \"accounts\": [],"
-         "    \"devices\": [],"
-         "    \"account\": {"
-         "      \"plan\": \"basic\","
-         "      \"custom_domain\": \"\","
-         "      \"link_format\": \"%s\","
-         "      \"link_size_quota\": 0,"
-         "      \"link_size_used\": 0"
-         "    },"
-         "    \"favorites\": [],"
-         "    \"success\": true"
-         "  },"
-         "  \"device\": {"
-         "    \"id\" : \"%s\","
-         "    \"name\": \"device\","
-         "    \"passport\": \"%s\","
-         "    \"success\": true"
-         "  },"
-         "  \"features\": [],"
-         "  \"account_registered\": false,"
-         "  \"trophonius\" : {"
-         "    \"host\": \"127.0.0.1\","
-         "    \"port\": 0,"
-         "    \"port_ssl\": %s"
-         "  },"
-         "  \"registered\": false"
-         "}",
-         identity_serialized,
-         std::string("http://%s/_/%s"),
-         this->_device_id,
-         generate_passport(this->_device_id, "DEVICE",
-                           this->_identity.pair().K()),
-         this->_trophonius.port());
-     }
-     throw Exception("/login", reactor::http::StatusCode::Forbidden,
-                     elle::sprintf("{\"code\": %s}", _login_result));
+  // std::string
+  // _post_login(Headers const&,
+  //             Cookies const&,
+  //             Parameters const&,
+  //             elle::Buffer const&)
+  // {
+  //   if (_login_result == 0)
+  //   {
+  //      std::string identity_serialized;
+  //      this->_identity.Save(identity_serialized);
+  //      return elle::sprintf(
+  //        "{"
+  //        "  \"self\": {"
+  //        "    \"id\": \"000\","
+  //        "    \"public_key\": \"\","
+  //        "    \"fullname\": \"\","
+  //        "    \"handle\": \"\","
+  //        "    \"connected_devices\": [],"
+  //        "    \"register_status\": \"\","
+  //        "    \"email\": \"\","
+  //        "    \"identity\": \"%s\","
+  //        "    \"accounts\": [],"
+  //        "    \"devices\": [],"
+  //        "    \"account\": {"
+  //        "      \"plan\": \"basic\","
+  //        "      \"custom_domain\": \"\","
+  //        "      \"link_format\": \"%s\","
+  //        "      \"link_size_quota\": 0,"
+  //        "      \"link_size_used\": 0"
+  //        "    },"
+  //        "    \"favorites\": [],"
+  //        "    \"success\": true"
+  //        "  },"
+  //        "  \"device\": {"
+  //        "    \"id\" : \"%s\","
+  //        "    \"name\": \"device\","
+  //        "    \"passport\": \"%s\","
+  //        "    \"success\": true"
+  //        "  },"
+  //        "  \"features\": [],"
+  //        "  \"account_registered\": false,"
+  //        "  \"trophonius\" : {"
+  //        "    \"host\": \"127.0.0.1\","
+  //        "    \"port\": 0,"
+  //        "    \"port_ssl\": %s"
+  //        "  },"
+  //        "  \"registered\": false"
+  //        "}",
+  //        identity_serialized,
+  //        std::string("http://%s/_/%s"),
+  //        this->_device_id,
+  //        generate_passport(this->_device_id, "DEVICE",
+  //                          this->_identity.pair().K()),
+  //        this->_trophonius.port());
+  //    }
+  //    throw Exception("/login", reactor::http::StatusCode::Forbidden,
+  //                    elle::sprintf("{\"code\": %s}", _login_result));
   }
 
   virtual
