@@ -2838,10 +2838,10 @@ class Mixin:
                              new_plan)
 
   def _change_plan(self, user, new_plan_name):
-    current_plan = self.database.plans.find_one({'name': user.get('plan', 'basic')})
+    current_plan = self.plans[user.get('plan', 'basic')]
     if new_plan_name == 'basic' and self.__eligible_for_plus(user['_id']):
       new_plan_name = 'plus'
-    new_plan = self.database.plans.find_one({'name': new_plan_name})
+    new_plan = self.plans[new_plan_name]
     fset = dict()
     funset = dict()
     for (k, v) in new_plan.get('features', {}).items():
@@ -2853,10 +2853,13 @@ class Mixin:
     update = {'$set': fset}
     if len(funset):
       update.update({'$unset': funset})
-    self.database.users.update({'_id': user['_id']}, update)
+    user = self.database.users.find_and_modify({'_id': user['_id']},
+                                               update,
+                                               fields = self.__referral_fields,
+                                               new = True)
     self._quota_updated_notification(user)
     return {
-      'plan': new_plan_name
+      'plan': new_plan_name or 'basic'
     }
 
   @api('/users/<user>', method='PUT')
@@ -2867,20 +2870,20 @@ class Mixin:
                   stripe_token = None,
                   stripe_coupon = None,
                 ):
-    if plan not in self.plans.keys():
-      return self.bad_request({
-        'error': 'invalid_plan',
-        'reason': 'invalid plan: %s' % plan,
-        'plan': plan,
-      })
-    user = self.user
-    customer = self.__fetch_or_create_stripe_customer(user)
-    res = {
-      'plan': plan
-    }
-    eligible_for_plus = self.__eligible_for_plus(user['_id'])
-    # Subscribing to a paying plan without source raises an error
     try:
+      if plan not in self.plans.keys():
+        return self.bad_request({
+          'error': 'invalid_plan',
+          'reason': 'invalid plan: %s' % plan,
+          'plan': plan,
+        })
+      user = self.user
+      customer = self.__fetch_or_create_stripe_customer(user)
+      res = {
+        'plan': plan or user['plan']
+      }
+      eligible_for_plus = self.__eligible_for_plus(user['_id'])
+      # Subscribing to a paying plan without source raises an error
       # Update user's payment source, represented by a token
       if stripe_token is not None:
         customer.source = stripe_token
@@ -2901,20 +2904,21 @@ class Mixin:
           sub = customer.subscriptions.data[0]
         else:
           sub = None
-        free_plans = ['basic']
-        if eligible_for_plus:
-          free_plans.append('plus')
-        if plan not in free_plans:
-          if sub is None:
-            sub = customer.subscriptions.create(
-              plan = plan, coupon = stripe_coupon)
-            stripe_coupon = None
+        if plan is not None:
+          free_plans = ['basic']
+          if eligible_for_plus:
+            free_plans.append('plus')
+          if plan not in free_plans:
+            if sub is None:
+              sub = customer.subscriptions.create(
+                plan = plan, coupon = stripe_coupon)
+              stripe_coupon = None
+            else:
+              sub.plan = plan
           else:
-            sub.plan = plan
-        else:
-          if sub is not None:
-            sub.delete(at_period_end = True)
-            sub = None
+            if sub is not None:
+              sub.delete(at_period_end = True)
+              sub = None
         if stripe_coupon is not None:
           if sub is None:
             self.bad_request({
@@ -2925,7 +2929,7 @@ class Mixin:
         if sub:
           sub = sub.save()
           res.update(_build_response(sub))
-        if user.get('plan', 'basic') != plan:
+        if plan is not None and user.get('plan', 'basic') != plan:
           res.update(self._change_plan(user, plan))
     except stripe.error.CardError as e:
       warn(
