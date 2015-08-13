@@ -118,9 +118,9 @@ try:
   with Meta(stripe_api_key = stripe_key) as meta:
     user = create_user(meta)
     res = update_plan(user, 'premium', stripe_token = _pay())
-    # No op.
-    update_plan(user, None)
     assertEq(res['amount'], 999)
+    # No op.
+    update_plan(user, None, previous_plan = 'premium')
     res = update_plan(user, None, stripe_coupon = 'coupon_30', previous_plan = 'premium')
     assertEq(res['amount'], 0.7 * 999)
 
