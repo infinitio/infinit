@@ -16,6 +16,8 @@ namespace infinit
         {
           case AccountPlanType::AccountPlanType_Basic:
             return "basic";
+          case AccountPlanType::AccountPlanType_Plus:
+            return "plus";
           case AccountPlanType::AccountPlanType_Premium:
             return "premium";
           // Fallback.
@@ -148,6 +150,8 @@ namespace elle
     {
       if (repr == "basic")
         return AccountPlanType::AccountPlanType_Basic;
+      else if (repr == "plus")
+        return AccountPlanType::AccountPlanType_Plus;
       else if (repr == "premium")
         return AccountPlanType::AccountPlanType_Premium;
       // Fallback.
