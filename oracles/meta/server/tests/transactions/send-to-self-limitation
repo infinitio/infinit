@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import datetime
-from pprint import pprint
 
 from utils import *
 from infinit.oracles.meta import error
@@ -23,7 +22,6 @@ def send_to_self(user, failure_expected = False):
     user.transaction_update(res['created_transaction_id'],
                             transaction_status.FINISHED)
     notifications = user.notifications
-    pprint(notifications)
     assertEq(len(notifications), 2) # Transaction + quota.
     notifications.sort()
     assertEq(notifications[1]['account']['quotas']['send_to_self']['used'],
