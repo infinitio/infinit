@@ -215,15 +215,7 @@ class Mixin:
         self.require_premium()
       link_size = __link_size_from_file_list(files)
       self._link_check_quota(user, link_size)
-      self.notifier.notify_some(
-        notifier.MODEL_UPDATE,
-        message = {
-          'account': {
-            'link_size_used': user.get('total_link_size', 0) + link_size,
-          }
-        },
-        recipient_ids = {user['_id']},
-        version = (0, 9, 37))
+      self._quota_updated_notification(user, extra_link_size = link_size)
       creation_time = self.now
       # Maintain a list of all elements in document here.
       # Do not add a None hash as this causes problems with concurrency.
@@ -454,11 +446,6 @@ class Mixin:
                 # upload, or if on gcs if nothing was uploaded at all
                 if link['status'] == transaction_status.FINISHED:
                   if 'file_size' in link:
-                    user = self.database.users.find_and_modify(
-                      {'_id': user['_id']},
-                      {'$inc': {'total_link_size': link['file_size'] * -1}},
-                      new = True,
-                    )
                     self._quota_updated_notification(user)
             else: #status = FINISHED
               # Get effective size
@@ -476,12 +463,7 @@ class Mixin:
                   'file_size': file_size,
                   'quota_counted': True
                 })
-                user = self.database.users.find_and_modify(
-                  {'_id': user['_id']},
-                  {'$inc': {'total_link_size': file_size}},
-                  new = True,
-                )
-                self._quota_updated_notification(user)
+              self._quota_updated_notification(user)
       if expiration_date is not None:
         update['expiration_date'] = expiration_date
       if message is not None:
