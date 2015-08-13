@@ -49,8 +49,8 @@ namespace infinit
 
       namespace json = elle::format::json;
 
-      struct User:
-         public elle::Printable
+      struct User
+        : public elle::Printable
       {
         typedef std::vector<elle::UUID> Devices;
         std::string id;

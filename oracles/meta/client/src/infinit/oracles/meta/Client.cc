@@ -470,8 +470,8 @@ namespace infinit
         for (auto const& tr: transaction_list)
           this->transactions.emplace(tr.id, tr);
         transaction_list.clear();
-        // Get the finals transactions (override potential duplicates because
-        // meta's reponse potentially suffers of a race condition).
+        // Get the final transactions (overwrite duplicates as Meta's response
+        // has a race condition).
         s.serialize("final_transactions", transaction_list);
         for (auto const& tr: transaction_list)
           this->transactions[tr.id] = tr;
@@ -1241,7 +1241,6 @@ namespace infinit
                   *status == oracles::Transaction::Status::rejected)
               {
                 ELLE_ASSERT(!device_id.is_nil());
-                ELLE_ASSERT_GT(device_name.length(), 0u);
                 query.serialize("device_id",
                                 const_cast<elle::UUID&>(device_id));
                 query.serialize("device_name",
