@@ -8,6 +8,9 @@ import random
 stripe_key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI'
 email = 'tests.stripe%s' % random.randint(1e9, 9e9) + '@infinit.io'
 
+# XXX: Someday, we'll need to fake the stripe's api to save us hours.
+# Right now, the test takes around 2 mins.
+
 # Recently created user has 'basic' plan by default.
 with Meta(stripe_api_key = stripe_key) as meta:
   user = User(meta, 'foobar@infinit.io')
@@ -86,6 +89,8 @@ def update_plan(user, plan, stripe_token = None, stripe_coupon = None,
     'stripe_token': stripe_token,
     'stripe_coupon': stripe_coupon})
   if check_new_plan:
+    if plan is None:
+      plan = previous_plan
     assertEq(res['plan'], plan)
     assertEq(user.me['plan'], plan)
     globals()['check_' + plan + '_quotas'](user)
@@ -101,6 +106,23 @@ try:
     quotas = user.me['quotas']
     assertGT(quotas['links']['quota'],
              previous_quotas['links']['quota'])
+
+  # Bad requests.
+  with Meta(stripe_api_key = stripe_key) as meta:
+    user = create_user(meta)
+    # No op.
+    update_plan(user, None)
+    throws(lambda: update_plan(user, None, stripe_coupon = 'bite'), 400)
+
+  # Update from premium to null.
+  with Meta(stripe_api_key = stripe_key) as meta:
+    user = create_user(meta)
+    res = update_plan(user, 'premium', stripe_token = _pay())
+    # No op.
+    update_plan(user, None)
+    assertEq(res['amount'], 999)
+    res = update_plan(user, None, stripe_coupon = 'coupon_30', previous_plan = 'premium')
+    assertEq(res['amount'], 0.7 * 999)
 
   # Update from basic to plus.
   with Meta(stripe_api_key = stripe_key) as meta:

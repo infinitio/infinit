@@ -2806,7 +2806,7 @@ class Mixin:
     custom_domains = user.get('account', {}).get('custom_domains', [])
     quotas = self.__quotas(user)
     res['account'] = {
-      'plan': user.get('plan', 'basic'),
+      'plan': user.get('plan', 'basic') or 'basic',
       'custom_domain': next(iter(custom_domains), {'name': ''})['name'],
       'link_format': user.get('account', {}).get('link_format', 'http://%s/_/%s'),
       # 0.9.40.
@@ -2816,16 +2816,22 @@ class Mixin:
     res['account'].update({'quotas': quotas})
     return self.success(res)
 
-  def _quota_updated_notification(self, user, version = (0, 9, 37)):
+  def _quota_updated_notification(self, user, version = (0, 9, 37),
+                                  extra_link_size = 0):
+    # extra_link_size is a way to 'fake' the local storage usage. It's
+    # conceptually broken because it's stored nowhere so /synchronize won't be
+    # able to provide the same state.
     quotas = self.__quotas(user)
     message = {
       'account': {
+        'plan': user.get('plan', 'basic') or 'basic',
         # 0.9.40.
-        'link_size_used': quotas['links']['used'],
+        'link_size_used': quotas['links']['used'] + extra_link_size,
         'link_size_quota': quotas['links']['quota'],
       }
     }
     message['account'].update({'quotas': quotas})
+    message['account']['quotas']['links']['used'] += extra_link_size
 
     self.notifier.notify_some(
       notifier.MODEL_UPDATE,

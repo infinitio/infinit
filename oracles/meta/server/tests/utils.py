@@ -652,7 +652,7 @@ class User(Client):
                version = None,
                **kwargs):
     super().__init__(meta, version)
-
+    self.plans = meta.inner.plans
     if not facebook:
       self.email = email is not None and email or random_email() + '@infinit.io'
       self.password, self.email_confirmation_token = \
@@ -861,6 +861,10 @@ class User(Client):
   @property
   def _id(self):
     return bson.ObjectId(self.data['id'])
+
+  @property
+  def plan(self):
+    return self.plans[self.me['plan']]
 
   @property
   def devices(self):
