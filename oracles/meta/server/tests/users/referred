@@ -171,6 +171,5 @@ with Meta() as meta:
   referrees = jean_luc.referrees
   jean_luc.post('user/invite', {'identifier': 'serge.karmazov@infinit.io'})
   User(meta, 'serge.karmazov@infinit.io', referral_code = jean_luc.referral_code).login()
-  print(previous, jean_luc.link_quota)
   assertGT(jean_luc.link_quota, previous)
   assertEq(len(jean_luc.referrees), len(referrees) + 1)
