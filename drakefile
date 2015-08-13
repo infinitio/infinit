@@ -665,68 +665,68 @@ def configure(cxx_toolkit = None,
   gap_tests_cxx_config += boost_date_time
   gap_tests_cxx_config += boost_filesystem
   gap_tests_cxx_config.lib_path_runtime('../../lib')
-  for name in (
-      'account-limits',
-      'cloud-buffer',
-      'devices',
-      'facebook_connect',
-      'ghost-download',
-      'ghost-invite',
-      'invalid-credentials',
-      # Kickout mechanism has been temporary disabled.
-      # 'kickout',
-      'links',
-      'pause',
-      'peer-reject',
-      'resynchronization',
-      'snapshot-resume',
-      'state',
-      'transition-to-finish',
-  ):
-    sources = drake.nodes('fist/tests/%s.cc' % name)
-    if name != 'state':
-      sources += drake.nodes(
-        'fist/tests/server.cc',
-        'fist/tests/server.hh',
-        'fist/tests/_detail/User.cc',
-        'fist/tests/_detail/User.hh',
-        'fist/tests/_detail/Device.cc',
-        'fist/tests/_detail/Device.hh',
-        'fist/tests/_detail/State.cc',
-        'fist/tests/_detail/State.hh',
-        'fist/tests/_detail/Trophonius.cc',
-        'fist/tests/_detail/Trophonius.hh',
-        'fist/tests/_detail/Transaction.cc',
-        'fist/tests/_detail/Transaction.hh',
-        'fist/tests/_detail/Authority.cc',
-        'fist/tests/_detail/Authority.hh',
-      )
-    test = drake.cxx.Executable(
-      'fist/tests/%s' % name,
-      sources +
-      [
-        gap_lib,
-        elle_lib,
-        reactor_lib,
-        papier_lib,
-        cryptography_lib,
-        meta_client_lib,
-        elle.openssl_lib_crypto,
-        elle.openssl_lib_ssl,
-        elle.aws.lib_dynamic,
-        trophonius_client_lib,
-        oracles.transaction_lib,
-        metrics_lib
-      ],
-      cxx_toolkit, gap_tests_cxx_config)
-    gap_tests << test
-    env = dict()
-    if cxx_toolkit.os == drake.os.android:
-      env['INFINIT_NON_PERSISTENT_DIR'] = '/tmp'
-      env['INFINIT_PERSISTENT_DIR'] = '/tmp'
-    runner = drake.Runner(exe = test, env=env)
-    runner.reporting = drake.Runner.Reporting.on_failure
-    gap_check << runner.status
+  # for name in (
+  #     'account-limits',
+  #     'cloud-buffer',
+  #     'devices',
+  #     'facebook_connect',
+  #     'ghost-download',
+  #     'ghost-invite',
+  #     'invalid-credentials',
+  #     # Kickout mechanism has been temporary disabled.
+  #     # 'kickout',
+  #     'links',
+  #     'pause',
+  #     'peer-reject',
+  #     'resynchronization',
+  #     'snapshot-resume',
+  #     'state',
+  #     'transition-to-finish',
+  # ):
+  #   sources = drake.nodes('fist/tests/%s.cc' % name)
+  #   if name != 'state':
+  #     sources += drake.nodes(
+  #       'fist/tests/server.cc',
+  #       'fist/tests/server.hh',
+  #       'fist/tests/_detail/User.cc',
+  #       'fist/tests/_detail/User.hh',
+  #       'fist/tests/_detail/Device.cc',
+  #       'fist/tests/_detail/Device.hh',
+  #       'fist/tests/_detail/State.cc',
+  #       'fist/tests/_detail/State.hh',
+  #       'fist/tests/_detail/Trophonius.cc',
+  #       'fist/tests/_detail/Trophonius.hh',
+  #       'fist/tests/_detail/Transaction.cc',
+  #       'fist/tests/_detail/Transaction.hh',
+  #       'fist/tests/_detail/Authority.cc',
+  #       'fist/tests/_detail/Authority.hh',
+  #     )
+  #   test = drake.cxx.Executable(
+  #     'fist/tests/%s' % name,
+  #     sources +
+  #     [
+  #       gap_lib,
+  #       elle_lib,
+  #       reactor_lib,
+  #       papier_lib,
+  #       cryptography_lib,
+  #       meta_client_lib,
+  #       elle.openssl_lib_crypto,
+  #       elle.openssl_lib_ssl,
+  #       elle.aws.lib_dynamic,
+  #       trophonius_client_lib,
+  #       oracles.transaction_lib,
+  #       metrics_lib
+  #     ],
+  #     cxx_toolkit, gap_tests_cxx_config)
+  #   gap_tests << test
+  #   env = dict()
+  #   if cxx_toolkit.os == drake.os.android:
+  #     env['INFINIT_NON_PERSISTENT_DIR'] = '/tmp'
+  #     env['INFINIT_PERSISTENT_DIR'] = '/tmp'
+  #   runner = drake.Runner(exe = test, env=env)
+  #   runner.reporting = drake.Runner.Reporting.on_failure
+  #   gap_check << runner.status
 
   ## --- ##
   ## CLI ##
