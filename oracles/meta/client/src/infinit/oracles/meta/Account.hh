@@ -34,7 +34,7 @@ namespace infinit
           `-------------*/
           public:
             QuotaUsage(elle::serialization::SerializerIn& s);
-            QuotaUsage() = default;
+            QuotaUsage();
             virtual
             ~QuotaUsage() = default;
 

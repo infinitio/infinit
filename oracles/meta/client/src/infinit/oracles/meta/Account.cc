@@ -26,6 +26,12 @@ namespace infinit
         }
       }
 
+      Account::Quotas::QuotaUsage::QuotaUsage()
+        : quota()
+        , used(0)
+      {
+      }
+
       Account::Quotas::QuotaUsage::QuotaUsage(elle::serialization::SerializerIn& s)
       {
         this->serialize(s);
