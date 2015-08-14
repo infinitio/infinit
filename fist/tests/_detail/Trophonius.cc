@@ -92,7 +92,13 @@ namespace tests
     ELLE_LOG("Trophonius, new connection: %s", key);
     elle::SafeFinally remove{[&] { try { this->_clients.erase(key); } catch (...) { }}};
     this->_clients.emplace(key, std::move(socket));
-    this->_clients.at(key)->write("{\"notification_type\": -666, \"response_code\": 200, \"response_details\": \"details\"}\n");
+    {
+      elle::serialization::json::SerializerOut output(*this->_clients.at(key),
+                                                      false);
+      output.serialize("notification_type", -666);
+      output.serialize("response_code", 200);
+      output.serialize("response_details", std::string("details"));
+    }
     try
     {
       while (true)
