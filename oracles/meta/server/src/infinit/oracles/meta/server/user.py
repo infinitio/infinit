@@ -196,6 +196,8 @@ class Mixin:
     else:
       fields = {field: 1 for field in fields}
       fields['has_avatar'] = {'$gt': ["$avatar", None]}
+      if isinstance(query, bson.ObjectId):
+        query = {'_id': query}
       res = self.database.users.aggregate([
         {'$match': query},
         {'$project': fields}
