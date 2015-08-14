@@ -35,7 +35,7 @@ namespace surface
                       std::string const& message,
                       std::string const& meta_id,
                       bool screenshot,
-                      boost::optional<gap_Status> failure_reason);
+                      boost::optional<gap_Status> status_info);
       ~LinkTransaction() noexcept(true);
 
       uint32_t id;
@@ -50,7 +50,7 @@ namespace surface
       std::string message;
       std::string meta_id;
       bool screenshot;
-      boost::optional<gap_Status> failure_reason;
+      boost::optional<gap_Status> status_info;
 
       static Notification::Type type;
 

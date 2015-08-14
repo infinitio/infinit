@@ -18,7 +18,7 @@ namespace surface
       std::string const& message_,
       TransactionCanceler const& canceler_,
       std::string const& meta_id_,
-      boost::optional<gap_Status> failure_reason_)
+      boost::optional<gap_Status> status_info_)
         : id(id_)
         , status(status_)
         , sender_id(sender_id_)
@@ -34,7 +34,7 @@ namespace surface
         , message(message_)
         , canceler(canceler_)
         , meta_id(meta_id_)
-        , failure_reason(failure_reason_)
+        , status_info(status_info_)
     {}
 
     PeerTransaction::~PeerTransaction() noexcept(true)

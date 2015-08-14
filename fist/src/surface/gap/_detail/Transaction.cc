@@ -120,7 +120,7 @@ namespace surface
       uint32_t id,
       infinit::oracles::PeerTransaction const& transaction,
       gap_TransactionStatus status,
-      boost::optional<gap_Status> failure_reason) const
+      boost::optional<gap_Status> status_info) const
     {
       return surface::gap::PeerTransaction(
         id,
@@ -136,7 +136,7 @@ namespace surface
         transaction.message,
         transaction.canceler,
         transaction.id,
-        failure_reason);
+        status_info);
     }
 
     surface::gap::LinkTransaction
@@ -144,7 +144,7 @@ namespace surface
       uint32_t id,
       infinit::oracles::LinkTransaction const& link,
       gap_TransactionStatus status,
-      boost::optional<gap_Status> failure_reason) const
+      boost::optional<gap_Status> status_info) const
     {
       return surface::gap::LinkTransaction(
         id,
@@ -159,7 +159,7 @@ namespace surface
         link.message,
         link.id,
         link.screenshot ? link.screenshot.get() : false,
-        failure_reason);
+        status_info);
     }
 
     uint32_t

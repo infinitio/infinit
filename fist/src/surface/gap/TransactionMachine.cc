@@ -263,9 +263,9 @@ namespace surface
 
     void
     TransactionMachine::gap_status(gap_TransactionStatus v,
-                                   boost::optional<gap_Status> failure_reason)
+                                   boost::optional<gap_Status> status_info)
     {
-      this->_transaction.status(v, failure_reason);
+      this->_transaction.status(v, status_info);
     }
 
     gap_TransactionStatus

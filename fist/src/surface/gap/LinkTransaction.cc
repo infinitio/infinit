@@ -17,7 +17,7 @@ namespace surface
       std::string const& message_,
       std::string const& meta_id_,
       bool screenshot_,
-      boost::optional<gap_Status> failure_reason_)
+      boost::optional<gap_Status> status_info_)
         : id(id_)
         , name(std::move(name_))
         , mtime(mtime_)
@@ -30,7 +30,7 @@ namespace surface
         , message(message_)
         , meta_id(meta_id_)
         , screenshot(screenshot_)
-        , failure_reason(failure_reason_)
+        , status_info(status_info_)
     {
       // FIXME: for now the server always return the share link, as an empty
       // string if not ready. Remove when we remove the old serialization,

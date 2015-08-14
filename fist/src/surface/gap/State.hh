@@ -737,14 +737,14 @@ namespace surface
         uint32_t id,
         infinit::oracles::LinkTransaction const& transaction,
         gap_TransactionStatus status,
-        boost::optional<gap_Status> failure_reason = boost::none) const;
+        boost::optional<gap_Status> status_info = boost::none) const;
 
       surface::gap::PeerTransaction
       transaction_to_gap_transaction(
         uint32_t id,
         infinit::oracles::PeerTransaction const& transaction,
         gap_TransactionStatus status,
-        boost::optional<gap_Status> failure_reason = boost::none) const;
+        boost::optional<gap_Status> status_info = boost::none) const;
       /*------------------.
       | Peer Transactions |
       `------------------*/
