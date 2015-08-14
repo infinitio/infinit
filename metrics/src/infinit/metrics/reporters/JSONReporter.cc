@@ -478,6 +478,9 @@ namespace infinit
           data[this->_key_str(JSONKey::device_id)] =
             std::string("unknown");
         }
+        std::string plan = Reporter::metric_sender_plan().empty()
+                         ? "unknown" : Reporter::metric_sender_plan();
+        data[this->_key_str(JSONKey::plan)] = plan;
         elle::json::Object feats;
         auto features = Reporter::metric_features();
         for (auto const& elem : Reporter::metric_features())
@@ -573,6 +576,8 @@ namespace infinit
           return "method";
         case JSONKey::onboarding:
           return "onboarding";
+        case JSONKey::plan:
+          return "plan";
         case JSONKey::proxy_type:
           return "proxy_type";
         case JSONKey::metric_sender_id:

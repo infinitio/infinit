@@ -39,6 +39,7 @@ namespace infinit
       metric_sender_id,
       onboarding,
       operation,
+      plan,
       proxy_type,
       recipient_id,
       referral_code,

@@ -86,6 +86,10 @@ namespace infinit
 
       static
       void
+      metric_sender_plan(std::string const& plan);
+
+      static
+      void
       metric_features(std::unordered_map<std::string, std::string> const& features);
 
     /// Transaction metrics.
@@ -404,6 +408,11 @@ namespace infinit
       void
       name(std::string name);
 
+    public:
+      static
+      std::string
+      metric_sender_plan();
+
     /// Static class attribute accessors.
     protected:
       static
@@ -436,6 +445,9 @@ namespace infinit
 
       static
       std::string _metric_device_id;
+
+      static
+      std::string _metric_sender_plan;
 
       static
       std::unordered_map<std::string, std::string>
