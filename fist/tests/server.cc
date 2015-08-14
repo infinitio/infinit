@@ -84,76 +84,12 @@ namespace tests
     this->register_route(
       "/login",
       reactor::http::Method::POST,
-      [&] (Server::Headers const&,
-           Server::Cookies const&,
-           Server::Parameters const&,
-           elle::Buffer const& content)
-      {
-        elle::IOStream stream(content.istreambuf());
-        elle::serialization::json::SerializerIn input(stream, false);
-        boost::optional<std::string> email;
-        input.serialize("email", email);
-        boost::optional<std::string> long_lived_access_token;
-        input.serialize("long_lived_access_token", long_lived_access_token);
-        bool registered = false;
-        auto const& user = [&] () -> User const&
-          {
-            if (email)
-            {
-              auto& users = this->_users.get<1>();
-              auto it = users.find(email.get());
-              if (it == users.end())
-                throw reactor::http::tests::Server::Exception(
-                  "/login",
-                  reactor::http::StatusCode::Not_Found,
-                  "user not found");
-              return *it;
-            }
-            else if (long_lived_access_token)
-            {
-              return this->facebook_connect(long_lived_access_token.get(),
-                                            registered);
-            }
-            elle::unreachable();
-          }();
-        std::string device_id_str;
-        input.serialize("device_id", device_id_str);
-        auto device_id = elle::UUID(device_id_str);
-        this->headers()["Set-Cookie"] =
-          elle::sprintf("session-id=%s+%s", user.id, device_id_str);
-        if (this->_devices.find(device_id) == this->_devices.end())
-          this->register_device(user, device_id);
-        auto const& device = this->_devices.at(device_id);
-        std::stringstream res;
-        {
-          namespace meta_ns = infinit::oracles::meta;
-          elle::serialization::json::SerializerOut output(res, false);
-          meta_ns::Self self;
-          self.connected_devices = std::vector<elle::UUID>{device.id};
-          self.devices = std::list<std::string>{device.id.repr()};
-          self.email = user.email();
-          self.facebook_id = user.facebook_id();
-          self.favorites = std::list<std::string>();
-          self.fullname = user.fullname;
-          self.handle = user.handle;
-          self.id = user.id;
-          self.public_key = user.public_key;
-          self.register_status = user.register_status;
-          std::string identity_serialized;
-          user.identity()->Save(identity_serialized);
-          self.identity = identity_serialized;
-          output.serialize("self", self);
-          output.serialize("device", static_cast<meta_ns::Device>(device));
-          output.serialize("features",
-                           std::unordered_map<std::string, std::string>());
-          output.serialize(
-            "trophonius",
-            static_cast<meta_ns::LoginResponse::Trophonius>(*this->trophonius));
-          output.serialize("account_registered", registered ? true : false);
-        }
-        ELLE_DEBUG("login res: %s", res.str());
-        return res.str();
-      });
+      std::bind(&Server::_login_post,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2,
+                std::placeholders::_3,
+                std::placeholders::_4));
 
     this->register_route(
       "/trophonius",
@@ -894,6 +830,78 @@ namespace tests
       });
 
     return elle::UUID(id);
+  }
+
+  std::string
+  Server::_login_post(Server::Headers const&,
+                            Server::Cookies const& cookies,
+                            Server::Parameters const&,
+                            elle::Buffer const& body)
+  {
+    elle::IOStream stream(body.istreambuf());
+    elle::serialization::json::SerializerIn input(stream, false);
+    boost::optional<std::string> email;
+    input.serialize("email", email);
+    boost::optional<std::string> long_lived_access_token;
+    input.serialize("long_lived_access_token", long_lived_access_token);
+    bool registered = false;
+    auto const& user = [&] () -> User const&
+      {
+        if (email)
+        {
+          auto& users = this->_users.get<1>();
+          auto it = users.find(email.get());
+          if (it == users.end())
+            throw reactor::http::tests::Server::Exception(
+              "/login",
+              reactor::http::StatusCode::Not_Found,
+              "user not found");
+          return *it;
+        }
+        else if (long_lived_access_token)
+        {
+          return this->facebook_connect(long_lived_access_token.get(),
+                                        registered);
+        }
+        elle::unreachable();
+      }();
+    std::string device_id_str;
+    input.serialize("device_id", device_id_str);
+    auto device_id = elle::UUID(device_id_str);
+    this->headers()["Set-Cookie"] =
+      elle::sprintf("session-id=%s+%s", user.id, device_id_str);
+    if (this->_devices.find(device_id) == this->_devices.end())
+      this->register_device(user, device_id);
+    auto const& device = this->_devices.at(device_id);
+    std::stringstream res;
+    {
+      namespace meta_ns = infinit::oracles::meta;
+      elle::serialization::json::SerializerOut output(res, false);
+      meta_ns::Self self;
+      self.connected_devices = std::vector<elle::UUID>{device.id};
+      self.devices = std::list<std::string>{device.id.repr()};
+      self.email = user.email();
+      self.facebook_id = user.facebook_id();
+      self.favorites = std::list<std::string>();
+      self.fullname = user.fullname;
+      self.handle = user.handle;
+      self.id = user.id;
+      self.public_key = user.public_key;
+      self.register_status = user.register_status;
+      std::string identity_serialized;
+      user.identity()->Save(identity_serialized);
+      self.identity = identity_serialized;
+      output.serialize("self", self);
+      output.serialize("device", static_cast<meta_ns::Device>(device));
+      output.serialize("features",
+                       std::unordered_map<std::string, std::string>());
+      output.serialize(
+        "trophonius",
+        static_cast<meta_ns::LoginResponse::Trophonius>(*this->trophonius));
+      output.serialize("account_registered", registered ? true : false);
+    }
+    ELLE_DEBUG("login res: %s", res.str());
+    return res.str();
   }
 
   std::string

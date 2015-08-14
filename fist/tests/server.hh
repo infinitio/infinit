@@ -5,7 +5,6 @@
 #include <boost/multi_index/mem_fun.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 
-#include <elle/UUID.hh>
 #include <elle/reactor/tests/http_server.hh>
 #include <elle/UUID.hh>
 
@@ -70,6 +69,13 @@ namespace tests
 
   protected:
     virtual
+    std::string
+    _login_post(Headers const& headers,
+                Cookies const& cookies,
+                Parameters const& parameters,
+                elle::Buffer const& body);
+
+    virtual
     elle::UUID
     _create_empty(std::string const& sender_id,
                   std::string const& recipient_identifier);
@@ -80,24 +86,25 @@ namespace tests
 
     virtual
     std::string
-    _transaction_post(Headers const&,
-                      Cookies const&,
-                      Parameters const&,
-                      elle::Buffer const&);
+    _transaction_post(Headers const& headers,
+                      Cookies const& cookies,
+                      Parameters const& parameters,
+                      elle::Buffer const& body);
 
     virtual
     std::string
-    _transaction_put(Headers const&,
-                     Cookies const&,
-                     Parameters const&,
-                     elle::Buffer const&,
+    _transaction_put(Headers const& headers,
+                     Cookies const& cookies,
+                     Parameters const& parameters,
+                     elle::Buffer const& body,
                      elle::UUID const&);
 
+    virtual
     std::string
-    _get_trophonius(Headers const&,
-                    Cookies const&,
-                    Parameters const&,
-                    elle::Buffer const&) const;
+    _get_trophonius(Headers const& headers,
+                    Cookies const& cookies,
+                    Parameters const& parameters,
+                    elle::Buffer const& body) const;
 
     ELLE_ATTRIBUTE_R(elle::UUID, session_id)
     std::unique_ptr<Trophonius> trophonius;
