@@ -141,8 +141,8 @@ namespace tests
           namespace meta_ns = infinit::oracles::meta;
           elle::serialization::json::SerializerOut output(res);
           std::vector<meta_ns::User> swaggers;
-          for (auto const& user: user.swaggers)
-            swaggers.emplace_back(*user);
+          for (auto const& u: user.swaggers)
+            swaggers.emplace_back(*u);
           output.serialize("swaggers", swaggers);
           output.serialize("running_transactions", runnings);
           output.serialize("final_transactions", finals);
@@ -1185,6 +1185,29 @@ namespace tests
     auto it = this->_transactions.find(id);
     ELLE_ASSERT(it != this->_transactions.end());
     return **it;
+  }
+
+  void
+  Server::notify_user(elle::UUID const& user_id,
+                      std::string const& notification)
+  {
+    ELLE_TRACE("notify user %s: %s", user_id, notification);
+    for (auto& socket: this->trophonius->clients(elle::UUID(user_id)))
+      socket->write(notification);
+  }
+
+  void
+  Server::notify_user_on_device(elle::UUID const& user_id,
+                                elle::UUID const& device_id,
+                                std::string const& notification)
+  {
+    ELLE_TRACE("notify user %s (on device: %s): %s",
+               user_id, device_id, notification);
+    auto* socket = this->trophonius->socket(user_id, device_id);
+    if (socket)
+      socket->write(notification);
+    else
+      elle::unreachable();
   }
 
   void
