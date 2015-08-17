@@ -235,8 +235,10 @@ namespace surface
       void
       status(gap_TransactionStatus status,
              boost::optional<gap_Status> status_info = boost::none);
-      ELLE_ATTRIBUTE_RX(boost::signals2::signal<void (gap_TransactionStatus)>,
-                        status_changed);
+      ELLE_ATTRIBUTE_RX(
+        boost::signals2::signal<void (gap_TransactionStatus,
+                                      boost::optional<gap_Status>)>,
+        status_changed);
       ELLE_ATTRIBUTE_R(uint32_t, id);
       ELLE_ATTRIBUTE_R(uint32_t, sender);
       ELLE_ATTRIBUTE_R(std::shared_ptr<Data>, data);
