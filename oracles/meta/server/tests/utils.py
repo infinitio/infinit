@@ -1084,6 +1084,10 @@ def assertIn(e, c):
   if e not in c:
     raise Exception('%r not in %r' % (e, c))
 
+def assertNin(e, c):
+  if e in c:
+    raise Exception('%r in %r' % (e, c))
+
 def assertGT(a, b):
   if a <= b:
     raise Exception('%r <= %r' % (a, b))
