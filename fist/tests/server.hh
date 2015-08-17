@@ -127,7 +127,7 @@ namespace tests
                       bmi::hashed_non_unique<UserEmail>,
                       bmi::hashed_unique<FacebookId>>
       > Users;
-    ELLE_ATTRIBUTE_R(Users, users);
+    ELLE_ATTRIBUTE_RX(Users, users);
     typedef
     bmi::const_mem_fun<Transaction, std::string const&, &Transaction::id_getter>
     TransactionId;

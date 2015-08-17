@@ -30,7 +30,7 @@ ELLE_TEST_SCHEDULED(wait_to_finish)
       "message");
     reactor::Barrier cloud_buffered("cloud buffered");
     auto conn = transaction.status_changed().connect(
-      [&] (gap_TransactionStatus status)
+      [&] (gap_TransactionStatus status, boost::optional<gap_Status>)
       {
         ELLE_LOG("transaction status changed: %s", status);
         t_id = transaction.data()->id;
@@ -56,7 +56,7 @@ ELLE_TEST_SCHEDULED(wait_to_finish)
       if (transaction.second->status() == gap_transaction_finished)
         finished.open();
       transaction.second->status_changed().connect(
-      [&] (gap_TransactionStatus status)
+      [&] (gap_TransactionStatus status, boost::optional<gap_Status>)
       {
         ELLE_LOG("transaction status changed: %s", status);
         if (status == gap_transaction_finished)

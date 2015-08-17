@@ -31,7 +31,7 @@ ELLE_TEST_SCHEDULED(peer_reject)
       "message");
     reactor::Barrier waiting, rejected;
     auto conn = transaction.status_changed().connect(
-      [&] (gap_TransactionStatus status)
+      [&] (gap_TransactionStatus status, boost::optional<gap_Status>)
       {
         ELLE_LOG("new local transaction status: %s", status);
         server.transaction(transaction.data()->id);

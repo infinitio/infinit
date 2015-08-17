@@ -39,7 +39,7 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
       "message");
     reactor::Barrier transferring, cloud_buffered;
     auto conn = state_transaction.status_changed().connect(
-      [&] (gap_TransactionStatus status)
+      [&] (gap_TransactionStatus status, boost::optional<gap_Status>)
       {
       t_id = state_transaction.data()->id;
         ELLE_LOG("new local transaction status: %s", status);
@@ -91,7 +91,7 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
       auto peer_data = dynamic_cast<infinit::oracles::PeerTransaction*>(data);
       BOOST_CHECK(peer_data->cloud_buffered);
       transaction.second->status_changed().connect(
-      [&] (gap_TransactionStatus status)
+      [&] (gap_TransactionStatus status, boost::optional<gap_Status>)
       {
         ELLE_LOG("transaction status changed: %s", status);
         BOOST_CHECK(peer_data->cloud_buffered);
@@ -133,7 +133,7 @@ ELLE_TEST_SCHEDULED(recipient_states)
       "message");
     reactor::Barrier transferring, cloud_buffered;
     auto conn = state_transaction.status_changed().connect(
-      [&] (gap_TransactionStatus status)
+      [&] (gap_TransactionStatus status, boost::optional<gap_Status>)
       {
       t_id = state_transaction.data()->id;
         ELLE_LOG("new gap status: %s", status);
@@ -181,7 +181,7 @@ ELLE_TEST_SCHEDULED(recipient_states)
     gap_TransactionStatus previous = gap_transaction_new;
     reactor::Barrier finished;
     auto conn = state_transaction.status_changed().connect(
-      [&] (gap_TransactionStatus status)
+      [&] (gap_TransactionStatus status, boost::optional<gap_Status>)
       {
         ELLE_LOG("new gap status: %s", status);
         switch (status)
@@ -248,7 +248,7 @@ ELLE_TEST_SCHEDULED(cloud_to_p2p)
     "message");
   reactor::Barrier cloud_buffered, sender_finished;
   auto conn = state_transaction.status_changed().connect(
-    [&] (gap_TransactionStatus status)
+    [&] (gap_TransactionStatus status, boost::optional<gap_Status>)
     {
       t_id = state_transaction.data()->id;
       ELLE_LOG("new sender transaction status: %s", status);
@@ -293,7 +293,7 @@ ELLE_TEST_SCHEDULED(cloud_to_p2p)
     *recipient.state->transactions().begin()->second;
   reactor::Barrier recipient_finished;
   state_transaction_recipient.status_changed().connect(
-    [&] (gap_TransactionStatus status)
+    [&] (gap_TransactionStatus status, boost::optional<gap_Status>)
     {
       ELLE_LOG("new recipient transaction status: %s", status);
       switch (status)
