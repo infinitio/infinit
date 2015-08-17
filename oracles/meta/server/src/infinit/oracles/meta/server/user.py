@@ -465,7 +465,8 @@ class Mixin:
       fields = ['referred_by'],
       new = False)
     if res is not None and 'referred_by' in res:
-      self.process_referrals(user, [referrer['id'] for referrer in res['referred_by']])
+      self.process_referrals(user, [referrer['id'] for referrer in res['referred_by']
+                                    if isinstance(referrer, dict)])
     bottle.request.session['device'] = device['id']
     bottle.request.session['identifier'] = user['_id']
     elle.log.trace("successfully connected as %s on device %s" %

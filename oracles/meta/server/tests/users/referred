@@ -41,6 +41,7 @@ with Meta() as meta:
            2)
   assertEq(len(alice.referrees), 0)
   assertEq(len(eve.referrees), 1)
+  bob = User(meta, "bob@infinit.io").login()
 
 # Complete.
 with Meta() as meta:
