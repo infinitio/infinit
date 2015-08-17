@@ -106,16 +106,6 @@ namespace tests
                     Parameters const& parameters,
                     elle::Buffer const& body) const;
 
-  public:
-    void
-    notify_user(elle::UUID const& user_id,
-                std::string const& notification);
-
-    void
-    notify_user_on_device(elle::UUID const& user_id,
-                          elle::UUID const& device_id,
-                          std::string const& notification);
-
     ELLE_ATTRIBUTE_R(elle::UUID, session_id)
     std::unique_ptr<Trophonius> trophonius;
     // Device.
