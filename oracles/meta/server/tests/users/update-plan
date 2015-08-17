@@ -32,7 +32,7 @@ with Meta(stripe_api_key = stripe_key) as meta:
   user = User(meta, 'foobar@infinit.io')
   user.login()
   throws(lambda: user.put('users/%s' % user.id, {'plan': 'Q'}), 400)
-  throws(lambda: user.put('users/%s' % user.id, {'plan': 'ppremium'}), 400)
+  throws(lambda: user.put('users/%s' % user.id, {'plan': 'premium'}), 400)
 
 stripe_token = None
 def clear():
