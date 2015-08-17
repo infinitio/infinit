@@ -362,12 +362,14 @@ ELLE_TEST_SCHEDULED(transactions)
 
 ELLE_TEST_SCHEDULED(transaction_create)
 {
+  using infinit::oracles::PeerTransaction;
   HTTPServer s;
-  infinit::oracles::meta::User recipient("42", "bob", "bob", "registered");
-  std::list<std::string> files = {"file1", "file2"};
+  infinit::oracles::meta::User recipient("1", "bob", "bob", "registered");
+  std::list<std::string> files = {"file"};
   std::string transaction_id = "42";
-  infinit::oracles::meta::CreatePeerTransactionResponse transaction(
-    recipient, transaction_id);
+  PeerTransaction transaction(
+    "1", recipient.fullname, elle::UUID::random(), recipient.id);
+  transaction.id = transaction_id;
   s.register_route("/transactions",
                      reactor::http::Method::POST,
                      [&transaction] (HTTPServer::Headers const&,
@@ -378,9 +380,9 @@ ELLE_TEST_SCHEDULED(transaction_create)
       std::stringstream ss;
       {
         elle::serialization::json::SerializerOut output(ss, false);
-        output.serialize("transaction", transaction);
-        output.serialize("created_transaction_id",
-                         transaction.created_transaction_id());
+        auto ptr = std::unique_ptr<infinit::oracles::Transaction>(
+          new PeerTransaction(transaction));
+        output.serialize("transaction", ptr);
       }
       return ss.str();
     });
@@ -394,11 +396,10 @@ ELLE_TEST_SCHEDULED(transaction_create)
       std::stringstream ss;
       {
         elle::serialization::json::SerializerOut output(ss, false);
-        output.serialize("transaction", transaction);
-        output.serialize("created_transaction_id",
-                         transaction.created_transaction_id());
+        auto ptr = std::unique_ptr<infinit::oracles::Transaction>(
+          new PeerTransaction(transaction));
+        output.serialize("transaction", ptr);
         output.serialize("recipient", recipient);
-        output.serialize("recipient_is_ghost", false);
       }
       return ss.str();
     });
@@ -1109,13 +1110,13 @@ namespace invitations
 
 namespace account_limits
 {
-  typedef infinit::oracles::meta::CreatePeerTransactionResponse CreatePeerTransactionResponse;
+  typedef infinit::oracles::PeerTransaction PeerTransaction;
 
   static
   void
   _create_peer_transaction_route(
     HTTPServer& s,
-    CreatePeerTransactionResponse const& transaction)
+    PeerTransaction const& transaction)
   {
     s.register_route("/transactions",
                      reactor::http::Method::POST,
@@ -1127,9 +1128,9 @@ namespace account_limits
         std::stringstream ss;
         {
           elle::serialization::json::SerializerOut output(ss, false);
-          output.serialize("transaction", transaction);
-          output.serialize("created_transaction_id",
-                           transaction.created_transaction_id());
+          auto ptr = std::unique_ptr<infinit::oracles::Transaction>(
+            new PeerTransaction(transaction));
+          output.serialize("transaction", ptr);
         }
         return ss.str();
       });
@@ -1164,7 +1165,8 @@ namespace account_limits
 
     // Failure while POST on /transactions
     {
-      CreatePeerTransactionResponse transaction(recipient, transaction_id);
+      PeerTransaction transaction("1", "bob", elle::UUID::random(), "2");
+      transaction.id = transaction_id;
       HTTPServer s;
       s.register_route(elle::sprintf("/transactions"),
                        reactor::http::Method::POST,
@@ -1183,7 +1185,8 @@ namespace account_limits
     }
     // Failure while filling.
     {
-      CreatePeerTransactionResponse transaction(recipient, transaction_id);
+      PeerTransaction transaction("1", "bob", elle::UUID::random(), "2");
+      transaction.id = transaction_id;
       HTTPServer s;
       s.register_route(
         "/transactions",
@@ -1196,9 +1199,9 @@ namespace account_limits
           std::stringstream ss;
           {
             elle::serialization::json::SerializerOut output(ss, false);
-            output.serialize("transaction", transaction);
-            output.serialize("created_transaction_id",
-                             transaction.created_transaction_id());
+            auto ptr = std::unique_ptr<infinit::oracles::Transaction>(
+              new PeerTransaction(transaction));
+            output.serialize("transaction", ptr);
           }
           return ss.str();
         });
@@ -1228,7 +1231,8 @@ namespace account_limits
     std::list<std::string> files = {"file"};
     std::string transaction_id = "42";
     uint64_t file_size = pow(10, 10);
-    CreatePeerTransactionResponse transaction(recipient, transaction_id);
+    PeerTransaction transaction("1", "bob", elle::UUID::random(), "2");
+    transaction.id = transaction_id;
     _create_peer_transaction_route(s, transaction);
     s.register_route(elle::sprintf("/transaction/%s", transaction_id),
                      reactor::http::Method::PUT,
@@ -1348,6 +1352,48 @@ namespace account_limits
       BOOST_CHECK_EQUAL(e.usage(), 99);
     }
   }
+
+  ELLE_TEST_SCHEDULED(ghost_download_limit_reached)
+  {
+    namespace meta_ns = infinit::oracles::meta;
+    HTTPServer s;
+    meta_ns::User ghost("1", "bob", "bob", "registered");
+    std::list<std::string> files = {"file"};
+    std::string transaction_id = "42";
+    uint64_t file_size = pow(10, 10);
+    PeerTransaction transaction(
+      "42", ghost.fullname, elle::UUID::random(), ghost.id);
+    transaction.id = transaction_id;
+    _create_peer_transaction_route(s, transaction);
+    s.register_route(elle::sprintf("/transaction/%s", transaction_id),
+                     reactor::http::Method::PUT,
+                     [&] (HTTPServer::Headers const&,
+                          HTTPServer::Cookies const&,
+                          HTTPServer::Parameters const&,
+                          elle::Buffer const& body) -> std::string
+      {
+        std::stringstream ss;
+        {
+          elle::serialization::json::SerializerOut output(ss, false);
+          output.serialize("recipient", ghost);
+          output.serialize("status_info_code", static_cast<int32_t>(
+            meta_ns::Error::ghost_download_limit_reached));
+          auto ptr = std::unique_ptr<infinit::oracles::Transaction>(
+            new PeerTransaction(transaction));
+          output.serialize("transaction", ptr);
+        }
+        return ss.str();
+      });
+    Client c("http", "127.0.0.1", s.port());
+    auto const& created_id = c.create_transaction(ghost.id, files, 2);
+    BOOST_CHECK_EQUAL(created_id, transaction_id);
+    auto const& res = c.fill_transaction(
+      ghost.id, files, files.size(), file_size, false,
+      elle::UUID::random(), "coucou", transaction_id);
+    BOOST_CHECK(res.status_info());
+    BOOST_CHECK_EQUAL(res.status_info().get(), static_cast<int32_t>(
+      meta_ns::Error::ghost_download_limit_reached));
+  }
 }
 
 ELLE_TEST_SUITE()
@@ -1407,5 +1453,6 @@ ELLE_TEST_SUITE()
     s->add(BOOST_TEST_CASE(account_limits::send_to_self_limit));
     s->add(BOOST_TEST_CASE(account_limits::file_transfer_size_limited));
     s->add(BOOST_TEST_CASE(account_limits::link_storage_limit_reached));
+    s->add(BOOST_TEST_CASE(account_limits::ghost_download_limit_reached));
   }
 }
