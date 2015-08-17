@@ -141,8 +141,8 @@ namespace tests
           namespace meta_ns = infinit::oracles::meta;
           elle::serialization::json::SerializerOut output(res);
           std::vector<meta_ns::User> swaggers;
-          for (auto const& user: user.swaggers)
-            swaggers.emplace_back(*user);
+          for (auto const& u: user.swaggers)
+            swaggers.emplace_back(*u);
           output.serialize("swaggers", swaggers);
           output.serialize("running_transactions", runnings);
           output.serialize("final_transactions", finals);
