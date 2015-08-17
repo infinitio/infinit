@@ -29,6 +29,7 @@ errors = {
   'link_storage_limit_reached': (-221, 'Link storage limit reached.'),
   'send_to_self_limit_reached': (-222, 'Send to self transaction limit reached.'),
   'file_transfer_size_limited': (-223, 'File transfer size limited.'),
+  'ghost_download_limit_reached': (-224, 'Ghost recipient required to install client.'),
 
   # User
   'already_logged_in': (-102, "You are already logged in."),
