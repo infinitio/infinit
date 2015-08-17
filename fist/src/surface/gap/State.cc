@@ -1446,6 +1446,12 @@ namespace surface
     {
       ELLE_TRACE_SCOPE("reset %s with %s", this->_model, account);
       this->_model.account = account;
+      if (this->metrics_reporter())
+      {
+        std::string new_plan(elle::sprintf("%s", this->_model.account.plan));
+        if (infinit::metrics::Reporter::metric_sender_plan() != new_plan)
+          infinit::metrics::Reporter::metric_sender_plan(new_plan);
+      }
     }
 
     /*------------------.

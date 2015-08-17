@@ -71,7 +71,7 @@ ELLE_TEST_SCHEDULED(links_another_device)
   t.click_count = 3;
   t.id = boost::lexical_cast<std::string>(elle::UUID::random());
   t.ctime = 2173213;
-  t.sender_id = boost::lexical_cast<std::string>(sender.user.id());
+  t.sender_id = sender.user.id;
   t.sender_device_id = boost::lexical_cast<std::string>(sender.device_id) + "other";
   t.status = infinit::oracles::Transaction::Status::initialized;
   sender.user.links[t.id] = t;
@@ -113,7 +113,7 @@ ELLE_TEST_SCHEDULED(swaggers)
   {
     step0 = false;
     auto it = bob.state->users().find(notif.id);
-    if (it->second.id == boost::lexical_cast<std::string>(eve.user.id()))
+    if (it->second.id == eve.user.id)
     {
       step1 = notif.status;
     }
@@ -134,14 +134,15 @@ ELLE_TEST_SCHEDULED(swaggers)
   // when playing with real states. I'll use some random device ids to check
   // behaviours.
   bob.user.connected_devices.clear();
-  bob.user.connected_devices.insert(elle::UUID::random());
-  bob.user.connected_devices.insert(elle::UUID::random());
+  bob.user.add_connected_device(elle::UUID::random());
+  bob.user.add_connected_device(elle::UUID::random());
+  BOOST_CHECK_EQUAL(bob.user.connected_devices.size(), 2u);
 
   int step2 = 0;
   alice.state->attach_callback<surface::gap::State::UserStatusNotification>([&] (surface::gap::State::UserStatusNotification notif)
   {
     auto it = alice.state->users().find(notif.id);
-    if (it->second.id == boost::lexical_cast<std::string>(bob.user.id()))
+    if (it->second.id == bob.user.id)
     {
       step2 += notif.status;
     }
@@ -157,7 +158,7 @@ ELLE_TEST_SCHEDULED(swaggers)
   alice.state->attach_callback<surface::gap::State::UserStatusNotification>([&] (surface::gap::State::UserStatusNotification notif)
   {
     auto it = alice.state->users().find(notif.id);
-    if (it->second.id == boost::lexical_cast<std::string>(bob.user.id()))
+    if (it->second.id == bob.user.id)
     {
       step3 = !notif.status;
     }

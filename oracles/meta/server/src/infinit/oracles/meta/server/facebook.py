@@ -84,7 +84,6 @@ class FacebookGraph:
           response = requests.get(url)
           response.raise_for_status()
           text = response.text
-          print(text)
           if text.startswith('access_token='):
             self.__long_lived_access_token = text[13:text.find("&")]
           else:

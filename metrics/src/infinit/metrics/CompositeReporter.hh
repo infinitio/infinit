@@ -103,9 +103,6 @@ namespace infinit
                  std::string const& aws_error_code,
                  std::string const& message) override;
 
-      virtual
-      void
-      _quota_exceeded(uint64_t size, uint64_t current, uint64_t total) override;
     /// User metrics.
     private:
       void
@@ -155,6 +152,18 @@ namespace infinit
                                     std::string const& code,
                                     std::string const& method,
                                     std::string const& fail_reason) override;
+
+      void
+      _link_quota_exceeded(uint64_t size,
+                           uint64_t current,
+                           uint64_t total) override;
+
+      void
+      _send_to_self_limit_reached(uint64_t limit) override;
+
+      void
+      _file_transfer_limit_reached(uint64_t limit,
+                                   uint64_t transfer_size) override;
 
       /// UI metrics:
       void

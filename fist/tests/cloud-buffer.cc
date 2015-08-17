@@ -15,8 +15,10 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
   tests::Server server;
   elle::filesystem::TemporaryDirectory sender_home(
     "cloud-buffer_sender_home");
-  auto const& sender_user = server.register_user("sender@infinit.io", "password");
-  auto const& recipient = server.register_user("recipient@infinit.io", "password");
+  auto const& sender_user = server.register_user("sender@infinit.io",
+                                                 "password");
+  auto const& recipient = server.register_user("recipient@infinit.io",
+                                               "password");
   std::string t_id;
   elle::filesystem::TemporaryFile transfered("cloud-buffered");
   {
@@ -83,7 +85,8 @@ ELLE_TEST_SCHEDULED(cloud_buffer)
     sender.state->synchronize();
     for (auto& transaction : sender.state->transactions())
     {
-      ELLE_LOG("transaction status on new sender: %s", transaction.second->status());
+      ELLE_LOG("transaction status on new sender: %s",
+               transaction.second->status());
       auto data = transaction.second->data().get();
       auto peer_data = dynamic_cast<infinit::oracles::PeerTransaction*>(data);
       BOOST_CHECK(peer_data->cloud_buffered);
@@ -237,12 +240,11 @@ ELLE_TEST_SCHEDULED(cloud_to_p2p)
     }
   }
 
-
   tests::Client sender(server, sender_user, sender_home.path());
   sender.login();
   auto& state_transaction = sender.state->transaction_peer_create(
     recipient_user.email(),
-    std::vector<std::string>{transfered.path().string().c_str()},
+    std::vector<std::string>{transfered.path().string()},
     "message");
   reactor::Barrier cloud_buffered, sender_finished;
   auto conn = state_transaction.status_changed().connect(
@@ -258,12 +260,14 @@ ELLE_TEST_SCHEDULED(cloud_to_p2p)
         }
         case gap_transaction_cloud_buffered:
         {
-          BOOST_ERROR("cloud_to_p2p test should not finish cloud buffering!");
+          BOOST_ERROR(
+            "cloud_to_p2p test should not finish cloud buffering!");
           break;
         }
         case gap_transaction_connecting:
         {
-          BOOST_ERROR("cloud_to_p2p sender should not pass through connecting state!");
+          BOOST_ERROR(
+            "cloud_to_p2p sender should not pass through connecting state!");
           break;
         }
         case gap_transaction_finished:
@@ -285,7 +289,8 @@ ELLE_TEST_SCHEDULED(cloud_to_p2p)
   tests::Client recipient(server, recipient_user, recipient_home.path());
   recipient.login();
   BOOST_CHECK_EQUAL(recipient.state->transactions().size(), 1);
-  auto& state_transaction_recipient = *recipient.state->transactions().begin()->second;
+  auto& state_transaction_recipient =
+    *recipient.state->transactions().begin()->second;
   reactor::Barrier recipient_finished;
   state_transaction_recipient.status_changed().connect(
     [&] (gap_TransactionStatus status)
@@ -304,7 +309,7 @@ ELLE_TEST_SCHEDULED(cloud_to_p2p)
         }
       }
     });
-  sender.state->_on_swagger_status_update(recipient.user.id().repr(),
+  sender.state->_on_swagger_status_update(recipient.user.id,
                                           true,
                                           recipient.device_id,
                                           true);

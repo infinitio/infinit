@@ -22,6 +22,7 @@ namespace tests
     ELLE_ATTRIBUTE_R(elle::filesystem::TemporaryDirectory, download_dir);
     ELLE_ATTRIBUTE_R(elle::filesystem::TemporaryDirectory, temporary_dir);
     ELLE_ATTRIBUTE_X(surface::gap::State, state);
+    ELLE_ATTRIBUTE_R(const std::vector<unsigned char>, trophonius_fingerprint)
   };
 }
 

@@ -82,6 +82,4 @@ namespace infinit
   }
 }
 
-# include <infinit/oracles/PeerTransaction.hxx>
-
 #endif

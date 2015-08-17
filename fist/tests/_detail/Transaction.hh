@@ -9,8 +9,9 @@ namespace tests
     : public infinit::oracles::PeerTransaction
   {
   public:
-    Transaction();
-    ~Transaction() noexcept (true);
+    Transaction(std::string const& sender_id,
+                std::string const& recipient_id);
+    ~Transaction() noexcept(true);
     ELLE_ATTRIBUTE_RX(
       boost::signals2::signal<void (infinit::oracles::Transaction::Status)>,
       status_changed);

@@ -18,14 +18,17 @@ extern const std::vector<char> server_dh1024;
 namespace tests
 {
   Trophonius::Trophonius()
-    : _server(elle::make_unique<reactor::network::SSLCertificate>(
+    : infinit::oracles::meta::LoginResponse::Trophonius()
+    , _server(elle::make_unique<reactor::network::SSLCertificate>(
                 server_certificate,
                 server_key,
                 server_dh1024))
     , _accepter(new reactor::Thread{elle::sprintf("%s accepter", *this),
-          boost::bind(&Trophonius::_serve, this)})
+        boost::bind(&Trophonius::_serve, this)})
   {
     this->_server.listen();
+    this->host = "127.0.0.1";
+    this->port_ssl = this->port();
   }
 
   Trophonius::~Trophonius()
@@ -89,7 +92,13 @@ namespace tests
     ELLE_LOG("Trophonius, new connection: %s", key);
     elle::SafeFinally remove{[&] { try { this->_clients.erase(key); } catch (...) { }}};
     this->_clients.emplace(key, std::move(socket));
-    this->_clients.at(key)->write("{\"notification_type\": -666, \"response_code\": 200, \"response_details\": \"details\"}\n");
+    {
+      elle::serialization::json::SerializerOut output(*this->_clients.at(key),
+                                                      false);
+      output.serialize("notification_type", -666);
+      output.serialize("response_code", 200);
+      output.serialize("response_details", std::string("details"));
+    }
     try
     {
       while (true)
@@ -129,13 +138,10 @@ namespace tests
   std::string
   Trophonius::json() const
   {
-    return elle::sprintf(
-      "{"
-      "  \"host\": \"127.0.0.1\","
-      "  \"port\": 0,"
-      "  \"port_ssl\": %s"
-      "}",
-      this->port());
+    elle::Buffer serialized =
+      elle::serialization::json::serialize(
+        static_cast<infinit::oracles::meta::LoginResponse::Trophonius>(*this));
+    return serialized.string();
   }
 }
 

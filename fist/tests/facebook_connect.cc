@@ -41,7 +41,7 @@ struct Reporter
   _facebook_connect(bool success,
                     std::string const& info) override
   {
-    ELLE_ASSERT_EQ(success, true);
+    BOOST_CHECK_EQUAL(success, true);
     this->facebook_beacon.open();
   }
 

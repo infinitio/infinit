@@ -300,8 +300,7 @@ def configure(cxx_toolkit = None,
   if python3 is not None:
     papier_python_cxx_config = drake.cxx.Config(cxx_config)
     if cxx_toolkit.os is drake.os.macos:
-      papier_python_cxx_config.flag('-framework')
-      papier_python_cxx_config.flag('CoreServices')
+      papier_python_cxx_config.framework_add('CoreServices')
     papier_python_sources = drake.nodes('papier/src/papier/python.cc')
     papier_python_sources.append(papier_lib)
     papier_python_cxx_config += boost_filesystem
@@ -667,6 +666,7 @@ def configure(cxx_toolkit = None,
   gap_tests_cxx_config += boost_filesystem
   gap_tests_cxx_config.lib_path_runtime('../../lib')
   for name in (
+      'account-limits',
       'cloud-buffer',
       'devices',
       'facebook_connect',
@@ -676,31 +676,30 @@ def configure(cxx_toolkit = None,
       # Kickout mechanism has been temporary disabled.
       # 'kickout',
       'links',
+      'login',
       'pause',
       'peer-reject',
       'resynchronization',
       'snapshot-resume',
-      'state',
       'transition-to-finish',
   ):
     sources = drake.nodes('fist/tests/%s.cc' % name)
-    if name != 'state':
-      sources += drake.nodes(
-        'fist/tests/server.cc',
-        'fist/tests/server.hh',
-        'fist/tests/_detail/User.cc',
-        'fist/tests/_detail/User.hh',
-        'fist/tests/_detail/Device.cc',
-        'fist/tests/_detail/Device.hh',
-        'fist/tests/_detail/State.cc',
-        'fist/tests/_detail/State.hh',
-        'fist/tests/_detail/Trophonius.cc',
-        'fist/tests/_detail/Trophonius.hh',
-        'fist/tests/_detail/Transaction.cc',
-        'fist/tests/_detail/Transaction.hh',
-        'fist/tests/_detail/Authority.cc',
-        'fist/tests/_detail/Authority.hh',
-      )
+    sources += drake.nodes(
+      'fist/tests/server.cc',
+      'fist/tests/server.hh',
+      'fist/tests/_detail/User.cc',
+      'fist/tests/_detail/User.hh',
+      'fist/tests/_detail/Device.cc',
+      'fist/tests/_detail/Device.hh',
+      'fist/tests/_detail/State.cc',
+      'fist/tests/_detail/State.hh',
+      'fist/tests/_detail/Trophonius.cc',
+      'fist/tests/_detail/Trophonius.hh',
+      'fist/tests/_detail/Transaction.cc',
+      'fist/tests/_detail/Transaction.hh',
+      'fist/tests/_detail/Authority.cc',
+      'fist/tests/_detail/Authority.hh',
+    )
     test = drake.cxx.Executable(
       'fist/tests/%s' % name,
       sources +
@@ -763,6 +762,7 @@ def configure(cxx_toolkit = None,
       crash_lib,
       oracles.transaction_lib,
       papier_lib,
+      cryptography_lib,
     ],
     cxx_toolkit,
     cli_cxx_config
@@ -782,6 +782,7 @@ def configure(cxx_toolkit = None,
       oracles.transaction_lib,
       meta_client_lib,
       papier_lib,
+      cryptography_lib,
     ],
     cxx_toolkit,
     cli_cxx_config
@@ -800,6 +801,7 @@ def configure(cxx_toolkit = None,
       crash_lib,
       oracles.transaction_lib,
       papier_lib,
+      cryptography_lib,
     ],
     cxx_toolkit,
     cli_cxx_config
@@ -818,6 +820,7 @@ def configure(cxx_toolkit = None,
       crash_lib,
       meta_client_lib,
       papier_lib,
+      cryptography_lib,
       ],
     cxx_toolkit,
     cli_cxx_config
@@ -919,8 +922,7 @@ def configure(cxx_toolkit = None,
       gap_python_cxx_config += boost_python
     else:
       if cxx_toolkit.os is drake.os.macos:
-        gap_python_cxx_config.flag('-framework')
-        gap_python_cxx_config.flag('CoreServices')
+        gap_python_cxx_config.framework_add('CoreServices')
       gap_python_cxx_config += boost_python
     with templating_context:
       gap_python_sources = drake.nodes(

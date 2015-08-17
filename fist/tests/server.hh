@@ -5,7 +5,6 @@
 #include <boost/multi_index/mem_fun.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 
-#include <elle/UUID.hh>
 #include <elle/reactor/tests/http_server.hh>
 #include <elle/UUID.hh>
 
@@ -28,10 +27,13 @@ namespace tests
     Server(std::unique_ptr<Trophonius> trophonius = nullptr);
     Server(Server const&) = delete;
 
-   void
-   register_route(std::string const& route,
-                  reactor::http::Method method,
-                  Super::Function const& function) override;
+    void
+    register_route(std::string const& route,
+                   reactor::http::Method method,
+                   Super::Function const& function) override;
+
+    infinit::oracles::meta::Account::Quotas
+    empty_account_quotas();
 
     User const&
     register_user(std::string const& email,
@@ -59,13 +61,24 @@ namespace tests
     User const&
     user(Cookies const& cookies) const;
 
+    User const&
+    user(std::string const& id_or_email) const;
+
     Device const&
     device(Cookies const& cookies) const;
 
   protected:
     virtual
+    std::string
+    _login_post(Headers const& headers,
+                Cookies const& cookies,
+                Parameters const& parameters,
+                elle::Buffer const& body);
+
+    virtual
     elle::UUID
-    _create_empty();
+    _create_empty(std::string const& sender_id,
+                  std::string const& recipient_identifier);
 
     virtual
     void
@@ -73,17 +86,25 @@ namespace tests
 
     virtual
     std::string
-    _transaction_put(Headers const&,
-                     Cookies const&,
-                     Parameters const&,
-                     elle::Buffer const&,
+    _transaction_post(Headers const& headers,
+                      Cookies const& cookies,
+                      Parameters const& parameters,
+                      elle::Buffer const& body);
+
+    virtual
+    std::string
+    _transaction_put(Headers const& headers,
+                     Cookies const& cookies,
+                     Parameters const& parameters,
+                     elle::Buffer const& body,
                      elle::UUID const&);
 
+    virtual
     std::string
-    _get_trophonius(Headers const&,
-                    Cookies const&,
-                    Parameters const&,
-                    elle::Buffer const&) const;
+    _get_trophonius(Headers const& headers,
+                    Cookies const& cookies,
+                    Parameters const& parameters,
+                    elle::Buffer const& body) const;
 
     ELLE_ATTRIBUTE_R(elle::UUID, session_id)
     std::unique_ptr<Trophonius> trophonius;
@@ -92,7 +113,7 @@ namespace tests
     ELLE_ATTRIBUTE_R(Devices, devices);
     // Users.
     typedef
-    bmi::const_mem_fun<User, elle::UUID const&, &User::id>
+    bmi::const_mem_fun<User, std::string const&, &User::bmi_id>
     UserId;
     typedef
     bmi::const_mem_fun<User, std::string const&, &User::email>

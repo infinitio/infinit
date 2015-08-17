@@ -4,8 +4,10 @@ import infinit.oracles.emailer
 import infinit.oracles.meta.server
 from infinit.oracles.meta.server.mail import Mailer
 from infinit.oracles.meta.server.invitation import Invitation
+from infinit.oracles.meta.server import error
 from infinit.oracles.meta.server import transaction_status
 from infinit.oracles.meta import version as Version
+from infinit.oracles.meta import error
 from random import uniform
 
 import datetime
@@ -138,7 +140,7 @@ class Client:
 class Trophonius(Client):
   class Accepter:
 
-    def poll(self, duration):
+    def poll(self, duration = 0.1):
       from time import sleep
       sleep(duration)
 
@@ -161,14 +163,14 @@ class Trophonius(Client):
             # Ignore configuration notification.
             if d['notification']['notification_type'] == 14:
               # OS X requires a larger backlog for the tests to function.
-              self.socket.listen(5)
+              self.socket.listen(8)
               self.poll()
               continue
             d['notification'].pop('timestamp')
             for user in self.trophonius.users_on_device[UUID(d['device_id'])]:
               user.notifications.append(Notification(d['notification']))
             # OS X requires a larger backlog for the tests to function.
-            self.socket.listen(5)
+            self.socket.listen(8)
           except BaseException as e:
             continue
       import threading
@@ -395,6 +397,41 @@ class InstrumentedMeta(infinit.oracles.meta.server.Meta):
     self.__now += duration
 
 
+basic_user_transfer_size_limit = 10 * 1000 * 1000 * 1000 # 10 GB
+def make_plan(name,
+              default_storage,
+              storage_bonuses,
+              send_to_self_quota,
+              send_to_self_bonus,
+              file_size_limit,
+              features = {}):
+  return {
+    'name': name,
+    'quotas': {
+      'links': {
+        'default_storage': default_storage,
+        'bonuses': {
+          'referrer': storage_bonuses[0],
+          'referree': storage_bonuses[1],
+          'facebook_linked': storage_bonuses[2],
+          'social_post': storage_bonuses[3],
+        },
+      },
+      'p2p': {
+        'size_limit': file_size_limit,
+      },
+      'send_to_self': {
+        'default_quota': send_to_self_quota,
+        'bonuses': {
+          'referrer': send_to_self_bonus[0],
+          'facebook_linked': send_to_self_bonus[1],
+          'social_post': send_to_self_bonus[2],
+        },
+      }
+    },
+    'features': features,
+  }
+
 class Meta:
 
   def __init__(self,
@@ -435,16 +472,32 @@ class Meta:
     self.__mongo.__enter__()
     client = pymongo.MongoClient(port = self.__mongo.port)
     self.__database = client.meta
-    client.meta.plans.insert({
-      'name': 'basic',
-      'quota': { 'total_link_size': 1e9},
-      'features': {'nag': 'true'}
-    })
-    client.meta.plans.insert({
-      'name': 'premium',
-      'quota': { 'total_link_size': 5e10},
-      'features': {'turbo': 'true'}
-    })
+    self.__database.plans.insert(
+      make_plan(name = 'basic',
+                default_storage = int(1e9),
+                storage_bonuses = (int(1e9), int(5e8), int(3e8), int(5e8)),
+                send_to_self_quota = 5,
+                send_to_self_bonus = (2, 1, 1),
+                file_size_limit = int(10e9),
+                features = {'nag': True}
+    ))
+    self.__database.plans.insert(
+      make_plan(name = 'plus',
+                default_storage = int(5e9),
+                storage_bonuses = (int(1e9), int(5e8), int(3e8), int(5e8)),
+                send_to_self_quota = None,
+                send_to_self_bonus = (2, 1, 1),
+                file_size_limit = None,
+    ))
+    self.__database.plans.insert(
+      make_plan(name = 'premium',
+                default_storage = int(1e11),
+                storage_bonuses = (int(1e9), int(5e8), int(3e8), int(5e8)),
+                send_to_self_quota = None,
+                send_to_self_bonus = (2, 1, 1),
+                file_size_limit = None,
+                features = {'turbo': True}
+    ))
     def run():
       try:
         self.__meta = InstrumentedMeta(
@@ -599,7 +652,7 @@ class User(Client):
                version = None,
                **kwargs):
     super().__init__(meta, version)
-
+    self.plans = meta.inner.plans
     if not facebook:
       self.email = email is not None and email or random_email() + '@infinit.io'
       self.password, self.email_confirmation_token = \
@@ -640,12 +693,18 @@ class User(Client):
     return self.me['facebook_id']
 
   @property
-  def login_parameters(self):
+  def web_login_parameters(self):
     return {
       'email': self.email,
       'password': self.password,
-      'device_id': str(self.device_id),
     }
+  @property
+  def login_parameters(self):
+    res = self.web_login_parameters
+    res.update({
+      'device_id': str(self.device_id),
+    })
+    return res
 
   @property
   def data(self):
@@ -709,7 +768,6 @@ class User(Client):
       assert res['success']
     return res
 
-
   def __hash__(self):
     return str(self.id).__hash__()
 
@@ -734,6 +792,16 @@ class User(Client):
   @property
   def me(self):
     res = self.get('user/self')
+    return res
+
+  @property
+  def link_usage(self):
+    res = self.get('user/self')['quotas']['links']['used']
+    return res
+
+  @property
+  def link_quota(self):
+    res = self.get('user/self')['quotas']['links']['quota']
     return res
 
   @property
@@ -773,6 +841,14 @@ class User(Client):
     return self.data['favorites']
 
   @property
+  def referral_code(self):
+    return self.get('user/referral-code')['referral_code']
+
+  @property
+  def referrees(self):
+    return self.get('user/referrees')['referrees']
+
+  @property
   def logged_in(self):
     try:
       res = self.data
@@ -785,6 +861,10 @@ class User(Client):
   @property
   def _id(self):
     return bson.ObjectId(self.data['id'])
+
+  @property
+  def plan(self):
+    return self.plans[self.me['plan']]
 
   @property
   def devices(self):
@@ -1003,3 +1083,7 @@ def assertNeq(a, b):
 def assertIn(e, c):
   if e not in c:
     raise Exception('%r not in %r' % (e, c))
+
+def assertGT(a, b):
+  if a <= b:
+    raise Exception('%r <= %r' % (a, b))

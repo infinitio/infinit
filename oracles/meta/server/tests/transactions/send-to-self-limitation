@@ -1,0 +1,157 @@
+#!/usr/bin/env python3
+
+import datetime
+
+from utils import *
+from infinit.oracles.meta import error
+
+def get_quota(user):
+  return user.me['quotas']['send_to_self']['quota']
+
+def get_used(user):
+  return user.me['quotas']['send_to_self']['used']
+
+def send_to_self(user, failure_expected = False):
+  try:
+    # XXX: RESTORE LIMITATION.
+    failure_expected = False
+    # Always make sure synchronize returns the same quota.
+    sync = user.get('user/synchronize')
+    assertEq(sync['account']['quotas']['send_to_self']['used'],
+             get_used(user))
+    _, res = user.sendfile(recipient = user.id, initialize = True)
+    del user.notifications[:]
+    user.transaction_update(res['created_transaction_id'],
+                            transaction_status.FINISHED)
+    notifications = user.notifications
+    assertEq(len(notifications), 2) # Transaction + quota.
+    notifications.sort()
+    assertEq(notifications[1]['account']['quotas']['send_to_self']['used'],
+             get_used(user))
+    assert not failure_expected
+    return
+  except HTTPException as e:
+    assertEq(e.status, 402)
+    assertEq(e.content['error'], error.SEND_TO_SELF_LIMIT_REACHED[0])
+
+def previous_month(year, month):
+  month = (month - 2) % 12 + 1
+  if month == 12:
+    year = year - 1
+  return datetime.datetime(year, month, 1)
+
+assertEq(previous_month(2015, 12), datetime.datetime(2015, 11, 1))
+assertEq(previous_month(2015, 11), datetime.datetime(2015, 10, 1))
+assertEq(previous_month(2015, 10), datetime.datetime(2015, 9, 1))
+assertEq(previous_month(2015, 4),  datetime.datetime(2015, 3, 1))
+assertEq(previous_month(2015, 3),  datetime.datetime(2015, 2, 1))
+assertEq(previous_month(2015, 2),  datetime.datetime(2015, 1, 1))
+assertEq(previous_month(2015, 1),  datetime.datetime(2014, 12, 1))
+
+# Test if transfers are not impacted by limits until clients are released.
+with Meta() as meta:
+  alice = User(meta, "alice@infinit.io")
+  alice.login()
+  limit = get_quota(alice)
+  # Make sure unfinished transaction doesn't count.
+  for _ in range(0, limit):
+    _, res = alice.sendfile(recipient = alice.id, initialize = True)
+    alice.transaction_update(res['created_transaction_id'],
+                             transaction_status.FINISHED)
+  assertEq(get_used(alice), limit)
+  _, res = alice.sendfile(recipient = alice.id, initialize = True)
+  assertEq(get_used(alice), limit)
+  alice.transaction_update(res['created_transaction_id'],
+                           transaction_status.FINISHED)
+  assertGT(get_used(alice), limit)
+
+# Referral via file invitation.
+with Meta() as meta, Trophonius(meta) as trophonius:
+  alice = User(meta, "alice@infinit.io")
+  alice.login(trophonius = trophonius)
+  limit = get_quota(alice)
+  # Make sure unfinished transaction doesn't count.
+  for _ in range(0, limit):
+    alice.sendfile(recipient = alice.id, initialize = True)
+  assertEq(get_used(alice), 0)
+  # Perform n send to self.
+  for _ in range(0, limit):
+    send_to_self(alice, False)
+  used = get_used(alice)
+  assertEq(get_used(alice), limit)
+  send_to_self(alice, failure_expected = True)
+
+  # Outdate all transactions.
+  meta.database.transactions.update(
+    {},
+    {
+      '$set': {
+        'creation_time' : previous_month(datetime.datetime.today().year,
+                                         datetime.datetime.today().month),
+      }
+    },
+    multi = True)
+  assertEq(get_used(alice), 0)
+  for _ in range(0, limit):
+    send_to_self(alice, False)
+  send_to_self(alice, failure_expected = True)
+
+  # Invite someone should extend the user quota.
+  def invite(inviter, invitee):
+    inviter.sendfile(recipient = invitee, initialize = True)
+    # Nothing since the user registered.
+    assertEq(limit, get_quota(inviter))
+    send_to_self(inviter, failure_expected = True)
+    invitee = User(meta, invitee)
+    invitee.login()
+    invitee.logout()
+
+  invite(alice, "bob@infinit.io")
+  # At least one extra send to self..
+  assertGT(get_quota(alice), limit)
+  limit = get_quota(alice)
+  send_to_self(alice, False)
+  # Rexhaust remaining send to self.
+  for _ in range(get_used(alice), limit):
+    send_to_self(alice, failure_expected = False)
+  assertEq(get_used(alice), limit + 1) #
+  assertEq(limit, get_quota(alice))
+  send_to_self(alice, failure_expected = True)
+
+  invite(alice, "george@infinit.io")
+  assertEq(get_quota(alice), None)
+  # Lets try to send.
+  for _ in range(0, 3):
+    send_to_self(alice, failure_expected = False)
+
+# Referral via invitation (no file).
+with Meta() as meta:
+  alice = User(meta, "alice@infinit.io")
+  alice.login()
+  limit = get_quota(alice)
+  def invite(inviter, invitee):
+    inviter.post('user/invite', {'identifier': invitee})
+    assertEq(get_quota(inviter), limit)
+    invitee = User(meta, invitee)
+    assertEq(get_quota(inviter), limit)
+    invitee.login()
+  invite(alice, 'bob@infinit.io')
+  assertGT(get_quota(alice), limit)
+  limit = get_quota(alice)
+  invite(alice, 'eve@infinit.io')
+  assertEq(get_quota(alice), None)
+
+# Referral code.
+with Meta() as meta:
+  alice = User(meta, "alice@infinit.io")
+  alice.login()
+  limit = get_quota(alice)
+  def invite(inviter, invitee):
+    invitee = User(meta, invitee, referral_code = inviter.referral_code)
+    assertEq(get_quota(inviter), limit)
+    invitee.login()
+  invite(alice, 'bob@infinit.io')
+  assertGT(get_quota(alice), limit)
+  limit = get_quota(alice)
+  invite(alice, 'eve@infinit.io')
+  assertEq(get_quota(alice), None)

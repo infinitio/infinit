@@ -36,7 +36,8 @@ namespace surface
                       bool is_directory,
                       std::string const& message,
                       TransactionCanceler const& canceler,
-                      std::string const& meta_id);
+                      std::string const& meta_id,
+                      boost::optional<gap_Status> status_info);
       ~PeerTransaction() noexcept(true);
 
       uint32_t id;
@@ -52,6 +53,7 @@ namespace surface
       std::string message;
       TransactionCanceler canceler;
       std::string meta_id;
+      boost::optional<gap_Status> status_info;
 
       static Notification::Type type;
 

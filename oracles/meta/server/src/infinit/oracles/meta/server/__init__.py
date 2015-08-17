@@ -43,6 +43,7 @@ from . import invitation
 from . import link_generation
 from . import mail
 from . import notifier
+from . import plans
 from . import root
 from . import transaction
 from . import trophonius
@@ -219,6 +220,21 @@ class Meta(bottle.Bottle,
     # Show deprecation warnings. How is this not the default ...
     import warnings
     warnings.simplefilter('default', DeprecationWarning)
+    # Plans.
+    if self.database.plans.count() == 0:
+      self.database.plans.insert(plans.basic)
+      self.database.plans.insert(plans.plus)
+      self.database.plans.insert(plans.premium)
+
+  @property
+  def plans(self):
+    # XXX: Could be cached.
+    plans = {}
+    for plan in self.database.plans.find():
+      plans[plan['name']] = plan
+    # XXX: Dirty.
+    plans[None] = plans['basic']
+    return plans
 
   @property
   def gcs(self):
@@ -287,7 +303,10 @@ class Meta(bottle.Bottle,
     # Collect referred users.
     self.__database.users.ensure_index([('used_referral_link', 1)],
                                        sparse = True)
-
+    # Collect referrer users.
+    self.__database.users.ensure_index([('referred_by.id', 1)],
+                                       sparse = True,
+                                       unique = False)
 
     #---------------------------------------------------------------------------
     # Transactions
@@ -334,6 +353,11 @@ class Meta(bottle.Bottle,
                                           unique = False)
     self.__database.sessions.ensure_index([('identifier', 1)],
                                           unique = False, sparse = True)
+
+    #---------------------------------------------------------------------------
+    # Plans.
+    #---------------------------------------------------------------------------
+    self.__database.plans.ensure_index([('name', 1)], unique = True)
 
   @property
   def mailer(self):

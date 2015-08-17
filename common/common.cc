@@ -11,7 +11,7 @@
 #include <elle/os/environ.hh>
 #include <elle/os/path.hh>
 #include <elle/print.hh>
-#include <elle/system/home_directory.hh>
+#include <elle/system/user_paths.hh>
 #include <elle/system/platform.hh>
 
 #include <infinit/metrics/CompositeReporter.hh>
@@ -133,7 +133,7 @@ namespace common
       _set_path_with_optional(
         this->_download_dir,
         elle::os::getenv("INFINIT_DOWNLOAD_DIR", ""),
-        path::join(elle::system::home_directory().string(), "Downloads"),
+        elle::system::download_directory().string(),
         download_dir);
 
       if (!elle::os::getenv("INFINIT_HOME", "").empty())
@@ -241,7 +241,7 @@ namespace common
       _set_path_with_optional(
         this->_download_dir,
         elle::os::getenv("INFINIT_DOWNLOAD_DIR", ""),
-        path::join(elle::system::home_directory().string(), "Downloads"),
+        elle::system::download_directory().string(),
         download_dir);
 
       if (!elle::os::getenv("INFINIT_HOME", "").empty() || home_dir)

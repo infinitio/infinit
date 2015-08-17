@@ -230,43 +230,32 @@ _change_synchronize_route(tests::Server& server,
     {
       auto const& device = server.device(cookies);
       if (devices.empty())
-      {
-        surface::gap::Device d;
-        d.id = device.id();
-        d.name = device.id().repr();
-        devices.push_back(d);
-      }
-
-      std::stringstream stream;
-      {
-        typename elle::serialization::json::SerializerOut output(stream, false);
-        output.serialize("devices", devices);
-      }
-      std::string devices = stream.str();
-      // Remove opening and closing bracket.
-      auto beg = devices.begin() + 1;
-      auto end = beg;
-      std::advance(end, devices.size() - 2);
-      devices = std::string(beg, end);
+        devices.push_back(device);
       ELLE_LOG("devices: %s", devices);
-      auto res = elle::sprintf(
-        "{"
-        "  \"swaggers\": [],"
-        "  \"running_transactions\": [],"
-        "  \"final_transactions\": [],"
-        "  \"links\": [],"
-        "  \"accounts\": [{\"type\": \"email\", \"id\": \"f@ke.email\"}],"
-        "  \"account\": {"
-        "    \"plan\": \"basic\","
-        "    \"custom_domain\": \"\","
-        "    \"link_format\": \"%s\","
-        "    \"link_size_quota\": 0,"
-        "    \"link_size_used\": 0"
-        "  },"
-        "%s"
-        "}", std::string("http://%s/_/%s"), devices);
+      std::stringstream res;
+      {
+        namespace meta_ns = infinit::oracles::meta;
+        typedef std::vector<int> EmptyList;
+        elle::serialization::json::SerializerOut output(res);
+        output.serialize("swaggers", EmptyList{});
+        output.serialize("running_transactions", EmptyList{});
+        output.serialize("final_transactions", EmptyList{});
+        output.serialize("links", EmptyList{});
+        output.serialize("devices", devices);
+        meta_ns::ExternalAccount email_account;
+        email_account.id = "coucou@infinit.io";
+        email_account.type = "email";
+        output.serialize(
+          "accounts", std::vector<meta_ns::ExternalAccount>{email_account});
+        infinit::oracles::meta::Account account;
+        account.custom_domain = "";
+        account.link_format =  std::string("http://%s/_/%s");
+        account.plan = meta_ns::AccountPlanType_Basic;
+        account.quotas = server.empty_account_quotas();
+        output.serialize("account", account);
+      }
       ELLE_DEBUG("synchronize response: %s", res);
-      return res;
+      return res.str();
     });
 }
 

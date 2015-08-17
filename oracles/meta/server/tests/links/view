@@ -1,0 +1,17 @@
+#!/usr/bin/env python3
+
+from utils import *
+from bson.objectid import ObjectId
+
+# FIXME: Add tests for other fields that should be present.
+with Meta() as meta:
+  alice = User(meta, 'alice@infinit.io')
+  alice.login()
+  link_size = 4242
+  link = alice.getalink(files = [['file1', link_size * (2 / 3)],
+                                 ['file2', link_size * (1 / 3)]])
+  res = alice.get('links/%s' % link['id'])
+  assertEq(res['size'], link_size)
+  bob = User(meta, 'bob@infinit.io')
+  res = bob.get('links/%s' % link['id'])
+  assertEq(res['size'], link_size)

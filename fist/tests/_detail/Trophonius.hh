@@ -11,9 +11,12 @@
 # include <reactor/network/ssl-server.hh>
 # include <reactor/thread.hh>
 
+# include <infinit/oracles/meta/Client.hh>
+
 namespace tests
 {
   class Trophonius
+    : public infinit::oracles::meta::LoginResponse::Trophonius
   {
   public:
     Trophonius();
