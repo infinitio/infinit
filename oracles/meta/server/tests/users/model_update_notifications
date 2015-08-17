@@ -8,9 +8,16 @@ with Meta() as meta, Trophonius(meta) as trophonius:
   plans = {plan['name']: plan for plan in meta.database.plans.find()}
   alice = User(meta, "alice@infinit.io")
   alice.login(trophonius = trophonius)
-  User(meta, 'bob@infinit.io', referral_code = alice.referral_code).login()
+  bob = User(meta, 'bob@infinit.io', referral_code = alice.referral_code)
+  assertEq(len(alice.notifications), 0)
+  bob.login()
   notif = alice.next_notification()
   assertEq(notif.type, 42)
+  # Make sure it doesn't spam notification when referred login.
+  del alice.notifications[:]
+  bob.login()
+  assertEq(len(alice.notifications), 0)
+
   quotas = notif['account']['quotas']
   assertGT(quotas['send_to_self']['quota'],
            alice.plan['quotas']['send_to_self']['default_quota'])

@@ -461,10 +461,11 @@ class Mixin:
       {
         '_id': user['_id'],
       },
-      { '$set': {'last_connection': time.time()} },
-      fields = ['referred_by'],
-      new = False)
-    if res is not None and 'referred_by' in res:
+      { '$set': {'last_connection': time.time()}},
+      fields = ['last_connection', 'referred_by'],
+      new = False
+    )
+    if res and 'last_connection' not in res and 'referred_by' in res:
       self.process_referrals(user, [referrer['id'] for referrer in res['referred_by']
                                     if isinstance(referrer, dict)])
     bottle.request.session['device'] = device['id']
