@@ -269,6 +269,45 @@ class Mixin:
       h += str(int(random.random() * 10))
     return h
 
+  def __ensure_ghost_download_limit(self, ghost):
+    """
+    Set the ghost's download remaining field if it hasn't been already.
+    """
+    self.__user_fetch_and_modify(
+      query = {
+        '_id': ghost['_id'],
+        'register_status': 'ghost',
+        'ghost_downloads_remaining': {'$exists': False},
+      },
+      update = {
+        '$set':
+        {
+          'ghost_downloads_remaining': int(2),
+        },
+      },
+      fields = {}, new = False)
+
+  def __user_id_premium(self, user_id: bson.ObjectId):
+    """
+    Check if a user_id has a premium account.
+    """
+    return self.__user_fetch(
+      {
+        '_id': user_id,
+        'plan': 'premium',
+      }) is not None
+
+  def __user_id_ghost_download_limited(self, user_id: bson.ObjectId):
+    """
+    Check if ghost has reached their direct download limit.
+    """
+    return self.__user_fetch(
+      {
+        '_id': user_id,
+        'register_status': 'ghost',
+        'ghost_downloads_remaining': {'$lte': 0},
+      }) is not None
+
   ## -------- ##
   ## Sessions ##
   ## -------- ##
@@ -1157,8 +1196,9 @@ class Mixin:
       user_id = recipient['_id']
       request.update(extra_fields)
       del request['accounts']
-      self.database.users.update( {'_id': user_id},
-        { '$set': request})
+      self.database.users.update(
+        {'_id': user_id},
+        {'$set': request})
     else:
       request.update(extra_fields)
       user_id = self._register(**request)
