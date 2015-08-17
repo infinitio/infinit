@@ -87,7 +87,7 @@ namespace infinit
     void
     PeerTransaction::serialize(elle::serialization::Serializer& s)
     {
-      s.serialize("_id", this->id);
+      s.serialize("id", this->id);
       s.serialize("sender_id", this->sender_id);
       s.serialize("sender_fullname", this->sender_fullname);
       s.serialize("sender_device_id", this->sender_device_id);
