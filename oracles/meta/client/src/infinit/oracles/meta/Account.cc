@@ -107,9 +107,29 @@ namespace infinit
                << "p2p = " << this->p2p << ")";
       }
 
+      Account::Account(Account const& rhs)
+        : custom_domain(rhs.custom_domain)
+        , link_format(rhs.link_format)
+        , plan(rhs.plan)
+        , quotas(rhs.quotas)
+        , _changed()
+      {}
+
       Account::Account(elle::serialization::SerializerIn& s)
       {
         this->serialize(s);
+      }
+
+      Account&
+      Account::operator =(Account const& rhs)
+      {
+        this->custom_domain = rhs.custom_domain;
+        this->link_format = rhs.link_format;
+        this->plan = rhs.plan;
+        this->quotas = rhs.quotas;
+        // Do not overwrite the changed signal.
+        this->_changed(*this);
+        return *this;
       }
 
       void

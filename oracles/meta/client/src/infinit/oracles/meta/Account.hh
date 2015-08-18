@@ -128,13 +128,18 @@ namespace infinit
       `-------------*/
       public:
         Account() = default;
+        Account(Account const& rhs);
         Account(elle::serialization::SerializerIn& s);
         das::Variable<std::string> custom_domain;
         das::Variable<std::string> link_format;
-        das::Variable<uint64_t> link_size_quota;
-        das::Variable<uint64_t> link_size_used;
         das::Variable<AccountPlanType> plan;
         das::Variable<Quotas> quotas;
+
+        Account&
+        operator =(Account const& rhs);
+
+        typedef boost::signals2::signal<void (Account const&)> ChangedSignal;
+        ELLE_ATTRIBUTE_RX(ChangedSignal, changed);
 
       /*--------------.
       | Serialization |
@@ -162,7 +167,7 @@ namespace infinit
 
 DAS_MODEL(
   infinit::oracles::meta::Account,
-  (custom_domain, link_format, plan, link_size_quota, link_size_used, quotas),
+  (custom_domain, link_format, plan, quotas),
   DasAccount);
 DAS_MODEL_DEFAULT(infinit::oracles::meta::Account, DasAccount);
 
