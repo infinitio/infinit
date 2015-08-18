@@ -767,7 +767,8 @@ class Mixin:
       {
         '$group': {'_id': None, 'total':{'$sum': '$file_size'}}
       }])['result']
-    return res[0]['total'] if len(res) else 0
+    total = res[0]['total'] if len(res) else 0
+    return int(total)
 
   # Generate url on storage for given HTTP operation
   def _generate_op_url(self, link, op):
