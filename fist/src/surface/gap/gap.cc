@@ -357,10 +357,25 @@ gap_account_changed_callback(gap_State* state, AccountChangedCallback callback)
     "attach account changed callback",
     [&] (surface::gap::State& state) -> gap_Status
     {
-      state.model().account.changed().connect(
-        [callback] (infinit::oracles::meta::Account const& account)
+      state.model().account.plan.changed().connect(
+        [callback, &state] (infinit::oracles::meta::AccountPlanType)
         {
-          callback(account);
+          callback(state.account());
+        });
+      state.model().account.custom_domain.changed().connect(
+        [callback, &state] (std::string)
+        {
+          callback(state.account());
+        });
+      state.model().account.link_size_quota.changed().connect(
+        [callback, &state] (uint64_t)
+        {
+          callback(state.account());
+        });
+      state.model().account.link_size_used.changed().connect(
+        [callback, &state] (uint64_t)
+        {
+          callback(state.account());
         });
       return gap_ok;
     });
