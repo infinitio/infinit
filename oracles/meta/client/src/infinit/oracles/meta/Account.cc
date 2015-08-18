@@ -29,8 +29,7 @@ namespace infinit
       Account::Quotas::QuotaUsage::QuotaUsage()
         : quota()
         , used(0)
-      {
-      }
+      {}
 
       Account::Quotas::QuotaUsage::QuotaUsage(elle::serialization::SerializerIn& s)
       {
@@ -107,6 +106,16 @@ namespace infinit
                << "p2p = " << this->p2p << ")";
       }
 
+      Account::Account(Account const& account)
+        : custom_domain(account.custom_domain)
+        , link_format(account.link_format)
+        , link_size_quota(account.link_size_quota)
+        , link_size_used(account.link_size_used)
+        , plan(account.plan)
+        , quotas(account.quotas)
+        , _changed()
+      {}
+
       Account::Account(elle::serialization::SerializerIn& s)
       {
         this->serialize(s);
@@ -119,6 +128,19 @@ namespace infinit
         s.serialize("link_format", this->link_format);
         s.serialize("plan", this->plan);
         s.serialize("quotas", this->quotas);
+      }
+
+      Account&
+      Account::operator =(Account const& account)
+      {
+        this->custom_domain = account.custom_domain;
+        this->link_format = account.link_format;
+        this->link_size_quota = account.link_size_quota;
+        this->link_size_used = account.link_size_used;
+        this->plan = account.plan;
+        this->quotas = account.quotas;
+        this->_changed(*this);
+        return *this;
       }
 
       void
