@@ -130,6 +130,7 @@ class Mixin:
     if (user_links['used'] + new_link_size) > user_links['quota']:
       self.quota_exceeded(
         {
+          'error': error.LINK_STORAGE_LIMIT_REACHED[0],
           'reason': 'Link size quota of %s reached' % user_links['quota'],
           'quota': int(user_links['quota']),
           'usage': int(user_links['used']),
