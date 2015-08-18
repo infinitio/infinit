@@ -1376,6 +1376,9 @@ namespace surface
           ELLE_DEBUG("%s: apply model update", *this);
           ELLE_DUMP("new model: %s", u);
           u.apply(this->_model);
+          // FIXME: Remove manual call to change when das handles parent object
+          // changed signal.
+          this->_model.account.changed().operator()(this->_model.account);
           break;
         }
         case infinit::oracles::trophonius::NotificationType::paused:
