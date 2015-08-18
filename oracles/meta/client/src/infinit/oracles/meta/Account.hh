@@ -1,11 +1,8 @@
 #ifndef INFINIT_ORACLES_META_CLIENT_ACCOUNT_HH
 # define INFINIT_ORACLES_META_CLIENT_ACCOUNT_HH
 
-# include <boost/signals2.hpp>
-
-# include <elle/attribute.hh>
-# include <elle/optional.hh>
 # include <elle/Printable.hh>
+# include <elle/optional.hh>
 
 # include <das/model.hh>
 
@@ -131,19 +128,13 @@ namespace infinit
       `-------------*/
       public:
         Account() = default;
-        Account(Account const& account);
         Account(elle::serialization::SerializerIn& s);
-        Account&
-        operator =(Account const& account);
         das::Variable<std::string> custom_domain;
         das::Variable<std::string> link_format;
         das::Variable<uint64_t> link_size_quota;
         das::Variable<uint64_t> link_size_used;
         das::Variable<AccountPlanType> plan;
         das::Variable<Quotas> quotas;
-
-        typedef boost::signals2::signal<void (Account const&)> ChangedSignal;
-        ELLE_ATTRIBUTE_RX(ChangedSignal, changed);
 
       /*--------------.
       | Serialization |
