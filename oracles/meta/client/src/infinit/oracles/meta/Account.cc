@@ -180,8 +180,8 @@ namespace elle
         return AccountPlanType::AccountPlanType_Plus;
       else if (repr == "premium")
         return AccountPlanType::AccountPlanType_Premium;
-      // Fallback.
-      return AccountPlanType::AccountPlanType_Basic;
+      // Fallback to Plus.
+      return AccountPlanType::AccountPlanType_Plus;
     }
   }
 }
