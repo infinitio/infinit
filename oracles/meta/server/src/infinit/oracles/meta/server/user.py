@@ -150,6 +150,7 @@ class Mixin:
       res += [
         'account',
         'accounts',
+        'blocked_referrer',
         'creation_time',
         'email',
         'email_confirmed',
@@ -497,16 +498,30 @@ class Mixin:
 
     # Check if this is the first login of this user
     res = self.database.users.find_and_modify(
-      {
-        '_id': user['_id'],
-      },
+      { '_id': user['_id'], },
       { '$set': {'last_connection': time.time()}},
       fields = ['last_connection', 'referred_by'],
       new = False
     )
     if res and 'last_connection' not in res and 'referred_by' in res:
-      self.process_referrals(user, [referrer['id'] for referrer in res['referred_by']
-                                    if isinstance(referrer, dict)])
+      referrer_ids = [referrer['id'] for referrer in res['referred_by']
+                      if isinstance(referrer, dict)]
+      def _same_device_as_referrer(device_id, referrer_ids):
+        for referrer in [self.__user_fetch({'_id': id}) for id in referrer_ids]:
+          for device in referrer.get('devices', []):
+            if device['id'] == str(device_id):
+              return referrer['_id']
+        return None
+      blocked_referrer = _same_device_as_referrer(device_id, referrer_ids)
+      if blocked_referrer:
+        self.__user_fetch_and_modify(
+          {'_id': user['_id']},
+          {'$set': {'blocked_referrer': blocked_referrer}},
+          [],
+          False
+        )
+        referrer_ids.remove(blocked_referrer)
+      self.process_referrals(user, referrer_ids)
     bottle.request.session['device'] = device['id']
     bottle.request.session['identifier'] = user['_id']
     elle.log.trace("successfully connected as %s on device %s" %
@@ -3782,6 +3797,7 @@ class Mixin:
     assert isinstance(referrer, bson.ObjectId)
     query = {
       'referred_by.id': referrer,
+      'blocked_referrer' : {'$ne': referrer},
     }
     if registered_user:
       query['last_connection'] = {'$exists': True}
