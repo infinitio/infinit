@@ -78,6 +78,12 @@ class Mixin:
             self.__ghost_profile_url(user, type = 'phone'))
         if 'shorten_ghost_profile_url' in user:
           del user['shorten_ghost_profile_url']
+    if self.admin:
+      self.__plan_and_quotas(user)
+      if 'stripe_id' in user:
+        user['stripe'] = stripe.Customer.retrieve(
+          user['stripe_id'],
+          api_key = self.stripe_api_key).get('subscriptions', {})
     return user
 
   def __sent_to_self(self, user):
@@ -104,6 +110,16 @@ class Mixin:
     user['devices'] = [d['id'] for d in user['devices']]
     return user
 
+  def __plan_and_quotas(self, user):
+    # Quotas.
+    user.update({'quotas': self.__quotas(user)})
+    user['social_posts'] = {
+      social_post['medium']: social_post['date']
+      for social_post in user.get('social_posts', {})
+    }
+    # If you has no plan or 'None', return basic.
+    user['plan'] = user.get('plan', 'basic') or 'basic'
+
   def __user_self(self, user):
     user = self.__user(user)
     if 'favorites' not in user:
@@ -116,15 +132,7 @@ class Mixin:
       )
       if cus.subscriptions.total_count > 0:
           user['subscription_data'] = cus.subscriptions.data[0]
-    # Quotas.
-    user.update({'quotas': self.__quotas(user)})
-    user['social_posts'] = {
-      social_post['medium']: social_post['date']
-      for social_post in user.get('social_posts', {})
-    }
-    # If you has no plan or 'None', return basic.
-    user['plan'] = user.get('plan', 'basic') or 'basic'
-
+    self.__plan_and_quotas(user)
     # Remove '_id' key, replaced earlier by 'id'.
     del user['_id']
     return user
@@ -149,7 +157,6 @@ class Mixin:
     if self.admin:
       res += [
         'account',
-        'accounts',
         'blocked_referrer',
         'creation_time',
         'email',
@@ -157,7 +164,8 @@ class Mixin:
         'features',
         'os',
         'total_link_size',
-      ]
+        'stripe_id',
+      ] + self.__referral_fields
     return res
 
   @property
