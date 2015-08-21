@@ -642,6 +642,47 @@ def random_email(N = 10):
   import string
   return ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(N))
 
+class Stripe():
+  key = 'sk_test_WtXpwiieEsemLlqrQeKK0qfI'
+
+  def __init__(self):
+    self.emails = set()
+
+  def __enter__(self):
+    return self
+
+  def __exit__(self, *args, **kwargs):
+    self.clear()
+
+  def clear(self):
+    import stripe
+    stripe.api_key = Stripe.key
+    cursor = None
+    while True:
+      if cursor:
+        users = stripe.Customer.all(limit = 100, starting_after = cursor)
+      else:
+        users = stripe.Customer.all(limit = 100)
+      for user in users['data']:
+        cursor = user['id']
+        if user['email'] in self.emails:
+          cu = stripe.Customer.retrieve(user['id'])
+          cu.delete()
+      if not users['has_more']:
+        break
+
+  def pay(self, email):
+    self.emails.add(email)
+    import requests
+    # 'like' the website.
+    r = requests.post('https://api.stripe.com/v1/tokens?'
+                      'card[number]=4242424242424242&'
+                      'card[exp_month]=12&'
+                      'card[exp_year]=2016&'
+                      'card[cvc]=123',
+                      auth = (Stripe.key, ''))
+    return r.json()['id']
+
 class User(Client):
 
   def __init__(self,
