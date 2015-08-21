@@ -81,7 +81,6 @@ with Meta() as meta, Trophonius(meta) as trophonius:
   del alice.notifications[:]
   meta.database.links.update({'hash': link['hash']},
     {'$set': {'file_size': size, 'quota_counted': True}})
-  assert 42 in types
   for notif in alice.notifications:
     if notif.type == 42:
       # We send a fake notification (before size is
@@ -94,3 +93,36 @@ with Meta() as meta, Trophonius(meta) as trophonius:
     if notif.type == 42:
       # Because we use amazon but don't save anything in it, size will be 0.
       assertEq(notif['account']['quotas']['links']['used'], 0)
+
+# Avatar.
+with Meta() as meta, Trophonius(meta) as trophonius:
+  plans = {plan['name']: plan for plan in meta.database.plans.find()}
+  alice = User(meta, "alice@infinit.io")
+  alice.login(trophonius = trophonius)
+  del alice.notifications[:]
+  with open('%s/avatar.jpg' % os.path.dirname(__file__), 'rb') as f:
+    alice.post('user/avatar', body = f.read())
+  notif = alice.next_notification()
+  assertEq(notif.type, 42)
+  assertEq(notif['account']['quotas']['send_to_self']['bonus'],
+           1)
+  # We should get it once.
+  assertEq(len(alice.notifications), 0)
+  with open('%s/avatar.jpg' % os.path.dirname(__file__), 'rb') as f:
+    alice.post('user/avatar', body = f.read())
+  assertEq(len(alice.notifications), 0)
+
+# Social post
+with Meta() as meta, Trophonius(meta) as trophonius:
+  plans = {plan['name']: plan for plan in meta.database.plans.find()}
+  alice = User(meta, "alice@infinit.io")
+  alice.login(trophonius = trophonius)
+  i = 0
+  for medium in ['facebook', 'twitter']:
+    i = i + 1
+    del alice.notifications[:]
+    alice.post('user/social_posts/' + medium)
+    notif = alice.next_notification()
+    assertEq(notif.type, 42)
+    assertEq(notif['account']['quotas']['send_to_self']['bonus'],
+             alice.plan['quotas']['send_to_self']['bonuses']['social_post'] * i)

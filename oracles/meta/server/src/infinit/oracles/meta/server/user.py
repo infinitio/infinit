@@ -2558,12 +2558,21 @@ class Mixin:
     out.seek(0)
     small_out.seek(0)
     import bson.binary
-    self.database.users.update(
+    res = self.__user_fetch_and_modify(
       {'_id': user['_id']},
-      {'$set': {
-        'avatar': bson.binary.Binary(out.read()),
-        'small_avatar': bson.binary.Binary(small_out.read()),
-      }})
+      {
+        '$set':
+        {
+          'avatar': bson.binary.Binary(out.read()),
+          'small_avatar': bson.binary.Binary(small_out.read()),
+        }
+      },
+      fields = self.__referral_fields + ['small_avatar'],
+      new = False
+    )
+    if 'small_avatar' not in res:
+      user.update({'has_avatar': True})
+      self._quota_updated_notification(user)
     return self.success()
 
   ## ----------------- ##
@@ -3755,7 +3764,11 @@ class Mixin:
             'date': self.now
           }
         }
-      })
+      },
+      new = True,
+      fields = self.__referral_fields
+    )
+    self._quota_updated_notification(user)
     return {}
 
   ## -------- ##
