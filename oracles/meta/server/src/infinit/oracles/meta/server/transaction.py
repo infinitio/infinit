@@ -689,7 +689,7 @@ class Mixin:
           time = False)
     else:
       transaction_id = self.database.transactions.insert(transaction)
-    if len(limit_reached) and False:
+    if len(limit_reached):
       self.payment_required({
         'error': limit_reached[0][0],
         'reason': limit_reached[0][1],
