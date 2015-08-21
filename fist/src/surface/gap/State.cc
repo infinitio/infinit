@@ -188,7 +188,7 @@ namespace surface
 #if defined(INFINIT_ANDROID) || defined(INFINIT_IOS)
       config.s3.multipart_upload.parallelism = 2;
 #else
-      config.s3.multipart_upload.parallelism = 8;
+      config.s3.multipart_upload.parallelism = 4;
 #endif
       config.s3.multipart_upload.chunk_size = 0;
       config.enable_file_mirroring =
